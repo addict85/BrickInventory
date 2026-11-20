@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
-import ch.brickinventoryapp.model.util.kalendertag
+import ch.brickinventoryapp.model.util.calendarDay
 import java.time.Instant
 import java.time.ZoneOffset
 import androidx.compose.runtime.remember
@@ -8,11 +8,11 @@ import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.ui.components.Rueckfrage
-import ch.brickinventoryapp.ui.components.RueckgaengigMeldung
+import ch.brickinventoryapp.ui.components.Prompt
+import ch.brickinventoryapp.ui.components.UndoMessage
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.zustand.ui.ManualItemDetailUiState
-import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
+import ch.brickinventoryapp.zustand.ui.ScopeUiState
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.zustand.ui.viewmodel.KaeufeAktionen
 import ch.brickinventoryapp.model.fach.KaufAnsicht
@@ -46,7 +46,7 @@ import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Lesebreite
-import ch.brickinventoryapp.ui.theme.mittigBis
+import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.ui.util.fmtEingabe
@@ -71,21 +71,21 @@ fun AcquisitionManagementRoute(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val manDetailState by remember(type, id, colorId) { vm.kaeufeVon(type, id, colorId) }.collectAsStateWithLifecycle()
-    val weg = vm.kaufWeg.wert.collectAsStateWithLifecycle().value
+    val manDetailState by remember(type, id, colorId) { vm.purchasesOf(type, id, colorId) }.collectAsStateWithLifecycle()
+    val weg = vm.purchaseRoute.wert.collectAsStateWithLifecycle().value
     val meldung = remember { SnackbarHostState() }
-    RueckgaengigMeldung(weg, stringResource(R.string.acq_geloescht), meldung, vm.kaufWeg::rueckgaengig, vm.kaufWeg::ausfuehren)
-    AcquisitionManagementScreen(KaeufeZustand(state, blick, manDetailState, weg?.kaufId), vm, type, id, colorId, title, onBack,
+    UndoMessage(weg, stringResource(R.string.acq_geloescht), meldung, vm.purchaseRoute::rueckgaengig, vm.purchaseRoute::ausfuehren)
+    AcquisitionManagementScreen(KaeufeZustand(state, blick, manDetailState, weg?.purchaseId), vm, type, id, colorId, title, onBack,
         meldung)
 }
 
 /** Was die Kaufverwaltung zeigt: ein Zustand für Sets, Teile und Figuren. */
 internal data class KaeufeZustand(
     val state: AppUiState,
-    val blick: BlickfeldUiState,
+    val blick: ScopeUiState,
     val manDetailState: ManualItemDetailUiState,
     /** Der Kauf, dessen Löschen gerade „Rückgängig“ anbietet; er fehlt schon in der Liste. */
-    val wegKaufId: Int? = null,
+    val routePurchaseId: Int? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,7 +105,7 @@ internal fun AcquisitionManagementScreen(
     val currency = state.currency
     val manDetailState = zustand.manDetailState
 
-    val acquisitions = manDetailState.acquisitions.filterNot { it.id == zustand.wegKaufId }
+    val acquisitions = manDetailState.acquisitions.filterNot { it.id == zustand.routePurchaseId }
     // Summe vom Server — die Rechnung stand vorher hier und noch dreimal
     // woanders (siehe utils/acquisitions.ts, acquisitionTotals).
     val totals = manDetailState.acquisitionTotals
@@ -118,7 +118,7 @@ internal fun AcquisitionManagementScreen(
     // `stringResource` geht nicht, weil die Zahlen erst in der Antwort entstehen;
     // LocalResources ist die konfigurationsbewusste Form.
     val res = androidx.compose.ui.platform.LocalResources.current
-    val isLoading    = manDetailState.kaeufeAbruf.laedt
+    val isLoading    = manDetailState.purchasesFetch.laedt
 
     Scaffold(
         snackbarHost = { SnackbarHost(meldung) },
@@ -144,7 +144,7 @@ internal fun AcquisitionManagementScreen(
         // Auf dem Tablet mittig in Formularbreite wie die Einstellungen: Über 1200 dp
         // lagen Anzahl und Preis einer Zeile zu weit auseinander, um sie zusammen zu lesen.
         LazyColumn(
-            Modifier.fillMaxSize().padding(innerPadding).mittigBis(Lesebreite.formular),
+            Modifier.fillMaxSize().padding(innerPadding).centeredUntil(Lesebreite.formular),
             contentPadding = PaddingValues(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)
         ) {
@@ -155,7 +155,7 @@ internal fun AcquisitionManagementScreen(
                 item {
                     Text(msg, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = Abstaende.winzig))
+                        modifier = Modifier.padding(vertical = Abstaende.tiny))
                 }
             }
 
@@ -175,7 +175,7 @@ internal fun AcquisitionManagementScreen(
                             else aktionen.loadManualAcquisitions(type, id, colorId)
                         }
                     },
-                    onDelete = { aktionen.kaufLoeschenVormerken(type, id, colorId, acq.id) }
+                    onDelete = { aktionen.purchaseDeleteReserve(type, id, colorId, acq.id) }
                 )
                 // ── Eigentümer dieser Zeile ──
                 //
@@ -206,17 +206,17 @@ internal fun AcquisitionManagementScreen(
                                     res.getQuantityString(R.plurals.household_move_minifigs, figuren, figuren))
                             }
                         },
-                        modifier = Modifier.padding(top = Abstaende.winzig)
+                        modifier = Modifier.padding(top = Abstaende.tiny)
                     )
                 }
                 HorizontalDivider()
             }
 
             // Die Summe kommt vom Server und zählt einen vorgemerkten Kauf noch mit.
-            if (acquisitions.size > 1 && zustand.wegKaufId == null) {
+            if (acquisitions.size > 1 && zustand.routePurchaseId == null) {
                 item {
                     Row(
-                        Modifier.fillMaxWidth().padding(top = Abstaende.winzig),
+                        Modifier.fillMaxWidth().padding(top = Abstaende.tiny),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -243,14 +243,14 @@ internal fun AcquisitionManagementScreen(
  * dass Antippen es ändert. Die Form folgt der App-Sprache wie jedes Datum (fmtTag).
  */
 @Composable
-internal fun Kaufdatum(createdAt: Instant?, onAendern: () -> Unit) {
+internal fun Kaufdatum(createdAt: Instant?, changeOn: () -> Unit) {
     Row(
         // heightIn statt minimumInteractiveComponentSize: Diese vergrössert nur die Tippfläche um den
-        // Knopf, die Knopf-Fläche selbst blieb 44 dp (KaufdatumTest).
+        // Knopf, die Knopf-Fläche selbst blieb 44 dp (PurchaseDateTest).
         Modifier
             .heightIn(min = 48.dp)
-            .clickable(onClickLabel = stringResource(R.string.acq_kaufdatum_aendern), role = Role.Button, onClick = onAendern)
-            .padding(vertical = Abstaende.winzig),
+            .clickable(onClickLabel = stringResource(R.string.acq_kaufdatum_aendern), role = Role.Button, onClick = changeOn)
+            .padding(vertical = Abstaende.tiny),
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -274,7 +274,7 @@ private fun AcquisitionManagementRow(
         mutableStateOf(acquisition.effectivePrice?.let { fmtEingabe(it) } ?: "")
     }
     var condition by remember(acquisition.id) { mutableStateOf(acquisition.condition) }
-    val geschaetztText = stringResource(R.string.acq_preis_geschaetzt)
+    val estimatedText = stringResource(R.string.acq_preis_geschaetzt)
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
@@ -297,7 +297,7 @@ private fun AcquisitionManagementRow(
         val (curPrice, curQty) = pending.value
         if (curPrice != lastSavedPrice) {
             lastSavedPrice = curPrice
-            onSave(NumericInput.leseBetrag(curPrice), null, null, null)
+            onSave(NumericInput.readAmount(curPrice), null, null, null)
         }
         if (curQty != lastSavedQty) {
             lastSavedQty = curQty
@@ -308,7 +308,7 @@ private fun AcquisitionManagementRow(
     DisposableEffect(acquisition.id) { onDispose { flushPending() } }
 
     if (showDeleteConfirm) {
-        Rueckfrage(
+        Prompt(
             titel = stringResource(R.string.acq_delete_title),
             text = stringResource(R.string.acq_delete_text),
             bestaetigen = stringResource(R.string.common_delete),
@@ -321,7 +321,7 @@ private fun AcquisitionManagementRow(
     Kaufdatum(acquisition.createdAt) { showDatePicker = true }
     if (showDatePicker) {
         val initialMillis = remember(acquisition.createdAt) {
-            acquisition.createdAt?.kalendertag()?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
+            acquisition.createdAt?.calendarDay()?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
         }
         val dpState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
         DatePickerDialog(
@@ -345,7 +345,7 @@ private fun AcquisitionManagementRow(
 
     Column(Modifier.fillMaxWidth()) {
     Row(
-        Modifier.fillMaxWidth().padding(bottom = Abstaende.winzig),
+        Modifier.fillMaxWidth().padding(bottom = Abstaende.tiny),
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -359,7 +359,7 @@ private fun AcquisitionManagementRow(
             // „Fertig“ zu drücken, verlöre die Eingabe. Gespeichert wird beim Fokusverlust
             // nur, wenn sich der Wert geändert hat.
             modifier = Modifier
-                .width(ANZAHL_BREITE)
+                .width(COUNT_WIDTH)
                 .onFocusChanged { st -> if (!st.isFocused) flushPending() },
             singleLine = true,
             keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Done),
@@ -386,10 +386,10 @@ private fun AcquisitionManagementRow(
             // Betrag; das „≈" sagt es, bis jemand den echten Preis einträgt.
             prefix = if (acquisition.priceEstimated && priceText.isNotEmpty()) {
                 { Text("≈", modifier = Modifier.semantics {
-                    contentDescription = geschaetztText }) }
+                    contentDescription = estimatedText }) }
             } else null,
             suffix = acquisition.currency?.let { w -> { Text(w.code, style = MaterialTheme.typography.bodySmall) } },
-            keyboardOptions = NumericInput.preisTastatur(),
+            keyboardOptions = NumericInput.priceKeyboard(),
             keyboardActions = KeyboardActions(
                 onDone = { focusManager.clearFocus(); flushPending() }
             ),
@@ -415,4 +415,4 @@ private fun AcquisitionManagementRow(
 }
 
 /** Breite des Anzahlfelds: Platz für „×“, drei Ziffern und die Beschriftung „Anzahl“. */
-private val ANZAHL_BREITE = 96.dp
+private val COUNT_WIDTH = 96.dp

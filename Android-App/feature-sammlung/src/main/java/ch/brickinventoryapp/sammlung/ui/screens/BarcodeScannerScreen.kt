@@ -29,15 +29,15 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashlightOff
 import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.foundation.BorderStroke
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.withFont
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.screens.KameraErlaubnisHinweis
-import ch.brickinventoryapp.ui.screens.KameraUeberlagerung
+import ch.brickinventoryapp.ui.screens.CameraPermissionHint
+import ch.brickinventoryapp.ui.screens.CameraOverlay
 import ch.brickinventoryapp.ui.screens.kameraBinden
-import ch.brickinventoryapp.ui.screens.kameraVorschau
-import ch.brickinventoryapp.ui.screens.rememberKameraErlaubnis
+import ch.brickinventoryapp.ui.screens.cameraPreview
+import ch.brickinventoryapp.ui.screens.rememberCameraPermission
 import ch.brickinventoryapp.ui.screens.tippZumFokus
 
 @Composable
@@ -53,11 +53,11 @@ fun BarcodeScannerScreen(
     onSetNumberResult: (String) -> Unit = onResult,
     onDismiss: () -> Unit,
     /** Ohne Kamera die Nummer eintippen; ohne eigenen Weg zurück zum Aufrufer, wo das Feld steht. */
-    onEintippen: () -> Unit = onDismiss,
+    typeInOn: () -> Unit = onDismiss,
     /** Nur die Überlagerung ohne Kamerabild — für Bildschirmfotos, wo es keine Kamera gibt. */
     ohneKamera: Boolean = false,
 ) {
-    val cameraPermission = rememberKameraErlaubnis()
+    val cameraPermission = rememberCameraPermission()
     val defaultHint = stringResource(R.string.scanner_hint_default)
     val detectedHintFmt = stringResource(R.string.scanner_hint_detected)
     var statusText by rememberSaveable { mutableStateOf(defaultHint) }
@@ -66,24 +66,24 @@ fun BarcodeScannerScreen(
     var cameraCtrl by remember { mutableStateOf<CameraControl?>(null) }
 
     LaunchedEffect(Unit) {
-        if (!ohneKamera && !cameraPermission.erteilt) cameraPermission.anfragen()
+        if (!ohneKamera && !cameraPermission.granted) cameraPermission.requests()
     }
 
     // Toggle torch when state changes
     LaunchedEffect(torchOn) { cameraCtrl?.enableTorch(torchOn) }
 
     // Kein periodischer Fokus-Trigger: Der Autofokus läuft über CONTINUOUS_PICTURE
-    // (autofokusDauerhaft() in KameraAufbau.kt); ein Takt liesse die Kamera dauernd
+    // (autofocusPermanent() in KameraAufbau.kt); ein Takt liesse die Kamera dauernd
     // nachpumpen. Manuell fokussiert wird nur beim Antippen.
 
     // Der Treffer ist auch zu spüren: Wer auf die Schachtel zielt, sieht nicht aufs Telefon.
-    val haptik = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     // Ein Treffer friert die Anzeige ein; was danach noch erkannt wird, zählt nicht mehr.
     fun gefunden(wert: String, weiter: (String) -> Unit) {
         if (frozen) return
         frozen = true
-        haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm)
+        haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm)
         statusText = detectedHintFmt.replace("%1\$s", wert)
         weiter(wert)
     }
@@ -95,7 +95,7 @@ fun BarcodeScannerScreen(
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
-            ohneKamera || cameraPermission.erteilt -> {
+            ohneKamera || cameraPermission.granted -> {
                 if (!ohneKamera) CameraPreviewBarcode(
                     frozen = frozen,
                     ocrEnabled = ocrEnabled,
@@ -111,21 +111,21 @@ fun BarcodeScannerScreen(
                 // Rahmen, Schild und Gewichtung in der gemeinsamen
                 // Ueberlagerung — siehe KameraErlaubnis.kt. Eigen bleiben hier
                 // das breite Rechteck mit den Eckwinkeln und der Lampenknopf.
-                KameraUeberlagerung(
+                CameraOverlay(
                     hinweis = statusText,
                     unten = {
                         Spacer(Modifier.height(Abstaende.gross))
-                        LichtKnopf(torchOn) { torchOn = !torchOn }
+                        LightButton(torchOn) { torchOn = !torchOn }
                     },
-                ) { ScanRahmen(borderColor) }
+                ) { ScanFrame(borderColor) }
             }
             else -> {
-                KameraErlaubnisHinweis(stringResource(R.string.scanner_camera_zweck_barcode),
-                    stringResource(R.string.scanner_nummer_eintippen), onEintippen,
-                    cameraPermission.dauerhaftVerweigert) { cameraPermission.erlauben() }
+                CameraPermissionHint(stringResource(R.string.scanner_camera_zweck_barcode),
+                    stringResource(R.string.scanner_nummer_eintippen), typeInOn,
+                    cameraPermission.permanentDenied) { cameraPermission.erlauben() }
             }
         }
-        // Oben links wie jedes Schliessen einer Vollbildseite (ZurueckKnopf).
+        // Oben links wie jedes Schliessen einer Vollbildseite (BackButton).
         MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopStart)) {
             IconButton(onClick = onDismiss, modifier = Modifier.padding(Abstaende.gross)) {
                 Icon(Icons.Default.Close, stringResource(R.string.scanner_close), tint = Color.White)
@@ -136,7 +136,7 @@ fun BarcodeScannerScreen(
 
 /** Das breite Rechteck mit Eckwinkeln: Ein Strichcode liegt quer, nicht im Quadrat. */
 @Composable
-private fun ScanRahmen(farbe: Color) {
+private fun ScanFrame(farbe: Color) {
     Box(
         Modifier
             .fillMaxWidth(0.88f)
@@ -145,9 +145,9 @@ private fun ScanRahmen(farbe: Color) {
     ) {
         val lang = 20.dp
         val dick = 3.dp
-        for (ecke in listOf(Alignment.TopStart, Alignment.TopEnd, Alignment.BottomStart, Alignment.BottomEnd)) {
-            Box(Modifier.size(lang, dick).align(ecke).background(farbe))
-            Box(Modifier.size(dick, lang).align(ecke).background(farbe))
+        for (corner in listOf(Alignment.TopStart, Alignment.TopEnd, Alignment.BottomStart, Alignment.BottomEnd)) {
+            Box(Modifier.size(lang, dick).align(corner).background(farbe))
+            Box(Modifier.size(dick, lang).align(corner).background(farbe))
         }
     }
 }
@@ -158,16 +158,16 @@ private fun ScanRahmen(farbe: Color) {
  * darüber: Auf hellem Motiv war Weiss auf durchscheinendem Weiss nicht zu lesen.
  */
 @Composable
-private fun LichtKnopf(an: Boolean, onUmschalten: () -> Unit) {
+private fun LightButton(an: Boolean, toggleOn: () -> Unit) {
     OutlinedButton(
-        onClick = onUmschalten,
+        onClick = toggleOn,
         border = BorderStroke(1.dp, Color.White),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = if (an) Color.White else Color.Black.copy(alpha = 0.72f),
             contentColor = if (an) Color.Black else Color.White,
         ),
     ) {
-        Icon(if (an) Icons.Default.FlashlightOff else Icons.Default.FlashlightOn, null, Modifier.size(mitSchrift(18.dp)))
+        Icon(if (an) Icons.Default.FlashlightOff else Icons.Default.FlashlightOn, null, Modifier.size(withFont(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
         Text(stringResource(if (an) R.string.scanner_torch_off else R.string.scanner_torch_on),
             style = MaterialTheme.typography.bodyMedium)
@@ -181,61 +181,61 @@ private fun LichtKnopf(an: Boolean, onUmschalten: () -> Unit) {
  */
 
 /**
- * Wörter, die eine Zahl als Mengenangabe ausweisen — wortgleich mit MENGENWORT in
+ * Wörter, die eine Zahl als Mengenangabe ausweisen — wortgleich mit QUANTITY_WORD in
  * produkttitel.ts. `(?iu)`, weil IGNORE_CASE ohne `u` nur ASCII kennt.
  */
-private val MENGENWORT = Regex(
+private val QUANTITY_WORD = Regex(
     "(?iu)^\\s*(?:x\\s*)?(?:pcs?|pieces?|piece|teil(?:e|en)?|stück(?:e|en)?|" +
     "stueck(?:e|en)?|stein(?:e|en)?|bricks?|parts?|element(?:e|en|s)?)\\b"
 )
 
 /**
  * Stellenzahlen in absteigender Guete. Unbekannte Laengen landen dahinter.
- * Muss mit `GUETE` in Web-App/utils/produkttitel.ts uebereinstimmen.
+ * Muss mit `QUALITY` in Web-App/utils/produkttitel.ts uebereinstimmen.
  */
-internal val GUETE = listOf(5, 4, 6, 7, 3)
+internal val QUALITY = listOf(5, 4, 6, 7, 3)
 
 /**
  * Drei bis sieben Ziffern, optional mit `#` davor und Variantenzusatz. Oben statt
  * in der Funktion, weil sie alle 700 ms in der Kameraschleife läuft. Wortgleich
- * mit `muster` in produkttitel.ts.
+ * mit `pattern` in produkttitel.ts.
  */
-private val SETNUMMER_MUSTER = Regex("(#\\s*)?\\b(\\d{3,7})(-\\d{1,2})?\\b")
+private val SET_NUMBER_PATTERN = Regex("(#\\s*)?\\b(\\d{3,7})(-\\d{1,2})?\\b")
 
-private data class SetnummerKandidat(
+private data class SetNumberCandidate(
     val wert: String,
-    val mitSuffix: Boolean,
-    val mitRaute: Boolean,
+    val withSuffix: Boolean,
+    val withHash: Boolean,
     val jahr: Boolean,
-    val guete: Int,
+    val quality: Int,
 )
 
 internal fun setNumberCandidates(text: String): List<String> {
-    val jahrGrenze = java.time.Year.now().value + 1
-    val gefunden = ArrayList<SetnummerKandidat>()
-    for (treffer in SETNUMMER_MUSTER.findAll(text)) {
-        val ziffern = treffer.groupValues[2]
+    val yearLimit = java.time.Year.now().value + 1
+    val gefunden = ArrayList<SetNumberCandidate>()
+    for (treffer in SET_NUMBER_PATTERN.findAll(text)) {
+        val digits = treffer.groupValues[2]
         val suffix = treffer.groupValues[3]
         // Regel 1: Was ein Mengenwort hinter sich hat, ist eine Teilezahl.
         val danach = text.substring(treffer.range.last + 1)
-        if (MENGENWORT.containsMatchIn(danach)) continue
-        val zahl = ziffern.toIntOrNull() ?: continue
+        if (QUANTITY_WORD.containsMatchIn(danach)) continue
+        val zahl = digits.toIntOrNull() ?: continue
         // Mit Variantenzusatz ist es keine Jahreszahl mehr, sondern eine
         // Setnummer in ihrer eindeutigen Schreibweise.
-        val jahr = suffix.isEmpty() && ziffern.length == 4 && zahl >= 1949 && zahl <= jahrGrenze
+        val jahr = suffix.isEmpty() && digits.length == 4 && zahl >= 1949 && zahl <= yearLimit
         // Unbekannte Laenge ganz nach hinten statt an den Anfang: indexOf
         // liefert sonst -1 und die Zahl gewaenne alles.
-        val guete = GUETE.indexOf(ziffern.length).let { if (it < 0) GUETE.size else it }
-        gefunden.add(SetnummerKandidat(ziffern + suffix, suffix.isNotEmpty(),
-            treffer.groupValues[1].isNotEmpty(), jahr, guete))
+        val quality = QUALITY.indexOf(digits.length).let { if (it < 0) QUALITY.size else it }
+        gefunden.add(SetNumberCandidate(digits + suffix, suffix.isNotEmpty(),
+            treffer.groupValues[1].isNotEmpty(), jahr, quality))
     }
     // sortedWith ist stabil, also bleibt bei Gleichstand die Reihenfolge im Text.
     return gefunden.distinctBy { it.wert }
         .sortedWith(
-            compareByDescending<SetnummerKandidat> { it.mitSuffix }
-                .thenByDescending { it.mitRaute }
+            compareByDescending<SetNumberCandidate> { it.withSuffix }
+                .thenByDescending { it.withHash }
                 .thenBy { it.jahr }
-                .thenBy { it.guete }
+                .thenBy { it.quality }
         )
         .map { it.wert }
 }
@@ -268,7 +268,7 @@ internal fun CameraPreviewBarcode(
 
     AndroidView(
         factory = { ctx ->
-            val previewView = kameraVorschau(ctx)
+            val previewView = cameraPreview(ctx)
             tippZumFokus(previewView) { _kameraCtrl.get() }
 
             // Anbieter holen, Vorschau bauen, binden: KameraAufbau.kt. Hier
@@ -278,7 +278,7 @@ internal fun CameraPreviewBarcode(
                 previewView = previewView,
                 lifecycleOwner = lifecycleOwner,
                 analyse = imageAnalyzer,
-                beiFehler = {
+                atError = {
                     // Kamera nicht verfügbar (belegt, Hardware-Fehler): Hinweis
                     // zeigen statt schwarzem Bild ohne Erklärung.
                     onStatus(errorHint)

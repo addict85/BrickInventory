@@ -2,7 +2,7 @@ package ch.brickinventoryapp.app
 
 import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.components.fokusRahmen
+import ch.brickinventoryapp.ui.components.focusFrame
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -33,8 +33,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.rememberTextMeasurer
-import ch.brickinventoryapp.ui.theme.ReiterFarben
-import ch.brickinventoryapp.ui.theme.reiterFarben
+import ch.brickinventoryapp.ui.theme.TabColors
+import ch.brickinventoryapp.ui.theme.tabColors
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -45,27 +45,27 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.konto.ui.KontoZiel
 import ch.brickinventoryapp.sammlung.ui.SammlungZiel
 import ch.brickinventoryapp.teile.ui.TeileZiel
-import ch.brickinventoryapp.ui.Navigationsart
+import ch.brickinventoryapp.ui.NavigationMode
 import ch.brickinventoryapp.ui.Reiterziel
-import ch.brickinventoryapp.ui.navigationsart
+import ch.brickinventoryapp.ui.navigationMode
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.vergissReiter
-import ch.brickinventoryapp.verwaltung.ui.VerwaltungZiel
+import ch.brickinventoryapp.verwaltung.ui.ManagementTarget
 import ch.brickinventoryapp.app.nav.Reiter
-import ch.brickinventoryapp.app.nav.ZielUmgebung
-import ch.brickinventoryapp.ui.components.AusgangLeiste
-import ch.brickinventoryapp.ui.components.LocalOffeneAenderungen
-import ch.brickinventoryapp.ui.components.LocalOfflineHinweise
-import ch.brickinventoryapp.ui.components.LocalSnackbarPlatz
+import ch.brickinventoryapp.app.nav.TargetEnvironment
+import ch.brickinventoryapp.ui.components.ExitBar
+import ch.brickinventoryapp.ui.components.LocalOpenChanges
+import ch.brickinventoryapp.ui.components.LocalOfflineHints
+import ch.brickinventoryapp.ui.components.LocalSnackbarSpace
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.AnsichtUmschalter
-import ch.brickinventoryapp.ui.components.UpdatePunkt
+import ch.brickinventoryapp.ui.components.ViewToggle
+import ch.brickinventoryapp.ui.components.UpdatePoint
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalAkzentflaechen
 import ch.brickinventoryapp.app.ui.components.CsvImportBanner
 import ch.brickinventoryapp.app.csv.CsvImportUiState
-import ch.brickinventoryapp.app.nav.AppZiel
+import ch.brickinventoryapp.app.nav.AppTarget
 
 /**
  * Gemeinsames Gerüst aller eingeloggten Screens: obere Leiste mit Titel und
@@ -106,57 +106,57 @@ fun MainScaffold(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDest = navBackStackEntry?.destination
-    val akzent = LocalAkzentflaechen.current
+    val accent = LocalAkzentflaechen.current
     // Die App-Leiste weicht beim Rollen nach unten und kommt beim Zurückrollen wieder:
     // Auf dem Telefon standen sonst Titel und Umschalter dauerhaft über dem Inhalt.
     // Ein neues Ziel beginnt mit sichtbarer Leiste.
-    val einklappen = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    LaunchedEffect(currentDest?.id) { einklappen.state.heightOffset = 0f }
+    val collapse = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    LaunchedEffect(currentDest?.id) { collapse.state.heightOffset = 0f }
 
-    fun istGewaehlt(screen: Any) =
-        currentDest?.hierarchy?.any { d -> d.istEinesVon(zieleVon(screen)) } == true
+    fun isSelected(screen: Any) =
+        currentDest?.hierarchy?.any { d -> d.isOneOf(targetsOf(screen)) } == true
 
     // Unterseiten von „Mehr“ mit unterer Leiste tragen den Zurück-Pfeil wie die übrigen
     // Mehr-Unterseiten. Er geht denselben Weg wie die Zurück-Geste: Führten beide an
     // verschiedene Orte, wüsste man vor dem Tippen nicht, wo man landet. Nur ohne
     // vorigen Eintrag (Einstieg von aussen) führt er auf „Mehr“.
-    val mehrUnterseite = currentDest != null && currentDest.istEinesVon(MEHR) && !currentDest.hasRoute<AppZiel.Mehr>()
-    fun zurueckAusMehr() {
+    val moreSubpage = currentDest != null && currentDest.isOneOf(MORE) && !currentDest.hasRoute<AppTarget.Mehr>()
+    fun backFromMore() {
         if (navController.previousBackStackEntry != null && navController.popBackStack()) return
-        if (!navController.popBackStack(AppZiel.Mehr, inclusive = false)) navController.zuReiter(AppZiel.Mehr)
+        if (!navController.popBackStack(AppTarget.Mehr, inclusive = false)) navController.toTab(AppTarget.Mehr)
     }
 
     // Leiste unten und Seitenleiste teilen sich diesen Weg, damit beide die
     // Rollposition gleich behandeln.
-    fun reiterWaehlen(screen: Any) {
+    fun tabChoose(screen: Any) {
         onTabAngetippt(screen)
-        if (navController.currentBackStackEntry?.destination?.hasRoute<VerwaltungZiel.Monitoring>() == true) {
+        if (navController.currentBackStackEntry?.destination?.hasRoute<ManagementTarget.Monitoring>() == true) {
             navController.popBackStack()
         }
-        navController.zuReiter(screen)
+        navController.toTab(screen)
     }
 
     // Das Symbol eines Ziels, an „Mehr“ mit dem Punkt für eine neue Version.
     @Composable
     fun Symbol(screen: Any, icon: @Composable () -> Unit) {
-        if (screen == AppZiel.Mehr && updateVerfuegbar) BadgedBox(badge = { UpdatePunkt() }) { icon() } else icon()
+        if (screen == AppTarget.Mehr && updateVerfuegbar) BadgedBox(badge = { UpdatePoint() }) { icon() } else icon()
     }
 
     // Die Fensterbreite entscheidet, nicht das Gerät: Ein Tablet im geteilten
     // Bildschirm ist schmal und bekommt die Leiste unten.
     // Die Snackbar liegt über dem Inhalt; ihre Höhe hebt den Erfassen-Knopf darüber.
-    var snackbarHoehe by remember { mutableIntStateOf(0) }
-    val offlineHinweise = remember { mutableIntStateOf(0) }
+    var snackbarHeight by remember { mutableIntStateOf(0) }
+    val offlineHints = remember { mutableIntStateOf(0) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val art = navigationsart(maxWidth.value)
+        val art = navigationMode(maxWidth.value)
         // Auf breiten Fenstern steht die Seitenleiste über die volle Höhe links, App-Leiste
         // und Inhalt rechts daneben — dieselben Ziele wie unten, „Mehr“ eingeschlossen.
         Row(Modifier.fillMaxSize()) {
-        if (art == Navigationsart.SEITENLEISTE) {
-            ReiterSeitenleiste(bottomNavItems, ::istGewaehlt, ::reiterWaehlen) { screen, icon -> Symbol(screen, icon) }
+        if (art == NavigationMode.SIDEBAR) {
+            TabSidebar(bottomNavItems, ::isSelected, ::tabChoose) { screen, icon -> Symbol(screen, icon) }
         }
         Scaffold(
-            modifier = Modifier.weight(1f).nestedScroll(einklappen.nestedScrollConnection),
+            modifier = Modifier.weight(1f).nestedScroll(collapse.nestedScrollConnection),
             topBar = {
               Column {
                 TopAppBar(
@@ -164,35 +164,35 @@ fun MainScaffold(
                     // „Mehr“ als Menüknopf. Vorleseprogramme springen zur Überschrift.
                     title = { Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() }) },
                     navigationIcon = {
-                        if (mehrUnterseite) MitTooltip(stringResource(R.string.common_back)) {
-                            IconButton(onClick = { zurueckAusMehr() }) {
+                        if (moreSubpage) MitTooltip(stringResource(R.string.common_back)) {
+                            IconButton(onClick = { backFromMore() }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, stringResource(R.string.common_back))
                             }
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = akzent.leiste,
-                        titleContentColor = akzent.aufLeiste,
-                        navigationIconContentColor = akzent.aufLeiste,
-                        actionIconContentColor = akzent.aufLeiste,
-                        scrolledContainerColor = akzent.leiste,
+                        containerColor = accent.leiste,
+                        titleContentColor = accent.onBar,
+                        navigationIconContentColor = accent.onBar,
+                        actionIconContentColor = accent.onBar,
+                        scrolledContainerColor = accent.leiste,
                     ),
-                    scrollBehavior = einklappen,
+                    scrollBehavior = collapse,
                 )
-                if (art == Navigationsart.LEISTE_UNTEN && currentDest?.istEinesVon(SAMMLUNG) == true) {
-                    SammlungUmschalter(sammlungsZiel(currentDest), onWahl = { ziel ->
+                if (art == NavigationMode.LEISTE_UNTEN && currentDest?.isOneOf(SAMMLUNG) == true) {
+                    CollectionToggle(collectionTarget(currentDest), onWahl = { ziel ->
                         onTabAngetippt(ziel)
-                        navController.zuReiter(ziel)
-                    }, modifier = Modifier.mitLeisteEinklappen { einklappen.state.collapsedFraction })
+                        navController.toTab(ziel)
+                    }, modifier = Modifier.withBarCollapse { collapse.state.collapsedFraction })
                 }
               }
             },
             bottomBar = {
-                if (art == Navigationsart.LEISTE_UNTEN) {
-                    ReiterLeiste(bottomNavItems, ::istGewaehlt, ::reiterWaehlen) { screen, icon -> Symbol(screen, icon) }
+                if (art == NavigationMode.LEISTE_UNTEN) {
+                    TabBar(bottomNavItems, ::isSelected, ::tabChoose) { screen, icon -> Symbol(screen, icon) }
                 }
             },
-            snackbarHost = { SnackbarHost(snackbarHostState, Modifier.onSizeChanged { snackbarHoehe = it.height }) },
+            snackbarHost = { SnackbarHost(snackbarHostState, Modifier.onSizeChanged { snackbarHeight = it.height }) },
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         ) { padding ->
             // Globaler CSV-Import-Balken: erscheint auf allen Tabs (wie in der
@@ -202,15 +202,15 @@ fun MainScaffold(
                 Column(Modifier.weight(1f).fillMaxHeight()) {
                     // Auf dem Tablet gehört der Umschalter zum Inhalt, so breit wie Suchfeld
                     // und Raster darunter. Neben einem offenen Set-Detail bleibt „Sets“ gewählt.
-                    if (art == Navigationsart.SEITENLEISTE && currentDest?.istEinesVon(SAMMLUNG + SammlungZiel.SetDetail::class) == true) {
-                        SammlungUmschalter(sammlungsZiel(currentDest),
+                    if (art == NavigationMode.SIDEBAR && currentDest?.isOneOf(SAMMLUNG + SammlungZiel.SetDetail::class) == true) {
+                        CollectionToggle(collectionTarget(currentDest),
                             onWahl = { ziel ->
                                 onTabAngetippt(ziel)
-                                navController.zuReiter(ziel)
+                                navController.toTab(ziel)
                             })
                     }
                     // Steht ein Offline-Hinweis, nennt er die wartenden Änderungen selbst.
-                    if (offlineHinweise.intValue == 0) AusgangLeiste(offeneAenderungen)
+                    if (offlineHints.intValue == 0) ExitBar(offeneAenderungen)
                     if (csvImport.lauf.laeuft) {
                         CsvImportBanner(
                             done = csvImport.done, total = csvImport.total, current = csvImport.current,
@@ -220,10 +220,10 @@ fun MainScaffold(
                     }
                     Box(Modifier.fillMaxSize()) {
                         CompositionLocalProvider(
-                            LocalSnackbarPlatz provides
-                                with(LocalDensity.current) { snackbarHoehe.toDp() },
-                            LocalOffeneAenderungen provides offeneAenderungen,
-                            LocalOfflineHinweise provides offlineHinweise,
+                            LocalSnackbarSpace provides
+                                with(LocalDensity.current) { snackbarHeight.toDp() },
+                            LocalOpenChanges provides offeneAenderungen,
+                            LocalOfflineHints provides offlineHints,
                         ) { content() }
                     }
                 }
@@ -242,25 +242,25 @@ fun MainScaffold(
 @Composable
 fun ReiterGeruest(
     titel: String,
-    umgebung: ZielUmgebung,
+    environment: TargetEnvironment,
     content: @Composable () -> Unit
 ) {
-    val vm = umgebung.aktivitaet.app
-    val selbstUpdate = umgebung.aktivitaet.update
+    val vm = environment.aktivitaet.app
+    val selbstUpdate = environment.aktivitaet.update
     val updateZustand by selbstUpdate.updateState.collectAsStateWithLifecycle()
     val offen by vm.offeneAenderungen.collectAsStateWithLifecycle()
-    val csvImport = umgebung.aktivitaet.csvImport
+    val csvImport = environment.aktivitaet.csvImport
     MainScaffold(
         title = titel,
-        navController = umgebung.navController,
-        bottomNavItems = umgebung.reiter,
-        snackbarHostState = umgebung.snackbar,
+        navController = environment.navController,
+        bottomNavItems = environment.tab,
+        snackbarHostState = environment.snackbar,
         csvImportState = csvImport.csvImportState,
         onCsvAbbrechen = { csvImport.cancelCsvImport() },
         // Reiter angetippt → oben anfangen.
         onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(rollSchluessel(ziel)) },
         // Der stille Start-Test hat ein Ergebnis — hier bekommt es einen Ort.
-        updateVerfuegbar = updateZustand.neuereFassung != null,
+        updateVerfuegbar = updateZustand.newerVersion != null,
         offeneAenderungen = offen,
         content = content
     )
@@ -268,19 +268,19 @@ fun ReiterGeruest(
 
 /** Ein Ziel der Navigation: Symbol mit Anzeige, darunter die Beschriftung oder (ohne [groesse]) nur ihr Name. */
 @Composable
-private fun ReiterZiel(
-    gewaehlt: Boolean, name: String, groesse: TextUnit?, farben: ReiterFarben,
+private fun TabTarget(
+    gewaehlt: Boolean, name: String, groesse: TextUnit?, farben: TabColors,
     onClick: () -> Unit, modifier: Modifier = Modifier, symbol: @Composable () -> Unit,
 ) {
     Column(
-        modifier.fokusRahmen(Formen.kachel).selectable(selected = gewaehlt, onClick = onClick, role = Role.Tab)
+        modifier.focusFrame(Formen.kachel).selectable(selected = gewaehlt, onClick = onClick, role = Role.Tab)
             .then(if (groesse == null) Modifier.semantics { contentDescription = name } else Modifier)
-            .padding(horizontal = Abstaende.winzig, vertical = Abstaende.mittel),
+            .padding(horizontal = Abstaende.tiny, vertical = Abstaende.mittel),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(Abstaende.winzig),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.tiny),
     ) {
         Box(
-            Modifier.size(width = ANZEIGE_BREITE, height = ANZEIGE_HOEHE)
+            Modifier.size(width = DISPLAY_WIDTH, height = DISPLAY_HEIGHT)
                 .background(if (gewaehlt) farben.anzeige else Color.Transparent, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
@@ -303,33 +303,33 @@ private fun ReiterZiel(
  * die übrigen tragen ihren Namen für TalkBack und als Tooltip.
  */
 @Composable
-private fun ReiterLeiste(
-    ziele: List<Reiter>,
+private fun TabBar(
+    targets: List<Reiter>,
     gewaehlt: (Any) -> Boolean, onWahl: (Any) -> Unit,
     symbol: @Composable (Any, @Composable () -> Unit) -> Unit,
 ) {
-    val farben = reiterFarben(MaterialTheme.colorScheme)
+    val farben = tabColors(MaterialTheme.colorScheme)
     val stil = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold)
-    val messer = rememberTextMeasurer()
+    val meter = rememberTextMeasurer()
     val dichte = LocalDensity.current
     Surface(color = farben.leiste) {
         // Ein Rand links und rechts: Bei 200 % stiess „Mehr“ samt Punkt an den Bildschirmrand.
         BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)
-            .padding(horizontal = LEISTE_RAND)) {
+            .padding(horizontal = BAR_EDGE)) {
             val satz = with(dichte) {
-                reiterSatz(ziele.map { messer.measure(it.beschriftung, stil).size.width.toFloat() },
-                    ziele.indexOfFirst { gewaehlt(it.ziel) }, maxWidth.toPx(), (Abstaende.winzig * 2).toPx(),
-                    ANZEIGE_MIN.toPx(), fontScale)
+                tabSet(targets.map { meter.measure(it.beschriftung, stil).size.width.toFloat() },
+                    targets.indexOfFirst { gewaehlt(it.ziel) }, maxWidth.toPx(), (Abstaende.tiny * 2).toPx(),
+                    DISPLAY_MIN.toPx(), fontScale)
             }
-            Row(Modifier.fillMaxWidth().heightIn(min = LEISTE_HOEHE).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-                ziele.forEachIndexed { i, (screen, icon, name) ->
+            Row(Modifier.fillMaxWidth().heightIn(min = BAR_HEIGHT).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+                targets.forEachIndexed { i, (screen, icon, name) ->
                     val beschriftet = satz.alle || i == satz.gewaehlt
-                    val platz = Modifier.weight(if (i == satz.gewaehlt) satz.gewicht else 1f)
+                    val space = Modifier.weight(if (i == satz.gewaehlt) satz.gewicht else 1f)
                     val ziel: @Composable (Modifier) -> Unit = { m ->
-                        ReiterZiel(gewaehlt(screen), name, if (beschriftet) stil.fontSize * satz.faktor else null, farben,
+                        TabTarget(gewaehlt(screen), name, if (beschriftet) stil.fontSize * satz.faktor else null, farben,
                             { onWahl(screen) }, m) { symbol(screen, icon) }
                     }
-                    if (beschriftet) ziel(platz) else MitTooltip(name, platz) { ziel(Modifier.fillMaxWidth()) }
+                    if (beschriftet) ziel(space) else MitTooltip(name, space) { ziel(Modifier.fillMaxWidth()) }
                 }
             }
         }
@@ -338,84 +338,84 @@ private fun ReiterLeiste(
 
 /** Die Seitenleiste wird so breit, wie die längste Beschriftung in voller Grösse braucht. */
 @Composable
-private fun ReiterSeitenleiste(
-    ziele: List<Reiter>,
+private fun TabSidebar(
+    targets: List<Reiter>,
     gewaehlt: (Any) -> Boolean, onWahl: (Any) -> Unit,
     symbol: @Composable (Any, @Composable () -> Unit) -> Unit,
 ) {
-    val farben = reiterFarben(MaterialTheme.colorScheme)
+    val farben = tabColors(MaterialTheme.colorScheme)
     val groesse = MaterialTheme.typography.labelMedium.fontSize
     Surface(color = MaterialTheme.colorScheme.surface) {
         Column(
-            Modifier.fillMaxHeight().width(IntrinsicSize.Max).widthIn(min = SEITENLEISTE_BREITE)
+            Modifier.fillMaxHeight().width(IntrinsicSize.Max).widthIn(min = SIDEBAR_WIDTH)
                 .windowInsetsPadding(NavigationRailDefaults.windowInsets).padding(top = Abstaende.mittel).selectableGroup(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            ziele.forEach { (screen, icon, name) ->
-                ReiterZiel(gewaehlt(screen), name, groesse, farben, { onWahl(screen) }, Modifier.fillMaxWidth()) { symbol(screen, icon) }
+            targets.forEach { (screen, icon, name) ->
+                TabTarget(gewaehlt(screen), name, groesse, farben, { onWahl(screen) }, Modifier.fillMaxWidth()) { symbol(screen, icon) }
             }
         }
     }
 }
 
 /** Wie die Leiste unten beschriftet ist: alle mit [faktor] der vollen Grösse, oder nur [gewaehlt] mit [gewicht]. */
-internal data class ReiterSatz(val alle: Boolean, val faktor: Float, val gewaehlt: Int, val gewicht: Float)
+internal data class TabSet(val alle: Boolean, val faktor: Float, val gewaehlt: Int, val gewicht: Float)
 
 /**
- * Aus den Breiten der Beschriftungen in voller Grösse ([breiten], px, ohne [rand]) und der
+ * Aus den Breiten der Beschriftungen in voller Grösse ([widths], px, ohne [edge]) und der
  * Schriftskala [schrift]: ob alle passen, wie weit sie schrumpfen, sonst wie breit das gewählte Ziel wird.
  */
-internal fun reiterSatz(breiten: List<Float>, gewaehlt: Int, gesamt: Float, rand: Float, minZiel: Float, schrift: Float): ReiterSatz {
-    val anteil = gesamt / breiten.size - rand
-    val boden = minOf(schrift, REITER_MIN_SKALA) / schrift
-    val faktor = minOf(1f, anteil / (breiten.maxOrNull() ?: 1f))
-    if (faktor >= boden || gewaehlt < 0 || breiten.size < 2) return ReiterSatz(true, maxOf(faktor, boden), gewaehlt, 1f)
-    val noetig = breiten[gewaehlt] + rand
-    val rest = (gesamt - noetig) / (breiten.size - 1)
-    if (rest >= minZiel) return ReiterSatz(false, 1f, gewaehlt, noetig / rest)
-    val frei = gesamt - minZiel * (breiten.size - 1)
-    return ReiterSatz(false, ((frei - rand) / breiten[gewaehlt]).coerceIn(boden, 1f), gewaehlt, frei / minZiel)
+internal fun tabSet(widths: List<Float>, gewaehlt: Int, gesamt: Float, edge: Float, minTarget: Float, schrift: Float): TabSet {
+    val share = gesamt / widths.size - edge
+    val floor = minOf(schrift, TAB_MIN_SCALE) / schrift
+    val faktor = minOf(1f, share / (widths.maxOrNull() ?: 1f))
+    if (faktor >= floor || gewaehlt < 0 || widths.size < 2) return TabSet(true, maxOf(faktor, floor), gewaehlt, 1f)
+    val noetig = widths[gewaehlt] + edge
+    val rest = (gesamt - noetig) / (widths.size - 1)
+    if (rest >= minTarget) return TabSet(false, 1f, gewaehlt, noetig / rest)
+    val frei = gesamt - minTarget * (widths.size - 1)
+    return TabSet(false, ((frei - edge) / widths[gewaehlt]).coerceIn(floor, 1f), gewaehlt, frei / minTarget)
 }
 
 /** Kleiner als das Anderthalbfache der Normalgrösse wird keine Beschriftung (WCAG 1.4.4). */
-private const val REITER_MIN_SKALA = 1.5f
-private val ANZEIGE_BREITE = 56.dp
-private val ANZEIGE_HOEHE = 32.dp
+private const val TAB_MIN_SCALE = 1.5f
+private val DISPLAY_WIDTH = 56.dp
+private val DISPLAY_HEIGHT = 32.dp
 /** Breite eines unbeschrifteten Ziels: Anzeige und Rand. */
-private val ANZEIGE_MIN = 64.dp
-private val LEISTE_HOEHE = 80.dp
+private val DISPLAY_MIN = 64.dp
+private val BAR_HEIGHT = 80.dp
 /** Abstand der äussersten Ziele zum Bildschirmrand. */
-private val LEISTE_RAND = 8.dp
-private val SEITENLEISTE_BREITE = 80.dp
+private val BAR_EDGE = 8.dp
+private val SIDEBAR_WIDTH = 80.dp
 
 /** Der Schlüssel der gemerkten Rollposition; Ziele ohne Liste haben keinen eigenen. */
 internal fun rollSchluessel(ziel: Any): String = (ziel as? Reiterziel)?.rollSchluessel ?: ziel.toString()
 
 /** Die Ziele des Umschalters Sets | Teile | Minifiguren, in seiner Reihenfolge. */
-internal val SAMMLUNGS_ZIELE: List<Any> = listOf(SammlungZiel.Gallery, TeileZiel.Parts, TeileZiel.Minifigs)
+internal val COLLECTION_TARGETS: List<Any> = listOf(SammlungZiel.Gallery, TeileZiel.Parts, TeileZiel.Minifigs)
 
 /** Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel. */
-private val SAMMLUNG: Set<KClass<out Any>> = SAMMLUNGS_ZIELE.map { it::class }.toSet()
+private val SAMMLUNG: Set<KClass<out Any>> = COLLECTION_TARGETS.map { it::class }.toSet()
 
 /** Seiten mit unterer Leiste, die man über „Mehr“ erreicht — dort bleibt „Mehr“ gewählt. */
-private val MEHR: Set<KClass<out Any>> = setOf(AppZiel.Mehr::class, TeileZiel.PartsList::class,
-    SammlungZiel.Comparison::class, KontoZiel.Settings::class, VerwaltungZiel.Monitoring::class)
+private val MORE: Set<KClass<out Any>> = setOf(AppTarget.Mehr::class, TeileZiel.PartsList::class,
+    SammlungZiel.Comparison::class, KontoZiel.Settings::class, ManagementTarget.Monitoring::class)
 
 /** Die Ziele, bei denen ein Ziel der Leiste als gewählt gilt. */
-private fun zieleVon(screen: Any): Set<KClass<out Any>> = when (screen) {
+private fun targetsOf(screen: Any): Set<KClass<out Any>> = when (screen) {
     SammlungZiel.Gallery -> SAMMLUNG + SammlungZiel.SetDetail::class
-    AppZiel.Mehr -> MEHR
+    AppTarget.Mehr -> MORE
     else -> setOf(screen::class)
 }
 
-private fun NavDestination.istEinesVon(ziele: Set<KClass<out Any>>) = ziele.any { hasRoute(it) }
+private fun NavDestination.isOneOf(targets: Set<KClass<out Any>>) = targets.any { hasRoute(it) }
 
 /** Welcher Teil der Sammlung offen ist; neben einem Set-Detail bleibt „Sets“ gewählt. */
-private fun sammlungsZiel(ziel: NavDestination): Any =
-    SAMMLUNGS_ZIELE.firstOrNull { ziel.hasRoute(it::class) } ?: SammlungZiel.Gallery
+private fun collectionTarget(ziel: NavDestination): Any =
+    COLLECTION_TARGETS.firstOrNull { ziel.hasRoute(it::class) } ?: SammlungZiel.Gallery
 
 /** Wie ein Reiter: Zustand der anderen sichern, nicht doppelt stapeln. */
-private fun androidx.navigation.NavController.zuReiter(ziel: Any) =
+private fun androidx.navigation.NavController.toTab(ziel: Any) =
     navigate(ziel) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
@@ -427,15 +427,15 @@ private fun androidx.navigation.NavController.zuReiter(ziel: Any) =
  * der Ansicht, darum Segmente, auch bei 200 % Schrift (dann untereinander).
  */
 @Composable
-private fun SammlungUmschalter(aktuell: Any, onWahl: (Any) -> Unit, modifier: Modifier = Modifier) {
-    val texte = listOf(R.string.nav_sets, R.string.nav_parts, R.string.nav_minifigs)
-    val ziele = SAMMLUNGS_ZIELE.zip(texte).map { (ziel, text) -> ziel to stringResource(text) }
-    AnsichtUmschalter<Any?>(
-        optionen = ziele,
+private fun CollectionToggle(aktuell: Any, onWahl: (Any) -> Unit, modifier: Modifier = Modifier) {
+    val texts = listOf(R.string.nav_sets, R.string.nav_parts, R.string.nav_minifigs)
+    val targets = COLLECTION_TARGETS.zip(texts).map { (ziel, text) -> ziel to stringResource(text) }
+    ViewToggle<Any?>(
+        optionen = targets,
         gewaehlt = aktuell,
         onWahl = { if (it != null) onWahl(it) },
         modifier = modifier.padding(horizontal = Abstaende.mittel,
-            vertical = Abstaende.winzig),
+            vertical = Abstaende.tiny),
     )
 }
 
@@ -443,8 +443,8 @@ private fun SammlungUmschalter(aktuell: Any, onWahl: (Any) -> Unit, modifier: Mo
  * Der Umschalter unter der App-Leiste weicht mit ihr: Bei 200 % Schrift blieben
  * sonst Umschalter und Suche stehen, und vom ersten Set war kaum etwas zu sehen.
  */
-private fun Modifier.mitLeisteEinklappen(anteil: () -> Float): Modifier = clipToBounds().layout { messbar, grenzen ->
-    val platz = messbar.measure(grenzen)
-    val hoehe = (platz.height * (1f - anteil())).roundToInt()
-    layout(platz.width, hoehe) { platz.place(0, hoehe - platz.height) }
+private fun Modifier.withBarCollapse(share: () -> Float): Modifier = clipToBounds().layout { messbar, grenzen ->
+    val space = messbar.measure(grenzen)
+    val hoehe = (space.height * (1f - share())).roundToInt()
+    layout(space.width, hoehe) { space.place(0, hoehe - space.height) }
 }

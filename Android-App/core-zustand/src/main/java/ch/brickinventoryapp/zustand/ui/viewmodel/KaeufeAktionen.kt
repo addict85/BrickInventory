@@ -21,11 +21,11 @@ interface KaeufeAktionen {
     )
     fun deleteManualAcquisition(type: Postenart, id: String, colorId: Int, acqId: Int)
     /** Löschen mit „Rückgängig“; ohne Snackbar, die es anbietet, gleich löschen. */
-    fun kaufLoeschenVormerken(type: Postenart, id: String, colorId: Int, acqId: Int) =
+    fun purchaseDeleteReserve(type: Postenart, id: String, colorId: Int, acqId: Int) =
         if (type == Postenart.SET) deleteAcquisition(id, acqId) else deleteManualAcquisition(type, id, colorId, acqId)
     fun changeAcquisitionOwner(
         type: Postenart, id: String, colorId: Int, acqId: Int,
         toUserId: Int, onDone: (String?, Int, Int) -> Unit = { _, _, _ -> },
     )
-    fun setzeManuellenLagerort(type: Postenart, id: String, farbe: Int, ort: String)
+    fun setManualLocation(type: Postenart, id: String, farbe: Int, ort: String)
 }

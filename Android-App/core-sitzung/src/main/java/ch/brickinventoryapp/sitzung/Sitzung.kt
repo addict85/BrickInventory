@@ -9,10 +9,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import javax.inject.Singleton
-import ch.brickinventoryapp.data.ZweiterFaktorPflicht
-import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.SecondFactorRequired
+import ch.brickinventoryapp.data.repository.AccountRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.model.fach.StartzustandAnsicht
+import ch.brickinventoryapp.model.fach.StartStateView
 
 /**
  * Die Sitzung der App: Server, Anmeldung, Einstellungen des Kontos. Geändert wird sie
@@ -26,7 +26,7 @@ interface Sitzung {
      * Zählt die Abmeldungen. Ein Zustand statt eines Ereignisses: Ein Sammler, der
      * gerade nicht lief, verlöre ein Ereignis; einen Zähler liest er beim nächsten Mal.
      */
-    val abmeldungen: StateFlow<Long>
+    val signOuts: StateFlow<Long>
 
     /** Die Anmeldung ist gelungen; das Verwalterrecht gilt bis zur nächsten Antwort von /auth/me. */
     fun angemeldet(admin: Boolean)
@@ -52,7 +52,7 @@ interface Sitzung {
     fun setzeDesign(theme: Design)
 
     /** Startzustand des Servers, solange er nicht bereit ist; null heisst durch oder nicht erreichbar. */
-    fun serverstartGeaendert(stand: StartzustandAnsicht?)
+    fun serverstartGeaendert(stand: StartStateView?)
 
     /**
      * Der Server bleibt eingetragen — abgemeldet heisst nicht „anderer Server“.
@@ -62,7 +62,7 @@ interface Sitzung {
 }
 
 /** Für Tests und Vorschauen ohne Hilt. */
-fun Sitzung(werte: Kontowerte = SpeicherKontowerte()): Sitzung = SitzungsZustand(werte)
+fun Sitzung(werte: Kontowerte = StorageAccountValues()): Sitzung = SessionState(werte)
 
 /**
  * Ein Singleton und kein Feld eines ViewModels, weil jeder Bildschirm die Sitzung
@@ -70,15 +70,15 @@ fun Sitzung(werte: Kontowerte = SpeicherKontowerte()): Sitzung = SitzungsZustand
  * und Design leitet sie aus [Kontowerte] ab; sie hält keine eigene Kopie.
  */
 @Singleton
-class SitzungsZustand @Inject constructor(private val werte: Kontowerte) : Sitzung {
+class SessionState @Inject constructor(private val werte: Kontowerte) : Sitzung {
 
     private val _state = MutableStateFlow(AppUiState())
     override val state: StateFlow<AppUiState> = _state
         .abgeleitet(werte.waehrung) { s, w -> s.copy(currency = w) }
         .abgeleitet(werte.design) { s, d -> s.copy(appTheme = d) }
 
-    private val _abmeldungen = MutableStateFlow(0L)
-    override val abmeldungen: StateFlow<Long> = _abmeldungen.asStateFlow()
+    private val _signOuts = MutableStateFlow(0L)
+    override val signOuts: StateFlow<Long> = _signOuts.asStateFlow()
 
     override fun angemeldet(admin: Boolean) = _state.update { it.copy(isLoggedIn = true, isAdmin = admin) }
 
@@ -88,33 +88,33 @@ class SitzungsZustand @Inject constructor(private val werte: Kontowerte) : Sitzu
     override fun verwalterGeaendert(admin: Boolean) = _state.update { it.copy(isAdmin = admin) }
 
     override fun einstellungenGespeichert(currency: Waehrung, priceCondition: Zustand) {
-        werte.setzeWaehrung(currency)
+        werte.setCurrency(currency)
         _state.update { it.copy(priceCondition = priceCondition) }
     }
 
     override fun einstellungenGeladen(
         currency: Waehrung, priceCondition: Zustand, defaultPriceCondition: Zustand, userDefaultCondition: Zustand?,
     ) {
-        werte.setzeWaehrung(currency)
+        werte.setCurrency(currency)
         _state.update {
             it.copy(priceCondition = priceCondition, defaultPriceCondition = defaultPriceCondition,
                 userDefaultCondition = userDefaultCondition)
         }
     }
 
-    override fun waehrungUebernommen(currency: Waehrung) = werte.setzeWaehrung(currency)
+    override fun waehrungUebernommen(currency: Waehrung) = werte.setCurrency(currency)
 
     override fun spracheGeaendert(language: String) = _state.update { it.copy(language = language) }
 
     override fun setzeDesign(theme: Design) = werte.setzeDesign(theme)
 
-    override fun serverstartGeaendert(stand: StartzustandAnsicht?) = _state.update { it.copy(startupStatus = stand) }
+    override fun serverstartGeaendert(stand: StartStateView?) = _state.update { it.copy(startupStatus = stand) }
 
     /** Die Währung des Kontos gilt nicht mehr; das Design bleibt bis zur Vorgabe des Servers. */
     override fun abgemeldet() {
-        werte.setzeWaehrung(AppUiState().currency)
+        werte.setCurrency(AppUiState().currency)
         _state.update { AppUiState(serverUrl = it.serverUrl) }
-        _abmeldungen.update { it + 1 }
+        _signOuts.update { it + 1 }
     }
 }
 
@@ -123,11 +123,11 @@ class SitzungsZustand @Inject constructor(private val werte: Kontowerte) : Sitzu
  * /settings nennt in app_theme die Vorgabe des Verwalters, das des Kontos kommt
  * von /settings/theme (SitzungsDienst).
  */
-suspend fun Sitzung.ladeEinstellungen(konto: KontoRepository) {
+suspend fun Sitzung.ladeEinstellungen(konto: AccountRepository) {
     val r = konto.getSettings()
     if (r is Ergebnis.Erfolg) {
         val e = r.data
-        einstellungenGeladen(e.waehrung, e.preisZustand, e.vorgabeZustand, e.wirksamerZustand)
+        einstellungenGeladen(e.waehrung, e.priceState, e.defaultState, e.effectiveState)
     }
 }
 
@@ -136,7 +136,7 @@ suspend fun Sitzung.ladeEinstellungen(konto: KontoRepository) {
  * aus dem Verwalterzustand heraus — wiederholte 403 (eine pollende Seite)
  * lösen so höchstens einen Abruf aus. @return true, wenn das Recht wegfiel
  */
-suspend fun Sitzung.rechteNachziehen(konto: KontoRepository): Boolean {
+suspend fun Sitzung.followUpRights(konto: AccountRepository): Boolean {
     if (!state.value.isAdmin) return false
     val me = konto.getMe()
     // Ohne Antwort gilt das 403: Der Server hat das Recht eben verneint.
@@ -150,15 +150,15 @@ suspend fun Sitzung.rechteNachziehen(konto: KontoRepository): Boolean {
  * /me antwortet auch ohne eingerichteten Faktor; so steht die Einrichtungsmaske
  * da, bevor die übrigen Abrufe mit 403 scheitern. Ohne Antwort bleibt alles, wie es ist.
  */
-suspend fun Sitzung.kontoUebernehmen(
-    konto: KontoRepository,
-    faktorPflicht: ZweiterFaktorPflicht,
+suspend fun Sitzung.adoptAccount(
+    konto: AccountRepository,
+    factorRequired: SecondFactorRequired,
 ) {
     val me = konto.getMe()
     if (me !is Ergebnis.Erfolg) return
     val nutzer = me.data
     verwalterGeaendert(nutzer?.verwalter == true)
-    if (nutzer?.zweiterFaktorPflicht == true) faktorPflicht.melde()
+    if (nutzer?.zweiterFaktorPflicht == true) factorRequired.melde()
 }
 
 /**
@@ -166,5 +166,5 @@ suspend fun Sitzung.kontoUebernehmen(
  * Fehler: Der Scanner löste doppelt aus, der erste Anlauf hat den einmaligen
  * Token verbraucht und angemeldet. Gibt die Meldung zurück, oder null.
  */
-fun <T : Any> qrFehler(bereitsAngemeldet: Boolean, meldung: T): T? =
-    if (bereitsAngemeldet) null else meldung
+fun <T : Any> qrError(alreadySignedIn: Boolean, meldung: T): T? =
+    if (alreadySignedIn) null else meldung

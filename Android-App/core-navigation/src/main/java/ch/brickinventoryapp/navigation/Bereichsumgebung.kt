@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.sitzung.AppUiState
-import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
+import ch.brickinventoryapp.zustand.ui.ScopeUiState
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import coil3.ImageLoader
 import kotlinx.coroutines.flow.StateFlow
@@ -23,7 +23,7 @@ interface Bereichsumgebung {
     // Nur, was die Ziele lesen, statt des AppViewModels: Ein Bereich soll nicht über die
     // Umgebung an alles kommen, was die Activity hält. Gelesen wird erst beim Zeigen.
     val sitzung: StateFlow<AppUiState>
-    val blickfeld: StateFlow<BlickfeldUiState>
+    val blickfeld: StateFlow<ScopeUiState>
     val lager: StateFlow<LagerUiState>
     val rollgedaechtnis: ScrollMemory
     fun ladeEinstellungen()

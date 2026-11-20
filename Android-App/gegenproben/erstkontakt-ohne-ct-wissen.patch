@@ -1,18 +1,18 @@
 Gegenprobe: Die Frage beim Erstkontakt erfährt nie, dass das System CT prüft
 Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Test: ch.brickinventoryapp.anmeldung.CertificatePinTest
 Rot: beim Erstkontakt mit CT-Pflicht genuegt der Vergleich
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 @@ -260,8 +260,7 @@
-         if (chain.isEmpty() || schluessel != eigenerServer()) return mit(fremdeHosts)
+         if (chain.isEmpty() || schluessel != ownServer()) return mit(foreignHosts)
          // Ohne Pin wird nie still vertraut; was die Rückfrage ist, sagt die Lage der Kette.
-         val pin = pins.pin(schluessel) ?: throw lage(chain, mit).let {
--            gemeldet(ZertifikatUngeklaert(schluessel, it.fingerabdruck, it.artOhnePin, blatt = spkiFingerabdruck(chain[0]),
--                ctErzwungen = ctErzwungen))
-+            gemeldet(ZertifikatUngeklaert(schluessel, it.fingerabdruck, it.artOhnePin, blatt = spkiFingerabdruck(chain[0])))
+         val pin = pins.pin(schluessel) ?: throw situation(chain, mit).let {
+-            gemeldet(CertificateUnresolved(schluessel, it.fingerabdruck, it.kindWithoutPin, blatt = spkiFingerprint(chain[0]),
+-                ctForced = ctForced))
++            gemeldet(CertificateUnresolved(schluessel, it.fingerabdruck, it.kindWithoutPin, blatt = spkiFingerprint(chain[0])))
          }
-         val ausCode = pins.ausCode(schluessel)
+         val fromCode = pins.fromCode(schluessel)
          // Ein Pin auf eine System-Wurzel gilt nur über die System-Prüfung samt Certificate

@@ -13,7 +13,7 @@ import ch.brickinventoryapp.testing.Quellen
 class RepoVerweiseInTestsTest {
 
     /** Kommentarzeilen weg — sie nennen absichtlich frühere Aufrufnamen. */
-    private fun ohneKommentare(src: String) = src.lines().joinToString("\n") {
+    private fun withoutComments(src: String) = src.lines().joinToString("\n") {
         val t = it.trim()
         if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it
     }
@@ -22,16 +22,16 @@ class RepoVerweiseInTestsTest {
     private val literale = Regex("\"\"\"(.*?)\"\"\"|\"((?:[^\"\\\\\\n]|\\\\.)*)\"", RegexOption.DOT_MATCHES_ALL)
 
     /** `repo.x(`, `repo.y.x(` — mit ein- oder zweifach maskierten Punkten. */
-    private val verweis = Regex("""repo(?:\\{1,2}\.|\.)(?:\w+(?:\\{1,2}\.|\.))*\w+\\{0,2}\(""")
+    private val reference = Regex("""repo(?:\\{1,2}\.|\.)(?:\w+(?:\\{1,2}\.|\.))*\w+\\{0,2}\(""")
 
-    private fun dateien(ordner: File) = ordner.walkTopDown()
+    private fun dateien(folder: File) = folder.walkTopDown()
         .filter { it.isFile && it.extension == "kt" }.toList()
 
-    private fun verweiseIn(src: String): Set<String> {
-        val roh = ohneKommentare(src)
+    private fun referencesIn(src: String): Set<String> {
+        val roh = withoutComments(src)
         return literale.findAll(roh)
             .map { it.groupValues[1].ifEmpty { it.groupValues[2] } }
-            .flatMap { lit -> verweis.findAll(lit).map { it.value } }
+            .flatMap { lit -> reference.findAll(lit).map { it.value } }
             // Maskierung aufheben: `repo\.sets\.addSet\(` → `repo.sets.addSet(`
             .map { it.replace("\\\\", "").replace("\\", "") }
             .toSet()
@@ -39,7 +39,7 @@ class RepoVerweiseInTestsTest {
 
     @Test
     fun `kein Test sucht nach einem Repository-Aufruf den es nicht mehr gibt`() {
-        val appCode = dateien(Quellen.wurzel)
+        val appCode = dateien(Quellen.root)
             .joinToString("\n") { it.readText() }
         assert(appCode.contains("sets.aktualisiereSets(")) {
             "Der App-Code wurde nicht gelesen — dieser Test prüfte sonst gegen Leere"
@@ -48,7 +48,7 @@ class RepoVerweiseInTestsTest {
         val tote = mutableListOf<String>()
         for (datei in dateien(Quellen.tests)) {
             if (datei.name == "RepoVerweiseInTestsTest.kt") continue // eigene Beispiele
-            for (v in verweiseIn(datei.readText())) {
+            for (v in referencesIn(datei.readText())) {
                 if (!appCode.contains(v)) tote += "${datei.name}: $v"
             }
         }

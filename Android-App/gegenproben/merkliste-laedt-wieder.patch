@@ -7,8 +7,8 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
 index b8f9d3e..3f0de7b 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandMerkliste.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandMerkliste.kt
-@@ -22,6 +22,7 @@ data class MerklisteUiState(
-     val merkposten: List<MerkpostenAnsicht> = emptyList(),
+@@ -22,6 +22,7 @@ data class WantedUiState(
+     val merkposten: List<WantedItemView> = emptyList(),
      /** Der letzte Abruf vom Server; die Liste selbst kommt aus der Ablage. */
      val abruf: Laden<Unit> = Laden.Daten(Unit),
 +    val nochLaedt: Boolean = false,

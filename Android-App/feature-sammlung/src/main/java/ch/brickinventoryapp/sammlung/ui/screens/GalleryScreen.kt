@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.sammlung.ui.screens
 
-import ch.brickinventoryapp.model.ui.fehlerArt
-import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.errorKind
+import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.sitzung.AppUiState
@@ -10,7 +10,7 @@ import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.MetricsView
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -31,12 +31,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.sammlung.ui.viewmodel.GalerieViewModel
+import ch.brickinventoryapp.sammlung.ui.viewmodel.GalleryViewModel
 import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
-import ch.brickinventoryapp.sammlung.ui.GalerieAnzeige
+import ch.brickinventoryapp.sammlung.ui.GalleryDisplay
 import ch.brickinventoryapp.sammlung.ui.GalleryUiState
-import ch.brickinventoryapp.sammlung.ui.galerieAnzeige
-import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
+import ch.brickinventoryapp.sammlung.ui.galleryDisplay
+import ch.brickinventoryapp.zustand.ui.ScopeUiState
 import ch.brickinventoryapp.zustand.ui.Filterzahl
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,51 +44,51 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.ImageLoader
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.LeerSymbol
-import ch.brickinventoryapp.ui.components.Bewegt
-import ch.brickinventoryapp.ui.components.SkelettRaster
-import ch.brickinventoryapp.ui.components.SortierMenue
+import ch.brickinventoryapp.ui.components.EmptySymbol
+import ch.brickinventoryapp.ui.components.Moved
+import ch.brickinventoryapp.ui.components.SkeletonRaster
+import ch.brickinventoryapp.ui.components.SortierMenu
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.ui.components.BarcodeSymbol
-import ch.brickinventoryapp.ui.components.ErfassenFab
-import ch.brickinventoryapp.ui.components.FabPlatz
-import ch.brickinventoryapp.ui.components.FehlerHinweis
-import ch.brickinventoryapp.ui.components.KnopfStapel
-import ch.brickinventoryapp.ui.components.LesbareSpalten
-import ch.brickinventoryapp.ui.components.LocalOffenesDetail
-import ch.brickinventoryapp.ui.components.OfflineHinweis
-import ch.brickinventoryapp.ui.components.grosseSchrift
-import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
+import ch.brickinventoryapp.ui.components.AddFab
+import ch.brickinventoryapp.ui.components.FabSpace
+import ch.brickinventoryapp.ui.components.ErrorHint
+import ch.brickinventoryapp.ui.components.ButtonStack
+import ch.brickinventoryapp.ui.components.ReadableColumns
+import ch.brickinventoryapp.ui.components.LocalOpenDetail
+import ch.brickinventoryapp.ui.components.OfflineHint
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.sammlung.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
-import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
-import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
-import ch.brickinventoryapp.gemeinsam.ui.AktiverFilter
-import ch.brickinventoryapp.gemeinsam.ui.kontoFilter
-import ch.brickinventoryapp.gemeinsam.ui.lagerFilter
-import ch.brickinventoryapp.gemeinsam.ui.teileAufschluesselung
-import ch.brickinventoryapp.sammlung.ui.KachelPreis
+import ch.brickinventoryapp.gemeinsam.ui.MetricsSeries
+import ch.brickinventoryapp.gemeinsam.ui.SearchWithFilter
+import ch.brickinventoryapp.gemeinsam.ui.ActiveFilter
+import ch.brickinventoryapp.gemeinsam.ui.accountFilter
+import ch.brickinventoryapp.gemeinsam.ui.storageFilter
+import ch.brickinventoryapp.gemeinsam.ui.partsBreakdown
+import ch.brickinventoryapp.sammlung.ui.TilePrice
 
 /** Was die Galerie zeigt; die Route sammelt es aus den Flüssen der ViewModels. */
-internal data class GalerieZustand(
+internal data class GalleryState(
     val app: AppUiState,
-    val blick: BlickfeldUiState,
+    val blick: ScopeUiState,
     val galerie: GalleryUiState,
-    val preise: Map<String, KachelPreis>,
+    val preise: Map<String, TilePrice>,
     val barcode: BarcodeUiState,
     val lager: LagerUiState,
 )
 
-/** Was die Galerie auslöst; die Route verdrahtet es mit GalerieViewModel und ErfassungViewModel. */
-internal class GalerieEreignisse(
+/** Was die Galerie auslöst; die Route verdrahtet es mit GalleryViewModel und EntryViewModel. */
+internal class GalleryEvents(
     val suche: (String) -> Unit,
     val thema: (String) -> Unit,
-    val sortierung: (Setsortierung) -> Unit,
+    val sorting: (Setsortierung) -> Unit,
     val konto: (String) -> Unit,
     val lagerort: (String) -> Unit,
     val aktualisieren: () -> Unit,
     val setErfassen: (Erfassungswunsch) -> Unit,
-    val manuelleErfassungQuittiert: () -> Unit,
+    val manualEntryAcknowledged: () -> Unit,
 )
 
 /**
@@ -97,7 +97,7 @@ internal class GalerieEreignisse(
  * antwortet nur für ihr Set: Löst ein zweites Löschen sie ab, bleibt dessen Rückgängig.
  */
 @Composable
-internal fun GalerieRueckgaengigRoute(vm: GalerieViewModel, snackbarHostState: SnackbarHostState) {
+internal fun GalleryUndoRoute(vm: GalleryViewModel, snackbarHostState: SnackbarHostState) {
     val vorgemerkt by vm.vorgemerkt.collectAsStateWithLifecycle()
     val text = vorgemerkt?.let { stringResource(R.string.vm_set_deleted, it.name) }
     val rueckgaengig = stringResource(R.string.common_undo)
@@ -108,7 +108,7 @@ internal fun GalerieRueckgaengigRoute(vm: GalerieViewModel, snackbarHostState: S
             zurueck = snackbarHostState.showSnackbar(text ?: v.name, rueckgaengig,
                 duration = SnackbarDuration.Long) == SnackbarResult.ActionPerformed
         } finally {
-            if (zurueck) vm.rueckgaengig(v) else vm.loeschenAusfuehren(v)
+            if (zurueck) vm.rueckgaengig(v) else vm.executeDelete(v)
         }
     }
 }
@@ -116,9 +116,9 @@ internal fun GalerieRueckgaengigRoute(vm: GalerieViewModel, snackbarHostState: S
 /** Die Galerie am Navigationsziel: sammelt die Flüsse und reicht Zustand und Ereignisse weiter. */
 @Composable
 fun GalleryRoute(
-    vm: GalerieViewModel,
+    vm: GalleryViewModel,
     /** Die Erfassung dieses Ziels; der Graph bindet sie an dessen Eintrag. */
-    erfassung: ErfassungViewModel,
+    erfassung: EntryViewModel,
     imageLoader: ImageLoader,
     /** Barcode-Scanner öffnen — nur der Graph kennt den NavController. */
     onScanBarcode: () -> Unit,
@@ -134,23 +134,23 @@ fun GalleryRoute(
     val galerie by vm.galleryState.collectAsStateWithLifecycle()
     val preise by vm.preise.collectAsStateWithLifecycle()
     val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
-    val lagerState by vm.lagerState.collectAsStateWithLifecycle()
-    val ereignisse = remember(vm, erfassung) {
-        GalerieEreignisse(
+    val storageState by vm.storageState.collectAsStateWithLifecycle()
+    val events = remember(vm, erfassung) {
+        GalleryEvents(
             suche = vm::setGalleryQuery,
             thema = vm::setGalleryTheme,
-            sortierung = vm::setGallerySort,
+            sorting = vm::setGallerySort,
             konto = { vm.setScope(ScopeFilter.View.GALLERY, it) },
-            lagerort = { vm.setLagerFilter(ScopeFilter.View.GALLERY, it) },
+            lagerort = { vm.setStorageFilter(ScopeFilter.View.GALLERY, it) },
             // Auch die Filterlisten: Sie werden sonst nur beim Start geladen.
             aktualisieren = vm::aktualisieren,
             setErfassen = erfassung::addSet,
-            manuelleErfassungQuittiert = { erfassung.manuelleErfassungQuittieren() },
+            manualEntryAcknowledged = { erfassung.manuelleErfassungQuittieren() },
         )
     }
     GalleryScreen(
-        zustand = GalerieZustand(state, blick, galerie, preise, barcodeState, lagerState),
-        ereignisse = ereignisse,
+        zustand = GalleryState(state, blick, galerie, preise, barcodeState, storageState),
+        events = events,
         imageLoader = imageLoader,
         onScanBarcode = onScanBarcode,
         onSetClick = onSetClick,
@@ -161,8 +161,8 @@ fun GalleryRoute(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun GalleryScreen(
-    zustand: GalerieZustand,
-    ereignisse: GalerieEreignisse,
+    zustand: GalleryState,
+    events: GalleryEvents,
     imageLoader: ImageLoader,
     onScanBarcode: () -> Unit,
     onSetClick: (String) -> Unit,
@@ -179,7 +179,7 @@ internal fun GalleryScreen(
     LaunchedEffect(zustand.barcode.manuelleErfassungAnfordern) {
         if (zustand.barcode.manuelleErfassungAnfordern) {
             showAddDialog = true
-            ereignisse.manuelleErfassungQuittiert()
+            events.manualEntryAcknowledged()
         }
     }
     // Das Eingabefeld hält seinen Text selbst (Tippen bleibt flüssig); die
@@ -187,88 +187,88 @@ internal fun GalleryScreen(
     // Filter-Generation hängt. Wechselt der Wert von aussen (Anmeldung,
     // Zurücksetzen), zieht das Feld nach.
     var searchInput by remember(galerie.galleryQuery) { mutableStateOf(galerie.galleryQuery) }
-    var zeigeFilter by rememberSaveable { mutableStateOf(false) }
+    var showFilter by rememberSaveable { mutableStateOf(false) }
 
     // Kein lokales Filtern und keine Themenliste aus `sets`: Der Schirm zeigt, was der
     // Server geliefert hat — eine zweite Suche hier kennte weder Jahr noch Sortierung,
     // und die Themen kämen aus der geladenen Seite statt aus dem Bestand.
 
-    val anzeige = galerieAnzeige(galerie, gefiltert = searchInput.isNotBlank() || galerie.galleryTheme.isNotEmpty())
-    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
-    val gross = grosseSchrift()
-    val erfassenText = stringResource(R.string.gallery_add_set)
+    val anzeige = galleryDisplay(galerie, gefiltert = searchInput.isNotBlank() || galerie.galleryTheme.isNotEmpty())
+    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SearchWithFilter).
+    val gross = largeFont()
+    val addText = stringResource(R.string.gallery_add_set)
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
             // Suche und ein Knopf für alles andere: Konto, Lagerort, Thema und
             // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster. Scannen
             // sitzt daneben, damit unten nur EIN Knopf schwebt. Im Fehlerzustand nicht:
             // Ohne Sammlung gibt es nichts zu suchen.
-            if (anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) GalerieSuche(
-                zustand, ereignisse, searchInput, { searchInput = it }, onScanBarcode,
-                onFilter = { zeigeFilter = true }, erfassen = erfassenText to { showAddDialog = true },
+            if (anzeige != GalleryDisplay.FEHLER && anzeige != GalleryDisplay.LEER) GallerySearch(
+                zustand, events, searchInput, { searchInput = it }, onScanBarcode,
+                onFilter = { showFilter = true }, erfassen = addText to { showAddDialog = true },
             )
 
-            OfflineHinweis(galerie.offlineStand, onErneut = ereignisse.aktualisieren)
+            OfflineHint(galerie.offlineStatus, onErneut = events.aktualisieren)
             // Der Kringel des Ziehens nur über einer Liste: Beim ersten Laden zeigt das
             // Skelett schon, dass etwas kommt, zwei Ladeanzeigen übereinander wirkten unruhig.
-            PullToRefreshBox(isRefreshing = galerie.abruf.laedt && anzeige == GalerieAnzeige.LISTE,
-                             onRefresh = ereignisse.aktualisieren, modifier = Modifier.fillMaxSize()) {
-                GalerieInhalt(anzeige, zustand, searchInput, imageLoader, gridState, onSetClick,
-                    onScanBarcode, onErfassen = { showAddDialog = true }, onRefresh = ereignisse.aktualisieren)
+            PullToRefreshBox(isRefreshing = galerie.abruf.laedt && anzeige == GalleryDisplay.LISTE,
+                             onRefresh = events.aktualisieren, modifier = Modifier.fillMaxSize()) {
+                GalleryContent(anzeige, zustand, searchInput, imageLoader, gridState, onSetClick,
+                    onScanBarcode, addOn = { showAddDialog = true }, onRefresh = events.aktualisieren)
             }
         }
 
         // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
         // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
         // Leer auch nicht: Die Leermeldung bietet Erfassen und Scannen selbst an.
-        if (!gross && anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ErfassenFab(
-            erfassenText, { showAddDialog = true },
+        if (!gross && anzeige != GalleryDisplay.FEHLER && anzeige != GalleryDisplay.LEER) AddFab(
+            addText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
     }
 
-    if (zeigeFilter) GalerieFilter(zustand, ereignisse, onSchliessen = { zeigeFilter = false })
-    if (showAddDialog) GalerieErfassen(zustand, ereignisse, onSchliessen = { showAddDialog = false })
+    if (showFilter) GalerieFilter(zustand, events, onSchliessen = { showFilter = false })
+    if (showAddDialog) GalerieErfassen(zustand, events, onSchliessen = { showAddDialog = false })
 }
 
 /** Der Bereich des Kontos und der gewählte Lagerort der Galerie. */
-internal fun GalerieZustand.kontoWahl(): String =
+internal fun GalleryState.accountChoice(): String =
     blick.scopeModes[ScopeFilter.View.GALLERY] ?: ScopeFilter.ALL
 
-internal fun GalerieZustand.lagerWahl(): String =
+internal fun GalleryState.storageChoice(): String =
     lager.modi[ScopeFilter.View.GALLERY] ?: ""
 
 /** Suche, Filterknopf, Scannen und Sortierung über dem Raster. */
 @Composable
-private fun GalerieSuche(
-    zustand: GalerieZustand,
-    ereignisse: GalerieEreignisse,
+private fun GallerySearch(
+    zustand: GalleryState,
+    events: GalleryEvents,
     suchtext: String,
-    onSuchtext: (String) -> Unit,
+    onSearchText: (String) -> Unit,
     onScanBarcode: () -> Unit,
     onFilter: () -> Unit,
     erfassen: Pair<String, () -> Unit>,
 ) {
     val galerie = zustand.galerie
-    SucheMitFilter(
+    SearchWithFilter(
         wert = suchtext,
-        onWert = { onSuchtext(it); ereignisse.suche(it) },
+        onValue = { onSearchText(it); events.suche(it) },
         platzhalter = stringResource(R.string.gallery_search_placeholder),
-        aktiveFilter = Filterzahl.galerie(zustand.blick.householdMembers, zustand.kontoWahl(), zustand.lager.orte,
-            zustand.lagerWahl(), galerie.galleryTheme),
+        activeFilter = Filterzahl.galerie(zustand.blick.householdMembers, zustand.accountChoice(), zustand.lager.orte,
+            zustand.storageChoice(), galerie.galleryTheme),
         onFilter = onFilter,
-        onScannen = onScanBarcode,
+        scanOn = onScanBarcode,
         erfassen = erfassen,
         aktive = listOfNotNull(
-            kontoFilter(zustand.blick.householdMembers, zustand.kontoWahl()) { ereignisse.konto(ScopeFilter.ALL) },
-            lagerFilter(zustand.lager.orte, zustand.lagerWahl()) { ereignisse.lagerort("") },
-            galerie.galleryTheme.takeIf { it.isNotBlank() }?.let { AktiverFilter(it) { ereignisse.thema("") } },
+            accountFilter(zustand.blick.householdMembers, zustand.accountChoice()) { events.konto(ScopeFilter.ALL) },
+            storageFilter(zustand.lager.orte, zustand.storageChoice()) { events.lagerort("") },
+            galerie.galleryTheme.takeIf { it.isNotBlank() }?.let { ActiveFilter(it) { events.thema("") } },
         ),
-        sortierung = {
-            SortierMenue(
+        sorting = {
+            SortierMenu(
                 optionen = Setsortierung.entries.map { it to it.beschriftung() },
-                gewaehlt = galerie.gallerySort, onWahl = ereignisse.sortierung,
-                vorgabe = Setsortierung.VORGABE,
+                gewaehlt = galerie.gallerySort, onWahl = events.sorting,
+                vorgabe = Setsortierung.DEFAULT,
             )
         },
     )
@@ -276,43 +276,43 @@ private fun GalerieSuche(
 
 /** Was unter der Suche steht: Skelett, Fehler, leere Sammlung, keine Treffer oder das Raster. */
 @Composable
-private fun GalerieInhalt(
-    anzeige: GalerieAnzeige,
-    zustand: GalerieZustand,
+private fun GalleryContent(
+    anzeige: GalleryDisplay,
+    zustand: GalleryState,
     suchtext: String,
     imageLoader: ImageLoader,
     gridState: LazyGridState,
     onSetClick: (String) -> Unit,
     onScanBarcode: () -> Unit,
-    onErfassen: () -> Unit,
+    addOn: () -> Unit,
     onRefresh: () -> Unit,
 ) {
     val galerie = zustand.galerie
     val stats = galerie.stats
     when (anzeige) {
-        GalerieAnzeige.LAEDT -> SkelettRaster(LesbareSpalten(160.dp), kachelHoehe = 252.dp,
-            kopfzeile = true, bildVerhaeltnis = BILD_SEITENVERHAELTNIS)
+        GalleryDisplay.LOADS -> SkeletonRaster(ReadableColumns(160.dp), kachelHoehe = 252.dp,
+            headerRow = true, imageRatio = IMAGE_ASPECT_RATIO)
         // Fehler und leere Sammlung sehen verschieden aus und bieten
         // Verschiedenes an: hier den Grund und einen neuen Versuch.
-        GalerieAnzeige.FEHLER -> GalerieHinweis {
-            FehlerHinweis(galerie.abruf.fehlerMeldung?.satz(), onRefresh,
-                galerie.abruf.fehlerArt)
+        GalleryDisplay.FEHLER -> GalleryHint {
+            ErrorHint(galerie.abruf.errorMessage?.satz(), onRefresh,
+                galerie.abruf.errorKind)
         }
-        GalerieAnzeige.LEER -> GalerieLeer(onErfassen, onScanBarcode)
-        GalerieAnzeige.KEINE_TREFFER -> GalerieHinweis {
+        GalleryDisplay.LEER -> GalleryEmpty(addOn, onScanBarcode)
+        GalleryDisplay.NO_HITS -> GalleryHint {
             // Die Kennzahlen meinen die ganze Sammlung — auch ohne Treffer.
-            if (stats != null) GalerieKennzahlen(stats)
-            LeerSymbol(Icons.Default.SearchOff)
+            if (stats != null) GalleryMetrics(stats)
+            EmptySymbol(Icons.Default.SearchOff)
             Text(stringResource(R.string.gallery_no_results, suchtext), fontWeight = FontWeight.SemiBold)
         }
-        GalerieAnzeige.LISTE -> GalerieRaster(zustand, imageLoader, gridState, onSetClick)
+        GalleryDisplay.LISTE -> GalleryRaster(zustand, imageLoader, gridState, onSetClick)
     }
 }
 
 /** Die leere Sammlung: Erfassen und Scannen, derselbe Dialog wie der Plus-Knopf. */
 @Composable
-private fun GalerieLeer(onErfassen: () -> Unit, onScanBarcode: () -> Unit) {
-    GalerieHinweis {
+private fun GalleryEmpty(addOn: () -> Unit, onScanBarcode: () -> Unit) {
+    GalleryHint {
         Image(painterResource(R.drawable.ic_logo), null, Modifier.size(64.dp))
         Text(stringResource(R.string.gallery_no_sets), fontWeight = FontWeight.SemiBold)
         Text(stringResource(R.string.gallery_empty_hint),
@@ -320,14 +320,14 @@ private fun GalerieLeer(onErfassen: () -> Unit, onScanBarcode: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center)
         // Derselbe Dialog wie der Plus-Knopf — kein zweiter Erfassungsweg.
-        KnopfStapel {
-            Button(onClick = onErfassen, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
+        ButtonStack {
+            Button(onClick = addOn, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.gallery_add_first))
             }
             OutlinedButton(onClick = onScanBarcode, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-                Icon(BarcodeSymbol, null, Modifier.size(mitSchrift(18.dp)))
+                Icon(BarcodeSymbol, null, Modifier.size(withFont(18.dp)))
                 Spacer(Modifier.width(Abstaende.klein))
                 Text(stringResource(R.string.gallery_scan_barcode))
             }
@@ -337,38 +337,38 @@ private fun GalerieLeer(onErfassen: () -> Unit, onScanBarcode: () -> Unit) {
 
 /** Kennzahlen und Kacheln; das Set, dessen Detail daneben offen ist, ist markiert. */
 @Composable
-private fun GalerieRaster(
-    zustand: GalerieZustand,
+private fun GalleryRaster(
+    zustand: GalleryState,
     imageLoader: ImageLoader,
     gridState: LazyGridState,
     onSetClick: (String) -> Unit,
 ) {
     val galerie = zustand.galerie
     val stats = galerie.stats
-    val gewaehlt = LocalOffenesDetail.current
-    val spalten = LesbareSpalten(160.dp)
+    val gewaehlt = LocalOpenDetail.current
+    val spalten = ReadableColumns(160.dp)
     // Listenzeilen, sobald nur eine Spalte Platz hat oder die Schrift gross ist: Bei 130 %
     // stand sonst eine Kachel über die ganze Breite, das Bild nahm zwei Drittel der Höhe
     // und ein Set füllte den Bildschirm.
     BoxWithConstraints {
     val dichte = LocalDensity.current
-    val einspaltig = with(spalten) { dichte.anzahl(maxWidth - Abstaende.mittel * 2, Abstaende.klein) } <= 1
-    val zeile = grosseSchrift() || einspaltig
+    val singleColumn = with(spalten) { dichte.anzahl(maxWidth - Abstaende.mittel * 2, Abstaende.klein) } <= 1
+    val zeile = largeFont() || singleColumn
     LazyVerticalGrid(
         columns = spalten,
         state = gridState,
         contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, end = Abstaende.mittel,
-            bottom = FabPlatz),
+            bottom = FabSpace),
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
     ) {
         if (stats != null) {
             item(key = "gallery-stats", span = { GridItemSpan(maxLineSpan) }) {
-                GalerieKennzahlen(stats)
+                GalleryMetrics(stats)
             }
         }
         itemsIndexed(galerie.sets, key = { _, s -> s.setNumber }) { index, set ->
-            Bewegt {
+            Moved {
                 SetCard(set, zustand.app.serverUrl, imageLoader, onSetClick, index,
                     preis = zustand.preise[set.setNumber], waehrung = zustand.app.currency,
                     ausgewaehlt = set.setNumber == gewaehlt, zeile = zeile)
@@ -380,12 +380,12 @@ private fun GalerieRaster(
 
 /** Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. */
 @Composable
-private fun GalerieKennzahlen(stats: KennzahlenAnsicht) {
-    KennzahlenReihe {
+private fun GalleryMetrics(stats: MetricsView) {
+    MetricsSeries {
         GalleryStatChip(stats.totalSets, R.plurals.gallery_stat_sets)
         GalleryStatChip(stats.totalQuantity, R.plurals.gallery_stat_units)
         GalleryStatChip(stats.totalParts, R.plurals.gallery_stat_parts,
-            teileAufschluesselung(stats.teileAusSets, stats.teileEinzeln))
+            partsBreakdown(stats.partsFromSets, stats.partsSingle))
         // Alle Kennzahlen immer, auch mit 0: Eine Reihe, deren Chips je nach Bestand
         // kommen und gehen, liest sich nicht gleich; 0 Figuren ist auch eine Auskunft.
         GalleryStatChip(stats.totalMinifigs, R.plurals.gallery_stat_minifigs)
@@ -399,9 +399,9 @@ private fun GalerieKennzahlen(stats: KennzahlenAnsicht) {
  * Ziehen zum Neuladen weiter geht.
  */
 @Composable
-private fun GalerieHinweis(inhalt: @Composable ColumnScope.() -> Unit) {
+private fun GalleryHint(inhalt: @Composable ColumnScope.() -> Unit) {
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Abstaende.riesig),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Abstaende.huge),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Abstaende.klein, Alignment.CenterVertically),
         content = inhalt,

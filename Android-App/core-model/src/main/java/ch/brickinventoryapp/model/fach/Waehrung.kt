@@ -22,6 +22,6 @@ value class Waehrung(val code: String) {
         val KEINE = Waehrung("")
 
         /** Die Wahl in den Einstellungen; dieselben wie in der Webapp. */
-        val WAEHLBAR = listOf(CHF, EUR, Waehrung("USD"), Waehrung("GBP"))
+        val SELECTABLE = listOf(CHF, EUR, Waehrung("USD"), Waehrung("GBP"))
     }
 }

@@ -218,7 +218,7 @@ der Pin die regelmässige Erneuerung des Serverzertifikats durch Caddy (alle paa
 Stunden). Unter einer öffentlichen CA fragt die App bei jedem neuen Serverschlüssel
 (Caddy erneuert ACME-Zertifikate standardmässig mit neuem Schlüssel, etwa alle 60
 Tage). Wechselt die Wurzel innerhalb einer Familie (ISRG Root X1 → X2, GTS R1 → R4
-usw.), fragt sie nicht; die Familien stehen fest in `CA_FAMILIEN`, nicht im frei
+usw.), fragt sie nicht; die Familien stehen fest in `CA_FAMILIES`, nicht im frei
 wählbaren `O=` des Subjekts. Andere Hosts
 (GitHub für die Selbstaktualisierung) prüft nur die System-CA-Liste.
 Nutzerinstallierte CAs zählen nur, wenn der Nutzer das in den Einstellungen
@@ -228,21 +228,21 @@ ausdrücklich einschaltet.
 Debug-Build; dort zeigt der Netzmitschnitt Anfrage- und Statuszeile, nie Rümpfe,
 und schwärzt `Authorization`, `Cookie` und `Set-Cookie`. R8 entfernt im Release
 zusätzlich alle `android.util.Log`-Aufrufe (`proguard-rules.pro`).
-`ProtokollTest` verbietet rohe Log-Aufrufe ausserhalb der Hülle.
+`LogTest` verbietet rohe Log-Aufrufe ausserhalb der Hülle.
 
 ## Daten auf dem Gerät
 
 Was zum Konto gehört, liegt verschlüsselt mit einem Schlüssel aus dem Keystore
 (`sicherheit/Ablageschluessel.kt`, AES-GCM, je Zweck abgeleitet und an Dateiname und
 Zweck gebunden). Der Ablageschlüssel ist wie das Token unter einem Keystore-Schlüssel
-mit `setUnlockedDeviceRequired` umhüllt (`EntsperrTresor`, Alias
+mit `setUnlockedDeviceRequired` umhüllt (`EntsperrVault`, Alias
 `brickinventory_ablage_entsperrt`): Ein Prozess, der bei gesperrtem Gerät neu startet,
 liest weder Bestand noch Kaufpreise. Ein Schlüssel älterer Fassungen (Alias
 `brickinventory_ablage`, ohne Bedingung) wird beim ersten Zugriff mit entsperrtem Gerät
-umgeschlüsselt, derselbe Schlüssel, nichts geht verloren (`AblageEntsperrtTest`);
+umgeschlüsselt, derselbe Schlüssel, nichts geht verloren (`StoreUnlockedTest`);
 danach wird der alte Alias gelöscht, beim Token ebenso `brickinventory_auth_token`.
 Einen fehlenden alten Schlüssel legt die App nie neu an, der Altbestand gilt dann als
-weg (`KeystoreAltbestandTest`). Die Keystore-Geheimtexte tragen eine AAD (`a1:`); ältere
+weg (`KeystoreLegacyStockTest`). Die Keystore-Geheimtexte tragen eine AAD (`a1:`); ältere
 ohne bleiben lesbar und werden beim ersten Zugriff umgeschlüsselt. Gesperrt meldet eine
 Ablage „gesperrt“ (IOException) statt „unlesbar“, damit niemand ihre Dateien löscht.
 Der Ausgang liegt in derselben Datenbank: Senden braucht ohnehin das Token, und das
@@ -251,11 +251,11 @@ Der Ausgang liegt in derselben Datenbank: Senden braucht ohnehin das Token, und 
 | Ablage | Wie |
 | --- | --- |
 | Bestand (Room) samt Kennzahlen und Katalog-Metadaten | SQLCipher |
-| Widget-Zahlen | `AblageChiffre` |
-| Vorschau-Ablage `files/vorschau/` | `AblageChiffre`; Klartext älterer Fassungen wird verworfen |
-| Bild-Zwischenspeicher `cache/image_http_cache` | OkHttp-Cache auf `VerschluesseltesDateisystem`; Coil hat keinen eigenen Plattencache mehr, ein Klartext-Rest älterer Fassungen fällt beim Start weg |
+| Widget-Zahlen | `StoreCipher` |
+| Vorschau-Ablage `files/vorschau/` | `StoreCipher`; Klartext älterer Fassungen wird verworfen |
+| Bild-Zwischenspeicher `cache/image_http_cache` | OkHttp-Cache auf `EncryptedFileSystem`; Coil hat keinen eigenen Plattencache mehr, ein Klartext-Rest älterer Fassungen fällt beim Start weg |
 | Gutschein-PDF (Nummer, PIN) | nie auf der Platte: in den Speicher geladen, gerendert aus einem memfd, der mit dem Betrachter oder dem Prozess vergeht |
-| Bauanleitungen `cache/anleitung_*.bin` (höchstens 500 MB) | `VerschluesseltesDateisystem` (Zweck `anleitungen`, an den Dateinamen gebunden, Endmarker); angezeigt aus einem Bereich ohne Namen (siehe unten); beim Abmelden gelöscht, Klartext älterer Fassungen (`pdfview_*`) beim Start |
+| Bauanleitungen `cache/anleitung_*.bin` (höchstens 500 MB) | `EncryptedFileSystem` (Zweck `anleitungen`, an den Dateinamen gebunden, Endmarker); angezeigt aus einem Bereich ohne Namen (siehe unten); beim Abmelden gelöscht, Klartext älterer Fassungen (`pdfview_*`) beim Start |
 | Teileliste-PDF `files/pdf/teileliste.bin` | AES-GCM (Ablageschlüssel, Zweck „teileliste“); die Ziel-App liest über den nicht exportierten `TeilelistenProvider` aus dem Speicher (Proxy-Deskriptor), nie Klartext auf der Platte; nach 30 Minuten gelöscht (WorkManager, dazu beim Start und beim Abmelden) |
 
 **Anleitungen anzeigen:** `PdfRenderer` braucht einen Deskriptor, in dem er
@@ -273,13 +273,13 @@ Druckdialog kann „Als PDF speichern“).
 Bildcaches, PDFs, Update-APK, Widget-Zahlen und alle Meldungen der App sind danach
 weg, die Marke des Preisalarms ebenfalls. Zuletzt erneuert `Ablageschluessel` den
 Schlüssel (Datei und Keystore-Alias neu): Was mit dem alten verschlüsselt war, auch
-gelöschte Reste auf dem Flash, ist nicht mehr lesbar. `AbmeldenRaeumtAllesTest`
+gelöschte Reste auf dem Flash, ist nicht mehr lesbar. `SignOutCleansEverythingTest`
 prüft das ausgeführt.
 
-**Token und Ablagen unter `setUnlockedDeviceRequired`** (`EntsperrTresor`): Preisalarm,
+**Token und Ablagen unter `setUnlockedDeviceRequired`** (`EntsperrVault`): Preisalarm,
 Widget und Ausgang arbeiten im Hintergrund nur in einem Prozess, der seit dem letzten
 Entsperren läuft; ein bei gesperrtem Gerät neu gestarteter wartet bis zum Entsperren
-(`liesToken`, Rückzug von WorkManager). Abgefedert ist der Rest durch die Rotation mit
+(`readToken`, Rückzug von WorkManager). Abgefedert ist der Rest durch die Rotation mit
 Wiederverwendungserkennung am Server und die harte Höchstdauer von 180 Tagen.
 
 **Pins und Nutzer-CA-Schalter verschlüsselt:** Sie liegen in `design_spiegel.xml`
@@ -288,7 +288,7 @@ eigenen Ablageschlüssel (`vertrauen.schluessel`), den das Abmelden nicht erneue
 Ein Pin gehört zum Server, nicht zum Konto. Was sich nicht entschlüsseln lässt,
 gilt als „kein Pin“ bzw. „Schalter aus“; der Nutzer bestätigt dann neu. Klartext
 älterer Fassungen wird einmal übernommen und gelöscht, später auftauchender nur
-gelöscht (`VertrauenVerschluesseltTest`). Wer Code mit der UID der App ausführt,
+gelöscht (`TrustEncryptedTest`). Wer Code mit der UID der App ausführt,
 kann den Keystore weiterhin benutzen wie die App.
 
 **Update-Angebot nie aus einer zurückgesetzten Beschreibung (sec12 H2):** Ist die
@@ -296,7 +296,7 @@ signierte Beschreibung älter als eine schon gesehene oder als die installierte
 Fassung, bietet die App kein Update an; die Einstellungen sagen, warum. Sonst hielte
 eine wieder eingespielte, echt signierte Beschreibung auf einer bekannt verwundbaren
 Zwischenfassung fest. Eine nur abgelaufene, aber neuere Beschreibung bietet ihre
-Fassung an, mit dem Hinweis, dass es Neueres geben könnte (`UpdateFrischeTest`):
+Fassung an, mit dem Hinweis, dass es Neueres geben könnte (`UpdateFreshTest`):
 Ohne neues Etikett binnen sieben Tagen bliebe das Gerät sonst auf der alten Fassung.
 
 ## Manipulationsschutz (MASVS-RESILIENCE)
@@ -316,7 +316,7 @@ App), prüft der Server über die Key Attestation des Geräteschlüssels
 verdeckt die App nach der gewählten Zeit im Hintergrund; Hintergrundarbeit läuft
 weiter, die Daten schützt der Keystore (siehe „Daten auf dem Gerät“). Das
 Widget verdeckt seine Beträge, sobald die Sperre greifen kann
-(`AppSperre.verdecktWidget`).
+(`AppLock.hiddenWidget`).
 
 R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`)
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
@@ -336,7 +336,7 @@ stammen inhaltlich von Dritten; eine pdfium-Lücke träfe so nur den leeren
 Render-Prozess und reichte nicht über ein Bitmap-Parcel zurück.
 
 **TOTP-Geheimnis an die Authenticator-App:** immer über die Systemauswahl
-(`oeffneMitAuswahl`), nur `otpauth://totp|hotp`. Eine fremde App bekommt das
+(`openWithSelection`), nur `otpauth://totp|hotp`. Eine fremde App bekommt das
 Geheimnis nur, wenn man sie dort auswählt.
 
 ## Hinweise
@@ -376,7 +376,7 @@ des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 
 | Modul | Paketstamm | Inhalt |
 | --- | --- | --- |
-| `core-model` | `ch.brickinventoryapp.model` | Fachtypen in `model.fach` (Beträge als `Geld` in Zehntausendsteln, Zeitpunkte als `Instant`), `Fehlercode` und Anmeldekennungen des Servers, reine Regeln (Passwortlänge, `otpauthAdresse`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
+| `core-model` | `ch.brickinventoryapp.model` | Fachtypen in `model.fach` (Beträge als `Geld` in Zehntausendsteln, Zeitpunkte als `Instant`), `Fehlercode` und Anmeldekennungen des Servers, reine Regeln (Passwortlänge, `otpauthAddress`), `fangeAusserAbbruch` — reines Kotlin, ohne Android |
 | `core-vertrag` | `ch.brickinventoryapp.vertrag` | Wire-Format: Anfragen und Antworten des Servers in `Vertrag.kt`, erzeugt aus `Web-App/docs/openapi.json` (`npm run vertrag:kotlin`, nie von Hand; Namen, Fachtypen und Rümpfe in `Web-App/scripts/contract-kotlin-mapping.js`), abgeleitete Werte in `Ergaenzungen.kt`, unter `vertrag.abbildung` die Abbildung auf die Fachtypen in `core-model`; reines Kotlin, kennt `core-model`, nicht umgekehrt; eingebunden nur von `core-data` |
 | `core-ressourcen` | — (nur Ressourcen) | Texte (de/en), Schriften, Bilder; `ch.brickinventoryapp.ressourcen.R` |
 | `core-netz` | `ch.brickinventoryapp.netz` | Wächter-Interceptor (`ServerWaechter`), Netzrichtlinie, Adress- und Bild-Host-Prüfung, `Protokoll` (Logcat nur im Debug-Build); kennt weder Room noch Hilt |
@@ -388,7 +388,7 @@ des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 | `core-ui` | `ch.brickinventoryapp.ui` | Design-System: Theme und Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge, Kamera-Bausteine, geheime Zwischenablage); kennt keine Ansichten und keine Servermodelle |
 | `core-ui-bestand` | `ch.brickinventoryapp.gemeinsam` | Fachliche Bausteine mehrerer Bereiche: Filterblatt, Haushalt- und Lagerortwahl, eigene Einträge, Preisdiagramm, Wertkacheln; hängt nur an `core-model`, `core-ressourcen`, `core-ui` (Paketstamm aus der Zeit als `feature-gemeinsam`) |
 | `core-sitzung` | `ch.brickinventoryapp.sitzung` | Sitzung samt `AppUiState`, Kontowerte und der SitzungsDienst, der Anmeldung, Abmeldung und Einstellungen über die Bildschirme hinweg folgt; kennt weder Filter noch ViewModels |
-| `core-zustand` | `ch.brickinventoryapp.zustand` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-sitzung`, ohne `core-ui` und ohne Compose (`Modulkanten.ohneOberflaeche`) |
+| `core-zustand` | `ch.brickinventoryapp.zustand` | Blickfeld, Texte, Basis der Bereichs-ViewModels, AppViewModel; liest die Sitzung aus `core-sitzung`, ohne `core-ui` und ohne Compose (`Modulkanten.withoutUi`) |
 | `core-navigation` | `ch.brickinventoryapp.navigation` | `Bereichsumgebung`: was jeder Bereich von der App zum Zeigen seiner Ziele bekommt (NavController, Bilder, Snackbar, Sitzung, Blickfeld, Rollgedächtnis) — einzelne Flüsse und Rückrufe, kein AppViewModel |
 | `core-testing` | `ch.brickinventoryapp.testing` | Testhilfen (Testserver, Testdienste, `Quellen`), nur als `testImplementation` |
 | `feature-anmeldung` | `ch.brickinventoryapp.anmeldung` | Anmelden, Server einrichten, QR |
@@ -398,7 +398,7 @@ des Moduls, die Konvention prüft sie nur. Ein SDK-Sprung ist eine Zeile in
 | `feature-finanzen` | `ch.brickinventoryapp.finanzen` | Finanzen, Gutscheine, PDF-Betrachter |
 | `feature-konto` | `ch.brickinventoryapp.konto` | Einstellungen |
 | `feature-verwaltung` | `ch.brickinventoryapp.verwaltung` | Monitoring für Verwalter |
-| `app` | `ch.brickinventoryapp.app` | Setzt die Navigation zusammen (jeder Bereich hält seine Routen, fremde Ziele öffnet er über Rückrufe, die nur `ZielUmgebung` erfüllt), Hilt-Einstieg, Activity, CSV-Import-Balken, Widget |
+| `app` | `ch.brickinventoryapp.app` | Setzt die Navigation zusammen (jeder Bereich hält seine Routen, fremde Ziele öffnet er über Rückrufe, die nur `TargetEnvironment` erfüllt), Hilt-Einstieg, Activity, CSV-Import-Balken, Widget |
 
 Jedes Modul hat seinen eigenen Paketstamm: Paket = Stamm + bisheriger
 Unterpfad (`ui.screens` in `feature-sammlung` heisst
@@ -531,7 +531,7 @@ Der Unterschied ist wichtig:
 **Verhaltenstests** führen Code aus. `BrickRepositoryErrorMappingTest` startet
 einen echten HTTP-Server (MockWebServer) und prüft, was das Repository aus
 einer Antwort macht — 409 mit Fehlerrumpf, 500 ohne, Zeitüberschreitung,
-Verbindungsabriss. `FehlerTexteTest` ruft die Zuordnung Ursache → Text direkt
+Verbindungsabriss. `ErrorTextsTest` ruft die Zuordnung Ursache → Text direkt
 auf. Solche Tests sind die wertvollen: Sie finden, ob eine Regel WIRKT.
 
 **Quelltextlesende Tests** suchen Muster im Code und finden nur, ob eine Regel im
@@ -546,7 +546,7 @@ braucht. `fehlerTextId()` und die Bereichsquelle der `Offlineablage` sind
 beides Beispiele dafür.
 
 Gemeinsame Helfer für die zweite Art stehen in `core-testing/…/Quellen.kt` —
-insbesondere `fenster()` (misst ZEILEN, nicht Zeichen) und `ohneKommentare()`.
+insbesondere `fenster()` (misst ZEILEN, nicht Zeichen) und `withoutComments()`.
 `Quellen.wurzel` legt die Quellen aller Module zu einem Baum zusammen.
 
 ## Release signieren

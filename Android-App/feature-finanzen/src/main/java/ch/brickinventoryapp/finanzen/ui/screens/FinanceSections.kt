@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.finanzen.ui.screens
 
 import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.finanzen.ui.FinanzZeile
-import ch.brickinventoryapp.model.fach.BewertungSetAnsicht
+import ch.brickinventoryapp.finanzen.ui.FinanceRow
+import ch.brickinventoryapp.model.fach.ValuationSetView
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ui.components.AuswahlChip
 
@@ -33,12 +33,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.finanzen.ui.figurZeilen
-import ch.brickinventoryapp.finanzen.ui.finanzKopf
+import ch.brickinventoryapp.finanzen.ui.minifigRows
+import ch.brickinventoryapp.finanzen.ui.financeHeader
 import ch.brickinventoryapp.finanzen.ui.finanzSummen
-import ch.brickinventoryapp.finanzen.ui.fremdeKaufpreise
-import ch.brickinventoryapp.finanzen.ui.setZeilen
-import ch.brickinventoryapp.finanzen.ui.teilZeilen
+import ch.brickinventoryapp.finanzen.ui.foreignPurchasePrices
+import ch.brickinventoryapp.finanzen.ui.setRows
+import ch.brickinventoryapp.finanzen.ui.partRows
 import ch.brickinventoryapp.ui.util.fmtProzent
 import ch.brickinventoryapp.model.util.resolveThumbUrl
 import androidx.compose.material.icons.filled.*
@@ -46,13 +46,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
-import ch.brickinventoryapp.ui.components.vorgelesenAls
-import ch.brickinventoryapp.ui.components.Abschnittstitel
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.readAloudAs
+import ch.brickinventoryapp.ui.components.SectionTitle
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.gemeinsam.ui.mengeManuell
 import ch.brickinventoryapp.model.fach.OHNE_FARBE
-import ch.brickinventoryapp.ui.components.BezeichnungUndWert
+import ch.brickinventoryapp.ui.components.LabelAndValue
 import ch.brickinventoryapp.gemeinsam.ui.ConditionBadges
 import ch.brickinventoryapp.gemeinsam.ui.FinanzBild
 import ch.brickinventoryapp.gemeinsam.ui.PnlBadge
@@ -66,8 +66,8 @@ internal fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsV
         // ── Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren ───────────
         item {
             // Alle Summanden vom Server; die eigene Addition nur für ältere Server (finanzSummen).
-            val summen = finanzSummen(valuation, partsValuation, figsValuation, pnl)
-            Spacer(Modifier.height(Abstaende.winzig))
+            val sums = finanzSummen(valuation, partsValuation, figsValuation, pnl)
+            Spacer(Modifier.height(Abstaende.tiny))
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = Formen.leiste,
@@ -76,20 +76,20 @@ internal fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsV
             ) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     val klein = MaterialTheme.typography.bodySmall
-                    BezeichnungUndWert(stringResource(R.string.finance_total_sets), fmtPrice(summen.sets.toPlainString()),
-                        stil = klein, wertGewicht = FontWeight.Normal)
-                    BezeichnungUndWert(stringResource(R.string.finance_total_manual_parts), fmtPrice(summen.teile.toPlainString()),
-                        stil = klein, wertGewicht = FontWeight.Normal)
-                    BezeichnungUndWert(stringResource(R.string.finance_total_manual_minifigs), fmtPrice(summen.figuren.toPlainString()),
-                        stil = klein, wertGewicht = FontWeight.Normal)
+                    LabelAndValue(stringResource(R.string.finance_total_sets), fmtPrice(sums.sets.toPlainString()),
+                        stil = klein, valueWeight = FontWeight.Normal)
+                    LabelAndValue(stringResource(R.string.finance_total_manual_parts), fmtPrice(sums.teile.toPlainString()),
+                        stil = klein, valueWeight = FontWeight.Normal)
+                    LabelAndValue(stringResource(R.string.finance_total_manual_minifigs), fmtPrice(sums.figuren.toPlainString()),
+                        stil = klein, valueWeight = FontWeight.Normal)
                     HorizontalDivider()
-                    BezeichnungUndWert(stringResource(R.string.finance_grand_total), fmtPrice(summen.gesamt.toPlainString()),
+                    LabelAndValue(stringResource(R.string.finance_grand_total), fmtPrice(sums.gesamt.toPlainString()),
                         stil = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                        bezeichnungFarbe = MaterialTheme.colorScheme.onSurface, wertGewicht = FontWeight.Bold)
+                        labelColor = MaterialTheme.colorScheme.onSurface, valueWeight = FontWeight.Bold)
                     // Wie die Fussnote im Web: Ohne den Hinweis las sich das Total als Wert aller Positionen.
-                    val ohneMarkt = finanzKopf(valuation, partsValuation, figsValuation, pnl).ohneMarkt
-                    if (ohneMarkt > 0) Text(
-                        pluralStringResource(R.plurals.finance_summe_ohne_markt, ohneMarkt, ohneMarkt),
+                    val withoutMarket = financeHeader(valuation, partsValuation, figsValuation, pnl).withoutMarket
+                    if (withoutMarket > 0) Text(
+                        pluralStringResource(R.plurals.finance_summe_ohne_markt, withoutMarket, withoutMarket),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -99,15 +99,15 @@ internal fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsV
 }
 
 /** Manuell erfasste Minifiguren, einzeln aufgelistet. */
-internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Geld?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
+internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtValue: (Geld?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manuell erfasste Minifiguren — einzeln auflisten, analog zu den Sets ─
     val figsItems = figsValuation?.figs ?: emptyList()
     if (figsItems.isNotEmpty() && showFigs) {
         item {
-            Abschnittstitel(stringResource(R.string.finance_section_minifigs),
-                Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
+            SectionTitle(stringResource(R.string.finance_section_minifigs),
+                Modifier.padding(top = Abstaende.klein, bottom = Abstaende.hairline, start = Abstaende.tiny))
         }
-        items(figurZeilen(figsItems), key = { it.second.schluessel }) { (fig, zeile) ->
+        items(minifigRows(figsItems), key = { it.second.schluessel }) { (fig, zeile) ->
             // Bild über image_local und den Server-Proxy, nicht roh über fig.imageUrl — sonst
             // fehlte es offline und bei Quellen, die nur der Server erreicht.
             val figImg = remember(fig.imageLocal, fig.imageUrl, serverUrl) {
@@ -120,12 +120,12 @@ internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht
                 title = fig.figName ?: fig.figNumber,
                 blId = fig.blFigNumber ?: fig.figNumber,
                 quantity = zeile.menge,
-                priceStr = fmtWert(zeile.wert),
-                purchaseStr = zeile.kaufGesamt?.let { fmtWert(it) },
+                priceStr = fmtValue(zeile.wert),
+                purchaseStr = zeile.kaufGesamt?.let { fmtValue(it) },
                 purchaseGesamt = zeile.menge > 1,
                 condition = zeile.zustand,
                 pnlProzent = zeile.pnlProzent,
-                gewinnStr = zeile.gewinn?.let { gewinnText(it, fmtWert) },
+                gainStr = zeile.gewinn?.let { gainText(it, fmtValue) },
             )
         }
         item {
@@ -137,19 +137,19 @@ internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht
 }
 
 /** Manuell erfasste Teile, einzeln aufgelistet. */
-internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtWert: (Geld?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
+internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtValue: (Geld?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
     // ── Manuell erfasste Teile — einzeln auflisten, analog zu den Sets ─────
     val partsItems = partsValuation?.parts ?: emptyList()
     if (partsItems.isNotEmpty() && showParts) {
         item {
-            Abschnittstitel(stringResource(R.string.finance_section_parts),
-                Modifier.padding(top = Abstaende.klein, bottom = Abstaende.haar, start = Abstaende.winzig))
+            SectionTitle(stringResource(R.string.finance_section_parts),
+                Modifier.padding(top = Abstaende.klein, bottom = Abstaende.hairline, start = Abstaende.tiny))
         }
         // Wie bei den Sets: eine vollständige Zeile je Kaufpreis. Ein
         // Teil, das einmal neu und einmal gebraucht gekauft wurde,
         // erscheint zweimal — jede Zeile mit dem Marktpreis ihres
         // Zustands. Ohne Erfassungen bleibt es bei der einen Zeile.
-        items(teilZeilen(partsItems), key = { it.second.schluessel }) { (part, zeile) ->
+        items(partRows(partsItems), key = { it.second.schluessel }) { (part, zeile) ->
             val partImg = remember(part.imageLocal, part.imageUrl, serverUrl) {
                 resolveThumbUrl(serverUrl, part.imageLocal, part.imageUrl)
             }
@@ -160,12 +160,12 @@ internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht
                 title = part.partName ?: part.partNumber,
                 blId = part.blPartNumber ?: part.partNumber,
                 quantity = zeile.menge,
-                priceStr = fmtWert(zeile.wert),
-                purchaseStr = zeile.kaufGesamt?.let { fmtWert(it) },
+                priceStr = fmtValue(zeile.wert),
+                purchaseStr = zeile.kaufGesamt?.let { fmtValue(it) },
                 purchaseGesamt = zeile.menge > 1,
                 condition = zeile.zustand,
                 pnlProzent = zeile.pnlProzent,
-                gewinnStr = zeile.gewinn?.let { gewinnText(it, fmtWert) },
+                gainStr = zeile.gewinn?.let { gainText(it, fmtValue) },
             )
         }
         item {
@@ -180,7 +180,7 @@ internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht
 
 /** Name, Nummer, Menge und Zustand einer Set-Zeile der Finanzen. */
 @Composable
-private fun RowScope.FinanzSetAngaben(set: BewertungSetAnsicht, zeile: FinanzZeile) {
+private fun RowScope.FinanceSetDetails(set: ValuationSetView, zeile: FinanceRow) {
     val rowQty = zeile.menge
     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
         Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
@@ -189,13 +189,13 @@ private fun RowScope.FinanzSetAngaben(set: BewertungSetAnsicht, zeile: FinanzZei
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (rowQty > 1)
             Text(mengeManuell(rowQty),
-                Modifier.vorgelesenAls(stueckzahl(rowQty)),
+                Modifier.readAloudAs(stueckzahl(rowQty)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         // Zustand dieser Erfassung — bei mehreren Karten
         // desselben Sets das einzige Unterscheidungsmerkmal.
         zeile.zustand?.let {
-            Box(Modifier.padding(top = Abstaende.haar)) {
+            Box(Modifier.padding(top = Abstaende.hairline)) {
                 ConditionBadges(listOf(it))
             }
         }
@@ -203,19 +203,19 @@ private fun RowScope.FinanzSetAngaben(set: BewertungSetAnsicht, zeile: FinanzZei
 }
 
 /** Eine vollständige Karte JE KAUFPREIS — siehe die Begründung im Rumpf. */
-internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtWert: (Geld?) -> String, onSetClick: (String) -> Unit) {
+internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtValue: (Geld?) -> String, onSetClick: (String) -> Unit) {
     // Section header
     if (showSets) {
     item {
-        Abschnittstitel(stringResource(R.string.finance_section_sets),
-            Modifier.padding(top = Abstaende.winzig, bottom = Abstaende.haar, start = Abstaende.winzig))
+        SectionTitle(stringResource(R.string.finance_section_sets),
+            Modifier.padding(top = Abstaende.tiny, bottom = Abstaende.hairline, start = Abstaende.tiny))
     }
 
     // Ein Set mit einem Kaufpreis für „Neu“ und einem für „Gebraucht“ erscheint zweimal, jede
     // Karte mit dem Marktpreis ihres Zustands — sonst würde das neu gekaufte Exemplar mit dem
     // Gebrauchtpreis bewertet.
-    items(setZeilen(valuation.sets), key = { it.second.schluessel }) { (set, zeile) ->
-        val priceStr    = fmtWert(zeile.wert)
+    items(setRows(valuation.sets), key = { it.second.schluessel }) { (set, zeile) ->
+        val priceStr    = fmtValue(zeile.wert)
         val rowQty      = zeile.menge
         val rowPurchase = zeile.kaufGesamt
         val rowPnl      = zeile.pnlProzent
@@ -230,7 +230,7 @@ internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets:
             Row(Modifier.padding(Abstaende.mittel), verticalAlignment = Alignment.CenterVertically) {
                 FinanzBild(imageUrl, imageLoader, set.name)
                 Spacer(Modifier.width(Abstaende.mittel))
-                FinanzSetAngaben(set, zeile)
+                FinanceSetDetails(set, zeile)
                 Spacer(Modifier.width(Abstaende.klein))
                 // Kaufpreis und Marktpreis untereinander, wie in der Webapp. Bei mehreren
                 // Erfassungen steht hier nichts: Die Zahlen stehen dann je Kaufpreis darunter,
@@ -248,8 +248,8 @@ internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets:
                     }
                     rowPurchase?.let {
                         Text(
-                            if (rowQty > 1) stringResource(R.string.finance_purchase_total, fmtWert(it))
-                            else stringResource(R.string.finance_purchase_short, fmtWert(it)),
+                            if (rowQty > 1) stringResource(R.string.finance_purchase_total, fmtValue(it))
+                            else stringResource(R.string.finance_purchase_short, fmtValue(it)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -257,7 +257,7 @@ internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets:
                     // Entwicklung gegen den Kaufpreis DIESER Erfassung —
                     // vom Server, hier wird nichts nachgerechnet.
                     rowPnl?.let {
-                        Box(Modifier.padding(top = Abstaende.haar)) { PnlBadge(it, zeile.gewinn?.let { g -> gewinnText(g, fmtWert) }) }
+                        Box(Modifier.padding(top = Abstaende.hairline)) { PnlBadge(it, zeile.gewinn?.let { g -> gainText(g, fmtValue) }) }
                     }
                 }
             }
@@ -274,13 +274,13 @@ internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets:
  */
 internal fun LazyListScope.financeCategoryFilter(
     aktive: Set<String>,
-    onUmschalten: (String) -> Unit,
-    onAlle: () -> Unit,
+    toggleOn: (String) -> Unit,
+    onAll: () -> Unit,
 ) {
     item {
         // Beschriftet und direkt über den Zeilen: Unter dem Diagramm war unklar, ob die
         // Chips auch die Kurve filtern. Sie wählen nur die Positionen darunter.
-        Abschnittstitel(stringResource(R.string.finance_positionen),
+        SectionTitle(stringResource(R.string.finance_positionen),
             Modifier.padding(top = Abstaende.klein))
     }
     item {
@@ -292,28 +292,28 @@ internal fun LazyListScope.financeCategoryFilter(
             item {
                 AuswahlChip(
                     selected = aktive.isEmpty(),
-                    onClick = onAlle,
+                    onClick = onAll,
                     label = { Text(stringResource(R.string.finance_filter_all), style = MaterialTheme.typography.labelMedium) },
                 )
             }
-            item { KategorieChip("sets",  R.string.finance_filter_sets,     aktive, onUmschalten) }
-            item { KategorieChip("parts", R.string.finance_filter_parts,    aktive, onUmschalten) }
-            item { KategorieChip("figs",  R.string.finance_filter_minifigs, aktive, onUmschalten) }
+            item { CategoryChip("sets",  R.string.finance_filter_sets,     aktive, toggleOn) }
+            item { CategoryChip("parts", R.string.finance_filter_parts,    aktive, toggleOn) }
+            item { CategoryChip("figs",  R.string.finance_filter_minifigs, aktive, toggleOn) }
         }
     }
 }
 
 /** Ein Chip der Filterleiste — drei Aufrufer, ein Aussehen. */
 @Composable
-private fun KategorieChip(
+private fun CategoryChip(
     schluessel: String,
     @androidx.annotation.StringRes text: Int,
     aktive: Set<String>,
-    onUmschalten: (String) -> Unit,
+    toggleOn: (String) -> Unit,
 ) {
     AuswahlChip(
         selected = schluessel in aktive,
-        onClick = { onUmschalten(schluessel) },
+        onClick = { toggleOn(schluessel) },
         label = { Text(stringResource(text), style = MaterialTheme.typography.labelMedium) },
     )
 }
@@ -342,10 +342,10 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
                 Spacer(Modifier.height(6.dp))
                 // totals.avg statt qtyAvg: Marktpreis ist avg_price, der mengengewichtete
                 // Schnitt liegt systematisch darunter (gleiche Umstellung wie in der Webapp).
-                val summen = finanzSummen(valuation, partsValuation, figsValuation, pnl)
-                // Einstand, Marktwert und G/V aus einer Basis (finanzKopf), sonst passten die drei
+                val sums = finanzSummen(valuation, partsValuation, figsValuation, pnl)
+                // Einstand, Marktwert und G/V aus einer Basis (financeHeader), sonst passten die drei
                 // Zahlen nicht zusammen; ältere Server ohne Basis zeigen den Gesamtwert wie bisher.
-                val kopf = finanzKopf(valuation, partsValuation, figsValuation, pnl)
+                val kopf = financeHeader(valuation, partsValuation, figsValuation, pnl)
                 // FlowRow: Bei grosser Schrift rückt die Gewinn-Plakette unter den Betrag,
                 // statt ihn zu quetschen.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -359,7 +359,7 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
                         style = MaterialTheme.typography.headlineMedium,
                         modifier = Modifier.align(Alignment.CenterVertically)
                     )
-                    val pnlPct = kopf.guvProzent
+                    val pnlPct = kopf.guvPercent
                     if (pnlPct != null) {
                         // Gewinn grün, Verlust rot wie überall sonst; auf weissem Grund, weil die
                         // Statusfarben nur auf surface 4,5:1 zusagen, nicht auf primary.
@@ -381,24 +381,24 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
                 }
                 // „davon Teile“ nur ohne Basis: Der Basis-Marktwert lässt Positionen ohne
                 // Kaufpreis aus, ein „davon“ aus allen Teilen könnte grösser sein als er.
-                if (!kopf.mitBasis && summen.teileUndFiguren.signum() > 0) {
-                    Spacer(Modifier.height(Abstaende.winzig))
+                if (!kopf.withBase && sums.partsAndMinifigs.signum() > 0) {
+                    Spacer(Modifier.height(Abstaende.tiny))
                     Text(
-                        stringResource(R.string.finance_parts_extra, fmtPrice(summen.teileUndFiguren.toPlainString())),
+                        stringResource(R.string.finance_parts_extra, fmtPrice(sums.partsAndMinifigs.toPlainString())),
                         color = auf,
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
                 // Kaufsumme und G/V in einer Zeile, die bei Bedarf umbricht: Untereinander waren
                 // es mit Betrag, Bezeichnung und Rechenhinweis vier Textebenen in einer Kachel.
-                if (kopf.basisBekannt) {
-                    Spacer(Modifier.height(Abstaende.winzig))
+                if (kopf.baseKnown) {
+                    Spacer(Modifier.height(Abstaende.tiny))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                        kopf.einstand?.let {
+                        kopf.cost?.let {
                             Text(stringResource(R.string.finance_einstand_zeile, fmtPrice(it.toPlainString())),
                                 color = auf, style = MaterialTheme.typography.bodySmall)
                         }
-                        val guv = kopf.guvBetrag
+                        val guv = kopf.guvAmount
                         Text(
                             stringResource(R.string.finance_guv_zeile,
                                 if (guv == null) stringResource(R.string.finance_pnl_needs_prices)
@@ -415,11 +415,11 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
                 // Zahl zweimal da.
                 Text(stringResource(R.string.finance_range_label), color = auf,
                     style = MaterialTheme.typography.labelMedium)
-                Spacer(Modifier.height(Abstaende.winzig))
+                Spacer(Modifier.height(Abstaende.tiny))
                 FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround,
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     PriceColumn(stringResource(R.string.finance_min_label), fmtPrice(valuation.totals.min), auf)
-                    if (summen.teileUndFiguren.signum() > 0)
+                    if (sums.partsAndMinifigs.signum() > 0)
                         PriceColumn(stringResource(R.string.finance_avg_label), fmtPrice(valuation.totals.avg), auf)
                     PriceColumn(stringResource(R.string.finance_max_label), fmtPrice(valuation.totals.max), auf)
                 }
@@ -429,25 +429,25 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
     item {
         // Wie gerechnet wurde, unter der Kachel statt in ihr: Sie trägt die Zahlen, der
         // Hinweis die Herkunft — wie die Zeile im Web (fin-basis), nur leiser.
-        val kopf = finanzKopf(valuation, partsValuation, figsValuation, pnl)
-        val ohneMarkt = if (kopf.ohneMarkt > 0) pluralStringResource(R.plurals.finance_basis_ohne_markt,
-            kopf.ohneMarkt, kopf.ohneMarkt, fmtPrice(kopf.ohneMarktEinstand.toPlainString())) else null
-        val ohneKauf = if (kopf.ohneKauf > 0) pluralStringResource(R.plurals.finance_basis_ohne_kauf,
-            kopf.ohneKauf, kopf.ohneKauf, fmtPrice(kopf.ohneKaufWert.toPlainString())) else null
+        val kopf = financeHeader(valuation, partsValuation, figsValuation, pnl)
+        val withoutMarket = if (kopf.withoutMarket > 0) pluralStringResource(R.plurals.finance_basis_ohne_markt,
+            kopf.withoutMarket, kopf.withoutMarket, fmtPrice(kopf.withoutMarketCost.toPlainString())) else null
+        val withoutPurchase = if (kopf.withoutPurchase > 0) pluralStringResource(R.plurals.finance_basis_ohne_kauf,
+            kopf.withoutPurchase, kopf.withoutPurchase, fmtPrice(kopf.withoutPurchaseValue.toPlainString())) else null
         // Wie das Web (finance.fremde_waehrung_n): fehlende Kaufpreise nennen statt still weglassen.
-        val fremde = fremdeKaufpreise(valuation, partsValuation, figsValuation, pnl)
+        val fremde = foreignPurchasePrices(valuation, partsValuation, figsValuation, pnl)
         val zeilen = listOfNotNull(
-            if (kopf.basisZeileSichtbar) pluralStringResource(R.plurals.finance_basis_gerechnet, kopf.gesamt,
-                kopf.bewertet, kopf.gesamt) + " " + listOfNotNull(ohneMarkt, ohneKauf).joinToString(" · ") else null,
+            if (kopf.baseRowVisible) pluralStringResource(R.plurals.finance_basis_gerechnet, kopf.gesamt,
+                kopf.valued, kopf.gesamt) + " " + listOfNotNull(withoutMarket, withoutPurchase).joinToString(" · ") else null,
             if (fremde > 0) pluralStringResource(R.plurals.finance_fremde_waehrung, fremde, fremde) else null,
         )
         if (zeilen.isNotEmpty()) Row(
-            Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig),
+            Modifier.fillMaxWidth().padding(horizontal = Abstaende.tiny),
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
-            Icon(Icons.Outlined.Info, null, Modifier.size(mitSchrift(16.dp)),
+            Icon(Icons.Outlined.Info, null, Modifier.size(withFont(16.dp)),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
                 zeilen.forEach {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }

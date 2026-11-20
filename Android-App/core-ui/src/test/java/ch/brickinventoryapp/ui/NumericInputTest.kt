@@ -20,7 +20,7 @@ import ch.brickinventoryapp.testing.Quellen
  * Hier steht seit dem 28.09. die FILTERUNG — was NumericInput mit einer
  * Eingabe macht — und die Sonderregel für die Setnummernfelder, die ihre
  * Felder an der Beschriftung erkennt. Die Sammelregel „jedes gefilterte Feld
- * zeigt auch die Zahlentastatur" steht in ZahlentastaturTest; siehe die
+ * zeigt auch die Zahlentastatur" steht in NumberPadTest; siehe die
  * Notiz unten, wo sie vorher stand.
  *
  * Seit 8.11. lässt die Setnummer auch Buchstaben durch (llca30, comcon001), wie
@@ -28,7 +28,7 @@ import ch.brickinventoryapp.testing.Quellen
  * Gegenprobe (gegenproben/setnummer-nur-ziffern.patch): der Filter wieder nur
  * Ziffern und „-" → rot „die Setnummer laesst Buchstaben und Ziffern durch …".
  *
- * Betrag und Menge: leseBetrag folgt leseBetrag der Web-App (format.js).
+ * Betrag und Menge: readAmount folgt readAmount der Web-App (format.js).
  * Gegenprobe (gegenproben/betrag-tausenderpunkt.patch): price() schneidet wieder am
  * zweiten Trenner ab → rot „eine eingefuegte Zahl mit Tausendertrennung bleibt ihr Wert".
  */
@@ -54,10 +54,10 @@ class NumericInputTest {
 
     @Test
     fun `die Setnummer-Tastatur ist eine Texttastatur ohne Grossschreibung`() {
-        val t = NumericInput.setnummerTastatur()
+        val t = NumericInput.setNumberKeyboard()
         assertEquals(KeyboardType.Ascii, t.keyboardType)
         assertEquals(KeyboardCapitalization.None, t.capitalization)
-        assertEquals(ImeAction.Done, NumericInput.setnummerTastatur(ImeAction.Done).imeAction)
+        assertEquals(ImeAction.Done, NumericInput.setNumberKeyboard(ImeAction.Done).imeAction)
     }
 
     @Test
@@ -68,13 +68,13 @@ class NumericInputTest {
     }
 
     /**
-     * Gegenprobe: setnummerMuster auf `\d+` verkürzt → "10294-1" rot; auf `.*` geweitet → "--" rot.
+     * Gegenprobe: setNumberPattern auf `\d+` verkürzt → "10294-1" rot; auf `.*` geweitet → "--" rot.
      */
     @Test
     fun `eine Setnummer hat Ziffern und hoechstens eine Variante`() {
-        for (gut in listOf("10294", "10294-1", "75192-12", " 75192 ")) assertEquals(gut, true, NumericInput.istSetnummer(gut))
-        for (schlecht in listOf("", "-", "--", "10294-", "-1", "1-2-3", "10294-1234", "abc!!")) {
-            assertEquals(schlecht, false, NumericInput.istSetnummer(schlecht))
+        for (gut in listOf("10294", "10294-1", "75192-12", " 75192 ")) assertEquals(gut, true, NumericInput.isSetNumber(gut))
+        for (bad in listOf("", "-", "--", "10294-", "-1", "1-2-3", "10294-1234", "abc!!")) {
+            assertEquals(bad, false, NumericInput.isSetNumber(bad))
         }
     }
 
@@ -100,34 +100,34 @@ class NumericInputTest {
         val de = '.'
         val en = ','
         // Beide Schreibweisen mit Tausendertrennung, in jeder Sprache gleich.
-        assertEquals(1299.0, NumericInput.leseBetrag("1.299,00", de)!!, 0.0)
-        assertEquals(1299.0, NumericInput.leseBetrag("1.299,00", en)!!, 0.0)
-        assertEquals(1299.5, NumericInput.leseBetrag("1,299.50", de)!!, 0.0)
-        assertEquals(1299.5, NumericInput.leseBetrag("1,299.50", en)!!, 0.0)
-        assertEquals(1234567.0, NumericInput.leseBetrag("1.234.567", de)!!, 0.0)
-        assertEquals(149.95, NumericInput.leseBetrag("149,95", de)!!, 0.0)
-        assertEquals(149.95, NumericInput.leseBetrag("149.95", en)!!, 0.0)
-        assertEquals(12.0, NumericInput.leseBetrag("12,", de)!!, 0.0)
-        assertEquals(0.5, NumericInput.leseBetrag(",5", de)!!, 0.0)
-        assertEquals(1299.0, NumericInput.leseBetrag("1'299.00", en)!!, 0.0)
-        assertEquals(12.5, NumericInput.leseBetrag("€ 12,50", de)!!, 0.0)
+        assertEquals(1299.0, NumericInput.readAmount("1.299,00", de)!!, 0.0)
+        assertEquals(1299.0, NumericInput.readAmount("1.299,00", en)!!, 0.0)
+        assertEquals(1299.5, NumericInput.readAmount("1,299.50", de)!!, 0.0)
+        assertEquals(1299.5, NumericInput.readAmount("1,299.50", en)!!, 0.0)
+        assertEquals(1234567.0, NumericInput.readAmount("1.234.567", de)!!, 0.0)
+        assertEquals(149.95, NumericInput.readAmount("149,95", de)!!, 0.0)
+        assertEquals(149.95, NumericInput.readAmount("149.95", en)!!, 0.0)
+        assertEquals(12.0, NumericInput.readAmount("12,", de)!!, 0.0)
+        assertEquals(0.5, NumericInput.readAmount(",5", de)!!, 0.0)
+        assertEquals(1299.0, NumericInput.readAmount("1'299.00", en)!!, 0.0)
+        assertEquals(12.5, NumericInput.readAmount("€ 12,50", de)!!, 0.0)
         // Ein einzelner Trenner vor drei Ziffern: Tausender nur, wenn er das Gruppenzeichen ist.
-        assertEquals(1299.0, NumericInput.leseBetrag("1.299", de)!!, 0.0)
-        assertEquals(1.299, NumericInput.leseBetrag("1.299", en)!!, 0.0)
-        assertEquals(1.299, NumericInput.leseBetrag("1,299", de)!!, 0.0)
-        assertEquals(1299.0, NumericInput.leseBetrag("1,299", en)!!, 0.0)
-        assertEquals(0.123, NumericInput.leseBetrag("0.123", de)!!, 0.0)
+        assertEquals(1299.0, NumericInput.readAmount("1.299", de)!!, 0.0)
+        assertEquals(1.299, NumericInput.readAmount("1.299", en)!!, 0.0)
+        assertEquals(1.299, NumericInput.readAmount("1,299", de)!!, 0.0)
+        assertEquals(1299.0, NumericInput.readAmount("1,299", en)!!, 0.0)
+        assertEquals(0.123, NumericInput.readAmount("0.123", de)!!, 0.0)
     }
 
     @Test
     fun `ein unlesbarer Betrag ist null, ein leerer auch, aber nur der unlesbare ist ungueltig`() {
         for (roh in listOf("", " ", ".", ",", "12.3.4", "1.29.900", "12,50.1", "abc", "1,2,3")) {
-            assertEquals("'$roh'", null, NumericInput.leseBetrag(roh, '.'))
+            assertEquals("'$roh'", null, NumericInput.readAmount(roh, '.'))
         }
-        assertEquals(false, NumericInput.preisUngueltig("", '.'))
-        assertEquals(false, NumericInput.preisUngueltig("1.299,00", '.'))
-        assertEquals(true, NumericInput.preisUngueltig(",", '.'))
-        assertEquals(true, NumericInput.preisUngueltig("12.3.4", '.'))
+        assertEquals(false, NumericInput.priceInvalid("", '.'))
+        assertEquals(false, NumericInput.priceInvalid("1.299,00", '.'))
+        assertEquals(true, NumericInput.priceInvalid(",", '.'))
+        assertEquals(true, NumericInput.priceInvalid("12.3.4", '.'))
     }
 
     @Test
@@ -141,18 +141,18 @@ class NumericInputTest {
         // Kein gültiger Betrag mit zwei Trennern: wie bisher der erste Trenner.
         assertEquals("12.34", NumericInput.price("12.3.4", '.'))
         // Der gefilterte Text ergibt denselben Wert wie der eingefügte.
-        assertEquals(1299.0, NumericInput.leseBetrag(NumericInput.price("1.299,00", '.'), '.')!!, 0.0)
+        assertEquals(1299.0, NumericInput.readAmount(NumericInput.price("1.299,00", '.'), '.')!!, 0.0)
     }
 
     @Test
     fun `eine Menge ist leer oder eine Zahl ab 1`() {
-        assertEquals(false, NumericInput.mengeUngueltig(""))
-        assertEquals(false, NumericInput.mengeUngueltig("1"))
-        assertEquals(false, NumericInput.mengeUngueltig("250"))
-        assertEquals(true, NumericInput.mengeUngueltig("0"))
-        assertEquals(true, NumericInput.mengeUngueltig("00"))
+        assertEquals(false, NumericInput.quantityInvalid(""))
+        assertEquals(false, NumericInput.quantityInvalid("1"))
+        assertEquals(false, NumericInput.quantityInvalid("250"))
+        assertEquals(true, NumericInput.quantityInvalid("0"))
+        assertEquals(true, NumericInput.quantityInvalid("00"))
         // Über Int: Das wurde bisher still zu 1.
-        assertEquals(true, NumericInput.mengeUngueltig("99999999999"))
+        assertEquals(true, NumericInput.quantityInvalid("99999999999"))
     }
 
     // ── Die Tastatur ─────────────────────────────────────────────────────────
@@ -166,8 +166,8 @@ class NumericInputTest {
      * Kommentarzeilen: Sonst genügte ein Kommentar, der den gesuchten Namen
      * nennt, und die Regel wäre zufrieden.
      */
-    private fun textfelder(): List<Triple<String, Int, String>> {
-        val dateien = Quellen.wurzel
+    private fun textFields(): List<Triple<String, Int, String>> {
+        val dateien = Quellen.root
             .walkTopDown().filter { it.extension == "kt" }.toList()
             .also {
                 // Untergrenze: ein leerer Dateilauf lässt jede
@@ -201,7 +201,7 @@ class NumericInputTest {
     // ── Hier stand „kein Zahlenfeld steht ohne Tastaturwahl da" ──────────────
     //
     // Die Regel ist nicht weggefallen, sie ist umgezogen: nach
-    // ZahlentastaturTest, „wer Zahlen filtert, zeigt auch die
+    // NumberPadTest, „wer Zahlen filtert, zeigt auch die
     // Zahlentastatur". Beide sagten dasselbe — ein Feld mit NumericInput-
     // Filter braucht die passende Tastatur —, und die Gegenprobe am 28.09.
     //
@@ -216,7 +216,7 @@ class NumericInputTest {
     fun `jedes Setnummernfeld nimmt Filter und Zahlenpad`() {
         // Auch ein Feld, das nicht als Zahlenfeld gebaut ist; erkannt an der Beschriftung,
         // die eine Umbenennung der Zustandsvariablen übersteht.
-        val felder = textfelder().filter { (_, _, block) ->
+        val felder = textFields().filter { (_, _, block) ->
             Regex("""R\.string\.[A-Za-z0-9_]*set_number[A-Za-z0-9_]*""").containsMatchIn(block)
         }
         // Drei sind es heute: Galerie („Set hinzufügen"), Merkliste und
@@ -241,7 +241,7 @@ class NumericInputTest {
     fun `keine Ansicht filtert Zahlen mehr selbst`() {
         // Sonst gäbe es wieder mehrere Fassungen derselben Regel — und die
         // Preis-Fassung mit nur EINEM Trennzeichen fehlte den anderen.
-        val dateien = Quellen.wurzel
+        val dateien = Quellen.root
             .walkTopDown().filter { it.extension == "kt" && it.name != "NumericInput.kt" }
         for (datei in dateien) {
             val s = code(datei.readText())

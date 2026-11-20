@@ -24,29 +24,29 @@ import java.io.File
 class DetektKonvention : Plugin<Project> {
     override fun apply(target: Project) {
         val fassung = target.libs.findVersion("detekt").get().requiredVersion
-        val werkzeug = detektKonfiguration(target, "detektWerkzeug")
-        val regelwerk = detektKonfiguration(target, "detektRegeln")
-        target.dependencies.add(werkzeug.name, "io.gitlab.arturbosch.detekt:detekt-cli:$fassung")
-        target.dependencies.add(regelwerk.name, "io.gitlab.arturbosch.detekt:detekt-formatting:$fassung")
+        val tool = detektConfiguration(target, "detektWerkzeug")
+        val ruleset = detektConfiguration(target, "detektRegeln")
+        target.dependencies.add(tool.name, "io.gitlab.arturbosch.detekt:detekt-cli:$fassung")
+        target.dependencies.add(ruleset.name, "io.gitlab.arturbosch.detekt:detekt-formatting:$fassung")
 
         val quellen = target.files(
             listOf("src/main/java", "src/main/kotlin", "src/test/java", "src/test/kotlin").map { target.file(it) },
         ).filter { it.isDirectory }
-        val bericht = target.layout.buildDirectory.file("reports/detekt/detekt.txt")
-        val detekt = target.tasks.register("detekt", JavaExec::class.java) { aufgabe ->
-            aufgabe.group = "verification"
-            aufgabe.description = "Prüft den Kotlin-Code mit detekt (Regeln: config/detekt/detekt.yml)."
-            aufgabe.classpath = werkzeug
-            aufgabe.mainClass.set("io.gitlab.arturbosch.detekt.cli.Main")
-            aufgabe.argumentProviders.add(
-                DetektArgumente(
+        val report = target.layout.buildDirectory.file("reports/detekt/detekt.txt")
+        val detekt = target.tasks.register("detekt", JavaExec::class.java) { task ->
+            task.group = "verification"
+            task.description = "Prüft den Kotlin-Code mit detekt (Regeln: config/detekt/detekt.yml)."
+            task.classpath = tool
+            task.mainClass.set("io.gitlab.arturbosch.detekt.cli.Main")
+            task.argumentProviders.add(
+                DetektArguments(
                     quellen, target.rootDir.resolve("config/detekt/detekt.yml"),
-                    target.rootDir.resolve("config/detekt/baseline.xml"), regelwerk, bericht.map { it.asFile },
+                    target.rootDir.resolve("config/detekt/baseline.xml"), ruleset, report.map { it.asFile },
                 ),
             )
-            aufgabe.outputs.file(bericht)
+            task.outputs.file(report)
             // Ohne Quellordner (core-ressourcen) läse detekt sonst das ganze Modul samt build/.
-            aufgabe.onlyIf("das Modul hat Kotlin-Quellen") { !quellen.isEmpty }
+            task.onlyIf("das Modul hat Kotlin-Quellen") { !quellen.isEmpty }
         }
         target.tasks.matching { it.name == "check" }.configureEach { it.dependsOn(detekt) }
     }
@@ -56,31 +56,31 @@ class DetektKonvention : Plugin<Project> {
      * Fassung, gegen die es gebaut ist; der Katalog nennt sie (detektKotlin), damit kein
      * anderes Kotlin im Bau sie anhebt.
      */
-    private fun detektKonfiguration(target: Project, name: String): Configuration {
+    private fun detektConfiguration(target: Project, name: String): Configuration {
         val kotlin = target.libs.findVersion("detektKotlin").get().requiredVersion
-        return target.configurations.create(name) { konfiguration ->
-            konfiguration.isCanBeConsumed = false
-            konfiguration.resolutionStrategy.eachDependency { abhaengigkeit ->
-                if (abhaengigkeit.requested.group == "org.jetbrains.kotlin") abhaengigkeit.useVersion(kotlin)
+        return target.configurations.create(name) { configuration ->
+            configuration.isCanBeConsumed = false
+            configuration.resolutionStrategy.eachDependency { dependency ->
+                if (dependency.requested.group == "org.jetbrains.kotlin") dependency.useVersion(kotlin)
             }
         }
     }
 }
 
 /** Die Aufrufzeile von detekt; die Felder sind zugleich die Eingaben der Aufgabe. */
-internal class DetektArgumente(
+internal class DetektArguments(
     @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) val quellen: FileCollection,
-    @get:InputFile @get:PathSensitive(PathSensitivity.NONE) val regeln: File,
+    @get:InputFile @get:PathSensitive(PathSensitivity.NONE) val rules: File,
     @get:InputFile @get:PathSensitive(PathSensitivity.NONE) val baseline: File,
-    @get:Classpath val regelwerk: FileCollection,
-    @get:Internal val bericht: org.gradle.api.provider.Provider<File>,
+    @get:Classpath val ruleset: FileCollection,
+    @get:Internal val report: org.gradle.api.provider.Provider<File>,
 ) : CommandLineArgumentProvider {
     override fun asArguments(): Iterable<String> = listOf(
         "--input", quellen.files.joinToString(",") { it.absolutePath },
-        "--config", regeln.absolutePath,
+        "--config", rules.absolutePath,
         "--build-upon-default-config",
         "--baseline", baseline.absolutePath,
-        "--plugins", regelwerk.files.joinToString(",") { it.absolutePath },
-        "--report", "txt:" + bericht.get().absolutePath,
+        "--plugins", ruleset.files.joinToString(",") { it.absolutePath },
+        "--report", "txt:" + report.get().absolutePath,
     )
 }

@@ -27,9 +27,9 @@ object Lesebreite {
     val wertzeile = 440.dp
 
     /** Knöpfe und Eingabefelder in Detailkarten: Mit Telefon-Proportionen über 900 dp wirkten sie unfertig. */
-    val bedienung = 400.dp
+    val controls = 400.dp
 }
 
 /** Volle Breite bis [max], darüber mittig. */
-fun Modifier.mittigBis(max: Dp): Modifier =
+fun Modifier.centeredUntil(max: Dp): Modifier =
     fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = max).fillMaxWidth()

@@ -1,14 +1,14 @@
 Gegenprobe: eine Absage des Servers verliert ihren Satz
 Modul: core-data
-Test: ch.brickinventoryapp.data.SetAnlegenStromTest
+Test: ch.brickinventoryapp.data.SetCreateStreamTest
 Rot: eine Absage traegt den Satz des Servers
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetAnlegenSseClient.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SetCreateSseClient.kt
 @@ -126,7 +126,7 @@
      /** Aus einer Fehlerantwort den Satz holen, den der Server geschickt hat. */
-     private fun fehlertextAus(koerper: String?): String =
+     private fun errorTextFrom(koerper: String?): String =
          try {
 -            json.parseToJsonElement(koerper.orEmpty()).jsonObject["error"]?.jsonPrimitive?.content.orEmpty()
 +            json.parseToJsonElement(koerper.orEmpty()).jsonObject["fehler"]?.jsonPrimitive?.content.orEmpty()

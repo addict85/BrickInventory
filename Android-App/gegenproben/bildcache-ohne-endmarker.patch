@@ -1,14 +1,14 @@
 Gegenprobe: der verschlüsselte Zwischenspeicher nimmt eine hinten gekürzte Datei wieder als vollständig (Stand vor sec12 H9)
 Modul: core-data
-Test: ch.brickinventoryapp.data.BildZwischenspeicherTest
+Test: ch.brickinventoryapp.data.ImageCacheTest
 Rot: eine hinten gekuerzte Datei gilt nicht
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
-@@ -106,7 +106,7 @@ internal class VerschluesseltesDateisystem(
+diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt
+--- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt
++++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/EncryptedFileSystem.kt
+@@ -106,7 +106,7 @@ internal class EncryptedFileSystem(
  
-         private fun naechster(): Boolean {
+         private fun next(): Boolean {
              if (quelle.exhausted()) {
 -                if (!abgeschlossen) throw IOException("abgeschnitten: $bindung")
 +                if (!abgeschlossen) return false

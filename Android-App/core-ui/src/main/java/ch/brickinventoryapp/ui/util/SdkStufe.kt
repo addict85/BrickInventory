@@ -8,4 +8,4 @@ import androidx.compose.runtime.staticCompositionLocalOf
  * Komposition statt Build.VERSION.SDK_INT im Bildschirm: Robolectric läuft hier
  * nur gegen API 35, und die Zweige für ältere Geräte sollen trotzdem geprüft sein.
  */
-val LocalSdkStufe = staticCompositionLocalOf { Build.VERSION.SDK_INT }
+val LocalSdkLevel = staticCompositionLocalOf { Build.VERSION.SDK_INT }

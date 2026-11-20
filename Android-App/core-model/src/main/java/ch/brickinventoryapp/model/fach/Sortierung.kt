@@ -19,8 +19,8 @@ enum class Setsortierung(val kennung: String) {
     MENGE_AUFSTEIGEND("qty_asc");
 
     companion object {
-        val VORGABE = NEUESTE
-        fun aus(kennung: String?): Setsortierung = entries.firstOrNull { it.kennung == kennung } ?: VORGABE
+        val DEFAULT = NEUESTE
+        fun aus(kennung: String?): Setsortierung = entries.firstOrNull { it.kennung == kennung } ?: DEFAULT
     }
 }
 
@@ -35,23 +35,23 @@ enum class Merksortierung(val kennung: String) {
     PREIS_AUFSTEIGEND("price_asc");
 
     companion object {
-        val VORGABE = NEUESTE
-        fun aus(kennung: String?): Merksortierung = entries.firstOrNull { it.kennung == kennung } ?: VORGABE
+        val DEFAULT = NEUESTE
+        fun aus(kennung: String?): Merksortierung = entries.firstOrNull { it.kennung == kennung } ?: DEFAULT
     }
 }
 
 /** Die Sortierungen des Katalogs; nach Jahr sortiert zeigt er die Jahresleiste. */
-enum class Katalogsortierung(val kennung: String, val nachJahr: Boolean = false) {
-    JAHR_ABSTEIGEND("year_desc", nachJahr = true),
-    JAHR_AUFSTEIGEND("year_asc", nachJahr = true),
+enum class Katalogsortierung(val kennung: String, val afterYear: Boolean = false) {
+    JAHR_ABSTEIGEND("year_desc", afterYear = true),
+    JAHR_AUFSTEIGEND("year_asc", afterYear = true),
     NAME("name_asc"),
     NUMMER("num_asc"),
     TEILE_ABSTEIGEND("parts_desc"),
     TEILE_AUFSTEIGEND("parts_asc");
 
     companion object {
-        val VORGABE = JAHR_ABSTEIGEND
-        fun aus(kennung: String?): Katalogsortierung = entries.firstOrNull { it.kennung == kennung } ?: VORGABE
+        val DEFAULT = JAHR_ABSTEIGEND
+        fun aus(kennung: String?): Katalogsortierung = entries.firstOrNull { it.kennung == kennung } ?: DEFAULT
     }
 }
 
@@ -60,15 +60,15 @@ enum class Katalogsortierung(val kennung: String, val nachJahr: Boolean = false)
  * Figuren ganz und nach Name, eine Wahl kennt er nicht. NAME ist seine Reihenfolge.
  */
 enum class Figurenordnung {
-    NAME, NUMMER, MENGE;
+    NAME, NUMMER, QUANTITY;
 
-    fun sortiere(figuren: List<FigurAnsicht>): List<FigurAnsicht> = when (this) {
+    fun sort(figuren: List<FigurAnsicht>): List<FigurAnsicht> = when (this) {
         NAME -> figuren
         NUMMER -> figuren.sortedBy { it.figNumber.lowercase() }
-        MENGE -> figuren.sortedByDescending { it.totalQuantity ?: it.quantity }
+        QUANTITY -> figuren.sortedByDescending { it.totalQuantity ?: it.quantity }
     }
 
     companion object {
-        val VORGABE = NAME
+        val DEFAULT = NAME
     }
 }

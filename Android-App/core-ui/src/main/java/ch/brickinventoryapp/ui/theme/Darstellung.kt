@@ -13,22 +13,22 @@ data class Darstellung(val design: Design, val dunkel: Boolean, val systemfarben
 const val SYSTEMFARBEN_AB_SDK = 31
 
 /**
- * [helligkeit] (Helligkeit.SYSTEM/HELL/DUNKEL) entscheidet, ob die dunkle Fassung
+ * [helligkeit] (Helligkeit.SYSTEM/LIGHT/DARK) entscheidet, ob die dunkle Fassung
  * DESSELBEN Designs gilt wie im Web (data-dunkel), nicht ein anderes Design.
  * Werkbank ist schon dunkel und bleibt, wie es ist. Systemfarben haben immer eine
  * dunkle Fassung; unter Android 12 gibt es sie nicht, dann gilt das Design.
  */
 fun darstellung(
-    design: Design, helligkeit: String, systemDunkel: Boolean,
+    design: Design, helligkeit: String, systemDark: Boolean,
     systemfarben: Boolean = false, sdk: Int = 0,
 ): Darstellung {
     val dynamisch = systemfarben && sdk >= SYSTEMFARBEN_AB_SDK
     val gewuenscht = when (helligkeit) {
-        Helligkeit.DUNKEL -> true
-        Helligkeit.HELL -> false
-        else -> systemDunkel
+        Helligkeit.DARK -> true
+        Helligkeit.LIGHT -> false
+        else -> systemDark
     }
-    return Darstellung(design, gewuenscht && helligkeitWaehlbar(design, systemfarben, sdk), dynamisch)
+    return Darstellung(design, gewuenscht && brightnessSelectable(design, systemfarben, sdk), dynamisch)
 }
 
 /**
@@ -36,5 +36,5 @@ fun darstellung(
  * Fassung (Werkbank ist schon dunkel) — die Einstellungen schalten die Wahl dann ab,
  * statt einen Schalter ohne Wirkung anzubieten.
  */
-fun helligkeitWaehlbar(design: Design, systemfarben: Boolean = false, sdk: Int = 0): Boolean =
-    (systemfarben && sdk >= SYSTEMFARBEN_AB_SDK) || hatDunkleFassung(design)
+fun brightnessSelectable(design: Design, systemfarben: Boolean = false, sdk: Int = 0): Boolean =
+    (systemfarben && sdk >= SYSTEMFARBEN_AB_SDK) || hatDarkVersion(design)

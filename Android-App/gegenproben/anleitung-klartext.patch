@@ -1,17 +1,17 @@
 Gegenprobe: die Anleitungen landen wieder im Klartext im Zwischenspeicher (Stand vor sec12 N1)
 Modul: core-data
-Test: ch.brickinventoryapp.data.AnleitungsAblageTest
+Test: ch.brickinventoryapp.data.InstructionStoreTest
 Rot: eine Anleitung liegt verschluesselt
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt
-@@ -48,11 +48,11 @@ class AnleitungsAblage(chiffre: AblageChiffre) {
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
+@@ -48,11 +48,11 @@ class InstructionStore(cipher: StoreCipher) {
      /** Neu oder hinten anfügend; erst `close` schliesst mit dem Endmarker ab. */
-     fun schreibe(datei: File, fortsetzen: Boolean): OutputStream {
+     fun schreibe(datei: File, resume: Boolean): OutputStream {
          val pfad = datei.toOkioPath()
--        return (if (fortsetzen) fs.appendingSink(pfad) else fs.sink(pfad)).buffer().outputStream()
-+        return (if (fortsetzen) FileSystem.SYSTEM.appendingSink(pfad) else FileSystem.SYSTEM.sink(pfad)).buffer().outputStream()
+-        return (if (resume) fs.appendingSink(pfad) else fs.sink(pfad)).buffer().outputStream()
++        return (if (resume) FileSystem.SYSTEM.appendingSink(pfad) else FileSystem.SYSTEM.sink(pfad)).buffer().outputStream()
      }
  
      /** Entschlüsselt beim Lesen; wirft IOException, wenn die Datei verändert oder gekürzt ist. */
@@ -19,4 +19,4 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/
 +    fun lies(datei: File): InputStream = FileSystem.SYSTEM.source(datei.toOkioPath()).buffer().inputStream()
  
      private companion object {
-         const val ZWECK = "anleitungen"
+         const val PURPOSE = "anleitungen"

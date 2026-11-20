@@ -7,11 +7,11 @@ diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 @@ -185,7 +185,7 @@
-     private fun sperre(b: String, art: Bestandsart) = sperren.getOrPut(b to art) { Mutex() }
+     private fun lock(b: String, art: StockKind) = sperren.getOrPut(b to art) { Mutex() }
  
      /** Der gültige Bereich, gestreut; null = nicht angemeldet, dann wird nichts abgelegt. */
--    suspend fun bereich(): String? = gueltig(fangeAusserAbbruch { bereichQuelle() }.getOrNull())
-+    suspend fun bereich(): String? = gueltig(runCatching { bereichQuelle() }.getOrNull())
+-    suspend fun bereich(): String? = gueltig(fangeAusserAbbruch { areaSource() }.getOrNull())
++    suspend fun bereich(): String? = gueltig(runCatching { areaSource() }.getOrNull())
  
      private fun gueltig(b: String?) = b?.takeIf { it.isNotBlank() }
  

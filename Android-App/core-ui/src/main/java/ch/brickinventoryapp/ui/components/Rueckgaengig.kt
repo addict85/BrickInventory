@@ -16,12 +16,12 @@ import ch.brickinventoryapp.ressourcen.R
  * verlässt. Jede Snackbar antwortet nur für ihren Eintrag.
  */
 @Composable
-fun <T : Any> RueckgaengigMeldung(
+fun <T : Any> UndoMessage(
     vorgemerkt: T?,
     text: String,
     host: SnackbarHostState,
-    onRueckgaengig: (T) -> Unit,
-    onAusfuehren: (T) -> Unit,
+    onUndo: (T) -> Unit,
+    executeOn: (T) -> Unit,
 ) {
     val rueckgaengig = stringResource(R.string.common_undo)
     val satz by rememberUpdatedState(text)
@@ -32,7 +32,7 @@ fun <T : Any> RueckgaengigMeldung(
             zurueck = host.showSnackbar(satz, rueckgaengig, duration = SnackbarDuration.Long) ==
                 SnackbarResult.ActionPerformed
         } finally {
-            if (zurueck) onRueckgaengig(v) else onAusfuehren(v)
+            if (zurueck) onUndo(v) else executeOn(v)
         }
     }
 }

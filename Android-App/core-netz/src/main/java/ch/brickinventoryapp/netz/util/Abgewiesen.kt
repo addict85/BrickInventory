@@ -13,22 +13,22 @@ package ch.brickinventoryapp.netz.util
  * header, the token is really invalid (which also rules out a loop); retrying
  * a login or a write request would count it twice.
  */
-fun darfNachfassen(
+fun followUpMay(
     status: Int,
-    unserServer: Boolean,
-    hatteAuthKopf: Boolean,
+    ourServer: Boolean,
+    hadAuthHeader: Boolean,
     methode: String,
 ): Boolean =
     status == 401 &&
-        unserServer &&
-        !hatteAuthKopf &&
+        ourServer &&
+        !hadAuthHeader &&
         (methode == "GET" || methode == "HEAD")
 
 /**
  * A 401 that reaches the UI while the app is signed in is already handled: on
- * a real expiry the interceptor signs out, in the sign-in race darfNachfassen()
+ * a real expiry the interceptor signs out, in the sign-in race followUpMay()
  * already retried. The request then stays silent. Not signed in means a
  * sign-in attempt — there the server's own sentence is the right one.
  */
-fun meldetDieSitzungsschicht(unauthorized: Boolean, angemeldet: Boolean): Boolean =
+fun reportsTheSessionLayer(unauthorized: Boolean, angemeldet: Boolean): Boolean =
     unauthorized && angemeldet

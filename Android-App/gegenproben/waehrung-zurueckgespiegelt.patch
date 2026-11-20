@@ -1,15 +1,15 @@
 Gegenprobe: Die Sitzung spiegelt die Währung zurück in die Ablage
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.SitzungsDienstTest
+Test: ch.brickinventoryapp.zustand.SessionServiceTest
 Rot: Waehrung und Design kommen aus der Ablage
 
 diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
 --- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
 +++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
 @@ -88,6 +88,7 @@
-             verfolgeServerstart()
+             trackServerStart()
          }
-         bereich.launch { folgeAnmeldung() }
+         bereich.launch { sequenceLogin() }
 +        bereich.launch { sitzung.state.collect { prefs.saveCurrency(it.currency) } }
          bereich.launch { prefs.language.collect { sitzung.spracheGeaendert(it) } }
          // Ein 401 auf einen Token, der an einen ausgewiesenen Server ging; ein

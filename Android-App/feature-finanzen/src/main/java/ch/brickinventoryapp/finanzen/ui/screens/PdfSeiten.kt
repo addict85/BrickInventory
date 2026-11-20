@@ -46,7 +46,7 @@ import ch.brickinventoryapp.ui.components.MitTooltip
  * Zahl da, nicht als Farbe.
  */
 @Composable
-internal fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier = Modifier) {
+internal fun ZoomBar(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
@@ -54,14 +54,14 @@ internal fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modif
             // surfaceVariant, und im Dunkelmodus wäre ein schwarzes Plättchen unsichtbar. Für
             // surface/onSurfaceVariant sichert Material3 den Kontrast in beiden Modi zu.
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), shape = Formen.chip)
-            .padding(horizontal = Abstaende.winzig)
+            .padding(horizontal = Abstaende.tiny)
     ) {
         // Am Anschlag abgeschaltet. `enabled` ist fuer Tastatur und Screenreader
         // verbindlich; die Ausgrauung ist nur die Begleitung davon, nicht das
         // Signal.
         MitTooltip(stringResource(R.string.pdfview_zoom_out)) {
             IconButton(
-                onClick = { setzeZoom(zoom / PDF_ZOOM_SCHRITT) },
+                onClick = { setzeZoom(zoom / PDF_ZOOM_STEP) },
                 enabled = zoom > PDF_ZOOM_MIN + 0.01f
             ) {
                 Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.pdfview_zoom_out))
@@ -90,7 +90,7 @@ internal fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modif
         }
         MitTooltip(stringResource(R.string.pdfview_zoom_in)) {
             IconButton(
-                onClick = { setzeZoom(zoom * PDF_ZOOM_SCHRITT) },
+                onClick = { setzeZoom(zoom * PDF_ZOOM_STEP) },
                 enabled = zoom < PDF_ZOOM_MAX - 0.01f
             ) {
                 Icon(Icons.Default.ZoomIn, contentDescription = stringResource(R.string.pdfview_zoom_in))
@@ -105,13 +105,13 @@ internal fun ZoomLeiste(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modif
  */
 internal class ZoomAnker {
     /** Wo im Sichtfeld der naechste Schritt ansetzt; null = Mitte. */
-    var punkt: Offset? = null
+    var point: Offset? = null
     /** Mitte der aufliegenden Finger im Sichtfeld, laufend nachgefuehrt. */
     var finger: Offset? = null
     /** Bei welchem Zoom die Liste zuletzt gemessen wurde. */
-    var gemessenBei = 0f
+    var measuredAt = 0f
     /** Waagerechtes Ziel, gesetzt beim Messen, eingeloest beim Platzieren. */
-    var ausstehendX: Int? = null
+    var pendingX: Int? = null
 }
 
 @Composable
@@ -121,7 +121,7 @@ internal fun PdfPages(
 ) {
     val dichte = LocalDensity.current
     val waagrecht = rememberScrollState()
-    val senkrecht = rememberLazyListState()
+    val vertical = rememberLazyListState()
     val geste = rememberTransformableState { _, zoomChange, _, _ -> setzeZoom(zoom * zoomChange, anker.finger) }
 
     // Solange zwei Finger aufliegen, rollt die Liste nicht: Die LazyColumn sieht die
@@ -139,9 +139,9 @@ internal fun PdfPages(
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // Die Seitenbreite OHNE den Rand, den die Liste ringsum legt — sonst
         // waere die gerenderte Bitmap um zweimal Abstaende.klein zu breit.
-        val seitenBreite = (this.maxWidth - Abstaende.klein * 2) * zoom
-        val renderBreitePx = with(dichte) {
-            ((this@BoxWithConstraints.maxWidth - Abstaende.klein * 2).toPx() * renderStufe(zoom))
+        val pagesWidth = (this.maxWidth - Abstaende.klein * 2) * zoom
+        val renderWidthPx = with(dichte) {
+            ((this@BoxWithConstraints.maxWidth - Abstaende.klein * 2).toPx() * renderLevel(zoom))
                 .toInt().coerceAtLeast(1)
         }
         Box(
@@ -152,29 +152,29 @@ internal fun PdfPages(
                 // der neue Zoom zugleich vor, und die neue Breite gilt schon fuer
                 // die Rollgrenze. Ein Effekt danach kaeme ein Bild zu spaet.
                 .layout { messbar, grenzen ->
-                    val f = if (anker.gemessenBei > 0f) zoom / anker.gemessenBei else 1f
-                    anker.gemessenBei = zoom
+                    val f = if (anker.measuredAt > 0f) zoom / anker.measuredAt else 1f
+                    anker.measuredAt = zoom
                     if (f != 1f) {
-                        val p = anker.punkt ?: Offset(grenzen.maxWidth / 2f, grenzen.maxHeight / 2f)
-                        anker.punkt = null
-                        val info = senkrecht.layoutInfo
+                        val p = anker.point ?: Offset(grenzen.maxWidth / 2f, grenzen.maxHeight / 2f)
+                        anker.point = null
+                        val info = vertical.layoutInfo
                         zoomZielY(
                             info.visibleItemsInfo.map {
-                                SeitenLage(it.index, it.offset + info.beforeContentPadding, it.size)
+                                PagesSituation(it.index, it.offset + info.beforeContentPadding, it.size)
                             },
                             p.y, f, info.beforeContentPadding, info.mainAxisItemSpacing,
-                        )?.let { (index, versatz) -> senkrecht.requestScrollToItem(index, versatz) }
-                        anker.ausstehendX = zoomZielX(waagrecht.value, p.x, Abstaende.klein.toPx(), f)
+                        )?.let { (index, versatz) -> vertical.requestScrollToItem(index, versatz) }
+                        anker.pendingX = zoomZielX(waagrecht.value, p.x, Abstaende.klein.toPx(), f)
                     }
-                    val platz = messbar.measure(grenzen)
-                    layout(platz.width, platz.height) {
+                    val space = messbar.measure(grenzen)
+                    layout(space.width, space.height) {
                         // Erst jetzt kennt horizontalScroll die neue Breite; vorher
                         // kappte es das Ziel an der alten.
-                        anker.ausstehendX?.let { ziel ->
-                            anker.ausstehendX = null
+                        anker.pendingX?.let { ziel ->
+                            anker.pendingX = null
                             waagrecht.dispatchRawDelta((ziel - waagrecht.value).toFloat())
                         }
-                        platz.place(0, 0)
+                        space.place(0, 0)
                     }
                 }
                 // Reihenfolge: transformable steht hinter horizontalScroll und sieht die Bewegung
@@ -210,16 +210,16 @@ internal fun PdfPages(
                 }
         ) {
             LazyColumn(
-                state = senkrecht,
+                state = vertical,
                 userScrollEnabled = !zweiFinger,
                 modifier = Modifier
-                    .width(seitenBreite + Abstaende.klein * 2)
+                    .width(pagesWidth + Abstaende.klein * 2)
                     .fillMaxHeight(),
                 contentPadding = PaddingValues(Abstaende.klein),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
             ) {
                 items((0 until pageCount).toList()) { index ->
-                    PdfPage(quelle, index, renderBreitePx, rendere)
+                    PdfPage(quelle, index, renderWidthPx, rendere)
                 }
             }
         }
@@ -227,14 +227,14 @@ internal fun PdfPages(
 }
 
 @Composable
-private fun PdfPage(quelle: PdfQuelle, index: Int, renderBreitePx: Int, rendere: SeitenRenderer) {
+private fun PdfPage(quelle: PdfQuelle, index: Int, renderWidthPx: Int, rendere: SeitenRenderer) {
     var bitmap by remember(quelle, index) { mutableStateOf<Bitmap?>(null) }
 
-    // remember ohne, LaunchedEffect mit renderBreitePx: Beim Stufenwechsel bleibt die
+    // remember ohne, LaunchedEffect mit renderWidthPx: Beim Stufenwechsel bleibt die
     // alte Bitmap stehen, bis die neue da ist. Ein Ladekreis hätte eine andere Höhe
     // und verlöre beim Zoomen die Stelle in der Anleitung.
-    LaunchedEffect(quelle, index, renderBreitePx) {
-        val neu = rendere(quelle, index, renderBreitePx)
+    LaunchedEffect(quelle, index, renderWidthPx) {
+        val neu = rendere(quelle, index, renderWidthPx)
         if (neu != null) bitmap = neu
     }
 

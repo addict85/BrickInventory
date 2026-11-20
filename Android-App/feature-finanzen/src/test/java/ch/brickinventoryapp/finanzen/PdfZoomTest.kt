@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.finanzen
 
 import ch.brickinventoryapp.finanzen.ui.pdf.PDF_BITMAP_MAX_PX
-import ch.brickinventoryapp.finanzen.ui.pdf.bitmapMasse
-import ch.brickinventoryapp.finanzen.ui.screens.renderStufe
+import ch.brickinventoryapp.finanzen.ui.pdf.bitmapDimensions
+import ch.brickinventoryapp.finanzen.ui.screens.renderLevel
 import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
@@ -12,7 +12,7 @@ import ch.brickinventoryapp.testing.Quellen
  *
  * ── Was hier geprueft wird, und was NICHT ───────────────────────────────────
  *
- * GERECHNET wird die Rechnung: [renderStufe] und [bitmapMasse] sind genau
+ * GERECHNET wird die Rechnung: [renderLevel] und [bitmapDimensions] sind genau
  * deshalb aus PdfViewerScreen herausgezogen, dass sie ohne Geraet laufen. Die
  * Flaechenbegrenzung mit der Wurzel ist die Stelle, an der ein Vorzeichen- oder
  * Wurzelfehler nicht auffaellt: Die Anzeige sieht richtig aus, nur der Speicher
@@ -41,11 +41,11 @@ class PdfZoomTest {
         // Stufe 1 gilt NUR bei genau 1x. Das ist gewollt: Solange nicht gezoomt
         // ist, soll der Betrachter so viel Speicher brauchen wie bisher; sobald
         // gezoomt ist, zaehlt Schaerfe mehr.
-        assert(renderStufe(1f) == 1) { "1x muss Stufe 1 sein, war ${renderStufe(1f)}" }
-        assert(renderStufe(1.25f) == 2) { "1,25x muss Stufe 2 sein, war ${renderStufe(1.25f)}" }
-        assert(renderStufe(2f) == 2) { "2x muss Stufe 2 sein, war ${renderStufe(2f)}" }
-        assert(renderStufe(2.5f) == 3) { "2,5x muss Stufe 3 sein, war ${renderStufe(2.5f)}" }
-        assert(renderStufe(5f) == 3) { "5x muss Stufe 3 sein, war ${renderStufe(5f)}" }
+        assert(renderLevel(1f) == 1) { "1x muss Stufe 1 sein, war ${renderLevel(1f)}" }
+        assert(renderLevel(1.25f) == 2) { "1,25x muss Stufe 2 sein, war ${renderLevel(1.25f)}" }
+        assert(renderLevel(2f) == 2) { "2x muss Stufe 2 sein, war ${renderLevel(2f)}" }
+        assert(renderLevel(2.5f) == 3) { "2,5x muss Stufe 3 sein, war ${renderLevel(2.5f)}" }
+        assert(renderLevel(5f) == 3) { "5x muss Stufe 3 sein, war ${renderLevel(5f)}" }
     }
 
     @Test
@@ -54,19 +54,19 @@ class PdfZoomTest {
         // Renderaufloesung nicht mitreissen. Darum bis 100 geprueft.
         var z = 1f
         while (z <= 100f) {
-            val stufe = renderStufe(z)
+            val stufe = renderLevel(z)
             assert(stufe in 1..3) { "Stufe $stufe bei Zoom $z liegt ausserhalb 1..3" }
             z += 0.37f
         }
         // Und die Gegenrichtung: ein unsinniger Wert darf nicht unter 1 fallen,
         // sonst waere die Bitmap 0 Pixel breit.
-        assert(renderStufe(0f) == 1) { "Zoom 0 muss Stufe 1 ergeben" }
-        assert(renderStufe(-3f) == 1) { "Ein negativer Zoom muss Stufe 1 ergeben" }
+        assert(renderLevel(0f) == 1) { "Zoom 0 muss Stufe 1 ergeben" }
+        assert(renderLevel(-3f) == 1) { "Ein negativer Zoom muss Stufe 1 ergeben" }
     }
 
     @Test
     fun `unterhalb der Grenze bleibt die gewuenschte Breite unangetastet`() {
-        val (w, h) = bitmapMasse(1080, A4)
+        val (w, h) = bitmapDimensions(1080, A4)
         assert(w == 1080) { "1080 px liegen weit unter der Grenze, geliefert wurde $w" }
         assert(h == (1080 * A4).toInt()) { "Hoehe $h passt nicht zu 1080 x $A4" }
         // Gegenprobe zur Grenze selbst: Dieser Fall darf sie nicht beruehren,
@@ -82,7 +82,7 @@ class PdfZoomTest {
         // 3240 px ist die Stufe 3 eines 1080-px-Geraets — der Fall, der in
         // Wirklichkeit auftritt.
         val gewuenscht = 3240
-        val (w, h) = bitmapMasse(gewuenscht, A4)
+        val (w, h) = bitmapDimensions(gewuenscht, A4)
 
         assert(w < gewuenscht) {
             "$gewuenscht px bei A4 sind ${gewuenscht.toLong() * (gewuenscht * A4).toInt()} " +
@@ -106,7 +106,7 @@ class PdfZoomTest {
     fun `der Riegel haelt fuer hoch und quer und fuer unsinnige Eingaben`() {
         for (ratio in listOf(0.5f, 0.707f, 1f, 1.4142f, 2f, 3f)) {
             for (breite in listOf(1, 320, 1080, 2160, 3240, 8000, 40000)) {
-                val (w, h) = bitmapMasse(breite, ratio)
+                val (w, h) = bitmapDimensions(breite, ratio)
                 assert(w >= 1 && h >= 1) { "Masse $w x $h bei ($breite, $ratio) — 0 ist keine Bitmap" }
                 assert(w.toLong() * h <= PDF_BITMAP_MAX_PX) {
                     "($breite, $ratio) ergibt ${w.toLong() * h} Pixel, erlaubt sind $PDF_BITMAP_MAX_PX"
@@ -118,7 +118,7 @@ class PdfZoomTest {
         }
         // Eine Breite von 0 oder weniger darf keine leere Bitmap ergeben.
         for (b in listOf(0, -1, -5000)) {
-            val (w, h) = bitmapMasse(b, A4)
+            val (w, h) = bitmapDimensions(b, A4)
             assert(w >= 1 && h >= 1) { "Breite $b ergab $w x $h" }
         }
     }
@@ -126,7 +126,7 @@ class PdfZoomTest {
     // ── Die drei Entscheidungen, die man versehentlich umdrehen kann ─────────
 
     private val quelle: String by lazy {
-        Quellen.ohneKommentare(Quellen.lies("finanzen/ui/screens/PdfSeiten.kt"))
+        Quellen.withoutComments(Quellen.lies("finanzen/ui/screens/PdfSeiten.kt"))
     }
 
     @Test
@@ -165,8 +165,8 @@ class PdfZoomTest {
         val kopf = Regex("""fun PdfPage\((\w+): PdfQuelle, (\w+): Int, (\w+): Int[,)]""").find(quelle)
         assert(kopf != null) { "PdfPage(quelle: PdfQuelle, index: Int, renderBreite: Int) nicht gefunden." }
         val (pdf, seite, breite) = kopf!!.destructured
-        fun schluessel(muster: String) =
-            Regex(muster).find(quelle)?.groupValues?.get(1)?.split(",")?.map { it.trim() }
+        fun schluessel(pattern: String) =
+            Regex(pattern).find(quelle)?.groupValues?.get(1)?.split(",")?.map { it.trim() }
         val gemerkt = schluessel("""var bitmap by remember\(([^)]*)\)""")
         assert(gemerkt == listOf(pdf, seite)) {
             "Der Bitmap-Zustand haengt an $gemerkt statt nur an ($pdf, $seite). Haengt er " +
@@ -175,9 +175,9 @@ class PdfZoomTest {
                 "Seiten eine andere Hoehe haben als gerenderte, verliert man beim " +
                 "Zoomen die Stelle."
         }
-        val neuGerendert = schluessel("""LaunchedEffect\(([^)]*\b$breite\b[^)]*)\)""")
-        assert(neuGerendert?.toSet() == setOf(pdf, seite, breite)) {
-            "Der LaunchedEffect haengt nicht an ($pdf, $seite, $breite), sondern an $neuGerendert — " +
+        val newRendered = schluessel("""LaunchedEffect\(([^)]*\b$breite\b[^)]*)\)""")
+        assert(newRendered?.toSet() == setOf(pdf, seite, breite)) {
+            "Der LaunchedEffect haengt nicht an ($pdf, $seite, $breite), sondern an $newRendered — " +
                 "ohne $breite wird beim Zoomen nie in hoeherer Aufloesung nachgerendert " +
                 "und das Bild bleibt grob."
         }
@@ -201,15 +201,15 @@ class PdfZoomTest {
             "Es gibt kein rememberUpdatedState fuer den Zoom mehr — dann liest der " +
                 "Doppeltipp den eingefrorenen Wert aus der ersten Komposition."
         }
-        val tipp = Regex("detectTapGestures\\(onDoubleTap = \\{(.*?)\\}\\)", RegexOption.DOT_MATCHES_ALL)
+        val tip = Regex("detectTapGestures\\(onDoubleTap = \\{(.*?)\\}\\)", RegexOption.DOT_MATCHES_ALL)
             .find(quelle)?.groupValues?.get(1)
-        assert(tipp != null) { "Kein detectTapGestures(onDoubleTap = ...) mehr gefunden." }
-        assert(tipp!!.contains("zoomJetzt") && tipp.contains("setzeZoomJetzt")) {
-            "Der Doppeltipp greift nicht auf die nachgefuehrten Werte zu:\n$tipp"
+        assert(tip != null) { "Kein detectTapGestures(onDoubleTap = ...) mehr gefunden." }
+        assert(tip!!.contains("zoomJetzt") && tip.contains("setzeZoomJetzt")) {
+            "Der Doppeltipp greift nicht auf die nachgefuehrten Werte zu:\n$tip"
         }
-        assert(!Regex("[^A-Za-z]zoom[^A-Za-z]").containsMatchIn(tipp)) {
+        assert(!Regex("[^A-Za-z]zoom[^A-Za-z]").containsMatchIn(tip)) {
             "Der Doppeltipp liest `zoom` unmittelbar — das ist der eingefrorene " +
-                "Wert aus der ersten Komposition:\n$tipp"
+                "Wert aus der ersten Komposition:\n$tip"
         }
     }
 
@@ -240,13 +240,13 @@ class PdfZoomTest {
 
     @Test
     fun `der Zoom rechnet beim Messen mit dem Fingerpunkt`() {
-        // Die Rechnung selbst prueft PdfZoomAnkerTest. Hier nur, dass sie dort
+        // Die Rechnung selbst prueft PdfZoomAnchorTest. Hier nur, dass sie dort
         // aufgerufen wird, wo altes Layout und neuer Zoom zugleich vorliegen.
-        val messen = Regex("""\.layout \{ messbar, grenzen ->(.*?)\n {16}\}""", RegexOption.DOT_MATCHES_ALL)
+        val measure = Regex("""\.layout \{ messbar, grenzen ->(.*?)\n {16}\}""", RegexOption.DOT_MATCHES_ALL)
             .find(quelle)?.groupValues?.get(1)
-        assert(messen != null) { "Kein .layout { messbar, grenzen -> ... } vor dem Rollen mehr." }
+        assert(measure != null) { "Kein .layout { messbar, grenzen -> ... } vor dem Rollen mehr." }
         for (teil in listOf("zoomZielY(", "requestScrollToItem(", "zoomZielX(", "dispatchRawDelta(")) {
-            assert(messen!!.contains(teil)) { "Beim Messen fehlt $teil:\n$messen" }
+            assert(measure!!.contains(teil)) { "Beim Messen fehlt $teil:\n$measure" }
         }
         assert(quelle.indexOf(".layout {") < quelle.indexOf(".horizontalScroll(")) {
             "Die Messung steht nicht vor horizontalScroll — dann kappt es das Ziel an der alten Breite."

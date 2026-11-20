@@ -3,8 +3,8 @@ package ch.brickinventoryapp.gemeinsam
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.fach.PreisDiagrammAnsicht
-import ch.brickinventoryapp.model.fach.PreisPunktAnsicht
-import ch.brickinventoryapp.model.fach.PreisReiheAnsicht
+import ch.brickinventoryapp.model.fach.PricePointView
+import ch.brickinventoryapp.model.fach.PriceSeriesView
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -25,15 +25,15 @@ import ch.brickinventoryapp.gemeinsam.ui.PriceChartMath
  * Dazu die Beschreibung für TalkBack. Gegenproben:
  *   A  in zusammenfassung() Anfang und Ende nach Index statt nach Tag → rot „die
  *      Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch“
- *   B  die Semantik am Canvas prüft PreisdiagrammBeschreibungTest (app) gezeichnet;
+ *   B  die Semantik am Canvas prüft PriceChartDescriptionTest (app) gezeichnet;
  *      gegenproben/preisdiagramm-stumm.patch
  */
 class PriceChartMathTest {
 
     private fun series(name: String, first: Int, vararg pts: Pair<String, Double>) =
-        PreisReiheAnsicht(
+        PriceSeriesView(
             name = name,
-            values = pts.map { PreisPunktAnsicht(it.first, Geld.aus(it.second)!!) },
+            values = pts.map { PricePointView(it.first, Geld.aus(it.second)!!) },
             firstRealIndex = first
         )
 
@@ -167,9 +167,9 @@ class PriceChartMathTest {
         val z = PriceChartMath.zusammenfassung(PriceChartMath.buildLines(chart), Locale.forLanguageTag("de-CH")).associateBy { it.zustand }
         val neu = z.getValue(Zustand.NEU)
         assertEquals(listOf("01.01.2026", "01.03.2026"), listOf(neu.von, neu.bis))
-        assertEquals(listOf(100.0, 120.0, 90.0, 120.0), listOf(neu.anfang, neu.ende, neu.tief, neu.hoch))
+        assertEquals(listOf(100.0, 120.0, 90.0, 120.0), listOf(neu.anfang, neu.ende, neu.deep, neu.hoch))
         val gebraucht = z.getValue(Zustand.GEBRAUCHT)
         assertEquals("Die aufgefüllte Null zählt nicht", "01.02.2026", gebraucht.von)
-        assertEquals(70.0, gebraucht.tief, 0.0)
+        assertEquals(70.0, gebraucht.deep, 0.0)
     }
 }

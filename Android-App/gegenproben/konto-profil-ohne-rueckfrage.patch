@@ -1,16 +1,16 @@
 Gegenprobe: Profil-Speichern sendet sofort, ohne nach dem Passwort zu fragen
 Modul: app
-Test: ch.brickinventoryapp.app.UnterseitenTest
+Test: ch.brickinventoryapp.app.SubpagesTest
 Rot: Konto fragt beim Speichern
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
 @@ -105,7 +105,7 @@
-                 profilGeprueft = true
-                 val erstes = profilFehler(benutzername, email).firstOrNull()
-                 if (erstes != null) profilFokus.getValue(erstes).requestFocus()
--                else if (geaendert) { fokus.clearFocus(); fragtPasswort = true }
+                 profileChecked = true
+                 val erstes = profileError(benutzername, email).firstOrNull()
+                 if (erstes != null) profileFocus.getValue(erstes).requestFocus()
+-                else if (geaendert) { fokus.clearFocus(); asksPassword = true }
 +                else if (geaendert) { fokus.clearFocus(); onSpeichern(benutzername, email, vorname, nachname, null, code) }
              }
          }

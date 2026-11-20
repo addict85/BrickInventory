@@ -15,7 +15,7 @@ import org.junit.Test
 /**
  * Der Client der Selbstaktualisierung, wie Hilt ihn baut: Er geht zu GitHub, nicht zu
  * unserem Server, und trägt darum weder Token noch Sprache; Umleitungen folgt nur der
- * eigene Wächter (UpdateUmleitungTest), OkHttp selbst keiner, auch nicht von https
+ * eigene Wächter (UpdateRedirectTest), OkHttp selbst keiner, auch nicht von https
  * auf http. Was hinausginge, fängt ein angehängter Interceptor vor dem Netz ab.
  *
  * Gegenproben (Patches unter gegenproben/, lokal mit kotlinc gemessen):
@@ -33,12 +33,12 @@ class UpdateClientTest {
         assertTrue(client.networkInterceptors.isEmpty())
 
         var hinaus: Request? = null
-        val abgefangen = client.newBuilder().addInterceptor { kette ->
+        val intercepted = client.newBuilder().addInterceptor { kette ->
             hinaus = kette.request()
             Response.Builder().request(kette.request()).protocol(Protocol.HTTP_1_1).code(200).message("OK")
                 .body("{}".toResponseBody("application/json".toMediaType())).build()
         }.build()
-        abgefangen.newCall(Request.Builder().url("https://github.com/x/y/releases/download/a/version.json").build())
+        intercepted.newCall(Request.Builder().url("https://github.com/x/y/releases/download/a/version.json").build())
             .execute().close()
 
         val kopf = hinaus!!.headers

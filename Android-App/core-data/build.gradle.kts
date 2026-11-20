@@ -1,7 +1,7 @@
 // Netz (Retrofit, OkHttp), DataStore, Repositories, das Senden des Ausgangs und
 // die Hilt-Module dafür. Room und Offlineablage liegen in core-offline, Tresor und
 // TLS-Vertrauen in core-sicherheit. Kennt keine Oberfläche: Was die App beisteuern
-// muss (Startziel, AppFassung), kommt über Hilt herein.
+// muss (Startziel, AppVersion), kommt über Hilt herein.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
@@ -53,10 +53,10 @@ dependencies {
     implementation(libs.androidx.appcompat)
 
     testImplementation(project(":core-testing"))
-    // AbmeldenRaeumtAllesTest prüft das Abmelden samt Sitzung und Blickfeld.
+    // SignOutCleansEverythingTest prüft das Abmelden samt Sitzung und Blickfeld.
     testImplementation(project(":core-zustand"))
     testImplementation(project(":core-sitzung"))
-    // Robolectric-Tests (BestandDatenbankTest, Ablagen, Netz-Clients).
+    // Robolectric-Tests (InventoryDatabaseTest, Ablagen, Netz-Clients).
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
 }

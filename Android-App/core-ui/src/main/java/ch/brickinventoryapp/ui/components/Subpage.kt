@@ -1,0 +1,65 @@
+package ch.brickinventoryapp.ui.components
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import ch.brickinventoryapp.ui.titel
+import ch.brickinventoryapp.ui.theme.Abstaende
+import ch.brickinventoryapp.ui.theme.centeredUntil
+import ch.brickinventoryapp.ui.theme.Lesebreite
+
+/**
+ * Der Rahmen jeder Unterseite: Titel, Zurück-Pfeil, darunter der Inhalt mit einem
+ * Abstand zwischen den Karten.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Subpage(
+    titel: String,
+    snackbarHostState: SnackbarHostState,
+    onZurueck: () -> Unit,
+    /** Formulare schmaler als Listen: Ein Eingabefeld über 800 dp liest sich nicht mehr als eines. */
+    breite: androidx.compose.ui.unit.Dp = Lesebreite.liste,
+    /** Aktionen der ganzen Seite oben rechts, etwa ein Überlaufmenü. */
+    aktionen: @Composable RowScope.() -> Unit = {},
+    /** Die Hauptaktion als schwebender Knopf; der Inhalt hält unten Platz für ihn frei. */
+    primaryAction: (@Composable () -> Unit)? = null,
+    inhalt: @Composable ColumnScope.() -> Unit,
+) {
+    Scaffold(
+        // ── Eigener Snackbar-Halter ──
+        //
+        // Die Meldungen laufen über einen Fluss (vm.snackbar), und AppNavigation zeigt sie
+        // auf `snackbarHostState`; der Halter dafür steht im Reiter-Gerüst, das hier nicht
+        // in der Komposition ist. Ohne diese Zeile gingen „Gutschein gespeichert“, „250
+        // CHF“ und jede Absage der Guthaben-Abfrage still verloren.
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        // Der Kopf der Detailseiten: Überschrift, bei grosser Schrift zweizeilig statt abgeschnitten.
+        topBar = { DetailTopAppBar(titel, onZurueck, schliessen = false, actions = aktionen) },
+        floatingActionButton = { primaryAction?.invoke() },
+    ) { innen ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(innen)
+                .verticalScroll(rememberScrollState())
+                // Auf dem Tablet mittig auf Lesebreite: Eine Zeile über 1200 dp liest sich
+                // nicht mehr in einem Zug.
+                .centeredUntil(breite)
+                .padding(horizontal = Abstaende.gross, vertical = Abstaende.gross),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.gross),
+        ) {
+            inhalt()
+            // Der schwebende Knopf deckt sonst die letzte Zeile zu.
+            if (primaryAction != null) Spacer(Modifier.height(PRIMARY_ACTION_SPACE))
+        }
+    }
+}
+
+/** Höhe eines schwebenden Knopfs samt seinem Abstand zum Rand. */
+private val PRIMARY_ACTION_SPACE = 72.dp

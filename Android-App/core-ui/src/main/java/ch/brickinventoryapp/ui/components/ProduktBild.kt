@@ -30,7 +30,7 @@ import coil3.compose.AsyncImagePainter
 import coil3.request.ImageRequest
 
 /** Testkennung des Ersatzbilds — Oberflächentests zählen damit leere Bildflächen. */
-const val BILD_ERSATZ = "bild-ersatz"
+const val IMAGE_FALLBACK = "bild-ersatz"
 
 /**
  * Jede Bildfläche eines Sets, Teils oder einer Figur. Solange das Bild lädt, fehlt
@@ -45,7 +45,7 @@ fun ProduktBild(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Fit,
-    ersatzGroesse: Dp = 40.dp,
+    fallbackSize: Dp = 40.dp,
     onState: ((AsyncImagePainter.State) -> Unit)? = null,
     /**
      * Die ganze Fläche als Bildgrund (Kacheln): Produktbilder stehen auf Weiss, und mit
@@ -54,7 +54,7 @@ fun ProduktBild(
      */
     bildgrund: Boolean = false,
     /** Abstand des Bilds zum Rand seiner Fläche; der Grund reicht bis an den Rand. */
-    innenAbstand: Dp = 0.dp,
+    innerGap: Dp = 0.dp,
 ) {
     // Am Ziel festgemacht, nicht an der Anfrage: Eine neu gebaute ImageRequest je
     // Zusammensetzung setzte den Zustand sonst ständig zurück.
@@ -69,17 +69,17 @@ fun ProduktBild(
         else -> Modifier.background(BILDGRUND)
     }
     Box(modifier.then(grund), contentAlignment = Alignment.Center) {
-        if (!geladen) BildErsatz(Modifier.matchParentSize(), ersatzGroesse)
+        if (!geladen) ImageFallback(Modifier.matchParentSize(), fallbackSize)
         if (model != null) {
             AsyncImage(
                 model = model,
                 imageLoader = imageLoader,
                 contentDescription = contentDescription,
-                modifier = Modifier.matchParentSize().padding(innenAbstand),
+                modifier = Modifier.matchParentSize().padding(innerGap),
                 contentScale = contentScale,
                 // Im Dunkeln dämpft der Schleier nur die Bildpunkte selbst; ein Rechteck darüber
                 // dunkelte auch die Fläche um ein freigestelltes Bild.
-                colorFilter = if (dunkel) DAEMPFUNG_DUNKEL else null,
+                colorFilter = if (dunkel) DAMPING_DARK else null,
                 onState = { st ->
                     geladen = st is AsyncImagePainter.State.Success
                     onState?.invoke(st)
@@ -96,16 +96,16 @@ private val BILDGRUND = Color.White
  * Deckkraft des Schleiers im Dunkeln: Ein Fünftel nimmt Weiss das Blenden. Mit einem
  * Drittel wirkten die Produktbilder grau und matt.
  */
-private const val SCHLEIER_DUNKEL = 0.2f
+private const val VEIL_DARK = 0.2f
 
 /** Derselbe Schleier als Filter auf den Bildpunkten, für Bilder ohne eigenen Grund. */
-private val DAEMPFUNG_DUNKEL = ColorFilter.tint(Color.Black.copy(alpha = SCHLEIER_DUNKEL), BlendMode.SrcAtop)
+private val DAMPING_DARK = ColorFilter.tint(Color.Black.copy(alpha = VEIL_DARK), BlendMode.SrcAtop)
 
 /** Das Ersatzbild allein — auch für Flächen, die gar keine Adresse haben. */
 @Composable
-fun BildErsatz(modifier: Modifier = Modifier, groesse: Dp = 40.dp) {
+fun ImageFallback(modifier: Modifier = Modifier, groesse: Dp = 40.dp) {
     Box(
-        modifier.background(MaterialTheme.colorScheme.surfaceContainer).testTag(BILD_ERSATZ),
+        modifier.background(MaterialTheme.colorScheme.surfaceContainer).testTag(IMAGE_FALLBACK),
         contentAlignment = Alignment.Center,
     ) {
         Icon(

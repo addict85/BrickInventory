@@ -9,7 +9,7 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
 @@ -149,7 +149,7 @@ fun SetDetailScreen(
                      MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
                          IconButton(onClick = {
-                             haptik.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                             haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
 -                            if (rueckgaengigMoeglich) onDelete(setNumber) else showSetDeleteConfirm = true
 +                            showSetDeleteConfirm = true
                          }) {

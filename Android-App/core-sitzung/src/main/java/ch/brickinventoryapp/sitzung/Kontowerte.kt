@@ -23,17 +23,17 @@ import javax.inject.Singleton
 interface Kontowerte {
     val waehrung: StateFlow<Waehrung>
     val design: StateFlow<Design>
-    fun setzeWaehrung(w: Waehrung)
+    fun setCurrency(w: Waehrung)
     fun setzeDesign(d: Design)
 }
 
 /** Im Speicher: für Tests und Vorschauen ohne Ablage. */
-class SpeicherKontowerte(waehrung: Waehrung = Waehrung.EUR, design: Design = Design.VORGABE) : Kontowerte {
-    private val _waehrung = MutableStateFlow(waehrung)
+class StorageAccountValues(waehrung: Waehrung = Waehrung.EUR, design: Design = Design.DEFAULT) : Kontowerte {
+    private val _currency = MutableStateFlow(waehrung)
     private val _design = MutableStateFlow(design)
-    override val waehrung: StateFlow<Waehrung> = _waehrung.asStateFlow()
+    override val waehrung: StateFlow<Waehrung> = _currency.asStateFlow()
     override val design: StateFlow<Design> = _design.asStateFlow()
-    override fun setzeWaehrung(w: Waehrung) { _waehrung.value = w }
+    override fun setCurrency(w: Waehrung) { _currency.value = w }
     override fun setzeDesign(d: Design) { _design.value = d }
 }
 
@@ -42,15 +42,15 @@ class SpeicherKontowerte(waehrung: Waehrung = Waehrung.EUR, design: Design = Des
  * Spiegel, weil das erste Bild vor dem ersten DataStore-Wert entsteht.
  */
 @Singleton
-class AblageKontowerte @Inject constructor(
+class StoreAccountValues @Inject constructor(
     private val ablage: Sitzungsablage,
     darstellung: Darstellungsablage,
     @param:ApplicationScope private val bereich: CoroutineScope,
 ) : Kontowerte {
     override val waehrung: StateFlow<Waehrung> = ablage.currency.stateIn(bereich, SharingStarted.Eagerly, Waehrung.EUR)
     override val design: StateFlow<Design> =
-        ablage.appTheme.stateIn(bereich, SharingStarted.Eagerly, darstellung.gemerktesDesign())
+        ablage.appTheme.stateIn(bereich, SharingStarted.Eagerly, darstellung.rememberedDesign())
 
-    override fun setzeWaehrung(w: Waehrung) { bereich.launch { ablage.saveCurrency(w) } }
+    override fun setCurrency(w: Waehrung) { bereich.launch { ablage.saveCurrency(w) } }
     override fun setzeDesign(d: Design) { bereich.launch { ablage.saveAppTheme(d) } }
 }

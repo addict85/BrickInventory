@@ -2,7 +2,7 @@ package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.testing.BrickApiService
-import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.repository.AccountRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import kotlinx.coroutines.test.runTest
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.netz.di.ServerWaechter
 import ch.brickinventoryapp.netz.di.Zugangslage
-import ch.brickinventoryapp.testing.testKontoRepository
+import ch.brickinventoryapp.testing.testAccountRepository
 
 /**
  * Der erste Test in diesem Projekt, der VERHALTEN ausführt statt Quelltext zu
@@ -41,20 +41,20 @@ import ch.brickinventoryapp.testing.testKontoRepository
  *  - [ResponseCache] lässt sich mit einem Wegwerf-Verzeichnis bauen statt mit
  *    einem `Context`.
  *  - Die Zuordnung Ursache → Text liegt in `fehlerTextId()` und braucht keinen
- *    `Context` mehr (siehe FehlerTexteTest).
+ *    `Context` mehr (siehe ErrorTextsTest).
  */
 class BrickRepositoryErrorMappingTest {
 
     private lateinit var server: MockWebServer
-    private lateinit var repo: KontoRepository
+    private lateinit var repo: AccountRepository
     private lateinit var cacheDir: File
 
     /** Kurze Fristen: Der Zeitüberschreitungs-Fall soll den Lauf nicht bremsen. */
-    private fun baueRepo(leseFristMs: Long = 1_000, waechter: okhttp3.Interceptor? = null): KontoRepository {
+    private fun buildRepo(readDeadlineMs: Long = 1_000, guard: okhttp3.Interceptor? = null): AccountRepository {
         val client = OkHttpClient.Builder()
-            .apply { waechter?.let { addInterceptor(it) } }
-            .readTimeout(leseFristMs, TimeUnit.MILLISECONDS)
-            .connectTimeout(leseFristMs, TimeUnit.MILLISECONDS)
+            .apply { guard?.let { addInterceptor(it) } }
+            .readTimeout(readDeadlineMs, TimeUnit.MILLISECONDS)
+            .connectTimeout(readDeadlineMs, TimeUnit.MILLISECONDS)
             .build()
         // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
         // Test eine Nachsicht, die es in der App nicht gibt.
@@ -65,11 +65,11 @@ class BrickRepositoryErrorMappingTest {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(BrickApiService::class.java)
-        // KontoRepository statt BrickRepository: getMe() liegt
+        // AccountRepository statt BrickRepository: getMe() liegt
         // seit der Aufteilung dort. Geprueft wird hier die Fehlerumsetzung in
         // sicherAufrufen() — die steht in Abruf.kt und ist fuer alle fuenf
         // Teil-Repositories dieselbe; getMe ist nur das Vehikel.
-        return testKontoRepository(api)
+        return testAccountRepository(api)
     }
 
     @Before
@@ -78,7 +78,7 @@ class BrickRepositoryErrorMappingTest {
         server.start()
         cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-test-${System.nanoTime()}")
         cacheDir.mkdirs()
-        repo = baueRepo()
+        repo = buildRepo()
     }
 
     @After
@@ -133,7 +133,7 @@ class BrickRepositoryErrorMappingTest {
     @Test
     fun `Zeitueberschreitung ist voruebergehend`() = runTest {
         server.enqueue(MockResponse().setSocketPolicy(SocketPolicy.NO_RESPONSE))
-        val e = fehler(baueRepo(leseFristMs = 300).getMe())
+        val e = fehler(buildRepo(readDeadlineMs = 300).getMe())
         assert(e.transient) { "Zeitüberschreitung muss als vorübergehend gelten" }
         assert(e == Ergebnis.Fehler.Zeitueberschreitung) { "Art war $e" }
     }
@@ -149,19 +149,19 @@ class BrickRepositoryErrorMappingTest {
     /**
      * Eine gespeicherte http-Adresse: Der Wächter des Release-Builds lehnt ab, und
      * daraus wird ein eigener Satz mit Anleitung statt „keine Verbindung“.
-     * Gegenprobe: den Zweig für KlartextAbgelehnt in
+     * Gegenprobe: den Zweig für PlaintextRejected in
      * sicherAufrufen() entfernt → rot (Netz, vorübergehend).
      */
     @Test
     fun `eine abgelehnte http-Anfrage ist kein Netzfehler und nicht voruebergehend`() = runTest {
-        val lage = object : Zugangslage {
+        val situation = object : Zugangslage {
             override fun serverUrl() = server.url("/").toString()
             override fun token() = "geheim"
-            override fun tokenHerkunft(): String? = NetworkPolicy.herkunft(serverUrl())
+            override fun tokenOrigin(): String? = NetworkPolicy.herkunft(serverUrl())
             override fun generation() = 0L
         }
-        val waechter = ServerWaechter(lage, false, entwicklung = false, sitzungAbgelaufen = {})
-        val e = fehler(baueRepo(waechter = waechter).getMe())
+        val guard = ServerWaechter(situation, false, entwicklung = false, sitzungAbgelaufen = {})
+        val e = fehler(buildRepo(guard = guard).getMe())
         assert(e == Ergebnis.Fehler.Klartext) { "Art war $e" }
         assert(!e.transient) { "Ein zweiter Versuch ginge genauso an http" }
         assert(server.requestCount == 0) { "Die Anfrage ging trotzdem hinaus" }

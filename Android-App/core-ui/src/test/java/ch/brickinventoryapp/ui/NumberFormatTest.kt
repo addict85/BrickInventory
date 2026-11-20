@@ -6,7 +6,7 @@ import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtMoneyOrDash
-import ch.brickinventoryapp.model.util.zahlenLocale
+import ch.brickinventoryapp.model.util.numbersLocale
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
@@ -17,7 +17,7 @@ import ch.brickinventoryapp.testing.Quellen
  * Zahlen und Beträge kommen aus EINER Fassung — und die folgt der App-Sprache.
  *
  * Gegenproben Teil 3 :
- *   A  zahlenLocale() wieder fest de-CH/en-GB → rot „de-DE schreibt Punkt und
+ *   A  numbersLocale() wieder fest de-CH/en-GB → rot „de-DE schreibt Punkt und
  *      Komma …“ und „ohne passende Landesform …“ (de-AT)
  *   B  das Land ohne Sprachprüfung übernommen → rot „ohne passende Landesform …“
  *      (de mit Gerät en-US ergab de-US)
@@ -29,7 +29,7 @@ import ch.brickinventoryapp.testing.Quellen
 class NumberFormatTest {
 
     private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.root, "$rel").readText()
 
     /** Kommentare zeilenweise ausblenden — sonst hält der eigene Erklärtext die Prüfung grün. */
     private fun code(s: String) = s.lines()
@@ -39,7 +39,7 @@ class NumberFormatTest {
 
     @Test
     fun `keine Ansicht setzt Betrag und Waehrung selbst zusammen`() {
-        val schirme = listOf(
+        val screens = listOf(
             "app/AppNavigation.kt",
             "teile/ui/screens/PartsScreen.kt",
             "teile/ui/screens/TeileFilterBlatt.kt",
@@ -56,7 +56,7 @@ class NumberFormatTest {
             "sammlung/ui/screens/GalerieErfassen.kt",
             "konto/ui/screens/EinstellungenAlarme.kt",
         )
-        for (f in schirme) {
+        for (f in screens) {
             val c = code(read(f))
             assert(!c.contains("fmtSwissAmount") && !c.contains("fmtSwissInt")) {
                 "$f benutzt noch die alte, fest auf de-CH genagelte Fassung"
@@ -85,8 +85,8 @@ class NumberFormatTest {
      */
     @Test
     fun `die Gegenrichtung bleibt Sache der Plattform`() {
-        mitGeraet("de-DE") { assertEquals("812,50\u00A0€", fmtMoney(812.5, Waehrung("EUR"))) }
-        mitGeraet("en-GB") { assertEquals("€812.50", fmtMoney(812.5, Waehrung("EUR"))) }
+        withDevice("de-DE") { assertEquals("812,50\u00A0€", fmtMoney(812.5, Waehrung("EUR"))) }
+        withDevice("en-GB") { assertEquals("€812.50", fmtMoney(812.5, Waehrung("EUR"))) }
     }
 
     // ── Teil 2: das Ergebnis ─────────────────────────────────────────────────
@@ -129,7 +129,7 @@ class NumberFormatTest {
 
     // ── Teil 3: die Landesform folgt dem Gerät, wie im Web ──────────────────
 
-    private fun mitGeraet(tag: String, block: () -> Unit) {
+    private fun withDevice(tag: String, block: () -> Unit) {
         val vorher = Locale.getDefault()
         Locale.setDefault(Locale.forLanguageTag(tag))
         try { block() } finally { Locale.setDefault(vorher) }
@@ -137,43 +137,43 @@ class NumberFormatTest {
 
     @Test
     fun `de-DE schreibt Punkt und Komma, de-CH Hochkomma und Punkt`() {
-        mitGeraet("de-DE") { assertEquals("4.894,77", fmtAmount(4894.77)) }
-        mitGeraet("de-CH") { assertEquals("4\u2019894.77", fmtAmount(4894.77)) }
-        mitGeraet("en-US") { assertEquals("4,894.77", fmtAmount(4894.77)) }
+        withDevice("de-DE") { assertEquals("4.894,77", fmtAmount(4894.77)) }
+        withDevice("de-CH") { assertEquals("4\u2019894.77", fmtAmount(4894.77)) }
+        withDevice("en-US") { assertEquals("4,894.77", fmtAmount(4894.77)) }
     }
 
     @Test
     fun `ein Eingabefeld bekommt den Betrag ohne Tausendertrennung zurueck`() {
-        mitGeraet("de-DE") { assertEquals("4894,77", fmtEingabe(4894.77)) }
-        mitGeraet("de-CH") { assertEquals("4894.77", fmtEingabe(4894.77)) }
+        withDevice("de-DE") { assertEquals("4894,77", fmtEingabe(4894.77)) }
+        withDevice("de-CH") { assertEquals("4894.77", fmtEingabe(4894.77)) }
         // So liest AcquisitionManagementRow das Feld beim Speichern.
-        mitGeraet("de-DE") { assertEquals(4894.77, fmtEingabe(4894.77).replace(',', '.').toDouble(), 0.0) }
+        withDevice("de-DE") { assertEquals(4894.77, fmtEingabe(4894.77).replace(',', '.').toDouble(), 0.0) }
     }
 
     @Test
     fun `ohne passende Landesform gelten de-CH und en-GB`() {
         val de = Locale.forLanguageTag("de")
-        assertEquals("de-CH", zahlenLocale(de, Locale.forLanguageTag("en-US")).toLanguageTag())
-        assertEquals("de-CH", zahlenLocale(de, de).toLanguageTag())
-        assertEquals("en-GB", zahlenLocale(Locale.forLanguageTag("fr-FR"), Locale.forLanguageTag("fr-FR")).toLanguageTag())
+        assertEquals("de-CH", numbersLocale(de, Locale.forLanguageTag("en-US")).toLanguageTag())
+        assertEquals("de-CH", numbersLocale(de, de).toLanguageTag())
+        assertEquals("en-GB", numbersLocale(Locale.forLanguageTag("fr-FR"), Locale.forLanguageTag("fr-FR")).toLanguageTag())
         assertEquals("Das Land kommt vom Gerät, die Sprache von der App",
-            "de-AT", zahlenLocale(de, Locale.forLanguageTag("de-AT")).toLanguageTag())
-        assertEquals("en-GB", zahlenLocale(Locale.forLanguageTag("en"), Locale.forLanguageTag("de-DE")).toLanguageTag())
+            "de-AT", numbersLocale(de, Locale.forLanguageTag("de-AT")).toLanguageTag())
+        assertEquals("en-GB", numbersLocale(Locale.forLanguageTag("en"), Locale.forLanguageTag("de-DE")).toLanguageTag())
     }
 
     /**
      * Wie Intl im Web: „CHF 812.50“ mit festem Leerzeichen, nie „CHF812.50“.
-     * Gegenprobe: mitWaehrungsAbstand() in fmtMoney entfernt →
+     * Gegenprobe: withCurrencyGap() in fmtMoney entfernt →
      * rot (en-GB ergab „CHF812.50“).
      */
     @Test
     fun `Waehrungscode und Betrag stehen mit festem Leerzeichen`() {
-        mitGeraet("en-GB") {
+        withDevice("en-GB") {
             assertEquals("CHF\u00A0812.50", fmtMoney(812.5, Waehrung("CHF")))
             assertEquals("-CHF\u00A012.00", fmtMoney(-12.0, Waehrung("CHF")))
             assertEquals("€812.50", fmtMoney(812.5, Waehrung("EUR")))
         }
-        mitGeraet("de-CH") {
+        withDevice("de-CH") {
             val s = fmtMoney(812.5, Waehrung("CHF"))
             assertEquals("CHF\u00A0812.50", s.replace(' ', '\u00A0'))
             assert(!s.contains("\u00A0\u00A0") && !s.contains("  ")) { "doppelter Abstand: $s" }

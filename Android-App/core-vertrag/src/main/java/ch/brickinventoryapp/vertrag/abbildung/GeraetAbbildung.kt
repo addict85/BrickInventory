@@ -1,17 +1,17 @@
 package ch.brickinventoryapp.vertrag.abbildung
 
 import ch.brickinventoryapp.vertrag.AppToken
-import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_VOLL
-import ch.brickinventoryapp.model.fach.GeraetAnsicht
+import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_FULL
+import ch.brickinventoryapp.model.fach.DeviceView
 
-fun AppToken.alsGeraet(): GeraetAnsicht = GeraetAnsicht(
+fun AppToken.asDevice(): DeviceView = DeviceView(
     tokenId = tokenId,
     bezeichnung = label?.takeIf { it.isNotBlank() } ?: "—",
     aktuell = aktuell,
     angelegt = createdAt,
-    zuletztBenutzt = lastUsed,
+    lastlyUsed = lastUsed,
     // ISO-Zeitstempel lassen sich als Text vergleichen.
-    laeuftAb = listOfNotNull(expiresAt.takeUnless { neverExpires }, hardExpiresAt).minOrNull(),
-    vollerZugriff = scope == TOKEN_SCOPE_VOLL,
-    ipBereich = ipRange?.takeIf { it.isNotBlank() },
+    runningAb = listOfNotNull(expiresAt.takeUnless { neverExpires }, hardExpiresAt).minOrNull(),
+    vollerZugriff = scope == TOKEN_SCOPE_FULL,
+    ipArea = ipRange?.takeIf { it.isNotBlank() },
 )

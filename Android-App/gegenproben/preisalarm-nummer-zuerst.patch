@@ -1,17 +1,17 @@
 Gegenprobe: Rückfrage zum Preisalarm nennt wieder nur die Nummer
 Modul: app
-Test: ch.brickinventoryapp.app.UnterseitenTest
+Test: ch.brickinventoryapp.app.SubpagesTest
 Rot: Preisalarme nennen
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
 @@ -195,7 +195,7 @@ internal fun PreisalarmeCard(
-     fragtLoeschen?.let { a ->
-         Rueckfrage(
+     deleteAsks?.let { a ->
+         Prompt(
              titel = stringResource(R.string.alerts_delete),
 -            text = stringResource(R.string.alerts_confirm_delete, a.name ?: a.setNumber),
 +            text = stringResource(R.string.alerts_confirm_delete, a.setNumber),
              bestaetigen = stringResource(R.string.common_delete),
              onBestaetigen = {
-                 fragtLoeschen = null
+                 deleteAsks = null

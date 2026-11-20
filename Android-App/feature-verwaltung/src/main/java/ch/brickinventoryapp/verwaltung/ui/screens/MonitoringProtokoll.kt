@@ -13,23 +13,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.model.fach.ProtokollZeileAnsicht
+import ch.brickinventoryapp.model.fach.LogRowView
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.util.fmtUhrzeit
 import ch.brickinventoryapp.ui.util.appNumberLocale
-import ch.brickinventoryapp.ui.util.vierundzwanzigStunden
+import ch.brickinventoryapp.ui.util.twentyFourHours
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringAktionen
-import ch.brickinventoryapp.verwaltung.ui.VerwaltungUiState
-import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringActions
+import ch.brickinventoryapp.verwaltung.ui.ManagementUiState
+import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.SegmentChoice
 import ch.brickinventoryapp.ui.components.Suchfeld
 
 /**
@@ -40,32 +40,32 @@ import ch.brickinventoryapp.ui.components.Suchfeld
 // nachgestellten Lambda nicht übersetzt.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: MonitoringAktionen) {
+internal fun LogSection(verwaltung: ManagementUiState, aktionen: MonitoringActions) {
     var offen by rememberSaveable { mutableStateOf(false) }
     // Beides gehoert dem Menschen und uebersteht deshalb eine Drehung — die
     // Zeilen selbst kommen ohnehin vom Server nach.
-    var versteckteStufen by rememberSaveable { mutableStateOf(setOf<String>()) }
-    var protokollSuche by rememberSaveable { mutableStateOf("") }
+    var hiddenLevels by rememberSaveable { mutableStateOf(setOf<String>()) }
+    var logSearch by rememberSaveable { mutableStateOf("") }
 
     AppKarte {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            ProtokollKopf(verwaltung.abruf.laedt, offen,
-                onNeuLaden = { aktionen.waehleProtokoll(verwaltung.protokollMinuten) },
-                onUmschalten = {
+            LogHeader(verwaltung.abruf.laedt, offen,
+                loadOnNew = { aktionen.chooseLog(verwaltung.logMinutes) },
+                toggleOn = {
                     offen = !offen
-                    if (offen && verwaltung.protokoll.isEmpty()) aktionen.waehleProtokoll(verwaltung.protokollMinuten)
+                    if (offen && verwaltung.protokoll.isEmpty()) aktionen.chooseLog(verwaltung.logMinutes)
                 })
 
             AnimatedVisibility(offen) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     // Dieselben Spannen wie die Webapp anbietet. Der Server
                     // begrenzt selbst auf 2880 Minuten.
-                    SegmentWahl(
+                    SegmentChoice(
                         optionen = listOf(15, 60, 240, 1440).map { it to stringResource(R.string.admin_log_minutes, it) },
-                        gewaehlt = verwaltung.protokollMinuten,
-                        onWahl = aktionen::waehleProtokoll,
+                        gewaehlt = verwaltung.logMinutes,
+                        onWahl = aktionen::chooseLog,
                     )
-                    ProtokollFehlerOderLeer(verwaltung)
+                    LogErrorOrEmpty(verwaltung)
                     // ── Stufen und Suche, wie in der Weboberfläche ──
                     //
                     // Gefiltert wird hier, nicht auf dem Server: Die Zeilen sind schon geladen, ein
@@ -74,21 +74,21 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
                         verwaltung.protokoll.mapNotNull { it.level?.lowercase() }.distinct().sorted()
                     }
                     if (stufen.size > 1) {
-                        ProtokollStufen(stufen, versteckteStufen, onStufe = { stufe ->
-                            versteckteStufen =
-                                if (stufe in versteckteStufen) versteckteStufen - stufe
-                                else versteckteStufen + stufe
+                        LogLevels(stufen, hiddenLevels, onLevel = { stufe ->
+                            hiddenLevels =
+                                if (stufe in hiddenLevels) hiddenLevels - stufe
+                                else hiddenLevels + stufe
                         })
                     }
                     if (verwaltung.protokoll.isNotEmpty()) {
-                        Suchfeld(protokollSuche, { protokollSuche = it },
+                        Suchfeld(logSearch, { logSearch = it },
                             stringResource(R.string.admin_log_search))
                     }
 
-                    val sichtbar = remember(verwaltung.protokoll, versteckteStufen, protokollSuche) {
-                        val suche = protokollSuche.trim().lowercase()
+                    val sichtbar = remember(verwaltung.protokoll, hiddenLevels, logSearch) {
+                        val suche = logSearch.trim().lowercase()
                         verwaltung.protokoll.filter { z ->
-                            z.level?.lowercase() !in versteckteStufen &&
+                            z.level?.lowercase() !in hiddenLevels &&
                                 (suche.isEmpty() || z.message.orEmpty().lowercase().contains(suche))
                         }
                     }
@@ -97,7 +97,7 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    sichtbar.forEach { zeile -> ProtokollEintrag(zeile) }
+                    sichtbar.forEach { zeile -> LogEntry(zeile) }
                 }
             }
         }
@@ -106,8 +106,8 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
 
 /** Der Fehler statt der Leermeldung: „keine Einträge“ wäre falsch, wenn der Abruf scheiterte. */
 @Composable
-private fun ProtokollFehlerOderLeer(verwaltung: VerwaltungUiState) {
-    val fehler = verwaltung.abruf.fehlerMeldung
+private fun LogErrorOrEmpty(verwaltung: ManagementUiState) {
+    val fehler = verwaltung.abruf.errorMessage
     if (fehler != null) {
         Text(fehler.satz(), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error)
@@ -120,7 +120,7 @@ private fun ProtokollFehlerOderLeer(verwaltung: VerwaltungUiState) {
 
 /** Titel, Ladekringel oder Neu-laden, und der Knopf zum Auf- und Zuklappen. */
 @Composable
-private fun ProtokollKopf(laedt: Boolean, offen: Boolean, onNeuLaden: () -> Unit, onUmschalten: () -> Unit) {
+private fun LogHeader(laedt: Boolean, offen: Boolean, loadOnNew: () -> Unit, toggleOn: () -> Unit) {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Text(stringResource(R.string.admin_log_title),
             fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
@@ -129,14 +129,14 @@ private fun ProtokollKopf(laedt: Boolean, offen: Boolean, onNeuLaden: () -> Unit
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             } else if (offen) {
                 MitTooltip(stringResource(R.string.admin_log_reload)) {
-                    IconButton(onClick = onNeuLaden) {
+                    IconButton(onClick = loadOnNew) {
                         Icon(Icons.Default.Refresh, stringResource(R.string.admin_log_reload),
                             Modifier.size(18.dp))
                     }
                 }
             }
             MitTooltip(stringResource(if (offen) R.string.common_collapse else R.string.common_expand)) {
-            IconButton(onClick = onUmschalten) {
+            IconButton(onClick = toggleOn) {
                 // Beschreibt die WIRKUNG des Tippens, nicht das
                 // gezeigte Zeichen — genau das braucht TalkBack.
                 Icon(
@@ -152,12 +152,12 @@ private fun ProtokollKopf(laedt: Boolean, offen: Boolean, onNeuLaden: () -> Unit
 /** Ein Schalter je Stufe; gewählt heisst: Die Zeilen dieser Stufe stehen da. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProtokollStufen(stufen: List<String>, versteckteStufen: Set<String>, onStufe: (String) -> Unit) {
+private fun LogLevels(stufen: List<String>, hiddenLevels: Set<String>, onLevel: (String) -> Unit) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         stufen.forEach { stufe ->
             AuswahlChip(
-                selected = stufe !in versteckteStufen,
-                onClick = { onStufe(stufe) },
+                selected = stufe !in hiddenLevels,
+                onClick = { onLevel(stufe) },
                 label = { Text(stufe.uppercase(),
                                style = MaterialTheme.typography.bodySmall) })
         }
@@ -166,13 +166,13 @@ private fun ProtokollStufen(stufen: List<String>, versteckteStufen: Set<String>,
 
 /** Eine Zeile des Protokolls: Uhrzeit, Stufe, Meldung. */
 @Composable
-private fun ProtokollEintrag(zeile: ProtokollZeileAnsicht) {
+private fun LogEntry(zeile: LogRowView) {
     Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         // Die Uhrzeit zuerst — wie in der Weboberflaeche.
         // `logged_at` kam seit jeher mit und wurde nie
         // gezeigt; ohne sie ist eine Protokollzeile kaum zu
         // gebrauchen.
-        Text(fmtUhrzeit(zeile.loggedAt, appNumberLocale(), vierundzwanzigStunden()) ?: "",
+        Text(fmtUhrzeit(zeile.loggedAt, appNumberLocale(), twentyFourHours()) ?: "",
             style = MaterialTheme.typography.bodySmall,
             fontFamily = FontFamily.Monospace,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

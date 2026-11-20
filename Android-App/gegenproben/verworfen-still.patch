@@ -9,10 +9,10 @@ index 1f19e30..b1a4f13 100644
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 @@ -358,7 +358,7 @@ class Offlineablage(
       */
-     private fun <T : Any> dekodiere(fach: Fach<T>, l: Lokal<LokaleZeile>): Lokal<T> {
-         val gelesen = l.liste.mapNotNull { z -> runCatching { fach.form.dekodiere(json, z.inhalt) }.getOrNull() }
+     private fun <T : Any> decode(fach: Fach<T>, l: Local<LocalRow>): Local<T> {
+         val gelesen = l.liste.mapNotNull { z -> runCatching { fach.form.decode(json, z.inhalt) }.getOrNull() }
 -        val verworfen = l.liste.size - gelesen.size
 +        val verworfen = 0
          if (verworfen > 0) protokoll("Ablage ${fach.art}: $verworfen von ${l.liste.size} Zeilen unlesbar, verworfen")
-         return Lokal(gelesen, l.stand, verworfen)
+         return Local(gelesen, l.stand, verworfen)
      }

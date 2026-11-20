@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.Offlineablage
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -15,15 +15,15 @@ import javax.inject.Singleton
 @Singleton
 class Bestandsabgleich @Inject constructor(
     private val sets: SetsRepository,
-    private val merkliste: MerklisteRepository,
-    private val teile: TeileRepository,
-    private val figuren: FigurenRepository,
+    private val merkliste: WantedRepository,
+    private val teile: PartsRepository,
+    private val figuren: MinifigsRepository,
     private val ablage: Offlineablage,
 ) {
     suspend fun sets(): Ergebnis<Unit> = sets.aktualisiereSets()
-    suspend fun merkliste(): Ergebnis<Unit> = merkliste.aktualisiereMerkliste()
-    suspend fun teile(): Ergebnis<Unit> = teile.aktualisiereTeile()
-    suspend fun figuren(): Ergebnis<Unit> = figuren.aktualisiereFiguren()
+    suspend fun merkliste(): Ergebnis<Unit> = merkliste.refreshWanted()
+    suspend fun teile(): Ergebnis<Unit> = teile.refreshParts()
+    suspend fun figuren(): Ergebnis<Unit> = figuren.refreshMinifigs()
 
     suspend fun bestand() {
         sets()
@@ -31,9 +31,9 @@ class Bestandsabgleich @Inject constructor(
         figuren()
     }
 
-    fun setsGeaendert(): Flow<Unit> = ablage.veraendert(Faecher.SETS)
-    fun teileGeaendert(): Flow<Unit> = ablage.veraendert(Faecher.TEILE, Faecher.MANUELLE_TEILE)
-    fun figurenGeaendert(): Flow<Unit> = ablage.veraendert(Faecher.FIGUREN, Faecher.MANUELLE_FIGUREN)
-    fun bestandGeaendert(): Flow<Unit> =
-        ablage.veraendert(Faecher.SETS, Faecher.TEILE, Faecher.MANUELLE_TEILE, Faecher.FIGUREN, Faecher.MANUELLE_FIGUREN)
+    fun setsChanged(): Flow<Unit> = ablage.altered(Slots.SETS)
+    fun partsChanged(): Flow<Unit> = ablage.altered(Slots.TEILE, Slots.MANUELLE_TEILE)
+    fun minifigsChanged(): Flow<Unit> = ablage.altered(Slots.FIGUREN, Slots.MANUELLE_FIGUREN)
+    fun inventoryChanged(): Flow<Unit> =
+        ablage.altered(Slots.SETS, Slots.TEILE, Slots.MANUELLE_TEILE, Slots.FIGUREN, Slots.MANUELLE_FIGUREN)
 }

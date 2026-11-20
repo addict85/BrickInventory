@@ -1,6 +1,6 @@
 Gegenprobe: Ein 401 meldet ab, auch wenn keine Sitzung mehr besteht
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.SitzungsDienstTest
+Test: ch.brickinventoryapp.zustand.SessionServiceTest
 Rot: ein 401 meldet die angemeldete Sitzung ab
 
 diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
@@ -9,9 +9,9 @@ diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung
 @@ -106,7 +106,7 @@ class SitzungsDienst @Inject constructor(
          bereich.launch {
              sessionExpired.abgelaufen.filter { it }.collect {
-                 sessionExpired.quittiere()
+                 sessionExpired.acknowledge()
 -                if (prefs.tokenJetzt().isNotBlank()) {
 +                if (true) {
-                     meldungen.zeige(Meldung.Ressource(R.string.vm_session_expired))
+                     meldungen.zeige(Meldung.Resource(R.string.vm_session_expired))
                      abmelden()
                  }

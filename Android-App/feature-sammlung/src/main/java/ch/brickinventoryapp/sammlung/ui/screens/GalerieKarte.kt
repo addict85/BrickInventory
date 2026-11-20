@@ -29,17 +29,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.components.KachelAusgleich
+import ch.brickinventoryapp.ui.components.TileBalance
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
-import ch.brickinventoryapp.ui.theme.LocalIstGlanz
+import ch.brickinventoryapp.ui.theme.LocalIsStudTheme
+import ch.brickinventoryapp.ui.theme.LocalIsGloss
 import androidx.compose.foundation.shape.CircleShape
-import ch.brickinventoryapp.ui.theme.steinTon
+import ch.brickinventoryapp.ui.theme.brickTone
 import ch.brickinventoryapp.ui.theme.BrickStudCap
-import ch.brickinventoryapp.ui.theme.NoppenReihe
-import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf
-import ch.brickinventoryapp.ui.theme.NoppenMass
+import ch.brickinventoryapp.ui.theme.StudsSeries
+import ch.brickinventoryapp.ui.theme.BrickEdgesHistory
+import ch.brickinventoryapp.ui.theme.StudsMass
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtProzent
@@ -53,22 +53,22 @@ import coil3.request.crossfade
 import kotlinx.coroutines.launch
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.readAloudAs
 import androidx.compose.ui.res.pluralStringResource
-import ch.brickinventoryapp.ui.components.GemeinsamesBild
+import ch.brickinventoryapp.ui.components.SharedImage
 import ch.brickinventoryapp.ui.components.ProduktBild
-import ch.brickinventoryapp.ui.components.bewegungReduziert
-import ch.brickinventoryapp.ui.components.grosseSchrift
-import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme
-import ch.brickinventoryapp.ui.theme.LocalSteinDekor
-import ch.brickinventoryapp.ui.theme.faecherTon
-import ch.brickinventoryapp.ui.theme.lichtStreifen
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.LocalIsColorSlotsTheme
+import ch.brickinventoryapp.ui.theme.LocalBrickDecor
+import ch.brickinventoryapp.ui.theme.slotsTone
+import ch.brickinventoryapp.ui.theme.lightStrip
 import ch.brickinventoryapp.gemeinsam.ui.ConditionBadges
 import ch.brickinventoryapp.gemeinsam.ui.OwnerBadges
-import ch.brickinventoryapp.sammlung.ui.KachelPreis
-import ch.brickinventoryapp.sammlung.ui.KachelQuelle
-import ch.brickinventoryapp.sammlung.ui.kachelBetrag
+import ch.brickinventoryapp.sammlung.ui.TilePrice
+import ch.brickinventoryapp.sammlung.ui.TileSource
+import ch.brickinventoryapp.sammlung.ui.tileAmount
 import ch.brickinventoryapp.sammlung.ui.kachelQuelle
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -81,12 +81,12 @@ fun SetCard(
     /** Position in der Kachelwand — nur fuer die Deckelfarbe des Designs "noppe". */
     position: Int = 0,
     /** Marktpreis und G&V; fehlt beides, steht der Kaufpreis da (wie im Web). */
-    preis: KachelPreis? = null,
+    preis: TilePrice? = null,
     waehrung: Waehrung = Waehrung.EUR,
     /** Steht das Detail dieses Sets daneben? Dann trägt die Kachel einen Rahmen. */
     ausgewaehlt: Boolean = false,
     /** Als Listenzeile statt als Kachel; das Raster entscheidet es nach Schrift und Spalten. */
-    zeile: Boolean = grosseSchrift(),
+    zeile: Boolean = largeFont(),
 ) {
     // Vorschaubild über den Server, mit Rückfall auf die volle Auflösung, solange die
     // `_thumb`-Datei fehlt (nach einem CSV-Import erzeugt der Server sie nachträglich)
@@ -101,30 +101,30 @@ fun SetCard(
     val scope = rememberCoroutineScope()
 
     val isBrick = LocalIsBrickTheme.current
-    val istNoppe = LocalIsNoppeTheme.current
-    val istGlanz = LocalIstGlanz.current
+    val isStud = LocalIsStudTheme.current
+    val isGloss = LocalIsGloss.current
     // Im Design "farbfaecher" trägt jede Kachel den Ton ihres Themas als Streifen, wie
     // im Katalog. Die Galerie kennt nur den Namen; derselbe Name ergibt denselben Ton.
-    val ton = if (LocalIsFarbfaecherTheme.current)
-        faecherTon(set.theme?.hashCode()) else null
+    val tone = if (LocalIsColorSlotsTheme.current)
+        slotsTone(set.theme?.hashCode()) else null
 
     // In der Listenzeile rücken die Plaketten vom Bild in den Text: Das Bild ist dort zu klein.
     val pct = preis?.pnlPct
-    val betrag = kachelBetrag(set, preis)
+    val betrag = tileAmount(set, preis)
     // Was die Plaketten auf dem Bild sagen, liest TalkBack am Ende der Kachel: zuerst der Name.
-    val guvAnsage = if (pct != null && betrag != null) stringResource(
+    val guvAnnouncement = if (pct != null && betrag != null) stringResource(
         if (pct >= 0) R.string.gallery_pnl_gewinn else R.string.gallery_pnl_verlust, fmtProzent(pct)) else null
-    val mengeAnsage = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_stat_units, set.quantity, fmtInt(set.quantity)) else null
+    val quantityAnnouncement = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_stat_units, set.quantity, fmtInt(set.quantity)) else null
     val guv: (@Composable () -> Unit)? = if (pct != null && betrag != null) ({
-        GuvPlakette(pct)
+        GuvBadge(pct)
     }) else null
     val menge: (@Composable () -> Unit)? = if (set.quantity > 1) ({
-        MengePlakette(set)
+        QuantityBadge(set)
     }) else null
 
     // Die Bildfläche; in der Zeile ohne Plaketten und links statt oben gerundet.
-    val bildflaeche: @Composable (Modifier) -> Unit = { flaeche ->
-        KachelBild(flaeche, set, imageUrl, imageLoader, retryNonce, zeile, isBrick, istGlanz, guv, menge,
+    val canvas: @Composable (Modifier) -> Unit = { flaeche ->
+        TileImage(flaeche, set, imageUrl, imageLoader, retryNonce, zeile, isBrick, isGloss, guv, menge,
             onState = { st ->
                 if (st is coil3.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
                     // Verzögert, nicht im selben Moment: Direkt nach
@@ -142,11 +142,11 @@ fun SetCard(
                 }
             })
     }
-    val texte: @Composable (Modifier) -> Unit = { spalte ->
-        KachelTexte(spalte, set, zeile, ton, guv, menge, preis, betrag, waehrung, listOfNotNull(guvAnsage, mengeAnsage))
+    val texts: @Composable (Modifier) -> Unit = { column ->
+        TileTexts(column, set, zeile, tone, guv, menge, preis, betrag, waehrung, listOfNotNull(guvAnnouncement, quantityAnnouncement))
     }
-    KachelRahmen(isBrick, istNoppe, istGlanz, position, ton, zeile, ausgewaehlt,
-        onClick = { onClick(set.setNumber) }, bildflaeche = bildflaeche, texte = texte)
+    TileFrame(isBrick, isStud, isGloss, position, tone, zeile, ausgewaehlt,
+        onClick = { onClick(set.setNumber) }, canvas = canvas, texts = texts)
 }
 
 /**
@@ -155,17 +155,17 @@ fun SetCard(
  * sagte nur, wer die Finanzen kennt.
  */
 @Composable
-private fun GuvPlakette(pct: Double) {
+private fun GuvBadge(pct: Double) {
     val farbe = if (pct >= 0) LocalStatusFarben.current.erfolg else MaterialTheme.colorScheme.error
-    val ansage = stringResource(if (pct >= 0) R.string.gallery_pnl_gewinn else R.string.gallery_pnl_verlust,
+    val announcement = stringResource(if (pct >= 0) R.string.gallery_pnl_gewinn else R.string.gallery_pnl_verlust,
         fmtProzent(pct))
     Surface(color = MaterialTheme.colorScheme.surface, shape = Formen.etikett) {
-        Row(Modifier.padding(horizontal = Abstaende.winzig + Abstaende.haar, vertical = Abstaende.haar),
+        Row(Modifier.padding(horizontal = Abstaende.tiny + Abstaende.hairline, vertical = Abstaende.hairline),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+            horizontalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
             Icon(if (pct >= 0) Icons.AutoMirrored.Filled.TrendingUp else Icons.AutoMirrored.Filled.TrendingDown,
-                null, Modifier.size(mitSchrift(12.dp)), tint = farbe)
-            Text(fmtProzent(pct), Modifier.semantics { contentDescription = ansage },
+                null, Modifier.size(withFont(12.dp)), tint = farbe)
+            Text(fmtProzent(pct), Modifier.semantics { contentDescription = announcement },
                 style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
                 color = farbe, maxLines = 1, softWrap = false)
         }
@@ -174,10 +174,10 @@ private fun GuvPlakette(pct: Double) {
 
 /** Die Stückzahl als Marke, vorgelesen als Einheiten statt als „x2“. */
 @Composable
-private fun MengePlakette(set: SetAnsicht) {
+private fun QuantityBadge(set: SetAnsicht) {
     Surface(color = MaterialTheme.colorScheme.primary, shape = Formen.etikett) {
-        Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar)
-            .vorgelesenAls(pluralStringResource(R.plurals.gallery_stat_units, set.quantity, fmtInt(set.quantity))),
+        Text(stringResource(R.string.gallery_quantity_badge, set.quantity), Modifier.padding(horizontal = 6.dp, vertical = Abstaende.hairline)
+            .readAloudAs(pluralStringResource(R.plurals.gallery_stat_units, set.quantity, fmtInt(set.quantity))),
             color = MaterialTheme.colorScheme.onPrimary,
             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
     }
@@ -185,7 +185,7 @@ private fun MengePlakette(set: SetAnsicht) {
 
 /** Bild der Kachel mit Spiegelung und, ausser in der Zeile, den Plaketten darauf. */
 @Composable
-private fun KachelBild(
+private fun TileImage(
     modifier: Modifier,
     set: SetAnsicht,
     imageUrl: String?,
@@ -193,16 +193,16 @@ private fun KachelBild(
     retryNonce: Int,
     zeile: Boolean,
     isBrick: Boolean,
-    istGlanz: Boolean,
+    isGloss: Boolean,
     guv: (@Composable () -> Unit)?,
     menge: (@Composable () -> Unit)?,
     onState: (AsyncImagePainter.State) -> Unit,
 ) {
     val ctx = LocalContext.current
-    // Weich einblenden nur, wenn Bewegung erwünscht ist (bewegungReduziert).
-    val weich = !bewegungReduziert()
+    // Weich einblenden nur, wenn Bewegung erwünscht ist (movementReduced).
+    val weich = !movementReduced()
     Box(modifier) {
-        GemeinsamesBild(set.setNumber) { bild ->
+        SharedImage(set.setNumber) { bild ->
             ProduktBild(
                 model = imageUrl?.let { ImageRequest.Builder(ctx).data(it)
                     .memoryCacheKeyExtra("retry", retryNonce.toString())
@@ -222,20 +222,20 @@ private fun KachelBild(
                         else -> Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
                     }),
                 contentScale = ContentScale.Fit,
-                ersatzGroesse = if (zeile) 32.dp else 48.dp,
+                fallbackSize = if (zeile) 32.dp else 48.dp,
                 bildgrund = true,
-                innenAbstand = Abstaende.klein,
+                innerGap = Abstaende.klein,
             )
         }
         // Die Spiegelung auf der Glasscheibe: über dem Bild, aber UNTER Plaketten und
-        // Menü, damit die Bedienelemente auf eigener Fläche stehen (lichtStreifen()).
-        if (istGlanz) Box(Modifier.matchParentSize().background(lichtStreifen()))
+        // Menü, damit die Bedienelemente auf eigener Fläche stehen (lightStrip()).
+        if (isGloss) Box(Modifier.matchParentSize().background(lightStrip()))
         // Die Kachel trägt keine zerstörerische Aktion: Gelöscht wird im Detail,
         // mit Rückfrage und danach „Rückgängig“. Plaketten mit Abstand innerhalb
-        // des Bilds (PLAKETTE_RAND): Auf dessen Rand sassen sie über der Ecke.
+        // des Bilds (BADGE_EDGE): Auf dessen Rand sassen sie über der Ecke.
         if (!zeile) {
-            if (guv != null) Box(Modifier.align(Alignment.TopStart).padding(PLAKETTE_RAND).clearAndSetSemantics {}) { guv() }
-            if (menge != null) Box(Modifier.align(Alignment.TopEnd).padding(PLAKETTE_RAND).clearAndSetSemantics {}) { menge() }
+            if (guv != null) Box(Modifier.align(Alignment.TopStart).padding(BADGE_EDGE).clearAndSetSemantics {}) { guv() }
+            if (menge != null) Box(Modifier.align(Alignment.TopEnd).padding(BADGE_EDGE).clearAndSetSemantics {}) { menge() }
         }
     }
 }
@@ -247,35 +247,35 @@ private fun KachelBild(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun KachelTexte(
+private fun TileTexts(
     modifier: Modifier,
     set: SetAnsicht,
     zeile: Boolean,
-    ton: Color?,
+    tone: Color?,
     guv: (@Composable () -> Unit)?,
     menge: (@Composable () -> Unit)?,
-    preis: KachelPreis?,
+    preis: TilePrice?,
     betrag: Geld?,
     waehrung: Waehrung,
     /** Was die Bildplaketten sagen; TalkBack liest es nach dem Preis. */
-    ansagen: List<String>,
+    announce: List<String>,
 ) {
     // Ein einzeiliger Name lässt keine Leerzeile unter sich; damit die Rasterreihe gleich hoch
-    // bleibt, steht die fehlende Zeile am Fuss der Kachel (KachelAusgleich).
-    var namensZeilen by remember { mutableIntStateOf(2) }
+    // bleibt, steht die fehlende Zeile am Fuss der Kachel (TileBalance).
+    var namedRows by remember { mutableIntStateOf(2) }
     Box(modifier) {
         Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(set.name ?: set.setNumber, fontWeight = FontWeight.SemiBold,
                 maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium,
-                onTextLayout = { namensZeilen = it.lineCount })
+                onTextLayout = { namedRows = it.lineCount })
             Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Column(Modifier.padding(vertical = Abstaende.haar), verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+            Column(Modifier.padding(vertical = Abstaende.hairline), verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
                 // In der Zeile stehen die Plaketten vor dem Zustand in einer Reihe: Jede
                 // eigene Zeile kostete bei 200 % ein Drittel der nächsten Zeile.
                 if (zeile) FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig),
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.haar),
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny),
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.hairline),
                 ) {
                     guv?.invoke()
                     menge?.invoke()
@@ -288,32 +288,32 @@ private fun KachelTexte(
             // Thema und Teilezahl in einer Zeile: Getrennt stand meist eine davon leer.
             // Im Farbfächer ein Punkt im Ton der Kartenleiste davor: So liest sich die
             // Leiste als Thema, nicht nur als Farbe.
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                if (ton != null && !set.theme.isNullOrBlank()) Box(Modifier.size(8.dp).background(ton, CircleShape))
-                Text(themaUndTeile(set.theme, set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }),
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+                if (tone != null && !set.theme.isNullOrBlank()) Box(Modifier.size(8.dp).background(tone, CircleShape))
+                Text(themeAndParts(set.theme, set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            KachelBetragZeilen(set, zeile, preis, betrag, waehrung)
-            if (!zeile) KachelAusgleich(2 - namensZeilen)
+            TileAmountRows(set, zeile, preis, betrag, waehrung)
+            if (!zeile) TileBalance(2 - namedRows)
         }
         // Ohne Fläche: nur die Ansage der Bildplaketten, nach dem Preis.
-        val plaketten = ansagen.takeIf { !zeile && it.isNotEmpty() }
-        if (plaketten != null) Box(Modifier.semantics { contentDescription = plaketten.joinToString(", ") })
+        val badges = announce.takeIf { !zeile && it.isNotEmpty() }
+        if (badges != null) Box(Modifier.semantics { contentDescription = badges.joinToString(", ") })
     }
 }
 
 /** Woher der Betrag kommt, darunter der Betrag und, bei mehreren Stück, „je Stück“. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun KachelBetragZeilen(set: SetAnsicht, zeile: Boolean, preis: KachelPreis?, betrag: Geld?, waehrung: Waehrung) {
+private fun TileAmountRows(set: SetAnsicht, zeile: Boolean, preis: TilePrice?, betrag: Geld?, waehrung: Waehrung) {
     // Wie im Web eine Zeile darüber, was der Betrag ist: Ohne Marktpreis ist es
     // der Kaufpreis (kachel_quelle), unbeschriftet las er sich als Marktwert.
     // Leer ohne Betrag, damit Kacheln einer Reihe gleich hoch bleiben; in der
     // Zeile steht die Bezeichnung vor dem Betrag, wenn die Breite reicht.
     val quelle = when (if (betrag != null) kachelQuelle(set, preis) else null) {
-        KachelQuelle.MARKT -> stringResource(R.string.gallery_card_market)
-        KachelQuelle.KAUF -> stringResource(R.string.gallery_card_paid)
+        TileSource.MARKT -> stringResource(R.string.gallery_card_market)
+        TileSource.PURCHASE -> stringResource(R.string.gallery_card_paid)
         null -> ""
     }
     if (!zeile) Text(quelle, style = MaterialTheme.typography.bodySmall,
@@ -345,77 +345,77 @@ private fun KachelBetragZeilen(set: SetAnsicht, zeile: Boolean, preis: KachelPre
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun KachelRahmen(
+private fun TileFrame(
     isBrick: Boolean,
-    istNoppe: Boolean,
-    istGlanz: Boolean,
+    isStud: Boolean,
+    isGloss: Boolean,
     position: Int,
-    ton: Color?,
+    tone: Color?,
     zeile: Boolean,
     ausgewaehlt: Boolean,
     onClick: () -> Unit,
-    bildflaeche: @Composable (Modifier) -> Unit,
-    texte: @Composable (Modifier) -> Unit,
+    canvas: @Composable (Modifier) -> Unit,
+    texts: @Composable (Modifier) -> Unit,
 ) {
     Box {
         AppKarte(
             modifier = Modifier
-                .then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier)
+                .then(if (isBrick) Modifier.padding(top = StudsMass.Stein.hoehe) else Modifier)
                 .semantics { selected = ausgewaehlt }
                 .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.karte) else Modifier),
             onClick = onClick,
             onClickLabel = stringResource(R.string.cd_details_oeffnen),
         ) {
             Column {
-                // Die Steinkante mit den Massen aus themes/brick.css (NoppenMass.Stein), wie im
+                // Die Steinkante mit den Massen aus themes/brick.css (StudsMass.Stein), wie im
                 // Web über die ganze Breite. Nur die Kante liegt in der Karte; die Noppen werden
                 // daneben gezeichnet, weil die Card sie abschnitte.
                 // Auf der schmalen Telefonkachel eine schlankere Kante: 22 dp nahmen dort dem Bild
                 // sichtbar Platz; ab Tabletbreite die volle Höhe wie im Web.
                 if (isBrick) BoxWithConstraints {
-                    BrickStudCap(mass = NoppenMass.Stein, verlauf = SteinKantenVerlauf,
+                    BrickStudCap(mass = StudsMass.Stein, verlauf = BrickEdgesHistory,
                         height = if (maxWidth < 240.dp) 12.dp else null)
                 }
                 // Der Steindeckel des Designs "noppe" — Position modulo sechs,
                 // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
                 // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
                 // Farbe; deshalb derselbe Baustein statt eines zweiten.
-                if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
-                if (ton != null) Box(Modifier.fillMaxWidth().height(5.dp).background(ton))
+                if (isStud) BrickStudCap(color = brickTone(position), gloss = isGloss)
+                if (tone != null) Box(Modifier.fillMaxWidth().height(5.dp).background(tone))
                 // 4:3 wie die Setbilder selbst: Eine feste Höhe liess bei ContentScale.Fit
                 // eine Lücke zwischen Bild und Text.
                 if (zeile) Row(verticalAlignment = Alignment.Top) {
-                    bildflaeche(Modifier.width(ZEILE_BILD_BREITE).aspectRatio(BILD_SEITENVERHAELTNIS))
-                    texte(Modifier.weight(1f))
+                    canvas(Modifier.width(ROW_IMAGE_WIDTH).aspectRatio(IMAGE_ASPECT_RATIO))
+                    texts(Modifier.weight(1f))
                 } else {
-                    bildflaeche(Modifier.fillMaxWidth().aspectRatio(BILD_SEITENVERHAELTNIS))
-                    texte(Modifier)
+                    canvas(Modifier.fillMaxWidth().aspectRatio(IMAGE_ASPECT_RATIO))
+                    texts(Modifier)
                 }
             }
         }
-        if (isBrick) NoppenReihe(
-            mass = NoppenMass.Stein,
+        if (isBrick) StudsSeries(
+            mass = StudsMass.Stein,
             modifier = Modifier.align(Alignment.TopStart),
-            farbe = LocalSteinDekor.current.noppen,
+            farbe = LocalBrickDecor.current.studs,
         )
     }
 }
 
 /** Breite des Vorschaubilds, wenn die Kachel bei grosser Schrift eine Listenzeile ist. */
-private val ZEILE_BILD_BREITE = 96.dp
+private val ROW_IMAGE_WIDTH = 96.dp
 
 /** Seitenverhältnis der Bildfläche einer Kachel — das der Setbilder. */
-internal const val BILD_SEITENVERHAELTNIS = 4f / 3f
+internal const val IMAGE_ASPECT_RATIO = 4f / 3f
 
 /** Plaketten auf dem Bild: Innenabstand des Bilds plus ein Rand, damit sie nicht auf seiner Ecke sitzen. */
-private val PLAKETTE_RAND = Abstaende.klein + Abstaende.winzig
+private val BADGE_EDGE = Abstaende.klein + Abstaende.tiny
 
 /**
  * „Star Wars · 7’541 Teile“ — das Thema halbfett statt blau: Blau heisst in der App
  * „antippbar“, und das Thema auf der Kachel ist es nicht (Filter im Blatt).
  */
 @Composable
-private fun themaUndTeile(thema: String?, teile: String?): androidx.compose.ui.text.AnnotatedString =
+private fun themeAndParts(thema: String?, teile: String?): androidx.compose.ui.text.AnnotatedString =
     androidx.compose.ui.text.buildAnnotatedString {
         if (!thema.isNullOrBlank()) {
             pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = FontWeight.SemiBold))

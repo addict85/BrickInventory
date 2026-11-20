@@ -17,30 +17,30 @@ import javax.inject.Inject
 
 /**
  * Der Balken eines laufenden CSV-Imports, auch eines aus der Webapp. Strom und
- * Vordergrund-Dienst steuert der [CsvImportKoordinator]; das ViewModel bindet ihn an
+ * Vordergrund-Dienst steuert der [CsvImportCoordinator]; das ViewModel bindet ihn an
  * die Lebenszeit der Activity und an die Anmeldung, statt eines LaunchedEffect.
  */
 @HiltViewModel
 class CsvImportViewModel @Inject constructor(
-    private val koordinator: CsvImportKoordinator,
+    private val coordinator: CsvImportCoordinator,
     private val csvImport: CsvImportRepository,
-    private val texte: Texte,
+    private val texts: Texte,
     private val meldungen: MeldungsKanal,
     sitzung: Sitzung,
 ) : ViewModel() {
 
-    val csvImportState: StateFlow<CsvImportUiState> = koordinator.zustand
+    val csvImportState: StateFlow<CsvImportUiState> = coordinator.zustand
 
     init {
-        viewModelScope.launch { koordinator.folge(sitzung.state.map { it.isLoggedIn }) }
+        viewModelScope.launch { coordinator.sequence(sitzung.state.map { it.isLoggedIn }) }
     }
 
     /** Abbrechen heisst „ab hier nicht weiter“; angelegte Sets bleiben. */
     fun cancelCsvImport() {
         viewModelScope.launch {
             when (val r = csvImport.abbrechen()) {
-                is Ergebnis.Erfolg -> meldungen.zeige(Meldung.Ressource(R.string.csv_cancel_requested))
-                is Ergebnis.Fehler -> meldungen.zeige(texte.meldungFuerSnackbar(r))
+                is Ergebnis.Erfolg -> meldungen.zeige(Meldung.Resource(R.string.csv_cancel_requested))
+                is Ergebnis.Fehler -> meldungen.zeige(texts.meldungFuerSnackbar(r))
             }
         }
     }

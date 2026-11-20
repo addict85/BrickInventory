@@ -10,7 +10,7 @@ import org.junit.Test
  * ── Warum das eine eigene Pruefung wert ist ─────────────────────────────────
  *
  * Diese Umrechnung traegt die teuerste Entscheidung des Preisalarms: `null`
- * heisst LOESCHEN. Jeder Text, der hier versehentlich zu `null` wird,
+ * heisst DELETE. Jeder Text, der hier versehentlich zu `null` wird,
  * loescht einen Alarm, den jemand gerade eintippt — und zwar lautlos, denn
  * ein Loeschen ist kein Fehler.
  *

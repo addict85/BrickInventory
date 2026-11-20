@@ -1,6 +1,6 @@
 Gegenprobe: Scannen wieder als zweiter schwebender Knopf über dem Erfassen-Knopf
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.UisRulesTest
 Rot: Galerie hat einen schwebenden Knopf
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalleryScreen.kt
@@ -10,18 +10,18 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
          // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
          // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
          // Leer auch nicht: Die Leermeldung bietet Erfassen und Scannen selbst an.
-+        if (anzeige != GalerieAnzeige.FEHLER) SmallFloatingActionButton(onClick = onScanBarcode,
++        if (anzeige != GalleryDisplay.FEHLER) SmallFloatingActionButton(onClick = onScanBarcode,
 +            modifier = Modifier.align(Alignment.BottomEnd).padding(end = Abstaende.gross, bottom = 96.dp)) {
 +            Icon(Icons.Default.QrCodeScanner, stringResource(R.string.gallery_scan_barcode))
 +        }
-         if (!gross && anzeige != GalerieAnzeige.FEHLER && anzeige != GalerieAnzeige.LEER) ErfassenFab(
-             erfassenText, { showAddDialog = true },
+         if (!gross && anzeige != GalleryDisplay.FEHLER && anzeige != GalleryDisplay.LEER) AddFab(
+             addText, { showAddDialog = true },
              Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
 @@ -257,7 +261,6 @@
-         aktiveFilter = Filterzahl.galerie(zustand.blick.householdMembers, zustand.kontoWahl(), zustand.lager.orte,
-             zustand.lagerWahl(), galerie.galleryTheme),
+         activeFilter = Filterzahl.galerie(zustand.blick.householdMembers, zustand.accountChoice(), zustand.lager.orte,
+             zustand.storageChoice(), galerie.galleryTheme),
          onFilter = onFilter,
--        onScannen = onScanBarcode,
+-        scanOn = onScanBarcode,
          erfassen = erfassen,
          aktive = listOfNotNull(
-             kontoFilter(zustand.blick.householdMembers, zustand.kontoWahl()) { ereignisse.konto(ScopeFilter.ALL) },
+             accountFilter(zustand.blick.householdMembers, zustand.accountChoice()) { events.konto(ScopeFilter.ALL) },

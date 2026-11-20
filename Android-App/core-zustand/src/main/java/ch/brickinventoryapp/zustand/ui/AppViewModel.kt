@@ -5,8 +5,8 @@ import ch.brickinventoryapp.sitzung.SitzungsRepository
 import ch.brickinventoryapp.sitzung.AppUiState
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.PasswortPflicht
-import ch.brickinventoryapp.data.ZweiterFaktorPflicht
+import ch.brickinventoryapp.data.PasswordRequired
+import ch.brickinventoryapp.data.SecondFactorRequired
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,14 +22,14 @@ import ch.brickinventoryapp.model.ui.ScrollMemory
  */
 @HiltViewModel
 class AppViewModel @Inject constructor(
-    private val sitzungsDienst: SitzungsRepository,
+    private val sessionService: SitzungsRepository,
     private val meldungen: MeldungsKanal,
     sitzung: Sitzung,
-    blickfeldDienst: Blickfeld,
+    scopeService: Scope,
     val scrollMemory: ScrollMemory,
     ausgangsmelder: Ausgangsmelder,
-    passwortPflicht: PasswortPflicht,
-    zweiterFaktorPflicht: ZweiterFaktorPflicht,
+    passwordRequired: PasswordRequired,
+    zweiterFaktorPflicht: SecondFactorRequired,
 ) : ViewModel() {
 
     val state: StateFlow<AppUiState> = sitzung.state
@@ -38,36 +38,36 @@ class AppViewModel @Inject constructor(
 
     /** Offline gespeicherte Änderungen, die noch zum Server müssen — für die Leiste im Gerüst. */
     val offeneAenderungen: StateFlow<Int> = ausgangsmelder.offene
-    fun clearSnackbar() { meldungen.quittiere() }
+    fun clearSnackbar() { meldungen.acknowledge() }
 
     /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
-    val startpasswortNoetig: StateFlow<Boolean> = passwortPflicht.noetig
+    val startPasswordNeeded: StateFlow<Boolean> = passwordRequired.noetig
 
     /** Verwalterrechte ohne zweiten Faktor: MainActivity zeigt dessen Einrichtung. */
-    val zweiterFaktorNoetig: StateFlow<Boolean> = zweiterFaktorPflicht.noetig
+    val secondFactorNeeded: StateFlow<Boolean> = zweiterFaktorPflicht.noetig
 
-    val blickfeld = blickfeldDienst.konten
-    val lagerState = blickfeldDienst.lager
+    val blickfeld = scopeService.konten
+    val storageState = scopeService.lager
 
-    private val _meldungsZiel = MutableStateFlow(MeldungsZielUiState())
-    val meldungsZiel: StateFlow<MeldungsZielUiState> = _meldungsZiel.asStateFlow()
+    private val _messageTarget = MutableStateFlow(MessageTargetUiState())
+    val messageTarget: StateFlow<MessageTargetUiState> = _messageTarget.asStateFlow()
 
-    fun zweiterFaktorEingerichtet() = sitzungsDienst.zweiterFaktorEingerichtet()
+    fun secondFactorConfigured() = sessionService.secondFactorConfigured()
 
-    fun logout(): Job = sitzungsDienst.abmelden()
+    fun logout(): Job = sessionService.abmelden()
 
-    fun loadHouseholdMembers() = sitzungsDienst.ladeMitglieder()
+    fun loadHouseholdMembers() = sessionService.loadMembers()
 
-    fun loadLagerorte() = sitzungsDienst.ladeLagerorte()
+    fun loadLagerorte() = sessionService.ladeLagerorte()
 
-    fun loadSettings() = sitzungsDienst.ladeEinstellungen()
+    fun loadSettings() = sessionService.ladeEinstellungen()
 
     /**
      * Zurück im Vordergrund: Ein in der Webapp geänderter Standard-Zustand greift so
      * auch in einer laufenden Sitzung, und Filterlisten, deren einziger Abruf beim
      * Start scheiterte, kommen nach. Abgemeldet fragt niemand.
      */
-    fun imVordergrund() {
+    fun inForeground() {
         if (!state.value.isLoggedIn) return
         loadSettings()
         loadHouseholdMembers()
@@ -77,14 +77,14 @@ class AppViewModel @Inject constructor(
     // ── Meldung angetippt ────────────────────────────────────────────────────
 
     /** Der Intent kommt am Rand der App an, und dieser Rand ist die Activity. */
-    fun setAusMeldungAnfordern(setNummer: String?) {
+    fun setFromMessageRequest(setNummer: String?) {
         // Auch hier geprüft: Die Nummer wird Teil einer Navigationsroute.
-        val sn = setnummerAusMeldung(setNummer) ?: return
-        _meldungsZiel.value = MeldungsZielUiState(sn)
+        val sn = setNumberFromMessage(setNummer) ?: return
+        _messageTarget.value = MessageTargetUiState(sn)
     }
 
     /** Erledigt — sonst springt die App bei der nächsten Rekomposition erneut. */
-    fun setAusMeldungQuittieren() {
-        _meldungsZiel.value = MeldungsZielUiState(null)
+    fun setFromMessageAcknowledge() {
+        _messageTarget.value = MessageTargetUiState(null)
     }
 }

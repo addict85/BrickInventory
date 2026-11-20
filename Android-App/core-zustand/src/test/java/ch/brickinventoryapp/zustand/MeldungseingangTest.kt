@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.zustand.ui.Meldungseingang
-import ch.brickinventoryapp.zustand.ui.setnummerAusMeldung
+import ch.brickinventoryapp.zustand.ui.setNumberFromMessage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -24,7 +24,7 @@ class MeldungseingangTest {
     @Test
     fun `Setnummern wie im Bestand gelten`() {
         for (sn in listOf("75192-1", "10497-1", "col23-1", "LLCA30-1", "6895"))
-            assertEquals(sn, setnummerAusMeldung(sn))
+            assertEquals(sn, setNumberFromMessage(sn))
     }
 
     @Test
@@ -32,7 +32,7 @@ class MeldungseingangTest {
         // Pfad-, Query- und Steuerzeichen würden Teil der Navigationsroute.
         for (roh in listOf(null, "", " ", "75192-1/../settings", "75192-1?x=1", "a b", "75192-1\n",
                 "x".repeat(21), "%2e%2e", "set_detail/1", "ä-1"))
-            assertNull("„$roh“ gilt als Setnummer", setnummerAusMeldung(roh))
+            assertNull("„$roh“ gilt als Setnummer", setNumberFromMessage(roh))
         val e = Meldungseingang()
         assertFalse(e.ablegen("../admin"))
         assertNull(e.abholen())

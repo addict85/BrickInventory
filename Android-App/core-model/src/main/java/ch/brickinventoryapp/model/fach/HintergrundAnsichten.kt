@@ -2,13 +2,13 @@ package ch.brickinventoryapp.model.fach
 
 /** Zustand eines Auftrags; was der Server neu einführt, landet bei UNBEKANNT statt zu brechen. */
 
-enum class AuftragStatus {
-    OFFEN, LAEUFT, FEHLER, ABGEBROCHEN, ERLEDIGT, UNBEKANNT;
+enum class JobStatus {
+    OFFEN, LAEUFT, FEHLER, ABGEBROCHEN, DONE, UNBEKANNT;
 
     companion object {
         fun aus(s: String) = when (s) {
             "offen" -> OFFEN; "laeuft" -> LAEUFT; "fehler" -> FEHLER
-            "abgebrochen" -> ABGEBROCHEN; "erledigt" -> ERLEDIGT; else -> UNBEKANNT
+            "abgebrochen" -> ABGEBROCHEN; "erledigt" -> DONE; else -> UNBEKANNT
         }
     }
 }
@@ -18,28 +18,28 @@ enum class AuftragStatus {
  * entschieden — dieselbe Regel wie der Server (abbrechen nur offen/läuft,
  * wiederholen nur Fehler/abgebrochen), damit kein Knopf sicher in ein 409 führt.
  */
-data class AuftragAnsicht(
+data class JobView(
     val id: String,
     val art: String,
-    val status: AuftragStatus,
-    val versuch: Int,
+    val status: JobStatus,
+    val attempt: Int,
     val maxVersuche: Int,
     val geplant: Boolean,
-    val faelligAb: String?,
-    val fortschrittText: String?,
+    val dueAb: String?,
+    val progressText: String?,
     val fehler: String?,
     val setNumber: String?,
 ) {
-    val abbrechbar: Boolean get() = status == AuftragStatus.OFFEN || status == AuftragStatus.LAEUFT
-    val wiederholbar: Boolean get() = status == AuftragStatus.FEHLER || status == AuftragStatus.ABGEBROCHEN
+    val abbrechbar: Boolean get() = status == JobStatus.OFFEN || status == JobStatus.LAEUFT
+    val retryable: Boolean get() = status == JobStatus.FEHLER || status == JobStatus.ABGEBROCHEN
 }
 
-data class AuftragsPauseAnsicht(val art: String, val bis: String?, val grund: String)
+data class JobPauseView(val art: String, val bis: String?, val grund: String)
 
-data class HintergrundAnsicht(
-    val auftraege: List<AuftragAnsicht>,
-    val pausen: List<AuftragsPauseAnsicht>,
+data class BackgroundView(
+    val auftraege: List<JobView>,
+    val pausen: List<JobPauseView>,
     val bildbedarf: Int,
     /** False: Kein Job-Prozess meldet sich — dann bewegt sich keiner der Aufträge. */
-    val jobProzessLaeuft: Boolean,
+    val jobProcessRunning: Boolean,
 )

@@ -1,6 +1,6 @@
 Gegenprobe: der Workflow nimmt einen Beschreibungsschlüssel an, den die App nicht kennt
 Modul: app
-Test: ch.brickinventoryapp.app.ReleasePruefenTest
+Test: ch.brickinventoryapp.app.ReleaseCheckTest
 Rot: ein Beschreibungsschluessel, den die App nicht kennt, wird abgelehnt
 
 diff --git a/Android-App/tools/release-pruefen.py b/Android-App/tools/release-pruefen.py

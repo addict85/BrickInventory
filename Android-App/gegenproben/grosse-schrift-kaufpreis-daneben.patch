@@ -1,6 +1,6 @@
 Gegenprobe: Kaufpreis auch bei grosser Schrift neben seiner Bezeichnung
 Modul: core-ui-bestand
-Test: ch.brickinventoryapp.gemeinsam.WertKachelnTest
+Test: ch.brickinventoryapp.gemeinsam.ValueTilesTest
 Rot: Kaufpreis bei 200 Prozent
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt
@@ -10,7 +10,7 @@ diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/geme
  ) {
      // Bei grosser Schrift die Käufe UNTER die Bezeichnung: Neben ihr blieb für
      // „CHF 700.00“ so wenig Breite, dass der Betrag Ziffer für Ziffer umbrach.
--    val untereinander = grosseSchrift()
+-    val untereinander = largeFont()
 +    val untereinander = false
      val ausrichtung = if (untereinander) Alignment.Start else Alignment.End
      val kaeufe: @Composable () -> Unit = {

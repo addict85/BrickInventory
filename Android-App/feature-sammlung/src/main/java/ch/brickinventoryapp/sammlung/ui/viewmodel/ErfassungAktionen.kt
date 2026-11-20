@@ -7,7 +7,7 @@ import ch.brickinventoryapp.model.fach.Erfassungswunsch
  * Schnittstelle lassen sie sich mit festem Zustand zeigen und prüfen.
  */
 interface ErfassungAktionen {
-    fun confirmAddBarcode(wunsch: Erfassungswunsch)
+    fun confirmAddBarcode(wish: Erfassungswunsch)
     fun cancelBarcode()
-    fun brichPruefungAb()
+    fun abortCheckAb()
 }

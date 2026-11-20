@@ -11,33 +11,33 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import ch.brickinventoryapp.finanzen.ui.screens.FinanceRoute
-import ch.brickinventoryapp.finanzen.ui.screens.GutscheinPdfSchutz
-import ch.brickinventoryapp.finanzen.ui.screens.GutscheineRoute
+import ch.brickinventoryapp.finanzen.ui.screens.VoucherPdfProtection
+import ch.brickinventoryapp.finanzen.ui.screens.VouchersRoute
 import ch.brickinventoryapp.finanzen.ui.screens.PdfViewerRoute
-import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
+import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanceViewModel
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
-import ch.brickinventoryapp.finanzen.ui.viewmodel.gutscheinPdfAdresse
+import ch.brickinventoryapp.finanzen.ui.viewmodel.voucherPdfAddress
 import ch.brickinventoryapp.model.fach.Postenart
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.navigation.Bereichsumgebung
 
 /** Was die Finanzen von der App brauchen: Set und Einzelstück gehören anderen Bereichen. */
-interface FinanzenNavigation : Bereichsumgebung {
-    fun oeffneSet(setNumber: String)
-    fun oeffneEinzelstueck(art: Postenart, id: String, colorId: Int, titel: String)
+interface FinancesNavigation : Bereichsumgebung {
+    fun openSet(setNumber: String)
+    fun openSinglePiece(art: Postenart, id: String, colorId: Int, titel: String)
 
-    /** Der PDF-Betrachter; die Route trägt nur einen Schlüssel (PdfAuswahl). */
-    fun zeigePdf(url: String, titel: String) = navController.navigate(FinanzZiel.PdfViewer(PdfAuswahl.lege(url, titel)))
+    /** Der PDF-Betrachter; die Route trägt nur einen Schlüssel (PdfSelection). */
+    fun showPdf(url: String, titel: String) = navController.navigate(FinanzZiel.PdfViewer(PdfSelection.put(url, titel)))
 }
 
 /** Finanzen, Gutscheine und der PDF-Betrachter. */
-fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
+fun NavGraphBuilder.financesGraph(navigation: FinancesNavigation) {
     val navController = navigation.navController
     composable<FinanzZiel.Finance> {
         // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
         val financeListState = remember { LazyListState() }
-        val finanzen: FinanzViewModel = hiltViewModel()
+        val finanzen: FinanceViewModel = hiltViewModel()
         val financeState by finanzen.financeState.collectAsStateWithLifecycle()
         navigation.Reiter(stringResource(R.string.nav_finance)) {
             ScrollPositionKeeper(
@@ -47,11 +47,11 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
                 vm = finanzen,
                 imageLoader = navigation.bilder,
                 // Klick auf eine Zeile öffnet dieselbe Detailansicht wie in der Galerie.
-                onSetClick = navigation::oeffneSet,
+                onSetClick = navigation::openSet,
                 // Den Namen gibt die angeklickte Zeile mit, sonst stünde bis zum ersten
                 // Laden die nackte Nummer in der Leiste.
                 onManualClick = { type, id, colorId, name ->
-                    navigation.oeffneEinzelstueck(type, id, colorId, name ?: id)
+                    navigation.openSinglePiece(type, id, colorId, name ?: id)
                 },
                 listState = financeListState
             )
@@ -60,31 +60,31 @@ fun NavGraphBuilder.finanzenGraph(navigation: FinanzenNavigation) {
     composable<FinanzZiel.Gutscheine> {
         // Am Ziel: Klartext und PIN enden mit der Seite. Der PDF-Betrachter liegt
         // darüber, die Seite bleibt also bestehen, solange er offen ist.
-        val gutscheinVm: GutscheinViewModel = hiltViewModel()
+        val voucherVm: GutscheinViewModel = hiltViewModel()
         val state by navigation.sitzung.collectAsStateWithLifecycle()
-        val gutscheine by gutscheinVm.state.collectAsStateWithLifecycle()
+        val gutscheine by voucherVm.state.collectAsStateWithLifecycle()
         // Ein freigegebenes Gutschein-PDF (eines oder alle): Das Ziel mit Ticket
         // steht im Zustand, die Navigation macht der Graph. Der Titel wird AUSSERHALB
         // des LaunchedEffect gelesen: stringResource ist @Composable.
-        val exportTitel = stringResource(R.string.vouchers_export)
-        LaunchedEffect(gutscheine.pdfZiel) {
-            val ziel = gutscheine.pdfZiel ?: return@LaunchedEffect
-            val titel = if (ziel.id == null) exportTitel
+        val exportTitle = stringResource(R.string.vouchers_export)
+        LaunchedEffect(gutscheine.pdfTarget) {
+            val ziel = gutscheine.pdfTarget ?: return@LaunchedEffect
+            val titel = if (ziel.id == null) exportTitle
                 else gutscheine.gutscheine.find { it.id == ziel.id }?.number.orEmpty()
-            navigation.zeigePdf(gutscheinPdfAdresse(state.serverUrl, ziel), titel)
-            gutscheinVm.gutscheinPdfQuittieren()
+            navigation.showPdf(voucherPdfAddress(state.serverUrl, ziel), titel)
+            voucherVm.voucherPdfAcknowledge()
         }
-        GutscheineRoute(gutscheinVm, navigation.snackbar) { navController.popBackStack() }
+        VouchersRoute(voucherVm, navigation.snackbar) { navController.popBackStack() }
     }
     composable<FinanzZiel.PdfViewer> { backStackEntry ->
         val ziel = backStackEntry.toRoute<FinanzZiel.PdfViewer>()
-        val pdf = remember(ziel.schluessel) { PdfAuswahl.hole(ziel.schluessel) }
+        val pdf = remember(ziel.schluessel) { PdfSelection.fetch(ziel.schluessel) }
         if (pdf == null) {
             // Nach einem Prozess-Tod ist die Auswahl weg: zurück, statt leer zu zeigen.
             LaunchedEffect(Unit) { navController.popBackStack() }
             return@composable
         }
-        GutscheinPdfSchutz(pdf.url)
+        VoucherPdfProtection(pdf.url)
         val state by navigation.sitzung.collectAsStateWithLifecycle()
         PdfViewerRoute(
             pdfUrl = pdf.url,

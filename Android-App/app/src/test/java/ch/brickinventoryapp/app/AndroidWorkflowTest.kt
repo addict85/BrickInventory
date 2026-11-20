@@ -38,8 +38,8 @@ class AndroidWorkflowTest {
         val i = z.indexOfFirst { it.trim() == "- name: $name" }
         assertTrue("Schritt „$name“ fehlt", i >= 0)
         val r = (i + 1 until z.size).first { Regex("""^\s+run: \|\s*$""").matches(z[it]) }
-        val tief = z[r + 1].length - z[r + 1].trimStart().length
-        val ende = (r + 1 until z.size).firstOrNull { z[it].isNotBlank() && z[it].length - z[it].trimStart().length < tief } ?: z.size
+        val deep = z[r + 1].length - z[r + 1].trimStart().length
+        val ende = (r + 1 until z.size).firstOrNull { z[it].isNotBlank() && z[it].length - z[it].trimStart().length < deep } ?: z.size
         return z.subList(r + 1, ende).joinToString("\n")
     }
 
@@ -51,12 +51,12 @@ class AndroidWorkflowTest {
         val j = job("gegenproben")
         assertTrue("der Job ruft das Werkzeug nicht", "python3 tools/gegenproben.py gegenproben" in j)
         assertFalse("eine grüne Gegenprobe muss den Lauf rot machen", "continue-on-error" in j)
-        val patches = File(Quellen.projekt, "gegenproben").listFiles { f -> f.name.endsWith(".patch") }.orEmpty()
+        val patches = File(Quellen.project, "gegenproben").listFiles { f -> f.name.endsWith(".patch") }.orEmpty()
         assertTrue("Nur ${patches.size} Patches — greift die Suche noch?", patches.size >= 100)
-        val klassen = patches.map { p ->
+        val classes = patches.map { p ->
             assertTrue("${p.name}: Kopf ohne Gegenprobe oder Rot", kopf(p, "Gegenprobe") != null && kopf(p, "Rot") != null)
             val voll = kopf(p, "Test").orEmpty()
-            val datei = File(Quellen.projekt, "${kopf(p, "Modul")}/src/test/java/${voll.replace('.', '/')}.kt")
+            val datei = File(Quellen.project, "${kopf(p, "Modul")}/src/test/java/${voll.replace('.', '/')}.kt")
             assertTrue("${p.name}: $voll liegt nicht in ${kopf(p, "Modul")}", datei.isFile)
             // gegenproben.py sucht `Rot` in den Namen der gescheiterten Tests, nicht in deren
             // Meldungen; ein Meldungstext hiesse „blieb grün“, obwohl der Test rot war.
@@ -65,7 +65,7 @@ class AndroidWorkflowTest {
                 namen.any { kopf(p, "Rot").orEmpty() in it })
             voll.substringAfterLast('.')
         }.toSet()
-        for (k in listOf("AblaufTest", "BestandMigrationTest")) assertTrue("$k braucht eine Gegenprobe", k in klassen)
+        for (k in listOf("AblaufTest", "BestandMigrationTest")) assertTrue("$k braucht eine Gegenprobe", k in classes)
     }
 
     @Test
@@ -81,10 +81,10 @@ class AndroidWorkflowTest {
         assertTrue("die Signierwerkzeuge werden nicht gegen feste Prüfsummen geprüft",
             Regex("""[0-9a-f]{64} "\${'$'}WERKZEUGE/zipalign"[\s\\]+[0-9a-f]{64} "\${'$'}WERKZEUGE/lib/apksigner\.jar"[\s\\]+\| sha256sum -c -""")
                 .containsMatchIn(signieren))
-        val soll = File(Quellen.projekt, "tools/release-zertifikat.sha256").readLines()
+        val soll = File(Quellen.project, "tools/release-zertifikat.sha256").readLines()
             .map { it.substringBefore('#').trim() }.firstOrNull { Regex("^[0-9a-f]{64}$").matches(it) }
         assertTrue("Die README nennt nicht das hinterlegte Zertifikat",
-            soll != null && "SHA-256 $soll" in File(Quellen.projekt, "README.md").readText())
+            soll != null && "SHA-256 $soll" in File(Quellen.project, "README.md").readText())
         val bereitstellen = schritt("BrickInventory.apk als Release bereitstellen", freigabe)
         for (s in listOf("tools/release-zertifikat.sha256", "Signierzertifikat SHA-256: \\`\$ZERT\\`", "apksigner verify --print-certs"))
             assertTrue("Release-Schritt ohne „$s“", s in bereitstellen)

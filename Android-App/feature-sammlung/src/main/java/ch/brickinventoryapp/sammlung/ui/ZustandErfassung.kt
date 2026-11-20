@@ -23,7 +23,7 @@ data class BarcodeUiState(
      * seinen eigenen Erfassen-Dialog.
      */
     val manuelleErfassungAnfordern: Boolean = false,
-    val fuerTeileliste: String? = null,
+    val forPartList: String? = null,
     val setName: String? = null,
     val imageUrl: String? = null,
     val imageLocal: String? = null,
@@ -32,7 +32,7 @@ data class BarcodeUiState(
     val theme: String? = null,
     val minifigs: Int? = null,
     /** Wie oft das gescannte Set schon in der Sammlung steht; 0 = gar nicht. */
-    val besitzMenge: Int = 0,
+    val ownershipQuantity: Int = 0,
     // Läuft gerade ein Hinzufügen aus dem Barcode-Dialog? Sperrt den Knopf
     // gegen den zweiten Klick, der sonst dasselbe Set ein zweites Mal erfasst.
     val hinzufuegen: Vorgang = Vorgang.Fertig,
@@ -51,7 +51,7 @@ data class BarcodeUiState(
  * sichtbar und hält an, Erfassen läuft im Hintergrund — die Anzeige steht, bis
  * feststeht, ob das Set schon da ist.
  */
-enum class Pruefphase {
+enum class CheckPhase {
     /** EAN → Setnummer. Der lange Teil: bis zu acht Rebrickable-Abrufe. */
     BARCODE,
     /** Steht das Set schon im Blickfeld? */
@@ -72,9 +72,9 @@ enum class Pruefphase {
  * @param bezeichner Was gerade geprüft wird — die EAN oder die Setnummer. Ohne
  *   sie sagt der Dialog beim schnellen Scannen nicht, WELCHES Set gemeint ist.
  */
-data class Pruefschritt(
-    val bezeichner: String,
-    val phase: Pruefphase,
+data class CheckStep(
+    val identifier: String,
+    val phase: CheckPhase,
 )
 
 /**
@@ -82,6 +82,6 @@ data class Pruefschritt(
  * manuellen Weg aus Galerie und Katalog — in BarcodeUiState wäre sie falsch
  * benannt, in AppUiState ginge jeder Zwischenstand jeden Reiter an.
  */
-data class ErfassungUiState(
-    val pruefung: Pruefschritt? = null,
+data class EntryUiState(
+    val check: CheckStep? = null,
 )

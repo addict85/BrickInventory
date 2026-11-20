@@ -3,11 +3,11 @@ package ch.brickinventoryapp.data.util
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject
-import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.sicherheit.StoreCipher
 import ch.brickinventoryapp.sicherheit.Ablageschluessel
 
 /** Die verschlüsselte Teileliste in filesDir/pdf; ältere Fassungen legten `teileliste.pdf` im Klartext ab. */
-internal const val TEILELISTE_DATEI = "teileliste.bin"
+internal const val PART_LIST_FILE = "teileliste.bin"
 
 /**
  * Die Teileliste trägt das ganze Inventar. Auf der Platte liegt sie darum nur mit
@@ -15,14 +15,14 @@ internal const val TEILELISTE_DATEI = "teileliste.bin"
  * den TeilelistenProvider liest. Die Bindung an den Zweck lässt keine andere Ablage
  * unter diesem Namen als Teileliste gelten.
  */
-class Teilelistentresor(private val chiffre: AblageChiffre) {
-    @Inject constructor(ablage: Ablageschluessel) : this(AblageChiffre { ablage.fuer(ZWECK) })
+class Teilelistentresor(private val cipher: StoreCipher) {
+    @Inject constructor(ablage: Ablageschluessel) : this(StoreCipher { ablage.fuer(PURPOSE) })
 
     /** Legt [pdf] verschlüsselt ab; erst das Umbenennen macht die neue Liste sichtbar. */
-    fun lege(intern: File, extern: File?, pdf: ByteArray): File {
-        val ziel = teilelistenAblage(intern, extern)
+    fun put(intern: File, extern: File?, pdf: ByteArray): File {
+        val ziel = partListsStore(intern, extern)
         val tmp = File(ziel.parentFile, ziel.name + ".tmp")
-        tmp.writeBytes(chiffre.verschluessle(pdf, ZWECK))
+        tmp.writeBytes(cipher.verschluessle(pdf, PURPOSE))
         if (!tmp.renameTo(ziel)) {
             tmp.delete()
             throw IOException("Teileliste nicht abgelegt")
@@ -32,14 +32,14 @@ class Teilelistentresor(private val chiffre: AblageChiffre) {
 
     /** Der Klartext oder null, wenn keine (lesbare) Teileliste da ist. */
     fun lies(intern: File): ByteArray? {
-        val datei = File(File(intern, "pdf"), TEILELISTE_DATEI)
+        val datei = File(File(intern, "pdf"), PART_LIST_FILE)
         if (!datei.isFile) return null
-        // Ein gesperrter Keystore wirft (AblageChiffre): Der Anbieter meldet dann „keine Datei“, statt abzustürzen.
-        return runCatching { chiffre.entschluessle(datei.readBytes(), ZWECK) }.getOrNull()
+        // Ein gesperrter Keystore wirft (StoreCipher): Der Anbieter meldet dann „keine Datei“, statt abzustürzen.
+        return runCatching { cipher.entschluessle(datei.readBytes(), PURPOSE) }.getOrNull()
     }
 
     private companion object {
-        const val ZWECK = "teileliste"
+        const val PURPOSE = "teileliste"
     }
 }
 
@@ -48,7 +48,7 @@ class Teilelistentresor(private val chiffre: AblageChiffre) {
  * die Zahl zurück, 0 am Ende. So liest der Proxy-Deskriptor des Providers: Die
  * Ziel-App darf springen, die Liste liegt dabei nur im Speicher.
  */
-internal fun liesAusSpeicher(inhalt: ByteArray, versatz: Long, laenge: Int, ziel: ByteArray): Int {
+internal fun readFromStorage(inhalt: ByteArray, versatz: Long, laenge: Int, ziel: ByteArray): Int {
     if (versatz < 0 || laenge < 0) throw IOException("Ungültiger Lesebereich")
     if (versatz >= inhalt.size) return 0
     val n = minOf(laenge.toLong(), inhalt.size - versatz, ziel.size.toLong()).toInt()

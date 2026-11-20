@@ -12,5 +12,5 @@ diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/kata
              // Sets, die es in der neuen Liste nicht mehr gibt.
 -            rollgedaechtnis.vergiss(KatalogZiel.Catalog.rollSchluessel)
              _catalogState.update {
-                 it.copy(abruf = Laden.Laedt,
+                 it.copy(abruf = Laden.Loads,
                          loadedPages = emptyMap(), loadingPages = emptySet(), scrollTo = null,

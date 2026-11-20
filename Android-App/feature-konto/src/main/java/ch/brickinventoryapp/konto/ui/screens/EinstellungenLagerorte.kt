@@ -14,13 +14,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.components.Abschnitt
-import ch.brickinventoryapp.ui.components.ErfassenDialog
-import ch.brickinventoryapp.ui.components.Rueckfrage
-import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.ui.components.AddDialog
+import ch.brickinventoryapp.ui.components.Prompt
+import ch.brickinventoryapp.model.fach.LocationEntryView
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenAktionen
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
@@ -28,7 +28,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Nur die eigenen: Fremde Regale umzubenennen wäre ein Versehen — lesen weit, schreiben eng.
  */
 @Composable
-internal fun LagerorteCard(lager: LagerUiState, aktionen: EinstellungenAktionen) {
+internal fun LocationsCard(lager: LagerUiState, aktionen: EinstellungenAktionen) {
     // Welcher Dialog offen ist, überlebt eine Drehung: Wer gerade umbenennt, soll
     // danach nicht vor der Liste stehen.
     var neu by rememberSaveable { mutableStateOf(false) }
@@ -39,19 +39,19 @@ internal fun LagerorteCard(lager: LagerUiState, aktionen: EinstellungenAktionen)
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-    Abschnitt(titel = null, innenAbstand = false) {
+    Abschnitt(titel = null, innerGap = false) {
         if (lager.eigene.isEmpty()) {
             ListItem(headlineContent = { Text(stringResource(R.string.storage_empty)) },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent))
         }
         lager.eigene.forEachIndexed { i, ort ->
             if (i > 0) HorizontalDivider()
-            LagerortZeile(
+            LocationRow(
                 ort = ort,
-                istVorgabe = lager.vorgabe?.id == ort.id,
-                onVorgabe = { aktionen.schalteLagerortVorgabe(ort.id, it) },
-                onUmbenennen = { umbenennen = ort.id },
-                onLoeschen = { loeschen = ort.id },
+                isDefault = lager.vorgabe?.id == ort.id,
+                onDefault = { aktionen.switchLocationDefault(ort.id, it) },
+                renameOn = { umbenennen = ort.id },
+                deleteOn = { loeschen = ort.id },
             )
         }
     }
@@ -59,35 +59,35 @@ internal fun LagerorteCard(lager: LagerUiState, aktionen: EinstellungenAktionen)
     // Hinzufügen in einer Unterseite: Knopf in voller Breite wie in Konto und Haushalt.
     // Der schwebende Knopf gehört dem Hauptobjekt eines Reiters (Sets, Merkposten).
     Button(onClick = { neu = true }, modifier = Modifier.fillMaxWidth()) {
-        Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
+        Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
         Text(stringResource(R.string.storage_add_button))
     }
 
-    if (neu) LagerortNameDialog(
+    if (neu) LocationNameDialog(
         titel = stringResource(R.string.storage_new),
         start = "",
         bestaetigen = stringResource(R.string.storage_add),
-        onFertig = { name -> neu = false; aktionen.legeLagerortAn(name) },
+        onFertig = { name -> neu = false; aktionen.putLocationAn(name) },
         onAbbrechen = { neu = false },
     )
     lager.eigene.firstOrNull { it.id == umbenennen }?.let { ort ->
         // Umbenennen schreibt alle Zuordnungen mit um — darum ein eigener Schritt mit
         // „Speichern“ statt Speichern beim Tippen.
-        LagerortNameDialog(
+        LocationNameDialog(
             titel = stringResource(R.string.storage_rename_title),
             start = ort.name,
             bestaetigen = stringResource(R.string.settings_save),
-            onFertig = { name -> umbenennen = null; if (name != ort.name) aktionen.benenneLagerortUm(ort.id, name) },
+            onFertig = { name -> umbenennen = null; if (name != ort.name) aktionen.nameLocationUm(ort.id, name) },
             onAbbrechen = { umbenennen = null },
         )
     }
     lager.eigene.firstOrNull { it.id == loeschen }?.let { ort ->
-        Rueckfrage(
+        Prompt(
             titel = stringResource(R.string.storage_delete_title),
             text = stringResource(R.string.storage_delete_text, ort.name),
             bestaetigen = stringResource(R.string.common_delete),
-            onBestaetigen = { loeschen = null; aktionen.lagerortLoeschenVormerken(ort) },
+            onBestaetigen = { loeschen = null; aktionen.locationDeleteReserve(ort) },
             onAbbrechen = { loeschen = null },
             symbol = Icons.Default.Delete,
         )
@@ -100,41 +100,41 @@ internal fun LagerorteCard(lager: LagerUiState, aktionen: EinstellungenAktionen)
  * unterscheidet er sich in der Form (gefüllt/umrissen), nicht nur in der Farbe.
  */
 @Composable
-private fun LagerortZeile(
-    ort: LagerortEintragAnsicht,
-    istVorgabe: Boolean,
-    onVorgabe: (Boolean) -> Unit,
-    onUmbenennen: () -> Unit,
-    onLoeschen: () -> Unit,
+private fun LocationRow(
+    ort: LocationEntryView,
+    isDefault: Boolean,
+    onDefault: (Boolean) -> Unit,
+    renameOn: () -> Unit,
+    deleteOn: () -> Unit,
 ) {
-    var menue by rememberSaveable { mutableStateOf(false) }
+    var menu by rememberSaveable { mutableStateOf(false) }
     ListItem(
         headlineContent = { Text(ort.name, maxLines = 2, overflow = TextOverflow.Ellipsis) },
-        supportingContent = if (istVorgabe) ({ Text(stringResource(R.string.storage_default_label)) }) else null,
+        supportingContent = if (isDefault) ({ Text(stringResource(R.string.storage_default_label)) }) else null,
         leadingContent = { Icon(Icons.Default.Inventory2, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
         trailingContent = {
             Row {
-                IconToggleButton(checked = istVorgabe, onCheckedChange = { onVorgabe(istVorgabe) }) {
-                    Icon(if (istVorgabe) Icons.Default.Star else Icons.Default.StarBorder,
+                IconToggleButton(checked = isDefault, onCheckedChange = { onDefault(isDefault) }) {
+                    Icon(if (isDefault) Icons.Default.Star else Icons.Default.StarBorder,
                         stringResource(R.string.storage_vorgabe_cd, ort.name),
-                        tint = if (istVorgabe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                        tint = if (isDefault) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Box {
                     MitTooltip(stringResource(R.string.storage_menu_cd, ort.name)) {
-                        IconButton(onClick = { menue = true }) {
+                        IconButton(onClick = { menu = true }) {
                             Icon(Icons.Default.MoreVert, stringResource(R.string.storage_menu_cd, ort.name))
                         }
                     }
-                    DropdownMenu(menue, { menue = false }) {
+                    DropdownMenu(menu, { menu = false }) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.storage_rename)) },
                             leadingIcon = { Icon(Icons.Default.Edit, null) },
-                            onClick = { menue = false; onUmbenennen() },
+                            onClick = { menu = false; renameOn() },
                         )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.common_delete)) },
                             leadingIcon = { Icon(Icons.Default.Delete, null) },
-                            onClick = { menue = false; onLoeschen() },
+                            onClick = { menu = false; deleteOn() },
                         )
                     }
                 }
@@ -146,7 +146,7 @@ private fun LagerortZeile(
 
 /** Name eines Lagerorts eingeben — für Neu und Umbenennen dieselbe Maske. */
 @Composable
-private fun LagerortNameDialog(
+private fun LocationNameDialog(
     titel: String,
     start: String,
     bestaetigen: String,
@@ -154,12 +154,12 @@ private fun LagerortNameDialog(
     onAbbrechen: () -> Unit,
 ) {
     var name by rememberSaveable { mutableStateOf(start) }
-    ErfassenDialog(
+    AddDialog(
         titel = titel,
         bestaetigen = bestaetigen,
         onBestaetigen = { onFertig(name.trim()) },
         onAbbrechen = onAbbrechen,
-        bestaetigenAn = name.isNotBlank(),
+        confirmAn = name.isNotBlank(),
         geaendert = name != start,
     ) {
         OutlinedTextField(

@@ -20,25 +20,25 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.model.ui.Listenansicht
+import ch.brickinventoryapp.model.ui.ListView
 
 /**
  * Umschalter Karten/Tabelle als zwei Chips: Bei zwei Möglichkeiten wäre ein
  * Aufklappmenü ein Klick zu viel, und die Wahl ist ohne Öffnen sichtbar.
  */
 @Composable
-fun AnsichtUmschalter(
-    aktuell: Listenansicht,
-    onWechsel: (Listenansicht) -> Unit,
+fun ViewToggle(
+    aktuell: ListView,
+    onSwitch: (ListView) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SegmentWahl(
+    SegmentChoice(
         optionen = listOf(
-            Listenansicht.KARTEN to stringResource(R.string.view_cards),
-            Listenansicht.TABELLE to stringResource(R.string.view_table),
+            ListView.KARTEN to stringResource(R.string.view_cards),
+            ListView.TABLE to stringResource(R.string.view_table),
         ),
         gewaehlt = aktuell,
-        onWahl = onWechsel,
+        onWahl = onSwitch,
         modifier = modifier,
     )
 }
@@ -52,23 +52,23 @@ fun AnsichtUmschalter(
 @Composable
 fun Suchfeld(
     wert: String,
-    onWert: (String) -> Unit,
+    onValue: (String) -> Unit,
     platzhalter: String,
     modifier: Modifier = Modifier,
 ) {
     // Bei normaler Schrift eine Zeile: Ein umbrechender Platzhalter machte das Feld doppelt
     // so hoch wie den Filterknopf daneben. Bei grosser Schrift bricht er um, statt bei
     // „Nummer oder…“ abzureissen.
-    val zeilen = if (grosseSchrift()) PLATZHALTER_ZEILEN_GROSS else 1
+    val zeilen = if (largeFont()) PLACEHOLDER_ROWS_LARGE else 1
     OutlinedTextField(
         value = wert,
-        onValueChange = onWert,
+        onValueChange = onValue,
         placeholder = { Text(platzhalter, maxLines = zeilen, overflow = TextOverflow.Ellipsis) },
-        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(mitSchrift(20.dp))) },
+        leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(withFont(20.dp))) },
         trailingIcon = {
             if (wert.isNotEmpty()) {
                 MitTooltip(stringResource(R.string.cd_search_clear)) {
-                    IconButton(onClick = { onWert("") }) {
+                    IconButton(onClick = { onValue("") }) {
                         Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear))
                     }
                 }
@@ -82,4 +82,4 @@ fun Suchfeld(
     )
 }
 
-private const val PLATZHALTER_ZEILEN_GROSS = 3
+private const val PLACEHOLDER_ROWS_LARGE = 3

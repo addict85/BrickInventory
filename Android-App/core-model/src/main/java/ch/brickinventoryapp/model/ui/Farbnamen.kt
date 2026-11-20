@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.model.ui
 
-import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.ColorView
 import ch.brickinventoryapp.model.fach.OHNE_FARBE
 
 /**
@@ -8,15 +8,15 @@ import ch.brickinventoryapp.model.fach.OHNE_FARBE
  * Die Auswahl führt „keine Farbe“ selbst, in der Sprache der App; sonst stünde
  * dieselbe Wahl zweimal da.
  */
-fun ohneKeineFarbe(farben: List<FarbeAnsicht>) =
+fun withoutNoColor(farben: List<ColorView>) =
     farben.filter { it.id != OHNE_FARBE }
 
 /**
- * Der Name der heutigen Farbe: KEINE_FARBE heisst [keineFarbe], nie „Farbe
+ * Der Name der heutigen Farbe: KEINE_FARBE heisst [noColor], nie „Farbe
  * 9999“; sonst der Name aus der Liste, dann der gespeicherte. Null, wenn
  * keiner bekannt ist — dann nennt die Anzeige die Nummer.
  */
-fun farbName(farben: List<FarbeAnsicht>, aktuell: Int,
-             aktuellerName: String?, keineFarbe: String): String? =
-    if (aktuell == OHNE_FARBE) keineFarbe
+fun farbName(farben: List<ColorView>, aktuell: Int,
+             aktuellerName: String?, noColor: String): String? =
+    if (aktuell == OHNE_FARBE) noColor
     else farben.firstOrNull { it.id == aktuell }?.name ?: aktuellerName?.takeIf { it.isNotBlank() }

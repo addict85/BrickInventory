@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.zustand.ui
 
-import ch.brickinventoryapp.model.fach.LagerortAnsicht
-import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
-import ch.brickinventoryapp.model.fach.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.LocationView
+import ch.brickinventoryapp.model.fach.LocationEntryView
+import ch.brickinventoryapp.model.fach.MemberView
 import ch.brickinventoryapp.model.data.ScopeFilter
 
 /*
@@ -12,8 +12,8 @@ import ch.brickinventoryapp.model.data.ScopeFilter
  * neu zeichnen.
  */
 
-/** Kontofilter und Haushaltskonten — gehalten von [Blickfeld]. */
-data class BlickfeldUiState(
+/** Kontofilter und Haushaltskonten — gehalten von [Scope]. */
+data class ScopeUiState(
     /**
      * Kontofilter je Ansicht. Er reist als
      * `accounts=` mit und wird nur auf dem Server übersetzt, damit Liste, Gesamtzahl,
@@ -25,7 +25,7 @@ data class BlickfeldUiState(
      * mit Unterkonten — erst dann erscheinen Kontofilter, Kontoauswahl beim
      * Erfassen und der Verschieben-Weg.
      */
-    val householdMembers: List<MitgliedAnsicht> = emptyList(),
+    val householdMembers: List<MemberView> = emptyList(),
 )
 
 /**
@@ -38,20 +38,20 @@ data class LagerUiState(
     /** Gewaehlter Lagerort JE ANSICHT — leer heisst „nicht gefiltert". */
     val modi: Map<ScopeFilter.View, String> = emptyMap(),
     /** Die belegten Lagerorte im Blickfeld — speist den FILTER. */
-    val orte: List<LagerortAnsicht> = emptyList(),
+    val orte: List<LocationView> = emptyList(),
     /**
      * Der Vorrat für das gerade offene Detail — was zur Wahl steht. Nicht [orte]
      * (belegte Orte des Blickfelds), sondern die wählbaren Orte des Besitzers; beim
      * Set des Enkels die seinen.
      */
-    val vorrat: List<LagerortEintragAnsicht> = emptyList(),
+    val stock: List<LocationEntryView> = emptyList(),
     /** Die EIGENEN Orte — fuer die Verwaltung in den Einstellungen. */
-    val eigene: List<LagerortEintragAnsicht> = emptyList(),
+    val eigene: List<LocationEntryView> = emptyList(),
     /**
      * Der Ort, der beim Erfassen schon dasteht (der Stern); null heisst keine Vorgabe.
      * Kommt mit [eigene] aus derselben Antwort — Vorrat und Stern sind eine Auskunft.
      */
-    val vorgabe: LagerortEintragAnsicht? = null,
+    val vorgabe: LocationEntryView? = null,
 )
 
 /**
@@ -60,6 +60,6 @@ data class LagerUiState(
  * wird sofort nach dem Navigieren, sonst spränge die App bei der nächsten
  * Rekomposition erneut ins Detail.
  */
-data class MeldungsZielUiState(
+data class MessageTargetUiState(
     val setNummer: String? = null,
 )

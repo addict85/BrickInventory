@@ -1,17 +1,17 @@
 Gegenprobe: der Bestand der Teileliste wird unter einem anderen Schlüssel gesucht
 Modul: core-data
-Test: ch.brickinventoryapp.data.TeileFachwerteTest
+Test: ch.brickinventoryapp.data.PartsSlotValuesTest
 Rot: der Bestand steht je gefragtem Teil
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/TeileRepositoryImpl.kt
 @@ -97,7 +97,7 @@
-                               konten: Kontoauswahl?): Ergebnis<Map<Teilschluessel, TeilBestand>> =
+                               konten: Kontoauswahl?): Ergebnis<Map<PartialKey, PartInventory>> =
          sicherAufrufen { api.getOwnedParts(BestandRequest(teile = teile.map { BestandTeil(it.nummer, it.farbe) }), konten?.anfrage) }
-             .zugesagt({ it.success }) { r ->
--                teile.mapNotNull { t -> r.bestand["${t.nummer}|${t.farbe}"]?.let { t to TeilBestand(it.gesamt, it.lose) } }.toMap()
-+                teile.mapNotNull { t -> r.bestand["${t.nummer}-${t.farbe}"]?.let { t to TeilBestand(it.gesamt, it.lose) } }.toMap()
+             .promised({ it.success }) { r ->
+-                teile.mapNotNull { t -> r.bestand["${t.nummer}|${t.farbe}"]?.let { t to PartInventory(it.gesamt, it.lose) } }.toMap()
++                teile.mapNotNull { t -> r.bestand["${t.nummer}-${t.farbe}"]?.let { t to PartInventory(it.gesamt, it.lose) } }.toMap()
              }
  
      /** Lagerort eines Teils setzen. Leerer Text loescht ihn. */

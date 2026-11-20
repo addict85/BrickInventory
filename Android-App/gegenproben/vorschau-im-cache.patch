@@ -1,6 +1,6 @@
 Gegenprobe: die Vorschau-Ablage liegt unter cacheDir, wo Android aufräumen darf
 Modul: core-data
-Test: ch.brickinventoryapp.data.VorschauGeraetTest
+Test: ch.brickinventoryapp.data.PreviewDeviceTest
 Rot: die Ablage liegt unter filesDir
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
@@ -10,8 +10,8 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache
      private val namen: () -> ByteArray,
  ) : Vorschauablage {
      @Inject constructor(@ApplicationContext context: Context, ablage: Ablageschluessel) :
--        this({ File(context.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") }, { ablage.fuer("namen") })
-+        this({ File(context.cacheDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") }, { ablage.fuer("namen") })
+-        this({ File(context.filesDir, "vorschau") }, StoreCipher { ablage.fuer("vorschau") }, { ablage.fuer("namen") })
++        this({ File(context.cacheDir, "vorschau") }, StoreCipher { ablage.fuer("vorschau") }, { ablage.fuer("namen") })
  
      companion object {
          /**

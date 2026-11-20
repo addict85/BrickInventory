@@ -5,8 +5,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import coil3.compose.AsyncImagePainter
-import ch.brickinventoryapp.ui.components.katalogName
-import ch.brickinventoryapp.ui.components.fokusRahmen
+import ch.brickinventoryapp.ui.components.catalogName
+import ch.brickinventoryapp.ui.components.focusFrame
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
@@ -31,10 +31,10 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.stueckzahl
-import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.readAloudAs
 import ch.brickinventoryapp.ui.components.ProduktBild
-import ch.brickinventoryapp.ui.components.SegmentWahl
-import ch.brickinventoryapp.ui.components.bewegungReduziert
+import ch.brickinventoryapp.ui.components.SegmentChoice
+import ch.brickinventoryapp.ui.components.movementReduced
 import ch.brickinventoryapp.ui.util.fmtInt
 
 /**
@@ -49,7 +49,7 @@ import ch.brickinventoryapp.ui.util.fmtInt
  * @param name        Bezeichnung
  * @param menge       rechts stehende Menge
  * @param farbe       Farbpunkt vor dem Namen (nur Teile)
- * @param zweiteZeile Kategorie/Sets bzw. Erfassungsdatum, oder null
+ * @param secondRow Kategorie/Sets bzw. Erfassungsdatum, oder null
  * @param onBildFehler Rückfall auf die volle Auflösung
  *         (rememberTileImageWithFallback)
  * @param onClick Antippen der ganzen Zeile, oder null für „nicht anklickbar“
@@ -66,7 +66,7 @@ fun TabellenZeile(
     imageLoader: ImageLoader,
     modifier: Modifier = Modifier,
     farbe: Color? = null,
-    zweiteZeile: String? = null,
+    secondRow: String? = null,
     onBildFehler: () -> Unit = {},
     onClick: (() -> Unit)? = null,
     onClickLabel: String? = null,
@@ -77,7 +77,7 @@ fun TabellenZeile(
     Surface(
         modifier = modifier.fillMaxWidth()
             .let {
-                if (onClick != null) it.fokusRahmen(Formen.etikett).clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
+                if (onClick != null) it.focusFrame(Formen.etikett).clickable(onClickLabel = onClickLabel, role = Role.Button, onClick = onClick)
                 else it
             },
         color = MaterialTheme.colorScheme.surface,
@@ -89,7 +89,7 @@ fun TabellenZeile(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 ProduktBild(
-                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
+                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
                     imageLoader = imageLoader,
                     // Ohne Beschreibung: Der Name steht daneben, TalkBack las ihn sonst zweimal.
                     contentDescription = null,
@@ -98,12 +98,12 @@ fun TabellenZeile(
                     },
                     modifier = Modifier.size(36.dp).clip(Formen.etikett),
                     contentScale = ContentScale.Fit,
-                    ersatzGroesse = 20.dp,
+                    fallbackSize = 20.dp,
                 )
-                TabellenText(nummer, name, farbe, zweiteZeile, Modifier.weight(1f))
+                TablesText(nummer, name, farbe, secondRow, Modifier.weight(1f))
                 Text(
                     fmtInt(menge),
-                    Modifier.vorgelesenAls(stueckzahl(menge)),
+                    Modifier.readAloudAs(stueckzahl(menge)),
                     fontFamily = FontFamily.Monospace,
                     fontWeight = FontWeight.Bold,
                     style = MaterialTheme.typography.bodyMedium,
@@ -116,7 +116,7 @@ fun TabellenZeile(
 
 /** Nummer mit Farbpunkt, Name und zweite Zeile: die Mitte einer [TabellenZeile]. */
 @Composable
-private fun TabellenText(nummer: String, name: String?, farbe: Color?, zweiteZeile: String?, modifier: Modifier) {
+private fun TablesText(nummer: String, name: String?, farbe: Color?, secondRow: String?, modifier: Modifier) {
     Column(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -135,17 +135,17 @@ private fun TabellenText(nummer: String, name: String?, farbe: Color?, zweiteZei
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        // Katalognamen sind englisch; TalkBack spricht sie so aus (katalogName).
+        // Katalognamen sind englisch; TalkBack spricht sie so aus (catalogName).
         Text(
-            name?.let { katalogName(it) } ?: AnnotatedString(stringResource(R.string.name_unknown)),
+            name?.let { catalogName(it) } ?: AnnotatedString(stringResource(R.string.name_unknown)),
             color = if (name == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodySmall,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        if (!zweiteZeile.isNullOrBlank()) {
+        if (!secondRow.isNullOrBlank()) {
             Text(
-                zweiteZeile,
+                secondRow,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -167,7 +167,7 @@ fun Zustandszeile(
     onZustand: (Zustand) -> Unit,
     modifier: Modifier = Modifier,
     /** Durchgereicht an [ConditionToggle] — siehe dort. */
-    optionen: List<Pair<Zustand, Int>> = ZUSTAND_NEU_GEBRAUCHT,
+    optionen: List<Pair<Zustand, Int>> = STATE_NEW_USED,
 ) {
     // Ab 130 % Schrift steht die Beschriftung über der Wahl: In der festen Spalte
     // daneben brach „Zustan|d“ mitten im Wort.
@@ -196,7 +196,7 @@ fun Zustandszeile(
  * Die Vorbelegung von [ConditionToggle] und [Zustandszeile] — an einer Stelle,
  * damit die beiden nicht mit verschiedenen Listen dastehen.
  */
-val ZUSTAND_NEU_GEBRAUCHT: List<Pair<Zustand, Int>> =
+val STATE_NEW_USED: List<Pair<Zustand, Int>> =
     listOf(Zustand.NEU to R.string.condition_new, Zustand.GEBRAUCHT to R.string.condition_used)
 
 /**
@@ -208,11 +208,11 @@ fun ConditionToggle(
     onSelect: (Zustand) -> Unit,
     modifier: Modifier = Modifier,
     /** Wert → Beschriftung, vorbelegt mit „neu / gebraucht“. */
-    optionen: List<Pair<Zustand, Int>> = ZUSTAND_NEU_GEBRAUCHT,
+    optionen: List<Pair<Zustand, Int>> = STATE_NEW_USED,
 ) {
-    // Dieselbe Segmentschaltfläche wie jede Einfachwahl der App (SegmentWahl): Die
+    // Dieselbe Segmentschaltfläche wie jede Einfachwahl der App (SegmentChoice): Die
     // eigene Fassung mit Flächen ohne Rand liess „Gebraucht“ wie Text aussehen.
-    SegmentWahl(
+    SegmentChoice(
         optionen = optionen.map { (wert, text) -> wert to stringResource(text) },
         gewaehlt = selected,
         onWahl = onSelect,

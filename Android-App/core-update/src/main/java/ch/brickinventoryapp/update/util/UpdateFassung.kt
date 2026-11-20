@@ -6,5 +6,5 @@ package ch.brickinventoryapp.update.util
  * Adresse; installiert würde dann eine alte Fassung (oder Android lehnt sie als
  * Downgrade ab), und die App böte dasselbe Update immer wieder an.
  */
-fun fassungPasst(imApk: Long?, gemeldet: Int, laufend: Int): Boolean =
-    imApk != null && imApk == gemeldet.toLong() && imApk > laufend
+fun versionFits(inApk: Long?, gemeldet: Int, laufend: Int): Boolean =
+    inApk != null && inApk == gemeldet.toLong() && inApk > laufend

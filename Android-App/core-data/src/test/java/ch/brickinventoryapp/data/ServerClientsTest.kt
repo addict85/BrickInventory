@@ -7,12 +7,12 @@ import ch.brickinventoryapp.data.cache.VorschauSpeicher
 import ch.brickinventoryapp.data.di.Netzablagen
 import ch.brickinventoryapp.data.di.NetzModule
 import ch.brickinventoryapp.data.di.buildInterceptorClient
-import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.sicherheit.StoreCipher
 import ch.brickinventoryapp.sicherheit.Ablageschluessel
-import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
-import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
+import ch.brickinventoryapp.sicherheit.TokenEncryption
+import ch.brickinventoryapp.sicherheit.CertificateQuestion
 import ch.brickinventoryapp.netz.di.ServerWaechter
-import ch.brickinventoryapp.netz.util.BildHostWaechter
+import ch.brickinventoryapp.netz.util.ImageHostGuard
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import coil3.request.ImageRequest
 import kotlinx.coroutines.CoroutineScope
@@ -46,7 +46,7 @@ import java.util.concurrent.TimeUnit
  *
  * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
  *   server-client-folgt-umleitung  followRedirects(false) in buildInterceptorClient entfernt → rot „kein Server-Client …“
- *   bild-client-ohne-waechter      BildHostWaechter nicht eingehängt → rot „der Bild-Client spricht …“
+ *   bild-client-ohne-waechter      ImageHostGuard nicht eingehängt → rot „der Bild-Client spricht …“
  *   bild-client-ohne-token         der ServerWaechter aus dem Bild-Client genommen → rot „beide Clients …“
  *   bild-client-ohne-rueckfall     der FORCE_CACHE-Rückfall wirft weiter → rot „ist der Server …“
  *   coil-ohne-bild-client          Coil ohne den Fetcher des Bild-Clients → rot „Coil lädt …“
@@ -60,7 +60,7 @@ class ServerClientsTest {
     private val server = MockWebServer().apply { start() }
 
     /** Robolectric hat keinen AndroidKeyStore; umhüllt wird hier nur zum Schein. */
-    private object Klartresor : TokenVerschluesselung {
+    private object Klartresor : TokenEncryption {
         override fun verschluessle(klartext: String) = klartext
         override fun entschluessle(gespeichert: String) = gespeichert
     }
@@ -74,47 +74,47 @@ class ServerClientsTest {
     private val netz: Netzablagen by lazy {
         runBlocking {
             val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "clients-${System.nanoTime()}.preferences_pb") }
-            val geraet = GeraeteAblage(ctx, store, testVertrauenschiffre())
-            val token = TokenAblage(store, Klartresor, geraet, bereich).also { it.warteAufStart() }
+            val geraet = DevicesStore(ctx, store, testVertrauenschiffre())
+            val token = TokenAblage(store, Klartresor, geraet, bereich).also { it.waitOnStart() }
             token.saveServerUrl(server.url("/").toString())
             Netzablagen(token, geraet)
         }
     }
 
     private fun apiClient() = buildInterceptorClient(netz, isApiClient = true, sessionExpired = SessionExpiredSignal(),
-        ctx = ctx, frage = ZertifikatsFrage())
+        ctx = ctx, frage = CertificateQuestion())
 
-    private fun bildClient() = NetzModule.provideImageOkHttpClient(ctx, netz, SessionExpiredSignal(),
-        VorschauSpeicher({ File(ctx.filesDir, "vorschau-clients") }, AblageChiffre { ByteArray(32) { 2 } }, { ByteArray(32) { 12 } }),
-        ZertifikatsFrage(), Ablageschluessel(File(ctx.noBackupFilesDir, "clients.schluessel"), Klartresor))
+    private fun imageClient() = NetzModule.provideImageOkHttpClient(ctx, netz, SessionExpiredSignal(),
+        VorschauSpeicher({ File(ctx.filesDir, "vorschau-clients") }, StoreCipher { ByteArray(32) { 2 } }, { ByteArray(32) { 12 } }),
+        CertificateQuestion(), Ablageschluessel(File(ctx.noBackupFilesDir, "clients.schluessel"), Klartresor))
 
-    private fun hole(client: OkHttpClient, adresse: String) =
+    private fun fetch(client: OkHttpClient, adresse: String) =
         client.newCall(Request.Builder().url(adresse).build()).execute().use { it.code to it.body.string() }
 
     @Test
     fun `kein Server-Client folgt einer Umleitung selbst`() {
-        for ((name, c) in listOf("api" to apiClient(), "bild" to bildClient())) {
+        for ((name, c) in listOf("api" to apiClient(), "bild" to imageClient())) {
             assertFalse("$name: OkHttp folgte Umleitungen am Wächter vorbei", c.followRedirects)
             assertFalse("$name: OkHttp folgte einer Umleitung von https auf http", c.followSslRedirects)
         }
     }
 
-    /** Der ServerWaechter hängt den Token an (ServerWaechterTest); ohne ihn lüde jedes Bild mit 401. */
+    /** Der ServerWaechter hängt den Token an (ServerGuardTest); ohne ihn lüde jedes Bild mit 401. */
     @Test
     fun `beide Clients haengen den Server-Waechter ein`() {
-        for ((name, c) in listOf("api" to apiClient(), "bild" to bildClient())) {
+        for ((name, c) in listOf("api" to apiClient(), "bild" to imageClient())) {
             assertTrue("$name: ohne ServerWaechter ginge kein Token mit", c.interceptors.any { it is ServerWaechter })
         }
     }
 
     @Test
     fun `der Bild-Client spricht nur ueber den Host-Waechter und drosselt mit Mass`() {
-        val bild = bildClient()
-        assertTrue("Der Bild-Client lädt ohne Host-Wächter", bild.interceptors.any { it is BildHostWaechter })
-        val jeHost = bild.dispatcher.maxRequestsPerHost
-        assertTrue("maxRequestsPerHost=$jeHost ist zu eng für eine Kachelwand", jeHost >= 6)
+        val bild = imageClient()
+        assertTrue("Der Bild-Client lädt ohne Host-Wächter", bild.interceptors.any { it is ImageHostGuard })
+        val perHost = bild.dispatcher.maxRequestsPerHost
+        assertTrue("maxRequestsPerHost=$perHost ist zu eng für eine Kachelwand", perHost >= 6)
         assertTrue("maxRequests=${bild.dispatcher.maxRequests} ist keine bewusste Drosselung",
-            bild.dispatcher.maxRequests in jeHost..32)
+            bild.dispatcher.maxRequests in perHost..32)
         assertNotNull("Der Bild-Client hat keinen Zwischenspeicher", bild.cache)
         assertNull("Der API-Client hat einen Zwischenspeicher: Eine Änderung könnte aus ihm beantwortet werden",
             apiClient().cache)
@@ -123,17 +123,17 @@ class ServerClientsTest {
     @Test
     fun `ist der Server nicht erreichbar, kommt das Bild aus dem Zwischenspeicher`() {
         server.enqueue(MockResponse().setHeader("Cache-Control", "max-age=0").setBody("bild-10179"))
-        val bild = bildClient()
+        val bild = imageClient()
         val adresse = server.url("/api/v1/images/set/10179-1").toString()
-        assertEquals(200 to "bild-10179", hole(bild, adresse))
+        assertEquals(200 to "bild-10179", fetch(bild, adresse))
         server.shutdown()
-        assertEquals("Offline bleibt die Kachel leer", 200 to "bild-10179", hole(bild, adresse))
+        assertEquals("Offline bleibt die Kachel leer", 200 to "bild-10179", fetch(bild, adresse))
     }
 
     @Test
     fun `Coil laedt ueber den Bild-Client und legt keinen eigenen Plattencache an`() {
         server.enqueue(MockResponse().setBody("kein Bild"))
-        val loader = NetzModule.provideImageLoader(ctx, bildClient())
+        val loader = NetzModule.provideImageLoader(ctx, imageClient())
         assertNull("Coil hielte dieselben Bytes noch einmal, im Klartext", loader.diskCache)
         runBlocking { loader.execute(ImageRequest.Builder(ctx).data(server.url("/api/v1/images/set/1-1").toString()).build()) }
         val anfrage = server.takeRequest(5, TimeUnit.SECONDS)

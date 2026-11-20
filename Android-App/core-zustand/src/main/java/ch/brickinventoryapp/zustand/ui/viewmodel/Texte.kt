@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.zustand.ui.viewmodel
 
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.netz.util.meldetDieSitzungsschicht
+import ch.brickinventoryapp.netz.util.reportsTheSessionLayer
 
 /**
  * Texte und Fehlermeldungen für die herausgelösten ViewModels.
@@ -17,7 +17,7 @@ interface Texte {
     fun meldung(fehler: Ergebnis.Fehler): String
     /** Null heisst: Die Sitzungsschicht hat den Fehler schon gemeldet. */
     fun meldungFuerSnackbar(fehler: Ergebnis.Fehler): String? =
-        if (meldetDieSitzungsschicht(fehler is Ergebnis.Fehler.Abgewiesen, angemeldet())) null else meldung(fehler)
+        if (reportsTheSessionLayer(fehler is Ergebnis.Fehler.Abgewiesen, angemeldet())) null else meldung(fehler)
     /** Liegt ein Token vor? Dieselbe Quelle, die der Interceptor liest. */
     fun angemeldet(): Boolean
 }

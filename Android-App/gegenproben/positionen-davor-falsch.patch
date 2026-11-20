@@ -1,6 +1,6 @@
 Gegenprobe: Neue Zeilen vor der ersten bleibenden landen hinter ihr
 Modul: core-offline
-Test: ch.brickinventoryapp.offline.room.PositionenTest
+Test: ch.brickinventoryapp.offline.room.PositionsTest
 Rot: neue Zeilen nehmen freie Positionen
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt

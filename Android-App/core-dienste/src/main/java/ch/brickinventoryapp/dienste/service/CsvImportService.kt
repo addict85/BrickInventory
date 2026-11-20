@@ -23,9 +23,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportStatusView
 import javax.inject.Inject
-import ch.brickinventoryapp.data.di.Anwendungsbereiche
+import ch.brickinventoryapp.data.di.Scopes
 import ch.brickinventoryapp.data.util.LanguageManager
 
 /** Der Vordergrund-Dienst eines laufenden CSV-Imports; im Test ein Zähler. */
@@ -34,7 +34,7 @@ interface CsvImportDienst {
     fun stop()
 }
 
-internal class AndroidCsvImportDienst @Inject constructor(
+internal class AndroidCsvImportService @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
 ) : CsvImportDienst {
     override fun start() = CsvImportService.start(ctx)
@@ -82,11 +82,11 @@ class CsvImportService : Service() {
         LanguageManager.localizedContext(this)
     }
 
-    @Inject lateinit var bereiche: Anwendungsbereiche
+    @Inject lateinit var areas: Scopes
 
     // Lebt mit dem Dienst (onDestroy bricht ab). lazy, weil Hilt die Felder erst
     // in super.onCreate() setzt.
-    private val serviceScope by lazy { CoroutineScope(SupervisorJob() + bereiche.io) }
+    private val serviceScope by lazy { CoroutineScope(SupervisorJob() + areas.io) }
     private var pollJob: Job? = null
 
     // Anlaufschutz, siehe applyStatus()
@@ -169,7 +169,7 @@ class CsvImportService : Service() {
      *
      * @return true solange der Import läuft, false wenn er fertig ist.
      */
-    private fun applyStatus(s: CsvImportStandAnsicht): Boolean {
+    private fun applyStatus(s: CsvImportStatusView): Boolean {
         val running = s.status?.laeuft == true
         val done    = s.done
         val total   = s.total

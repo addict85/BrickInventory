@@ -2,11 +2,11 @@ package ch.brickinventoryapp.app.csv
 
 import ch.brickinventoryapp.model.fach.Laufstatus
 /**
- * Was folgt aus einer CSV-Statusmeldung? Getrennt von CsvImportKoordinator, der
+ * Was folgt aus einer CSV-Statusmeldung? Getrennt von CsvImportCoordinator, der
  * handelt: Die Entscheidung braucht weder Dienst noch Zeit und lässt sich so als
  * Tabelle prüfen (CsvStatusReloadTest).
  */
-internal enum class CsvFolge {
+internal enum class CsvSequence {
     /** Ein Import hat gerade begonnen — der Vordergrunddienst muss anlaufen. */
     DIENST_STARTEN,
 
@@ -27,24 +27,24 @@ internal enum class CsvFolge {
  * schon sehen und der Dienst schon laufen — sonst wirkt die App zwischen
  * Annahme und erster Zeile eingefroren.
  */
-internal fun importLaeuft(status: Laufstatus?): Boolean = status?.laeuft == true
+internal fun importRunning(status: Laufstatus?): Boolean = status?.laeuft == true
 
 /**
  * Die eigentliche Regel: Nachgeladen wird beim Übergang von „läuft“ zu „fertig“, nicht in
  * jedem Zustand „fertig“.
  */
-internal fun csvFolge(warVorherAktiv: Boolean, status: Laufstatus?): CsvFolge = when {
+internal fun csvSequence(warBeforeActive: Boolean, status: Laufstatus?): CsvSequence = when {
     // Läuft: Dienst nur beim Anlaufen starten, nicht bei jeder Fortschrittszeile.
-    importLaeuft(status) -> if (warVorherAktiv) CsvFolge.NICHTS else CsvFolge.DIENST_STARTEN
+    importRunning(status) -> if (warBeforeActive) CsvSequence.NICHTS else CsvSequence.DIENST_STARTEN
 
     // Ein Fehler wird gemeldet, solange er ansteht — hier ist das Aufräumen
     // gewollt idempotent und nicht an den Übergang gebunden.
-    status == Laufstatus.FEHLER -> CsvFolge.FEHLER_AUFRAEUMEN
+    status == Laufstatus.FEHLER -> CsvSequence.FEHLER_AUFRAEUMEN
 
-    status == null -> CsvFolge.NICHTS
+    status == null -> CsvSequence.NICHTS
 
     // Fertig — aber nur nachladen, wenn vorher wirklich etwas lief.
-    warVorherAktiv -> CsvFolge.NACHLADEN
+    warBeforeActive -> CsvSequence.NACHLADEN
 
-    else -> CsvFolge.NICHTS
+    else -> CsvSequence.NICHTS
 }

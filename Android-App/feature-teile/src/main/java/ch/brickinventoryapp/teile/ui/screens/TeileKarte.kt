@@ -2,9 +2,9 @@ package ch.brickinventoryapp.teile.ui.screens
 
 import ch.brickinventoryapp.model.fach.Waehrung
 import androidx.compose.material3.Button
-import ch.brickinventoryapp.ui.components.fokusRahmen
-import ch.brickinventoryapp.ui.theme.farbeAusHex
-import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.ui.components.focusFrame
+import ch.brickinventoryapp.ui.theme.colorFromHex
+import ch.brickinventoryapp.model.fach.ManualPartView
 import ch.brickinventoryapp.model.fach.TeilAnsicht
 import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.ui.theme.Formen
@@ -35,24 +35,24 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.stueckzahl
-import ch.brickinventoryapp.ui.components.vorgelesenAls
-import ch.brickinventoryapp.ui.components.Abschnittstitel
+import ch.brickinventoryapp.ui.components.readAloudAs
+import ch.brickinventoryapp.ui.components.SectionTitle
 import ch.brickinventoryapp.ui.components.ProduktBild
-import ch.brickinventoryapp.ui.components.bewegungReduziert
-import ch.brickinventoryapp.ui.components.farbUebersetzer
-import ch.brickinventoryapp.ui.components.grosseSchrift
-import ch.brickinventoryapp.ui.components.katalogName
-import ch.brickinventoryapp.ui.components.kategorieUebersetzer
-import ch.brickinventoryapp.gemeinsam.ui.ErsatzteilPlakette
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.farbTranslator
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.catalogName
+import ch.brickinventoryapp.ui.components.categoryTranslator
+import ch.brickinventoryapp.gemeinsam.ui.SparePartBadge
 import ch.brickinventoryapp.gemeinsam.ui.ManuelleKachel
 import ch.brickinventoryapp.gemeinsam.ui.TabellenZeile
 import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
 
 @Composable
-internal fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
+internal fun ManualPartTile(part: ManualPartView, serverUrl: String, imageLoader: ImageLoader,
                    waehrung: Waehrung, onEdit: () -> Unit) {
     val farbe = remember(part.colorHex) {
-        farbeAusHex(part.colorHex)
+        colorFromHex(part.colorHex)
     }
     // Auf Nutzerwunsch läuft auch die volle Auflösung (Rückfall) über
     // den Server-Proxy, nicht direkt zum CDN — anders als bei Sets/Katalog.
@@ -65,19 +65,19 @@ internal fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, image
         imageLoader = imageLoader,
         name = part.partName ?: part.partNumber,
         menge = part.quantity,
-        zustaende = part.conditions,
+        states = part.conditions,
         zustand = part.condition,
         besitzer = part.owners,
         preis = part.avgPurchasePrice ?: part.unitPrice ?: part.purchasePrice,
         waehrung = waehrung,
         onEdit = onEdit,
         farbe = farbe,
-        farbname = part.colorName?.let { farbUebersetzer()(it) },
+        farbname = part.colorName?.let { farbTranslator()(it) },
     )
 }
 
 /** Bildfläche der Teilekachel: wächst mit der Kachel, auf dem Telefon wie bisher rund 90 dp hoch. */
-private const val TEIL_BILD_VERHAELTNIS = 4f / 3f
+private const val PART_IMAGE_RATIO = 4f / 3f
 
 @Composable
 fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
@@ -85,19 +85,19 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     val ctx = LocalContext.current
     val qty = part.totalQuantity.takeIf { it > 0 } ?: 1
     val colorObj = remember(part.colorHex) {
-        farbeAusHex(part.colorHex)
+        colorFromHex(part.colorHex)
     }
     // Auf Nutzerwunsch läuft auch die volle Auflösung (Rückfall) über
     // den Server-Proxy, nicht direkt zum CDN — anders als bei Sets/Katalog.
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
     // Ab grosser Schrift eine Listenzeile wie die Sets: Das Bild über die volle Breite
     // liess ein Teil je Bildschirm. Die Menge rückt dann vom Bild in den Text.
-    val zeile = grosseSchrift()
-    val weich = !bewegungReduziert()
+    val zeile = largeFont()
+    val weich = !movementReduced()
     val menge: @Composable () -> Unit = {
         Surface(color = MaterialTheme.colorScheme.primary, shape = Formen.marke) {
-            Text(mengeAusSet(qty), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp)
-                .vorgelesenAls(stueckzahl(qty)),
+            Text(mengeAusSet(qty), Modifier.padding(horizontal = Abstaende.tiny, vertical = 1.dp)
+                .readAloudAs(stueckzahl(qty)),
                 color = MaterialTheme.colorScheme.onPrimary,
                 style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
         }
@@ -105,7 +105,7 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
 
     // Mit der Kachel wachsend statt fest 90 dp: Auf dem Tablet stand sonst ein kleines
     // Bild über einer breiten Kachel.
-    val bildflaeche: @Composable (Modifier) -> Unit = { flaeche ->
+    val canvas: @Composable (Modifier) -> Unit = { flaeche ->
         Box(flaeche) {
             ProduktBild(
                 model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(weich).build() },
@@ -118,13 +118,13 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 modifier = Modifier.fillMaxSize()
                     .clip(Formen.kachelBildEcken),
                 contentScale = ContentScale.Fit,
-                ersatzGroesse = 32.dp,
+                fallbackSize = 32.dp,
                 // Der Bildgrund über die ganze Kachelbreite wie bei den Sets: Ein schmales
                 // Bild stand sonst als Kasten mit weissen Rändern in der Karte.
                 bildgrund = true,
-                innenAbstand = Abstaende.winzig,
+                innerGap = Abstaende.tiny,
             )
-            if (!zeile) Box(Modifier.align(Alignment.TopEnd).padding(Abstaende.winzig)) { menge() }
+            if (!zeile) Box(Modifier.align(Alignment.TopEnd).padding(Abstaende.tiny)) { menge() }
             // Color dot
             if (colorObj != null) {
                 Box(
@@ -135,15 +135,15 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
         }
     }
 
-    val texte: @Composable (Modifier) -> Unit = { spalte ->
-        Column(spalte.padding(horizontal = 7.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+    val texts: @Composable (Modifier) -> Unit = { column ->
+        Column(column.padding(horizontal = 7.dp, vertical = 5.dp), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             if (zeile) menge()
             val nummer = part.blPartNumber ?: part.partNumber
-            Text(nummer, Modifier.vorgelesenAls(stringResource(R.string.cd_teil_nummer, nummer)),
+            Text(nummer, Modifier.readAloudAs(stringResource(R.string.cd_teil_nummer, nummer)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold)
-            Text(part.partName?.let { katalogName(it) }
+            Text(part.partName?.let { catalogName(it) }
                     ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
@@ -152,13 +152,13 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 minLines = if (zeile) 1 else 2,
                 maxLines = if (zeile) 4 else 2, overflow = TextOverflow.Ellipsis)
             part.colorName?.let {
-                Text(farbUebersetzer()(it), style = MaterialTheme.typography.bodySmall,
+                Text(farbTranslator()(it), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
             // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
             // eines IST: eine Plakette „kein Ersatzteil" an jeder Kachel
             // waere Rauschen.
-            if (part.isSpare) ErsatzteilPlakette(Modifier.padding(top = Abstaende.haar))
+            if (part.isSpare) SparePartBadge(Modifier.padding(top = Abstaende.hairline))
         }
     }
 
@@ -167,29 +167,29 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
         modifier = Modifier.fillMaxWidth().heightIn(min = if (zeile) 0.dp else 164.dp)
             .semantics { selected = ausgewaehlt }
             .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
-            .let { if (onClick != null) it.fokusRahmen(Formen.leiste).clickable(role = Role.Button, onClick = onClick) else it },
+            .let { if (onClick != null) it.focusFrame(Formen.leiste).clickable(role = Role.Button, onClick = onClick) else it },
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         if (zeile) Row(verticalAlignment = Alignment.Top) {
-            bildflaeche(Modifier.width(ZEILE_BILD_BREITE).aspectRatio(TEIL_BILD_VERHAELTNIS))
-            texte(Modifier.weight(1f))
+            canvas(Modifier.width(ROW_IMAGE_WIDTH).aspectRatio(PART_IMAGE_RATIO))
+            texts(Modifier.weight(1f))
         } else Column {
-            bildflaeche(Modifier.fillMaxWidth().aspectRatio(TEIL_BILD_VERHAELTNIS))
-            texte(Modifier)
+            canvas(Modifier.fillMaxWidth().aspectRatio(PART_IMAGE_RATIO))
+            texts(Modifier)
         }
     }
 }
 
 /** Breite des Vorschaubilds, wenn die Kachel bei grosser Schrift eine Listenzeile ist. */
-private val ZEILE_BILD_BREITE = 96.dp
+private val ROW_IMAGE_WIDTH = 96.dp
 
 /** Sektions-Überschrift innerhalb der Grids (Manuell erfasst / Aus Sets). */
 @Composable
 internal fun SectionHeader(text: String) {
-    Abschnittstitel(text,
-        Modifier.padding(horizontal = Abstaende.haar, vertical = Abstaende.winzig))
+    SectionTitle(text,
+        Modifier.padding(horizontal = Abstaende.hairline, vertical = Abstaende.tiny))
 }
 
 /**
@@ -201,14 +201,14 @@ internal fun SectionHeader(text: String) {
 internal fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                  onClick: (() -> Unit)? = null) {
     val farbe = remember(part.colorHex) {
-        farbeAusHex(part.colorHex)
+        colorFromHex(part.colorHex)
     }
-    val (bildUrl, onFehler) = rememberTileImageWithFallback(
+    val (bildUrl, onError) = rememberTileImageWithFallback(
         serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
     // Kategorie und Sets in einer Zeile, mit „·" getrennt — und nur, was da
     // ist. Ein leeres „ · " sieht nach einem fehlenden Wert aus.
     val ersatzteil = stringResource(R.string.parts_spare_tag)
-    val kategorie = kategorieUebersetzer()
+    val kategorie = categoryTranslator()
     val zweite = listOfNotNull(
         part.categoryName?.takeIf { it.isNotBlank() }?.let(kategorie),
         part.inSets?.takeIf { it.isNotBlank() }?.replace(",", ", "),
@@ -225,8 +225,8 @@ internal fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: Ima
         menge = part.totalQuantity.takeIf { it > 0 } ?: 1,
         imageLoader = imageLoader,
         farbe = farbe,
-        zweiteZeile = zweite,
-        onBildFehler = onFehler,
+        secondRow = zweite,
+        onBildFehler = onError,
         onClick = onClick,
     )
 }

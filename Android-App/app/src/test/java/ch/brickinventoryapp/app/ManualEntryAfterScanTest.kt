@@ -19,7 +19,7 @@ class ManualEntryAfterScanTest {
     // Gemeinsame Fassung statt einer eigenen Kopie je Testdatei — siehe
     // Quellen.kt.
     private fun lies(rel: String) = Quellen.lies(rel)
-    private fun code(src: String) = Quellen.ohneKommentare(src)
+    private fun code(src: String) = Quellen.withoutComments(src)
 
     @Test
     fun `jeder Scanner-Einstieg reagiert darauf`() {
@@ -58,11 +58,11 @@ class ManualEntryAfterScanTest {
             "Der Cursor wird nicht bei jeder Anzeige ins Set-Feld gesetzt"
         }
         // Der Anker muss am SET-Feld hängen, nicht an Menge oder Preis.
-        val setFeld = fn.indexOf("value = setNumber")
-        val ankerAmSetFeld = fn.indexOf("focusRequester(setFeldFokus)")
+        val setField = fn.indexOf("value = setNumber")
+        val anchorAtSetField = fn.indexOf("focusRequester(setFeldFokus)")
         // Im selben Feld heisst: vor dem nächsten Eingabefeld (Menge, Preis).
-        val naechstesFeld = fn.indexOf("OutlinedTextField(", setFeld).let { if (it < 0) fn.length else it }
-        assert(setFeld >= 0 && ankerAmSetFeld in (setFeld + 1) until naechstesFeld) {
+        val nextField = fn.indexOf("OutlinedTextField(", setField).let { if (it < 0) fn.length else it }
+        assert(setField >= 0 && anchorAtSetField in (setField + 1) until nextField) {
             "Der Fokus-Anker hängt nicht am Set-Feld"
         }
     }

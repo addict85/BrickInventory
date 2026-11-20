@@ -49,7 +49,7 @@ import ch.brickinventoryapp.vertrag.SetInfoResponse
  * Teilelisten (SetsRepository). Erbt die Abfragen von Teilen und Figuren, weil
  * der Inhalt eines Sets über dieselben Adressen kommt.
  */
-interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
+interface SetsApi : PartsQueryApi, MinifigsQueryApi {
 
     // Umgezogen nach /api/v1: Seit der Zusammenfuehrung gibt es nur noch EINEN
     // Adressraum. Der Router dahinter ist derselbe wie vorher — nur die Adresse
@@ -72,7 +72,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     // geraten.
     @Multipart
     @POST("api/v1/sets/{setNumber}/instructions/upload")
-    suspend fun uploadAnleitung(
+    suspend fun uploadInstruction(
         @Path("setNumber") setNumber: String,
         @retrofit2.http.Part datei: okhttp3.MultipartBody.Part,
         @retrofit2.http.Part("description") beschreibung: okhttp3.RequestBody,
@@ -168,7 +168,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
      * Einzelroute, damit es ein Modell bleibt.
      */
     @GET("api/v1/alerts")
-    suspend fun getAlleAlarme(): Response<PreisalarmeResponse>
+    suspend fun getAllAlerts(): Response<PreisalarmeResponse>
 
     @GET("api/v1/sets/{setNumber}/alert")
     suspend fun getPreisalarme(
@@ -182,12 +182,12 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
     ): Response<PreisalarmResponse>
 
     @DELETE("api/v1/sets/{setNumber}/alert")
-    suspend fun deletePreisalarm(
+    suspend fun deletePriceAlert(
         @Path("setNumber") setNumber: String,
         @Query("condition") condition: String = "N",
     ): Response<PreisalarmResponse>
 
-    // ── Lagerort je Set (für Teile und Figuren siehe TeileApi) ──
+    // ── Lagerort je Set (für Teile und Figuren siehe PartsApi) ──
 
     @PUT("api/v1/sets/{setNumber}/storage")
     suspend fun setSetStorage(
@@ -224,14 +224,14 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
      * Regel (Aufnahmedatum bleibt, Alarm zieht mit) steht in utils/merkliste.ts.
      */
     @PUT("api/v1/wanted/{setNumber}/{condition}/inhaber")
-    suspend fun verschiebeMerkposten(
+    suspend fun moveWantedItem(
         @Path("setNumber") setNumber: String,
         @Path("condition") condition: String,
         @Body request: MerkpostenInhaberRequest,
     ): Response<MerkpostenInhaberAntwort>
 
     @DELETE("api/v1/wanted/{setNumber}/{condition}")
-    suspend fun loescheMerkposten(
+    suspend fun deleteWantedItem(
         @Path("setNumber") setNumber: String,
         @Path("condition") condition: String,
         @Query("owner_user_id") ownerUserId: Int? = null,
@@ -244,12 +244,12 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
      * Regelfall.
      */
     @GET("api/v1/wanted/{setNumber}/preise")
-    suspend fun getMerkpostenPreise(
+    suspend fun getWantedItemPrices(
         @Path("setNumber") setNumber: String,
     ): Response<MerkpostenPreiseResponse>
 
     @POST("api/v1/wanted/{setNumber}/{condition}/uebernehmen")
-    suspend fun uebernimmMerkposten(
+    suspend fun adoptWantedItem(
         @Path("setNumber") setNumber: String,
         @Path("condition") condition: String,
         @Body request: MerkpostenUebernahmeRequest,
@@ -257,7 +257,7 @@ interface SetsApi : TeileAbfrageApi, FigurenAbfrageApi {
 
     @POST("api/v1/sets/partslist-pdf")
     suspend fun startPdfJob(
-        @Body auftrag: PdfAuftragAnfrage
+        @Body job: PdfAuftragAnfrage
     ): Response<PdfAuftragAntwort>
 
     @GET("api/v1/sets/partslist-pdf/status/{jobId}")

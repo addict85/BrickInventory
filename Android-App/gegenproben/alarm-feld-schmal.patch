@@ -1,6 +1,6 @@
 Gegenprobe: Felder und Wahlen eines Alarms auch auf dem Telefon höchstens 320 dp breit
 Modul: app
-Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: Preisalarme nennen die Richtung einmal und enden am Rand der Karte
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
@@ -9,9 +9,9 @@ diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/
 @@ -261,7 +261,7 @@
  }
  
- private val BETRAG_BREITE = 320.dp
--private val TELEFON_KARTE = 420.dp
-+private val TELEFON_KARTE = 0.dp
+ private val AMOUNT_WIDTH = 320.dp
+-private val PHONE_CARD = 420.dp
++private val PHONE_CARD = 0.dp
  
  /**
   * „Aktiv“ oder „Ausgelöst“ ohne Farbe lesbar: Wort und Form (gefüllt/umrandet) tragen

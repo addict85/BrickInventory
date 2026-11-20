@@ -58,11 +58,11 @@ class AndroidApplicationKonvention : Plugin<Project> {
  */
 class AndroidUnittestKonvention : Plugin<Project> {
     override fun apply(target: Project) {
-        target.beiAndroid { android ->
+        target.atAndroid { android ->
             val unitTests = android.testOptions.unitTests
             unitTests.isIncludeAndroidResources = false
             unitTests.all { test ->
-                testprotokoll(test)
+                testLog(test)
                 // Die Fototests der App allein dauern Minuten; zwei Forks auf dem Runner der CI.
                 test.maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
             }
@@ -83,12 +83,12 @@ class JvmLibraryKonvention : Plugin<Project> {
         target.tasks.withType(KotlinJvmCompile::class.java).configureEach {
             it.compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
         }
-        target.tasks.withType(Test::class.java).configureEach { testprotokoll(it) }
+        target.tasks.withType(Test::class.java).configureEach { testLog(it) }
     }
 }
 
 /** Der volle Stack im CI-Protokoll: Der Testbericht liegt dort nur als Artefakt vor. */
-internal fun testprotokoll(test: Test) {
+internal fun testLog(test: Test) {
     test.testLogging.exceptionFormat = TestExceptionFormat.FULL
     test.testLogging.showCauses = true
     test.testLogging.showStackTraces = true
@@ -97,8 +97,8 @@ internal fun testprotokoll(test: Test) {
 /** Compose-Übersetzer, buildFeatures.compose und die Compose-Gruppe samt BOM. */
 class AndroidComposeKonvention : Plugin<Project> {
     override fun apply(target: Project) {
-        Modulkanten.oberflaecheVerstoss(target.name, listOf("brickinventory.android.compose"))?.let { throw GradleException(it) }
-        target.beiAndroid { android ->
+        Modulkanten.uiViolation(target.name, listOf("brickinventory.android.compose"))?.let { throw GradleException(it) }
+        target.atAndroid { android ->
             target.pluginAusKatalog("kotlin.compose")
             android.buildFeatures.compose = true
             val bom = target.libs.findLibrary("androidx.compose.bom").get()
@@ -111,11 +111,11 @@ class AndroidComposeKonvention : Plugin<Project> {
 /** Hilt über KSP (kein kapt). */
 class AndroidHiltKonvention : Plugin<Project> {
     override fun apply(target: Project) {
-        target.beiAndroid {
+        target.atAndroid {
             target.pluginAusKatalog("ksp")
             target.pluginAusKatalog("hilt")
-            target.bibliothek("implementation", "hilt.android")
-            target.bibliothek("ksp", "hilt.compiler")
+            target.library("implementation", "hilt.android")
+            target.library("ksp", "hilt.compiler")
             kspNacheinander(target)
         }
     }
@@ -126,7 +126,7 @@ class AndroidHiltKonvention : Plugin<Project> {
      * lässt nur die KSP-Aufgaben nacheinander laufen; Übersetzen und Tests bleiben parallel.
      */
     private fun kspNacheinander(target: Project) {
-        val dienst = target.gradle.sharedServices.registerIfAbsent("kspNacheinander", KspNacheinander::class.java) {
+        val dienst = target.gradle.sharedServices.registerIfAbsent("kspNacheinander", KspSequential::class.java) {
             it.maxParallelUsages.set(1)
         }
         target.tasks.matching { it.name.startsWith("ksp") }.configureEach { it.usesService(dienst) }
@@ -134,7 +134,7 @@ class AndroidHiltKonvention : Plugin<Project> {
 }
 
 /** Platzhalter für den Dienst, der KSP-Aufgaben einzeln laufen lässt. */
-abstract class KspNacheinander : BuildService<BuildServiceParameters.None>
+abstract class KspSequential : BuildService<BuildServiceParameters.None>
 
 /**
  * Ein Bereich: Bibliothek mit Tests, Compose und Hilt. Namespace und Kanten setzt das Modul.
@@ -148,16 +148,16 @@ class AndroidFeatureKonvention : Plugin<Project> {
         target.pluginManager.apply(AndroidComposeKonvention::class.java)
         target.pluginManager.apply(AndroidHiltKonvention::class.java)
         target.pluginManager.apply(AndroidUnittestKonvention::class.java)
-        target.bibliothek("implementation", "androidx.core.ktx")
-        target.bibliothek("implementation", "androidx.navigation.compose")
-        target.beiAndroid { android ->
+        target.library("implementation", "androidx.core.ktx")
+        target.library("implementation", "androidx.navigation.compose")
+        target.atAndroid { android ->
             // Robolectric liest Texte und Schriften aus den Ressourcen.
             android.testOptions.unitTests.isIncludeAndroidResources = true
             val bom = target.libs.findLibrary("androidx.compose.bom").get()
             target.dependencies.add("testImplementation", target.dependencies.platform(bom))
             for (alias in listOf("robolectric", "androidx.test.ext.junit", "androidx.ui.test.junit4"))
-                target.bibliothek("testImplementation", alias)
-            target.bibliothek("debugImplementation", "androidx.ui.test.manifest")
+                target.library("testImplementation", alias)
+            target.library("debugImplementation", "androidx.ui.test.manifest")
         }
     }
 }

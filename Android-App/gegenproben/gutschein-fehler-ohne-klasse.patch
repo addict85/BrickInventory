@@ -1,18 +1,18 @@
 Gegenprobe: Ladefehler der Gutscheine wieder ohne Fehlerklasse
 Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.GutscheinLeerUndFehlerTest
+Test: ch.brickinventoryapp.finanzen.VoucherEmptyAndErrorTest
 Rot: ein Serverfehler nennt den Rat seiner Klasse
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
 index c3f8e48..e30ae24 100644
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
-@@ -213,7 +213,7 @@ private fun GuthabenLaufZeile(lauf: GuthabenLauf, onAbbrechen: () -> Unit) {
- private fun LeerOderFehler(zustand: GutscheinUiState, onErneut: () -> Unit) {
+@@ -213,7 +213,7 @@ private fun BalanceRunRow(lauf: BalanceRun, onAbbrechen: () -> Unit) {
+ private fun EmptyOrError(zustand: GutscheinUiState, onErneut: () -> Unit) {
      if (zustand.gutscheine.isNotEmpty() || zustand.abruf.laedt) return
      val fehler = zustand.abruf as? Laden.Fehler
--    if (fehler != null) FehlerHinweis(fehler.meldung.satz(), onErneut, fehler.art)
-+    if (fehler != null) FehlerHinweis(fehler.meldung.satz(), onErneut, null)
+-    if (fehler != null) ErrorHint(fehler.meldung.satz(), onErneut, fehler.art)
++    if (fehler != null) ErrorHint(fehler.meldung.satz(), onErneut, null)
      else Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.mittel),
          horizontalAlignment = Alignment.CenterHorizontally,
          verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {

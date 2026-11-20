@@ -1,6 +1,6 @@
 Gegenprobe: Ein Token unter dem schwächeren Schlüssel wird nach dem Entsperren nicht hochgestuft, erst beim nächsten Start
 Modul: core-data
-Test: ch.brickinventoryapp.data.TokenTresorTest
+Test: ch.brickinventoryapp.data.TokenVaultTest
 Rot: nach dem Entsperren kommt ein Token unter dem alten Schluessel sofort unter den strengen
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
@@ -8,9 +8,9 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Token
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 @@ -405,6 +405,7 @@
       */
-     override suspend fun stufeTokenHoch() {
+     override suspend fun levelTokenHigh() {
          if (dataStore.data.first()[AUTH_TOKEN_ENC]?.let(tresor::veraltet) != true) return
 +        return
          var umgeschluesselt = false
          dataStore.edit { umgeschluesselt = umschluesseln(it) }
-         if (umgeschluesselt) fangeAusserAbbruch { tresor.vergissAltbestand() }
+         if (umgeschluesselt) fangeAusserAbbruch { tresor.forgetLegacyStock() }

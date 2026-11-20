@@ -1,18 +1,18 @@
 Gegenprobe: die Leiste unten wieder ohne Rand
 Modul: app
-Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: die Leiste haelt bei 200 Prozent Abstand zum Bildschirmrand
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 index 1f2b49e..2b7bdf8 100644
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -314,7 +314,7 @@ private fun ReiterLeiste(
+@@ -314,7 +314,7 @@ private fun TabBar(
      Surface(color = farben.leiste) {
          // Ein Rand links und rechts: Bei 200 % stiess „Mehr“ samt Punkt an den Bildschirmrand.
          BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)
--            .padding(horizontal = LEISTE_RAND)) {
+-            .padding(horizontal = BAR_EDGE)) {
 +) {
              val satz = with(dichte) {
-                 reiterSatz(ziele.map { messer.measure(it.beschriftung, stil).size.width.toFloat() },
-                     ziele.indexOfFirst { gewaehlt(it.ziel) }, maxWidth.toPx(), (Abstaende.winzig * 2).toPx(),
+                 tabSet(targets.map { meter.measure(it.beschriftung, stil).size.width.toFloat() },
+                     targets.indexOfFirst { gewaehlt(it.ziel) }, maxWidth.toPx(), (Abstaende.tiny * 2).toPx(),

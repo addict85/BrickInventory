@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.konto.ui.screens
 
 import ch.brickinventoryapp.model.ui.laeuft
-import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
@@ -22,10 +22,10 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.konto.ui.GeraeteUiState
-import ch.brickinventoryapp.model.fach.GeraetAnsicht
+import ch.brickinventoryapp.konto.ui.DevicesUiState
+import ch.brickinventoryapp.model.fach.DeviceView
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.PasswortRueckfrage
+import ch.brickinventoryapp.ui.components.PasswordPrompt
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.ui.components.SettingsCard
 
@@ -35,10 +35,10 @@ import ch.brickinventoryapp.ui.components.SettingsCard
  * Abmelden.
  */
 @Composable
-internal fun GeraeteCard(
-    zustand: GeraeteUiState,
+internal fun DevicesCard(
+    zustand: DevicesUiState,
     onReload: () -> Unit,
-    onFrage: (tokenId: String?) -> Unit,
+    onQuestion: (tokenId: String?) -> Unit,
     onBestaetigen: (passwort: String, code: String?) -> Unit,
     onAbbrechen: () -> Unit,
 ) {
@@ -60,7 +60,7 @@ internal fun GeraeteCard(
                      color = MaterialTheme.colorScheme.onSurfaceVariant)
             else -> Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 for (g in zustand.geraete) {
-                    GeraetZeile(g, onEntwerten = { onFrage(g.tokenId) })
+                    DeviceRow(g, redeemOn = { onQuestion(g.tokenId) })
                 }
             }
         }
@@ -73,7 +73,7 @@ internal fun GeraeteCard(
             // immer „es gibt keine anderen" meldet, ist schlimmer als keiner.
             if (zustand.geraete.count { !it.aktuell } > 0) {
                 OutlinedButton(
-                    onClick = { onFrage(null) },
+                    onClick = { onQuestion(null) },
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     border = nebenKnopfRand(),
                 ) { Text(stringResource(R.string.tokens_revoke_others)) }
@@ -83,16 +83,16 @@ internal fun GeraeteCard(
 
     // Rückfrage mit Passwort: Ein Zugang, der weg ist, kommt nicht wieder, und
     // ein erbeuteter Zugang allein soll die anderen nicht abmelden können.
-    val frage = zustand.rueckfrage
+    val frage = zustand.prompt
     if (frage != null) {
         val betroffen = zustand.geraete.count { !it.aktuell }
-        PasswortRueckfrage(
+        PasswordPrompt(
             titel = stringResource(if (frage.tokenId == null) R.string.tokens_revoke_others_title else R.string.tokens_revoke_title),
             text = if (frage.tokenId == null) pluralStringResource(R.plurals.tokens_revoke_others_text, betroffen, betroffen)
                    else stringResource(R.string.tokens_revoke_text,
                        zustand.geraete.firstOrNull { it.tokenId == frage.tokenId }?.bezeichnung ?: "—"),
             bestaetigen = stringResource(R.string.tokens_revoke_confirm),
-            codeNoetig = frage.codeNoetig, fehler = frage.vorgang.fehlerMeldung?.satz(), laeuft = frage.vorgang.laeuft,
+            codeNoetig = frage.codeNoetig, fehler = frage.operation.errorMessage?.satz(), laeuft = frage.operation.laeuft,
             onBestaetigen = onBestaetigen,
             onAbbrechen = onAbbrechen,
         )
@@ -101,7 +101,7 @@ internal fun GeraeteCard(
 
 /** Ein angemeldetes Gerät: Bezeichnung, Marken, Daten und, ausser beim eigenen, Aussperren. */
 @Composable
-private fun GeraetZeile(g: GeraetAnsicht, onEntwerten: () -> Unit) {
+private fun DeviceRow(g: DeviceView, redeemOn: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.weight(1f)) {
@@ -115,7 +115,7 @@ private fun GeraetZeile(g: GeraetAnsicht, onEntwerten: () -> Unit) {
                     Text(stringResource(R.string.tokens_current),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar))
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.hairline))
                 }
                 // Ein Zugang mit Verwalterrechten soll in der Liste auffallen.
                 if (g.vollerZugriff) Surface(
@@ -125,19 +125,19 @@ private fun GeraetZeile(g: GeraetAnsicht, onEntwerten: () -> Unit) {
                     Text(stringResource(R.string.tokens_full_access),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar))
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.hairline))
                 }
             }
             Text(
                 stringResource(R.string.tokens_row_hint,
                     fmtTag(g.angelegt) ?: "—",
-                    fmtTag(g.zuletztBenutzt) ?: stringResource(R.string.tokens_unused),
-                    g.laeuftAb?.let { fmtTag(it) ?: "—" } ?: stringResource(R.string.tokens_never)),
+                    fmtTag(g.lastlyUsed) ?: stringResource(R.string.tokens_unused),
+                    g.runningAb?.let { fmtTag(it) ?: "—" } ?: stringResource(R.string.tokens_never)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         if (!g.aktuell) MitTooltip(stringResource(R.string.tokens_revoke_title)) {
-            IconButton(onClick = onEntwerten) {
+            IconButton(onClick = redeemOn) {
                 Icon(Icons.Default.Delete,
                     stringResource(R.string.tokens_revoke_title),
                     tint = MaterialTheme.colorScheme.error)

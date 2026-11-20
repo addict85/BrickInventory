@@ -11,8 +11,8 @@ import kotlin.coroutines.cancellation.CancellationException
 inline fun <T> fangeAusserAbbruch(block: () -> T): kotlin.Result<T> =
     try {
         kotlin.Result.success(block())
-    } catch (abbruch: CancellationException) {
-        throw abbruch
+    } catch (abort: CancellationException) {
+        throw abort
     } catch (e: Exception) {
         kotlin.Result.failure(e)
     }

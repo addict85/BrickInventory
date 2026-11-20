@@ -11,48 +11,48 @@ import ch.brickinventoryapp.vertrag.PriceChartSeries
 import ch.brickinventoryapp.vertrag.PriceHistoryPoint
 import ch.brickinventoryapp.vertrag.PriceHistoryResponse
 import ch.brickinventoryapp.vertrag.SetPriceResponse
-import ch.brickinventoryapp.model.fach.AktuellJeZustandAnsicht
-import ch.brickinventoryapp.model.fach.AktuellerPreisAnsicht
-import ch.brickinventoryapp.model.fach.MerkpostenPreiseAnsicht
+import ch.brickinventoryapp.model.fach.CurrentPerStateView
+import ch.brickinventoryapp.model.fach.CurrentPriceView
+import ch.brickinventoryapp.model.fach.WantedItemPricesView
 import ch.brickinventoryapp.model.fach.PreisDiagrammAnsicht
-import ch.brickinventoryapp.model.fach.PreisJeZustandAnsicht
-import ch.brickinventoryapp.model.fach.PreisPunktAnsicht
-import ch.brickinventoryapp.model.fach.PreisReiheAnsicht
-import ch.brickinventoryapp.model.fach.PreisverlaufAnsicht
-import ch.brickinventoryapp.model.fach.PreisverlaufPunktAnsicht
-import ch.brickinventoryapp.model.fach.SetPreisAnsicht
-import ch.brickinventoryapp.model.fach.ZustandsBewertungAnsicht
-import ch.brickinventoryapp.model.fach.alsGeld
-import ch.brickinventoryapp.model.fach.alsGeldPflicht
+import ch.brickinventoryapp.model.fach.PricePerStateView
+import ch.brickinventoryapp.model.fach.PricePointView
+import ch.brickinventoryapp.model.fach.PriceSeriesView
+import ch.brickinventoryapp.model.fach.PriceHistoryView
+import ch.brickinventoryapp.model.fach.PriceHistoryPointView
+import ch.brickinventoryapp.model.fach.SetPriceView
+import ch.brickinventoryapp.model.fach.StateValuationView
+import ch.brickinventoryapp.model.fach.asMoney
+import ch.brickinventoryapp.model.fach.asMoneyRequired
 
 fun PriceChartData.alsAnsicht() = PreisDiagrammAnsicht(
     values = values.map { it.alsAnsicht() },
     x = x,
 )
 
-fun PriceChartSeries.alsAnsicht() = PreisReiheAnsicht(
+fun PriceChartSeries.alsAnsicht() = PriceSeriesView(
     name = name,
     values = values.map { it.alsAnsicht() },
     firstRealIndex = firstRealIndex,
 )
 
-fun PriceChartPoint.alsAnsicht() = PreisPunktAnsicht(
+fun PriceChartPoint.alsAnsicht() = PricePointView(
     x = x,
-    preis = y.alsGeldPflicht(),
+    preis = y.asMoneyRequired(),
 )
 
-fun PriceByCondition.alsAnsicht() = PreisJeZustandAnsicht(
+fun PriceByCondition.alsAnsicht() = PricePerStateView(
     new = new?.alsAnsicht(),
     used = used?.alsAnsicht(),
 )
 
-fun ConditionValuation.alsAnsicht() = ZustandsBewertungAnsicht(
-    marketPrice = marketPrice.alsGeld(),
-    purchasePrice = purchasePrice.alsGeld(),
+fun ConditionValuation.alsAnsicht() = StateValuationView(
+    marketPrice = marketPrice.asMoney(),
+    purchasePrice = purchasePrice.asMoney(),
     pnlPct = pnlPct,
 )
 
-fun PriceHistoryResponse.alsAnsicht() = PreisverlaufAnsicht(
+fun PriceHistoryResponse.alsAnsicht() = PriceHistoryView(
     currency = currency,
     historyNew = historyNew.map { it.alsAnsicht() },
     historyUsed = historyUsed.map { it.alsAnsicht() },
@@ -60,33 +60,33 @@ fun PriceHistoryResponse.alsAnsicht() = PreisverlaufAnsicht(
     chart = chart.alsAnsicht(),
     pnlPct = pnlPct,
     pnlProzent = pnlProzent,
-    purchasePrice = purchasePrice.alsGeld(),
+    purchasePrice = purchasePrice.asMoney(),
 )
 
-fun PriceHistoryPoint.alsAnsicht() = PreisverlaufPunktAnsicht(
-    qtyAvgPrice = qtyAvgPrice.alsGeld(),
-    avgPrice = avgPrice.alsGeld(),
+fun PriceHistoryPoint.alsAnsicht() = PriceHistoryPointView(
+    qtyAvgPrice = qtyAvgPrice.asMoney(),
+    avgPrice = avgPrice.asMoney(),
 )
 
-fun SetPriceResponse.alsAnsicht() = SetPreisAnsicht(
+fun SetPriceResponse.alsAnsicht() = SetPriceView(
     setNumber = setNumber,
     currency = currency,
-    avgPrice = avgPrice.alsGeld(),
-    qtyAvgPrice = qtyAvgPrice.alsGeld(),
+    avgPrice = avgPrice.asMoney(),
+    qtyAvgPrice = qtyAvgPrice.asMoney(),
     noPrice = noPrice,
 )
 
-fun CurrentPrice.alsAnsicht() = AktuellerPreisAnsicht(
+fun CurrentPrice.alsAnsicht() = CurrentPriceView(
     condition = condition,
-    avgPrice = avgPrice.alsGeld(),
+    avgPrice = avgPrice.asMoney(),
 )
 
-fun CurrentByCondition.alsAnsicht() = AktuellJeZustandAnsicht(
+fun CurrentByCondition.alsAnsicht() = CurrentPerStateView(
     new = new?.alsAnsicht(),
     used = used?.alsAnsicht(),
 )
 
-fun MerkpostenPreiseResponse.alsAnsicht() = MerkpostenPreiseAnsicht(
+fun MerkpostenPreiseResponse.alsAnsicht() = WantedItemPricesView(
     currency = currency,
     current = current.alsAnsicht(),
 )

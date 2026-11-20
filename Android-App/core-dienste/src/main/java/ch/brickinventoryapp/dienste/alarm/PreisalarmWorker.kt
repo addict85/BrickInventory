@@ -26,7 +26,7 @@ import java.util.concurrent.TimeUnit
 class PreisalarmWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val abholung: PreisalarmRepository,
+    private val abholung: PriceAlertRepository,
 ) : CoroutineWorker(context, params) {
 
     // erfolg=false heisst NUR „der Server war nicht erreichbar". Alles andere
@@ -35,7 +35,7 @@ class PreisalarmWorker @AssistedInject constructor(
     override suspend fun doWork(): androidx.work.ListenableWorker.Result =
         // retry(): Der Server ist gerade nicht da. WorkManager versucht es mit
         // wachsendem Abstand erneut, statt eine Stunde zu warten.
-        if (abholung.durchgang()) androidx.work.ListenableWorker.Result.success()
+        if (abholung.pass()) androidx.work.ListenableWorker.Result.success()
         else androidx.work.ListenableWorker.Result.retry()
 
     companion object {
@@ -47,7 +47,7 @@ class PreisalarmWorker @AssistedInject constructor(
         const val EXTRA_SET = "preisalarm_set"
 
         private const val NAME = "preisalarm-abruf"
-        internal const val KANAL = "preisalarm"
+        internal const val CHANNEL = "preisalarm"
 
         /**
          * Einplanen oder abbestellen. KEEP statt UPDATE, damit ein häufiges Öffnen der App
@@ -62,14 +62,14 @@ class PreisalarmWorker @AssistedInject constructor(
         fun einplanen(context: Context, an: Boolean): Throwable? = runCatching {
             val wm = WorkManager.getInstance(context)
             if (!an) { wm.cancelUniqueWork(NAME); return@runCatching }
-            val auftrag = PeriodicWorkRequestBuilder<PreisalarmWorker>(1, TimeUnit.HOURS)
+            val job = PeriodicWorkRequestBuilder<PreisalarmWorker>(1, TimeUnit.HOURS)
                 .setConstraints(
                     Constraints.Builder()
                         .setRequiredNetworkType(NetworkType.CONNECTED)
                         .build()
                 )
                 .build()
-            wm.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, auftrag)
+            wm.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, job)
         }.exceptionOrNull()
 
         /**
@@ -77,18 +77,18 @@ class PreisalarmWorker @AssistedInject constructor(
          * der das Telefon sieht, was im Regal steht und was es wert ist.
          */
         fun meldung(context: Context, text: String, tippen: PendingIntent?): android.app.Notification {
-            val oeffentlich = NotificationCompat.Builder(context, KANAL)
+            val oeffentlich = NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle(context.getString(R.string.detail_alert))
                 .setContentText(context.getString(R.string.alert_gesperrt))
                 .build()
-            return NotificationCompat.Builder(context, KANAL)
+            return NotificationCompat.Builder(context, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
                 .setContentTitle(context.getString(R.string.detail_alert))
                 .setContentText(text)
                 .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                 .setPublicVersion(oeffentlich)
-                .setGroup(KANAL)
+                .setGroup(CHANNEL)
                 .setAutoCancel(true)
                 .setContentIntent(tippen)
                 .build()

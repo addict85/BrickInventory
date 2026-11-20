@@ -1,6 +1,6 @@
 Gegenprobe: „Alles leeren“ leert den Preis-Cache ohne Rückfrage
 Modul: feature-verwaltung
-Test: ch.brickinventoryapp.verwaltung.CacheLeerenFragtTest
+Test: ch.brickinventoryapp.verwaltung.CacheClearAsksTest
 Rot: das Leeren fragt erst nach
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
@@ -8,10 +8,10 @@ diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/v
 +++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt
 @@ -149,7 +149,7 @@
              // Tageskontingent; ein Fehlgriff nimmt allen anderen Kontingent weg.
-             CacheLeerenKnoepfe(
-                 onPreise = { leerenAlles = false; zeigeLeerenFrage = true },
--                onAlles = { leerenAlles = true; zeigeLeerenFrage = true },
-+                onAlles = { ereignisse.cacheLeeren(true) },
+             CacheClearButtons(
+                 onPrices = { clearEverything = false; showClearQuestion = true },
+-                onEverything = { clearEverything = true; showClearQuestion = true },
++                onEverything = { events.cacheLeeren(true) },
              )
          }
      }

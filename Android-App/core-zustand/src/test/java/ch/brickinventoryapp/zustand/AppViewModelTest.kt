@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.zustand
 
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.PasswortPflicht
-import ch.brickinventoryapp.data.ZweiterFaktorPflicht
+import ch.brickinventoryapp.data.PasswordRequired
+import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.sitzung.Sitzung
@@ -27,9 +27,9 @@ import org.junit.Test
  * wird und welches Set eine angetippte Meldung öffnen darf.
  *
  * Gegenproben (je ein Patch unter gegenproben/):
- *   app-vordergrund-ohne-sitzung   imVordergrund() ohne `if (!state.value.isLoggedIn) return`
+ *   app-vordergrund-ohne-sitzung   inForeground() ohne `if (!state.value.isLoggedIn) return`
  *                                  → rot „abgemeldet laedt der Vordergrund nichts nach“
- *   app-meldungsziel-ungeprueft    setAusMeldungAnfordern() ohne setnummerAusMeldung
+ *   app-meldungsziel-ungeprueft    setFromMessageRequest() ohne setNumberFromMessage
  *                                  → rot „eine angetippte Meldung oeffnet nur eine gueltige Setnummer“
  *   app-meldung-nicht-quittiert    clearSnackbar() ruft quittiere() nicht → rot „die Snackbar …“
  */
@@ -39,20 +39,20 @@ class AppViewModelTest {
 
     /** Zählt, was der AppViewModel bei der Sitzung auslöst. */
     private class Sitzungsschritte : SitzungsRepository {
-        val gerufen = mutableListOf<String>()
-        override fun starte() { gerufen += "starte" }
-        override fun abmelden(): Job { gerufen += "abmelden"; return Job().apply { complete() } }
-        override fun zweiterFaktorEingerichtet() { gerufen += "faktor" }
-        override fun ladeEinstellungen() { gerufen += "einstellungen" }
-        override fun ladeMitglieder() { gerufen += "mitglieder" }
-        override fun ladeLagerorte() { gerufen += "lagerorte" }
+        val called = mutableListOf<String>()
+        override fun starte() { called += "starte" }
+        override fun abmelden(): Job { called += "abmelden"; return Job().apply { complete() } }
+        override fun secondFactorConfigured() { called += "faktor" }
+        override fun ladeEinstellungen() { called += "einstellungen" }
+        override fun loadMembers() { called += "mitglieder" }
+        override fun ladeLagerorte() { called += "lagerorte" }
     }
 
     private val schritte = Sitzungsschritte()
     private val sitzung: Sitzung = t.sitzung
     private val kanal = MeldungsKanal()
-    private val passwort = PasswortPflicht()
-    private val faktor = ZweiterFaktorPflicht()
+    private val passwort = PasswordRequired()
+    private val faktor = SecondFactorRequired()
     private val ausgang = object : Ausgangsmelder {
         override val offene: StateFlow<Int> = MutableStateFlow(3)
         override fun starte(scope: CoroutineScope) = Unit
@@ -63,44 +63,44 @@ class AppViewModelTest {
 
     @Test
     fun `abgemeldet laedt der Vordergrund nichts nach, angemeldet Einstellungen und Filterlisten`() {
-        vm.imVordergrund()
-        assertEquals(emptyList<String>(), schritte.gerufen)
+        vm.inForeground()
+        assertEquals(emptyList<String>(), schritte.called)
         sitzung.angemeldet(admin = false)
-        vm.imVordergrund()
-        assertEquals(listOf("einstellungen", "mitglieder", "lagerorte"), schritte.gerufen)
+        vm.inForeground()
+        assertEquals(listOf("einstellungen", "mitglieder", "lagerorte"), schritte.called)
     }
 
     @Test
     fun `eine angetippte Meldung oeffnet nur eine gueltige Setnummer, bis sie quittiert ist`() {
-        vm.setAusMeldungAnfordern("75192-1")
-        assertEquals("75192-1", vm.meldungsZiel.value.setNummer)
-        vm.setAusMeldungQuittieren()
-        assertNull(vm.meldungsZiel.value.setNummer)
+        vm.setFromMessageRequest("75192-1")
+        assertEquals("75192-1", vm.messageTarget.value.setNummer)
+        vm.setFromMessageAcknowledge()
+        assertNull(vm.messageTarget.value.setNummer)
         // Die Nummer wird Teil einer Route: Was keine Setnummer ist, öffnet nichts.
-        vm.setAusMeldungAnfordern("../../konto")
-        assertNull(vm.meldungsZiel.value.setNummer)
-        vm.setAusMeldungAnfordern(null)
-        assertNull(vm.meldungsZiel.value.setNummer)
+        vm.setFromMessageRequest("../../konto")
+        assertNull(vm.messageTarget.value.setNummer)
+        vm.setFromMessageRequest(null)
+        assertNull(vm.messageTarget.value.setNummer)
     }
 
     @Test
     fun `die Snackbar zeigt den Kanal, quittiert rueckt die naechste nach`() {
-        kanal.zeige(Meldung.Ressource(1))
-        kanal.zeige(Meldung.Ressource(2))
-        assertEquals(Meldung.Ressource(1), vm.snackbar.value)
+        kanal.zeige(Meldung.Resource(1))
+        kanal.zeige(Meldung.Resource(2))
+        assertEquals(Meldung.Resource(1), vm.snackbar.value)
         vm.clearSnackbar()
-        assertEquals(Meldung.Ressource(2), vm.snackbar.value)
+        assertEquals(Meldung.Resource(2), vm.snackbar.value)
     }
 
     @Test
     fun `Abmelden, zweiter Faktor und Pflichten gehen an Sitzung und Ablage durch`() {
         vm.logout()
-        vm.zweiterFaktorEingerichtet()
-        assertEquals(listOf("abmelden", "faktor"), schritte.gerufen)
+        vm.secondFactorConfigured()
+        assertEquals(listOf("abmelden", "faktor"), schritte.called)
         passwort.melde()
         faktor.melde()
-        assertEquals(true, vm.startpasswortNoetig.value)
-        assertEquals(true, vm.zweiterFaktorNoetig.value)
+        assertEquals(true, vm.startPasswordNeeded.value)
+        assertEquals(true, vm.secondFactorNeeded.value)
         assertEquals(3, vm.offeneAenderungen.value)
         assertSame("dieselbe Sitzung wie die Bereiche", sitzung.state, vm.state)
     }

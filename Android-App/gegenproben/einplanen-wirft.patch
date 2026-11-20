@@ -1,6 +1,6 @@
 Gegenprobe: einplanen() reicht einen Fehler des WorkManagers weiter, statt ihn zurückzugeben
 Modul: core-dienste
-Test: ch.brickinventoryapp.dienste.AlarmEinplanenTest
+Test: ch.brickinventoryapp.dienste.AlarmScheduleTest
 Rot: einplanen meldet einen Fehler des WorkManagers
 
 diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt
@@ -9,7 +9,7 @@ diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste
 @@ -70,7 +70,7 @@
                  )
                  .build()
-             wm.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, auftrag)
+             wm.enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, job)
 -        }.exceptionOrNull()
 +        }.getOrThrow().let { null }
  

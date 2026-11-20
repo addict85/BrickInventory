@@ -27,9 +27,9 @@ enum class Fehlercode(val kennung: String) {
     ZWEITER_FAKTOR_PFLICHT("zweiter_faktor_pflicht");
 
     companion object {
-        private val nachKennung = entries.associateBy { it.kennung }
+        private val afterId = entries.associateBy { it.kennung }
 
         /** Ein Code, den die App nicht kennt, ist null: Sie verzweigt dann nicht nach ihm. */
-        fun aus(kennung: String?): Fehlercode? = kennung?.let { nachKennung[it] }
+        fun aus(kennung: String?): Fehlercode? = kennung?.let { afterId[it] }
     }
 }

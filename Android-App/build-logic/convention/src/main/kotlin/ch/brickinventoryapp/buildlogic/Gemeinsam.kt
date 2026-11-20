@@ -20,8 +20,8 @@ internal fun Project.pluginAusKatalog(alias: String) {
     pluginManager.apply(libs.findPlugin(alias).get().get().pluginId)
 }
 
-internal fun Project.bibliothek(konfiguration: String, alias: String) {
-    dependencies.add(konfiguration, libs.findLibrary(alias).get())
+internal fun Project.library(configuration: String, alias: String) {
+    dependencies.add(configuration, libs.findLibrary(alias).get())
 }
 
 /**
@@ -48,12 +48,12 @@ internal fun Project.androidxMindestens() {
     }
 }
 
-internal fun Project.gruppe(konfiguration: String, alias: String) {
-    dependencies.add(konfiguration, libs.findBundle(alias).get())
+internal fun Project.gruppe(configuration: String, alias: String) {
+    dependencies.add(configuration, libs.findBundle(alias).get())
 }
 
 /** Was App und Bibliothek gleich einstellen, unabhängig von ihrer Erweiterung. */
-internal class AndroidTeile(
+internal class AndroidParts(
     val compileOptions: CompileOptions,
     val testOptions: TestOptions,
     val buildFeatures: BuildFeatures,
@@ -64,14 +64,14 @@ internal class AndroidTeile(
  * Konventionen nicht von der Reihenfolge im plugins-Block ab, und
  * `implementation` oder `ksp` gibt es, wenn sie Abhängigkeiten eintragen.
  */
-internal fun Project.beiAndroid(aktion: (AndroidTeile) -> Unit) {
+internal fun Project.atAndroid(aktion: (AndroidParts) -> Unit) {
     pluginManager.withPlugin("com.android.application") {
         val android = extensions.getByType(ApplicationExtension::class.java)
-        aktion(AndroidTeile(android.compileOptions, android.testOptions, android.buildFeatures))
+        aktion(AndroidParts(android.compileOptions, android.testOptions, android.buildFeatures))
     }
     pluginManager.withPlugin("com.android.library") {
         val android = extensions.getByType(LibraryExtension::class.java)
-        aktion(AndroidTeile(android.compileOptions, android.testOptions, android.buildFeatures))
+        aktion(AndroidParts(android.compileOptions, android.testOptions, android.buildFeatures))
     }
 }
 

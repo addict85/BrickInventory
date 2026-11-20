@@ -10,8 +10,8 @@ diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/geme
  
  @Composable
  fun DetailRow2(label: String, value: String) {
--    BezeichnungUndWert(label, value, Modifier.padding(vertical = Abstaende.winzig))
-+    BezeichnungUndWert(label, value, Modifier.padding(vertical = 5.dp))
+-    LabelAndValue(label, value, Modifier.padding(vertical = Abstaende.tiny))
++    LabelAndValue(label, value, Modifier.padding(vertical = 5.dp))
  }
  
  /**

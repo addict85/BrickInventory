@@ -39,7 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.util.fmtInt
 
 /**
@@ -52,7 +52,7 @@ import ch.brickinventoryapp.ui.util.fmtInt
  * @param anzahl Verschiedene Teile — dieselbe Zahl, die die Webapp zeigt.
  * @param farbe  Farbpunkt, nur bei der Farbliste.
  */
-internal data class TeileFilterEintrag(
+internal data class PartsFilterEntry(
     val wert: String,
     val text: String,
     val anzahl: Int,
@@ -67,64 +67,64 @@ internal data class TeileFilterEintrag(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun TeileFilterZeile(
-    farben: List<TeileFilterEintrag>,
-    kategorien: List<TeileFilterEintrag>,
-    farbeGewaehlt: String,
-    kategorieGewaehlt: String,
-    onFarbe: (String) -> Unit,
-    onKategorie: (String) -> Unit,
+internal fun PartsFilterRow(
+    farben: List<PartsFilterEntry>,
+    kategorien: List<PartsFilterEntry>,
+    colorSelected: String,
+    categorySelected: String,
+    onColor: (String) -> Unit,
+    onCategory: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Nichts geladen, nichts anzubieten: Ein Chip „Farbe" ohne Inhalt waere ein
     // Versprechen, das das Antippen nicht einloest.
     if (farben.isEmpty() && kategorien.isEmpty()) return
 
-    var offenFarbe by rememberSaveable { mutableStateOf(false) }
-    var offenKategorie by rememberSaveable { mutableStateOf(false) }
+    var openColor by rememberSaveable { mutableStateOf(false) }
+    var openCategory by rememberSaveable { mutableStateOf(false) }
 
     val alle = stringResource(R.string.parts_filter_all)
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         if (farben.isNotEmpty()) {
             AuswahlChip(
-                selected = farbeGewaehlt.isNotBlank(),
-                onClick = { offenFarbe = true },
+                selected = colorSelected.isNotBlank(),
+                onClick = { openColor = true },
                 label = {
-                    Text(farben.firstOrNull { it.wert == farbeGewaehlt }?.text
+                    Text(farben.firstOrNull { it.wert == colorSelected }?.text
                         ?: stringResource(R.string.parts_filter_color),
                         style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(18.dp))) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(withFont(18.dp))) },
             )
         }
         if (kategorien.isNotEmpty()) {
             AuswahlChip(
-                selected = kategorieGewaehlt.isNotBlank(),
-                onClick = { offenKategorie = true },
+                selected = categorySelected.isNotBlank(),
+                onClick = { openCategory = true },
                 label = {
-                    Text(kategorien.firstOrNull { it.wert == kategorieGewaehlt }?.text
+                    Text(kategorien.firstOrNull { it.wert == categorySelected }?.text
                         ?: stringResource(R.string.parts_filter_category),
                         style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(18.dp))) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(withFont(18.dp))) },
             )
         }
     }
 
-    if (offenFarbe) {
-        FilterBlatt(
+    if (openColor) {
+        FilterSheet(
             titel = stringResource(R.string.parts_filter_color),
-            eintraege = farben, gewaehlt = farbeGewaehlt, alleText = alle,
-            onWahl = { offenFarbe = false; onFarbe(it) },
-            onSchliessen = { offenFarbe = false },
+            eintraege = farben, gewaehlt = colorSelected, allText = alle,
+            onWahl = { openColor = false; onColor(it) },
+            onSchliessen = { openColor = false },
         )
     }
-    if (offenKategorie) {
-        FilterBlatt(
+    if (openCategory) {
+        FilterSheet(
             titel = stringResource(R.string.parts_filter_category),
-            eintraege = kategorien, gewaehlt = kategorieGewaehlt, alleText = alle,
-            onWahl = { offenKategorie = false; onKategorie(it) },
-            onSchliessen = { offenKategorie = false },
+            eintraege = kategorien, gewaehlt = categorySelected, allText = alle,
+            onWahl = { openCategory = false; onCategory(it) },
+            onSchliessen = { openCategory = false },
         )
     }
 }
@@ -137,24 +137,24 @@ internal fun TeileFilterZeile(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FilterBlatt(
+private fun FilterSheet(
     titel: String,
-    eintraege: List<TeileFilterEintrag>,
+    eintraege: List<PartsFilterEntry>,
     gewaehlt: String,
-    alleText: String,
+    allText: String,
     onWahl: (String) -> Unit,
     onSchliessen: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onSchliessen) {
-        Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
+        Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.veryLarge)) {
             Text(titel, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             LazyColumn(Modifier.heightIn(max = 420.dp)) {
                 item {
-                    FilterZeile(alleText, null, null, gewaehlt.isBlank()) { onWahl("") }
+                    FilterRow(allText, null, null, gewaehlt.isBlank()) { onWahl("") }
                 }
                 items(eintraege.size, key = { eintraege[it].wert }) { i ->
                     val e = eintraege[i]
-                    FilterZeile(e.text, e.anzahl, e.farbe, e.wert == gewaehlt) { onWahl(e.wert) }
+                    FilterRow(e.text, e.anzahl, e.farbe, e.wert == gewaehlt) { onWahl(e.wert) }
                 }
             }
         }
@@ -163,7 +163,7 @@ private fun FilterBlatt(
 
 /** Eine Zeile des Auswahlblatts. */
 @Composable
-private fun FilterZeile(
+private fun FilterRow(
     text: String,
     anzahl: Int?,
     farbe: Color?,

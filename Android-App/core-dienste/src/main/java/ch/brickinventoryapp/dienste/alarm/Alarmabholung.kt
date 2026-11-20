@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.dienste.alarm
 
 import ch.brickinventoryapp.model.fach.Alarmrichtung
-import ch.brickinventoryapp.model.fach.AlarmabrufAnsicht
-import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.AlarmabrufView
+import ch.brickinventoryapp.model.fach.PriceAlertView
 import ch.brickinventoryapp.data.repository.Ergebnis as Abrufergebnis
 import java.text.NumberFormat
 import java.util.Currency
 import java.util.Locale
 
 /**
- * Die Abfrage selbst — ein Typalias, damit die Signatur von [Alarmabholung.hole]
+ * Die Abfrage selbst — ein Typalias, damit die Signatur von [Alarmabholung.fetch]
  * lesbar bleibt. Top-Level, weil Kotlin Typalias nur dort erlaubt.
  */
-typealias Frage = suspend (String?) -> Abrufergebnis<AlarmabrufAnsicht>
+typealias Frage = suspend (String?) -> Abrufergebnis<AlarmabrufView>
 
 /**
  * Was beim Abholen der ausgelösten Preisalarme entschieden wird — ausserhalb des
@@ -28,7 +28,7 @@ internal object Alarmabholung {
          * immer zu speichern, auch ohne Meldung: Sonst fragte der nächste Durchgang ab dem
          * alten Zeitpunkt und brächte dieselbe Meldung ein zweites Mal.
          */
-        data class Geholt(val meldungen: List<PreisalarmAnsicht>, val neueMarke: String) : Ergebnis
+        data class Geholt(val meldungen: List<PriceAlertView>, val neueMarke: String) : Ergebnis
 
         /**
          * Erster Durchgang — es gab noch keine Marke. Bewusst ohne Meldung: Eine frisch
@@ -52,7 +52,7 @@ internal object Alarmabholung {
      * @param marke der Zeitpunkt des letzten erfolgreichen Durchgangs, leer beim
      *         allerersten
      */
-    suspend fun hole(marke: String?, frage: Frage): Ergebnis {
+    suspend fun fetch(marke: String?, frage: Frage): Ergebnis {
         val r = frage(marke?.takeIf { it.isNotBlank() })
         val antwort = (r as? Abrufergebnis.Erfolg)?.data ?: return Ergebnis.Fehlgeschlagen
         // Ohne `now` keine neue Marke — und ohne neue Marke lieber gar nichts
@@ -60,7 +60,7 @@ internal object Alarmabholung {
         // ist eine aeltere Fassung; dann bleibt es beim Mailversand.
         val neueMarke = antwort.marke?.takeIf { it.isNotBlank() } ?: return Ergebnis.Fehlgeschlagen
         if (marke.isNullOrBlank()) return Ergebnis.Markiert(neueMarke)
-        return Ergebnis.Geholt(antwort.alarme, neueMarke)
+        return Ergebnis.Geholt(antwort.alerts, neueMarke)
     }
 
     /**
@@ -70,18 +70,18 @@ internal object Alarmabholung {
      * sind nicht 200 EUR. Der Betrag in der Form von [zahlen] („199,50 CHF“), wie überall
      * in der App und in der Web-Oberfläche.
      */
-    fun text(a: PreisalarmAnsicht, unter: String, ueber: String, zahlen: Locale): String {
+    fun text(a: PriceAlertView, unter: String, ueber: String, zahlen: Locale): String {
         val richtung = if (a.richtung == Alarmrichtung.UNTER) unter else ueber
         val format = NumberFormat.getCurrencyInstance(zahlen).apply {
             runCatching { currency = Currency.getInstance(a.currencyCode.code) }
             minimumFractionDigits = 2
             maximumFractionDigits = 2
         }
-        val preis = a.zuletztPreis
-        val schwelle = format.format(a.schwelle.alsBigDecimal())
+        val preis = a.lastlyPrice
+        val schwelle = format.format(a.schwelle.asBigDecimal())
         return if (preis == null)
             "${a.setNumber}: $richtung $schwelle"
         else
-            "${a.setNumber}: ${format.format(preis.alsBigDecimal())} ($richtung $schwelle)"
+            "${a.setNumber}: ${format.format(preis.asBigDecimal())} ($richtung $schwelle)"
     }
 }

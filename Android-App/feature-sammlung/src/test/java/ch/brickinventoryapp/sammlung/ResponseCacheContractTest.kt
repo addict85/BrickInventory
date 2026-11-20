@@ -15,7 +15,7 @@ import ch.brickinventoryapp.testing.Quellen
 
 /**
  * Die Antworten des Servers gehen verlustfrei durch die Serialisierung; wie sie in der
- * Ablage liegen, prüfen AblageformTest und AblageFassungTest mit der eigenen Zeilenform.
+ * Ablage liegen, prüfen AblageformTest und StoreVersionTest mit der eigenen Zeilenform.
  */
 class ResponseCacheContractTest {
 
@@ -168,7 +168,7 @@ class MinifigImageFieldTest {
 class GalleryImageRetryTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, rel)
+        val f = File(Quellen.root, rel)
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }

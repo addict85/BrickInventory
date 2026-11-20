@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.data.api.GeraetApi
+import ch.brickinventoryapp.data.api.DeviceApi
 import ch.brickinventoryapp.data.repository.SchrittbindungImpl
 import ch.brickinventoryapp.model.schritt.Schluesselnonce
 import ch.brickinventoryapp.model.schritt.Schrittaktion
@@ -24,13 +24,13 @@ import java.util.Base64
  * bleibt im Gerät. Die Signatur geht als Base64.
  *
  * Gegenproben (nur in der CI messbar, lokal fehlt das Android-SDK):
- *   A  in challenge() jede Absage und jeden Netzfehler als NichtGebunden → erwartet
+ *   A  in challenge() jede Absage und jeden Netzfehler als NotBound → erwartet
  *      rot „eine Absage des Servers haelt an“ und „ohne Netz kein Rueckfall …“;
  *      gegenproben/schrittbindung-absage-als-ungebunden.patch
- *   C  in challenge() ein 404 wieder als NichtGebunden (der frühere Rückfall) →
+ *   C  in challenge() ein 404 wieder als NotBound (der frühere Rückfall) →
  *      erwartet rot „ein 404 auf die Challenge haelt an“;
  *      gegenproben/schrittbindung-404-als-ungebunden.patch
- *   B  in hinterlegeKette() die Zertifikate mit dem URL-Alphabet kodiert →
+ *   B  in depositChain() die Zertifikate mit dem URL-Alphabet kodiert →
  *      erwartet rot „die Kette geht als Base64 je Zertifikat …“;
  *      gegenproben/schrittbindung-kette-base64url.patch
  */
@@ -39,7 +39,7 @@ class SchrittbindungTest {
     private val server = MockWebServer().apply { start() }
     private val api = Retrofit.Builder().baseUrl(server.url("/"))
         .addConverterFactory(BrickJson.asConverterFactory("application/json".toMediaType()))
-        .build().create(GeraetApi::class.java)
+        .build().create(DeviceApi::class.java)
     private val bindung = SchrittbindungImpl(api)
 
     @After
@@ -60,31 +60,31 @@ class SchrittbindungTest {
     @Test
     fun `eine Absage des Servers haelt an`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":false,"code":"geraeteschluessel_fehlt","error":"Bitte neu anmelden."}""", 403))
-        assertEquals(Schrittantwort.Abgelehnt("Bitte neu anmelden."), bindung.challenge(Schrittaktion.VERWALTUNG))
+        assertEquals(Schrittantwort.Rejected("Bitte neu anmelden."), bindung.challenge(Schrittaktion.VERWALTUNG))
     }
 
     @Test
     fun `ein 404 auf die Challenge haelt an`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":false,"code":"api_pfad_unbekannt","error":"x"}""", 404))
-        assertEquals(Schrittantwort.Abgelehnt("x"), bindung.challenge(Schrittaktion.GUTSCHEIN))
-        assertEquals(Schrittantwort.NichtGebunden, bindung.challenge(Schrittaktion.LOKAL))
+        assertEquals(Schrittantwort.Rejected("x"), bindung.challenge(Schrittaktion.GUTSCHEIN))
+        assertEquals(Schrittantwort.NotBound, bindung.challenge(Schrittaktion.LOKAL))
         assertEquals(1, server.requestCount)
     }
 
     @Test
     fun `ohne Netz kein Rueckfall auf die Pruefung im Geraet`() = runBlocking {
         server.shutdown()
-        assertTrue(bindung.challenge(Schrittaktion.GUTSCHEIN) is Schrittantwort.Abgelehnt)
+        assertTrue(bindung.challenge(Schrittaktion.GUTSCHEIN) is Schrittantwort.Rejected)
     }
 
     @Test
     fun `die Signatur geht als Base64 zum Server`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":true,"aktion":"gutschein","gueltig_bis":"2026-11-09T12:05:00Z"}"""))
-        assertEquals(Schrittantwort.Frei, bindung.freigeben("c1", byteArrayOf(1, 2, 3)))
+        assertEquals(Schrittantwort.Free, bindung.freigeben("c1", byteArrayOf(1, 2, 3)))
         val rumpf = server.takeRequest().body.readUtf8()
         assertEquals("""{"challenge":"c1","signatur":"${Base64.getEncoder().encodeToString(byteArrayOf(1, 2, 3))}"}""", rumpf)
         server.enqueue(TestApi.antwort("""{"success":false,"code":"schritt_signatur_ungueltig","error":"abgelehnt"}""", 400))
-        assertEquals(Schrittantwort.Abgelehnt("abgelehnt"), bindung.freigeben("c2", byteArrayOf(4)))
+        assertEquals(Schrittantwort.Rejected("abgelehnt"), bindung.freigeben("c2", byteArrayOf(4)))
     }
 
     @Test
@@ -93,22 +93,22 @@ class SchrittbindungTest {
         assertEquals(Schluesselnonce.Nonce("ab_-"), bindung.schluesselNonce())
         assertEquals("/api/v1/geraet/schluessel/nonce", server.takeRequest().path)
         server.enqueue(TestApi.antwort("""{"success":false,"code":"api_pfad_unbekannt","error":"x"}""", 404))
-        assertEquals(Schluesselnonce.Abgelehnt("x"), bindung.schluesselNonce())
+        assertEquals(Schluesselnonce.Rejected("x"), bindung.schluesselNonce())
         server.enqueue(TestApi.antwort("""{"success":false,"code":"geraeteschluessel_frist","error":"Bitte neu anmelden."}""", 403))
-        assertEquals(Schluesselnonce.Abgelehnt("Bitte neu anmelden."), bindung.schluesselNonce())
+        assertEquals(Schluesselnonce.Rejected("Bitte neu anmelden."), bindung.schluesselNonce())
     }
 
     @Test
     fun `die Kette geht als Base64 je Zertifikat zum Server`() = runBlocking {
         server.enqueue(TestApi.antwort("""{"success":true}"""))
         val kette = listOf(byteArrayOf(-5, -1), byteArrayOf(3))
-        assertEquals(Schrittantwort.Frei, bindung.hinterlegeKette(kette))
+        assertEquals(Schrittantwort.Free, bindung.depositChain(kette))
         val anfrage = server.takeRequest()
         assertEquals("/api/v1/geraet/schluessel", anfrage.path)
         assertEquals("""{"kette":["+/8=","Aw=="]}""", anfrage.body.readUtf8())
         server.enqueue(TestApi.antwort("""{"success":false,"code":"geraeteschluessel_attestation","error":"nicht bestätigt"}""", 400))
-        assertEquals(Schrittantwort.Abgelehnt("nicht bestätigt"), bindung.hinterlegeKette(kette))
+        assertEquals(Schrittantwort.Rejected("nicht bestätigt"), bindung.depositChain(kette))
         server.shutdown()
-        assertEquals("Ein Netzfehler ist keine Meldung", Schrittantwort.Abgelehnt(null), bindung.hinterlegeKette(kette))
+        assertEquals("Ein Netzfehler ist keine Meldung", Schrittantwort.Rejected(null), bindung.depositChain(kette))
     }
 }

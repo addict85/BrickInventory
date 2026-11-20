@@ -29,6 +29,6 @@ dependencies {
     testImplementation(project(":core-testing"))
     // Die Testserver antworten im Wire-Format.
     testImplementation(project(":core-vertrag"))
-    // AusgangAbgleichTest baut Ablage und Ausgang im Speicher.
+    // ExitSyncTest baut Ablage und Ausgang im Speicher.
     testImplementation(project(":core-offline"))
 }

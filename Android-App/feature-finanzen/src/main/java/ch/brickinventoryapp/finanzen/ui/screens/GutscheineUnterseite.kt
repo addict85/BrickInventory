@@ -10,9 +10,9 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.finanzen.ui.viewmodel.GutscheinViewModel
-import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
-import ch.brickinventoryapp.model.datei.DateiRef
-import ch.brickinventoryapp.ui.components.Unterseite
+import ch.brickinventoryapp.ui.util.SecretClipboard
+import ch.brickinventoryapp.model.datei.FileRef
+import ch.brickinventoryapp.ui.components.Subpage
 import androidx.compose.runtime.saveable.rememberSaveable
 import ch.brickinventoryapp.finanzen.ui.GutscheinUiState
 
@@ -22,50 +22,50 @@ import ch.brickinventoryapp.finanzen.ui.GutscheinUiState
  * anderes sucht.
  */
 @Composable
-fun GutscheineRoute(
+fun VouchersRoute(
     gvm: GutscheinViewModel,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
 ) {
-    val gutscheinZustand by gvm.state.collectAsStateWithLifecycle()
+    val voucherState by gvm.state.collectAsStateWithLifecycle()
     Sichtschutz()
     // PIN kopieren und Gutscheine löschen: kein Tipp durch eine Überlagerung.
     Ueberdeckungsschutz()
-    // Kopiert wird über GeheimeZwischenablage (nach einer Minute wieder leer); die
+    // Kopiert wird über SecretClipboard (nach einer Minute wieder leer); die
     // Rückmeldung läuft über den Snackbar des ViewModels wie alle anderen Meldungen.
-    val kontext = androidx.compose.ui.platform.LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val etikett = stringResource(R.string.vouchers_title)
     // Die Liste lädt, sobald diese Seite den Zustand beobachtet (GutscheinViewModel),
     // nicht beim Öffnen der Einstellungen. Der Klartext lebt nur, solange die Seite vorne steht.
-    DisposableEffect(Unit) { onDispose { gvm.verlasseGutscheine() } }
-    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { gvm.vergissKlartext() }
+    DisposableEffect(Unit) { onDispose { gvm.leaveVouchers() } }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { gvm.forgetPlaintext() }
     // Nummer und PIN zusammen sind Geld: als Geheimnis markiert, nach einer Minute weg.
-    val auftrag = gutscheinZustand.zuKopieren
-    LaunchedEffect(auftrag) {
-        if (auftrag == null) return@LaunchedEffect
-        GeheimeZwischenablage.kopiere(kontext, etikett, auftrag.wert)
-        gvm.meldeGutscheinKopiert(auftrag.istNummer)
-        gvm.kopierenQuittieren()
+    val job = voucherState.copyTo
+    LaunchedEffect(job) {
+        if (job == null) return@LaunchedEffect
+        SecretClipboard.copy(context, etikett, job.wert)
+        gvm.reportVoucherCopied(job.isNumber)
+        gvm.copyAcknowledge()
     }
-    GutscheineSeite(gutscheinZustand, snackbarHostState, onZurueck,
-        onGuthabenAlle = { gvm.frageAlleGuthabenAb() }, onExportieren = { gvm.oeffneGutscheinExport() }) { neu, onNeu ->
+    VouchersPage(voucherState, snackbarHostState, onZurueck,
+        onBalanceAll = { gvm.questionAllBalanceAb() }, exportOn = { gvm.openVoucherExport() }) { neu, onNew ->
         GutscheineCard(
-            zustand = gutscheinZustand,
-            onFeld = { n, p, b, w -> gvm.setzeGutscheinFeld(n, p, b, w) },
-            onPinSchalten = { gvm.schalteGutscheinPin(it) },
-            onBearbeiten = { gvm.bearbeiteGutschein(it) },
-            onAbbrechen = { gvm.leereGutscheinFormular() },
-            onSpeichern = { gvm.speichereGutschein(it?.let { u -> DateiRef(u.toString()) }) },
-            onLoeschen = { gvm.loescheGutschein(it) },
-            onPdfOeffnen = { gvm.oeffneGutscheinPdf(it) },
-            onKopieren = { id, istNummer -> gvm.kopiereGutschein(id, istNummer) },
-            onGuthaben = { gvm.frageGuthabenAb(it) },
-            onGuthabenAbbrechen = { gvm.guthabenLaufAbbrechen() },
-            onErneut = { gvm.ladeGutscheine() },
-            onBestaetigen = { passwort, code -> gvm.bestaetige(passwort, code) },
-            onBestaetigungAbbrechen = { gvm.bestaetigungAbbrechen() },
+            zustand = voucherState,
+            onFeld = { n, p, b, w -> gvm.setVoucherField(n, p, b, w) },
+            switchOnPin = { gvm.switchVoucherPin(it) },
+            editOn = { gvm.editVoucher(it) },
+            onAbbrechen = { gvm.emptyVoucherForm() },
+            onSpeichern = { gvm.saveVoucher(it?.let { u -> FileRef(u.toString()) }) },
+            deleteOn = { gvm.deleteVoucher(it) },
+            openOnPdf = { gvm.openVoucherPdf(it) },
+            onKopieren = { id, isNumber -> gvm.copyVoucher(id, isNumber) },
+            onBalance = { gvm.questionBalanceAb(it) },
+            cancelOnBalance = { gvm.cancelBalanceRun() },
+            onErneut = { gvm.loadVouchers() },
+            onBestaetigen = { passwort, code -> gvm.confirm(passwort, code) },
+            cancelOnConfirmation = { gvm.cancelConfirmation() },
             neu = neu,
-            onNeu = onNeu,
+            onNew = onNew,
         )
     }
 }
@@ -76,18 +76,18 @@ fun GutscheineRoute(
  * Karten aus dem Bild. [karte] bekommt, ob das Formular zum Anlegen offen ist.
  */
 @Composable
-fun GutscheineSeite(
+fun VouchersPage(
     zustand: GutscheinUiState,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
-    onGuthabenAlle: () -> Unit,
-    onExportieren: () -> Unit,
-    karte: @Composable (neu: Boolean, onNeu: (Boolean) -> Unit) -> Unit,
+    onBalanceAll: () -> Unit,
+    exportOn: () -> Unit,
+    karte: @Composable (neu: Boolean, onNew: (Boolean) -> Unit) -> Unit,
 ) {
     var neu by rememberSaveable { mutableStateOf(false) }
-    Unterseite(
+    Subpage(
         stringResource(R.string.vouchers_title), snackbarHostState, onZurueck,
-        aktionen = { GutscheinMenue(zustand, onGuthabenAlle, onExportieren) },
-        hauptaktion = { GutscheinHinzufuegen { neu = true } },
+        aktionen = { VoucherMenu(zustand, onBalanceAll, exportOn) },
+        primaryAction = { VoucherAdd { neu = true } },
     ) { karte(neu) { neu = it } }
 }

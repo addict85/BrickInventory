@@ -1,6 +1,6 @@
 Gegenprobe: Das Modell liest das Feld unter falschem Namen
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.ZweiterFaktorUebernahmeTest
+Test: ch.brickinventoryapp.zustand.SecondFactorTakeoverTest
 Rot: Anmeldung und auth me lesen
 
 diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt

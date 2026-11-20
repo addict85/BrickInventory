@@ -7,11 +7,11 @@ diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventor
 --- a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
 +++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
 @@ -92,8 +92,6 @@
-             k.konfiguration == "api" && k.nach != "core-model" ->
+             k.configuration == "api" && k.nach != "core-model" ->
                  "Modulkanten per api nur zu core-model: ${k.von} → ${k.nach}"
-             k.nurTest -> null
+             k.onlyTest -> null
 -            k.nach == "core-vertrag" && k.von !in wireKenner ->
 -                "${k.von} kennt das Wire-Format: Nur ${wireKenner.sorted().joinToString(" und ")} bildet es ab"
              k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"
              k.von.startsWith("feature-") && !k.nach.startsWith("core-") -> "${k.von} hängt an ${k.nach}"
-             k.von.startsWith("feature-") && k.nach in tiefeKerne && k.von !in tiefeKerne.getValue(k.nach) ->
+             k.von.startsWith("feature-") && k.nach in depthCores && k.von !in depthCores.getValue(k.nach) ->

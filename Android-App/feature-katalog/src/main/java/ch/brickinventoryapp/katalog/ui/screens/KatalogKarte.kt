@@ -24,18 +24,18 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ui.components.KachelAusgleich
+import ch.brickinventoryapp.ui.components.TileBalance
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.BrickStudCap
-import ch.brickinventoryapp.ui.theme.NoppenReihe
-import ch.brickinventoryapp.ui.theme.SteinKantenVerlauf
-import ch.brickinventoryapp.ui.theme.NoppenMass
+import ch.brickinventoryapp.ui.theme.StudsSeries
+import ch.brickinventoryapp.ui.theme.BrickEdgesHistory
+import ch.brickinventoryapp.ui.theme.StudsMass
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.LocalIsNoppeTheme
-import ch.brickinventoryapp.ui.theme.LocalIstGlanz
-import ch.brickinventoryapp.ui.theme.steinTon
-import ch.brickinventoryapp.ui.theme.LocalIsFarbfaecherTheme
-import ch.brickinventoryapp.ui.theme.faecherTon
+import ch.brickinventoryapp.ui.theme.LocalIsStudTheme
+import ch.brickinventoryapp.ui.theme.LocalIsGloss
+import ch.brickinventoryapp.ui.theme.brickTone
+import ch.brickinventoryapp.ui.theme.LocalIsColorSlotsTheme
+import ch.brickinventoryapp.ui.theme.slotsTone
 import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
 import coil3.ImageLoader
 import coil3.request.ImageRequest
@@ -44,13 +44,13 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.readAloudAs
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.components.ProduktBild
-import ch.brickinventoryapp.ui.components.bewegungReduziert
-import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.ui.theme.LocalSteinDekor
-import ch.brickinventoryapp.ui.theme.lichtStreifen
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.ui.theme.LocalBrickDecor
+import ch.brickinventoryapp.ui.theme.lightStrip
 
 @Composable
 fun CatalogSetCard(
@@ -63,41 +63,41 @@ fun CatalogSetCard(
 ) {
     val ctx = LocalContext.current
     val isBrick = LocalIsBrickTheme.current
-    val istNoppe = LocalIsNoppeTheme.current
-    val istGlanz = LocalIstGlanz.current
+    val isStud = LocalIsStudTheme.current
+    val isGloss = LocalIsGloss.current
     // Der Thementon des Designs "farbfaecher" — dieselbe Rechnung wie
     // --faecher-ton in js/katalog.js. Ohne Thema-Nummer gibt es keinen
     // Streifen, statt eines falschen.
-    val ton = if (LocalIsFarbfaecherTheme.current) faecherTon(set.themeId) else null
-    val besitz = set.ownedQuantity.coerceAtLeast(1)
-    val besitzAnsage = if (set.owned) pluralStringResource(R.plurals.cd_in_sammlung, besitz, besitz) else null
+    val tone = if (LocalIsColorSlotsTheme.current) slotsTone(set.themeId) else null
+    val ownership = set.ownedQuantity.coerceAtLeast(1)
+    val ownershipAnnouncement = if (set.owned) pluralStringResource(R.plurals.cd_in_sammlung, ownership, ownership) else null
     // Die Noppen stehen über der Karte: Eine Material-Card klippt auf ihre Form.
     // Deshalb rückt die Karte um die Noppenhöhe nach unten, und die Reihe wird daneben
     // gezeichnet und darübergelegt — wie `top:-6px` im CSS.
     Box {
         AppKarte(
-            modifier = Modifier.then(if (isBrick) Modifier.padding(top = NoppenMass.Stein.hoehe) else Modifier),
+            modifier = Modifier.then(if (isBrick) Modifier.padding(top = StudsMass.Stein.hoehe) else Modifier),
             onClick = { onClick(set.setNumber) },
             onClickLabel = stringResource(R.string.cd_details_oeffnen),
         ) {
             Column {
                 // Die Steinkante und der Steindeckel wie in der Galerie (SetCard).
                 if (isBrick) BoxWithConstraints {
-                    BrickStudCap(mass = NoppenMass.Stein, verlauf = SteinKantenVerlauf,
+                    BrickStudCap(mass = StudsMass.Stein, verlauf = BrickEdgesHistory,
                         height = if (maxWidth < 240.dp) 12.dp else null)
                 }
-                if (istNoppe) BrickStudCap(color = steinTon(position), glanz = istGlanz)
-                if (ton != null) {
-                    Box(Modifier.fillMaxWidth().height(5.dp).background(ton))
+                if (isStud) BrickStudCap(color = brickTone(position), gloss = isGloss)
+                if (tone != null) {
+                    Box(Modifier.fillMaxWidth().height(5.dp).background(tone))
                 }
                 // 4:3 wie die Kacheln der Galerie: Eine feste Höhe liess das Bild auf dem
                 // Tablet schmal in der Kachel stehen.
-                Box(Modifier.fillMaxWidth().aspectRatio(KATALOG_BILD_VERHAELTNIS)) {
+                Box(Modifier.fillMaxWidth().aspectRatio(CATALOG_IMAGE_RATIO)) {
                     // Über den Server auflösen statt roher CDN-Adresse; scheitert die Vorschau,
                     // Rückfall auf die volle Auflösung vor dem Platzhalter.
                     val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
                     ProduktBild(
-                        model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
+                        model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
                         imageLoader = imageLoader,
                         // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
                         contentDescription = null,
@@ -105,42 +105,42 @@ fun CatalogSetCard(
                         modifier = Modifier.fillMaxSize()
                             .then(if (isBrick) Modifier else Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))),
                         contentScale = ContentScale.Fit,
-                        ersatzGroesse = 44.dp,
+                        fallbackSize = 44.dp,
                         bildgrund = true,
-                        innenAbstand = Abstaende.klein,
+                        innerGap = Abstaende.klein,
                     )
-                    // Die Spiegelung auf der Glasscheibe, nur über dem Bild (LichtStreifen in BrickDecor.kt).
-                    if (istGlanz) Box(Modifier.matchParentSize().background(lichtStreifen()))
+                    // Die Spiegelung auf der Glasscheibe, nur über dem Bild (LightStrip in BrickDecor.kt).
+                    if (isGloss) Box(Modifier.matchParentSize().background(lightStrip()))
                     // Eine Pille innerhalb des Bilds wie die Mengenplakette der Galerie; vorgelesen am Ende.
                     if (set.owned) {
                         Surface(
                             color = MaterialTheme.colorScheme.primary,
                             shape = Formen.etikett,
-                            modifier = Modifier.align(Alignment.TopEnd).padding(KATALOG_PLAKETTE_RAND).clearAndSetSemantics {}
+                            modifier = Modifier.align(Alignment.TopEnd).padding(CATALOG_BADGE_EDGE).clearAndSetSemantics {}
                         ) {
                             Text(
                                 if (set.ownedQuantity > 1) "✓ ×${set.ownedQuantity}" else "✓",
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.hairline),
                             )
                         }
                     }
                 }
                 // Der Name zuerst, wie er vorgelesen wird; Nummer, Jahr und Teile darunter.
-                // Ein kurzer Name lässt keine Lücke; die Zeile fehlt am Fuss (KachelAusgleich).
-                var namensZeilen by remember { mutableIntStateOf(2) }
+                // Ein kurzer Name lässt keine Lücke; die Zeile fehlt am Fuss (TileBalance).
+                var namedRows by remember { mutableIntStateOf(2) }
                 Box {
                     Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
-                        verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                        verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
                         Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namensZeilen = it.lineCount })
-                        Text(set.setNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_set_nummer, set.setNumber)),
+                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namedRows = it.lineCount })
+                        Text(set.setNumber, Modifier.readAloudAs(stringResource(R.string.cd_set_nummer, set.setNumber)),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             val jahr = set.year
-                            if (jahr != null) Text("$jahr", Modifier.vorgelesenAls(stringResource(R.string.cd_jahr, "$jahr")),
+                            if (jahr != null) Text("$jahr", Modifier.readAloudAs(stringResource(R.string.cd_jahr, "$jahr")),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if ((set.numParts ?: 0) > 0) {
                                 // Dasselbe Teile-Symbol wie im Reiter „Teile" und in der Webapp.
@@ -148,7 +148,7 @@ fun CatalogSetCard(
                                     ImageVector.vectorResource(R.drawable.ic_parts_bricks),
                                     contentDescription = null,
                                     tint = Color.Unspecified,
-                                    modifier = Modifier.size(mitSchrift(13.dp))
+                                    modifier = Modifier.size(withFont(13.dp))
                                 )
                                 // Die Zahl mit Wort: „500“ allein neben dem Steinsymbol las sich wie ein Preis.
                                 val teile = set.numParts ?: 0
@@ -156,25 +156,25 @@ fun CatalogSetCard(
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
-                        KachelAusgleich(2 - namensZeilen)
+                        TileBalance(2 - namedRows)
                     }
-                    if (besitzAnsage != null) Box(Modifier.semantics { contentDescription = besitzAnsage })
+                    if (ownershipAnnouncement != null) Box(Modifier.semantics { contentDescription = ownershipAnnouncement })
                 }
             }
         }
-        if (isBrick) NoppenReihe(
-            mass = NoppenMass.Stein,
+        if (isBrick) StudsSeries(
+            mass = StudsMass.Stein,
             modifier = Modifier.align(Alignment.TopStart),
-            farbe = LocalSteinDekor.current.noppen,
+            farbe = LocalBrickDecor.current.studs,
         )
     }
 }
 
 /** Seitenverhältnis der Kachelbilder, wie in der Galerie. */
-private const val KATALOG_BILD_VERHAELTNIS = 4f / 3f
+private const val CATALOG_IMAGE_RATIO = 4f / 3f
 
 /** Abstand der Besitzplakette vom Bildrand, wie in der Galerie. */
-private val KATALOG_PLAKETTE_RAND = Abstaende.klein + Abstaende.winzig
+private val CATALOG_BADGE_EDGE = Abstaende.klein + Abstaende.tiny
 
 /**
  * Platzhalter für einen Platz, dessen Seite noch nicht geladen ist — gleich hoch

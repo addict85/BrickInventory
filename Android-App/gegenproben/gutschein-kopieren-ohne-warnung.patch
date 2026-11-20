@@ -9,8 +9,8 @@ diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/fin
 @@ -125,7 +125,6 @@
              )
          }
-         GutscheinRaster(zustand.gutscheine, breit, karte)
--        if (zustand.gutscheine.isNotEmpty()) GeheimKopierWarnung()
+         VoucherRaster(zustand.gutscheine, breit, karte)
+-        if (zustand.gutscheine.isNotEmpty()) SecretKopierWarning()
  
-         // Die Summe — nur bei EINER Waehrung (gutscheinSumme).
-         val summe = gutscheinSumme(zustand.gutscheine)
+         // Die Summe — nur bei EINER Waehrung (voucherSum).
+         val sum = voucherSum(zustand.gutscheine)

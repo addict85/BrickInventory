@@ -25,18 +25,18 @@ enum class Design(val kennung: String) {
     HOCHGLANZ("hochglanz");
 
     companion object {
-        val VORGABE = CLASSIC
+        val DEFAULT = CLASSIC
 
         /** null für leer oder unbekannt: „keine Information“, nicht „zurück auf die Vorgabe“. */
         fun aus(kennung: String?): Design? = entries.firstOrNull { it.kennung == kennung?.trim() }
     }
 }
 
-/** Schreibt die [Design.kennung]; liest Unbekanntes als [Design.VORGABE]. */
+/** Schreibt die [Design.kennung]; liest Unbekanntes als [Design.DEFAULT]. */
 object DesignSerializer : KSerializer<Design> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor(Design::class.java.name, PrimitiveKind.STRING)
     override fun serialize(encoder: Encoder, value: Design) = encoder.encodeString(value.kennung)
-    override fun deserialize(decoder: Decoder): Design = Design.aus(decoder.decodeString()) ?: Design.VORGABE
+    override fun deserialize(decoder: Decoder): Design = Design.aus(decoder.decodeString()) ?: Design.DEFAULT
 }
 
 /**

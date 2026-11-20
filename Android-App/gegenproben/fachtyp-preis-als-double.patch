@@ -7,10 +7,10 @@ diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fac
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
 +++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
 @@ -55,6 +55,7 @@
- data class KaufSummenAnsicht(
+ data class PurchaseSumsView(
      val quantity: Int = 0,
      val amount: Geld? = null,
 +    val betragAlt: Double? = null,
  )
  
- data class LagerortAnsicht(
+ data class LocationView(

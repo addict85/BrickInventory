@@ -15,7 +15,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   schicht-praesentation-netz  `import retrofit2.Response` in GalleryScreen → rot „Präsentation …“
  *   schicht-bereich-api         `import ch.brickinventoryapp.data.api.SetsApi` in MerklisteViewModel
  *                               → rot „ein Bereich kennt die Retrofit-Schnittstellen nicht“
- *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.KontoApi` in AppTexte → dasselbe rot
+ *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.AccountApi` in AppTexte → dasselbe rot
  *   zustand-texte-mit-context   `import android.content.Context` in AppTexte → rot „core-zustand und core-sitzung kennen keinen Context“
  *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-sitzung) → rot
  *                               „core-zustand und core-sitzung kennen keinen Context“
@@ -36,7 +36,7 @@ class SchichtregelnTest {
         }
     }
 
-    private fun verstoesse(welche: (Datei) -> Boolean, verboten: (String) -> Boolean): List<String> {
+    private fun violations(welche: (Datei) -> Boolean, verboten: (String) -> Boolean): List<String> {
         val geprueft = dateien.filter(welche)
         assert(geprueft.isNotEmpty()) { "Keine Dateien geprüft — Muster veraltet?" }
         return geprueft.flatMap { d -> d.importe.filter(verboten).map { "${d.modul}/${d.name}: $it" } }
@@ -44,11 +44,11 @@ class SchichtregelnTest {
 
     private val WIRE_KENNER = setOf("core-vertrag", "core-data", "core-testing")
 
-    private fun praesentation(d: Datei) = d.modul in setOf("core-zustand", "core-sitzung") || d.modul.startsWith("feature-")
+    private fun presentation(d: Datei) = d.modul in setOf("core-zustand", "core-sitzung") || d.modul.startsWith("feature-")
 
     @Test
     fun `ein ViewModel kennt weder Android noch Netz noch Bildschirmcode`() {
-        val f = verstoesse({ it.name.endsWith("ViewModel.kt") }) {
+        val f = violations({ it.name.endsWith("ViewModel.kt") }) {
             it.startsWith("android.") || it.startsWith("okhttp3.") || it.startsWith("retrofit2.") ||
                 Regex("""\.ui\.(screens|components)\.""").containsMatchIn(it)
         }
@@ -57,7 +57,7 @@ class SchichtregelnTest {
 
     @Test
     fun `Praesentation holt nichts selbst am Netz`() {
-        val f = verstoesse(::praesentation) { it.startsWith("okhttp3.") || it.startsWith("retrofit2.") }
+        val f = violations(::presentation) { it.startsWith("okhttp3.") || it.startsWith("retrofit2.") }
         assert(f.isEmpty()) { "Präsentation mit OkHttp oder Retrofit:\n  " + f.joinToString("\n  ") }
     }
 
@@ -69,20 +69,20 @@ class SchichtregelnTest {
      */
     @Test
     fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format nur core-data`() {
-        val f = verstoesse(::praesentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
+        val f = violations(::presentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
         assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api:\n  " + f.joinToString("\n  ") }
-        val wire = verstoesse({ it.modul !in WIRE_KENNER }) { it.startsWith("ch.brickinventoryapp.vertrag.") }
+        val wire = violations({ it.modul !in WIRE_KENNER }) { it.startsWith("ch.brickinventoryapp.vertrag.") }
         assert(wire.isEmpty()) { "Importe aus core-vertrag ausserhalb von core-data:\n  " + wire.joinToString("\n  ") }
-        val umsetzung = verstoesse({ it.modul !in setOf("core-data", "core-testing") }) {
+        val implementation = violations({ it.modul !in setOf("core-data", "core-testing") }) {
             Regex("""^ch\.brickinventoryapp\.data\.repository\.\w+Impl$""").matches(it)
         }
-        assert(umsetzung.isEmpty()) { "Repository-Umsetzungen ausserhalb von core-data und core-testing:\n  " + umsetzung.joinToString("\n  ") }
+        assert(implementation.isEmpty()) { "Repository-Umsetzungen ausserhalb von core-data und core-testing:\n  " + implementation.joinToString("\n  ") }
     }
 
-    /** Texte und Dateien kommen über Textquelle und DateiLeser aus core-data, ohne Ausnahme. */
+    /** Texte und Dateien kommen über Textquelle und FileReader aus core-data, ohne Ausnahme. */
     @Test
     fun `core-zustand und core-sitzung kennen keinen Context`() {
-        val f = verstoesse({ it.modul in setOf("core-zustand", "core-sitzung") }) {
+        val f = violations({ it.modul in setOf("core-zustand", "core-sitzung") }) {
             it == "android.content.Context" || it.endsWith(".ApplicationContext")
         }
         assert(f.isEmpty()) { "core-zustand oder core-sitzung mit Context:\n  " + f.joinToString("\n  ") }

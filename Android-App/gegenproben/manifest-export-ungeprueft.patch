@@ -1,6 +1,6 @@
 Gegenprobe: Eine exportierte Komponente ausserhalb der Positivliste geht durch
 Modul: app
-Test: ch.brickinventoryapp.app.ManifestPruefenTest
+Test: ch.brickinventoryapp.app.ManifestCheckTest
 Rot: eine fremde exportierte Komponente
 
 diff --git a/Android-App/tools/manifest-pruefen.py b/Android-App/tools/manifest-pruefen.py

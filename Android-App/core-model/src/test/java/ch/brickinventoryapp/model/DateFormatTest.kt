@@ -1,0 +1,167 @@
+package ch.brickinventoryapp.model
+
+import ch.brickinventoryapp.model.util.DateYear
+import ch.brickinventoryapp.model.util.fmtDatum
+import ch.brickinventoryapp.model.util.fmtStatus
+import ch.brickinventoryapp.model.util.fmtUhrzeit
+import org.junit.Test
+import java.time.Instant
+import java.time.ZoneOffset
+import java.util.Locale
+
+/**
+ * Der gemeinsame Datumsformatierer — und der Grund, warum es ihn gibt.
+ *
+ * Es gab die Umwandlung zweimal: einmal ueber `iso.take(10).split("-")`
+ * (SetDetailScreen), einmal ueber SimpleDateFormat mit dem festen Muster
+ * "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" (MinifigsScreen). Die zweite Fassung fiel bei
+ * jedem Zeitstempel OHNE Millisekunden still auf null zurueck — dann stand gar
+ * kein Datum da. Genau das prueft der erste Fall unten mit.
+ *
+ * Gegenproben: in fmtDatum den Zweig `locale.language !=
+ * "en"` immer genommen → rot „je Sprache eine Form wie im Web“; im en-Zweig `DateYear.OHNE`
+ * wie VOLL behandelt → ebenso rot; in fmtStatus das Datum wieder fest als
+ * dd.MM.yyyy → rot „der Stand folgt derselben Form“. Englisch wieder „$t/$m/$jj“
+ * → rot „je Sprache eine Form …“. timeOfDayFormat() wieder fest „HH:mm“ → rot „die Uhrzeit
+ * folgt der 12- oder 24-Stunden-Einstellung …“ (gegenproben/uhrzeit-fest-24-stunden.patch,
+ * mit kotlinc gemessen).
+ */
+class DateFormatTest {
+
+    private val DE = Locale.forLanguageTag("de-CH")
+
+    /** Wie Intl.DateTimeFormat mit 2-stelligem Tag und Monat in der Webapp (fmtDatum). */
+    @Test
+    fun `je Sprache eine Form wie im Web`() {
+        val tag = "2026-08-01T10:00:00Z"
+        assert(fmtDatum(tag, DE) == "01.08.2026") { fmtDatum(tag, DE).toString() }
+        assert(fmtDatum(tag, Locale.forLanguageTag("en-GB")) == "1 Aug 2026")
+        assert(fmtDatum(tag, Locale.forLanguageTag("en-US")) == "Aug 1, 2026")
+        assert(fmtDatum(tag, DE, DateYear.OHNE) == "01.08.") { fmtDatum(tag, DE, DateYear.OHNE).toString() }
+        assert(fmtDatum(tag, Locale.forLanguageTag("en-GB"), DateYear.OHNE) == "1 Aug")
+        // Keine Ziffernform „dd/mm“ im Englischen: Sie liest sich je nach Land verschieden.
+        for (land in listOf("en-GB", "en-US")) {
+            val l = Locale.forLanguageTag(land)
+            for (j in DateYear.entries) {
+                val s = fmtDatum(tag, l, j).orEmpty()
+                assert(!Regex("""\d{1,2}/\d{1,2}""").containsMatchIn(s)) { "$land $j: $s" }
+            }
+        }
+    }
+
+    @Test
+    fun `der Stand folgt derselben Form`() {
+        val utc = ZoneOffset.UTC
+        val millis = Instant.parse("2026-08-01T09:05:00Z").toEpochMilli()
+        assert(fmtStatus(millis, Locale.forLanguageTag("en-GB"), utc) == "1 Aug 2026 09:05") {
+            fmtStatus(millis, Locale.forLanguageTag("en-GB"), utc)
+        }
+        assert(fmtStatus(millis, DE, utc) == "01.08.2026 09:05")
+    }
+
+    /**
+     * Fest „HH:mm“ zeigte einem Gerät auf 12 Stunden eine andere Uhr als die Statusleiste.
+     * Die Einstellung des Geräts entscheidet, die Sprache nur die Tageszeit-Wörter.
+     */
+    @Test
+    fun `die Uhrzeit folgt der 12- oder 24-Stunden-Einstellung des Geraets`() {
+        val utc = ZoneOffset.UTC
+        val millis = Instant.parse("2026-08-01T21:05:00Z").toEpochMilli()
+        val us = Locale.forLanguageTag("en-US")
+        assert(fmtStatus(millis, us, utc, twentyFour = false) == "Aug 1, 2026 9:05 PM") {
+            fmtStatus(millis, us, utc, twentyFour = false)
+        }
+        assert(fmtStatus(millis, us, utc, twentyFour = true) == "Aug 1, 2026 21:05")
+        assert(fmtStatus(millis, DE, utc, twentyFour = true, jahr = DateYear.OHNE) == "01.08. 21:05") {
+            fmtStatus(millis, DE, utc, twentyFour = true, jahr = DateYear.OHNE)
+        }
+        val zwoelf = fmtStatus(millis, DE, utc, twentyFour = false)
+        assert(zwoelf.startsWith("01.08.2026 9:05 ")) { zwoelf }
+        val clock = fmtUhrzeit("2026-08-01T21:05:09Z", us, twentyFour = false)!!
+        assert(Regex("""^\d{1,2}:05:09 (AM|PM)$""").matches(clock)) { clock }
+    }
+
+    @Test
+    fun `Zeitstempel mit und ohne Millisekunden ergeben dasselbe Datum`() {
+        val erwartet = "03.09.2026"
+        for (eingabe in listOf(
+            "2026-09-03T15:00:32.194Z",   // mit Millisekunden
+            "2026-09-03T15:00:32Z",       // ohne — die alte Fassung gab hier null
+            "2026-09-03T15:00:32+02:00",  // mit Zonenversatz
+            "2026-09-03",                 // nur der Tag
+        )) {
+            assert(fmtDatum(eingabe, DE) == erwartet) {
+                "fmtDatum(\"$eingabe\") ergab ${fmtDatum(eingabe, DE)}, erwartet $erwartet"
+            }
+        }
+    }
+
+    @Test
+    fun `zweistelliges Jahr auf Wunsch`() {
+        assert(fmtDatum("2026-09-03", DE, DateYear.SHORT) == "03.09.26")
+    }
+
+    /**
+     * Die Uhrzeit fuer das Protokoll — siehe fmtUhrzeit.
+     *
+     * ── Warum nicht auf eine feste Uhrzeit geprueft wird ────────────────────
+     *
+     * fmtUhrzeit rechnet ABSICHTLICH in die Zone des Geraets um (anders als
+     * fmtDatum; die Begruendung steht dort). Eine Zusicherung wie
+     * `== "17:00:32"` waere damit von der Zeitzone der Maschine abhaengig, auf
+     * der der Test laeuft — gruen hier, rot im GitHub-Lauf oder umgekehrt. Ein
+     * Test, der von der Umgebung abhaengt, wird beim ersten roten Lauf
+     * abgeschaltet.
+     *
+     * Geprueft wird deshalb, was UNABHAENGIG von der Zone gilt: die Form, die
+     * Sekunden (die verschiebt keine Zone — halbe Stunden gibt es, halbe
+     * Minuten nicht), und dass eine Stunde Unterschied in der Eingabe eine
+     * Stunde Unterschied in der Ausgabe ergibt.
+     */
+    @Test
+    fun `Uhrzeit hat die richtige Form und rechnet konsistent`() {
+        for (eingabe in listOf(
+            "2026-09-03T15:00:32.194Z",   // mit Millisekunden
+            "2026-09-03T15:00:32Z",       // ohne
+            "2026-09-03T15:00:32+02:00",  // mit Zonenversatz
+            "2026-09-03T15:00:32",        // ohne Zone — gilt als UTC
+        )) {
+            val u = fmtUhrzeit(eingabe)
+            assert(u != null && Regex("""\d\d:\d\d:\d\d""").matches(u)) {
+                "fmtUhrzeit(\"$eingabe\") ergab $u, erwartet HH:MM:SS"
+            }
+            // Nur die SEKUNDEN, nicht Minuten und Sekunden: Es gibt Zonen mit
+            // halbstuendigem Versatz (Indien +05:30), dort verschiebt die
+            // Umrechnung sehr wohl die Minute. Die erste Fassung dieser Zeile
+            // pruefte ":00:32" und waere auf einer Maschine in Kalkutta rot
+            // geworden — eine Zusicherung, die nur zufaellig gilt, weil hier
+            // und im GitHub-Lauf UTC eingestellt ist.
+            assert(u!!.endsWith(":32")) {
+                "fmtUhrzeit(\"$eingabe\") ergab $u — die Sekunden aendert keine Zone"
+            }
+        }
+        val early = fmtUhrzeit("2026-09-03T10:00:00Z")!!.take(2).toInt()
+        val spaet = fmtUhrzeit("2026-09-03T11:00:00Z")!!.take(2).toInt()
+        assert((spaet - early + 24) % 24 == 1) {
+            "Eine Stunde Unterschied ergab $early → $spaet"
+        }
+    }
+
+    @Test
+    fun `unbrauchbare Uhrzeiten ergeben null, nicht Unsinn`() {
+        for (eingabe in listOf(null, "", "gleich", "2026-09-03")) {
+            assert(fmtUhrzeit(eingabe) == null) {
+                "fmtUhrzeit(\"$eingabe\") ergab ${fmtUhrzeit(eingabe)}, erwartet null"
+            }
+        }
+    }
+
+    @Test
+    fun `unbrauchbare Eingaben ergeben null, nicht Unsinn`() {
+        for (eingabe in listOf(null, "", "morgen", "2026-9-3", "03.09.2026")) {
+            assert(fmtDatum(eingabe, DE) == null) {
+                "fmtDatum(\"$eingabe\") ergab ${fmtDatum(eingabe, DE)}, erwartet null"
+            }
+        }
+    }
+}

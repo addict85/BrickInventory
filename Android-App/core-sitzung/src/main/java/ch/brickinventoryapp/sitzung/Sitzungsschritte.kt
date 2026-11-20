@@ -9,8 +9,8 @@ fun interface Abmeldevorgang {
 }
 
 /** Der eine Schritt, den der SitzungsDienst vom Vorwärmen kennt. */
-fun interface Vorwaermung {
-    fun anstossen()
+fun interface WarmUp {
+    fun kick()
 }
 
 /**
@@ -19,8 +19,8 @@ fun interface Vorwaermung {
  * vier Schritte, sonst hinge sie an den Filtern der Bereiche.
  */
 interface Filterquelle {
-    suspend fun ladeFilter()
-    suspend fun ladeMitglieder()
+    suspend fun loadFilter()
+    suspend fun loadMembers()
     suspend fun ladeLagerorte()
-    suspend fun ladeEigeneLagerorte()
+    suspend fun loadOwnLocations()
 }

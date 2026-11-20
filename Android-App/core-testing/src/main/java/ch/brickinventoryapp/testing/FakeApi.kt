@@ -21,10 +21,10 @@ class FakeApi {
 
     /** Abweichender Statuscode je Methode, z. B. 500 für „Server kaputt“. */
     val codes: MutableMap<String, Int> = Collections.synchronizedMap(mutableMapOf())
-    val aufrufe: MutableList<String> = Collections.synchronizedList(mutableListOf())
+    val calls: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
     /** Die Argumente je Aufruf (ohne die Continuation), für „mit welchem Filter“. */
-    val argumente: MutableList<Pair<String, List<Any?>>> = Collections.synchronizedList(mutableListOf())
+    val arguments: MutableList<Pair<String, List<Any?>>> = Collections.synchronizedList(mutableListOf())
 
     val api: BrickApiService = Proxy.newProxyInstance(
         BrickApiService::class.java.classLoader, arrayOf(BrickApiService::class.java),
@@ -34,16 +34,16 @@ class FakeApi {
             "hashCode" -> System.identityHashCode(proxy)
             "equals" -> proxy === args?.firstOrNull()
             else -> {
-                argumente += methode.name to args?.filterNot { it is kotlin.coroutines.Continuation<*> }.orEmpty()
+                arguments += methode.name to args?.filterNot { it is kotlin.coroutines.Continuation<*> }.orEmpty()
                 antwort(methode.name)
             }
         }
     } as BrickApiService
 
-    fun aufrufeVon(methode: String): Int = synchronized(aufrufe) { aufrufe.count { it == methode } }
+    fun callsOf(methode: String): Int = synchronized(calls) { calls.count { it == methode } }
 
     private fun antwort(methode: String): Response<Any> {
-        aufrufe += methode
+        calls += methode
         val rumpf = antworten[methode]
         val code = codes[methode] ?: if (rumpf != null) 200 else 404
         return if (code in 200..299 && rumpf != null) Response.success(code, rumpf)
@@ -52,10 +52,10 @@ class FakeApi {
 }
 
 /** Die Sitzungsablage im Speicher; was das AppViewModel merkt, steht in den Flüssen. */
-class SpeicherSitzungsablage : Sitzungsablage {
+class StorageSessionStore : Sitzungsablage {
     val server = MutableStateFlow("")
     val token = MutableStateFlow("")
-    val design = MutableStateFlow(Design.VORGABE)
+    val design = MutableStateFlow(Design.DEFAULT)
     val waehrung = MutableStateFlow(Waehrung.EUR)
     val sprache = MutableStateFlow("system")
     var abgelaufen = false
@@ -68,9 +68,9 @@ class SpeicherSitzungsablage : Sitzungsablage {
     override val language: Flow<String> = sprache
     override suspend fun serverUrlJetzt() = server.value
     override suspend fun tokenJetzt() = token.value
-    override suspend fun anmeldungAbgelaufen(jetzt: Long) = abgelaufen
+    override suspend fun loginExpired(jetzt: Long) = abgelaufen
     override suspend fun saveAppTheme(theme: Design) { design.value = theme }
     override suspend fun saveCurrency(cur: Waehrung) { waehrung.value = cur }
-    override fun gescheiterteEntwertungen(): Set<String> = gescheitert.toSet()
-    override fun quittiereGescheiterteEntwertungen() = gescheitert.clear()
+    override fun failedRedemptions(): Set<String> = gescheitert.toSet()
+    override fun acknowledgeFailedRedemptions() = gescheitert.clear()
 }

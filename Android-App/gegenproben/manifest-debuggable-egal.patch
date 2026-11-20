@@ -1,6 +1,6 @@
 Gegenprobe: Ein debuggable APK geht durch die Manifestprüfung
 Modul: app
-Test: ch.brickinventoryapp.app.ManifestPruefenTest
+Test: ch.brickinventoryapp.app.ManifestCheckTest
 Rot: ein debuggable APK
 
 diff --git a/Android-App/tools/manifest-pruefen.py b/Android-App/tools/manifest-pruefen.py

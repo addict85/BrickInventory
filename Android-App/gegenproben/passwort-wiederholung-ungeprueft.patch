@@ -1,16 +1,16 @@
 Gegenprobe: Passwortwechsel prüft die Wiederholung nicht
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.components.PasswortWechselTest
+Test: ch.brickinventoryapp.ui.components.PasswordSwitchTest
 Rot: verschiedene Wiederholung
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PasswortWechsel.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PasswortWechsel.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PasswortWechsel.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/PasswortWechsel.kt
 @@ -24,7 +24,6 @@
- fun passwortWechselFehler(aktuell: String, neu: String, wiederholt: String): List<PasswortFeldFehler> = buildList {
-     if (aktuell.isBlank()) add(PasswortFeldFehler.AKTUELL)
-     if (passwortZuKurz(neu)) add(PasswortFeldFehler.NEU)
--    if (wiederholt != neu) add(PasswortFeldFehler.WIEDERHOLUNG)
+ fun passwordSwitchError(aktuell: String, neu: String, wiederholt: String): List<PasswordFieldError> = buildList {
+     if (aktuell.isBlank()) add(PasswordFieldError.AKTUELL)
+     if (passwordToShort(neu)) add(PasswordFieldError.NEU)
+-    if (wiederholt != neu) add(PasswordFieldError.WIEDERHOLUNG)
  }
  
  /**

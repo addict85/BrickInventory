@@ -8,21 +8,21 @@ import ch.brickinventoryapp.testing.Quellen
  */
 class DesignTokensTest {
 
-    private val themeOrdner = "ui/theme"
+    private val themeFolder = "ui/theme"
 
     @Test
     fun `keine festen Eckenradien ausserhalb des Designs`() {
         val fehler = mutableListOf<String>()
         for (datei in Quellen.alle()) {
-            if (datei.invariantSeparatorsPath.contains("/$themeOrdner/")) continue
-            val s = Quellen.ohneKommentare(datei.readText())
+            if (datei.invariantSeparatorsPath.contains("/$themeFolder/")) continue
+            val s = Quellen.withoutComments(datei.readText())
             Regex("""RoundedCornerShape\(\d+\.dp\)""").findAll(s).forEach { m ->
                 val zeile = s.substring(0, m.range.first).count { it == '\n' } + 1
                 fehler += "${datei.name}:$zeile  ${m.value}"
             }
         }
         assert(fehler.isEmpty()) {
-            "Feste Eckenradien ausserhalb von $themeOrdner/ (${fehler.size}):\n  " +
+            "Feste Eckenradien ausserhalb von $themeFolder/ (${fehler.size}):\n  " +
                 fehler.joinToString("\n  ") +
                 "\nDafür gibt es Formen.karte/chip/feld/kachel/leiste/etikett/marke/fab/strich. " +
                 "Passt keine, gehört eine NEUE dorthin — sonst ist die nächste " +
@@ -34,15 +34,15 @@ class DesignTokensTest {
     fun `keine festen Farben ausserhalb des Designs`() {
         val fehler = mutableListOf<String>()
         for (datei in Quellen.alle()) {
-            if (datei.invariantSeparatorsPath.contains("/$themeOrdner/")) continue
-            val s = Quellen.ohneKommentare(datei.readText())
+            if (datei.invariantSeparatorsPath.contains("/$themeFolder/")) continue
+            val s = Quellen.withoutComments(datei.readText())
             Regex("""Color\(0x[0-9A-Fa-f]{8}\)""").findAll(s).forEach { m ->
                 val zeile = s.substring(0, m.range.first).count { it == '\n' } + 1
                 fehler += "${datei.name}:$zeile  ${m.value}"
             }
         }
         assert(fehler.isEmpty()) {
-            "Feste Farben ausserhalb von $themeOrdner/ (${fehler.size}):\n  " +
+            "Feste Farben ausserhalb von $themeFolder/ (${fehler.size}):\n  " +
                 fehler.joinToString("\n  ") +
                 "\nFür Zustände gibt es LocalStatusFarben (erfolg/warnung/fehler), " +
                 "für das Diagramm LocalChartColors. Eine Farbe, die im Bildschirm " +
@@ -55,12 +55,12 @@ class DesignTokensTest {
         // Es gibt zwei: flach (Listen, Abschnitte) und hoch (Anmeldung,
         // Dialoge, Kennzahlen). Eine dritte Zahl im Bildschirm heisst, dass
         // jemand eine dritte Bedeutung erfunden hat, ohne sie zu benennen.
-        val vorlage = Regex(
+        val template = Regex(
             """cardElevation\(defaultElevation = \d+\.dp\)"""
         )
         val fehler = Quellen.alle()
-            .filter { !it.invariantSeparatorsPath.contains("/$themeOrdner/") }
-            .filter { vorlage.containsMatchIn(Quellen.ohneKommentare(it.readText())) }
+            .filter { !it.invariantSeparatorsPath.contains("/$themeFolder/") }
+            .filter { template.containsMatchIn(Quellen.withoutComments(it.readText())) }
             .map { it.name }
         assert(fehler.isEmpty()) {
             "Diese Dateien setzen die Karten-Erhebung als Zahl: ${fehler.joinToString()}. " +
@@ -75,7 +75,7 @@ class DesignTokensTest {
         // Vorgabe des CompositionLocal zurück — und die ist die klassische.
         // Im Stein-Design stünde dann wieder ein Preussischblau neben
         // Salbeigrün, nur diesmal ohne dass es jemandem auffiele.
-        val theme = Quellen.ohneKommentare(Quellen.lies("ui/theme/Theme.kt"))
+        val theme = Quellen.withoutComments(Quellen.lies("ui/theme/Theme.kt"))
         assert(theme.contains("LocalStatusFarben provides")) { "Statusfarben werden nicht bereitgestellt" }
         assert(theme.contains("LocalChartColors  provides") || theme.contains("LocalChartColors provides")) {
             "Diagrammfarben werden nicht bereitgestellt"
@@ -92,17 +92,17 @@ class DesignTokensTest {
      * standen eckig neben runden Textfeldern. Jedes nennt seine Form aus dem Design
      * (Formen.feld; Suchleisten und Tabellenfelder bewusst eine eigene).
      * Gegenprobe (gegenproben/lagerort-feld-eckig.patch): `shape = Formen.feld` am
-     * Lagerortfeld entfernt → rot mit „LagerortFeld.kt“.
+     * Lagerortfeld entfernt → rot mit „LocationField.kt“.
      */
     @Test
     fun `kein Eingabefeld steht in der eckigen Vorgabe`() {
-        val aufruf = Regex("""\b(OutlinedTextField|TextField)\(""")
+        val call = Regex("""\b(OutlinedTextField|TextField)\(""")
         val fehler = mutableListOf<String>()
         var gesehen = 0
         for (datei in Quellen.alle()) {
-            val s = Quellen.ohneKommentare(datei.readText())
+            val s = Quellen.withoutComments(datei.readText())
                 .replace(Regex(""""(?:\\.|[^"\\\n])*""""), "\"\"")
-            for (m in aufruf.findAll(s)) {
+            for (m in call.findAll(s)) {
                 var tiefe = 0
                 var ende = m.range.last
                 while (ende < s.length) {
@@ -110,8 +110,8 @@ class DesignTokensTest {
                     ende++
                 }
                 gesehen++
-                val argumente = s.substring(m.range.last, minOf(ende + 1, s.length))
-                if (!Regex("""\bshape\s*=\s*(ch\.brickinventoryapp\.ui\.theme\.)?(Formen|MaterialTheme\.shapes)\.""").containsMatchIn(argumente)) {
+                val arguments = s.substring(m.range.last, minOf(ende + 1, s.length))
+                if (!Regex("""\bshape\s*=\s*(ch\.brickinventoryapp\.ui\.theme\.)?(Formen|MaterialTheme\.shapes)\.""").containsMatchIn(arguments)) {
                     fehler += "${datei.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}"
                 }
             }
@@ -128,21 +128,21 @@ class DesignTokensTest {
      * im Ablauf Einrichten → Anmelden von Bildschirm zu Bildschirm. Jeder umrandete Knopf
      * trägt nebenKnopfFarben/-Rand oder ist als Gefahr rot; sonst sah er gesperrt aus.
      *
-     * Gegenproben: knopf-mit-eigener-form (`shape = Formen.feld` in LoginScreen.LadeKnopf)
+     * Gegenproben: knopf-mit-eigener-form (`shape = Formen.feld` in LoginScreen.LoadButton)
      * → rot mit „LoginScreen.kt“; nebenknopf-ohne-farben („Als Datei speichern“ der
      * Notfallcodes ohne beides) → rot mit „ZweiterFaktorPflichtMaske.kt“.
      */
     @Test
     fun `Knoepfe tragen alle dieselbe Form, Nebenknoepfe dieselben Farben`() {
-        val aufruf = Regex("""\b(Button|OutlinedButton|FilledTonalButton|ElevatedButton|TextButton)\(""")
+        val call = Regex("""\b(Button|OutlinedButton|FilledTonalButton|ElevatedButton|TextButton)\(""")
         val fehler = mutableListOf<String>()
         val nebenknoepfe = mutableListOf<String>()
         var gesehen = 0
         for (datei in Quellen.alle()) {
             // Zeichenketten leeren: Eine Klammer darin würfe die Klammerbilanz um.
-            val s = Quellen.ohneKommentare(datei.readText())
+            val s = Quellen.withoutComments(datei.readText())
                 .replace(Regex(""""(?:\\.|[^"\\\n])*""""), "\"\"")
-            for (m in aufruf.findAll(s)) {
+            for (m in call.findAll(s)) {
                 // Die Argumentliste bis zur passenden Klammer; der Inhalt (Lambda) folgt danach.
                 var tiefe = 0
                 var ende = m.range.last
@@ -150,12 +150,12 @@ class DesignTokensTest {
                     if (s[ende] == '(') tiefe++ else if (s[ende] == ')' && --tiefe == 0) break
                     ende++
                 }
-                val argumente = s.substring(m.range.last, minOf(ende + 1, s.length))
+                val arguments = s.substring(m.range.last, minOf(ende + 1, s.length))
                 val wo = "${datei.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}"
-                if (Regex("""\bshape\s*=""").containsMatchIn(argumente)) fehler += "$wo  ${m.value}"
-                if (m.groupValues[1] == "OutlinedButton" && datei.name !in UEBER_DEM_KAMERABILD) {
+                if (Regex("""\bshape\s*=""").containsMatchIn(arguments)) fehler += "$wo  ${m.value}"
+                if (m.groupValues[1] == "OutlinedButton" && datei.name !in VIA_THE_CAMERA_IMAGE) {
                     gesehen++
-                    nebenKnopfFehler(argumente)?.let { nebenknoepfe += "$wo  $it" }
+                    besideButtonError(arguments)?.let { nebenknoepfe += "$wo  $it" }
                 }
             }
         }
@@ -171,16 +171,16 @@ class DesignTokensTest {
     }
 
     /** Die Lampe im Scanner liegt auf dem Kamerabild und trägt Weiss auf Schwarz. */
-    private val UEBER_DEM_KAMERABILD = setOf("BarcodeScannerScreen.kt")
+    private val VIA_THE_CAMERA_IMAGE = setOf("BarcodeScannerScreen.kt")
 
     /** Was einem umrandeten Knopf fehlt, oder null. Rot (Gefahr) ersetzt die Farben des Nebenknopfs. */
-    private fun nebenKnopfFehler(argumente: String): String? {
-        val gefahr = "colorScheme.error" in argumente
-        val rand = Regex("""\bborder\s*=\s*nebenKnopfRand\(([^)]*)\)""").find(argumente)
+    private fun besideButtonError(arguments: String): String? {
+        val danger = "colorScheme.error" in arguments
+        val edge = Regex("""\bborder\s*=\s*nebenKnopfRand\(([^)]*)\)""").find(arguments)
         return when {
-            !gefahr && !Regex("""\bcolors\s*=\s*nebenKnopfFarben\(\)""").containsMatchIn(argumente) -> "ohne nebenKnopfFarben()"
-            rand == null && !gefahr -> "ohne nebenKnopfRand()"
-            rand != null && Regex("""\benabled\s*=""").containsMatchIn(argumente) && rand.groupValues[1].isBlank() ->
+            !danger && !Regex("""\bcolors\s*=\s*nebenKnopfFarben\(\)""").containsMatchIn(arguments) -> "ohne nebenKnopfFarben()"
+            edge == null && !danger -> "ohne nebenKnopfRand()"
+            edge != null && Regex("""\benabled\s*=""").containsMatchIn(arguments) && edge.groupValues[1].isBlank() ->
                 "sperrbar, aber nebenKnopfRand() ohne den Zustand"
             else -> null
         }

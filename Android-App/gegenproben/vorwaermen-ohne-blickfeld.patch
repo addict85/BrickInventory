@@ -1,17 +1,17 @@
 Gegenprobe: die Teile werden ohne den Kontofilter des Blickfelds vorgewärmt
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.SammlungVorwaermenTest
+Test: ch.brickinventoryapp.zustand.CollectionWarmUpTest
 Rot: vorgewaermt wird jeder Reiter
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
 --- a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/Vorwaermen.kt
 @@ -41,7 +41,7 @@
-     liste(galerie, kontosicht.galerie, sets::aktualisiereSets, sets.beobachteSets())
+     liste(galerie, kontosicht.galerie, sets::aktualisiereSets, sets.observeSets())
          .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
  
--    val teileKonto = blickfeld.kontoFuer(ScopeFilter.View.PARTS)
-+    val teileKonto: ch.brickinventoryapp.model.fach.Kontoauswahl? = null
-     val teileAbfrage = teileKonto?.let { Kontosicht.TeileAbfrage(it, null, Farbwahl.Alle, Kategoriewahl.Alle, Ersatzteilwahl.ALLE, false, null) }
-     liste(teileAbfrage, kontosicht.teileliste, teile::aktualisiereTeile, teile.beobachteTeile())
+-    val partsAccount = blickfeld.accountFor(ScopeFilter.View.PARTS)
++    val partsAccount: ch.brickinventoryapp.model.fach.Kontoauswahl? = null
+     val partsQuery = partsAccount?.let { Kontosicht.PartsQuery(it, null, ColorPicker.Alle, Kategoriewahl.Alle, Ersatzteilwahl.ALLE, false, null) }
+     liste(partsQuery, kontosicht.teileliste, teile::refreshParts, teile.observeParts())
          .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }

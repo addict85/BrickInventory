@@ -1,20 +1,20 @@
 package ch.brickinventoryapp.zustand.ui
 
-import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.fach.ColorPicker
 import ch.brickinventoryapp.model.fach.Kategoriewahl
-import ch.brickinventoryapp.sitzung.Vorwaermung
+import ch.brickinventoryapp.sitzung.WarmUp
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.data.repository.MinifigsRepository
 import ch.brickinventoryapp.data.repository.SetsRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.PartsRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.data.repository.Kontosicht.Serversicht
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
-import ch.brickinventoryapp.model.lokal.Lokal
+import ch.brickinventoryapp.model.lokal.Local
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import ch.brickinventoryapp.data.Zugangsdaten
+import ch.brickinventoryapp.data.Credentials
 import ch.brickinventoryapp.data.cache.VorschauVorwaermer
 import ch.brickinventoryapp.model.koroutinen.ApplicationScope
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
@@ -32,40 +32,40 @@ import kotlinx.coroutines.launch
  * Hier und nicht im Vorwärmer, weil nur hier der Kontofilter bekannt ist; der Katalog bleibt
  * draussen, er verdrängte die eigene Sammlung.
  */
-internal suspend fun bildAdressenDerSammlung(
-    sets: SetsRepository, teile: TeileRepository, figuren: FigurenRepository, kontosicht: Kontosicht,
-    blickfeld: Blickfeld, basis: String,
+internal suspend fun imageAddressesTheCollection(
+    sets: SetsRepository, teile: PartsRepository, figuren: MinifigsRepository, kontosicht: Kontosicht,
+    blickfeld: Scope, basis: String,
 ): List<String> {
     val roh = mutableListOf<String?>()
-    val galerie = blickfeld.kontoFuer(ScopeFilter.View.GALLERY)?.let { Kontosicht.SetsAbfrage(it, null, null, null, null) }
-    liste(galerie, kontosicht.galerie, sets::aktualisiereSets, sets.beobachteSets())
+    val galerie = blickfeld.accountFor(ScopeFilter.View.GALLERY)?.let { Kontosicht.SetsQuery(it, null, null, null, null) }
+    liste(galerie, kontosicht.galerie, sets::aktualisiereSets, sets.observeSets())
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
 
-    val teileKonto = blickfeld.kontoFuer(ScopeFilter.View.PARTS)
-    val teileAbfrage = teileKonto?.let { Kontosicht.TeileAbfrage(it, null, Farbwahl.Alle, Kategoriewahl.Alle, Ersatzteilwahl.ALLE, false, null) }
-    liste(teileAbfrage, kontosicht.teileliste, teile::aktualisiereTeile, teile.beobachteTeile())
+    val partsAccount = blickfeld.accountFor(ScopeFilter.View.PARTS)
+    val partsQuery = partsAccount?.let { Kontosicht.PartsQuery(it, null, ColorPicker.Alle, Kategoriewahl.Alle, Ersatzteilwahl.ALLE, false, null) }
+    liste(partsQuery, kontosicht.teileliste, teile::refreshParts, teile.observeParts())
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
 
-    val figurenAbfrage = blickfeld.kontoFuer(ScopeFilter.View.MINIFIGS)?.let { Kontosicht.FigurenAbfrage(it, null) }
-    liste(figurenAbfrage, kontosicht.figurenliste, figuren::aktualisiereFiguren, figuren.beobachteFiguren())
+    val minifigsQuery = blickfeld.accountFor(ScopeFilter.View.MINIFIGS)?.let { Kontosicht.MinifigsQuery(it, null) }
+    liste(minifigsQuery, kontosicht.figurenliste, figuren::refreshMinifigs, figuren.observeMinifigs())
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
-    // Die manuellen Listen hat aktualisiereTeile bzw. aktualisiereFiguren schon mitgeholt.
-    liste(teileKonto?.let { Kontosicht.ManuelleAbfrage(it, null, null) }, kontosicht.manuelleTeile,
-        { Ergebnis.Erfolg(Unit) }, teile.beobachteManuelleTeile())
+    // Die manuellen Listen hat refreshParts bzw. refreshMinifigs schon mitgeholt.
+    liste(partsAccount?.let { Kontosicht.ManualQuery(it, null, null) }, kontosicht.manuelleTeile,
+        { Ergebnis.Erfolg(Unit) }, teile.observeManualParts())
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
-    liste(figurenAbfrage, kontosicht.manuelleFiguren, { Ergebnis.Erfolg(Unit) }, figuren.beobachteManuelleFiguren())
+    liste(minifigsQuery, kontosicht.manualMinifigs, { Ergebnis.Erfolg(Unit) }, figuren.observeManualMinifigs())
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
     return roh.filterNotNull()
 }
 
-private suspend fun <A, T> liste(abfrage: A?, sicht: Serversicht<A, T>, aktualisiere: suspend () -> Ergebnis<Unit>,
-                                 ablage: Flow<Lokal<T>>): List<T> {
+private suspend fun <A, T> liste(abfrage: A?, view: Serversicht<A, T>, refresh: suspend () -> Ergebnis<Unit>,
+                                 ablage: Flow<Local<T>>): List<T> {
     if (abfrage == null) {
-        aktualisiere()
+        refresh()
         return ablage.first().liste
     }
-    sicht.aktualisiere(abfrage)
-    return sicht.beobachte(abfrage).first().liste
+    view.refresh(abfrage)
+    return view.observe(abfrage).first().liste
 }
 
 /**
@@ -74,19 +74,19 @@ private suspend fun <A, T> liste(abfrage: A?, sicht: Serversicht<A, T>, aktualis
  * zweite durch dieselben Bilder starten.
  */
 @Singleton
-class SammlungVorwaermen @Inject constructor(
+class CollectionWarmUp @Inject constructor(
     private val vorwaermer: VorschauVorwaermer,
     private val sets: SetsRepository,
-    private val teile: TeileRepository,
-    private val figuren: FigurenRepository,
+    private val teile: PartsRepository,
+    private val figuren: MinifigsRepository,
     private val kontosicht: Kontosicht,
-    private val blickfeld: Blickfeld,
-    private val prefs: Zugangsdaten,
+    private val blickfeld: Scope,
+    private val prefs: Credentials,
     @param:ApplicationScope private val bereich: CoroutineScope,
-) : Vorwaermung {
+) : WarmUp {
     private val gestartet = AtomicBoolean(false)
 
-    override fun anstossen() {
+    override fun kick() {
         if (!gestartet.compareAndSet(false, true)) return
         bereich.launch {
             delay(VorschauVorwaermer.ANLAUF_MS)
@@ -94,7 +94,7 @@ class SammlungVorwaermen @Inject constructor(
             if (!vorwaermer.darfStarten()) return@launch
             val basis = fangeAusserAbbruch { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
             if (basis.isBlank()) return@launch
-            vorwaermer.vorwaermen(bildAdressenDerSammlung(sets, teile, figuren, kontosicht, blickfeld, basis))
+            vorwaermer.vorwaermen(imageAddressesTheCollection(sets, teile, figuren, kontosicht, blickfeld, basis))
         }
     }
 }

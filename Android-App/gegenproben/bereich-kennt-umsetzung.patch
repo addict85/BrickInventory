@@ -9,7 +9,7 @@ diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/kata
 @@ -10,6 +10,7 @@
  import androidx.lifecycle.viewModelScope
  import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
- import ch.brickinventoryapp.data.repository.KatalogRepository
+ import ch.brickinventoryapp.data.repository.CatalogRepository
 +import ch.brickinventoryapp.data.repository.KatalogRepositoryImpl
  import ch.brickinventoryapp.data.repository.Ergebnis
  import ch.brickinventoryapp.katalog.ui.CatalogUiState

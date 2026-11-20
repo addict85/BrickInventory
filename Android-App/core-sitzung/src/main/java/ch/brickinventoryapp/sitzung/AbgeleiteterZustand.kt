@@ -14,13 +14,13 @@ import kotlinx.coroutines.flow.map
  * den Fluss sonst für die ganze Lebensdauer des ViewModels wach.
  */
 @OptIn(ExperimentalForInheritanceCoroutinesApi::class)
-fun <A, B, R> StateFlow<A>.abgeleitet(b: StateFlow<B>, rechne: (A, B) -> R): StateFlow<R> {
+fun <A, B, R> StateFlow<A>.abgeleitet(b: StateFlow<B>, compute: (A, B) -> R): StateFlow<R> {
     val a = this
     return object : StateFlow<R> {
-        override val value: R get() = rechne(a.value, b.value)
+        override val value: R get() = compute(a.value, b.value)
         override val replayCache: List<R> get() = listOf(value)
         override suspend fun collect(collector: FlowCollector<R>): Nothing {
-            combine(a, b, rechne).distinctUntilChanged().collect(collector)
+            combine(a, b, compute).distinctUntilChanged().collect(collector)
             awaitCancellation()
         }
     }
@@ -28,13 +28,13 @@ fun <A, B, R> StateFlow<A>.abgeleitet(b: StateFlow<B>, rechne: (A, B) -> R): Sta
 
 /** Dasselbe für einen einzelnen Zustand. */
 @OptIn(ExperimentalForInheritanceCoroutinesApi::class)
-fun <A, R> StateFlow<A>.abgeleitet(rechne: (A) -> R): StateFlow<R> {
+fun <A, R> StateFlow<A>.abgeleitet(compute: (A) -> R): StateFlow<R> {
     val a = this
     return object : StateFlow<R> {
-        override val value: R get() = rechne(a.value)
+        override val value: R get() = compute(a.value)
         override val replayCache: List<R> get() = listOf(value)
         override suspend fun collect(collector: FlowCollector<R>): Nothing {
-            a.map(rechne).distinctUntilChanged().collect(collector)
+            a.map(compute).distinctUntilChanged().collect(collector)
             awaitCancellation()
         }
     }

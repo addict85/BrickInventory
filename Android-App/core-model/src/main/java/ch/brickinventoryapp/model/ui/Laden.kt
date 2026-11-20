@@ -6,7 +6,7 @@ package ch.brickinventoryapp.model.ui
  * und ein `when` darüber muss jeden Fall nennen.
  */
 sealed interface Laden<out T> {
-    data object Laedt : Laden<Nothing>
+    data object Loads : Laden<Nothing>
 
     /** [stand]: Zeitpunkt der Ablage, wenn die Daten offline aus ihr kommen; null heisst frisch. */
     data class Daten<out T>(val wert: T, val stand: Long? = null) : Laden<T> {
@@ -17,11 +17,11 @@ sealed interface Laden<out T> {
     data class Fehler(val art: Fehlerklasse, val meldung: Meldung) : Laden<Nothing>
 }
 
-val Laden<*>.laedt: Boolean get() = this is Laden.Laedt
+val Laden<*>.laedt: Boolean get() = this is Laden.Loads
 
-val Laden<*>.fehlerMeldung: Meldung? get() = (this as? Laden.Fehler)?.meldung
+val Laden<*>.errorMessage: Meldung? get() = (this as? Laden.Fehler)?.meldung
 
-val Laden<*>.fehlerArt: Fehlerklasse? get() = (this as? Laden.Fehler)?.art
+val Laden<*>.errorKind: Fehlerklasse? get() = (this as? Laden.Fehler)?.art
 
 /** Die Daten, solange es welche gibt; beim Laden und nach einem Fehler null. */
-fun <T> Laden<T>.datenOderNull(): T? = (this as? Laden.Daten<T>)?.wert
+fun <T> Laden<T>.dataOrNull(): T? = (this as? Laden.Daten<T>)?.wert

@@ -4,23 +4,23 @@ import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Alarmrichtung
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
+import ch.brickinventoryapp.model.fach.LocationEntryView
 
 /** Was die Einstellungen und ihre Unterseiten am Konto ändern; die Karten kennen nur diese Schnittstelle. */
 interface EinstellungenAktionen {
     fun saveSettings(currency: Waehrung, condition: Zustand)
     fun saveUserDefaultCondition(condition: Zustand?)
-    fun ladeAlarmUebersicht()
-    fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Geld)
-    fun setzeAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String)
-    fun loescheAlarm(setNumber: String, condition: Zustand)
+    fun loadAlarmOverview()
+    fun changeAlarmThreshold(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Geld)
+    fun setAlarmThreshold(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String)
+    fun deleteAlarm(setNumber: String, condition: Zustand)
     /** Einen Alarm anlegen wie in der Web-App: Setnummer, Zustand, Richtung und Schwelle (roh). */
-    fun legeAlarmAn(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String)
-    fun ladeEigeneLagerorte()
-    fun legeLagerortAn(name: String)
-    fun benenneLagerortUm(id: Int, name: String)
-    fun schalteLagerortVorgabe(id: Int, istVorgabe: Boolean)
-    fun loescheLagerort(id: Int)
+    fun putAlarmAn(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String)
+    fun loadOwnLocations()
+    fun putLocationAn(name: String)
+    fun nameLocationUm(id: Int, name: String)
+    fun switchLocationDefault(id: Int, isDefault: Boolean)
+    fun deleteLocation(id: Int)
     /** Löschen mit „Rückgängig“; ohne Seite, die es anbietet, gleich löschen. */
-    fun lagerortLoeschenVormerken(ort: LagerortEintragAnsicht) = loescheLagerort(ort.id)
+    fun locationDeleteReserve(ort: LocationEntryView) = deleteLocation(ort.id)
 }

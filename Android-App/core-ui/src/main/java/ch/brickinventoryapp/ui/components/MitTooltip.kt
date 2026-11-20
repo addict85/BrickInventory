@@ -25,28 +25,28 @@ import androidx.compose.ui.window.PopupPositionProvider
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MitTooltip(text: String, modifier: Modifier = Modifier, knopf: @Composable () -> Unit) {
-    val abstand = with(LocalDensity.current) { TOOLTIP_ABSTAND.roundToPx() }
-    val lage = remember(abstand) { UeberDemKnopf(abstand) }
+fun MitTooltip(text: String, modifier: Modifier = Modifier, button: @Composable () -> Unit) {
+    val abstand = with(LocalDensity.current) { TOOLTIP_GAP.roundToPx() }
+    val situation = remember(abstand) { ViaTheButton(abstand) }
     Box(modifier) {
         TooltipBox(
-            positionProvider = lage,
+            positionProvider = situation,
             tooltip = { PlainTooltip { Text(text) } },
             state = rememberTooltipState(),
-            content = knopf,
+            content = button,
         )
     }
 }
 
 /** Abstand zwischen Knopf und Tooltip, wie Material ihn vorsieht. */
-private val TOOLTIP_ABSTAND = 4.dp
+private val TOOLTIP_GAP = 4.dp
 
 /**
  * Mittig über dem Knopf, unter ihm, wenn oben kein Platz ist, und nie über den Fensterrand.
  * Eigene Fassung statt TooltipDefaults: Deren Lage-Funktionen wechseln zwischen den
  * Material-Fassungen ihren Namen, und eine Veraltet-Warnung bräche die Warnungsgrenze.
  */
-private class UeberDemKnopf(private val abstand: Int) : PopupPositionProvider {
+private class ViaTheButton(private val abstand: Int) : PopupPositionProvider {
     override fun calculatePosition(
         anchorBounds: IntRect,
         windowSize: IntSize,

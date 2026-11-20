@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui.theme
 
-import ch.brickinventoryapp.ui.components.fokusRahmen
+import ch.brickinventoryapp.ui.components.focusFrame
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -29,7 +29,7 @@ object Formen {
      * Kachelbild sitzt oben bündig in der Karte; verschiedene Radien liessen es
      * überstehen oder einen Spalt.
      */
-    private val leisteRadius = 14.dp
+    private val barRadius = 14.dp
 
     /** Karten und Abschnitte. */
     val karte = RoundedCornerShape(16.dp)
@@ -44,7 +44,7 @@ object Formen {
     /** Kachelbilder und kleinere Flächen. */
     val kachel = RoundedCornerShape(10.dp)
     /** Hinweisleisten und eingebettete Flächen. */
-    val leiste = RoundedCornerShape(leisteRadius)
+    val leiste = RoundedCornerShape(barRadius)
     /** Etiketten und kleine Marken. */
     val etikett = RoundedCornerShape(8.dp)
     /** Sehr kleine Marken (Zustandspunkte, Zähler). */
@@ -55,7 +55,7 @@ object Formen {
     val strich = RoundedCornerShape(2.dp)
 
     /** Die oberen Ecken eines Kachelbildes — passt zwingend zu [leiste]. */
-    val kachelBildEcken = RoundedCornerShape(topStart = leisteRadius, topEnd = leisteRadius)
+    val kachelBildEcken = RoundedCornerShape(topStart = barRadius, topEnd = barRadius)
 
     /**
      * Masse einer Bestandskachel (Teile- und Minifiguren-Reiter): Beide zeigen
@@ -93,26 +93,26 @@ fun AppKarte(
     inhalt: @Composable ColumnScope.() -> Unit
 ) {
     val form = Formen.karte
-    val erhebung = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung)
+    val survey = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung)
     val farben = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     if (onClick == null) {
         Card(modifier = modifier.fillMaxWidth(), shape = form,
-             elevation = erhebung, colors = farben, content = inhalt)
+             elevation = survey, colors = farben, content = inhalt)
     } else {
         // Card(onClick) setzt keine Rolle; TalkBack nannte die Kachel nicht als Knopf.
-        val bedienung = Modifier.fokusRahmen(form).semantics {
+        val controls = Modifier.focusFrame(form).semantics {
             role = Role.Button
             onClick(label = onClickLabel) { onClick(); true }
         }
-        Card(onClick = onClick, modifier = modifier.fillMaxWidth().then(bedienung), shape = form,
-             elevation = erhebung, colors = farben, content = inhalt)
+        Card(onClick = onClick, modifier = modifier.fillMaxWidth().then(controls), shape = form,
+             elevation = survey, colors = farben, content = inhalt)
     }
 }
 
 /**
  * Farben mit Bedeutung, die das Material-Schema nicht kennt („erfolgreich“,
  * „Warnung“) — einmal festgelegt statt verstreut, damit sie mit dem Design
- * mitziehen. Die Werte je Design stehen in statusFarbenFuer() in Theme.kt.
+ * mitziehen. Die Werte je Design stehen in statusColorsFor() in Theme.kt.
  */
 data class StatusFarben(
     val erfolg: Color,

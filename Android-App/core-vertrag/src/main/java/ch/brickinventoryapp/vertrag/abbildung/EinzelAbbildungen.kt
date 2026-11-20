@@ -3,42 +3,42 @@ package ch.brickinventoryapp.vertrag.abbildung
 import ch.brickinventoryapp.vertrag.BrickColor
 import ch.brickinventoryapp.vertrag.ChartPoint
 import ch.brickinventoryapp.vertrag.ChartYAxis
-import ch.brickinventoryapp.vertrag.CsvArt
+import ch.brickinventoryapp.vertrag.CsvKind
 import ch.brickinventoryapp.vertrag.Gutschein
 import ch.brickinventoryapp.vertrag.Preisalarm
 import ch.brickinventoryapp.vertrag.StartupStatus
-import ch.brickinventoryapp.model.fach.CsvImportArt
-import ch.brickinventoryapp.model.fach.DiagrammAchse
+import ch.brickinventoryapp.model.fach.CsvImportKind
+import ch.brickinventoryapp.model.fach.ChartAxis
 import ch.brickinventoryapp.model.fach.DiagrammPunkt
-import ch.brickinventoryapp.model.fach.FarbeAnsicht
-import ch.brickinventoryapp.model.fach.GutscheinAnsicht
-import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
-import ch.brickinventoryapp.model.fach.StartzustandAnsicht
-import ch.brickinventoryapp.model.fach.alsGeld
-import ch.brickinventoryapp.model.fach.alsGeldPflicht
+import ch.brickinventoryapp.model.fach.ColorView
+import ch.brickinventoryapp.model.fach.VoucherView
+import ch.brickinventoryapp.model.fach.PriceAlertView
+import ch.brickinventoryapp.model.fach.StartStateView
+import ch.brickinventoryapp.model.fach.asMoney
+import ch.brickinventoryapp.model.fach.asMoneyRequired
 import ch.brickinventoryapp.model.util.zeitpunkt
 
-fun CsvImportArt.alsDaten(): CsvArt = when (this) {
-    CsvImportArt.SETS -> CsvArt.SETS
-    CsvImportArt.TEILE -> CsvArt.TEILE
-    CsvImportArt.MINIFIGUREN -> CsvArt.MINIFIGUREN
-    CsvImportArt.MERKLISTE -> CsvArt.MERKLISTE
-    CsvImportArt.PREISALARME -> CsvArt.PREISALARME
+fun CsvImportKind.asData(): CsvKind = when (this) {
+    CsvImportKind.SETS -> CsvKind.SETS
+    CsvImportKind.TEILE -> CsvKind.TEILE
+    CsvImportKind.MINIFIGUREN -> CsvKind.MINIFIGUREN
+    CsvImportKind.MERKLISTE -> CsvKind.MERKLISTE
+    CsvImportKind.PREISALARME -> CsvKind.PREISALARME
 }
 
-fun CsvArt.alsAnsicht(): CsvImportArt = CsvImportArt.valueOf(name)
+fun CsvKind.alsAnsicht(): CsvImportKind = CsvImportKind.valueOf(name)
 
-fun StartupStatus.alsAnsicht() = StartzustandAnsicht(bereit = ready, schritt = step, unterschritt = sub,
+fun StartupStatus.alsAnsicht() = StartStateView(bereit = ready, schritt = step, undercut = sub,
     fortschritt = progress, gesamt = total)
 
-fun ChartPoint.alsAnsicht() = DiagrammPunkt(xLabel, value.alsGeldPflicht(), yFrac)
+fun ChartPoint.alsAnsicht() = DiagrammPunkt(xLabel, value.asMoneyRequired(), yFrac)
 
-fun ChartYAxis.alsAnsicht() = DiagrammAchse(label, value.alsGeldPflicht(), frac)
+fun ChartYAxis.alsAnsicht() = ChartAxis(label, value.asMoneyRequired(), frac)
 
-fun BrickColor.alsAnsicht() = FarbeAnsicht(id, name, hex)
+fun BrickColor.alsAnsicht() = ColorView(id, name, hex)
 
-fun Gutschein.alsAnsicht() = GutscheinAnsicht(id, number, pin, amount.alsGeldPflicht(), currency, hatPdf,
+fun Gutschein.alsAnsicht() = VoucherView(id, number, pin, amount.asMoneyRequired(), currency, hatPdf,
     zeitpunkt(createdAt), zeitpunkt(guthabenGeprueftAm))
 
-fun Preisalarm.alsAnsicht() = PreisalarmAnsicht(setNumber, condition, direction, threshold.alsGeldPflicht(), currencyCode,
-    triggered, zeitpunkt(lastTriggeredAt), lastPrice.alsGeld(), name, imageLocal, imageUrl, setImgUrl, besitzt)
+fun Preisalarm.alsAnsicht() = PriceAlertView(setNumber, condition, direction, threshold.asMoneyRequired(), currencyCode,
+    triggered, zeitpunkt(lastTriggeredAt), lastPrice.asMoney(), name, imageLocal, imageUrl, setImgUrl, besitzt)

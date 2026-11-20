@@ -15,7 +15,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.util.fmtInt
-import ch.brickinventoryapp.ui.components.grosseSchrift
+import ch.brickinventoryapp.ui.components.largeFont
 
 /**
  * Eine Kennzahl als Text: Zahl fett, Bezeichnung daneben. Keine eigene Fläche — die
@@ -28,20 +28,20 @@ fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {
     val text = pluralStringResource(plural, anzahl, zahl)
     // Bei grosser Schrift steht die Aufschlüsselung auf eigener Zeile: In der Zeile brach sie
     // mitten in der Klammer („40 /einzeln“).
-    val trenner = if (grosseSchrift()) "\n(" else "\u2002("
+    val separator = if (largeFont()) "\n(" else "\u2002("
     // Die Aufschlüsselung klein in derselben Zeile: Als zweite Zeile darunter war die
     // Kennzahl breiter als ihr Wert und liess eine Lücke vor der nächsten.
     val klein = MaterialTheme.typography.labelSmall.fontSize
-    val stelle = text.indexOf(zahl)
+    val place = text.indexOf(zahl)
     Text(
         buildAnnotatedString {
-            if (stelle < 0) append(text) else {
-                append(text, 0, stelle)
+            if (place < 0) append(text) else {
+                append(text, 0, place)
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)) { append(zahl) }
-                append(text, stelle + zahl.length, text.length)
+                append(text, place + zahl.length, text.length)
             }
             if (detail != null) withStyle(SpanStyle(fontSize = klein)) {
-                append(trenner); append(detail.split(TEILER).joinToString(TEILER) { untrennbar(it) }); append(')')
+                append(separator); append(detail.split(DIVIDER).joinToString(DIVIDER) { inseparable(it) }); append(')')
             }
         },
         Modifier.semantics(mergeDescendants = true) {},
@@ -51,9 +51,9 @@ fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {
 }
 
 /** Zahl und Wort bleiben zusammen („42 aus Sets“); umbrechen darf die Zeile nur zwischen den Teilen. */
-private fun untrennbar(text: String) = text.replace(' ', '\u00A0')
+private fun inseparable(text: String) = text.replace(' ', '\u00A0')
 
-private const val TEILER = " · "
+private const val DIVIDER = " · "
 
 /**
  * Die Kennzahlen über Sets, Teilen, Figuren und im Detail — eine ruhige Fläche
@@ -63,12 +63,12 @@ private const val TEILER = " · "
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun KennzahlenReihe(modifier: Modifier = Modifier, inhalt: @Composable () -> Unit) {
+fun MetricsSeries(modifier: Modifier = Modifier, inhalt: @Composable () -> Unit) {
     Surface(modifier.fillMaxWidth(), shape = Formen.leiste, color = MaterialTheme.colorScheme.surfaceContainerLow) {
         FlowRow(
-            Modifier.padding(horizontal = Abstaende.rand, vertical = Abstaende.klein),
+            Modifier.padding(horizontal = Abstaende.edge, vertical = Abstaende.klein),
             horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.winzig),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.tiny),
         ) { inhalt() }
     }
 }
@@ -78,7 +78,7 @@ fun KennzahlenReihe(modifier: Modifier = Modifier, inhalt: @Composable () -> Uni
  * es einzeln erfasste Teile gibt; sonst wäre die Zeile die Zahl darüber noch einmal.
  */
 @Composable
-fun teileAufschluesselung(ausSets: Int?, einzeln: Int?): String? =
-    if (ausSets != null && einzeln != null && einzeln > 0)
-        stringResource(R.string.parts_breakdown, fmtInt(ausSets), fmtInt(einzeln))
+fun partsBreakdown(fromSets: Int?, einzeln: Int?): String? =
+    if (fromSets != null && einzeln != null && einzeln > 0)
+        stringResource(R.string.parts_breakdown, fmtInt(fromSets), fmtInt(einzeln))
     else null

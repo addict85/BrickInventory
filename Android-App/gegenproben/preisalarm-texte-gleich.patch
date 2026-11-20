@@ -1,6 +1,6 @@
 Gegenprobe: „Ausgelöst“ heisst auf Deutsch wie „Aktiv“
 Modul: app
-Test: ch.brickinventoryapp.app.PreisalarmeAnzeigeTest
+Test: ch.brickinventoryapp.app.PriceAlertsDisplayTest
 Rot: die beiden Zustaende
 
 diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml

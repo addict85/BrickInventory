@@ -12,6 +12,6 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/Ne
              .followRedirects(false)
 -            .followSslRedirects(false)
 +            .followSslRedirects(true)
-             .addInterceptor(UpdateUmleitungen())
+             .addInterceptor(UpdateRedirects())
              .connectTimeout(15, TimeUnit.SECONDS)
              .readTimeout(120, TimeUnit.SECONDS)

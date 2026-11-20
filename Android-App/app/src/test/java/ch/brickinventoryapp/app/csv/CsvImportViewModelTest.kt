@@ -2,12 +2,12 @@ package ch.brickinventoryapp.app.csv
 
 import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.model.fach.Laufstatus
-import ch.brickinventoryapp.data.CsvImportBeobachter
+import ch.brickinventoryapp.data.CsvImportObserver
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.data.CsvImportStrom
+import ch.brickinventoryapp.data.CsvImportStream
 import ch.brickinventoryapp.vertrag.CsvImportStatus
-import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportStatusView
 import ch.brickinventoryapp.vertrag.GenericAdminResponse
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.dienste.service.CsvImportDienst
@@ -34,8 +34,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import ch.brickinventoryapp.testing.FakeApi
-import ch.brickinventoryapp.testing.NummernTexte
-import ch.brickinventoryapp.testing.testSetDateienRepository
+import ch.brickinventoryapp.testing.NumbersTexts
+import ch.brickinventoryapp.testing.testSetFilesRepository
 import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
 
@@ -48,7 +48,7 @@ import ch.brickinventoryapp.testing.text
  *
  * Gegenproben:
  *   csv-zustand-zuerst  entschieden mit dem schon neuen Zustand → rot „ein laufender Import …“
- *   csv-ohne-nachladen  NACHLADEN ohne `abgleich.bestand()` → rot „ein laufender Import …“
+ *   csv-ohne-nachladen  NACHLADEN ohne `sync.bestand()` → rot „ein laufender Import …“
  *   csv-rueckzug-fest   der Abstand wächst nicht mehr → rot „ein abgerissener Strom …“
  *   csv-abbruch-still   cancelCsvImport() meldet einen Fehler nicht → rot „der Abbruch meldet …“
  *   csv-folgt-doppelt   folge() ohne die Sperre `folgt` → rot „ein laufender Import …“
@@ -63,17 +63,17 @@ class CsvImportViewModelTest {
     private lateinit var t: TestDienste
 
     /** Je Verbindung eine Folge von Ereignissen; danach bleibt die Verbindung offen. */
-    private class Strom(vararg folgen: List<CsvImportSseClient.Event>) : CsvImportStrom {
+    private class Strom(vararg folgen: List<CsvImportSseClient.Event>) : CsvImportStream {
         private val rest = ArrayDeque(folgen.toList())
-        val verbindungen = mutableListOf<Long>()
-        var uhr: () -> Long = { 0L }
+        val connections = mutableListOf<Long>()
+        var clock: () -> Long = { 0L }
         override fun stream(): Flow<CsvImportSseClient.Event> = flow {
-            verbindungen += uhr()
-            val folge = rest.removeFirstOrNull() ?: awaitCancellation()
-            folge.forEach { emit(it) }
+            connections += clock()
+            val sequence = rest.removeFirstOrNull() ?: awaitCancellation()
+            sequence.forEach { emit(it) }
             // Wie CsvImportSseClient: Er endet nur mit Failed. Ein sauberes Ende hiesse
             // für den Beobachter „sofort neu verbinden“ und zählte eine Verbindung zu viel.
-            if (folge.lastOrNull() !is CsvImportSseClient.Event.Failed) awaitCancellation()
+            if (sequence.lastOrNull() !is CsvImportSseClient.Event.Failed) awaitCancellation()
         }
     }
 
@@ -94,17 +94,17 @@ class CsvImportViewModelTest {
     }
 
     private fun status(s: String, done: Int = 0) =
-        CsvImportSseClient.Event.Status(CsvImportStandAnsicht(status = Laufstatus.aus(s), total = 3, done = done))
+        CsvImportSseClient.Event.Status(CsvImportStatusView(status = Laufstatus.aus(s), total = 3, done = done))
 
-    private lateinit var koordinator: CsvImportKoordinator
+    private lateinit var coordinator: CsvImportCoordinator
 
     /** Angemeldet, wie nach dem Start der App; das ViewModel folgt dem Import von selbst. */
-    private fun mitVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
-        strom.uhr = { testScheduler.currentTime }
-        val beobachter = CsvImportBeobachter(strom, testSetDateienRepository(fake.api))
-        koordinator = CsvImportKoordinator(beobachter, dienst, t.abgleich)
+    private fun withVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
+        strom.clock = { testScheduler.currentTime }
+        val observer = CsvImportObserver(strom, testSetFilesRepository(fake.api))
+        coordinator = CsvImportCoordinator(observer, dienst, t.sync)
         t.sitzung.angemeldet(admin = false)
-        val vm = CsvImportViewModel(koordinator, beobachter, NummernTexte, t.meldungen, t.sitzung)
+        val vm = CsvImportViewModel(coordinator, observer, NumbersTexts, t.meldungen, t.sitzung)
         try {
             block(vm)
         } finally {
@@ -116,12 +116,12 @@ class CsvImportViewModelTest {
     fun `ein laufender Import startet den Dienst einmal, fertig laedt nach und raeumt nach fuenf Sekunden ab`() {
         val dienst = Dienst()
         val strom = Strom(listOf(status("running", 1), status("running", 2), status("done", 3)))
-        mitVm(strom, dienst) { vm ->
-            val vorher = fake.aufrufeVon("getSets")
+        withVm(strom, dienst) { vm ->
+            val vorher = fake.callsOf("getSets")
             // Ein zweiter Folger (etwa ein zweites ViewModel) öffnet keine zweite Verbindung.
-            val zweiter = backgroundScope.launch { koordinator.folge(t.sitzung.state.map { it.isLoggedIn }) }
+            val zweiter = backgroundScope.launch { coordinator.sequence(t.sitzung.state.map { it.isLoggedIn }) }
             runCurrent()
-            assertEquals("Mehrfach gestartet: eine Verbindung", 1, strom.verbindungen.size)
+            assertEquals("Mehrfach gestartet: eine Verbindung", 1, strom.connections.size)
             zweiter.cancel()
             assertEquals("Der Dienst startet beim Anlaufen, nicht je Zeile", 1, dienst.starts)
             assertEquals(3, vm.csvImportState.value.done)
@@ -133,7 +133,7 @@ class CsvImportViewModelTest {
             advanceTimeBy(2)
             assertEquals(0, vm.csvImportState.value.done)
             assertEquals(1, dienst.stops)
-            assertTrue("Nach dem Import holt die Ablage den Bestand", fake.aufrufeVon("getSets") > vorher)
+            assertTrue("Nach dem Import holt die Ablage den Bestand", fake.callsOf("getSets") > vorher)
         }
     }
 
@@ -142,16 +142,16 @@ class CsvImportViewModelTest {
         val dienst = Dienst()
         val fehler = listOf(CsvImportSseClient.Event.Failed("weg"))
         val strom = Strom(fehler, fehler, fehler)
-        mitVm(strom, dienst) { vm ->
+        withVm(strom, dienst) { vm ->
             fake.antworten["getCsvImportStatus"] = CsvImportStatus(success = true, status = Laufstatus.LAEUFT, total = 5, done = 2)
             runCurrent()
-            assertEquals("Nach dem Abriss eine Abfrage", 1, fake.aufrufeVon("getCsvImportStatus"))
+            assertEquals("Nach dem Abriss eine Abfrage", 1, fake.callsOf("getCsvImportStatus"))
             assertEquals("Die Abfrage füllt den Balken", 2, vm.csvImportState.value.done)
             assertTrue(vm.csvImportState.value.lauf.laeuft)
             assertEquals(1, dienst.starts)
 
             advanceTimeBy(60_000)
-            assertEquals("5 s, dann 10 s, dann 20 s", listOf(0L, 5_000L, 15_000L, 35_000L), strom.verbindungen)
+            assertEquals("5 s, dann 10 s, dann 20 s", listOf(0L, 5_000L, 15_000L, 35_000L), strom.connections)
         }
     }
 
@@ -159,34 +159,34 @@ class CsvImportViewModelTest {
     fun `nach dem Abmelden ist der Balken leer, die Verbindung zu und der Dienst angehalten`() {
         val strom = Strom(listOf(status("running", 1)))
         val dienst = Dienst()
-        mitVm(strom, dienst) { vm ->
+        withVm(strom, dienst) { vm ->
             runCurrent()
             assertTrue(vm.csvImportState.value.lauf.laeuft)
             assertEquals(1, dienst.starts)
-            val vorher = strom.verbindungen.size
+            val vorher = strom.connections.size
             t.sitzung.abgemeldet()
             advanceUntilIdle()
             assertFalse(vm.csvImportState.value.lauf.laeuft)
             assertEquals(0, vm.csvImportState.value.done)
             assertEquals("Der Dienst läuft nicht für das abgemeldete Konto weiter", 1, dienst.stops)
             advanceTimeBy(120_000)
-            assertEquals("Abgemeldet verbindet niemand neu", vorher, strom.verbindungen.size)
+            assertEquals("Abgemeldet verbindet niemand neu", vorher, strom.connections.size)
         }
     }
 
     @Test
     fun `ohne Anmeldung verbindet niemand, die Anmeldung startet den Strom`() = runTest(takt) {
         val strom = Strom(listOf(status("running", 1)))
-        strom.uhr = { testScheduler.currentTime }
-        val beobachter = CsvImportBeobachter(strom, testSetDateienRepository(fake.api))
-        val vm = CsvImportViewModel(CsvImportKoordinator(beobachter, Dienst(), t.abgleich), beobachter,
-            NummernTexte, t.meldungen, t.sitzung)
+        strom.clock = { testScheduler.currentTime }
+        val observer = CsvImportObserver(strom, testSetFilesRepository(fake.api))
+        val vm = CsvImportViewModel(CsvImportCoordinator(observer, Dienst(), t.sync), observer,
+            NumbersTexts, t.meldungen, t.sitzung)
         try {
             advanceTimeBy(60_000)
-            assertEquals("Abgemeldet öffnet das ViewModel keinen Strom", 0, strom.verbindungen.size)
+            assertEquals("Abgemeldet öffnet das ViewModel keinen Strom", 0, strom.connections.size)
             t.sitzung.angemeldet(admin = false)
             runCurrent()
-            assertEquals(1, strom.verbindungen.size)
+            assertEquals(1, strom.connections.size)
             assertTrue(vm.csvImportState.value.lauf.laeuft)
         } finally {
             vm.viewModelScope.cancel()
@@ -195,11 +195,11 @@ class CsvImportViewModelTest {
 
     @Test
     fun `der Abbruch meldet Erfolg und Fehler`() {
-        mitVm(Strom(), Dienst()) { vm ->
+        withVm(Strom(), Dienst()) { vm ->
             vm.cancelCsvImport()
             advanceUntilIdle()
             assertEquals("Scheitert der Abbruch, sagt es die Meldung", "fehler", t.meldungen.text)
-            t.meldungen.quittiere()
+            t.meldungen.acknowledge()
             fake.antworten["cancelCsvImport"] = GenericAdminResponse(success = true)
             vm.cancelCsvImport()
             advanceUntilIdle()

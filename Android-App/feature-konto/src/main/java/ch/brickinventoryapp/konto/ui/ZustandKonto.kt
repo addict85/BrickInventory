@@ -4,14 +4,14 @@ import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.model.fach.CsvErgebnisAnsicht
-import ch.brickinventoryapp.model.fach.CsvImportArt
-import ch.brickinventoryapp.model.fach.GeraetAnsicht
-import ch.brickinventoryapp.model.fach.HaushaltStatusAnsicht
-import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
-import ch.brickinventoryapp.model.fach.ProfilAnsicht
+import ch.brickinventoryapp.model.fach.CsvResultView
+import ch.brickinventoryapp.model.fach.CsvImportKind
+import ch.brickinventoryapp.model.fach.DeviceView
+import ch.brickinventoryapp.model.fach.HouseholdStatusView
+import ch.brickinventoryapp.model.fach.PriceAlertView
+import ch.brickinventoryapp.model.fach.ProfileView
 import ch.brickinventoryapp.update.util.UpdateBeschreibung
-import ch.brickinventoryapp.update.util.UpdateFrische
+import ch.brickinventoryapp.update.util.UpdateFresh
 
 /**
  * Das eigene Konto in den Einstellungen — eigener Zustand, weil nur ein Bildschirm
@@ -19,10 +19,10 @@ import ch.brickinventoryapp.update.util.UpdateFrische
  * meldet ab, logout() setzt alle Flüsse zurück; die Erklärung geht in die
  * Snackbar, die das überlebt.
  */
-data class KontoUiState(
+data class AccountUiState(
     /** Der Abruf des Profils; das Profil selbst bleibt stehen, während neu geholt wird. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
-    val profil: ProfilAnsicht? = null,
+    val profile: ProfileView? = null,
     /** Profil, Passwort oder Design speichern; scheitert es, steht der Grund hier. */
     val speichern: Vorgang = Vorgang.Fertig,
     /** Was das Speichern bewirkt hat. */
@@ -30,11 +30,11 @@ data class KontoUiState(
     /** Der Server verlangt den zweiten Faktor (zweiter_faktor_noetig): Codefeld zeigen. */
     val codeNoetig: Boolean = false,
     /** Null, solange nicht geladen oder der Server kein Design je Konto kennt. */
-    val design: DesignWahl? = null,
+    val design: DesignChoice? = null,
 )
 
 /** Das Design des Kontos: wirksam, die Vorgabe des Verwalters und die eigene Wahl (null = Vorgabe). */
-data class DesignWahl(val wirksam: Design, val vorgabe: Design, val eigenes: Design?)
+data class DesignChoice(val wirksam: Design, val vorgabe: Design, val eigenes: Design?)
 
 /** Zweiter Faktor im Konto: Stand, laufende Einrichtung, frische Codes. */
 data class ZweiterFaktorUiState(
@@ -55,12 +55,12 @@ data class ZweiterFaktorUiState(
  * nur in den Einstellungen gebraucht, mit eigenen Zwischenständen, die sonst jeden
  * Reiter neu zeichnen liessen.
  */
-internal data class GeraeteUiState(
+internal data class DevicesUiState(
     /** Der Abruf der Liste; ein Fehler steht statt der Liste. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
-    val geraete: List<GeraetAnsicht> = emptyList(),
+    val geraete: List<DeviceView> = emptyList(),
     /** Die offene Passwort-Rückfrage vor dem Abmelden; null = keine. */
-    val rueckfrage: GeraeteRueckfrage? = null,
+    val prompt: DevicesPrompt? = null,
 )
 
 /**
@@ -68,29 +68,29 @@ internal data class GeraeteUiState(
  * erbeuteter Zugang soll den Inhaber nicht aussperren. [tokenId] null heisst
  * „alle anderen“.
  */
-internal data class GeraeteRueckfrage(
+internal data class DevicesPrompt(
     val tokenId: String?,
     val codeNoetig: Boolean = false,
-    val vorgang: Vorgang = Vorgang.Fertig,
+    val operation: Vorgang = Vorgang.Fertig,
 )
 
 /** Zustand der Haushalts-Karte in den Einstellungen. */
 data class HouseholdUiState(
     /** Laden, Einladen, Einlösen, Lösen: läuft, gelungen oder mit dem Grund des Servers gescheitert. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
-    val status: HaushaltStatusAnsicht? = null,
+    val status: HouseholdStatusView? = null,
     /** Zuletzt erzeugter Einladungscode — nur bis zum Verlassen der Ansicht. */
     val inviteCode: String? = null,
     /** Bis wann der Code gilt (Millisekunden seit 1970); null, wenn der Server es nicht sagt. */
-    val inviteGueltigBis: Long? = null,
+    val inviteValidUntil: Long? = null,
     /** Das Passwort beim Einlösen war falsch; das Feld zeigt es an. */
-    val passwortFalsch: Boolean = false,
+    val passwordWrong: Boolean = false,
     /** Zählt gelungene Einlösungen — daran leert die Ansicht ihre Felder. */
     val eingeloest: Int = 0,
     /** Der zweite Faktor ist aktiv (oder der Server verlangte seinen Code): Codefeld zeigen. */
-    val faktorNoetig: Boolean = false,
+    val factorNeeded: Boolean = false,
     /** Der Code des zweiten Faktors war falsch; das Feld zeigt es an. */
-    val faktorFalsch: Boolean = false,
+    val factorWrong: Boolean = false,
 )
 
 /**
@@ -99,11 +99,11 @@ data class HouseholdUiState(
  * auf dem Server weiter und meldet sich über seinen Kanal. Zwei Vorgänge mit
  * verschiedener Lebensdauer teilen keinen Fortschritt.
  */
-data class CsvHochladenUiState(
+data class CsvUploadUiState(
     val hochladen: Vorgang = Vorgang.Fertig,
     /** Welche Art gerade hochgeladen wird — fuer die Anzeige am richtigen Knopf. */
-    val art: CsvImportArt? = null,
-    val ergebnis: CsvErgebnisAnsicht? = null,
+    val art: CsvImportKind? = null,
+    val ergebnis: CsvResultView? = null,
 )
 
 /**
@@ -113,23 +113,23 @@ data class CsvHochladenUiState(
  * Neues“, damit der Knopf eine Rückmeldung gibt.
  */
 data class UpdateUiState(
-    val pruefung: Vorgang = Vorgang.Fertig,
+    val check: Vorgang = Vorgang.Fertig,
     /** Wurde in dieser Sitzung schon nachgesehen? */
     val geprueft: Boolean = false,
     /** Die neuere Fassung, oder null: es gibt keine. */
-    val neuereFassung: UpdateBeschreibung? = null,
+    val newerVersion: UpdateBeschreibung? = null,
     /** 0..100 waehrend des Ladens, null = es laedt nichts. */
     val fortschritt: Int? = null,
     /** Das geladene APK wartet auf die Zustimmung des Nutzers. */
-    val bereitZurInstallation: Boolean = false,
+    val readyToInstallation: Boolean = false,
     /** Fehlt die Systemerlaubnis „Apps aus unbekannten Quellen"? */
-    val erlaubnisFehlt: Boolean = false,
+    val permissionAbsent: Boolean = false,
     /**
      * Hat der Nutzer den Hinweis beim Start weggeklickt? Gilt für diesen App-Lauf:
      * nicht bei jedem Reiterwechsel wieder fragen, beim nächsten Start aber schon. Der
      * Punkt am Konto-Symbol bleibt stehen.
      */
-    val dialogAbgelehnt: Boolean = false,
+    val dialogRejected: Boolean = false,
     /** Ein Satz in Bausteinen; die Oberfläche bildet ihn in ihrer Sprache. */
     val fehler: Meldung? = null,
     /**
@@ -137,7 +137,7 @@ data class UpdateUiState(
      * Auch nach der stillen Prüfung gesetzt: Ein Zurückhalten soll man in den
      * Einstellungen sehen, ohne erst den Knopf zu drücken.
      */
-    val frische: UpdateFrische? = null,
+    val frische: UpdateFresh? = null,
     /** Schalter „Beim Start nach Updates suchen“ (je Gerät). */
     val startpruefung: Boolean = true,
 )
@@ -148,6 +148,6 @@ data class UpdateUiState(
  * gebe keine Alarme.
  */
 data class AlarmUebersichtUiState(
-    val alarme: List<PreisalarmAnsicht> = emptyList(),
+    val alerts: List<PriceAlertView> = emptyList(),
     val geladen: Boolean = false,
 )

@@ -36,8 +36,8 @@ import ch.brickinventoryapp.katalog.ui.CatalogUiState
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.SortierMenue
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.SortierMenu
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.components.Suchfeld
 
 /**
@@ -60,7 +60,7 @@ internal fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?,
                     Text(selectedThemeName ?: stringResource(R.string.catalog_filter_theme),
                         style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(16.dp))) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(withFont(16.dp))) },
                 modifier = Modifier.widthIn(max = 180.dp),
             )
         }
@@ -69,7 +69,7 @@ internal fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?,
                 selected = state.year != null,
                 onClick = { showYearSheet.value = true },
                 label = { Text(state.year?.toString() ?: stringResource(R.string.catalog_filter_year), style = MaterialTheme.typography.labelMedium) },
-                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(16.dp))) },
+                trailingIcon = { Icon(Icons.Default.ArrowDropDown, null, Modifier.size(withFont(16.dp))) },
             )
         }
     }
@@ -83,16 +83,16 @@ internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -
     Row(verticalAlignment = Alignment.CenterVertically) {
         Suchfeld(
             wert = state.query,
-            onWert = onQueryChange,
+            onValue = onQueryChange,
             platzhalter = stringResource(R.string.catalog_search_placeholder),
             modifier = Modifier.weight(1f),
         )
-        SortierMenue(
+        SortierMenu(
             optionen = Katalogsortierung.entries.map { it to it.beschriftung() },
             gewaehlt = state.sort,
             onWahl = onSortChange,
-            modifier = Modifier.padding(end = Abstaende.rand),
-            vorgabe = Katalogsortierung.VORGABE,
+            modifier = Modifier.padding(end = Abstaende.edge),
+            vorgabe = Katalogsortierung.DEFAULT,
         )
     }
 }
@@ -103,7 +103,7 @@ internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -
 internal fun CatalogYearSheet(state: CatalogUiState, showYearSheet: MutableState<Boolean>, onYearChange: (Int?) -> Unit) {
     if (showYearSheet.value) {
         ModalBottomSheet(onDismissRequest = { showYearSheet.value = false }) {
-            Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
+            Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.veryLarge)) {
                 Text(stringResource(R.string.catalog_filter_year), Modifier.semantics { heading() },
                     fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(Abstaende.klein))
@@ -136,14 +136,14 @@ internal fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: MutableSta
     if (showThemeSheet.value) {
         ModalBottomSheet(onDismissRequest = { showThemeSheet.value = false }) {
             var themeFilter by rememberSaveable { mutableStateOf("") }
-            Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross)) {
+            Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.veryLarge)) {
                 Text(stringResource(R.string.catalog_filter_theme), Modifier.semantics { heading() },
                     fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
                 // Der gemeinsame Baustein, damit auch dieses Feld einen Leeren-Knopf hat wie alle
                 // anderen Suchfelder.
                 Suchfeld(
                     wert = themeFilter,
-                    onWert = { themeFilter = it },
+                    onValue = { themeFilter = it },
                     platzhalter = stringResource(R.string.catalog_theme_search),
                 )
                 val filteredThemes = remember(state.themes, themeFilter) {

@@ -1,6 +1,6 @@
 Gegenprobe: Zustand und Aufklappen am CSV-Balken entfernt
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitTest
+Test: ch.brickinventoryapp.app.AccessibilityTest
 Rot: CSV-Balken nennt Zustand, Aufklappen und Fortschritt
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
@@ -16,4 +16,4 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/component
 -                }
          ) {
              Column(Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.klein)) {
-                 CsvKopfzeile(done, total, ok, running, expanded, fortschritt, onAbbrechen)
+                 CsvHeaderRow(done, total, ok, running, expanded, fortschritt, onAbbrechen)

@@ -6,4 +6,4 @@ package ch.brickinventoryapp.model.ui
  * „Serverfehler (500)“ allein sagte weder das eine noch das andere.
  */
 
-enum class Fehlerklasse { OFFLINE, SERVER, ANMELDUNG, UNBEKANNT }
+enum class Fehlerklasse { OFFLINE, SERVER, LOGIN, UNBEKANNT }

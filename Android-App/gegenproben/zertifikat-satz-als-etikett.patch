@@ -1,6 +1,6 @@
 Gegenprobe: Das Eingabefeld des Zertifikatsdialogs trägt wieder den ganzen Satz als Etikett, ohne Erklärung darunter
 Modul: app
-Test: ch.brickinventoryapp.app.ZertifikatDialogTest
+Test: ch.brickinventoryapp.app.CertificateDialogTest
 Rot: das Feld traegt ein kurzes Etikett, die Anleitung steht darunter
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Fingerabdruckfeld.kt
@@ -11,12 +11,12 @@ diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/component
          // Kurzes Etikett, die Anleitung darunter: Ein Satz als Etikett wurde
          // abgeschnitten und stand beim Tippen über dem Feld.
 -        label = { Text(stringResource(R.string.zert_eingabe_etikett)) },
-+        label = { Text(hilfe) },
-         isError = fehlerText != null,
++        label = { Text(help) },
+         isError = errorText != null,
          supportingText = {
              Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
--                Text(fehlerText ?: hilfe, modifier = Modifier.weight(1f))
-+                Text(fehlerText.orEmpty(), modifier = Modifier.weight(1f))
+-                Text(errorText ?: help, modifier = Modifier.weight(1f))
++                Text(errorText.orEmpty(), modifier = Modifier.weight(1f))
                  Text(stringResource(R.string.zert_eingabe_zaehler, gezaehlt, noetig))
              }
          },

@@ -1,19 +1,19 @@
 Gegenprobe: Passwort ändern in der Startpasswort-Maske schickt ohne Prüfung ab
 Modul: app
-Test: ch.brickinventoryapp.app.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
 Rot: Startpasswort-Maske markiert
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartpasswortMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartpasswortMaske.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartpasswortMaske.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartpasswortMaske.kt
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartPasswordMask.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartPasswordMask.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartPasswordMask.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/StartPasswordMask.kt
 @@ -78,9 +78,7 @@
-                 if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
+                 if (kontoZustand.codeNoetig) SecondFactorCodeField(faktorCode) { faktorCode = it }
                  Button(
                      onClick = {
--                        pruefung.absenden(pwAktuell, pwNeu, pwWiederholt) {
--                            onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() })
+-                        check.submit(pwCurrent, pwNeu, pwRepeated) {
+-                            onReplace(pwCurrent, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() })
 -                        }
-+                        onErsetzen(pwAktuell, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() })
++                        onReplace(pwCurrent, pwNeu, faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() })
                      },
                      enabled = !kontoZustand.speichern.laeuft,
-                     colors = hauptKnopfFarben(),
+                     colors = mainButtonColors(),

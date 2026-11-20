@@ -7,16 +7,16 @@ import java.io.Serializable
  * trägt die Wahl den Namen; „alle“ ist eine eigene Wahl statt eines leeren Textes. Serializable,
  * weil der Teilefilter im SavedStateHandle liegt.
  */
-sealed interface Farbwahl : Serializable {
-    data object Alle : Farbwahl
+sealed interface ColorPicker : Serializable {
+    data object Alle : ColorPicker
 
-    data class Farbe(val name: String) : Farbwahl
+    data class Farbe(val name: String) : ColorPicker
 
     /** Der Wert für Abfrage und Ablage; null heisst alle. */
     val wert: String? get() = (this as? Farbe)?.name
 
     companion object {
-        fun aus(text: String?): Farbwahl = text?.takeIf { it.isNotBlank() }?.let(::Farbe) ?: Alle
+        fun aus(text: String?): ColorPicker = text?.takeIf { it.isNotBlank() }?.let(::Farbe) ?: Alle
     }
 }
 

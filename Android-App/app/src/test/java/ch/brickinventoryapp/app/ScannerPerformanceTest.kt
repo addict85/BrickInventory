@@ -16,8 +16,8 @@ class ScannerPerformanceTest {
     // Analyse-Datei, ihre Reihenfolge zueinander aendert das Voranstellen nicht.
     private val src: String by lazy {
         val w = "sammlung/ui/screens/"
-        File(Quellen.wurzel, w + "BarcodeScannerScreen.kt").readText() + "\n" +
-            File(Quellen.wurzel, w + "BarcodeAnalyzer.kt").readText()
+        File(Quellen.root, w + "BarcodeScannerScreen.kt").readText() + "\n" +
+            File(Quellen.root, w + "BarcodeAnalyzer.kt").readText()
     }
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
@@ -29,15 +29,15 @@ class ScannerPerformanceTest {
             "Ohne Drosselung läuft die Texterkennung auf jedem Bild und blockiert den " +
                 "Analyse-Thread — Vorschau und Autofokus werden dadurch träge"
         }
-        val drossel = c.indexOf("letzteOcr.get() < OCR_INTERVALL_MS")
+        val throttle = c.indexOf("letzteOcr.get() < OCR_INTERVALL_MS")
         val ocr = c.indexOf("textRecognizer.process(")
-        assert(drossel in 1 until ocr) {
+        assert(throttle in 1 until ocr) {
             "Die Zeitschranke muss VOR dem Aufruf der Texterkennung greifen"
         }
         // Der Barcode-Leser darf NICHT gedrosselt sein — er ist billig und soll
         // sofort auslösen.
         val barcode = c.indexOf("barcodeScanner.process(")
-        assert(barcode in 1 until drossel) {
+        assert(barcode in 1 until throttle) {
             "Der Barcode-Leser wurde mitgedrosselt — er soll auf jedem Bild laufen"
         }
     }

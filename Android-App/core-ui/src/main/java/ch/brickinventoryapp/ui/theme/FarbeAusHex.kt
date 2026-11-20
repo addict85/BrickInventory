@@ -7,7 +7,7 @@ import androidx.compose.ui.graphics.Color
  * auch "aarrggbb"); null, wenn er fehlt oder keiner ist. Eine Stelle statt acht,
  * damit Fehlerfall und Deckkraft überall gleich ausfallen.
  */
-fun argbAusHex(hex: String?): Long? {
+fun argbFromHex(hex: String?): Long? {
     val roh = hex?.trim()?.removePrefix("#") ?: return null
     if (roh.isEmpty() || roh.any { it !in "0123456789abcdefABCDEF" }) return null
     return when (roh.length) {
@@ -17,5 +17,5 @@ fun argbAusHex(hex: String?): Long? {
     }
 }
 
-/** [argbAusHex] als Compose-Farbe. */
-fun farbeAusHex(hex: String?): Color? = argbAusHex(hex)?.let { Color(it) }
+/** [argbFromHex] als Compose-Farbe. */
+fun colorFromHex(hex: String?): Color? = argbFromHex(hex)?.let { Color(it) }

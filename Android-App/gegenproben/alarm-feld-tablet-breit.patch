@@ -1,6 +1,6 @@
 Gegenprobe: Felder eines Alarms füllen auch die Tabletkarte
 Modul: app
-Test: ch.brickinventoryapp.app.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
 Rot: Konto und Preisalarme stehen auf dem Tablet in Formularbreite
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
@@ -9,9 +9,9 @@ diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/
 @@ -261,7 +261,7 @@
  }
  
- private val BETRAG_BREITE = 320.dp
--private val TELEFON_KARTE = 420.dp
-+private val TELEFON_KARTE = 2000.dp
+ private val AMOUNT_WIDTH = 320.dp
+-private val PHONE_CARD = 420.dp
++private val PHONE_CARD = 2000.dp
  
  /**
   * „Aktiv“ oder „Ausgelöst“ ohne Farbe lesbar: Wort und Form (gefüllt/umrandet) tragen

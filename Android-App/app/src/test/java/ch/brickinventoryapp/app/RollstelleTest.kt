@@ -46,13 +46,13 @@ class RollstelleTest {
     fun `die Liste steht nach dem Ausflug wieder an ihrer Stelle, ohne hochgezogenen Zustand`() {
         val speicher = ScrollMemory()
         lateinit var nav: NavHostController
-        val zustaende = mutableListOf<LazyListState>()
+        val states = mutableListOf<LazyListState>()
         compose.setContent {
             nav = rememberNavController()
             NavHost(nav, startDestination = "liste") {
                 composable("liste") {
                     val listState = remember { LazyListState() }
-                    if (zustaende.lastOrNull() !== listState) zustaende += listState
+                    if (states.lastOrNull() !== listState) states += listState
                     ScrollPositionKeeper("probe", listState, bereit = true, speicher = speicher)
                     LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
                         items(200) { Text("Zeile $it", Modifier.height(48.dp)) }
@@ -70,8 +70,8 @@ class RollstelleTest {
         compose.runOnIdle { nav.popBackStack() }
         compose.waitForIdle()
 
-        assertEquals("Ein neuer Besuch, ein neuer Zustand", 2, zustaende.size)
-        assertNotSame(zustaende[0], zustaende[1])
-        assertEquals("die Liste steht nach dem Ausflug wieder an ihrer Stelle", 60, zustaende[1].firstVisibleItemIndex)
+        assertEquals("Ein neuer Besuch, ein neuer Zustand", 2, states.size)
+        assertNotSame(states[0], states[1])
+        assertEquals("die Liste steht nach dem Ausflug wieder an ihrer Stelle", 60, states[1].firstVisibleItemIndex)
     }
 }

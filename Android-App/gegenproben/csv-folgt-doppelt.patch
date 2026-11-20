@@ -3,13 +3,13 @@ Modul: app
 Test: ch.brickinventoryapp.app.csv.CsvImportViewModelTest
 Rot: ein laufender Import startet den Dienst einmal
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportKoordinator.kt
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImportCoordinator.kt
 @@ -38,7 +38,6 @@
       * Folgt schon jemand, kehrt der Aufruf sofort zurück: eine Verbindung, ein Balken.
       */
-     suspend fun folge(angemeldet: Flow<Boolean>) {
+     suspend fun sequence(angemeldet: Flow<Boolean>) {
 -        if (!folgt.compareAndSet(false, true)) return
          try {
              angemeldet.distinctUntilChanged().collectLatest { an ->

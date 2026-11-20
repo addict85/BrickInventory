@@ -34,29 +34,29 @@ import com.google.mlkit.vision.common.InputImage
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.netz.util.NetworkPolicy
-import ch.brickinventoryapp.sicherheit.Abschrift
+import ch.brickinventoryapp.sicherheit.Transcript
 import ch.brickinventoryapp.ui.components.Fingerabdruckfeld
 import androidx.compose.ui.window.DialogProperties
-import ch.brickinventoryapp.sicherheit.fingerabdruckAnfang
-import ch.brickinventoryapp.sicherheit.fingerabdruckLesbar
+import ch.brickinventoryapp.sicherheit.fingerprintStart
+import ch.brickinventoryapp.sicherheit.fingerprintReadable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.text.font.FontFamily
 import ch.brickinventoryapp.anmeldung.ui.QrLoginPayload
 import ch.brickinventoryapp.anmeldung.ui.qrUebernehmbar
-import ch.brickinventoryapp.anmeldung.ui.qrWechseltServer
+import ch.brickinventoryapp.anmeldung.ui.qrSwitchesServer
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
-import ch.brickinventoryapp.ui.screens.KameraErlaubnisHinweis
-import ch.brickinventoryapp.ui.screens.KameraUeberlagerung
-import ch.brickinventoryapp.ui.screens.bildAnalyse
+import ch.brickinventoryapp.ui.screens.CameraPermissionHint
+import ch.brickinventoryapp.ui.screens.CameraOverlay
+import ch.brickinventoryapp.ui.screens.imageAnalyse
 import ch.brickinventoryapp.ui.screens.kameraBinden
-import ch.brickinventoryapp.ui.screens.kameraVorschau
-import ch.brickinventoryapp.ui.screens.rememberKameraErlaubnis
+import ch.brickinventoryapp.ui.screens.cameraPreview
+import ch.brickinventoryapp.ui.screens.rememberCameraPermission
 import ch.brickinventoryapp.ui.screens.tippZumFokus
 
 /**
@@ -74,20 +74,20 @@ internal fun QrVorschlagDialog(
     onAbbrechen: () -> Unit,
     onUebernehmen: (abgetippt: String?) -> Unit,
 ) {
-    val qrGesperrt = NetworkPolicy.adressfehler(vorschlag.url, entwicklung) != null
+    val qrLocked = NetworkPolicy.addressError(vorschlag.url, entwicklung) != null
     // Ein Code mit anderem Schlüssel als dem bestätigten: wie „Zertifikat geändert“, mit beiden Werten.
     val bisher = remember(vorschlag) { bisherigerPin(vorschlag.url, vorschlag.fingerabdruck) }
     val abtippen = remember(vorschlag) { mussAbtippen(vorschlag.url, vorschlag.fingerabdruck) }
-    // Wie ZertifikatDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
+    // Wie CertificateDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
     var eingabe by remember(vorschlag) { mutableStateOf("") }
-    var befund by remember(vorschlag) { mutableStateOf<Abschrift?>(null) }
-    var zielBestaetigt by remember(vorschlag) { mutableStateOf(false) }
+    var finding by remember(vorschlag) { mutableStateOf<Transcript?>(null) }
+    var targetConfirmed by remember(vorschlag) { mutableStateOf(false) }
     val titel = stringResource(if (bisher != null) R.string.zert_titel_geaendert else R.string.setup_qr_titel)
     AlertDialog(
         containerColor = fensterFlaeche(),
         onDismissRequest = onAbbrechen,
         modifier = Modifier.semantics { paneTitle = titel },
-        // Wie ZertifikatDialog: Daneben tippen verwirft nichts Abgetipptes, Zurück nur ein leeres Feld.
+        // Wie CertificateDialog: Daneben tippen verwirft nichts Abgetipptes, Zurück nur ein leeres Feld.
         properties = DialogProperties(dismissOnBackPress = eingabe.isEmpty(), dismissOnClickOutside = false),
         title = { Text(titel, Modifier.semantics { heading() }) },
         text = {
@@ -97,7 +97,7 @@ internal fun QrVorschlagDialog(
                 // Geparst statt roh: Ein Code wie `https://mein.server@fremd.example` oder mit
                 // Zeilenumbruch zeigte sonst einen Namen, der nicht das Ziel ist.
                 val ansicht = remember(vorschlag) { NetworkPolicy.ansicht(vorschlag.url) }
-                val bisherHost = remember(vorschlag, currentUrl) { qrWechseltServer(currentUrl, vorschlag.url) }
+                val sofarHost = remember(vorschlag, currentUrl) { qrSwitchesServer(currentUrl, vorschlag.url) }
                 Text(stringResource(R.string.setup_qr_ziel))
                 if (ansicht != null) {
                     Text(ansicht.host, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold,
@@ -107,26 +107,26 @@ internal fun QrVorschlagDialog(
                     if (ansicht.international) Text(stringResource(R.string.setup_qr_international),
                         color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     Row(
-                        Modifier.fillMaxWidth().toggleable(zielBestaetigt, role = Role.Checkbox) { zielBestaetigt = it },
+                        Modifier.fillMaxWidth().toggleable(targetConfirmed, role = Role.Checkbox) { targetConfirmed = it },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Checkbox(checked = zielBestaetigt, onCheckedChange = null)
+                        Checkbox(checked = targetConfirmed, onCheckedChange = null)
                         Text(stringResource(R.string.setup_qr_ziel_bestaetigen, ansicht.host), fontWeight = FontWeight.Bold)
                     }
                 }
                 Text(stringResource(R.string.setup_qr_hinweis))
-                if (bisherHost != null) Text(stringResource(R.string.setup_qr_anderer_server, bisherHost),
+                if (sofarHost != null) Text(stringResource(R.string.setup_qr_anderer_server, sofarHost),
                     color = MaterialTheme.colorScheme.error)
                 val fp = vorschlag.fingerabdruck
                 if (bisher != null && fp != null) {
                     Text(stringResource(R.string.setup_qr_pin_geaendert), color = MaterialTheme.colorScheme.error)
                     Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
-                    Text(fingerabdruckLesbar(bisher), fontFamily = FontFamily.Monospace,
+                    Text(fingerprintReadable(bisher), fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // Wie ZertifikatDialog: Den neuen Wert nennt der Code selbst, abgetippt
+                    // Wie CertificateDialog: Den neuen Wert nennt der Code selbst, abgetippt
                     // wird er aus der Webapp; hier steht nur sein Anfang.
                     Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
-                    Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
+                    Text(fingerprintStart(fp), fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 } else if (fp != null) {
                     // Erstes Einrichten: Ohne Tippen gilt nur eine System-Wurzel; einen eigenen
@@ -134,34 +134,34 @@ internal fun QrVorschlagDialog(
                     Text(stringResource(if (abtippen) R.string.setup_qr_pin_abtippen else R.string.setup_qr_pin),
                         color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
-                    Text(fingerabdruckAnfang(fp), fontFamily = FontFamily.Monospace,
+                    Text(fingerprintStart(fp), fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall)
                 }
                 if (abtippen && fp != null) {
                     Fingerabdruckfeld(
                         eingabe = eingabe,
-                        onEingabe = { eingabe = it; befund = null },
-                        noetig = Abschrift.NOETIG,
-                        hilfe = stringResource(if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe),
+                        onInput = { eingabe = it; finding = null },
+                        noetig = Transcript.NEEDED,
+                        help = stringResource(if (bisher != null) R.string.zert_geaendert_eingabe else R.string.zert_unbekannt_eingabe),
                         fehler = { gezaehlt ->
-                            when (befund) {
-                                null, Abschrift.PASST -> null
-                                Abschrift.LEER, Abschrift.ZU_KURZ ->
-                                    stringResource(R.string.zert_eingabe_zu_kurz, gezaehlt, Abschrift.NOETIG)
-                                Abschrift.PASST_NICHT -> stringResource(R.string.zert_eingabe_falsch)
+                            when (finding) {
+                                null, Transcript.PASST -> null
+                                Transcript.LEER, Transcript.TO_SHORT ->
+                                    stringResource(R.string.zert_eingabe_zu_kurz, gezaehlt, Transcript.NEEDED)
+                                Transcript.FITS_NOT -> stringResource(R.string.zert_eingabe_falsch)
                             }
                         },
                     )
                 }
-                if (qrGesperrt) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
+                if (qrLocked) Text(stringResource(R.string.setup_qr_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
             }
         },
         confirmButton = {
-            TextButton(enabled = qrUebernehmbar(qrGesperrt, zielBestaetigt, abtippen, eingabe), onClick = {
+            TextButton(enabled = qrUebernehmbar(qrLocked, targetConfirmed, abtippen, eingabe), onClick = {
                 val fp = vorschlag.fingerabdruck
-                val pruefung = if (abtippen) fp?.let { Abschrift.von(eingabe, it) } ?: Abschrift.PASST_NICHT else Abschrift.PASST
-                if (pruefung != Abschrift.PASST) {
-                    befund = pruefung
+                val check = if (abtippen) fp?.let { Transcript.von(eingabe, it) } ?: Transcript.FITS_NOT else Transcript.PASST
+                if (check != Transcript.PASST) {
+                    finding = check
                 } else {
                     onUebernehmen(eingabe.takeIf { abtippen })
                 }
@@ -179,18 +179,18 @@ internal fun QrVorschlagDialog(
 /** QR scanner for setup — reuses the proven CameraPreviewBarcode with QR_CODE format */
 @Composable
 internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> Unit) {
-    val cameraPermission = rememberKameraErlaubnis()
+    val cameraPermission = rememberCameraPermission()
     var frozen by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        if (!cameraPermission.erteilt) cameraPermission.anfragen()
+        if (!cameraPermission.granted) cameraPermission.requests()
     }
     // Das Bild zeigt einen Anmeldecode: In einer Aufnahme meldete er ein fremdes Gerät an.
     Sichtschutz()
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         when {
-            cameraPermission.erteilt -> {
+            cameraPermission.granted -> {
                 // Reuse proven camera implementation with QR-only scanner
                 QrCameraPreview(
                     frozen = frozen,
@@ -200,7 +200,7 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
                 )
                 // Rahmen und Hinweis in der gemeinsamen Ueberlagerung — siehe
                 // KameraErlaubnis.kt. Eigen bleibt nur das Quadrat.
-                KameraUeberlagerung(
+                CameraOverlay(
                     hinweis = if (frozen) stringResource(R.string.setup_qr_detected)
                               else stringResource(R.string.setup_qr_scan_hint),
                 ) {
@@ -216,9 +216,9 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
             }
             else -> {
                 // Eintippen heisst zurück zur Einrichtung: Dort steht das Adressfeld.
-                KameraErlaubnisHinweis(stringResource(R.string.scanner_camera_zweck_qr),
+                CameraPermissionHint(stringResource(R.string.scanner_camera_zweck_qr),
                     stringResource(R.string.scanner_adresse_eintippen), onDismiss,
-                    cameraPermission.dauerhaftVerweigert) { cameraPermission.erlauben() }
+                    cameraPermission.permanentDenied) { cameraPermission.erlauben() }
             }
         }
         MitTooltip(stringResource(R.string.scanner_close), Modifier.align(Alignment.TopEnd)) {
@@ -260,7 +260,7 @@ internal fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
         // Aufbau samt AF-Modus: ui/screens/KameraAufbau.kt. 1280x720 statt 1920x1080 wie
         // im Barcodescanner: Hier wird ein QR-Code mit grossen Modulen gelesen, und
         // weniger Auflösung lässt Kamera und Vorschau mehr Rechenzeit.
-        bildAnalyse(1280, 720)
+        imageAnalyse(1280, 720)
             .also { analysis ->
                 analysis.setAnalyzer(executor) { imageProxy ->
                     if (frozen) { imageProxy.close(); return@setAnalyzer }
@@ -280,9 +280,9 @@ internal fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
 
     AndroidView(
         factory = { ctx ->
-            val previewView = kameraVorschau(ctx)
+            val previewView = cameraPreview(ctx)
             // Anbieter holen, Vorschau bauen, binden: KameraAufbau.kt. Kein
-            // beiFehler: Ist die Kamera nicht verfügbar, bleibt die Vorschau
+            // atError: Ist die Kamera nicht verfügbar, bleibt die Vorschau
             // bewusst leer — anders als im Scanner, der einen Hinweis zeigt.
             kameraBinden(
                 ctx = ctx,

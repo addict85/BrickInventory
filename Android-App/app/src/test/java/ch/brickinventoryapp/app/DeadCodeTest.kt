@@ -13,17 +13,17 @@ class DeadCodeTest {
      * Ressourcen, die absichtlich ohne Aufrufer im Quelltext stehen.
      * Kurz halten: Jeder Eintrag ist eine Ausnahme, die niemand mehr prüft.
      */
-    private val erlaubteRessourcen = setOf<String>(
+    private val allowedResources = setOf<String>(
         // (derzeit keine)
     )
 
     /**
      * `<!-- … -->` heraus, auch ueber mehrere Zeilen.
      *
-     * Kotlins Zeilenfilter (Quellen.ohneKommentare) hilft in XML nicht: Dort
+     * Kotlins Zeilenfilter (Quellen.withoutComments) hilft in XML nicht: Dort
      * steht der Kommentar oft in einer Zeile mit Inhalt.
      */
-    private fun ohneXmlKommentare(s: String) = s.replace(Regex("<!--[\\s\\S]*?-->"), "")
+    private fun withoutXmlComments(s: String) = s.replace(Regex("<!--[\\s\\S]*?-->"), "")
 
     @Test
     fun `jede Textressource wird benutzt`() {
@@ -45,17 +45,17 @@ class DeadCodeTest {
         // So haelt sich jeder tote Text am Leben, sobald irgendwo steht, warum
         // er tot ist — und das ist die Sorte Erklaerung, die man am ehesten
         // hinschreibt.
-        val verwendung = buildString {
-            Quellen.alle().forEach { append(Quellen.ohneKommentare(it.readText())).append('\n') }
+        val usage = buildString {
+            Quellen.alle().forEach { append(Quellen.withoutComments(it.readText())).append('\n') }
             Quellen.res.walkTopDown()
                 .filter { it.isFile && it.extension == "xml" && !it.name.startsWith("strings") }
-                .forEach { append(ohneXmlKommentare(it.readText())).append('\n') }
-            append(ohneXmlKommentare(Quellen.manifest.readText()))
+                .forEach { append(withoutXmlComments(it.readText())).append('\n') }
+            append(withoutXmlComments(Quellen.manifest.readText()))
         }
-        assert(verwendung.length > 100_000) { "Zu wenig Quelltext gelesen — Pfad veraltet?" }
+        assert(usage.length > 100_000) { "Zu wenig Quelltext gelesen — Pfad veraltet?" }
 
         val tot = schluessel.filter {
-            it !in erlaubteRessourcen && !Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(verwendung)
+            it !in allowedResources && !Regex("""\b${Regex.escape(it)}\b""").containsMatchIn(usage)
         }.sorted()
         assert(tot.isEmpty()) {
             "Diese Texte werden nirgends benutzt (${tot.size}):\n  " + tot.joinToString("\n  ") +
@@ -66,27 +66,27 @@ class DeadCodeTest {
 
     @Test
     fun `jede Funktion hat einen Aufrufer`() {
-        val dateien = Quellen.alle().associateWith { Quellen.ohneKommentare(it.readText()) }
+        val dateien = Quellen.alle().associateWith { Quellen.withoutComments(it.readText()) }
         val alles = dateien.values.joinToString("\n")
         // Die Hilfen aus core-testing sind für Tests da; ihre Aufrufer stehen dort, nicht im Hauptbaum.
-        val ausTests = alles + "\n" + Quellen.tests.walkTopDown().filter { it.extension == "kt" }
-            .joinToString("\n") { Quellen.ohneKommentare(it.readText()) }
+        val fromTests = alles + "\n" + Quellen.tests.walkTopDown().filter { it.extension == "kt" }
+            .joinToString("\n") { Quellen.withoutComments(it.readText()) }
 
         // Nur eigene Deklarationen: `override`, `operator` und Konstruktoren
         // bleiben aussen vor — die ruft das Rahmenwerk auf, nicht dieser Baum.
-        val deklaration = Regex("""^(?:internal |private |public |)fun (\w+)\s*[(<]""", RegexOption.MULTILINE)
+        val declaration = Regex("""^(?:internal |private |public |)fun (\w+)\s*[(<]""", RegexOption.MULTILINE)
         val orte = mutableMapOf<String, MutableList<String>>()
         dateien.forEach { (datei, s) ->
-            deklaration.findAll(s).forEach { orte.getOrPut(it.groupValues[1]) { mutableListOf() } += datei.invariantSeparatorsPath }
+            declaration.findAll(s).forEach { orte.getOrPut(it.groupValues[1]) { mutableListOf() } += datei.invariantSeparatorsPath }
         }
         assert(orte.size > 80) { "Nur ${orte.size} Funktionen gefunden — Muster veraltet?" }
 
         // Einstiegspunkte, die niemand aus diesem Baum heraus aufruft.
-        val einstiege = setOf("main", "onCreate", "onStart", "onResume", "onPause", "onDestroy")
+        val entries = setOf("main", "onCreate", "onStart", "onResume", "onPause", "onDestroy")
 
         val tot = orte.filter { (name, wo) ->
-            if (name in einstiege) return@filter false
-            val text = if (wo.all { "/testing/" in it }) ausTests else alles
+            if (name in entries) return@filter false
+            val text = if (wo.all { "/testing/" in it }) fromTests else alles
             // Ein Aufruf ist `name(`, eine Referenz `::name`, ein benanntes
             // Argument `name =`. Weniger Treffer als Deklarationen heisst:
             // ausser der Deklaration steht nichts da.
@@ -96,7 +96,7 @@ class DeadCodeTest {
             // Kotlin darf den letzten Parameter als Block HINTER die Klammern
             // ziehen, und dann faellt die Klammer ganz weg:
             //
-            //     KameraErlaubnisHinweis { cameraPermission.launchPermissionRequest() }
+            //     CameraPermissionHint { cameraPermission.launchPermissionRequest() }
             //
             // Das IST ein Aufruf, nur ohne `(`. Dieser Test hat ihn nicht
             // gezaehlt und meldete die Funktion als tot.
@@ -105,11 +105,11 @@ class DeadCodeTest {
             // GEMESSEN benutzen genau ZWEI eigene Funktionen diese Form,
             // `AppKarte` (3 Stellen) und die neue hier (2). `AppKarte` wird
             // daneben auch mit Klammern gerufen und rutschte deshalb durch.
-            val aufrufe = Regex("""\b${Regex.escape(name)}\s*\(""").findAll(text).count()
-            val alsBlock = Regex("""\b${Regex.escape(name)}\s*\{""").findAll(text).count()
-            val referenzen = Regex("""::${Regex.escape(name)}\b""").findAll(text).count()
-            val benannt = Regex("""\b${Regex.escape(name)}\s*=""").findAll(text).count()
-            aufrufe <= wo.size && alsBlock == 0 && referenzen == 0 && benannt == 0
+            val calls = Regex("""\b${Regex.escape(name)}\s*\(""").findAll(text).count()
+            val asBlock = Regex("""\b${Regex.escape(name)}\s*\{""").findAll(text).count()
+            val references = Regex("""::${Regex.escape(name)}\b""").findAll(text).count()
+            val named = Regex("""\b${Regex.escape(name)}\s*=""").findAll(text).count()
+            calls <= wo.size && asBlock == 0 && references == 0 && named == 0
         }.map { "${it.key} (${it.value.joinToString { p -> p.substringAfterLast('/') }})" }.sorted()
 
         assert(tot.isEmpty()) {

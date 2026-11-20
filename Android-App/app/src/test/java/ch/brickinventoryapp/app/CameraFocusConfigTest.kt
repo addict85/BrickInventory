@@ -20,18 +20,18 @@ import ch.brickinventoryapp.testing.Quellen
 class CameraFocusConfigTest {
 
     private fun scanner(): String =
-        File(Quellen.wurzel, "sammlung/ui/screens/BarcodeScannerScreen.kt").readText()
+        File(Quellen.root, "sammlung/ui/screens/BarcodeScannerScreen.kt").readText()
 
     private fun code(src: String) = src.lines()
         .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it }
 
-    private fun aufbau(): String = code(Quellen.lies("ui/screens/KameraAufbau.kt"))
+    private fun setup(): String = code(Quellen.lies("ui/screens/KameraAufbau.kt"))
 
     @Test
     fun `genau EIN Tap-to-Focus-Listener`() {
         // Seit der Tipper in KameraAufbau.kt steht (tippZumFokus), setzt ihn jeder
         // Scanner genau einmal und keiner einen eigenen daneben.
-        val anzahl = Regex("""\.setOnTouchListener""").findAll(aufbau()).count() +
+        val anzahl = Regex("""\.setOnTouchListener""").findAll(setup()).count() +
             Regex("""\.setOnTouchListener""").findAll(code(scanner())).count()
         assert(Regex("""\btippZumFokus\(""").findAll(code(scanner())).count() == 1) {
             "Der Barcodescanner setzt den Tipper nicht genau einmal"
@@ -66,7 +66,7 @@ class CameraFocusConfigTest {
      * Vergleich gleicher Codeblöcke über den ganzen Baum. Eine Regel, die an
      * zwei Stellen steht, sieht an jeder einzelnen Stelle richtig aus.
      */
-    private fun mitTapToFocus(): List<File> {
+    private fun withTapToFocus(): List<File> {
         // Die Bildschirme liegen je Modul unter <stamm>/ui/screens; unter() sammelt alle.
         val treffer = Quellen.unter("ui/screens")
             .filter { code(it.readText()).let { c -> c.contains("tippZumFokus(") || c.contains("startFocusAndMetering(") } }
@@ -81,9 +81,9 @@ class CameraFocusConfigTest {
 
     @Test
     fun `der Tap-to-Focus haelt den Fokus`() {
-        for (datei in mitTapToFocus()) {
+        for (datei in withTapToFocus()) {
             // Der Tipper selbst steht in KameraAufbau.kt; geprüft wird er dort für jeden Nutzer.
-            val c = code(datei.readText()) + "\n" + aufbau()
+            val c = code(datei.readText()) + "\n" + setup()
             assert(c.contains("disableAutoCancel()")) {
                 "${datei.name}: Ohne disableAutoCancel() fällt die Kamera nach " +
                     "wenigen Sekunden auf ihre eigene Wahl zurück — der Nutzer " +
@@ -104,7 +104,7 @@ class CameraFocusConfigTest {
      * `CONTROL_AF_MODE_CONTINUOUS_PICTURE` in den einzelnen Bildschirmdateien:
      *
      * Dann hiess sie „wer eine Vorschau baut, muss den AF-Modus setzen" —
-     * die Fassung fuer eine Welt mit zwei Kopien. Seit auch die BINDUNG
+     * die Fassung fuer eine Welt mit zwei Kopien. Seit auch die BINDING
      * zusammengelegt ist (19 von 23 Zeilen waren zeichengleich), baut niemand
      * ausser KameraAufbau.kt noch eine Vorschau, eine Bildanalyse oder eine
      * Bindung. Damit laesst sich das Staerkere pruefen: Es gibt nur einen Ort.
@@ -154,7 +154,7 @@ class CameraFocusConfigTest {
     @Test
     fun `beide Scanner holen ihre Kamera dort`() {
         // Sonst nützt die Regel oben nichts: Wer sich die Kamera selbst bindet,
-        // umgeht autofokusDauerhaft() — und sieht dabei richtig aus.
+        // umgeht autofocusPermanent() — und sieht dabei richtig aus.
         val nutzer = Quellen.unter("ui/screens")
             .filter { it.name != "KameraAufbau.kt" }
             .filter { code(it.readText()).contains("kameraBinden(") }
@@ -168,9 +168,9 @@ class CameraFocusConfigTest {
     @Test
     fun `der Tipper steht nur in KameraAufbau`() {
         // Wie Vorschau und Bindung: Eine Kopie im Bildschirm verfehlte die nächste Behebung.
-        val eigene = mitTapToFocus().filter { it.name != "KameraAufbau.kt" && code(it.readText()).contains("startFocusAndMetering(") }
+        val eigene = withTapToFocus().filter { it.name != "KameraAufbau.kt" && code(it.readText()).contains("startFocusAndMetering(") }
         assert(eigene.isEmpty()) { "Eigener Tap-to-Focus statt tippZumFokus(): ${eigene.joinToString { it.name }}" }
-        assert(aufbau().contains("startFocusAndMetering(")) { "KameraAufbau.kt fokussiert beim Tippen nicht mehr" }
+        assert(setup().contains("startFocusAndMetering(")) { "KameraAufbau.kt fokussiert beim Tippen nicht mehr" }
     }
 
     @Test
@@ -180,7 +180,7 @@ class CameraFocusConfigTest {
         // Antippen.
         val pump = Regex(
             """(while\s*\(|delay\s*\(|Timer\(|fixedRate|LaunchedEffect)[\s\S]{0,400}?(startFocusAndMetering|tippZumFokus)""")
-        val dateien = mitTapToFocus()
+        val dateien = withTapToFocus()
         assert(dateien.size >= 2) {
             "Nur ${dateien.size} Datei(en) mit startFocusAndMetering gefunden — " +
                 "erwartet werden mindestens Barcodescanner und SetupScreen. " +

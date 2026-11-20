@@ -14,20 +14,20 @@ import javax.inject.Inject
  * auf, zuletzt leeren Widget, Sitzung und Blickfeld ihren Zustand.
  */
 class Abmelden @Inject constructor(
-    private val bereinigung: SitzungsBereinigung,
+    private val cleanup: SitzungsBereinigung,
     private val abmeldehaken: Abmeldehaken,
     private val sitzung: Sitzung,
-    private val blickfeld: Blickfeld,
+    private val blickfeld: Scope,
     private val abmeldung: Abmeldung,
 ) : Abmeldevorgang {
     /** Liefert, ob der Server den Token erst später entwertet (aus der Warteschlange). */
     override suspend fun ausfuehren(): Abmeldeweg? {
-        val weg = if (sitzung.state.value.isLoggedIn) abmeldung.amServer() else null
-        bereinigung.raeumeAuf()
+        val weg = if (sitzung.state.value.isLoggedIn) abmeldung.atServer() else null
+        cleanup.raeumeAuf()
         // Das Widget zeigt sonst die Zahlen des abgemeldeten Kontos weiter.
         fangeAusserAbbruch { abmeldehaken.abgemeldet() }
         sitzung.abgemeldet()
-        blickfeld.zuruecksetzen()
+        blickfeld.reset()
         return weg
     }
 }

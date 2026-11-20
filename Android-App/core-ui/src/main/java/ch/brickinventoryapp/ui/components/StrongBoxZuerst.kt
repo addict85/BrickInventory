@@ -9,7 +9,7 @@ import java.security.ProviderException
  * Schlüssel nicht erzeugen kann (manche Geräte melden das allgemeiner); beides ist eine
  * ProviderException. Jeder andere Fehler bleibt einer. Der Server nimmt TEE wie StrongBox an.
  */
-internal fun <T> strongBoxZuerst(erzeuge: (strongBox: Boolean) -> T): T =
+internal fun <T> strongBoxFirst(erzeuge: (strongBox: Boolean) -> T): T =
     try {
         erzeuge(true)
     } catch (_: ProviderException) {

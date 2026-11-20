@@ -5,10 +5,10 @@ package ch.brickinventoryapp.model.fach
 
 /** So steht ein vorhandener PIN in jeder Gutschein-Antwort; PUT nimmt ihn als „unverändert“. */
 
-const val GUTSCHEIN_PIN_MASKE = "•••"
+const val VOUCHER_PIN_MASK = "•••"
 
 /** Ob [nummer] die Maske des Servers ist („…1234“) und nicht die Kartennummer. */
-fun istGutscheinMaske(nummer: String): Boolean = nummer.startsWith("…")
+fun isVoucherMask(nummer: String): Boolean = nummer.startsWith("…")
 
 /**
  * „Keine Farbe“ wie bei Rebrickable ([No Color/Any Color]) und auf dem Server

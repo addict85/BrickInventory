@@ -2,17 +2,17 @@ package ch.brickinventoryapp.konto.ui.screens
 
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.errorMessage
 import androidx.compose.ui.platform.LocalContext
-import ch.brickinventoryapp.model.util.DatumJahr
-import ch.brickinventoryapp.model.util.fmtStand
+import ch.brickinventoryapp.model.util.DateYear
+import ch.brickinventoryapp.model.util.fmtStatus
 import ch.brickinventoryapp.ui.util.appNumberLocale
-import ch.brickinventoryapp.ui.util.vierundzwanzigStunden
+import ch.brickinventoryapp.ui.util.twentyFourHours
 import androidx.compose.material.icons.filled.Share
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
-import ch.brickinventoryapp.ui.components.SperrGrund
+import ch.brickinventoryapp.ui.components.LockReason
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -32,16 +32,16 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.beschreibung
 import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.components.Abschnitt
-import ch.brickinventoryapp.ui.components.PasswortFeld
-import ch.brickinventoryapp.ui.components.Rueckfrage
-import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.components.PasswordField
+import ch.brickinventoryapp.ui.components.Prompt
+import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.konto.ui.HouseholdUiState
 import ch.brickinventoryapp.ui.components.ErklaerText
-import ch.brickinventoryapp.ui.util.GeheimeZwischenablage
-import ch.brickinventoryapp.ui.util.LocalSdkStufe
-import ch.brickinventoryapp.ui.util.geheimKopierbar
+import ch.brickinventoryapp.ui.util.SecretClipboard
+import ch.brickinventoryapp.ui.util.LocalSdkLevel
+import ch.brickinventoryapp.ui.util.secretCopyable
 
 /**
  * Haushalt: verknüpfte Konten, Konto einladen, Einladung annehmen — drei Abschnitte
@@ -67,18 +67,18 @@ internal fun HouseholdCard(
     var passwort by remember { mutableStateOf("") }
     var faktorCode by remember { mutableStateOf("") }
     LaunchedEffect(state.eingeloest) { if (state.eingeloest > 0) code = "" }
-    // Über GeheimeZwischenablage statt LocalClipboard: Sie nimmt den Code nach
+    // Über SecretClipboard statt LocalClipboard: Sie nimmt den Code nach
     // einer Minute wieder heraus, auch wenn die Seite dann schon zu ist.
-    val kontext = LocalContext.current
+    val context = LocalContext.current
     // Das Etikett eines ClipData ist auf manchen Android-Oberflächen sichtbar und
     // gehört darum in die Sprachdateien. Geholt hier, weil der Klick-Rumpf nicht
     // @Composable ist.
-    val einladungEtikett = stringResource(R.string.household_invite_label)
+    val invitationLabel = stringResource(R.string.household_invite_label)
     // Trennen nimmt einem Hauptkonto die Sicht auf fremde Daten; zurück geht es nur
     // über eine neue Einladung. Darum fragt es nach, mit dem Namen des Kontos.
     // Gemerkt wird Konto-ID und ob es ein Hauptkonto ist.
     var trennen by rememberSaveable { mutableStateOf<Int?>(null) }
-    var trenntEltern by rememberSaveable { mutableStateOf(false) }
+    var separatesParent by rememberSaveable { mutableStateOf(false) }
 
     // Zwei Sätze vorn, der Rest auf Wunsch: Sechs Zeilen Erklärung vor dem ersten
     // Knopf las niemand.
@@ -90,23 +90,23 @@ internal fun HouseholdCard(
     val eltern = st?.elternkonten.orEmpty()
     // Nur Unterkonten: Die Karte heisst gleich so, statt „Verknüpfte Konten“ und
     // darunter „Unterkonten“ als zweite Überschrift zu zeigen.
-    val nurUnterkonten = eltern.isEmpty() && st?.subAccounts?.isNotEmpty() == true
-    if (st != null) Abschnitt(stringResource(if (nurUnterkonten) R.string.household_state_main else R.string.household_linked)) {
+    val onlySubAccounts = eltern.isEmpty() && st?.subAccounts?.isNotEmpty() == true
+    if (st != null) Abschnitt(stringResource(if (onlySubAccounts) R.string.household_state_main else R.string.household_linked)) {
         if (eltern.isNotEmpty()) {
             Text(stringResource(R.string.household_state_parents),
                 style = MaterialTheme.typography.labelLarge)
             eltern.forEach { m ->
-                KontoZeile(m.username, stringResource(R.string.household_unlink)) {
-                    trennen = m.id; trenntEltern = true
+                AccountRow(m.username, stringResource(R.string.household_unlink)) {
+                    trennen = m.id; separatesParent = true
                 }
             }
         }
         if (st.subAccounts.isNotEmpty()) {
-            if (!nurUnterkonten) Text(stringResource(R.string.household_state_main),
+            if (!onlySubAccounts) Text(stringResource(R.string.household_state_main),
                 style = MaterialTheme.typography.labelLarge)
             st.subAccounts.forEach { m ->
-                KontoZeile(m.username, stringResource(R.string.household_remove)) {
-                    trennen = m.id; trenntEltern = false
+                AccountRow(m.username, stringResource(R.string.household_remove)) {
+                    trennen = m.id; separatesParent = false
                 }
             }
         }
@@ -158,25 +158,25 @@ internal fun HouseholdCard(
                 label = { Text(stringResource(R.string.household_invite_label)) },
                 modifier = Modifier.fillMaxWidth(), shape = Formen.feld,
             )
-            state.inviteGueltigBis?.let { bis ->
+            state.inviteValidUntil?.let { bis ->
                 Text(stringResource(R.string.household_invite_gueltig_bis,
-                        fmtStand(bis, appNumberLocale(), vierundzwanzig = vierundzwanzigStunden(), jahr = DatumJahr.OHNE)),
+                        fmtStatus(bis, appNumberLocale(), twentyFour = twentyFourHours(), jahr = DateYear.OHNE)),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             // Der Code gehört auf ein anderes Gerät: teilen und kopieren, beide gleich gewichtet.
-            val teilenTitel = stringResource(R.string.household_invite_section)
+            val shareTitle = stringResource(R.string.household_invite_section)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                OutlinedButton(onClick = { teileCodes(kontext, teilenTitel, listOf(c)) }, modifier = Modifier.weight(1f),
+                OutlinedButton(onClick = { partsCodes(context, shareTitle, listOf(c)) }, modifier = Modifier.weight(1f),
                     colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-                    Icon(Icons.Default.Share, null, Modifier.size(mitSchrift(18.dp)))
+                    Icon(Icons.Default.Share, null, Modifier.size(withFont(18.dp)))
                     Spacer(Modifier.width(Abstaende.klein))
                     Text(stringResource(R.string.household_invite_teilen))
                 }
                 // Unter Android 13 sähe die Tastatur den Code; Teilen bleibt dort der Weg.
-                if (geheimKopierbar(LocalSdkStufe.current)) OutlinedButton(
-                    onClick = { GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c) },
+                if (secretCopyable(LocalSdkLevel.current)) OutlinedButton(
+                    onClick = { SecretClipboard.copy(context, invitationLabel, c) },
                     modifier = Modifier.weight(1f), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-                    Icon(Icons.Default.ContentCopy, null, Modifier.size(mitSchrift(18.dp)))
+                    Icon(Icons.Default.ContentCopy, null, Modifier.size(withFont(18.dp)))
                     Spacer(Modifier.width(Abstaende.klein))
                     Text(stringResource(R.string.household_invite_copy))
                 }
@@ -195,20 +195,20 @@ internal fun HouseholdCard(
             modifier = Modifier.fillMaxWidth(), shape = Formen.feld,
         )
         // Nach einem Fehlversuch ist das Feld leer und rot, bis wieder getippt wird.
-        val passwortFalsch = state.passwortFalsch && passwort.isEmpty()
-        PasswortFeld(passwort, { passwort = it }, stringResource(R.string.household_redeem_password),
+        val passwordWrong = state.passwordWrong && passwort.isEmpty()
+        PasswordField(passwort, { passwort = it }, stringResource(R.string.household_redeem_password),
             Modifier.fillMaxWidth(),
-            hinweis = if (passwortFalsch) stringResource(R.string.household_redeem_password_wrong) else null,
-            fehlerhaft = passwortFalsch)
+            hinweis = if (passwordWrong) stringResource(R.string.household_redeem_password_wrong) else null,
+            faulty = passwordWrong)
         // Bei aktivem zweitem Faktor verlangt der Server dessen Code (oder einen Wiederherstellungscode).
-        if (state.faktorNoetig) {
-            val faktorFalsch = state.faktorFalsch && faktorCode.isEmpty()
+        if (state.factorNeeded) {
+            val factorWrong = state.factorWrong && faktorCode.isEmpty()
             OutlinedTextField(
                 value = faktorCode, onValueChange = { faktorCode = it.take(24) }, singleLine = true,
                 label = { Text(stringResource(R.string.household_redeem_code)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                isError = faktorFalsch,
-                supportingText = if (faktorFalsch) {
+                isError = factorWrong,
+                supportingText = if (factorWrong) {
                     { Text(stringResource(R.string.household_redeem_code_wrong)) }
                 } else null,
                 modifier = Modifier.fillMaxWidth(),
@@ -217,30 +217,30 @@ internal fun HouseholdCard(
         }
         // Meldung des Servers (Währung weicht ab, schon verknüpft) direkt über dem Knopf,
         // nicht am Seitenende unter allen Abschnitten.
-        state.abruf.fehlerMeldung?.takeUnless { state.passwortFalsch || state.faktorFalsch }?.let {
-            Text(it.satz(), Modifier.ansagen(), style = MaterialTheme.typography.bodySmall,
+        state.abruf.errorMessage?.takeUnless { state.passwordWrong || state.factorWrong }?.let {
+            Text(it.satz(), Modifier.announce(), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
-        val bereit = code.isNotBlank() && passwort.isNotEmpty() && (!state.faktorNoetig || faktorCode.isNotBlank())
+        val bereit = code.isNotBlank() && passwort.isNotEmpty() && (!state.factorNeeded || faktorCode.isNotBlank())
         // Wie bei der Anmeldung: Ein gesperrter Knopf sagt, was fehlt.
-        if (!bereit) SperrGrund(stringResource(if (state.faktorNoetig) R.string.household_redeem_sperrgrund_faktor
+        if (!bereit) LockReason(stringResource(if (state.factorNeeded) R.string.household_redeem_sperrgrund_faktor
                                               else R.string.household_redeem_sperrgrund))
-        Button(onClick = { onRedeemInvite(code, passwort, faktorCode.takeIf { state.faktorNoetig }); passwort = ""; faktorCode = "" },
+        Button(onClick = { onRedeemInvite(code, passwort, faktorCode.takeIf { state.factorNeeded }); passwort = ""; faktorCode = "" },
                enabled = bereit && !state.abruf.laedt, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.household_redeem_submit))
         }
     }
 
     trennen?.let { id ->
-        val name = (if (trenntEltern) eltern.firstOrNull { it.id == id }?.username
+        val name = (if (separatesParent) eltern.firstOrNull { it.id == id }?.username
                     else st?.subAccounts.orEmpty().firstOrNull { it.id == id }?.username) ?: "—"
-        Rueckfrage(
-            titel = stringResource(if (trenntEltern) R.string.household_unlink_title else R.string.household_remove_title),
-            text = stringResource(if (trenntEltern) R.string.household_unlink_text else R.string.household_remove_text, name),
-            bestaetigen = stringResource(if (trenntEltern) R.string.household_unlink else R.string.household_remove),
+        Prompt(
+            titel = stringResource(if (separatesParent) R.string.household_unlink_title else R.string.household_remove_title),
+            text = stringResource(if (separatesParent) R.string.household_unlink_text else R.string.household_remove_text, name),
+            bestaetigen = stringResource(if (separatesParent) R.string.household_unlink else R.string.household_remove),
             onBestaetigen = {
                 trennen = null
-                if (trenntEltern) onUnlinkParent(id) else onUnlink(id)
+                if (separatesParent) onUnlinkParent(id) else onUnlink(id)
             },
             onAbbrechen = { trennen = null },
             symbol = Icons.Default.LinkOff,
@@ -250,13 +250,13 @@ internal fun HouseholdCard(
 
 /** Ein verknüpftes Konto mit seiner einen Aktion; TalkBack hört „Entfernen: lena“, nicht nur „Entfernen“. */
 @Composable
-private fun KontoZeile(name: String, aktion: String, onAktion: () -> Unit) {
+private fun AccountRow(name: String, aktion: String, onAction: () -> Unit) {
     val beschreibung = stringResource(R.string.aktion_fuer, aktion, name)
     Row(verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         Icon(Icons.Default.AccountCircle, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(name, modifier = Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
-        TextButton(onClick = onAktion, modifier = Modifier.semantics { contentDescription = beschreibung }) {
+        TextButton(onClick = onAction, modifier = Modifier.semantics { contentDescription = beschreibung }) {
             Text(aktion, color = MaterialTheme.colorScheme.error)
         }
     }

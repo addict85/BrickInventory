@@ -14,5 +14,5 @@ index b274d3e..b405d33 100644
 -        onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(rollSchluessel(ziel)) },
 +        onTabAngetippt = { _ -> },
          // Der stille Start-Test hat ein Ergebnis — hier bekommt es einen Ort.
-         updateVerfuegbar = updateZustand.neuereFassung != null,
+         updateVerfuegbar = updateZustand.newerVersion != null,
          offeneAenderungen = offen,

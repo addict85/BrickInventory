@@ -1,6 +1,6 @@
 Gegenprobe: Der Name des gelöschten Merkpostens kommt aus der rohen Liste statt aus der gezeigten
 Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.MerklisteViewModelTest
+Test: ch.brickinventoryapp.sammlung.WantedViewModelTest
 Rot: ein geloeschter Merkposten laesst sich zurueckholen, geloescht wird erst danach
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
@@ -8,11 +8,11 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
 @@ -207,8 +207,7 @@
       */
-     override fun loescheMerkposten(setNumber: String, zustand: Zustand, besitzer: Int?) {
-         merkpostenLoeschenAusfuehren()
+     override fun deleteWantedItem(setNumber: String, zustand: Zustand, besitzer: Int?) {
+         executeWantedItemDelete()
 -        // Die gezeigte Liste, nicht die rohe: Ohne Filter steht der Posten nur in der Ablage.
--        val name = merklisteState.value.merkposten
-+        val name = _merklisteState.value.merkposten
+-        val name = wantedState.value.merkposten
++        val name = _wantedState.value.merkposten
              .firstOrNull { it.setNumber == setNumber && it.condition == zustand }?.name ?: setNumber
-         _vorgemerkt.value = VorgemerkterMerkposten(setNumber, zustand, besitzer, name)
+         _reserved.value = ReservedWantedItem(setNumber, zustand, besitzer, name)
      }

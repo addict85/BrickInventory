@@ -8,7 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Die Jahres-Leiste rechnet über die VERTEILUNG, nicht linear.
+ * Die Jahres-Leiste rechnet über die DISTRIBUTION, nicht linear.
  *
  * ── Der Fehler, den das verhindert ──────────────────────────────────────────
  * Hier stand vorher ein lineares Modell: oben yearMax, unten yearMin, die
@@ -33,14 +33,14 @@ class CatalogYearMathTest {
     private val T = 36        // Griffhöhe in px
 
     /** Neueste zuerst — dieselbe Reihenfolge, in der die Liste steht. */
-    private val VERTEILUNG = listOf(
+    private val DISTRIBUTION = listOf(
         JahrAnzahlAnsicht(2024, 90),
         JahrAnzahlAnsicht(2010, 7),
         JahrAnzahlAnsicht(1965, 3),
     )
     private val TOTAL = 100
 
-    private fun jahr(anteil: Float) = CatalogYearMath.jahrAnPosition(anteil, TOTAL, VERTEILUNG)
+    private fun jahr(share: Float) = CatalogYearMath.yearAnPosition(share, TOTAL, DISTRIBUTION)
 
     @Test
     fun `neun Zehntel hinunter ist noch nicht beim aeltesten Jahrgang`() {
@@ -61,7 +61,7 @@ class CatalogYearMathTest {
     @Test
     fun `die Grenze zwischen zwei Jahrgaengen liegt an der richtigen Nummer`() {
         // Nummer 89 ist die letzte von 2024, Nummer 90 die erste von 2010.
-        assertEquals(89, CatalogYearMath.nummerAus(0.9f, TOTAL))
+        assertEquals(89, CatalogYearMath.numberFrom(0.9f, TOTAL))
         assertEquals(2024, jahr(89f / 99f))
         assertEquals(2010, jahr(90f / 99f))
     }
@@ -78,51 +78,51 @@ class CatalogYearMathTest {
 
     @Test
     fun `ohne Verteilung oder ohne Sets gibt es kein Etikett`() {
-        assertNull(CatalogYearMath.jahrAnPosition(0.5f, TOTAL, emptyList()))
-        assertNull(CatalogYearMath.jahrAnPosition(0.5f, 0, VERTEILUNG))
+        assertNull(CatalogYearMath.yearAnPosition(0.5f, TOTAL, emptyList()))
+        assertNull(CatalogYearMath.yearAnPosition(0.5f, 0, DISTRIBUTION))
     }
 
     @Test
     fun `eine geladene Kachel schlaegt die Rechnung`() {
         // Erste Wahl wie in der Webapp: Ist die Stelle geladen, gilt ihr Jahr —
         // auch wenn die Verteilung etwas anderes ergäbe.
-        assertEquals(1999, CatalogYearMath.jahrFuer(0.9f, TOTAL, VERTEILUNG) { 1999 })
+        assertEquals(1999, CatalogYearMath.yearFor(0.9f, TOTAL, DISTRIBUTION) { 1999 })
         // Nicht geladen -> die Rechnung.
-        assertEquals(2024, CatalogYearMath.jahrFuer(0.9f, TOTAL, VERTEILUNG) { null })
+        assertEquals(2024, CatalogYearMath.yearFor(0.9f, TOTAL, DISTRIBUTION) { null })
     }
 
     @Test
     fun `Beruehrung und Griffposition sind zueinander umgekehrt`() {
         for (prozent in 0..100) {
-            val anteil = prozent / 100f
-            val offset = CatalogYearMath.daumenOffset(anteil, H, T)
+            val share = prozent / 100f
+            val offset = CatalogYearMath.thumbOffset(share, H, T)
             // Die Griffmitte an dieser Stelle ergibt wieder denselben Anteil.
-            val zurueck = CatalogYearMath.anteilAus(offset + T / 2f, H, T)
-            assertEquals("Anteil $anteil", anteil, zurueck, 0.002f)
+            val zurueck = CatalogYearMath.shareFrom(offset + T / 2f, H, T)
+            assertEquals("Anteil $share", share, zurueck, 0.002f)
         }
-        assertEquals(0, CatalogYearMath.daumenOffset(0f, H, T))
-        assertEquals(H - T, CatalogYearMath.daumenOffset(1f, H, T))
+        assertEquals(0, CatalogYearMath.thumbOffset(0f, H, T))
+        assertEquals(H - T, CatalogYearMath.thumbOffset(1f, H, T))
     }
 
     @Test
     fun `Nummer und Anteil sind zueinander umgekehrt`() {
         for (n in 0 until TOTAL) {
-            assertEquals(n, CatalogYearMath.nummerAus(CatalogYearMath.anteilAusNummer(n, TOTAL), TOTAL))
+            assertEquals(n, CatalogYearMath.numberFrom(CatalogYearMath.anteilAusNummer(n, TOTAL), TOTAL))
         }
         // Eine Liste mit einem einzigen Eintrag hat keine Strecke.
         assertEquals(0f, CatalogYearMath.anteilAusNummer(0, 1), 0f)
-        assertEquals(0, CatalogYearMath.nummerAus(0.5f, 0))
+        assertEquals(0, CatalogYearMath.numberFrom(0.5f, 0))
     }
 
     @Test
     fun `entartete Faelle stuerzen nicht ab`() {
         // Leiste kleiner als der Griff (extrem kleines Layout)
-        val a = CatalogYearMath.anteilAus(10f, 20, T)
+        val a = CatalogYearMath.shareFrom(10f, 20, T)
         assertTrue(a in 0f..1f)
-        assertEquals(0, CatalogYearMath.daumenOffset(a, 20, T))
+        assertEquals(0, CatalogYearMath.thumbOffset(a, 20, T))
         // Verteilung deckt weniger ab als `total` — Sets ohne Jahr zählen in
         // `total` mit, stehen aber nicht in der Verteilung. Dann gilt der
         // letzte Jahrgang, genau wie in der Webapp.
-        assertEquals(1965, CatalogYearMath.jahrAnPosition(1f, 500, VERTEILUNG))
+        assertEquals(1965, CatalogYearMath.yearAnPosition(1f, 500, DISTRIBUTION))
     }
 }

@@ -4,11 +4,11 @@ import android.content.Context
 import androidx.glance.appwidget.updateAll
 import ch.brickinventoryapp.BuildConfig
 import ch.brickinventoryapp.app.MeldungsEinstieg
-import ch.brickinventoryapp.model.util.AppFassung
+import ch.brickinventoryapp.model.util.AppVersion
 import ch.brickinventoryapp.data.Startziel
 import ch.brickinventoryapp.zustand.ui.Abmeldehaken
 import ch.brickinventoryapp.app.widget.SammlungsWidget
-import ch.brickinventoryapp.app.widget.WidgetAblage
+import ch.brickinventoryapp.app.widget.WidgetStore
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -32,7 +32,7 @@ object AppModule {
     fun provideStartziel(): Startziel = Startziel(MeldungsEinstieg::class.java)
 
     @Provides
-    fun provideAppFassung(): AppFassung = AppFassung(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
+    fun provideAppVersion(): AppVersion = AppVersion(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
 
     /** Das Widget zeigt nach dem Abmelden sonst die Zahlen des alten Kontos. */
     @Provides
@@ -41,7 +41,7 @@ object AppModule {
 
     @Provides
     fun provideAbmeldehaken(@ApplicationContext ctx: Context): Abmeldehaken = Abmeldehaken {
-        WidgetAblage.leeren(ctx)
+        WidgetStore.leeren(ctx)
         SammlungsWidget().updateAll(ctx)
     }
 }

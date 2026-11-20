@@ -1,17 +1,17 @@
 Gegenprobe: Die App-Sperre fragt nach jeder gescheiterten Signatur erneut
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.AppEntsperrungTest
+Test: ch.brickinventoryapp.ui.AppUnlockingTest
 Rot: fremd signiert entsperrt nicht
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppEntsperrung.kt
-@@ -30,7 +30,7 @@ private fun versuche(weiter: () -> Unit, nochmal: Boolean) {
-         frage(signatur) { freigegeben ->
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppUnlocking.kt
+@@ -30,7 +30,7 @@ private fun versuche(weiter: () -> Unit, again: Boolean) {
+         frage(signatur) { released ->
              when {
-                 freigabe.gilt(freigegeben) -> weiter()
-                 freigegeben != null && nochmal -> {
-                     runCatching { schluessel.verwerfe() }
--                    versuche(weiter, nochmal = false)
-+                    versuche(weiter, nochmal = true)
+                 freigabe.gilt(released) -> weiter()
+                 released != null && again -> {
+                     runCatching { schluessel.discard() }
+-                    versuche(weiter, again = false)
++                    versuche(weiter, again = true)
                  }

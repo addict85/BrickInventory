@@ -4,7 +4,7 @@ import ch.brickinventoryapp.model.ui.laedt
 import androidx.compose.foundation.layout.heightIn
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.model.fach.AnleitungAnsicht
+import ch.brickinventoryapp.model.fach.InstructionView
 import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.clickable
@@ -30,10 +30,10 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.*
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.netz.util.eigeneAdresse
-import ch.brickinventoryapp.netz.util.externeAdresse
-import ch.brickinventoryapp.ui.util.oeffneExtern
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.netz.util.ownAddress
+import ch.brickinventoryapp.netz.util.externeAddress
+import ch.brickinventoryapp.ui.util.openExtern
 import ch.brickinventoryapp.gemeinsam.ui.SectionCard
 
 /**
@@ -43,10 +43,10 @@ import ch.brickinventoryapp.gemeinsam.ui.SectionCard
 internal fun LazyListScope.setDetailInstructionsSection(
     set: SetAnsicht, detailState: SetDetailUiState, serverUrl: String,
     onOpenPdf: (url: String, title: String) -> Unit,
-    onAnleitungWaehlen: () -> Unit,
+    onInstructionChoose: () -> Unit,
     onAnleitungLoeschen: (Int) -> Unit,
     /** Kein Programm öffnet die Adresse — der Bildschirm meldet es in seinem Gerüst. */
-    onKeineApp: () -> Unit,
+    onNoApp: () -> Unit,
 ) {
         // ── Instructions section ───────────────────────────────────────────
         val instructions = set.instructions
@@ -56,7 +56,7 @@ internal fun LazyListScope.setDetailInstructionsSection(
                     title = if (instructions.isNotEmpty())
                         stringResource(R.string.detail_instructions_with_count, instructions.size) else stringResource(R.string.detail_instructions)
                 ) {
-                    if (detailState.detailAbruf.laedt && instructions.isEmpty()) {
+                    if (detailState.detailFetch.laedt && instructions.isEmpty()) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                             verticalAlignment = Alignment.CenterVertically
@@ -69,20 +69,20 @@ internal fun LazyListScope.setDetailInstructionsSection(
                     } else {
                         instructions.forEachIndexed { idx, instr ->
                             if (idx > 0) HorizontalDivider(
-                                Modifier.padding(vertical = Abstaende.winzig),
+                                Modifier.padding(vertical = Abstaende.tiny),
                                 color = MaterialTheme.colorScheme.outlineVariant
                             )
-                            AnleitungZeile(instr, serverUrl, onOpenPdf, onAnleitungLoeschen, onKeineApp)
+                            InstructionRow(instr, serverUrl, onOpenPdf, onAnleitungLoeschen, onNoApp)
                         }
                         // Der Weg, eine erste Anleitung hinzuzufügen — unter der Liste, weil das
                         // Ansehen häufiger ist; höchstens Bedienbreite, auf dem Tablet nicht über die Spalte.
                         OutlinedButton(
-                            onClick = onAnleitungWaehlen,
+                            onClick = onInstructionChoose,
                             modifier = Modifier.padding(top = Abstaende.klein).fillMaxWidth(),
                             colors = nebenKnopfFarben(),
                             border = nebenKnopfRand(),
                         ) {
-                            Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
+                            Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
                             Spacer(Modifier.width(Abstaende.klein))
                             Text(stringResource(R.string.instr_upload))
                         }
@@ -94,19 +94,19 @@ internal fun LazyListScope.setDetailInstructionsSection(
 
 /** Eine Anleitung: Die ganze Zeile öffnet sie, der Papierkorb daneben entfernt eine eigene. */
 @Composable
-private fun AnleitungZeile(
-    instr: AnleitungAnsicht,
+private fun InstructionRow(
+    instr: InstructionView,
     serverUrl: String,
     onOpenPdf: (url: String, title: String) -> Unit,
     onAnleitungLoeschen: (Int) -> Unit,
-    onKeineApp: () -> Unit,
+    onNoApp: () -> Unit,
 ) {
     val ctx = LocalContext.current
     // Kein `?token=` an der Adresse: Der Sitzungstoken läge sonst im
     // Backstack, als Text unter der Anleitung und im Zugriffsprotokoll. Der
     // In-App-Betrachter lädt über den geteilten Client, der den
     // Authorization-Kopf setzt (di/ServerClient.kt).
-    val eigene = instr.localPath?.let { eigeneAdresse(serverUrl, it) }
+    val eigene = instr.localPath?.let { ownAddress(serverUrl, it) }
     val openUrl = eigene ?: instr.url
 
     // Die ganze Zeile öffnet die Anleitung — sie sah aus wie ein Verweis.
@@ -116,9 +116,9 @@ private fun AnleitungZeile(
     val oeffneAnleitung: () -> Unit = {
         if (eigene != null) {
             onOpenPdf(eigene, instr.description ?: "")
-        } else if (!oeffneExtern(ctx, externeAdresse(instr.url))) {
+        } else if (!openExtern(ctx, externeAddress(instr.url))) {
             // Rückmeldung statt Stille, siehe CatalogDetailScreen.
-            onKeineApp()
+            onNoApp()
         }
     }
     Row(
@@ -136,11 +136,11 @@ private fun AnleitungZeile(
                 // paar totes Pixel.
                 .clickable(role = Role.Button, onClick = oeffneAnleitung)
                 .heightIn(min = 48.dp)
-                .padding(vertical = Abstaende.winzig),
+                .padding(vertical = Abstaende.tiny),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)
         ) {
-            PdfKachel()
+            PdfTile()
             Column(Modifier.weight(1f)) {
                 Text(
                     instr.description ?: stringResource(R.string.detail_instruction_default),
@@ -167,13 +167,13 @@ private fun AnleitungZeile(
                 )
             }
         }
-        AnleitungLoeschen(instr, onAnleitungLoeschen)
+        InstructionDelete(instr, onAnleitungLoeschen)
     }
 }
 
 /** Das PDF-Zeichen vorn in der Zeile; nur Hinweis, nicht antippbar für sich. */
 @Composable
-private fun PdfKachel() {
+private fun PdfTile() {
     Surface(
         shape = Formen.kachel,
         color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
@@ -196,7 +196,7 @@ private fun PdfKachel() {
  * treffen.
  */
 @Composable
-private fun AnleitungLoeschen(instr: AnleitungAnsicht, onAnleitungLoeschen: (Int) -> Unit) {
+private fun InstructionDelete(instr: InstructionView, onAnleitungLoeschen: (Int) -> Unit) {
     val id = instr.id
     if (id != null && instr.isManual) {
         MitTooltip(stringResource(R.string.instr_delete)) {

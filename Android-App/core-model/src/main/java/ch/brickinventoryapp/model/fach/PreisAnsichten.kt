@@ -3,55 +3,55 @@ package ch.brickinventoryapp.model.fach
 // Marktpreise und ihr Verlauf je Zustand.
 
 data class PreisDiagrammAnsicht(
-    val values: List<PreisReiheAnsicht> = emptyList(),
+    val values: List<PriceSeriesView> = emptyList(),
     val x: List<String> = emptyList(),
 )
 
-data class PreisReiheAnsicht(
+data class PriceSeriesView(
     val name: String = "",
-    val values: List<PreisPunktAnsicht> = emptyList(),
+    val values: List<PricePointView> = emptyList(),
     val firstRealIndex: Int = 0,
 )
 
-data class PreisPunktAnsicht(
+data class PricePointView(
     val x: String = "",
     val preis: Geld = Geld.NULL,
 )
 
-data class PreisJeZustandAnsicht(
-    val new: ZustandsBewertungAnsicht? = null,
-    val used: ZustandsBewertungAnsicht? = null,
+data class PricePerStateView(
+    val new: StateValuationView? = null,
+    val used: StateValuationView? = null,
 ) {
     /** Die Zustände, zu denen es eine Bewertung gibt, neu zuerst. */
-    fun present(): List<Pair<Zustand, ZustandsBewertungAnsicht>> = buildList {
+    fun present(): List<Pair<Zustand, StateValuationView>> = buildList {
         new?.let { add(Zustand.NEU to it) }
         used?.let { add(Zustand.GEBRAUCHT to it) }
     }
 }
 
-data class ZustandsBewertungAnsicht(
+data class StateValuationView(
     val marketPrice: Geld? = null,
     val purchasePrice: Geld? = null,
     val pnlPct: Double? = null,
 )
 
-data class PreisverlaufAnsicht(
+data class PriceHistoryView(
     val currency: Waehrung = Waehrung.KEINE,
-    val historyNew: List<PreisverlaufPunktAnsicht> = emptyList(),
-    val historyUsed: List<PreisverlaufPunktAnsicht> = emptyList(),
-    val byCondition: PreisJeZustandAnsicht = PreisJeZustandAnsicht(),
+    val historyNew: List<PriceHistoryPointView> = emptyList(),
+    val historyUsed: List<PriceHistoryPointView> = emptyList(),
+    val byCondition: PricePerStateView = PricePerStateView(),
     val chart: PreisDiagrammAnsicht = PreisDiagrammAnsicht(),
     val pnlPct: String? = null,
     val pnlProzent: Double? = null,
     val purchasePrice: Geld? = null,
 )
 
-data class PreisverlaufPunktAnsicht(
+data class PriceHistoryPointView(
     val qtyAvgPrice: Geld? = null,
     val avgPrice: Geld? = null,
 )
 
-data class SetPreisAnsicht(
+data class SetPriceView(
     val setNumber: String = "",
     val currency: Waehrung = Waehrung.KEINE,
     val avgPrice: Geld? = null,
@@ -59,17 +59,17 @@ data class SetPreisAnsicht(
     val noPrice: Boolean = false,
 )
 
-data class AktuellerPreisAnsicht(
+data class CurrentPriceView(
     val condition: Zustand? = null,
     val avgPrice: Geld? = null,
 )
 
-data class AktuellJeZustandAnsicht(
-    val new: AktuellerPreisAnsicht? = null,
-    val used: AktuellerPreisAnsicht? = null,
+data class CurrentPerStateView(
+    val new: CurrentPriceView? = null,
+    val used: CurrentPriceView? = null,
 )
 
-data class MerkpostenPreiseAnsicht(
+data class WantedItemPricesView(
     val currency: Waehrung = Waehrung.KEINE,
-    val current: AktuellJeZustandAnsicht = AktuellJeZustandAnsicht(),
+    val current: CurrentPerStateView = CurrentPerStateView(),
 )

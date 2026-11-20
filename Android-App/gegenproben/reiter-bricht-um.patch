@@ -1,12 +1,12 @@
 Gegenprobe: Beschriftung der Reiter wieder ohne Zeilengrenze, alle Ziele beschriftet
 Modul: app
-Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
 Rot: Reiterleiste bricht bei 200 Prozent kein Wort um
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -291,7 +291,6 @@ private fun ReiterZiel(
+@@ -291,7 +291,6 @@ private fun TabTarget(
              // Fett und in Hauptfarbe: Das gewählte Ziel unterscheidet sich auch in der Form.
              fontWeight = if (gewaehlt) FontWeight.Bold else FontWeight.Medium,
              color = if (gewaehlt) farben.gewaehlt else farben.ungewaehlt,
@@ -14,12 +14,12 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold
          )
      }
  }
-@@ -321,7 +320,7 @@ private fun ReiterLeiste(
+@@ -321,7 +320,7 @@ private fun TabBar(
              }
-             Row(Modifier.fillMaxWidth().heightIn(min = LEISTE_HOEHE).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
-                 ziele.forEachIndexed { i, (screen, icon, name) ->
+             Row(Modifier.fillMaxWidth().heightIn(min = BAR_HEIGHT).selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+                 targets.forEachIndexed { i, (screen, icon, name) ->
 -                    val beschriftet = satz.alle || i == satz.gewaehlt
 +                    val beschriftet = true
-                     val platz = Modifier.weight(if (i == satz.gewaehlt) satz.gewicht else 1f)
+                     val space = Modifier.weight(if (i == satz.gewaehlt) satz.gewicht else 1f)
                      val ziel: @Composable (Modifier) -> Unit = { m ->
-                         ReiterZiel(gewaehlt(screen), name, if (beschriftet) stil.fontSize * satz.faktor else null, farben,
+                         TabTarget(gewaehlt(screen), name, if (beschriftet) stil.fontSize * satz.faktor else null, farben,

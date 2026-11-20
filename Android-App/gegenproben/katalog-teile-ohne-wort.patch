@@ -1,6 +1,6 @@
 Gegenprobe: Katalogkachel zeigt die Teilezahl wieder nur als Zahl
 Modul: app
-Test: ch.brickinventoryapp.app.KachelVorlesenTest
+Test: ch.brickinventoryapp.app.TileReadAloudTest
 Rot: Katalogkachel zeigt die Teilezahl
 
 diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt
@@ -11,7 +11,7 @@ diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/kata
                                  // Die Zahl mit Wort: „500“ allein neben dem Steinsymbol las sich wie ein Preis.
                                  val teile = set.numParts ?: 0
 -                                Text(pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile)),
-+                                Text(fmtInt(teile), Modifier.vorgelesenAls(pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile))),
++                                Text(fmtInt(teile), Modifier.readAloudAs(pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile))),
                                      style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                              }
                          }

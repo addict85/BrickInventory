@@ -1,6 +1,6 @@
 Gegenprobe: Ein gesetzter Preisalarm geht nur an den Server, die Ablage bleibt alt
 Modul: core-data
-Test: ch.brickinventoryapp.data.AlarmUndVorratAblageTest
+Test: ch.brickinventoryapp.data.AlarmAndStockStoreTest
 Rot: ein gesetzter und ein geloeschter Alarm stehen sofort in der Ablage
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/AlarmRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/AlarmRepositoryImpl.kt
@@ -10,11 +10,11 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
  
      override suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Geld,
                                         condition: Zustand): Ergebnis<Unit> =
--        ablage.nachgezogen({ r -> r.alert?.takeIf { r.success }?.let { Nachzug.AlarmGesetzt(it.alsAnsicht()) } }) {
--            sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle.alsDouble(), condition = condition)) }
--        }.zugesagt({ it.success }) { }
-+        sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle.alsDouble(), condition = condition)) }
-+            .zugesagt({ it.success }) { }
+-        ablage.nachgezogen({ r -> r.alert?.takeIf { r.success }?.let { FollowUp.AlarmSet(it.alsAnsicht()) } }) {
+-            sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle.asDouble(), condition = condition)) }
+-        }.promised({ it.success }) { }
++        sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle.asDouble(), condition = condition)) }
++            .promised({ it.success }) { }
  
-     override suspend fun deletePreisalarm(setNumber: String, condition: Zustand): Ergebnis<Unit> =
-         ablage.nachgezogen({ r -> Nachzug.AlarmEntfernt(setNumber, condition).takeIf { r.success } }) {
+     override suspend fun deletePriceAlert(setNumber: String, condition: Zustand): Ergebnis<Unit> =
+         ablage.nachgezogen({ r -> FollowUp.AlarmRemoved(setNumber, condition).takeIf { r.success } }) {

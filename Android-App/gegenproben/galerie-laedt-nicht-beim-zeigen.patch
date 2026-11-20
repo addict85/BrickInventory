@@ -1,17 +1,17 @@
 Gegenprobe: Die Galerie lädt nicht mehr, wenn jemand sie zeigt
 Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.GalerieViewModelTest
+Test: ch.brickinventoryapp.sammlung.GalleryViewModelTest
 Rot: wer die Galerie zeigt
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt
+diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
 index 941844b..8fc1d05 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalerieViewModel.kt
-@@ -123,7 +123,6 @@ class GalerieViewModel @Inject constructor(
-             thema = gemerkt[THEMA] ?: "",
-             sortierung = Setsortierung.aus(gemerkt[SORTIERUNG]),
+--- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
++++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/GalleryViewModel.kt
+@@ -123,7 +123,6 @@ class GalleryViewModel @Inject constructor(
+             thema = gemerkt[THEME] ?: "",
+             sorting = Setsortierung.aus(gemerkt[SORTING]),
          )
--        ladeJeServer(sitzung, galerieBeobachtet) { ladeWennLeer() }
+-        loadPerServer(sitzung, galleryObserved) { loadIfEmpty() }
      }
  
      fun loadSets() = galerie.laden()

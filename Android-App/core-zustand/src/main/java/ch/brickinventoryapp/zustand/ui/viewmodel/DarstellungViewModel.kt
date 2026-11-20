@@ -34,11 +34,11 @@ class DarstellungViewModel @Inject constructor(
      */
     val appTheme: StateFlow<Design> = sitzung.state.abgeleitet { it.appTheme }
 
-    private val _helligkeit = MutableStateFlow(prefs.helligkeit())
-    val helligkeit: StateFlow<String> = _helligkeit.asStateFlow()
+    private val _brightness = MutableStateFlow(prefs.helligkeit())
+    val helligkeit: StateFlow<String> = _brightness.asStateFlow()
     override fun setHelligkeit(wahl: String) {
         prefs.setzeHelligkeit(wahl)
-        _helligkeit.value = wahl
+        _brightness.value = wahl
     }
 
     private val _systemfarben = MutableStateFlow(prefs.systemfarben())
@@ -49,20 +49,20 @@ class DarstellungViewModel @Inject constructor(
     }
 
     /** FLAG_SECURE für die ganze App, über den Zähler von Sichtschutz. */
-    private val _vorschauVerbergen = MutableStateFlow(prefs.vorschauVerbergen())
-    val vorschauVerbergen: StateFlow<Boolean> = _vorschauVerbergen.asStateFlow()
+    private val _hidePreview = MutableStateFlow(prefs.hidePreview())
+    val hidePreview: StateFlow<Boolean> = _hidePreview.asStateFlow()
     override fun setVorschauVerbergen(an: Boolean) {
         prefs.setzeVorschauVerbergen(an)
-        _vorschauVerbergen.value = an
+        _hidePreview.value = an
     }
 
     /** Geldwerte im Startbildschirm-Widget; es liegt ohne Entsperren offen. */
-    private val _widgetWerte = MutableStateFlow(prefs.widgetWerteZeigen())
-    val widgetWerte: StateFlow<Boolean> = _widgetWerte.asStateFlow()
-    override fun setWidgetWerte(an: Boolean) {
-        prefs.setzeWidgetWerteZeigen(an)
-        _widgetWerte.value = an
-        viewModelScope.launch { fangeAusserAbbruch { widget.aktualisiere() } }
+    private val _widgetValues = MutableStateFlow(prefs.showWidgetValues())
+    val widgetValues: StateFlow<Boolean> = _widgetValues.asStateFlow()
+    override fun setWidgetValues(an: Boolean) {
+        prefs.showSetWidgetValues(an)
+        _widgetValues.value = an
+        viewModelScope.launch { fangeAusserAbbruch { widget.refresh() } }
     }
 
     override fun setLanguage(languageCode: String) {

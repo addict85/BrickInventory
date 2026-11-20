@@ -11,7 +11,7 @@ index 25f2ada..1b60ed6 100644
       */
      fun name(bindung: String): String? = runCatching {
          val namensschluessel = hmac(vertrauen(), NAMEN)
--        Base64.getUrlEncoder().withoutPadding().encodeToString(hmac(namensschluessel, bindung)).take(NAME_LAENGE)
+-        Base64.getUrlEncoder().withoutPadding().encodeToString(hmac(namensschluessel, bindung)).take(NAME_LENGTH)
 +        bindung.also { namensschluessel.size }
      }.getOrNull()
  

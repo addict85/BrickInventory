@@ -1,20 +1,20 @@
 Gegenprobe: „Gutschein hinzufügen“ wieder als Knopf über der Liste statt schwebend
 Modul: app
-Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: Gutscheine anlegen schwebt, Guthaben und PDF stehen im Menue der Leiste
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineUnterseite.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineUnterseite.kt
 index c666631..c56e5da 100644
 --- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineUnterseite.kt
 +++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineUnterseite.kt
-@@ -88,6 +88,8 @@ fun GutscheineSeite(
-     Unterseite(
+@@ -88,6 +88,8 @@ fun VouchersPage(
+     Subpage(
          stringResource(R.string.vouchers_title), snackbarHostState, onZurueck,
-         aktionen = { GutscheinMenue(zustand, onGuthabenAlle, onExportieren) },
--        hauptaktion = { GutscheinHinzufuegen { neu = true } },
+         aktionen = { VoucherMenu(zustand, onBalanceAll, exportOn) },
+-        primaryAction = { VoucherAdd { neu = true } },
 -    ) { karte(neu) { neu = it } }
 +    ) {
-+        GutscheinHinzufuegen { neu = true }
++        VoucherAdd { neu = true }
 +        karte(neu) { neu = it }
 +    }
  }

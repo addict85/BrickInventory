@@ -2,10 +2,10 @@ package ch.brickinventoryapp.sammlung.ui.screens
 
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.runtime.LaunchedEffect
-import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
-import ch.brickinventoryapp.model.fach.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.WantedItemView
+import ch.brickinventoryapp.model.fach.MemberView
 import androidx.compose.foundation.layout.*
-import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.components.announce
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -17,7 +17,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.ui.components.ErfassenDialog
+import ch.brickinventoryapp.ui.components.AddDialog
 import ch.brickinventoryapp.gemeinsam.ui.LagerortErfassung
 import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
@@ -30,11 +30,11 @@ import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
  */
 @Composable
 internal fun UebernahmeDialog(
-    merkposten: MerkpostenAnsicht,
+    merkposten: WantedItemView,
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
     /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
-    lagerortVorgabe: String = "",
+    locationDefault: String = "",
     onDismiss: () -> Unit,
     onUebernehmen: (Int, String, Zustand, String?) -> Unit,
 ) {
@@ -42,15 +42,15 @@ internal fun UebernahmeDialog(
     var preis    by rememberSaveable { mutableStateOf("") }
     var zustand  by rememberSaveable { mutableStateOf(merkposten.condition) }
     // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Katalog-Dialog.
-    var lagerort by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
+    var lagerort by rememberSaveable(locationDefault) { mutableStateOf(locationDefault) }
 
-    ErfassenDialog(
+    AddDialog(
         titel = stringResource(R.string.wanted_take),
         bestaetigen = stringResource(R.string.wanted_take),
         onBestaetigen = { onUebernehmen(anzahl.toIntOrNull() ?: 1, preis, zustand,
                                         lagerort.trim().takeIf { it.isNotEmpty() }) },
         onAbbrechen = onDismiss,
-        geaendert = anzahl != "1" || preis.isNotEmpty() || zustand != merkposten.condition || lagerort != lagerortVorgabe,
+        geaendert = anzahl != "1" || preis.isNotEmpty() || zustand != merkposten.condition || lagerort != locationDefault,
     ) {
         Text(merkposten.name ?: merkposten.setNumber, style = MaterialTheme.typography.bodyMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
@@ -71,7 +71,7 @@ internal fun UebernahmeDialog(
                 onValueChange = { preis = NumericInput.price(it) },
                 label = { Text(stringResource(R.string.gallery_purchase_price)) },
                 singleLine = true,
-                keyboardOptions = NumericInput.preisTastatur(),
+                keyboardOptions = NumericInput.priceKeyboard(),
                 modifier = Modifier.weight(1f),
             )
         }
@@ -90,11 +90,11 @@ internal fun UebernahmeDialog(
  * Durchlauf noch nicht angeordnet ist.
  */
 @Composable
-internal fun MerkpostenErfassenDialog(
-    householdMembers: List<MitgliedAnsicht>,
+internal fun WantedItemAddDialog(
+    householdMembers: List<MemberView>,
     defaultCondition: Zustand,
     onDismiss: () -> Unit,
-    onAnlegen: (String, Zustand, Int?) -> Unit,
+    createOn: (String, Zustand, Int?) -> Unit,
 ) {
     var nummer  by rememberSaveable { mutableStateOf("") }
     var zustand by rememberSaveable { mutableStateOf(defaultCondition) }
@@ -105,21 +105,21 @@ internal fun MerkpostenErfassenDialog(
 
     // „Auf die Merkliste“ bleibt antippbar und markiert dann das leere Feld: Grau ohne
     // Grund liess raten, warum nichts geschah.
-    var nummerFehlt by rememberSaveable { mutableStateOf(false) }
-    val nummerFokus = remember { FocusRequester() }
+    var numberMissing by rememberSaveable { mutableStateOf(false) }
+    val numberFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(120)
-        try { nummerFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+        try { numberFocus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
     }
 
-    ErfassenDialog(
+    AddDialog(
         titel = stringResource(R.string.wanted_add_title),
         bestaetigen = stringResource(R.string.wanted_add_submit),
         // Nur mitschicken, wenn es ueberhaupt eine Wahl gab — sonst schreibt der
         // Server auf das eigene Konto.
         onBestaetigen = {
-            if (nummer.isBlank()) nummerFehlt = true
-            else onAnlegen(nummer, zustand, if (householdMembers.size > 1) besitzer else null)
+            if (nummer.isBlank()) numberMissing = true
+            else createOn(nummer, zustand, if (householdMembers.size > 1) besitzer else null)
         },
         onAbbrechen = onDismiss,
         geaendert = nummer.isNotBlank() || zustand != defaultCondition,
@@ -130,9 +130,9 @@ internal fun MerkpostenErfassenDialog(
             label = { Text(stringResource(R.string.gallery_set_number)) },
             // Als Hilfetext statt Platzhalter: Der Platzhalter verschwand mit dem
             // Fokus, und der Dialog fokussiert das Feld sofort.
-            isError = nummerFehlt && nummer.isBlank(),
+            isError = numberMissing && nummer.isBlank(),
             supportingText = {
-                if (nummerFehlt && nummer.isBlank()) Text(stringResource(R.string.erfassen_nummer_fehlt), Modifier.ansagen())
+                if (numberMissing && nummer.isBlank()) Text(stringResource(R.string.erfassen_nummer_fehlt), Modifier.announce())
                 else Text(stringResource(R.string.gallery_set_number_placeholder))
             },
             singleLine = true,
@@ -140,8 +140,8 @@ internal fun MerkpostenErfassenDialog(
             // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld
             // ohne Tastaturwahl oeffnet die Buchstabentastatur — die
             // Regel dazu steht in NumericInputTest.
-            keyboardOptions = NumericInput.setnummerTastatur(),
-            modifier = Modifier.fillMaxWidth().focusRequester(nummerFokus),
+            keyboardOptions = NumericInput.setNumberKeyboard(),
+            modifier = Modifier.fillMaxWidth().focusRequester(numberFocus),
         )
         // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
         Zustandszeile(zustand, { zustand = it })

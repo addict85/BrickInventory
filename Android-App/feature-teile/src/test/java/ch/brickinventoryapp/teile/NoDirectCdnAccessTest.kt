@@ -30,7 +30,7 @@ import ch.brickinventoryapp.testing.Quellen
 class NoDirectCdnAccessTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -80,7 +80,7 @@ class NoDirectCdnAccessTest {
     @Test
     fun `PartsListScreen wickelt eine bereits aufgelöste Adresse nicht doppelt ein`() {
         // teile/ui/Teileliste.kt löst part.imageUrl bereits auf (das prüft
-        // TeilelisteTest am Ergebnis); ein zweites resolveThumbUrl() hier
+        // PartListTest am Ergebnis); ein zweites resolveThumbUrl() hier
         // wickelte die Proxy-Adresse doppelt ein.
         val screen = code(Quellen.bildschirm("teile/ui/screens/PartsListScreen.kt"))
         assert(!screen.contains("resolveThumbUrl(") && !screen.contains("resolveFullUrl(")) {

@@ -1,6 +1,6 @@
 Gegenprobe: Dialogfläche ein Grau wie outlineVariant
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.GesperrtKontrastTest
+Test: ch.brickinventoryapp.ui.LockedContrastTest
 Rot: Dialogschrift haelt
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt

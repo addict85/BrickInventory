@@ -8,9 +8,9 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/SetDetailViewModel.kt
 @@ -135,7 +135,6 @@
  
-     private fun starte(abschnitt: Abschnitt, abruf: suspend () -> Unit) {
+     private fun starte(section: Abschnitt, abruf: suspend () -> Unit) {
          if (setNumber.isBlank()) return
--        laufend.remove(abschnitt)?.cancel()
-         laufend[abschnitt] = viewModelScope.launch { abruf() }
+-        laufend.remove(section)?.cancel()
+         laufend[section] = viewModelScope.launch { abruf() }
      }
  

@@ -1,6 +1,6 @@
 Gegenprobe: der Abgriff liest den Rumpf selbst, statt ihn nur anzusehen
 Modul: core-data
-Test: ch.brickinventoryapp.data.VorschauAbgriffTest
+Test: ch.brickinventoryapp.data.PreviewTapTest
 Rot: eine geholte Vorschau
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/NetzModule.kt

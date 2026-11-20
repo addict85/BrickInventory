@@ -8,7 +8,7 @@ diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventor
 +++ b/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/kanten/Modulkanten.kt
 @@ -53,7 +53,7 @@
       */
-     val ohneOberflaeche: Set<String> = setOf(
+     val withoutUi: Set<String> = setOf(
          "core-model", "core-vertrag", "core-netz", "core-sicherheit", "core-offline", "core-data", "core-update", "core-dienste",
 -        "core-sitzung", "core-zustand",
 +        "core-sitzung",

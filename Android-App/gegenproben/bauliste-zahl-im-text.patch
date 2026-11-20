@@ -1,6 +1,6 @@
 Gegenprobe: „(2 Sets)“ wieder als zweiter Text im Knopf
 Modul: app
-Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: Bauliste erstellen bleibt bei 200 Prozent einzeilig und nennt die Zahl der Sets
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt

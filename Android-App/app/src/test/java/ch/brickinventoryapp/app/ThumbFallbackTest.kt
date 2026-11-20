@@ -31,7 +31,7 @@ private const val SERVER = "http://nas:3000/"
 class ThumbFallbackTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -118,7 +118,7 @@ class ImageClientLoggingTest {
         assert(fn.contains("if (BuildConfig.DEBUG) {")) {
             "Beide Clients müssen im Debug-Build protokolliert werden"
         }
-        // Die Umschreibung des Platzhalters prüft ServerWaechterTest ausgeführt.
+        // Die Umschreibung des Platzhalters prüft ServerGuardTest ausgeführt.
     }
 }
 
@@ -169,7 +169,7 @@ class FullResolutionBypassesProxyTest {
  */
 class PartsMinifigsFullResBypassProxyTest {
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -194,15 +194,15 @@ class PartsMinifigsFullResBypassProxyTest {
         // von rememberTileImageWithFallback dort fullViaProxy = true setzen —
         // eine vergessene Stelle faellt damit auf, eine hinzugefuegte richtige
         // nicht.
-        val aufruf = Regex("""rememberTileImageWithFallback\s*\(([^)]*)\)""")
+        val call = Regex("""rememberTileImageWithFallback\s*\(([^)]*)\)""")
         for (rel in listOf("teile/ui/screens/PartsScreen.kt", "teile/ui/screens/MinifigsScreen.kt")) {
-            // ohneKommentare: Beide Dateien ERWAEHNEN den Helfer in einem
+            // withoutComments: Beide Dateien ERWAEHNEN den Helfer in einem
             // Erklaerkommentar („siehe model/util/ImageUrls.kt,
             // rememberTileImageWithFallback()"). Ohne diesen Schritt meldet
             // die Pruefung genau diese Erwaehnung als Aufruf ohne
             // fullViaProxy — beim Nachrechnen ist mir das sofort passiert.
-            val src = Quellen.ohneKommentare(Quellen.bildschirm(rel))
-            val stellen = aufruf.findAll(src).toList()
+            val src = Quellen.withoutComments(Quellen.bildschirm(rel))
+            val stellen = call.findAll(src).toList()
             // Selbstbeweis: Findet das Muster nichts, waere die Schleife leer
             // und der Test gruen, ohne etwas geprueft zu haben.
             assert(stellen.size >= 2) {
@@ -238,7 +238,7 @@ class PartsMinifigsFullResBypassProxyTest {
  */
 class SetDetailUsesFullResolutionTest {
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }

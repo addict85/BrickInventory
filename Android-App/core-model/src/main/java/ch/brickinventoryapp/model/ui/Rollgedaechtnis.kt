@@ -15,10 +15,10 @@ interface ScrollMemory {
 }
 
 /** Für Tests ohne Hilt. */
-fun ScrollMemory(): ScrollMemory = ScrollSpeicher()
+fun ScrollMemory(): ScrollMemory = ScrollStorage()
 
 /** Eine Instanz für die ganze App; Hilt bindet sie im Zustandsmodul als Singleton. */
-class ScrollSpeicher : ScrollMemory {
+class ScrollStorage : ScrollMemory {
     private val positionen = mutableMapOf<String, Pair<Int, Int>>()
 
     override fun lies(schluessel: String): Pair<Int, Int> = positionen[schluessel] ?: (0 to 0)

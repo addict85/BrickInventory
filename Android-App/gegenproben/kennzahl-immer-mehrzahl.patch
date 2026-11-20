@@ -1,6 +1,6 @@
 Gegenprobe: Kennzahl fragt den Plural immer mit 2 („1 Exemplare“)
 Modul: core-ui-bestand
-Test: ch.brickinventoryapp.gemeinsam.KennzahlenPluralTest
+Test: ch.brickinventoryapp.gemeinsam.MetricsPluralTest
 Rot: bei 1 steht auf Deutsch die Einzahl
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
@@ -14,4 +14,4 @@ diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/geme
 +    val text = pluralStringResource(plural, 2, zahl)
      // Bei grosser Schrift steht die Aufschlüsselung auf eigener Zeile: In der Zeile brach sie
      // mitten in der Klammer („40 /einzeln“).
-     val trenner = if (grosseSchrift()) "\n(" else "\u2002("
+     val separator = if (largeFont()) "\n(" else "\u2002("

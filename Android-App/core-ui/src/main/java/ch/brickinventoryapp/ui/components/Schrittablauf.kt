@@ -17,24 +17,24 @@ class Schrittablauf(private val bindung: Schrittbindung, private val freigabe: S
         data object Weiter : Ausgang
         /** Die Sperre wurde abgebrochen oder lieferte keine gültige Signatur. */
         data object Abgebrochen : Ausgang
-        data class Abgelehnt(val meldung: String?) : Ausgang
+        data class Rejected(val meldung: String?) : Ausgang
     }
 
-    suspend fun bestaetige(aktion: Schrittaktion, entsperren: suspend () -> Signature?): Ausgang {
+    suspend fun confirm(aktion: Schrittaktion, entsperren: suspend () -> Signature?): Ausgang {
         val c = bindung.challenge(aktion)
         val nachricht = when (c) {
             is Schrittantwort.Challenge -> c.nachricht.toByteArray(Charsets.UTF_8)
-            is Schrittantwort.Abgelehnt -> return Ausgang.Abgelehnt(c.meldung)
-            Schrittantwort.Frei -> return Ausgang.Abgelehnt(null)
+            is Schrittantwort.Rejected -> return Ausgang.Rejected(c.meldung)
+            Schrittantwort.Free -> return Ausgang.Rejected(null)
             // Ohne Bindung am Server bleibt die Prüfung im Gerät: eine frische Nonce.
-            Schrittantwort.NichtGebunden -> freigabe.nonce()
+            Schrittantwort.NotBound -> freigabe.nonce()
         }
-        val unterschrift = freigabe.unterschrift(entsperren(), nachricht) ?: return Ausgang.Abgebrochen
+        val signature = freigabe.signature(entsperren(), nachricht) ?: return Ausgang.Abgebrochen
         if (c !is Schrittantwort.Challenge) return Ausgang.Weiter
-        return when (val f = bindung.freigeben(c.challenge, unterschrift)) {
-            Schrittantwort.Frei -> Ausgang.Weiter
-            is Schrittantwort.Abgelehnt -> Ausgang.Abgelehnt(f.meldung)
-            is Schrittantwort.Challenge, Schrittantwort.NichtGebunden -> Ausgang.Abgelehnt(null)
+        return when (val f = bindung.freigeben(c.challenge, signature)) {
+            Schrittantwort.Free -> Ausgang.Weiter
+            is Schrittantwort.Rejected -> Ausgang.Rejected(f.meldung)
+            is Schrittantwort.Challenge, Schrittantwort.NotBound -> Ausgang.Rejected(null)
         }
     }
 }

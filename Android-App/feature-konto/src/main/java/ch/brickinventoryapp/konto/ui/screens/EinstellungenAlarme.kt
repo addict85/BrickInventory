@@ -6,11 +6,11 @@ import android.os.Build
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.heading
-import ch.brickinventoryapp.ui.components.SperrGrund
-import ch.brickinventoryapp.ui.components.SegmentWahl
-import ch.brickinventoryapp.ui.components.Rueckfrage
-import ch.brickinventoryapp.ui.components.Ansage
-import ch.brickinventoryapp.ui.components.SchalterZeile
+import ch.brickinventoryapp.ui.components.LockReason
+import ch.brickinventoryapp.ui.components.SegmentChoice
+import ch.brickinventoryapp.ui.components.Prompt
+import ch.brickinventoryapp.ui.components.Announcement
+import ch.brickinventoryapp.ui.components.ToggleRow
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -29,7 +29,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.fach.PreisalarmAnsicht
+import ch.brickinventoryapp.model.fach.PriceAlertView
 import androidx.compose.foundation.text.KeyboardActions
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import ch.brickinventoryapp.ui.util.NumericInput
@@ -41,7 +41,7 @@ import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.ErklaerText
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.util.fmtEingabe
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.gemeinsam.ui.FinanzBild
@@ -65,7 +65,7 @@ internal fun PreisalarmeCard(
     // Die Rueckfrage haelt die ZEILE fest, nicht nur ein Ja/Nein: Der Text
     // nennt das Set, und beim Bestaetigen braucht es beide Teile des
     // Schluessels (Set und Zustand).
-    var fragtLoeschen by remember { mutableStateOf<PreisalarmAnsicht?>(null) }
+    var deleteAsks by remember { mutableStateOf<PriceAlertView?>(null) }
 
     SettingsCard(
         title = stringResource(R.string.alerts_liste_titel),
@@ -77,12 +77,12 @@ internal fun PreisalarmeCard(
 
         // `geladen` und nicht nur „Liste leer": Beim Aufbau stuende sonst kurz
         // „keine Alarme gesetzt", obwohl noch gar nichts abgerufen wurde.
-        if (uebersicht.geladen && uebersicht.alarme.isEmpty()) {
+        if (uebersicht.geladen && uebersicht.alerts.isEmpty()) {
             Text(stringResource(R.string.alerts_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        for (a in uebersicht.alarme) {
+        for (a in uebersicht.alerts) {
             // Schluessel ist (Set, Zustand) — beides, sonst traegt das Feld des
             // einen Alarms den Wert des anderen, wenn ein Set beide hat.
             // Als Betrag wie überall („750.00“), nicht als Rohzahl „750.0“.
@@ -103,13 +103,13 @@ internal fun PreisalarmeCard(
             // Abstand innerhalb eines Alarms: Er ist ein Kind der Karte, deren Abstände hier
             // nicht greifen. Aussen zwischen Kopf und Schwelle, innen haarfein zwischen
             // Nummer, Name und Plakette, damit die drei eine Einheit bleiben.
-            Column(zeile.padding(vertical = Abstaende.winzig),
+            Column(zeile.padding(vertical = Abstaende.tiny),
                    verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     FinanzBild(bildUrl, imageLoader, a.name)
                     Column(Modifier.weight(1f),
-                           verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                           verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
                         // Der Name zuerst wie in der Sammlung; Nummer und Zustand leiser
                         // darunter. Ohne Namen trägt die Nummer die Zeile.
                         val zustand = if (a.condition == Zustand.GEBRAUCHT)
@@ -124,9 +124,9 @@ internal fun PreisalarmeCard(
                         // FlowRow: In einer Row nahm die Plakette die ganze Breite, und „zuletzt …“
                         // brach Zeichen für Zeichen um. So rückt der Preis darunter, wenn es eng wird.
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                            verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                            verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
                             AlarmZustandPlakette(a.ausgeloest)
-                            a.zuletztPreis?.let {
+                            a.lastlyPrice?.let {
                                 Text(stringResource(R.string.alerts_last,
                                         fmtMoney(it, a.currencyCode)),
                                     style = MaterialTheme.typography.bodySmall,
@@ -137,7 +137,7 @@ internal fun PreisalarmeCard(
                     // Leise wie jede Zeilenaktion: Rot je Zeile übertönte die Preise; die
                     // Rückfrage danach trägt das Gewicht.
                     MitTooltip(stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber)) {
-                        IconButton(onClick = { fragtLoeschen = a }) {
+                        IconButton(onClick = { deleteAsks = a }) {
                             Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber),
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -149,18 +149,18 @@ internal fun PreisalarmeCard(
                 // „Schwelle“, statt sie ein zweites Mal zu nennen.
                 val zahl = Alarmeingabe.zahl(wert)
                 // Die Richtung umschaltbar wie in der Web-App; gespeichert wird sofort.
-                SegmentWahl(
+                SegmentChoice(
                     optionen = listOf(Alarmrichtung.UNTER to stringResource(R.string.detail_alert_chip_below),
                                       Alarmrichtung.UEBER to stringResource(R.string.detail_alert_chip_above)),
                     gewaehlt = a.richtung,
-                    onWahl = { neu -> if (neu != a.richtung) aktionen.aendereAlarmSchwelle(a.setNumber, a.condition, neu, zahl ?: a.schwelle) },
+                    onWahl = { neu -> if (neu != a.richtung) aktionen.changeAlarmThreshold(a.setNumber, a.condition, neu, zahl ?: a.schwelle) },
                     modifier = Modifier.betragsbreite(),
                 )
                 OutlinedTextField(
                     value = wert,
                     onValueChange = { roh ->
                         wert = NumericInput.price(roh)
-                        aktionen.setzeAlarmSchwelle(a.setNumber, a.condition, a.richtung, wert)
+                        aktionen.setAlarmThreshold(a.setNumber, a.condition, a.richtung, wert)
                     },
                     singleLine = true,
                     label = { Text(stringResource(R.string.alerts_schwelle)) },
@@ -170,38 +170,38 @@ internal fun PreisalarmeCard(
                     // Plakette, die ganze Wiederholung darunter verdoppelte jede Zeile.
                     supportingText = {
                         if (zahl == a.schwelle) Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
-                            Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(14.dp)))
+                            horizontalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
+                            Icon(Icons.Default.Check, null, Modifier.size(withFont(14.dp)))
                             Text(stringResource(R.string.vm_saved))
                         } else Text(stringResource(R.string.detail_alert_hint))
                     },
-                    keyboardOptions = NumericInput.preisTastatur(),
+                    keyboardOptions = NumericInput.priceKeyboard(),
                     // „Fertig“ speichert sofort, ohne die Ruhezeit abzuwarten.
                     keyboardActions = KeyboardActions(onDone = {
-                        if (zahl != null && zahl != a.schwelle) aktionen.aendereAlarmSchwelle(a.setNumber, a.condition, a.richtung, zahl)
+                        if (zahl != null && zahl != a.schwelle) aktionen.changeAlarmThreshold(a.setNumber, a.condition, a.richtung, zahl)
                     }),
                     shape = Formen.feld,
                     // Ein Betrag, keine Zeile Text: auf dem Tablet nicht über die ganze Karte.
                     modifier = Modifier.betragsbreite(),
                 )
-                Ansage(if (zahl == a.schwelle) stringResource(R.string.vm_saved) else null)
+                Announcement(if (zahl == a.schwelle) stringResource(R.string.vm_saved) else null)
             }
         }
-        AlarmAnlegen(aktionen)
+        AlarmCreate(aktionen)
     }
 
     // Rueckfrage vor dem Loeschen — wie in der Webapp. Ein Alarm ist mit einem
     // Fingertipp weg und kommt nicht wieder; die Schwelle muesste man neu suchen.
-    fragtLoeschen?.let { a ->
-        Rueckfrage(
+    deleteAsks?.let { a ->
+        Prompt(
             titel = stringResource(R.string.alerts_delete),
             text = stringResource(R.string.alerts_confirm_delete, a.name ?: a.setNumber),
             bestaetigen = stringResource(R.string.common_delete),
             onBestaetigen = {
-                fragtLoeschen = null
-                aktionen.loescheAlarm(a.setNumber, a.condition)
+                deleteAsks = null
+                aktionen.deleteAlarm(a.setNumber, a.condition)
             },
-            onAbbrechen = { fragtLoeschen = null },
+            onAbbrechen = { deleteAsks = null },
         )
     }
 }
@@ -211,7 +211,7 @@ internal fun PreisalarmeCard(
  * Ohne Nummer oder Schwelle bleibt der Knopf gesperrt, und der Satz darüber sagt warum.
  */
 @Composable
-private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
+private fun AlarmCreate(aktionen: EinstellungenAktionen) {
     var nummer by rememberSaveable { mutableStateOf("") }
     var zustand by rememberSaveable { mutableStateOf(Zustand.NEU) }
     var richtung by rememberSaveable { mutableStateOf(Alarmrichtung.UNTER) }
@@ -222,11 +222,11 @@ private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
     OutlinedTextField(
         value = nummer, onValueChange = { nummer = NumericInput.setNumber(it) },
         label = { Text(stringResource(R.string.gallery_set_number)) }, singleLine = true,
-        keyboardOptions = NumericInput.setnummerTastatur(), shape = Formen.feld,
+        keyboardOptions = NumericInput.setNumberKeyboard(), shape = Formen.feld,
         modifier = Modifier.betragsbreite(),
     )
     Zustandszeile(zustand = zustand, onZustand = { zustand = it }, modifier = Modifier.betragsbreite())
-    SegmentWahl(
+    SegmentChoice(
         optionen = listOf(Alarmrichtung.UNTER to stringResource(R.string.detail_alert_chip_below),
                           Alarmrichtung.UEBER to stringResource(R.string.detail_alert_chip_above)),
         gewaehlt = richtung, onWahl = { richtung = it }, modifier = Modifier.betragsbreite(),
@@ -234,34 +234,34 @@ private fun AlarmAnlegen(aktionen: EinstellungenAktionen) {
     OutlinedTextField(
         value = schwelle, onValueChange = { schwelle = NumericInput.price(it) },
         label = { Text(stringResource(R.string.alerts_schwelle)) }, singleLine = true,
-        keyboardOptions = NumericInput.preisTastatur(), shape = Formen.feld,
+        keyboardOptions = NumericInput.priceKeyboard(), shape = Formen.feld,
         modifier = Modifier.betragsbreite(),
     )
     val bereit = nummer.isNotBlank() && Alarmeingabe.zahl(schwelle) != null
-    if (!bereit) SperrGrund(stringResource(R.string.alerts_anlegen_sperrgrund))
+    if (!bereit) LockReason(stringResource(R.string.alerts_anlegen_sperrgrund))
     Button(
-        onClick = { aktionen.legeAlarmAn(nummer, zustand, richtung, schwelle); nummer = ""; schwelle = "" },
+        onClick = { aktionen.putAlarmAn(nummer, zustand, richtung, schwelle); nummer = ""; schwelle = "" },
         enabled = bereit, modifier = Modifier.betragsbreite(),
     ) { Text(stringResource(R.string.alerts_anlegen)) }
 }
 
 /**
  * Breite der Felder und Wahlen eines Alarms: Ein Betrag über die ganze Tabletkarte läse sich
- * als Textzeile, darum [BETRAG_BREITE]. Ist die Karte kaum breiter (Telefon), füllen sie sie
+ * als Textzeile, darum [AMOUNT_WIDTH]. Ist die Karte kaum breiter (Telefon), füllen sie sie
  * und enden am selben Rand wie Kopf und Trennlinie, statt ein paar dp davor.
  */
 private fun Modifier.betragsbreite(): Modifier = layout { messbar, grenzen ->
     val breite = when {
-        !grenzen.hasBoundedWidth -> BETRAG_BREITE.roundToPx()
-        grenzen.maxWidth <= TELEFON_KARTE.roundToPx() -> grenzen.maxWidth
-        else -> minOf(grenzen.maxWidth, BETRAG_BREITE.roundToPx())
+        !grenzen.hasBoundedWidth -> AMOUNT_WIDTH.roundToPx()
+        grenzen.maxWidth <= PHONE_CARD.roundToPx() -> grenzen.maxWidth
+        else -> minOf(grenzen.maxWidth, AMOUNT_WIDTH.roundToPx())
     }
-    val platz = messbar.measure(grenzen.copy(minWidth = breite, maxWidth = breite))
-    layout(platz.width, platz.height) { platz.place(0, 0) }
+    val space = messbar.measure(grenzen.copy(minWidth = breite, maxWidth = breite))
+    layout(space.width, space.height) { space.place(0, 0) }
 }
 
-private val BETRAG_BREITE = 320.dp
-private val TELEFON_KARTE = 420.dp
+private val AMOUNT_WIDTH = 320.dp
+private val PHONE_CARD = 420.dp
 
 /**
  * „Aktiv“ oder „Ausgelöst“ ohne Farbe lesbar: Wort und Form (gefüllt/umrandet) tragen
@@ -293,7 +293,7 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
                     else MaterialTheme.colorScheme.onSecondaryContainer,
             // Innenabstand wie ein Chip: Mit 4 dp berührte „Ausgelöst“ den Rand.
             modifier = Modifier.padding(
-                horizontal = Abstaende.klein, vertical = Abstaende.haar),
+                horizontal = Abstaende.klein, vertical = Abstaende.hairline),
         )
     }
 }
@@ -306,7 +306,7 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
  * es zu“ — wer sie später erteilt, bekommt die Meldungen ohne weiteres Zutun.
  */
 @Composable
-fun PreisalarmCard(an: Boolean, onUmschalten: (Boolean) -> Unit) {
+fun PriceAlertCard(an: Boolean, toggleOn: (Boolean) -> Unit) {
     val frage = androidx.activity.compose.rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { /* Antwort egal — Begruendung im Kommentar ueber dieser Funktion. */ }
@@ -315,13 +315,13 @@ fun PreisalarmCard(an: Boolean, onUmschalten: (Boolean) -> Unit) {
         title = stringResource(R.string.detail_alert),
         icon = Icons.Default.Notifications,
     ) {
-        SchalterZeile(stringResource(R.string.alert_notify), an, { neu ->
+        ToggleRow(stringResource(R.string.alert_notify), an, { neu ->
             // Die Berechtigung ZUERST und auf dem Hauptthread: Sie öffnet einen
             // Systemdialog, und der gehört nicht hinter eine Hintergrundarbeit.
             if (neu && Build.VERSION.SDK_INT >= 33) {
                 frage.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
-            onUmschalten(neu)
+            toggleOn(neu)
         }, hinweis = stringResource(R.string.alert_notify_hint))
     }
 }

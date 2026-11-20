@@ -13,9 +13,9 @@ import androidx.compose.ui.test.performClick
 import ch.brickinventoryapp.konto.ui.UpdateUiState
 import ch.brickinventoryapp.konto.ui.dialogs.UpdateDialog
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateAktionen
-import ch.brickinventoryapp.model.util.AppFassung
+import ch.brickinventoryapp.model.util.AppVersion
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.components.LocalAppFassung
+import ch.brickinventoryapp.ui.components.LocalAppVersion
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import ch.brickinventoryapp.update.util.UpdateBeschreibung
 import org.junit.Assert.assertEquals
@@ -33,7 +33,7 @@ import org.robolectric.annotation.Config
  *
  * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
  *   update-dialog-laedt-selbst   LaunchedEffect lädt beim Zeigen → rot „der Hinweis fragt …“
- *   update-spaeter-vergessen     dialogAbgelehnt nicht beachtet → rot „nach Später …“
+ *   update-spaeter-vergessen     dialogRejected nicht beachtet → rot „nach Später …“
  *   version-leer                 versionsName() ohne Rückfall → rot „ohne bekannte Version …“
  */
 @RunWith(RobolectricTestRunner::class)
@@ -51,20 +51,20 @@ class UpdateDialogTest {
     /** Zählt, was der Dialog auslöst; „Später“ setzt den Zustand wie das ViewModel. */
     private class Aktionen(val spaeter: () -> Unit = {}) : UpdateAktionen {
         var geladen = 0
-        var geschlossen = 0
+        var closed = 0
         override fun pruefeAufUpdate(still: Boolean) = Unit
         override fun pruefeBeimStart() = Unit
-        override fun setzeStartpruefung(an: Boolean) = Unit
-        override fun updateHinweisSchliessen() { geschlossen++; spaeter() }
+        override fun setStartpruefung(an: Boolean) = Unit
+        override fun closeUpdateHint() { closed++; spaeter() }
         override fun ladeUpdate() { geladen++ }
-        override fun ladeAbbrechen() = Unit
-        override fun starteInstallation() = Unit
+        override fun cancelLoad() = Unit
+        override fun startInstallation() = Unit
     }
 
     @Test
     fun `der Hinweis fragt, geladen wird erst auf den Klick`() {
         val aktionen = Aktionen()
-        compose.setContent { BrickInventoryManagerTheme { UpdateDialog(UpdateUiState(neuereFassung = neu), aktionen) } }
+        compose.setContent { BrickInventoryManagerTheme { UpdateDialog(UpdateUiState(newerVersion = neu), aktionen) } }
         compose.waitForIdle()
         compose.onNodeWithText(text(R.string.update_dialog_title)).fetchSemanticsNode()
         assertEquals("Das Zeigen allein lädt schon", 0, aktionen.geladen)
@@ -76,26 +76,26 @@ class UpdateDialogTest {
 
     @Test
     fun `nach Spaeter fragt der Hinweis in diesem Lauf nicht wieder`() {
-        var zustand by mutableStateOf(UpdateUiState(neuereFassung = neu))
-        val aktionen = Aktionen { zustand = zustand.copy(dialogAbgelehnt = true) }
+        var zustand by mutableStateOf(UpdateUiState(newerVersion = neu))
+        val aktionen = Aktionen { zustand = zustand.copy(dialogRejected = true) }
         compose.setContent { BrickInventoryManagerTheme { UpdateDialog(zustand, aktionen) } }
         compose.waitForIdle()
 
         compose.onNodeWithText(text(R.string.update_dialog_later)).performClick()
         compose.waitForIdle()
 
-        assertEquals(1, aktionen.geschlossen)
+        assertEquals(1, aktionen.closed)
         assertEquals(0, aktionen.geladen)
         compose.onAllNodesWithText(text(R.string.update_dialog_title)).assertCountEquals(0)
     }
 
     @Test
     fun `ohne bekannte Version steht unbekannt, sonst die Version`() {
-        var fassung by mutableStateOf(AppFassung("", 0))
+        var fassung by mutableStateOf(AppVersion("", 0))
         compose.setContent {
             BrickInventoryManagerTheme {
-                CompositionLocalProvider(LocalAppFassung provides fassung) {
-                    UpdateDialog(UpdateUiState(neuereFassung = neu), Aktionen())
+                CompositionLocalProvider(LocalAppVersion provides fassung) {
+                    UpdateDialog(UpdateUiState(newerVersion = neu), Aktionen())
                 }
             }
         }
@@ -103,7 +103,7 @@ class UpdateDialogTest {
         val unbekannt = text(R.string.update_version_unbekannt)
         compose.onNodeWithText(compose.activity.getString(R.string.update_dialog_text, "2.20", unbekannt))
             .fetchSemanticsNode("Die installierte Version bleibt leer")
-        fassung = AppFassung("2.10", 10)
+        fassung = AppVersion("2.10", 10)
         compose.waitForIdle()
         compose.onNodeWithText(compose.activity.getString(R.string.update_dialog_text, "2.20", "2.10")).fetchSemanticsNode()
     }

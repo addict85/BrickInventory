@@ -1,17 +1,17 @@
 Gegenprobe: die Anfrage zur Stückänderung verliert den Schritt
 Modul: feature-teile
-Test: ch.brickinventoryapp.teile.OfflineBearbeitungTest
+Test: ch.brickinventoryapp.teile.OfflineEditingTest
 Rot: reist als Menge und Schritt
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Ausgangsanfragen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Ausgangsanfragen.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Ausgangsanfragen.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Ausgangsanfragen.kt
 @@ -31,7 +31,7 @@
- internal fun Figurenerfassung.alsAnfrage() = AddMinifigRequest(figNumber = nummer, blFigNumber = blNummer, quantity = menge,
-     unitPrice = stueckpreis?.alsDouble(), condition = zustand, ownerUserId = besitzer, storage = lagerort)
+ internal fun Figurenerfassung.asRequest() = AddMinifigRequest(figNumber = nummer, blFigNumber = blNumber, quantity = menge,
+     unitPrice = stueckpreis?.asDouble(), condition = zustand, ownerUserId = besitzer, storage = lagerort)
  
--internal fun Stueckaenderung.alsAnfrage() = UpdateManualItemRequest(quantity = menge, quantityDelta = schritt,
-+internal fun Stueckaenderung.alsAnfrage() = UpdateManualItemRequest(quantity = menge, quantityDelta = null,
-     unitPrice = stueckpreis?.alsDouble(), condition = zustand, blFigNumber = blNummer)
+-internal fun Stueckaenderung.asRequest() = UpdateManualItemRequest(quantity = menge, quantityDelta = schritt,
++internal fun Stueckaenderung.asRequest() = UpdateManualItemRequest(quantity = menge, quantityDelta = null,
+     unitPrice = stueckpreis?.asDouble(), condition = zustand, blFigNumber = blNumber)
  
- internal fun SetAggregate.alsZusammenfassung() = Setzusammenfassung(setNumber = setNumber, zustand = condition,
+ internal fun SetAggregate.asSummary() = Setzusammenfassung(setNumber = setNumber, zustand = condition,

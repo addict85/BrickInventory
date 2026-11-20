@@ -6,7 +6,7 @@ import ch.brickinventoryapp.model.data.ScopeFilter
 internal interface FinanzAktionen {
     fun loadValuation()
     fun loadPortfolioHistory(period: String)
-    fun finanzKategorieUmschalten(kategorie: String)
-    fun finanzKategorienZuruecksetzen()
+    fun toggleFinanceCategory(kategorie: String)
+    fun resetFinanceCategories()
     fun setScope(view: ScopeFilter.View, value: String)
 }

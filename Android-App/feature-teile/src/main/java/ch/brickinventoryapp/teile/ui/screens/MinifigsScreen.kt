@@ -2,9 +2,9 @@ package ch.brickinventoryapp.teile.ui.screens
 
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
-import ch.brickinventoryapp.teile.ui.FigurenUiState
-import ch.brickinventoryapp.teile.ui.TeileSitzungUiState
-import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
+import ch.brickinventoryapp.teile.ui.MinifigsUiState
+import ch.brickinventoryapp.teile.ui.PartsSessionUiState
+import ch.brickinventoryapp.zustand.ui.ScopeUiState
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
@@ -12,10 +12,10 @@ import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
-import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
-import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.ui.components.NoHitsHint
+import ch.brickinventoryapp.ui.components.HintText
 import ch.brickinventoryapp.teile.ui.viewmodel.FigurenAktionen
-import ch.brickinventoryapp.model.fach.FigurenKennzahlenAnsicht
+import ch.brickinventoryapp.model.fach.MinifigsMetricsView
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
 import androidx.compose.material.icons.Icons
@@ -32,55 +32,55 @@ import coil3.ImageLoader
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.teile.ui.viewmodel.FigurenViewModel
-import ch.brickinventoryapp.ui.Ladeanzeige
-import ch.brickinventoryapp.ui.ladeanzeige
+import ch.brickinventoryapp.teile.ui.viewmodel.MinifigsViewModel
+import ch.brickinventoryapp.ui.LoadingIndicator
+import ch.brickinventoryapp.ui.loadingIndicator
 import ch.brickinventoryapp.zustand.ui.Filterzahl
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.Bewegt
-import ch.brickinventoryapp.ui.components.SkelettRaster
-import ch.brickinventoryapp.ui.components.FehlerHinweis
-import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import ch.brickinventoryapp.ui.components.Moved
+import ch.brickinventoryapp.ui.components.SkeletonRaster
+import ch.brickinventoryapp.ui.components.ErrorHint
+import ch.brickinventoryapp.ui.components.StateHint
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.ui.components.ErfassenFab
-import ch.brickinventoryapp.ui.components.FabPlatz
-import ch.brickinventoryapp.ui.components.LesbareSpalten
-import ch.brickinventoryapp.ui.components.LocalOffenesDetail
-import ch.brickinventoryapp.ui.components.OfflineHinweis
-import ch.brickinventoryapp.ui.components.detailSchluessel
-import ch.brickinventoryapp.ui.components.grosseSchrift
-import ch.brickinventoryapp.gemeinsam.ui.AnsichtAbschnitt
-import ch.brickinventoryapp.gemeinsam.ui.FilterBlattRahmen
+import ch.brickinventoryapp.ui.components.AddFab
+import ch.brickinventoryapp.ui.components.FabSpace
+import ch.brickinventoryapp.ui.components.ReadableColumns
+import ch.brickinventoryapp.ui.components.LocalOpenDetail
+import ch.brickinventoryapp.ui.components.OfflineHint
+import ch.brickinventoryapp.ui.components.detailKey
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.gemeinsam.ui.ViewSection
+import ch.brickinventoryapp.gemeinsam.ui.FilterSheetFrame
 import ch.brickinventoryapp.gemeinsam.ui.GalleryStatChip
-import ch.brickinventoryapp.gemeinsam.ui.KennzahlenReihe
-import ch.brickinventoryapp.gemeinsam.ui.KontoFilterAbschnitt
-import ch.brickinventoryapp.gemeinsam.ui.SucheMitFilter
-import ch.brickinventoryapp.gemeinsam.ui.kontoFilter
+import ch.brickinventoryapp.gemeinsam.ui.MetricsSeries
+import ch.brickinventoryapp.gemeinsam.ui.AccountFilterSection
+import ch.brickinventoryapp.gemeinsam.ui.SearchWithFilter
+import ch.brickinventoryapp.gemeinsam.ui.accountFilter
 import ch.brickinventoryapp.model.fach.Figurenordnung
-import ch.brickinventoryapp.ui.components.SortierMenue
-import ch.brickinventoryapp.model.ui.Listenansicht
+import ch.brickinventoryapp.ui.components.SortierMenu
+import ch.brickinventoryapp.model.ui.ListView
 
 /** Was der Figuren-Reiter zeigt; die Route sammelt es aus den Flüssen. */
 internal data class FigurenZustand(
-    val sitzung: TeileSitzungUiState,
-    val blick: BlickfeldUiState,
-    val figuren: FigurenUiState,
+    val sitzung: PartsSessionUiState,
+    val blick: ScopeUiState,
+    val figuren: MinifigsUiState,
     val lager: LagerUiState,
 )
 
 /** Der Figuren-Reiter am Navigationsziel: reicht Zustand und Aktionen an [MinifigsScreen]. */
 @Composable
 fun MinifigsRoute(
-    vm: FigurenViewModel,
+    vm: MinifigsViewModel,
     imageLoader: ImageLoader,
     onOpenDetail: (figNumber: String) -> Unit = { _ -> },
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
-    val state by vm.sitzungsWerte.collectAsStateWithLifecycle()
+    val state by vm.sessionValues.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val figuren by vm.figurenZustand.collectAsStateWithLifecycle()
-    val lagerState by vm.lagerState.collectAsStateWithLifecycle()
-    MinifigsScreen(FigurenZustand(state, blick, figuren, lagerState), vm, imageLoader, onOpenDetail, gridState)
+    val figuren by vm.minifigsState.collectAsStateWithLifecycle()
+    val storageState by vm.storageState.collectAsStateWithLifecycle()
+    MinifigsScreen(FigurenZustand(state, blick, figuren, storageState), vm, imageLoader, onOpenDetail, gridState)
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -100,9 +100,9 @@ internal fun MinifigsScreen(
 
     val figs = partsState.minifigs
     val minifigStats = partsState.minifigStats
-    val isLoading = partsState.figurenAbruf.laedt
-    val fehler = partsState.figurenAbruf as? Laden.Fehler
-    val fehlerText = fehler?.meldung?.satz()
+    val isLoading = partsState.minifigsFetch.laedt
+    val fehler = partsState.minifigsFetch as? Laden.Fehler
+    val errorText = fehler?.meldung?.satz()
     val serverUrl = state.serverUrl
     val waehrung = state.currency
     val defaultCondition = state.userDefaultCondition ?: Zustand.NEU
@@ -110,87 +110,87 @@ internal fun MinifigsScreen(
     val scopeMode = blick.scopeModes[ScopeFilter.View.MINIFIGS]
         ?: ScopeFilter.ALL
     val manualFigs = partsState.manualFigs ?: emptyList()
-    val lagerState = zustand.lager
+    val storageState = zustand.lager
     // Die Figur, deren Detail daneben offen ist (breites Fenster); ihre Kachel ist markiert.
-    val gewaehlt = LocalOffenesDetail.current
+    val gewaehlt = LocalOpenDetail.current
 
     val onRefresh: () -> Unit = { aktionen.loadMinifigs() }
     val onScopeChange: (String) -> Unit = { aktionen.setScope(ScopeFilter.View.MINIFIGS, it) }
     // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Erfassen soll
     // auch ein leeres Regal zur Wahl stehen.
-    val lagerortVorrat = lagerState.eigene.map { it.name }
+    val locationStock = storageState.eigene.map { it.name }
 
     // Suchtext aus dem Zustand, gefiltert wird auf dem Server — wie bei den Teilen und
     // in der Galerie, damit die Suchregel nur einmal existiert (Begründung in
-    // TeileRepository.getMinifigs). remember(partsState.minifigsQuery): Das Feld hält
+    // PartsRepository.getMinifigs). remember(partsState.minifigsQuery): Das Feld hält
     // den Text beim Tippen selbst, übernimmt aber einen von aussen gesetzten (Leeren
     // beim Abmelden, Wiederherstellen).
     var search by remember(partsState.minifigsQuery) { mutableStateOf(partsState.minifigsQuery) }
     val ansicht = partsState.minifigsView
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
-    var zeigeFilter by rememberSaveable { mutableStateOf(false) }
+    var showFilter by rememberSaveable { mutableStateOf(false) }
 
-    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SucheMitFilter).
-    val gross = grosseSchrift()
-    val erfassenText = stringResource(R.string.minifigs_add)
+    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SearchWithFilter).
+    val gross = largeFont()
+    val addText = stringResource(R.string.minifigs_add)
     // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
     // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
-    val figurenGefiltert = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
-    val anzeige = ladeanzeige(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, fehlerText, figurenGefiltert)
+    val minifigsFiltered = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
+    val anzeige = loadingIndicator(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, errorText, minifigsFiltered)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         // Suche und „Filter“: Konto und Ansicht stehen im Blatt, die Kennzahlen rollen mit
         // dem Raster. Im Fehlerzustand nicht — ohne Liste gibt es nichts zu suchen.
-        if (anzeige != Ladeanzeige.FEHLER) SucheMitFilter(
+        if (anzeige != LoadingIndicator.FEHLER) SearchWithFilter(
             wert = search,
-            onWert = { search = it; aktionen.setMinifigsQuery(it) },
+            onValue = { search = it; aktionen.setMinifigsQuery(it) },
             platzhalter = stringResource(R.string.minifigs_search_placeholder),
-            aktiveFilter = Filterzahl.konto(householdMembers, scopeMode),
-            onFilter = { zeigeFilter = true },
-            sortierung = {
-                SortierMenue(
+            activeFilter = Filterzahl.konto(householdMembers, scopeMode),
+            onFilter = { showFilter = true },
+            sorting = {
+                SortierMenu(
                     optionen = Figurenordnung.entries.map { it to stringResource(it.beschriftung()) },
-                    gewaehlt = partsState.ordnung, onWahl = aktionen::setMinifigsOrdnung,
-                    vorgabe = Figurenordnung.VORGABE,
+                    gewaehlt = partsState.order, onWahl = aktionen::setMinifigsOrder,
+                    vorgabe = Figurenordnung.DEFAULT,
                 )
             },
-            erfassen = erfassenText to { showAddDialog = true },
-            aktive = listOfNotNull(kontoFilter(householdMembers, scopeMode) { onScopeChange(ScopeFilter.ALL) }),
+            erfassen = addText to { showAddDialog = true },
+            aktive = listOfNotNull(accountFilter(householdMembers, scopeMode) { onScopeChange(ScopeFilter.ALL) }),
         )
 
-        OfflineHinweis(partsState.figurenOfflineStand, onErneut = onRefresh)
+        OfflineHint(partsState.minifigsOfflineStatus, onErneut = onRefresh)
         when (anzeige) {
-            Ladeanzeige.LAEDT ->
-                SkelettRaster(LesbareSpalten(140.dp), kachelHoehe = 196.dp)
-            Ladeanzeige.FEHLER -> ZustandsHinweis { FehlerHinweis(fehlerText, onRefresh, fehler?.art) }
+            LoadingIndicator.LOADS ->
+                SkeletonRaster(ReadableColumns(140.dp), kachelHoehe = 196.dp)
+            LoadingIndicator.FEHLER -> StateHint { ErrorHint(errorText, onRefresh, fehler?.art) }
             // Wie der leere Teile-Reiter: Satz und Handlung, keine Kennzahlen neben „leer“.
-            Ladeanzeige.LEER -> ZustandsHinweis {
-                HinweisText(Icons.Default.Person, stringResource(R.string.minifigs_none),
+            LoadingIndicator.LEER -> StateHint {
+                HintText(Icons.Default.Person, stringResource(R.string.minifigs_none),
                     stringResource(R.string.minifigs_leer_text))
-                Button(onClick = { showAddDialog = true }) { Text(erfassenText) }
+                Button(onClick = { showAddDialog = true }) { Text(addText) }
             }
-            Ladeanzeige.KEINE_TREFFER -> ZustandsHinweis {
-                KeinTrefferHinweis(stringResource(R.string.minifigs_no_results))
+            LoadingIndicator.NO_HITS -> StateHint {
+                NoHitsHint(stringResource(R.string.minifigs_no_results))
                 OutlinedButton(onClick = {
                     search = ""; aktionen.setMinifigsQuery("")
                     if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
                 }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.search_clear_all)) }
             }
-            Ladeanzeige.LISTE -> PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
+            LoadingIndicator.LISTE -> PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
                 LazyVerticalGrid(
-                    columns = LesbareSpalten(140.dp),
+                    columns = ReadableColumns(140.dp),
                     state = gridState,
                     // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
                     contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
-                        end = Abstaende.mittel, bottom = FabPlatz),
+                        end = Abstaende.mittel, bottom = FabSpace),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
                     // Nach dem Inhalt gefragt, nicht nach der geladenen Seite: Die
                     // Zahlen meinen die ganze Sammlung, auch während einer Suche.
                     if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { FigurenKennzahlen(minifigStats) }
+                        item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { MinifigsMetrics(minifigStats) }
                     }
                     // Manuelle Figuren als Grid-Sektion — eine durchgehende
                     // Scroll-Liste statt fixem Block über dem Grid (s. PartsScreen).
@@ -199,7 +199,7 @@ internal fun MinifigsScreen(
                             SectionHeader(stringResource(R.string.minifigs_manual_section))
                         }
                         items(manualFigs, key = { "manual-${it.id ?: it.figNumber}" }) { fig ->
-                            Bewegt {
+                            Moved {
                                 ManualFigTile(
                                     fig = fig,
                                     serverUrl = serverUrl,
@@ -222,14 +222,14 @@ internal fun MinifigsScreen(
                     itemsIndexed(
                         figs,
                         key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" },
-                        span = { _, _ -> if (ansicht == Listenansicht.TABELLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+                        span = { _, _ -> if (ansicht == ListView.TABLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { _, fig ->
                         // BEIDE Ansichten oeffnen denselben Dialog.
-                        val oeffne = { aktionen.oeffneSetItem(fig.figNumber) }
-                        Bewegt {
-                            if (ansicht == Listenansicht.TABELLE) MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
+                        val oeffne = { aktionen.openSetItem(fig.figNumber) }
+                        Moved {
+                            if (ansicht == ListView.TABLE) MinifigTableRow(fig, serverUrl, imageLoader, oeffne)
                             else MinifigCard(fig, serverUrl, imageLoader, oeffne,
-                                ausgewaehlt = gewaehlt == detailSchluessel("fig", fig.figNumber))
+                                ausgewaehlt = gewaehlt == detailKey("fig", fig.figNumber))
                         }
                     }
                 }
@@ -238,20 +238,20 @@ internal fun MinifigsScreen(
     }
 
         // Wie Galerie, Teile und Merkliste: kein „+“ im Fehlerzustand, leer steht es im Bild.
-        if (!gross && anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ErfassenFab(
-            erfassenText, { showAddDialog = true },
+        if (!gross && anzeige != LoadingIndicator.FEHLER && anzeige != LoadingIndicator.LEER) AddFab(
+            addText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
     }
 
-    if (zeigeFilter) {
-        val zuruecksetzen: () -> Unit = { onScopeChange(ScopeFilter.ALL) }
-        FilterBlattRahmen(
-            onSchliessen = { zeigeFilter = false },
-            onZuruecksetzen = zuruecksetzen.takeIf { Filterzahl.konto(householdMembers, scopeMode) > 0 },
+    if (showFilter) {
+        val reset: () -> Unit = { onScopeChange(ScopeFilter.ALL) }
+        FilterSheetFrame(
+            onSchliessen = { showFilter = false },
+            resetOn = reset.takeIf { Filterzahl.konto(householdMembers, scopeMode) > 0 },
         ) {
-            KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
-            AnsichtAbschnitt(ansicht) { aktionen.setMinifigsView(it) }
+            AccountFilterSection(householdMembers, scopeMode, onScopeChange)
+            ViewSection(ansicht) { aktionen.setMinifigsView(it) }
         }
     }
 
@@ -260,8 +260,8 @@ internal fun MinifigsScreen(
             householdMembers = householdMembers,
             defaultCondition = defaultCondition,
             onDismiss = { showAddDialog = false },
-            lagerorte = lagerortVorrat,
-            lagerortVorgabe = lagerState.vorgabe?.name ?: "",
+            lagerorte = locationStock,
+            locationDefault = storageState.vorgabe?.name ?: "",
             onAdd = { erfassung ->
                 showAddDialog = false
                 aktionen.addMinifig(erfassung)
@@ -275,8 +275,8 @@ internal fun MinifigsScreen(
 
 /** Die Kennzahlen der Minifiguren — erste Zeile des Rasters, sie rollt mit. */
 @Composable
-private fun FigurenKennzahlen(minifigStats: FigurenKennzahlenAnsicht) {
-    KennzahlenReihe {
+private fun MinifigsMetrics(minifigStats: MinifigsMetricsView) {
+    MetricsSeries {
         // Zahlen vom Server (getMinifigStats): Aus der Liste gerechnet fehlten
         // die manuell erfassten Figuren, die hier ausgefiltert sind.
         GalleryStatChip(minifigStats.types, R.plurals.minifigs_stat_types)
@@ -288,5 +288,5 @@ private fun FigurenKennzahlen(minifigStats: FigurenKennzahlenAnsicht) {
 private fun Figurenordnung.beschriftung(): Int = when (this) {
     Figurenordnung.NAME -> R.string.parts_ordnung_name
     Figurenordnung.NUMMER -> R.string.minifigs_ordnung_nummer
-    Figurenordnung.MENGE -> R.string.parts_ordnung_menge
+    Figurenordnung.QUANTITY -> R.string.parts_ordnung_menge
 }

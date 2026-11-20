@@ -11,5 +11,5 @@ diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/
 
      override fun deserialize(decoder: Decoder): Design? =
 -        if (decoder.decodeNotNullMark()) Design.aus(decoder.decodeString()) else decoder.decodeNull()
-+        if (decoder.decodeNotNullMark()) Design.aus(decoder.decodeString()) ?: Design.VORGABE else decoder.decodeNull()
++        if (decoder.decodeNotNullMark()) Design.aus(decoder.decodeString()) ?: Design.DEFAULT else decoder.decodeNull()
  }

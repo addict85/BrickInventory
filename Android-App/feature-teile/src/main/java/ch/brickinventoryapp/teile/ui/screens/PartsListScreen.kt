@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.teile.ui.screens
 
 import ch.brickinventoryapp.model.ui.laeuft
-import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.teile.ui.normalisiert
+import ch.brickinventoryapp.teile.ui.normalized
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import ch.brickinventoryapp.ui.components.GedrosselteAnsage
-import ch.brickinventoryapp.ui.components.ansagen
-import ch.brickinventoryapp.ui.components.KaestchenZeile
+import ch.brickinventoryapp.ui.components.ThrottledAnnouncement
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.BoxRow
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,7 +20,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.runtime.*
@@ -40,16 +40,16 @@ import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.text.input.ImeAction
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.teile.ui.TeilelisteUiState
-import ch.brickinventoryapp.teile.ui.viewmodel.TeilelisteViewModel
+import ch.brickinventoryapp.teile.ui.viewmodel.PartListViewModel
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import androidx.compose.material.icons.automirrored.filled.ListAlt
-import ch.brickinventoryapp.data.service.teilelistenAuswahl
-import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.data.service.partListsSelection
+import ch.brickinventoryapp.ui.components.HintText
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.ScanKnopf
-import ch.brickinventoryapp.ui.components.ZustandsHinweis
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.ScanButton
+import ch.brickinventoryapp.ui.components.StateHint
+import ch.brickinventoryapp.ui.components.withFont
 
 // ── Sortierung wie Webapp und PDF ──
 //
@@ -80,23 +80,23 @@ fun PartsListRoute(
     listState: LazyListState,
     manuelleErfassungAnfordern: Boolean,
     onManuelleErfassungQuittiert: () -> Unit,
-    vm: TeilelisteViewModel = hiltViewModel(),
+    vm: PartListViewModel = hiltViewModel(),
 ) {
     val zustand by vm.zustand.collectAsStateWithLifecycle()
     val pdfStatus by vm.pdfExportStatus.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
-    val oeffnenMit = stringResource(R.string.pdfexp_oeffnen_mit)
+    val openWith = stringResource(R.string.pdfexp_oeffnen_mit)
     LaunchedEffect(barcodeSetNumber) {
         if (barcodeSetNumber != null) {
-            vm.fuegeHinzu(barcodeSetNumber)
+            vm.addAdd(barcodeSetNumber)
             onBarcodeConsumed()
         }
     }
     // Das fertige PDF einmal zur Auswahl anbieten; ein Activity-Start gehört nicht ins ViewModel.
-    LaunchedEffect(zustand.pdfDatei) {
-        if (zustand.pdfDatei != null) {
-            ctx.startActivity(teilelistenAuswahl(ctx, oeffnenMit))
-            vm.pdfGeoeffnet()
+    LaunchedEffect(zustand.pdfFile) {
+        if (zustand.pdfFile != null) {
+            ctx.startActivity(partListsSelection(ctx, openWith))
+            vm.pdfOpened()
         }
     }
     PartsListScreen(
@@ -104,15 +104,15 @@ fun PartsListRoute(
         serverUrl = serverUrl,
         imageLoader = imageLoader,
         onScanBarcode = onScanBarcode,
-        onFuegeHinzu = vm::fuegeHinzu,
+        onFuegeHinzu = vm::addAdd,
         onEntferne = vm::entferne,
         onLeere = vm::leere,
         onErstelle = vm::erstelle,
-        onLadeBestand = vm::ladeBestand,
-        onNurLose = vm::setzeNurLose,
-        onMitUnterkonten = vm::setzeMitUnterkonten,
+        onLadeBestand = vm::loadInventory,
+        onNurLose = vm::setOnlyLose,
+        onMitUnterkonten = vm::setWithSubAccounts,
         onExportPdf = vm::exportiere,
-        onPdfFehlerGesehen = vm::pdfFehlerGesehen,
+        onPdfFehlerGesehen = vm::pdfErrorSeen,
         pdfStatus = pdfStatus,
         hatUnterkonten = hatUnterkonten,
         listState = listState,
@@ -160,16 +160,16 @@ fun PartsListScreen(
     // Nur das Eingabefeld und die offene Rückfrage sind Zustand des Bildschirms; alles
     // andere hält das ViewModel.
     var setInput  by rememberSaveable { mutableStateOf("") }
-    var leerenFragen by rememberSaveable { mutableStateOf(false) }
+    var clearAsk by rememberSaveable { mutableStateOf(false) }
     val setFeldFokus = remember { FocusRequester() }
     val sets = zustand.sets
     val parts = zustand.parts
     val isLoading = zustand.erzeugen.laedt
     val status = zustand.status?.satz().orEmpty()
     val generated = zustand.generated
-    val nurLose = zustand.nurLose
-    val mitUnterkonten = zustand.mitUnterkonten
-    val mengen = androidx.compose.ui.platform.LocalResources.current
+    val onlyLose = zustand.onlyLose
+    val withSubAccounts = zustand.withSubAccounts
+    val quantities = androidx.compose.ui.platform.LocalResources.current
 
     fun addSet(nr: String) {
         onFuegeHinzu(nr)
@@ -181,13 +181,13 @@ fun PartsListScreen(
         setInput = ""
     }
 
-    if (leerenFragen) {
-        Rueckfrage(
+    if (clearAsk) {
+        Prompt(
             titel = stringResource(R.string.partslist_reset_titel),
             text = stringResource(R.string.partslist_reset_text),
             bestaetigen = stringResource(R.string.partslist_reset),
-            onBestaetigen = { leerenFragen = false; onLeere() },
-            onAbbrechen = { leerenFragen = false },
+            onBestaetigen = { clearAsk = false; onLeere() },
+            onAbbrechen = { clearAsk = false },
         )
     }
 
@@ -213,7 +213,7 @@ fun PartsListScreen(
                         // „Fertig“ und das „+“ im Feld nehmen das Set in die Liste: ein Weg hinein,
                         // ein Knopf zum Erstellen.
                         onValueChange = { setInput = NumericInput.setNumber(it) },
-                        keyboardOptions = NumericInput.setnummerTastatur(ImeAction.Done),
+                        keyboardOptions = NumericInput.setNumberKeyboard(ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { if (setInput.isNotBlank()) addSet(setInput) }),
                         // Beschriftung statt Platzhalter: Der lange Platzhalter brach im Feld
                         // zweizeilig um und verschwand beim Tippen.
@@ -231,33 +231,33 @@ fun PartsListScreen(
                     )
                     // Derselbe Scan-Knopf wie neben jeder Suche; ein schwebender Knopf mitten
                     // in einer Zeile sah aus wie der eine Hauptknopf des Bildschirms.
-                    ScanKnopf(onScanBarcode)
+                    ScanButton(onScanBarcode)
                 }
 
                 // Die gesammelten Sets mit ihrem Zurücksetzen: Es leert diese Liste und steht
                 // deshalb bei ihr, nicht frei unter den Knöpfen. Ohne Inhalt fehlt es ganz.
                 if (sets.isNotEmpty() || generated) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(mengen.getQuantityString(R.plurals.partslist_sets_in_list, sets.size, sets.size),
+                        Text(quantities.getQuantityString(R.plurals.partslist_sets_in_list, sets.size, sets.size),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f))
                         // Mit Rückfrage: Zurücksetzen wirft Sets und erstellte Liste weg.
                         TextButton(
-                            onClick = { leerenFragen = true },
+                            onClick = { clearAsk = true },
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                         ) { Text(stringResource(R.string.partslist_reset)) }
                     }
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)
+                        verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)
                     ) {
                         sets.forEachIndexed { i, s ->
                             AssistChip(
                                 onClick = { onEntferne(i) },
                                 label = { Text(if (s.name != s.setNumber) "${s.setNumber} — ${s.name}" else s.setNumber,
                                     style = MaterialTheme.typography.bodySmall) },
-                                trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(mitSchrift(14.dp))) }
+                                trailingIcon = { Icon(Icons.Default.Close, null, Modifier.size(withFont(14.dp))) }
                             )
                         }
                     }
@@ -265,7 +265,7 @@ fun PartsListScreen(
 
                 // Eine Hauptsache in voller Breite: Erstellen, mit der Zahl der Sets, die es
                 // nimmt — das getippte eingeschlossen.
-                val anzahl = sets.size + (if (setInput.isNotBlank() && sets.none { it.setNumber == normalisiert(setInput) }) 1 else 0)
+                val anzahl = sets.size + (if (setInput.isNotBlank() && sets.none { it.setNumber == normalized(setInput) }) 1 else 0)
                 Button(
                     onClick = { erstellen() },
                     enabled = anzahl > 0 && !isLoading,
@@ -276,8 +276,8 @@ fun PartsListScreen(
                     // beide 16 dp breit.
                     if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
                         color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                    else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(mitSchrift(16.dp)))
-                    Spacer(Modifier.width(Abstaende.winzig))
+                    else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(withFont(16.dp)))
+                    Spacer(Modifier.width(Abstaende.tiny))
                     Text(stringResource(R.string.partslist_generate))
                     // Die Zahl als Plakette: „(2 Sets)“ brach bei 200 % in eine zweite Zeile.
                     if (anzahl > 0) {
@@ -291,7 +291,7 @@ fun PartsListScreen(
                     }
                 }
                 if (generated && parts.isNotEmpty()) {
-                    PdfKnopf(zustand.pdf.laeuft, zustand.pdf.fehlerMeldung?.satz(), onExportPdf, onPdfFehlerGesehen)
+                    PdfButton(zustand.pdf.laeuft, zustand.pdf.errorMessage?.satz(), onExportPdf, onPdfFehlerGesehen)
                 }
 
                 // ── Eigener Bestand: eine Zeile für sich ──
@@ -304,7 +304,7 @@ fun PartsListScreen(
                     val bestandLaeuft = zustand.bestand.laeuft
                     // Untereinander: Die Beschriftung der Wahl ist lang und passt auf einem
                     // 360-dp-Telefon nicht neben den Knopf.
-                    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
                         // Umrandet: Ein zweiter gefüllter Knopf stritt mit „Bauliste erstellen“
                         // um die Hauptsache.
                         OutlinedButton(
@@ -317,31 +317,31 @@ fun PartsListScreen(
                             // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
                             // beide 16 dp breit.
                             if (bestandLaeuft) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                            else Icon(Icons.Default.Inventory2, null, Modifier.size(mitSchrift(16.dp)))
-                            Spacer(Modifier.width(Abstaende.winzig))
+                            else Icon(Icons.Default.Inventory2, null, Modifier.size(withFont(16.dp)))
+                            Spacer(Modifier.width(Abstaende.tiny))
                             Text(stringResource(R.string.partslist_fill_owned))
                         }
-                        KaestchenZeile(stringResource(R.string.partslist_only_loose), nurLose, onNurLose)
+                        BoxRow(stringResource(R.string.partslist_only_loose), onlyLose, onNurLose)
                         // Zweite Wahl, andere Frage: Die erste sagt, WELCHE ART
                         // Teile zaehlt, diese sagt, WESSEN. Beide wirken
                         // zusammen — „nur manuell erfasste" plus „mit
                         // Unterkonten" zaehlt die manuell erfassten Teile des
                         // ganzen Haushalts.
                         if (hatUnterkonten) {
-                            KaestchenZeile(stringResource(R.string.partslist_include_subs), mitUnterkonten, onMitUnterkonten)
+                            BoxRow(stringResource(R.string.partslist_include_subs), withSubAccounts, onMitUnterkonten)
                         }
                     }
                 }
 
                 if (status.isNotBlank()) {
-                    Text(status, Modifier.ansagen(), style = MaterialTheme.typography.bodySmall,
+                    Text(status, Modifier.announce(), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
                 // Live-Countdown während der PDF-Erstellung (nur wenn ein Export läuft).
                 pdfStatus?.let { txt ->
                     // Sichtbar jede Sekunde, angesagt alle zehn.
-                    GedrosselteAnsage(txt)
+                    ThrottledAnnouncement(txt)
                     Text(txt, Modifier.clearAndSetSemantics { contentDescription = txt }, style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.primary)
                 }
@@ -349,22 +349,22 @@ fun PartsListScreen(
         }
 
         if (!generated || parts.isEmpty()) {
-            // Derselbe Leerzustand wie jede Liste (ZustandsHinweis): mittig, mit Rand.
-            if (!isLoading) ZustandsHinweis {
-                HinweisText(Icons.AutoMirrored.Filled.ListAlt,
+            // Derselbe Leerzustand wie jede Liste (StateHint): mittig, mit Rand.
+            if (!isLoading) StateHint {
+                HintText(Icons.AutoMirrored.Filled.ListAlt,
                     stringResource(R.string.partslist_empty_title), stringResource(R.string.partslist_empty_hint))
             }
             return@Column
         }
 
         // Gruppieren und Sortieren memoisiert: `parts` ändert sich bei einer Recomposition selten.
-        val colorGroups = remember(parts) { baulistenGruppen(parts) }
-        val mitBestand = parts.any { it.vorhanden != null }
+        val colorGroups = remember(parts) { buildListsGroups(parts) }
+        val withInventory = parts.any { it.vorhanden != null }
         LazyColumn(state = listState, contentPadding = PaddingValues(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.gross)) {
-            if (mitBestand) item(key = "legende") { BaulistenLegende() }
+            if (withInventory) item(key = "legende") { BuildListsLegend() }
             colorGroups.forEachIndexed { groupIdx, (colorName, colorParts) ->
                 item(key = "header_${groupIdx}_$colorName") {
-                    FarbGruppenKopf(colorName, colorParts)
+                    FarbGroupsHeader(colorName, colorParts)
                 }
                 items(
                     colorParts,

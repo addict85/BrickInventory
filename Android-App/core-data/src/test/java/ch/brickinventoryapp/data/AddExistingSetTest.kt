@@ -6,7 +6,7 @@ import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.testing.testSetKatalogRepository
+import ch.brickinventoryapp.testing.testSetCatalogRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
@@ -15,7 +15,7 @@ import ch.brickinventoryapp.testing.TestApi
  * (utils/setAdd.ts): Das Erfassen antwortet mit `action = "exists"` und schreibt
  * nichts, damit sie nicht zwischen den Clients auseinanderläuft.
  *
- * Ausgeführt geprüft wird das in ErfassungViewModelTest (Nummern-Weg,
+ * Ausgeführt geprüft wird das in EntryViewModelTest (Nummern-Weg,
  * Scanner, Texterkennung, Fehler der Vorabfrage). Hier: die Vorabfrage gegen
  * einen Testserver und die Struktur, dass die Galerie den Auslöser auswertet.
  *
@@ -36,13 +36,13 @@ class AddExistingSetTest {
      */
     @Test
     fun `die Existenzpruefung schickt keinen Kontofilter mit`() {
-        val pfade = PfadServer("/api/v1/sets/exists/75192-1" to """{"success":true,"exists":false}""")
+        val paths = PfadServer("/api/v1/sets/exists/75192-1" to """{"success":true,"exists":false}""")
         try {
-            val sets = testSetKatalogRepository(TestApi.fuer(pfade.server))
+            val sets = testSetCatalogRepository(TestApi.fuer(paths.server))
             runBlocking { sets.getSetExists("75192-1") }
-            assertEquals(listOf("GET /api/v1/sets/exists/75192-1"), pfade.anfragen.toList())
+            assertEquals(listOf("GET /api/v1/sets/exists/75192-1"), paths.requests.toList())
         } finally {
-            pfade.server.shutdown()
+            paths.server.shutdown()
         }
     }
 
@@ -51,9 +51,9 @@ class AddExistingSetTest {
         // Ein gesetzter Auslöser ohne Empfänger wäre wirkungslos — und ohne
         // Zurücksetzen liesse sich dasselbe Set kein zweites Mal öffnen.
         // Der Erfassungsrahmen wertet aus, der Graph navigiert.
-        val nav = code(File(Quellen.wurzel, "sammlung/ui/Erfassungsrahmen.kt").readText() + "\n" +
-            File(Quellen.wurzel, "sammlung/ui/SammlungGraph.kt").readText())
-        // Geprueft wird das FELD, nicht der Name des Zustands davor.
+        val nav = code(File(Quellen.root, "sammlung/ui/Erfassungsrahmen.kt").readText() + "\n" +
+            File(Quellen.root, "sammlung/ui/SammlungGraph.kt").readText())
+        // Geprueft wird das FIELD, nicht der Name des Zustands davor.
         assert(Regex("""\w+\.gefundenesSet""").containsMatchIn(nav)) {
             "die Galerie beobachtet den Auslöser nicht — es passiert dann gar nichts"
         }

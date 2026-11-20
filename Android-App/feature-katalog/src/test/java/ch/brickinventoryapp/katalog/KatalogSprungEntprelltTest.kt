@@ -2,7 +2,7 @@ package ch.brickinventoryapp.katalog
 
 import ch.brickinventoryapp.katalog.ui.CatalogYearMath
 import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
-import ch.brickinventoryapp.katalog.ui.viewmodel.SICHTFENSTER_RUHE_MS
+import ch.brickinventoryapp.katalog.ui.viewmodel.VIEWPORT_REST_MS
 import ch.brickinventoryapp.katalog.ui.viewmodel.Sichtfensterlader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,7 +53,7 @@ import ch.brickinventoryapp.testing.Quellen
  *   A  `collectLatest` durch `collect` ersetzt
  *      (gegenproben/sichtfenster-ohne-entprellung.patch) → rot „der
  *      Sichtfenster-Lader wartet …“ (jedes Fenster des Zuges wird geladen)
- *   B  `delay(ruheMs)` entfernt → rot, derselbe Fall (laedt vor der Ruhe)
+ *   B  `delay(restMs)` entfernt → rot, derselbe Fall (laedt vor der Ruhe)
  *   C  den Vorlauf `(von - 1)..(bis + 1)` auf `von..bis` verkuerzt → rot, derselbe Fall
  */
 class KatalogSprungEntprelltTest {
@@ -63,15 +63,15 @@ class KatalogSprungEntprelltTest {
         // Ein gewoehnliches Telefon: Leiste ueber die volle Hoehe, Griff 36dp
         // bei dreifacher Dichte. Der Katalog hat rund 25'000 Sets.
         val hoehe = 1800
-        val griff = 108
+        val handle = 108
         val total = 25_000
 
         // Jeder Pixel, den der Finger auf dem Weg von oben nach unten
         // ueberstreicht — genau die Punkte, an denen die Liste weitergerollt
         // wird und der Sichtfenster-Lader ein neues Fenster sieht.
-        val seiten = (0..hoehe).map { y ->
-            val anteil = CatalogYearMath.anteilAus(y.toFloat(), hoehe, griff)
-            CatalogYearMath.nummerAus(anteil, total) / CATALOG_PAGE_SIZE + 1
+        val pages = (0..hoehe).map { y ->
+            val share = CatalogYearMath.shareFrom(y.toFloat(), hoehe, handle)
+            CatalogYearMath.numberFrom(share, total) / CATALOG_PAGE_SIZE + 1
         }.toSet()
 
         // GEMESSEN, nicht behauptet: Der Weg beruehrt JEDE Seite des Katalogs
@@ -87,13 +87,13 @@ class KatalogSprungEntprelltTest {
         // jeder ueber 60 Sets, keiner abgebrochen, und der API-Client laesst
         // nur eine Handvoll gleichzeitig zu. Die Zielseite steht dann hinter
         // allen anderen in der Schlange: drei bis fünf Sekunden.
-        val gesamtSeiten = (total - 1) / CATALOG_PAGE_SIZE + 1
-        assert(seiten.size >= gesamtSeiten - 1) {
-            "Der Weg beruehrt nur ${seiten.size} von $gesamtSeiten Seiten. Dann " +
+        val totalPages = (total - 1) / CATALOG_PAGE_SIZE + 1
+        assert(pages.size >= totalPages - 1) {
+            "Der Weg beruehrt nur ${pages.size} von $totalPages Seiten. Dann " +
                 "waere die Entprellung die falsche Behebung, und die Ursache laege " +
                 "woanders — nachrechnen, bevor hier eine Zahl angepasst wird."
         }
-        assert(gesamtSeiten > 100) { "Katalog zu klein fuer diese Aussage — Rechnung veraltet?" }
+        assert(totalPages > 100) { "Katalog zu klein fuer diese Aussage — Rechnung veraltet?" }
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -101,7 +101,7 @@ class KatalogSprungEntprelltTest {
     fun `der Sichtfenster-Lader wartet, bis die Liste ruhig steht`() = runTest {
         val geladen = mutableListOf<Int>()
         val bereich = CoroutineScope(StandardTestDispatcher(testScheduler))
-        val lader = Sichtfensterlader(bereich, SICHTFENSTER_RUHE_MS) { geladen += it }
+        val lader = Sichtfensterlader(bereich, VIEWPORT_REST_MS) { geladen += it }
         // Ein Zug ueber die Leiste: hundert Fenster, alle 10 ms eines, Seite fuer Seite.
         for (seite in 1..100) {
             lader.sichtbar(seite, seite + 1)
@@ -121,12 +121,12 @@ class KatalogSprungEntprelltTest {
 
     @Test
     fun `die Leiste rollt nur und laedt nicht selbst`() {
-        val src = Quellen.ohneKommentare(Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt"))
+        val src = Quellen.withoutComments(Quellen.bildschirm("katalog/ui/screens/CatalogScreen.kt"))
 
         val ab = src.indexOf("onScrollTo = ")
         assert(ab > 0) { "Der Rueckruf der Jahresleiste ist nicht mehr zu finden" }
-        val rueckruf = src.substring(ab, minOf(ab + 200, src.length))
-        assert(!rueckruf.contains("onEnsurePage")) {
+        val callback = src.substring(ab, minOf(ab + 200, src.length))
+        assert(!callback.contains("onEnsurePage")) {
             "Die Leiste laedt wieder bei JEDEM Beruehrungspunkt. Das sind ueber " +
                 "hundert Abrufe je Zug (siehe die Messung im ersten Test)."
         }

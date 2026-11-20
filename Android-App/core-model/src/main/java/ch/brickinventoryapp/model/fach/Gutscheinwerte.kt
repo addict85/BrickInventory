@@ -11,7 +11,7 @@ sealed interface Gutscheinspeicherung {
     data class Gespeichert(val neu: Int? = null, val geaendert: Int? = null) : Gutscheinspeicherung
 
     /** Der Server las die PDF nicht ganz; was er fand, belegt das Formular vor. */
-    data class Unvollstaendig(
+    data class Incomplete(
         val nummer: String? = null,
         val pin: String? = null,
         val betrag: Geld? = null,
@@ -25,7 +25,7 @@ sealed interface Gutscheinspeicherung {
  */
 data class Guthabenauskunft(
     val erfolg: Boolean,
-    val gutschein: GutscheinAnsicht? = null,
+    val gutschein: VoucherView? = null,
     val angezeigt: String? = null,
     val waehrungGeaendert: Boolean = false,
     val grund: String? = null,

@@ -10,9 +10,9 @@ import java.text.NumberFormat
 import java.time.Instant
 import java.util.Currency
 import java.util.Locale
-import ch.brickinventoryapp.model.util.DatumJahr
+import ch.brickinventoryapp.model.util.DateYear
 import ch.brickinventoryapp.model.util.fmtDatum
-import ch.brickinventoryapp.model.util.zahlenLocale
+import ch.brickinventoryapp.model.util.numbersLocale
 
 /*
  * Zahlen und Beträge — eine Fassung für die ganze App, gleichgezogen mit der
@@ -31,7 +31,7 @@ fun appNumberLocale(): Locale {
     val app = try {
         AppCompatDelegate.getApplicationLocales().let { if (it.isEmpty) null else it[0] }
     } catch (_: Throwable) { null }
-    return zahlenLocale(app ?: geraet, geraet)
+    return numbersLocale(app ?: geraet, geraet)
 }
 
 /**
@@ -48,27 +48,27 @@ fun fmtMoney(amount: Double, currencyCode: Waehrung?): String {
         nf.currency = Currency.getInstance((currencyCode ?: Waehrung.EUR).code)
         nf.minimumFractionDigits = 2
         nf.maximumFractionDigits = 2
-        mitWaehrungsAbstand(nf.format(amount))
+        withCurrencyGap(nf.format(amount))
     } catch (_: Exception) {
         "${currencyCode?.code.orEmpty()}\u00A0${fmtAmount(amount)}".trim()
     }
 }
 
 /** Ein Geldbetrag, erst auf Rappen gerundet wie am Server (halbe von der Null weg). */
-fun fmtMoney(betrag: Geld, currencyCode: Waehrung?): String = fmtMoney(betrag.aufRappen().toDouble(), currencyCode)
+fun fmtMoney(betrag: Geld, currencyCode: Waehrung?): String = fmtMoney(betrag.onRappen().toDouble(), currencyCode)
 
 /** Wie [fmtMoney], „—“ ohne Betrag. */
 fun fmtMoneyOrDash(betrag: Geld?, currencyCode: Waehrung?): String = betrag?.let { fmtMoney(it, currencyCode) } ?: "—"
 
-fun fmtMoneyGanz(betrag: Geld, currencyCode: Waehrung?): String = fmtMoneyGanz(betrag.alsDouble(), currencyCode)
+fun fmtMoneyWhole(betrag: Geld, currencyCode: Waehrung?): String = fmtMoneyWhole(betrag.asDouble(), currencyCode)
 
 /** Ganzer Betrag mit Währung („CHF 1'720“) — für Diagrammachsen, wie sie der Server liefert. */
-fun fmtMoneyGanz(amount: Double, currencyCode: Waehrung?): String = try {
+fun fmtMoneyWhole(amount: Double, currencyCode: Waehrung?): String = try {
     val nf = NumberFormat.getCurrencyInstance(appNumberLocale())
     nf.currency = Currency.getInstance((currencyCode ?: Waehrung.EUR).code)
     nf.minimumFractionDigits = 0
     nf.maximumFractionDigits = 0
-    mitWaehrungsAbstand(nf.format(amount))
+    withCurrencyGap(nf.format(amount))
 } catch (_: IllegalArgumentException) {
     "${currencyCode?.code.orEmpty()}\u00A0${fmtAmount(amount, 0, 0)}".trim()
 }
@@ -78,13 +78,13 @@ fun fmtMoneyGanz(amount: Double, currencyCode: Waehrung?): String = try {
  * Web schreibt „CHF 812.50“. Ein festes Leerzeichen dazwischen, damit beide gleich
  * aussehen und die Zeile nicht zwischen Code und Zahl umbricht. Symbole wie € bleiben.
  */
-fun mitWaehrungsAbstand(text: String): String =
+fun withCurrencyGap(text: String): String =
     text.replace(Regex("""(?<=\p{L})(?=[-−]?\d)|(?<=\d)(?=\p{L})"""), "\u00A0")
 
 /** Ein Tag aus der Serverantwort in der Form der App-Sprache — siehe fmtDatum. */
-fun fmtTag(iso: String?, jahr: DatumJahr = DatumJahr.VOLL): String? = fmtDatum(iso, appNumberLocale(), jahr)
+fun fmtTag(iso: String?, jahr: DateYear = DateYear.VOLL): String? = fmtDatum(iso, appNumberLocale(), jahr)
 
-fun fmtTag(zeit: Instant?, jahr: DatumJahr = DatumJahr.VOLL): String? = fmtDatum(zeit, appNumberLocale(), jahr)
+fun fmtTag(zeit: Instant?, jahr: DateYear = DateYear.VOLL): String? = fmtDatum(zeit, appNumberLocale(), jahr)
 
 /** Wie fmtMoney, aber aus dem String der API — `null`/unlesbar ergibt „—". */
 fun fmtMoneyOrDash(amount: String?, currencyCode: Waehrung?): String {
@@ -101,7 +101,7 @@ fun fmtAmount(v: Double, minFractionDigits: Int = 2, maxFractionDigits: Int = 2)
 }
 
 fun fmtAmount(betrag: Geld, minFractionDigits: Int = 2, maxFractionDigits: Int = 2): String =
-    fmtAmount(betrag.aufRappen().toDouble(), minFractionDigits, maxFractionDigits)
+    fmtAmount(betrag.onRappen().toDouble(), minFractionDigits, maxFractionDigits)
 
 /**
  * Betrag für ein Eingabefeld: zwei Nachkommastellen im Dezimalzeichen der
@@ -116,7 +116,7 @@ fun fmtEingabe(v: Double): String {
     return nf.format(v)
 }
 
-fun fmtEingabe(betrag: Geld): String = fmtEingabe(betrag.aufRappen().toDouble())
+fun fmtEingabe(betrag: Geld): String = fmtEingabe(betrag.onRappen().toDouble())
 
 /** Ganze Zahl mit Tausendertrennung (Stückzahlen, Teilezahlen). */
 fun fmtInt(v: Int): String {
@@ -144,4 +144,4 @@ fun fmtProzent(prozent: Double): String {
 
 /** Stellt das Gerät die Uhr auf 24 Stunden? Wie die Statusleiste, nicht nach der Sprache. */
 @Composable
-fun vierundzwanzigStunden(): Boolean = DateFormat.is24HourFormat(LocalContext.current)
+fun twentyFourHours(): Boolean = DateFormat.is24HourFormat(LocalContext.current)

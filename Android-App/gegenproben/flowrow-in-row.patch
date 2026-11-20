@@ -1,6 +1,6 @@
 Gegenprobe: Die FlowRow der Besitzer-Etiketten steht in einer Row
 Modul: app
-Test: ch.brickinventoryapp.app.ComposeLayoutRegelnTest
+Test: ch.brickinventoryapp.app.ComposeLayoutRulesTest
 Rot: keine FlowRow in einer waagerechten Row
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/HouseholdComposables.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/HouseholdComposables.kt
@@ -15,7 +15,7 @@ diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/geme
 +        FlowRow(
          modifier,
          horizontalArrangement = Arrangement.spacedBy(3.dp),
-         verticalArrangement = Arrangement.spacedBy(Abstaende.haar),
+         verticalArrangement = Arrangement.spacedBy(Abstaende.hairline),
 @@ -208,6 +209,7 @@
              }
          }

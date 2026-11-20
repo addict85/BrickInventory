@@ -41,19 +41,19 @@ fun ErklaerText(
 ) {
     var offen by rememberSaveable { mutableStateOf(false) }
     // Nach dem Antippen verschwindet der Knopf; Fokus und Ansage gehen auf den neuen Text.
-    var fokusNachOeffnen by remember { mutableStateOf(false) }
+    var openFocusAfter by remember { mutableStateOf(false) }
     val ziel = remember { FocusRequester() }
     val name = thema?.let { stringResource(R.string.erklaer_mehr_zu, it) }
-    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
         Text(kurz, style = stil, color = farbe)
         if (offen) {
-            Text(mehr, Modifier.focusRequester(ziel).focusable().ansagen(), style = MaterialTheme.typography.bodySmall, color = farbe)
+            Text(mehr, Modifier.focusRequester(ziel).focusable().announce(), style = MaterialTheme.typography.bodySmall, color = farbe)
             TextButton(onClick = { offen = false }, contentPadding = PaddingValues(horizontal = 0.dp)) {
                 Text(stringResource(R.string.erklaer_weniger))
             }
-            if (fokusNachOeffnen) LaunchedEffect(Unit) { ziel.requestFocus(); fokusNachOeffnen = false }
+            if (openFocusAfter) LaunchedEffect(Unit) { ziel.requestFocus(); openFocusAfter = false }
         } else TextButton(
-            onClick = { offen = true; fokusNachOeffnen = true },
+            onClick = { offen = true; openFocusAfter = true },
             contentPadding = PaddingValues(horizontal = 0.dp),
             modifier = if (name != null) Modifier.semantics { contentDescription = name } else Modifier,
         ) {

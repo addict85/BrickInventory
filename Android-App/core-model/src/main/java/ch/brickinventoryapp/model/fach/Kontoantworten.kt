@@ -19,10 +19,10 @@ data class Anmeldung(
 )
 
 /** Wer angemeldet ist, wie der Server es sieht. */
-data class Kontoinhaber(val id: Int, val benutzer: String, val verwalter: Boolean, val zweiterFaktorPflicht: Boolean)
+data class AccountOwner(val id: Int, val benutzer: String, val verwalter: Boolean, val zweiterFaktorPflicht: Boolean)
 
 /** Eine begonnene QR-Kopplung: [code] zeigt die App zum Vergleich mit dem Browser. */
-data class QrKopplung(val abholung: String, val code: String, val gueltigSekunden: Int)
+data class QrPairing(val abholung: String, val code: String, val validSeconds: Int)
 
 /** Ein Blick auf die Abholung einer QR-Kopplung: wartend, als Vorschau des Kontos oder mit Token. */
 data class QrAbholstand(
@@ -36,8 +36,8 @@ data class QrAbholstand(
 /** Was der Server ohne Anmeldung anbietet. */
 data class Registrierungsstand(val offen: Boolean, val passkey: Boolean, val passwortVergessen: Boolean, val mailVersand: Boolean)
 
-/** Ein neues Konto; [ohneMailversand]: Der Link steht im Serverprotokoll statt in einer E-Mail. */
-data class Registrierung(val meldung: String?, val ohneMailversand: Boolean)
+/** Ein neues Konto; [withoutMailversand]: Der Link steht im Serverprotokoll statt in einer E-Mail. */
+data class Registrierung(val meldung: String?, val withoutMailversand: Boolean)
 
 /** Die Angaben eines neuen Kontos; leere Namen heissen „nicht angegeben“. */
 data class Kontoanlage(
@@ -59,23 +59,23 @@ data class Profilaenderung(
     val code: String?,
 )
 
-/** Eine neue Adresse gilt erst nach dem Link; [mailGesendet] sagt, ob er unterwegs ist. */
-data class ProfilGespeichert(val neueAdresse: Boolean, val mailGesendet: Boolean)
+/** Eine neue Adresse gilt erst nach dem Link; [mailSent] sagt, ob er unterwegs ist. */
+data class ProfilGespeichert(val newAddress: Boolean, val mailSent: Boolean)
 
 /** Wirksames Design, Vorgabe des Verwalters und eigene Wahl; ohne [vorgabe] kennt der Server kein Design je Konto. */
 data class Designstand(val wirksam: Design?, val vorgabe: Design?, val eigenes: Design?)
 
 /** Passwort und, wenn verlangt, Code des zweiten Faktors für eine heikle Aktion. */
-data class Bestaetigung(val passwort: String? = null, val code: String? = null)
+data class Confirmation(val passwort: String? = null, val code: String? = null)
 
 data class ZweiterFaktorStand(val aktiv: Boolean, val codesUebrig: Int)
 
 data class ZweiterFaktorEinrichtung(val geheimnis: String?, val otpauth: String?)
 
-/** Die Einstellungen des Kontos; [wirksamerZustand] ist die eigene Vorgabe oder die des Servers. */
-data class Kontoeinstellungen(
+/** Die Einstellungen des Kontos; [effectiveState] ist die eigene Vorgabe oder die des Servers. */
+data class AccountSettings(
     val waehrung: Waehrung,
-    val preisZustand: Zustand,
-    val vorgabeZustand: Zustand,
-    val wirksamerZustand: Zustand,
+    val priceState: Zustand,
+    val defaultState: Zustand,
+    val effectiveState: Zustand,
 )

@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.data.di.SseClient
-import ch.brickinventoryapp.netz.di.PLATZHALTER_BASIS
+import ch.brickinventoryapp.netz.di.PLACEHOLDER_BASE
 import ch.brickinventoryapp.vertrag.CsvImportStatus
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
-import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportStatusView
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
@@ -16,7 +16,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /** Die Schritte eines CSV-Imports, solange jemand sammelt; im Test eine Folge aus dem Speicher. */
-interface CsvImportStrom {
+interface CsvImportStream {
     fun stream(): Flow<CsvImportSseClient.Event>
 }
 
@@ -32,17 +32,17 @@ class CsvImportSseClient @Inject constructor(
     // zählt der Parameter; der Use-Site-Target macht das eindeutig.
     @param:SseClient private val client: OkHttpClient,
     private val json: Json
-) : CsvImportStrom {
+) : CsvImportStream {
     sealed class Event {
         /** Statusänderung vom Server (inkl. idle-Zustand wenn kein Import läuft). */
-        data class Status(val status: CsvImportStandAnsicht) : Event()
+        data class Status(val status: CsvImportStatusView) : Event()
         /**
-         * Verbindungsfehler. [technisch] ist ausschliesslich fürs Log: Der Aufrufer
+         * Verbindungsfehler. [technical] ist ausschliesslich fürs Log: Der Aufrufer
          * (CsvImportService über folgeStrom) fällt auf Polling zurück, dem Nutzer wird
          * nichts gezeigt — deshalb kein übersetzbarer
          * Text, sondern die Ursache in technischer Form.
          */
-        data class Failed(val technisch: String?) : Event()
+        data class Failed(val technical: String?) : Event()
     }
 
     /**
@@ -54,20 +54,20 @@ class CsvImportSseClient @Inject constructor(
         // Adresse und Token setzt der Wächter des Clients wie bei jedem Abruf; ohne
         // Anmeldung antwortet der Server 401, und der Aufrufer fragt später wieder.
         val request = Request.Builder()
-            .url("${PLATZHALTER_BASIS}api/v1/sets/import/csv/stream")
+            .url("${PLACEHOLDER_BASE}api/v1/sets/import/csv/stream")
             .header("Accept", "text/event-stream")
             .build()
 
         // Verbindung NICHT schließen, solange Status kommen — offen lassen für nächsten Import.
         // Jedes andere Ende (auch ein unlesbares Ereignis) heisst Failed: Der Aufrufer
         // reconnectet bzw. pollt, statt auf einen Status zu warten, der nie kommt.
-        val ereignisse = sseStrom(client, request) { json.decodeFromString(CsvImportStatus.serializer(), it) }
-        emitAll(ereignisse.map { e ->
+        val events = sseStream(client, request) { json.decodeFromString(CsvImportStatus.serializer(), it) }
+        emitAll(events.map { e ->
             when (e) {
-                is SseEreignis.Daten      -> Event.Status(e.wert.alsAnsicht())
-                is SseEreignis.Unlesbar   -> Event.Failed("unreadable event: ${e.technisch}")
-                is SseEreignis.Beendet    -> Event.Failed("stream closed by server")
-                is SseEreignis.Gescheitert -> Event.Failed(e.code?.let { "HTTP $it" } ?: e.technisch)
+                is SseEvent.Daten      -> Event.Status(e.wert.alsAnsicht())
+                is SseEvent.Unlesbar   -> Event.Failed("unreadable event: ${e.technical}")
+                is SseEvent.Ended    -> Event.Failed("stream closed by server")
+                is SseEvent.Gescheitert -> Event.Failed(e.code?.let { "HTTP $it" } ?: e.technical)
             }
         })
     }

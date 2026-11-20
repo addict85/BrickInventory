@@ -1,6 +1,6 @@
 Gegenprobe: Die Positionen werden bei jedem Angleichen von vorn durchgezählt
 Modul: core-offline
-Test: ch.brickinventoryapp.offline.room.PositionenTest
+Test: ch.brickinventoryapp.offline.room.PositionsTest
 Rot: ein Loeschen in der Mitte verschiebt nichts
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/room/Positionen.kt

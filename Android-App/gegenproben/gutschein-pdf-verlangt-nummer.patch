@@ -1,6 +1,6 @@
 Gegenprobe: Gutscheinnummer auch mit PDF Pflicht
 Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.GutscheinFormularPruefungTest
+Test: ch.brickinventoryapp.finanzen.VoucherFormCheckTest
 Rot: mit PDF
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinFormular.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinFormular.kt
@@ -9,9 +9,9 @@ diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/fin
 @@ -177,7 +177,7 @@
   * was leer ist; ein unlesbarer Betrag bleibt auch dann ein Fehler.
   */
- internal fun gutscheinFehler(nummer: String, betrag: String, mitPdf: Boolean): List<GutscheinFeld> = buildList {
--    if (!mitPdf && nummer.isBlank()) add(GutscheinFeld.NUMMER)
-+    if (nummer.isBlank()) add(GutscheinFeld.NUMMER)
+ internal fun voucherError(nummer: String, betrag: String, withPdf: Boolean): List<VoucherField> = buildList {
+-    if (!withPdf && nummer.isBlank()) add(VoucherField.NUMMER)
++    if (nummer.isBlank()) add(VoucherField.NUMMER)
      val unlesbar = betrag.replace(',', '.').trim().toDoubleOrNull() == null
-     if (if (mitPdf) betrag.isNotBlank() && unlesbar else unlesbar) add(GutscheinFeld.BETRAG)
+     if (if (withPdf) betrag.isNotBlank() && unlesbar else unlesbar) add(VoucherField.AMOUNT)
  }

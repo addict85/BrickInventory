@@ -12,7 +12,7 @@ sealed interface Meldung {
     data class Text(val text: String) : Meldung
 
     /** Ein Satz aus den Ressourcen und seine Werte; ein Wert darf selbst eine Meldung sein. */
-    data class Ressource(val id: Int, val werte: List<Any> = emptyList()) : Meldung
+    data class Resource(val id: Int, val werte: List<Any> = emptyList()) : Meldung
 
     /** Ein Mengensatz (plurals): [anzahl] wählt die Form, [werte] füllen sie. */
     data class Menge(val id: Int, val anzahl: Int, val werte: List<Any> = listOf(anzahl)) : Meldung

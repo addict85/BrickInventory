@@ -1,17 +1,17 @@
 Gegenprobe: Ein Token ohne Herkunft gilt wieder für den eingetragenen Server
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.ServerWaechterTest
+Test: ch.brickinventoryapp.zustand.ServerGuardTest
 Rot: ein Token ohne Bindung geht an keinen Server
 
 diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
 --- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
 +++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
 @@ -136,7 +136,7 @@ class ServerWaechter(
-     private fun setzeKoepfe(original: Request, reqBuilder: Request.Builder, token: String, unserServer: Boolean, finalUrl: HttpUrl): Boolean {
+     private fun setHeaders(original: Request, reqBuilder: Request.Builder, token: String, ourServer: Boolean, finalUrl: HttpUrl): Boolean {
          // A token only goes to the origin it is bound to; unbound, it goes to none.
-         val herkunft = lage.tokenHerkunft()
--        val tokenGehoertHierher = herkunft != null && herkunft == NetworkPolicy.herkunft(finalUrl.toString())
-+        val tokenGehoertHierher = herkunft == null || herkunft == NetworkPolicy.herkunft(finalUrl.toString())
-         val mitToken = token.isNotBlank() && unserServer && tokenGehoertHierher
+         val herkunft = situation.tokenOrigin()
+-        val tokenBelongsHere = herkunft != null && herkunft == NetworkPolicy.herkunft(finalUrl.toString())
++        val tokenBelongsHere = herkunft == null || herkunft == NetworkPolicy.herkunft(finalUrl.toString())
+         val mitToken = token.isNotBlank() && ourServer && tokenBelongsHere
          if (mitToken && original.header("Authorization") == null) {
              reqBuilder.header("Authorization", "Bearer $token")

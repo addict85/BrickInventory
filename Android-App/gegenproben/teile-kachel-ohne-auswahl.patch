@@ -1,17 +1,17 @@
 Gegenprobe: Kachel des offenen Teils nicht markiert
 Modul: app
-Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
 Rot: Tablet zeigt Teil und Liste nebeneinander
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/TeileGraph.kt
-@@ -238,7 +238,7 @@ fun TeileListeUndDetailRoute(
+@@ -238,7 +238,7 @@ fun PartsListAndDetailRoute(
              }
-             ListeUndDetail(
+             ListAndDetail(
                  liste = {
--                    CompositionLocalProvider(LocalOffenesDetail provides offenesTeil) {
-+                    CompositionLocalProvider(LocalOffenesDetail provides null) {
-                         liste(oeffneManuell)
+-                    CompositionLocalProvider(LocalOpenDetail provides openPart) {
++                    CompositionLocalProvider(LocalOpenDetail provides null) {
+                         liste(openManual)
                      }
                  },

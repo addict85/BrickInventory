@@ -19,17 +19,17 @@ import androidx.compose.ui.platform.LocalContext
  * weil man sie bei offener App in den Systemeinstellungen umstellt.
  */
 @Composable
-fun bewegungReduziert(): Boolean {
-    val kontext = LocalContext.current
-    val aufloesung = kontext.contentResolver
-    fun lies() = Settings.Global.getFloat(aufloesung, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
-    var reduziert by remember(kontext) { mutableStateOf(lies()) }
-    DisposableEffect(kontext) {
-        val beobachter = object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean) { reduziert = lies() }
+fun movementReduced(): Boolean {
+    val context = LocalContext.current
+    val resolution = context.contentResolver
+    fun lies() = Settings.Global.getFloat(resolution, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    var reduced by remember(context) { mutableStateOf(lies()) }
+    DisposableEffect(context) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) { reduced = lies() }
         }
-        aufloesung.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, beobachter)
-        onDispose { aufloesung.unregisterContentObserver(beobachter) }
+        resolution.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observer)
+        onDispose { resolution.unregisterContentObserver(observer) }
     }
-    return reduziert
+    return reduced
 }

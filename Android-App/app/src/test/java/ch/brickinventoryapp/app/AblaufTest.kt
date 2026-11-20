@@ -26,8 +26,8 @@ import androidx.compose.ui.test.performTextReplacement
 import ch.brickinventoryapp.vertrag.Gutschein
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
-import ch.brickinventoryapp.finanzen.ui.GutscheinBestaetigung
-import ch.brickinventoryapp.finanzen.ui.GutscheinSchritt
+import ch.brickinventoryapp.finanzen.ui.VoucherConfirmation
+import ch.brickinventoryapp.finanzen.ui.VoucherStep
 import ch.brickinventoryapp.finanzen.ui.GutscheinUiState
 import ch.brickinventoryapp.sammlung.ui.screens.AddSetDialog
 import ch.brickinventoryapp.finanzen.ui.screens.GutscheineCard
@@ -35,7 +35,7 @@ import ch.brickinventoryapp.anmeldung.ui.screens.LoginScreen
 import ch.brickinventoryapp.sammlung.ui.screens.SetDetailRoute
 import ch.brickinventoryapp.ui.components.LocalSchrittschutz
 import ch.brickinventoryapp.ui.components.Schrittschutz
-import ch.brickinventoryapp.ui.util.LocalSdkStufe
+import ch.brickinventoryapp.ui.util.LocalSdkLevel
 import ch.brickinventoryapp.ui.theme.BrickInventoryManagerTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -63,12 +63,12 @@ import android.os.Build
  *   (b) der Plus-Knopf ohne Beschreibung → ATF rot in „die Menge aendern …“
  *   (c) AddSetDialog übergibt die Anzahl fest als 1 → rot „ein Set erfassen …“
  *   (d) Gutschein-PIN immer sichtbar → rot „ein Gutschein zeigt den PIN …“
- *   (e) in GutscheineCard das Aufdecken ohne Schrittschutz (`onPinSchalten(g.id)`
+ *   (e) in GutscheineCard das Aufdecken ohne Schrittschutz (`switchOnPin(g.id)`
  *       direkt) → rot „ohne Bestaetigung der Geraetesperre bleibt der PIN verdeckt“
  *       (gegenproben/gutschein-pin-ohne-geraetesperre.patch)
  *   (f) die Nummer ohne Schrittschutz kopiert → rot „ohne Geraetesperre wird auch die
  *       Nummer nicht kopiert“ (gegenproben/gutschein-nummer-ohne-geraetesperre.patch)
- *   (g) in PasswortRueckfrage das Codefeld nie gezeigt → rot „die Rueckfrage zeigt das
+ *   (g) in PasswordPrompt das Codefeld nie gezeigt → rot „die Rueckfrage zeigt das
  *       Codefeld erst auf Verlangen“ (gegenproben/gutschein-rueckfrage-ohne-code.patch)
  *   (g2) die Absage rollt nicht ins Bild → dasselbe rot, „Bitte den Code eingeben.“ ist
  *       nicht zu sehen (gegenproben/rueckfrage-meldung-ausser-sicht.patch; der Stand vor
@@ -77,7 +77,7 @@ import android.os.Build
  *       Rueckgaengig sofort …“ (gegenproben/set-loeschen-doppelt-gesichert.patch)
  *   (i) Hinzufügen ohne Nummer markiert das Feld nicht → rot „ein Set ohne Nummer sagt …“
  *       (gegenproben/erfassen-ohne-grund.patch)
- *   (j) GutscheineCard ohne GeheimKopierWarnung() → rot „unter Android 13 warnt die
+ *   (j) GutscheineCard ohne SecretKopierWarning() → rot „unter Android 13 warnt die
  *       Gutscheinseite …“ (gegenproben/gutschein-kopieren-ohne-warnung.patch)
  */
 @RunWith(RobolectricTestRunner::class)
@@ -94,10 +94,10 @@ class AblaufTest {
     @Before
     fun auf() = compose.enableAccessibilityChecks()
 
-    private var welt: Beispiele.Welt? = null
+    private var world: Examples.Welt? = null
 
     @After
-    fun zu() { welt?.close() }
+    fun zu() { world?.close() }
 
     private fun zeige(inhalt: @androidx.compose.runtime.Composable () -> Unit) =
         compose.setContent { BrickInventoryManagerTheme { Surface { inhalt() } } }
@@ -136,7 +136,7 @@ class AblaufTest {
     @Test
     fun `ein Set ohne Nummer sagt beim Tippen auf Hinzufuegen, was fehlt`() {
         var erfasst = 0
-        zeige { AddSetDialog(onDismiss = {}, onAdd = { erfasst++ }, sofortFokus = false) }
+        zeige { AddSetDialog(onDismiss = {}, onAdd = { erfasst++ }, immediatelyFocus = false) }
         compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
         compose.waitForIdle()
         assertEquals("Ohne Nummer wird nichts erfasst", 0, erfasst)
@@ -151,7 +151,7 @@ class AblaufTest {
      */
     @Test
     fun `jedes Feld beim Set erfassen hat eine Hilfezeile, auch beim Tippen`() {
-        zeige { AddSetDialog(onDismiss = {}, onAdd = {}, sofortFokus = false) }
+        zeige { AddSetDialog(onDismiss = {}, onAdd = {}, immediatelyFocus = false) }
         compose.onNodeWithText(ctx.getString(R.string.gallery_purchase_price)).performTextInput("12")
         compose.waitForIdle()
         for (id in listOf(R.string.gallery_set_number_placeholder, R.string.gallery_quantity_hint,
@@ -162,13 +162,13 @@ class AblaufTest {
 
     /**
      * Eine Nummer, die keine Setnummer ist ("--"), wird nicht erfasst und am Feld erklärt.
-     * Gegenprobe: in nummerFehler() den Zweig `!NumericInput.istSetnummer(nummer)` entfernt
+     * Gegenprobe: in numberError() den Zweig `!NumericInput.isSetNumber(nummer)` entfernt
      * → erfasst steht auf 1 und der Hinweis fehlt, beide Prüfungen rot.
      */
     @Test
     fun `ein Set mit unsinniger Nummer sagt beim Hinzufuegen, was erwartet wird`() {
         var erfasst = 0
-        zeige { AddSetDialog(onDismiss = {}, onAdd = { erfasst++ }, sofortFokus = false) }
+        zeige { AddSetDialog(onDismiss = {}, onAdd = { erfasst++ }, immediatelyFocus = false) }
         compose.onNodeWithText(ctx.getString(R.string.gallery_set_number)).performTextInput("--")
         compose.onNode(hasText(ctx.getString(R.string.gallery_add)) and hasClickAction()).performClick()
         compose.waitForIdle()
@@ -178,12 +178,12 @@ class AblaufTest {
 
     @Test
     fun `die Menge aendern schickt einen Schritt an den Server`() {
-        val w = Beispiele.Welt().also { welt = it }
+        val w = Examples.Welt().also { world = it }
         val vm = w.setDetail()
-        w.pfade.antworten["/api/v1/sets/75192-1"] =
+        w.paths.antworten["/api/v1/sets/75192-1"] =
             """{"success":true,"quantity":3,"set":{"set_number":"75192-1","name":"Millennium Falcon","quantity":2}}"""
         zeige {
-            SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
+            SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "",
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
         }
         compose.waitUntil(10_000) { vm.setDetailState.value.setDetail != null }
@@ -194,28 +194,28 @@ class AblaufTest {
             SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
             .performScrollToNode(plus)
         compose.onNode(plus).performClick()
-        compose.waitUntil(10_000) { w.pfade.anfragenAn("PUT /api/v1/sets/75192-1").isNotEmpty() }
-        assertTrue(w.pfade.koerper.any { it.contains("\"quantity_delta\":1") })
+        compose.waitUntil(10_000) { w.paths.requestsAn("PUT /api/v1/sets/75192-1").isNotEmpty() }
+        assertTrue(w.paths.koerper.any { it.contains("\"quantity_delta\":1") })
     }
 
     /** Eine Sicherung genügt: mit „Rückgängig“ darunter keine Rückfrage, ohne sie schon. */
     @Test
     fun `ein Set loescht mit Rueckgaengig sofort, ohne Rueckgaengig erst nach Rueckfrage`() {
-        val w = Beispiele.Welt().also { welt = it }
+        val w = Examples.Welt().also { world = it }
         val vm = w.setDetail()
         var rueckgaengig by mutableStateOf(true)
         val geloescht = mutableListOf<String>()
         zeige {
-            SetDetailRoute(setNumber = Beispiele.SET, vm = vm, serverUrl = "",
+            SetDetailRoute(setNumber = Examples.SET, vm = vm, serverUrl = "",
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = { geloescht += it },
                 rueckgaengigMoeglich = rueckgaengig)
         }
         compose.waitUntil(10_000) { vm.setDetailState.value.setDetail != null }
-        val name = vm.setDetailState.value.setDetail?.name ?: Beispiele.SET
+        val name = vm.setDetailState.value.setDetail?.name ?: Examples.SET
         val papierkorb = compose.onNodeWithContentDescription(ctx.getString(R.string.cd_set_delete, name))
         papierkorb.performClick()
         compose.waitForIdle()
-        assertEquals("Mit Rückgängig sofort vorgemerkt", listOf(Beispiele.SET), geloescht)
+        assertEquals("Mit Rückgängig sofort vorgemerkt", listOf(Examples.SET), geloescht)
         compose.onNode(androidx.compose.ui.test.isDialog()).assertDoesNotExist()
 
         rueckgaengig = false
@@ -233,16 +233,16 @@ class AblaufTest {
     /** Die Android-Stufe, nach der die Seite wählt; Robolectric selbst läuft gegen API 35. */
     private var stufe by mutableStateOf(Build.VERSION.SDK_INT)
 
-    /** Ein Gutschein mit PIN 4711; [schutz] steht für die Gerätesperre. */
-    private fun zeigeGutschein(schutz: Schrittschutz, kopiert: MutableList<String> = mutableListOf()) {
+    /** Ein Gutschein mit PIN 4711; [protection] steht für die Gerätesperre. */
+    private fun showVoucher(protection: Schrittschutz, kopiert: MutableList<String> = mutableListOf()) {
         zeige {
-            CompositionLocalProvider(LocalSchrittschutz provides schutz, LocalSdkStufe provides stufe) {
+            CompositionLocalProvider(LocalSchrittschutz provides protection, LocalSdkLevel provides stufe) {
                 GutscheineCard(
                     zustand = zustand, onFeld = { _, _, _, _ -> },
-                    onPinSchalten = { id -> zustand = zustand.copy(pinSichtbar = zustand.pinSichtbar + id) },
-                    onBearbeiten = {}, onAbbrechen = {}, onSpeichern = {}, onLoeschen = {}, onPdfOeffnen = {},
-                    onKopieren = { id, _ -> kopiert += id.toString() }, onGuthaben = {},
-                    onGuthabenAbbrechen = {}, onErneut = {}, onBestaetigen = { _, _ -> }, onBestaetigungAbbrechen = {},
+                    switchOnPin = { id -> zustand = zustand.copy(pinSichtbar = zustand.pinSichtbar + id) },
+                    editOn = {}, onAbbrechen = {}, onSpeichern = {}, deleteOn = {}, openOnPdf = {},
+                    onKopieren = { id, _ -> kopiert += id.toString() }, onBalance = {},
+                    cancelOnBalance = {}, onErneut = {}, onBestaetigen = { _, _ -> }, cancelOnConfirmation = {},
                 )
             }
         }
@@ -252,7 +252,7 @@ class AblaufTest {
     @Test
     fun `unter Android 13 warnt die Gutscheinseite vor dem Kopieren, ab 13 nicht`() {
         stufe = 32
-        zeigeGutschein(schutz = { _, weiter -> weiter() })
+        showVoucher(protection = { _, weiter -> weiter() })
         compose.onNodeWithText(ctx.getString(R.string.geheim_kopieren_warnung)).assertExists()
         compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, "6061 2345 6789")).assertExists()
         stufe = 33
@@ -262,7 +262,7 @@ class AblaufTest {
 
     @Test
     fun `ein Gutschein zeigt den PIN erst auf Wunsch`() {
-        zeigeGutschein(schutz = { _, weiter -> weiter() })
+        showVoucher(protection = { _, weiter -> weiter() })
         compose.onNodeWithText("4711", substring = true).assertDoesNotExist()
         compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_pin_show)).performClick()
         compose.onNodeWithText("4711", substring = true).assertIsDisplayed()
@@ -273,7 +273,7 @@ class AblaufTest {
     fun `ohne Bestaetigung der Geraetesperre bleibt der PIN verdeckt`() {
         val gefragt = mutableListOf<String>()
         val kopiert = mutableListOf<String>()
-        zeigeGutschein({ grund, _ -> gefragt += grund }, kopiert)
+        showVoucher({ grund, _ -> gefragt += grund }, kopiert)
         compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_pin_show)).performClick()
         compose.onNodeWithText("4711", substring = true).assertDoesNotExist()
         compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_pin, "6061 2345 6789"))
@@ -287,7 +287,7 @@ class AblaufTest {
     fun `ohne Geraetesperre wird auch die Nummer nicht kopiert`() {
         val gefragt = mutableListOf<String>()
         val kopiert = mutableListOf<String>()
-        zeigeGutschein({ grund, _ -> gefragt += grund }, kopiert)
+        showVoucher({ grund, _ -> gefragt += grund }, kopiert)
         compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_copy_number, "6061 2345 6789"))
             .performClick()
         assertEquals("Ohne Bestätigung nichts kopiert", emptyList<String>(), kopiert)
@@ -301,13 +301,13 @@ class AblaufTest {
      */
     @Test
     fun `die Rueckfrage zeigt das Codefeld erst auf Verlangen`() {
-        zustand = zustand.copy(bestaetigung = GutscheinBestaetigung(GutscheinSchritt.PIN_ZEIGEN, 7))
-        zeigeGutschein(schutz = { _, weiter -> weiter() })
+        zustand = zustand.copy(confirmation = VoucherConfirmation(VoucherStep.PIN_ZEIGEN, 7))
+        showVoucher(protection = { _, weiter -> weiter() })
         compose.onNodeWithText(ctx.getString(R.string.konto_password_current)).assertIsDisplayed()
         compose.onNodeWithText(ctx.getString(R.string.login_code)).assertDoesNotExist()
         compose.onNodeWithText(ctx.getString(R.string.vouchers_confirm_button)).assertIsNotEnabled()
-        zustand = zustand.copy(bestaetigung = zustand.bestaetigung?.copy(
-            codeNoetig = true, vorgang = Vorgang.Fehlgeschlagen(Meldung.Text("Bitte den Code eingeben."))))
+        zustand = zustand.copy(confirmation = zustand.confirmation?.copy(
+            codeNoetig = true, operation = Vorgang.Fehlgeschlagen(Meldung.Text("Bitte den Code eingeben."))))
         compose.onNodeWithText(ctx.getString(R.string.login_code)).assertIsDisplayed()
         compose.onNodeWithText("Bitte den Code eingeben.").assertIsDisplayed()
     }

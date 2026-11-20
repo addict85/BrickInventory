@@ -28,27 +28,27 @@ import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
  * Platz unter der letzten Zeile einer Liste mit Erfassen-Knopf: Knopfhöhe (56) und
  * sein Abstand zum Rand oben wie unten. Ohne ihn verdeckt der Knopf den letzten Eintrag.
  */
-val FabPlatz = 56.dp + 16.dp * 2
+val FabSpace = 56.dp + 16.dp * 2
 
 /**
  * Wie hoch die Snackbar des Gerüsts gerade über dem Inhalt steht. Der Erfassen-Knopf
  * liegt im Inhalt, nicht im Fab-Platz des Gerüsts, und stiege sonst nicht über sie —
  * ausgerechnet während „Rückgängig“ wäre die Haupthandlung verdeckt.
  */
-val LocalSnackbarPlatz = compositionLocalOf { 0.dp }
+val LocalSnackbarSpace = compositionLocalOf { 0.dp }
 
 /**
  * Der eine schwebende Knopf eines Bildschirms: Erfassen. Scannen sitzt als Symbol neben
- * der Suche (ScanKnopf) — zwei gestapelte Knöpfe verdeckten das Listenende, und welcher
+ * der Suche (ScanButton) — zwei gestapelte Knöpfe verdeckten das Listenende, und welcher
  * der wichtigere ist, sagte nur ihre Grösse.
  */
 @Composable
-fun ErfassenFab(beschreibung: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun AddFab(beschreibung: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val brick = LocalIsBrickTheme.current
-    val ueberSnackbar by animateDpAsState(LocalSnackbarPlatz.current, label = "fab-ueber-snackbar")
+    val viaSnackbar by animateDpAsState(LocalSnackbarSpace.current, label = "fab-ueber-snackbar")
     FloatingActionButton(
         onClick = onClick,
-        modifier = modifier.padding(bottom = ueberSnackbar),
+        modifier = modifier.padding(bottom = viaSnackbar),
         containerColor = if (brick) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
         contentColor = if (brick) MaterialTheme.colorScheme.onSecondary else MaterialTheme.colorScheme.onPrimary,
         shape = Formen.fab,
@@ -57,7 +57,7 @@ fun ErfassenFab(beschreibung: String, onClick: () -> Unit, modifier: Modifier = 
 
 /** Scannen als Symbolknopf neben einem Eingabefeld — mit Rand in `outline` (≥ 3:1). */
 @Composable
-fun ScanKnopf(onClick: () -> Unit, modifier: Modifier = Modifier, beschreibung: String = stringResource(R.string.gallery_scan_barcode)) {
+fun ScanButton(onClick: () -> Unit, modifier: Modifier = Modifier, beschreibung: String = stringResource(R.string.gallery_scan_barcode)) {
     MitTooltip(beschreibung, modifier) {
         OutlinedIconButton(
             onClick = onClick,

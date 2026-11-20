@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.verwaltung.ui.screens
 
-import ch.brickinventoryapp.model.fach.KontingentAnsicht
+import ch.brickinventoryapp.model.fach.QuotaView
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
@@ -14,19 +14,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.model.fach.KontingenteAnsicht
+import ch.brickinventoryapp.model.fach.QuotasView
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringUiState
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.Abschnittstitel
+import ch.brickinventoryapp.ui.components.SectionTitle
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.withFont
 
 /** Die Tageskontingente mit dem Bearbeitungszustand ihrer Grenzen. */
 @Composable
-internal fun KontingentAbschnitt(monState: MonitoringUiState, ereignisse: CacheEreignisse) {
+internal fun QuotaSection(monState: MonitoringUiState, events: CacheEvents) {
     val cacheStats = monState.cacheStats
     val apiLimits  = monState.apiLimits
     // Halb eingetippte Grenzen gehören dem Menschen und bleiben speicherbar.
@@ -50,17 +50,17 @@ internal fun KontingentAbschnitt(monState: MonitoringUiState, ereignisse: CacheE
     }
 
     // ── API Rate Limits ───────────────────────────────────────────────────────
-    KontingentKarte(
-        kontingente = cacheStats?.rateLimits,
+    QuotaCard(
+        quotas = cacheStats?.rateLimits,
         bearbeiten = editingLimits,
-        onBearbeitenUmschalten = { editingLimits = !editingLimits },
-        eingaben = Triple(bsInput, blInput, rbInput),
+        toggleOnEdit = { editingLimits = !editingLimits },
+        inputs = Triple(bsInput, blInput, rbInput),
         onBrickset = { bsInput = it },
         onBricklink = { blInput = it },
         onRebrickable = { rbInput = it },
         onSpeichern = {
             // Das Nachladen der Grenzwerte steht im ViewModel.
-            ereignisse.grenzwerte(rbInput.toIntOrNull() ?: 0, blInput.toIntOrNull() ?: 0, bsInput.toIntOrNull() ?: 0)
+            events.limits(rbInput.toIntOrNull() ?: 0, blInput.toIntOrNull() ?: 0, bsInput.toIntOrNull() ?: 0)
             editingLimits = false
         },
     )
@@ -68,32 +68,32 @@ internal fun KontingentAbschnitt(monState: MonitoringUiState, ereignisse: CacheE
 
 /**
  * Die Tageskontingente der drei Dienste; im Bearbeiten-Modus mit Eingabefeldern für
- * die Grenzen. [eingaben] in der Reihenfolge Brickset, BrickLink, Rebrickable.
+ * die Grenzen. [inputs] in der Reihenfolge Brickset, BrickLink, Rebrickable.
  */
 @Composable
-private fun KontingentKarte(
-    kontingente: KontingenteAnsicht?,
+private fun QuotaCard(
+    quotas: QuotasView?,
     bearbeiten: Boolean,
-    onBearbeitenUmschalten: () -> Unit,
-    eingaben: Triple<String, String, String>,
+    toggleOnEdit: () -> Unit,
+    inputs: Triple<String, String, String>,
     onBrickset: (String) -> Unit,
     onBricklink: (String) -> Unit,
     onRebrickable: (String) -> Unit,
     onSpeichern: () -> Unit,
 ) {
-    val (bsInput, blInput, rbInput) = eingaben
+    val (bsInput, blInput, rbInput) = inputs
     AppKarte {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Abschnittstitel(stringResource(R.string.monitoring_api_calls))
+                SectionTitle(stringResource(R.string.monitoring_api_calls))
                 MitTooltip(stringResource(R.string.cd_edit_limits)) {
                     FilledTonalIconButton(
-                        onClick = onBearbeitenUmschalten,
-                    ) { Icon(if (bearbeiten) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(mitSchrift(14.dp))) }
+                        onClick = toggleOnEdit,
+                    ) { Icon(if (bearbeiten) Icons.Default.Close else Icons.Default.Edit, stringResource(R.string.cd_edit_limits), Modifier.size(withFont(14.dp))) }
                 }
             }
 
-            kontingente?.let { rl ->
+            quotas?.let { rl ->
                 RateLimitRow("Brickset",    rl.brickset,    if (bearbeiten) bsInput else null, onBrickset)
                 RateLimitRow("BrickLink",   rl.bricklink,   if (bearbeiten) blInput else null, onBricklink)
                 RateLimitRow("Rebrickable", rl.rebrickable, if (bearbeiten) rbInput else null, onRebrickable)
@@ -105,7 +105,7 @@ private fun KontingentKarte(
                     modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(vertical = Abstaende.klein)
                 ) {
-                    Icon(Icons.Default.Save, null, Modifier.size(mitSchrift(16.dp)))
+                    Icon(Icons.Default.Save, null, Modifier.size(withFont(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.monitoring_limits_save), style = MaterialTheme.typography.bodyMedium)
                 }
@@ -117,7 +117,7 @@ private fun KontingentKarte(
 @Composable
 private fun RateLimitRow(
     label: String,
-    rl: KontingentAnsicht,
+    rl: QuotaView,
     editValue: String?,
     onEdit: (String) -> Unit
 ) {
@@ -137,7 +137,7 @@ private fun RateLimitRow(
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
             Text(label, style = MaterialTheme.typography.bodyMedium)
             if (editValue != null) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
                     Text("${rl.count} /", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedTextField(
                         value = editValue,
@@ -151,7 +151,7 @@ private fun RateLimitRow(
                 }
             } else {
                 Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                    horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
                     if (eng) Icon(Icons.Default.Warning, stringResource(R.string.monitoring_kontingent_eng),
                         Modifier.size(14.dp), tint = color)
                     Text("${rl.count} / ${rl.limit}",

@@ -5,7 +5,7 @@ import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.draw.clip
-import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.WantedItemView
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.*
@@ -28,16 +28,16 @@ import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Alarm
 import ch.brickinventoryapp.ui.components.ProduktBild
 import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.gemeinsam.ui.InfoPlakette
+import ch.brickinventoryapp.gemeinsam.ui.InfoBadge
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun MerkpostenZeile(
-    w: MerkpostenAnsicht, serverUrl: String, imageLoader: coil3.ImageLoader,
+internal fun WantedItemRow(
+    w: WantedItemView, serverUrl: String, imageLoader: coil3.ImageLoader,
     gewaehlt: Boolean,
     onOeffnen: () -> Unit,
     /** Im Raster mit Nachbarn: gleiche Höhe erzwingen. Auf dem Telefon nicht — dort blieb eine Leerzeile. */
-    mehrspaltig: Boolean = false,
+    multiColumn: Boolean = false,
 ) {
     // Die ganze Karte öffnet das Detail — wie die Kachel in der Galerie. Sie
     // trägt keinen Knopf, tut also auf ihrer ganzen Fläche dasselbe;
@@ -58,15 +58,15 @@ internal fun MerkpostenZeile(
         // folgt“ steht dann in der Zeile mit Nummer und Jahr: Allein rechts unten liess es
         // eine leere Zeile in der Karte.
         val preis = w.marktpreis
-        Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+        Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
                 ProduktBild(
                     model = resolveThumbUrl(serverUrl, w.imageLocal, w.imageUrl),
                     contentDescription = null,
                     imageLoader = imageLoader,
-                    modifier = Modifier.size(Abstaende.riesig + Abstaende.sehrGross).clip(MaterialTheme.shapes.small),
-                    ersatzGroesse = 28.dp,
+                    modifier = Modifier.size(Abstaende.huge + Abstaende.veryLarge).clip(MaterialTheme.shapes.small),
+                    fallbackSize = 28.dp,
                     bildgrund = true,
                 )
                 Column(Modifier.weight(1f)) {
@@ -75,7 +75,7 @@ internal fun MerkpostenZeile(
                     // Kopie der Stammdaten fuehrt (Migration 0021).
                     // Immer zwei Zeilen Platz wie in der Galerie: Im Tablet-Raster stand eine
                     // Karte mit kurzem Namen niedriger als ihre Nachbarn.
-                    Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, minLines = if (mehrspaltig) 2 else 1, maxLines = 2,
+                    Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, minLines = if (multiColumn) 2 else 1, maxLines = 2,
                         overflow = TextOverflow.Ellipsis)
                     Text(
                         listOfNotNull(
@@ -92,11 +92,11 @@ internal fun MerkpostenZeile(
             }
             // FlowRow: Bei grosser Schrift rückt der Preis unter die Plaketten, statt sie zu quetschen.
             // Mindesthöhe einer Plakette, auch ohne Inhalt: Karten mit und ohne Plakette sind gleich hoch.
-            FlowRow(if (mehrspaltig) Modifier.heightIn(min = 32.dp) else Modifier,
+            FlowRow(if (multiColumn) Modifier.heightIn(min = 32.dp) else Modifier,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                    verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+                    verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
                 w.alarm?.let { a ->
-                    InfoPlakette(
+                    InfoBadge(
                         stringResource(if (a.richtung == Alarmrichtung.UEBER) R.string.wanted_alert_above else R.string.wanted_alert_below,
                                        fmtMoney(a.schwelle, w.waehrung)),
                         icon = if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
@@ -104,7 +104,7 @@ internal fun MerkpostenZeile(
                 }
                 // „Habe ich das inzwischen?" meint das BLICKFELD: Beim
                 // Grossvater heisst „ich habe es" auch „der Enkel hat es".
-                if (w.owned) InfoPlakette(stringResource(R.string.wanted_owned), icon = Icons.Default.Check)
+                if (w.owned) InfoBadge(stringResource(R.string.wanted_owned), icon = Icons.Default.Check)
                 Spacer(Modifier.weight(1f))
                 // Marktpreis statt Knopf: In die Sammlung übernommen wird im Merkposten-Detail.
                 if (preis != null) {
@@ -117,4 +117,4 @@ internal fun MerkpostenZeile(
 }
 
 /** Mindestbreite einer Spalte der Merkliste. */
-internal val MERKLISTE_SPALTE = 340.dp
+internal val WANTED_COLUMN = 340.dp

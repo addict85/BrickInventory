@@ -40,24 +40,24 @@ import ch.brickinventoryapp.testing.Quellen
 class AbstandsskalaTest {
 
     /** Nur echte ABSTANDS-Stellen — nicht Groessen. Siehe KDoc. */
-    private val abstandsMuster = listOf(
+    private val spacingPattern = listOf(
         Regex("""\bspacedBy\((\d+)\.dp\)"""),
         Regex("""\bpadding\((\d+)\.dp\)"""),
         Regex("""\bPaddingValues\((\d+)\.dp\)"""),
         Regex("""\b(?:horizontal|vertical|top|bottom|start|end) = (\d+)\.dp"""),
         Regex("""\bSpacer\(Modifier\.(?:width|height)\((\d+)\.dp\)\)"""),
     )
-    private val schriftMuster = Regex("""\bfontSize = (\d+)\.sp""")
+    private val fontPattern = Regex("""\bfontSize = (\d+)\.sp""")
 
     /** Die Bildschirme — ui/theme selbst ist die Skala und zaehlt nicht mit. */
     private fun quellen(): List<Pair<String, String>> =
         Quellen.unter("ui")
             .filter { "theme" !in it.path.split(File.separator) }
-            .map { it.name to Quellen.ohneKommentare(it.readText()) }
+            .map { it.name to Quellen.withoutComments(it.readText()) }
             .toList()
 
-    private fun zaehle(muster: List<Regex>): Int =
-        quellen().sumOf { (_, s) -> muster.sumOf { it.findAll(s).count() } }
+    private fun zaehle(pattern: List<Regex>): Int =
+        quellen().sumOf { (_, s) -> pattern.sumOf { it.findAll(s).count() } }
 
     @Test
     fun `die Skala wird ueberhaupt benutzt`() {
@@ -108,7 +108,7 @@ class AbstandsskalaTest {
     fun `es gibt nur die Schriftskala von Material`() {
         val zweite = quellen().filter { (_, s) -> Regex("""\bSchrift\.\w+""").containsMatchIn(s) }.map { it.first }
         assert(zweite.isEmpty()) { "Zweite Schriftskala benutzt in: $zweite — nimm MaterialTheme.typography." }
-        assert(!File(Quellen.wurzel, "ui/theme/Schrift.kt").exists()) {
+        assert(!File(Quellen.root, "ui/theme/Schrift.kt").exists()) {
             "ui/theme/Schrift.kt ist wieder da."
         }
     }
@@ -137,7 +137,7 @@ class AbstandsskalaTest {
         // Gruppen auf die Skala zu ziehen. Sie darf nicht steigen: Ein neuer
         // Bildschirm hat keinen Grund, einen Abstand zu erfinden, den es noch
         // nicht gibt.
-        val ist = zaehle(abstandsMuster)
+        val ist = zaehle(spacingPattern)
         assert(ist <= 176) {
             "$ist Abstaende stehen noch als Zahl da, gemessen waren es 176. " +
                 "Ein neuer Wert ausserhalb von Abstaende gehoert begruendet — oder " +
@@ -167,7 +167,7 @@ class AbstandsskalaTest {
         //
         // 2 -> 0 (28.10.): Auch die Achsen des Portfolio-Diagramms nehmen jetzt
         // labelSmall statt 8 sp.
-        val ist = zaehle(listOf(schriftMuster))
+        val ist = zaehle(listOf(fontPattern))
         assert(ist <= 0) {
             "$ist Schriftgroessen stehen als Zahl da. Nimm eine Rolle aus " +
                 "MaterialTheme.typography."

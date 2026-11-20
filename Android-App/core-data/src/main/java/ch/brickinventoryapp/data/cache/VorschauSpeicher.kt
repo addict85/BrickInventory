@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data.cache
 
 import android.content.Context
-import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.sicherheit.StoreCipher
 import ch.brickinventoryapp.sicherheit.Ablageschluessel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -24,13 +24,13 @@ interface Vorschauablage {
 @Singleton
 class VorschauSpeicher(
     /** Der Ablageordner; eine Funktion, damit `context` erst beim ersten Zugriff gefragt wird. */
-    private val wurzel: () -> File,
-    private val chiffre: AblageChiffre,
+    private val root: () -> File,
+    private val cipher: StoreCipher,
     /** Schlüssel der Dateinamen; ohne ihn liesse sich aus einer bekannten Adresse ihr Name rechnen. */
     private val namen: () -> ByteArray,
 ) : Vorschauablage {
     @Inject constructor(@ApplicationContext context: Context, ablage: Ablageschluessel) :
-        this({ File(context.filesDir, "vorschau") }, AblageChiffre { ablage.fuer("vorschau") }, { ablage.fuer("namen") })
+        this({ File(context.filesDir, "vorschau") }, StoreCipher { ablage.fuer("vorschau") }, { ablage.fuer("namen") })
 
     companion object {
         /**
@@ -43,35 +43,35 @@ class VorschauSpeicher(
          * Beim Aufraeumen auf vier Fuenftel hinunter, statt jedes Mal knapp an der Grenze
          * zu arbeiten.
          */
-        private const val ZIEL_ANTEIL = 0.8
+        private const val TARGET_SHARE = 0.8
 
         /**
          * So weit darf das Vorwärmen die Ablage füllen: 80 %. Nicht dasselbe wie
-         * [ZIEL_ANTEIL] (wie tief das Aufräumen geht): Das letzte Fünftel bleibt dem, was
+         * [TARGET_SHARE] (wie tief das Aufräumen geht): Das letzte Fünftel bleibt dem, was
          * jemand wirklich ansieht, sonst löste jeder echte Aufruf ein Aufräumen aus.
          */
-        const val GRENZE_VORWAERMEN = MAX_BYTES / 5 * 4
+        const val LIMIT_WARM_UP = MAX_BYTES / 5 * 4
 
         /**
          * Zeitstempel für spekulativ geholte Bilder, kurz nach der Epoche: Aufgeräumt wird
          * das Älteste zuerst, und ein vorgewärmtes Bild soll vor einem wirklich
          * angesehenen fliegen. Wird es später angesehen, schreibt der Abgriff in
-         * NetzModule es mit `spekulativ = false` neu und gibt ihm einen echten Stempel.
+         * NetzModule es mit `speculative = false` neu und gibt ihm einen echten Stempel.
          */
-        private const val SPEKULATIV_ZEIT = 1000L
+        private const val SPECULATIVE_TIME = 1000L
 
-        /** Nur Vorschaubilder. Die volle Aufloesung gehoert nicht hierher — siehe [istVorschau]. */
-        private const val VORSCHAU_MERKMAL = "thumb"
+        /** Nur Vorschaubilder. Die volle Aufloesung gehoert nicht hierher — siehe [isPreview]. */
+        private const val PREVIEW_FEATURE = "thumb"
 
         /** Unterordner der Ablage mit gestreuten Namen; alles andere daneben stammt von älteren Fassungen. */
-        private const val VERSCHLUESSELT = "v3"
+        private const val ENCRYPTED = "v3"
     }
 
-    private val ordner: File by lazy {
-        val basis = wurzel()
+    private val folder: File by lazy {
+        val basis = root()
         // Ein Zwischenspeicher: Klartext (Dateien) und v2 (Namen als SHA-256 der Adresse) werden verworfen.
-        runCatching { basis.listFiles()?.filter { it.name != VERSCHLUESSELT }?.forEach { it.deleteRecursively() } }
-        File(basis, VERSCHLUESSELT).also { it.mkdirs() }
+        runCatching { basis.listFiles()?.filter { it.name != ENCRYPTED }?.forEach { it.deleteRecursively() } }
+        File(basis, ENCRYPTED).also { it.mkdirs() }
     }
 
     /** Zweck und Dateiname als AAD: Eine Datei unter fremdem Namen gilt nicht als dieses Bild. */
@@ -86,8 +86,8 @@ class VorschauSpeicher(
      * Die volle Auflösung bleibt draussen: Sie wird einzeln im Detail angesehen, nicht
      * in Tabellen.
      */
-    fun istVorschau(adresse: String): Boolean =
-        adresse.contains("${VORSCHAU_MERKMAL}=1") || adresse.contains("_$VORSCHAU_MERKMAL.")
+    fun isPreview(adresse: String): Boolean =
+        adresse.contains("${PREVIEW_FEATURE}=1") || adresse.contains("_$PREVIEW_FEATURE.")
 
     /**
      * Der Dateiname zu einer Adresse: HMAC-SHA256 mit [namen], nicht der blosse Hash —
@@ -97,7 +97,7 @@ class VorschauSpeicher(
         Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(namen(), "HmacSHA256")) }
             .doFinal(adresse.toByteArray()).joinToString("") { "%02x".format(it) }
 
-    private fun datei(adresse: String) = File(ordner, schluessel(adresse))
+    private fun datei(adresse: String) = File(folder, schluessel(adresse))
 
     /**
      * Liegt diese Adresse schon hier? Für das Vorwärmen, ohne die Bytes zu lesen —
@@ -113,33 +113,33 @@ class VorschauSpeicher(
         val f = datei(adresse)
         if (!f.isFile || f.length() == 0L) return null
         val roh = runCatching { f.readBytes() }.getOrNull() ?: return null
-        return chiffre.entschluessle(roh, bindung(f)) ?: run { f.delete(); null }
+        return cipher.entschluessle(roh, bindung(f)) ?: run { f.delete(); null }
     }
 
     /**
      * Bytes ablegen: erst in eine Nebendatei, dann umbenennen — sonst läge nach einem
      * Abbruch eine halbe Datei da, die wie ein Bild aussieht.
      */
-    fun schreibe(adresse: String, bytes: ByteArray, spekulativ: Boolean = false) {
+    fun schreibe(adresse: String, bytes: ByteArray, speculative: Boolean = false) {
         if (bytes.isEmpty()) return
         runCatching {
             val ziel = datei(adresse)
-            val temp = File(ordner, "${ziel.name}.tmp")
-            temp.writeBytes(chiffre.verschluessle(bytes, bindung(ziel)))
+            val temp = File(folder, "${ziel.name}.tmp")
+            temp.writeBytes(cipher.verschluessle(bytes, bindung(ziel)))
             if (!temp.renameTo(ziel)) temp.delete()
-            // Vorgewaermtes altert sofort — Begruendung an SPEKULATIV_ZEIT.
-            else if (spekulativ) ziel.setLastModified(SPEKULATIV_ZEIT)
+            // Vorgewaermtes altert sofort — Begruendung an SPECULATIVE_TIME.
+            else if (speculative) ziel.setLastModified(SPECULATIVE_TIME)
         }
-        aufraeumenFallsNoetig()
+        cleanupIfNeeded()
     }
 
     /** Wie viel liegt hier? Fuer die Anzeige in den Einstellungen. */
     override fun belegt(): Long =
-        runCatching { ordner.listFiles()?.sumOf { it.length() } ?: 0L }.getOrDefault(0L)
+        runCatching { folder.listFiles()?.sumOf { it.length() } ?: 0L }.getOrDefault(0L)
 
     /** Alles wegwerfen — fuer den Knopf in den Einstellungen. */
     override fun leeren() {
-        runCatching { ordner.listFiles()?.forEach { it.delete() } }
+        runCatching { folder.listFiles()?.forEach { it.delete() } }
     }
 
     /**
@@ -147,16 +147,16 @@ class VorschauSpeicher(
      * viele Dateisysteme die Lesezeit nicht mehr führen. Was regelmässig gebraucht
      * wird, wird ohnehin neu geschrieben.
      */
-    private fun aufraeumenFallsNoetig() {
+    private fun cleanupIfNeeded() {
         runCatching {
-            val dateien = ordner.listFiles()?.toList() ?: return
-            var summe = dateien.sumOf { it.length() }
-            if (summe <= MAX_BYTES) return
-            val ziel = (MAX_BYTES * ZIEL_ANTEIL).toLong()
+            val dateien = folder.listFiles()?.toList() ?: return
+            var sum = dateien.sumOf { it.length() }
+            if (sum <= MAX_BYTES) return
+            val ziel = (MAX_BYTES * TARGET_SHARE).toLong()
             for (f in dateien.sortedBy { it.lastModified() }) {
-                if (summe <= ziel) break
+                if (sum <= ziel) break
                 val gross = f.length()
-                if (f.delete()) summe -= gross
+                if (f.delete()) sum -= gross
             }
         }
     }

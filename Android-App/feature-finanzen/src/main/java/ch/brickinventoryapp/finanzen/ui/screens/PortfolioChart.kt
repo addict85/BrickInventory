@@ -20,20 +20,20 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
-import ch.brickinventoryapp.model.fach.DiagrammAchse
+import ch.brickinventoryapp.model.fach.ChartAxis
 import ch.brickinventoryapp.model.fach.DiagrammPunkt
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.gemeinsam.ui.diagrammZusammenfassung
+import ch.brickinventoryapp.gemeinsam.ui.chartSummary
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtProzent
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.SegmentWahl
+import ch.brickinventoryapp.ui.components.SegmentChoice
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun PortfolioChart(
     points: List<DiagrammPunkt>,
-    yAxis: List<DiagrammAchse>,
+    yAxis: List<ChartAxis>,
     currency: Waehrung,
     isLoading: Boolean,
     selectedPeriod: String,
@@ -50,13 +50,13 @@ internal fun PortfolioChart(
     val measurer   = rememberTextMeasurer()
     // Achsen in der kleinsten Rolle der Skala (11 sp) statt 8 sp; der Rand
     // links und unten richtet sich unten nach der gemessenen Beschriftung.
-    val achsenStil = MaterialTheme.typography.labelSmall.copy(color = mutedColor)
+    val axesStyle = MaterialTheme.typography.labelSmall.copy(color = mutedColor)
 
     // Die Fläche der übrigen Karten: Auf dem grauen Kartenton der Vorgabe hätte die
     // Achsenschrift weniger Kontrast als überall sonst.
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(Abstaende.gross)) {
-            PortfolioKopf(selectedPeriod, periodChangePct)
+            PortfolioHeader(selectedPeriod, periodChangePct)
 
             Spacer(Modifier.height(Abstaende.mittel))
 
@@ -71,25 +71,25 @@ internal fun PortfolioChart(
                 else -> {
                     // Eine Zeichenfläche hat keine Semantik; ohne diese Zeile
                     // überspringt TalkBack das Diagramm ganz.
-                    val beschreibung = diagrammZusammenfassung(points, periodChangePct)?.let { z ->
+                    val beschreibung = chartSummary(points, periodChangePct)?.let { z ->
                         val von = fmtMoney(z.anfang, currency)
                         val bis = fmtMoney(z.ende, currency)
-                        val prozent = z.veraenderungProzent
+                        val prozent = z.changePercent
                         if (prozent == null) stringResource(R.string.chart_summary_no_change, z.von, z.bis, von, bis)
                         else stringResource(R.string.chart_summary, z.von, z.bis, von, bis,
                             fmtProzent(prozent))
                     }.orEmpty()
 
                     Canvas(Modifier.fillMaxWidth().height(160.dp).semantics { contentDescription = beschreibung }) {
-                        zeichneVerlauf(points, yAxis, measurer, achsenStil, VerlaufFarben(lineColor, fillStart, gridColor))
+                        drawHistory(points, yAxis, measurer, axesStyle, HistoryColors(lineColor, fillStart, gridColor))
                     }
                 }
             }
 
             Spacer(Modifier.height(10.dp))
 
-            // Zeitraum: eine Einfachwahl, darum Segmente wie überall (SegmentWahl).
-            SegmentWahl(
+            // Zeitraum: eine Einfachwahl, darum Segmente wie überall (SegmentChoice).
+            SegmentChoice(
                 optionen = listOf(
                     "week" to stringResource(R.string.chart_period_week),
                     "month" to stringResource(R.string.chart_period_month),
@@ -106,10 +106,10 @@ internal fun PortfolioChart(
 /** Titel und Veränderung im Zeitraum; bei grosser Schrift rückt die Plakette darunter. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PortfolioKopf(selectedPeriod: String, periodChangePct: Double?) {
+private fun PortfolioHeader(selectedPeriod: String, periodChangePct: Double?) {
     FlowRow(Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+        verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
         Text(stringResource(R.string.chart_portfolio_value),
             fontWeight = FontWeight.SemiBold,
             style = MaterialTheme.typography.titleSmall)
@@ -133,29 +133,29 @@ private fun PortfolioKopf(selectedPeriod: String, periodChangePct: Double?) {
 }
 
 /** Die drei Farben des Verlaufs aus dem Design: Linie, Fläche darunter, Raster. */
-private class VerlaufFarben(val linie: Color, val flaeche: Color, val raster: Color)
+private class HistoryColors(val linie: Color, val flaeche: Color, val raster: Color)
 
 /** Raster, Achsen, Fläche, Linie und Punkte; die Höhe jedes Punkts rechnet der Server (y_frac). */
-private fun DrawScope.zeichneVerlauf(
+private fun DrawScope.drawHistory(
     points: List<DiagrammPunkt>,
-    yAxis: List<DiagrammAchse>,
+    yAxis: List<ChartAxis>,
     measurer: TextMeasurer,
-    achsenStil: TextStyle,
-    farben: VerlaufFarben,
+    axesStyle: TextStyle,
+    farben: HistoryColors,
 ) {
-    val yMasse = yAxis.map { measurer.measure(it.label, achsenStil) }
-    val padL = (yMasse.maxOfOrNull { it.size.width } ?: 0) + 8f
+    val yDimensions = yAxis.map { measurer.measure(it.label, axesStyle) }
+    val padL = (yDimensions.maxOfOrNull { it.size.width } ?: 0) + 8f
     val padR = 16f
     val padT = 14f
-    val padB = measurer.measure("0", achsenStil).size.height + 10f
+    val padB = measurer.measure("0", axesStyle).size.height + 10f
     val r = Rahmen(padL, padT, size.width - padL - padR, size.height - padT - padB, points.size)
-    zeichneYAchse(yAxis, yMasse, r, farben.raster)
+    drawYAxis(yAxis, yDimensions, r, farben.raster)
     // Die Daten unter der Fläche, nie links neben ihr: Die erste steht
     // bündig am Anfang, die letzte am Ende, damit keine in die Spalte
     // der Beträge links ragt.
     points.forEachIndexed { i, p ->
         if (p.xLabel.isEmpty()) return@forEachIndexed
-        val m = measurer.measure(p.xLabel, achsenStil)
+        val m = measurer.measure(p.xLabel, axesStyle)
         val links = when (i) {
             0 -> r.links
             points.size - 1 -> r.links + r.breite - m.size.width
@@ -174,7 +174,7 @@ private class Rahmen(val links: Float, val oben: Float, val breite: Float, val h
 }
 
 /** Gestrichelte Rasterlinien und die Beträge links daneben (der Server schickt fünf, Index 0 unten). */
-private fun DrawScope.zeichneYAchse(yAxis: List<DiagrammAchse>, yMasse: List<TextLayoutResult>, r: Rahmen, raster: Color) {
+private fun DrawScope.drawYAxis(yAxis: List<ChartAxis>, yDimensions: List<TextLayoutResult>, r: Rahmen, raster: Color) {
     yAxis.forEachIndexed { i, ya ->
         val y = r.y(ya.frac)
         var xd = r.links
@@ -185,14 +185,14 @@ private fun DrawScope.zeichneYAchse(yAxis: List<DiagrammAchse>, yMasse: List<Tex
         }
         // Rechtsbündig und nie unter die Grundlinie: Die unterste
         // Beschriftung ragte sonst in die Zeile der Daten darunter.
-        val m = yMasse[i]
+        val m = yDimensions[i]
         val oben = (y - m.size.height / 2f).coerceIn(0f, r.unten - m.size.height)
         drawText(m, topLeft = Offset(r.links - m.size.width - 4f, oben))
     }
 }
 
 /** Die Fläche unter der Linie im Verlauf, die Linie und die Punkte; der letzte hervorgehoben. */
-private fun DrawScope.zeichneLinie(points: List<DiagrammPunkt>, r: Rahmen, farben: VerlaufFarben) {
+private fun DrawScope.zeichneLinie(points: List<DiagrammPunkt>, r: Rahmen, farben: HistoryColors) {
     val n = points.size
     val fp = Path().apply {
         moveTo(r.x(0), r.unten)

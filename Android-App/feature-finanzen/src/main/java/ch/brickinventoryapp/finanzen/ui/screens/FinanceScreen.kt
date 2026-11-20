@@ -24,46 +24,46 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanzViewModel
+import ch.brickinventoryapp.finanzen.ui.viewmodel.FinanceViewModel
 import ch.brickinventoryapp.finanzen.ui.FinanceUiState
-import ch.brickinventoryapp.finanzen.ui.finanzKopf
-import ch.brickinventoryapp.ui.ladeanzeige
-import ch.brickinventoryapp.ui.zweiSpaltig
-import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
+import ch.brickinventoryapp.finanzen.ui.financeHeader
+import ch.brickinventoryapp.ui.loadingIndicator
+import ch.brickinventoryapp.ui.twoSpaltig
+import ch.brickinventoryapp.zustand.ui.ScopeUiState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import coil3.ImageLoader
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.LeerSymbol
-import ch.brickinventoryapp.ui.components.Ladezustand
-import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.EmptySymbol
+import ch.brickinventoryapp.ui.components.LoadState
+import ch.brickinventoryapp.ui.components.readAloudAs
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.ui.components.grosseSchrift
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.components.stueckzahl
 import ch.brickinventoryapp.gemeinsam.ui.mengeManuell
 import ch.brickinventoryapp.ui.util.fmtMoneyOrDash
-import ch.brickinventoryapp.model.util.zahlenLocale
-import ch.brickinventoryapp.ui.components.BezeichnungUndWert
+import ch.brickinventoryapp.model.util.numbersLocale
+import ch.brickinventoryapp.ui.components.LabelAndValue
 import ch.brickinventoryapp.gemeinsam.ui.ConditionBadges
 import ch.brickinventoryapp.gemeinsam.ui.FinanzBild
 import ch.brickinventoryapp.gemeinsam.ui.PnlBadge
 import ch.brickinventoryapp.gemeinsam.ui.ScopeFilterChip
-import ch.brickinventoryapp.gemeinsam.ui.lokaleAchse
-import ch.brickinventoryapp.gemeinsam.ui.lokaleWerte
+import ch.brickinventoryapp.gemeinsam.ui.localAxis
+import ch.brickinventoryapp.gemeinsam.ui.localValues
 
 /** Was der Finanzen-Reiter zeigt; die Route sammelt es aus den Flüssen. */
 internal data class FinanzZustand(
     val state: AppUiState,
-    val blick: BlickfeldUiState,
+    val blick: ScopeUiState,
     val financeState: FinanceUiState,
 )
 
 /** Der Finanzen-Reiter am Navigationsziel: reicht Zustand und Aktionen an [FinanceScreen]. */
 @Composable
 fun FinanceRoute(
-    vm: FinanzViewModel,
+    vm: FinanceViewModel,
     imageLoader: ImageLoader,
     onSetClick: (String) -> Unit = {},
     onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
@@ -94,7 +94,7 @@ internal fun FinanceScreen(
 
     val valuation = financeState.valuation
     val isLoading = financeState.bewertung.laedt
-    val bewertungsFehler = financeState.bewertung as? Laden.Fehler
+    val valuationError = financeState.bewertung as? Laden.Fehler
     val serverUrl = state.serverUrl
     val priceCondition = state.priceCondition
     val historyLoading = financeState.verlauf.laedt
@@ -104,16 +104,16 @@ internal fun FinanceScreen(
     // Sprachwechsel neu formatiert, ohne neu zu laden.
     val konfig = androidx.compose.ui.platform.LocalConfiguration.current
     val zahlen = remember(konfig) {
-        zahlenLocale(konfig.locales[0], java.util.Locale.getDefault())
+        numbersLocale(konfig.locales[0], java.util.Locale.getDefault())
     }
-    val historyPoints = remember(financeState.historyPoints, financeState.historyTage, zahlen) {
-        lokaleAchse(financeState.historyPoints, financeState.historyTage, zahlen)
+    val historyPoints = remember(financeState.historyPoints, financeState.historyDays, zahlen) {
+        localAxis(financeState.historyPoints, financeState.historyDays, zahlen)
     }
     // Bei grosser Schrift kurz („1,7k“): Ausgeschrieben nahm die Achse ein Drittel der Breite.
-    val kompakt = grosseSchrift()
-    val historyYAxis = remember(financeState.historyYAxis, financeState.historyWaehrung, valuation?.currency, zahlen, kompakt) {
-        val w = financeState.historyWaehrung ?: valuation?.currency
-        if (w == null) financeState.historyYAxis else lokaleWerte(financeState.historyYAxis, w, zahlen, kompakt)
+    val compact = largeFont()
+    val historyYAxis = remember(financeState.historyYAxis, financeState.historyCurrency, valuation?.currency, zahlen, compact) {
+        val w = financeState.historyCurrency ?: valuation?.currency
+        if (w == null) financeState.historyYAxis else localValues(financeState.historyYAxis, w, zahlen, compact)
     }
     val partsValuation = financeState.partsValuation
     val figsValuation = financeState.figsValuation
@@ -130,17 +130,17 @@ internal fun FinanceScreen(
     // Gemeinsame Fassung (util/NumberFormatUtils.kt): Die Stellung von Symbol und
     // Betrag entscheidet die Sprache, wie in der Webapp.
     fun fmtPrice(v: String?): String = fmtMoneyOrDash(v, currencyCode)
-    fun fmtWert(v: Geld?): String = fmtMoneyOrDash(v, currencyCode)
+    fun fmtValue(v: Geld?): String = fmtMoneyOrDash(v, currencyCode)
 
     // Ohne Bewertung: laden, gescheitert (mit Grund und neuem Versuch) oder
     // wirklich keine Preise — vorher sah ein Fehler aus wie „keine Preisdaten“.
     if (valuation == null) {
-        val fehlerText = bewertungsFehler?.meldung?.satz()
-        Ladezustand(
-            anzeige = ladeanzeige(hatInhalt = false, laedt = isLoading, fehler = fehlerText, gefiltert = false),
-            fehler = fehlerText,
+        val errorText = valuationError?.meldung?.satz()
+        LoadState(
+            anzeige = loadingIndicator(hatContent = false, laedt = isLoading, fehler = errorText, gefiltert = false),
+            fehler = errorText,
             onErneut = onRefresh,
-            fehlerKlasse = bewertungsFehler?.art,
+            errorClass = valuationError?.art,
             laedt = {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
@@ -151,10 +151,10 @@ internal fun FinanceScreen(
                 }
             },
             leer = {
-                LeerSymbol(Icons.Default.Savings, 48.dp)
+                EmptySymbol(Icons.Default.Savings, 48.dp)
                 Text(stringResource(R.string.finance_no_data), fontWeight = FontWeight.SemiBold)
                 Button(onClick = onRefresh) {
-                    Icon(Icons.Default.Refresh, null, Modifier.size(mitSchrift(16.dp)))
+                    Icon(Icons.Default.Refresh, null, Modifier.size(withFont(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.finance_load_prices))
                 }
@@ -173,11 +173,11 @@ internal fun FinanceScreen(
 
     PullToRefreshBox(isRefreshing = isLoading, onRefresh = onRefresh) {
       BoxWithConstraints(Modifier.fillMaxSize()) {
-        val rand = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel)
+        val edge = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel)
         val abstand = Arrangement.spacedBy(10.dp)
         // Überblick: Kontofilter, Kopfkachel, dann der Verlauf — der Marktwert ist die erste
         // Frage, die Kurve erklärt ihn. Die Summe steht nach den Zeilen.
-        val ueberblick: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
+        val overview: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten. Er gilt für
             // ALLE Zahlen dieses Reiters: Kurve, Kacheln, Sets, Teile und Minifiguren.
             if (householdMembers.size > 1) {
@@ -193,11 +193,11 @@ internal fun FinanceScreen(
             item {
                 // Ohne Marktwert keine Entwicklung, wie im Web: Der Verlauf trüge dann nur
                 // Kaufpreise, und „+0.0 %“ neben „—“ behauptete Stillstand.
-                val mitWert = finanzKopf(valuation, partsValuation, figsValuation, pnl).wert.signum() > 0
+                val withValue = financeHeader(valuation, partsValuation, figsValuation, pnl).wert.signum() > 0
                 PortfolioChart(
                     points = historyPoints, yAxis = historyYAxis,
                     currency = currencyCode, isLoading = historyLoading,
-                    selectedPeriod = historyPeriod, periodChangePct = historyPeriodChangePct.takeIf { mitWert },
+                    selectedPeriod = historyPeriod, periodChangePct = historyPeriodChangePct.takeIf { withValue },
                     onPeriodChange = onPeriodChange
                 )
             }
@@ -206,31 +206,31 @@ internal fun FinanceScreen(
         val zeilen: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
             financeCategoryFilter(
                 aktive = kategorien,
-                onUmschalten = { aktionen.finanzKategorieUmschalten(it) },
-                onAlle = { aktionen.finanzKategorienZuruecksetzen() },
+                toggleOn = { aktionen.toggleFinanceCategory(it) },
+                onAll = { aktionen.resetFinanceCategories() },
             )
-            financeSetRows(valuation, showSets, serverUrl, imageLoader, ::fmtWert, onSetClick)
-            financePartRows(partsValuation, showParts, serverUrl, imageLoader, ::fmtPrice, ::fmtWert, onManualClick)
-            financeFigRows(figsValuation, showFigs, serverUrl, imageLoader, ::fmtPrice, ::fmtWert, onManualClick)
+            financeSetRows(valuation, showSets, serverUrl, imageLoader, ::fmtValue, onSetClick)
+            financePartRows(partsValuation, showParts, serverUrl, imageLoader, ::fmtPrice, ::fmtValue, onManualClick)
+            financeFigRows(figsValuation, showFigs, serverUrl, imageLoader, ::fmtPrice, ::fmtValue, onManualClick)
         }
         // Ab Tabletbreite zwei Spalten wie die Set-Detailseite: links der Überblick, rechts
         // die Zeilen. Einspaltig lagen Betrag und Bezeichnung einer Zeile eine Armlänge auseinander.
         // Die Summe schliesst die Zeilen rechts ab: Links unter dem Überblick stand sie
         // neben einer halb leeren rechten Spalte.
-        if (zweiSpaltig(maxWidth.value)) {
+        if (twoSpaltig(maxWidth.value)) {
             Row(Modifier.fillMaxSize()) {
-                LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = rand, verticalArrangement = abstand) {
-                    ueberblick()
+                LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = edge, verticalArrangement = abstand) {
+                    overview()
                 }
-                LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = listState, contentPadding = rand,
+                LazyColumn(Modifier.weight(1f).fillMaxHeight(), state = listState, contentPadding = edge,
                     verticalArrangement = abstand) {
                     zeilen()
                     financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
                 }
             }
         } else {
-            LazyColumn(state = listState, contentPadding = rand, verticalArrangement = abstand) {
-                ueberblick()
+            LazyColumn(state = listState, contentPadding = edge, verticalArrangement = abstand) {
+                overview()
                 zeilen()
                 financeGrandTotal(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
             }
@@ -263,7 +263,7 @@ internal fun ManualFinanceRow(
     /** Entwicklung gegen den Kaufpreis dieser Erfassung (vom Server, pnl_prozent). */
     pnlProzent: Double? = null,
     /** Dieselbe Entwicklung in Geld, schon formatiert mit Vorzeichen. */
-    gewinnStr: String? = null,
+    gainStr: String? = null,
 ) {
     // Zwei Karten statt einer mit `enabled`: Material3 hat für die anklickbare
     // Karte eine eigene Überladung, und eine Card mit onClick = {} sähe zwar
@@ -284,13 +284,13 @@ internal fun ManualFinanceRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
                 if (quantity > 1)
                     Text(mengeManuell(quantity),
-                        Modifier.vorgelesenAls(stueckzahl(quantity)),
+                        Modifier.readAloudAs(stueckzahl(quantity)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 // Bei mehreren Zeilen desselben Eintrags ist die Plakette das
                 // einzige Unterscheidungsmerkmal.
                 condition?.let {
-                    Box(Modifier.padding(top = Abstaende.haar)) { ConditionBadges(listOf(it)) }
+                    Box(Modifier.padding(top = Abstaende.hairline)) { ConditionBadges(listOf(it)) }
                 }
             }
             Spacer(Modifier.width(Abstaende.klein))
@@ -313,7 +313,7 @@ internal fun ManualFinanceRow(
                 // Entwicklung wie bei den Sets — gegen den Kaufpreis dieser
                 // Erfassung, gerechnet auf dem Server.
                 pnlProzent?.let {
-                    Box(Modifier.padding(top = Abstaende.haar)) { PnlBadge(it, gewinnStr) }
+                    Box(Modifier.padding(top = Abstaende.hairline)) { PnlBadge(it, gainStr) }
                 }
             }
         }
@@ -329,12 +329,12 @@ internal fun ManualFinanceRow(
 }
 
 /** Gewinn als Betrag mit Vorzeichen, wie die Prozentzahl daneben (fmtProzent). */
-internal fun gewinnText(betrag: Geld, fmtWert: (Geld?) -> String): String =
-    if (betrag.aufRappen().signum() > 0) "+" + fmtWert(betrag) else fmtWert(betrag)
+internal fun gainText(betrag: Geld, fmtValue: (Geld?) -> String): String =
+    if (betrag.onRappen().signum() > 0) "+" + fmtValue(betrag) else fmtValue(betrag)
 
 @Composable
 internal fun SubtotalRow(label: String, value: String) {
-    BezeichnungUndWert(label, value, Modifier.padding(horizontal = Abstaende.winzig, vertical = Abstaende.winzig),
+    LabelAndValue(label, value, Modifier.padding(horizontal = Abstaende.tiny, vertical = Abstaende.tiny),
         stil = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold))
 }
 

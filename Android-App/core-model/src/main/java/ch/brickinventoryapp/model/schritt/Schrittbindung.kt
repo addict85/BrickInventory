@@ -9,41 +9,41 @@ enum class Schrittaktion(val kennung: String?) {
     LOKAL(null),
 }
 
-/** Was der Server zu einem Schritt sagt; [Abgelehnt.meldung] null heisst: keine Antwort. */
+/** Was der Server zu einem Schritt sagt; [Rejected.meldung] null heisst: keine Antwort. */
 sealed interface Schrittantwort {
     data class Challenge(val challenge: String, val nachricht: String) : Schrittantwort
-    data object Frei : Schrittantwort
+    data object Free : Schrittantwort
     /** Ein Schritt ohne Aktion am Server ([Schrittaktion.LOKAL]): Die Prüfung bleibt im Gerät. */
-    data object NichtGebunden : Schrittantwort
-    data class Abgelehnt(val meldung: String?) : Schrittantwort
+    data object NotBound : Schrittantwort
+    data class Rejected(val meldung: String?) : Schrittantwort
 }
 
 /** Die Nonce, die der Keystore-Schlüssel als Attestation-Challenge trägt ([Nonce.wert]: Base64url). */
 sealed interface Schluesselnonce {
     data class Nonce(val wert: String) : Schluesselnonce
-    data class Abgelehnt(val meldung: String?) : Schluesselnonce
+    data class Rejected(val meldung: String?) : Schluesselnonce
 }
 
 /** Der Weg zum Server; core-data setzt ihn um, core-ui fragt ihn vor jedem Schritt. */
 interface Schrittbindung {
-    /** [Schrittantwort.Challenge], [Schrittantwort.NichtGebunden] oder [Schrittantwort.Abgelehnt]. */
+    /** [Schrittantwort.Challenge], [Schrittantwort.NotBound] oder [Schrittantwort.Rejected]. */
     suspend fun challenge(aktion: Schrittaktion): Schrittantwort
-    /** [Schrittantwort.Frei] oder [Schrittantwort.Abgelehnt]. */
+    /** [Schrittantwort.Free] oder [Schrittantwort.Rejected]. */
     suspend fun freigeben(challenge: String, signatur: ByteArray): Schrittantwort
     /**
      * Nur gleich nach der Anmeldung. Es gibt keinen Weg ohne Nonce: Der Server nimmt
      * keinen blossen Schlüssel an, ein Rückfall darauf liesse sich nur erzwingen.
      */
-    suspend fun schluesselNonce(): Schluesselnonce = Schluesselnonce.Abgelehnt(null)
+    suspend fun schluesselNonce(): Schluesselnonce = Schluesselnonce.Rejected(null)
 
-    /** Die Attestierungskette (DER je Zertifikat, Blatt zuerst): [Schrittantwort.Frei] oder [Schrittantwort.Abgelehnt]. */
-    suspend fun hinterlegeKette(kette: List<ByteArray>): Schrittantwort = Schrittantwort.Abgelehnt(null)
+    /** Die Attestierungskette (DER je Zertifikat, Blatt zuerst): [Schrittantwort.Free] oder [Schrittantwort.Rejected]. */
+    suspend fun depositChain(kette: List<ByteArray>): Schrittantwort = Schrittantwort.Rejected(null)
 
     companion object {
         /** Ohne Server, für Tests und Activities ohne Konto. */
         val OHNE: Schrittbindung = object : Schrittbindung {
-            override suspend fun challenge(aktion: Schrittaktion) = Schrittantwort.NichtGebunden
-            override suspend fun freigeben(challenge: String, signatur: ByteArray) = Schrittantwort.Frei
+            override suspend fun challenge(aktion: Schrittaktion) = Schrittantwort.NotBound
+            override suspend fun freigeben(challenge: String, signatur: ByteArray) = Schrittantwort.Free
         }
     }
 }

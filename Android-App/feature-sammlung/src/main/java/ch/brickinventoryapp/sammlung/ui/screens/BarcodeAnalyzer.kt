@@ -12,7 +12,7 @@ import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import java.util.concurrent.Executors
-import ch.brickinventoryapp.ui.screens.bildAnalyse
+import ch.brickinventoryapp.ui.screens.imageAnalyse
 
 /**
  * Der Bildanalyse-Teil des Barcode-Scanners: Barcode-Leser, Texterkennung,
@@ -80,7 +80,7 @@ internal fun rememberBarcodeAnalyzer(
         // Aufbau samt AF-Modus: ui/screens/KameraAufbau.kt — dieselbe
         // Einstellung wie im SetupScreen, nur mit mehr Aufloesung fuer
         // kleine EAN-Striche und die Texterkennung.
-        bildAnalyse(1920, 1080)
+        imageAnalyse(1920, 1080)
             .also { analysis ->
                 analysis.setAnalyzer(executor) { imageProxy ->
                     if (frozen) { imageProxy.close(); return@setAnalyzer }
@@ -119,14 +119,14 @@ internal fun rememberBarcodeAnalyzer(
                                 }
                                 textRecognizer.process(image)
                                     .addOnSuccessListener { result ->
-                                        val kandidat = setNumberCandidates(result.text).firstOrNull()
-                                        if (kandidat != null) {
+                                        val candidate = setNumberCandidates(result.text).firstOrNull()
+                                        if (candidate != null) {
                                             // Dieselbe Mehrfachbestätigung wie beim
                                             // Barcode: Eine einzelne Fehllesung soll
                                             // nicht sofort einen Dialog auslösen.
-                                            if (kandidat == lastValue) confirmCount++
-                                            else { lastValue = kandidat; confirmCount = 1 }
-                                            if (confirmCount >= CONFIRM_NEEDED) onSetNumberFound(kandidat)
+                                            if (candidate == lastValue) confirmCount++
+                                            else { lastValue = candidate; confirmCount = 1 }
+                                            if (confirmCount >= CONFIRM_NEEDED) onSetNumberFound(candidate)
                                             else onStatus(confirmingHint)
                                         } else onStatus(aimHint)
                                     }

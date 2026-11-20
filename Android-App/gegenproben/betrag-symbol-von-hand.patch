@@ -11,8 +11,8 @@ index f20fea6..9aa014c 100644
          nf.currency = Currency.getInstance((currencyCode ?: Waehrung.EUR).code)
          nf.minimumFractionDigits = 2
          nf.maximumFractionDigits = 2
--        mitWaehrungsAbstand(nf.format(amount))
-+        mitWaehrungsAbstand(nf.currency.getSymbol(loc) + fmtAmount(amount))
+-        withCurrencyGap(nf.format(amount))
++        withCurrencyGap(nf.currency.getSymbol(loc) + fmtAmount(amount))
      } catch (_: Exception) {
          "${currencyCode?.code.orEmpty()}\u00A0${fmtAmount(amount)}".trim()
      }

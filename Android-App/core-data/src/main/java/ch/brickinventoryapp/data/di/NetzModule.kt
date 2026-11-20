@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.di
 
-import ch.brickinventoryapp.data.util.UpdateUmleitungen
+import ch.brickinventoryapp.data.util.UpdateRedirects
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import dagger.Module
@@ -19,23 +19,23 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 import okio.Path.Companion.toOkioPath
-import ch.brickinventoryapp.data.Entwerter
+import ch.brickinventoryapp.data.Redeemer
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.PasswortPflicht
-import ch.brickinventoryapp.data.RechteSignal
+import ch.brickinventoryapp.data.PasswordRequired
+import ch.brickinventoryapp.data.RightsSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
-import ch.brickinventoryapp.data.TokenTausch
-import ch.brickinventoryapp.data.ZweiterFaktorPflicht
+import ch.brickinventoryapp.data.TokenSwap
+import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.cache.VorschauSpeicher
-import ch.brickinventoryapp.data.cache.Vorwaermung
-import ch.brickinventoryapp.sicherheit.AblageChiffre
+import ch.brickinventoryapp.data.cache.WarmUp
+import ch.brickinventoryapp.sicherheit.StoreCipher
 import ch.brickinventoryapp.sicherheit.Ablageschluessel
-import ch.brickinventoryapp.netz.util.BildHostWaechter
-import ch.brickinventoryapp.sicherheit.VerschluesseltesDateisystem
-import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
-import ch.brickinventoryapp.netz.util.istEigenerBildServer
+import ch.brickinventoryapp.netz.util.ImageHostGuard
+import ch.brickinventoryapp.sicherheit.EncryptedFileSystem
+import ch.brickinventoryapp.sicherheit.CertificateQuestion
+import ch.brickinventoryapp.netz.util.isOwnImageServer
 import ch.brickinventoryapp.data.Verbindungsabwurf
-import ch.brickinventoryapp.sicherheit.SystemWurzeln
+import ch.brickinventoryapp.sicherheit.SystemRoots
 
 /** OkHttp-Clients, Bildlader und Retrofit — alles, was über das Netz geht. */
 @Module
@@ -50,15 +50,15 @@ internal object NetzModule {
         prefs: Netzablagen,
         sessionExpired: SessionExpiredSignal,
         meldungen: MeldungsKanal,
-        frage: ZertifikatsFrage,
-        tausch: TokenTausch,
-        rechte: RechteSignal,
-        pflicht: PasswortPflicht,
-        faktorPflicht: ZweiterFaktorPflicht,
+        frage: CertificateQuestion,
+        tausch: TokenSwap,
+        rights: RightsSignal,
+        pflicht: PasswordRequired,
+        factorRequired: SecondFactorRequired,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context,
-            meldungen = meldungen, frage = frage, rotation = tausch, rechte = rechte, pflicht = pflicht,
-            faktorPflicht = faktorPflicht)
+            meldungen = meldungen, frage = frage, rotation = tausch, rights = rights, pflicht = pflicht,
+            factorRequired = factorRequired)
 
     /**
      * Der Client für die Selbstaktualisierung — bewusst blank: Server, Bearer-Token
@@ -76,14 +76,14 @@ internal object NetzModule {
             // nur zu GitHub über https; OkHttp folgte ihnen sonst zu jedem Host.
             .followRedirects(false)
             .followSslRedirects(false)
-            .addInterceptor(UpdateUmleitungen())
+            .addInterceptor(UpdateRedirects())
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(120, TimeUnit.SECONDS)
             .build()
 
     @Provides
     @Singleton
-    @BildClient
+    @ImageClient
     fun provideImageOkHttpClient(
         // Context für den HTTP-Zwischenspeicher unten — dieselbe Schreibweise
         // wie bei provideImageLoader in dieser Datei.
@@ -91,7 +91,7 @@ internal object NetzModule {
         prefs: Netzablagen,
         sessionExpired: SessionExpiredSignal,
         vorschau: VorschauSpeicher,
-        frage: ZertifikatsFrage,
+        frage: CertificateQuestion,
         ablage: Ablageschluessel,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = false, sessionExpired = sessionExpired, ctx = context, frage = frage)
@@ -105,11 +105,11 @@ internal object NetzModule {
             .addInterceptor(vorschauAbgriff(vorschau))
             // Nur der eigene Server (util/BildHosts.kt); Umleitungen prüft
             // der Wächter selbst, OkHttp folgte ihnen sonst an ihm vorbei.
-            .addInterceptor(BildHostWaechter(
-                eigenerServer = { url ->
-                    istEigenerBildServer(url, prefs.token.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
+            .addInterceptor(ImageHostGuard(
+                ownServer = { url ->
+                    isOwnImageServer(url, prefs.token.serverUrlState.value ?: "", NetworkPolicy.entwicklung)
                 },
-                basisPfad = { NetworkPolicy.basisPfad(prefs.token.serverUrlState.value.orEmpty()).orEmpty() },
+                basePath = { NetworkPolicy.basePath(prefs.token.serverUrlState.value.orEmpty()).orEmpty() },
             ))
             .followRedirects(false)
             // Bild-Downloads drosseln, aber nicht so eng, dass Kacheln verhungern: Dies ist
@@ -123,11 +123,11 @@ internal object NetzModule {
             // HTTP-Zwischenspeicher für Bilder: Für bedingte Anfragen und den Offline-Rückfall
             // braucht es ETag und Ablaufdatum. Verschlüsselt wie Bestand und Antworten, denn die
             // Bilder zeigen, welche Sets jemand besitzt.
-            .cache(context.cacheDir.resolve("image_http_cache").toOkioPath().let { ordner ->
+            .cache(context.cacheDir.resolve("image_http_cache").toOkioPath().let { folder ->
                 okhttp3.Cache(
-                    VerschluesseltesDateisystem(okio.FileSystem.SYSTEM, AblageChiffre { ablage.fuer("bilder") }, "bilder",
-                        VerschluesseltesDateisystem.Streuung(ordner) { ablage.fuer("namen") }),
-                    ordner,
+                    EncryptedFileSystem(okio.FileSystem.SYSTEM, StoreCipher { ablage.fuer("bilder") }, "bilder",
+                        EncryptedFileSystem.Jitter(folder) { ablage.fuer("namen") }),
+                    folder,
                     50L * 1024 * 1024,
                 )
             })
@@ -149,7 +149,7 @@ internal object NetzModule {
             }
             .build()
             // Eigener Dispatcher: Der Abbruch beim Serverwechsel muss ihn eigens kennen.
-            .also { folgtDemServer(prefs, it) }
+            .also { followsTheServer(prefs, it) }
 
     /**
      * Ein ImageLoader für die ganze Laufzeit: In der Activity gebaut, entstand bei
@@ -160,7 +160,7 @@ internal object NetzModule {
     @Singleton
     fun provideImageLoader(
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
-        @BildClient client: OkHttpClient
+        @ImageClient client: OkHttpClient
     ): coil3.ImageLoader =
         coil3.ImageLoader.Builder(context)
             // ── Das Netz ist in Coil 3 ein eigenes Bauteil ──
@@ -199,8 +199,8 @@ internal object NetzModule {
         @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         prefs: Netzablagen,
         sessionExpired: SessionExpiredSignal,
-        frage: ZertifikatsFrage,
-        tausch: TokenTausch,
+        frage: CertificateQuestion,
+        tausch: TokenSwap,
     ): OkHttpClient =
         buildInterceptorClient(prefs, isApiClient = true, sessionExpired = sessionExpired, ctx = context, frage = frage,
             rotation = tausch)
@@ -212,21 +212,21 @@ internal object NetzModule {
     /** Für Abmeldungen, die erst später den Server erreichen (data/Entwertung.kt). */
     @Provides
     @Singleton
-    fun provideEntwerter(
+    fun provideRedeemer(
         prefs: Netzablagen,
-        frage: ZertifikatsFrage,
-    ): Entwerter =
-        Entwerter(buildEntwertungsBasis(prefs, frage), NetworkPolicy.entwicklung,
-            vertrauenFuer = auftragsVertrauenFabrik(prefs.vertrauen))
+        frage: CertificateQuestion,
+    ): Redeemer =
+        Redeemer(buildRedemptionBase(prefs, frage), NetworkPolicy.entwicklung,
+            trustFor = jobTrustFactory(prefs.vertrauen))
 
     /** Für die QR-Anmeldung: Ein `fp` auf eine System-Wurzel gilt ohne Abtippen. */
     @Provides
     @Singleton
-    fun provideSystemWurzeln(): SystemWurzeln = systemWurzeln()
+    fun provideSystemRoots(): SystemRoots = systemRoots()
 
     // Kein unqualifiziertes OkHttpClient-Binding: Es lieferte still den api-Client
     // auch an Bild- und SSE-Wege aus. Wer einen Client braucht, nennt @ApiClient,
-    // @BildClient oder @SseClient.
+    // @ImageClient oder @SseClient.
 
     /** Nach einer Änderung des Vertrauens: Offene Verbindungen trugen das alte. */
     @Provides
@@ -250,7 +250,7 @@ internal object NetzModule {
 internal fun vorschauAbgriff(vorschau: VorschauSpeicher): Interceptor = Interceptor { chain ->
     val anfrage = chain.request()
     val adresse = anfrage.url.toString()
-    if (!vorschau.istVorschau(adresse)) {
+    if (!vorschau.isPreview(adresse)) {
         chain.proceed(anfrage)
     } else {
         // Kein eigenes If-None-Match: OkHttp führt die bedingte Anfrage selbst; ein von
@@ -259,7 +259,7 @@ internal fun vorschauAbgriff(vorschau: VorschauSpeicher): Interceptor = Intercep
         val antwort = try {
             chain.proceed(anfrage)
         } catch (e: java.io.IOException) {
-            vorschauAntwort(anfrage, vorschau.lies(adresse)) ?: throw e
+            previewResponse(anfrage, vorschau.lies(adresse)) ?: throw e
         }
         when {
             antwort.isSuccessful -> {
@@ -274,10 +274,10 @@ internal fun vorschauAbgriff(vorschau: VorschauSpeicher): Interceptor = Intercep
                     // Spekulativ oder gebraucht? Nur die Anfragen des Vorwärmers tragen
                     // das Tag (VorschauVorwaermer); ein vorgewärmtes Bild wird beim
                     // ersten echten Aufruf von selbst zu einem gebrauchten.
-                    val spekulativ = anfrage.tag(
-                        Vorwaermung::class.java
+                    val speculative = anfrage.tag(
+                        WarmUp::class.java
                     ) != null
-                    vorschau.schreibe(adresse, bytes, spekulativ)
+                    vorschau.schreibe(adresse, bytes, speculative)
                 }
                 antwort
             }
@@ -285,7 +285,7 @@ internal fun vorschauAbgriff(vorschau: VorschauSpeicher): Interceptor = Intercep
             // unten, wenn dort nichts lag. Auch das ist ein Fall
             // fuer die Ablage.
             antwort.code == 504 ->
-                vorschauAntwort(anfrage, vorschau.lies(adresse))
+                previewResponse(anfrage, vorschau.lies(adresse))
                     ?.also { antwort.close() } ?: antwort
             else -> antwort
         }
@@ -297,7 +297,7 @@ internal fun vorschauAbgriff(vorschau: VorschauSpeicher): Interceptor = Intercep
  * der HTTP-Zwischenspeicher sie wie jede andere behandeln; `X-Vorschau-Ablage`
  * zeigt im Protokoll, dass sie aus der Ablage kam.
  */
-private fun vorschauAntwort(anfrage: okhttp3.Request, bytes: ByteArray?): okhttp3.Response? {
+private fun previewResponse(anfrage: okhttp3.Request, bytes: ByteArray?): okhttp3.Response? {
     if (bytes == null || bytes.isEmpty()) return null
     return okhttp3.Response.Builder()
         .request(anfrage)

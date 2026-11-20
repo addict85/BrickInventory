@@ -1,17 +1,17 @@
 Gegenprobe: GedrosselteAnsage gibt jeden Wortlaut sofort weiter
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitTest
+Test: ch.brickinventoryapp.app.AccessibilityTest
 Rot: Statusmeldungen sind Live-Regionen und Fortschritt wird gedrosselt angesagt
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ansage.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ansage.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ansage.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Ansage.kt
-@@ -37,7 +37,7 @@ fun GedrosselteAnsage(text: String, abstandMs: Long = ANSAGE_ABSTAND_MS) {
-             ansageFortschritt = aktuell
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Announcement.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Announcement.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Announcement.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Announcement.kt
+@@ -37,7 +37,7 @@ fun ThrottledAnnouncement(text: String, gapMs: Long = ANNOUNCEMENT_GAP_MS) {
+             announcementProgress = aktuell
          }
      }
--    Ansage(ansageFortschritt)
-+    Ansage(text)
+-    Announcement(announcementProgress)
++    Announcement(text)
  }
  
  /** Zehn Sekunden zwischen zwei Ansagen eines laufenden Vorgangs. */

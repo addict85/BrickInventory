@@ -34,13 +34,13 @@ data class ChartBounds(
 }
 
 /** Was TalkBack je Linie sagt: Zeitraum, Anfangs- und Endwert, Tief und Hoch. */
-data class LinienZusammenfassung(
+data class LinesSummary(
     val zustand: Zustand,
     val von: String,
     val bis: String,
     val anfang: Double,
     val ende: Double,
-    val tief: Double,
+    val deep: Double,
     val hoch: Double,
 )
 
@@ -53,10 +53,10 @@ object PriceChartMath {
     fun zusammenfassung(
         lines: List<ChartLine>,
         locale: java.util.Locale = appNumberLocale(),
-    ): List<LinienZusammenfassung> = lines.map { l ->
+    ): List<LinesSummary> = lines.map { l ->
         val erst = l.points.minBy { it.day }
         val letzt = l.points.maxBy { it.day }
-        LinienZusammenfassung(l.condition, tagText(erst.day, locale), tagText(letzt.day, locale), erst.value, letzt.value,
+        LinesSummary(l.condition, tagText(erst.day, locale), tagText(letzt.day, locale), erst.value, letzt.value,
             l.points.minOf { it.value }, l.points.maxOf { it.value })
     }
 
@@ -89,8 +89,8 @@ object PriceChartMath {
         return series.mapNotNull { s ->
             val start = s.firstRealIndex.coerceIn(0, s.values.size)
             val pts = s.values.drop(start)
-                .filter { it.preis.positiv }
-                .mapNotNull { p -> dayNumber(p.x)?.let { ChartPointXY(it, p.preis.alsDouble()) } }
+                .filter { it.preis.positive }
+                .mapNotNull { p -> dayNumber(p.x)?.let { ChartPointXY(it, p.preis.asDouble()) } }
             if (pts.isEmpty()) null else ChartLine(Zustand.aus(s.name) ?: Zustand.NEU, pts)
         }
     }
@@ -126,9 +126,9 @@ object PriceChartMath {
      */
     fun schritt(roh: Double): Double {
         if (roh <= 1.0) return 1.0
-        val potenz = Math.pow(10.0, kotlin.math.floor(kotlin.math.log10(roh)))
-        val faktor = listOf(1.0, 2.0, 5.0, 10.0).first { it * potenz >= roh }
-        return faktor * potenz
+        val power = Math.pow(10.0, kotlin.math.floor(kotlin.math.log10(roh)))
+        val faktor = listOf(1.0, 2.0, 5.0, 10.0).first { it * power >= roh }
+        return faktor * power
     }
 
     /** Drei Beschriftungen der Wertachse: unten, Mitte, oben — alle drei runde Werte. */

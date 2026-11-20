@@ -1,17 +1,17 @@
 Gegenprobe: das Angebot fragt nicht mehr nach der Frische, auch eine zurückgesetzte Beschreibung bietet an (Stand vor sec12 H2)
 Modul: core-update
-Test: ch.brickinventoryapp.update.UpdateFrischeTest
+Test: ch.brickinventoryapp.update.UpdateFreshTest
 Rot: aus einer zurueckgesetzten Beschreibung wird nichts angeboten
 
-diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
---- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
-+++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
 @@ -36,7 +36,7 @@
-  * Fassung stehen. Den Hinweis, dass es Neueres geben könnte, gibt [quelleVeraltet].
+  * Fassung stehen. Den Hinweis, dass es Neueres geben könnte, gibt [sourceStale].
   */
- fun anzubietendeFassung(b: UpdateBeschreibung, frische: UpdateFrische, laufend: Int): UpdateBeschreibung? =
--    b.takeIf { frische != UpdateFrische.ZURUECKGESETZT && istNeuer(laufend, it.versionCode) }
-+    b.takeIf { istNeuer(laufend, it.versionCode) }
+ fun offerableVersion(b: UpdateBeschreibung, frische: UpdateFresh, laufend: Int): UpdateBeschreibung? =
+-    b.takeIf { frische != UpdateFresh.ZURUECKGESETZT && isNew(laufend, it.versionCode) }
++    b.takeIf { isNew(laufend, it.versionCode) }
  
  /**
   * Eine echt signierte, aber alte Beschreibung hält Updates still zurück: Ihre

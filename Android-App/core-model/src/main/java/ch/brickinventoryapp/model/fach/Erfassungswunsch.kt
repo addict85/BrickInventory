@@ -20,14 +20,14 @@ data class Erfassungswunsch(
 
 /**
  * Was der Server zu einem erfassten Set meldet. [vorhanden]: Es stand schon im
- * Blickfeld, geschrieben wurde nichts. [ergaenzungAusstehend]: Name, Bild und Preise
+ * Blickfeld, geschrieben wurde nichts. [supplementPending]: Name, Bild und Preise
  * holt ein Auftrag erst noch; wer die Galerie früher nachlädt, sieht sie nicht.
  */
-data class SetErfasst(
+data class SetRecorded(
     val nummer: String?,
     val name: String? = null,
     val angelegt: Boolean = false,
     val vorhanden: Boolean = false,
     val katalogOffen: Boolean = false,
-    val ergaenzungAusstehend: Boolean = false,
+    val supplementPending: Boolean = false,
 )

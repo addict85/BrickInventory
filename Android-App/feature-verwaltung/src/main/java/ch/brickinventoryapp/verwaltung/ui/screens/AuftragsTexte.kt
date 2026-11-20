@@ -1,23 +1,23 @@
 package ch.brickinventoryapp.verwaltung.ui.screens
 
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.fach.AuftragStatus
+import ch.brickinventoryapp.model.fach.JobStatus
 
 // Die Texte zu Aufträgen gehören zur Anzeige: Das UI-Modell in core-model kennt
 // keine Android-Ressourcen.
 
-/** Text eines Auftragszustands; ERLEDIGT und UNBEKANNT zeigen keinen. */
-internal val AuftragStatus.statusText: Int?
+/** Text eines Auftragszustands; DONE und UNBEKANNT zeigen keinen. */
+internal val JobStatus.statusText: Int?
     get() = when (this) {
-        AuftragStatus.OFFEN -> R.string.hintergrund_offen
-        AuftragStatus.LAEUFT -> R.string.hintergrund_laeuft
-        AuftragStatus.FEHLER -> R.string.hintergrund_fehler
-        AuftragStatus.ABGEBROCHEN -> R.string.hintergrund_abgebrochen
-        AuftragStatus.ERLEDIGT, AuftragStatus.UNBEKANNT -> null
+        JobStatus.OFFEN -> R.string.hintergrund_offen
+        JobStatus.LAEUFT -> R.string.hintergrund_laeuft
+        JobStatus.FEHLER -> R.string.hintergrund_fehler
+        JobStatus.ABGEBROCHEN -> R.string.hintergrund_abgebrochen
+        JobStatus.DONE, JobStatus.UNBEKANNT -> null
     }
 
 /** Die Namen der Arten wie in der Webapp (monitor.art.*); unbekannte zeigt die Liste roh. */
-internal fun auftragsArtText(art: String): Int? = when (art) {
+internal fun jobKindText(art: String): Int? = when (art) {
     "nacharbeit" -> R.string.art_nacharbeit
     "bilder" -> R.string.art_bilder
     "pdf" -> R.string.art_pdf

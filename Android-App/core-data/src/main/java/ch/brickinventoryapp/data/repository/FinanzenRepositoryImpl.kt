@@ -3,17 +3,17 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.model.fach.BewertungAnsicht
 import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
 import ch.brickinventoryapp.model.fach.GewinnAnsicht
-import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
-import ch.brickinventoryapp.model.fach.PreisverlaufAnsicht
-import ch.brickinventoryapp.model.fach.SetPreisAnsicht
+import ch.brickinventoryapp.model.fach.MetricsView
+import ch.brickinventoryapp.model.fach.PriceHistoryView
+import ch.brickinventoryapp.model.fach.SetPriceView
 import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
-import ch.brickinventoryapp.model.fach.WertverlaufAnsicht
+import ch.brickinventoryapp.model.fach.ValueHistoryView
 import ch.brickinventoryapp.vertrag.PriceHistoryResponse
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 
 import ch.brickinventoryapp.model.fach.Kontoauswahl
-import ch.brickinventoryapp.data.api.FinanzenApi
-import ch.brickinventoryapp.offline.Faecher
+import ch.brickinventoryapp.data.api.FinancesApi
+import ch.brickinventoryapp.offline.Slots
 import ch.brickinventoryapp.offline.Offlineablage
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -23,43 +23,43 @@ import javax.inject.Singleton
  */
 @Singleton
 class FinanzenRepositoryImpl @Inject constructor(
-    private val api: FinanzenApi,
+    private val api: FinancesApi,
     private val ablage: Offlineablage,
-) : FinanzenRepository {
+) : FinancesRepository {
 
-    override suspend fun getSetPrice(setNumber: String): Ergebnis<SetPreisAnsicht> =
-        sicherAufrufen { api.getSetPrice(setNumber) }.abgebildet { it.alsAnsicht() }
+    override suspend fun getSetPrice(setNumber: String): Ergebnis<SetPriceView> =
+        sicherAufrufen { api.getSetPrice(setNumber) }.shown { it.alsAnsicht() }
 
-    override suspend fun getSetPriceHistory(setNumber: String): Ergebnis<PreisverlaufAnsicht> =
+    override suspend fun getSetPriceHistory(setNumber: String): Ergebnis<PriceHistoryView> =
         sicherAufrufen { api.getSetPriceHistory(setNumber) }.verlauf()
 
-    override suspend fun getPartPriceHistory(partNumber: String, colorId: Int): Ergebnis<PreisverlaufAnsicht> =
+    override suspend fun getPartPriceHistory(partNumber: String, colorId: Int): Ergebnis<PriceHistoryView> =
         sicherAufrufen { api.getPartPriceHistory(partNumber, colorId) }.verlauf()
 
-    override suspend fun getFigPriceHistory(figNumber: String): Ergebnis<PreisverlaufAnsicht> =
+    override suspend fun getFigPriceHistory(figNumber: String): Ergebnis<PriceHistoryView> =
         sicherAufrufen { api.getFigPriceHistory(figNumber) }.verlauf()
 
     override suspend fun getPartsValuation(konten: Kontoauswahl?): Ergebnis<TeileBewertungAnsicht> =
-        sicherAufrufen { api.getPartsValuation(konten?.anfrage) }.abgebildet { it.alsAnsicht() }
+        sicherAufrufen { api.getPartsValuation(konten?.anfrage) }.shown { it.alsAnsicht() }
 
     override suspend fun getMinifigsValuation(konten: Kontoauswahl?): Ergebnis<FigurenBewertungAnsicht> =
-        sicherAufrufen { api.getMinifigsValuation(konten?.anfrage) }.abgebildet { it.alsAnsicht() }
+        sicherAufrufen { api.getMinifigsValuation(konten?.anfrage) }.shown { it.alsAnsicht() }
 
     override suspend fun getValuation(konten: Kontoauswahl?): Ergebnis<BewertungAnsicht> =
-        sicherAufrufen { api.getValuation(konten?.anfrage) }.abgebildet { it.alsAnsicht() }
+        sicherAufrufen { api.getValuation(konten?.anfrage) }.shown { it.alsAnsicht() }
 
     override suspend fun getPnl(konten: Kontoauswahl?): Ergebnis<GewinnAnsicht> =
-        sicherAufrufen { api.getPnl(konten?.anfrage) }.abgebildet { it.alsAnsicht() }
+        sicherAufrufen { api.getPnl(konten?.anfrage) }.shown { it.alsAnsicht() }
 
-    override suspend fun getPortfolioHistory(period: String, konten: Kontoauswahl?): Ergebnis<WertverlaufAnsicht> =
-        sicherAufrufen { api.getPortfolioHistory(period, konten?.anfrage) }.abgebildet { it.alsAnsicht() }
+    override suspend fun getPortfolioHistory(period: String, konten: Kontoauswahl?): Ergebnis<ValueHistoryView> =
+        sicherAufrufen { api.getPortfolioHistory(period, konten?.anfrage) }.shown { it.alsAnsicht() }
 
-    override suspend fun getStats(konten: Kontoauswahl?): Ergebnis<KennzahlenAnsicht?> =
+    override suspend fun getStats(konten: Kontoauswahl?): Ergebnis<MetricsView?> =
         (if (konten == null)
-            ablage.abgeglichenEinzeln(Faecher.KENNZAHLEN) { sicherAufrufen { api.getStats() }.abgebildet { it.stats?.alsAnsicht() } }
-        else sicherAufrufen { api.getStats(konten.anfrage) }.abgebildet { it.stats?.alsAnsicht() })
+            ablage.reconciledSingle(Slots.KENNZAHLEN) { sicherAufrufen { api.getStats() }.shown { it.stats?.alsAnsicht() } }
+        else sicherAufrufen { api.getStats(konten.anfrage) }.shown { it.stats?.alsAnsicht() })
 }
 
 /** Ein Verlauf mit success: false hat keine Punkte, die etwas sagten. */
-private fun Ergebnis<PriceHistoryResponse>.verlauf(): Ergebnis<PreisverlaufAnsicht> =
-    zugesagt({ it.success }, { null }) { it.alsAnsicht() }
+private fun Ergebnis<PriceHistoryResponse>.verlauf(): Ergebnis<PriceHistoryView> =
+    promised({ it.success }, { null }) { it.alsAnsicht() }

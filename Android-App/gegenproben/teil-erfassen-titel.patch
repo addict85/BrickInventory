@@ -1,6 +1,6 @@
 Gegenprobe: Titel des Teil-Dialogs wieder „Teil erfassen“
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaecheEinheitlichTest
+Test: ch.brickinventoryapp.app.UiUniformTest
 Rot: Texte sagen hinzufuegen und Preisvergleich
 
 diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml

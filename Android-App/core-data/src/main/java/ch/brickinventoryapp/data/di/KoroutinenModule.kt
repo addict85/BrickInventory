@@ -33,7 +33,7 @@ internal object KoroutinenModule {
     @Provides
     @Singleton
     @ApplicationScope
-    fun anwendungsBereich(@Dispatcher(BrickDispatchers.IO) io: CoroutineDispatcher): CoroutineScope =
+    fun applicationArea(@Dispatcher(BrickDispatchers.IO) io: CoroutineDispatcher): CoroutineScope =
         CoroutineScope(SupervisorJob() + io)
 }
 
@@ -41,8 +41,8 @@ internal object KoroutinenModule {
  * Für Klassen, die Android selbst anlegt (Application, Dienste) und die darum
  * per Feld statt per Konstruktor beliefert werden: ein Typ ohne Qualifier.
  */
-class Anwendungsbereiche @Inject constructor(
-    @param:ApplicationScope val anwendung: CoroutineScope,
+class Scopes @Inject constructor(
+    @param:ApplicationScope val application: CoroutineScope,
     @param:Dispatcher(BrickDispatchers.IO) val io: CoroutineDispatcher,
     @param:Dispatcher(BrickDispatchers.Main) val haupt: CoroutineDispatcher,
 )

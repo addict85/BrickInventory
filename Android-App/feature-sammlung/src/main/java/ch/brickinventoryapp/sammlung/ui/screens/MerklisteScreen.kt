@@ -2,8 +2,8 @@ package ch.brickinventoryapp.sammlung.ui.screens
 
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
-import ch.brickinventoryapp.model.ui.fehlerArt
-import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.errorKind
+import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Merksortierung
 import ch.brickinventoryapp.model.fach.Zustand
@@ -14,23 +14,23 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.LaunchedEffect
 import ch.brickinventoryapp.zustand.ui.LagerUiState
-import ch.brickinventoryapp.sammlung.ui.MerkpostenDetailUiState
-import ch.brickinventoryapp.sammlung.ui.MerklisteUiState
-import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
+import ch.brickinventoryapp.sammlung.ui.WantedItemDetailUiState
+import ch.brickinventoryapp.sammlung.ui.WantedUiState
+import ch.brickinventoryapp.zustand.ui.ScopeUiState
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteAktionen
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.WantedItemView
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items
-import ch.brickinventoryapp.ui.components.Bewegt
-import ch.brickinventoryapp.ui.components.HinweisText
-import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
-import ch.brickinventoryapp.ui.components.Ladezustand
-import ch.brickinventoryapp.ui.Ladeanzeige
-import ch.brickinventoryapp.ui.ladeanzeige
+import ch.brickinventoryapp.ui.components.Moved
+import ch.brickinventoryapp.ui.components.HintText
+import ch.brickinventoryapp.ui.components.NoHitsHint
+import ch.brickinventoryapp.ui.components.LoadState
+import ch.brickinventoryapp.ui.LoadingIndicator
+import ch.brickinventoryapp.ui.loadingIndicator
 import ch.brickinventoryapp.ui.satz
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.Icons
@@ -48,15 +48,15 @@ import ch.brickinventoryapp.sammlung.ui.viewmodel.MerklisteViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.ui.components.BarcodeSymbol
-import ch.brickinventoryapp.ui.components.ErfassenFab
-import ch.brickinventoryapp.ui.components.FabPlatz
-import ch.brickinventoryapp.ui.components.KnopfStapel
-import ch.brickinventoryapp.ui.components.ListeUndDetail
-import ch.brickinventoryapp.ui.components.ScanKnopf
+import ch.brickinventoryapp.ui.components.AddFab
+import ch.brickinventoryapp.ui.components.FabSpace
+import ch.brickinventoryapp.ui.components.ButtonStack
+import ch.brickinventoryapp.ui.components.ListAndDetail
+import ch.brickinventoryapp.ui.components.ScanButton
 import ch.brickinventoryapp.ui.components.AuswahlChip
-import ch.brickinventoryapp.ui.components.SortierMenue
-import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.gemeinsam.ui.ScopeFilterZeile
+import ch.brickinventoryapp.ui.components.SortierMenu
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.gemeinsam.ui.ScopeFilterRow
 import ch.brickinventoryapp.ui.components.Suchfeld
 
 /**
@@ -64,33 +64,33 @@ import ch.brickinventoryapp.ui.components.Suchfeld
  * gebraucht und bei zwei Konten dastehen; mit der Nummer allein verlöre Compose
  * die Zuordnung.
  */
-private fun merkpostenSchluessel(w: MerkpostenAnsicht) = "${w.setNumber}|${w.condition.kennung}|${w.userId}"
+private fun wantedItemKey(w: WantedItemView) = "${w.setNumber}|${w.condition.kennung}|${w.userId}"
 
 /** Was Merkliste und Merkposten-Detail zeigen; die Route sammelt es aus den Flüssen. */
 internal data class MerklisteZustand(
     val appState: AppUiState,
-    val blick: BlickfeldUiState,
-    val liste: MerklisteUiState,
-    val detail: MerkpostenDetailUiState,
+    val blick: ScopeUiState,
+    val liste: WantedUiState,
+    val detail: WantedItemDetailUiState,
     val lagerZustand: LagerUiState,
 )
 
 /** Merkliste und Detail am Navigationsziel: ein ViewModel für beide Hälften. */
 @Composable
-fun MerklisteRoute(
+fun WantedRoute(
     vm: MerklisteViewModel,
     imageLoader: coil3.ImageLoader,
     onScan: () -> Unit,
-    onOeffnenEinzeln: (String, Zustand) -> Unit,
-    nebeneinander: Boolean = false,
+    onOpenSingle: (String, Zustand) -> Unit,
+    sideBySide: Boolean = false,
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val liste by vm.merklisteState.collectAsStateWithLifecycle()
-    val detail by vm.merkpostenDetailState.collectAsStateWithLifecycle()
-    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    val liste by vm.wantedState.collectAsStateWithLifecycle()
+    val detail by vm.wantedItemDetailState.collectAsStateWithLifecycle()
+    val lagerZustand by vm.storageState.collectAsStateWithLifecycle()
     val ansicht = MerklisteZustand(appState, blick, liste, detail, lagerZustand)
-    MerklisteUndDetail(ansicht, vm, imageLoader, nebeneinander, onScan, onOeffnenEinzeln)
+    WantedAndDetail(ansicht, vm, imageLoader, sideBySide, onScan, onOpenSingle)
 }
 
 /**
@@ -98,7 +98,7 @@ fun MerklisteRoute(
  * ohne Rückgängig endet — auch wenn sie verschwindet, weil man die Merkliste verlässt.
  */
 @Composable
-fun MerkpostenRueckgaengigRoute(vm: MerklisteViewModel, snackbarHostState: SnackbarHostState) {
+fun WantedItemUndoRoute(vm: MerklisteViewModel, snackbarHostState: SnackbarHostState) {
     val vorgemerkt by vm.vorgemerkt.collectAsStateWithLifecycle()
     val text = vorgemerkt?.let { stringResource(R.string.wanted_deleted, it.name) }
     val rueckgaengig = stringResource(R.string.common_undo)
@@ -110,14 +110,14 @@ fun MerkpostenRueckgaengigRoute(vm: MerklisteViewModel, snackbarHostState: Snack
                 duration = SnackbarDuration.Long) ==
                 SnackbarResult.ActionPerformed
         } finally {
-            if (zurueck) vm.merkpostenRueckgaengig(v) else vm.merkpostenLoeschenAusfuehren(v)
+            if (zurueck) vm.wantedItemUndo(v) else vm.executeWantedItemDelete(v)
         }
     }
 }
 
 /** Das Merkposten-Detail als eigene Seite (Telefon). */
 @Composable
-internal fun MerkpostenDetailRoute(
+internal fun WantedItemDetailRoute(
     vm: MerklisteViewModel,
     setNumber: String,
     condition: Zustand,
@@ -126,9 +126,9 @@ internal fun MerkpostenDetailRoute(
 ) {
     val appState by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    val liste by vm.merklisteState.collectAsStateWithLifecycle()
-    val detail by remember(setNumber) { vm.merkpostenDetailVon(setNumber) }.collectAsStateWithLifecycle()
-    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    val liste by vm.wantedState.collectAsStateWithLifecycle()
+    val detail by remember(setNumber) { vm.wantedItemDetailOf(setNumber) }.collectAsStateWithLifecycle()
+    val lagerZustand by vm.storageState.collectAsStateWithLifecycle()
     val ansicht = MerklisteZustand(appState, blick, liste, detail, lagerZustand)
     MerkpostenDetailScreen(ansicht, vm, setNumber, condition, imageLoader, onBack)
 }
@@ -156,34 +156,34 @@ internal fun MerklisteScreen(
 
     // Übernommen wird über das Detail (MerkpostenDetailScreen), wo Anzahl, Kaufpreis
     // und Zustand zur Wahl stehen; die Zeile zeigt dafür den Marktpreis.
-    var maskeOffen by rememberSaveable { mutableStateOf(false) }
+    var openMask by rememberSaveable { mutableStateOf(false) }
 
     // ── Der Filter ──
     //
     // Dieselben Bausteine in derselben Reihenfolge wie in der Galerie: Kontofilter,
     // Suchfeld, Chips. Kein Lagerortfilter — was man nicht hat, liegt nirgends; dafür
     // der Zustand, weil dasselbe Set neu und gebraucht dastehen kann.
-    val scopeModus = blick.scopeModes[ScopeFilter.View.MERKLISTE]
+    val scopeMode = blick.scopeModes[ScopeFilter.View.MERKLISTE]
         ?: ScopeFilter.ALL
     // Das Eingabefeld haelt seinen Text selbst (Tippen bleibt fluessig); die
     // Entprellung liegt im ViewModel. Wechselt der Wert von aussen, zieht das
     // Feld nach — dieselbe Zeile wie in der Galerie.
-    var sucheInput by remember(zustand.query) { mutableStateOf(zustand.query) }
+    var searchInput by remember(zustand.query) { mutableStateOf(zustand.query) }
 
     // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die Liste,
     // „nichts gefunden“ über den Filter; ein Ladefehler eine dritte.
     val gefiltert = zustand.query.isNotBlank() ||
-        zustand.zustandFilter != null ||
-        scopeModus != ScopeFilter.ALL
-    val fehler = zustand.abruf.fehlerMeldung?.satz()
-    val anzeige = ladeanzeige(zustand.merkposten.isNotEmpty(), zustand.abruf.laedt, fehler, gefiltert)
+        zustand.stateFilter != null ||
+        scopeMode != ScopeFilter.ALL
+    val fehler = zustand.abruf.errorMessage?.satz()
+    val anzeige = loadingIndicator(zustand.merkposten.isNotEmpty(), zustand.abruf.laedt, fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
         // Volle Breite wie jedes Raster (Lesebreite.kt): Mittig auf 840 dp stand der Preis
         // auf dem Tablet 1200 px vom Titel entfernt; im Raster bleibt er neben ihm.
         Column(Modifier.fillMaxSize()) {
-            ScopeFilterZeile(
+            ScopeFilterRow(
                 members  = blick.householdMembers,
-                current  = scopeModus,
+                current  = scopeMode,
                 onSelect = { aktionen.setScope(ScopeFilter.View.MERKLISTE, it) },
             )
 
@@ -191,76 +191,76 @@ internal fun MerklisteScreen(
             // Fehlerzustand weder Suche noch Filter — es gibt nichts zu durchsuchen.
             // Ohne Merkposten weder Suche noch Filter: Die Leermeldung bietet Merken und
             // Scannen an, ein zweiter Scan-Knopf darüber wäre derselbe Weg noch einmal.
-            val mitKopf = anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER
-            if (mitKopf) Row(
+            val withHeader = anzeige != LoadingIndicator.FEHLER && anzeige != LoadingIndicator.LEER
+            if (withHeader) Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Suchfeld(
-                    wert = sucheInput,
-                    onWert = { sucheInput = it; aktionen.setzeMerklisteSuche(it) },
+                    wert = searchInput,
+                    onValue = { searchInput = it; aktionen.setWantedSearch(it) },
                     platzhalter = stringResource(R.string.wanted_search),
                     modifier = Modifier.weight(1f),
                 )
-                SortierMenue(
+                SortierMenu(
                     optionen = Merksortierung.entries.map { it to it.beschriftung() },
-                    gewaehlt = zustand.sortierung,
-                    onWahl = { aktionen.setzeMerklisteSortierung(it) },
-                    modifier = Modifier.padding(end = Abstaende.winzig),
-                    vorgabe = Merksortierung.VORGABE,
+                    gewaehlt = zustand.sorting,
+                    onWahl = { aktionen.setWantedSorting(it) },
+                    modifier = Modifier.padding(end = Abstaende.tiny),
+                    vorgabe = Merksortierung.DEFAULT,
                 )
-                ScanKnopf({ onScan() }, Modifier.padding(end = 14.dp))
+                ScanButton({ onScan() }, Modifier.padding(end = 14.dp))
             }
 
             // Der Zustand schränkt die Liste ein: ein Filter, also Chips wie in Galerie und
             // Finanzen; Segmente stehen nur für Ansichten (Sets | Teile | Minifiguren).
-            if (mitKopf) ZustandFilterChips(
-                gewaehlt = zustand.zustandFilter,
-                onWahl = { aktionen.setzeMerklisteZustand(it) },
-                modifier = Modifier.padding(horizontal = Abstaende.rand).padding(bottom = Abstaende.klein),
+            if (withHeader) StateFilterChips(
+                gewaehlt = zustand.stateFilter,
+                onWahl = { aktionen.setWantedState(it) },
+                modifier = Modifier.padding(horizontal = Abstaende.edge).padding(bottom = Abstaende.klein),
             )
 
-            Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.rand)) {
-                Ladezustand(
+            Column(Modifier.fillMaxSize().padding(horizontal = Abstaende.edge)) {
+                LoadState(
                     anzeige = anzeige,
                     fehler = fehler,
-                    onErneut = { aktionen.ladeMerkliste() },
+                    onErneut = { aktionen.loadWanted() },
                     // Wie die leere Galerie: sagen, wozu die Liste da ist, und beide Wege
                     // zum ersten Eintrag anbieten — dieselben wie die Knöpfe unten rechts.
                     leer = {
-                        HinweisText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty),
+                        HintText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty),
                             stringResource(R.string.wanted_empty_hint))
-                        KnopfStapel {
-                            Button(onClick = { maskeOffen = true }, modifier = Modifier.fillMaxWidth()) {
-                                Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
+                        ButtonStack {
+                            Button(onClick = { openMask = true }, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
                                 Spacer(Modifier.width(Abstaende.klein))
                                 Text(stringResource(R.string.wanted_add_first))
                             }
                             OutlinedButton(onClick = { onScan() }, modifier = Modifier.fillMaxWidth(), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-                                Icon(BarcodeSymbol, null, Modifier.size(mitSchrift(18.dp)))
+                                Icon(BarcodeSymbol, null, Modifier.size(withFont(18.dp)))
                                 Spacer(Modifier.width(Abstaende.klein))
                                 Text(stringResource(R.string.gallery_scan_barcode))
                             }
                         }
                     },
-                    keineTreffer = { KeinTrefferHinweis(stringResource(R.string.wanted_no_results)) },
-                    fehlerKlasse = zustand.abruf.fehlerArt,
+                    noHits = { NoHitsHint(stringResource(R.string.wanted_no_results)) },
+                    errorClass = zustand.abruf.errorKind,
                 ) {
                     BoxWithConstraints {
-                    val mehrspaltig = maxWidth >= MERKLISTE_SPALTE * 2
+                    val multiColumn = maxWidth >= WANTED_COLUMN * 2
                     LazyVerticalGrid(
-                        columns = GridCells.Adaptive(MERKLISTE_SPALTE),
+                        columns = GridCells.Adaptive(WANTED_COLUMN),
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         // Platz für den Erfassen-Knopf: Ohne ihn verdeckt er die letzte Zeile.
-                        contentPadding = PaddingValues(bottom = FabPlatz),
+                        contentPadding = PaddingValues(bottom = FabSpace),
                     ) {
-                        items(zustand.merkposten, key = ::merkpostenSchluessel) { w ->
-                            Bewegt {
-                                MerkpostenZeile(w, appState.serverUrl, imageLoader,
+                        items(zustand.merkposten, key = ::wantedItemKey) { w ->
+                            Moved {
+                                WantedItemRow(w, appState.serverUrl, imageLoader,
                                     gewaehlt = gewaehlt == w.setNumber to w.condition,
-                                    onOeffnen = { onOeffnen(w.setNumber, w.condition) }, mehrspaltig = mehrspaltig)
+                                    onOeffnen = { onOeffnen(w.setNumber, w.condition) }, multiColumn = multiColumn)
                             }
                         }
                     }
@@ -271,20 +271,20 @@ internal fun MerklisteScreen(
 
         // Ein Knopf wie in der Galerie; Scannen steht neben der Suche. Im Fehlerzustand
         // nicht, und leer auch nicht: Dort steht „Set merken“ schon mitten im Bild.
-        if (anzeige != Ladeanzeige.FEHLER && anzeige != Ladeanzeige.LEER) ErfassenFab(
-            stringResource(R.string.wanted_add_title), { maskeOffen = true },
+        if (anzeige != LoadingIndicator.FEHLER && anzeige != LoadingIndicator.LEER) AddFab(
+            stringResource(R.string.wanted_add_title), { openMask = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
         )
     }
 
-    if (maskeOffen) {
-        MerkpostenErfassenDialog(
+    if (openMask) {
+        WantedItemAddDialog(
             householdMembers = blick.householdMembers,
             defaultCondition = appState.userDefaultCondition ?: Zustand.NEU,
-            onDismiss = { maskeOffen = false },
-            onAnlegen = { nummer, zustandWahl, besitzer ->
-                aktionen.legeMerkpostenAn(nummer, zustandWahl, besitzer)
-                maskeOffen = false
+            onDismiss = { openMask = false },
+            createOn = { nummer, stateChoice, besitzer ->
+                aktionen.legeMerkpostenAn(nummer, stateChoice, besitzer)
+                openMask = false
             },
         )
     }
@@ -292,33 +292,33 @@ internal fun MerklisteScreen(
 
 /**
  * Die Merkliste mit dem Detail des geöffneten Merkpostens daneben, wenn
- * [nebeneinander] (breites Fenster, listeUndDetail()); sonst öffnet [onOeffnenEinzeln]
+ * [sideBySide] (breites Fenster, listAndDetail()); sonst öffnet [onOpenSingle]
  * das Detail als eigene Seite. Ein Zustand für beide Hälften: dasselbe ViewModel.
  */
 @Composable
-internal fun MerklisteUndDetail(
+internal fun WantedAndDetail(
     ansicht: MerklisteZustand,
     aktionen: MerklisteAktionen,
     imageLoader: coil3.ImageLoader,
-    nebeneinander: Boolean,
+    sideBySide: Boolean,
     onScan: () -> Unit,
-    onOeffnenEinzeln: (String, Zustand) -> Unit,
+    onOpenSingle: (String, Zustand) -> Unit,
 ) {
     var offen by rememberSaveable { mutableStateOf<List<String>?>(null) }
-    val auswahl = offen?.let { it[0] to (Zustand.aus(it[1]) ?: Zustand.NEU) }
+    val selection = offen?.let { it[0] to (Zustand.aus(it[1]) ?: Zustand.NEU) }
     val liste: @Composable () -> Unit = {
         MerklisteScreen(ansicht = ansicht, aktionen = aktionen, imageLoader = imageLoader, onScan = onScan,
-            onOeffnen = { sn, z -> if (nebeneinander) offen = listOf(sn, z.kennung) else onOeffnenEinzeln(sn, z) },
-            gewaehlt = auswahl.takeIf { nebeneinander })
+            onOeffnen = { sn, z -> if (sideBySide) offen = listOf(sn, z.kennung) else onOpenSingle(sn, z) },
+            gewaehlt = selection.takeIf { sideBySide })
     }
-    if (nebeneinander && auswahl != null) {
-        ListeUndDetail(
+    if (sideBySide && selection != null) {
+        ListAndDetail(
             liste = liste,
             detail = {
                 // key: Ein anderer Merkposten ist ein anderes Detail (Dialoge, Zoom zu).
-                androidx.compose.runtime.key(auswahl) {
-                    val detail by remember { aktionen.merkpostenDetailVon(auswahl.first) }.collectAsStateWithLifecycle()
-                    MerkpostenDetailScreen(ansicht = ansicht.copy(detail = detail), aktionen = aktionen, setNumber = auswahl.first, condition = auswahl.second,
+                androidx.compose.runtime.key(selection) {
+                    val detail by remember { aktionen.wantedItemDetailOf(selection.first) }.collectAsStateWithLifecycle()
+                    MerkpostenDetailScreen(ansicht = ansicht.copy(detail = detail), aktionen = aktionen, setNumber = selection.first, condition = selection.second,
                         imageLoader = imageLoader, onBack = { offen = null })
                 }
             },
@@ -329,7 +329,7 @@ internal fun MerklisteUndDetail(
 /** Alle | Neu | Gebraucht als Filterchips; bei grosser Schrift brechen sie um statt abzuschneiden. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ZustandFilterChips(gewaehlt: Zustand?, onWahl: (Zustand?) -> Unit, modifier: Modifier = Modifier) {
+private fun StateFilterChips(gewaehlt: Zustand?, onWahl: (Zustand?) -> Unit, modifier: Modifier = Modifier) {
     val optionen = listOf(null to R.string.filter_condition_all, Zustand.NEU to R.string.condition_new,
         Zustand.GEBRAUCHT to R.string.condition_used)
     FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {

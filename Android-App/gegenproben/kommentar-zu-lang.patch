@@ -19,4 +19,4 @@ index d2ef040..fb81c34 100644
 +// Sechs.
  @HiltViewModel
  class AppViewModel @Inject constructor(
-     private val sitzungsDienst: SitzungsRepository,
+     private val sessionService: SitzungsRepository,

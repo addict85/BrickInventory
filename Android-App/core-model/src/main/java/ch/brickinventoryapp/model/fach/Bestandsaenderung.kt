@@ -14,7 +14,7 @@ data class Stueckaenderung(
     val schritt: Int? = null,
     val stueckpreis: Geld? = null,
     val zustand: Zustand? = null,
-    val blNummer: String? = null,
+    val blNumber: String? = null,
 )
 
 /**
@@ -24,8 +24,8 @@ data class Stueckaenderung(
 data class Setzusammenfassung(
     val setNumber: String,
     val zustand: Zustand,
-    val zustaende: List<Zustand>,
+    val states: List<Zustand>,
     val gebraucht: Int,
-    val hoechsterKaufpreis: Geld?,
-    val kaufpreisSchnitt: Geld?,
+    val highestPurchasePrice: Geld?,
+    val purchasePriceCut: Geld?,
 )

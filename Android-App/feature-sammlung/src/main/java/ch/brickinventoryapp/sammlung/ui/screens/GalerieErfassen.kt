@@ -2,7 +2,7 @@ package ch.brickinventoryapp.sammlung.ui.screens
 
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.model.fach.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.MemberView
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -18,14 +18,14 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.titel
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.ui.components.ansagen
-import ch.brickinventoryapp.ui.components.ErfassenDialog
-import ch.brickinventoryapp.gemeinsam.ui.AnzahlFeld
-import ch.brickinventoryapp.gemeinsam.ui.KaufpreisFeld
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.AddDialog
+import ch.brickinventoryapp.gemeinsam.ui.CountField
+import ch.brickinventoryapp.gemeinsam.ui.PurchasePriceField
 import ch.brickinventoryapp.gemeinsam.ui.LagerortErfassung
 import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
-import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
+import ch.brickinventoryapp.gemeinsam.ui.entryInvalid
 
 /**
  * Ein Set erfassen. Zur Wahl steht der VORRAT an Lagerorten, nicht die belegten:
@@ -33,10 +33,10 @@ import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
  * ein leeres Regal zur Wahl stehen.
  */
 @Composable
-internal fun GalerieErfassen(zustand: GalerieZustand, ereignisse: GalerieEreignisse, onSchliessen: () -> Unit) {
+internal fun GalerieErfassen(zustand: GalleryState, events: GalleryEvents, onSchliessen: () -> Unit) {
     AddSetDialog(
         onDismiss = onSchliessen,
-        onAdd = { wunsch -> onSchliessen(); ereignisse.setErfassen(wunsch) },
+        onAdd = { wish -> onSchliessen(); events.setErfassen(wish) },
         householdMembers = zustand.blick.householdMembers,
         defaultCondition = zustand.app.userDefaultCondition ?: Zustand.NEU,
         lagerorte = zustand.lager.eigene.map { it.name },
@@ -45,28 +45,28 @@ internal fun GalerieErfassen(zustand: GalerieZustand, ereignisse: GalerieEreigni
 }
 
 /** Ohne Haushalt gar nichts mitschicken — der Server bleibt dann beim eigenen Konto. */
-private fun eigentuemerFuerErfassung(mitglieder: List<MitgliedAnsicht>, gewaehlt: Int?): Int? =
+private fun ownerForEntry(mitglieder: List<MemberView>, gewaehlt: Int?): Int? =
     if (mitglieder.size > 1) gewaehlt else null
 
 /** Ist der Dialog schon zu, wirft requestFocus; dann gibt es nichts mehr zu fokussieren. */
-private fun FocusRequester.fokusWennOffen() {
+private fun FocusRequester.openFocusIf() {
     try { requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
 }
 
 @Composable
-private fun FokusNachPause(ziel: FocusRequester) = LaunchedEffect(Unit) {
+private fun FocusAfterPause(ziel: FocusRequester) = LaunchedEffect(Unit) {
     kotlinx.coroutines.delay(120)
-    ziel.fokusWennOffen()
+    ziel.openFocusIf()
 }
 
 /**
  * Der Hinweis am Setnummer-Feld (null: nichts zu beanstanden). Vor dem ersten Versuch zu
  * erfassen bleibt das Feld ruhig, damit "75192-" beim Tippen nicht schon als Fehler gilt.
  */
-private fun nummerFehler(nummer: String, geprueft: Boolean): Int? = when {
+private fun numberError(nummer: String, geprueft: Boolean): Int? = when {
     !geprueft -> null
     nummer.isBlank() -> R.string.erfassen_nummer_fehlt
-    !NumericInput.istSetnummer(nummer) -> R.string.erfassen_nummer_ungueltig
+    !NumericInput.isSetNumber(nummer) -> R.string.erfassen_nummer_ungueltig
     else -> null
 }
 
@@ -76,7 +76,7 @@ fun AddSetDialog(
     onAdd: (Erfassungswunsch) -> Unit,
     defaultCondition: Zustand = Zustand.NEU,
     /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
-    householdMembers: List<MitgliedAnsicht> = emptyList(),
+    householdMembers: List<MemberView> = emptyList(),
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String> = emptyList(),
     /**
@@ -85,7 +85,7 @@ fun AddSetDialog(
      */
     vorgabe: String = "",
     /** Nur Tests: Ein blinkender Cursor lässt Robolectric nie zur Ruhe kommen. */
-    sofortFokus: Boolean = true,
+    immediatelyFocus: Boolean = true,
 ) {
     var setNumber by rememberSaveable { mutableStateOf("") }
     var quantity  by rememberSaveable { mutableStateOf("1") }
@@ -100,7 +100,7 @@ fun AddSetDialog(
     // weil das Feld beim ersten Durchlauf noch nicht angeordnet ist und requestFocus()
     // sonst ins Leere liefe.
     val setFeldFokus = remember { FocusRequester() }
-    if (sofortFokus) FokusNachPause(setFeldFokus)
+    if (immediatelyFocus) FocusAfterPause(setFeldFokus)
     var purchasePrice by rememberSaveable { mutableStateOf("") }
     var condition by rememberSaveable { mutableStateOf(defaultCondition) }
     // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
@@ -111,27 +111,27 @@ fun AddSetDialog(
     val keyboard  = LocalSoftwareKeyboardController.current
     // Hinzufügen bleibt antippbar und markiert dann das leere Feld: Grau ohne Grund liess
     // raten, warum nichts geschah.
-    var nummerFehlt by rememberSaveable { mutableStateOf(false) }
+    var numberMissing by rememberSaveable { mutableStateOf(false) }
 
     fun submit() {
-        if (nummerFehler(setNumber, geprueft = true) != null) {
-            nummerFehlt = true
-            if (sofortFokus) setFeldFokus.fokusWennOffen()
-        } else if (!erfassungUngueltig(quantity, purchasePrice)) {
+        if (numberError(setNumber, geprueft = true) != null) {
+            numberMissing = true
+            if (immediatelyFocus) setFeldFokus.openFocusIf()
+        } else if (!entryInvalid(quantity, purchasePrice)) {
             // Bei unlesbarer Menge oder unlesbarem Preis bleibt der Dialog offen; die Felder zeigen den Fehler.
             onAdd(Erfassungswunsch(
                 setNumber = setNumber,
                 menge = quantity.toIntOrNull() ?: 1,
-                kaufpreis = NumericInput.leseGeld(purchasePrice),
+                kaufpreis = NumericInput.readMoney(purchasePrice),
                 zustand = condition,
-                besitzer = eigentuemerFuerErfassung(householdMembers, owner),
+                besitzer = ownerForEntry(householdMembers, owner),
                 lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
             ))
         }
     }
 
-    // Derselbe Rahmen wie jede Erfassung (ErfassenDialog): Titel links, ohne Symbol.
-    ErfassenDialog(
+    // Derselbe Rahmen wie jede Erfassung (AddDialog): Titel links, ohne Symbol.
+    AddDialog(
         titel = stringResource(R.string.gallery_add_set_title),
         bestaetigen = stringResource(R.string.gallery_add),
         onBestaetigen = { submit() },
@@ -148,17 +148,17 @@ fun AddSetDialog(
             value = setNumber,
             onValueChange = { setNumber = NumericInput.setNumber(it) },
             label = { Text(stringResource(R.string.gallery_set_number)) },
-            isError = nummerFehler(setNumber, nummerFehlt) != null,
+            isError = numberError(setNumber, numberMissing) != null,
             supportingText = {
-                nummerFehler(setNumber, nummerFehlt)?.let { Text(stringResource(it), Modifier.ansagen()) }
+                numberError(setNumber, numberMissing)?.let { Text(stringResource(it), Modifier.announce()) }
                     ?: Text(stringResource(R.string.gallery_set_number_placeholder))
             },
             modifier = Modifier.fillMaxWidth().focusRequester(setFeldFokus), singleLine = true,
             shape = Formen.feld,
-            keyboardOptions = NumericInput.setnummerTastatur()
+            keyboardOptions = NumericInput.setNumberKeyboard()
         )
-        AnzahlFeld(quantity, { quantity = it }, stringResource(R.string.gallery_quantity_hint))
-        KaufpreisFeld(purchasePrice, { purchasePrice = it }, stringResource(R.string.gallery_purchase_price)) {
+        CountField(quantity, { quantity = it }, stringResource(R.string.gallery_quantity_hint))
+        PurchasePriceField(purchasePrice, { purchasePrice = it }, stringResource(R.string.gallery_purchase_price)) {
             keyboard?.hide(); submit()
         }
         Zustandszeile(zustand = condition, onZustand = { condition = it })

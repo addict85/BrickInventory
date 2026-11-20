@@ -14,9 +14,9 @@ class StringResourceParityTest {
     // solche Maskierungen haben in dieser Reihe schon zweimal einen Test
     // stillschweigend etwas anderes prüfen lassen als beabsichtigt.
     private val DOLLAR = '\u0024'
-    private val AUSDRUCK_AUF = "$DOLLAR{"
-    private val AUSDRUCK_LANG = "\\$DOLLAR\\{[^}]*\\}"
-    private val AUSDRUCK_KURZ = "\\$DOLLAR\\w+"
+    private val EXPRESSION_ON = "$DOLLAR{"
+    private val EXPRESSION_LANG = "\\$DOLLAR\\{[^}]*\\}"
+    private val EXPRESSION_SHORT = "\\$DOLLAR\\w+"
 
     private fun schluessel(datei: String): Set<String> =
         Regex("""<string name="([^"]+)"""")
@@ -29,17 +29,17 @@ class StringResourceParityTest {
         val de = schluessel("values-de/strings.xml")
         assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
 
-        val nurEn = (en - de).sorted()
-        val nurDe = (de - en).sorted()
-        assert(nurEn.isEmpty()) {
+        val onlyEn = (en - de).sorted()
+        val onlyDe = (de - en).sorted()
+        assert(onlyEn.isEmpty()) {
             "Nur in values/, fehlt auf Deutsch (Android zeigt dort still Englisch):\n  " +
-                nurEn.joinToString("\n  ")
+                onlyEn.joinToString("\n  ")
         }
         // Die Gegenrichtung ist harmloser, aber ebenso ein Fehler: ein
         // deutscher Eintrag ohne englisches Gegenstück ist toter Ballast,
         // denn values/ ist die Vorgabesprache und wird immer gelesen.
-        assert(nurDe.isEmpty()) {
-            "Nur in values-de/, ohne Gegenstück in values/:\n  " + nurDe.joinToString("\n  ")
+        assert(onlyDe.isEmpty()) {
+            "Nur in values-de/, ohne Gegenstück in values/:\n  " + onlyDe.joinToString("\n  ")
         }
     }
 
@@ -86,31 +86,31 @@ class StringResourceParityTest {
             "Keine <plurals> in values/strings.xml gefunden — Muster veraltet?"
         }
 
-        val nurEn = (en.keys - de.keys).sorted()
-        assert(nurEn.isEmpty()) {
+        val onlyEn = (en.keys - de.keys).sorted()
+        assert(onlyEn.isEmpty()) {
             "Mengenform nur in values/, fehlt auf Deutsch (Android zeigt dort still " +
-                "Englisch):\n  " + nurEn.joinToString("\n  ")
+                "Englisch):\n  " + onlyEn.joinToString("\n  ")
         }
-        val nurDe = (de.keys - en.keys).sorted()
-        assert(nurDe.isEmpty()) {
+        val onlyDe = (de.keys - en.keys).sorted()
+        assert(onlyDe.isEmpty()) {
             "Mengenform nur in values-de/, ohne Gegenstück in values/:\n  " +
-                nurDe.joinToString("\n  ")
+                onlyDe.joinToString("\n  ")
         }
 
-        val andereKlassen = en.keys.filter { it in de && en[it] != de[it] }.sorted()
-        assert(andereKlassen.isEmpty()) {
+        val otherClasses = en.keys.filter { it in de && en[it] != de[it] }.sorted()
+        assert(otherClasses.isEmpty()) {
             "Diese Mengenformen haben in den beiden Dateien NICHT dieselben " +
                 "Mengenklassen — die fehlende Fassung fällt still auf Englisch " +
-                "zurück:\n  " + andereKlassen.joinToString("\n  ") {
+                "zurück:\n  " + otherClasses.joinToString("\n  ") {
                     "$it: values=${en[it]?.sorted()} values-de=${de[it]?.sorted()}"
                 }
         }
 
-        val ohneBeide = en.keys.filter { !en.getValue(it).containsAll(listOf("one", "other")) }.sorted()
-        assert(ohneBeide.isEmpty()) {
+        val withoutBoth = en.keys.filter { !en.getValue(it).containsAll(listOf("one", "other")) }.sorted()
+        assert(withoutBoth.isEmpty()) {
             "Diese Mengenformen haben nicht beide Klassen `one` und `other` — dann " +
                 "steht auch bei genau einem Treffer die Mehrzahl da:\n  " +
-                ohneBeide.joinToString("\n  ")
+                withoutBoth.joinToString("\n  ")
         }
     }
 
@@ -187,20 +187,20 @@ class StringResourceParityTest {
             "filter_button", "filter_title",
             // Zähler „5/24“ unter dem Fingerabdruckfeld: nur Zahlen.
             "zert_eingabe_zaehler",
-            // Eine Sprache heisst in der Auswahl, wie sie sich selbst nennt (FormulareUndRaenderTest).
+            // Eine Sprache heisst in der Auswahl, wie sie sich selbst nennt (FormsAndMarginsTest).
             "settings_language_en", "settings_language_de",
         )
 
-        val en = texte("values/strings.xml")
-        val de = texte("values-de/strings.xml")
+        val en = texts("values/strings.xml")
+        val de = texts("values-de/strings.xml")
         assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
 
         val gleich = en.keys.filter { it in de && en[it] == de[it] }.toSet()
-        val unuebersetzt = (gleich - gewolltGleich).sorted()
-        assert(unuebersetzt.isEmpty()) {
+        val untranslated = (gleich - gewolltGleich).sorted()
+        assert(untranslated.isEmpty()) {
             "Diese Texte stehen auf Deutsch wortgleich wie auf Englisch — sehr " +
                 "wahrscheinlich beim Anlegen kopiert und nicht uebersetzt:\n  " +
-                unuebersetzt.joinToString("\n  ") { "$it = \"${en[it]}\"" } +
+                untranslated.joinToString("\n  ") { "$it = \"${en[it]}\"" } +
                 "\nIst er wirklich in beiden Sprachen gleich, gehoert er in `gewolltGleich`."
         }
         val veraltet = (gewolltGleich - gleich).sorted()
@@ -221,7 +221,7 @@ class StringResourceParityTest {
      * sehr wohl zu übersetzen. Sie fällt jetzt in den Vergleich unten und ist
      * dort harmlos, weil "en" und "de" sich unterscheiden.
      */
-    private fun texte(datei: String): Map<String, String> =
+    private fun texts(datei: String): Map<String, String> =
         Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
             .findAll(File(Quellen.res, "$datei").readText())
             .associate { it.groupValues[1] to it.groupValues[2] }
@@ -255,8 +255,8 @@ class StringResourceParityTest {
      */
     @Test
     fun `der Bereich heisst ueberall Hintergrundarbeiten`() {
-        val en = texte("values/strings.xml")
-        val de = texte("values-de/strings.xml")
+        val en = texts("values/strings.xml")
+        val de = texts("values-de/strings.xml")
         for (k in listOf("nav_monitoring", "main_menu_monitoring")) {
             assert(de[k] == "Hintergrundarbeiten") { "$k (de) = ${de[k]}" }
             assert(en[k] == "Background jobs") { "$k (en) = ${en[k]}" }
@@ -273,10 +273,10 @@ class StringResourceParityTest {
      */
     @Test
     fun `deutsche Texte in Schweizer Schreibung und eindeutig`() {
-        val de = texte("values-de/strings.xml")
+        val de = texts("values-de/strings.xml")
         val falsch = de.filterValues { "ß" in it || "ggü." in it || Regex("""\bFassung\b""").containsMatchIn(it) }
         assert(falsch.isEmpty()) { "Nicht in Schweizer Schreibung oder mit altem Begriff: ${falsch.keys}" }
-        for (t in listOf(de, texte("values/strings.xml"))) {
+        for (t in listOf(de, texts("values/strings.xml"))) {
             assert(t["login_title"] != t["login_button"]) { "Überschrift und Knopf der Anmeldung gleich: ${t["login_title"]}" }
         }
     }
@@ -300,11 +300,11 @@ class StringResourceParityTest {
         // Auch keine Form im Wort: Versalien setzt Abschnittstitel (vorgelesen wie geschrieben),
         // und eine Wahl in Gedankenstrichen las sich als Platzhalter.
         val form = listOf(Regex("""^\p{Lu}[\p{Lu}\- ]{4,}$"""), Regex("""^— .* —$"""))
-        val funde = verboten.flatMap { (datei, muster) ->
-            texte(datei).filterValues { t -> (muster + form).any { it.containsMatchIn(t) } }.map { "$datei ${it.key}: ${it.value}" }
+        val findings = verboten.flatMap { (datei, pattern) ->
+            texts(datei).filterValues { t -> (pattern + form).any { it.containsMatchIn(t) } }.map { "$datei ${it.key}: ${it.value}" }
         }
-        assert(funde.isEmpty()) { "Abweichender Begriff:\n  " + funde.joinToString("\n  ") }
-        rollenNamenPruefen()
+        assert(findings.isEmpty()) { "Abweichender Begriff:\n  " + findings.joinToString("\n  ") }
+        checkRolesNames()
     }
 
     /**
@@ -312,9 +312,9 @@ class StringResourceParityTest {
      * („Administratorrechte“); „Verwalter“ und „Benutzer“ als Rolle sind abgelöst.
      * Gegenprobe (gegenproben/rolle-verwalter.patch): zf_pflicht_kurz wieder „Verwalterrechte …“ → rot.
      */
-    private fun rollenNamenPruefen() {
-        val de = texte("values-de/strings.xml")
-        val en = texte("values/strings.xml")
+    private fun checkRolesNames() {
+        val de = texts("values-de/strings.xml")
+        val en = texts("values/strings.xml")
         assert(de["zf_pflicht_kurz"]?.startsWith("Administratorrechte") == true) { "zf_pflicht_kurz = ${de["zf_pflicht_kurz"]}" }
         val alt = de.filterValues { Regex("""Verwalter|\bBenutzer(?!name)""").containsMatchIn(it) }.keys +
             en.filterValues { Regex("""\b[Aa]dmins?\b""").containsMatchIn(it) }.keys
@@ -323,8 +323,8 @@ class StringResourceParityTest {
 
     @Test
     fun `kein zweiter Name fuer einen common-Text`() {
-        val en = texte("values/strings.xml")
-        val de = texte("values-de/strings.xml")
+        val en = texts("values/strings.xml")
+        val de = texts("values-de/strings.xml")
         assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
         val gemeinsam = en.keys.filter { it.startsWith("common_") }
         assert(gemeinsam.size >= 3) { "Nur ${gemeinsam.size} common_-Namen — Konvention aufgegeben?" }
@@ -351,38 +351,38 @@ class StringResourceParityTest {
         // liest. Bewusst NICHT beanstandet:
         //  - Emoji und Symbole ("👷", "📅") — die sind in jeder Sprache gleich
         //    und stehen absichtlich im Code statt in den Sprachdateien.
-        val muster = listOf(
+        val pattern = listOf(
             Regex("""Text\(\s*"([^"]{3,})"""),
             Regex("""contentDescription\s*=\s*"([^"]{3,})""""),
             Regex("""Toast\.makeText\([^,]+,\s*"([^"]{3,})"""),
         )
         // Eigennamen und Abkürzungen, die in jeder Sprache gleich lauten (z. B. PDF: common_pdf).
         val erlaubt = emptySet<String>()
-        val erlaubtGesehen = mutableSetOf<String>()
+        val allowedSeen = mutableSetOf<String>()
 
         val fehler = mutableListOf<String>()
         for (datei in Quellen.alle()) {
-            val s = Quellen.ohneKommentare(datei.readText())
-            for (m in muster) {
+            val s = Quellen.withoutComments(datei.readText())
+            for (m in pattern) {
                 m.findAll(s).forEach { treffer ->
                     val text = treffer.groupValues[1]
-                    if (text in erlaubt) { erlaubtGesehen += text; return@forEach }
+                    if (text in erlaubt) { allowedSeen += text; return@forEach }
                     // Eine offene Klammer ohne schliessende heisst: Der
                     // Ausdruck enthält selbst eine Zeichenkette, und der
                     // Treffer bricht an deren Anführungszeichen ab. So ein
                     // Bruchstück ist nicht beurteilbar — hier wird nicht
                     // geraten, sondern übergangen. Ein echter Parser wäre die
                     // Alternative; für diese Handvoll Fälle lohnt er nicht.
-                    if (text.contains(AUSDRUCK_AUF) && !text.contains("}")) return@forEach
+                    if (text.contains(EXPRESSION_ON) && !text.contains("}")) return@forEach
                     // Ausdrücke entfernen, DANN auf Sprache prüfen: Ohne das
                     // zählte der Variablenname in einer Einsetzung als Text und
                     // meldete zwanzig Fehlalarme.
-                    val nurText = text
-                        .replace(Regex(AUSDRUCK_LANG), "")
-                        .replace(Regex(AUSDRUCK_KURZ), "")
+                    val onlyText = text
+                        .replace(Regex(EXPRESSION_LANG), "")
+                        .replace(Regex(EXPRESSION_SHORT), "")
                     // Mindestens zwei aufeinanderfolgende Buchstaben — das
                     // trennt Sprache von Symbolen und Zahlenformaten.
-                    if (!Regex("""\p{L}\p{L}""").containsMatchIn(nurText)) return@forEach
+                    if (!Regex("""\p{L}\p{L}""").containsMatchIn(onlyText)) return@forEach
                     val zeile = s.substring(0, treffer.range.first).count { it == '\n' } + 1
                     fehler += "${datei.name}:$zeile  \"$text\""
                 }
@@ -392,7 +392,7 @@ class StringResourceParityTest {
             "Oberflächentext als Literal statt aus den Sprachdateien:\n  " +
                 fehler.joinToString("\n  ")
         }
-        val veraltet = (erlaubt - erlaubtGesehen).sorted()
+        val veraltet = (erlaubt - allowedSeen).sorted()
         assert(veraltet.isEmpty()) {
             "Diese Eintraege in `erlaubt` beschreiben nichts mehr: " +
                 veraltet.joinToString(", ") +

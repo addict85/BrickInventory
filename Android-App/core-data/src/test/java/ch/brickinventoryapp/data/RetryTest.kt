@@ -1,0 +1,76 @@
+package ch.brickinventoryapp.data
+
+import ch.brickinventoryapp.data.repository.Ergebnis
+import ch.brickinventoryapp.data.Netzlage.Wiederholung
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/**
+ * Die Wiederholungsregel der Abrufe: nur bei vorübergehenden Fehlern, mit
+ * wachsender Pause, und ohne Netz gar nicht — dann zeigt die Ablage ihren Stand.
+ *
+ * Gegenproben (kotlinc und JUnit gegen Netzlage.Wiederholung):
+ *   A  die Pause nicht verdoppelt → rot „ein vorübergehender Fehler wird mit
+ *      wachsender Pause wiederholt“ ([1000, 1000, 1000, 1000])
+ *   B  die Prüfung auf KEIN_NETZ entfernt → rot „ohne Netz wird nicht gewartet“
+ *   C  die Prüfung `transient` entfernt → rot „eine Auskunft des Servers wird nicht
+ *      wiederholt“
+ */
+class RetryTest {
+
+    private val pausen = mutableListOf<Long>()
+    private var situation = Netzlage.Art.WLAN
+
+    private fun rule(versuche: Int = 5) = Wiederholung.forTest(versuche, { situation }) { pausen += it }
+
+    private fun fetches(vararg results: Ergebnis<String>): Pair<MutableList<Ergebnis<String>>, suspend () -> Ergebnis<String>> {
+        val rest = results.toMutableList()
+        val called = mutableListOf<Ergebnis<String>>()
+        return called to { rest.removeAt(0).also { called += it } }
+    }
+
+    @Test
+    fun `ein voruebergehender Fehler wird mit wachsender Pause wiederholt`() = runBlocking {
+        val netz = Ergebnis.Fehler.Netz()
+        val (called, abruf) = fetches(netz, netz, netz, netz, Ergebnis.Erfolg("da"))
+        assertEquals(Ergebnis.Erfolg("da"), rule().wiederhole(abruf))
+        assertEquals(5, called.size)
+        assertEquals(listOf(1_000L, 2_000L, 4_000L, 8_000L), pausen)
+    }
+
+    @Test
+    fun `nach dem letzten Versuch kommt der Fehler zurueck`() = runBlocking {
+        val netz = Ergebnis.Fehler.Zeitueberschreitung
+        val (called, abruf) = fetches(netz, netz, netz)
+        assertEquals(netz, rule(versuche = 3).wiederhole(abruf))
+        assertEquals(3, called.size)
+    }
+
+    @Test
+    fun `ohne Netz wird nicht gewartet`() = runBlocking {
+        situation = Netzlage.Art.KEIN_NETZ
+        val (called, abruf) = fetches(Ergebnis.Fehler.Netz(), Ergebnis.Erfolg("nie"))
+        assertEquals(Ergebnis.Fehler.Netz(), rule().wiederhole(abruf))
+        assertEquals(1, called.size)
+        assertEquals(emptyList<Long>(), pausen)
+    }
+
+    @Test
+    fun `eine Auskunft des Servers wird nicht wiederholt`() = runBlocking {
+        val (called, abruf) = fetches(Ergebnis.Fehler.Server(404), Ergebnis.Erfolg("nie"))
+        assertEquals(Ergebnis.Fehler.Server(404), rule().wiederhole(abruf))
+        assertEquals(1, called.size)
+    }
+
+    @Test
+    fun `hoechstens begrenzt die Versuche, nie unter einen`() = runBlocking {
+        val netz = Ergebnis.Fehler.Netz()
+        val (called, abruf) = fetches(netz, netz, netz)
+        rule().atMost(2).wiederhole(abruf)
+        assertEquals(2, called.size)
+        val (einmal, abruf2) = fetches(netz)
+        rule().atMost(0).wiederhole(abruf2)
+        assertEquals(1, einmal.size)
+    }
+}

@@ -1,6 +1,6 @@
 Gegenprobe: Umschalter Sets/Teile/Minifiguren auch auf dem Tablet in der App-Leiste
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.UisRulesTest
 Rot: Tablet hat den Umschalter
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
@@ -8,10 +8,10 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 @@ -179,7 +179,7 @@ fun MainScaffold(
                      ),
-                     scrollBehavior = einklappen,
+                     scrollBehavior = collapse,
                  )
--                if (art == Navigationsart.LEISTE_UNTEN && currentDest?.istEinesVon(SAMMLUNG) == true) {
-+                if (currentDest?.istEinesVon(SAMMLUNG) == true) {
-                     SammlungUmschalter(sammlungsZiel(currentDest), onWahl = { ziel ->
+-                if (art == NavigationMode.LEISTE_UNTEN && currentDest?.isOneOf(SAMMLUNG) == true) {
++                if (currentDest?.isOneOf(SAMMLUNG) == true) {
+                     CollectionToggle(collectionTarget(currentDest), onWahl = { ziel ->
                          onTabAngetippt(ziel)
-                         navController.zuReiter(ziel)
+                         navController.toTab(ziel)

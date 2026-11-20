@@ -3,7 +3,7 @@ package ch.brickinventoryapp.sammlung.ui.screens
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.ui.theme.mittigBis
+import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
@@ -29,21 +29,21 @@ import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.model.util.resolveFullUrl
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.ui.components.Abschnittstitel
+import ch.brickinventoryapp.ui.components.SectionTitle
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.ProduktBild
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
-import ch.brickinventoryapp.netz.util.externeAdresse
-import ch.brickinventoryapp.ui.util.oeffneExtern
+import ch.brickinventoryapp.netz.util.externeAddress
+import ch.brickinventoryapp.ui.util.openExtern
 import ch.brickinventoryapp.ui.components.CatalogDetailRow
 import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
-import ch.brickinventoryapp.gemeinsam.ui.PreisLaedtZeile
+import ch.brickinventoryapp.gemeinsam.ui.PriceLoadsRow
 import ch.brickinventoryapp.gemeinsam.ui.PriceChart
 
 /**
@@ -72,16 +72,16 @@ internal fun MerkpostenDetailScreen(
     // stringResource statt ctx.getString im Rückruf: Ein aus LocalContext gegriffener
     // Context liefert nach einem Konfigurationswechsel veraltete Werte (Lint
     // LocalContextGetResourceValueCall).
-    val keineAppText = stringResource(R.string.common_no_app_to_open)
+    val noAppText = stringResource(R.string.common_no_app_to_open)
     // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
     val meldungen = remember { SnackbarHostState() }
     val bereich = rememberCoroutineScope()
     // Derselbe Dialog wie in der Liste, nicht ein zweiter: Anzahl, Kaufpreis
     // und Zustand muessen hier dieselbe Maske sein.
-    var uebernahmeOffen by rememberSaveable { mutableStateOf(false) }
+    var openTakeover by rememberSaveable { mutableStateOf(false) }
     // Zoom wie in Set- und Katalog-Detail und in der Webapp. rememberSaveable: Wer im
     // Zoom das Telefon dreht, soll darin bleiben.
-    var zoomOffen by rememberSaveable { mutableStateOf(false) }
+    var openZoom by rememberSaveable { mutableStateOf(false) }
 
     val merkposten = liste.merkposten.firstOrNull {
         it.setNumber == setNumber && it.condition == condition
@@ -93,8 +93,8 @@ internal fun MerkpostenDetailScreen(
         if (merkposten == null && !liste.abruf.laedt && liste.merkposten.isNotEmpty()) onBack()
     }
 
-    val keinPreis = stringResource(R.string.detail_price_none_yet)
-    fun preis(v: Geld?) = if (v == null) keinPreis else fmtMoney(v, appState.currency)
+    val noPrice = stringResource(R.string.detail_price_none_yet)
+    fun preis(v: Geld?) = if (v == null) noPrice else fmtMoney(v, appState.currency)
 
     Scaffold(
         snackbarHost = { SnackbarHost(meldungen) },
@@ -107,7 +107,7 @@ internal fun MerkpostenDetailScreen(
                     merkposten?.let { w ->
                         MitTooltip(stringResource(R.string.common_delete)) {
                             IconButton(onClick = {
-                                aktionen.loescheMerkposten(w.setNumber, w.condition, w.userId)
+                                aktionen.deleteWantedItem(w.setNumber, w.condition, w.userId)
                             }) {
                                 Icon(Icons.Default.Delete, stringResource(R.string.common_delete))
                             }
@@ -139,18 +139,18 @@ internal fun MerkpostenDetailScreen(
                     imageLoader = imageLoader,
                     // Antippen oeffnet den Zoom — dasselbe Verhalten wie im
                     // Set- und im Katalog-Detail.
-                    modifier = Modifier.fillMaxWidth().height(Abstaende.riesig * 5)
+                    modifier = Modifier.fillMaxWidth().height(Abstaende.huge * 5)
                         .clip(MaterialTheme.shapes.medium)
-                        .clickable(enabled = bildUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { zoomOffen = true },
-                    ersatzGroesse = Abstaende.riesig * 2,
+                        .clickable(enabled = bildUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { openZoom = true },
+                    fallbackSize = Abstaende.huge * 2,
                     bildgrund = true,
-                    innenAbstand = Abstaende.mittel,
+                    innerGap = Abstaende.mittel,
                 )
             }
 
             // Die Karten begrenzen die Breite (wie im Set-Detail), nicht jedes Element darin.
             item {
-                AppKarte(Modifier.mittigBis(Lesebreite.formular)) {
+                AppKarte(Modifier.centeredUntil(Lesebreite.formular)) {
                     // Mit Abstand zwischen den Zeilen wie im Katalog-Detail: Dicht gestapelt
                     // las sich die Karte als ein Block.
                     Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
@@ -180,7 +180,7 @@ internal fun MerkpostenDetailScreen(
                             OwnerPicker(
                                 members = blick.householdMembers,
                                 selected = merkposten.userId,
-                                onSelect = { aktionen.verschiebeMerkposten(
+                                onSelect = { aktionen.moveWantedItem(
                                     merkposten.setNumber, merkposten.condition, merkposten.userId, it) },
                             )
                         }
@@ -192,28 +192,28 @@ internal fun MerkpostenDetailScreen(
             //
             // Derselbe Abschnitt wie im Set-Detail: derselbe Eintrag in price_alerts am selben
             // Schlüssel, und /sets/:sn/alert verlangt keinen Besitz.
-            setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, aktionen::setzePreisalarm,
-                aussenAbstand = false)
+            setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, aktionen::setPriceAlert,
+                outerGap = false)
 
             item {
-                AppKarte(Modifier.mittigBis(Lesebreite.formular)) {
+                AppKarte(Modifier.centeredUntil(Lesebreite.formular)) {
                     Column(Modifier.padding(Abstaende.mittel)) {
-                        Abschnittstitel(stringResource(R.string.detail_section_market))
+                        SectionTitle(stringResource(R.string.detail_section_market))
                         Spacer(Modifier.height(Abstaende.klein))
-                        // Aus der PREIS-Antwort, nicht aus dem Verlauf: Die
+                        // Aus der PRICE-Antwort, nicht aus dem Verlauf: Die
                         // holt frisch, der Verlauf liest nur den Cache.
                         CatalogDetailRow(stringResource(R.string.condition_new),
                             preis(detail.preise?.current?.new?.avgPrice))
                         CatalogDetailRow(stringResource(R.string.condition_used),
                             preis(detail.preise?.current?.used?.avgPrice))
 
-                        val chart = detail.historie?.chart
+                        val chart = detail.history?.chart
                         if (chart != null && chart.values.isNotEmpty()) {
                             Spacer(Modifier.height(Abstaende.klein))
                             PriceChart(chart, appState.currency)
                         } else if (detail.abruf.laedt) {
                             Spacer(Modifier.height(Abstaende.klein))
-                            PreisLaedtZeile()
+                            PriceLoadsRow()
                         }
                     }
                 }
@@ -244,8 +244,8 @@ internal fun MerkpostenDetailScreen(
                             for ((beschriftung, url) in adressen) {
                                 OutlinedButton(
                                     onClick = {
-                                        if (!oeffneExtern(ctx, externeAdresse(url))) {
-                                            bereich.launch { meldungen.showSnackbar(keineAppText) }
+                                        if (!openExtern(ctx, externeAddress(url))) {
+                                            bereich.launch { meldungen.showSnackbar(noAppText) }
                                         }
                                     },
                                     modifier = Modifier.weight(1f),
@@ -267,11 +267,11 @@ internal fun MerkpostenDetailScreen(
                     }
 
                     Button(
-                        onClick = { uebernahmeOffen = true },
+                        onClick = { openTakeover = true },
                         modifier = breite,
                     ) {
-                        Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
-                        Spacer(Modifier.width(Abstaende.winzig))
+                        Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
+                        Spacer(Modifier.width(Abstaende.tiny))
                         Text(stringResource(R.string.wanted_take))
                     }
                 }
@@ -283,7 +283,7 @@ internal fun MerkpostenDetailScreen(
     // `let`, weil `merkposten` hier wieder nullbar ist: Wer waehrend des offenen
     // Dialogs den letzten Eintrag anderswo loescht, soll keinen Absturz
     // bekommen, sondern nichts.
-    if (zoomOffen) merkposten?.let { w ->
+    if (openZoom) merkposten?.let { w ->
         // Dieselbe Adresse wie das Bild oben, hier neu berechnet, weil `merkposten`
         // ausserhalb des Scaffold-Rumpfs wieder nullbar ist. Gezeichnet von
         // ui/components/ZoomableImageDialog.kt wie in Set- und Katalog-Detail.
@@ -294,21 +294,21 @@ internal fun MerkpostenDetailScreen(
                 imageUrl = zoomUrl,
                 contentDescription = w.name,
                 imageLoader = imageLoader,
-                onDismiss = { zoomOffen = false },
+                onDismiss = { openZoom = false },
             )
         }
     }
 
-    if (uebernahmeOffen) merkposten?.let { w ->
+    if (openTakeover) merkposten?.let { w ->
         UebernahmeDialog(
             merkposten = w,
             lagerorte = lagerZustand.eigene.map { it.name },
-            lagerortVorgabe = lagerZustand.vorgabe?.name ?: "",
-            onDismiss = { uebernahmeOffen = false },
-            onUebernehmen = { anzahl, preisRoh, zustandWahl, ort ->
-                aktionen.uebernimmMerkposten(w.setNumber, w.condition, w.userId,
-                                   anzahl, preisRoh, zustandWahl, ort)
-                uebernahmeOffen = false
+            locationDefault = lagerZustand.vorgabe?.name ?: "",
+            onDismiss = { openTakeover = false },
+            onUebernehmen = { anzahl, priceRaw, stateChoice, ort ->
+                aktionen.adoptWantedItem(w.setNumber, w.condition, w.userId,
+                                   anzahl, priceRaw, stateChoice, ort)
+                openTakeover = false
             },
         )
     }

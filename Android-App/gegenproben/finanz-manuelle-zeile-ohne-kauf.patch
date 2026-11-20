@@ -1,6 +1,6 @@
 Gegenprobe: die Zeile für manuelle Einträge zeigt keinen Kaufpreis
 Modul: app
-Test: ch.brickinventoryapp.app.FinanzKaufpreisZeilenTest
+Test: ch.brickinventoryapp.app.FinancePurchasePriceRowsTest
 Rot: Teile und Figuren zeigen
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceScreen.kt

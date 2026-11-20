@@ -1,6 +1,6 @@
 Gegenprobe: Die Bauliste wieder ohne Legende
 Modul: feature-teile
-Test: ch.brickinventoryapp.teile.BaulisteLegendeTest
+Test: ch.brickinventoryapp.teile.BuildListLegendTest
 Rot: ueber der Liste steht die Legende
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
@@ -8,10 +8,10 @@ index 210127d..d0f1d2b 100644
 --- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
 +++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
 @@ -361,7 +361,6 @@ fun PartsListScreen(
-         val colorGroups = remember(parts) { baulistenGruppen(parts) }
-         val mitBestand = parts.any { it.vorhanden != null }
+         val colorGroups = remember(parts) { buildListsGroups(parts) }
+         val withInventory = parts.any { it.vorhanden != null }
          LazyColumn(state = listState, contentPadding = PaddingValues(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.gross)) {
--            if (mitBestand) item(key = "legende") { BaulistenLegende() }
+-            if (withInventory) item(key = "legende") { BuildListsLegend() }
              colorGroups.forEachIndexed { groupIdx, (colorName, colorParts) ->
                  item(key = "header_${groupIdx}_$colorName") {
-                     FarbGruppenKopf(colorName, colorParts)
+                     FarbGroupsHeader(colorName, colorParts)

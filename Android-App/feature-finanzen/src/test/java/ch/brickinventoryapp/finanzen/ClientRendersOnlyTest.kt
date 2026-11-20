@@ -25,7 +25,7 @@ class ClientRendersOnlyTest {
     @Test
     fun `die Oberflaeche summiert keine Geldbetraege selbst`() {
         val dateien = Quellen.unter("ui")
-        val geld = Regex("""sumOf\s*\{[^}]{0,120}?\.(price|Price|value|Value|total|Total|purchase|Purchase)\w*""")
+        val money = Regex("""sumOf\s*\{[^}]{0,120}?\.(price|Price|value|Value|total|Total|purchase|Purchase)\w*""")
         val treffer = mutableListOf<String>()
         // Untergrenze: Ein Dateilauf, der nichts findet, lässt
         // jede Sammelprüfung darunter stillschweigend bestehen.
@@ -33,8 +33,8 @@ class ClientRendersOnlyTest {
             "Zu wenige Kotlin-Dateien unter ui/ (${dateien.size}) — Pfad veraltet?"
         }
         for (f in dateien) {
-            val code = Quellen.entkleide(f.readText())
-            for (m in geld.findAll(code)) {
+            val code = Quellen.strip(f.readText())
+            for (m in money.findAll(code)) {
                 val zeile = code.substring(0, m.range.first).count { it == '\n' } + 1
                 treffer += "${f.name}:$zeile — ${m.value.take(60)}"
             }
@@ -53,11 +53,11 @@ class ClientRendersOnlyTest {
      */
     @Test
     fun `der Gesamtwert kommt vom Server`() {
-        val summen = finanzSummen(ValuationResponse(success = true).alsAnsicht(),
+        val sums = finanzSummen(ValuationResponse(success = true).alsAnsicht(),
             PartsValuationResponse(success = true, totalValue = "0.20").alsAnsicht(),
             null, PnlResponse(success = true, totals = PnlTotals(purchase = "0.00", current = "0.00", grandTotal = "4894.77")).alsAnsicht())
-        assertEquals(0, BigDecimal("4894.77").compareTo(summen.gesamt))
-        val sections = File(Quellen.wurzel,
+        assertEquals(0, BigDecimal("4894.77").compareTo(sums.gesamt))
+        val sections = File(Quellen.root,
             "finanzen/ui/screens/FinanceSections.kt").readText()
         assert(Regex("""finanzSummen\(valuation, partsValuation, figsValuation, pnl\)""").findAll(sections).count() == 2) {
             "Eine Kopfkarte liest den Gesamtwert nicht mehr über finanzSummen() — dann rechnet " +
@@ -66,7 +66,7 @@ class ClientRendersOnlyTest {
         // Das Modellfeld muss es geben, sonst liest der Ausdruck oben ins Leere.
         // Alle Modelldateien: Vorher stand hier ein Dateiname,
         // und die Klassen liegen seither nach Sachgebieten verteilt.
-        val models = File(Quellen.wurzel, "vertrag")
+        val models = File(Quellen.root, "vertrag")
             .listFiles { f -> f.extension == "kt" }
             .orEmpty().sortedBy { it.name }
             .joinToString("\n") { it.readText() }

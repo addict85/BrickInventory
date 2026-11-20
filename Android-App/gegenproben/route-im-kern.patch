@@ -26,9 +26,9 @@ index a22234f..0ab6c1f 100644
 +import ch.brickinventoryapp.model.ui.Zentralziel
  
  /** Die Verwaltung braucht nur, was jeder Bereich bekommt. */
- interface VerwaltungNavigation : Bereichsumgebung
-@@ -21,7 +22,7 @@ fun NavGraphBuilder.verwaltungGraph(navigation: VerwaltungNavigation) {
-     composable<VerwaltungZiel.Monitoring> {
+ interface ManagementNavigation : Bereichsumgebung
+@@ -21,7 +22,7 @@ fun NavGraphBuilder.managementGraph(navigation: ManagementNavigation) {
+     composable<ManagementTarget.Monitoring> {
          // Fällt das Verwalterrecht weg, verlässt die Seite sich selbst, statt weiter 403 zu sammeln.
          val stand by navigation.sitzung.collectAsStateWithLifecycle()
 -        LaunchedEffect(stand.isAdmin) { if (!stand.isAdmin) navigation.navController.popBackStack() }

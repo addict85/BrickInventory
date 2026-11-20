@@ -1,17 +1,17 @@
 Gegenprobe: ein Gutschein-PDF bekommt wieder eine Datei im Zwischenspeicher (Stand vor sec11 N1)
 Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.GutscheinPdfAblageTest
+Test: ch.brickinventoryapp.finanzen.VoucherPdfStoreTest
 Rot: ein Gutschein-PDF bekommt keine Datei
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfCache.kt
-@@ -41,7 +41,7 @@ const val PDF_VERTRAULICH_ORDNER = "pdf_vertraulich"
+@@ -41,7 +41,7 @@ const val PDF_CONFIDENTIAL_FOLDER = "pdf_vertraulich"
   * (hashCode) teilten sich zwei Adressen leicht eine Datei.
   */
  fun pdfAblage(cacheDir: File, pdfUrl: String, vertraulich: Boolean): File? {
 -    if (vertraulich) return null
 +    if (vertraulich) return File(cacheDir, "pdfview_vertraulich.pdf")
      val hash = java.security.MessageDigest.getInstance("SHA-256").digest(pdfUrl.toByteArray())
-     return File(cacheDir, ANLEITUNG_PRAEFIX + hash.joinToString("") { "%02x".format(it) } + ANLEITUNG_ENDUNG)
+     return File(cacheDir, INSTRUCTION_PREFIX + hash.joinToString("") { "%02x".format(it) } + INSTRUCTION_EXTENSION)
  }

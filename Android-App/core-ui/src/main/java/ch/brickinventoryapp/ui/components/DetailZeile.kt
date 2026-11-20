@@ -14,7 +14,7 @@ import ch.brickinventoryapp.ui.theme.Lesebreite
 /** Eine Zeile der Detailkarten (Katalog, Merkposten), auf dem Tablet höchstens in Lesebreite. */
 @Composable
 fun CatalogDetailRow(label: String, value: String) {
-    BezeichnungUndWert(label, value, Modifier.widthIn(max = Lesebreite.wertzeile))
+    LabelAndValue(label, value, Modifier.widthIn(max = Lesebreite.wertzeile))
 }
 
 /**
@@ -23,24 +23,24 @@ fun CatalogDetailRow(label: String, value: String) {
  * die Bezeichnung darf mehrzeilig werden, sie nimmt sich den übrigen Platz.
  */
 @Composable
-fun BezeichnungUndWert(
+fun LabelAndValue(
     bezeichnung: String,
     wert: String,
     modifier: Modifier = Modifier,
     stil: TextStyle = MaterialTheme.typography.bodyMedium,
-    wertStil: TextStyle = stil,
-    bezeichnungFarbe: Color = MaterialTheme.colorScheme.onSurfaceVariant,
-    wertGewicht: FontWeight = FontWeight.SemiBold,
+    valueStyle: TextStyle = stil,
+    labelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    valueWeight: FontWeight = FontWeight.SemiBold,
 ) {
-    if (grosseSchrift()) {
+    if (largeFont()) {
         Column(modifier.fillMaxWidth()) {
-            Text(bezeichnung, color = bezeichnungFarbe, style = stil)
-            Text(wert, fontWeight = wertGewicht, style = wertStil, color = MaterialTheme.colorScheme.onSurface)
+            Text(bezeichnung, color = labelColor, style = stil)
+            Text(wert, fontWeight = valueWeight, style = valueStyle, color = MaterialTheme.colorScheme.onSurface)
         }
     } else {
         Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(bezeichnung, color = bezeichnungFarbe, style = stil, modifier = Modifier.weight(1f))
-            Text(wert, fontWeight = wertGewicht, style = wertStil, color = MaterialTheme.colorScheme.onSurface,
+            Text(bezeichnung, color = labelColor, style = stil, modifier = Modifier.weight(1f))
+            Text(wert, fontWeight = valueWeight, style = valueStyle, color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1, softWrap = false, modifier = Modifier.padding(start = Abstaende.gross))
         }
     }

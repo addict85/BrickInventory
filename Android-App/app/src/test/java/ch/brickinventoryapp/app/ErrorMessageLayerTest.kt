@@ -12,7 +12,7 @@ import ch.brickinventoryapp.testing.Quellen
  */
 class ErrorMessageLayerTest {
 
-    private val datenschicht = listOf(
+    private val dataLayer = listOf(
         // Alle Dateien der Datenschicht — vorher nur die eine.
         "data/repository/Ergebnis.kt",
         "data/repository/Abruf.kt",
@@ -39,8 +39,8 @@ class ErrorMessageLayerTest {
         // Anzeige — oder eine durchgereichte Servermeldung (eine Variable).
         val satz = Regex("""Ergebnis\.Fehler\.(?:Abgewiesen\(\s*|Server\((?:[^,()]|\([^()]*\))*,\s*)"([^"]+)"|\bmessage\s*=\s*"([^"]+)"""")
         val fehler = mutableListOf<String>()
-        for (rel in datenschicht) {
-            val s = Quellen.ohneKommentare(Quellen.lies(rel))
+        for (rel in dataLayer) {
+            val s = Quellen.withoutComments(Quellen.lies(rel))
             satz.findAll(s).forEach { m ->
                 val zeile = s.substring(0, m.range.first).count { it == '\n' } + 1
                 fehler += "$rel:$zeile  ${m.value}"
@@ -56,18 +56,18 @@ class ErrorMessageLayerTest {
     @Test
     fun `die Zuordnung Ursache zu Text liegt ausserhalb von meldung`() {
         // Ob jede Fehlerart einen eigenen Satz hat, prüft
-        // FehlerTexteTest — ausgeführt statt gelesen. Hier bleibt nur die
+        // ErrorTextsTest — ausgeführt statt gelesen. Hier bleibt nur die
         // Aussage, die eine Textsuche wirklich treffen kann: dass die
         // Zuordnung eine eigene, Context-freie Funktion IST. Wandert sie
         // zurück in meldung(), ist sie wieder nur über Android prüfbar.
-        val texte = Quellen.ohneKommentare(Quellen.lies("zustand/ui/FehlerTexte.kt"))
-        assert(texte.contains("fun fehlerTextId(")) { "fehlerTextId() fehlt" }
-        assert(!texte.contains("ctx.") && !texte.contains("Context")) {
+        val texts = Quellen.withoutComments(Quellen.lies("zustand/ui/FehlerTexte.kt"))
+        assert(texts.contains("fun fehlerTextId(")) { "fehlerTextId() fehlt" }
+        assert(!texts.contains("ctx.") && !texts.contains("Context")) {
             "FehlerTexte.kt darf keinen Context brauchen — sonst ist die Zuordnung " +
                 "wieder nur mit Android-Laufzeit prüfbar"
         }
-        val vm = Quellen.ohneKommentare(Quellen.lies("zustand/ui/viewmodel/AppTexte.kt"))
-        val meldung = Quellen.funktion(vm, "override fun meldung(")
+        val vm = Quellen.withoutComments(Quellen.lies("zustand/ui/viewmodel/AppTexte.kt"))
+        val meldung = Quellen.function(vm, "override fun meldung(")
         assert(meldung.isNotEmpty()) { "meldung() fehlt in AppTexte" }
         assert(meldung.contains("fehlerTextId(")) {
             "meldung() benutzt die gemeinsame Zuordnung nicht mehr"

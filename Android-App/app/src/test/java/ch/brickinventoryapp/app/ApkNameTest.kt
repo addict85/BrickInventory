@@ -95,15 +95,15 @@ class ApkNameTest {
         val agp = setOf("app-release.apk", "app-release-unsigned.apk", "app-debug.apk")
         // Zwischendateien des Signierschritts liegen in $RUNNER_TEMP und werden nie
         // ausgeliefert; gemeint ist der Name, unter dem die APK hochgeht.
-        val imWorkflow = Regex("""(?<!RUNNER_TEMP/)\b[\w.-]+\.apk""").findAll(wf).map { it.value }.toSet() - agp
+        val inWorkflow = Regex("""(?<!RUNNER_TEMP/)\b[\w.-]+\.apk""").findAll(wf).map { it.value }.toSet() - agp
 
-        assert(imWorkflow.isNotEmpty()) {
+        assert(inWorkflow.isNotEmpty()) {
             "Der Workflow nennt gar keinen APK-Namen mehr — dann lädt er nichts hoch, " +
                 "oder das Muster hier ist veraltet."
         }
-        assert(imWorkflow == setOf(ziel)) {
+        assert(inWorkflow == setOf(ziel)) {
             "Gradle legt \"$ziel\" ab, der Workflow spricht von " +
-                imWorkflow.joinToString(", ") { "\"$it\"" } +
+                inWorkflow.joinToString(", ") { "\"$it\"" } +
                 ". Auf Linux sind das verschiedene Dateien — schon ein Buchstabe genügt."
         }
     }
@@ -156,15 +156,15 @@ class ApkNameTest {
         val ziel = zielname()
         val alle = schritte()
 
-        val artefakte = alle.filter { it.contains("upload-artifact") }
+        val artifacts = alle.filter { it.contains("upload-artifact") }
         // Selbstbeweis: Ohne Artefaktschritte prueft die Bedingung darunter
         // nichts und waere immer gruen. Der Workflow hat welche (Testberichte,
         // Bundle) — findet das Muster keine, ist es veraltet.
-        assert(artefakte.isNotEmpty()) {
+        assert(artifacts.isNotEmpty()) {
             "Kein einziger upload-artifact-Schritt gefunden — Muster veraltet?"
         }
-        val gezippt = artefakte.filter { it.contains(ziel) }
-        assert(gezippt.isEmpty()) {
+        val zipped = artifacts.filter { it.contains(ziel) }
+        assert(zipped.isEmpty()) {
             "$ziel haengt wieder an einem Artefakt und kommt damit nur als Zip " +
                 "heraus. Als Release-Anhang wird dieselbe Datei roh ausgeliefert."
         }
@@ -182,8 +182,8 @@ class ApkNameTest {
         // sonst zeigt er auf einen ungeprueften Zweig. Hochgeladen wird nur aus
         // android-release.yml, und das startet nie aus einem Pull-Request.
         val release = Quellen.workflow("android-release.yml")
-        val ausloeser = release.substringAfter("\non:\n").substringBefore("\npermissions:")
-        assert(roh[0] in release && !Regex("""\n  (pull_request|pull_request_target|push):""").containsMatchIn("\n" + ausloeser)) {
+        val trigger = release.substringAfter("\non:\n").substringBefore("\npermissions:")
+        assert(roh[0] in release && !Regex("""\n  (pull_request|pull_request_target|push):""").containsMatchIn("\n" + trigger)) {
             "Der Release-Schritt laeuft auch bei Pull-Requests oder Pushes und ueberschreibt " +
                 "damit das APK hinter dem stabilen Link."
         }
@@ -200,10 +200,10 @@ class ApkNameTest {
         assert(anfang >= 0) { "Der Ausdruck `val built =` steht nicht mehr in build.gradle.kts" }
         val ende = src.indexOf("if (built != null)", anfang)
         assert(ende > anfang) { "Das Ende des Ausdrucks ist nicht mehr zu finden" }
-        val ausdruck = src.substring(anfang, ende)
+        val expression = src.substring(anfang, ende)
 
-        val signiert = ausdruck.indexOf("app-release.apk")
-        val unsigniert = ausdruck.indexOf("app-release-unsigned.apk")
+        val signiert = expression.indexOf("app-release.apk")
+        val unsigniert = expression.indexOf("app-release-unsigned.apk")
         assert(signiert >= 0 && unsigniert >= 0) {
             "Der Ausdruck unterscheidet signiert und unsigniert nicht mehr"
         }

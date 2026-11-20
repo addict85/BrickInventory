@@ -13,10 +13,10 @@ sealed interface Vorgang {
 
 val Vorgang.laeuft: Boolean get() = this is Vorgang.Laeuft
 
-val Vorgang.fehlerMeldung: Meldung? get() = (this as? Vorgang.Fehlgeschlagen)?.meldung
+val Vorgang.errorMessage: Meldung? get() = (this as? Vorgang.Fehlgeschlagen)?.meldung
 
 /** Den Grund wegnehmen, wenn ihn niemand mehr sehen soll; ein laufender Vorgang läuft weiter. */
-fun Vorgang.ohneFehler(): Vorgang = if (this is Vorgang.Fehlgeschlagen) Vorgang.Fertig else this
+fun Vorgang.withoutError(): Vorgang = if (this is Vorgang.Fehlgeschlagen) Vorgang.Fertig else this
 
 /** Ein beendeter Vorgang: mit Grund gescheitert, ohne fertig. */
 fun beendet(fehler: Meldung?): Vorgang = fehler?.let(Vorgang::Fehlgeschlagen) ?: Vorgang.Fertig

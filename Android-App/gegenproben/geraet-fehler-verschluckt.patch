@@ -1,6 +1,6 @@
 Gegenprobe: Ein Fehlschlag beim Einplanen geht nicht in den Meldungskanal
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.GeraeteEinstellungenViewModelTest
+Test: ch.brickinventoryapp.zustand.DevicesSettingsViewModelTest
 Rot: ein Fehlschlag beim Einplanen wird gemeldet
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt
@@ -8,11 +8,11 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
 +++ b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/GeraeteEinstellungenViewModel.kt
 @@ -49,8 +49,8 @@
          viewModelScope.launch {
-             einstellungen.setzeAlarmMeldungen(an)
-             val fehler = planer.einplanen(an) ?: return@launch
--            meldungen.zeige(Meldung.Ressource(R.string.alert_schedule_failed,
+             einstellungen.setAlarmMessages(an)
+             val fehler = planner.einplanen(an) ?: return@launch
+-            meldungen.zeige(Meldung.Resource(R.string.alert_schedule_failed,
 -                listOf("${fehler::class.java.simpleName}: ${fehler.message ?: "—"}")))
-+            Meldung.Ressource(R.string.alert_schedule_failed,
++            Meldung.Resource(R.string.alert_schedule_failed,
 +                listOf("${fehler::class.java.simpleName}: ${fehler.message ?: "—"}"))
          }
      }

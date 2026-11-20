@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
-import ch.brickinventoryapp.ui.theme.skelettTon
+import ch.brickinventoryapp.ui.theme.skeletonTone
 
 /**
  * Kacheln ohne Inhalt, solange die erste Seite lädt. Die Fläche steht schon so
@@ -47,7 +47,7 @@ import ch.brickinventoryapp.ui.theme.skelettTon
  * auf Wunsch die Kennzahlenzeile darüber —, damit beim Eintreffen nichts springt.
  */
 @Composable
-fun SkelettRaster(
+fun SkeletonRaster(
     spalten: GridCells,
     kachelHoehe: Dp,
     modifier: Modifier = Modifier,
@@ -55,26 +55,26 @@ fun SkelettRaster(
     innenabstand: PaddingValues = PaddingValues(Abstaende.mittel),
     abstand: Dp = 10.dp,
     /** Eine Zeile über die ganze Breite vorweg, wo die Liste Kennzahlen zeigt (Galerie). */
-    kopfzeile: Boolean = false,
+    headerRow: Boolean = false,
     /**
      * Seitenverhältnis der Bildfläche, wo die echte Kachel eines hat (Galerie 4:3).
      * Ohne nimmt das Bild den Rest der Höhe; mit springt beim Eintreffen nichts.
      */
-    bildVerhaeltnis: Float? = null,
+    imageRatio: Float? = null,
 ) {
     val laedt = stringResource(R.string.common_loading)
     // Ein Schimmer für alle Kacheln: Läuft er über alle gleich, liest es sich als eine
-    // Fläche, die lädt. Der Ton kommt aus skelettTon (Theme.kt), damit die Kacheln
+    // Fläche, die lädt. Der Ton kommt aus skeletonTone (Theme.kt), damit die Kacheln
     // sich in jedem Design vom Hintergrund abheben.
     val weg by rememberInfiniteTransition(label = "skelett").animateFloat(
         initialValue = -600f, targetValue = 1800f,
         animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart),
         label = "skelett-schimmer",
     )
-    val grund = skelettTon(MaterialTheme.colorScheme)
-    val licht = skelettTon(MaterialTheme.colorScheme, 0.04f)
+    val grund = skeletonTone(MaterialTheme.colorScheme)
+    val light = skeletonTone(MaterialTheme.colorScheme, 0.04f)
     // Ohne Bewegung eine ruhige Fläche statt des wandernden Lichts.
-    val schimmer = if (bewegungReduziert()) SolidColor(grund) else Brush.linearGradient(listOf(grund, licht, grund),
+    val schimmer = if (movementReduced()) SolidColor(grund) else Brush.linearGradient(listOf(grund, light, grund),
         start = Offset(weg, 0f), end = Offset(weg + 600f, 600f))
     LazyVerticalGrid(
         columns = spalten,
@@ -84,8 +84,8 @@ fun SkelettRaster(
         verticalArrangement = Arrangement.spacedBy(abstand),
         userScrollEnabled = false,
     ) {
-        if (kopfzeile) item(key = "skelett-kopf", span = { GridItemSpan(maxLineSpan) }) {
-            Box(Modifier.fillMaxWidth().height(SKELETT_KOPF).clip(Formen.karte).background(schimmer))
+        if (headerRow) item(key = "skelett-kopf", span = { GridItemSpan(maxLineSpan) }) {
+            Box(Modifier.fillMaxWidth().height(SKELETON_HEADER).clip(Formen.karte).background(schimmer))
         }
         items(anzahl, key = { "skelett-$it" }) {
             // Wie eine Karte: Fläche, darin Bild und zwei Zeilen Text als Balken.
@@ -94,7 +94,7 @@ fun SkelettRaster(
                     .background(MaterialTheme.colorScheme.surface).padding(Abstaende.klein),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
             ) {
-                val bild = if (bildVerhaeltnis != null) Modifier.aspectRatio(bildVerhaeltnis) else Modifier.weight(1f)
+                val bild = if (imageRatio != null) Modifier.aspectRatio(imageRatio) else Modifier.weight(1f)
                 Box(Modifier.fillMaxWidth().then(bild).clip(Formen.kachel).background(schimmer))
                 Box(Modifier.fillMaxWidth(0.8f).height(Abstaende.mittel).clip(Formen.strich).background(schimmer))
                 Box(Modifier.fillMaxWidth(0.5f).height(Abstaende.mittel).clip(Formen.strich).background(schimmer))
@@ -104,7 +104,7 @@ fun SkelettRaster(
 }
 
 /** Höhe der Kennzahlenzeile im Skelett — so hoch wie die echte bei 100 %. */
-private val SKELETT_KOPF = 88.dp
+private val SKELETON_HEADER = 88.dp
 
 /**
  * Ein Eintrag, der beim Einfügen, Entfernen und Umsortieren gleitet statt zu
@@ -112,12 +112,12 @@ private val SKELETT_KOPF = 88.dp
  * auch ausserhalb von Listen benutzt, wo animateItem() nicht gilt.
  */
 @Composable
-fun LazyGridItemScope.Bewegt(inhalt: @Composable () -> Unit) {
-    Box(if (bewegungReduziert()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }
+fun LazyGridItemScope.Moved(inhalt: @Composable () -> Unit) {
+    Box(if (movementReduced()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }
 }
 
 /** Dasselbe für Einträge einer LazyColumn. */
 @Composable
-fun LazyItemScope.Bewegt(inhalt: @Composable () -> Unit) {
-    Box(if (bewegungReduziert()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }
+fun LazyItemScope.Moved(inhalt: @Composable () -> Unit) {
+    Box(if (movementReduced()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }
 }

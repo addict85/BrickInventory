@@ -21,19 +21,19 @@ data class TeilAnsicht(
 )
 
 /** [teileGesamt] ist die Gesamtzahl wie in der Sammlung: aus Sets und einzeln erfasst zusammen. */
-data class TeileKennzahlenAnsicht(
+data class PartsMetricsView(
     val uniqueParts: Int = 0,
     val uniqueColors: Int = 0,
     val teileGesamt: Int = 0,
-    val teileAusSets: Int? = null,
-    val teileEinzeln: Int? = null,
+    val partsFromSets: Int? = null,
+    val partsSingle: Int? = null,
 )
 
 data class FigurAnsicht(
     val figNumber: String,
     val condition: Zustand? = null,
     val conditions: List<Zustand> = emptyList(),
-    val owners: List<KontoAnsicht> = emptyList(),
+    val owners: List<AccountView> = emptyList(),
     val avgPurchasePrice: Geld? = null,
     val figName: String? = null,
     val quantity: Int = 1,
@@ -44,27 +44,27 @@ data class FigurAnsicht(
     val setAddedAt: Instant? = null,
 )
 
-data class FigurenKennzahlenAnsicht(
+data class MinifigsMetricsView(
     val types: Int = 0,
     val totalQuantity: Int = 0,
     val manual: Int = 0,
 )
 
-data class FilterFarbeAnsicht(
+data class FilterColorView(
     val colorName: String? = null,
     val colorHex: String? = null,
     val uniqueParts: Int = 0,
     val totalQuantity: Int = 0,
 )
 
-data class KategorieAnsicht(
+data class CategoryView(
     val categoryName: String? = null,
     val label: String? = null,
     val uniqueParts: Int = 0,
     val totalQuantity: Int = 0,
 )
 
-data class BestandteilKopfAnsicht(
+data class ComponentHeaderView(
     val nummer: String,
     val name: String? = null,
     val colorId: Int? = null,
@@ -79,7 +79,7 @@ data class BestandteilKopfAnsicht(
     val totalQuantity: Int = 0,
 )
 
-data class VerwendendesSetAnsicht(
+data class UsingSetView(
     val setNumber: String,
     val setName: String? = null,
     val quantity: Int = 0,
@@ -88,7 +88,7 @@ data class VerwendendesSetAnsicht(
     val ownerUserId: Int = 0,
 )
 
-data class ManuellesTeilAnsicht(
+data class ManualPartView(
     val id: Int? = null,
     val partNumber: String = "",
     val blPartNumber: String? = null,
@@ -111,12 +111,12 @@ data class ManuellesTeilAnsicht(
     val condition: Zustand? = null,
     val conditions: List<Zustand> = emptyList(),
     val userId: Int? = null,
-    val owners: List<KontoAnsicht> = emptyList(),
-    val acquisitions: List<BewertungsKaufAnsicht> = emptyList(),
+    val owners: List<AccountView> = emptyList(),
+    val acquisitions: List<ValuationPurchaseView> = emptyList(),
     val storage: String? = null,
 )
 
-data class ManuelleFigurAnsicht(
+data class ManualMinifigView(
     val id: Int? = null,
     val figNumber: String = "",
     val blFigNumber: String? = null,
@@ -136,24 +136,24 @@ data class ManuelleFigurAnsicht(
     val condition: Zustand? = null,
     val conditions: List<Zustand> = emptyList(),
     val userId: Int? = null,
-    val owners: List<KontoAnsicht> = emptyList(),
-    val acquisitions: List<BewertungsKaufAnsicht> = emptyList(),
+    val owners: List<AccountView> = emptyList(),
+    val acquisitions: List<ValuationPurchaseView> = emptyList(),
     val storage: String? = null,
 )
 
 /** In welchen Sets ein Teil oder eine Figur steckt; [kopf] beschreibt den Posten selbst. */
-data class VerwendungAnsicht(
-    val kopf: BestandteilKopfAnsicht? = null,
-    val sets: List<VerwendendesSetAnsicht> = emptyList(),
+data class UsageView(
+    val kopf: ComponentHeaderView? = null,
+    val sets: List<UsingSetView> = emptyList(),
 )
 
 /** Wonach die Teileliste den eigenen Bestand fragt: Rebrickable-Nummer und Farbe. */
-data class Teilschluessel(val nummer: String, val farbe: Int)
+data class PartialKey(val nummer: String, val farbe: Int)
 
 /** Wie viele Stück da sind; [lose] zählt nur, was in keinem Set steckt. */
-data class TeilBestand(val gesamt: Int = 0, val lose: Int = 0)
+data class PartInventory(val gesamt: Int = 0, val lose: Int = 0)
 
-data class BewertungsKaufAnsicht(
+data class ValuationPurchaseView(
     val id: Int = 0,
     val condition: Zustand = Zustand.NEU,
     val quantity: Int = 1,

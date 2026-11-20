@@ -34,7 +34,7 @@ object ScopeFilter {
      * Lagerort“: „Was muss ich noch einräumen?“ ist eine andere Frage als „wo liegt
      * X?“ — wie in der Webapp.
      */
-    fun lagerAsQuery(value: String?): String? =
+    fun storageAsQuery(value: String?): String? =
         if (value.isNullOrBlank()) null else value
 
     /**

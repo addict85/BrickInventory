@@ -1,6 +1,6 @@
 Gegenprobe: Bild der Teilekachel wieder mit dem Namen beschrieben
 Modul: app
-Test: ch.brickinventoryapp.app.KachelVorlesenTest
+Test: ch.brickinventoryapp.app.TileReadAloudTest
 Rot: Teilekachel liest Name einmal
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt

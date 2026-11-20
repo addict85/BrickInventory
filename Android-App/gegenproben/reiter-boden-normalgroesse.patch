@@ -1,17 +1,17 @@
 Gegenprobe: Reiterbeschriftung schrumpft bei grosser Schrift wieder bis zur Normalgrösse
 Modul: app
-Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
 Rot: Reiterbeschriftung waechst bei 200 Prozent mindestens aufs Anderthalbfache
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -365,7 +365,7 @@ internal data class ReiterSatz(val alle: Boolean, val faktor: Float, val gewaehl
+@@ -365,7 +365,7 @@ internal data class TabSet(val alle: Boolean, val faktor: Float, val gewaehl
   */
- internal fun reiterSatz(breiten: List<Float>, gewaehlt: Int, gesamt: Float, rand: Float, minZiel: Float, schrift: Float): ReiterSatz {
-     val anteil = gesamt / breiten.size - rand
--    val boden = minOf(schrift, REITER_MIN_SKALA) / schrift
-+    val boden = 1f / schrift
-     val faktor = minOf(1f, anteil / (breiten.maxOrNull() ?: 1f))
-     if (faktor >= boden || gewaehlt < 0 || breiten.size < 2) return ReiterSatz(true, maxOf(faktor, boden), gewaehlt, 1f)
-     val noetig = breiten[gewaehlt] + rand
+ internal fun tabSet(widths: List<Float>, gewaehlt: Int, gesamt: Float, edge: Float, minTarget: Float, schrift: Float): TabSet {
+     val share = gesamt / widths.size - edge
+-    val floor = minOf(schrift, TAB_MIN_SCALE) / schrift
++    val floor = 1f / schrift
+     val faktor = minOf(1f, share / (widths.maxOrNull() ?: 1f))
+     if (faktor >= floor || gewaehlt < 0 || widths.size < 2) return TabSet(true, maxOf(faktor, floor), gewaehlt, 1f)
+     val noetig = widths[gewaehlt] + edge

@@ -1,6 +1,6 @@
 Gegenprobe: Abmelden lässt den verschlüsselten Token stehen
 Modul: core-data
-Test: ch.brickinventoryapp.data.TokenTresorTest
+Test: ch.brickinventoryapp.data.TokenVaultTest
 Rot: Abmelden entfernt beide Eintraege
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
@@ -12,6 +12,6 @@ index 0287f52..d54d0c8 100644
              // Abmelden über den Altbestand wieder angemeldet.
              it.remove(AUTH_TOKEN)
 -            it.remove(AUTH_TOKEN_ENC)
-             it.entferne(HERKUNFT)
+             it.entferne(ORIGIN)
              it.entferne(NAME)
-             it.remove(ANGEMELDET_AM)
+             it.remove(SIGNED_IN_AT)

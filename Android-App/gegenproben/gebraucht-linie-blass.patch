@@ -1,6 +1,6 @@
 Gegenprobe: Gebraucht-Linie von Noppe und Hochglanz wieder #FF7A00 wie die Web-App
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.TextKontrastTest
+Test: ch.brickinventoryapp.ui.TextContrastTest
 Rot: Diagrammschrift und Linien sind lesbar
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
@@ -10,7 +10,7 @@ diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/The
          // blau, Gebraucht bernstein/orange, damit sich die Farbsysteme nicht verwechseln.
          Design.FARBFAECHER -> ChartColors(ChartNewFarbfaecher, ChartUsedFarbfaecher, gedaempft = gedaempft)
          // Das Orange des Webs (ChartUsedNoppe) erreicht auf Weiss nur 2,6:1; als Linie braucht es 3:1.
--        Design.NOPPE, Design.HOCHGLANZ -> ChartColors(ChartNewNoppe, ChartUsedNoppe.let { mitKontrast(it, s.surface, GRAFIK_KONTRAST) },
+-        Design.NOPPE, Design.HOCHGLANZ -> ChartColors(ChartNewNoppe, ChartUsedNoppe.let { withContrast(it, s.surface, GRAPHIC_CONTRAST) },
 +        Design.NOPPE, Design.HOCHGLANZ -> ChartColors(ChartNewNoppe, ChartUsedNoppe,
              raster = Color(0xFFE4E8EF), gedaempft = gedaempft)
          Design.CLASSIC -> ChartColors(ChartNewClassic, ChartUsedClassic, gedaempft = gedaempft)

@@ -2,7 +2,7 @@ package ch.brickinventoryapp.model.fach
 
 // Jobs, Brickset-Warteschlange, Zwischenspeicher und Kontingente im Monitoring.
 
-data class JobZustandAnsicht(
+data class JobStateView(
     val label: String = "",
     val status: Laufstatus = Laufstatus.RUHT,
     val progress: Int = 0,
@@ -11,18 +11,18 @@ data class JobZustandAnsicht(
 )
 
 /** Die Jobs des Servers und ihr Zeitplan, aus einer Antwort. */
-data class JobsAnsicht(
-    val jobs: Map<String, JobZustandAnsicht> = emptyMap(),
-    val zeitplaene: Map<String, ZeitplanAnsicht> = emptyMap(),
+data class JobsView(
+    val jobs: Map<String, JobStateView> = emptyMap(),
+    val schedules: Map<String, ScheduleView> = emptyMap(),
 )
 
-data class ZeitplanAnsicht(
+data class ScheduleView(
     val type: String = "daily",
     val time: String? = null,
     val minutes: Int? = null,
 )
 
-data class BricksetEintragAnsicht(
+data class BricksetEntryView(
     val setNumber: String,
     val name: String? = null,
     val attempts: Int = 0,
@@ -30,27 +30,27 @@ data class BricksetEintragAnsicht(
     val lastError: String? = null,
 )
 
-data class CacheKennzahlenAnsicht(
+data class CacheMetricsView(
     val prices: Int = 0,
     val subsets: Int = 0,
     val catalog: Int = 0,
     val priceStale: Int = 0,
-    val rateLimits: KontingenteAnsicht? = null,
+    val rateLimits: QuotasView? = null,
 )
 
-data class KontingenteAnsicht(
-    val bricklink: KontingentAnsicht = KontingentAnsicht(),
-    val rebrickable: KontingentAnsicht = KontingentAnsicht(),
-    val brickset: KontingentAnsicht = KontingentAnsicht(),
+data class QuotasView(
+    val bricklink: QuotaView = QuotaView(),
+    val rebrickable: QuotaView = QuotaView(),
+    val brickset: QuotaView = QuotaView(),
 )
 
-data class KontingentAnsicht(
+data class QuotaView(
     val count: Int = 0,
     val limit: Int = 0,
     val remaining: Int = 0,
 )
 
-data class ApiGrenzenAnsicht(
+data class ApiLimitsView(
     val rebrickable: Int = 0,
     val bricklink: Int = 0,
     val brickset: Int = 0,

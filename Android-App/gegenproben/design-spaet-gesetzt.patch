@@ -1,6 +1,6 @@
 Gegenprobe: Das gemerkte Design kommt nicht mehr vor dem ersten Bild in die Sitzung
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.DarstellungUndVertrauenTest
+Test: ch.brickinventoryapp.zustand.RenderingAndTrustTest
 Rot: der Zustand wird mit dem gemerkten Design geboren
 
 diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Kontowerte.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Kontowerte.kt
@@ -10,8 +10,8 @@ diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung
  ) : Kontowerte {
      override val waehrung: StateFlow<Waehrung> = ablage.currency.stateIn(bereich, SharingStarted.Eagerly, Waehrung.EUR)
      override val design: StateFlow<Design> =
--        ablage.appTheme.stateIn(bereich, SharingStarted.Eagerly, darstellung.gemerktesDesign())
-+        ablage.appTheme.stateIn(bereich, SharingStarted.Eagerly, Design.VORGABE)
+-        ablage.appTheme.stateIn(bereich, SharingStarted.Eagerly, darstellung.rememberedDesign())
++        ablage.appTheme.stateIn(bereich, SharingStarted.Eagerly, Design.DEFAULT)
  
-     override fun setzeWaehrung(w: Waehrung) { bereich.launch { ablage.saveCurrency(w) } }
+     override fun setCurrency(w: Waehrung) { bereich.launch { ablage.saveCurrency(w) } }
      override fun setzeDesign(d: Design) { bereich.launch { ablage.saveAppTheme(d) } }

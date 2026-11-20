@@ -8,7 +8,7 @@ import okhttp3.logging.HttpLoggingInterceptor
  * (Passwörter, Gutschein-PINs). Die Köpfe mit Token oder Sitzung sind zusätzlich
  * geschwärzt, falls jemand beim Suchen die Stufe hochdreht.
  */
-internal fun netzMitschnitt(
+internal fun networkRecording(
     schreiber: HttpLoggingInterceptor.Logger = HttpLoggingInterceptor.Logger { Protokoll.notiz("OkHttp", it) },
 ): HttpLoggingInterceptor = HttpLoggingInterceptor(schreiber).apply {
     level = HttpLoggingInterceptor.Level.BASIC

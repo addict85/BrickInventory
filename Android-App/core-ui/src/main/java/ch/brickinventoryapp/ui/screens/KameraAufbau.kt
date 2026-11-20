@@ -30,9 +30,9 @@ import androidx.camera.core.resolutionselector.ResolutionStrategy
  * Der AF-Modus steht auch hier, nicht nur an der Vorschau: CameraX führt beide zu einem Request
  * zusammen, und je nach Gerät entscheidet die Analyse mit.
  */
-fun bildAnalyse(breite: Int, hoehe: Int): ImageAnalysis =
+fun imageAnalyse(breite: Int, hoehe: Int): ImageAnalysis =
     ImageAnalysis.Builder()
-        .also { autofokusDauerhaft(it) }
+        .also { autofocusPermanent(it) }
         .setResolutionSelector(
             ResolutionSelector.Builder()
                 .setResolutionStrategy(
@@ -56,17 +56,17 @@ fun bildAnalyse(breite: Int, hoehe: Int): ImageAnalysis =
  * beiden dieselbe Zeile ist.
  */
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
-fun autofokusDauerhaft(bauer: ImageAnalysis.Builder) {
-    Camera2Interop.Extender(bauer).setCaptureRequestOption(
+fun autofocusPermanent(builder: ImageAnalysis.Builder) {
+    Camera2Interop.Extender(builder).setCaptureRequestOption(
         CaptureRequest.CONTROL_AF_MODE,
         CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
     )
 }
 
-/** Dasselbe für die Vorschau — siehe [autofokusDauerhaft]. */
+/** Dasselbe für die Vorschau — siehe [autofocusPermanent]. */
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
-fun autofokusDauerhaft(bauer: Preview.Builder) {
-    Camera2Interop.Extender(bauer).setCaptureRequestOption(
+fun autofocusPermanent(builder: Preview.Builder) {
+    Camera2Interop.Extender(builder).setCaptureRequestOption(
         CaptureRequest.CONTROL_AF_MODE,
         CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE
     )
@@ -82,8 +82,8 @@ fun kameraBinden(
     previewView: PreviewView,
     lifecycleOwner: LifecycleOwner,
     analyse: ImageAnalysis,
-    beiFehler: () -> Unit = {},
-    beiKamera: (Camera) -> Unit,
+    atError: () -> Unit = {},
+    atCamera: (Camera) -> Unit,
 ) {
     val future = ProcessCameraProvider.getInstance(ctx)
     future.addListener({
@@ -91,12 +91,12 @@ fun kameraBinden(
         try {
             val provider = future.get()
             val previewBuilder = Preview.Builder()
-            autofokusDauerhaft(previewBuilder)
+            autofocusPermanent(previewBuilder)
             val preview = previewBuilder.build()
                 .also { it.setSurfaceProvider(previewView.surfaceProvider) }
             try {
                 provider.unbindAll()
-                beiKamera(
+                atCamera(
                     provider.bindToLifecycle(
                         lifecycleOwner,
                         CameraSelector.DEFAULT_BACK_CAMERA,
@@ -107,7 +107,7 @@ fun kameraBinden(
             } catch (_: Exception) {
                 // Bewusst still: Das Binden scheitert praktisch nur, wenn der Lebenszyklus schon
                 // beendet ist — dann gibt es niemanden mehr, dem man etwas melden könnte.
-                // beiFehler() gehört an den äusseren Fall, wo die Kamera gar nicht erst verfügbar
+                // atError() gehört an den äusseren Fall, wo die Kamera gar nicht erst verfügbar
                 // ist.
             }
         } catch (_: Exception) {
@@ -115,13 +115,13 @@ fun kameraBinden(
             // folgt, entscheidet der Aufrufer: Der Scanner zeigt einen Hinweis
             // statt eines schwarzen Bildes, der SetupScreen laesst die Vorschau
             // bewusst leer.
-            beiFehler()
+            atError()
         }
     }, ContextCompat.getMainExecutor(ctx))
 }
 
 /** Die Vorschau beider Scanner: füllt die Fläche und rechnet schnell statt kompatibel. */
-fun kameraVorschau(ctx: Context): PreviewView = PreviewView(ctx).apply {
+fun cameraPreview(ctx: Context): PreviewView = PreviewView(ctx).apply {
     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
     scaleType = PreviewView.ScaleType.FILL_CENTER
     implementationMode = PreviewView.ImplementationMode.PERFORMANCE
@@ -130,19 +130,19 @@ fun kameraVorschau(ctx: Context): PreviewView = PreviewView(ctx).apply {
 /**
  * Tippen stellt an dieser Stelle scharf und misst dort die Belichtung: Bei einer
  * Anleitung dicht vor der Linse liegt der Dauer-Autofokus gern daneben. disableAutoCancel(),
- * sonst fiele die Kamera nach Sekunden auf ihre eigene Wahl zurück. [steuerung] ist null,
+ * sonst fiele die Kamera nach Sekunden auf ihre eigene Wahl zurück. [control] ist null,
  * solange die Kamera nicht gebunden ist.
  */
-fun tippZumFokus(previewView: PreviewView, steuerung: () -> CameraControl?) {
+fun tippZumFokus(previewView: PreviewView, control: () -> CameraControl?) {
     previewView.setOnTouchListener { v, ev ->
         if (ev.action == MotionEvent.ACTION_UP) {
-            val punkt = previewView.meteringPointFactory.createPoint(ev.x, ev.y)
-            val aktion = FocusMeteringAction.Builder(punkt, FocusMeteringAction.FLAG_AF)
-                .addPoint(punkt, FocusMeteringAction.FLAG_AE)
+            val point = previewView.meteringPointFactory.createPoint(ev.x, ev.y)
+            val aktion = FocusMeteringAction.Builder(point, FocusMeteringAction.FLAG_AF)
+                .addPoint(point, FocusMeteringAction.FLAG_AE)
                 .disableAutoCancel()
                 .build()
             // Kamera noch nicht bereit oder schon weg: Der Tipp bleibt ohne Wirkung.
-            runCatching { steuerung()?.startFocusAndMetering(aktion) }
+            runCatching { control()?.startFocusAndMetering(aktion) }
             v.performClick()
         }
         true

@@ -7,7 +7,7 @@ import java.net.URI
  * vom Server und geht per ACTION_VIEW hinaus; ein anderes Schema (`intent:`,
  * `https:`, `content:`) öffnete sonst ein beliebiges Ziel und gäbe ihm das Geheimnis.
  */
-fun otpauthAdresse(url: String?): String? {
+fun otpauthAddress(url: String?): String? {
     val roh = url?.trim()?.takeIf { it.isNotEmpty() && it.none(Char::isWhitespace) } ?: return null
     val uri = runCatching { URI(roh) }.getOrNull() ?: return null
     if (!uri.scheme.equals("otpauth", ignoreCase = true) || uri.isOpaque) return null

@@ -1,25 +1,25 @@
 Gegenprobe: Der Kontofilter der Teile übersteht den Prozesstod im SavedStateHandle
 Modul: feature-teile
-Test: ch.brickinventoryapp.teile.TeileViewModelTest
+Test: ch.brickinventoryapp.teile.PartsViewModelTest
 Rot: der Kontofilter nicht
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
 index ea8ae02..f1ade08 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-@@ -67,6 +67,7 @@ class TeileViewModel @Inject constructor(
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
+@@ -67,6 +67,7 @@ class PartsViewModel @Inject constructor(
      override fun setScope(view: ScopeFilter.View, value: String) {
          viewModelScope.launch {
-             filter.setzeKonto(view, value)
+             filter.setAccount(view, value)
 +            gemerkt["teile_konto"] = value
              if (view == ScopeFilter.View.PARTS) loadParts()
          }
      }
-@@ -140,6 +141,7 @@ class TeileViewModel @Inject constructor(
+@@ -140,6 +141,7 @@ class PartsViewModel @Inject constructor(
          // Die Liste folgt der Ablage selbst; die Kennzahlen rechnet der Server darüber.
-         viewModelScope.launch { aenderungen.teileGeaendert().collect { teile.ladeKennzahlen() } }
-         gemerkt.get<Teilefilter>(F_FILTER)?.let(teile::stelleFilterWieder)
-+        gemerkt.get<String>("teile_konto")?.let { k -> viewModelScope.launch { filter.setzeKonto(ScopeFilter.View.PARTS, k) } }
+         viewModelScope.launch { changes.partsChanged().collect { teile.loadMetrics() } }
+         gemerkt.get<Teilefilter>(F_FILTER)?.let(teile::placeFilterAgain)
++        gemerkt.get<String>("teile_konto")?.let { k -> viewModelScope.launch { filter.setAccount(ScopeFilter.View.PARTS, k) } }
          // Wer den Reiter oder ein Einzelstück zeigt, bekommt Liste, Farbkatalog und Filterlisten;
-         // die beiden Filterlisten kommen von zwei Adressen (TeileApi.getPartsFilterColors).
-         ladeJeServer(sitzung, teileBeobachtet) { loadParts(); loadPartsColors(); loadPartsFilters() }
+         // die beiden Filterlisten kommen von zwei Adressen (PartsApi.getPartsFilterColors).
+         loadPerServer(sitzung, partsObserved) { loadParts(); loadPartsColors(); loadPartsFilters() }

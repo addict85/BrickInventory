@@ -9,9 +9,9 @@ diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/kata
 @@ -155,7 +155,7 @@
                  )
                  // Derselbe Fehlerzustand wie Galerie, Teile und Merkliste.
-                 fehler != null && state.total == 0 -> ZustandsHinweis {
--                    FehlerHinweis(fehler.meldung.satz(), onRefresh, fehler.art)
-+                    FehlerHinweis(fehler.meldung.satz(), onRefresh, null)
+                 fehler != null && state.total == 0 -> StateHint {
+-                    ErrorHint(fehler.meldung.satz(), onRefresh, fehler.art)
++                    ErrorHint(fehler.meldung.satz(), onRefresh, null)
                  }
                  // Mit Suche oder Filter: sagen, woran es liegt, und den Weg zurück anbieten.
-                 state.total == 0 && gefiltert -> ZustandsHinweis {
+                 state.total == 0 && gefiltert -> StateHint {

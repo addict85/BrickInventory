@@ -2,7 +2,7 @@ package ch.brickinventoryapp.finanzen.ui.screens
 
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import ch.brickinventoryapp.ui.components.GedrosselteAnsage
+import ch.brickinventoryapp.ui.components.ThrottledAnnouncement
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.app.Activity
 import android.content.ContentValues
@@ -27,12 +27,12 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.data.util.AnleitungsAblage
-import ch.brickinventoryapp.finanzen.ui.pdf.PdfFehler
+import ch.brickinventoryapp.data.util.InstructionStore
+import ch.brickinventoryapp.finanzen.ui.pdf.PdfError
 import ch.brickinventoryapp.finanzen.ui.pdf.PdfLoadState
 import ch.brickinventoryapp.finanzen.ui.pdf.PdfQuelle
 import ch.brickinventoryapp.finanzen.ui.pdf.SeitenRenderer
-import ch.brickinventoryapp.finanzen.ui.pdf.PdfDruckAdapter
+import ch.brickinventoryapp.finanzen.ui.pdf.PdfPrintAdapter
 import ch.brickinventoryapp.finanzen.ui.pdf.PdfSchreiber
 import kotlinx.coroutines.CoroutineScope
 import ch.brickinventoryapp.finanzen.ui.viewmodel.PdfBetrachterViewModel
@@ -40,14 +40,14 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlin.math.ceil
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.FehlerHinweis
-import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import ch.brickinventoryapp.ui.components.ErrorHint
+import ch.brickinventoryapp.ui.components.StateHint
 import androidx.compose.ui.text.style.TextAlign
-import ch.brickinventoryapp.finanzen.ui.viewmodel.pdfDarfGespeichertWerden
+import ch.brickinventoryapp.finanzen.ui.viewmodel.pdfMaySavedBecome
 
 /**
  * In-App PDF-Viewer für grosse Anleitungen: Der Download läuft streamend und
- * verschlüsselt auf die Platte ([AnleitungsAblage]; Gutscheine nur in den Speicher),
+ * verschlüsselt auf die Platte ([InstructionStore]; Gutscheine nur in den Speicher),
  * angezeigt wird aus einem Bereich ohne Namen ([PdfQuelle]). PdfRenderer rendert die
  * Seiten einzeln. „Herunterladen“ kopiert die geladene Anleitung, statt sie über den
  * DownloadManager neu zu holen — der kennt den Bearer-Token nicht.
@@ -58,7 +58,7 @@ import ch.brickinventoryapp.finanzen.ui.viewmodel.pdfDarfGespeichertWerden
 // wie im Bildzoom und in der Weboberfläche.
 internal const val PDF_ZOOM_MIN = 1f
 internal const val PDF_ZOOM_MAX = 5f
-internal const val PDF_ZOOM_SCHRITT = 1.25f      // ein Druck auf + bzw. −
+internal const val PDF_ZOOM_STEP = 1.25f      // ein Druck auf + bzw. −
 internal const val PDF_ZOOM_DOPPELTIPP = 2.5f    // Doppeltipp aus 1x heraus
 
 /**
@@ -67,7 +67,7 @@ internal const val PDF_ZOOM_DOPPELTIPP = 2.5f    // Doppeltipp aus 1x heraus
  * Wechsel kostet einen PdfRenderer-Durchlauf; so sind es auf dem Weg von 1x nach
  * 5x höchstens zwei.
  */
-internal fun renderStufe(zoom: Float): Int = ceil(zoom).toInt().coerceIn(1, 3)
+internal fun renderLevel(zoom: Float): Int = ceil(zoom).toInt().coerceIn(1, 3)
 
 /**
  * Der Betrachter am Navigationsziel: holt das ViewModel und stösst das Laden an.
@@ -77,7 +77,7 @@ internal fun renderStufe(zoom: Float): Int = ceil(zoom).toInt().coerceIn(1, 3)
 internal fun PdfViewerRoute(
     pdfUrl: String,
     title: String,
-    /** Nur Adressen dieses Servers lädt der Betrachter (pdfImBetrachter). */
+    /** Nur Adressen dieses Servers lädt der Betrachter (pdfInViewer). */
     serverUrl: String,
     onBack: () -> Unit,
     vm: PdfBetrachterViewModel = hiltViewModel(),
@@ -87,9 +87,9 @@ internal fun PdfViewerRoute(
     PdfViewerScreen(
         state = state,
         title = title,
-        speicherbar = remember(pdfUrl) { pdfDarfGespeichertWerden(pdfUrl) },
+        speicherbar = remember(pdfUrl) { pdfMaySavedBecome(pdfUrl) },
         onBack = onBack,
-        rendereSeite = vm.seiten::seite,
+        rendereSeite = vm.pages::seite,
         schreibe = vm.schreiber,
         onErneut = vm::erneut,
     )
@@ -122,8 +122,8 @@ internal fun PdfViewerScreen(
     var zoom by remember { mutableFloatStateOf(PDF_ZOOM_MIN) }
     val anker = remember { ZoomAnker() }
     // Geste und Doppeltipp zoomen um ihren Punkt, die Knoepfe (null) um die Mitte.
-    val setzeZoom = { neu: Float, punkt: Offset? ->
-        anker.punkt = punkt
+    val setzeZoom = { neu: Float, point: Offset? ->
+        anker.point = point
         zoom = neu.coerceIn(PDF_ZOOM_MIN, PDF_ZOOM_MAX)
     }
 
@@ -176,10 +176,10 @@ internal fun PdfViewerScreen(
                 is PdfLoadState.Downloading -> DownloadProgress(s)
                 is PdfLoadState.Rendering -> CenteredLoading(stringResource(R.string.pdfview_rendering))
                 is PdfLoadState.Ready -> PdfPages(s.quelle, s.pageCount, zoom, anker, setzeZoom, rendereSeite)
-                is PdfLoadState.Error -> PdfFehlerAnzeige(s, onErneut)
+                is PdfLoadState.Error -> PdfErrorDisplay(s, onErneut)
             }
             if (state is PdfLoadState.Ready) {
-                ZoomLeiste(
+                ZoomBar(
                     zoom = zoom,
                     setzeZoom = { setzeZoom(it, null) },
                     modifier = Modifier
@@ -197,13 +197,13 @@ private fun DownloadProgress(s: PdfLoadState.Downloading) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
-            modifier = Modifier.padding(Abstaende.sehrGross)
+            modifier = Modifier.padding(Abstaende.veryLarge)
         ) {
             if (s.total > 0) {
                 CircularProgressIndicator(progress = { s.pct / 100f })
                 Text(stringResource(R.string.pdfview_loading_pct, s.pct), Modifier.clearAndSetSemantics {})
                 // Der Prozentwert tickt; angesagt wird er alle zehn Sekunden.
-                GedrosselteAnsage(stringResource(R.string.pdfview_loading_pct, s.pct))
+                ThrottledAnnouncement(stringResource(R.string.pdfview_loading_pct, s.pct))
                 Text(
                     "${formatMb(s.bytes)} / ${formatMb(s.total)}",
                     style = MaterialTheme.typography.bodySmall,
@@ -212,7 +212,7 @@ private fun DownloadProgress(s: PdfLoadState.Downloading) {
             } else {
                 CircularProgressIndicator()
                 Text(stringResource(R.string.pdfview_loading_bytes, formatMb(s.bytes)), Modifier.clearAndSetSemantics {})
-                GedrosselteAnsage(stringResource(R.string.pdfview_loading_bytes, formatMb(s.bytes)))
+                ThrottledAnnouncement(stringResource(R.string.pdfview_loading_bytes, formatMb(s.bytes)))
             }
         }
     }
@@ -237,20 +237,20 @@ private fun CenteredLoading(text: String) {
  * zweiten Mal nicht: dort nur der Satz, ohne „Erneut versuchen“.
  */
 @Composable
-private fun PdfFehlerAnzeige(s: PdfLoadState.Error, onErneut: () -> Unit) {
-    if (s.grund == PdfFehler.FREMDER_HOST) {
-        ZustandsHinweis { Text(fehlerText(s.grund), textAlign = TextAlign.Center) }
-    } else ZustandsHinweis {
-        FehlerHinweis(s.message?.let { stringResource(R.string.pdfview_ursache, it) } ?: fehlerText(s.grund), onErneut, s.klasse)
+private fun PdfErrorDisplay(s: PdfLoadState.Error, onErneut: () -> Unit) {
+    if (s.grund == PdfError.FREMDER_HOST) {
+        StateHint { Text(errorText(s.grund), textAlign = TextAlign.Center) }
+    } else StateHint {
+        ErrorHint(s.message?.let { stringResource(R.string.pdfview_ursache, it) } ?: errorText(s.grund), onErneut, s.klasse)
     }
 }
 
 /** Fehler ohne Ursachentext: der Satz in der Sprache der App. */
 @Composable
-private fun fehlerText(grund: PdfFehler): String = when (grund) {
-    PdfFehler.FREMDER_HOST -> stringResource(R.string.pdfview_fremder_host)
-    PdfFehler.DOWNLOAD -> stringResource(R.string.pdfview_download_failed)
-    PdfFehler.UNBEKANNT -> stringResource(R.string.pdfview_unknown_error)
+private fun errorText(grund: PdfError): String = when (grund) {
+    PdfError.FREMDER_HOST -> stringResource(R.string.pdfview_fremder_host)
+    PdfError.DOWNLOAD -> stringResource(R.string.pdfview_download_failed)
+    PdfError.UNBEKANNT -> stringResource(R.string.pdfview_unknown_error)
 }
 
 // Druckt die bereits geladene PDF-Datei über das System-Druckframework. Gibt bei einem
@@ -259,10 +259,10 @@ private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String, schreiber: 
     return fangeAusserAbbruch {
         val printManager = ctx.getSystemService(Context.PRINT_SERVICE) as PrintManager
         val jobName = title.ifBlank { ctx.getString(R.string.pdfview_default_name) }
-        printManager.print(jobName, PdfDruckAdapter(quelle, jobName, schreiber, bereich), PrintAttributes.Builder().build())
+        printManager.print(jobName, PdfPrintAdapter(quelle, jobName, schreiber, bereich), PrintAttributes.Builder().build())
         null
     }.getOrElse { e ->
-        mitUrsache(ctx.getString(R.string.pdfview_print_failed), e)
+        withCause(ctx.getString(R.string.pdfview_print_failed), e)
     }
 }
 
@@ -288,19 +288,19 @@ private fun savePdfToDownloads(ctx: Context, quelle: PdfQuelle, title: String): 
         val resolver = ctx.contentResolver
         val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
             ?: throw IllegalStateException(ctx.getString(R.string.pdfview_no_target))
-        resolver.openOutputStream(uri)?.use { out -> quelle.eingang().use { it.copyTo(out) } }
+        resolver.openOutputStream(uri)?.use { out -> quelle.inbox().use { it.copyTo(out) } }
             ?: throw IllegalStateException(ctx.getString(R.string.pdfview_write_failed))
         values.clear()
         values.put(MediaStore.Downloads.IS_PENDING, 0)
         resolver.update(uri, values, null, null)
         ctx.getString(R.string.pdfview_saved, name)
     }.getOrElse { e ->
-        mitUrsache(ctx.getString(R.string.pdfview_save_failed), e)
+        withCause(ctx.getString(R.string.pdfview_save_failed), e)
     }
 }
 
 /** Der Satz zuerst; der Text der Ausnahme nur als Zusatz, er ist oft Technik („EACCES“). */
-private fun mitUrsache(satz: String, e: Throwable): String =
+private fun withCause(satz: String, e: Throwable): String =
     e.message?.takeIf { it.isNotBlank() }?.let { "$satz ($it)" } ?: satz
 
 private fun Context.findActivity(): Activity? {

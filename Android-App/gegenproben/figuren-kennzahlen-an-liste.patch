@@ -1,6 +1,6 @@
 Gegenprobe: Die Kennzahlen der Figuren hängen wieder an der Liste aus Sets
 Modul: app
-Test: ch.brickinventoryapp.app.ManuelleKachelAnzeigeTest
+Test: ch.brickinventoryapp.app.ManualTileDisplayTest
 Rot: die Kennzahlen der Figuren
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/MinifigsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/MinifigsScreen.kt
@@ -13,6 +13,6 @@ index d25e7c7..62d4c77 100644
                      // Zahlen meinen die ganze Sammlung, auch während einer Suche.
 -                    if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
 +                    if (figs.isNotEmpty()) {
-                         item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { FigurenKennzahlen(minifigStats) }
+                         item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { MinifigsMetrics(minifigStats) }
                      }
                      // Manuelle Figuren als Grid-Sektion — eine durchgehende

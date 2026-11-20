@@ -8,9 +8,9 @@ diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/component
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 @@ -269,7 +269,6 @@
          Text(text, style = MaterialTheme.typography.bodyMedium)
-         PasswortFeld(passwort, { passwort = it }, stringResource(R.string.konto_password_current),
+         PasswordField(passwort, { passwort = it }, stringResource(R.string.konto_password_current),
              Modifier.fillMaxWidth())
--        if (codeNoetig) ZweiterFaktorCodeFeld(code) { code = it }
-         if (fehler != null) FehlerZeile(fehler, Modifier.bringIntoViewRequester(meldungSichtbar))
+-        if (codeNoetig) SecondFactorCodeField(code) { code = it }
+         if (fehler != null) ErrorRow(fehler, Modifier.bringIntoViewRequester(messageVisible))
      }
  }

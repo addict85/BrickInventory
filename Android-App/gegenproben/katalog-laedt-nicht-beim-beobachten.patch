@@ -8,7 +8,7 @@ diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/kata
 +++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/viewmodel/CatalogViewModel.kt
 @@ -67,7 +67,7 @@
          // Erst wer den Katalog sieht, lädt ihn; ein Zurückkehren lädt nur, was noch fehlt.
-         ladeBeimBeobachten(_catalogState) {
+         observeLoadOn(_catalogState) {
              val s = _catalogState.value
 -            if (s.loadedPages.isEmpty() && !s.abruf.laedt) { loadCatalogMeta(); loadCatalogSets() }
 +            if (s.loadedPages.isEmpty() && !s.abruf.laedt) { loadCatalogMeta() }

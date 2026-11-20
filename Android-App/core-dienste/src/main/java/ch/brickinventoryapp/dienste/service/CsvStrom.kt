@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.dienste.service
 
 import ch.brickinventoryapp.data.CsvImportSseClient
-import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
+import ch.brickinventoryapp.model.fach.CsvImportStatusView
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.takeWhile
@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.takeWhile
  */
 internal suspend fun folgeStrom(
     strom: Flow<CsvImportSseClient.Event>,
-    weiter: (CsvImportStandAnsicht) -> Boolean,
+    weiter: (CsvImportStatusView) -> Boolean,
 ): Boolean {
     var gescheitert = false
     fangeAusserAbbruch {

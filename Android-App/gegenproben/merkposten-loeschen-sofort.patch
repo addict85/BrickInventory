@@ -1,16 +1,16 @@
 Gegenprobe: Löschen eines Merkpostens geht wieder sofort an den Server
 Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.MerklisteViewModelTest
+Test: ch.brickinventoryapp.sammlung.WantedViewModelTest
 Rot: ein geloeschter Merkposten laesst sich zurueckholen, geloescht wird erst danach
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
 @@ -206,6 +206,7 @@
-         val name = merklisteState.value.merkposten
+         val name = wantedState.value.merkposten
              .firstOrNull { it.setNumber == setNumber && it.condition == zustand }?.name ?: setNumber
-         _vorgemerkt.value = VorgemerkterMerkposten(setNumber, zustand, besitzer, name)
-+        merkpostenLoeschenAusfuehren()
+         _reserved.value = ReservedWantedItem(setNumber, zustand, besitzer, name)
++        executeWantedItemDelete()
      }
  
      /** Der vorgemerkte Posten bleibt; er stand die ganze Zeit in der Quelle. */

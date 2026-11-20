@@ -1,14 +1,14 @@
 package ch.brickinventoryapp.buildlogic.kanten
 
-/** Eine Abhängigkeit [von] einem Modul [nach] einem anderen, in der Gradle-Konfiguration [konfiguration]. */
-data class Modulkante(val von: String, val konfiguration: String, val nach: String) {
+/** Eine Abhängigkeit [von] einem Modul [nach] einem anderen, in der Gradle-Konfiguration [configuration]. */
+data class Modulkante(val von: String, val configuration: String, val nach: String) {
     /** testImplementation, kspTest, androidTestImplementation …: Was nur Tests sehen, liefert die App nicht aus. */
-    val nurTest: Boolean get() = "test" in konfiguration.lowercase()
+    val onlyTest: Boolean get() = "test" in configuration.lowercase()
 }
 
 /**
  * Welches Modul wovon abhängen darf: app → feature-* → core-*, kein Bereich kennt einen anderen,
- * die Kernmodule in fester Schichtung. Ohne Gradle-Typen, damit die Konvention (ModulkantenPruefen)
+ * die Kernmodule in fester Schichtung. Ohne Gradle-Typen, damit die Konvention (ModuleEdgesCheck)
  * und ModulgrenzenTest dieselbe Regel ausführen statt zwei Abschriften zu pflegen.
  */
 object Modulkanten {
@@ -41,7 +41,7 @@ object Modulkanten {
      * Netz und Tresor liegen unter dem Zustand; ein Bereich kennt sie nur, wenn er selbst
      * Server und Zertifikate prüft (Anmeldung) oder Adressen des Servers auflöst.
      */
-    val tiefeKerne: Map<String, Set<String>> = mapOf(
+    val depthCores: Map<String, Set<String>> = mapOf(
         "core-netz" to setOf("feature-anmeldung", "feature-finanzen", "feature-katalog", "feature-sammlung"),
         "core-sicherheit" to setOf("feature-anmeldung"),
         "core-offline" to emptySet(),
@@ -51,7 +51,7 @@ object Modulkanten {
      * Kernmodule ohne Compose: Zustand, Daten und alles darunter. Ein Compose-Typ dort zöge
      * Oberfläche unter den Zustand, und über ihn erreichte ein Bereich, was er nicht kennen soll.
      */
-    val ohneOberflaeche: Set<String> = setOf(
+    val withoutUi: Set<String> = setOf(
         "core-model", "core-vertrag", "core-netz", "core-sicherheit", "core-offline", "core-data", "core-update", "core-dienste",
         "core-sitzung", "core-zustand",
     )
@@ -59,11 +59,11 @@ object Modulkanten {
     /** Wer core-vertrag einbindet: Nur die Repositories übersetzen; die Ablage hält Fachtypen. */
     val wireKenner: Set<String> = setOf("core-data")
 
-    private val oberflaechenPlugins = setOf("brickinventory.android.compose", "brickinventory.android.feature", "kotlin.compose")
+    private val uisPlugins = setOf("brickinventory.android.compose", "brickinventory.android.feature", "kotlin.compose")
 
     /** Der Verstoss, wenn [modul] mit [plugins] (Katalognamen wie im Modulskript) Compose einschaltet. */
-    fun oberflaecheVerstoss(modul: String, plugins: Collection<String>): String? =
-        (plugins.toSet() intersect oberflaechenPlugins).takeIf { modul in ohneOberflaeche && it.isNotEmpty() }
+    fun uiViolation(modul: String, plugins: Collection<String>): String? =
+        (plugins.toSet() intersect uisPlugins).takeIf { modul in withoutUi && it.isNotEmpty() }
             ?.let { "$modul liegt unter der Oberfläche und schaltet Compose ein: ${it.sorted()}" }
 
     /**
@@ -81,22 +81,22 @@ object Modulkanten {
     )
 
     /** Was zwischen den ViewModels in core-zustand ([gefunden]) und [zustandsViewModels] nicht stimmt. */
-    fun zustandsViewModelVerstoesse(gefunden: Collection<String>): List<String> =
+    fun stateViewModelViolations(gefunden: Collection<String>): List<String> =
         (gefunden.toSet() - zustandsViewModels.keys).map { "$it liegt in core-zustand ohne Grund in Modulkanten.zustandsViewModels" } +
             (zustandsViewModels.keys - gefunden.toSet()).map { "$it steht in Modulkanten.zustandsViewModels, liegt aber nicht in core-zustand" }
 
     /** Die Verstösse unter [kanten], je einer als Satz; leer, wenn alle erlaubt sind. */
-    fun verstoesse(kanten: Collection<Modulkante>): List<String> = kanten.mapNotNull { k ->
+    fun violations(kanten: Collection<Modulkante>): List<String> = kanten.mapNotNull { k ->
         when {
             // api reicht ein Modul an jeden weiter, der dieses kennt; nur core-model ist gemeinsame Sprache.
-            k.konfiguration == "api" && k.nach != "core-model" ->
+            k.configuration == "api" && k.nach != "core-model" ->
                 "Modulkanten per api nur zu core-model: ${k.von} → ${k.nach}"
-            k.nurTest -> null
+            k.onlyTest -> null
             k.nach == "core-vertrag" && k.von !in wireKenner ->
                 "${k.von} kennt das Wire-Format: Nur ${wireKenner.sorted().joinToString(" und ")} bildet es ab"
             k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"
             k.von.startsWith("feature-") && !k.nach.startsWith("core-") -> "${k.von} hängt an ${k.nach}"
-            k.von.startsWith("feature-") && k.nach in tiefeKerne && k.von !in tiefeKerne.getValue(k.nach) ->
+            k.von.startsWith("feature-") && k.nach in depthCores && k.von !in depthCores.getValue(k.nach) ->
                 "${k.von} hängt an ${k.nach}, das unter dem Zustand liegt"
             k.von.startsWith("core-") && k.nach !in kerne[k.von].orEmpty() ->
                 "Schichtung der Kernmodule: ${k.von} hängt an ${k.nach}" +

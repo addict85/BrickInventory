@@ -10,9 +10,9 @@ index a66716f..ffce0fd 100644
 @@ -50,7 +50,7 @@ internal class SchrittbindungImpl @Inject constructor(
  
      /** Den Satz des Servers nur bei seiner Absage: Ein Netzfehler nach der Anmeldung ist keine Meldung wert. */
-     override suspend fun hinterlegeKette(kette: List<ByteArray>): Schrittantwort {
+     override suspend fun depositChain(kette: List<ByteArray>): Schrittantwort {
 -        val anfrage = GeraeteSchluesselAnfrage(kette = kette.map { Base64.getEncoder().encodeToString(it) })
 +        val anfrage = GeraeteSchluesselAnfrage(kette = kette.map { Base64.getUrlEncoder().encodeToString(it) })
-         return when (val r = sicherAufrufen { api.hinterlegeKette(anfrage) }) {
-             is Ergebnis.Erfolg -> Schrittantwort.Frei
-             is Ergebnis.Fehler -> Schrittantwort.Abgelehnt(if (r is Ergebnis.Fehler.Server) r.message.ifBlank { null } else null)
+         return when (val r = sicherAufrufen { api.depositChain(anfrage) }) {
+             is Ergebnis.Erfolg -> Schrittantwort.Free
+             is Ergebnis.Fehler -> Schrittantwort.Rejected(if (r is Ergebnis.Fehler.Server) r.message.ifBlank { null } else null)

@@ -1,6 +1,6 @@
 Gegenprobe: kaeufeVon lädt beim ersten Beobachter nichts
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.KaeufeViewModelTest
+Test: ch.brickinventoryapp.zustand.PurchasesViewModelTest
 Rot: die Kaeufe eines Eintrags laden, sobald
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
@@ -10,11 +10,11 @@ index 81d48be..488e53c 100644
 @@ -62,9 +62,7 @@ class KaeufeViewModel @Inject constructor(
  
      /** Die Käufe eines Eintrags, wie seine Seite sie liest: Wer sie zeigt, lädt sie. */
-     fun kaeufeVon(type: Postenart, id: String, colorId: Int): StateFlow<ManualItemDetailUiState> =
--        Beobachtet(manDetailState) {
+     fun purchasesOf(type: Postenart, id: String, colorId: Int): StateFlow<ManualItemDetailUiState> =
+-        Observed(manDetailState) {
 -            if (type == Postenart.SET) loadAcquisitions(id) else loadManualAcquisitions(type, id, colorId)
 -        }
-+        Beobachtet(manDetailState)
++        Observed(manDetailState)
  
-     private var lagerJob: Job? = null
+     private var storageJob: Job? = null
  

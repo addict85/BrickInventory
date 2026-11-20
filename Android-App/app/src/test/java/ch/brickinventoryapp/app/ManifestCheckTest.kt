@@ -1,0 +1,134 @@
+package ch.brickinventoryapp.app
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import java.io.File
+import java.util.concurrent.TimeUnit
+
+/**
+ * tools/manifest-pruefen.py gegen Ausgaben im Format von
+ * `aapt2 dump xmltree --file AndroidManifest.xml`, mit der echten Positivliste.
+ *
+ * Gegenproben:
+ *   manifest-export-ungeprueft  der Vergleich mit der Positivliste gestrichen → rot
+ *                               „eine fremde exportierte Komponente …“
+ *   manifest-debuggable-egal    die Prüfung auf debuggable gestrichen → rot „ein debuggable …“
+ * ProfileInstallReceiver wieder in manifest-exportiert.txt →
+ *                               rot „herausgenommene Bibliothekskomponenten …“
+ * die Schleife über uses-permission gestrichen →
+ *                               rot „eine Berechtigung ausserhalb der Liste …“
+ *   manifest-telemetrie-ungeprueft  die Prüfung der datatransport-Backends gestrichen →
+ *                               rot „ein Telemetrie-Backend von ML Kit …“
+ */
+class ManifestCheckTest {
+
+    private fun komponente(art: String, name: String, exportiert: Boolean, right: String? = null) = buildString {
+        append("      E: $art (line=10)\n")
+        append("        A: http://schemas.android.com/apk/res/android:name(0x01010003)=\"$name\" (Raw: \"$name\")\n")
+        append("        A: http://schemas.android.com/apk/res/android:exported(0x01010010)=$exportiert\n")
+        if (right != null) append("        A: http://schemas.android.com/apk/res/android:permission(0x01010006)=\"$right\" (Raw: \"$right\")\n")
+    }
+
+    private fun right(name: String) =
+        "    E: uses-permission (line=16)\n" +
+            "      A: http://schemas.android.com/apk/res/android:name(0x01010003)=\"$name\" (Raw: \"$name\")\n"
+
+    private fun manifest(vararg components: String, application: String = "", rights: List<String> = listOf(
+        "android.permission.INTERNET", "android.permission.CAMERA")) =
+        "N: android=http://schemas.android.com/apk/res/android (line=2)\n" +
+            "  E: manifest (line=2)\n" +
+            "    A: package=\"ch.brickinventoryapp\" (Raw: \"ch.brickinventoryapp\")\n" +
+            rights.joinToString("") { right(it) } +
+            "    E: application (line=80)\n" +
+            "      A: http://schemas.android.com/apk/res/android:allowBackup(0x01010280)=false\n" +
+            application + components.joinToString("")
+
+    private val gut = arrayOf(
+        komponente("activity", "ch.brickinventoryapp.app.MainActivity", true),
+        komponente("activity", "ch.brickinventoryapp.app.MeldungsEinstieg", false),
+        komponente("receiver", "ch.brickinventoryapp.app.widget.SammlungsWidgetEmpfaenger", true, "android.permission.BIND_APPWIDGET"),
+        komponente("service", "androidx.work.impl.background.systemjob.SystemJobService", true, "android.permission.BIND_JOB_SERVICE"),
+    )
+
+    private fun pruefe(text: String): Pair<Int, String> {
+        val f = File.createTempFile("manifest", ".txt").apply { deleteOnExit(); writeText(text) }
+        val p = ProcessBuilder("python3", "../tools/manifest-pruefen.py", f.path, "../tools/manifest-exportiert.txt",
+            "../tools/manifest-berechtigungen.txt")
+            .redirectErrorStream(true).start()
+        val output = p.inputStream.bufferedReader().readText()
+        check(p.waitFor(30, TimeUnit.SECONDS)) { output }
+        return p.exitValue() to output
+    }
+
+    @Test
+    fun `das erwartete Manifest geht durch`() {
+        val (code, text) = pruefe(manifest(*gut))
+        assertEquals(text, 0, code)
+    }
+
+    @Test
+    fun `eine fremde exportierte Komponente faellt auf, auch mit falscher Berechtigung`() {
+        val (code, text) = pruefe(manifest(*gut, komponente("provider", "com.beispiel.Offen", true)))
+        assertEquals(1, code)
+        assertTrue(text, "com.beispiel.Offen" in text)
+        val (code2, text2) = pruefe(manifest(komponente("activity", "ch.brickinventoryapp.app.MainActivity", true),
+            komponente("receiver", "ch.brickinventoryapp.app.widget.SammlungsWidgetEmpfaenger", true)))
+        assertEquals(1, code2)
+        assertTrue(text2, "BIND_APPWIDGET" in text2)
+    }
+
+    /** Beide kommen aus Bibliotheken; das Manifest nimmt sie heraus. */
+    @Test
+    fun `herausgenommene Bibliothekskomponenten stehen nicht in der Positivliste`() {
+        for ((art, name, right) in listOf(
+            Triple("receiver", "androidx.profileinstaller.ProfileInstallReceiver", "android.permission.DUMP"),
+            Triple("service", "com.google.android.gms.auth.api.signin.RevocationBoundService",
+                "com.google.android.gms.auth.api.signin.permission.REVOCATION_NOTIFICATION"),
+        )) {
+            val (code, text) = pruefe(manifest(*gut, komponente(art, name, true, right)))
+            assertEquals(text, 1, code)
+        }
+    }
+
+    @Test
+    fun `ein debuggable APK, Sicherung oder Klartext fallen auf`() {
+        val debuggable = "      A: http://schemas.android.com/apk/res/android:debuggable(0x0101000f)=true\n"
+        assertEquals(1, pruefe(manifest(*gut, application = debuggable)).first)
+        val klartext = "      A: http://schemas.android.com/apk/res/android:usesCleartextTraffic(0x010104ec)=true\n"
+        assertEquals(1, pruefe(manifest(*gut, application = klartext)).first)
+        val backup = manifest(*gut).replace("allowBackup(0x01010280)=false", "allowBackup(0x01010280)=true")
+        assertEquals(1, pruefe(backup).first)
+    }
+
+    @Test
+    fun `ohne erkennbare Komponenten ist das Format falsch, nicht das Manifest gut`() {
+        assertEquals(1, pruefe(manifest()).first)
+        assertEquals(1, pruefe("irgendwas\n").first)
+    }
+
+    @Test
+    fun `eine Berechtigung ausserhalb der Liste oder testOnly faellt auf`() {
+        val (code, text) = pruefe(manifest(*gut, rights = listOf("android.permission.INTERNET", "android.permission.READ_PHONE_STATE")))
+        assertEquals(text, 1, code)
+        assertTrue(text, "READ_PHONE_STATE" in text)
+        val testOnly = "      A: http://schemas.android.com/apk/res/android:testOnly(0x01010272)=true\n"
+        assertEquals(1, pruefe(manifest(*gut, application = testOnly)).first)
+    }
+
+    /** ML Kit meldet über Googles datatransport Nutzungsdaten; die App nimmt dessen Backend heraus. */
+    @Test
+    fun `ein Telemetrie-Backend von ML Kit faellt auf, der Dienst ohne Backend nicht`() {
+        val dienst = komponente("service", "com.google.android.datatransport.runtime.backends.TransportBackendDiscovery", false)
+        val backend = "        E: meta-data (line=6)\n" +
+            "          A: http://schemas.android.com/apk/res/android:name(0x01010003)=" +
+            "\"backend:com.google.android.datatransport.cct.CctBackendFactory\" " +
+            "(Raw: \"backend:com.google.android.datatransport.cct.CctBackendFactory\")\n" +
+            "          A: http://schemas.android.com/apk/res/android:value(0x01010024)=\"cct\" (Raw: \"cct\")\n"
+        val (ohne, text) = pruefe(manifest(*gut, dienst))
+        assertEquals(text, 0, ohne)
+        val (mit, text2) = pruefe(manifest(*gut, dienst + backend))
+        assertEquals(text2, 1, mit)
+        assertTrue(text2, "CctBackendFactory" in text2)
+    }
+}

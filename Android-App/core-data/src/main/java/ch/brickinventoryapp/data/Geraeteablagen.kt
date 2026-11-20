@@ -1,24 +1,24 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.sicherheit.PinAblage
+import ch.brickinventoryapp.sicherheit.PinStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Wie die App auf diesem Gerät aussieht. Synchron, weil schon das erste Bild davon
- * abhängt; im Gerät die GeraeteAblage, im Test eine Fassung im Speicher.
+ * abhängt; im Gerät die DevicesStore, im Test eine Fassung im Speicher.
  */
 interface Darstellungsablage {
-    fun gemerktesDesign(): Design
+    fun rememberedDesign(): Design
     fun helligkeit(): String
     fun setzeHelligkeit(wahl: String)
     fun systemfarben(): Boolean
     fun setzeSystemfarben(an: Boolean)
-    fun vorschauVerbergen(): Boolean
+    fun hidePreview(): Boolean
     fun setzeVorschauVerbergen(an: Boolean)
-    fun widgetWerteZeigen(): Boolean
-    fun setzeWidgetWerteZeigen(an: Boolean)
+    fun showWidgetValues(): Boolean
+    fun showSetWidgetValues(an: Boolean)
     suspend fun saveLanguage(lang: String)
 }
 
@@ -28,20 +28,20 @@ interface Darstellungsablage {
  * Glance ohne Koroutine des Widgets liest.
  */
 interface Widgetablage {
-    fun widgetStand(): String?
-    fun setzeWidgetStand(text: String)
-    fun leereWidgetStand()
+    fun widgetStatus(): String?
+    fun setWidgetStatus(text: String)
+    fun emptyWidgetStatus()
 }
 
 /** Wem die Clients des eigenen Servers vertrauen: gemerkte Pins und der Schalter für Nutzer-CAs. */
-interface Vertrauensablage : PinAblage {
-    fun nutzerCaErlaubt(): Boolean
-    fun setzeNutzerCa(an: Boolean)
+interface Vertrauensablage : PinStore {
+    fun userCaAllowed(): Boolean
+    fun setUserCa(an: Boolean)
 }
 
 /** Was die Server-Clients zusätzlich brauchen: Nach dem Umschalten der Nutzer-CAs gilt ein neuer TLS-Kontext. */
 interface Netzvertrauen : Vertrauensablage {
-    fun beimNutzerCaWechsel(hoerer: () -> Unit)
+    fun onUserCaSwitch(listener: () -> Unit)
 }
 
 /**
@@ -49,14 +49,14 @@ interface Netzvertrauen : Vertrauensablage {
  * (SSE, Statusabfrage). Gleich nach dem Anmelden steht der Token noch nicht auf
  * der Platte; darum nicht der Fluss, sondern der Speicherwert.
  */
-interface Zugangsdaten {
+interface Credentials {
     suspend fun serverUrlJetzt(): String
     suspend fun tokenJetzt(): String
 }
 
 /** Offene Verbindungen trugen das alte Vertrauen; nach jeder Änderung werden sie verworfen. */
 fun interface Verbindungsabwurf {
-    fun verwirf()
+    fun discard()
 }
 
 /** Ob jetzt ein Token gilt, als Speicherwert: für Texte und für Zustände, die beim Abmelden verfallen. */
@@ -65,7 +65,7 @@ interface Anmeldestand {
 }
 
 /** Das Abmelden im Gerät: Token, Herkunft und Benutzername weg, unter der Sperre der Token-Schreibungen. */
-interface Sitzungsende {
+interface SessionEnd {
     suspend fun clearSession()
 }
 
@@ -76,38 +76,38 @@ interface Sitzungsende {
 interface Tokenspiegel {
     val serverUrlState: StateFlow<String?>
     val authTokenState: StateFlow<String?>
-    val tokenHerkunftState: StateFlow<String?>
+    val tokenOriginState: StateFlow<String?>
     /** Während einer QR-Kopplung mit einem anderen Server dessen Adresse, sonst null (Anmeldeablage.kopplungsziel). */
     val kopplungszielState: StateFlow<String?>
     fun tokenGeneration(): Long
-    fun warteAufStart()
-    fun beimServerwechsel(hoerer: () -> Unit)
-    suspend fun tokenStand(): TokenStand
-    suspend fun ersetzeGetauschtenToken(vorher: TokenStand, neu: String, anfrageHerkunft: String?): Boolean
+    fun waitOnStart()
+    fun onServerwechsel(listener: () -> Unit)
+    suspend fun tokenStatus(): TokenStatus
+    suspend fun replaceSwappedToken(vorher: TokenStatus, neu: String, requestOrigin: String?): Boolean
 }
 
 /** Einmal beim Start: ein Klartext-Token älterer Fassungen entfernen, einen alten Geheimtext umschlüsseln. */
 fun interface Tokenuebernahme {
-    suspend fun uebernehmeAltesToken(): Boolean
+    suspend fun adoptOldToken(): Boolean
 
     /** Nach dem Entsperren: nur das Umschlüsseln, ohne die übrigen Aufräumarbeiten des Starts. */
-    suspend fun stufeTokenHoch() = Unit
+    suspend fun levelTokenHigh() = Unit
 }
 
 /** Was der Preisalarm-Arbeiter liest und schreibt: Schalter und Marke des letzten Abrufs. */
 interface Alarmablage {
-    val alarmMeldungenAn: Flow<Boolean>
-    val alarmMarke: Flow<String?>
-    suspend fun setzeAlarmMarke(marke: String)
+    val alarmMessagesAn: Flow<Boolean>
+    val alarmBrand: Flow<String?>
+    suspend fun setAlarmBrand(marke: String)
 }
 
 /** Für den Entwertungs-Arbeiter: ein Server, an dem die nachgeholte Abmeldung endgültig scheiterte. */
 fun interface Entwertungsprotokoll {
-    fun merkeGescheiterteEntwertung(server: String)
+    fun rememberFailedRedemption(server: String)
 }
 
 /** Die Sprache für Application.onCreate unter Android 13, synchron aus dem Spiegel. */
 interface Sprachablage {
-    fun gemerkteSprache(): String?
-    suspend fun spracheNachziehen(): String
+    fun rememberedLanguage(): String?
+    suspend fun followUpLanguage(): String
 }

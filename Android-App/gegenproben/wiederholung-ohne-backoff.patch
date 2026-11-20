@@ -1,6 +1,6 @@
 Gegenprobe: Die Wiederholung wartet immer gleich lang
 Modul: core-data
-Test: ch.brickinventoryapp.data.WiederholungTest
+Test: ch.brickinventoryapp.data.RetryTest
 Rot: ein voruebergehender Fehler wird mit wachsender Pause wiederholt
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzlage.kt
@@ -9,8 +9,8 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/Netzl
 @@ -48,7 +48,6 @@
                  val r = call()
                  if (r !is Ergebnis.Fehler || !r.transient || netz() == Art.KEIN_NETZ) return r
-                 warte(pause)
--                pause = (pause * 2).coerceAtMost(HOECHSTE_PAUSE_MS)
+                 wait(pause)
+-                pause = (pause * 2).coerceAtMost(HIGHEST_PAUSE_MS)
              }
              return call()
          }

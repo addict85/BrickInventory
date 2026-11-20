@@ -11,8 +11,8 @@ index f37e038..48efd95 100644
       * Dateitext. Die Ausgabe eines gestarteten Werkzeugs (`bufferedReader().readText()`) ist
       * ein Ergebnis, kein Quelltext.
       */
--    private val liestQuelle = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|(?<!bufferedReader\(\)\.)readText\(\)|readLines\(\)""")
-+    private val liestQuelle = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|readText\(\)|readLines\(\)""")
+-    private val readsSource = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|(?<!bufferedReader\(\)\.)readText\(\)|readLines\(\)""")
++    private val readsSource = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|readText\(\)|readLines\(\)""")
  
      /**
       * (Testfunktionen, davon lesend) einer Datei. Eine Funktion liest Quelltext, wenn ihr Rumpf

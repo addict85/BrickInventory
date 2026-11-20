@@ -1,16 +1,16 @@
 Gegenprobe: Abmelden lässt die verschlüsselten Anleitungen liegen (sec12 N1)
 Modul: core-data
-Test: ch.brickinventoryapp.data.AnleitungsAblageTest
+Test: ch.brickinventoryapp.data.InstructionStoreTest
 Rot: Abmelden raeumt alle Anleitungen weg
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/AnleitungsAblage.kt
-@@ -62,7 +62,6 @@ class AnleitungsAblage(chiffre: AblageChiffre) {
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/InstructionStore.kt
+@@ -62,7 +62,6 @@ class InstructionStore(cipher: StoreCipher) {
  /** Beim Abmelden und damit beim Serverwechsel: Die Anleitungen gehören zur Sammlung des Kontos. */
  fun raeumeAnleitungenAuf(cacheDir: File) {
      raeumeKlartextAnleitungenAuf(cacheDir)
--    cacheDir.listFiles { f -> f.name.startsWith(ANLEITUNG_PRAEFIX) }?.forEach { it.deleteRecursively() }
+-    cacheDir.listFiles { f -> f.name.startsWith(INSTRUCTION_PREFIX) }?.forEach { it.deleteRecursively() }
  }
  
  /** Beim Start: Klartext-Anleitungen älterer Fassungen (`pdfview_*`) und Anzeige-Reste eines Absturzes. */

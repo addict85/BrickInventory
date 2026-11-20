@@ -13,8 +13,8 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.model.koroutinen.ApplicationScope
-import ch.brickinventoryapp.zustand.ui.Blickfeld
-import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
+import ch.brickinventoryapp.zustand.ui.Scope
+import ch.brickinventoryapp.zustand.ui.ScopeUiState
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import ch.brickinventoryapp.sitzung.Sitzung
 import kotlinx.coroutines.CoroutineScope
@@ -32,79 +32,79 @@ interface Meldungen : Texte {
     fun zeige(text: String?)
 
     /** Eine überholte Meldung zurücknehmen, etwa nach einem gelungenen zweiten Scan. */
-    fun quittiere()
+    fun acknowledge()
 }
 
 /** Für Tests ohne Hilt. */
-fun Meldungen(kanal: MeldungsKanal, texte: Texte): Meldungen = AppMeldungen(kanal, texte)
+fun Meldungen(kanal: MeldungsKanal, texts: Texte): Meldungen = AppMessages(kanal, texts)
 
-class AppMeldungen @Inject constructor(
+class AppMessages @Inject constructor(
     private val kanal: MeldungsKanal,
-    texte: Texte,
-) : Meldungen, Texte by texte {
+    texts: Texte,
+) : Meldungen, Texte by texts {
     override fun zeige(text: String?) = kanal.zeige(text)
-    override fun quittiere() = kanal.quittiere()
+    override fun acknowledge() = kanal.acknowledge()
 }
 
 /**
  * Konto- und Lagerortfilter, wie ein Bereich sie zeigt und setzt. Die Bildschirme
- * lesen `blickfeld` und `lagerState` am ViewModel; dieses reicht die Filterwahl
+ * lesen `blickfeld` und `storageState` am ViewModel; dieses reicht die Filterwahl
  * per Delegation durch, statt sie von einer Basisklasse zu erben.
  */
 interface Filterwahl {
-    val blickfeld: StateFlow<BlickfeldUiState>
-    val lagerState: StateFlow<LagerUiState>
+    val blickfeld: StateFlow<ScopeUiState>
+    val storageState: StateFlow<LagerUiState>
 
     /** Der Wert für `accounts=`, oder null für „alle Konten“. */
-    fun kontoFuer(view: ScopeFilter.View): Kontoauswahl?
+    fun accountFor(view: ScopeFilter.View): Kontoauswahl?
 
     /** Der Wert für `storage=`, oder null für „alle Orte“. */
-    fun lagerFuer(view: ScopeFilter.View): String?
+    fun storageFor(view: ScopeFilter.View): String?
 
     fun setScope(view: ScopeFilter.View, value: String)
-    fun setLagerFilter(view: ScopeFilter.View, value: String)
+    fun setStorageFilter(view: ScopeFilter.View, value: String)
 
     /** Vorschläge fürs Lagerortfeld: die Orte der Besitzer des gezeigten Eintrags. */
-    fun loadLagerortVorrat(besitzer: List<Int>)
+    fun loadLocationStock(besitzer: List<Int>)
 
     /** Die eigenen Orte samt Vorgabe — für die Erfassungsdialoge. */
-    fun ladeEigeneLagerorte()
+    fun loadOwnLocations()
 
     /** Für Bereiche, die nach dem Setzen ihre Liste neu laden. */
-    suspend fun setzeKonto(view: ScopeFilter.View, value: String)
+    suspend fun setAccount(view: ScopeFilter.View, value: String)
     suspend fun setzeLager(view: ScopeFilter.View, value: String)
 
     /** Nach einer Änderung im Bereich, deren Ergebnis der Aufrufer abwartet. */
-    suspend fun ladeMitglieder()
+    suspend fun loadMembers()
     suspend fun ladeLagerorte()
-    suspend fun eigeneLagerorteNeu()
+    suspend fun ownLocationsNew()
 }
 
 /** Für Tests ohne Hilt. */
-fun Filterwahl(dienst: Blickfeld, bereich: CoroutineScope): Filterwahl = BereichsFilter(dienst, bereich)
+fun Filterwahl(dienst: Scope, bereich: CoroutineScope): Filterwahl = AreaFilter(dienst, bereich)
 
 /**
  * Im Bereich der App: Ein Filter, den jemand gesetzt hat, wird gemerkt, auch wenn
  * der Bildschirm gleich danach verschwindet. Der Blickfeld-Zustand ist ein
  * Singleton und verträgt jeden Faden.
  */
-class BereichsFilter @Inject constructor(
-    private val dienst: Blickfeld,
+class AreaFilter @Inject constructor(
+    private val dienst: Scope,
     @param:ApplicationScope private val bereich: CoroutineScope,
 ) : Filterwahl {
-    override val blickfeld: StateFlow<BlickfeldUiState> = dienst.konten
-    override val lagerState: StateFlow<LagerUiState> = dienst.lager
-    override fun kontoFuer(view: ScopeFilter.View) = dienst.kontoFuer(view)
-    override fun lagerFuer(view: ScopeFilter.View) = dienst.lagerFuer(view)
-    override fun setScope(view: ScopeFilter.View, value: String) { bereich.launch { setzeKonto(view, value) } }
-    override fun setLagerFilter(view: ScopeFilter.View, value: String) { bereich.launch { setzeLager(view, value) } }
-    override fun loadLagerortVorrat(besitzer: List<Int>) { bereich.launch { dienst.ladeVorrat(besitzer) } }
-    override fun ladeEigeneLagerorte() { bereich.launch { dienst.ladeEigeneLagerorte() } }
-    override suspend fun setzeKonto(view: ScopeFilter.View, value: String) = dienst.setzeKonto(view, value)
+    override val blickfeld: StateFlow<ScopeUiState> = dienst.konten
+    override val storageState: StateFlow<LagerUiState> = dienst.lager
+    override fun accountFor(view: ScopeFilter.View) = dienst.accountFor(view)
+    override fun storageFor(view: ScopeFilter.View) = dienst.storageFor(view)
+    override fun setScope(view: ScopeFilter.View, value: String) { bereich.launch { setAccount(view, value) } }
+    override fun setStorageFilter(view: ScopeFilter.View, value: String) { bereich.launch { setzeLager(view, value) } }
+    override fun loadLocationStock(besitzer: List<Int>) { bereich.launch { dienst.loadStock(besitzer) } }
+    override fun loadOwnLocations() { bereich.launch { dienst.loadOwnLocations() } }
+    override suspend fun setAccount(view: ScopeFilter.View, value: String) = dienst.setAccount(view, value)
     override suspend fun setzeLager(view: ScopeFilter.View, value: String) = dienst.setzeLager(view, value)
-    override suspend fun ladeMitglieder() = dienst.ladeMitglieder()
+    override suspend fun loadMembers() = dienst.loadMembers()
     override suspend fun ladeLagerorte() = dienst.ladeLagerorte()
-    override suspend fun eigeneLagerorteNeu() = dienst.ladeEigeneLagerorte()
+    override suspend fun ownLocationsNew() = dienst.loadOwnLocations()
 }
 
 /**
@@ -112,8 +112,8 @@ class BereichsFilter @Inject constructor(
  * nächste Nutzer auf demselben Gerät sähe es sonst. drop(1): Der Zähler steht
  * beim Sammeln schon auf seinem Wert, und der ist keine neue Abmeldung.
  */
-fun ViewModel.folgeAbmeldung(sitzung: Sitzung, zuruecksetzen: () -> Unit) {
-    viewModelScope.launch { sitzung.abmeldungen.drop(1).collect { zuruecksetzen() } }
+fun ViewModel.sequenceSignOut(sitzung: Sitzung, reset: () -> Unit) {
+    viewModelScope.launch { sitzung.signOuts.drop(1).collect { reset() } }
 }
 
 /**
@@ -121,7 +121,7 @@ fun ViewModel.folgeAbmeldung(sitzung: Sitzung, zuruecksetzen: () -> Unit) {
  * Das Betreten der Seite stösst das Laden an, nicht ein LaunchedEffect des Bildschirms.
  * Kein stateIn, damit `.value` auch ohne Beobachter stimmt.
  */
-fun ViewModel.ladeBeimBeobachten(zustand: MutableStateFlow<*>, laden: () -> Unit) {
+fun ViewModel.observeLoadOn(zustand: MutableStateFlow<*>, laden: () -> Unit) {
     viewModelScope.launch {
         zustand.subscriptionCount.map { it > 0 }.distinctUntilChanged().collect { if (it) laden() }
     }
@@ -131,23 +131,23 @@ fun ViewModel.ladeBeimBeobachten(zustand: MutableStateFlow<*>, laden: () -> Unit
  * Lädt, solange [zustand] beobachtet wird, für jede Serveradresse einmal: beim Betreten der
  * Seite und wieder, wenn die Adresse wechselt, während sie offen ist. Ohne Adresse nichts.
  */
-fun ViewModel.ladeJeServer(sitzung: Sitzung, zustand: MutableStateFlow<*>, laden: () -> Unit) =
-    ladeJeServer(sitzung, zustand.subscriptionCount, laden)
+fun ViewModel.loadPerServer(sitzung: Sitzung, zustand: MutableStateFlow<*>, laden: () -> Unit) =
+    loadPerServer(sitzung, zustand.subscriptionCount, laden)
 
 /** Dasselbe für einen durchgereichten Fluss. */
-fun ViewModel.ladeJeServer(sitzung: Sitzung, zustand: Beobachtet<*>, laden: () -> Unit) =
-    ladeJeServer(sitzung, zustand.beobachter, laden)
+fun ViewModel.loadPerServer(sitzung: Sitzung, zustand: Observed<*>, laden: () -> Unit) =
+    loadPerServer(sitzung, zustand.observer, laden)
 
-/** Wie [ladeBeimBeobachten] für einen durchgereichten Fluss. */
-fun ViewModel.ladeBeimBeobachten(zustand: Beobachtet<*>, laden: () -> Unit) {
+/** Wie [observeLoadOn] für einen durchgereichten Fluss. */
+fun ViewModel.observeLoadOn(zustand: Observed<*>, laden: () -> Unit) {
     viewModelScope.launch {
-        zustand.beobachter.map { it > 0 }.distinctUntilChanged().collect { if (it) laden() }
+        zustand.observer.map { it > 0 }.distinctUntilChanged().collect { if (it) laden() }
     }
 }
 
-private fun ViewModel.ladeJeServer(sitzung: Sitzung, beobachter: StateFlow<Int>, laden: () -> Unit) {
+private fun ViewModel.loadPerServer(sitzung: Sitzung, observer: StateFlow<Int>, laden: () -> Unit) {
     viewModelScope.launch {
-        beobachter.map { it > 0 }.distinctUntilChanged().collectLatest { beobachtet ->
+        observer.map { it > 0 }.distinctUntilChanged().collectLatest { beobachtet ->
             if (beobachtet) sitzung.state.map { it.serverUrl }.distinctUntilChanged().filter { it.isNotBlank() }.collect { laden() }
         }
     }
@@ -156,20 +156,20 @@ private fun ViewModel.ladeJeServer(sitzung: Sitzung, beobachter: StateFlow<Int>,
 /**
  * Ein fremder Zustand mit gezählten Beobachtern: So kann ein ViewModel beim Betreten der Seite
  * laden, auch wenn es den Fluss nur durchreicht (etwa die Sitzung), oder je Eintrag, den die
- * Seite zeigt ([beimBeobachten] läuft, sobald der erste Beobachter kommt).
+ * Seite zeigt ([observeOn] läuft, sobald der erste Beobachter kommt).
  */
 @OptIn(ExperimentalForInheritanceCoroutinesApi::class)
-class Beobachtet<T>(private val quelle: StateFlow<T>, private val beimBeobachten: () -> Unit = {}) : StateFlow<T> {
-    private val zaehler = MutableStateFlow(0)
-    val beobachter: StateFlow<Int> = zaehler.asStateFlow()
+class Observed<T>(private val quelle: StateFlow<T>, private val observeOn: () -> Unit = {}) : StateFlow<T> {
+    private val counter = MutableStateFlow(0)
+    val observer: StateFlow<Int> = counter.asStateFlow()
     override val value: T get() = quelle.value
     override val replayCache: List<T> get() = quelle.replayCache
     override suspend fun collect(collector: FlowCollector<T>): Nothing {
-        if (zaehler.getAndUpdate { it + 1 } == 0) beimBeobachten()
+        if (counter.getAndUpdate { it + 1 } == 0) observeOn()
         try {
             quelle.collect(collector)
         } finally {
-            zaehler.update { it - 1 }
+            counter.update { it - 1 }
         }
     }
 }

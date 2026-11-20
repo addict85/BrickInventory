@@ -3,11 +3,11 @@ package ch.brickinventoryapp.konto.ui.screens
 import ch.brickinventoryapp.model.ui.laeuft
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.ui.titel
 import ch.brickinventoryapp.ui.beschreibung
 import ch.brickinventoryapp.model.ui.theme.Design
-import ch.brickinventoryapp.ui.components.ZweiterFaktorCodeFeld
+import ch.brickinventoryapp.ui.components.SecondFactorCodeField
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -21,24 +21,24 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.text.KeyboardActions
-import ch.brickinventoryapp.ui.components.PasswortWechselFelder
-import ch.brickinventoryapp.ui.components.PasswortWechselPruefung
-import ch.brickinventoryapp.ui.components.rememberPasswortWechselPruefung
-import ch.brickinventoryapp.ui.theme.hauptKnopfFarben
-import ch.brickinventoryapp.ui.theme.tonKnopfFarben
+import ch.brickinventoryapp.ui.components.PasswordSwitchFields
+import ch.brickinventoryapp.ui.components.PasswordSwitchCheck
+import ch.brickinventoryapp.ui.components.rememberPasswordSwitchCheck
+import ch.brickinventoryapp.ui.theme.mainButtonColors
+import ch.brickinventoryapp.ui.theme.toneButtonColors
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
-import ch.brickinventoryapp.ui.components.FehlerZeile
-import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.components.ErrorRow
+import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.konto.ui.DesignWahl
-import ch.brickinventoryapp.konto.ui.KontoUiState
-import ch.brickinventoryapp.model.fach.ProfilAnsicht
-import ch.brickinventoryapp.ui.components.PasswortRueckfrage
-import ch.brickinventoryapp.ui.components.AuswahlFeld
+import ch.brickinventoryapp.konto.ui.DesignChoice
+import ch.brickinventoryapp.konto.ui.AccountUiState
+import ch.brickinventoryapp.model.fach.ProfileView
+import ch.brickinventoryapp.ui.components.PasswordPrompt
+import ch.brickinventoryapp.ui.components.SelectionField
 import ch.brickinventoryapp.ui.components.SettingsCard
 
 /**
@@ -46,166 +46,166 @@ import ch.brickinventoryapp.ui.components.SettingsCard
  * /auth/change-password, die auch das Bearer-Token der App annehmen.
  */
 @Composable
-internal fun KontoCard(
+internal fun AccountCard(
     // `kontoZustand`, nicht `zustand`: Die Kontoseiten nehmen `zustand` schon für andere
     // Zustände, und derselbe Name für zwei Typen verwechselt sich beim Lesen.
-    kontoZustand: KontoUiState,
+    kontoZustand: AccountUiState,
     onSpeichern: (String, String, String, String, String?, String?) -> Unit,
-    onPasswort: (String, String, String?) -> Unit,
-    onMeldungWeg: () -> Unit,
+    onPassword: (String, String, String?) -> Unit,
+    onMessageRoute: () -> Unit,
 ) {
-    val profil = kontoZustand.profil
+    val profile = kontoZustand.profile
     // Die Felder werden aus dem Serverstand vorbelegt und danach vom Nutzer
-    // gefuehrt. `remember(profil)` und nicht `remember`: Nach dem Speichern
+    // gefuehrt. `remember(profile)` und nicht `remember`: Nach dem Speichern
     // holt das ViewModel das Profil neu, und die Felder sollen den
     // NORMALISIERTEN Stand des Servers zeigen, nicht das Getippte.
-    var benutzername by remember(profil) { mutableStateOf(profil?.username.orEmpty()) }
-    var email        by remember(profil) { mutableStateOf(profil?.email.orEmpty()) }
-    var vorname      by remember(profil) { mutableStateOf(profil?.firstName.orEmpty()) }
-    var nachname     by remember(profil) { mutableStateOf(profil?.lastName.orEmpty()) }
+    var benutzername by remember(profile) { mutableStateOf(profile?.username.orEmpty()) }
+    var email        by remember(profile) { mutableStateOf(profile?.email.orEmpty()) }
+    var vorname      by remember(profile) { mutableStateOf(profile?.firstName.orEmpty()) }
+    var nachname     by remember(profile) { mutableStateOf(profile?.lastName.orEmpty()) }
     // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
     // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
-    var pwAktuell    by remember { mutableStateOf("") }
+    var pwCurrent    by remember { mutableStateOf("") }
     var pwNeu        by remember { mutableStateOf("") }
-    var pwWiederholt by remember { mutableStateOf("") }
+    var pwRepeated by remember { mutableStateOf("") }
     // Das Passwort für eine Profiländerung fragt erst der Dialog beim Speichern ab.
-    var fragtPasswort by remember(profil) { mutableStateOf(false) }
+    var asksPassword by remember(profile) { mutableStateOf(false) }
     var faktorCode   by remember { mutableStateOf("") }
     val code = faktorCode.takeIf { kontoZustand.codeNoetig && it.isNotBlank() }
 
-    val geaendert = profilGeaendert(profil, benutzername, email, vorname, nachname)
+    val geaendert = profileChanged(profile, benutzername, email, vorname, nachname)
     // Speichern bleibt antippbar und markiert dann, was fehlt (wie beim Set-Dialog).
-    var profilGeprueft by rememberSaveable(profil) { mutableStateOf(false) }
-    val profilFokus = remember { ProfilFeld.entries.associateWith { FocusRequester() } }
-    val passwortPruefung = rememberPasswortWechselPruefung()
+    var profileChecked by rememberSaveable(profile) { mutableStateOf(false) }
+    val profileFocus = remember { ProfileField.entries.associateWith { FocusRequester() } }
+    val passwordCheck = rememberPasswordSwitchCheck()
 
     // „Profil“, nicht „Konto“: Die Leiste der Seite heisst schon so.
     SettingsCard(title = stringResource(R.string.konto_profil_titel), icon = Icons.Default.AccountCircle) {
-        if (kontoZustand.abruf.laedt && profil == null) {
+        if (kontoZustand.abruf.laedt && profile == null) {
             LinearProgressIndicator(Modifier.fillMaxWidth())
         }
 
-        KontoMeldungen(kontoZustand)
+        AccountMessages(kontoZustand)
         // Erst nachdem der Server ihn verlangt hat; gilt für E-Mail und Passwort.
-        if (kontoZustand.codeNoetig) ZweiterFaktorCodeFeld(faktorCode) { faktorCode = it }
+        if (kontoZustand.codeNoetig) SecondFactorCodeField(faktorCode) { faktorCode = it }
 
-        if (profil != null) {
-            val tippen: (String) -> Unit = { onMeldungWeg() }
-            ProfilFelder(profil,
-                fehler = if (profilGeprueft) profilFehler(benutzername, email) else emptyList(),
-                fokus = profilFokus,
-                benutzername = benutzername, onBenutzername = { benutzername = it; tippen(it) },
+        if (profile != null) {
+            val tippen: (String) -> Unit = { onMessageRoute() }
+            ProfileFields(profile,
+                fehler = if (profileChecked) profileError(benutzername, email) else emptyList(),
+                fokus = profileFocus,
+                benutzername = benutzername, onUsername = { benutzername = it; tippen(it) },
                 email = email, onEmail = { email = it; tippen(it) },
-                vorname = vorname, onVorname = { vorname = it; tippen(it) },
-                nachname = nachname, onNachname = { nachname = it; tippen(it) })
+                vorname = vorname, onFirstName = { vorname = it; tippen(it) },
+                nachname = nachname, onLastName = { nachname = it; tippen(it) })
             // Erst den Fokus abgeben: Sonst bleibt das zuletzt getippte Feld hinter dem
             // Dialog fokussiert und hält Tastatur und Cursor, obwohl nur der Dialog
             // Eingaben annimmt.
             val fokus = LocalFocusManager.current
-            ProfilSpeichernKnopf(nichtsGeaendert = profilGeprueft && !geaendert, speichert = kontoZustand.speichern.laeuft) {
-                profilGeprueft = true
-                val erstes = profilFehler(benutzername, email).firstOrNull()
-                if (erstes != null) profilFokus.getValue(erstes).requestFocus()
-                else if (geaendert) { fokus.clearFocus(); fragtPasswort = true }
+            ProfileSaveButton(nothingChanged = profileChecked && !geaendert, speichert = kontoZustand.speichern.laeuft) {
+                profileChecked = true
+                val erstes = profileError(benutzername, email).firstOrNull()
+                if (erstes != null) profileFocus.getValue(erstes).requestFocus()
+                else if (geaendert) { fokus.clearFocus(); asksPassword = true }
             }
         }
     }
 
     // Eine eigene Karte unter eigener Überschrift: Unter „Profil“ las sich das Passwort
     // als Teil der Angaben, die „Profil speichern“ sichert.
-    if (profil != null) {
-        PasswortKarte(
-            pwAktuell = pwAktuell, onPwAktuell = { pwAktuell = it },
-            pwNeu = pwNeu, onPwNeu = { pwNeu = it },
-            pwWiederholt = pwWiederholt, onPwWiederholt = { pwWiederholt = it },
+    if (profile != null) {
+        PasswordCard(
+            pwCurrent = pwCurrent, onPwCurrent = { pwCurrent = it },
+            pwNeu = pwNeu, onPwNew = { pwNeu = it },
+            pwRepeated = pwRepeated, onPwRepeated = { pwRepeated = it },
             speichert = kontoZustand.speichern.laeuft,
-            pruefung = passwortPruefung,
-            onAendern = { onPasswort(pwAktuell, pwNeu, code) },
+            check = passwordCheck,
+            changeOn = { onPassword(pwCurrent, pwNeu, code) },
         )
     }
 
     // Der Server bestätigt jede Profiländerung mit dem Passwort: Sonst liesse sich über
     // eine neue Adresse das Passwort zurücksetzen. Gefragt wird erst beim Speichern.
-    if (fragtPasswort) PasswortRueckfrage(
+    if (asksPassword) PasswordPrompt(
         titel = stringResource(R.string.konto_save),
         text = stringResource(R.string.konto_profil_password_needed),
         bestaetigen = stringResource(R.string.konto_save),
         codeNoetig = false, fehler = null, laeuft = kontoZustand.speichern.laeuft,
-        onBestaetigen = { pw, _ -> fragtPasswort = false; onSpeichern(benutzername, email, vorname, nachname, pw, code) },
-        onAbbrechen = { fragtPasswort = false },
+        onBestaetigen = { pw, _ -> asksPassword = false; onSpeichern(benutzername, email, vorname, nachname, pw, code) },
+        onAbbrechen = { asksPassword = false },
     )
 }
 
 /** Weicht eine Eingabe vom Stand des Servers ab? Nur dann lässt sich speichern. */
-private fun profilGeaendert(profil: ProfilAnsicht?, benutzername: String, email: String, vorname: String, nachname: String) =
-    profil != null && (
-        benutzername != profil.username.orEmpty() || email != profil.email.orEmpty() ||
-        vorname != profil.firstName.orEmpty() || nachname != profil.lastName.orEmpty())
+private fun profileChanged(profile: ProfileView?, benutzername: String, email: String, vorname: String, nachname: String) =
+    profile != null && (
+        benutzername != profile.username.orEmpty() || email != profile.email.orEmpty() ||
+        vorname != profile.firstName.orEmpty() || nachname != profile.lastName.orEmpty())
 
 /** Meldung und Fehler über den Profilfeldern, beide angesagt. */
 @Composable
-private fun KontoMeldungen(kontoZustand: KontoUiState) {
+private fun AccountMessages(kontoZustand: AccountUiState) {
     kontoZustand.meldung?.let { meldung ->
         Text(meldung.satz(), style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.primary, modifier = Modifier.ansagen())
+            color = MaterialTheme.colorScheme.primary, modifier = Modifier.announce())
     }
-    (kontoZustand.speichern.fehlerMeldung ?: kontoZustand.abruf.fehlerMeldung)?.let { FehlerZeile(it) }
+    (kontoZustand.speichern.errorMessage ?: kontoZustand.abruf.errorMessage)?.let { ErrorRow(it) }
 }
 
 /** „Profil speichern“, antippbar auch ohne Änderung; dann sagt die Zeile darüber, warum nichts geschieht. */
 @Composable
-private fun ProfilSpeichernKnopf(nichtsGeaendert: Boolean, speichert: Boolean, onClick: () -> Unit) {
-    if (nichtsGeaendert) Text(stringResource(R.string.konto_nichts_geaendert),
+private fun ProfileSaveButton(nothingChanged: Boolean, speichert: Boolean, onClick: () -> Unit) {
+    if (nothingChanged) Text(stringResource(R.string.konto_nichts_geaendert),
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.ansagen())
+        modifier = Modifier.announce())
     Button(
         onClick = onClick,
         enabled = !speichert,
-        colors = hauptKnopfFarben(),
+        colors = mainButtonColors(),
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
     ) { Text(stringResource(R.string.konto_save), fontWeight = FontWeight.SemiBold) }
 }
 
 /** Ein Profilfeld, das vor dem Speichern nicht leer sein darf. */
-internal enum class ProfilFeld { BENUTZERNAME, EMAIL }
+internal enum class ProfileField { BENUTZERNAME, EMAIL }
 
 /** Was vor dem Speichern fehlt, in der Reihenfolge der Felder. */
-internal fun profilFehler(benutzername: String, email: String): List<ProfilFeld> = buildList {
-    if (benutzername.isBlank()) add(ProfilFeld.BENUTZERNAME)
-    if (email.isBlank()) add(ProfilFeld.EMAIL)
+internal fun profileError(benutzername: String, email: String): List<ProfileField> = buildList {
+    if (benutzername.isBlank()) add(ProfileField.BENUTZERNAME)
+    if (email.isBlank()) add(ProfileField.EMAIL)
 }
 
 /**
- * Benutzername, E-Mail und Name; den Zustand der Felder hält KontoCard. Mit Symbol wie
+ * Benutzername, E-Mail und Name; den Zustand der Felder hält AccountCard. Mit Symbol wie
  * beim Registrieren und wie die Passwortfelder darunter: Ohne sahen die beiden Karten
  * aus zwei Formularen aus.
  */
 @Composable
-private fun ProfilFelder(
-    profil: ProfilAnsicht,
-    fehler: List<ProfilFeld>,
-    fokus: Map<ProfilFeld, FocusRequester>,
+private fun ProfileFields(
+    profile: ProfileView,
+    fehler: List<ProfileField>,
+    fokus: Map<ProfileField, FocusRequester>,
     benutzername: String,
-    onBenutzername: (String) -> Unit,
+    onUsername: (String) -> Unit,
     email: String,
     onEmail: (String) -> Unit,
     vorname: String,
-    onVorname: (String) -> Unit,
+    onFirstName: (String) -> Unit,
     nachname: String,
-    onNachname: (String) -> Unit,
+    onLastName: (String) -> Unit,
 ) {
-    val ausstehend = profil.emailNeu
-    val nameFehlt = ProfilFeld.BENUTZERNAME in fehler
+    val ausstehend = profile.emailNew
+    val nameMissing = ProfileField.BENUTZERNAME in fehler
     OutlinedTextField(
         value = benutzername,
-        onValueChange = onBenutzername,
+        onValueChange = onUsername,
         label = { Text(stringResource(R.string.login_username)) },
         leadingIcon = { Icon(Icons.Default.Person, null) },
-        isError = nameFehlt,
-        supportingText = if (nameFehlt) { { Text(stringResource(R.string.login_username_fehlt), Modifier.ansagen()) } } else null,
-        modifier = Modifier.fillMaxWidth().focusRequester(fokus.getValue(ProfilFeld.BENUTZERNAME)),
+        isError = nameMissing,
+        supportingText = if (nameMissing) { { Text(stringResource(R.string.login_username_fehlt), Modifier.announce()) } } else null,
+        modifier = Modifier.fillMaxWidth().focusRequester(fokus.getValue(ProfileField.BENUTZERNAME)),
         singleLine = true, shape = Formen.feld)
-    val emailFehlt = ProfilFeld.EMAIL in fehler
+    val emailMissing = ProfileField.EMAIL in fehler
     OutlinedTextField(
         value = email,
         onValueChange = onEmail,
@@ -214,39 +214,39 @@ private fun ProfilFelder(
         // Eine neue Adresse wartet auf ihren Link, das Feld zeigt bis dahin die
         // geltende. Ohne den Hinweis sähe die Änderung nach dem Speichern verloren aus.
         supportingText = when {
-            emailFehlt -> { { Text(stringResource(R.string.konto_email_fehlt), Modifier.ansagen()) } }
+            emailMissing -> { { Text(stringResource(R.string.konto_email_fehlt), Modifier.announce()) } }
             ausstehend != null -> { { Text(stringResource(R.string.konto_email_ausstehend, ausstehend)) } }
-            !profil.emailBestaetigt -> { { Text(stringResource(R.string.konto_email_unverified)) } }
+            !profile.emailConfirmed -> { { Text(stringResource(R.string.konto_email_unverified)) } }
             else -> null
         },
-        isError = emailFehlt || !profil.emailBestaetigt,
-        modifier = Modifier.fillMaxWidth().focusRequester(fokus.getValue(ProfilFeld.EMAIL)),
+        isError = emailMissing || !profile.emailConfirmed,
+        modifier = Modifier.fillMaxWidth().focusRequester(fokus.getValue(ProfileField.EMAIL)),
         singleLine = true, shape = Formen.feld,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email))
     OutlinedTextField(
-        value = vorname, onValueChange = onVorname,
+        value = vorname, onValueChange = onFirstName,
         label = { Text(stringResource(R.string.register_first_name)) },
         leadingIcon = { Icon(Icons.Default.Badge, null) },
         modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld)
     OutlinedTextField(
-        value = nachname, onValueChange = onNachname,
+        value = nachname, onValueChange = onLastName,
         label = { Text(stringResource(R.string.register_last_name)) },
         leadingIcon = { Icon(Icons.Default.Badge, null) },
         modifier = Modifier.fillMaxWidth(), singleLine = true, shape = Formen.feld)
 }
 
-/** Passwort ändern. Die Eingaben hält KontoCard; die Karte zeigt sie nur und meldet Änderungen. */
+/** Passwort ändern. Die Eingaben hält AccountCard; die Karte zeigt sie nur und meldet Änderungen. */
 @Composable
-private fun PasswortKarte(
-    pwAktuell: String,
-    onPwAktuell: (String) -> Unit,
+private fun PasswordCard(
+    pwCurrent: String,
+    onPwCurrent: (String) -> Unit,
     pwNeu: String,
-    onPwNeu: (String) -> Unit,
-    pwWiederholt: String,
-    onPwWiederholt: (String) -> Unit,
+    onPwNew: (String) -> Unit,
+    pwRepeated: String,
+    onPwRepeated: (String) -> Unit,
     speichert: Boolean,
-    pruefung: PasswortWechselPruefung,
-    onAendern: () -> Unit,
+    check: PasswordSwitchCheck,
+    changeOn: () -> Unit,
 ) {
     SettingsCard(title = stringResource(R.string.konto_password_title), icon = Icons.Default.Lock) {
         // Steht VOR den Feldern, nicht darunter: Wer erst nach dem Tippen
@@ -255,13 +255,13 @@ private fun PasswortKarte(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         val fokus = LocalFocusManager.current
-        PasswortWechselFelder(pwAktuell, onPwAktuell, pwNeu, onPwNeu, pwWiederholt, onPwWiederholt, pruefung,
+        PasswordSwitchFields(pwCurrent, onPwCurrent, pwNeu, onPwNew, pwRepeated, onPwRepeated, check,
             KeyboardActions(onNext = { fokus.moveFocus(FocusDirection.Down) }))
         // Tonal statt umrandet: Ein deaktivierter umrandeter Knopf war kaum zu sehen.
         FilledTonalButton(
-            onClick = { pruefung.absenden(pwAktuell, pwNeu, pwWiederholt, onAendern) },
+            onClick = { check.submit(pwCurrent, pwNeu, pwRepeated, changeOn) },
             enabled = !speichert,
-            colors = tonKnopfFarben(),
+            colors = toneButtonColors(),
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
         ) { Text(stringResource(R.string.konto_password_button), fontWeight = FontWeight.SemiBold) }
     }
@@ -274,7 +274,7 @@ private fun PasswortKarte(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-internal fun DesignCard(design: DesignWahl?, onWahl: (Design?) -> Unit) {
+internal fun DesignCard(design: DesignChoice?, onWahl: (Design?) -> Unit) {
     if (design == null) return
     SettingsCard(title = stringResource(R.string.monitoring_theme), icon = Icons.Default.Palette) {
         Text(stringResource(R.string.konto_design_hint), style = MaterialTheme.typography.bodySmall,
@@ -282,7 +282,7 @@ internal fun DesignCard(design: DesignWahl?, onWahl: (Design?) -> Unit) {
         // Eine Wahl aus sieben: ein Feld mit Menü wie Sprache und Währung; null steht für
         // „die Vorgabe des Servers“.
         val vorgabe = stringResource(design.vorgabe.titel())
-        AuswahlFeld(
+        SelectionField(
             beschriftung = stringResource(R.string.monitoring_theme),
             modifier = Modifier.fillMaxWidth(),
             optionen = listOf<Pair<Design?, String>>(null to stringResource(R.string.konto_design_vorgabe, vorgabe)) +

@@ -24,36 +24,36 @@ import ch.brickinventoryapp.ui.theme.Formen
 
 /**
  * Das Feld zum Abtippen eines Fingerabdrucks, für Zertifikatsfrage und QR-Code gleich. Es
- * setzt die Doppelpunkte selbst und zählt nur Hex-Zeichen ([abschriftInPaaren]); [fehler]
+ * setzt die Doppelpunkte selbst und zählt nur Hex-Zeichen ([pairTranscriptIn]); [fehler]
  * bekommt die gezählten Zeichen, damit „zu kurz“ sagen kann, wie viele fehlen.
  */
 @Composable
 fun Fingerabdruckfeld(
     eingabe: String,
-    onEingabe: (String) -> Unit,
+    onInput: (String) -> Unit,
     noetig: Int,
-    hilfe: String,
+    help: String,
     fehler: @Composable (gezaehlt: Int) -> String?,
     modifier: Modifier = Modifier,
 ) {
     var cursor by rememberSaveable { mutableIntStateOf(eingabe.length) }
-    val gezaehlt = abschriftZeichen(eingabe)
-    val fehlerText = fehler(gezaehlt)
+    val gezaehlt = transcriptChars(eingabe)
+    val errorText = fehler(gezaehlt)
     OutlinedTextField(
         shape = Formen.feld,
         value = TextFieldValue(eingabe, TextRange(cursor)),
         onValueChange = { neu ->
-            val (text, stelle) = abschriftInPaaren(neu.text, neu.selection.end)
-            cursor = stelle
-            onEingabe(text)
+            val (text, place) = pairTranscriptIn(neu.text, neu.selection.end)
+            cursor = place
+            onInput(text)
         },
         // Kurzes Etikett, die Anleitung darunter: Ein Satz als Etikett wurde
         // abgeschnitten und stand beim Tippen über dem Feld.
         label = { Text(stringResource(R.string.zert_eingabe_etikett)) },
-        isError = fehlerText != null,
+        isError = errorText != null,
         supportingText = {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                Text(fehlerText ?: hilfe, modifier = Modifier.weight(1f))
+                Text(errorText ?: help, modifier = Modifier.weight(1f))
                 Text(stringResource(R.string.zert_eingabe_zaehler, gezaehlt, noetig))
             }
         },

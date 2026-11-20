@@ -1,18 +1,18 @@
 Gegenprobe: Der Teile-Reiter holt beim Zeigen den Farbkatalog nicht mehr
 Modul: feature-teile
-Test: ch.brickinventoryapp.teile.TeileViewModelTest
+Test: ch.brickinventoryapp.teile.PartsViewModelTest
 Rot: wer den Reiter zeigt
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
 index ea8ae02..6b32e80 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-@@ -142,7 +142,7 @@ class TeileViewModel @Inject constructor(
-         gemerkt.get<Teilefilter>(F_FILTER)?.let(teile::stelleFilterWieder)
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
+@@ -142,7 +142,7 @@ class PartsViewModel @Inject constructor(
+         gemerkt.get<Teilefilter>(F_FILTER)?.let(teile::placeFilterAgain)
          // Wer den Reiter oder ein Einzelstück zeigt, bekommt Liste, Farbkatalog und Filterlisten;
-         // die beiden Filterlisten kommen von zwei Adressen (TeileApi.getPartsFilterColors).
--        ladeJeServer(sitzung, teileBeobachtet) { loadParts(); loadPartsColors(); loadPartsFilters() }
-+        ladeJeServer(sitzung, teileBeobachtet) { loadParts(); loadPartsFilters() }
+         // die beiden Filterlisten kommen von zwei Adressen (PartsApi.getPartsFilterColors).
+-        loadPerServer(sitzung, partsObserved) { loadParts(); loadPartsColors(); loadPartsFilters() }
++        loadPerServer(sitzung, partsObserved) { loadParts(); loadPartsFilters() }
      }
  
      // ── Liste und Filter ─────────────────────────────────────────────────────

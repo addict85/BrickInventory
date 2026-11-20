@@ -1,6 +1,6 @@
 Gegenprobe: apk-pruefen prüft ausgestellt und gueltigBis der signierten Beschreibung nicht
 Modul: app
-Test: ch.brickinventoryapp.app.ReleasePruefenTest
+Test: ch.brickinventoryapp.app.ReleaseCheckTest
 Rot: eine Beschreibung ohne gueltige Frist wird nicht veroeffentlicht
 
 diff --git a/Android-App/tools/release-pruefen.py b/Android-App/tools/release-pruefen.py

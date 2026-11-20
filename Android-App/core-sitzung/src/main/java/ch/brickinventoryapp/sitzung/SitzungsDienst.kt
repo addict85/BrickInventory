@@ -2,14 +2,14 @@ package ch.brickinventoryapp.sitzung
 
 import ch.brickinventoryapp.data.Abmeldeweg
 import ch.brickinventoryapp.data.MeldungsKanal
-import ch.brickinventoryapp.data.RechteSignal
+import ch.brickinventoryapp.data.RightsSignal
 import ch.brickinventoryapp.data.SessionExpiredSignal
 import ch.brickinventoryapp.data.Sitzungsablage
-import ch.brickinventoryapp.data.ZweiterFaktorPflicht
+import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
-import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.repository.AccountRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
+import ch.brickinventoryapp.data.repository.ManagementRepository
 import ch.brickinventoryapp.model.koroutinen.ApplicationScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.ui.Meldung
@@ -40,13 +40,13 @@ interface SitzungsRepository {
     fun abmelden(): Job
 
     /** Der zweite Faktor ist bestätigt: Was bis dahin mit 403 abgewiesen wurde, jetzt laden. */
-    fun zweiterFaktorEingerichtet()
+    fun secondFactorConfigured()
 
     /** Einstellungen und Design des Kontos; das Design kommt von /settings/theme. */
     fun ladeEinstellungen()
 
     /** Die Haushaltskonten entscheiden, ob und mit welchen Einträgen der Kontofilter erscheint. */
-    fun ladeMitglieder()
+    fun loadMembers()
 
     /** Eine Abfrage für Galerie und Teile, damit beide denselben Stand zeigen. */
     fun ladeLagerorte()
@@ -59,18 +59,18 @@ interface SitzungsRepository {
  */
 @Singleton
 class SitzungsDienst @Inject constructor(
-    private val konto: KontoRepository,
-    private val verwaltung: VerwaltungRepository,
+    private val konto: AccountRepository,
+    private val verwaltung: ManagementRepository,
     private val prefs: Sitzungsablage,
     private val sessionExpired: SessionExpiredSignal,
-    private val rechte: RechteSignal,
+    private val rights: RightsSignal,
     private val meldungen: MeldungsKanal,
     private val sitzung: Sitzung,
     private val blickfeld: Filterquelle,
-    private val abgleich: Bestandsabgleich,
-    private val zweiterFaktorPflicht: ZweiterFaktorPflicht,
+    private val sync: Bestandsabgleich,
+    private val zweiterFaktorPflicht: SecondFactorRequired,
     private val abmeldevorgang: Abmeldevorgang,
-    private val vorwaermen: Vorwaermung,
+    private val vorwaermen: WarmUp,
     @param:ApplicationScope private val bereich: CoroutineScope,
 ) : SitzungsRepository {
 
@@ -78,43 +78,43 @@ class SitzungsDienst @Inject constructor(
 
     override fun starte() {
         if (!gestartet.compareAndSet(false, true)) return
-        meldeGescheiterteEntwertung()
+        reportFailedRedemption()
         // Währung und Design liest die Sitzung aus der Ablage (Kontowerte); hier
         // fragt nur der Server, ob sich das Design geändert hat.
         bereich.launch {
-            launch { ladeDesign() }
-            verfolgeServerstart()
+            launch { loadDesign() }
+            trackServerStart()
         }
-        bereich.launch { folgeAnmeldung() }
+        bereich.launch { sequenceLogin() }
         bereich.launch { prefs.language.collect { sitzung.spracheGeaendert(it) } }
         // Ein 401 auf einen Token, der an einen ausgewiesenen Server ging; ein
         // Fehlversuch beim Anmelden meldet nicht ab. Die Ablage statt der Sitzung:
         // Beim Kaltstart kann der 401 vor dem ersten Abgleich der Sitzung kommen.
         bereich.launch {
             sessionExpired.abgelaufen.filter { it }.collect {
-                sessionExpired.quittiere()
+                sessionExpired.acknowledge()
                 if (prefs.tokenJetzt().isNotBlank()) {
-                    meldungen.zeige(Meldung.Ressource(R.string.vm_session_expired))
+                    meldungen.zeige(Meldung.Resource(R.string.vm_session_expired))
                     abmelden()
                 }
             }
         }
         // Ein 403 `nur_admins`: Recht nachziehen; die Meldung nur beim Übergang.
         bereich.launch {
-            rechte.entzogen.filter { it }.collect {
-                rechte.quittiere()
-                if (sitzung.rechteNachziehen(konto)) meldungen.zeige(Meldung.Ressource(R.string.vm_rechte_entzogen))
+            rights.entzogen.filter { it }.collect {
+                rights.acknowledge()
+                if (sitzung.followUpRights(konto)) meldungen.zeige(Meldung.Resource(R.string.vm_rechte_entzogen))
             }
         }
     }
 
     // Eine nachgeholte Abmeldung, die endgültig scheiterte (EntwertungsWorker): Die
     // Benachrichtigung kann fehlen, also hier noch einmal, einmalig.
-    private fun meldeGescheiterteEntwertung() {
-        prefs.gescheiterteEntwertungen().firstOrNull()?.let { server ->
-            meldungen.zeige(Meldung.Ressource(R.string.abmeldung_gescheitert_text,
+    private fun reportFailedRedemption() {
+        prefs.failedRedemptions().firstOrNull()?.let { server ->
+            meldungen.zeige(Meldung.Resource(R.string.abmeldung_gescheitert_text,
                 listOf(NetworkPolicy.ansicht(server)?.adresse ?: server)))
-            prefs.quittiereGescheiterteEntwertungen()
+            prefs.acknowledgeFailedRedemptions()
         }
     }
 
@@ -123,7 +123,7 @@ class SitzungsDienst @Inject constructor(
      * eigener Bereich, den der nächste Wechsel abbricht: Eine späte Antwort des
      * alten Kontos schriebe sonst in die neue Sitzung.
      */
-    private suspend fun folgeAnmeldung() {
+    private suspend fun sequenceLogin() {
         combine(prefs.serverUrl, prefs.authToken) { url, token -> url to token }
             .distinctUntilChanged()
             .collectLatest { (url, token) -> coroutineScope { anmeldung(this, url, token) } }
@@ -131,48 +131,48 @@ class SitzungsDienst @Inject constructor(
 
     private suspend fun anmeldung(anmeldung: CoroutineScope, url: String, token: String) {
         sitzung.anmeldungGeaendert(url, token.isNotBlank())
-        if (token.isNotBlank() && prefs.anmeldungAbgelaufen()) {
-            meldungen.zeige(Meldung.Ressource(R.string.vm_anmeldung_zu_alt))
+        if (token.isNotBlank() && prefs.loginExpired()) {
+            meldungen.zeige(Meldung.Resource(R.string.vm_anmeldung_zu_alt))
             abmelden()
             return
         }
-        // Eine alte http-Adresse führt in die Einrichtung (startZiel); Abrufe
+        // Eine alte http-Adresse führt in die Einrichtung (startTarget); Abrufe
         // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
         if (token.isNotBlank() && url.isNotBlank() &&
-            !NetworkPolicy.klartextAltbestand(url, NetworkPolicy.entwicklung)) {
-            anmeldung.launch { sitzung.kontoUebernehmen(konto, zweiterFaktorPflicht) }
-            nachAnmeldung(anmeldung)
+            !NetworkPolicy.plaintextLegacyStock(url, NetworkPolicy.entwicklung)) {
+            anmeldung.launch { sitzung.adoptAccount(konto, zweiterFaktorPflicht) }
+            afterLogin(anmeldung)
             ladeEinstellungen(anmeldung)
-            vorwaermen.anstossen()
+            vorwaermen.kick()
         }
     }
 
-    override fun zweiterFaktorEingerichtet() {
+    override fun secondFactorConfigured() {
         zweiterFaktorPflicht.erledigt()
-        nachAnmeldung(bereich)
+        afterLogin(bereich)
         ladeEinstellungen()
     }
 
     /** Nach dem Anmelden: Filter, Konten, Orte und die Galerie in die Ablage; die Bereiche zeigen sie. */
-    private fun nachAnmeldung(anmeldung: CoroutineScope) {
-        anmeldung.launch { blickfeld.ladeFilter() }
-        anmeldung.launch { blickfeld.ladeMitglieder() }
+    private fun afterLogin(anmeldung: CoroutineScope) {
+        anmeldung.launch { blickfeld.loadFilter() }
+        anmeldung.launch { blickfeld.loadMembers() }
         anmeldung.launch { blickfeld.ladeLagerorte() }
-        anmeldung.launch { blickfeld.ladeEigeneLagerorte() }
-        anmeldung.launch { abgleich.sets() }
+        anmeldung.launch { blickfeld.loadOwnLocations() }
+        anmeldung.launch { sync.sets() }
     }
 
-    /** Die Bereichs-ViewModels leeren sich auf [Sitzung.abmeldungen]. */
+    /** Die Bereichs-ViewModels leeren sich auf [Sitzung.signOuts]. */
     override fun abmelden(): Job = bereich.launch {
-        if (abmeldevorgang.ausfuehren() == Abmeldeweg.NACHGEHOLT) {
-            meldungen.zeige(Meldung.Ressource(R.string.vm_abmelden_nachgeholt))
+        if (abmeldevorgang.ausfuehren() == Abmeldeweg.CAUGHT_UP) {
+            meldungen.zeige(Meldung.Resource(R.string.vm_abmelden_nachgeholt))
         }
         // Das Design des Kontos gilt nicht mehr; ohne Token liefert der Server die Vorgabe.
-        bereich.launch { ladeDesign() }
+        bereich.launch { loadDesign() }
     }
 
-    override fun ladeMitglieder() {
-        bereich.launch { blickfeld.ladeMitglieder() }
+    override fun loadMembers() {
+        bereich.launch { blickfeld.loadMembers() }
     }
 
     override fun ladeLagerorte() {
@@ -183,18 +183,18 @@ class SitzungsDienst @Inject constructor(
 
     private fun ladeEinstellungen(anmeldung: CoroutineScope) {
         anmeldung.launch { sitzung.ladeEinstellungen(konto) }
-        anmeldung.launch { ladeDesign() }
+        anmeldung.launch { loadDesign() }
     }
 
     /** Angemeldet das Design des Kontos, sonst die Vorgabe; im Fehlerfall bleibt das gemerkte. */
-    private suspend fun ladeDesign() {
+    private suspend fun loadDesign() {
         if (prefs.serverUrlJetzt().isBlank()) return
         val r = konto.getAppTheme()
         if (r is Ergebnis.Erfolg) r.data.wirksam?.let(sitzung::setzeDesign)
     }
 
     /** Ohne Zeitlimit: Der erste Start des Servers kann viele Minuten dauern. */
-    private suspend fun verfolgeServerstart() {
+    private suspend fun trackServerStart() {
         if (prefs.serverUrlJetzt().isBlank()) return
         while (true) {
             val r = verwaltung.getStartupStatus()
@@ -203,11 +203,11 @@ class SitzungsDienst @Inject constructor(
                 return
             }
             sitzung.serverstartGeaendert(r.data)
-            delay(SERVERSTART_TAKT_MS)
+            delay(SERVER_START_TICK_MS)
         }
     }
 
     private companion object {
-        const val SERVERSTART_TAKT_MS = 2000L
+        const val SERVER_START_TICK_MS = 2000L
     }
 }

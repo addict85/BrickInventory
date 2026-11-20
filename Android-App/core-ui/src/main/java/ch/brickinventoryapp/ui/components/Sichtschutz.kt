@@ -14,23 +14,23 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogWindowProvider
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.ui.util.LocalSdkStufe
+import ch.brickinventoryapp.ui.util.LocalSdkLevel
 
 /**
  * Kein Bildschirmfoto, keine Aufnahme und kein Vorschaubild in der App-Übersicht, solange
  * dieser Bildschirm steht — für Nummer und PIN der Gutscheine.
  */
 @Composable
-fun Sichtschutz(ueberdeckung: Boolean = true) {
-    if (ueberdeckung) Ueberdeckungsschutz()
+fun Sichtschutz(coverage: Boolean = true) {
+    if (coverage) Ueberdeckungsschutz()
     val view = LocalView.current
     val activity = LocalContext.current.findActivity()
     DisposableEffect(view, activity) {
         // Ein Dialog hat ein eigenes Fenster und übernimmt FLAG_SECURE vom Fenster darunter
         // erst bei seinem nächsten Neuaufbau. Darum beide sofort, und beide gezählt.
         val fenster = listOfNotNull(activity?.window, (view.parent as? DialogWindowProvider)?.window).distinct()
-        fenster.forEach(::sichere)
-        onDispose { fenster.forEach(::gibFrei) }
+        fenster.forEach(::secure)
+        onDispose { fenster.forEach(::giveFree) }
     }
 }
 
@@ -41,11 +41,11 @@ fun Sichtschutz(ueberdeckung: Boolean = true) {
  * nur mit FLAG_SECURE über den Zähler von [Sichtschutz].
  */
 @Composable
-fun AppUebersichtSchutz(sperre: AppSperre) {
-    val minuten by sperre.minuten.collectAsState()
+fun AppOverviewProtection(lock: AppLock) {
+    val minuten by lock.minuten.collectAsState()
     if (minuten <= 0) return
-    if (LocalSdkStufe.current < Build.VERSION_CODES.TIRAMISU) {
-        Sichtschutz(ueberdeckung = false)
+    if (LocalSdkLevel.current < Build.VERSION_CODES.TIRAMISU) {
+        Sichtschutz(coverage = false)
         return
     }
     val activity = LocalContext.current.findActivity() ?: return
@@ -55,15 +55,15 @@ fun AppUebersichtSchutz(sperre: AppSperre) {
     }
 }
 
-private fun geschuetzteAnzahl(f: Window) = f.decorView.getTag(R.id.sichtschutz_anzahl) as? Int ?: 0
+private fun protectedCount(f: Window) = f.decorView.getTag(R.id.sichtschutz_anzahl) as? Int ?: 0
 
-private fun sichere(f: Window) {
-    if (geschuetzteAnzahl(f) == 0) f.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
-    f.decorView.setTag(R.id.sichtschutz_anzahl, geschuetzteAnzahl(f) + 1)
+private fun secure(f: Window) {
+    if (protectedCount(f) == 0) f.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+    f.decorView.setTag(R.id.sichtschutz_anzahl, protectedCount(f) + 1)
 }
 
-private fun gibFrei(f: Window) {
-    val rest = geschuetzteAnzahl(f) - 1
+private fun giveFree(f: Window) {
+    val rest = protectedCount(f) - 1
     f.decorView.setTag(R.id.sichtschutz_anzahl, rest)
     if (rest <= 0) f.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
 }

@@ -1,18 +1,18 @@
 Gegenprobe: Fehler des Preisverlaufs im Set-Detail wieder ohne Fehlerklasse
 Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.SetDetailAnzeigeTest
+Test: ch.brickinventoryapp.sammlung.SetDetailDisplayTest
 Rot: scheitert der Preisverlauf
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
 index fd5469f..c5df813 100644
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
-@@ -124,7 +124,7 @@ private fun PreisKarteInhalt(
-             PreisLaedtZeile()
-         } else if (detailState.verlaufAbruf is Laden.Fehler) {
+@@ -124,7 +124,7 @@ private fun PriceCardContent(
+             PriceLoadsRow()
+         } else if (detailState.historyFetch is Laden.Fehler) {
              Spacer(Modifier.height(Abstaende.klein))
--            FehlerHinweis(detailState.verlaufAbruf.meldung.satz(), onErneut, detailState.verlaufAbruf.art)
-+            FehlerHinweis(detailState.verlaufAbruf.meldung.satz(), onErneut, null)
+-            ErrorHint(detailState.historyFetch.meldung.satz(), onErneut, detailState.historyFetch.art)
++            ErrorHint(detailState.historyFetch.meldung.satz(), onErneut, null)
          }
      }
  }

@@ -6,7 +6,7 @@ import ch.brickinventoryapp.model.fach.OHNE_FARBE
 // Auflösung eines Sets (ui/Teileliste.kt) ohne Oberfläche prüfbar ist.
 
 /** „10294“ heisst „10294-1“ — wie überall, wo eine Setnummer getippt wird. */
-internal fun normalisiert(nr: String): String = if (nr.contains("-")) nr.trim() else "${nr.trim()}-1"
+internal fun normalized(nr: String): String = if (nr.contains("-")) nr.trim() else "${nr.trim()}-1"
 
 data class PlSet(val setNumber: String, val name: String = "")
 

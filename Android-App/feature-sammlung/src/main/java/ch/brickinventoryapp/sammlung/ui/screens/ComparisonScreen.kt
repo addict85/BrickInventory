@@ -22,13 +22,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.HinweisText
+import ch.brickinventoryapp.ui.components.HintText
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.ScanKnopf
-import ch.brickinventoryapp.ui.components.ZustandsHinweis
-import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.netz.util.externeAdresse
-import ch.brickinventoryapp.ui.util.oeffneExtern
+import ch.brickinventoryapp.ui.components.ScanButton
+import ch.brickinventoryapp.ui.components.StateHint
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.netz.util.externeAddress
+import ch.brickinventoryapp.ui.util.openExtern
 
 @Composable
 fun ComparisonScreen() {
@@ -49,12 +49,12 @@ fun ComparisonScreen() {
     }
 
     // Die Eingabe als Abfragewert kodiert: Ein `#` oder `&` darin veränderte sonst die Adresse.
-    val keineAppText = stringResource(R.string.common_no_app_to_open)
+    val noAppText = stringResource(R.string.common_no_app_to_open)
     // Snackbar statt Toast wie in den Detailseiten: bleibt lesbar, bis TalkBack fertig ist.
     val meldungen = remember { SnackbarHostState() }
     suspend fun openInBrowser(query: String) {
         val url = "https://www.toppreise.ch/produktsuche".toUri().buildUpon().appendQueryParameter("q", query).build()
-        if (!oeffneExtern(context, externeAdresse(url.toString()))) meldungen.showSnackbar(keineAppText)
+        if (!openExtern(context, externeAddress(url.toString()))) meldungen.showSnackbar(noAppText)
     }
 
     LaunchedEffect(activeQuery) {
@@ -99,7 +99,7 @@ fun ComparisonScreen() {
                         if (searchText.isNotBlank()) scannedBarcode = null
                     },
                     placeholder = { Text(stringResource(R.string.comparison_search_placeholder)) },
-                    leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(mitSchrift(20.dp))) },
+                    leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(withFont(20.dp))) },
                     trailingIcon = {
                         // `cd_search_clear` statt `comparison_clear`: Letzteres heisst „Löschen“ /
                         // „Clear“, und TalkBack sagte am Suche-leeren-Knopf das Wort für „Bestand
@@ -115,7 +115,7 @@ fun ComparisonScreen() {
                     keyboardOptions = NumericInput.ganzzahlTastatur(ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { triggerSearch() })
                 )
-                ScanKnopf({ showScanner = true })
+                ScanButton({ showScanner = true })
                 }
 
                 Button(
@@ -123,7 +123,7 @@ fun ComparisonScreen() {
                     modifier = Modifier.fillMaxWidth(),
                     enabled = searchText.isNotBlank() || scannedBarcode != null
                 ) {
-                    Icon(Icons.Default.OpenInBrowser, null, Modifier.size(mitSchrift(16.dp)))
+                    Icon(Icons.Default.OpenInBrowser, null, Modifier.size(withFont(16.dp)))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.comparison_search), fontWeight = FontWeight.SemiBold)
                 }
@@ -138,7 +138,7 @@ fun ComparisonScreen() {
                             stringResource(R.string.comparison_barcode_label, scannedBarcode ?: ""),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = Abstaende.winzig)
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = Abstaende.tiny)
                         )
                     }
                 }
@@ -146,8 +146,8 @@ fun ComparisonScreen() {
         }
 
         // Derselbe Hinweis wie jeder Leerzustand der App (Symbol auf runder Fläche).
-        ZustandsHinweis {
-            HinweisText(Icons.Default.Search,
+        StateHint {
+            HintText(Icons.Default.Search,
                 stringResource(R.string.comparison_title), stringResource(R.string.comparison_hint))
         }
     }

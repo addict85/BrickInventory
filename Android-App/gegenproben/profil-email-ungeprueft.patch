@@ -1,6 +1,6 @@
 Gegenprobe: Leere E-Mail im Profil nicht gemeldet
 Modul: feature-konto
-Test: ch.brickinventoryapp.konto.ProfilPruefungTest
+Test: ch.brickinventoryapp.konto.ProfileCheckTest
 Rot: leer
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
@@ -8,9 +8,9 @@ diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenKonto.kt
 @@ -171,7 +171,6 @@
  /** Was vor dem Speichern fehlt, in der Reihenfolge der Felder. */
- internal fun profilFehler(benutzername: String, email: String): List<ProfilFeld> = buildList {
-     if (benutzername.isBlank()) add(ProfilFeld.BENUTZERNAME)
--    if (email.isBlank()) add(ProfilFeld.EMAIL)
+ internal fun profileError(benutzername: String, email: String): List<ProfileField> = buildList {
+     if (benutzername.isBlank()) add(ProfileField.BENUTZERNAME)
+-    if (email.isBlank()) add(ProfileField.EMAIL)
  }
  
  /**

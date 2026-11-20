@@ -45,91 +45,91 @@ import kotlin.coroutines.resume
  * dort nicht weiterkommen. [weiter] läuft nur nach Bestätigung.
  */
 fun interface Schrittschutz {
-    fun bestaetige(grund: String, weiter: () -> Unit)
+    fun confirm(grund: String, weiter: () -> Unit)
 
     /** Für einen Schritt, den der Server prüft: Die Bestätigung gilt dort nur für [aktion]. */
-    fun bestaetige(grund: String, aktion: Schrittaktion, weiter: () -> Unit) = bestaetige(grund, weiter)
+    fun confirm(grund: String, aktion: Schrittaktion, weiter: () -> Unit) = confirm(grund, weiter)
 }
 
 /** Derselbe Schutz, immer für [aktion]: So bleiben Aufrufe mit zwei Argumenten an den Server gebunden. */
 fun Schrittschutz.fuer(aktion: Schrittaktion): Schrittschutz {
     val basis = this
-    return Schrittschutz { grund, weiter -> basis.bestaetige(grund, aktion, weiter) }
+    return Schrittschutz { grund, weiter -> basis.confirm(grund, aktion, weiter) }
 }
 
 /**
  * Ohne Anbieter geschieht nichts: Vergässe eine Activity ihn, wäre der Schutz
- * sonst still aus. MainActivity setzt [GeraeteSchrittschutz], Tests ihren eigenen.
+ * sonst still aus. MainActivity setzt [DevicesStepProtection], Tests ihren eigenen.
  */
 val LocalSchrittschutz = staticCompositionLocalOf { Schrittschutz { _, _ -> } }
 
 /**
  * Fingerabdruck (starke Biometrie), sonst PIN, Muster oder Passwort des Geräts. Ohne
- * Sperre gibt es nichts zu prüfen; dann warnt [ohneSperre], statt still durchzulassen.
+ * Sperre gibt es nichts zu prüfen; dann warnt [withoutLock], statt still durchzulassen.
  * Bestätigt ist erst, was der Keystore freigibt und, für eine [Schrittaktion] mit
  * Kennung, der Server mit der Signatur über seine Challenge annimmt ([Schrittablauf]).
  */
-// [untertitel] und [keinSchluessel] kommen von aussen: Unter Android 13 trägt die
+// [subtitle] und [noKey] kommen von aussen: Unter Android 13 trägt die
 // Activity die System- statt der App-Sprache, den lokalisierten Context kennt core-ui nicht.
-class GeraeteSchrittschutz(
+class DevicesStepProtection(
     private val activity: FragmentActivity,
-    private val keinSchluessel: () -> Unit = {},
+    private val noKey: () -> Unit = {},
     private val bindung: Schrittbindung = Schrittbindung.OHNE,
     /** Der Server lehnte ab; null: keine Antwort. */
     private val abgelehnt: (meldung: String?) -> Unit = {},
     /** Das Gerät kann keinen Schlüssel mit Attestation erzeugen; heikle Schritte gehen dann nur in der Webapp. */
-    private val ohneAttestation: () -> Unit = {},
-    private val untertitel: () -> String,
+    private val withoutAttestation: () -> Unit = {},
+    private val subtitle: () -> String,
 ) : Schrittschutz {
     // Je Aktion: Die Freigabe am Server gilt auch nur für eine.
-    private val fristen = mutableMapOf<Schrittaktion, Bestaetigungsfrist>()
-    private val ablauf = Schrittablauf(bindung, Schrittfreigabe(GeraeteSchluessel::oeffentlich))
+    private val deadlines = mutableMapOf<Schrittaktion, Bestaetigungsfrist>()
+    private val flow = Schrittablauf(bindung, Schrittfreigabe(DevicesKey::oeffentlich))
 
-    /** Die Rückfrage ohne Displaysperre; MainActivity zeigt sie mit [OhneSperreWarnung]. */
-    val ohneSperre = OhneSperre()
+    /** Die Rückfrage ohne Displaysperre; MainActivity zeigt sie mit [WithoutLockWarning]. */
+    val withoutLock = WithoutLock()
 
     /** Beim Verlassen der App (MainActivity.onStop): Danach wird wieder gefragt. */
-    fun vergiss() = fristen.values.forEach(Bestaetigungsfrist::vergiss)
+    fun vergiss() = deadlines.values.forEach(Bestaetigungsfrist::vergiss)
 
     /** Nach der Anmeldung: Nur dann nimmt der Server den Schlüssel an ([Schluesselbindung]). */
-    fun bindeAnServer() {
+    fun bindAnServer() {
         if (activity.getSystemService<KeyguardManager>()?.isDeviceSecure != true) return
         activity.lifecycleScope.launch {
-            when (val a = Schluesselbindung(bindung, GeraeteSchluessel).binde()) {
+            when (val a = Schluesselbindung(bindung, DevicesKey).bind()) {
                 Schluesselbindung.Ausgang.Gebunden -> Unit
-                Schluesselbindung.Ausgang.OhneAttestation -> ohneAttestation()
-                is Schluesselbindung.Ausgang.Abgelehnt -> a.meldung?.let(abgelehnt)
+                Schluesselbindung.Ausgang.WithoutAttestation -> withoutAttestation()
+                is Schluesselbindung.Ausgang.Rejected -> a.meldung?.let(abgelehnt)
             }
         }
     }
 
-    override fun bestaetige(grund: String, weiter: () -> Unit) = bestaetige(grund, Schrittaktion.LOKAL, weiter)
+    override fun confirm(grund: String, weiter: () -> Unit) = confirm(grund, Schrittaktion.LOKAL, weiter)
 
-    override fun bestaetige(grund: String, aktion: Schrittaktion, weiter: () -> Unit) {
-        val frist = fristen.getOrPut(aktion) { Bestaetigungsfrist(uhr = SystemClock::elapsedRealtime) }
-        if (frist.gilt()) {
+    override fun confirm(grund: String, aktion: Schrittaktion, weiter: () -> Unit) {
+        val deadline = deadlines.getOrPut(aktion) { Bestaetigungsfrist(clock = SystemClock::elapsedRealtime) }
+        if (deadline.gilt()) {
             weiter()
             return
         }
         if (activity.getSystemService<KeyguardManager>()?.isDeviceSecure != true) {
-            ohneSperre.frage(grund) { frist.bestaetigt(); weiter() }
+            withoutLock.frage(grund) { deadline.confirmed(); weiter() }
             return
         }
         // Ohne gebundenen Schlüssel kein Weiter: Ein Rückfall auf die blosse Rückfrage
         // wäre genau der Weg, den ein eingehakter Rückruf öffnet.
-        val signatur = runCatching { GeraeteSchluessel.signatur() }.getOrNull() ?: return keinSchluessel()
+        val signatur = runCatching { DevicesKey.signatur() }.getOrNull() ?: return noKey()
         activity.lifecycleScope.launch {
-            when (val a = ablauf.bestaetige(aktion) { entsperre(grund, signatur) }) {
-                Schrittablauf.Ausgang.Weiter -> { frist.bestaetigt(); weiter() }
+            when (val a = flow.confirm(aktion) { unlock(grund, signatur) }) {
+                Schrittablauf.Ausgang.Weiter -> { deadline.confirmed(); weiter() }
                 Schrittablauf.Ausgang.Abgebrochen -> Unit
-                is Schrittablauf.Ausgang.Abgelehnt -> abgelehnt(a.meldung)
+                is Schrittablauf.Ausgang.Rejected -> abgelehnt(a.meldung)
             }
         }
     }
 
     /** Die vom Keystore freigegebene Signatur; null bei Abbruch oder Fehler der Sperre. */
-    private suspend fun entsperre(grund: String, signatur: Signature): Signature? = suspendCancellableCoroutine { weiter ->
-        val rueckruf = object : BiometricPrompt.AuthenticationCallback() {
+    private suspend fun unlock(grund: String, signatur: Signature): Signature? = suspendCancellableCoroutine { weiter ->
+        val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                 if (weiter.isActive) weiter.resume(result.cryptoObject?.signature)
             }
@@ -139,12 +139,12 @@ class GeraeteSchrittschutz(
         }
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(grund)
-            .setSubtitle(untertitel())
+            .setSubtitle(subtitle())
             // Seit minSdk 30 immer starke Biometrie oder die Gerätesperre, nie Klasse-2-Gesicht;
-            // beides kann der Keystore-Schlüssel freigeben (GeraeteSchluessel).
+            // beides kann der Keystore-Schlüssel freigeben (DevicesKey).
             .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
             .build()
-        BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), rueckruf)
+        BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), callback)
             .authenticate(info, BiometricPrompt.CryptoObject(signatur))
     }
 }
@@ -154,14 +154,14 @@ class GeraeteSchrittschutz(
  * benutzt, soll wissen, dass PIN, Codes und Verwaltung dort jedem offenstehen, der
  * das Telefon kurz hat. Ein Ja gilt wie eine Bestätigung bis zur Frist.
  */
-class OhneSperre {
-    class Wartend(val grund: String, val weiter: () -> Unit)
+class WithoutLock {
+    class Waiting(val grund: String, val weiter: () -> Unit)
 
-    var wartet by mutableStateOf<Wartend?>(null)
+    var wartet by mutableStateOf<Waiting?>(null)
         private set
 
     fun frage(grund: String, weiter: () -> Unit) {
-        wartet = Wartend(grund, weiter)
+        wartet = Waiting(grund, weiter)
     }
 
     fun fortfahren() {
@@ -175,14 +175,14 @@ class OhneSperre {
     }
 }
 
-/** Die Rückfrage zu [OhneSperre]; Wegtippen bricht ab, ein überlagerter Tipp zählt nicht. */
+/** Die Rückfrage zu [WithoutLock]; Wegtippen bricht ab, ein überlagerter Tipp zählt nicht. */
 @Composable
-fun OhneSperreWarnung(ohneSperre: OhneSperre) {
-    val w = ohneSperre.wartet ?: return
+fun WithoutLockWarning(withoutLock: WithoutLock) {
+    val w = withoutLock.wartet ?: return
     val titel = stringResource(R.string.schritt_ohne_sperre_titel)
     AlertDialog(
         containerColor = fensterFlaeche(),
-        onDismissRequest = ohneSperre::abbrechen,
+        onDismissRequest = withoutLock::abbrechen,
         modifier = Modifier.semantics { paneTitle = titel },
         title = { Text(titel, Modifier.semantics { heading() }) },
         text = {
@@ -190,10 +190,10 @@ fun OhneSperreWarnung(ohneSperre: OhneSperre) {
             Text(stringResource(R.string.schritt_ohne_sperre_text, w.grund))
         },
         confirmButton = {
-            TextButton(onClick = ohneSperre::fortfahren) { Text(stringResource(R.string.schritt_ohne_sperre_weiter)) }
+            TextButton(onClick = withoutLock::fortfahren) { Text(stringResource(R.string.schritt_ohne_sperre_weiter)) }
         },
         dismissButton = {
-            TextButton(onClick = ohneSperre::abbrechen) { Text(stringResource(R.string.common_cancel)) }
+            TextButton(onClick = withoutLock::abbrechen) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
@@ -207,10 +207,10 @@ fun Schrittsperre(grund: String, aktion: Schrittaktion = Schrittaktion.LOKAL, in
     // Eine Seite hinter der Gerätesperre ist heikel: kein untergeschobener Tipp.
     Ueberdeckungsschutz()
     val basis = LocalSchrittschutz.current
-    val schutz = remember(basis, aktion) { basis.fuer(aktion) }
+    val protection = remember(basis, aktion) { basis.fuer(aktion) }
     var entsperrt by remember { mutableStateOf(false) }
-    val frage = { schutz.bestaetige(grund) { entsperrt = true } }
-    LaunchedEffect(schutz) { if (!entsperrt) frage() }
+    val frage = { protection.confirm(grund) { entsperrt = true } }
+    LaunchedEffect(protection) { if (!entsperrt) frage() }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) { entsperrt = false }
     if (entsperrt) {
         inhalt()

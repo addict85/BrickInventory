@@ -17,12 +17,12 @@ import androidx.compose.ui.unit.dp
  * hat: Materials Zustandsebene lag nur 1,2:1 über der Fläche (WCAG 2.4.7). Steht vor
  * dem `clickable`, dessen Fokus es beobachtet; im Touch-Betrieb gibt es keinen Fokus.
  */
-fun Modifier.fokusRahmen(form: Shape): Modifier = composed {
+fun Modifier.focusFrame(form: Shape): Modifier = composed {
     var fokus by remember { mutableStateOf(false) }
     val farbe = MaterialTheme.colorScheme.primary
     onFocusChanged { fokus = it.hasFocus }
-        .then(if (fokus) Modifier.border(FOKUS_RAHMEN, farbe, form) else Modifier)
+        .then(if (fokus) Modifier.border(FOCUS_FRAME, farbe, form) else Modifier)
 }
 
 /** Breite des Fokusrahmens: deutlich breiter als die 1-dp-Ränder der Karten. */
-val FOKUS_RAHMEN = 3.dp
+val FOCUS_FRAME = 3.dp

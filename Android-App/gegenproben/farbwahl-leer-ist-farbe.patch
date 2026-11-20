@@ -10,8 +10,8 @@ diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fac
      val wert: String? get() = (this as? Farbe)?.name
  
      companion object {
--        fun aus(text: String?): Farbwahl = text?.takeIf { it.isNotBlank() }?.let(::Farbe) ?: Alle
-+        fun aus(text: String?): Farbwahl = text?.let(::Farbe) ?: Alle
+-        fun aus(text: String?): ColorPicker = text?.takeIf { it.isNotBlank() }?.let(::Farbe) ?: Alle
++        fun aus(text: String?): ColorPicker = text?.let(::Farbe) ?: Alle
      }
  }
  

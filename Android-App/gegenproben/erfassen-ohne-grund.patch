@@ -9,8 +9,8 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
 @@ -115,7 +115,6 @@
  
      fun submit() {
-         if (nummerFehler(setNumber, geprueft = true) != null) {
--            nummerFehlt = true
-             if (sofortFokus) setFeldFokus.fokusWennOffen()
-         } else if (!erfassungUngueltig(quantity, purchasePrice)) {
+         if (numberError(setNumber, geprueft = true) != null) {
+-            numberMissing = true
+             if (immediatelyFocus) setFeldFokus.openFocusIf()
+         } else if (!entryInvalid(quantity, purchasePrice)) {
              // Bei unlesbarer Menge oder unlesbarem Preis bleibt der Dialog offen; die Felder zeigen den Fehler.

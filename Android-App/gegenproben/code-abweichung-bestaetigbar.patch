@@ -1,17 +1,17 @@
 Gegenprobe: Eine Abweichung vom Code lässt sich wie ein geänderter Schlüssel abgetippt bestätigen
 Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Test: ch.brickinventoryapp.anmeldung.CertificatePinTest
 Rot: ein Code mit System-Wurzel muss genau diese Wurzel treffen
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 index 6ec1f8a..16d1c6c 100644
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-@@ -207,7 +207,6 @@ internal class ZertifikatsRueckfrage @Inject constructor() : ZertifikatsFrage {
+@@ -207,7 +207,6 @@ internal class CertificatePrompt @Inject constructor() : CertificateQuestion {
       */
-     override fun bestaetige(pins: PinAblage, eingabe: String?): Boolean {
-         val f = _offen.value ?: return false
--        if (f.art == ZertifikatUngeklaert.Art.CODE_ABWEICHUNG) return false
-         val pruefen = f.abschriftNoetig || f.art == ZertifikatUngeklaert.Art.ERSTKONTAKT && !eingabe.isNullOrBlank()
-         if (pruefen && !Abschrift.bestaetigt(eingabe, f.fingerabdruck)) return false
-         pins.merkePin(f.ablageSchluessel, f.fingerabdruck)
+     override fun confirm(pins: PinStore, eingabe: String?): Boolean {
+         val f = _open.value ?: return false
+-        if (f.art == CertificateUnresolved.Art.CODE_ABWEICHUNG) return false
+         val pruefen = f.transcriptNeeded || f.art == CertificateUnresolved.Art.ERSTKONTAKT && !eingabe.isNullOrBlank()
+         if (pruefen && !Transcript.confirmed(eingabe, f.fingerabdruck)) return false
+         pins.rememberPin(f.storeKey, f.fingerabdruck)

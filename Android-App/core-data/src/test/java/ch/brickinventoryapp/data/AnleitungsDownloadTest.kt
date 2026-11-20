@@ -2,8 +2,8 @@ package ch.brickinventoryapp.data
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.sicherheit.AblageChiffre
-import ch.brickinventoryapp.data.util.AnleitungsAblage
+import ch.brickinventoryapp.sicherheit.StoreCipher
+import ch.brickinventoryapp.data.util.InstructionStore
 import ch.brickinventoryapp.data.util.pdfAblage
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -70,7 +70,7 @@ class AnleitungsDownloadTest {
 
     @Test
     fun `ein abgerissener Download wird an der Teildatei fortgesetzt und erst am Ende umbenannt`() = runTest {
-        val ablage = AnleitungsAblage(AblageChiffre { ByteArray(32) { 6 } })
+        val ablage = InstructionStore(StoreCipher { ByteArray(32) { 6 } })
         val api = OkHttpClient.Builder().addInterceptor { kette ->
             kette.proceed(kette.request().newBuilder().header("Authorization", "Bearer token-marco").build())
         }.build()

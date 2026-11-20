@@ -3,7 +3,7 @@ package ch.brickinventoryapp.teile.ui.screens
 import ch.brickinventoryapp.teile.ui.PlPart
 import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import androidx.compose.ui.semantics.contentDescription
-import ch.brickinventoryapp.ui.theme.farbeAusHex
+import ch.brickinventoryapp.ui.theme.colorFromHex
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.background
@@ -33,22 +33,22 @@ import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.ProduktBild
-import ch.brickinventoryapp.ui.components.bewegungReduziert
-import ch.brickinventoryapp.ui.components.farbUebersetzer
-import ch.brickinventoryapp.ui.components.katalogName
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.farbTranslator
+import ch.brickinventoryapp.ui.components.catalogName
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.util.fmtInt
 
 /** PDF der fertigen Liste; ein Fehler kommt als Dialog. Der Export läuft im ViewModel. */
 @Composable
-internal fun PdfKnopf(exportLaeuft: Boolean, pdfError: String?, onExport: () -> Unit, onFehlerGesehen: () -> Unit) {
+internal fun PdfButton(exportRunning: Boolean, pdfError: String?, onExport: () -> Unit, onErrorSeen: () -> Unit) {
     if (pdfError != null) {
         val titel = stringResource(R.string.partslist_pdf_error_title)
         androidx.compose.material3.AlertDialog(
             containerColor = fensterFlaeche(),
-            onDismissRequest = onFehlerGesehen,
+            onDismissRequest = onErrorSeen,
             modifier = Modifier.semantics { paneTitle = titel },
-            confirmButton = { TextButton(onClick = onFehlerGesehen) { Text(stringResource(R.string.common_ok)) } },
+            confirmButton = { TextButton(onClick = onErrorSeen) { Text(stringResource(R.string.common_ok)) } },
             title = { Text(titel, Modifier.semantics { heading() }) },
             text = { Text(pdfError) }
         )
@@ -56,29 +56,29 @@ internal fun PdfKnopf(exportLaeuft: Boolean, pdfError: String?, onExport: () -> 
     // Umrandet wie jede Nebenaktion: Die getönte Fläche lag im hellen Design kaum über dem Grund.
     OutlinedButton(
         onClick = onExport,
-        enabled = !exportLaeuft,
+        enabled = !exportRunning,
         colors = nebenKnopfFarben(),
-        border = nebenKnopfRand(!exportLaeuft),
+        border = nebenKnopfRand(!exportRunning),
     ) {
         // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt (wie oben).
-        if (exportLaeuft) CircularProgressIndicator(Modifier.size(16.dp),
+        if (exportRunning) CircularProgressIndicator(Modifier.size(16.dp),
             strokeWidth = 2.dp)
-        else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(mitSchrift(16.dp)))
-        Spacer(Modifier.width(Abstaende.winzig))
+        else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(withFont(16.dp)))
+        Spacer(Modifier.width(Abstaende.tiny))
         Text(stringResource(R.string.common_pdf))
     }
 }
 
 /** Kopf einer Farbgruppe: Farbpunkt, Name und wie viele Teile und Typen sie hat; [colorName] null = Minifiguren. */
 @Composable
-internal fun FarbGruppenKopf(colorName: String?, colorParts: List<PlPart>) {
-    val mengen = androidx.compose.ui.platform.LocalResources.current
-    val farbe = farbUebersetzer()
+internal fun FarbGroupsHeader(colorName: String?, colorParts: List<PlPart>) {
+    val quantities = androidx.compose.ui.platform.LocalResources.current
+    val farbe = farbTranslator()
     Row(verticalAlignment = Alignment.CenterVertically) {
         val hex = colorParts.first().colorHex
         if (hex != null && !colorParts.first().isFig) {
             Box(Modifier.size(14.dp).clip(CircleShape)
-                .background(farbeAusHex(hex) ?: Color.Gray))
+                .background(colorFromHex(hex) ?: Color.Gray))
             Spacer(Modifier.width(6.dp))
         }
         val displayName = when {
@@ -92,12 +92,12 @@ internal fun FarbGruppenKopf(colorName: String?, colorParts: List<PlPart>) {
         Spacer(Modifier.width(Abstaende.klein))
         // Uebereinstimmung mit %2$d (den Typen) — %1$d traegt
         // nur ein „×" und kein Wort.
-        Text(mengen.getQuantityString(R.plurals.partslist_group_summary,
+        Text(quantities.getQuantityString(R.plurals.partslist_group_summary,
                 colorParts.size, colorParts.sumOf { it.quantity }, colorParts.size),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    HorizontalDivider(Modifier.padding(top = Abstaende.winzig), color = MaterialTheme.colorScheme.primaryContainer)
+    HorizontalDivider(Modifier.padding(top = Abstaende.tiny), color = MaterialTheme.colorScheme.primaryContainer)
 }
 
 @Composable
@@ -116,18 +116,18 @@ internal fun PartListRow(
         }
     }
     Row(
-        Modifier.fillMaxWidth().padding(vertical = Abstaende.winzig),
+        Modifier.fillMaxWidth().padding(vertical = Abstaende.tiny),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         // Image
         ProduktBild(
-            model = imgUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
+            model = imgUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
             imageLoader = imageLoader,
             contentDescription = part.partName,
             modifier = Modifier.size(48.dp).clip(MaterialTheme.shapes.small),
             contentScale = ContentScale.Fit,
-            ersatzGroesse = 24.dp,
+            fallbackSize = 24.dp,
         )
         // Info
         Column(Modifier.weight(1f)) {
@@ -139,9 +139,9 @@ internal fun PartListRow(
                 Text(stringResource(R.string.partslist_rb_prefix, part.partNumber), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(katalogName(part.partName), style = MaterialTheme.typography.bodySmall,
+            Text(catalogName(part.partName), style = MaterialTheme.typography.bodySmall,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
-            MengenPillen(part)
+            QuantitiesPills(part)
         }
     }
 }
@@ -153,16 +153,16 @@ internal fun PartListRow(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun MengenPillen(part: PlPart) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig),
-        verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-        Pille(stringResource(R.string.partslist_benoetigt, fmtInt(part.quantity)),
+private fun QuantitiesPills(part: PlPart) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+        Pill(stringResource(R.string.partslist_benoetigt, fmtInt(part.quantity)),
             if (part.isFig) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer,
             if (part.isFig) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer)
         // Grün, wenn es reicht, sonst rot mit dem Fehlbetrag: „kann ich das bauen?“ beim Überfliegen.
         part.vorhanden?.let { habe ->
             val reicht = habe >= part.quantity
-            Pille(
+            Pill(
                 if (reicht) stringResource(R.string.partslist_vorhanden, fmtInt(habe))
                 else stringResource(R.string.partslist_vorhanden_von, fmtInt(habe), fmtInt(part.quantity)),
                 if (reicht) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.errorContainer,
@@ -173,16 +173,16 @@ private fun MengenPillen(part: PlPart) {
 }
 
 @Composable
-private fun Pille(text: String, flaeche: Color, schrift: Color) {
+private fun Pill(text: String, flaeche: Color, schrift: Color) {
     Surface(color = flaeche, shape = MaterialTheme.shapes.small) {
-        Text(text, Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.haar),
+        Text(text, Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.hairline),
             style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = schrift)
     }
 }
 
 /** Die Legende über der Liste, sobald der Bestand eingetragen ist. */
 @Composable
-internal fun BaulistenLegende() {
+internal fun BuildListsLegend() {
     Text(stringResource(R.string.partslist_legende), style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
@@ -191,15 +191,15 @@ internal fun BaulistenLegende() {
  * Teile nach Farbe, die Minifiguren als eigene Gruppe am Ende (Schlüssel null): Sie haben
  * keine Farbe und standen sonst zwischen den Teilen unter „(Keine Farbe)“.
  */
-internal fun baulistenGruppen(parts: List<PlPart>): List<Pair<String?, List<PlPart>>> {
-    val nachNummer = Comparator<PlPart> { a, b ->
+internal fun buildListsGroups(parts: List<PlPart>): List<Pair<String?, List<PlPart>>> {
+    val afterNumber = Comparator<PlPart> { a, b ->
         comparePartNumbers(a.blPartNumber ?: a.partNumber, b.blPartNumber ?: b.partNumber)
     }
     val (figuren, teile) = parts.partition { it.isFig }
     val farben: List<Pair<String?, List<PlPart>>> = teile.groupBy { it.colorName }.entries
         .sortedWith(compareBy(plColorCollator) { it.key })
-        .map { (farbe, liste) -> farbe to liste.sortedWith(nachNummer) }
-    return if (figuren.isEmpty()) farben else farben + (null to figuren.sortedWith(nachNummer))
+        .map { (farbe, liste) -> farbe to liste.sortedWith(afterNumber) }
+    return if (figuren.isEmpty()) farben else farben + (null to figuren.sortedWith(afterNumber))
 }
 
-// Den PDF-Export führt TeilelisteViewModel.exportPartsPdf über den Vordergrund-Dienst.
+// Den PDF-Export führt PartListViewModel.exportPartsPdf über den Vordergrund-Dienst.

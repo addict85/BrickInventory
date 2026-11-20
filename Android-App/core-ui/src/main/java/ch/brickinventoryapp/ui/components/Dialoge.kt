@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import ch.brickinventoryapp.ui.MITTLERE_BREITE_DP
+import ch.brickinventoryapp.ui.MIDDLE_WIDTH_DP
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
@@ -52,7 +52,7 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
 import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.fensterFlaeche
-import ch.brickinventoryapp.ui.theme.hauptKnopfFarben
+import ch.brickinventoryapp.ui.theme.mainButtonColors
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.size
@@ -65,7 +65,7 @@ import androidx.compose.material3.CircularProgressIndicator
  * Schliessen muss der Aufrufer in [onBestaetigen] selbst.
  */
 @Composable
-fun Rueckfrage(
+fun Prompt(
     titel: String,
     text: String,
     bestaetigen: String,
@@ -77,7 +77,7 @@ fun Rueckfrage(
     AlertDialog(
         onDismissRequest = onAbbrechen,
         properties = DialogProperties(usePlatformDefaultWidth = false),
-        modifier = Modifier.fensterRand().semantics { paneTitle = titel },
+        modifier = Modifier.windowEdge().semantics { paneTitle = titel },
         containerColor = fensterFlaeche(),
         icon = symbol?.let { s -> { Icon(s, null, tint = MaterialTheme.colorScheme.error) } },
         title = { Text(titel, Modifier.semantics { heading() }) },
@@ -94,39 +94,39 @@ fun Rueckfrage(
  * Der Rahmen jedes Erfassen-Dialogs: Titel links ohne Symbol, die Felder mit
  * gleichem Abstand untereinander, rechts der volle Knopf. Set, Merkposten,
  * Übernahme und Lagerort sahen vorher je anders aus (Symbol, Mitte, Rundung).
- * Auf dem Telefon mit grosser Schrift als Vollbild ([vollbildErfassen]).
+ * Auf dem Telefon mit grosser Schrift als Vollbild ([addFullscreen]).
  */
 @Composable
-fun ErfassenDialog(
+fun AddDialog(
     titel: String,
     bestaetigen: String,
     onBestaetigen: () -> Unit,
     onAbbrechen: () -> Unit,
-    bestaetigenAn: Boolean = true,
-    /** Ob schon etwas eingegeben ist; dann schliesst kein Fehlgriff den Dialog (siehe [erfassenSchliessbar]). */
+    confirmAn: Boolean = true,
+    /** Ob schon etwas eingegeben ist; dann schliesst kein Fehlgriff den Dialog (siehe [addClosable]). */
     geaendert: Boolean = false,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
-    var verwerfenFragen by rememberSaveable { mutableStateOf(false) }
+    var discardAsk by rememberSaveable { mutableStateOf(false) }
     // Zurück und Danebentippen landen hier; Abbrechen und das Kreuz schliessen weiter ohne Frage.
-    val schliessen: () -> Unit = { if (geaendert) { verwerfenFragen = true } else { onAbbrechen() } }
-    if (verwerfenFragen) {
-        Rueckfrage(
+    val schliessen: () -> Unit = { if (geaendert) { discardAsk = true } else { onAbbrechen() } }
+    if (discardAsk) {
+        Prompt(
             titel = stringResource(R.string.erfassen_verwerfen_titel),
             text = stringResource(R.string.erfassen_verwerfen_text),
             bestaetigen = stringResource(R.string.erfassen_verwerfen),
-            onBestaetigen = { verwerfenFragen = false; onAbbrechen() },
-            onAbbrechen = { verwerfenFragen = false },
+            onBestaetigen = { discardAsk = false; onAbbrechen() },
+            onAbbrechen = { discardAsk = false },
         )
     }
-    if (vollbildErfassen()) {
-        VollbildErfassen(titel, bestaetigen, onBestaetigen, onAbbrechen, schliessen, bestaetigenAn, geaendert, inhalt)
+    if (addFullscreen()) {
+        FullscreenAdd(titel, bestaetigen, onBestaetigen, onAbbrechen, schliessen, confirmAn, geaendert, inhalt)
         return
     }
     AlertDialog(
         onDismissRequest = schliessen,
-        properties = erfassenSchliessbar(geaendert),
-        modifier = Modifier.fensterRand().semantics { paneTitle = titel },
+        properties = addClosable(geaendert),
+        modifier = Modifier.windowEdge().semantics { paneTitle = titel },
         containerColor = fensterFlaeche(),
         title = { Text(titel, Modifier.semantics { heading() }) },
         // Rollbar: Ist die Schrift gross, sind die Felder höher als das Fenster; die
@@ -136,7 +136,7 @@ fun ErfassenDialog(
                 verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) { inhalt() }
         },
         confirmButton = {
-            Button(onClick = onBestaetigen, enabled = bestaetigenAn, colors = hauptKnopfFarben()) { Text(bestaetigen) }
+            Button(onClick = onBestaetigen, enabled = confirmAn, colors = mainButtonColors()) { Text(bestaetigen) }
         },
         dismissButton = { TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) } },
     )
@@ -163,18 +163,18 @@ fun Knopfzeile(
         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         itemVerticalAlignment = Alignment.CenterVertically,
     ) {
-        if (laeuft) CircularProgressIndicator(Modifier.size(mitSchrift(18.dp)), strokeWidth = 2.dp)
+        if (laeuft) CircularProgressIndicator(Modifier.size(withFont(18.dp)), strokeWidth = 2.dp)
         TextButton(onClick = onAbbrechen) { Text(stringResource(R.string.common_cancel)) }
-        Button(onClick = onBestaetigen, enabled = !laeuft, colors = hauptKnopfFarben()) { Text(bestaetigen) }
+        Button(onClick = onBestaetigen, enabled = !laeuft, colors = mainButtonColors()) { Text(bestaetigen) }
     }
 }
 
 /**
  * Daneben tippen schliesst ein ausgefülltes Formular nicht: Ein Tipp neben das Fenster
  * verwarf bisher Set, Merkposten oder Lagerort samt allem Getippten. Zurück bleibt an,
- * fragt dann aber erst nach (ErfassenDialog).
+ * fragt dann aber erst nach (AddDialog).
  */
-fun erfassenSchliessbar(geaendert: Boolean) =
+fun addClosable(geaendert: Boolean) =
     DialogProperties(dismissOnClickOutside = !geaendert, usePlatformDefaultWidth = false)
 
 /**
@@ -182,9 +182,9 @@ fun erfassenSchliessbar(geaendert: Boolean) =
  * der Plattform: Die hing vom Gerät ab, und ohne sie stand der Dialog randlos über der
  * ganzen Breite. Mittig steht er von selbst; breiter als 560 dp wird er nicht.
  */
-fun Modifier.fensterRand(): Modifier = padding(horizontal = FENSTER_RAND)
+fun Modifier.windowEdge(): Modifier = padding(horizontal = WINDOW_EDGE)
 
-private val FENSTER_RAND = 24.dp
+private val WINDOW_EDGE = 24.dp
 
 /**
  * Vollbild statt schwebendem Dialog: auf schmalem Fenster ab grosser Schrift. Dort
@@ -192,9 +192,9 @@ private val FENSTER_RAND = 24.dp
  * durch (Material: „full-screen dialog“ für Eingaben auf dem Telefon).
  */
 @Composable
-fun vollbildErfassen(): Boolean {
-    val breiteDp = LocalWindowInfo.current.containerSize.width / LocalDensity.current.density
-    return grosseSchrift() && breiteDp < MITTLERE_BREITE_DP
+fun addFullscreen(): Boolean {
+    val widthDp = LocalWindowInfo.current.containerSize.width / LocalDensity.current.density
+    return largeFont() && widthDp < MIDDLE_WIDTH_DP
 }
 
 /**
@@ -202,20 +202,20 @@ fun vollbildErfassen(): Boolean {
  * am Fuss in voller Breite: Neben einem Titel in 200 % Schrift hätte er oben keinen Platz.
  */
 @Composable
-private fun VollbildErfassen(
+private fun FullscreenAdd(
     titel: String,
     bestaetigen: String,
     onBestaetigen: () -> Unit,
     onAbbrechen: () -> Unit,
     onSchliessen: () -> Unit,
-    bestaetigenAn: Boolean,
+    confirmAn: Boolean,
     geaendert: Boolean,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
-    Dialog(onDismissRequest = onSchliessen, properties = erfassenSchliessbar(geaendert)) {
+    Dialog(onDismissRequest = onSchliessen, properties = addClosable(geaendert)) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxSize().imePadding()) {
-                Row(Modifier.fillMaxWidth().padding(horizontal = Abstaende.winzig, vertical = Abstaende.klein),
+                Row(Modifier.fillMaxWidth().padding(horizontal = Abstaende.tiny, vertical = Abstaende.klein),
                     verticalAlignment = Alignment.CenterVertically) {
                     MitTooltip(stringResource(R.string.common_cancel)) {
                         IconButton(onClick = onAbbrechen) {
@@ -231,7 +231,7 @@ private fun VollbildErfassen(
                     verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
                 ) { inhalt() }
                 HorizontalDivider()
-                Button(onClick = onBestaetigen, enabled = bestaetigenAn, colors = hauptKnopfFarben(),
+                Button(onClick = onBestaetigen, enabled = confirmAn, colors = mainButtonColors(),
                     modifier = Modifier.fillMaxWidth().padding(Abstaende.gross)) { Text(bestaetigen) }
             }
         }
@@ -248,17 +248,17 @@ private fun VollbildErfassen(
 fun Abschnitt(
     titel: String?,
     modifier: Modifier = Modifier,
-    innenAbstand: Boolean = true,
+    innerGap: Boolean = true,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
     AppKarte(modifier) {
         Column(
-            if (innenAbstand) Modifier.fillMaxWidth().padding(Abstaende.gross) else Modifier.fillMaxWidth(),
+            if (innerGap) Modifier.fillMaxWidth().padding(Abstaende.gross) else Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
             // Dieselbe Überschrift wie jede Karte (Abschnittstitel).
-            if (titel != null) Abschnittstitel(titel,
-                if (innenAbstand) Modifier else Modifier.padding(start = Abstaende.gross,
+            if (titel != null) SectionTitle(titel,
+                if (innerGap) Modifier else Modifier.padding(start = Abstaende.gross,
                     end = Abstaende.gross, top = Abstaende.gross))
             inhalt()
         }
@@ -272,7 +272,7 @@ fun Abschnitt(
  * landet im Bundle und bei Prozesstod auf der Platte.
  */
 @Composable
-fun PasswortRueckfrage(
+fun PasswordPrompt(
     titel: String,
     text: String,
     bestaetigen: String,
@@ -286,32 +286,32 @@ fun PasswortRueckfrage(
     var code by remember { mutableStateOf("") }
     // Die Absage rollt ins Bild: Mit dem Codefeld darüber lag sie auf kleinen Schirmen unter
     // dem Rand der Rückfrage, und man sah nur ein neues Feld ohne den Grund dafür.
-    val meldungSichtbar = remember { BringIntoViewRequester() }
+    val messageVisible = remember { BringIntoViewRequester() }
     LaunchedEffect(fehler) {
         if (fehler == null) return@LaunchedEffect
         withFrameNanos { }  // erst wenn die Zeile gesetzt ist
-        meldungSichtbar.bringIntoView()
+        messageVisible.bringIntoView()
     }
-    ErfassenDialog(
+    AddDialog(
         titel = titel,
         bestaetigen = bestaetigen,
         onBestaetigen = { onBestaetigen(passwort, code.takeIf { codeNoetig && it.isNotBlank() }) },
         onAbbrechen = onAbbrechen,
-        bestaetigenAn = !laeuft && passwort.isNotEmpty() && (!codeNoetig || code.isNotBlank()),
+        confirmAn = !laeuft && passwort.isNotEmpty() && (!codeNoetig || code.isNotBlank()),
     ) {
         // Ein Dialog hat sein eigenes Fenster; der Schutz der Seite reicht nicht hinein.
         Ueberdeckungsschutz()
         Text(text, style = MaterialTheme.typography.bodyMedium)
-        PasswortFeld(passwort, { passwort = it }, stringResource(R.string.konto_password_current),
+        PasswordField(passwort, { passwort = it }, stringResource(R.string.konto_password_current),
             Modifier.fillMaxWidth())
-        if (codeNoetig) ZweiterFaktorCodeFeld(code) { code = it }
-        if (fehler != null) FehlerZeile(fehler, Modifier.bringIntoViewRequester(meldungSichtbar))
+        if (codeNoetig) SecondFactorCodeField(code) { code = it }
+        if (fehler != null) ErrorRow(fehler, Modifier.bringIntoViewRequester(messageVisible))
     }
 }
 
 /** Der Code des zweiten Faktors, den der Server für Passwort, E-Mail und Gutscheine verlangt. */
 @Composable
-fun ZweiterFaktorCodeFeld(code: String, onCode: (String) -> Unit) {
+fun SecondFactorCodeField(code: String, onCode: (String) -> Unit) {
     OutlinedTextField(
         value = code, onValueChange = { onCode(it.take(24)) },
         label = { Text(stringResource(R.string.login_code)) },

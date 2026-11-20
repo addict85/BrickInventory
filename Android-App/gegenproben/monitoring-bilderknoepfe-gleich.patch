@@ -1,6 +1,6 @@
 Gegenprobe: der Katalogbilder-Knopf lädt die Bestandsbilder nach
 Modul: feature-verwaltung
-Test: ch.brickinventoryapp.verwaltung.MonitoringJobsAnzeigeTest
+Test: ch.brickinventoryapp.verwaltung.MonitoringJobsDisplayTest
 Rot: die zwei Bilderknoepfe
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringScreen.kt
@@ -9,9 +9,9 @@ diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/v
 @@ -217,7 +217,7 @@
                  "imgDl" -> {
                      // Der erste holt die Bilder des Bestands nach, der zweite die des Katalogs (wie in der Webapp).
-                     StartKnopf(Jobstart.BESTANDSBILDER, knoepfe, Icons.Default.Download, R.string.monitoring_redownload_missing, starte)
--                    StartKnopf(Jobstart.KATALOGBILDER, knoepfe, Icons.Default.Download, R.string.monitoring_catalog_images, starte)
-+                    StartKnopf(Jobstart.BESTANDSBILDER, knoepfe, Icons.Default.Download, R.string.monitoring_catalog_images, starte)
+                     StartButton(Jobstart.BESTANDSBILDER, buttons, Icons.Default.Download, R.string.monitoring_redownload_missing, starte)
+-                    StartButton(Jobstart.KATALOGBILDER, buttons, Icons.Default.Download, R.string.monitoring_catalog_images, starte)
++                    StartButton(Jobstart.BESTANDSBILDER, buttons, Icons.Default.Download, R.string.monitoring_catalog_images, starte)
                  }
                  "instrQueue" ->
-                     StartKnopf(Jobstart.ANLEITUNGEN, knoepfe, Icons.Default.Download, R.string.monitoring_import_missing_instr, starte)
+                     StartButton(Jobstart.INSTRUCTIONS, buttons, Icons.Default.Download, R.string.monitoring_import_missing_instr, starte)

@@ -3,8 +3,8 @@ package ch.brickinventoryapp.zustand.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.data.Verbindungsabwurf
 import ch.brickinventoryapp.data.Vertrauensablage
-import ch.brickinventoryapp.zustand.ui.NutzerCaSchalter
-import ch.brickinventoryapp.sicherheit.ZertifikatsFrage
+import ch.brickinventoryapp.zustand.ui.UserCaToggle
+import ch.brickinventoryapp.sicherheit.CertificateQuestion
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
@@ -16,26 +16,26 @@ import javax.inject.Inject
 @HiltViewModel
 class VertrauenViewModel @Inject constructor(
     private val prefs: Vertrauensablage,
-    private val abwurf: Verbindungsabwurf,
-    private val zertifikatsFrage: ZertifikatsFrage,
+    private val drop: Verbindungsabwurf,
+    private val certificateQuestion: CertificateQuestion,
 ) : ViewModel() {
 
-    /** Das Zertifikat, das auf Ja oder Nein wartet (ZertifikatDialog). */
-    val zertifikat = zertifikatsFrage.offen
+    /** Das Zertifikat, das auf Ja oder Nein wartet (CertificateDialog). */
+    val zertifikat = certificateQuestion.offen
 
     /** Auch nutzerinstallierte CAs; an nur nach Bestätigung. */
-    val nutzerCa = NutzerCaSchalter(
-        lies = prefs::nutzerCaErlaubt,
-        schreibe = prefs::setzeNutzerCa,
-        nachAenderung = abwurf::verwirf,
+    val userCa = UserCaToggle(
+        lies = prefs::userCaAllowed,
+        schreibe = prefs::setUserCa,
+        afterChange = drop::discard,
     )
 
     /** Ja zum gezeigten Zertifikat. Ohne bekannte CA oder geändert nur mit [eingabe]. */
-    fun zertifikatVertrauen(eingabe: String? = null): Boolean {
-        if (!zertifikatsFrage.bestaetige(prefs, eingabe)) return false
-        abwurf.verwirf()
+    fun trustCertificate(eingabe: String? = null): Boolean {
+        if (!certificateQuestion.confirm(prefs, eingabe)) return false
+        drop.discard()
         return true
     }
 
-    fun zertifikatVerwerfen() = zertifikatsFrage.verwerfen()
+    fun discardCertificate() = certificateQuestion.verwerfen()
 }

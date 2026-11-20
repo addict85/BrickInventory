@@ -5,9 +5,9 @@ import ch.brickinventoryapp.vertrag.CatalogSetItem
 import ch.brickinventoryapp.vertrag.CatalogTheme
 import ch.brickinventoryapp.vertrag.JahrAnzahl
 import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
-import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.fach.CatalogDetailView
 import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
-import ch.brickinventoryapp.model.fach.KatalogThemaAnsicht
+import ch.brickinventoryapp.model.fach.CatalogThemeView
 
 fun CatalogSetItem.alsAnsicht() = KatalogSetAnsicht(
     setNumber = setNumber,
@@ -22,7 +22,7 @@ fun CatalogSetItem.alsAnsicht() = KatalogSetAnsicht(
     ownedQuantity = ownedQuantity,
 )
 
-fun CatalogSetDetail.alsAnsicht() = KatalogDetailAnsicht(
+fun CatalogSetDetail.alsAnsicht() = CatalogDetailView(
     setNumber = setNumber,
     name = name,
     year = year,
@@ -43,7 +43,7 @@ fun JahrAnzahl.alsAnsicht() = JahrAnzahlAnsicht(
     n = n,
 )
 
-fun CatalogTheme.alsAnsicht() = KatalogThemaAnsicht(
+fun CatalogTheme.alsAnsicht() = CatalogThemeView(
     id = id,
     name = name,
     setCount = setCount,

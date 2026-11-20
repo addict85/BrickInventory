@@ -14,15 +14,15 @@ import javax.inject.Singleton
  */
 @Singleton
 class SessionExpiredSignal @Inject constructor() {
-    private val _abgelaufen = MutableStateFlow(false)
-    val abgelaufen: StateFlow<Boolean> = _abgelaufen.asStateFlow()
+    private val _expired = MutableStateFlow(false)
+    val abgelaufen: StateFlow<Boolean> = _expired.asStateFlow()
 
     fun notifyExpired() {
-        _abgelaufen.value = true
+        _expired.value = true
     }
 
     /** Der Verbraucher hat reagiert; ein weiterer 401 meldet erneut. */
-    fun quittiere() {
-        _abgelaufen.value = false
+    fun acknowledge() {
+        _expired.value = false
     }
 }

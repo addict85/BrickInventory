@@ -6,7 +6,7 @@ import ch.brickinventoryapp.model.fach.Merkwunsch
 import ch.brickinventoryapp.model.fach.Setzusammenfassung
 import ch.brickinventoryapp.model.fach.Stueckaenderung
 import ch.brickinventoryapp.model.fach.Teilerfassung
-import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.fach.asMoney
 import ch.brickinventoryapp.vertrag.AddMinifigRequest
 import ch.brickinventoryapp.vertrag.AddPartRequest
 import ch.brickinventoryapp.vertrag.AddSetRequest
@@ -19,21 +19,21 @@ import ch.brickinventoryapp.vertrag.UpdateManualItemRequest
  * daraus das Wire-Format, für den direkten Versuch wie für das Senden aus dem Ausgang.
  */
 
-internal fun Erfassungswunsch.alsAnfrage() = AddSetRequest(setNumber = setNumber, quantity = menge,
-    purchasePrice = kaufpreis?.alsDouble(), condition = zustand, ownerUserId = besitzer, storage = lagerort)
+internal fun Erfassungswunsch.asRequest() = AddSetRequest(setNumber = setNumber, quantity = menge,
+    purchasePrice = kaufpreis?.asDouble(), condition = zustand, ownerUserId = besitzer, storage = lagerort)
 
-internal fun Merkwunsch.alsAnfrage() = MerkpostenRequest(setNumber = setNumber, condition = zustand, ownerUserId = besitzer)
+internal fun Merkwunsch.asRequest() = MerkpostenRequest(setNumber = setNumber, condition = zustand, ownerUserId = besitzer)
 
-internal fun Teilerfassung.alsAnfrage() = AddPartRequest(partNumber = nummer, colorId = farbId, colorName = farbname,
-    colorHex = farbHex, quantity = menge, unitPrice = stueckpreis?.alsDouble(), condition = zustand, ownerUserId = besitzer,
+internal fun Teilerfassung.asRequest() = AddPartRequest(partNumber = nummer, colorId = farbId, colorName = farbname,
+    colorHex = farbHex, quantity = menge, unitPrice = stueckpreis?.asDouble(), condition = zustand, ownerUserId = besitzer,
     storage = lagerort)
 
-internal fun Figurenerfassung.alsAnfrage() = AddMinifigRequest(figNumber = nummer, blFigNumber = blNummer, quantity = menge,
-    unitPrice = stueckpreis?.alsDouble(), condition = zustand, ownerUserId = besitzer, storage = lagerort)
+internal fun Figurenerfassung.asRequest() = AddMinifigRequest(figNumber = nummer, blFigNumber = blNumber, quantity = menge,
+    unitPrice = stueckpreis?.asDouble(), condition = zustand, ownerUserId = besitzer, storage = lagerort)
 
-internal fun Stueckaenderung.alsAnfrage() = UpdateManualItemRequest(quantity = menge, quantityDelta = schritt,
-    unitPrice = stueckpreis?.alsDouble(), condition = zustand, blFigNumber = blNummer)
+internal fun Stueckaenderung.asRequest() = UpdateManualItemRequest(quantity = menge, quantityDelta = schritt,
+    unitPrice = stueckpreis?.asDouble(), condition = zustand, blFigNumber = blNumber)
 
-internal fun SetAggregate.alsZusammenfassung() = Setzusammenfassung(setNumber = setNumber, zustand = condition,
-    zustaende = conditions, gebraucht = usedCount, hoechsterKaufpreis = maxPurchasePrice.alsGeld(),
-    kaufpreisSchnitt = avgPurchasePrice.alsGeld())
+internal fun SetAggregate.asSummary() = Setzusammenfassung(setNumber = setNumber, zustand = condition,
+    states = conditions, gebraucht = usedCount, highestPurchasePrice = maxPurchasePrice.asMoney(),
+    purchasePriceCut = avgPurchasePrice.asMoney())

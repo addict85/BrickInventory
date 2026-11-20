@@ -5,13 +5,13 @@ import ch.brickinventoryapp.vertrag.Instruction
 import ch.brickinventoryapp.vertrag.Merkposten
 import ch.brickinventoryapp.vertrag.MerkpostenAlarm
 import ch.brickinventoryapp.vertrag.SetItem
-import ch.brickinventoryapp.model.fach.AnleitungAnsicht
-import ch.brickinventoryapp.model.fach.BrickLinkAnsicht
-import ch.brickinventoryapp.model.fach.MerkpostenAlarmAnsicht
-import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.InstructionView
+import ch.brickinventoryapp.model.fach.BrickLinkView
+import ch.brickinventoryapp.model.fach.WantedItemAlarmView
+import ch.brickinventoryapp.model.fach.WantedItemView
 import ch.brickinventoryapp.model.fach.SetAnsicht
-import ch.brickinventoryapp.model.fach.alsGeld
-import ch.brickinventoryapp.model.fach.alsGeldPflicht
+import ch.brickinventoryapp.model.fach.asMoney
+import ch.brickinventoryapp.model.fach.asMoneyRequired
 import ch.brickinventoryapp.model.util.zeitpunkt
 
 fun SetItem.alsAnsicht() = SetAnsicht(
@@ -29,15 +29,15 @@ fun SetItem.alsAnsicht() = SetAnsicht(
     storage = storage,
     conditions = conditions,
     owners = owners.map { it.alsAnsicht() },
-    maxPurchasePrice = maxPurchasePrice.alsGeld(),
-    avgPurchasePrice = avgPurchasePrice.alsGeld(),
+    maxPurchasePrice = maxPurchasePrice.asMoney(),
+    avgPurchasePrice = avgPurchasePrice.asMoney(),
     usedCount = usedCount,
     instructions = instructions.map { it.alsAnsicht() },
     bricklink = bricklink?.alsAnsicht(),
     preisvergleichUrl = preisvergleichUrl,
 )
 
-fun Instruction.alsAnsicht() = AnleitungAnsicht(
+fun Instruction.alsAnsicht() = InstructionView(
     id = id,
     url = url,
     description = description,
@@ -45,7 +45,7 @@ fun Instruction.alsAnsicht() = AnleitungAnsicht(
     isManual = isManual,
 )
 
-fun BrickLinkRef.alsAnsicht() = BrickLinkAnsicht(
+fun BrickLinkRef.alsAnsicht() = BrickLinkView(
     type = type,
     number = number,
     url = url,
@@ -53,7 +53,7 @@ fun BrickLinkRef.alsAnsicht() = BrickLinkAnsicht(
     resolved = resolved,
 )
 
-fun Merkposten.alsAnsicht() = MerkpostenAnsicht(
+fun Merkposten.alsAnsicht() = WantedItemView(
     setNumber = setNumber,
     condition = condition,
     createdAt = zeitpunkt(createdAt),
@@ -63,15 +63,15 @@ fun Merkposten.alsAnsicht() = MerkpostenAnsicht(
     numParts = numParts,
     imageUrl = imageUrl,
     imageLocal = imageLocal,
-    marktpreis = marktpreis.alsGeld(),
+    marktpreis = marktpreis.asMoney(),
     waehrung = waehrung,
     owned = owned,
     alarm = alarm?.alsAnsicht(),
     preisvergleichUrl = preisvergleichUrl,
 )
 
-fun MerkpostenAlarm.alsAnsicht() = MerkpostenAlarmAnsicht(
+fun MerkpostenAlarm.alsAnsicht() = WantedItemAlarmView(
     richtung = direction,
-    schwelle = threshold.alsGeldPflicht(),
+    schwelle = threshold.asMoneyRequired(),
     ausgeloest = triggered,
 )

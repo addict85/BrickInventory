@@ -8,13 +8,13 @@ import ch.brickinventoryapp.model.ui.theme.Design
  */
 
 /** Werkbank ist schon dunkel und hat keine eigene Fassung. */
-fun hatDunkleFassung(design: Design): Boolean = design.kennung in DunkelTokens.designs
+fun hatDarkVersion(design: Design): Boolean = design.kennung in DunkelTokens.designs
 
 /** Ein Token der dunklen Fassung: erst das Design (samt `erbt`), dann die Basis. */
-fun dunkelToken(design: Design, token: String): String? {
-    val eigen = DunkelTokens.designs[design.kennung] ?: DunkelTokens.designs.getValue(Design.VORGABE.kennung)
-    val geerbt = eigen["erbt"]?.let { DunkelTokens.designs[it] }.orEmpty()
-    return eigen[token]?.takeIf { token != "erbt" } ?: geerbt[token] ?: DunkelTokens.basis[token]
+fun darkToken(design: Design, token: String): String? {
+    val own = DunkelTokens.designs[design.kennung] ?: DunkelTokens.designs.getValue(Design.DEFAULT.kennung)
+    val geerbt = own["erbt"]?.let { DunkelTokens.designs[it] }.orEmpty()
+    return own[token]?.takeIf { token != "erbt" } ?: geerbt[token] ?: DunkelTokens.basis[token]
 }
 
 /** "#rrggbb" als undurchsichtiges ARGB. */
@@ -33,15 +33,15 @@ data class DunkleRollen(
     val onSurface: Long, val onSurfaceVariant: Long, val outline: Long, val outlineVariant: Long,
     val error: Long,
     val erfolg: Long, val warnung: Long,
-    val chartNeu: Long, val chartGebraucht: Long, val chartRaster: Long, val chartGedaempft: Long,
+    val chartNew: Long, val chartUsed: Long, val chartRaster: Long, val chartDimmed: Long,
 )
 
-fun dunkleRollen(design: Design): DunkleRollen {
-    fun t(name: String) = argb(dunkelToken(design, name) ?: error("Token --$name fehlt in der dunklen Fassung"))
+fun darkRoles(design: Design): DunkleRollen {
+    fun t(name: String) = argb(darkToken(design, name) ?: error("Token --$name fehlt in der dunklen Fassung"))
     // Gewählte Chips und der kleine Knopf tragen secondaryContainer, im Dunkeln im Ton
     // der Hauptfarbe: Bernstein neben Hellblau (brick, früher auch classic) waren zwei
     // Akzente. Fächer und Noppe sind hell neutral und bleiben es hier.
-    val (zweitFlaeche, aufZweitFlaeche) = when (design) {
+    val (secondSurface, onSecondSurface) = when (design) {
         Design.BRICK, Design.CLASSIC -> t("b50") to t("b700")
         else -> t("s200") to t("txt")
     }
@@ -49,7 +49,7 @@ fun dunkleRollen(design: Design): DunkleRollen {
         primary = t("b600"), onPrimary = t("auf-primaer"),
         primaryContainer = t("b50"), onPrimaryContainer = t("b700"),
         secondary = t("b700"), onSecondary = t("auf-primaer"),
-        secondaryContainer = zweitFlaeche, onSecondaryContainer = aufZweitFlaeche,
+        secondaryContainer = secondSurface, onSecondaryContainer = onSecondSurface,
         tertiary = t("a500"), onTertiary = t("auf-primaer"),
         tertiaryContainer = t("a100"), onTertiaryContainer = t("a-schrift"),
         background = t("bg"), surface = t("sur"), surfaceVariant = t("s200"),
@@ -58,13 +58,13 @@ fun dunkleRollen(design: Design): DunkleRollen {
         outline = t("s500"), outlineVariant = t("bdr"),
         error = t("r500"),
         erfolg = t("gewinn"), warnung = t("a500"),
-        chartNeu = t("chart-new"), chartGebraucht = t("chart-used"),
-        chartRaster = t("s200"), chartGedaempft = t("s400"),
+        chartNew = t("chart-new"), chartUsed = t("chart-used"),
+        chartRaster = t("s200"), chartDimmed = t("s400"),
     )
 }
 
 /** Farben der Stein-Dekoration als ARGB: Noppen über der Kante, die Schieferkachel und ihre Schrift. */
-data class SteinDekorFarben(val noppen: Long, val schiefer: Long, val aufSchiefer: Long)
+data class BrickDecorColors(val studs: Long, val slate: Long, val onSlate: Long)
 
 /**
  * Die Stein-Dekoration in der dunklen Fassung von „brick“, wie [data-dunkel] im
@@ -72,7 +72,7 @@ data class SteinDekorFarben(val noppen: Long, val schiefer: Long, val aufSchiefe
  * --auf-primaer. Hell sind es dieselben Tokens aus DesignTokens.kt; fest
  * eingesetzt blieben die hellen Töne auch im Dunkeln stehen.
  */
-fun dunkleSteinDekor(): SteinDekorFarben {
-    fun t(name: String) = argb(dunkelToken(Design.BRICK, name) ?: error("Token --$name fehlt in der dunklen Fassung"))
-    return SteinDekorFarben(noppen = t("b400"), schiefer = t("b600"), aufSchiefer = t("auf-primaer"))
+fun darkBrickDecor(): BrickDecorColors {
+    fun t(name: String) = argb(darkToken(Design.BRICK, name) ?: error("Token --$name fehlt in der dunklen Fassung"))
+    return BrickDecorColors(studs = t("b400"), slate = t("b600"), onSlate = t("auf-primaer"))
 }

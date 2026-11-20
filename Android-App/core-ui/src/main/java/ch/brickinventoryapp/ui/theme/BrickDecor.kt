@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
  * des Designs. Zahlen statt design-tokens.json, weil ein Verlauf aus Weiss- und
  * Schwarzanteilen keine Farbe ist, sondern über jeder Grundfarbe liegt.
  */
-val LackVerlauf = Brush.verticalGradient(
+val LackHistory = Brush.verticalGradient(
     0.00f to Color.White.copy(alpha = 0.34f),
     0.30f to Color.White.copy(alpha = 0.10f),
     0.62f to Color.Black.copy(alpha = 0.10f),
@@ -30,16 +30,16 @@ val LackVerlauf = Brush.verticalGradient(
 
 /**
  * Die Form einer Noppe: unten bündig am Deckel, oben rund — dieselbe wie
- * `--noppen-form` in styles.css, an einer Stelle.
+ * `--studs-form` in styles.css, an einer Stelle.
  */
-val NoppenForm = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
+val StudsForm = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
 
 /**
  * Der Lichtabfall auf der Steinkante, dieselben Haltepunkte wie `.sc::before` in
- * themes/brick.css. Schwächer als LackVerlauf, weil das Stein-Design mattes
+ * themes/brick.css. Schwächer als LackHistory, weil das Stein-Design mattes
  * Plastik ist; ohne ihn wäre die Kante eine Fläche.
  */
-val SteinKantenVerlauf = Brush.verticalGradient(
+val BrickEdgesHistory = Brush.verticalGradient(
     0.00f to Color.White.copy(alpha = 0.20f),
     0.40f to Color.White.copy(alpha = 0.05f),
     1.00f to Color.Black.copy(alpha = 0.12f),
@@ -50,43 +50,43 @@ val SteinKantenVerlauf = Brush.verticalGradient(
  * Designs unterscheiden sich genau darin, und verteilt über mehrere Aufrufstellen
  * zöge beim Nachbessern eine nicht mit.
  */
-data class NoppenMass(
+data class StudsMass(
     /** Hoehe der Kante insgesamt — `height` der ::before-Regel im CSS. */
-    val kanteHoehe: Dp,
+    val edgeHeight: Dp,
     /** Abstand von Noppenmitte zu Noppenmitte — `mask-size` im CSS. */
     val takt: Dp,
     val breite: Dp,
     val hoehe: Dp,
     /** Einzug links und rechts — `left`/`right` im CSS. */
-    val rand: Dp,
+    val edge: Dp,
     /**
      * Abstand von der Oberkante der Kante — `top` im CSS. Negativ heisst: Die Noppen
      * stehen über wie an einem echten Stein; dann wird die Reihe ausserhalb der Karte
-     * gezeichnet (NoppenReihe).
+     * gezeichnet (StudsSeries).
      */
     val oben: Dp,
     /** Füllt die Reihe die ganze Breite? Sonst gelten `anzahl` Stück. */
-    val fuellend: Boolean,
+    val filling: Boolean,
     val anzahl: Int = 4,
 ) {
     /** Steht die Reihe über der Kante? Dann gehört sie nicht in die Karte. */
-    val ueberstehend: Boolean get() = oben < 0.dp
+    val overhanging: Boolean get() = oben < 0.dp
 
     companion object {
         /** themes/brick.css: eine Reihe über die ganze Kante, Takt 17. */
-        val Stein = NoppenMass(kanteHoehe = 22.dp, takt = 17.dp, breite = 10.dp,
-                               hoehe = 6.dp, rand = 10.dp, oben = (-6).dp, fuellend = true)
+        val Stein = StudsMass(edgeHeight = 22.dp, takt = 17.dp, breite = 10.dp,
+                               hoehe = 6.dp, edge = 10.dp, oben = (-6).dp, filling = true)
 
         /** themes/noppe.css: vier Noppen auf dem Deckel, Takt 22. */
-        val Deckel = NoppenMass(kanteHoehe = 16.dp, takt = 22.dp, breite = 14.dp,
-                                hoehe = 7.dp, rand = 12.dp, oben = 6.dp, fuellend = false, anzahl = 4)
+        val Deckel = StudsMass(edgeHeight = 16.dp, takt = 22.dp, breite = 14.dp,
+                                hoehe = 7.dp, edge = 12.dp, oben = 6.dp, filling = false, anzahl = 4)
     }
 }
 
 /**
  * Noppen-Deckel für Stein-Karten: eine schmale farbige Leiste mit Noppen; das
  * Karten-Clipping rundet ihn oben ab. Die Noppe ist ein Rechteck mit runder
- * Oberkante wie in themes/noppe.css (13 × 6, Radius 4, Abstand 7). `glanz` wölbt
+ * Oberkante wie in themes/noppe.css (13 × 6, Radius 4, Abstand 7). `gloss` wölbt
  * den Deckel — ein Parameter statt eines zweiten Bausteins, weil es derselbe
  * Deckel in anderem Material ist.
  */
@@ -96,29 +96,29 @@ fun BrickStudCap(
     color: Color = MaterialTheme.colorScheme.primary,
     /** Ohne Angabe die Hoehe aus `mass` — dann steht keine Zahl am Aufruf. */
     height: Dp? = null,
-    glanz: Boolean = false,
-    mass: NoppenMass = NoppenMass.Deckel,
-    noppenFarbe: Color? = null,
-    /** Lichtabfall ueber der Grundfarbe — siehe SteinKantenVerlauf. */
+    gloss: Boolean = false,
+    mass: StudsMass = StudsMass.Deckel,
+    studsColor: Color? = null,
+    /** Lichtabfall ueber der Grundfarbe — siehe BrickEdgesHistory. */
     verlauf: Brush? = null,
 ) {
     Box(
         modifier
             .fillMaxWidth()
-            .height(height ?: mass.kanteHoehe)
+            .height(height ?: mass.edgeHeight)
             .background(color)
             .then(if (verlauf != null) Modifier.background(verlauf) else Modifier)
-            .then(if (glanz) Modifier.background(LackVerlauf) else Modifier)
+            .then(if (gloss) Modifier.background(LackHistory) else Modifier)
     ) {
         // Steht die Reihe ueber der Kante, gehoert sie nicht hierher: Eine
         // Material-Card klippt auf ihre Form, und die Noppen waeren weg. Die
         // Aufrufstelle zeichnet sie dann neben der Karte (siehe GalleryScreen).
-        if (!mass.ueberstehend) {
-            NoppenReihe(
+        if (!mass.overhanging) {
+            StudsSeries(
                 mass = mass,
                 modifier = Modifier.align(Alignment.TopStart).offset(y = mass.oben),
-                farbe = noppenFarbe,
-                glanz = glanz,
+                farbe = studsColor,
+                gloss = gloss,
             )
         }
     }
@@ -130,33 +130,33 @@ fun BrickStudCap(
  * Offset darübergeschoben.
  */
 @Composable
-fun NoppenReihe(
-    mass: NoppenMass,
+fun StudsSeries(
+    mass: StudsMass,
     modifier: Modifier = Modifier,
     farbe: Color? = null,
-    glanz: Boolean = false,
+    gloss: Boolean = false,
 ) {
     BoxWithConstraints(modifier.fillMaxWidth().height(mass.hoehe)) {
         // Wie viele Noppen passen auf die Kante? Im CSS rechnet das
         // `mask-repeat:repeat-x` von selbst aus; hier braucht es die Breite,
         // und die gibt es erst beim Messen. Genau dafuer BoxWithConstraints.
         val anzahl =
-            if (mass.fuellend) (((maxWidth - mass.rand * 2) / mass.takt).toInt()).coerceAtLeast(1)
+            if (mass.filling) (((maxWidth - mass.edge * 2) / mass.takt).toInt()).coerceAtLeast(1)
             else mass.anzahl
         Row(
-            Modifier.align(Alignment.TopStart).padding(start = mass.rand),
+            Modifier.align(Alignment.TopStart).padding(start = mass.edge),
             horizontalArrangement = Arrangement.spacedBy(mass.takt - mass.breite)
         ) {
             repeat(anzahl) {
                 Box(
                     Modifier
                         .size(width = mass.breite, height = mass.hoehe)
-                        .clip(NoppenForm)
+                        .clip(StudsForm)
                         // Die Kuppe: ein Lichtpunkt oben statt einer gleichmaessig
                         // hellen Scheibe. Derselbe radiale Verlauf wie
                         // `radial-gradient(ellipse at 50% 20%, …)` im Web.
                         .then(
-                            if (glanz) Modifier.background(
+                            if (gloss) Modifier.background(
                                 Brush.radialGradient(
                                     0.00f to Color.White.copy(alpha = 0.95f),
                                     0.45f to Color.White.copy(alpha = 0.55f),
@@ -177,7 +177,7 @@ fun NoppenReihe(
  * auf farbigen Flächen: Über weissem Text wäre ein weisser Schleier Grau statt
  * Glanz.
  */
-val LichtStreifen = Brush.linearGradient(
+val LightStrip = Brush.linearGradient(
     0.20f to Color.White.copy(alpha = 0.00f),
     0.36f to Color.White.copy(alpha = 0.55f),
     0.44f to Color.White.copy(alpha = 0.15f),
@@ -188,7 +188,7 @@ val LichtStreifen = Brush.linearGradient(
  * Im Dunkeln nur ein Hauch: Ein heller Streifen von 0,85 Deckkraft auf dunklem
  * Bildfeld leuchtete wie ein Scheinwerfer und lag unter Menü und Mengenplakette.
  */
-private val LichtStreifenDunkel = Brush.linearGradient(
+private val LightStripDark = Brush.linearGradient(
     0.20f to Color.White.copy(alpha = 0.00f),
     0.36f to Color.White.copy(alpha = 0.10f),
     0.44f to Color.White.copy(alpha = 0.03f),
@@ -197,5 +197,5 @@ private val LichtStreifenDunkel = Brush.linearGradient(
 
 /** Der Lichtstreifen passend zur Helligkeit der Fläche. */
 @Composable
-fun lichtStreifen(): Brush =
-    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) LichtStreifenDunkel else LichtStreifen
+fun lightStrip(): Brush =
+    if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) LightStripDark else LightStrip

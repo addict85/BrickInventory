@@ -1,18 +1,18 @@
 Gegenprobe: Die Reihenfolge der Teile wird nicht gemerkt
 Modul: feature-teile
-Test: ch.brickinventoryapp.teile.TeileOrdnungTest
+Test: ch.brickinventoryapp.teile.PartsOrderTest
 Rot: die Reihenfolge sortiert die geladene Liste
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
 index ea8ae02..87ca116 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeileViewModel.kt
-@@ -113,7 +113,7 @@ class TeileViewModel @Inject constructor(
-                 ?: repo.beobachteManuelleTeile(st.filter.suche) },
-             aktualisiere = { st -> aktualisiereTeile(st) },
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartsViewModel.kt
+@@ -113,7 +113,7 @@ class PartsViewModel @Inject constructor(
+                 ?: repo.observeManualParts(st.filter.suche) },
+             refresh = { st -> refreshParts(st) },
          ),
--        filterGeaendert = { gemerkt[F_FILTER] = it },
-+        filterGeaendert = { gemerkt[F_FILTER] = it.copy(ordnung = Teilefilter.Ordnung.FARBE) },
+-        filterChanged = { gemerkt[F_FILTER] = it },
++        filterChanged = { gemerkt[F_FILTER] = it.copy(order = Teilefilter.Order.FARBE) },
      )
  
      /** Jede Quelle füllen, die der Zustand zeigt; die Tabelle allein lässt die manuellen in der Ablage. */

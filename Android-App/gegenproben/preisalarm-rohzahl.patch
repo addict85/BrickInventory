@@ -1,6 +1,6 @@
 Gegenprobe: Schwelle der Preisalarm-Übersicht wieder als Rohzahl „750.0“
 Modul: app
-Test: ch.brickinventoryapp.app.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
 Rot: Preisalarme zeigen die Schwelle als Betrag
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt

@@ -1,6 +1,6 @@
 // Was jeder Bereich von der App braucht, um seine Ziele zu zeigen (Bereichsumgebung).
 // Eigenes Modul, weil es Compose, Navigation und Coil kennt: core-zustand bleibt so
-// ohne Oberfläche (Modulkanten.ohneOberflaeche).
+// ohne Oberfläche (Modulkanten.withoutUi).
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.compose)

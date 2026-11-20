@@ -1,18 +1,18 @@
 Gegenprobe: Beim Erstkontakt gibt es keinen Weg mehr zum Abtippen
 Modul: app
-Test: ch.brickinventoryapp.app.ZertifikatDialogTest
+Test: ch.brickinventoryapp.app.CertificateDialogTest
 Rot: beim Erstkontakt laesst sich stattdessen abtippen
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/ZertifikatDialog.kt
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CertificateDialog.kt
 @@ -79,9 +79,6 @@
              Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                  Text(stringResource(text, host))
-                 FingerabdruckAnzeige(frage, abschreiben, geaendert)
--                if (erstkontakt && !abschreiben) {
--                    TextButton(onClick = { abtippenGewaehlt = true }) { Text(stringResource(R.string.zert_erstkontakt_abtippen)) }
+                 FingerprintDisplay(frage, writeOff, geaendert)
+-                if (firstContact && !writeOff) {
+-                    TextButton(onClick = { typeInSelected = true }) { Text(stringResource(R.string.zert_erstkontakt_abtippen)) }
 -                }
-                 if (abschreiben) {
+                 if (writeOff) {
                      Fingerabdruckfeld(
                          eingabe = eingabe,

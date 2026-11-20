@@ -7,11 +7,11 @@ diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
 @@ -109,7 +109,7 @@
-                 if (beschreibung == null || !istErlaubteApkAdresse(beschreibung.apkUrl)) {
+                 if (beschreibung == null || !isAllowedApkAddress(beschreibung.apkUrl)) {
                      _state.update {
-                         it.copy(pruefung = Vorgang.Fertig, geprueft = true, neuereFassung = null,
--                            fehler = if (still) null else Meldung.Ressource(
-+                            fehler = Meldung.Ressource(
+                         it.copy(check = Vorgang.Fertig, geprueft = true, newerVersion = null,
+-                            fehler = if (still) null else Meldung.Resource(
++                            fehler = Meldung.Resource(
                                  if (beschreibung == null) R.string.update_beschreibung_unsigniert else R.string.update_fremde_adresse))
                      }
                      return@launch

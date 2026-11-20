@@ -10,12 +10,12 @@ index b274d3e..206c007 100644
 @@ -132,11 +132,11 @@ fun MainScaffold(
      // Leiste unten und Seitenleiste teilen sich diesen Weg, damit beide die
      // Rollposition gleich behandeln.
-     fun reiterWaehlen(screen: Any) {
+     fun tabChoose(screen: Any) {
 -        onTabAngetippt(screen)
-         if (navController.currentBackStackEntry?.destination?.hasRoute<VerwaltungZiel.Monitoring>() == true) {
+         if (navController.currentBackStackEntry?.destination?.hasRoute<ManagementTarget.Monitoring>() == true) {
              navController.popBackStack()
          }
-         navController.zuReiter(screen)
+         navController.toTab(screen)
 +        onTabAngetippt(screen)
      }
  

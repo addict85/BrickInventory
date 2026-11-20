@@ -1,13 +1,13 @@
 Gegenprobe: Eine Anmeldung bricht die Abrufe der vorigen nicht ab
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.SitzungsDienstTest
+Test: ch.brickinventoryapp.zustand.SessionServiceTest
 Rot: eine spaete Antwort des alten Kontos
 
 diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
 --- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
 +++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/SitzungsDienst.kt
 @@ -128,7 +128,7 @@
-     private suspend fun folgeAnmeldung() {
+     private suspend fun sequenceLogin() {
          combine(prefs.serverUrl, prefs.authToken) { url, token -> url to token }
              .distinctUntilChanged()
 -            .collectLatest { (url, token) -> coroutineScope { anmeldung(this, url, token) } }

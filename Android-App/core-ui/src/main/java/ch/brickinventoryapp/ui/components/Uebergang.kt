@@ -17,22 +17,22 @@ import androidx.compose.ui.Modifier
  * Tests) bleibt alles ohne Animation.
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
-val LocalUebergang = compositionLocalOf<SharedTransitionScope?> { null }
-val LocalZielSichtbarkeit = compositionLocalOf<AnimatedVisibilityScope?> { null }
+val LocalTransition = compositionLocalOf<SharedTransitionScope?> { null }
+val LocalTargetVisibility = compositionLocalOf<AnimatedVisibilityScope?> { null }
 
 /** Um den NavHost: der gemeinsame Raum, in dem Elemente zwischen Zielen wandern. */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun UebergangsRahmen(inhalt: @Composable () -> Unit) {
+fun TransitionFrame(inhalt: @Composable () -> Unit) {
     SharedTransitionLayout {
-        CompositionLocalProvider(LocalUebergang provides this) { inhalt() }
+        CompositionLocalProvider(LocalTransition provides this) { inhalt() }
     }
 }
 
 /** In einem Navigationsziel: dessen Ein- und Ausblenden steuert den Übergang. */
 @Composable
-fun MitZiel(ziel: AnimatedVisibilityScope, inhalt: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalZielSichtbarkeit provides ziel) { inhalt() }
+fun WithTarget(ziel: AnimatedVisibilityScope, inhalt: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalTargetVisibility provides ziel) { inhalt() }
 }
 
 /**
@@ -42,13 +42,13 @@ fun MitZiel(ziel: AnimatedVisibilityScope, inhalt: @Composable () -> Unit) {
  */
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-fun GemeinsamesBild(setNumber: String, inhalt: @Composable (Modifier) -> Unit) {
-    val uebergang = LocalUebergang.current
-    val ziel = LocalZielSichtbarkeit.current
+fun SharedImage(setNumber: String, inhalt: @Composable (Modifier) -> Unit) {
+    val transition = LocalTransition.current
+    val ziel = LocalTargetVisibility.current
     // Ohne Bewegung bleibt nur das Überblenden des Navigationsziels.
-    val ruhig = bewegungReduziert()
-    if (uebergang == null || ziel == null || ruhig) return inhalt(Modifier)
-    with(uebergang) {
+    val ruhig = movementReduced()
+    if (transition == null || ziel == null || ruhig) return inhalt(Modifier)
+    with(transition) {
         inhalt(Modifier.sharedElement(rememberSharedContentState("set-bild-$setNumber"), ziel))
     }
 }

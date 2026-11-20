@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.Prompt
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -20,61 +20,61 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.data.VorwaermNetz
-import ch.brickinventoryapp.model.fach.CacheKennzahlenAnsicht
+import ch.brickinventoryapp.data.VorwaermNetwork
+import ch.brickinventoryapp.model.fach.CacheMetricsView
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringUiState
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.Abschnittstitel
+import ch.brickinventoryapp.ui.components.SectionTitle
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.AuswahlFeld
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.SelectionField
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.gemeinsam.ui.ConditionToggle
 
 /** Was der Cache-Abschnitt auslöst; MonitoringRoute verdrahtet die ViewModels. */
-class CacheEreignisse(
-    val vorgabeZustand: (Zustand) -> Unit,
-    val ablageLeeren: () -> Unit,
-    val netz: (VorwaermNetz, Boolean) -> Unit,
+class CacheEvents(
+    val defaultState: (Zustand) -> Unit,
+    val clearStore: () -> Unit,
+    val netz: (VorwaermNetwork, Boolean) -> Unit,
     val design: (Design) -> Unit,
-    val cacheDauer: (Int) -> Unit,
+    val cacheDuration: (Int) -> Unit,
     val cacheLeeren: (Boolean) -> Unit,
-    val grenzwerte: (rebrickable: Int, bricklink: Int, brickset: Int) -> Unit,
+    val limits: (rebrickable: Int, bricklink: Int, brickset: Int) -> Unit,
 )
 
 @Composable
 internal fun CacheAndLimitsSection(
     monState: MonitoringUiState,
     /** Die Netzerlaubnisse fürs Vorwärmen (WLAN, mobil, Roaming), Geräte-Einstellungen. */
-    netze: Map<VorwaermNetz, Boolean>,
+    networks: Map<VorwaermNetwork, Boolean>,
     /** Das wirksame Design, wenn der Server noch keine Vorgabe nannte. */
-    wirksamesDesign: Design,
-    ablageBytes: Long,
-    ereignisse: CacheEreignisse,
+    effectiveDesign: Design,
+    storeBytes: Long,
+    events: CacheEvents,
 ) {
     // Derselbe Abstand und Rand wie zwischen den übrigen Karten der Seite.
     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-        CacheKarte(monState, netze, ablageBytes, ereignisse)
-        DarstellungKarte(monState.vorgabeDesign ?: wirksamesDesign, ereignisse.design)
-        KontingentAbschnitt(monState, ereignisse)
+        CacheCard(monState, networks, storeBytes, events)
+        RenderingCard(monState.defaultDesign ?: effectiveDesign, events.design)
+        QuotaSection(monState, events)
     }
 }
 
 /** Preis-Cache: Zahlen, Vorgaben, Vorschau-Ablage, Netze, Dauer und Leeren. */
 @Composable
-private fun CacheKarte(
+private fun CacheCard(
     monState: MonitoringUiState,
-    netze: Map<VorwaermNetz, Boolean>,
-    ablageBytes: Long,
-    ereignisse: CacheEreignisse,
+    networks: Map<VorwaermNetwork, Boolean>,
+    storeBytes: Long,
+    events: CacheEvents,
 ) {
-    var zeigeLeerenFrage by rememberSaveable { mutableStateOf(false) }
-    var leerenAlles by rememberSaveable { mutableStateOf(false) }
+    var showClearQuestion by rememberSaveable { mutableStateOf(false) }
+    var clearEverything by rememberSaveable { mutableStateOf(false) }
     val cacheStats = monState.cacheStats
     val cacheTtl   = monState.cacheTtl
-    val defaultCondition = monState.vorgabeZustand
+    val defaultCondition = monState.defaultState
 
     // Bedienzustand: was gerade bearbeitet und halb eingetippt ist. Bleibt hier
     // und speicherbar — das ueberlebt auch den Prozesstod, ein ViewModel nicht.
@@ -87,12 +87,12 @@ private fun CacheKarte(
     // ── Price Cache ───────────────────────────────────────────────────────────
     AppKarte {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Abschnittstitel(stringResource(R.string.monitoring_price_cache))
+            SectionTitle(stringResource(R.string.monitoring_price_cache))
 
-            cacheStats?.let { cs -> CacheZahlen(cs) }
+            cacheStats?.let { cs -> CacheNumbers(cs) }
 
             // Default condition (Neu/Gebraucht)
-            VorgabeZustandZeile(defaultCondition, ereignisse.vorgabeZustand)
+            DefaultStateRow(defaultCondition, events.defaultState)
 
             // Die vier Blöcke stehen untereinander in der Column: In einer Row teilten sie
             // sich die Breite, die FlowRows brachen jeden Chip um, und es entstanden grosse
@@ -103,24 +103,24 @@ private fun CacheKarte(
             // Sie liegt unter filesDir und wird von Android nicht geräumt; deshalb muss man
             // sie hier sehen und leeren können. `remember`, nicht `rememberSaveable`: Die Zahl
             // ist eine Messung der Platte und stünde nach einem Prozesstod falsch da
-            // (BildschirmZustandTest, Sorte „gemessen“).
-            VorschauAblageZeile(ablageBytes, ereignisse.ablageLeeren)
+            // (ScreenStateTest, Sorte „gemessen“).
+            PreviewStoreRow(storeBytes, events.clearStore)
 
             // ── In welchen Netzen darf vorgewärmt werden ──
             //
             // Drei unabhängige Schalter, je einer für eine Lage; die Begründung steht an den
-            // Schlüsseln in GeraeteAblage (VORWAERMEN_*).
-            VorwaermNetzWahl(netze, ereignisse.netz)
+            // Schlüsseln in DevicesStore (VORWAERMEN_*).
+            VorwaermNetworkChoice(networks, events.netz)
 
             // Cache TTL
-            CacheDauerZeile(
+            CacheDurationRow(
                 dauer = cacheTtl,
                 bearbeiten = editingTtl,
-                onBearbeiten = { editingTtl = it },
+                editOn = { editingTtl = it },
                 eingabe = ttlInput,
-                onEingabe = { ttlInput = it },
+                onInput = { ttlInput = it },
                 onSpeichern = {
-                    ereignisse.cacheDauer(ttlInput.toIntOrNull() ?: 24)
+                    events.cacheDuration(ttlInput.toIntOrNull() ?: 24)
                     editingTtl = false
                 },
             )
@@ -129,20 +129,20 @@ private fun CacheKarte(
             //
             // Mit Rückfrage: Jeder Neuaufbau kostet Anfragen aus dem gemeinsamen
             // Tageskontingent; ein Fehlgriff nimmt allen anderen Kontingent weg.
-            CacheLeerenKnoepfe(
-                onPreise = { leerenAlles = false; zeigeLeerenFrage = true },
-                onAlles = { leerenAlles = true; zeigeLeerenFrage = true },
+            CacheClearButtons(
+                onPrices = { clearEverything = false; showClearQuestion = true },
+                onEverything = { clearEverything = true; showClearQuestion = true },
             )
         }
     }
 
-    if (zeigeLeerenFrage) {
-        CacheLeerenFrage(
-            alles = leerenAlles,
-            onSchliessen = { zeigeLeerenFrage = false },
-            onLeeren = {
-                zeigeLeerenFrage = false
-                ereignisse.cacheLeeren(leerenAlles)
+    if (showClearQuestion) {
+        CacheClearQuestion(
+            alles = clearEverything,
+            onSchliessen = { showClearQuestion = false },
+            clearOn = {
+                showClearQuestion = false
+                events.cacheLeeren(clearEverything)
             },
         )
     }
@@ -154,12 +154,12 @@ private fun CacheKarte(
  * loadSettings() danach zieht das wirksame Design neu.
  */
 @Composable
-private fun DarstellungKarte(gewaehlt: Design, onWahl: (Design) -> Unit) {
+private fun RenderingCard(gewaehlt: Design, onWahl: (Design) -> Unit) {
     AppKarte {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-            Abschnittstitel(stringResource(R.string.monitoring_darstellung_vorgabe))
+            SectionTitle(stringResource(R.string.monitoring_darstellung_vorgabe))
             // Eine Wahl aus sechs: ein Feld mit Menü wie in den Einstellungen.
-            AuswahlFeld(
+            SelectionField(
                 beschriftung = stringResource(R.string.monitoring_theme),
                 modifier = Modifier.fillMaxWidth(),
                 optionen = Design.entries.map { it to stringResource(it.titel()) },
@@ -172,7 +172,7 @@ private fun DarstellungKarte(gewaehlt: Design, onWahl: (Design) -> Unit) {
 
 /** Wie viel im Cache liegt: Preise, davon veraltet, Teilelisten, Katalog. */
 @Composable
-private fun CacheZahlen(cs: CacheKennzahlenAnsicht) {
+private fun CacheNumbers(cs: CacheMetricsView) {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
         CacheStatCell(stringResource(R.string.monitoring_cache_prices), "${cs.prices}")
         CacheStatCell(stringResource(R.string.monitoring_cache_stale), "${cs.priceStale}")
@@ -183,7 +183,7 @@ private fun CacheZahlen(cs: CacheKennzahlenAnsicht) {
 
 /** Der Zustand, mit dem neue Erfassungen beginnen (Neu oder Gebraucht). */
 @Composable
-private fun VorgabeZustandZeile(defaultCondition: Zustand, onSelect: (Zustand) -> Unit) {
+private fun DefaultStateRow(defaultCondition: Zustand, onSelect: (Zustand) -> Unit) {
     // Beschriftung über der Wahl: Neben ihr blieb der Wahl so wenig Breite, dass
     // „Gebraucht“ im Wort umbrach.
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
@@ -196,7 +196,7 @@ private fun VorgabeZustandZeile(defaultCondition: Zustand, onSelect: (Zustand) -
 
 /** Belegung der Vorschau-Ablage in MB und der Knopf, sie zu leeren. */
 @Composable
-private fun VorschauAblageZeile(ablageBytes: Long, onLeeren: () -> Unit) {
+private fun PreviewStoreRow(storeBytes: Long, clearOn: () -> Unit) {
     Row(
         Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -204,12 +204,12 @@ private fun VorschauAblageZeile(ablageBytes: Long, onLeeren: () -> Unit) {
     ) {
         Text(
             stringResource(R.string.monitoring_vorschau_ablage,
-                ablageBytes / (1024 * 1024)),
+                storeBytes / (1024 * 1024)),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
-        TextButton(onClick = onLeeren) { Text(stringResource(R.string.monitoring_vorschau_leeren), style = MaterialTheme.typography.labelMedium) }
+        TextButton(onClick = clearOn) { Text(stringResource(R.string.monitoring_vorschau_leeren), style = MaterialTheme.typography.labelMedium) }
     }
 }
 
@@ -219,19 +219,19 @@ private fun VorschauAblageZeile(ablageBytes: Long, onLeeren: () -> Unit) {
  * Netz erlaubt ist, sah man nicht.
  */
 @Composable
-private fun VorwaermNetzWahl(netze: Map<VorwaermNetz, Boolean>, onNetz: (VorwaermNetz, Boolean) -> Unit) {
+private fun VorwaermNetworkChoice(networks: Map<VorwaermNetwork, Boolean>, onNetwork: (VorwaermNetwork, Boolean) -> Unit) {
     Text(stringResource(R.string.monitoring_vorwaermen_netz),
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
     for ((netz, text) in listOf(
-        VorwaermNetz.WLAN to R.string.monitoring_vorwaermen_wlan,
-        VorwaermNetz.MOBIL to R.string.monitoring_vorwaermen_mobil,
-        VorwaermNetz.ROAMING to R.string.monitoring_vorwaermen_roaming,
+        VorwaermNetwork.WLAN to R.string.monitoring_vorwaermen_wlan,
+        VorwaermNetwork.MOBILE to R.string.monitoring_vorwaermen_mobil,
+        VorwaermNetwork.ROAMING to R.string.monitoring_vorwaermen_roaming,
     )) {
-        val erlaubt = netze[netz] == true
+        val erlaubt = networks[netz] == true
         Row(
             Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .toggleable(value = erlaubt, role = Role.Switch, onValueChange = { onNetz(netz, it) }),
+                .toggleable(value = erlaubt, role = Role.Switch, onValueChange = { onNetwork(netz, it) }),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(stringResource(text), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
@@ -248,19 +248,19 @@ private fun VorwaermNetzWahl(netze: Map<VorwaermNetz, Boolean>, onNetz: (Vorwaer
 
 /** Die beiden Leeren-Knöpfe; sie öffnen nur die Rückfrage. */
 @Composable
-private fun CacheLeerenKnoepfe(onPreise: () -> Unit, onAlles: () -> Unit) {
+private fun CacheClearButtons(onPrices: () -> Unit, onEverything: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(top = Abstaende.winzig),
+        Modifier.fillMaxWidth().padding(top = Abstaende.tiny),
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
     ) {
         OutlinedButton(
-            onClick = onPreise,
+            onClick = onPrices,
             contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
             colors = nebenKnopfFarben(),
             border = nebenKnopfRand(),
         ) { Text(stringResource(R.string.monitoring_cache_clear_prices), style = MaterialTheme.typography.labelMedium) }
         OutlinedButton(
-            onClick = onAlles,
+            onClick = onEverything,
             contentPadding = PaddingValues(horizontal = Abstaende.mittel, vertical = 6.dp),
             colors = nebenKnopfFarben(),
             border = nebenKnopfRand(),
@@ -270,12 +270,12 @@ private fun CacheLeerenKnoepfe(onPreise: () -> Unit, onAlles: () -> Unit) {
 
 /** Cache-Dauer in Stunden: angezeigt oder, nach „Bearbeiten“, als Eingabefeld. */
 @Composable
-private fun CacheDauerZeile(
+private fun CacheDurationRow(
     dauer: String,
     bearbeiten: Boolean,
-    onBearbeiten: (Boolean) -> Unit,
+    editOn: (Boolean) -> Unit,
     eingabe: String,
-    onEingabe: (String) -> Unit,
+    onInput: (String) -> Unit,
     onSpeichern: () -> Unit,
 ) {
     Row(
@@ -293,7 +293,7 @@ private fun CacheDauerZeile(
             ) {
                 OutlinedTextField(
                     value = eingabe,
-                    onValueChange = { onEingabe(NumericInput.quantity(it)) },
+                    onValueChange = { onInput(NumericInput.quantity(it)) },
                     suffix = { Text(stringResource(R.string.common_hours_short)) },
                     modifier = Modifier.width(90.dp),
                     singleLine = true,
@@ -305,7 +305,7 @@ private fun CacheDauerZeile(
                     contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                 ) { Text(stringResource(R.string.common_ok), style = MaterialTheme.typography.labelMedium) }
                 MitTooltip(stringResource(R.string.common_cancel)) {
-                    IconButton(onClick = { onBearbeiten(false) }) {
+                    IconButton(onClick = { editOn(false) }) {
                         Icon(Icons.Default.Close, stringResource(R.string.common_cancel))
                     }
                 }
@@ -318,8 +318,8 @@ private fun CacheDauerZeile(
                 Text(stringResource(R.string.monitoring_cache_ttl_hours, dauer), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
                 MitTooltip(stringResource(R.string.cd_edit_cache_ttl)) {
                     FilledTonalIconButton(
-                        onClick = { onBearbeiten(true) },
-                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(mitSchrift(14.dp))) }
+                        onClick = { editOn(true) },
+                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_cache_ttl), Modifier.size(withFont(14.dp))) }
                 }
             }
         }
@@ -328,13 +328,13 @@ private fun CacheDauerZeile(
 
 /** Rückfrage vor dem Leeren: Jeder Neuaufbau kostet Anfragen aus dem gemeinsamen Tageskontingent. */
 @Composable
-private fun CacheLeerenFrage(alles: Boolean, onSchliessen: () -> Unit, onLeeren: () -> Unit) {
+private fun CacheClearQuestion(alles: Boolean, onSchliessen: () -> Unit, clearOn: () -> Unit) {
     // Die gemeinsame Rückfrage: Sie nennt ihren Titel als Überschrift und Fenstername.
-    Rueckfrage(
+    Prompt(
         titel = stringResource(if (alles) R.string.monitoring_cache_clear_all else R.string.monitoring_cache_clear_prices),
         text = stringResource(R.string.monitoring_cache_clear_hint),
         bestaetigen = stringResource(R.string.monitoring_cache_clear_confirm),
-        onBestaetigen = onLeeren,
+        onBestaetigen = clearOn,
         onAbbrechen = onSchliessen,
         symbol = Icons.Default.Delete,
     )

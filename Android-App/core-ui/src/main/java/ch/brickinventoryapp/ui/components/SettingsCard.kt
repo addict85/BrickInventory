@@ -27,7 +27,7 @@ fun SettingsCard(
             Modifier.padding(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
-            if (title != null) Abschnittstitel(title, Modifier.padding(bottom = Abstaende.mittel), symbol = icon)
+            if (title != null) SectionTitle(title, Modifier.padding(bottom = Abstaende.mittel), symbol = icon)
             content()
         }
     }

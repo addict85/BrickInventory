@@ -8,25 +8,25 @@ import ch.brickinventoryapp.vertrag.HouseholdStatusResponse
 import ch.brickinventoryapp.vertrag.LoginResponse
 import ch.brickinventoryapp.vertrag.Profil
 import ch.brickinventoryapp.vertrag.ProtokollZeile
-import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_VOLL
+import ch.brickinventoryapp.model.fach.TOKEN_SCOPE_FULL
 import ch.brickinventoryapp.vertrag.elternkonten
-import ch.brickinventoryapp.vertrag.neuAngelegt
-import ch.brickinventoryapp.model.fach.CsvErgebnisAnsicht
-import ch.brickinventoryapp.model.fach.CsvImportStandAnsicht
-import ch.brickinventoryapp.model.fach.GetrenntesKontoAnsicht
-import ch.brickinventoryapp.model.fach.HaushaltStatusAnsicht
-import ch.brickinventoryapp.model.fach.ProfilAnsicht
-import ch.brickinventoryapp.model.fach.ProtokollZeileAnsicht
+import ch.brickinventoryapp.vertrag.newCreated
+import ch.brickinventoryapp.model.fach.CsvResultView
+import ch.brickinventoryapp.model.fach.CsvImportStatusView
+import ch.brickinventoryapp.model.fach.SeparateAccountView
+import ch.brickinventoryapp.model.fach.HouseholdStatusView
+import ch.brickinventoryapp.model.fach.ProfileView
+import ch.brickinventoryapp.model.fach.LogRowView
 
 /** Verwalterrecht wirkt nur mit vollem Token: Mit "app" antwortet der Server auf Verwalteradressen 403. */
-val LoginResponse.verwalter: Boolean get() = user?.isAdmin == true && tokenInfo?.scope == TOKEN_SCOPE_VOLL
+val LoginResponse.verwalter: Boolean get() = user?.isAdmin == true && tokenInfo?.scope == TOKEN_SCOPE_FULL
 
 fun Profil.alsAnsicht() =
-    ProfilAnsicht(id, username, email, firstName, lastName, emailBestaetigt = emailVerified, emailNeu = newEmail?.ifBlank { null })
+    ProfileView(id, username, email, firstName, lastName, emailConfirmed = emailVerified, emailNew = newEmail?.ifBlank { null })
 
-fun GetrenntesKonto.alsAnsicht() = GetrenntesKontoAnsicht(id, username, via)
+fun GetrenntesKonto.alsAnsicht() = SeparateAccountView(id, username, via)
 
-fun HouseholdStatusResponse.alsAnsicht() = HaushaltStatusAnsicht(
+fun HouseholdStatusResponse.alsAnsicht() = HouseholdStatusView(
     isMain = isMain,
     isSub = isSub,
     currency = currency,
@@ -36,11 +36,11 @@ fun HouseholdStatusResponse.alsAnsicht() = HaushaltStatusAnsicht(
     formerLinks = formerLinks.map { it.alsAnsicht() },
 )
 
-fun ProtokollZeile.alsAnsicht() = ProtokollZeileAnsicht(id, level, message, zeitpunkt(loggedAt))
+fun ProtokollZeile.alsAnsicht() = LogRowView(id, level, message, zeitpunkt(loggedAt))
 
-fun CsvImportErgebnis.alsAnsicht() = CsvErgebnisAnsicht(total, neuAngelegt, updated, errors)
+fun CsvImportErgebnis.alsAnsicht() = CsvResultView(total, newCreated, updated, errors)
 
-fun CsvImportStatus.alsAnsicht() = CsvImportStandAnsicht(
+fun CsvImportStatus.alsAnsicht() = CsvImportStatusView(
     status = status,
     total = total,
     done = done,

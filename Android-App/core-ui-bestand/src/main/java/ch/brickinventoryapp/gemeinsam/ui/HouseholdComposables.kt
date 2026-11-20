@@ -2,10 +2,10 @@ package ch.brickinventoryapp.gemeinsam.ui
 
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
-import ch.brickinventoryapp.model.fach.kontoOptionen
-import ch.brickinventoryapp.model.fach.KontoAnsicht
-import ch.brickinventoryapp.model.fach.LagerortAnsicht
-import ch.brickinventoryapp.model.fach.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.accountOptions
+import ch.brickinventoryapp.model.fach.AccountView
+import ch.brickinventoryapp.model.fach.LocationView
+import ch.brickinventoryapp.model.fach.MemberView
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.withFont
 
 /**
  * Der Kontofilter, wie ihn eine Bestandsansicht zeigt: links oben, mit dem
@@ -31,8 +31,8 @@ import ch.brickinventoryapp.ui.components.mitSchrift
  * Reiterwechsel auffällt.
  */
 @Composable
-fun ScopeFilterZeile(
-    members: List<MitgliedAnsicht>,
+fun ScopeFilterRow(
+    members: List<MemberView>,
     current: String,
     onSelect: (String) -> Unit,
     // ── Der Lagerortfilter steht daneben, nicht darunter ──
@@ -41,26 +41,26 @@ fun ScopeFilterZeile(
     // nebeneinander sieht man beide Antworten auf einen Blick, wie in der Webapp
     // (public/index.html, scope-* und storage-* in einer Zeile). Vorgaben, damit
     // Bildschirme, die nur den Kontofilter brauchen, unverändert aufrufen können.
-    lagerorte: List<LagerortAnsicht> = emptyList(),
-    lagerAktuell: String = "",
-    onLagerSelect: (String) -> Unit = {},
+    lagerorte: List<LocationView> = emptyList(),
+    storageCurrent: String = "",
+    onStorageSelect: (String) -> Unit = {},
 ) {
     // Beide koennen einzeln entfallen: der Kontofilter ohne Unterkonten, der
     // Lagerortfilter, solange nirgends ein Ort erfasst ist. Sind beide leer,
     // entsteht keine Zeile — sonst staende dort ein leerer Streifen.
-    val zeigeKonten = members.size > 1
-    val zeigeLager  = lagerorte.isNotEmpty()
-    if (!zeigeKonten && !zeigeLager) return
+    val showAccounts = members.size > 1
+    val showStorage  = lagerorte.isNotEmpty()
+    if (!showAccounts && !showStorage) return
     Row(
         Modifier.padding(start = 14.dp, top = Abstaende.klein),
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (zeigeKonten) {
+        if (showAccounts) {
             ScopeFilterChip(members = members, current = current, onSelect = onSelect)
         }
-        if (zeigeLager) {
-            LagerortFilterChip(orte = lagerorte, current = lagerAktuell, onSelect = onLagerSelect)
+        if (showStorage) {
+            LocationFilterChip(orte = lagerorte, current = storageCurrent, onSelect = onStorageSelect)
         }
     }
 }
@@ -73,8 +73,8 @@ fun ScopeFilterZeile(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LagerortFilterChip(
-    orte: List<LagerortAnsicht>,
+fun LocationFilterChip(
+    orte: List<LocationView>,
     current: String,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
@@ -96,7 +96,7 @@ fun LagerortFilterChip(
                     style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Medium)
             },
             trailingIcon = {
-                Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(mitSchrift(18.dp)))
+                Icon(Icons.Default.ArrowDropDown, alle, Modifier.size(withFont(18.dp)))
             },
             shape = Formen.kachel,
         )
@@ -128,12 +128,12 @@ fun LagerortFilterChip(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScopeFilterChip(
-    members: List<MitgliedAnsicht>,
+    members: List<MemberView>,
     current: String,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val options = kontoOptionen(
+    val options = accountOptions(
         members,
         labelAll  = stringResource(R.string.household_scope_all),
         labelOwn  = stringResource(R.string.household_scope_own),
@@ -183,7 +183,7 @@ fun ScopeFilterChip(
 // Ergebnis auf" und meldete „Unresolved reference 'invoke'".
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun OwnerBadges(owners: List<KontoAnsicht>, modifier: Modifier = Modifier) {
+fun OwnerBadges(owners: List<AccountView>, modifier: Modifier = Modifier) {
     if (owners.isEmpty()) return
     // FlowRow statt Row: Zwei Besitzer mit langen Namen sind breiter als die Kachel,
     // in einer Row schöben sich die Etiketten übereinander. FlowRow bricht um, damit
@@ -191,7 +191,7 @@ fun OwnerBadges(owners: List<KontoAnsicht>, modifier: Modifier = Modifier) {
     FlowRow(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(3.dp),
-        verticalArrangement = Arrangement.spacedBy(Abstaende.haar),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.hairline),
     ) {
         owners.forEach { o ->
             Surface(
@@ -203,7 +203,7 @@ fun OwnerBadges(owners: List<KontoAnsicht>, modifier: Modifier = Modifier) {
                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                     style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold,
                     maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar)
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.hairline)
                 )
             }
         }
@@ -218,7 +218,7 @@ fun OwnerBadges(owners: List<KontoAnsicht>, modifier: Modifier = Modifier) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OwnerPicker(
-    members: List<MitgliedAnsicht>,
+    members: List<MemberView>,
     selected: Int?,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
@@ -231,7 +231,7 @@ fun OwnerPicker(
         OutlinedButton(onClick = { open = true }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
             Text(stringResource(R.string.household_for_account) + ": " + current.username,
                 style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Icon(Icons.Default.ArrowDropDown, null, Modifier.size(mitSchrift(18.dp)))
+            Icon(Icons.Default.ArrowDropDown, null, Modifier.size(withFont(18.dp)))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             members.forEach { m ->

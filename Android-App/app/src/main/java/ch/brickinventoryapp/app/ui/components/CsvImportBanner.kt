@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app.ui.components
 
-import ch.brickinventoryapp.ui.components.ansagen
-import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.readAloudAs
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -33,7 +33,7 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Error
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.withFont
 
 @Composable
 fun CsvImportBanner(
@@ -55,7 +55,7 @@ fun CsvImportBanner(
     val zustand = stringResource(if (expanded) R.string.zustand_ausgeklappt else R.string.zustand_eingeklappt)
     val fortschritt = pluralStringResource(R.plurals.csv_fortschritt, total, done, total)
     // Angesagt wird in Zehnerschritten, nicht bei jedem Set.
-    val stufe = if (total > 0) done * ANSAGE_STUFEN / total else 0
+    val stufe = if (total > 0) done * ANNOUNCEMENT_LEVELS / total else 0
     val angesagt = remember(stufe, running) { fortschritt }
     val ziel = stringResource(if (expanded) R.string.csv_details_verbergen else R.string.csv_details_zeigen)
 
@@ -72,26 +72,26 @@ fun CsvImportBanner(
                 }
         ) {
             Column(Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.klein)) {
-                CsvKopfzeile(done, total, ok, running, expanded, fortschritt, onAbbrechen)
+                CsvHeaderRow(done, total, ok, running, expanded, fortschritt, onAbbrechen)
                 if (running && current != null) {
                     Text(
                         current,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(top = Abstaende.haar)
+                        modifier = Modifier.padding(top = Abstaende.hairline)
                     )
                 }
             }
         }
         // Ausserhalb des Knopfs: Sonst würde der ganze Balken zur Live-Region und jedes Set angesagt.
-        if (running) Box(Modifier.ansagen().semantics { contentDescription = angesagt })
-        if (expanded) CsvImportZahlen(ok, warn, err, running)
+        if (running) Box(Modifier.announce().semantics { contentDescription = angesagt })
+        if (expanded) CsvImportNumbers(ok, warn, err, running)
     }
 }
 
 /** Kopfzeile des Balkens: Fortschritt, Abbrechen und der Pfeil des Aufklappers. */
 @Composable
-private fun CsvKopfzeile(
+private fun CsvHeaderRow(
     done: Int, total: Int, ok: Int, running: Boolean, expanded: Boolean, fortschritt: String, onAbbrechen: () -> Unit,
 ) {
     val pct = if (total > 0) done.toFloat() / total else 0f
@@ -99,7 +99,7 @@ private fun CsvKopfzeile(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
     ) {
-        Icon(Icons.Default.UploadFile, null, Modifier.size(mitSchrift(16.dp)),
+        Icon(Icons.Default.UploadFile, null, Modifier.size(withFont(16.dp)),
             tint = if (running) MaterialTheme.colorScheme.onPrimary
                    else MaterialTheme.colorScheme.onSecondaryContainer)
         LinearProgressIndicator(
@@ -112,7 +112,7 @@ private fun CsvKopfzeile(
         )
         Text(
             if (running) "$done/$total" else stringResource(R.string.csv_ok_count, ok),
-            modifier = if (running) Modifier.vorgelesenAls(fortschritt) else Modifier,
+            modifier = if (running) Modifier.readAloudAs(fortschritt) else Modifier,
             style = MaterialTheme.typography.bodySmall,
             color = if (running) MaterialTheme.colorScheme.onPrimary
                     else MaterialTheme.colorScheme.onSecondaryContainer,
@@ -144,7 +144,7 @@ private fun CsvKopfzeile(
 
 /** Aufgeklappt: Erfolge, Warnungen und Fehler einzeln, nach dem Lauf mit „fertig“. */
 @Composable
-private fun CsvImportZahlen(ok: Int, warn: Int, err: Int, running: Boolean) {
+private fun CsvImportNumbers(ok: Int, warn: Int, err: Int, running: Boolean) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier.fillMaxWidth()
@@ -161,8 +161,8 @@ private fun CsvImportZahlen(ok: Int, warn: Int, err: Int, running: Boolean) {
             ).forEach { (v, symbol, l) ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                        Icon(symbol.first, null, Modifier.size(mitSchrift(16.dp)), tint = symbol.second)
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+                        Icon(symbol.first, null, Modifier.size(withFont(16.dp)), tint = symbol.second)
                         Text("$v", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     }
                     Text(l, style = MaterialTheme.typography.bodySmall,
@@ -183,4 +183,4 @@ private fun CsvImportZahlen(ok: Int, warn: Int, err: Int, running: Boolean) {
 }
 
 /** Zehn Ansagen über einen ganzen Import. */
-private const val ANSAGE_STUFEN = 10
+private const val ANNOUNCEMENT_LEVELS = 10

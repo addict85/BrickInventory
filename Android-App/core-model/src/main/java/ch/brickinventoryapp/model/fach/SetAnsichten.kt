@@ -18,19 +18,19 @@ data class SetAnsicht(
     val condition: Zustand? = null,
     val storage: String? = null,
     val conditions: List<Zustand> = emptyList(),
-    val owners: List<KontoAnsicht> = emptyList(),
+    val owners: List<AccountView> = emptyList(),
     val maxPurchasePrice: Geld? = null,
     val avgPurchasePrice: Geld? = null,
     val usedCount: Int? = null,
-    val instructions: List<AnleitungAnsicht> = emptyList(),
-    val bricklink: BrickLinkAnsicht? = null,
+    val instructions: List<InstructionView> = emptyList(),
+    val bricklink: BrickLinkView? = null,
     val preisvergleichUrl: String? = null,
 ) {
     /** Der angezeigte Kaufpreis, mengengewichtet — Kachel und Detail zeigen denselben. */
-    val anzeigeKaufpreis: Geld? get() = avgPurchasePrice
+    val displayPurchasePrice: Geld? get() = avgPurchasePrice
 }
 
-data class AnleitungAnsicht(
+data class InstructionView(
     val id: Int? = null,
     val url: String,
     val description: String? = null,
@@ -38,7 +38,7 @@ data class AnleitungAnsicht(
     val isManual: Boolean = false,
 )
 
-data class BrickLinkAnsicht(
+data class BrickLinkView(
     val type: String = "SET",
     val number: String = "",
     val url: String? = null,
@@ -46,7 +46,7 @@ data class BrickLinkAnsicht(
     val resolved: Boolean = false,
 )
 
-data class MerkpostenAnsicht(
+data class WantedItemView(
     val setNumber: String = "",
     val condition: Zustand = Zustand.NEU,
     val createdAt: Instant? = null,
@@ -59,11 +59,11 @@ data class MerkpostenAnsicht(
     val marktpreis: Geld? = null,
     val waehrung: Waehrung = Waehrung.EUR,
     val owned: Boolean = false,
-    val alarm: MerkpostenAlarmAnsicht? = null,
+    val alarm: WantedItemAlarmView? = null,
     val preisvergleichUrl: String? = null,
 )
 
-data class MerkpostenAlarmAnsicht(
+data class WantedItemAlarmView(
     val richtung: Alarmrichtung = Alarmrichtung.UNTER,
     val schwelle: Geld = Geld.NULL,
     val ausgeloest: Boolean = false,

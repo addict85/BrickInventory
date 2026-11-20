@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.konto.ui.screens
 
 import ch.brickinventoryapp.model.ui.laeuft
-import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.ui.satz
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -21,8 +21,8 @@ import ch.brickinventoryapp.ui.components.Abschnitt
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.titel
 import kotlinx.coroutines.launch
-import ch.brickinventoryapp.konto.ui.CsvHochladenUiState
-import ch.brickinventoryapp.model.fach.CsvImportArt
+import ch.brickinventoryapp.konto.ui.CsvUploadUiState
+import ch.brickinventoryapp.model.fach.CsvImportKind
 import ch.brickinventoryapp.konto.ui.viewmodel.CSV_MAX_BYTES
 
 /**
@@ -33,18 +33,18 @@ import ch.brickinventoryapp.konto.ui.viewmodel.CSV_MAX_BYTES
  */
 @Composable
 internal fun CsvImportCard(
-    csvZustand: CsvHochladenUiState,
-    onDatei: (CsvImportArt, android.net.Uri) -> Unit,
+    csvState: CsvUploadUiState,
+    onFile: (CsvImportKind, android.net.Uri) -> Unit,
     onSchliessen: () -> Unit,
 ) {
     // Welche Art beim Antippen gemeint war — der Dateiauswahl-Vertrag liefert nur den
     // Uri, nicht den Knopf. rememberSaveable, nicht remember: Die Dateiauswahl ist
     // eine fremde Anwendung, währenddessen darf das System diesen Vorgang beenden;
     // fiele der Wert auf SETS zurück, landete eine Teile-Datei in der falschen Tabelle.
-    var gewaehlteArt by rememberSaveable { mutableStateOf(CsvImportArt.SETS) }
-    val auswahl = androidx.activity.compose.rememberLauncherForActivityResult(
+    var selectedKind by rememberSaveable { mutableStateOf(CsvImportKind.SETS) }
+    val selection = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
-    ) { uri -> if (uri != null) onDatei(gewaehlteArt, uri) }
+    ) { uri -> if (uri != null) onFile(selectedKind, uri) }
 
     // `text/*` UND `text/comma-separated-values`: Manche Dateiverwaltungen
     // geben einer .csv den Typ `application/vnd.ms-excel`, andere gar keinen.
@@ -59,13 +59,13 @@ internal fun CsvImportCard(
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-    Abschnitt(titel = null, innenAbstand = false) {
+    Abschnitt(titel = null, innerGap = false) {
         listOf(
-            CsvArt(CsvImportArt.SETS, R.string.csv_upload_sets, R.string.csv_desc_sets, R.string.csv_format_sets),
-            CsvArt(CsvImportArt.TEILE, R.string.csv_upload_parts, R.string.csv_desc_parts, R.string.csv_format_parts),
-            CsvArt(CsvImportArt.MINIFIGUREN, R.string.csv_upload_figs, R.string.csv_desc_figs, R.string.csv_format_figs),
-            CsvArt(CsvImportArt.MERKLISTE, R.string.csv_upload_wanted, R.string.csv_desc_wanted, R.string.csv_format_wanted),
-            CsvArt(CsvImportArt.PREISALARME, R.string.csv_upload_alerts, R.string.csv_desc_alerts, R.string.csv_format_alerts),
+            CsvKind(CsvImportKind.SETS, R.string.csv_upload_sets, R.string.csv_desc_sets, R.string.csv_format_sets),
+            CsvKind(CsvImportKind.TEILE, R.string.csv_upload_parts, R.string.csv_desc_parts, R.string.csv_format_parts),
+            CsvKind(CsvImportKind.MINIFIGUREN, R.string.csv_upload_figs, R.string.csv_desc_figs, R.string.csv_format_figs),
+            CsvKind(CsvImportKind.MERKLISTE, R.string.csv_upload_wanted, R.string.csv_desc_wanted, R.string.csv_format_wanted),
+            CsvKind(CsvImportKind.PREISALARME, R.string.csv_upload_alerts, R.string.csv_desc_alerts, R.string.csv_format_alerts),
         ).forEachIndexed { i, (art, titel, inhalt, spalten) ->
             if (i > 0) HorizontalDivider()
             ListItem(
@@ -82,23 +82,23 @@ internal fun CsvImportCard(
                 },
                 leadingContent = { Icon(Icons.Default.UploadFile, null, tint = MaterialTheme.colorScheme.primary) },
                 // Der Kreisel steht an der Zeile, deren Import läuft — die anderen bleiben ruhig.
-                trailingContent = if (csvZustand.hochladen.laeuft && csvZustand.art == art) {
+                trailingContent = if (csvState.hochladen.laeuft && csvState.art == art) {
                     { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) }
                 } else null,
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.clickable(enabled = !csvZustand.hochladen.laeuft, role = Role.Button) {
-                    gewaehlteArt = art; auswahl.launch(typen)
-                }.alpha(if (csvZustand.hochladen.laeuft && csvZustand.art != art) 0.6f else 1f),
+                modifier = Modifier.clickable(enabled = !csvState.hochladen.laeuft, role = Role.Button) {
+                    selectedKind = art; selection.launch(typen)
+                }.alpha(if (csvState.hochladen.laeuft && csvState.art != art) 0.6f else 1f),
             )
         }
     }
-    CsvRueckmeldung(csvZustand, onSchliessen)
+    CsvFeedback(csvState, onSchliessen)
 }
 
 /** Was der letzte Import gebracht hat, oder warum er scheiterte; beides lässt sich schliessen. */
 @Composable
-private fun CsvRueckmeldung(csvZustand: CsvHochladenUiState, onSchliessen: () -> Unit) {
-    val ergebnis = csvZustand.ergebnis
+private fun CsvFeedback(csvState: CsvUploadUiState, onSchliessen: () -> Unit) {
+    val ergebnis = csvState.ergebnis
     if (ergebnis != null) {
         Text(
             // Vier Zahlen, im Englischen stimmen zwei davon überein („row/rows“,
@@ -107,14 +107,14 @@ private fun CsvRueckmeldung(csvZustand: CsvHochladenUiState, onSchliessen: () ->
             // kein %d trägt, das Lint beanstandet.
             stringResource(R.string.csv_upload_result,
                 pluralStringResource(R.plurals.csv_upload_rows, ergebnis.total, ergebnis.total),
-                pluralStringResource(R.plurals.csv_upload_new, ergebnis.neuAngelegt, ergebnis.neuAngelegt),
+                pluralStringResource(R.plurals.csv_upload_new, ergebnis.newCreated, ergebnis.newCreated),
                 pluralStringResource(R.plurals.csv_upload_updated, ergebnis.updated, ergebnis.updated),
                 pluralStringResource(R.plurals.csv_upload_errors, ergebnis.errors, ergebnis.errors)),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.primary)
         TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
     }
-    csvZustand.hochladen.fehlerMeldung?.let { fehler ->
+    csvState.hochladen.errorMessage?.let { fehler ->
         Text(fehler.satz(), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error)
         TextButton(onClick = onSchliessen) { Text(stringResource(R.string.csv_upload_close)) }
@@ -122,8 +122,8 @@ private fun CsvRueckmeldung(csvZustand: CsvHochladenUiState, onSchliessen: () ->
 }
 
 /** Eine Importart: was sie ist, was drinsteht (Klartext) und wie die Spalten der Datei heissen. */
-private data class CsvArt(
-    val art: CsvImportArt,
+private data class CsvKind(
+    val art: CsvImportKind,
     val titel: Int,
     val inhalt: Int,
     val spalten: Int,

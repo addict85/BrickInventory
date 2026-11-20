@@ -5,7 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.test.core.app.ApplicationProvider
-import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
+import ch.brickinventoryapp.sicherheit.TokenEncryption
 import ch.brickinventoryapp.testing.testVertrauenschiffre
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -45,23 +45,23 @@ class TokenSpeicherwertTest {
     private val bereich = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val datei = File(ctx.filesDir, "token-${System.nanoTime()}.preferences_pb")
     private val echt = PreferenceDataStoreFactory.create(scope = bereich) { datei }
-    private val geraet = GeraeteAblage(ctx,
+    private val geraet = DevicesStore(ctx,
         PreferenceDataStoreFactory.create { File(ctx.filesDir, "geraet-${System.nanoTime()}.preferences_pb") },
         testVertrauenschiffre())
 
     /** Robolectric hat keinen AndroidKeyStore; umhüllt wird hier nur zum Schein. */
-    private object Klartresor : TokenVerschluesselung {
+    private object Klartresor : TokenEncryption {
         override fun verschluessle(klartext: String) = klartext
         override fun entschluessle(gespeichert: String) = gespeichert
     }
 
-    /** Hält jede Schreibung an, solange [tor] gesetzt ist; [wartend] zählt die angehaltenen. */
-    private class Zoegernd(private val echt: DataStore<Preferences>) : DataStore<Preferences> {
-        @Volatile var tor: CompletableDeferred<Unit>? = null
-        val wartend = AtomicInteger()
+    /** Hält jede Schreibung an, solange [gate] gesetzt ist; [waiting] zählt die angehaltenen. */
+    private class Hesitant(private val echt: DataStore<Preferences>) : DataStore<Preferences> {
+        @Volatile var gate: CompletableDeferred<Unit>? = null
+        val waiting = AtomicInteger()
         override val data: Flow<Preferences> = echt.data
         override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
-            tor?.let { wartend.incrementAndGet(); it.await() }
+            gate?.let { waiting.incrementAndGet(); it.await() }
             return echt.updateData(transform)
         }
     }
@@ -70,37 +70,37 @@ class TokenSpeicherwertTest {
     fun zu() { bereich.cancel() }
 
     /** Startet [schreiben], hält es an der Platte an und gibt den Speicherwert in diesem Moment zurück. */
-    private fun waehrendDerSchreibung(store: Zoegernd, schreiben: suspend () -> Unit, lies: () -> String?): String? = runBlocking {
-        val tor = CompletableDeferred<Unit>()
-        store.tor = tor
-        val vorher = store.wartend.get()
+    private fun duringTheSpelling(store: Hesitant, schreiben: suspend () -> Unit, lies: () -> String?): String? = runBlocking {
+        val gate = CompletableDeferred<Unit>()
+        store.gate = gate
+        val vorher = store.waiting.get()
         val lauf = bereich.launch { schreiben() }
-        withTimeout(5_000) { while (store.wartend.get() == vorher) delay(5) }
+        withTimeout(5_000) { while (store.waiting.get() == vorher) delay(5) }
         val gesehen = lies()
-        store.tor = null
-        tor.complete(Unit)
+        store.gate = null
+        gate.complete(Unit)
         lauf.join()
         gesehen
     }
 
     @Test
     fun `Token und Adresse gelten schon waehrend der Plattenschreibung`() {
-        val store = Zoegernd(echt)
-        val ablage = TokenAblage(store, Klartresor, geraet, bereich).also { it.warteAufStart() }
+        val store = Hesitant(echt)
+        val ablage = TokenAblage(store, Klartresor, geraet, bereich).also { it.waitOnStart() }
         val adresse = "https://brick.example"
         assertEquals("Die Adresse folgt erst der Platte", adresse,
-            waehrendDerSchreibung(store, { ablage.saveServerUrl(adresse) }) { ablage.serverUrlState.value })
+            duringTheSpelling(store, { ablage.saveServerUrl(adresse) }) { ablage.serverUrlState.value })
         assertEquals("Der Token folgt erst der Platte", "token-marco",
-            waehrendDerSchreibung(store, { ablage.saveAuthToken("token-marco") }) { ablage.authTokenState.value })
+            duringTheSpelling(store, { ablage.saveAuthToken("token-marco") }) { ablage.authTokenState.value })
     }
 
     @Test
     fun `ein neuer Prozess bekommt Token und Adresse aus dem DataStore`() = runBlocking {
-        val erste = TokenAblage(echt, Klartresor, geraet, bereich).also { it.warteAufStart() }
+        val erste = TokenAblage(echt, Klartresor, geraet, bereich).also { it.waitOnStart() }
         erste.saveServerUrl("https://brick.example")
         erste.saveAuthToken("token-marco")
 
-        val neu = TokenAblage(echt, Klartresor, geraet, bereich).also { it.warteAufStart() }
+        val neu = TokenAblage(echt, Klartresor, geraet, bereich).also { it.waitOnStart() }
         assertEquals("https://brick.example", neu.serverUrlState.value)
         assertEquals("token-marco", neu.authTokenState.value)
     }

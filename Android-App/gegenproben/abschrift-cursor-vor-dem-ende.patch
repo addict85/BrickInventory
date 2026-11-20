@@ -9,9 +9,9 @@ diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/component
 @@ -12,7 +12,7 @@
      if (text.any { it.uppercaseChar() !in HEX && it != ':' && !it.isWhitespace() }) return text to cursor
      val davor = text.take(cursor.coerceIn(0, text.length)).count { it.uppercaseChar() in HEX }
-     val gepaart = text.uppercase().filter { it in HEX }.chunked(2).joinToString(":")
--    return gepaart to if (davor == 0) 0 else davor + (davor - 1) / 2
-+    return gepaart to davor
+     val paired = text.uppercase().filter { it in HEX }.chunked(2).joinToString(":")
+-    return paired to if (davor == 0) 0 else davor + (davor - 1) / 2
++    return paired to davor
  }
  
  private const val HEX = "0123456789ABCDEF"

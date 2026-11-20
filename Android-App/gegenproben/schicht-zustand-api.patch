@@ -10,7 +10,7 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
  package ch.brickinventoryapp.zustand.ui.viewmodel
  
  import ch.brickinventoryapp.data.Anmeldestand
-+import ch.brickinventoryapp.data.api.KontoApi
++import ch.brickinventoryapp.data.api.AccountApi
  import ch.brickinventoryapp.model.util.Textquelle
- import ch.brickinventoryapp.data.repository.fehlerTextZuCode
+ import ch.brickinventoryapp.data.repository.errorTextToCode
  import ch.brickinventoryapp.data.repository.Ergebnis

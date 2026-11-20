@@ -1,6 +1,6 @@
 // Die lokale Wahrheit der Oberfläche: Listen und Ausgang je Konto in Room
 // (SQLCipher), Offlineablage und die lokale Anwendung von Bearbeitungen. Kennt
-// weder Netz noch Repositories: Das Senden (Abgleich, AusgangWorker) liegt in
+// weder Netz noch Repositories: Das Senden (Abgleich, ExitWorker) liegt in
 // core-data, das hierauf aufbaut (ModulgrenzenTest).
 plugins {
     alias(libs.plugins.brickinventory.android.library)
@@ -35,7 +35,7 @@ dependencies {
     testImplementation(project(":core-testing"))
     // Die Tests bauen Antworten des Servers, wie core-data sie abbildet; die Ablage selbst kennt sie nicht.
     testImplementation(project(":core-vertrag"))
-    // Abgleich und Repositories gegen die echte Room-Ablage (BestandDatenbankTest, OhneNetzFilterTest).
+    // Abgleich und Repositories gegen die echte Room-Ablage (InventoryDatabaseTest, WithoutNetworkFilterTest).
     testImplementation(project(":core-data"))
     // Room-Tests laufen unter Robolectric (BestandMigrationTest).
     testImplementation(libs.robolectric)

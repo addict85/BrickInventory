@@ -1,6 +1,6 @@
 Gegenprobe: INVARIANTEN.md nennt eine Quelldatei, die es nicht gibt
 Modul: app
-Test: ch.brickinventoryapp.app.InvariantenVerweiseTest
+Test: ch.brickinventoryapp.app.InvariantsReferencesTest
 Rot: jede in INVARIANTEN genannte Quelldatei und Testklasse gibt es
 
 diff --git a/Android-App/INVARIANTEN.md b/Android-App/INVARIANTEN.md

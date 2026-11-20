@@ -20,9 +20,9 @@ class ServicePolishTest {
     private fun read(rel: String): String {
         // Quellen und Ressourcen über alle Module; das Manifest liegt in app/.
         val f = when {
-            rel.startsWith("java/ch/brickinventoryapp/") -> File(Quellen.wurzel, rel.removePrefix("java/ch/brickinventoryapp/"))
+            rel.startsWith("java/ch/brickinventoryapp/") -> File(Quellen.root, rel.removePrefix("java/ch/brickinventoryapp/"))
             rel.startsWith("res/") -> File(Quellen.res, rel.removePrefix("res/"))
-            else -> File(Quellen.projekt, "app/src/main/$rel")
+            else -> File(Quellen.project, "app/src/main/$rel")
         }
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
@@ -124,10 +124,10 @@ class ServicePolishTest {
             "Das Manifest trägt wieder einen FileProvider — er gibt nur Klartext-Dateien weiter, " +
                 "die Teileliste läge dann wieder offen in filesDir"
         }
-        val eintrag = Regex("""<provider[^>]*TeilelistenProvider[^>]*>""").find(manifest)?.value
+        val entry = Regex("""<provider[^>]*TeilelistenProvider[^>]*>""").find(manifest)?.value
             ?: error("Der TeilelistenProvider fehlt im Manifest")
-        assert(eintrag.contains("android:exported=\"false\"")) { "Der TeilelistenProvider ist exportiert" }
-        assert(eintrag.contains("android:grantUriPermissions=\"true\"")) {
+        assert(entry.contains("android:exported=\"false\"")) { "Der TeilelistenProvider ist exportiert" }
+        assert(entry.contains("android:grantUriPermissions=\"true\"")) {
             "Ohne grantUriPermissions öffnet die gewählte App die Teileliste nicht"
         }
         assert(!File(Quellen.res, "xml/file_paths.xml").exists()) { "file_paths.xml ist zurück" }

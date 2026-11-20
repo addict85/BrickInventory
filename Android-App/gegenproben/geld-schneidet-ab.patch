@@ -1,6 +1,6 @@
 Gegenprobe: Geld.aus schneidet Nachkommastellen ab statt zu runden
 Modul: core-model
-Test: ch.brickinventoryapp.model.GeldTest
+Test: ch.brickinventoryapp.model.MoneyTest
 Rot: ein Betrag wird auf vier Stellen gerundet
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Geld.kt
@@ -10,8 +10,8 @@ diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fac
          val NULL = Geld(0)
  
          /** Wie inZehntel4() des Servers; was keine endliche Zahl ist, ist kein Betrag. */
--        fun aus(betrag: Double): Geld? = if (betrag.isFinite()) Geld(Math.round(betrag * FAKTOR)) else null
-+        fun aus(betrag: Double): Geld? = if (betrag.isFinite()) Geld((betrag * FAKTOR).toLong()) else null
+-        fun aus(betrag: Double): Geld? = if (betrag.isFinite()) Geld(Math.round(betrag * FACTOR)) else null
++        fun aus(betrag: Double): Geld? = if (betrag.isFinite()) Geld((betrag * FACTOR).toLong()) else null
  
-         fun aus(betrag: BigDecimal): Geld = Geld(betrag.setScale(STELLEN, RoundingMode.HALF_UP).unscaledValue().toLong())
+         fun aus(betrag: BigDecimal): Geld = Geld(betrag.setScale(PLACES, RoundingMode.HALF_UP).unscaledValue().toLong())
  

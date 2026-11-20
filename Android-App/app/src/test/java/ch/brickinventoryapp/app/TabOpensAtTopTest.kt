@@ -40,7 +40,7 @@ import org.robolectric.annotation.GraphicsMode
  * „Ich komme zurück“ behält die Stelle; unterscheiden lässt sich das nur im Gerüst.
  *
  * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   reiter-meldet-nach-navigation      onTabAngetippt erst nach zuReiter → rot „die untere Leiste meldet …“
+ *   reiter-meldet-nach-navigation      onTabAngetippt erst nach toTab → rot „die untere Leiste meldet …“
  *   umschalter-meldet-nach-navigation  im Sammlungs-Umschalter ebenso → rot „der Sammlungs-Umschalter meldet …“
  *   geruest-vergisst-nicht             ReiterGeruest verwirft die Rollposition nicht → rot „kein Reiter-Ziel …“
  */
@@ -62,13 +62,13 @@ class TabOpensAtTopTest {
         compose.setContent {
             BrickInventoryManagerTheme(theme = Design.CLASSIC) {
                 nav = rememberNavController()
-                val reiter = remember {
+                val tab = remember {
                     listOf(
                         Reiter(SammlungZiel.Gallery, { Icon(Icons.Default.ViewInAr, null) }, "Sammlung"),
                         Reiter(FinanzZiel.Finance, { Icon(Icons.Default.ViewInAr, null) }, "Finanzen"))
                 }
                 MainScaffold(
-                    title = "Sammlung", navController = nav, bottomNavItems = reiter,
+                    title = "Sammlung", navController = nav, bottomNavItems = tab,
                     snackbarHostState = remember { SnackbarHostState() },
                     csvImportState = remember { MutableStateFlow(CsvImportUiState()) },
                     onCsvAbbrechen = {},
@@ -107,12 +107,12 @@ class TabOpensAtTopTest {
     fun `kein Reiter-Ziel baut das Geruest selbst`() {
         // Struktur: ReiterGeruest setzt den Rückruf einmal; ein Ziel, das MainScaffold
         // selbst baut, müsste ihn wieder von Hand durchreichen.
-        val ziele = Quellen.unter("nav")
-        assertTrue("Nur ${ziele.size} Dateien unter nav/ — Pfad veraltet?", ziele.size >= 3)
-        val direkt = ziele.filter { Quellen.ohneKommentare(it.readText()).contains("MainScaffold(") }
+        val targets = Quellen.unter("nav")
+        assertTrue("Nur ${targets.size} Dateien unter nav/ — Pfad veraltet?", targets.size >= 3)
+        val direkt = targets.filter { Quellen.withoutComments(it.readText()).contains("MainScaffold(") }
         assertTrue("Diese Ziele bauen MainScaffold selbst statt ReiterGeruest: ${direkt.joinToString { it.name }}",
             direkt.isEmpty())
-        val geruest = Quellen.ohneKommentare(Quellen.lies("app/MainScaffold.kt"))
+        val geruest = Quellen.withoutComments(Quellen.lies("app/MainScaffold.kt"))
         assertTrue("Das Gerüst verwirft die Rollposition des angetippten Reiters nicht mehr",
             geruest.contains("onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(rollSchluessel(ziel)) }"))
     }

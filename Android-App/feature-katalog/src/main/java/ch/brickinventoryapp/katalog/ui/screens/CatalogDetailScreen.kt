@@ -7,13 +7,13 @@ import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.material.icons.filled.Bookmark
 import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.ui.components.ErfassenDialog
-import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.ui.components.AddDialog
+import ch.brickinventoryapp.model.fach.WantedItemView
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import androidx.compose.ui.draw.clip
-import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
-import ch.brickinventoryapp.model.fach.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.CatalogDetailView
+import ch.brickinventoryapp.model.fach.MemberView
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -42,7 +42,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import ch.brickinventoryapp.ui.zweiSpaltig
+import ch.brickinventoryapp.ui.twoSpaltig
 import ch.brickinventoryapp.ui.components.ZoomableImageDialog
 import ch.brickinventoryapp.model.util.resolveFullUrl
 import coil3.ImageLoader
@@ -51,22 +51,22 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
-import ch.brickinventoryapp.ui.components.FehlerHinweis
-import ch.brickinventoryapp.ui.components.LadeKreis
-import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import ch.brickinventoryapp.ui.components.ErrorHint
+import ch.brickinventoryapp.ui.components.LoadCircle
+import ch.brickinventoryapp.ui.components.StateHint
 import ch.brickinventoryapp.model.ui.Laden
-import ch.brickinventoryapp.model.ui.datenOderNull
+import ch.brickinventoryapp.model.ui.dataOrNull
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.ui.components.ProduktBild
-import ch.brickinventoryapp.ui.components.ansagen
-import ch.brickinventoryapp.gemeinsam.ui.erfassungUngueltig
-import ch.brickinventoryapp.ui.components.SegmentWahl
-import ch.brickinventoryapp.ui.components.bewegungReduziert
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.gemeinsam.ui.entryInvalid
+import ch.brickinventoryapp.ui.components.SegmentChoice
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Lesebreite
 import ch.brickinventoryapp.ui.util.fmtInt
-import ch.brickinventoryapp.netz.util.externeAdresse
-import ch.brickinventoryapp.ui.util.oeffneExtern
+import ch.brickinventoryapp.netz.util.externeAddress
+import ch.brickinventoryapp.ui.util.openExtern
 import ch.brickinventoryapp.ui.components.CatalogDetailRow
 import ch.brickinventoryapp.gemeinsam.ui.LagerortErfassung
 import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
@@ -81,16 +81,16 @@ import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
 fun CatalogDetailScreen(
     setNumber: String,
     /** Ein Fehler steht mit „Erneut versuchen“ statt des Kringels. */
-    geladen: Laden<KatalogDetailAnsicht>,
+    geladen: Laden<CatalogDetailView>,
     imageLoader: ImageLoader,
     serverUrl: String,
     defaultCondition: Zustand = Zustand.NEU,
     /** Mitglieder des Haushalts — die Kontowahl blendet sich ohne sie selbst aus. */
-    householdMembers: List<MitgliedAnsicht> = emptyList(),
+    householdMembers: List<MemberView> = emptyList(),
     /** Vorrat an Lagerorten fuer den Erfassungsdialog. */
     lagerorte: List<String> = emptyList(),
     /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
-    lagerortVorgabe: String = "",
+    locationDefault: String = "",
     onLoad: (String) -> Unit,
     onAddToGallery: (Erfassungswunsch) -> Unit,
     /** Auf die Merkliste; das Zielkonto wie im Erfassungsdialog und in der Webapp (cat-m-owner). */
@@ -98,11 +98,11 @@ fun CatalogDetailScreen(
     onOpenInGallery: (String) -> Unit,
     onBack: () -> Unit,
     /** Der Merkposten zu diesem Set, falls es schon auf der Merkliste steht. */
-    gemerkt: MerkpostenAnsicht? = null,
+    gemerkt: WantedItemView? = null,
     /** Den Merkposten öffnen — Setnummer und Zustand. */
-    onOeffneMerkposten: (String, Zustand) -> Unit = { _, _ -> },
+    onOpenWantedItem: (String, Zustand) -> Unit = { _, _ -> },
 ) {
-    val detail = geladen.datenOderNull()
+    val detail = geladen.dataOrNull()
     LaunchedEffect(setNumber) { onLoad(setNumber) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var showWishDialog by rememberSaveable { mutableStateOf(false) }
@@ -113,7 +113,7 @@ fun CatalogDetailScreen(
     // gegriffener Context kann nach einem Konfigurationswechsel (Sprache, Dunkelmodus,
     // Drehung) veraltete Werte liefern (Lint: LocalContextGetResourceValueCall). In
     // der Komposition wertet Compose bei einer Änderung neu aus.
-    val keineAppText = stringResource(R.string.common_no_app_to_open)
+    val noAppText = stringResource(R.string.common_no_app_to_open)
     // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
     val meldungen = remember { SnackbarHostState() }
     val bereich = rememberCoroutineScope()
@@ -126,30 +126,30 @@ fun CatalogDetailScreen(
         topBar = { DetailTopAppBar(titel = detail?.name ?: setNumber, onZurueck = onBack) }
     ) { padding ->
         when {
-            geladen is Laden.Fehler -> ZustandsHinweis(Modifier.padding(padding)) {
-                FehlerHinweis(geladen.meldung.satz(), { onLoad(setNumber) }, geladen.art)
+            geladen is Laden.Fehler -> StateHint(Modifier.padding(padding)) {
+                ErrorHint(geladen.meldung.satz(), { onLoad(setNumber) }, geladen.art)
             }
-            detail == null -> LadeKreis(Modifier.padding(padding))
-            else -> KatalogDetailInhalt(
+            detail == null -> LoadCircle(Modifier.padding(padding))
+            else -> CatalogDetailContent(
                 detail, serverUrl, imageLoader, gemerkt, rollen, Modifier.padding(padding),
                 onZoom = { showImageZoom = true },
-                onMerken = { if (gemerkt != null) onOeffneMerkposten(gemerkt.setNumber, gemerkt.condition) else showWishDialog = true },
-                onAufnehmen = { showAddDialog = true },
+                rememberOn = { if (gemerkt != null) onOpenWantedItem(gemerkt.setNumber, gemerkt.condition) else showWishDialog = true },
+                captureOn = { showAddDialog = true },
                 onOpenInGallery = onOpenInGallery,
                 onBrickLink = { url ->
                     // Nicht still schlucken: Ist kein Browser da, passierte sonst nichts.
-                    if (!oeffneExtern(ctx, externeAdresse(url))) {
-                        bereich.launch { meldungen.showSnackbar(keineAppText) }
+                    if (!openExtern(ctx, externeAddress(url))) {
+                        bereich.launch { meldungen.showSnackbar(noAppText) }
                     }
                 },
             )
         }
     }
 
-    KatalogDetailDialoge(
+    CatalogDetailDialogs(
         detail = detail, merken = showWishDialog, aufnehmen = showAddDialog, zoom = showImageZoom,
         defaultCondition = defaultCondition, householdMembers = householdMembers,
-        lagerorte = lagerorte, lagerortVorgabe = lagerortVorgabe, serverUrl = serverUrl, imageLoader = imageLoader,
+        lagerorte = lagerorte, locationDefault = locationDefault, serverUrl = serverUrl, imageLoader = imageLoader,
         onWish = onWish, onAddToGallery = onAddToGallery,
         onSchliessen = { showWishDialog = false; showAddDialog = false; showImageZoom = false },
     )
@@ -157,16 +157,16 @@ fun CatalogDetailScreen(
 
 /** Bild und Angaben; ab „expanded“ in zwei Spalten. */
 @Composable
-private fun KatalogDetailInhalt(
-    detail: KatalogDetailAnsicht,
+private fun CatalogDetailContent(
+    detail: CatalogDetailView,
     serverUrl: String,
     imageLoader: ImageLoader,
-    gemerkt: MerkpostenAnsicht?,
+    gemerkt: WantedItemView?,
     rollen: ScrollState,
     modifier: Modifier,
     onZoom: () -> Unit,
-    onMerken: () -> Unit,
-    onAufnehmen: () -> Unit,
+    rememberOn: () -> Unit,
+    captureOn: () -> Unit,
     onOpenInGallery: (String) -> Unit,
     onBrickLink: (String) -> Unit,
 ) {
@@ -181,23 +181,23 @@ private fun KatalogDetailInhalt(
         // gedämpft — wie das Set-Detail, statt einer grellen Fläche.
         val bild: @Composable (Modifier) -> Unit = { m ->
             ProduktBild(
-                model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
+                model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
                 imageLoader = imageLoader,
                 contentDescription = detail.name,
                 modifier = m.clip(Formen.karte)
                     .clickable(enabled = fullUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { onZoom() },
                 contentScale = androidx.compose.ui.layout.ContentScale.Fit,
-                ersatzGroesse = 64.dp,
+                fallbackSize = 64.dp,
                 bildgrund = true,
-                innenAbstand = Abstaende.mittel,
+                innerGap = Abstaende.mittel,
             )
         }
         val angaben: @Composable ColumnScope.() -> Unit = {
-            KatalogAngaben(
+            CatalogDetails(
                 detail = detail,
                 gemerkt = gemerkt,
-                onMerken = onMerken,
-                onAufnehmen = onAufnehmen,
+                rememberOn = rememberOn,
+                captureOn = captureOn,
                 onOpenInGallery = onOpenInGallery,
                 onBrickLink = onBrickLink,
             )
@@ -205,12 +205,12 @@ private fun KatalogDetailInhalt(
         // Ab „expanded“ zwei Spalten wie das Set-Detail: Bild links, Angaben und
         // Handlungen rechts. Einspaltig liefen Tabelle und Knöpfe über die ganze
         // Tablet-Breite, „Jahr“ stand eine Armlänge von „2022“.
-        if (zweiSpaltig(maxWidth.value)) {
+        if (twoSpaltig(maxWidth.value)) {
             Row(Modifier.fillMaxSize().padding(horizontal = Abstaende.gross),
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.sehrGross)) {
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.veryLarge)) {
                 Box(Modifier.weight(1f).fillMaxHeight().padding(vertical = Abstaende.gross),
                     contentAlignment = Alignment.TopCenter) {
-                    bild(Modifier.widthIn(max = BILD_HOECHSTENS).fillMaxWidth().aspectRatio(BILD_VERHAELTNIS))
+                    bild(Modifier.widthIn(max = IMAGE_AT_MOST).fillMaxWidth().aspectRatio(IMAGE_RATIO))
                 }
                 Column(
                     Modifier.weight(1f).fillMaxHeight().verticalScroll(rollen).padding(vertical = Abstaende.gross),
@@ -229,15 +229,15 @@ private fun KatalogDetailInhalt(
 
 /** Merken, Aufnehmen und Zoom des Katalog-Details; [onSchliessen] schliesst, was offen ist. */
 @Composable
-private fun KatalogDetailDialoge(
-    detail: KatalogDetailAnsicht?,
+private fun CatalogDetailDialogs(
+    detail: CatalogDetailView?,
     merken: Boolean,
     aufnehmen: Boolean,
     zoom: Boolean,
     defaultCondition: Zustand,
-    householdMembers: List<MitgliedAnsicht>,
+    householdMembers: List<MemberView>,
     lagerorte: List<String>,
-    lagerortVorgabe: String,
+    locationDefault: String,
     serverUrl: String,
     imageLoader: ImageLoader,
     onWish: (Merkwunsch) -> Unit,
@@ -263,11 +263,11 @@ private fun KatalogDetailDialoge(
             defaultCondition = defaultCondition,
             householdMembers = householdMembers,
             lagerorte = lagerorte,
-            lagerortVorgabe = lagerortVorgabe,
+            locationDefault = locationDefault,
             onDismiss = onSchliessen,
-            onAdd = { wunsch ->
+            onAdd = { wish ->
                 onSchliessen()
-                onAddToGallery(wunsch.copy(setNumber = detail.setNumber))
+                onAddToGallery(wish.copy(setNumber = detail.setNumber))
             }
         )
     }
@@ -289,16 +289,16 @@ private fun KatalogDetailDialoge(
 }
 
 /** Seitenverhältnis der Setbilder; auf dem Tablet hat das Bild so seine eigene Spalte. */
-private const val BILD_VERHAELTNIS = 4f / 3f
+private const val IMAGE_RATIO = 4f / 3f
 
 /** Grösser als die Vorlage wird ein Setbild nur unscharf; daneben bleibt Platz für die Angaben. */
-private val BILD_HOECHSTENS = 480.dp
+private val IMAGE_AT_MOST = 480.dp
 
 /** Die Angaben des Sets als Tabelle, mit Besitz und Merkposten, wenn es sie gibt. */
 @Composable
-private fun KatalogTabelle(detail: KatalogDetailAnsicht, gemerkt: MerkpostenAnsicht?) {
+private fun CatalogTable(detail: CatalogDetailView, gemerkt: WantedItemView?) {
     Card(shape = Formen.karte, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
-        Column(Modifier.padding(Abstaende.rand), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
+        Column(Modifier.padding(Abstaende.edge), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             CatalogDetailRow(stringResource(R.string.catalog_detail_year),   detail.year?.toString() ?: "—")
             CatalogDetailRow(stringResource(R.string.catalog_detail_theme),  detail.themeName ?: "—")
             CatalogDetailRow(stringResource(R.string.catalog_detail_parts),  detail.numParts?.takeIf { it > 0 }?.let { fmtInt(it) } ?: "—")
@@ -307,7 +307,7 @@ private fun KatalogTabelle(detail: KatalogDetailAnsicht, gemerkt: MerkpostenAnsi
                 CatalogDetailRow(stringResource(R.string.catalog_owned), "✓ ×${detail.ownedQuantity}")
             }
             // Steht das Set schon auf der Merkliste, sagt es die Tabelle — mit Zustand und Alarm.
-            if (gemerkt != null) CatalogDetailRow(stringResource(R.string.catalog_auf_merkliste), merkpostenText(gemerkt))
+            if (gemerkt != null) CatalogDetailRow(stringResource(R.string.catalog_auf_merkliste), wantedItemText(gemerkt))
         }
     }
 }
@@ -318,11 +318,11 @@ private fun KatalogTabelle(detail: KatalogDetailAnsicht, gemerkt: MerkpostenAnsi
  * Er stand über ihnen und sah aus wie die Haupthandlung.
  */
 @Composable
-private fun ColumnScope.KatalogAngaben(
-    detail: KatalogDetailAnsicht,
-    gemerkt: MerkpostenAnsicht?,
-    onMerken: () -> Unit,
-    onAufnehmen: () -> Unit,
+private fun ColumnScope.CatalogDetails(
+    detail: CatalogDetailView,
+    gemerkt: WantedItemView?,
+    rememberOn: () -> Unit,
+    captureOn: () -> Unit,
     onOpenInGallery: (String) -> Unit,
     onBrickLink: (String) -> Unit,
 ) {
@@ -330,29 +330,29 @@ private fun ColumnScope.KatalogAngaben(
     Text(detail.setNumber, color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
 
-    KatalogTabelle(detail, gemerkt)
+    CatalogTable(detail, gemerkt)
 
     // Untereinander in voller Breite wie im Merkposten-Detail: Nebeneinander war
     // „Zur Sammlung hinzufügen“ schon bei normaler Schrift gekürzt. Aufnehmen ist die
     // häufigere Handlung und steht oben und gefüllt, Merken darunter umrandet.
     // Höchstens Bedienbreite: Auf dem Tablet liefen die Knöpfe sonst über die ganze Spalte.
-    val knopf = Modifier.widthIn(max = Lesebreite.bedienung).fillMaxWidth()
-    Button(onClick = onAufnehmen, modifier = knopf) {
-        Icon(Icons.Default.Add, null, Modifier.size(mitSchrift(18.dp)))
+    val button = Modifier.widthIn(max = Lesebreite.controls).fillMaxWidth()
+    Button(onClick = captureOn, modifier = button) {
+        Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
         Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
             textAlign = TextAlign.Center)
     }
     // Gemerkt: zum Merkposten statt ein zweites Mal merken.
-    OutlinedButton(onClick = onMerken, modifier = knopf, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-        Icon(if (gemerkt != null) Icons.Default.Bookmark else Icons.Default.BookmarkAdd, null, Modifier.size(mitSchrift(18.dp)))
+    OutlinedButton(onClick = rememberOn, modifier = button, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+        Icon(if (gemerkt != null) Icons.Default.Bookmark else Icons.Default.BookmarkAdd, null, Modifier.size(withFont(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
         Text(stringResource(if (gemerkt != null) R.string.catalog_merkposten_oeffnen else R.string.wanted_add_submit),
             textAlign = TextAlign.Center)
     }
     if (detail.owned) {
-        OutlinedButton(onClick = { onOpenInGallery(detail.setNumber) }, modifier = knopf, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
-            Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)))
+        OutlinedButton(onClick = { onOpenInGallery(detail.setNumber) }, modifier = button, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
+            Icon(Icons.Default.Check, null, Modifier.size(withFont(18.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.catalog_open_in_gallery))
         }
@@ -365,18 +365,18 @@ private fun ColumnScope.KatalogAngaben(
     val blUrl = bl?.url ?: BrickLinkUrls.searchFor(detail.setNumber)
     val blLabel = if (bl != null && !bl.exact) R.string.catalog_search_bricklink else R.string.catalog_buy_bricklink
     // So breit wie die Knöpfe darüber: Mittig für sich stand er auf dem Tablet neben ihrer Achse.
-    TextButton(onClick = { onBrickLink(blUrl) }, modifier = knopf) {
-        Icon(Icons.Default.ShoppingCart, null, Modifier.size(mitSchrift(18.dp)))
+    TextButton(onClick = { onBrickLink(blUrl) }, modifier = button) {
+        Icon(Icons.Default.ShoppingCart, null, Modifier.size(withFont(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
         Text(stringResource(blLabel))
-        Spacer(Modifier.width(Abstaende.winzig))
-        Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(mitSchrift(16.dp)))
+        Spacer(Modifier.width(Abstaende.tiny))
+        Icon(Icons.AutoMirrored.Filled.OpenInNew, null, Modifier.size(withFont(16.dp)))
     }
 }
 
 /** „Neu, Alarm unter CHF 349.00“ — Zustand und Alarm eines Merkpostens in einer Zeile. */
 @Composable
-private fun merkpostenText(m: MerkpostenAnsicht): String {
+private fun wantedItemText(m: WantedItemView): String {
     val zustand = stringResource(if (m.condition == Zustand.GEBRAUCHT) R.string.condition_used else R.string.condition_new)
     val alarm = m.alarm?.let { a ->
         stringResource(if (a.richtung == Alarmrichtung.UEBER) R.string.wanted_alert_above else R.string.wanted_alert_below,
@@ -390,11 +390,11 @@ private fun merkpostenText(m: MerkpostenAnsicht): String {
 private fun CatalogAddDialog(
     setName: String,
     defaultCondition: Zustand,
-    householdMembers: List<MitgliedAnsicht>,
+    householdMembers: List<MemberView>,
     /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
     lagerorte: List<String>,
     /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
-    lagerortVorgabe: String = "",
+    locationDefault: String = "",
     onDismiss: () -> Unit,
     /** Ohne Setnummer: Die setzt das Detail, zu dem der Dialog gehört. */
     onAdd: (Erfassungswunsch) -> Unit
@@ -405,20 +405,20 @@ private fun CatalogAddDialog(
     // Schluessel ist die Vorgabe: Sie kommt ueber das Netz und kann nach dem
     // Oeffnen eintreffen. Eine eigene Eingabe bleibt stehen, weil sich die
     // Vorgabe danach nicht mehr aendert.
-    var lagerort      by rememberSaveable(lagerortVorgabe) { mutableStateOf(lagerortVorgabe) }
+    var lagerort      by rememberSaveable(locationDefault) { mutableStateOf(locationDefault) }
     // Vorbelegt mit dem eigenen Konto, genau wie im Galerie-Dialog.
     val eigenes = householdMembers.firstOrNull { it.isSelf }?.id
     var owner         by remember(householdMembers) { mutableStateOf(eigenes) }
 
-    // Der gemeinsame Rahmen (ErfassenDialog): Titel als Überschrift und Fenstername, rollbar
+    // Der gemeinsame Rahmen (AddDialog): Titel als Überschrift und Fenstername, rollbar
     // und bei grosser Schrift Vollbild; vorher fehlte beides.
-    ErfassenDialog(
+    AddDialog(
         titel = stringResource(R.string.catalog_add_to_gallery),
         bestaetigen = stringResource(R.string.catalog_add_confirm),
         onBestaetigen = { onAdd(Erfassungswunsch(
             setNumber = "",
             menge = quantity.toIntOrNull() ?: 1,
-            kaufpreis = NumericInput.leseGeld(purchasePrice),
+            kaufpreis = NumericInput.readMoney(purchasePrice),
             zustand = condition,
             // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann
             // beim eigenen Konto (gleiche Regel wie im Galerie-Dialog).
@@ -426,9 +426,9 @@ private fun CatalogAddDialog(
             lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
         )) },
         onAbbrechen = onDismiss,
-        bestaetigenAn = !erfassungUngueltig(quantity, purchasePrice),
+        confirmAn = !entryInvalid(quantity, purchasePrice),
         geaendert = quantity != "1" || purchasePrice.isNotEmpty() || condition != defaultCondition ||
-            lagerort != lagerortVorgabe || owner != eigenes,
+            lagerort != locationDefault || owner != eigenes,
     ) {
         Text(setName, fontWeight = FontWeight.SemiBold)
         // Blendet sich bei weniger als zwei Mitgliedern selbst aus.
@@ -439,8 +439,8 @@ private fun CatalogAddDialog(
             value = quantity,
             onValueChange = { quantity = NumericInput.quantity(it) },
             label = { Text(stringResource(R.string.common_quantity)) },
-            isError = NumericInput.mengeUngueltig(quantity),
-            supportingText = { if (NumericInput.mengeUngueltig(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen()) },
+            isError = NumericInput.quantityInvalid(quantity),
+            supportingText = { if (NumericInput.quantityInvalid(quantity)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.announce()) },
             singleLine = true, modifier = Modifier.fillMaxWidth(),
             keyboardOptions = NumericInput.ganzzahlTastatur()
         )
@@ -449,10 +449,10 @@ private fun CatalogAddDialog(
             value = purchasePrice,
             onValueChange = { purchasePrice = NumericInput.price(it) },
             label = { Text(stringResource(R.string.gallery_purchase_price)) },
-            isError = NumericInput.preisUngueltig(purchasePrice),
-            supportingText = { if (NumericInput.preisUngueltig(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen()) },
+            isError = NumericInput.priceInvalid(purchasePrice),
+            supportingText = { if (NumericInput.priceInvalid(purchasePrice)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.announce()) },
             singleLine = true, modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = NumericInput.preisTastatur()
+            keyboardOptions = NumericInput.priceKeyboard()
         )
         Zustandszeile(zustand = condition, onZustand = { condition = it })
         LagerortErfassung(lagerort, lagerorte, { lagerort = it })
@@ -470,7 +470,7 @@ private fun MerkpostenDialog(
     setName: String,
     defaultCondition: Zustand,
     /** Konten des Haushalts — ohne Unterkonten blendet sich die Wahl selbst aus. */
-    householdMembers: List<MitgliedAnsicht>,
+    householdMembers: List<MemberView>,
     onDismiss: () -> Unit,
     onWish: (Zustand, Alarmrichtung, String, Int?) -> Unit,
 ) {
@@ -483,7 +483,7 @@ private fun MerkpostenDialog(
     }
 
     // Derselbe Rahmen wie „Set merken“ in der Merkliste und jedes Erfassen.
-    ErfassenDialog(
+    AddDialog(
         titel = stringResource(R.string.wanted_add_submit),
         bestaetigen = stringResource(R.string.wanted_add_submit),
         onBestaetigen = { onWish(zustand, richtung, schwelle,
@@ -501,7 +501,7 @@ private fun MerkpostenDialog(
                 HorizontalDivider()
                 Text(stringResource(R.string.detail_alert),
                      style = MaterialTheme.typography.labelLarge)
-                SegmentWahl(
+                SegmentChoice(
                     optionen = listOf(Alarmrichtung.UNTER to stringResource(R.string.detail_alert_chip_below),
                                       Alarmrichtung.UEBER to stringResource(R.string.detail_alert_chip_above)),
                     gewaehlt = richtung,
@@ -515,7 +515,7 @@ private fun MerkpostenDialog(
                     onValueChange = { schwelle = NumericInput.price(it) },
                     label = { Text(stringResource(R.string.wanted_threshold)) },
                     singleLine = true,
-                    keyboardOptions = NumericInput.preisTastatur(),
+                    keyboardOptions = NumericInput.priceKeyboard(),
                     modifier = Modifier.fillMaxWidth(),
                 )
     }

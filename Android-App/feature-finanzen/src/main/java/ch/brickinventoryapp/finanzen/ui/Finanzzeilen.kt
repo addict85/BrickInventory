@@ -3,12 +3,12 @@ package ch.brickinventoryapp.finanzen.ui
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.model.fach.BewertungAnsicht
 import ch.brickinventoryapp.model.fach.Geld
-import ch.brickinventoryapp.model.fach.BewertungSetAnsicht
-import ch.brickinventoryapp.model.fach.BewertungsKaufAnsicht
+import ch.brickinventoryapp.model.fach.ValuationSetView
+import ch.brickinventoryapp.model.fach.ValuationPurchaseView
 import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
 import ch.brickinventoryapp.model.fach.GewinnAnsicht
-import ch.brickinventoryapp.model.fach.ManuelleFigurAnsicht
-import ch.brickinventoryapp.model.fach.ManuellesTeilAnsicht
+import ch.brickinventoryapp.model.fach.ManualMinifigView
+import ch.brickinventoryapp.model.fach.ManualPartView
 import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
 import java.math.BigDecimal
 
@@ -16,7 +16,7 @@ import java.math.BigDecimal
  * Was eine Karte der Finanzliste zeigt. Die Zahlen kommen fertig gerundet vom
  * Server (wert_gesamt, pnl_prozent); gerechnet wird nur Kauf mal Menge, in Geld.
  */
-data class FinanzZeile(
+data class FinanceRow(
     val schluessel: String,
     val menge: Int,
     /** Marktwert der Zeile; null = kein Marktpreis. */
@@ -48,15 +48,15 @@ data class FinanzZeile(
  * ihres Zustands. Sonst eine Karte für den Eintrag (die einzige Erfassung oder
  * keine).
  */
-private fun <T> jeKaufpreis(eintraege: List<T>, erfassungen: (T) -> List<BewertungsKaufAnsicht>) =
+private fun <T> perPurchasePrice(eintraege: List<T>, entries: (T) -> List<ValuationPurchaseView>) =
     eintraege.flatMap { e ->
-        val a = erfassungen(e)
+        val a = entries(e)
         if (a.size > 1) a.map { e to it } else listOf(e to a.firstOrNull())
     }
 
-fun setZeilen(sets: List<BewertungSetAnsicht>): List<Pair<BewertungSetAnsicht, FinanzZeile>> =
-    jeKaufpreis(sets) { it.acquisitions }.map { (s, acq) ->
-        s to FinanzZeile(
+fun setRows(sets: List<ValuationSetView>): List<Pair<ValuationSetView, FinanceRow>> =
+    perPurchasePrice(sets) { it.acquisitions }.map { (s, acq) ->
+        s to FinanceRow(
             schluessel = "${s.setNumber}#${acq?.id ?: 0}",
             menge = acq?.quantity ?: s.quantity,
             wert = acq?.wertGesamt ?: s.wertGesamt,
@@ -67,23 +67,23 @@ fun setZeilen(sets: List<BewertungSetAnsicht>): List<Pair<BewertungSetAnsicht, F
         )
     }
 
-internal fun teilZeilen(parts: List<ManuellesTeilAnsicht>): List<Pair<ManuellesTeilAnsicht, FinanzZeile>> =
-    jeKaufpreis(parts) { it.acquisitions }.map { (p, acq) ->
-        p to FinanzZeile("part_${p.id}#${acq?.id ?: 0}", acq?.quantity ?: p.quantity,
+internal fun partRows(parts: List<ManualPartView>): List<Pair<ManualPartView, FinanceRow>> =
+    perPurchasePrice(parts) { it.acquisitions }.map { (p, acq) ->
+        p to FinanceRow("part_${p.id}#${acq?.id ?: 0}", acq?.quantity ?: p.quantity,
             acq?.wertGesamt ?: p.wertGesamt, acq?.purchasePrice ?: p.purchasePrice,
             acq?.condition, acq?.pnlProzent ?: p.pnlProzent)
     }
 
-internal fun figurZeilen(figs: List<ManuelleFigurAnsicht>): List<Pair<ManuelleFigurAnsicht, FinanzZeile>> =
-    jeKaufpreis(figs) { it.acquisitions }.map { (f, acq) ->
-        f to FinanzZeile("fig_${f.id}#${acq?.id ?: 0}", acq?.quantity ?: f.quantity,
+internal fun minifigRows(figs: List<ManualMinifigView>): List<Pair<ManualMinifigView, FinanceRow>> =
+    perPurchasePrice(figs) { it.acquisitions }.map { (f, acq) ->
+        f to FinanceRow("fig_${f.id}#${acq?.id ?: 0}", acq?.quantity ?: f.quantity,
             acq?.wertGesamt ?: f.wertGesamt, acq?.purchasePrice ?: f.purchasePrice,
             acq?.condition, acq?.pnlProzent ?: f.pnlProzent)
     }
 
 /** Die drei Teilsummen und der Gesamtwert der Finanzseite. */
-data class FinanzSummen(val sets: BigDecimal, val teile: BigDecimal, val figuren: BigDecimal, val gesamt: BigDecimal) {
-    val teileUndFiguren: BigDecimal get() = teile + figuren
+data class FinanceSums(val sets: BigDecimal, val teile: BigDecimal, val figuren: BigDecimal, val gesamt: BigDecimal) {
+    val partsAndMinifigs: BigDecimal get() = teile + figuren
 }
 
 private fun betrag(text: String?): BigDecimal = text?.trim()?.toBigDecimalOrNull() ?: BigDecimal.ZERO
@@ -93,47 +93,47 @@ private fun betrag(text: String?): BigDecimal = text?.trim()?.toBigDecimalOrNull
  * addiert die App die drei Serversummen — in BigDecimal, weil 0.1 + 0.2 als
  * Double nicht 0.3 ist und die Summe sonst neben der Kopfkachel abwiche.
  */
-fun finanzSummen(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): FinanzSummen {
+fun finanzSummen(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): FinanceSums {
     val sets = betrag(valuation.totals.avg)
     val teile = betrag(parts?.totalValue)
     val figuren = betrag(figs?.totalValue)
     val gesamt = pnl?.totals?.grandTotal?.trim()?.toBigDecimalOrNull() ?: (sets + teile + figuren)
-    return FinanzSummen(sets, teile, figuren, gesamt)
+    return FinanceSums(sets, teile, figuren, gesamt)
 }
 
 /**
  * Wie viele Kaufpreise in einer anderen Währung fehlen. /finance/pnl zählt über
  * alle drei Arten; ohne diese Antwort die Zahlen der drei Bewertungen.
  */
-internal fun fremdeKaufpreise(valuation: BewertungAnsicht?, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): Int =
+internal fun foreignPurchasePrices(valuation: BewertungAnsicht?, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): Int =
     pnl?.totals?.kaufpreiseFremdeWaehrung
         ?: ((valuation?.kaufpreiseFremdeWaehrung ?: 0) + (parts?.kaufpreiseFremdeWaehrung ?: 0) +
             (figs?.kaufpreiseFremdeWaehrung ?: 0))
 
 /**
- * Was die Kopfkarte zeigt. [mitBasis]: Der Server hat Positionen mit Kauf- UND
+ * Was die Kopfkarte zeigt. [withBase]: Der Server hat Positionen mit Kauf- UND
  * Marktpreis gerechnet; dann stammen Einstand, Marktwert und G/V aus dieser einen
  * Basis, damit Einstand + G/V = Marktwert gilt (wie im Web, basisAus).
- * [basisBekannt] ist false bei älteren Servern ohne diese Felder.
+ * [baseKnown] ist false bei älteren Servern ohne diese Felder.
  */
-internal data class FinanzKopf(
-    val basisBekannt: Boolean,
-    val mitBasis: Boolean,
+internal data class FinanceHeader(
+    val baseKnown: Boolean,
+    val withBase: Boolean,
     /** null = nicht bekannt (älterer Server). */
-    val einstand: BigDecimal?,
+    val cost: BigDecimal?,
     val wert: BigDecimal,
     /** null = keine G/V (ohne Basis). */
-    val guvBetrag: BigDecimal?,
-    val guvProzent: Double?,
+    val guvAmount: BigDecimal?,
+    val guvPercent: Double?,
     val gesamt: Int = 0,
-    val bewertet: Int = 0,
-    val ohneMarkt: Int = 0,
-    val ohneMarktEinstand: BigDecimal = BigDecimal.ZERO,
-    val ohneKauf: Int = 0,
-    val ohneKaufWert: BigDecimal = BigDecimal.ZERO,
+    val valued: Int = 0,
+    val withoutMarket: Int = 0,
+    val withoutMarketCost: BigDecimal = BigDecimal.ZERO,
+    val withoutPurchase: Int = 0,
+    val withoutPurchaseValue: BigDecimal = BigDecimal.ZERO,
 ) {
     /** Die Basiszeile steht nur, wenn gerechnet wurde und etwas fehlt — sonst sagt sie nichts. */
-    val basisZeileSichtbar: Boolean get() = mitBasis && (ohneMarkt > 0 || ohneKauf > 0)
+    val baseRowVisible: Boolean get() = withBase && (withoutMarket > 0 || withoutPurchase > 0)
 }
 
 /**
@@ -141,26 +141,26 @@ internal data class FinanzKopf(
  * pnl_prozent. Mit Basis, aber ohne eine bewertete Position, stehen die Summen aller
  * Positionen da und keine G/V — eine Prozentzahl gegen nichts wäre erfunden.
  */
-internal fun finanzKopf(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): FinanzKopf {
+internal fun financeHeader(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): FinanceHeader {
     val alle = finanzSummen(valuation, parts, figs, pnl).gesamt
     val t = pnl?.totals
     if (t?.basisEinstand == null)
-        return FinanzKopf(basisBekannt = false, mitBasis = false, einstand = null, wert = alle,
-            guvBetrag = null, guvProzent = t?.pnlProzent)
-    val bewertet = t.positionenBewertet ?: 0
-    val mitBasis = bewertet > 0
-    return FinanzKopf(
-        basisBekannt = true,
-        mitBasis = mitBasis,
-        einstand = if (mitBasis) betrag(t.basisEinstand) else t.purchase.trim().toBigDecimalOrNull(),
-        wert = if (mitBasis) betrag(t.basisMarktwert) else alle,
-        guvBetrag = if (mitBasis) betrag(t.basisGuvBetrag) else null,
-        guvProzent = if (mitBasis) t.pnlProzent else null,
+        return FinanceHeader(baseKnown = false, withBase = false, cost = null, wert = alle,
+            guvAmount = null, guvPercent = t?.pnlProzent)
+    val valued = t.positionenBewertet ?: 0
+    val withBase = valued > 0
+    return FinanceHeader(
+        baseKnown = true,
+        withBase = withBase,
+        cost = if (withBase) betrag(t.basisEinstand) else t.purchase.trim().toBigDecimalOrNull(),
+        wert = if (withBase) betrag(t.basisMarktwert) else alle,
+        guvAmount = if (withBase) betrag(t.basisGuvBetrag) else null,
+        guvPercent = if (withBase) t.pnlProzent else null,
         gesamt = t.positionen ?: 0,
-        bewertet = bewertet,
-        ohneMarkt = t.positionenOhneMarktpreis ?: 0,
-        ohneMarktEinstand = betrag(t.ohneMarktpreisEinstand),
-        ohneKauf = t.positionenOhneKaufpreis ?: 0,
-        ohneKaufWert = betrag(t.ohneKaufpreisMarktwert),
+        valued = valued,
+        withoutMarket = t.positionenOhneMarktpreis ?: 0,
+        withoutMarketCost = betrag(t.ohneMarktpreisEinstand),
+        withoutPurchase = t.positionenOhneKaufpreis ?: 0,
+        withoutPurchaseValue = betrag(t.ohneKaufpreisMarktwert),
     )
 }

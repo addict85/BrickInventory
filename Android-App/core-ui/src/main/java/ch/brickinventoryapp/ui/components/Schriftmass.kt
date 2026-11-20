@@ -12,30 +12,30 @@ import androidx.compose.ui.unit.dp
  * nebeneinander: Bei 200 % brach „CHF 700.00“ neben „Kaufpreis“ Ziffer für
  * Ziffer um. 1,3 ist die erste Stufe, die Android über „Gross“ anbietet.
  */
-const val GROSSE_SCHRIFT_AB = 1.3f
+const val LARGE_FONT_AB = 1.3f
 
-/** Ist die Schrift so gross, dass Zeilen umgestellt werden ([GROSSE_SCHRIFT_AB])? */
+/** Ist die Schrift so gross, dass Zeilen umgestellt werden ([LARGE_FONT_AB])? */
 @Composable
-fun grosseSchrift(): Boolean = LocalDensity.current.fontScale > GROSSE_SCHRIFT_AB
+fun largeFont(): Boolean = LocalDensity.current.fontScale > LARGE_FONT_AB
 
 /**
  * Ein Symbol neben Schrift wächst mit ihr, höchstens aufs Doppelte: Ein Stift von
  * 14 dp neben 32 sp hohem Text war bei 200 % kaum noch zu sehen.
  */
 @Composable
-fun mitSchrift(basis: Dp): Dp = basis * LocalDensity.current.fontScale.coerceIn(1f, 2f)
+fun withFont(basis: Dp): Dp = basis * LocalDensity.current.fontScale.coerceIn(1f, 2f)
 
 /** Ab dieser Rasterbreite gilt ein Fenster als breit (Tablet, Querformat). */
-private val BREITES_RASTER = 840.dp
+private val WIDE_RASTER = 840.dp
 
 /**
  * Rasterspalten mit [mindestens] als Mindestbreite einer Kachel, gewachsen mit der
  * Schrift (höchstens doppelt) und auf breiten Fenstern um die Hälfte: Bei 200 % kürzte
  * eine 110-dp-Kachel jeden Namen, auf dem Tablet standen kleine Kacheln in einer Ecke.
  */
-data class LesbareSpalten(val mindestens: Dp) : GridCells {
+data class ReadableColumns(val mindestens: Dp) : GridCells {
     override fun Density.calculateCrossAxisCellSizes(availableSize: Int, spacing: Int): List<Int> {
-        val breit = availableSize.toDp() >= BREITES_RASTER
+        val breit = availableSize.toDp() >= WIDE_RASTER
         val breite = mindestens * fontScale.coerceIn(1f, 2f) * (if (breit) 1.5f else 1f)
         return with(GridCells.Adaptive(breite)) { calculateCrossAxisCellSizes(availableSize, spacing) }
     }

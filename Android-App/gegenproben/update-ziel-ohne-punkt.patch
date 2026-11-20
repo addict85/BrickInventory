@@ -1,15 +1,15 @@
 Gegenprobe: Die Update-Hosts werden mit endsWith ohne Punkt geprüft
 Modul: core-data
-Test: ch.brickinventoryapp.data.UpdateUmleitungTest
+Test: ch.brickinventoryapp.data.UpdateRedirectTest
 Rot: nur GitHub und sein CDN
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt
 @@ -7,7 +7,7 @@ import java.io.IOException
  
  /** Wohin der Update-Client darf: GitHub und sein Ablage-CDN, nur über https auf 443. */
- internal fun updateZielErlaubt(url: HttpUrl): Boolean =
+ internal fun updateTargetAllowed(url: HttpUrl): Boolean =
 -    url.isHttps && url.port == 443 && (url.host == "github.com" || url.host.endsWith(".githubusercontent.com"))
 +    url.isHttps && url.port == 443 && (url.host == "github.com" || url.host.endsWith("githubusercontent.com"))
  

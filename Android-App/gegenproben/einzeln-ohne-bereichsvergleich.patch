@@ -1,17 +1,17 @@
 Gegenprobe: abgeglichenEinzeln() legt ab, auch wenn das Konto während des Abrufs wechselte
 Modul: core-data
-Test: ch.brickinventoryapp.data.CacheBereichTest
+Test: ch.brickinventoryapp.data.CacheAreaTest
 Rot: wechselt das Konto waehrend des Abrufs
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
 @@ -142,7 +142,7 @@
- internal suspend fun <T : Any, E : T?> Offlineablage.abgeglichenEinzeln(fach: Fach<T>, call: suspend () -> Ergebnis<E>): Ergebnis<E> {
+ internal suspend fun <T : Any, E : T?> Offlineablage.reconciledSingle(fach: Fach<T>, call: suspend () -> Ergebnis<E>): Ergebnis<E> {
      val vorher = bereich()
      val frisch = call()
 -    val bereich = bereich()?.takeIf { it == vorher } ?: return frisch
 +    val bereich = bereich() ?: return frisch
      if (frisch is Ergebnis.Erfolg) {
          // Ohne Wert (eine Antwort ohne stats) bleibt die Ablage, wie sie ist.
-         frisch.data?.let { uebernimm(fach, listOf(it as T), bereich) }
+         frisch.data?.let { adopt(fach, listOf(it as T), bereich) }

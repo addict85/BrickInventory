@@ -1,6 +1,6 @@
 Gegenprobe: Vormerken loescht den Kauf gleich
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaecheEinheitlichTest
+Test: ch.brickinventoryapp.app.UiUniformTest
 Rot: Kauf loeschen bietet Rueckgaengig
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/viewmodel/KaeufeViewModel.kt
@@ -9,9 +9,9 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
 @@ -155,7 +155,7 @@
      }
  
-     override fun kaufLoeschenVormerken(type: Postenart, id: String, colorId: Int, acqId: Int) =
--        kaufWeg.vormerken(VorgemerkterKauf(type, id, colorId, acqId))
+     override fun purchaseDeleteReserve(type: Postenart, id: String, colorId: Int, acqId: Int) =
+-        purchaseRoute.reserve(ReservedPurchase(type, id, colorId, acqId))
 +        if (type == Postenart.SET) deleteAcquisition(id, acqId) else deleteManualAcquisition(type, id, colorId, acqId)
  
      /** Hat die Ablage die neue Summe des Sets schon übernommen, folgt die Kachel; sonst wird der Stand geholt. */
-     private suspend fun setGeaendert(uebernommen: Boolean) {
+     private suspend fun setChanged(uebernommen: Boolean) {

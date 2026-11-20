@@ -17,21 +17,21 @@ import javax.crypto.spec.SecretKeySpec
  * je Prozess statt einer je Datei; verschlüsselt wird in Software mit einem Schlüssel,
  * der lesbar nur im Speicher der App liegt. Je Zweck ein abgeleiteter ([fuer]).
  */
-class Ablageschluessel(private val datei: File, private val tresor: TokenVerschluesselung) {
+class Ablageschluessel(private val datei: File, private val tresor: TokenEncryption) {
     @Volatile private var bekannt: ByteArray? = null
 
     /** Eben neu angelegt: Was mit einem früheren Schlüssel verschlüsselt lag, ist nicht mehr lesbar. */
-    @Volatile var neuAngelegt: Boolean = false
+    @Volatile var newCreated: Boolean = false
         private set
 
     @Synchronized
-    fun hole(): ByteArray {
+    fun fetch(): ByteArray {
         bekannt?.let { return it }
         if (datei.isFile) {
             val umhuellt = datei.readText().trim()
-            when (val befund = tresor.oeffne(umhuellt)) {
-                is Tresorbefund.Lesbar -> hexZuBytes(befund.klartext)?.takeIf { it.size == LAENGE }?.let {
-                    if (tresor.veraltet(umhuellt)) umhuelleNeu(befund.klartext)
+            when (val finding = tresor.oeffne(umhuellt)) {
+                is Tresorbefund.Readable -> hexToBytes(finding.klartext)?.takeIf { it.size == LENGTH }?.let {
+                    if (tresor.veraltet(umhuellt)) wrapNew(finding.klartext)
                     bekannt = it
                     return it
                 }
@@ -40,12 +40,12 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
                 Tresorbefund.Weg -> Unit
             }
         }
-        val neu = ByteArray(LAENGE).also(SecureRandom()::nextBytes)
+        val neu = ByteArray(LENGTH).also(SecureRandom()::nextBytes)
         // Wie beim Lesen: Ein Keystore, der gesperrt nicht verschlüsselt, heisst „später“.
         val umhuellt = fangeAusserAbbruch { tresor.verschluessle(neu.joinToString("") { "%02x".format(it) }) }
             .getOrElse { throw IOException("Keystore gerade nicht bereit", it) }
         schreibe(umhuellt)
-        neuAngelegt = true
+        newCreated = true
         bekannt = neu
         return neu
     }
@@ -63,9 +63,9 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
      * umhüllt: Die Ablagen bleiben lesbar. Scheitert es (gesperrt), beim nächsten Zugriff.
      * Erst wenn die neue Hülle auf der Platte steht, geht der alte Alias.
      */
-    private fun umhuelleNeu(hex: String) {
+    private fun wrapNew(hex: String) {
         fangeAusserAbbruch { schreibe(tresor.verschluessle(hex)) }
-            .onSuccess { fangeAusserAbbruch { tresor.vergissAltbestand() } }
+            .onSuccess { fangeAusserAbbruch { tresor.forgetLegacyStock() } }
             .onFailure { Protokoll.warnung("Ablage", "Ablageschlüssel nicht umgeschlüsselt", it) }
     }
 
@@ -73,10 +73,10 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
     @Volatile var stand: Long = 0
         private set
 
-    private val vorErneuerung = CopyOnWriteArrayList<() -> Unit>()
+    private val beforeRenewal = CopyOnWriteArrayList<() -> Unit>()
 
     /** Für Ablagen, die den Schlüssel länger halten als einen Zugriff (die Datenbank): zu und weg damit. */
-    fun vorErneuerung(hoerer: () -> Unit) { vorErneuerung += hoerer }
+    fun beforeRenewal(listener: () -> Unit) { beforeRenewal += listener }
 
     /**
      * Krypto-Shredding beim Abmelden: Ein neuer Schlüssel macht alles unlesbar, was mit dem
@@ -84,26 +84,26 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
      * niemand dazwischen mit dem alten Schlüssel neu öffnet.
      */
     @Synchronized
-    fun erneuere() {
-        vorErneuerung.forEach { it() }
+    fun renew() {
+        beforeRenewal.forEach { it() }
         datei.delete()
         runCatching { tresor.vergiss() }
         bekannt = null
         stand++
         // Gesperrt entsteht der neue erst beim nächsten Zugriff: Ein Abmelden im Hintergrund
         // soll nicht scheitern, nur weil das Gerät gerade nichts verschlüsseln lässt.
-        fangeAusserAbbruch { hole() }
+        fangeAusserAbbruch { fetch() }
     }
 
     /** Abgeleitet mit HMAC-SHA256: Datenbank und Dateien teilen keinen Schlüssel. */
     fun fuer(zweck: String): ByteArray = Mac.getInstance("HmacSHA256").run {
-        init(SecretKeySpec(hole(), "HmacSHA256"))
+        init(SecretKeySpec(fetch(), "HmacSHA256"))
         doFinal(zweck.toByteArray(Charsets.UTF_8))
     }
 
     private companion object {
-        const val LAENGE = 32
-        fun hexZuBytes(hex: String): ByteArray? =
+        const val LENGTH = 32
+        fun hexToBytes(hex: String): ByteArray? =
             if (hex.length % 2 != 0 || hex.any { it !in "0123456789abcdef" }) null
             else ByteArray(hex.length / 2) { hex.substring(it * 2, it * 2 + 2).toInt(16).toByte() }
     }
@@ -115,44 +115,44 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenVerschl
  * scheitert an der Prüfung, statt als die andere gelesen zu werden. Ohne
  * Kennung gilt eine Datei als Altbestand im Klartext; der Aufrufer verwirft sie.
  */
-class AblageChiffre(private val schluessel: () -> ByteArray) {
+class StoreCipher(private val schluessel: () -> ByteArray) {
 
     fun verschluessle(klartext: ByteArray, bindung: String): ByteArray {
-        val iv = ByteArray(IV_LAENGE).also(SecureRandom()::nextBytes)
-        val c = Cipher.getInstance(VERFAHREN)
+        val iv = ByteArray(IV_LENGTH).also(SecureRandom()::nextBytes)
+        val c = Cipher.getInstance(PROCEDURE)
         c.init(Cipher.ENCRYPT_MODE, SecretKeySpec(schluessel(), "AES"), GCMParameterSpec(TAG_BITS, iv))
         c.updateAAD(bindung.toByteArray(Charsets.UTF_8))
-        return KENNUNG + iv + c.doFinal(klartext)
+        return ID + iv + c.doFinal(klartext)
     }
 
     /** null, wenn die Daten nicht von hier stammen, verändert, anders gebunden oder mit einem anderen Schlüssel sind. */
-    fun entschluessle(daten: ByteArray, bindung: String): ByteArray? = oeffne(daten, KENNUNG, bindung)
+    fun entschluessle(daten: ByteArray, bindung: String): ByteArray? = oeffne(daten, ID, bindung)
 
     /**
      * Nur zur einmaligen Übernahme: die Fassung ohne Bindung (Kennung 1). Wer so
      * liest, legt die Daten sofort gebunden neu ab, damit kein Altbestand bleibt.
      */
-    fun entschluessleUngebunden(daten: ByteArray): ByteArray? = oeffne(daten, KENNUNG_UNGEBUNDEN, null)
+    fun entschluessleUnbound(daten: ByteArray): ByteArray? = oeffne(daten, ID_UNBOUND, null)
 
     // Der Schlüssel ausserhalb von runCatching: Ein gesperrter Keystore (IOException) ist kein
     // unlesbarer Geheimtext; als null gelesen, löschten Aufrufer die Datei.
     private fun oeffne(daten: ByteArray, kennung: ByteArray, bindung: String?): ByteArray? {
-        if (daten.size <= kennung.size + IV_LAENGE || !daten.copyOfRange(0, kennung.size).contentEquals(kennung)) return null
+        if (daten.size <= kennung.size + IV_LENGTH || !daten.copyOfRange(0, kennung.size).contentEquals(kennung)) return null
         val k = SecretKeySpec(schluessel(), "AES")
         return runCatching {
-            val c = Cipher.getInstance(VERFAHREN)
+            val c = Cipher.getInstance(PROCEDURE)
             c.init(Cipher.DECRYPT_MODE, k,
-                GCMParameterSpec(TAG_BITS, daten, kennung.size, IV_LAENGE))
+                GCMParameterSpec(TAG_BITS, daten, kennung.size, IV_LENGTH))
             if (bindung != null) c.updateAAD(bindung.toByteArray(Charsets.UTF_8))
-            c.doFinal(daten, kennung.size + IV_LAENGE, daten.size - kennung.size - IV_LAENGE)
+            c.doFinal(daten, kennung.size + IV_LENGTH, daten.size - kennung.size - IV_LENGTH)
         }.getOrNull()
     }
 
     private companion object {
-        const val VERFAHREN = "AES/GCM/NoPadding"
-        const val IV_LAENGE = 12
+        const val PROCEDURE = "AES/GCM/NoPadding"
+        const val IV_LENGTH = 12
         const val TAG_BITS = 128
-        val KENNUNG = byteArrayOf('B'.code.toByte(), 'I'.code.toByte(), 'A'.code.toByte(), 2)
-        val KENNUNG_UNGEBUNDEN = byteArrayOf('B'.code.toByte(), 'I'.code.toByte(), 'A'.code.toByte(), 1)
+        val ID = byteArrayOf('B'.code.toByte(), 'I'.code.toByte(), 'A'.code.toByte(), 2)
+        val ID_UNBOUND = byteArrayOf('B'.code.toByte(), 'I'.code.toByte(), 'A'.code.toByte(), 1)
     }
 }

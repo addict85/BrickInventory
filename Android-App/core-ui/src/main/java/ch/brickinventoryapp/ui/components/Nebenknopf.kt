@@ -14,7 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.gesperrtFarben
+import ch.brickinventoryapp.ui.theme.lockedColors
 
 /**
  * Schrift des umrandeten Nebenknopfs in der Hauptfarbe. Die Material-Vorgabe setzt sie
@@ -24,7 +24,7 @@ import ch.brickinventoryapp.ui.theme.gesperrtFarben
 @Composable
 fun nebenKnopfFarben(): ButtonColors = ButtonDefaults.outlinedButtonColors(
     contentColor = MaterialTheme.colorScheme.primary,
-    disabledContentColor = gesperrtFarben(MaterialTheme.colorScheme).schrift,
+    disabledContentColor = lockedColors(MaterialTheme.colorScheme).schrift,
 )
 
 /**
@@ -34,7 +34,7 @@ fun nebenKnopfFarben(): ButtonColors = ButtonDefaults.outlinedButtonColors(
 @Composable
 fun nebenKnopfRand(aktiv: Boolean = true): BorderStroke =
     BorderStroke(1.dp, if (aktiv) MaterialTheme.colorScheme.outline
-                       else gesperrtFarben(MaterialTheme.colorScheme).rand)
+                       else lockedColors(MaterialTheme.colorScheme).edge)
 
 /**
  * Gestapelte Knöpfe gleich breit, so breit wie der breiteste: „Set merken“ stand
@@ -42,7 +42,7 @@ fun nebenKnopfRand(aktiv: Boolean = true): BorderStroke =
  * nimmt `Modifier.fillMaxWidth()`.
  */
 @Composable
-fun KnopfStapel(inhalt: @Composable ColumnScope.() -> Unit) {
+fun ButtonStack(inhalt: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.width(IntrinsicSize.Max), horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Abstaende.klein), content = inhalt)
 }

@@ -8,7 +8,7 @@ import javax.inject.Singleton
 private val SETNUMMER = Regex("^[0-9A-Za-z-]{1,20}$")
 
 /** Die Setnummer, wenn sie dem Format genügt, sonst null. */
-fun setnummerAusMeldung(roh: String?): String? = roh?.takeIf { SETNUMMER.matches(it) }
+fun setNumberFromMessage(roh: String?): String? = roh?.takeIf { SETNUMMER.matches(it) }
 
 /**
  * Das Ziel einer angetippten Meldung, im Prozess abgelegt. Die exportierte
@@ -21,7 +21,7 @@ class Meldungseingang @Inject constructor() {
 
     /** @return false, wenn [roh] keine Setnummer ist; dann bleibt nichts liegen. */
     fun ablegen(roh: String?): Boolean {
-        val sn = setnummerAusMeldung(roh) ?: return false
+        val sn = setNumberFromMessage(roh) ?: return false
         ziel.set(sn)
         return true
     }

@@ -1,17 +1,17 @@
 Gegenprobe: Teilekategorien unübersetzt
 Modul: core-model
-Test: ch.brickinventoryapp.model.KategorieDeutschTest
+Test: ch.brickinventoryapp.model.CategoryGermanTest
 Rot: bekannte Kategorien lesen sich deutsch
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/KategorieDeutsch.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/KategorieDeutsch.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/KategorieDeutsch.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/KategorieDeutsch.kt
-@@ -38,7 +38,7 @@ object KategorieDeutsch {
-         val trenner = Regex("""\s*(,|-)\s*|\s+""").findAll(en.trim()).map { it.value.trim() }.toList()
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/CategoryGerman.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/CategoryGerman.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/CategoryGerman.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/CategoryGerman.kt
+@@ -38,7 +38,7 @@ object CategoryGerman {
+         val separator = Regex("""\s*(,|-)\s*|\s+""").findAll(en.trim()).map { it.value.trim() }.toList()
          val sb = StringBuilder()
          teile.forEachIndexed { i, wort ->
--            val de = woerter[wort.lowercase()] ?: wort
+-            val de = words[wort.lowercase()] ?: wort
 +            val de = wort
              if (i > 0) {
-                 val t = trenner.getOrNull(i - 1).orEmpty()
-                 val vorher = woerter[teile[i - 1].lowercase()]
+                 val t = separator.getOrNull(i - 1).orEmpty()
+                 val vorher = words[teile[i - 1].lowercase()]

@@ -32,7 +32,7 @@ import ch.brickinventoryapp.testing.Quellen
 class ListScrollPositionTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -117,9 +117,9 @@ class ListScrollPositionTest {
         val abgedeckt = raster + spalten + listOf("katalog/ui/screens/CatalogScreen.kt")
         val ohneRollbereich = listOf("sammlung/ui/screens/ComparisonScreen.kt")
 
-        val alleReiter = abgedeckt + ohneRollbereich
-        assert(alleReiter.size == 7) {
-            "Die App hat sieben Reiter; hier stehen ${alleReiter.size}. Wurde einer " +
+        val allTab = abgedeckt + ohneRollbereich
+        assert(allTab.size == 7) {
+            "Die App hat sieben Reiter; hier stehen ${allTab.size}. Wurde einer " +
                 "hinzugefügt, gehört er in `abgedeckt` — oder, wenn er nichts zu " +
                 "rollen hat, in `ohneRollbereich`."
         }
@@ -144,9 +144,9 @@ class ListScrollPositionTest {
         for (alt in listOf("Rollzustaende", "rememberLazyGridState", "rememberLazyListState", "rememberScrollState")) {
             assert(!nav.contains(alt)) { "AppNavigation hält wieder Rollzustände ($alt) — eine zweite Quelle" }
         }
-        val graphen = listOf("sammlung/ui/SammlungGraph.kt", "teile/ui/TeileGraph.kt", "finanzen/ui/FinanzenGraph.kt",
+        val graphs = listOf("sammlung/ui/SammlungGraph.kt", "teile/ui/TeileGraph.kt", "finanzen/ui/FinanzenGraph.kt",
             "konto/ui/KontoGraph.kt")
-        val graph = graphen.joinToString("\n") { code(read(it)) }
+        val graph = graphs.joinToString("\n") { code(read(it)) }
         for (zweite in listOf("rememberLazyGridState(", "rememberLazyListState(", "rememberScrollState(", "navigation.rollen")) {
             assert(!graph.contains(zweite)) { "Ein Graph hält die Stelle wieder selbst ($zweite)" }
         }
@@ -199,18 +199,18 @@ class ListScrollPositionTest {
 
         // Und die beiden Fallen von oben dürfen im gemeinsamen Helfer nicht
         // wieder auftauchen.
-        val helfer = code(read("ui/ScrollMemory.kt"))
-        assert(!helfer.contains("rememberSaveable")) {
+        val helper = code(read("ui/ScrollMemory.kt"))
+        assert(!helper.contains("rememberSaveable")) {
             "Der Merker im Helfer ist `rememberSaveable` — dann überlebt er den " +
                 "Ausflug und schaltet die Wiederherstellung dauerhaft ab"
         }
-        assert(helfer.contains("if (!wiederhergestellt) return@LaunchedEffect")) {
+        assert(helper.contains("if (!wiederhergestellt) return@LaunchedEffect")) {
             "Der Melder läuft los, bevor zurückgesprungen wurde — er überschreibt " +
                 "dann die gemerkte Position mit der Null des frischen Zustands"
         }
-        val ersterSprung = helfer.indexOf("scrollToItem")
-        val ersterMerker = helfer.indexOf("wiederhergestellt = true")
-        assert(ersterSprung in 0 until ersterMerker) {
+        val firstJump = helper.indexOf("scrollToItem")
+        val firstMarker = helper.indexOf("wiederhergestellt = true")
+        assert(firstJump in 0 until firstMarker) {
             "Der Merker steht vor dem Sprung statt danach"
         }
 
@@ -219,14 +219,14 @@ class ListScrollPositionTest {
         val gal = code(read("sammlung/ui/Galerie.kt"))
         for (fn in listOf("setzeSuche", "setzeThema", "setzeSortierung")) {
             // Funktionsrumpf statt eines festen Zeichenfensters. Siehe Quellen.kt.
-            val rumpf = Quellen.funktion(gal, "fun $fn(")
+            val rumpf = Quellen.function(gal, "fun $fn(")
             assert(rumpf.isNotEmpty()) { "$fn fehlt" }
             assert(rumpf.contains("vergissScroll()")) {
                 "$fn verwirft die gemerkte Rollposition nicht"
             }
         }
         // Dass dabei die Stelle der GALERIE vergessen wird, prüft
-        // GalerieViewModelTest ausgeführt.
+        // GalleryViewModelTest ausgeführt.
     }
 
     @Test
@@ -277,15 +277,15 @@ class ListScrollPositionTest {
             "Die Jahresleiste bekommt die Stelle der Liste gar nicht zu sehen — " +
                 "`listenNummer` wird nicht übergeben"
         }
-        val ausdruck = uebergabe!!.groupValues[1]
-        val unmittelbar = ausdruck == "gridState.firstVisibleItemIndex"
+        val expression = uebergabe!!.groupValues[1]
+        val unmittelbar = expression == "gridState.firstVisibleItemIndex"
         val abgeleitet = Regex(
-            """val\s+""" + Regex.escape(ausdruck) +
+            """val\s+""" + Regex.escape(expression) +
                 """\s+by\s+remember[^{]*\{\s*derivedStateOf\s*\{\s*""" +
                 """gridState\.firstVisibleItemIndex\s*\}"""
         ).containsMatchIn(katalog)
         assert(unmittelbar || abgeleitet) {
-            "`listenNummer = $ausdruck` geht nicht auf gridState.firstVisibleItemIndex " +
+            "`listenNummer = $expression` geht nicht auf gridState.firstVisibleItemIndex " +
                 "zurück — die Jahresleiste zeigt dann nicht, wo die Liste steht"
         }
     }

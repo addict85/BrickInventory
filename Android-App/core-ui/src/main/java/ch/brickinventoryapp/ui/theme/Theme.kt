@@ -22,23 +22,23 @@ val LocalIsBrickTheme = staticCompositionLocalOf { false }
 // Themenstreifen. Ein eigener Merker statt eines Vergleichs auf den
 // Design-Namen quer durch die Bildschirme — sonst muesste jede Stelle den
 // Namen kennen.
-val LocalIsFarbfaecherTheme = staticCompositionLocalOf { false }
+val LocalIsColorSlotsTheme = staticCompositionLocalOf { false }
 
 /**
  * Traegt die Kachel im Design "noppe" einen Steindeckel?
  *
- * Wie [LocalIsFarbfaecherTheme]: Die Kachel selbst soll in allen Designs
+ * Wie [LocalIsColorSlotsTheme]: Die Kachel selbst soll in allen Designs
  * dieselbe Auszeichnung behalten, und nur dieses Local entscheidet, ob der
  * Deckel dazukommt.
  */
-val LocalIsNoppeTheme = staticCompositionLocalOf { false }
+val LocalIsStudTheme = staticCompositionLocalOf { false }
 
 /**
  * Trägt die Oberfläche den Lack des Designs "hochglanz"? Getrennt von
- * [LocalIsNoppeTheme]: "hochglanz" ist "noppe" in anderem Material; die Kachel
+ * [LocalIsStudTheme]: "hochglanz" ist "noppe" in anderem Material; die Kachel
  * fragt beides, ein Local mit drei Zuständen erzwänge überall eine Fallunterscheidung.
  */
-val LocalIstGlanz = staticCompositionLocalOf { false }
+val LocalIsGloss = staticCompositionLocalOf { false }
 
 // BrandBlue, BrandBlueDark, BrandBlueLight und BrandBlue50 stehen in
 // DesignTokens.kt — erzeugt aus shared/design-tokens.json, damit sie mit der
@@ -87,8 +87,8 @@ private val LightColors = lightColorScheme(
 val PetrolLight      = Color(0xFFCFE3E8)
 val BrickSand        = Color(0xFFE9DED0)  // "Gebraucht"-Akzent (Container)
 val BrickSandText    = Color(0xFF5C4A2E)
-val BrickSage        = Color(0xFFE1EBE2)  // "Neu"-Akzent (Container, Salbeigrün)
-val BrickSageText    = Color(0xFF4A6B52)
+val BrickSay        = Color(0xFFE1EBE2)  // "Neu"-Akzent (Container, Salbeigrün)
+val BrickSayText    = Color(0xFF4A6B52)
 val BrickStud        = Color(0xFF6E8CB0)  // Noppen-/Deckelfarbe (heller Schiefer)
 
 private val BrickBlueColors = lightColorScheme(
@@ -168,7 +168,7 @@ private val WerkbankColors = darkColorScheme(
 // Graue Bedienung: Die Markenfarbe ist hier fast schwarz, damit die
 // Themenfarben (FaecherFarben in DesignTokens.kt) die einzigen bunten
 // Flaechen sind und deshalb etwas bedeuten.
-private val FarbfaecherColors = lightColorScheme(
+private val ColorSlotsColors = lightColorScheme(
     primary              = FaecherTinte,
     onPrimary            = Color.White,
     primaryContainer     = FaecherTinteHell,
@@ -195,23 +195,23 @@ private val FarbfaecherColors = lightColorScheme(
 // `outline` ist die TINTE, weil in diesem Design der Rahmen trägt, nicht der Schatten.
 // Rot steht in keiner Rolle, nur auf den Steindeckeln: In Wertkarte, „Neu“-Plakette
 // und Knöpfen las es sich als Verlust oder Fehler. Blau führt, Gelb ist der Akzent.
-private val NoppeBlau = Color(0xFF1A5FB8)
-private val NoppeBlauHell = Color(0xFFE3EDFA)
-private val NoppeGelbHell = Color(0xFFFFF3C4)
-private val NoppeOcker = Color(0xFF7A5200)
+private val StudBlue = Color(0xFF1A5FB8)
+private val StudBlueLight = Color(0xFFE3EDFA)
+private val StudYellowLight = Color(0xFFFFF3C4)
+private val StudOcker = Color(0xFF7A5200)
 
-private val NoppeColors = lightColorScheme(
-    primary              = NoppeBlau,
+private val StudColors = lightColorScheme(
+    primary              = StudBlue,
     onPrimary            = Color.White,
-    primaryContainer     = NoppeBlauHell,
+    primaryContainer     = StudBlueLight,
     onPrimaryContainer   = NoppeTinte,
     secondary            = NoppeTinte,
     onSecondary          = Color.White,
     secondaryContainer   = Color(0xFFEEF1F6),
     onSecondaryContainer = NoppeTinte,
-    tertiary             = NoppeOcker,
+    tertiary             = StudOcker,
     onTertiary           = Color.White,
-    tertiaryContainer    = NoppeGelbHell,
+    tertiaryContainer    = StudYellowLight,
     onTertiaryContainer  = NoppeTinte,
     background           = Color(0xFFEEF1F6),
     surface              = Color.White,
@@ -219,7 +219,7 @@ private val NoppeColors = lightColorScheme(
     onSurface            = NoppeTinte,
     onSurfaceVariant     = Color(0xFF5A6270),
     outline              = NoppeTinte,
-    // Derselbe Wert, den ergaenzeRollen() vorher aus surface und onSurface mischte.
+    // Derselbe Wert, den supplementRoles() vorher aus surface und onSurface mischte.
     outlineVariant       = Color(0xFFD7D8DA),
     error                = Color(0xFFB91C1C),
 )
@@ -229,7 +229,7 @@ private val NoppeColors = lightColorScheme(
  * kantig. Drei statische Schnitte statt des variablen, der FontVariation und damit
  * eine API-Stufe bräuchte; dieselben Formen wie public/vendor/fonts/ im Web.
  */
-private val NunitoFamilie = FontFamily(
+private val NunitoFamily = FontFamily(
     Font(R.font.nunito_regular, FontWeight.Normal),
     Font(R.font.nunito_bold, FontWeight.Bold),
     Font(R.font.nunito_black, FontWeight.Black),
@@ -240,7 +240,7 @@ private val NunitoFamilie = FontFamily(
  * Designs ausser "noppe". Statische Schnitte aus dem Variablen Schnitt der
  * Webapp, aus demselben Grund wie bei Nunito oben.
  */
-private val JakartaFamilie = FontFamily(
+private val JakartaFamily = FontFamily(
     Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal),
     Font(R.font.plus_jakarta_sans_medium, FontWeight.Medium),
     Font(R.font.plus_jakarta_sans_semibold, FontWeight.SemiBold),
@@ -253,7 +253,7 @@ private val JakartaFamilie = FontFamily(
  * getauscht, keine Grösse und kein Gewicht — sonst verschöbe ein Designwechsel
  * die ganze Oberfläche, und AbstandsskalaTest hätte recht damit, das zu melden.
  */
-private fun mitFamilie(f: FontFamily): Typography = Typography().let { t ->
+private fun withFamily(f: FontFamily): Typography = Typography().let { t ->
     Typography(
         displayLarge = t.displayLarge.copy(fontFamily = f),
         displayMedium = t.displayMedium.copy(fontFamily = f),
@@ -274,44 +274,44 @@ private fun mitFamilie(f: FontFamily): Typography = Typography().let { t ->
 }
 
 /** Die Typografie des Designs "noppe": dieselbe Skala, andere Schrift. */
-private val NoppeTypografie: Typography = mitFamilie(NunitoFamilie)
-private val MarkenTypografie: Typography = mitFamilie(JakartaFamilie)
+private val StudTypography: Typography = withFamily(NunitoFamily)
+private val BrandsTypography: Typography = withFamily(JakartaFamily)
 
 /**
  * Die Deckelfarbe einer Kachel im Design "noppe".
  *
  * Position modulo sechs, genau wie `.sc:nth-child(6n+…)` in themes/noppe.css.
  * Sie bedeutet NICHTS und gibt nur Takt — der ausdrueckliche Unterschied zu
- * [faecherTon] darunter, wo die Farbe das Thema IST.
+ * [slotsTone] darunter, wo die Farbe das Thema IST.
  */
-fun steinTon(position: Int): Color =
+fun brickTone(position: Int): Color =
     SteinFarben[((position % SteinFarben.size) + SteinFarben.size) % SteinFarben.size]
 
 /**
  * Der Ton eines LEGO-Themas im Design "farbfaecher".
  *
- * Thema-Nummer modulo zwoelf, genau wie `--faecher-ton` in der Webapp. Ohne
+ * Thema-Nummer modulo zwoelf, genau wie `--slots-tone` in der Webapp. Ohne
  * Nummer gibt es keinen Ton — dann bleibt der Streifen weg, statt einen
  * falschen zu zeigen (dieselbe Regel wie applyTheme(): keine Information
  * aendert nichts).
  */
-fun faecherTon(themaNummer: Int?): Color? =
-    themaNummer?.let { FaecherFarben[((it % FaecherFarben.size) + FaecherFarben.size) % FaecherFarben.size] }
+fun slotsTone(themeNumber: Int?): Color? =
+    themeNumber?.let { FaecherFarben[((it % FaecherFarben.size) + FaecherFarben.size) % FaecherFarben.size] }
 
 val LocalChartColors = staticCompositionLocalOf {
     ChartColors(new = ChartNewClassic, used = ChartUsedClassic)
 }
 
-/** Farben der Stein-Dekoration (Noppen, Schieferkachel) — hell oder dunkel, siehe dunkleSteinDekor(). */
-data class SteinDekor(val noppen: Color, val schiefer: Color, val aufSchiefer: Color)
+/** Farben der Stein-Dekoration (Noppen, Schieferkachel) — hell oder dunkel, siehe darkBrickDecor(). */
+data class BrickDecor(val studs: Color, val slate: Color, val onSlate: Color)
 
-val LocalSteinDekor = staticCompositionLocalOf { SteinDekor(SlateBlueNoppe, SlateBlue, Color.White) }
+val LocalBrickDecor = staticCompositionLocalOf { BrickDecor(SlateBlueNoppe, SlateBlue, Color.White) }
 
 /**
  * Die dunkle Fassung eines Designs aus den Tokens (DunkelTokens.kt). Dieselbe
  * Zuordnung wie WerkbankColors, nur mit den Markenfarben des Designs.
  */
-private fun dunklesSchema(theme: Design): ColorScheme = dunkleRollen(theme).let { r ->
+private fun darkSchema(theme: Design): ColorScheme = darkRoles(theme).let { r ->
     darkColorScheme(
         primary = Color(r.primary), onPrimary = Color(r.onPrimary),
         primaryContainer = Color(r.primaryContainer), onPrimaryContainer = Color(r.onPrimaryContainer),
@@ -331,23 +331,23 @@ private fun dunklesSchema(theme: Design): ColorScheme = dunkleRollen(theme).let 
  * `when` statt geschachtelter Bedingungen: Ein weiteres Design kostet eine Zeile.
  */
 internal fun farbschema(theme: Design, dunkel: Boolean = false): ColorScheme =
-    if (dunkel && hatDunkleFassung(theme)) ergaenzeRollen(dunklesSchema(theme).let {
+    if (dunkel && hatDarkVersion(theme)) supplementRoles(darkSchema(theme).let {
         // Wie hell: Das Noppe-Rot ist im Dunkeln kaum von der Fehlerfarbe zu unterscheiden.
         // Hauptfarbe wird das Blau der Diagrammlinie, die Container nehmen die blauen Stufen
         // von classic, und der Akzent bleibt das Bernstein der Basis.
         if (theme == Design.NOPPE || theme == Design.HOCHGLANZ) it.copy(primary = Color(0xFF6AA8FF),
-            primaryContainer = Color(argb(dunkelToken(Design.CLASSIC, "b50") ?: "#13233d")),
-            onPrimaryContainer = Color(argb(dunkelToken(Design.CLASSIC, "b700") ?: "#a9caff")))
+            primaryContainer = Color(argb(darkToken(Design.CLASSIC, "b50") ?: "#13233d")),
+            onPrimaryContainer = Color(argb(darkToken(Design.CLASSIC, "b700") ?: "#a9caff")))
         else it
     }, dunkel = true)
     else when (theme) {
         Design.BRICK -> BrickBlueColors
         Design.WERKBANK -> WerkbankColors
-        Design.FARBFAECHER -> FarbfaecherColors
+        Design.FARBFAECHER -> ColorSlotsColors
         // Hochglanz ist Noppe in anderem Material, nicht in anderen Farben (`erbt`).
-        Design.NOPPE, Design.HOCHGLANZ -> NoppeColors
+        Design.NOPPE, Design.HOCHGLANZ -> StudColors
         Design.CLASSIC -> LightColors
-    }.let { ergaenzeRollen(it, dunkel = theme == Design.WERKBANK) }
+    }.let { supplementRoles(it, dunkel = theme == Design.WERKBANK) }
 
 /**
  * Flächen mit eigener Farbe, die nicht aus einer Material-Rolle allein folgen:
@@ -356,10 +356,10 @@ internal fun farbschema(theme: Design, dunkel: Boolean = false): ColorScheme =
  * leuchteten auf Schwarz, und die Kaufpreis-Kachel stach den Marktwert aus.
  */
 data class Akzentflaechen(
-    val leiste: Color, val aufLeiste: Color,
-    val detailLeiste: Color, val aufDetailLeiste: Color,
-    val markt: Color, val aufMarkt: Color,
-    val kauf: Color, val aufKauf: Color,
+    val leiste: Color, val onBar: Color,
+    val detailLeiste: Color, val onDetailBar: Color,
+    val markt: Color, val onMarket: Color,
+    val kauf: Color, val onPurchase: Color,
 )
 
 /**
@@ -372,19 +372,19 @@ internal fun akzentflaechen(theme: Design, dunkel: Boolean, s: ColorScheme): Akz
     val stein = theme == Design.BRICK && !dunkel
     // Im Dunkeln liegt primaryContainer (--b50) kaum über surface; ein Viertel der
     // Hauptfarbe in surface gemischt ergibt einen mitteldunklen Ton wie Material 3s Stufe 30.
-    val nacht = s.surface.luminance() < 0.2f
+    val night = s.surface.luminance() < 0.2f
     val markt = when {
         stein -> Petrol
-        nacht -> lerp(s.surface, s.primary, 0.28f)
+        night -> lerp(s.surface, s.primary, 0.28f)
         else -> s.primary
     }
     return Akzentflaechen(
-        leiste = if (stein) s.primary else s.surface, aufLeiste = if (stein) s.onPrimary else s.onSurface,
-        detailLeiste = if (stein) s.secondary else s.surface, aufDetailLeiste = if (stein) s.onSecondary else s.onSurface,
-        markt = markt, aufMarkt = if (stein) Color.White else if (nacht) s.onSurface else s.onPrimary,
+        leiste = if (stein) s.primary else s.surface, onBar = if (stein) s.onPrimary else s.onSurface,
+        detailLeiste = if (stein) s.secondary else s.surface, onDetailBar = if (stein) s.onSecondary else s.onSurface,
+        markt = markt, onMarket = if (stein) Color.White else if (night) s.onSurface else s.onPrimary,
         // Kaufpreis wie G&V auf surface mit Rand: zwei Stufen (Marktwert hervorgehoben,
         // der Rest ruhig) statt dreier Kartenstile nebeneinander.
-        kauf = s.surface, aufKauf = s.onSurface,
+        kauf = s.surface, onPurchase = s.onSurface,
     )
 }
 
@@ -395,8 +395,8 @@ val LocalAkzentflaechen = staticCompositionLocalOf { akzentflaechen(Design.CLASS
  * Text 4,5:1 auf der Fläche.
  * Im Stein-Design gedeckter, damit es neben Salbeigrün und Sand nicht heraussticht.
  */
-internal fun statusFarbenFuer(theme: Design, dunkel: Boolean = false): StatusFarben = if (dunkel && hatDunkleFassung(theme)) {
-    dunkleRollen(theme).let { StatusFarben(erfolg = Color(it.erfolg), warnung = Color(it.warnung), fehler = Color(it.error)) }
+internal fun statusColorsFor(theme: Design, dunkel: Boolean = false): StatusFarben = if (dunkel && hatDarkVersion(theme)) {
+    darkRoles(theme).let { StatusFarben(erfolg = Color(it.erfolg), warnung = Color(it.warnung), fehler = Color(it.error)) }
 } else when (theme) {
     // Warnung zeichnet Balken und Symbole: 3:1 auf jeder hellen Fläche (WCAG 1.4.11).
     Design.BRICK -> StatusFarben(erfolg = Color(0xFF4E7058), warnung = Color(0xFF8C6A28), fehler = Color(0xFFA34B3C))
@@ -405,7 +405,7 @@ internal fun statusFarbenFuer(theme: Design, dunkel: Boolean = false): StatusFar
 }
 
 /** Farben der Navigationsleiste und der Seitenleiste (MainScaffold). */
-data class ReiterFarben(
+data class TabColors(
     val leiste: Color, val anzeige: Color, val aufAnzeige: Color,
     val gewaehlt: Color, val ungewaehlt: Color,
 )
@@ -415,7 +415,7 @@ data class ReiterFarben(
  * secondaryContainer, das sich von der Leiste kaum abhob (1,03:1). So trägt die
  * Fläche den Unterschied, nicht der Farbton des Symbols allein (WCAG 1.4.11).
  */
-fun reiterFarben(s: ColorScheme) = ReiterFarben(
+fun tabColors(s: ColorScheme) = TabColors(
     leiste = s.surfaceContainer, anzeige = s.primary, aufAnzeige = s.onPrimary,
     gewaehlt = s.primary, ungewaehlt = s.onSurfaceVariant,
 )
@@ -425,7 +425,7 @@ fun reiterFarben(s: ColorScheme) = ReiterFarben(
  * surfaceVariant und selbst surfaceContainerHighest lagen in den hellen Designs nur
  * 1,03–1,18:1 über background, die Kacheln waren kaum zu sehen.
  */
-fun skelettTon(s: ColorScheme, anteil: Float = 0.12f): Color = lerp(s.background, s.onSurface, anteil)
+fun skeletonTone(s: ColorScheme, share: Float = 0.12f): Color = lerp(s.background, s.onSurface, share)
 
 /**
  * Belegt die Rollen, die die Paletten oben nicht nennen, aus deren eigenen Farben.
@@ -435,14 +435,14 @@ fun skelettTon(s: ColorScheme, anteil: Float = 0.12f): Color = lerp(s.background
  * in jedem Design violett getönt. Die Stufen liegen zwischen surface und
  * onSurface: im Hellen dunkler, im Dunklen heller — wie Material sie meint.
  */
-internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
-    fun stufe(anteil: Float) = lerp(s.surface, s.onSurface, anteil)
+internal fun supplementRoles(s: ColorScheme, dunkel: Boolean): ColorScheme {
+    fun stufe(share: Float) = lerp(s.surface, s.onSurface, share)
     // Dialoge und Menüs liegen auf den Containerstufen und tragen Text in primary,
     // error und onSurfaceVariant; die Stufen werden gestaucht, bis alle 4,5:1 halten.
     val schrift = listOf(s.primary, s.error, s.onSurfaceVariant)
     var mass = 1f
-    while (mass > 0.3f && schrift.any { kontrast(it, stufe(STUFE_HOECHSTE * mass)) < TEXT_KONTRAST }) mass -= 0.05f
-    fun container(anteil: Float) = stufe(anteil * mass)
+    while (mass > 0.3f && schrift.any { contrast(it, stufe(LEVEL_HIGHEST * mass)) < TEXT_CONTRAST }) mass -= 0.05f
+    fun container(share: Float) = stufe(share * mass)
     return s.copy(
         onBackground = s.onSurface,
         surfaceTint = s.primary,
@@ -450,13 +450,13 @@ internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
         surfaceContainerLow = container(0.025f),
         surfaceContainer = container(0.05f),
         surfaceContainerHigh = container(0.075f),
-        surfaceContainerHighest = container(STUFE_HOECHSTE),
+        surfaceContainerHighest = container(LEVEL_HIGHEST),
         surfaceDim = if (dunkel) s.background else stufe(0.08f),
         surfaceBright = if (dunkel) stufe(0.12f) else s.surface,
         inverseSurface = s.onSurface,
         inverseOnSurface = s.surface,
         // Die Snackbar-Aktion: so weit aufgehellt bzw. abgedunkelt, bis sie 4,5:1 erreicht.
-        inversePrimary = mitKontrast(lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f), s.onSurface),
+        inversePrimary = withContrast(lerp(s.primary, if (dunkel) Color.Black else Color.White, 0.45f), s.onSurface),
         // Material setzt im Dunkeln #690005, auf den hellen Fehlertönen nur 4,48:1.
         onError = if (dunkel) s.background else Color.White,
         errorContainer = lerp(s.error, s.surface, 0.85f),
@@ -464,22 +464,22 @@ internal fun ergaenzeRollen(s: ColorScheme, dunkel: Boolean): ColorScheme {
     )
 }
 
-private const val STUFE_HOECHSTE = 0.10f
-private const val TEXT_KONTRAST = 4.5f
-private const val GRAFIK_KONTRAST = 3f
+private const val LEVEL_HIGHEST = 0.10f
+private const val TEXT_CONTRAST = 4.5f
+private const val GRAPHIC_CONTRAST = 3f
 
 /** Kontrastverhältnis nach WCAG 2 (1 bis 21). */
-fun kontrast(a: Color, b: Color): Float {
+fun contrast(a: Color, b: Color): Float {
     val la = a.luminance(); val lb = b.luminance()
     return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
 }
 
 /** [farbe], schrittweise von [gegen] weg gemischt, bis sie [ziel]:1 erreicht. */
-fun mitKontrast(farbe: Color, gegen: Color, ziel: Float = TEXT_KONTRAST): Color {
+fun withContrast(farbe: Color, gegen: Color, ziel: Float = TEXT_CONTRAST): Color {
     val weg = if (gegen.luminance() > 0.5f) Color.Black else Color.White
-    var anteil = 0f
+    var share = 0f
     var c = farbe
-    while (kontrast(c, gegen) < ziel && anteil < 1f) { anteil += 0.05f; c = lerp(farbe, weg, anteil) }
+    while (contrast(c, gegen) < ziel && share < 1f) { share += 0.05f; c = lerp(farbe, weg, share) }
     return c
 }
 
@@ -490,8 +490,8 @@ fun mitKontrast(farbe: Color, gegen: Color, ziel: Float = TEXT_KONTRAST): Color 
  */
 internal fun diagrammFarben(theme: Design, dunkel: Boolean, s: ColorScheme): ChartColors {
     val gedaempft = s.onSurfaceVariant
-    return if (dunkel && hatDunkleFassung(theme)) dunkleRollen(theme).let {
-        ChartColors(Color(it.chartNeu), Color(it.chartGebraucht), linie = Color(it.chartNeu),
+    return if (dunkel && hatDarkVersion(theme)) darkRoles(theme).let {
+        ChartColors(Color(it.chartNew), Color(it.chartUsed), linie = Color(it.chartNew),
             raster = Color(it.chartRaster), gedaempft = gedaempft)
     } else when (theme) {
         Design.BRICK -> ChartColors(ChartNewBrick, ChartUsedBrick,
@@ -504,7 +504,7 @@ internal fun diagrammFarben(theme: Design, dunkel: Boolean, s: ColorScheme): Cha
         // blau, Gebraucht bernstein/orange, damit sich die Farbsysteme nicht verwechseln.
         Design.FARBFAECHER -> ChartColors(ChartNewFarbfaecher, ChartUsedFarbfaecher, gedaempft = gedaempft)
         // Das Orange des Webs (ChartUsedNoppe) erreicht auf Weiss nur 2,6:1; als Linie braucht es 3:1.
-        Design.NOPPE, Design.HOCHGLANZ -> ChartColors(ChartNewNoppe, ChartUsedNoppe.let { mitKontrast(it, s.surface, GRAFIK_KONTRAST) },
+        Design.NOPPE, Design.HOCHGLANZ -> ChartColors(ChartNewNoppe, ChartUsedNoppe.let { withContrast(it, s.surface, GRAPHIC_CONTRAST) },
             raster = Color(0xFFE4E8EF), gedaempft = gedaempft)
         Design.CLASSIC -> ChartColors(ChartNewClassic, ChartUsedClassic, gedaempft = gedaempft)
     }
@@ -517,37 +517,37 @@ internal fun diagrammFarben(theme: Design, dunkel: Boolean, s: ColorScheme): Cha
  */
 @Composable
 fun BrickInventoryManagerTheme(
-    theme: Design = Design.VORGABE, dunkel: Boolean = false, systemfarben: Boolean = false,
+    theme: Design = Design.DEFAULT, dunkel: Boolean = false, systemfarben: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val isBrick = theme == Design.BRICK
-    val kontext = androidx.compose.ui.platform.LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     val dynamisch = systemfarben && android.os.Build.VERSION.SDK_INT >= SYSTEMFARBEN_AB_SDK
     val colors = remember(theme, dunkel, dynamisch) {
-        if (dynamisch) systemSchema(kontext, dunkel) else farbschema(theme, dunkel)
+        if (dynamisch) systemSchema(context, dunkel) else farbschema(theme, dunkel)
     }
     val chartColors = if (dynamisch) ChartColors(colors.primary, colors.tertiary, linie = colors.primary,
         raster = colors.outlineVariant, gedaempft = colors.onSurfaceVariant)
     else diagrammFarben(theme, dunkel, colors)
     // Dunkle Systemfarben unter einem Design ohne dunkle Fassung: die dunklen
     // Statusfarben von classic, sonst stünde Dunkelgrün auf dunklem Grund.
-    val statusFarben = if (dynamisch && dunkel && !hatDunkleFassung(theme)) statusFarbenFuer(Design.CLASSIC, true)
-                       else statusFarbenFuer(theme, dunkel)
-    val steinDekor = if (dunkel && isBrick) dunkleSteinDekor().let { SteinDekor(Color(it.noppen), Color(it.schiefer), Color(it.aufSchiefer)) }
-                     else SteinDekor(SlateBlueNoppe, SlateBlue, Color.White)
+    val statusColors = if (dynamisch && dunkel && !hatDarkVersion(theme)) statusColorsFor(Design.CLASSIC, true)
+                       else statusColorsFor(theme, dunkel)
+    val brickDecor = if (dunkel && isBrick) darkBrickDecor().let { BrickDecor(Color(it.studs), Color(it.slate), Color(it.onSlate)) }
+                     else BrickDecor(SlateBlueNoppe, SlateBlue, Color.White)
     CompositionLocalProvider(
         LocalIsBrickTheme provides isBrick,
-        LocalIsFarbfaecherTheme provides (theme == Design.FARBFAECHER),
-        LocalIsNoppeTheme provides (theme == Design.NOPPE || theme == Design.HOCHGLANZ),
-        LocalIstGlanz provides (theme == Design.HOCHGLANZ),
+        LocalIsColorSlotsTheme provides (theme == Design.FARBFAECHER),
+        LocalIsStudTheme provides (theme == Design.NOPPE || theme == Design.HOCHGLANZ),
+        LocalIsGloss provides (theme == Design.HOCHGLANZ),
         LocalChartColors  provides chartColors,
-        LocalStatusFarben provides statusFarben,
-        LocalSteinDekor provides steinDekor,
+        LocalStatusFarben provides statusColors,
+        LocalBrickDecor provides brickDecor,
         LocalAkzentflaechen provides akzentflaechen(theme, dunkel, colors),
     ) {
         MaterialTheme(
             colorScheme = colors,
-            typography  = if (theme == Design.NOPPE || theme == Design.HOCHGLANZ) NoppeTypografie else MarkenTypografie,
+            typography  = if (theme == Design.NOPPE || theme == Design.HOCHGLANZ) StudTypography else BrandsTypography,
             content     = content
         )
     }
@@ -555,5 +555,5 @@ fun BrickInventoryManagerTheme(
 
 /** Nur ab Android 12 aufrufen ([SYSTEMFARBEN_AB_SDK]); das prüft der Aufrufer. */
 @android.annotation.SuppressLint("NewApi")
-private fun systemSchema(kontext: android.content.Context, dunkel: Boolean): ColorScheme =
-    if (dunkel) dynamicDarkColorScheme(kontext) else dynamicLightColorScheme(kontext)
+private fun systemSchema(context: android.content.Context, dunkel: Boolean): ColorScheme =
+    if (dunkel) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)

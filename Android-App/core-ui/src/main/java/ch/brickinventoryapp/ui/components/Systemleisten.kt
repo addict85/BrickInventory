@@ -11,4 +11,4 @@ import androidx.compose.ui.Modifier
  * schrumpft das Fenster nicht. Die Tastatur zuletzt, damit sie nur abzieht, was über
  * die Gestenleiste hinausragt.
  */
-fun Modifier.ausserhalbDerSystemleisten(): Modifier = systemBarsPadding().displayCutoutPadding().imePadding()
+fun Modifier.outsideTheSystemBars(): Modifier = systemBarsPadding().displayCutoutPadding().imePadding()

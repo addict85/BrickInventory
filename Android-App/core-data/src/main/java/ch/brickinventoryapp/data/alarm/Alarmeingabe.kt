@@ -24,11 +24,11 @@ object Alarmeingabe {
      * Knopf wäre ein zweiter Weg für dieselbe Absicht.
      */
     fun zahl(roh: String): Geld? {
-        val z = Geld.ausText(roh.replace(',', '.')) ?: return null
+        val z = Geld.fromText(roh.replace(',', '.')) ?: return null
         // Nicht-positive Schwellen sind kein Alarm, sondern einer, der nie
         // oder immer meldet. Der Server lehnt sie ebenfalls ab
         // (pruefeEingabe in utils/preisalarm.ts) — hier faengt es die Anfrage
         // schon vorher ab.
-        return z.takeIf { it.positiv }
+        return z.takeIf { it.positive }
     }
 }

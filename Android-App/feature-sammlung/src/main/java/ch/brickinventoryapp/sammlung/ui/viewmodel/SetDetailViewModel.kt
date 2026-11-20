@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.sammlung.ui.viewmodel
 
-import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.zustand.ui.loadError
 import ch.brickinventoryapp.model.ui.Laden
 import kotlinx.coroutines.flow.first
 import ch.brickinventoryapp.model.fach.Alarmrichtung
@@ -12,8 +12,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
-import ch.brickinventoryapp.data.repository.FinanzenRepository
-import ch.brickinventoryapp.data.repository.HaushaltRepository
+import ch.brickinventoryapp.data.repository.FinancesRepository
+import ch.brickinventoryapp.data.repository.HouseholdRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.sammlung.ui.Preisalarmeingabe
@@ -36,25 +36,25 @@ import javax.inject.Inject
 import androidx.lifecycle.ViewModel
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sitzung.Sitzung
-import ch.brickinventoryapp.model.datei.DateiLeser
+import ch.brickinventoryapp.model.datei.FileReader
 import ch.brickinventoryapp.model.datei.Gelesen
-import ch.brickinventoryapp.model.datei.DateiRef
+import ch.brickinventoryapp.model.datei.FileRef
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.zustand.ui.viewmodel.Meldungen
-import ch.brickinventoryapp.zustand.ui.viewmodel.folgeAbmeldung
+import ch.brickinventoryapp.zustand.ui.viewmodel.sequenceSignOut
 
 /**
  * Wie gross eine Anleitung sein darf — derselbe Wert wie `limits.fileSize` in
  * routes/sets.ts. Die App muss die Grenze kennen, bevor sie 80 MB durchs
  * Mobilfunknetz schickt.
  */
-internal const val ANLEITUNG_MAX_BYTES = 50L * 1024 * 1024
+internal const val INSTRUCTION_MAX_BYTES = 50L * 1024 * 1024
 
 /**
  * Die Typen, die der Server annimmt (INSTR_EXT_BY_MIME in routes/sets.ts). Er
  * leitet daraus die Dateiendung ab; die App filtert schon die Auswahl.
  */
-internal val ANLEITUNG_TYPEN = arrayOf("application/pdf", "image/jpeg", "image/png")
+internal val INSTRUCTION_TYPES = arrayOf("application/pdf", "image/jpeg", "image/png")
 
 /**
  * Die Detailansicht eines Sets: Stammdaten, Preis und Verlauf, Käufe,
@@ -70,11 +70,11 @@ class SetDetailViewModel @Inject constructor(
     private val meldungen: Meldungen,
     private val sets: SetsRepository,
     private val katalog: SetKatalogRepository,
-    private val alarme: AlarmRepository,
+    private val alerts: AlarmRepository,
     private val dateien: SetDateienRepository,
-    private val finanzen: FinanzenRepository,
-    private val haushalt: HaushaltRepository,
-    private val leser: DateiLeser,
+    private val finanzen: FinancesRepository,
+    private val haushalt: HouseholdRepository,
+    private val reader: FileReader,
     gemerkt: SavedStateHandle,
 ) : ViewModel(), Filterwahl by filter, SetDetailAktionen {
 
@@ -90,9 +90,9 @@ class SetDetailViewModel @Inject constructor(
      * Dieses Set, wie die Galerie es aus der Ablage zeigt: Die Kachel steht da, bis das
      * Detail geladen ist. Aus derselben Quelle statt aus dem ViewModel der Galerie.
      */
-    val vorschau: StateFlow<SetAnsicht?> = sets.beobachteSets()
+    val vorschau: StateFlow<SetAnsicht?> = sets.observeSets()
         .map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(VORSCHAU_HALTEN_MS), null)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PREVIEW_HOLD_MS), null)
 
     // Je Abschnitt ein Abruf: Ein neuer bricht den laufenden ab, damit keine späte
     // Antwort eines alten Abrufs die neuere überschreibt.
@@ -100,106 +100,106 @@ class SetDetailViewModel @Inject constructor(
 
     // Nach setNumber und dem Zustand: Ein init davor sähe beide noch nicht belegt.
     init {
-        folgeAbmeldung(sitzung) { zuruecksetzen() }
+        sequenceSignOut(sitzung) { reset() }
         // Ändert sich dieses Set in der Ablage — hier oder anderswo —, gelten Detail und Käufe nicht mehr.
         viewModelScope.launch {
-            sets.beobachteSets().map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
+            sets.observeSets().map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
                 .distinctUntilChanged().drop(1).collect {
-                    if (_setDetailState.value.setDetail != null) { ladeDetail(); ladeKaeufe() }
+                    if (_setDetailState.value.setDetail != null) { loadDetail(); loadPurchases() }
                 }
         }
     }
 
     // Menge, Lagerort und Alarm warten die Ruhezeit ab; die Aufträge laufen im
     // Scope des ViewModels und überstehen so das Zurückgehen.
-    private var lagerJob: Job? = null
-    private val alarmEingabe = Preisalarmeingabe(
-        scope = viewModelScope, alarme = alarme,
+    private var storageJob: Job? = null
+    private val alarmInput = Preisalarmeingabe(
+        scope = viewModelScope, alerts = alerts,
         melde = { meldungen.zeige(it) },
-        beschreibe = { meldungen.meldungFuerSnackbar(it) },
-        gespeichert = { sn -> if (sn == setNumber) ladePreisalarme() },
+        describe = { meldungen.meldungFuerSnackbar(it) },
+        gespeichert = { sn -> if (sn == setNumber) loadPriceAlerts() },
     )
 
-    // Am Ende der Felder: Die Abrufe brauchen laufend und alarmEingabe schon belegt.
-    init { aktualisiere() }
+    // Am Ende der Felder: Die Abrufe brauchen laufend und alarmInput schon belegt.
+    init { refresh() }
 
     /** Alles, was die Ansicht zeigt, neu holen; beim Erzeugen und auf „Erneut versuchen“. */
-    override fun aktualisiere() {
-        ladeDetail()
-        ladePreis()
-        ladeVerlauf()
-        ladeKaeufe()
-        ladePreisalarme()
+    override fun refresh() {
+        loadDetail()
+        loadPrice()
+        loadHistory()
+        loadPurchases()
+        loadPriceAlerts()
     }
 
-    private fun starte(abschnitt: Abschnitt, abruf: suspend () -> Unit) {
+    private fun starte(section: Abschnitt, abruf: suspend () -> Unit) {
         if (setNumber.isBlank()) return
-        laufend.remove(abschnitt)?.cancel()
-        laufend[abschnitt] = viewModelScope.launch { abruf() }
+        laufend.remove(section)?.cancel()
+        laufend[section] = viewModelScope.launch { abruf() }
     }
 
-    private fun ladeDetail() = starte(Abschnitt.DETAIL) {
-        _setDetailState.update { it.copy(detailAbruf = Laden.Laedt) }
+    private fun loadDetail() = starte(Abschnitt.DETAIL) {
+        _setDetailState.update { it.copy(detailFetch = Laden.Loads) }
         when (val r = katalog.getSetDetail(setNumber)) {
             is Ergebnis.Erfolg -> {
-                _setDetailState.update { it.copy(setDetail = r.data, detailAbruf = Laden.Daten(Unit)) }
+                _setDetailState.update { it.copy(setDetail = r.data, detailFetch = Laden.Daten(Unit)) }
                 // Die Vorschläge fürs Lagerortfeld gehören dem Besitzer des Sets, nicht dem Betrachter.
-                filter.loadLagerortVorrat(r.data?.owners.orEmpty().map { it.id })
+                filter.loadLocationStock(r.data?.owners.orEmpty().map { it.id })
             }
-            is Ergebnis.Fehler -> _setDetailState.update { it.copy(detailAbruf = ladefehler(r)) }
+            is Ergebnis.Fehler -> _setDetailState.update { it.copy(detailFetch = loadError(r)) }
         }
     }
 
-    private fun ladePreis() = starte(Abschnitt.PREIS) {
-        _setDetailState.update { it.copy(preisAbruf = Laden.Laedt) }
+    private fun loadPrice() = starte(Abschnitt.PRICE) {
+        _setDetailState.update { it.copy(priceFetch = Laden.Loads) }
         when (val r = finanzen.getSetPrice(setNumber)) {
-            is Ergebnis.Erfolg -> _setDetailState.update { it.copy(setPrice = r.data, preisAbruf = Laden.Daten(Unit)) }
-            is Ergebnis.Fehler -> _setDetailState.update { it.copy(preisAbruf = ladefehler(r)) }
+            is Ergebnis.Erfolg -> _setDetailState.update { it.copy(setPrice = r.data, priceFetch = Laden.Daten(Unit)) }
+            is Ergebnis.Fehler -> _setDetailState.update { it.copy(priceFetch = loadError(r)) }
         }
     }
 
-    private fun ladeVerlauf() = starte(Abschnitt.VERLAUF) {
-        _setDetailState.update { it.copy(verlaufAbruf = Laden.Laedt) }
+    private fun loadHistory() = starte(Abschnitt.HISTORY) {
+        _setDetailState.update { it.copy(historyFetch = Laden.Loads) }
         when (val r = finanzen.getSetPriceHistory(setNumber)) {
-            is Ergebnis.Erfolg -> _setDetailState.update { it.copy(priceHistory = r.data, verlaufAbruf = Laden.Daten(Unit)) }
-            is Ergebnis.Fehler -> _setDetailState.update { it.copy(verlaufAbruf = ladefehler(r)) }
+            is Ergebnis.Erfolg -> _setDetailState.update { it.copy(priceHistory = r.data, historyFetch = Laden.Daten(Unit)) }
+            is Ergebnis.Fehler -> _setDetailState.update { it.copy(historyFetch = loadError(r)) }
         }
     }
 
-    private fun ladeKaeufe() = starte(Abschnitt.KAEUFE) {
-        _setDetailState.update { it.copy(kaeufeAbruf = Laden.Laedt) }
+    private fun loadPurchases() = starte(Abschnitt.PURCHASES) {
+        _setDetailState.update { it.copy(purchasesFetch = Laden.Loads) }
         when (val r = haushalt.getAcquisitions(setNumber)) {
             is Ergebnis.Erfolg -> _setDetailState.update {
-                it.copy(acquisitions = r.data.kaeufe, acquisitionTotals = r.data.summen,
-                        kaeufeAbruf = Laden.Daten(Unit))
+                it.copy(acquisitions = r.data.kaeufe, acquisitionTotals = r.data.sums,
+                        purchasesFetch = Laden.Daten(Unit))
             }
-            is Ergebnis.Fehler -> _setDetailState.update { it.copy(kaeufeAbruf = ladefehler(r)) }
+            is Ergebnis.Fehler -> _setDetailState.update { it.copy(purchasesFetch = loadError(r)) }
         }
     }
 
-    private fun ladePreisalarme() = starte(Abschnitt.ALARME) {
-        alarme.aktualisiereAlarme()
-        val liste = alarme.beobachteAlarme(setNumber).first().liste
+    private fun loadPriceAlerts() = starte(Abschnitt.ALERTS) {
+        alerts.refreshAlerts()
+        val liste = alerts.observeAlerts(setNumber).first().liste
         _setDetailState.update { it.copy(preisalarme = liste) }
     }
 
-    override fun setzePreisalarm(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand) =
-        alarmEingabe.setze(setNumber, richtung, roh, zustand)
+    override fun setPriceAlert(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand) =
+        alarmInput.setze(setNumber, richtung, roh, zustand)
 
     /**
      * Die Menge ändern. Die neue Zahl steht sofort in der Ansicht; die übrigen
      * Bestandsansichten folgen der Ablage, in die das Repository sie schreibt.
      */
-    fun setzeMenge(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null) =
-        mengeAendern(setNumber) { sets.setzeMenge(setNumber, quantity, purchasePrice, condition) }
+    fun setQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null) =
+        changeQuantity(setNumber) { sets.setQuantity(setNumber, quantity, purchasePrice, condition) }
 
     /** Der Regler: ein Schritt, damit gleichzeitige Klicks auf zwei Geräten zusammenzählen. */
-    override fun aendereMengeUm(setNumber: String, schritt: Int) =
-        mengeAendern(setNumber) { sets.aendereMengeUm(setNumber, schritt) }
+    override fun changeQuantityUm(setNumber: String, schritt: Int) =
+        changeQuantity(setNumber) { sets.changeQuantityUm(setNumber, schritt) }
 
-    private fun mengeAendern(setNumber: String, aufruf: suspend () -> Ergebnis<Int?>) {
+    private fun changeQuantity(setNumber: String, call: suspend () -> Ergebnis<Int?>) {
         viewModelScope.launch {
-            when (val r = aufruf()) {
+            when (val r = call()) {
                 is Ergebnis.Erfolg -> {
                     r.data?.let { echt ->
                         _setDetailState.update { st ->
@@ -214,9 +214,9 @@ class SetDetailViewModel @Inject constructor(
     }
 
     /** Lagerort des Sets, entprellt; massgeblich ist der normalisierte Ort aus der Antwort. */
-    override fun setzeSetLagerort(setNumber: String, ort: String) {
-        lagerJob?.cancel()
-        lagerJob = viewModelScope.launch {
+    override fun setSetLocation(setNumber: String, ort: String) {
+        storageJob?.cancel()
+        storageJob = viewModelScope.launch {
             delay(Alarmeingabe.RUHE_MS)
             when (val r = sets.setSetStorage(setNumber, ort)) {
                 is Ergebnis.Erfolg -> Unit
@@ -231,22 +231,22 @@ class SetDetailViewModel @Inject constructor(
         }
     }
 
-    override fun ladeAnleitungHoch(setNumber: String, datei: DateiRef) {
+    override fun loadInstructionHigh(setNumber: String, datei: FileRef) {
         viewModelScope.launch {
-            val gelesen = leser.liesHoechstens(datei, ANLEITUNG_MAX_BYTES)
-            if (gelesen == Gelesen.ZuGross) {
-                meldungen.zeige(meldungen.text(R.string.csv_upload_too_big, ANLEITUNG_MAX_BYTES / 1024 / 1024))
+            val gelesen = reader.readAtMost(datei, INSTRUCTION_MAX_BYTES)
+            if (gelesen == Gelesen.ToLarge) {
+                meldungen.zeige(meldungen.text(R.string.csv_upload_too_big, INSTRUCTION_MAX_BYTES / 1024 / 1024))
                 return@launch
             }
             val typ = (gelesen as? Gelesen.Inhalt)?.typ
             if (gelesen !is Gelesen.Inhalt || typ == null) { meldungen.zeige(meldungen.text(R.string.csv_upload_unreadable)); return@launch }
-            if (typ !in ANLEITUNG_TYPEN) { meldungen.zeige(meldungen.text(R.string.instr_upload_wrong_type)); return@launch }
+            if (typ !in INSTRUCTION_TYPES) { meldungen.zeige(meldungen.text(R.string.instr_upload_wrong_type)); return@launch }
             val bytes = gelesen.bytes
-            val name = leser.name(datei) ?: "anleitung"
-            when (val r = dateien.uploadAnleitung(setNumber, name, typ, bytes, name)) {
+            val name = reader.name(datei) ?: "anleitung"
+            when (val r = dateien.uploadInstruction(setNumber, name, typ, bytes, name)) {
                 is Ergebnis.Erfolg -> {
                     meldungen.zeige(meldungen.text(R.string.instr_upload_done))
-                    ladeDetail()
+                    loadDetail()
                 }
                 is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
@@ -256,20 +256,20 @@ class SetDetailViewModel @Inject constructor(
     override fun loescheAnleitung(setNumber: String, instrId: Int) {
         viewModelScope.launch {
             when (val r = dateien.deleteAnleitung(setNumber, instrId)) {
-                is Ergebnis.Erfolg -> ladeDetail()
+                is Ergebnis.Erfolg -> loadDetail()
                 is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             }
         }
     }
 
-    private fun zuruecksetzen() {
-        lagerJob?.cancel()
+    private fun reset() {
+        storageJob?.cancel()
         laufend.values.forEach { it.cancel() }
         laufend.clear()
         _setDetailState.value = SetDetailUiState()
     }
 
-    private enum class Abschnitt { DETAIL, PREIS, VERLAUF, KAEUFE, ALARME }
+    private enum class Abschnitt { DETAIL, PRICE, HISTORY, PURCHASES, ALERTS }
 
     private companion object {
         const val ARG_SET = "setNumber"
@@ -277,4 +277,4 @@ class SetDetailViewModel @Inject constructor(
 }
 
 /** So lange bleibt die Vorschau nach dem letzten Beobachter abonniert (Drehen des Geräts). */
-private const val VORSCHAU_HALTEN_MS = 5_000L
+private const val PREVIEW_HOLD_MS = 5_000L

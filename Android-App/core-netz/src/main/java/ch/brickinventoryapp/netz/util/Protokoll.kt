@@ -5,7 +5,7 @@ import ch.brickinventoryapp.core.netz.BuildConfig
 /**
  * The app's only place that writes to Logcat, and only in a debug build:
  * exception texts carry addresses including the query string, and anyone with
- * adb or a bug report reads Logcat along with it. ProtokollTest forbids raw android.util.Log.
+ * adb or a bug report reads Logcat along with it. LogTest forbids raw android.util.Log.
  */
 object Protokoll {
     enum class Stufe { NOTIZ, WARNUNG }

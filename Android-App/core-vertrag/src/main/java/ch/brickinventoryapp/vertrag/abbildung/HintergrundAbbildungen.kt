@@ -2,15 +2,15 @@ package ch.brickinventoryapp.vertrag.abbildung
 
 import ch.brickinventoryapp.vertrag.Auftrag
 import ch.brickinventoryapp.vertrag.AuftraegeResponse
-import ch.brickinventoryapp.model.fach.AuftragAnsicht
-import ch.brickinventoryapp.model.fach.AuftragStatus
-import ch.brickinventoryapp.model.fach.AuftragsPauseAnsicht
-import ch.brickinventoryapp.model.fach.HintergrundAnsicht
+import ch.brickinventoryapp.model.fach.JobView
+import ch.brickinventoryapp.model.fach.JobStatus
+import ch.brickinventoryapp.model.fach.JobPauseView
+import ch.brickinventoryapp.model.fach.BackgroundView
 
-fun Auftrag.alsAnsicht() = AuftragAnsicht(
-    id = id, art = type, status = AuftragStatus.aus(status),
-    versuch = attempts, maxVersuche = maxAttempts, geplant = geplant, faelligAb = dueAt,
-    fortschrittText = progress?.let { f ->
+fun Auftrag.alsAnsicht() = JobView(
+    id = id, art = type, status = JobStatus.aus(status),
+    attempt = attempts, maxVersuche = maxAttempts, geplant = geplant, dueAb = dueAt,
+    progressText = progress?.let { f ->
         listOfNotNull(
             if (f.erledigt != null && f.gesamt != null) "${f.erledigt}/${f.gesamt}" else null,
             f.text?.takeIf { it.isNotBlank() },
@@ -19,9 +19,9 @@ fun Auftrag.alsAnsicht() = AuftragAnsicht(
     fehler = errorMessage?.takeIf { it.isNotBlank() }, setNumber = setNumber,
 )
 
-fun AuftraegeResponse.alsAnsicht() = HintergrundAnsicht(
+fun AuftraegeResponse.alsAnsicht() = BackgroundView(
     auftraege = auftraege.map { it.alsAnsicht() },
-    pausen = pausen.map { AuftragsPauseAnsicht(it.type, it.untilAt, it.reason.orEmpty()) },
+    pausen = pausen.map { JobPauseView(it.type, it.untilAt, it.reason.orEmpty()) },
     bildbedarf = bildbedarf,
-    jobProzessLaeuft = jobProzess.laeuft,
+    jobProcessRunning = jobProzess.laeuft,
 )

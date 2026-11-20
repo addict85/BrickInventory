@@ -1,6 +1,6 @@
 Gegenprobe: das Schwellenfeld eines Alarms heisst wieder wie die Richtung
 Modul: app
-Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: Preisalarme nennen die Richtung einmal und enden am Rand der Karte
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
@@ -8,7 +8,7 @@ index 324df06..db6e97f 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
 @@ -162,7 +162,8 @@ internal fun PreisalarmeCard(
-                         aktionen.setzeAlarmSchwelle(a.setNumber, a.condition, a.richtung, wert)
+                         aktionen.setAlarmThreshold(a.setNumber, a.condition, a.richtung, wert)
                      },
                      singleLine = true,
 -                    label = { Text(stringResource(R.string.alerts_schwelle)) },

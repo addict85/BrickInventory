@@ -19,7 +19,7 @@ dependencies {
     implementation(project(":core-ressourcen"))
     implementation(libs.bundles.camera)
     implementation(libs.mlkit.barcode)
-    // Passkeys über den Credential Manager (ui/CredentialManagerAbfrage.kt).
+    // Passkeys über den Credential Manager (ui/CredentialManagerQuery.kt).
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services)
 

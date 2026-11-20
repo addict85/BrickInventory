@@ -1,6 +1,6 @@
 Gegenprobe: das Wegräumen eines Fehlers beendet auch einen laufenden Vorgang
 Modul: core-model
-Test: ch.brickinventoryapp.model.VorgangTest
+Test: ch.brickinventoryapp.model.OperationTest
 Rot: das Wegraeumen eines Fehlers haelt keinen laufenden Vorgang an
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt
@@ -8,11 +8,11 @@ index 1d1e916..7bdff2b 100644
 --- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt
 +++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Vorgang.kt
 @@ -16,7 +16,7 @@ val Vorgang.laeuft: Boolean get() = this is Vorgang.Laeuft
- val Vorgang.fehlerMeldung: Meldung? get() = (this as? Vorgang.Fehlgeschlagen)?.meldung
+ val Vorgang.errorMessage: Meldung? get() = (this as? Vorgang.Fehlgeschlagen)?.meldung
  
  /** Den Grund wegnehmen, wenn ihn niemand mehr sehen soll; ein laufender Vorgang läuft weiter. */
--fun Vorgang.ohneFehler(): Vorgang = if (this is Vorgang.Fehlgeschlagen) Vorgang.Fertig else this
-+fun Vorgang.ohneFehler(): Vorgang = Vorgang.Fertig
+-fun Vorgang.withoutError(): Vorgang = if (this is Vorgang.Fehlgeschlagen) Vorgang.Fertig else this
++fun Vorgang.withoutError(): Vorgang = Vorgang.Fertig
  
  /** Ein beendeter Vorgang: mit Grund gescheitert, ohne fertig. */
  fun beendet(fehler: Meldung?): Vorgang = fehler?.let(Vorgang::Fehlgeschlagen) ?: Vorgang.Fertig

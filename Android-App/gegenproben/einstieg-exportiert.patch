@@ -1,6 +1,6 @@
 Gegenprobe: Der Einstieg der Meldungen ist exportiert
 Modul: app
-Test: ch.brickinventoryapp.app.FremderEinstiegTest
+Test: ch.brickinventoryapp.app.ForeignEntryTest
 Rot: der Einstieg der Meldungen ist nicht exportiert
 
 diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml

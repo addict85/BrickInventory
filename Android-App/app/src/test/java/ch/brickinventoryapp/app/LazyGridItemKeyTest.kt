@@ -19,17 +19,17 @@ class LazyGridItemKeyTest {
         // enthalten (`span = { GridItemSpan(maxLineSpan) }`). Eine erste Fassung
         // ohne DOT_MATCHES_ALL blieb bei der Gegenprobe grün — sie fand den
         // mehrzeiligen Aufruf gar nicht.
-        val eintrag = Regex(
+        val entry = Regex(
             """(?<![\w.])item\s*\(((?:[^()]|\([^()]*\))*)\)\s*\{""",
             RegexOption.DOT_MATCHES_ALL)
         val fehler = mutableListOf<String>()
 
         for (f in ui) {
-            val code = Quellen.entkleide(f.readText())
+            val code = Quellen.strip(f.readText())
             // Nur Dateien, die überhaupt mit Schlüsseln arbeiten — sonst gibt es
             // keinen Ersatzschlüssel, der wechseln könnte.
             if (!code.contains("key =")) continue
-            for (m in eintrag.findAll(code)) {
+            for (m in entry.findAll(code)) {
                 val args = m.groupValues[1]
                 if (args.contains("key") || args.isBlank()) continue
                 val zeile = code.substring(0, m.range.first).count { it == '\n' } + 1

@@ -32,15 +32,15 @@ fun git(vararg args: String): String? = runCatching {
     }
     if (lauf.result.get().exitValue == 0) lauf.standardOutput.asText.get().trim().ifEmpty { null } else null
 }.getOrNull()
-val commitAnzahl: Int? = git("rev-list", "--count", "HEAD")?.toIntOrNull()
+val commitCount: Int? = git("rev-list", "--count", "HEAD")?.toIntOrNull()
 val generatedVersionName: String =
     (project.findProperty("buildVersionName") as String?)
         ?: git("describe", "--tags", "--match", "v[0-9]*")?.removePrefix("v")
-        ?: commitAnzahl?.let { n -> "$n-g${git("rev-parse", "--short", "HEAD") ?: "0"}" }
+        ?: commitCount?.let { n -> "$n-g${git("rev-parse", "--short", "HEAD") ?: "0"}" }
         ?: "0.0.0-ohne-git"
 val generatedVersionCode: Int =
     (project.findProperty("buildVersionCode") as String?)?.toIntOrNull()
-        ?: (VERSION_CODE_BASE + (commitAnzahl ?: 0))
+        ?: (VERSION_CODE_BASE + (commitCount ?: 0))
 
 ksp {
     arg("dagger.fastInit", "enabled")
@@ -75,20 +75,20 @@ android {
     // Datei im Projekt: Die läge beim nächsten `git add -A` im Repository. Ohne Werte
     // entsteht ein unsigniertes APK, damit ein lokaler Bau nicht daran scheitert. Eine
     // Vorgabe gibt es nicht; ein fest eingetragenes Passwort sähe nur geschützt aus.
-    fun signaturWert(umgebung: String, property: String): String? =
-        System.getenv(umgebung) ?: providers.gradleProperty(property).orNull
+    fun signatureValue(environment: String, property: String): String? =
+        System.getenv(environment) ?: providers.gradleProperty(property).orNull
 
-    val schluesselDatei = signaturWert("BRICK_KEYSTORE_PFAD", "brickKeystorePfad")
+    val keyFile = signatureValue("BRICK_KEYSTORE_PFAD", "brickKeystorePfad")
         ?.let { file(it) }
         ?.takeIf { it.exists() }
 
     signingConfigs {
-        if (schluesselDatei != null) {
+        if (keyFile != null) {
             create("release") {
-                storeFile     = schluesselDatei
-                storePassword = signaturWert("BRICK_KEYSTORE_PASSWORT", "brickKeystorePasswort")
-                keyAlias      = signaturWert("BRICK_KEY_ALIAS", "brickKeyAlias")
-                keyPassword   = signaturWert("BRICK_KEY_PASSWORT", "brickKeyPasswort")
+                storeFile     = keyFile
+                storePassword = signatureValue("BRICK_KEYSTORE_PASSWORT", "brickKeystorePasswort")
+                keyAlias      = signatureValue("BRICK_KEY_ALIAS", "brickKeyAlias")
+                keyPassword   = signatureValue("BRICK_KEY_PASSWORT", "brickKeyPasswort")
                 // Wie die CI (apksigner im Job signieren): kein v1 — ab minSdk 30
                 // prüft kein Gerät mehr die JAR-Signatur —, v3 für eine spätere
                 // Schlüsselrotation.
@@ -203,8 +203,8 @@ androidComponents {
         }
         // Nach dem Packen der Release-APK ausführen; matching statt afterEvaluate,
         // damit die Aufgabe erst angelegt wird, wenn sie gebraucht wird.
-        val packen = "package${variant.name.replaceFirstChar { it.uppercase() }}"
-        tasks.matching { it.name == packen }.configureEach { finalizedBy(renameTask) }
+        val pack = "package${variant.name.replaceFirstChar { it.uppercase() }}"
+        tasks.matching { it.name == pack }.configureEach { finalizedBy(renameTask) }
     }
 }
 
@@ -236,7 +236,7 @@ dependencies {
     testImplementation(project(":core-vertrag"))
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
-    // GeraeteSchutzTest baut die TokenAblage auf einem eigenen DataStore.
+    // DevicesProtectionTest baut die TokenAblage auf einem eigenen DataStore.
     testImplementation(libs.androidx.datastore)
     implementation(libs.androidx.core.ktx)
     // Startbild statt weissem Fenster beim Kaltstart (MainActivity.installSplashScreen).

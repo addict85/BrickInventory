@@ -10,8 +10,8 @@ diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/u
   * Ein Textvergleich liesse `…/apk-neuste.angreifer.tld/x.apk`, `…/../x.apk` oder
   * Varianten mit Benutzerangabe, Port oder Fragment durch.
   */
--internal fun liegtUnter(url: String, basis: String): Boolean {
-+fun liegtUnter(url: String, basis: String): Boolean {
+-internal fun liesBelow(url: String, basis: String): Boolean {
++fun liesBelow(url: String, basis: String): Boolean {
      val ziel = url.toHttpUrlOrNull() ?: return false
      val b = basis.toHttpUrlOrNull() ?: return false
-     val ordner = b.pathSegments.filter { it.isNotEmpty() }
+     val folder = b.pathSegments.filter { it.isNotEmpty() }

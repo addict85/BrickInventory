@@ -9,10 +9,10 @@ index 41b3d3a..198280c 100644
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schluesselbindung.kt
 @@ -36,7 +36,7 @@ class Schluesselbindung(
              is Schluesselnonce.Nonce -> n.wert
-             is Schluesselnonce.Abgelehnt -> return Ausgang.Abgelehnt(n.meldung)
+             is Schluesselnonce.Rejected -> return Ausgang.Rejected(n.meldung)
          }
 -        val challenge = runCatching { Base64.getUrlDecoder().decode(nonce) }.getOrNull()
 +        val challenge = runCatching { nonce.toByteArray() }.getOrNull()
-             ?: return Ausgang.Abgelehnt(null)
-         val kette = withContext(keystore) { runCatching { schluessel.erzeugeMitAttestation(challenge) }.getOrNull() }
+             ?: return Ausgang.Rejected(null)
+         val kette = withContext(keystore) { runCatching { schluessel.createWithAttestation(challenge) }.getOrNull() }
          // Ohne Attestation liefert der Keystore nur das selbstsignierte Zertifikat des Schlüssels.

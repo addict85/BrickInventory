@@ -4,11 +4,11 @@ import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Waehrung
 import ch.brickinventoryapp.model.fach.Zustand
 import androidx.compose.ui.graphics.luminance
-import ch.brickinventoryapp.ui.components.KleinerKnopf
+import ch.brickinventoryapp.ui.components.SmallerButton
 import ch.brickinventoryapp.ui.components.nebenKnopfFarben
 import ch.brickinventoryapp.ui.components.nebenKnopfRand
 import ch.brickinventoryapp.model.fach.KaufAnsicht
-import ch.brickinventoryapp.model.fach.KontoAnsicht
+import ch.brickinventoryapp.model.fach.AccountView
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
@@ -34,18 +34,18 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.theme.LocalIsBrickTheme
-import ch.brickinventoryapp.ui.theme.BrickSage
-import ch.brickinventoryapp.ui.theme.BrickSageText
+import ch.brickinventoryapp.ui.theme.BrickSay
+import ch.brickinventoryapp.ui.theme.BrickSayText
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.stueckzahl
-import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.readAloudAs
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.components.announce
 import ch.brickinventoryapp.ui.components.ProduktBild
-import ch.brickinventoryapp.ui.components.bewegungReduziert
-import ch.brickinventoryapp.ui.components.grosseSchrift
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.withFont
 
 /**
  * Gemeinsame Composables für manuell erfasste Teile UND Minifiguren.
@@ -62,7 +62,7 @@ fun AcquisitionSummarySection(
 ) {
     // Bei grosser Schrift die Käufe UNTER die Bezeichnung: Neben ihr blieb für
     // „CHF 700.00“ so wenig Breite, dass der Betrag Ziffer für Ziffer umbrach.
-    val untereinander = grosseSchrift()
+    val untereinander = largeFont()
     val ausrichtung = if (untereinander) Alignment.Start else Alignment.End
     val kaeufe: @Composable () -> Unit = {
         Column(horizontalAlignment = ausrichtung) {
@@ -70,29 +70,29 @@ fun AcquisitionSummarySection(
                 Text(stringResource(R.string.detail_purchase_none), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
-                acquisitions.forEach { acq -> KaufZeile(acq, currency) }
+                acquisitions.forEach { acq -> PurchaseRow(acq, currency) }
             }
-            Spacer(Modifier.height(Abstaende.winzig))
+            Spacer(Modifier.height(Abstaende.tiny))
             // Sichtbar klein unter den Käufen, getippt in 48 dp.
-            KleinerKnopf(onClick = onEditPrices,
+            SmallerButton(onClick = onEditPrices,
                 form = ButtonDefaults.outlinedShape,
                 flaeche = Modifier.heightIn(min = 28.dp),
                 inhaltFarbe = nebenKnopfFarben().contentColor,
-                rand = nebenKnopfRand(),
-                innen = PaddingValues(horizontal = 10.dp, vertical = Abstaende.haar)) {
-                Icon(Icons.Default.Edit, null, Modifier.size(mitSchrift(14.dp)))
-                Spacer(Modifier.width(Abstaende.winzig))
+                edge = nebenKnopfRand(),
+                innen = PaddingValues(horizontal = 10.dp, vertical = Abstaende.hairline)) {
+                Icon(Icons.Default.Edit, null, Modifier.size(withFont(14.dp)))
+                Spacer(Modifier.width(Abstaende.tiny))
                 Text(stringResource(R.string.detail_edit_prices), style = MaterialTheme.typography.labelMedium)
             }
         }
     }
-    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
         val bezeichnung: @Composable () -> Unit = {
             Text(
                 stringResource(R.string.detail_purchase_price),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = Abstaende.haar)
+                modifier = Modifier.padding(top = Abstaende.hairline)
             )
         }
         if (untereinander) {
@@ -116,21 +116,21 @@ fun AcquisitionSummarySection(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun KaufZeile(acq: KaufAnsicht, currency: Waehrung) {
+private fun PurchaseRow(acq: KaufAnsicht, currency: Waehrung) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        val mitte = Modifier.align(Alignment.CenterVertically)
-        Text(mengeManuell(acq.quantity), mitte.vorgelesenAls(stueckzahl(acq.quantity)),
+        val middle = Modifier.align(Alignment.CenterVertically)
+        Text(mengeManuell(acq.quantity), middle.readAloudAs(stueckzahl(acq.quantity)),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Box(mitte) { ConditionBadge(acq.condition) }
+        Box(middle) { ConditionBadge(acq.condition) }
         // Ohne Betrag sagt die Zeile, dass keiner erfasst ist; sonst stand „×2 Neu“ allein da.
         val preis = acq.effectivePrice
         if (preis != null) {
             Text(fmtMoney(preis, currency), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1, softWrap = false, modifier = mitte)
+                maxLines = 1, softWrap = false, modifier = middle)
         } else {
             Text(stringResource(R.string.detail_purchase_none), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = mitte)
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = middle)
         }
     }
 }
@@ -158,12 +158,12 @@ fun ConditionBadge(condition: Zustand) {
     val isBrick = LocalIsBrickTheme.current && MaterialTheme.colorScheme.surface.luminance() > 0.5f
     val bgColor = when {
         isUsed  -> MaterialTheme.colorScheme.secondaryContainer
-        isBrick -> BrickSage
+        isBrick -> BrickSay
         else    -> MaterialTheme.colorScheme.primaryContainer
     }
     val fgColor = when {
         isUsed  -> MaterialTheme.colorScheme.onSecondaryContainer
-        isBrick -> BrickSageText
+        isBrick -> BrickSayText
         else    -> MaterialTheme.colorScheme.onPrimaryContainer
     }
     Surface(
@@ -185,7 +185,7 @@ fun ConditionBadge(condition: Zustand) {
  * Flächenton: Ein Ersatzteil ist eine Nebeninformation, kein Zustand.
  */
 @Composable
-fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
+fun SparePartBadge(modifier: Modifier = Modifier) {
     Surface(shape = Formen.etikett, color = MaterialTheme.colorScheme.surfaceVariant, modifier = modifier) {
         Text(
             stringResource(R.string.parts_spare_tag),
@@ -202,12 +202,12 @@ fun ErsatzteilPlakette(modifier: Modifier = Modifier) {
  * onClick sah aus wie ein Knopf, wurde als Knopf vorgelesen und tat nichts.
  */
 @Composable
-fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
+fun InfoBadge(text: String, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
     Surface(shape = Formen.chip, color = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer, modifier = modifier) {
-        Row(Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-            if (icon != null) Icon(icon, null, Modifier.size(mitSchrift(16.dp)))
+        Row(Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.tiny),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+            if (icon != null) Icon(icon, null, Modifier.size(withFont(16.dp)))
             Text(text, style = MaterialTheme.typography.labelMedium)
         }
     }
@@ -230,7 +230,7 @@ fun InfoPlakette(text: String, modifier: Modifier = Modifier, icon: androidx.com
  * @param waehrung Währungscode aus den Einstellungen
  */
 @Composable
-fun ManuelleKachelFuss(preis: Geld?, waehrung: Waehrung) {
+fun ManualTileFooter(preis: Geld?, waehrung: Waehrung) {
     Text(
         if (preis != null) fmtMoney(preis, waehrung) else stringResource(R.string.detail_price_none_yet),
         style = MaterialTheme.typography.bodySmall,
@@ -238,7 +238,7 @@ fun ManuelleKachelFuss(preis: Geld?, waehrung: Waehrung) {
         color = MaterialTheme.colorScheme.onSurface,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(top = Abstaende.haar),
+        modifier = Modifier.padding(top = Abstaende.hairline),
     )
 }
 
@@ -251,11 +251,11 @@ fun ManuelleKachelFuss(preis: Geld?, waehrung: Waehrung) {
 @Composable
 fun ErfassungsFelder(
     anzahl: String,
-    onAnzahl: (String) -> Unit,
+    onCount: (String) -> Unit,
     /** Was gezählt wird („Anzahl gleicher Teile“). */
-    anzahlHinweis: String,
+    countHint: String,
     preis: String,
-    onPreis: (String) -> Unit,
+    onPrice: (String) -> Unit,
     zustand: Zustand,
     onZustand: (Zustand) -> Unit,
     /**
@@ -263,13 +263,13 @@ fun ErfassungsFelder(
      * Erfassungsfelder.
      */
     lagerort: String = "",
-    onLagerort: (String) -> Unit = {},
+    onLocation: (String) -> Unit = {},
     lagerorte: List<String> = emptyList(),
 ) {
-    AnzahlFeld(anzahl, onAnzahl, anzahlHinweis)
-    KaufpreisFeld(preis, onPreis, stringResource(R.string.common_unit_price))
+    CountField(anzahl, onCount, countHint)
+    PurchasePriceField(preis, onPrice, stringResource(R.string.common_unit_price))
     Zustandszeile(zustand = zustand, onZustand = onZustand)
-    LagerortErfassung(lagerort, lagerorte, onLagerort)
+    LagerortErfassung(lagerort, lagerorte, onLocation)
 }
 
 /**
@@ -277,13 +277,13 @@ fun ErfassungsFelder(
  * ungleich weit auseinander, und ein Dialog liess eine leere Lücke.
  */
 @Composable
-fun AnzahlFeld(wert: String, onWert: (String) -> Unit, hinweis: String) {
+fun CountField(wert: String, onValue: (String) -> Unit, hinweis: String) {
     OutlinedTextField(
-        value = wert, onValueChange = { onWert(NumericInput.quantity(it)) },
+        value = wert, onValueChange = { onValue(NumericInput.quantity(it)) },
         label = { Text(stringResource(R.string.common_quantity)) },
-        isError = NumericInput.mengeUngueltig(wert),
+        isError = NumericInput.quantityInvalid(wert),
         supportingText = {
-            if (NumericInput.mengeUngueltig(wert)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen())
+            if (NumericInput.quantityInvalid(wert)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.announce())
             else Text(hinweis)
         },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
@@ -297,18 +297,18 @@ fun AnzahlFeld(wert: String, onWert: (String) -> Unit, hinweis: String) {
  * Platzhalter: Der verschwand mit dem ersten Tippen.
  */
 @Composable
-fun KaufpreisFeld(wert: String, onWert: (String) -> Unit, beschriftung: String, onFertig: (() -> Unit)? = null) {
+fun PurchasePriceField(wert: String, onValue: (String) -> Unit, beschriftung: String, onFertig: (() -> Unit)? = null) {
     OutlinedTextField(
-        value = wert, onValueChange = { onWert(NumericInput.price(it)) },
+        value = wert, onValueChange = { onValue(NumericInput.price(it)) },
         label = { Text(beschriftung) },
-        isError = NumericInput.preisUngueltig(wert),
+        isError = NumericInput.priceInvalid(wert),
         supportingText = {
-            if (NumericInput.preisUngueltig(wert)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.ansagen())
+            if (NumericInput.priceInvalid(wert)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.announce())
             else Text(stringResource(R.string.common_unit_price_placeholder))
         },
         modifier = Modifier.fillMaxWidth(), singleLine = true,
         shape = Formen.feld,
-        keyboardOptions = NumericInput.preisTastatur(),
+        keyboardOptions = NumericInput.priceKeyboard(),
         keyboardActions = if (onFertig != null) KeyboardActions(onDone = { onFertig() }) else KeyboardActions.Default,
     )
 }
@@ -326,9 +326,9 @@ fun ManuelleKachel(
     imageLoader: ImageLoader,
     name: String,
     menge: Int,
-    zustaende: List<Zustand>,
+    states: List<Zustand>,
     zustand: Zustand?,
-    besitzer: List<KontoAnsicht>,
+    besitzer: List<AccountView>,
     preis: Geld?,
     waehrung: Waehrung,
     onEdit: () -> Unit,
@@ -346,7 +346,7 @@ fun ManuelleKachel(
         Column {
             Box(Modifier.fillMaxWidth().height(76.dp)) {
                 ProduktBild(
-                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
+                    model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
                     imageLoader = imageLoader,
                     // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
                     contentDescription = null,
@@ -355,7 +355,7 @@ fun ManuelleKachel(
                     },
                     modifier = Modifier.fillMaxSize().clip(Formen.kachelBildEcken),
                     contentScale = ContentScale.Fit,
-                    ersatzGroesse = 28.dp,
+                    fallbackSize = 28.dp,
                 )
                 Surface(
                     color = MaterialTheme.colorScheme.primary,
@@ -366,7 +366,7 @@ fun ManuelleKachel(
                     // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
                     // sondern die Regel der Webapp — `man-tile` traegt dort ein
                     // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
-                    Text(mengeManuell(menge), Modifier.padding(horizontal = Abstaende.winzig, vertical = 1.dp).vorgelesenAls(stueckzahl(menge)),
+                    Text(mengeManuell(menge), Modifier.padding(horizontal = Abstaende.tiny, vertical = 1.dp).readAloudAs(stueckzahl(menge)),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                 }
@@ -374,7 +374,7 @@ fun ManuelleKachel(
                     Box(Modifier.size(12.dp).align(Alignment.BottomStart).padding(3.dp)
                         .clip(CircleShape).background(farbe))
                 }
-                Row(Modifier.align(Alignment.TopStart).padding(Abstaende.haar)) {
+                Row(Modifier.align(Alignment.TopStart).padding(Abstaende.hairline)) {
                     MitTooltip(stringResource(R.string.common_edit)) {
                         IconButton(onClick = onEdit) {
                             Icon(Icons.Default.Edit, stringResource(R.string.common_edit),
@@ -385,7 +385,7 @@ fun ManuelleKachel(
                 // Kein Papierkorb auf der Kachel: Die Karte öffnet das Detail, und dort steht er
                 // an derselben Stelle wie beim Set.
             }
-            Column(Modifier.padding(horizontal = 6.dp, vertical = Abstaende.winzig)) {
+            Column(Modifier.padding(horizontal = 6.dp, vertical = Abstaende.tiny)) {
                 Text(name, style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (farbname != null) {
@@ -393,12 +393,12 @@ fun ManuelleKachel(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Box(Modifier.padding(top = 3.dp)) { ConditionBadges(zustaende, zustand) }
+                Box(Modifier.padding(top = 3.dp)) { ConditionBadges(states, zustand) }
                 // Wem gehört der Eintrag? Der Server hängt owners nur an, wenn
                 // mehrere Konten im Blickfeld sind — im Einzelkonto stünde an
                 // jeder Kachel „gehört mir".
-                OwnerBadges(besitzer, Modifier.padding(top = Abstaende.haar))
-                ManuelleKachelFuss(preis = preis, waehrung = waehrung)
+                OwnerBadges(besitzer, Modifier.padding(top = Abstaende.hairline))
+                ManualTileFooter(preis = preis, waehrung = waehrung)
             }
         }
     }

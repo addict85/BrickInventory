@@ -1,17 +1,17 @@
 Gegenprobe: Ein abgewählter Stufen-Chip blendet keine Zeile aus
 Modul: feature-verwaltung
-Test: ch.brickinventoryapp.verwaltung.MonitoringProtokollAnzeigeTest
+Test: ch.brickinventoryapp.verwaltung.MonitoringLogDisplayTest
 Rot: eine abgewaehlte Stufe
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
 index 6b54475..27f1480 100644
 --- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
 +++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
-@@ -91,7 +91,7 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
-                     val sichtbar = remember(verwaltung.protokoll, versteckteStufen, protokollSuche) {
-                         val suche = protokollSuche.trim().lowercase()
+@@ -91,7 +91,7 @@ internal fun LogSection(verwaltung: ManagementUiState, aktionen: Monitorin
+                     val sichtbar = remember(verwaltung.protokoll, hiddenLevels, logSearch) {
+                         val suche = logSearch.trim().lowercase()
                          verwaltung.protokoll.filter { z ->
--                            z.level?.lowercase() !in versteckteStufen &&
+-                            z.level?.lowercase() !in hiddenLevels &&
 +                            true &&
                                  (suche.isEmpty() || z.message.orEmpty().lowercase().contains(suche))
                          }

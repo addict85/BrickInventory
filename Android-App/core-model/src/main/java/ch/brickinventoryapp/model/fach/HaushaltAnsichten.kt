@@ -11,7 +11,7 @@ import ch.brickinventoryapp.model.data.ScopeFilter
  * namentlich — ein Eintrag meint immer genau ein Konto. Leer, wenn es nichts zu
  * wählen gibt; dann bleibt die Auswahl verborgen. Paare aus (Wert, Beschriftung).
  */
-fun kontoOptionen(mitglieder: List<MitgliedAnsicht>, labelAll: String, labelOwn: String): List<Pair<String, String>> {
+fun accountOptions(mitglieder: List<MemberView>, labelAll: String, labelOwn: String): List<Pair<String, String>> {
     if (mitglieder.size < 2) return emptyList()
     return buildList {
         add(ScopeFilter.ALL to labelAll)
@@ -20,13 +20,13 @@ fun kontoOptionen(mitglieder: List<MitgliedAnsicht>, labelAll: String, labelOwn:
     }
 }
 
-data class MitgliedAnsicht(
+data class MemberView(
     val id: Int = 0,
     val username: String = "",
     val isSelf: Boolean = false,
 )
 
-data class KontoAnsicht(
+data class AccountView(
     val id: Int = 0,
     val username: String = "",
 )
@@ -47,30 +47,30 @@ data class KaufAnsicht(
 }
 
 /** Die Käufe eines Eintrags samt Summen, aus einer Antwort. */
-data class KaeufeAnsicht(val kaeufe: List<KaufAnsicht>, val summen: KaufSummenAnsicht)
+data class PurchasesView(val kaeufe: List<KaufAnsicht>, val sums: PurchaseSumsView)
 
-/** Eine Einladung in den Haushalt; [gueltigSekunden] null heisst ohne Frist. */
-data class EinladungAnsicht(val code: String, val gueltigSekunden: Int?)
+/** Eine Einladung in den Haushalt; [validSeconds] null heisst ohne Frist. */
+data class InvitationView(val code: String, val validSeconds: Int?)
 
-data class KaufSummenAnsicht(
+data class PurchaseSumsView(
     val quantity: Int = 0,
     val amount: Geld? = null,
 )
 
-data class LagerortAnsicht(
+data class LocationView(
     val ort: String,
     val sets: Int = 0,
     val teile: Int = 0,
 )
 
-data class LagerortEintragAnsicht(
+data class LocationEntryView(
     val id: Int = 0,
     val userId: Int = 0,
     val name: String = "",
 )
 
 /** Ein Ort des eigenen Vorrats; [vorgabe] ist der Stern, den das Erfassen vorauswählt. */
-data class VorratsOrtAnsicht(
-    val ort: LagerortEintragAnsicht,
+data class StockLocationView(
+    val ort: LocationEntryView,
     val vorgabe: Boolean = false,
 )

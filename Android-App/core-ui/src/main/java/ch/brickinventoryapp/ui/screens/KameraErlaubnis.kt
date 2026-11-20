@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui.screens
 
-import ch.brickinventoryapp.ui.components.ansagen
+import ch.brickinventoryapp.ui.components.announce
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 
-/** Ob die Kamera erlaubt ist, und wie man danach fragt (siehe [rememberKameraErlaubnis]). */
+/** Ob die Kamera erlaubt ist, und wie man danach fragt (siehe [rememberCameraPermission]). */
 @Stable
 class KameraErlaubnis(
     private val zustand: State<Boolean>,
@@ -52,16 +52,16 @@ class KameraErlaubnis(
     private val frage: () -> Unit,
     private val einstellungen: () -> Unit,
 ) {
-    val erteilt: Boolean get() = zustand.value
+    val granted: Boolean get() = zustand.value
 
     /** Das System zeigt keine Frage mehr; erlauben lässt sich nur noch in den App-Einstellungen. */
-    val dauerhaftVerweigert: Boolean get() = !zustand.value && gesperrt.value
+    val permanentDenied: Boolean get() = !zustand.value && gesperrt.value
 
     /** Die Frage des Systems — auch beim Öffnen des Scanners, darum nie die Einstellungen. */
-    fun anfragen() = frage()
+    fun requests() = frage()
 
     /** Der Knopf im Hinweis: Ist die Frage gesperrt, führt er in die Einstellungen statt ins Leere. */
-    fun erlauben() = if (dauerhaftVerweigert) einstellungen() else frage()
+    fun erlauben() = if (permanentDenied) einstellungen() else frage()
 }
 
 /**
@@ -72,33 +72,33 @@ class KameraErlaubnis(
  * sofort mit Nein zurück, und nur die Einstellungen helfen weiter.
  */
 @Composable
-fun rememberKameraErlaubnis(): KameraErlaubnis {
-    val kontext = LocalContext.current
+fun rememberCameraPermission(): KameraErlaubnis {
+    val context = LocalContext.current
     val aktivitaet = LocalActivity.current
-    val erteilt = remember { mutableStateOf(kameraErteilt(kontext)) }
+    val granted = remember { mutableStateOf(cameraGranted(context)) }
     val gesperrt = remember { mutableStateOf(false) }
     val starter = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ja ->
-        erteilt.value = ja
+        granted.value = ja
         gesperrt.value = !ja && aktivitaet != null &&
             !ActivityCompat.shouldShowRequestPermissionRationale(aktivitaet, Manifest.permission.CAMERA)
     }
-    LifecycleResumeEffect(kontext) {
-        erteilt.value = kameraErteilt(kontext)
+    LifecycleResumeEffect(context) {
+        granted.value = cameraGranted(context)
         onPauseOrDispose { }
     }
-    return remember(starter, kontext) {
-        KameraErlaubnis(erteilt, gesperrt, { starter.launch(Manifest.permission.CAMERA) }) { oeffneAppEinstellungen(kontext) }
+    return remember(starter, context) {
+        KameraErlaubnis(granted, gesperrt, { starter.launch(Manifest.permission.CAMERA) }) { openAppSettings(context) }
     }
 }
 
-private fun kameraErteilt(kontext: Context): Boolean =
-    ContextCompat.checkSelfPermission(kontext, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+private fun cameraGranted(context: Context): Boolean =
+    ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
 /** Die Seite dieser App in den Systemeinstellungen; fehlt sie (eigenwillige Geräte), geschieht nichts. */
-private fun oeffneAppEinstellungen(kontext: Context) {
+private fun openAppSettings(context: Context) {
     runCatching {
-        kontext.startActivity(
-            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", kontext.packageName, null))
+        context.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
     }
@@ -111,18 +111,18 @@ private fun oeffneAppEinstellungen(kontext: Context) {
  * will, soll nicht in einer Sackgasse stehen.
  *
  * @param zweck wozu die Kamera dient (Barcode, QR-Code)
- * @param eintippen Beschriftung des Wegs ohne Kamera, [onEintippen] geht ihn
- * @param verweigert [KameraErlaubnis.dauerhaftVerweigert]: Dann sagt der Hinweis, wo man
+ * @param eintippen Beschriftung des Wegs ohne Kamera, [typeInOn] geht ihn
+ * @param verweigert [KameraErlaubnis.permanentDenied]: Dann sagt der Hinweis, wo man
  *        erlaubt, sonst wirkte „Erlauben“ wie ein toter Knopf.
- * @param onErlauben [KameraErlaubnis.erlauben]
+ * @param onAllow [KameraErlaubnis.erlauben]
  */
 @Composable
-fun KameraErlaubnisHinweis(
+fun CameraPermissionHint(
     zweck: String,
     eintippen: String,
-    onEintippen: () -> Unit,
-    verweigert: Boolean = false,
-    onErlauben: () -> Unit,
+    typeInOn: () -> Unit,
+    denied: Boolean = false,
+    onAllow: () -> Unit,
 ) {
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         Column(Modifier.padding(Abstaende.gross), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -130,16 +130,16 @@ fun KameraErlaubnisHinweis(
                 color = Color.White, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
             Spacer(Modifier.height(Abstaende.klein))
             Text(zweck, color = Color.White, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
-            if (verweigert) {
+            if (denied) {
                 Spacer(Modifier.height(Abstaende.klein))
-                Text(stringResource(R.string.scanner_camera_gesperrt), Modifier.ansagen(),
+                Text(stringResource(R.string.scanner_camera_gesperrt), Modifier.announce(),
                     color = Color.White, style = MaterialTheme.typography.bodyMedium, textAlign = TextAlign.Center)
             }
             Spacer(Modifier.height(Abstaende.mittel))
-            Button(onClick = onErlauben) {
-                Text(stringResource(if (verweigert) R.string.scanner_camera_einstellungen else R.string.scanner_allow))
+            Button(onClick = onAllow) {
+                Text(stringResource(if (denied) R.string.scanner_camera_einstellungen else R.string.scanner_allow))
             }
-            TextButton(onClick = onEintippen, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
+            TextButton(onClick = typeInOn, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
                 Text(eintippen)
             }
         }
@@ -153,10 +153,10 @@ fun KameraErlaubnisHinweis(
  * weisse Schrift in 13 sp).
  */
 @Composable
-fun KameraUeberlagerung(
+fun CameraOverlay(
     hinweis: String,
     unten: @Composable ColumnScope.() -> Unit = {},
-    rahmen: @Composable ColumnScope.() -> Unit,
+    frame: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         Modifier.fillMaxSize(),
@@ -164,12 +164,12 @@ fun KameraUeberlagerung(
         verticalArrangement = Arrangement.Center,
     ) {
         Spacer(Modifier.weight(0.2f))
-        rahmen()
+        frame()
         Spacer(Modifier.height(Abstaende.gross))
         Surface(color = Color.Black.copy(alpha = 0.72f), shape = Formen.kachel) {
             Text(
                 hinweis,
-                Modifier.padding(horizontal = 18.dp, vertical = 10.dp).ansagen(),
+                Modifier.padding(horizontal = 18.dp, vertical = 10.dp).announce(),
                 color = Color.White, style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
             )

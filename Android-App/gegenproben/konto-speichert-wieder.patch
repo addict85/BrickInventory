@@ -7,8 +7,8 @@ diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/
 index 3b4ab43..a9de27c 100644
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/ZustandKonto.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/ZustandKonto.kt
-@@ -25,6 +25,7 @@ data class KontoUiState(
-     val profil: ProfilAnsicht? = null,
+@@ -25,6 +25,7 @@ data class AccountUiState(
+     val profile: ProfileView? = null,
      /** Profil, Passwort oder Design speichern; scheitert es, steht der Grund hier. */
      val speichern: Vorgang = Vorgang.Fertig,
 +    val speichert: Boolean = false,

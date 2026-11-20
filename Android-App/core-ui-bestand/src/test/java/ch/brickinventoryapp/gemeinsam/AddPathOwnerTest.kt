@@ -3,11 +3,11 @@ package ch.brickinventoryapp.gemeinsam
 import ch.brickinventoryapp.model.fach.Geld
 import ch.brickinventoryapp.model.fach.Zustand
 import org.junit.Assert.assertEquals
-import ch.brickinventoryapp.model.fach.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.MemberView
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.Quellen
-import ch.brickinventoryapp.gemeinsam.ui.ErfassungsWerte
+import ch.brickinventoryapp.gemeinsam.ui.EntryValues
 import ch.brickinventoryapp.gemeinsam.ui.erfassungsWerte
 
 /**
@@ -19,7 +19,7 @@ import ch.brickinventoryapp.gemeinsam.ui.erfassungsWerte
 class AddPathOwnerTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -50,12 +50,12 @@ class AddPathOwnerTest {
     @Test
     fun `alle Erfassungswege fragen den Eigentuemer ab`() {
         // Wächter gegen den nächsten vergessenen Weg.
-        val wege = listOf(
+        val routes = listOf(
             "sammlung/ui/screens/GalerieErfassen.kt" to "Set über die Galerie",
             "teile/ui/screens/PartsDialogs.kt"    to "manuelles Teil",
             "teile/ui/screens/FigurenErfassen.kt" to "manuelle Minifigur",
         )
-        for ((datei, name) in wege) {
+        for ((datei, name) in routes) {
             assert(code(read(datei)).contains("OwnerPicker(")) {
                 "Erfassungsweg ohne Eigentümer-Auswahl: $name ($datei)"
             }
@@ -74,12 +74,12 @@ class AddPathOwnerTest {
                 "$datei rechnet die Eingaben wieder selbst um statt über erfassungsWerte()"
             }
         }
-        val allein = listOf(MitgliedAnsicht(id = 1, username = "ich", isSelf = true))
-        val haushalt = allein + MitgliedAnsicht(id = 7, username = "lea")
+        val allein = listOf(MemberView(id = 1, username = "ich", isSelf = true))
+        val haushalt = allein + MemberView(id = 7, username = "lea")
         assertEquals("ohne Haushalt überschriebe die App eine Server-Vorgabe mit einer ID, die niemand gewählt hat",
-            ErfassungsWerte(anzahl = 1, preis = Geld.aus(2.5), zustand = Zustand.GEBRAUCHT, besitzer = null),
+            EntryValues(anzahl = 1, preis = Geld.aus(2.5), zustand = Zustand.GEBRAUCHT, besitzer = null),
             erfassungsWerte(anzahl = "", preis = "2,50", zustand = Zustand.GEBRAUCHT, besitzer = 7, haushalt = allein))
-        assertEquals(ErfassungsWerte(anzahl = 3, preis = null, zustand = Zustand.NEU, besitzer = 7),
+        assertEquals(EntryValues(anzahl = 3, preis = null, zustand = Zustand.NEU, besitzer = 7),
             erfassungsWerte(anzahl = "3", preis = "", zustand = Zustand.NEU, besitzer = 7, haushalt = haushalt))
     }
 }

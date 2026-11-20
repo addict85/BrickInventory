@@ -1,12 +1,12 @@
 Gegenprobe: Filterknopf wieder mit Text neben dem Suchfeld (wie vorher auf dem Tablet)
 Modul: app
-Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
 Rot: Such-Platzhalter
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
 --- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
 +++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
-@@ -122,12 +122,13 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Mo
+@@ -122,12 +122,13 @@ private fun FilterButton(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Mo
          modifier = modifier,
      ) {
          MitTooltip(stringResource(R.string.filter_button)) {
@@ -14,7 +14,7 @@ diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/geme
 +            androidx.compose.material3.OutlinedButton(
                  onClick = onClick,
                  modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
-                 border = rand,
+                 border = edge,
              ) {
 -                Icon(Icons.Default.FilterAlt, stringResource(R.string.filter_button))
 +                Icon(Icons.Default.FilterAlt, null)

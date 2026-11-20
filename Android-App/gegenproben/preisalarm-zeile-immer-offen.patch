@@ -1,6 +1,6 @@
 Gegenprobe: auch ein Alarm ohne Set in der Sammlung öffnet die Detailansicht
 Modul: app
-Test: ch.brickinventoryapp.app.PreisalarmeAnzeigeTest
+Test: ch.brickinventoryapp.app.PriceAlertsDisplayTest
 Rot: eine Zeile oeffnet
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt

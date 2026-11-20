@@ -1,14 +1,14 @@
 Gegenprobe: Offline-Banner wieder in tertiaryContainer (Classic: rot)
 Modul: app
-Test: ch.brickinventoryapp.app.GeruestUndFormularTest
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
 Rot: Offline-Hinweis meldet keinen Fehler
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHinweis.kt
-@@ -90,8 +90,8 @@ private fun Hinweisbanner(symbol: ImageVector, titel: String, text: String?, mod
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/OfflineHint.kt
+@@ -90,8 +90,8 @@ private fun NoticeBanner(symbol: ImageVector, titel: String, text: String?, mod
      Surface(
-         modifier.fillMaxWidth().padding(horizontal = Abstaende.mittel, vertical = Abstaende.winzig).ansagen(),
+         modifier.fillMaxWidth().padding(horizontal = Abstaende.mittel, vertical = Abstaende.tiny).announce(),
          shape = Formen.leiste,
 -        color = MaterialTheme.colorScheme.surface,
 -        contentColor = MaterialTheme.colorScheme.onSurface,

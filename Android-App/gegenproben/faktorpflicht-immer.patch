@@ -1,6 +1,6 @@
 Gegenprobe: Jedes /auth/me meldet die Pflicht, auch ohne Feld
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.ZweiterFaktorUebernahmeTest
+Test: ch.brickinventoryapp.zustand.SecondFactorTakeoverTest
 Rot: auth me ohne Pflicht
 
 diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
@@ -10,8 +10,8 @@ diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung
      if (me !is Ergebnis.Erfolg) return
      val nutzer = me.data
      verwalterGeaendert(nutzer?.verwalter == true)
--    if (nutzer?.zweiterFaktorPflicht == true) faktorPflicht.melde()
-+    faktorPflicht.melde()
+-    if (nutzer?.zweiterFaktorPflicht == true) factorRequired.melde()
++    factorRequired.melde()
  }
  
  /**

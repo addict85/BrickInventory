@@ -10,7 +10,7 @@ diff --git a/Android-App/build-logic/convention/src/main/kotlin/ch/brickinventor
                  "${k.von} kennt das Wire-Format: Nur ${wireKenner.sorted().joinToString(" und ")} bildet es ab"
              k.nach == "core-testing" -> "${k.von} bindet core-testing nicht nur für Tests ein"
              k.von.startsWith("feature-") && !k.nach.startsWith("core-") -> "${k.von} hängt an ${k.nach}"
--            k.von.startsWith("feature-") && k.nach in tiefeKerne && k.von !in tiefeKerne.getValue(k.nach) ->
+-            k.von.startsWith("feature-") && k.nach in depthCores && k.von !in depthCores.getValue(k.nach) ->
 -                "${k.von} hängt an ${k.nach}, das unter dem Zustand liegt"
              k.von.startsWith("core-") && k.nach !in kerne[k.von].orEmpty() ->
                  "Schichtung der Kernmodule: ${k.von} hängt an ${k.nach}" +

@@ -1,6 +1,6 @@
 Gegenprobe: Das Adressfeld der Einrichtung trägt wieder einen ganzen Satz als Etikett
 Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.AnmeldeRandTest
+Test: ch.brickinventoryapp.anmeldung.LoginEdgeTest
 Rot: das Adressfeld traegt ein kurzes Etikett
 
 diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml

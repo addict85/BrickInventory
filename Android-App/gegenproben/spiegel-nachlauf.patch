@@ -1,17 +1,17 @@
 Gegenprobe: der Plattenspiegel übernimmt jeden Wert, auch einen überholten
 Modul: core-data
-Test: ch.brickinventoryapp.data.SpiegelNachlaufTest
+Test: ch.brickinventoryapp.data.MirrorFollowUpTest
 Rot: ein ueberholter Plattenwert dreht den Speicher nicht zurueck
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
-@@ -74,7 +74,7 @@ class TokenSchranke {
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+@@ -74,7 +74,7 @@ class TokenLimit {
          strom.map(roh).distinctUntilChanged()
              .transformLatest { r -> lies(r) { emit(r to it) } }
              .collect { (r, wert) ->
--                sperre.withLock { if (roh(jetzt()) == r) setze(wert) }
-+                sperre.withLock { setze(wert) }
+-                lock.withLock { if (roh(jetzt()) == r) setze(wert) }
++                lock.withLock { setze(wert) }
                  if (erster) { erster = false; gelesen() }
              }
      }

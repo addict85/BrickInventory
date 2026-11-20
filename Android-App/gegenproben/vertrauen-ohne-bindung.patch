@@ -1,6 +1,6 @@
 Gegenprobe: Vertrauenschiffre bindet den Namen des Eintrags nicht als AAD
 Modul: core-data
-Test: ch.brickinventoryapp.data.VertrauenVerschluesseltTest
+Test: ch.brickinventoryapp.data.TrustEncryptedTest
 Rot: ein Geheimtext unter fremdem Namen gilt nicht
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
@@ -11,13 +11,13 @@ index 25f2ada..977fd1e 100644
      private val angaben: () -> ByteArray = angaben ?: schluessel
  
      fun verschluessle(wert: String, bindung: String): String? = runCatching {
--        Base64.getEncoder().encodeToString(chiffre.verschluessle(wert.toByteArray(Charsets.UTF_8), ZWECK + bindung))
-+        Base64.getEncoder().encodeToString(chiffre.verschluessle(wert.toByteArray(Charsets.UTF_8), ZWECK))
+-        Base64.getEncoder().encodeToString(cipher.verschluessle(wert.toByteArray(Charsets.UTF_8), PURPOSE + bindung))
++        Base64.getEncoder().encodeToString(cipher.verschluessle(wert.toByteArray(Charsets.UTF_8), PURPOSE))
      }.getOrNull()
  
      fun entschluessle(gespeichert: String, bindung: String): String? = runCatching {
--        chiffre.entschluessle(Base64.getDecoder().decode(gespeichert), ZWECK + bindung)?.toString(Charsets.UTF_8)
-+        chiffre.entschluessle(Base64.getDecoder().decode(gespeichert), ZWECK)?.toString(Charsets.UTF_8)
+-        cipher.entschluessle(Base64.getDecoder().decode(gespeichert), PURPOSE + bindung)?.toString(Charsets.UTF_8)
++        cipher.entschluessle(Base64.getDecoder().decode(gespeichert), PURPOSE)?.toString(Charsets.UTF_8)
      }.getOrNull()
  
      /**

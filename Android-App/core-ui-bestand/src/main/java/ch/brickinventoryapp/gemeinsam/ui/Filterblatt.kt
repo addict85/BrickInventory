@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
-import ch.brickinventoryapp.ui.components.WahlChip
+import ch.brickinventoryapp.ui.components.ChoiceChip
 import androidx.compose.ui.semantics.heading
 import androidx.compose.foundation.selection.selectableGroup
-import ch.brickinventoryapp.model.fach.kontoOptionen
-import ch.brickinventoryapp.model.fach.LagerortAnsicht
-import ch.brickinventoryapp.model.fach.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.accountOptions
+import ch.brickinventoryapp.model.fach.LocationView
+import ch.brickinventoryapp.model.fach.MemberView
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,11 +50,11 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.ScanKnopf
-import ch.brickinventoryapp.ui.components.grosseSchrift
-import ch.brickinventoryapp.ui.components.AnsichtUmschalter
+import ch.brickinventoryapp.ui.components.ScanButton
+import ch.brickinventoryapp.ui.components.largeFont
+import ch.brickinventoryapp.ui.components.ViewToggle
 import ch.brickinventoryapp.ui.components.Suchfeld
-import ch.brickinventoryapp.model.ui.Listenansicht
+import ch.brickinventoryapp.model.ui.ListView
 
 /**
  * Suche und daneben ein Knopf „Filter“ — der Kopf über Galerie, Teilen und
@@ -63,39 +63,39 @@ import ch.brickinventoryapp.model.ui.Listenansicht
  * viele davon gerade wirken.
  */
 @Composable
-fun SucheMitFilter(
+fun SearchWithFilter(
     wert: String,
-    onWert: (String) -> Unit,
+    onValue: (String) -> Unit,
     platzhalter: String,
-    aktiveFilter: Int,
+    activeFilter: Int,
     onFilter: () -> Unit,
     /** Scannen als Symbol neben dem Filter; null = kein Scanner auf diesem Bildschirm. */
-    onScannen: (() -> Unit)? = null,
-    /** Das Sortiermenü (SortierMenue) zwischen Filter und Scannen; null = keine Sortierung. */
-    sortierung: (@Composable () -> Unit)? = null,
+    scanOn: (() -> Unit)? = null,
+    /** Das Sortiermenü (SortierMenu) zwischen Filter und Scannen; null = keine Sortierung. */
+    sorting: (@Composable () -> Unit)? = null,
     /**
      * Erfassen mit seiner Beschreibung; steht nur bei grosser Schrift hier, sonst schwebt
-     * es als ErfassenFab. Null = dieser Bildschirm erfasst nichts.
+     * es als AddFab. Null = dieser Bildschirm erfasst nichts.
      */
     erfassen: Pair<String, () -> Unit>? = null,
     /** Die wirkenden Filter; sie stehen als Chips unter der Suche und lassen sich einzeln entfernen. */
-    aktive: List<AktiverFilter> = emptyList(),
+    aktive: List<ActiveFilter> = emptyList(),
 ) {
     Column(Modifier.fillMaxWidth()) {
-        SucheUndKnoepfe(wert, onWert, platzhalter, aktiveFilter, onFilter, onScannen, sortierung, erfassen)
-        AktiveFilterReihe(aktive)
+        SearchAndButtons(wert, onValue, platzhalter, activeFilter, onFilter, scanOn, sorting, erfassen)
+        ActiveFilterSeries(aktive)
     }
 }
 
 @Composable
-private fun SucheUndKnoepfe(
+private fun SearchAndButtons(
     wert: String,
-    onWert: (String) -> Unit,
+    onValue: (String) -> Unit,
     platzhalter: String,
-    aktiveFilter: Int,
+    activeFilter: Int,
     onFilter: () -> Unit,
-    onScannen: (() -> Unit)?,
-    sortierung: (@Composable () -> Unit)?,
+    scanOn: (() -> Unit)?,
+    sorting: (@Composable () -> Unit)?,
     erfassen: Pair<String, () -> Unit>?,
 ) {
     // So breit wie das Raster darunter (Lesebreite.kt): Endete die Leiste bei 840 dp,
@@ -104,39 +104,39 @@ private fun SucheUndKnoepfe(
         // Filter, Sortieren und Scannen gleich: drei Symbole mit Tooltip und Namen für
         // TalkBack. Auf dem Tablet stand „Filter“ beschriftet neben zwei nackten Symbolen.
         // Die Zahl am Symbol sagt weiter, wie viele Filter wirken.
-        val gross = grosseSchrift()
+        val gross = largeFont()
         // Bei grosser Schrift steht Erfassen in dieser Zeile statt schwebend: Über einer
         // Liste, die nur zwei Einträge zeigt, verdeckte der schwebende Knopf ihren Text.
-        val erfassenHier = erfassen.takeIf { gross }
-        val knoepfe: @Composable () -> Unit = {
-            val folgt = onScannen != null || sortierung != null || erfassenHier != null
-            FilterKnopf(aktiveFilter, onFilter, Modifier.padding(end = if (folgt) Abstaende.winzig else 14.dp))
-            if (sortierung != null) Box(Modifier.padding(end = if (onScannen != null || erfassenHier != null) Abstaende.winzig else 14.dp)) { sortierung() }
-            if (onScannen != null) ScanKnopf(onScannen,
-                Modifier.padding(end = if (erfassenHier != null) Abstaende.winzig else 14.dp))
-            if (erfassenHier != null) MitTooltip(erfassenHier.first, Modifier.padding(end = 14.dp)) {
-                FilledIconButton(onClick = erfassenHier.second) { Icon(Icons.Default.Add, contentDescription = erfassenHier.first) }
+        val addHere = erfassen.takeIf { gross }
+        val buttons: @Composable () -> Unit = {
+            val folgt = scanOn != null || sorting != null || addHere != null
+            FilterButton(activeFilter, onFilter, Modifier.padding(end = if (folgt) Abstaende.tiny else 14.dp))
+            if (sorting != null) Box(Modifier.padding(end = if (scanOn != null || addHere != null) Abstaende.tiny else 14.dp)) { sorting() }
+            if (scanOn != null) ScanButton(scanOn,
+                Modifier.padding(end = if (addHere != null) Abstaende.tiny else 14.dp))
+            if (addHere != null) MitTooltip(addHere.first, Modifier.padding(end = 14.dp)) {
+                FilledIconButton(onClick = addHere.second) { Icon(Icons.Default.Add, contentDescription = addHere.first) }
             }
         }
         // Bei grosser Schrift die Knöpfe unter das Feld: Daneben blieb vom Platzhalter
         // nur „Suche…“. Ein Filterknopf allein bleibt daneben; auf eigener Zeile stand
         // er verloren über dem Raster (Teile, Figuren).
-        val untereinander = gross && (onScannen != null || sortierung != null || erfassenHier != null)
+        val untereinander = gross && (scanOn != null || sorting != null || addHere != null)
         if (untereinander) Column {
-            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
+            Suchfeld(wert = wert, onValue = onValue, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically) { knoepfe() }
+                verticalAlignment = Alignment.CenterVertically) { buttons() }
         } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             // Über die ganze Breite, die Knöpfe am rechten Rand des Rasters: Auf 720 dp begrenzt
             // endete die Zeile auf dem Tablet mitten über den Kacheln, rechts davon leer.
-            Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.weight(1f))
-            knoepfe()
+            Suchfeld(wert = wert, onValue = onValue, platzhalter = platzhalter, modifier = Modifier.weight(1f))
+            buttons()
         }
     }
 }
 
 /** Ein wirkender Filter: was er zeigt und wie er wegfällt. */
-data class AktiverFilter(val text: String, val entfernen: () -> Unit)
+data class ActiveFilter(val text: String, val entfernen: () -> Unit)
 
 /**
  * Die wirkenden Filter unter der Suche, je ein Chip mit Kreuz. Die Zahl am Filterknopf
@@ -144,12 +144,12 @@ data class AktiverFilter(val text: String, val entfernen: () -> Unit)
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AktiveFilterReihe(filter: List<AktiverFilter>) {
+fun ActiveFilterSeries(filter: List<ActiveFilter>) {
     if (filter.isEmpty()) return
     FlowRow(
-        Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.winzig),
+        Modifier.fillMaxWidth().padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.tiny),
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-        verticalArrangement = Arrangement.spacedBy(Abstaende.winzig),
+        verticalArrangement = Arrangement.spacedBy(Abstaende.tiny),
     ) {
         for (f in filter) {
             val name = stringResource(R.string.filter_entfernen, f.text)
@@ -166,25 +166,25 @@ fun AktiveFilterReihe(filter: List<AktiverFilter>) {
 
 /** Der Kontofilter als Chip, wenn er wirkt; der Name wie im Blatt. */
 @Composable
-fun kontoFilter(members: List<MitgliedAnsicht>, wert: String, onEntfernen: () -> Unit): AktiverFilter? {
+fun accountFilter(members: List<MemberView>, wert: String, removeOn: () -> Unit): ActiveFilter? {
     if (wert == ScopeFilter.ALL) return null
-    val text = kontoOptionen(
+    val text = accountOptions(
         members,
         labelAll = stringResource(R.string.household_scope_all),
         labelOwn = stringResource(R.string.household_scope_own),
     ).firstOrNull { it.first == wert }?.second ?: return null
-    return AktiverFilter(text, onEntfernen)
+    return ActiveFilter(text, removeOn)
 }
 
 /** Der Lagerortfilter als Chip, wenn er wirkt. */
-fun lagerFilter(orte: List<LagerortAnsicht>, wert: String, onEntfernen: () -> Unit): AktiverFilter? =
-    wert.takeIf { w -> w.isNotBlank() && orte.any { it.ort == w } }?.let { AktiverFilter(it, onEntfernen) }
+fun storageFilter(orte: List<LocationView>, wert: String, removeOn: () -> Unit): ActiveFilter? =
+    wert.takeIf { w -> w.isNotBlank() && orte.any { it.ort == w } }?.let { ActiveFilter(it, removeOn) }
 
 @Composable
-private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun FilterButton(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val zustand = if (aktiv > 0) pluralStringResource(R.plurals.filter_active, aktiv, aktiv) else ""
     // outline statt der Vorgabe outlineVariant (1,1–1,2:1): Der Rand ist die Grenze des Knopfs.
-    val rand = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+    val edge = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     BadgedBox(
         badge = { if (aktiv > 0) Badge { Text(aktiv.toString()) } },
         modifier = modifier,
@@ -193,7 +193,7 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Mo
             OutlinedIconButton(
                 onClick = onClick,
                 modifier = Modifier.semantics { if (aktiv > 0) stateDescription = zustand },
-                border = rand,
+                border = edge,
             ) {
                 Icon(Icons.Default.FilterAlt, stringResource(R.string.filter_button))
             }
@@ -207,9 +207,9 @@ private fun FilterKnopf(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Mo
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilterBlattRahmen(
+fun FilterSheetFrame(
     onSchliessen: () -> Unit,
-    onZuruecksetzen: (() -> Unit)?,
+    resetOn: (() -> Unit)?,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
     // Gleich ganz offen: Halb offen stand bei grosser Schrift nur Titel und erster Abschnitt
@@ -218,14 +218,14 @@ fun FilterBlattRahmen(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(
             Modifier.fillMaxWidth().verticalScroll(rememberScrollState())
-                .padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.sehrGross),
+                .padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.veryLarge),
             verticalArrangement = Arrangement.spacedBy(Abstaende.gross),
         ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.filter_title), Modifier.weight(1f).semantics { heading() },
                     fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                if (onZuruecksetzen != null) {
-                    TextButton(onClick = onZuruecksetzen) { Text(stringResource(R.string.filter_reset)) }
+                if (resetOn != null) {
+                    TextButton(onClick = resetOn) { Text(stringResource(R.string.filter_reset)) }
                 }
             }
             inhalt()
@@ -239,13 +239,13 @@ fun FilterBlattRahmen(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun FilterAbschnitt(titel: String, chips: @Composable () -> Unit) {
+fun FilterSection(titel: String, chips: @Composable () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         Text(titel, Modifier.semantics { heading() }, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
         FlowRow(
             Modifier.selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-            verticalArrangement = Arrangement.spacedBy(Abstaende.winzig),
+            verticalArrangement = Arrangement.spacedBy(Abstaende.tiny),
         ) { chips() }
     }
 }
@@ -255,48 +255,48 @@ fun FilterAbschnitt(titel: String, chips: @Composable () -> Unit) {
  * abgeschnitten zu werden; nur bei normaler Schrift ist der Chip schmal begrenzt.
  */
 @Composable
-fun FilterWahl(text: String, gewaehlt: Boolean, onClick: () -> Unit) {
-    WahlChip(text, gewaehlt, onClick, if (grosseSchrift()) Modifier else Modifier.widthIn(max = 220.dp))
+fun FilterChoice(text: String, gewaehlt: Boolean, onClick: () -> Unit) {
+    ChoiceChip(text, gewaehlt, onClick, if (largeFont()) Modifier else Modifier.widthIn(max = 220.dp))
 }
 
 /** Kontofilter als Abschnitt — nur, wenn es im Haushalt etwas zu wählen gibt. */
 @Composable
-fun KontoFilterAbschnitt(members: List<MitgliedAnsicht>, current: String, onSelect: (String) -> Unit) {
-    val optionen = kontoOptionen(
+fun AccountFilterSection(members: List<MemberView>, current: String, onSelect: (String) -> Unit) {
+    val optionen = accountOptions(
         members,
         labelAll = stringResource(R.string.household_scope_all),
         labelOwn = stringResource(R.string.household_scope_own),
     )
     if (optionen.isEmpty()) return
     val wert = ScopeFilter.sanitize(current, optionen)
-    FilterAbschnitt(stringResource(R.string.household_scope_label)) {
-        optionen.forEach { (v, text) -> FilterWahl(text, v == wert) { if (v != wert) onSelect(v) } }
+    FilterSection(stringResource(R.string.household_scope_label)) {
+        optionen.forEach { (v, text) -> FilterChoice(text, v == wert) { if (v != wert) onSelect(v) } }
     }
 }
 
 /**
  * Lagerortfilter als Abschnitt — nur, wenn irgendwo ein Ort erfasst ist. Die Zahl zählt,
- * was der Filter filtert ([nachTeilen]), mit Einheit: „Keller (42)“ bei drei Sets las
+ * was der Filter filtert ([afterShare]), mit Einheit: „Keller (42)“ bei drei Sets las
  * sich wie ein Fehler.
  */
 @Composable
-fun LagerortFilterAbschnitt(orte: List<LagerortAnsicht>, current: String, onSelect: (String) -> Unit,
-                            nachTeilen: Boolean = false) {
+fun LocationFilterSection(orte: List<LocationView>, current: String, onSelect: (String) -> Unit,
+                            afterShare: Boolean = false) {
     if (orte.isEmpty()) return
     val wert = if (orte.any { it.ort == current }) current else ""
-    FilterAbschnitt(stringResource(R.string.detail_storage)) {
-        FilterWahl(stringResource(R.string.filter_storage_all), wert.isBlank()) { if (wert.isNotBlank()) onSelect("") }
+    FilterSection(stringResource(R.string.detail_storage)) {
+        FilterChoice(stringResource(R.string.filter_storage_all), wert.isBlank()) { if (wert.isNotBlank()) onSelect("") }
         orte.forEach { o ->
-            val zahl = if (nachTeilen) o.teile else o.sets
-            val text = pluralStringResource(if (nachTeilen) R.plurals.filter_lagerort_teile else R.plurals.filter_lagerort_sets,
+            val zahl = if (afterShare) o.teile else o.sets
+            val text = pluralStringResource(if (afterShare) R.plurals.filter_lagerort_teile else R.plurals.filter_lagerort_sets,
                 zahl, o.ort, zahl)
-            FilterWahl(text, o.ort == wert) { if (o.ort != wert) onSelect(o.ort) }
+            FilterChoice(text, o.ort == wert) { if (o.ort != wert) onSelect(o.ort) }
         }
     }
 }
 
 /** Karten oder Tabelle — keine Filterwahl, aber derselbe Ort wie die Filter. */
 @Composable
-fun AnsichtAbschnitt(aktuell: Listenansicht, onWechsel: (Listenansicht) -> Unit) {
-    FilterAbschnitt(stringResource(R.string.filter_section_view)) { AnsichtUmschalter(aktuell, onWechsel) }
+fun ViewSection(aktuell: ListView, onSwitch: (ListView) -> Unit) {
+    FilterSection(stringResource(R.string.filter_section_view)) { ViewToggle(aktuell, onSwitch) }
 }

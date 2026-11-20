@@ -7,21 +7,21 @@ import ch.brickinventoryapp.vertrag.KontoName
 import ch.brickinventoryapp.vertrag.Lagerort
 import ch.brickinventoryapp.vertrag.LagerortEintrag
 import ch.brickinventoryapp.model.fach.KaufAnsicht
-import ch.brickinventoryapp.model.fach.KaufSummenAnsicht
-import ch.brickinventoryapp.model.fach.KontoAnsicht
-import ch.brickinventoryapp.model.fach.LagerortAnsicht
-import ch.brickinventoryapp.model.fach.LagerortEintragAnsicht
-import ch.brickinventoryapp.model.fach.MitgliedAnsicht
-import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.fach.PurchaseSumsView
+import ch.brickinventoryapp.model.fach.AccountView
+import ch.brickinventoryapp.model.fach.LocationView
+import ch.brickinventoryapp.model.fach.LocationEntryView
+import ch.brickinventoryapp.model.fach.MemberView
+import ch.brickinventoryapp.model.fach.asMoney
 import ch.brickinventoryapp.model.util.zeitpunkt
 
-fun HouseholdMember.alsAnsicht() = MitgliedAnsicht(
+fun HouseholdMember.alsAnsicht() = MemberView(
     id = id,
     username = username,
     isSelf = isSelf,
 )
 
-fun KontoName.alsAnsicht() = KontoAnsicht(
+fun KontoName.alsAnsicht() = AccountView(
     id = id,
     username = username,
 )
@@ -29,8 +29,8 @@ fun KontoName.alsAnsicht() = KontoAnsicht(
 fun Acquisition.alsAnsicht() = KaufAnsicht(
     id = id,
     quantity = quantity,
-    purchasePrice = purchasePrice.alsGeld(),
-    unitPrice = unitPrice.alsGeld(),
+    purchasePrice = purchasePrice.asMoney(),
+    unitPrice = unitPrice.asMoney(),
     condition = condition,
     createdAt = zeitpunkt(createdAt),
     ownerUserId = ownerUserId,
@@ -38,18 +38,18 @@ fun Acquisition.alsAnsicht() = KaufAnsicht(
     currency = currency,
 )
 
-fun AcquisitionTotals.alsAnsicht() = KaufSummenAnsicht(
+fun AcquisitionTotals.alsAnsicht() = PurchaseSumsView(
     quantity = quantity,
-    amount = amount.alsGeld(),
+    amount = amount.asMoney(),
 )
 
-fun Lagerort.alsAnsicht() = LagerortAnsicht(
+fun Lagerort.alsAnsicht() = LocationView(
     ort = ort,
     sets = sets,
     teile = teile,
 )
 
-fun LagerortEintrag.alsAnsicht() = LagerortEintragAnsicht(
+fun LagerortEintrag.alsAnsicht() = LocationEntryView(
     id = id,
     userId = userId,
     name = name,

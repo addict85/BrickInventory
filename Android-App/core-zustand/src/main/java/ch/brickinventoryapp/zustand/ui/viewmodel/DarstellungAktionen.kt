@@ -6,5 +6,5 @@ interface DarstellungAktionen {
     fun setHelligkeit(wahl: String)
     fun setSystemfarben(an: Boolean)
     fun setVorschauVerbergen(an: Boolean)
-    fun setWidgetWerte(an: Boolean)
+    fun setWidgetValues(an: Boolean)
 }

@@ -1,13 +1,13 @@
 Gegenprobe: beim Beobachten lädt die Finanzseite nur die Bewertung
 Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.FinanzViewModelTest
+Test: ch.brickinventoryapp.finanzen.FinanceViewModelTest
 Rot: wer die Finanzen sieht
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanzViewModel.kt
+diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt
+--- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt
++++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/FinanceViewModel.kt
 @@ -74,7 +74,6 @@
-         ladeBeimBeobachten(_financeState) {
+         observeLoadOn(_financeState) {
              val s = _financeState.value
              if (s.valuation == null && !s.bewertung.laedt) loadValuation()
 -            if (s.historyPoints.isEmpty() && !s.verlauf.laedt) loadPortfolioHistory()

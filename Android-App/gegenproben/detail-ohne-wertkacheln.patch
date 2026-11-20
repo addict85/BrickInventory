@@ -1,6 +1,6 @@
 Gegenprobe: Set-Detail ohne Wert-Kacheln
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.UisRulesTest
 Rot: Set-Detail zeigt Marktwert
 
 diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailScreen.kt

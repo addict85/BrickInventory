@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.vertrag.abbildung
 
-import ch.brickinventoryapp.model.fach.WertverlaufAnsicht
+import ch.brickinventoryapp.model.fach.ValueHistoryView
 import ch.brickinventoryapp.vertrag.PortfolioHistoryResponse
 
 import ch.brickinventoryapp.vertrag.DashboardStats
@@ -13,26 +13,26 @@ import ch.brickinventoryapp.vertrag.Totals
 import ch.brickinventoryapp.vertrag.ValuationResponse
 import ch.brickinventoryapp.vertrag.ValuationSet
 import ch.brickinventoryapp.model.fach.BewertungAnsicht
-import ch.brickinventoryapp.model.fach.BewertungSetAnsicht
+import ch.brickinventoryapp.model.fach.ValuationSetView
 import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
 import ch.brickinventoryapp.model.fach.GewinnAnsicht
-import ch.brickinventoryapp.model.fach.GewinnSummenAnsicht
-import ch.brickinventoryapp.model.fach.GewinnZeileAnsicht
-import ch.brickinventoryapp.model.fach.KennzahlenAnsicht
-import ch.brickinventoryapp.model.fach.SummenAnsicht
+import ch.brickinventoryapp.model.fach.GainSumsView
+import ch.brickinventoryapp.model.fach.GainRowView
+import ch.brickinventoryapp.model.fach.MetricsView
+import ch.brickinventoryapp.model.fach.SumsView
 import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
-import ch.brickinventoryapp.model.fach.alsGeld
+import ch.brickinventoryapp.model.fach.asMoney
 import ch.brickinventoryapp.model.util.zeitpunkt
 
 /** total_parts ist hier schon die Summe; set_parts fehlt bei älteren Servern, dann aus der Differenz. */
-fun DashboardStats.alsAnsicht() = KennzahlenAnsicht(
+fun DashboardStats.alsAnsicht() = MetricsView(
     totalSets = totalSets,
     totalQuantity = totalQuantity,
     totalInstructions = totalInstructions,
     totalParts = totalParts,
     totalMinifigs = totalMinifigs,
-    teileAusSets = setParts ?: manualParts?.let { totalParts - it },
-    teileEinzeln = manualParts,
+    partsFromSets = setParts ?: manualParts?.let { totalParts - it },
+    partsSingle = manualParts,
 )
 
 fun PartsValuationResponse.alsAnsicht() = TeileBewertungAnsicht(
@@ -55,22 +55,22 @@ fun PnlResponse.alsAnsicht() = GewinnAnsicht(
     sets = sets.map { it.alsAnsicht() },
 )
 
-fun PnlSetZeile.alsAnsicht() = GewinnZeileAnsicht(
+fun PnlSetZeile.alsAnsicht() = GainRowView(
     setNumber = setNumber,
     quantity = quantity,
-    currentPrice = currentPrice.alsGeld(),
-    baselinePrice = baselinePrice.alsGeld(),
+    currentPrice = currentPrice.asMoney(),
+    baselinePrice = baselinePrice.asMoney(),
     pnlPct = pnlPct,
     baselinePnlPct = baselinePnlPct,
-    pnlBetrag = pnlBetrag.alsGeld(),
+    pnlBetrag = pnlBetrag.asMoney(),
     pnlProzent = pnlProzent,
     baselinePnlProzent = baselinePnlProzent,
-    kachelPreis = kachelPreis.alsGeld(),
+    kachelPreis = kachelPreis.asMoney(),
     kachelPnlPct = kachelPnlPct,
     kachelQuelle = kachelQuelle,
 )
 
-fun PnlTotals.alsAnsicht() = GewinnSummenAnsicht(
+fun PnlTotals.alsAnsicht() = GainSumsView(
     purchase = purchase,
     current = current,
     pnlPct = pnlPct,
@@ -97,7 +97,7 @@ fun ValuationResponse.alsAnsicht() = BewertungAnsicht(
     totals = totals.alsAnsicht(),
 )
 
-fun ValuationSet.alsAnsicht() = BewertungSetAnsicht(
+fun ValuationSet.alsAnsicht() = ValuationSetView(
     setNumber = setNumber,
     addedAt = zeitpunkt(addedAt),
     name = name,
@@ -105,29 +105,29 @@ fun ValuationSet.alsAnsicht() = BewertungSetAnsicht(
     quantity = quantity,
     imageLocal = imageLocal,
     imageUrl = imageUrl,
-    avgPrice = avgPrice.alsGeld(),
-    qtyAvgPrice = qtyAvgPrice.alsGeld(),
+    avgPrice = avgPrice.asMoney(),
+    qtyAvgPrice = qtyAvgPrice.asMoney(),
     totalQtyAvg = totalQtyAvg,
     totalAvg = totalAvg,
-    wertGesamt = wertGesamt.alsGeld(),
+    wertGesamt = wertGesamt.asMoney(),
     pnlProzent = pnlProzent,
-    purchasePrice = purchasePrice.alsGeld(),
+    purchasePrice = purchasePrice.asMoney(),
     noPrice = noPrice,
     acquisitions = acquisitions.map { it.alsAnsicht() },
     mixed = mixed,
     error = error,
 )
 
-fun Totals.alsAnsicht() = SummenAnsicht(
+fun Totals.alsAnsicht() = SumsView(
     min = min,
     avg = avg,
     max = max,
 )
 
-fun PortfolioHistoryResponse.alsAnsicht() = WertverlaufAnsicht(
+fun PortfolioHistoryResponse.alsAnsicht() = ValueHistoryView(
     waehrung = currency,
-    veraenderungProzent = periodChangePct,
+    changePercent = periodChangePct,
     punkte = points.map { it.alsAnsicht() },
     yAchse = yAxis.map { it.alsAnsicht() },
-    tage = chart?.x.orEmpty(),
+    days = chart?.x.orEmpty(),
 )

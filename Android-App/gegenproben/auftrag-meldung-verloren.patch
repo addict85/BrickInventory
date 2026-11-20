@@ -1,6 +1,6 @@
 Gegenprobe: Eine Auftragsaktion läuft, ihr Satz kommt aber nicht in den Meldungskanal
 Modul: feature-verwaltung
-Test: ch.brickinventoryapp.verwaltung.HintergrundarbeitenTest
+Test: ch.brickinventoryapp.verwaltung.BackgroundWorkTest
 Rot: eine Aktion laeuft im ViewModel
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/viewmodel/MonitoringViewModel.kt
@@ -14,4 +14,4 @@ diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/v
 +        viewModelScope.launch { aktion() }
      }
  
-     private suspend fun <T> nachAuftrag(r: Ergebnis<T>, erfolg: (T) -> Meldung): Meldung {
+     private suspend fun <T> afterJob(r: Ergebnis<T>, erfolg: (T) -> Meldung): Meldung {

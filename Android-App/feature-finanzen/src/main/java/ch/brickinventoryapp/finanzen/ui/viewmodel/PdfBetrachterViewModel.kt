@@ -3,18 +3,18 @@ package ch.brickinventoryapp.finanzen.ui.viewmodel
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ch.brickinventoryapp.data.DownloadGescheitert
-import ch.brickinventoryapp.finanzen.ui.pdf.PdfFehler
-import ch.brickinventoryapp.finanzen.ui.pdf.PdfHalter
-import ch.brickinventoryapp.finanzen.ui.pdf.PdfLader
+import ch.brickinventoryapp.data.DownloadFailed
+import ch.brickinventoryapp.finanzen.ui.pdf.PdfError
+import ch.brickinventoryapp.finanzen.ui.pdf.PdfHolder
+import ch.brickinventoryapp.finanzen.ui.pdf.PdfLoader
 import ch.brickinventoryapp.finanzen.ui.pdf.PdfLoadState
 import ch.brickinventoryapp.finanzen.ui.pdf.PdfSeitenQuelle
 import ch.brickinventoryapp.finanzen.ui.pdf.PdfSchreiber
-import ch.brickinventoryapp.finanzen.ui.pdf.kopiereAbbrechbar
-import ch.brickinventoryapp.finanzen.ui.pdf.pdfFehlerklasse
+import ch.brickinventoryapp.finanzen.ui.pdf.copyAbbrechbar
+import ch.brickinventoryapp.finanzen.ui.pdf.pdfErrorClass
 import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
 import ch.brickinventoryapp.model.koroutinen.Dispatcher
-import ch.brickinventoryapp.netz.util.pdfImBetrachter
+import ch.brickinventoryapp.netz.util.pdfInViewer
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,38 +31,38 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class PdfBetrachterViewModel @Inject constructor(
-    private val lader: PdfLader,
+    private val lader: PdfLoader,
     /** Rendert die Seiten für den Bildschirm; hier nur durchgereicht. */
-    val seiten: PdfSeitenQuelle,
+    val pages: PdfSeitenQuelle,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<PdfLoadState>(PdfLoadState.Downloading(0, 0, 0))
     val state: StateFlow<PdfLoadState> = _state.asStateFlow()
 
-    private val offen = PdfHalter()
+    private val offen = PdfHolder()
     private var adresse: String? = null
     private var server: String = ""
 
     /** Für jede Komposition gerufen; dieselbe Adresse lädt nur einmal. */
     fun oeffne(pdfUrl: String, serverUrl: String) {
         val bisher = _state.value
-        val abgewiesen = bisher is PdfLoadState.Error && bisher.grund == PdfFehler.FREMDER_HOST
+        val abgewiesen = bisher is PdfLoadState.Error && bisher.grund == PdfError.FREMDER_HOST
         if (pdfUrl == adresse && !abgewiesen) return
         adresse = pdfUrl
         server = serverUrl
         // Nur Adressen des eigenen Servers: Geladen wird mit dem Token-Client.
-        if (!pdfImBetrachter(pdfUrl, serverUrl)) {
-            _state.value = PdfLoadState.Error(null, PdfFehler.FREMDER_HOST)
+        if (!pdfInViewer(pdfUrl, serverUrl)) {
+            _state.value = PdfLoadState.Error(null, PdfError.FREMDER_HOST)
             return
         }
         _state.value = PdfLoadState.Downloading(0, 0, 0)
         viewModelScope.launch {
             _state.value = fangeAusserAbbruch { lader.lade(pdfUrl, offen) { _state.value = it } }.fold(
-                onSuccess = { (quelle, seiten) -> PdfLoadState.Ready(quelle, seiten) },
+                onSuccess = { (quelle, pages) -> PdfLoadState.Ready(quelle, pages) },
                 onFailure = { e ->
-                    if (e is DownloadGescheitert && e.status == null) PdfLoadState.Error(null, PdfFehler.DOWNLOAD)
-                    else PdfLoadState.Error(e.message, klasse = pdfFehlerklasse(e))
+                    if (e is DownloadFailed && e.status == null) PdfLoadState.Error(null, PdfError.DOWNLOAD)
+                    else PdfLoadState.Error(e.message, klasse = pdfErrorClass(e))
                 },
             )
         }
@@ -77,7 +77,7 @@ class PdfBetrachterViewModel @Inject constructor(
     }
 
     /** Kopiert die geladene Datei für den Druck auf dem IO-Dispatcher; abbrechbar zwischen zwei Stücken. */
-    val schreiber = PdfSchreiber { quelle, ziel -> withContext(io) { quelle.eingang().use { kopiereAbbrechbar(it, ziel) } } }
+    val schreiber = PdfSchreiber { quelle, ziel -> withContext(io) { quelle.inbox().use { copyAbbrechbar(it, ziel) } } }
 
     override fun onCleared() {
         offen.close()

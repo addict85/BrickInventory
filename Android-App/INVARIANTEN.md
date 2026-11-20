@@ -2,7 +2,7 @@
 
 Regeln, die in diesem Projekt schon gebrochen wurden: je eine Regel, die Dateien, an denen
 sie hängt, und der Test, der sie hält. Die Geschichte einer Regel steht in den Commits
-(`git log -S '<Stichwort>' -- Android-App/INVARIANTEN.md`; die lange Fassung zuletzt in 94184d8). `InvariantenVerweiseTest` prüft, dass jede genannte Datei und Testklasse existiert;
+(`git log -S '<Stichwort>' -- Android-App/INVARIANTEN.md`; die lange Fassung zuletzt in 94184d8). `InvariantsReferencesTest` prüft, dass jede genannte Datei und Testklasse existiert;
 ob der Test die Regel noch ganz trägt, prüft er nicht. Schlägt ein Test fehl, ist die Regel
 verletzt — den Code korrigieren, nicht den Test.
 
@@ -28,8 +28,8 @@ ML-Kit-Client), braucht `DisposableEffect { onDispose { … } }`. Test: `Resourc
 **Doppelklick-Sperre.** `confirmAddBarcode()` prüft `hinzufuegen` zuerst und setzt es synchron
 **vor** `viewModelScope.launch`; jeder Ausgang und `cancelBarcode()` setzt es zurück. Der
 gesperrte Knopf ist nur Rückmeldung, kein Schutz.
-Dateien: `sammlung/ui/viewmodel/ErfassungViewModel.kt`, `sammlung/ui/ZustandErfassung.kt`,
-`sammlung/ui/dialogs/BarcodeResultDialog.kt` · Test: `ErfassungViewModelTest`
+Dateien: `sammlung/ui/viewmodel/EntryViewModel.kt`, `sammlung/ui/ZustandErfassung.kt`,
+`sammlung/ui/dialogs/BarcodeResultDialog.kt` · Test: `EntryViewModelTest`
 
 **Ein Barcode-Pfad.** Scanner → `vm.resolveBarcode()` → `repo.resolveBarcode()`; keine
 Zweitimplementierung. Test: `SessionAndLifecycleTest`
@@ -42,32 +42,32 @@ Zweitimplementierung. Test: `SessionAndLifecycleTest`
 und quittiert. Test: `ManualEntryAfterScanTest`
 
 **Zwei Preisfelder.** Sets schicken `purchase_price`, Teile und Figuren `unit_price`; der
-Rumpf entsteht nur über `aenderungFuerSet()` bzw. `aenderungFuerStueck()`.
-Datei: `vertrag/Ergaenzungen.kt` · Test: `KaeufeViewModelTest`
+Rumpf entsteht nur über `changeForSet()` bzw. `changeForPiece()`.
+Datei: `vertrag/Ergaenzungen.kt` · Test: `PurchasesViewModelTest`
 
 ## Sitzung und Netz
 
 **HTTP 401.** `sicherAufrufen()` meldet ihn als `Ergebnis.Fehler.Abgewiesen`; `abgeglichen()` und
-`abgeglichenEinzeln()` fallen dann **nicht** auf die Ablage zurück; der Interceptor meldet nur, wenn ein Token mitging
+`reconciledSingle()` fallen dann **nicht** auf die Ablage zurück; der Interceptor meldet nur, wenn ein Token mitging
 und es der eigene Server war.
 Dateien: `data/repository/Abruf.kt`, `app/di/AppModule.kt`, `data/SessionExpiredSignal.kt`,
 `sitzung/SitzungsDienst.kt` · Test: `SessionAndLifecycleTest`
 
 **Token nur an die eigene Herkunft** (Schema, Host, Port, Basispfad). Was eine Antwort
 auslöst, gilt nur der Sitzung, in der die Anfrage hinausging (Generation der
-`TokenSchranke`); Umleitungen bleiben in der Herkunft. Abmelden entwertet am Server oder
+`TokenLimit`); Umleitungen bleiben in der Herkunft. Abmelden entwertet am Server oder
 über `EntwertungsWorker`; ein gesperrter Keystore heisst „später“, nie „abgemeldet“.
 Dateien: `netz/di/ServerWaechter.kt`, `data/Entwertung.kt`, `sicherheit/Tresorbefund.kt` ·
-Tests: `ServerwechselTest`, `TokenTauschTest`, `UmleitungTest`, `BasisPfadTest`,
-`EntwertungTest`, `TresorSperreTest`
+Tests: `ServerwechselTest`, `TokenSwapTest`, `RedirectTest`, `BasePathTest`,
+`RedemptionTest`, `VaultLockTest`
 
 **Schrittschutz nur mit Attestation.** Der Geräteschlüssel entsteht mit der Nonce des
 Servers und geht nur als Kette hinaus; jede Absage (auch 404) hält an, es gibt keinen
 blossen Schlüssel und keinen Rückfall auf die Prüfung im Gerät. Erzeugt zuerst im
-StrongBox, nur ohne Chip im TEE (`strongBoxZuerst`).
+StrongBox, nur ohne Chip im TEE (`strongBoxFirst`).
 Dateien: `ui/components/Schluesselbindung.kt`, `data/repository/SchrittbindungImpl.kt`,
 `ui/components/StrongBoxZuerst.kt` · Tests: `SchluesselbindungTest`, `SchrittbindungTest`,
-`StrongBoxZuerstTest`
+`StrongBoxFirstTest`
 
 **Ein OkHttp-Stack.** Ausserhalb von core-data kein eigener `OkHttpClient.Builder()`: Er
 liefe am Wächter vorbei (Token, Klartext-Verbot, 401). Abweichende Zeiten über `newBuilder()`
@@ -84,7 +84,7 @@ Satz; den Satz bildet `AppTexte.meldung()`, die Meldung des Servers hat Vorrang.
 `technisch` gehört ins Log, nie in die Anzeige. Ein Bildschirmzustand trägt `Laden<T>` für Abrufe,
 `Vorgang` für Handlungen (läuft, fertig, gescheitert mit `Meldung`), keinen fertigen Satz und
 kein `laeuft: Boolean`; alte Formen zählt `QuelltextRatscheTest`.
-Tests: `ErrorMessageLayerTest`, `AppTexteTest`, `LadenTest`, `VorgangTest`, `QuelltextRatscheTest`
+Tests: `ErrorMessageLayerTest`, `AppTextsTest`, `LoadTest`, `OperationTest`, `QuelltextRatscheTest`
 
 **Eine Json-Konfiguration.** Server, Ablage und Cache lesen und schreiben mit `BrickJson`
 (per DI als `Json`); keine zweite `Json { }`.
@@ -92,20 +92,20 @@ Datei: `model/json/BrickJson.kt` · Test: `BrickJsonTest`
 
 ## Offline-Ablage
 
-**Der Ausgang liegt in eigener Form.** Ein wartender Posten wird als `Ausgangsform`
+**Der Ausgang liegt in eigener Form.** Ein wartender Posten wird als `InitialForm`
 (Fassung 1) abgelegt, nie als Server-Anfrage; eine unverträgliche Änderung bekommt eine
 neue Fassung daneben. Lesen schreibt nie; ein unlesbarer Posten wird über
-`raeumeUnlesbare()` als verworfen gemeldet, nie still gelöscht.
-Dateien: `offline/Ausgangsform.kt`, `offline/room/RoomAblagen.kt`, `data/lokal/Abgleich.kt` ·
-Tests: `AusgangsformTest`, `BestandDatenbankTest`, `AusgangsmelderTest`
+`cleanUnreadable()` als verworfen gemeldet, nie still gelöscht.
+Dateien: `offline/InitialForm.kt`, `offline/room/RoomAblagen.kt`, `data/lokal/Abgleich.kt` ·
+Tests: `InitialFormTest`, `InventoryDatabaseTest`, `AusgangsmelderTest`
 
-**Eine Ablage.** Was offline gelten soll, liegt als Fach (`Bestandsart`) in der Room-Ablage,
-auch eine einzelne Antwort ohne Liste (`abgeglichenEinzeln()`); kein zweiter Plattenspeicher
-daneben. Den früheren (`noBackupFilesDir/api-*`) räumt `raeumeAlteAntwortablage()`.
+**Eine Ablage.** Was offline gelten soll, liegt als Fach (`StockKind`) in der Room-Ablage,
+auch eine einzelne Antwort ohne Liste (`reconciledSingle()`); kein zweiter Plattenspeicher
+daneben. Den früheren (`noBackupFilesDir/api-*`) räumt `cleanOldResponseStore()`.
 Jedes Fach liegt in eigener `…Zeile`-Form (`Ablagezeilen.kt`), nie als Servermodell; eine
 unverträgliche Änderung bekommt eine neue Fassung (`Ablageform.fassung`), ältere bleiben lesbar.
 Dateien: `offline/Offlineablage.kt`, `offline/Ablageform.kt`, `data/repository/Abruf.kt`,
-`data/cache/CacheBesitzer.kt` · Tests: `CacheBereichTest`, `RepoCacheRueckfallTest`, `AblageFassungTest`
+`data/cache/CacheOwner.kt` · Tests: `CacheAreaTest`, `RepoCacheFallbackTest`, `StoreVersionTest`
 
 **Schema.** Wer das Room-Schema ändert, erhöht die Fassung, schreibt eine Migration und
 checkt das Schema unter `core-offline/schemas` ein. Test: `BestandMigrationTest`
@@ -116,11 +116,11 @@ checkt das Schema unter `core-offline/schemas` ein. Test: `BestandMigrationTest`
 wer nur einen Teil braucht, leitet ihn mit `abgeleitet { }` ab. Jede Feature-Datei schreibt
 nur Felder ihrer Domäne; Ausnahmen stehen begründet im Test. Abmelden leert jeden Bereich.
 Dateien: `sitzung/AppUiState.kt`, `sitzung/AbgeleiteterZustand.kt` · Tests:
-`ZustandsflussBreiteTest`, `AbgeleiteterZustandTest`, `StateDomainBoundaryTest`, `TeileViewModelTest`
+`StateFlowWidthTest`, `DerivedStateTest`, `StateDomainBoundaryTest`, `PartsViewModelTest`
 
 **Modulkanten.** app → feature-* → core-*, kein Bereich kennt einen anderen; die Kernmodule
 in fester Schichtung (build-logic, `Modulkanten`). Zustand und alles darunter ohne Compose
-(`ohneOberflaeche`); die Bereiche bekommen die App nur als `Bereichsumgebung` aus einzelnen
+(`withoutUi`); die Bereiche bekommen die App nur als `Bereichsumgebung` aus einzelnen
 Flüssen und Rückrufen, nie den AppViewModel. Ein ViewModel liegt nur mit Grund in
 core-zustand (`zustandsViewModels`).
 Das Wire-Format liegt in core-vertrag (kennt core-model, nicht umgekehrt), als ein Satz
@@ -133,7 +133,7 @@ Datei: `navigation/Bereichsumgebung.kt` · Tests: `ModulgrenzenTest`, `Schichtre
 **Bildschirme sind zustandslos.** Nur ein Composable `…Route` nimmt ein ViewModel und reicht
 Zustand und eine `…Aktionen`-Schnittstelle weiter; so lässt sich jeder Bildschirm ohne Hilt
 zeigen und prüfen. Geladen wird im ViewModel, sobald jemand den Zustand beobachtet
-(`ladeBeimBeobachten`, `ladeJeServer`, `Beobachtet`), nie per `LaunchedEffect` (`QuelltextRatscheTest`). Dialoge stehen in `ui/dialogs/`, ihr Aufruf samt Bedingung im
+(`observeLoadOn`, `loadPerServer`, `Observed`), nie per `LaunchedEffect` (`QuelltextRatscheTest`). Dialoge stehen in `ui/dialogs/`, ihr Aufruf samt Bedingung im
 Navigationsaufbau; grosse Bildschirme teilen sich in `*Sections.kt` (detekt `LongMethod`).
 
 **Delegierte Zustands-Properties** (`val state by …collectAsStateWithLifecycle()`) erlauben
@@ -154,7 +154,7 @@ Tests: `ListScrollPositionTest`, `TabOpensAtTopTest`
 
 **Endlos-Scroll.** Die Ladesperre wird synchron vor dem `launch` gesetzt und in jedem
 Ausgang gelöst; beim Anhängen werden bekannte Schlüssel ausgesiebt.
-Datei: `sammlung/ui/Galerie.kt` · Test: `GalerieTest`
+Datei: `sammlung/ui/Galerie.kt` · Test: `GalleryTest`
 
 **Schlüssel.** Stehen `items(…, key = …)` und ein `item { }` in derselben Liste, trägt auch
 dieser einen Schlüssel. Test: `LazyGridItemKeyTest`
@@ -173,11 +173,11 @@ Dateien: `dienste/service/CsvImportService.kt`, `dienste/service/PdfExportServic
 nicht exportiert, Leserecht nur über die Auswahl des Systems, Klartext nur im Speicher
 (Proxy-Deskriptor). Auf der Platte liegt sie mit AES-GCM verschlüsselt.
 Dateien: `data/service/TeilelistenProvider.kt`, `data/util/Teilelistentresor.kt` ·
-Tests: `ServicePolishTest`, `TeilelistenAblageTest`, `InvariantenVerweiseTest`
+Tests: `ServicePolishTest`, `PartListsStoreTest`, `InvariantsReferencesTest`
 
 **Update nur aus signierter Beschreibung.** Ohne gültige Signatur eines
 Beschreibungsschlüssels gilt keine Beschreibung, auch keine unsignierte `version.json`.
-Datei: `update/util/UpdateSignatur.kt` · Tests: `UpdateFrischeTest`, `InvariantenVerweiseTest`
+Datei: `update/util/UpdateSignatur.kt` · Tests: `UpdateFreshTest`, `InvariantsReferencesTest`
 
 **Ein CSV-Statuspfad.** SSE zuerst, Polling nur als Rückfall, die Statuslogik in
 `applyStatus()` samt Anlaufschutz. Dateien: `dienste/service/CsvImportService.kt`,
@@ -185,7 +185,7 @@ Datei: `update/util/UpdateSignatur.kt` · Tests: `UpdateFrischeTest`, `Invariant
 
 **PDF-Cache mit Budget.** `prunePdfCache()` hält `PDF_CACHE_BUDGET_BYTES`, älteste zuerst,
 ohne die gerade angeforderte Datei. Datei: `finanzen/ui/pdf/AnleitungsLader.kt` · Tests:
-`ResourceAndCacheTest`, `AnleitungsAblageTest`
+`ResourceAndCacheTest`, `InstructionStoreTest`
 
 **Abmelden leert alle Caches**, den Bild-Speicher vor dem Bild-Plattencache.
 Datei: `data/SitzungsBereinigung.kt` · Test: `ResourceAndCacheTest`
@@ -206,14 +206,14 @@ Abbrechen und Hauptknopf ist eine `Knopfzeile`. Jeder AlertDialog liegt auf
 
 **Absenden ist nie gesperrt, weil etwas fehlt.** Der Hauptknopf bleibt antippbar, markiert
 die falschen Felder und setzt den Cursor ins erste; gesperrt nur während des Sendens, dann
-mit `gesperrtFarben()` (4,5:1). Dateien: `ui/components/PasswortWechsel.kt`, `ui/theme/Gesperrt.kt` ·
-Tests: `PasswortWechselTest`, `GesperrtKontrastTest`, `GeruestUndFormularTest`
+mit `lockedColors()` (4,5:1). Dateien: `ui/components/PasswortWechsel.kt`, `ui/theme/Gesperrt.kt` ·
+Tests: `PasswordSwitchTest`, `LockedContrastTest`, `ScaffoldAndFormTest`
 
-**Einfachwahl ist kein Chip.** Zwei bis vier Möglichkeiten: `SegmentWahl` (bei grosser Schrift
-untereinander); mehr: `AuswahlFeld`. Chips nur für Filter. Test: `OberflaechenRegelnTest`
+**Einfachwahl ist kein Chip.** Zwei bis vier Möglichkeiten: `SegmentChoice` (bei grosser Schrift
+untereinander); mehr: `SelectionField`. Chips nur für Filter. Test: `UisRulesTest`
 
 **Tippziel und Name.** Jedes antippbare Element der Hauptbildschirme hat 48 dp und einen Namen.
-Test: `TippzielUndNameTest`
+Test: `TipTargetAndNameTest`
 
 ## Darstellung von Zahlen
 
@@ -229,7 +229,7 @@ rechnet, die App rechnet nicht nach. Dateien: `finanzen/ui/screens/FinanceScreen
 **Beträge sind Geld, Zeitpunkte Instant.** Fachtypen tragen Beträge als `Geld`
 (Zehntausendstel wie der Server), gerundet auf Rappen erst in der Anzeige; Zeitpunkte als
 `Instant`, der Kalendertag ist der in UTC. Double und Text gibt es nur auf der Leitung.
-Dateien: `model/fach/Geld.kt`, `model/util/DatumFormat.kt` · Tests: `GeldTest`, `QuelltextRatscheTest`
+Dateien: `model/fach/Geld.kt`, `model/util/DatumFormat.kt` · Tests: `MoneyTest`, `QuelltextRatscheTest`
 
 ## Bau und Plattform
 
@@ -251,23 +251,23 @@ Test: `ResourceAndCacheTest`
 
 | Klasse | Inhalt | Ablage |
 |---|---|---|
-| geheim | Token | nur AES-GCM mit Keystore-Schlüssel und AAD (`TokenTresor`); der Schlüssel früherer Fassungen wird nach dem Umschlüsseln gelöscht und nie neu angelegt (`KeystoreAltbestandTest`) |
-| geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`GutscheineRepository.ohneGeheimnis`), ein Gutschein-PDF nur im Speicher (memfd) |
+| geheim | Token | nur AES-GCM mit Keystore-Schlüssel und AAD (`TokenTresor`); der Schlüssel früherer Fassungen wird nach dem Umschlüsseln gelöscht und nie neu angelegt (`KeystoreLegacyStockTest`) |
+| geheim | Gutschein-PIN, Passwörter, TOTP-Schlüssel, Wiederherstellungscodes | **nie** auf der Platte; die PIN wird vor dem Ablegen entfernt (`VouchersRepository.withoutSecret`), ein Gutschein-PDF nur im Speicher (memfd) |
 | vertraulich | Sets, Teile, Figuren, Merkliste, Preisalarme, Lagerorte, Bewertungen, Gutschein-Nummer und -Betrag, Kennzahlen, Katalog-Metadaten (Room `bestand.db`), Ausgang | SQLCipher |
-| vertraulich | Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `AblageChiffre` (AES-GCM, Schlüssel aus dem Keystore umhüllt) |
-| vertraulich | Server-Adresse, Benutzername, Herkunft des Tokens, Widget-Zahlen, Abmeldeaufträge (WorkManager), gescheiterte Entwertungen | `Vertrauenschiffre.verschluessleAngabe`: eigener Schlüssel, nur entsperrt (`setUnlockedDeviceRequired`), überlebt das Abmelden; gesperrt heisst „später“, nie „weg“ (`VertrauenschiffreTest`, `TokenTresorTest`, `AuftragsablageTest`) |
-| vertraulich | Konto- und Lagerortfilter | nur im Speicher (`ScopeFilterSpeicher`); Reste früherer Fassungen räumt `KlartextReste` (`KlartextResteTest`) |
-| vertraulich | Teileliste-PDF | `AblageChiffre` (`Teilelistentresor`); Klartext nur im Speicher, solange die Ziel-App über den `TeilelistenProvider` liest; nach 30 Minuten gelöscht |
-| Integrität | Zertifikat-Pins, Schalter „Nutzer-CAs vertrauen“ | `Vertrauenschiffre`, überlebt das Abmelden, arbeitet auch gesperrt (jede TLS-Verbindung fragt); Eintragsnamen per HMAC, kein Host im Namen; unlesbar heisst „nicht vertraut“ (`VertrauenVerschluesseltTest`) |
+| vertraulich | Vorschaubilder, Bild-Zwischenspeicher, Bauanleitungen | `StoreCipher` (AES-GCM, Schlüssel aus dem Keystore umhüllt) |
+| vertraulich | Server-Adresse, Benutzername, Herkunft des Tokens, Widget-Zahlen, Abmeldeaufträge (WorkManager), gescheiterte Entwertungen | `Vertrauenschiffre.verschluessleDetail`: eigener Schlüssel, nur entsperrt (`setUnlockedDeviceRequired`), überlebt das Abmelden; gesperrt heisst „später“, nie „weg“ (`VertrauenschiffreTest`, `TokenVaultTest`, `AuftragsablageTest`) |
+| vertraulich | Konto- und Lagerortfilter | nur im Speicher (`ScopeFilterStorage`); Reste früherer Fassungen räumt `PlaintextRemainder` (`PlaintextRemainderTest`) |
+| vertraulich | Teileliste-PDF | `StoreCipher` (`Teilelistentresor`); Klartext nur im Speicher, solange die Ziel-App über den `TeilelistenProvider` liest; nach 30 Minuten gelöscht |
+| Integrität | Zertifikat-Pins, Schalter „Nutzer-CAs vertrauen“ | `Vertrauenschiffre`, überlebt das Abmelden, arbeitet auch gesperrt (jede TLS-Verbindung fragt); Eintragsnamen per HMAC, kein Host im Namen; unlesbar heisst „nicht vertraut“ (`TrustEncryptedTest`) |
 
 Für alle: `allowBackup="false"`, ohne Cloud-Sicherung und Geräteumzug
 (`NetzsicherheitTest`), beim Abmelden geleert, jede Ablage gehört Server und Konto
-(`CacheBereichTest`). Ein neues Fach in `Bestandsart` ist rot, bis es hier eingeordnet ist.
+(`CacheAreaTest`). Ein neues Fach in `StockKind` ist rot, bis es hier eingeordnet ist.
 
 ## Bewusst getragen
 
 - **Pin auf eine System-Wurzel:** Nach bestätigtem öffentlichem Zertifikat gilt jede
-  öffentlich gültige Kette samt Certificate Transparency (`ZertifikatPinTest`). Wer das
+  öffentlich gültige Kette samt Certificate Transparency (`CertificatePinTest`). Wer das
   ausschliessen will, betreibt eine eigene CA.
 - **Keine Root- oder Integritätserkennung:** Verteilung ausserhalb von Play; Geheimnisse
   liegen im Keystore oder gar nicht auf dem Gerät.
@@ -277,14 +277,14 @@ Für alle: `allowBackup="false"`, ohne Cloud-Sicherung und Geräteumzug
 - **Token ohne Nutzerauthentisierung:** Hintergrundarbeit (Preisalarm, Widget, Ausgang,
   Entwertung) braucht ihn; dagegen 180 Tage Höchstdauer, Rotation, Entwertung. Er liegt
   unter einem Schlüssel, der nur entsperrt arbeitet, ohne Ausweg auf einen schwächeren
-  (`EntsperrTresor`); bei gesperrtem Gerät wird nicht getauscht (`TokenTauschTest`).
+  (`EntsperrVault`); bei gesperrtem Gerät wird nicht getauscht (`TokenSwapTest`).
 - **Pins unter einem Schlüssel ohne Entsperr-Bedingung:** Die TLS-Prüfung braucht sie bei
   jeder Verbindung. Sie sind öffentlich (Fingerabdrücke), nur ihre Unverfälschtheit zählt;
   die Namen verraten den Server nicht.
 - **Abgelaufene, neuere Beschreibung bietet an:** Ohne Etikett binnen sieben Tagen
   bliebe ein Gerät sonst auf der alten Fassung. Die App sagt dazu, dass es Neueres
   geben könnte; eine Beschreibung unter der installierten oder schon gesehenen
-  Fassung bietet nie an (`UpdateFrischeTest`).
+  Fassung bietet nie an (`UpdateFreshTest`).
 - **Teileliste 30 Minuten abrufbar:** Verschlüsselt auf der Platte, aber die Ziel-App
   liest sie im Klartext und kann sie behalten; danach löscht die App ihre Kopie.
 - **Anleitung über 64 MB in einer namenlosen Datei:** Ein memfd dieser Grösse kostete
@@ -295,4 +295,4 @@ Für alle: `allowBackup="false"`, ohne Cloud-Sicherung und Geräteumzug
   im `SavedStateHandle` (Teile als ein `Teilefilter`, Figuren, Galerie, Merkliste, Finanzen,
   die Setnummern der Teileliste); Daten und Rollposition nicht, sie laden beim Beobachten
   nach. Konto- und Lagerortfilter bleiben nur im Speicher (vertraulich, siehe oben)
-  (`TeileViewModelTest`).
+  (`PartsViewModelTest`).

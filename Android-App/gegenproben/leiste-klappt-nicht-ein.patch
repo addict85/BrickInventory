@@ -1,16 +1,16 @@
 Gegenprobe: App-Leiste ohne scrollBehavior
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.UisRulesTest
 Rot: App-Leiste weicht beim Rollen
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 @@ -177,7 +177,6 @@ fun MainScaffold(
-                         actionIconContentColor = akzent.aufLeiste,
-                         scrolledContainerColor = akzent.leiste,
+                         actionIconContentColor = accent.onBar,
+                         scrolledContainerColor = accent.leiste,
                      ),
--                    scrollBehavior = einklappen,
+-                    scrollBehavior = collapse,
                  )
-                 if (art == Navigationsart.LEISTE_UNTEN && currentDest?.istEinesVon(SAMMLUNG) == true) {
-                     SammlungUmschalter(sammlungsZiel(currentDest), onWahl = { ziel ->
+                 if (art == NavigationMode.LEISTE_UNTEN && currentDest?.isOneOf(SAMMLUNG) == true) {
+                     CollectionToggle(collectionTarget(currentDest), onWahl = { ziel ->

@@ -1,16 +1,16 @@
 Gegenprobe: dieselbe Meldung hintereinander wird mehrfach eingereiht
 Modul: core-data
-Test: ch.brickinventoryapp.data.MeldungsWarteschlangeTest
+Test: ch.brickinventoryapp.data.MessageQueueTest
 Rot: dieselbe Meldung hintereinander kommt einmal
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt
-@@ -46,7 +46,6 @@ internal class MeldungsWarteschlange @Inject constructor() : MeldungsKanal {
-         synchronized(warteschlange) {
+@@ -46,7 +46,6 @@ internal class MessageQueue @Inject constructor() : MeldungsKanal {
+         synchronized(queue) {
              when {
-                 _meldung.value == null -> _meldung.value = meldung
--                meldung == (warteschlange.lastOrNull() ?: _meldung.value) -> Unit
-                 warteschlange.size < PLAETZE -> warteschlange.addLast(meldung)
+                 _message.value == null -> _message.value = meldung
+-                meldung == (queue.lastOrNull() ?: _message.value) -> Unit
+                 queue.size < PLACES -> queue.addLast(meldung)
              }
          }

@@ -1,6 +1,6 @@
 Gegenprobe: Anmeldebildschirme ohne imePadding: die Tastatur deckt den Hauptknopf
 Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.AnmeldeRandTest
+Test: ch.brickinventoryapp.anmeldung.LoginEdgeTest
 Rot: Registrieren bleibt ueber der Tastatur
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Systemleisten.kt
@@ -10,5 +10,5 @@ diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/component
   * schrumpft das Fenster nicht. Die Tastatur zuletzt, damit sie nur abzieht, was über
   * die Gestenleiste hinausragt.
   */
--fun Modifier.ausserhalbDerSystemleisten(): Modifier = systemBarsPadding().displayCutoutPadding().imePadding()
-+fun Modifier.ausserhalbDerSystemleisten(): Modifier = systemBarsPadding().displayCutoutPadding()
+-fun Modifier.outsideTheSystemBars(): Modifier = systemBarsPadding().displayCutoutPadding().imePadding()
++fun Modifier.outsideTheSystemBars(): Modifier = systemBarsPadding().displayCutoutPadding()

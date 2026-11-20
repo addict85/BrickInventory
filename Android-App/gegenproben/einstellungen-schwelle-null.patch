@@ -1,16 +1,16 @@
 Gegenprobe: Eine Alarmschwelle von null geht an den Server
 Modul: feature-konto
-Test: ch.brickinventoryapp.konto.EinstellungenViewModelTest
+Test: ch.brickinventoryapp.konto.SettingsViewModelTest
 Rot: eine Schwelle von null geht nicht hinaus
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/EinstellungenViewModel.kt
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/SettingsViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/SettingsViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/SettingsViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/SettingsViewModel.kt
 @@ -165,7 +165,6 @@
  
-     override fun aendereAlarmSchwelle(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Geld) {
-         wartendeSchwellen.remove(setNumber to condition)?.cancel()
--        if (!schwelle.positiv) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
-         alarmSchleuse { alarme.setPreisalarm(setNumber, richtung, schwelle, condition) }
+     override fun changeAlarmThreshold(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Geld) {
+         waitingThresholds.remove(setNumber to condition)?.cancel()
+-        if (!schwelle.positive) { meldungen.zeige(meldungen.text(R.string.alerts_bad_value)); return }
+         alarmLock { alerts.setPreisalarm(setNumber, richtung, schwelle, condition) }
      }
  

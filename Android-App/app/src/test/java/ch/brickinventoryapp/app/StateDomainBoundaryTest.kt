@@ -5,7 +5,7 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.fach.Zustand
 import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.sitzung.Sitzung
-import ch.brickinventoryapp.model.fach.StartzustandAnsicht
+import ch.brickinventoryapp.model.fach.StartStateView
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -50,7 +50,7 @@ class StateDomainBoundaryTest {
         "waehrungUebernommen" to { it.waehrungUebernommen(Waehrung.CHF) },
         "spracheGeaendert" to { it.spracheGeaendert("fr") },
         "setzeDesign" to { it.setzeDesign(Design.NOPPE) },
-        "serverstartGeaendert" to { it.serverstartGeaendert(StartzustandAnsicht(false, "Katalog", null, 2.0, 8)) },
+        "serverstartGeaendert" to { it.serverstartGeaendert(StartStateView(false, "Katalog", null, 2.0, 8)) },
     )
 
     @Test
@@ -61,8 +61,8 @@ class StateDomainBoundaryTest {
             val sitzung = Sitzung()
             val vorher = sitzung.state.value
             schritt(sitzung)
-            val nachher = sitzung.state.value
-            val geaendert = felder.filter { (_, f) -> f(vorher) != f(nachher) }.keys
+            val after = sitzung.state.value
+            val geaendert = felder.filter { (_, f) -> f(vorher) != f(after) }.keys
             if (geaendert.isEmpty()) fehler += "$name ändert nichts"
             (geaendert - erlaubt.getValue(name)).forEach { fehler += "$name setzt $it" }
         }

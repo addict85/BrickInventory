@@ -97,11 +97,11 @@ class SixteenKbAlignmentTest {
         assert("libs.versions.datastore.get()" in gradle && "force(\"androidx.datastore:\$it:\$datastore\")" in block) {
             "DataStore wird nicht auf die Fassung des Katalogs festgenagelt"
         }
-        for (artefakt in listOf("datastore", "datastore-android", "datastore-core",
+        for (artifact in listOf("datastore", "datastore-android", "datastore-core",
                                 "datastore-core-android", "datastore-preferences",
                                 "datastore-preferences-android")) {
-            assert("\"$artefakt\"" in block) {
-                "androidx.datastore:$artefakt wird nicht festgenagelt. Eine " +
+            assert("\"$artifact\"" in block) {
+                "androidx.datastore:$artifact wird nicht festgenagelt. Eine " +
                     "transitive Anhebung wuerde ein anderes APK ergeben als das geprüfte."
             }
         }

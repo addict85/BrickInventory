@@ -14,22 +14,22 @@ internal object CatalogYearMath {
      * (js/rollbalken.js → rollen): Der Griff liegt mittig unter dem Finger,
      * umgerechnet wird auf die Spur ohne Griffhöhe.
      */
-    fun anteilAus(y: Float, heightPx: Int, thumbHeightPx: Int): Float {
-        val spur = (heightPx - thumbHeightPx).coerceAtLeast(1)
-        return ((y - thumbHeightPx / 2f) / spur).coerceIn(0f, 1f)
+    fun shareFrom(y: Float, heightPx: Int, thumbHeightPx: Int): Float {
+        val track = (heightPx - thumbHeightPx).coerceAtLeast(1)
+        return ((y - thumbHeightPx / 2f) / track).coerceIn(0f, 1f)
     }
 
     /** Vertikaler Offset (Pixel) der Griff-Oberkante zu einem Anteil. */
-    fun daumenOffset(anteil: Float, heightPx: Int, thumbHeightPx: Int): Int =
-        (anteil.coerceIn(0f, 1f) * (heightPx - thumbHeightPx).coerceAtLeast(0)).roundToInt()
+    fun thumbOffset(share: Float, heightPx: Int, thumbHeightPx: Int): Int =
+        (share.coerceIn(0f, 1f) * (heightPx - thumbHeightPx).coerceAtLeast(0)).roundToInt()
 
     /** Laufende Nummer im Gesamtergebnis zu einem Anteil. */
-    fun nummerAus(anteil: Float, total: Int): Int {
+    fun numberFrom(share: Float, total: Int): Int {
         if (total <= 0) return 0
-        return (anteil.coerceIn(0f, 1f) * (total - 1)).roundToInt()
+        return (share.coerceIn(0f, 1f) * (total - 1)).roundToInt()
     }
 
-    /** Anteil zu einer laufenden Nummer — die Gegenrichtung zu nummerAus. */
+    /** Anteil zu einer laufenden Nummer — die Gegenrichtung zu numberFrom. */
     fun anteilAusNummer(nummer: Int, total: Int): Float {
         if (total <= 1) return 0f
         return (nummer.toFloat() / (total - 1)).coerceIn(0f, 1f)
@@ -45,32 +45,32 @@ internal object CatalogYearMath {
      * @param geladen liefert das Jahr zu einer laufenden Nummer, oder null, wenn diese
      *         Stelle noch nicht geladen ist
      */
-    fun jahrFuer(
-        anteil: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>,
+    fun yearFor(
+        share: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>,
         geladen: (Int) -> Int?
-    ): Int? = geladen(nummerAus(anteil, total)) ?: jahrAnPosition(anteil, total, verteilung)
+    ): Int? = geladen(numberFrom(share, total)) ?: yearAnPosition(share, total, verteilung)
 
     /**
      * Welches Jahr liegt an diesem Anteil der Liste? Wie in der Webapp
      * (js/katalog.js → _jahrAnPosition): Aus dem Anteil wird eine laufende Nummer,
      * die durch die Verteilung wandert, bis sie in einen Jahrgang fällt.
      */
-    fun jahrAnPosition(anteil: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {
+    fun yearAnPosition(share: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {
         if (verteilung.isEmpty() || total <= 0) return null
-        var nummer = nummerAus(anteil, total)
-        for (eintrag in verteilung) {
-            if (nummer < eintrag.n) return eintrag.year
-            nummer -= eintrag.n
+        var nummer = numberFrom(share, total)
+        for (entry in verteilung) {
+            if (nummer < entry.n) return entry.year
+            nummer -= entry.n
         }
         return verteilung.last().year
     }
 
     /** Die erste laufende Nummer eines Jahrgangs; null, wenn die Verteilung ihn nicht kennt. */
-    fun nummerVonJahr(jahr: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {
+    fun numberOfYear(jahr: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {
         var nummer = 0
-        for (eintrag in verteilung) {
-            if (eintrag.year == jahr) return nummer
-            nummer += eintrag.n
+        for (entry in verteilung) {
+            if (entry.year == jahr) return nummer
+            nummer += entry.n
         }
         return null
     }

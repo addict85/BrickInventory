@@ -30,7 +30,7 @@ import ch.brickinventoryapp.testing.Quellen
 class CatalogUsesLocalImagesTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -133,7 +133,7 @@ class CatalogUsesLocalImagesTest {
             "teile/ui/screens/MinifigsScreen.kt",
             "katalog/ui/screens/CatalogScreen.kt",
             "katalog/ui/screens/CatalogDetailScreen.kt",
-        ).flatMap { Quellen.bildschirmDateien(it) }
+        ).flatMap { Quellen.screenFiles(it) }
         for (rel in screensToCheck) {
             val raw = read(rel)
             // Nur Funktionen auf oberster Ebene (Spalte 0), auch internal oder private:

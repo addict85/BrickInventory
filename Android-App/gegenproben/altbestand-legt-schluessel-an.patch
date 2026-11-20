@@ -1,17 +1,17 @@
 Gegenprobe: auch der Altbestand legt einen fehlenden Schlüssel neu an (Stand vor and-sec-r3 N2)
 Modul: core-sicherheit
-Test: ch.brickinventoryapp.sicherheit.KeystoreAltbestandTest
+Test: ch.brickinventoryapp.sicherheit.KeystoreLegacyStockTest
 Rot: der Altbestand legt keinen Schluessel an und meldet weg
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/TokenTresor.kt
 @@ -65,7 +65,7 @@
- ) : TokenVerschluesselung {
+ ) : TokenEncryption {
  
      private fun schluessel(): SecretKey? =
--        bund.hole(alias) ?: if (nurLesen) null else bund.erzeuge(alias, nurEntsperrt)
-+        bund.hole(alias) ?: bund.erzeuge(alias, nurEntsperrt)
+-        bund.fetch(alias) ?: if (readOnly) null else bund.erzeuge(alias, onlyUnlocked)
++        bund.fetch(alias) ?: bund.erzeuge(alias, onlyUnlocked)
  
      override fun verschluessle(klartext: String): String {
-         check(!nurLesen) { "Altbestand verschlüsselt nicht" }
+         check(!readOnly) { "Altbestand verschlüsselt nicht" }

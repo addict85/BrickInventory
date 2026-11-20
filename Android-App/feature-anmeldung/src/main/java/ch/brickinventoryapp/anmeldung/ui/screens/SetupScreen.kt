@@ -26,18 +26,18 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import ch.brickinventoryapp.ui.theme.mittigBis
+import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.anmeldung.ui.QrLoginPayload
 import ch.brickinventoryapp.anmeldung.ui.parseQrPayload
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
-import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
-import ch.brickinventoryapp.ui.components.ansagen
-import ch.brickinventoryapp.ui.components.LocalAppFassung
-import ch.brickinventoryapp.ui.components.LocalAppSperre
-import ch.brickinventoryapp.ui.components.AppSperreWahl
-import ch.brickinventoryapp.ui.components.MarkenKopf
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.outsideTheSystemBars
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.LocalAppVersion
+import ch.brickinventoryapp.ui.components.LocalAppLock
+import ch.brickinventoryapp.ui.components.AppLockChoice
+import ch.brickinventoryapp.ui.components.BrandsHeader
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
@@ -59,20 +59,20 @@ fun SetupScreen(
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
     // Saveable: Nach einer Drehung stünde der Scan sonst kommentarlos wieder bei null.
-    var scanUngueltig by rememberSaveable { mutableStateOf(false) }
+    var scanInvalid by rememberSaveable { mutableStateOf(false) }
     // Ein QR-Code kann von jedem stammen: Die Adresse wird erst nach einem Ja übernommen.
     // Nicht saveable: Der Code trägt ein Anmeldetoken, und gesicherter Zustand landet bei
     // Prozesstod auf der Platte (wie Passwort und Code in LoginScreen). Nach einer
     // Drehung scannt man ihn noch einmal.
-    var qrVorschlag  by remember { mutableStateOf<QrLoginPayload?>(null) }
+    var qrSuggestion  by remember { mutableStateOf<QrLoginPayload?>(null) }
     val keyboard     = LocalSoftwareKeyboardController.current
-    val altbestand   = NetworkPolicy.klartextAltbestand(currentUrl, entwicklung)
-    val fehler       = if (url.isBlank()) null else NetworkPolicy.adressfehler(url, entwicklung)
-    val adresseBereit = url.isNotBlank() && fehler == null
+    val altbestand   = NetworkPolicy.plaintextLegacyStock(currentUrl, entwicklung)
+    val fehler       = if (url.isBlank()) null else NetworkPolicy.addressError(url, entwicklung)
+    val addressReady = url.isNotBlank() && fehler == null
 
     fun save() {
         if (url.isBlank() || fehler != null) return
-        keyboard?.hide(); onSave(NetworkPolicy.normalisiere(url))
+        keyboard?.hide(); onSave(NetworkPolicy.normalize(url))
     }
 
     if (showScanner) {
@@ -82,9 +82,9 @@ fun SetupScreen(
                 showScanner = false
                 val payload = parseQrPayload(raw)
                 if (payload != null) {
-                    qrVorschlag = payload
+                    qrSuggestion = payload
                 } else {
-                    scanUngueltig = true
+                    scanInvalid = true
                 }
             },
             onDismiss = { showScanner = false }
@@ -92,16 +92,16 @@ fun SetupScreen(
         return
     }
 
-    qrVorschlag?.let { vorschlag ->
+    qrSuggestion?.let { vorschlag ->
         QrVorschlagDialog(
             vorschlag = vorschlag,
             currentUrl = currentUrl,
             entwicklung = entwicklung,
             bisherigerPin = bisherigerPin,
             mussAbtippen = mussAbtippen,
-            onAbbrechen = { qrVorschlag = null },
+            onAbbrechen = { qrSuggestion = null },
             onUebernehmen = { abgetippt ->
-                qrVorschlag = null
+                qrSuggestion = null
                 url = vorschlag.url
                 onQrScanned?.invoke(vorschlag, abgetippt)
             },
@@ -110,8 +110,8 @@ fun SetupScreen(
 
     // Kopf (Marke, Hinweis zum Altbestand) und Handlung (QR, Adresse, Weiter) als zwei
     // Teile: Im Querformat stehen sie nebeneinander, sonst lag „Weiter“ unter dem Falz.
-    val kopfTeil: @Composable ColumnScope.() -> Unit = {
-        MarkenKopf(untertitel = stringResource(R.string.setup_subtitle))
+    val headerPart: @Composable ColumnScope.() -> Unit = {
+        BrandsHeader(subtitle = stringResource(R.string.setup_subtitle))
 
         if (altbestand) {
             Spacer(Modifier.height(Abstaende.gross))
@@ -125,7 +125,7 @@ fun SetupScreen(
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             ) {
                 Row(Modifier.padding(Abstaende.gross), horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
-                    Icon(Icons.Default.Lock, null, Modifier.size(mitSchrift(24.dp)),
+                    Icon(Icons.Default.Lock, null, Modifier.size(withFont(24.dp)),
                         tint = MaterialTheme.colorScheme.primary)
                     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                         Text(stringResource(R.string.setup_altbestand_titel), fontWeight = FontWeight.Bold)
@@ -136,7 +136,7 @@ fun SetupScreen(
                                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                                     // Feste Ziffernspalte mit Tabellenziffern: „1.“ ist schmaler als
                                     // „2.“, und die Schritte begannen verschieden weit rechts.
-                                    Text("${i + 1}.", Modifier.width(mitSchrift(20.dp)),
+                                    Text("${i + 1}.", Modifier.width(withFont(20.dp)),
                                         style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
                                         fontWeight = FontWeight.SemiBold)
                                     Text(stringResource(schritt), style = MaterialTheme.typography.bodyMedium)
@@ -149,24 +149,24 @@ fun SetupScreen(
             }
         }
     }
-    val handlungsTeil: @Composable ColumnScope.() -> Unit = {
-        Spacer(Modifier.height(Abstaende.riesig))
+    val handlungsPart: @Composable ColumnScope.() -> Unit = {
+        Spacer(Modifier.height(Abstaende.huge))
 
         // Der QR-Code ist der empfohlene Weg (Adresse und Zertifikat in einem Schritt) und
         // deshalb gefüllt, bis eine Adresse von Hand dasteht: Dann ist „Weiter“ der Weg.
         Hauptknopf(
-            haupt = !adresseBereit,
-            onClick = { scanUngueltig = false; showScanner = true },
+            haupt = !addressReady,
+            onClick = { scanInvalid = false; showScanner = true },
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
         ) {
-            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(mitSchrift(20.dp)))
+            Icon(Icons.Default.QrCodeScanner, null, Modifier.size(withFont(20.dp)))
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.setup_scan_qr), fontWeight = FontWeight.SemiBold)
         }
 
-        if (scanUngueltig) {
+        if (scanInvalid) {
             Spacer(Modifier.height(Abstaende.klein))
-            Text(stringResource(R.string.setup_invalid_qr), Modifier.ansagen(), color = MaterialTheme.colorScheme.error,
+            Text(stringResource(R.string.setup_invalid_qr), Modifier.announce(), color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall)
         }
 
@@ -205,13 +205,13 @@ fun SetupScreen(
                     keyboardActions = KeyboardActions(onDone = { save() }),
                     supportingText = {
                         when (fehler) {
-                            NetworkPolicy.Adressfehler.KLARTEXT ->
+                            NetworkPolicy.AddressError.PLAINTEXT ->
                                 Text(stringResource(R.string.setup_klartext_abgelehnt), color = MaterialTheme.colorScheme.error)
-                            NetworkPolicy.Adressfehler.UNLESBAR ->
+                            NetworkPolicy.AddressError.UNLESBAR ->
                                 Text(stringResource(R.string.setup_url_unlesbar), color = MaterialTheme.colorScheme.error)
-                            NetworkPolicy.Adressfehler.BENUTZERANGABE ->
+                            NetworkPolicy.AddressError.USER_INPUT ->
                                 Text(stringResource(R.string.setup_url_benutzerangabe), color = MaterialTheme.colorScheme.error)
-                            NetworkPolicy.Adressfehler.ZUSATZ ->
+                            NetworkPolicy.AddressError.EXTRA ->
                                 Text(stringResource(R.string.setup_url_zusatz), color = MaterialTheme.colorScheme.error)
                             null -> Text(stringResource(R.string.setup_url_supporting))
                         }
@@ -223,17 +223,17 @@ fun SetupScreen(
                 // aus wie gesperrt. Gesperrt bleibt er blass, bis die Adresse taugt.
                 Button(
                     onClick = ::save, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    enabled = adresseBereit,
+                    enabled = addressReady,
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
             }
         }
         // Hier angeboten, weil kaum jemand nach der Einrichtung die Einstellungen durchsucht.
         // Ohne Anbieter (Vorschau, Test) fehlt die Karte, wie in den Einstellungen.
-        LocalAppSperre.current?.let { sperre ->
+        LocalAppLock.current?.let { lock ->
             Spacer(Modifier.height(Abstaende.gross))
             AppKarte {
                 Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    AppSperreWahl(sperre)
+                    AppLockChoice(lock)
                     Text(stringResource(R.string.app_sperre_einrichten), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -241,7 +241,7 @@ fun SetupScreen(
         }
         // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
         // (app/build.gradle.kts). Ohne Namen (Vorschau, Test) bliebe nur „Build “ stehen.
-        val fassung = LocalAppFassung.current.name
+        val fassung = LocalAppVersion.current.name
         if (fassung.isNotBlank()) {
             Spacer(Modifier.height(Abstaende.gross))
             Text(
@@ -255,19 +255,19 @@ fun SetupScreen(
 
     // Rollbar wie die Anmeldung (bei 200 % Schrift reichte die Höhe nicht), mittig
     // solange es passt, und auf dem Tablet nicht breiter als ein Formular.
-    BoxWithConstraints(Modifier.fillMaxSize().ausserhalbDerSystemleisten()) {
+    BoxWithConstraints(Modifier.fillMaxSize().outsideTheSystemBars()) {
         // In Row- und Column-Lambdas ist der Empfänger von BoxWithConstraints gesperrt (DslMarker).
         val hoehe = maxHeight
-        if (maxWidth > hoehe && maxWidth >= QUER_ZWEISPALTIG) {
+        if (maxWidth > hoehe && maxWidth >= ACROSS_TWO_COLUMN) {
             Row(
-                Modifier.fillMaxSize().mittigBis(Lesebreite.formular * 2)
-                    .padding(horizontal = Abstaende.riesig),
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.riesig),
+                Modifier.fillMaxSize().centeredUntil(Lesebreite.formular * 2)
+                    .padding(horizontal = Abstaende.huge),
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.huge),
             ) {
-                listOf(kopfTeil, handlungsTeil).forEach { teil ->
+                listOf(headerPart, handlungsPart).forEach { teil ->
                     Column(
                         Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = hoehe)
-                            .padding(vertical = Abstaende.riesig),
+                            .padding(vertical = Abstaende.huge),
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                         content = teil,
@@ -276,12 +276,12 @@ fun SetupScreen(
             }
         } else Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = hoehe)
-                .mittigBis(Lesebreite.formular).padding(Abstaende.riesig),
+                .centeredUntil(Lesebreite.formular).padding(Abstaende.huge),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            kopfTeil()
-            handlungsTeil()
+            headerPart()
+            handlungsPart()
         }
     }
 }
@@ -294,4 +294,4 @@ private fun Hauptknopf(haupt: Boolean, onClick: () -> Unit, modifier: Modifier, 
 }
 
 /** Ab dieser Breite stehen Kopf und Handlung im Querformat nebeneinander. */
-private val QUER_ZWEISPALTIG = 840.dp
+private val ACROSS_TWO_COLUMN = 840.dp

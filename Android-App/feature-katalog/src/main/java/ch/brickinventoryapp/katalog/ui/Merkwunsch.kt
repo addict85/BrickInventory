@@ -12,6 +12,6 @@ data class Merkwunsch(
     val setNumber: String,
     val zustand: Zustand,
     val richtung: Alarmrichtung,
-    val schwelleRoh: String,
+    val thresholdRaw: String,
     val konto: Int?,
 )

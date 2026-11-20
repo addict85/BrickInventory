@@ -1,16 +1,16 @@
 Gegenprobe: passtZumPin prüft die EKU des Blatts nicht (Stand vor sec10 H8)
 Modul: core-data
-Test: ch.brickinventoryapp.data.PinZweckTest
+Test: ch.brickinventoryapp.data.PinPurposeTest
 Rot: ein Zertifikat fuer einen anderen Zweck passt nicht zum Pin
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-@@ -306,7 +306,7 @@ internal fun auftragsVertrauen(
+@@ -306,7 +306,7 @@ internal fun trustJob(
   */
- fun passtZumPin(chain: Array<X509Certificate>, pin: String): Boolean {
-     val i = chain.indexOfFirst { spkiFingerabdruck(it) == pin }
--    if (i < 0 || !fuerServer(chain[0])) return false
+ fun fitsToPin(chain: Array<X509Certificate>, pin: String): Boolean {
+     val i = chain.indexOfFirst { spkiFingerprint(it) == pin }
+-    if (i < 0 || !forServer(chain[0])) return false
 +    if (i < 0) return false
      if (i == 0) return runCatching { chain[0].checkValidity() }.isSuccess
      return runCatching {

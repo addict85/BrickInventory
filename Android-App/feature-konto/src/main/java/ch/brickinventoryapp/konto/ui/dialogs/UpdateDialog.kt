@@ -3,7 +3,7 @@ package ch.brickinventoryapp.konto.ui.dialogs
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.ui.theme.fensterFlaeche
 // Sammel-Importe wie in den Nachbardialogen (BarcodeResultDialog.kt,
-// SetPruefungDialog.kt) — siehe die Begruendung dort.
+// SetCheckDialog.kt) — siehe die Begruendung dort.
 import ch.brickinventoryapp.konto.ui.UpdateUiState
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateAktionen
 import androidx.compose.foundation.layout.*
@@ -20,7 +20,7 @@ import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.versionsName
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
-import ch.brickinventoryapp.update.util.erlaubnisAbsicht
+import ch.brickinventoryapp.update.util.permissionIntent
 
 /**
  * „Es gibt eine neue Fassung — jetzt aktualisieren?“ Ein Dialog beim Start, weil
@@ -29,19 +29,19 @@ import ch.brickinventoryapp.update.util.erlaubnisAbsicht
  * — fragen ist nicht automatisch handeln.
  */
 @Composable
-fun UpdateRoute(selbstUpdate: UpdateAktionen.MitZustand) {
+fun UpdateRoute(selbstUpdate: UpdateAktionen.WithState) {
     val zustand by selbstUpdate.zustand.collectAsStateWithLifecycle()
     UpdateDialog(zustand, selbstUpdate)
 }
 
 @Composable
 internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) {
-    val neuere = zustand.neuereFassung ?: return
-    if (zustand.dialogAbgelehnt) return
+    val neuere = zustand.newerVersion ?: return
+    if (zustand.dialogRejected) return
     val ctx = LocalContext.current
 
     val laedt = zustand.fortschritt != null
-    val schliessen = { selbstUpdate.updateHinweisSchliessen() }
+    val schliessen = { selbstUpdate.closeUpdateHint() }
 
     val titel = stringResource(R.string.update_dialog_title)
     AlertDialog(
@@ -52,18 +52,18 @@ internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) 
         title = { Text(titel, Modifier.semantics { heading() }) },
         text = {
             Ueberdeckungsschutz()
-            UpdateInhalt(zustand, neuere.versionName)
+            UpdateContent(zustand, neuere.versionName)
         },
         confirmButton = {
             when {
                 // Die Systemerlaubnis fehlt: Der einzige Knopf, der jetzt
                 // weiterhilft, fuehrt in die Systemeinstellungen.
-                zustand.erlaubnisFehlt -> TextButton(onClick = {
-                    ctx.startActivity(erlaubnisAbsicht(ctx))
+                zustand.permissionAbsent -> TextButton(onClick = {
+                    ctx.startActivity(permissionIntent(ctx))
                 }) { Text(stringResource(R.string.update_permission_grant)) }
                 // Liegt schon auf der Platte (etwa weil der System-Installer
                 // abgebrochen wurde): nicht noch einmal laden.
-                zustand.bereitZurInstallation -> TextButton(onClick = { selbstUpdate.starteInstallation() }) {
+                zustand.readyToInstallation -> TextButton(onClick = { selbstUpdate.startInstallation() }) {
                     Text(stringResource(R.string.update_install))
                 }
                 laedt -> {}
@@ -85,20 +85,20 @@ internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) 
 
 /** Fassung, Fortschritt und was fehlt — der Text des Dialogs, getrennt vom Rahmen und den Knöpfen. */
 @Composable
-private fun UpdateInhalt(zustand: UpdateUiState, versionName: String) {
+private fun UpdateContent(zustand: UpdateUiState, versionName: String) {
     Column {
         Text(stringResource(R.string.update_dialog_text, versionName, versionsName()))
         zustand.fortschritt?.let { p ->
             Spacer(Modifier.height(Abstaende.mittel))
             Text(stringResource(R.string.update_downloading, p),
                 style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(Abstaende.winzig))
+            Spacer(Modifier.height(Abstaende.tiny))
             LinearProgressIndicator(
                 progress = { p / 100f },
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        if (zustand.erlaubnisFehlt) {
+        if (zustand.permissionAbsent) {
             Spacer(Modifier.height(Abstaende.mittel))
             Text(stringResource(R.string.update_permission_needed),
                 style = MaterialTheme.typography.bodySmall,

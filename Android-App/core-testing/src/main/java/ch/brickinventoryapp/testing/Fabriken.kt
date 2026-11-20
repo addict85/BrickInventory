@@ -2,45 +2,45 @@
 
 package ch.brickinventoryapp.testing
 
-import ch.brickinventoryapp.data.api.FigurenApi
-import ch.brickinventoryapp.data.api.FinanzenApi
-import ch.brickinventoryapp.data.api.GutscheineApi
-import ch.brickinventoryapp.data.api.HaushaltApi
-import ch.brickinventoryapp.data.api.KatalogApi
-import ch.brickinventoryapp.data.api.KontoApi
+import ch.brickinventoryapp.data.api.MinifigsApi
+import ch.brickinventoryapp.data.api.FinancesApi
+import ch.brickinventoryapp.data.api.VouchersApi
+import ch.brickinventoryapp.data.api.HouseholdApi
+import ch.brickinventoryapp.data.api.CatalogApi
+import ch.brickinventoryapp.data.api.AccountApi
 import ch.brickinventoryapp.data.api.SetsApi
-import ch.brickinventoryapp.data.api.TeileApi
-import ch.brickinventoryapp.data.api.VerwaltungApi
+import ch.brickinventoryapp.data.api.PartsApi
+import ch.brickinventoryapp.data.api.ManagementApi
 import ch.brickinventoryapp.offline.Ausgang
-import ch.brickinventoryapp.offline.AusgangPlaner
+import ch.brickinventoryapp.offline.ExitPlanner
 import ch.brickinventoryapp.offline.Offlineablage
-import ch.brickinventoryapp.offline.SpeicherAusgang
-import ch.brickinventoryapp.offline.SpeicherBestand
-import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.offline.StorageExit
+import ch.brickinventoryapp.offline.StorageInventory
+import ch.brickinventoryapp.data.repository.MinifigsRepository
 import ch.brickinventoryapp.data.repository.FigurenRepositoryImpl
-import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.data.repository.FinancesRepository
 import ch.brickinventoryapp.data.repository.FinanzenRepositoryImpl
-import ch.brickinventoryapp.data.repository.GutscheineRepository
+import ch.brickinventoryapp.data.repository.VouchersRepository
 import ch.brickinventoryapp.data.repository.GutscheineRepositoryImpl
-import ch.brickinventoryapp.data.repository.HaushaltRepository
+import ch.brickinventoryapp.data.repository.HouseholdRepository
 import ch.brickinventoryapp.data.repository.HaushaltRepositoryImpl
-import ch.brickinventoryapp.data.repository.KatalogRepository
+import ch.brickinventoryapp.data.repository.CatalogRepository
 import ch.brickinventoryapp.data.repository.KatalogRepositoryImpl
-import ch.brickinventoryapp.data.repository.KontoRepository
+import ch.brickinventoryapp.data.repository.AccountRepository
 import ch.brickinventoryapp.data.repository.KontoRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.SetsRepositoryImpl
 import ch.brickinventoryapp.data.repository.AlarmRepository
 import ch.brickinventoryapp.data.repository.AlarmRepositoryImpl
-import ch.brickinventoryapp.data.repository.MerklisteRepository
+import ch.brickinventoryapp.data.repository.WantedRepository
 import ch.brickinventoryapp.data.repository.MerklisteRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetDateienRepository
-import ch.brickinventoryapp.data.repository.SetDateienRepositoryImpl
+import ch.brickinventoryapp.data.repository.SetFilesRepositoryImpl
 import ch.brickinventoryapp.data.repository.SetKatalogRepository
-import ch.brickinventoryapp.data.repository.SetKatalogRepositoryImpl
-import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.SetCatalogRepositoryImpl
+import ch.brickinventoryapp.data.repository.PartsRepository
 import ch.brickinventoryapp.data.repository.TeileRepositoryImpl
-import ch.brickinventoryapp.data.repository.VerwaltungRepository
+import ch.brickinventoryapp.data.repository.ManagementRepository
 import ch.brickinventoryapp.data.repository.VerwaltungRepositoryImpl
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
 import ch.brickinventoryapp.data.repository.Kontosicht
@@ -56,47 +56,47 @@ import kotlinx.coroutines.Job
 // eine Ablage braucht, bekommt ohne Angabe eine eigene im Speicher.
 
 /** Listen und Ausgang im Speicher, mit festem Bereich; [ausgang] behält der Test, um nachzusehen. */
-fun Testablage(bereich: String? = "test", ausgang: Ausgang = SpeicherAusgang(), planer: AusgangPlaner = AusgangPlaner {}) =
-    Offlineablage(SpeicherBestand(), ausgang, { bereich }, planer)
+fun Testablage(bereich: String? = "test", ausgang: Ausgang = StorageExit(), planner: ExitPlanner = ExitPlanner {}) =
+    Offlineablage(StorageInventory(), ausgang, { bereich }, planner)
 
 fun testSetsRepository(api: SetsApi, ablage: Offlineablage = Testablage()): SetsRepository =
     SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun testMerklisteRepository(api: SetsApi, ablage: Offlineablage = Testablage()): MerklisteRepository =
+fun testWantedRepository(api: SetsApi, ablage: Offlineablage = Testablage()): WantedRepository =
     MerklisteRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
 fun testAlarmRepository(api: SetsApi, ablage: Offlineablage = Testablage()): AlarmRepository =
     AlarmRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun testSetKatalogRepository(api: SetsApi): SetKatalogRepository =
-    SetKatalogRepositoryImpl(api)
+fun testSetCatalogRepository(api: SetsApi): SetKatalogRepository =
+    SetCatalogRepositoryImpl(api)
 
-fun testSetDateienRepository(api: SetsApi): SetDateienRepository =
-    SetDateienRepositoryImpl(api)
+fun testSetFilesRepository(api: SetsApi): SetDateienRepository =
+    SetFilesRepositoryImpl(api)
 
-fun testTeileRepository(api: TeileApi, ablage: Offlineablage = Testablage()): TeileRepository =
+fun testPartsRepository(api: PartsApi, ablage: Offlineablage = Testablage()): PartsRepository =
     TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun testFigurenRepository(api: FigurenApi, ablage: Offlineablage = Testablage()): FigurenRepository =
+fun testMinifigsRepository(api: MinifigsApi, ablage: Offlineablage = Testablage()): MinifigsRepository =
     FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-fun testGutscheineRepository(api: GutscheineApi): GutscheineRepository =
+fun testVouchersRepository(api: VouchersApi): VouchersRepository =
     GutscheineRepositoryImpl(api, Testablage())
 
-fun testKontoRepository(
-    api: KontoApi,
+fun testAccountRepository(
+    api: AccountApi,
     io: CoroutineDispatcher = Dispatchers.IO,
-): KontoRepository = KontoRepositoryImpl(api, io)
+): AccountRepository = KontoRepositoryImpl(api, io)
 
-fun testFinanzenRepository(api: FinanzenApi, ablage: Offlineablage = Testablage()): FinanzenRepository = FinanzenRepositoryImpl(api, ablage)
+fun testFinancesRepository(api: FinancesApi, ablage: Offlineablage = Testablage()): FinancesRepository = FinanzenRepositoryImpl(api, ablage)
 
-fun testHaushaltRepository(api: HaushaltApi, ablage: Offlineablage = Testablage()): HaushaltRepository =
+fun testHouseholdRepository(api: HouseholdApi, ablage: Offlineablage = Testablage()): HouseholdRepository =
     HaushaltRepositoryImpl(api, ablage)
 
-fun testVerwaltungRepository(api: VerwaltungApi): VerwaltungRepository =
+fun testManagementRepository(api: ManagementApi): ManagementRepository =
     VerwaltungRepositoryImpl(api)
 
-fun testKatalogRepository(api: KatalogApi, ablage: Offlineablage = Testablage()): KatalogRepository =
+fun testCatalogRepository(api: CatalogApi, ablage: Offlineablage = Testablage()): CatalogRepository =
     KatalogRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
 /** Die Sicht über gewählte Konten; mit derselben [ablage] wie die Repositories, damit Schreiben sie neu fragt. */
@@ -116,18 +116,18 @@ fun testVertrauenschiffre(schluessel: Byte = 7): Vertrauenschiffre = Vertrauensc
  * Der SitzungsDienst für Tests von ViewModels, die abmelden lassen: Er zählt nur
  * mit, damit ein Test prüfen kann, ob und wann abgemeldet wurde.
  */
-class SitzungsAttrappe(private val beimAbmelden: () -> Unit = {}) : SitzungsRepository {
-    var abmeldungen = 0
+class SessionFake(private val signOutOn: () -> Unit = {}) : SitzungsRepository {
+    var signOuts = 0
         private set
 
     override fun starte() = Unit
     override fun abmelden(): Job {
-        abmeldungen++
-        beimAbmelden()
+        signOuts++
+        signOutOn()
         return Job().apply { complete() }
     }
-    override fun zweiterFaktorEingerichtet() = Unit
+    override fun secondFactorConfigured() = Unit
     override fun ladeEinstellungen() = Unit
-    override fun ladeMitglieder() = Unit
+    override fun loadMembers() = Unit
     override fun ladeLagerorte() = Unit
 }

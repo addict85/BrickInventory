@@ -12,5 +12,5 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/di/Se
          // folgt nur innerhalb derselben Herkunft (ServerWaechter.senden).
 -        .followRedirects(false)
          .followSslRedirects(false)
-         .addInterceptor(ServerWaechter(GeraeteZugang(prefs.token), isApiClient, NetworkPolicy.entwicklung,
-             sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMeldung = versionsMeldung,
+         .addInterceptor(ServerWaechter(DevicesAccess(prefs.token), isApiClient, NetworkPolicy.entwicklung,
+             sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMessage = versionsMessage,

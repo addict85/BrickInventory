@@ -21,7 +21,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import ch.brickinventoryapp.ui.components.Rueckfrage
+import ch.brickinventoryapp.ui.components.Prompt
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
@@ -29,13 +29,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.fach.AuftragAnsicht
+import ch.brickinventoryapp.model.fach.JobView
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.AppKarte
-import ch.brickinventoryapp.ui.components.Abschnittstitel
-import ch.brickinventoryapp.verwaltung.ui.viewmodel.HintergrundUiState
+import ch.brickinventoryapp.ui.components.SectionTitle
+import ch.brickinventoryapp.verwaltung.ui.viewmodel.BackgroundUiState
 import ch.brickinventoryapp.ui.util.fmtTag
-import ch.brickinventoryapp.model.ui.fehlerMeldung
+import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ui.satz
 
@@ -45,23 +45,23 @@ import ch.brickinventoryapp.ui.satz
  * Aufträge darunter, und das soll man nicht aus stehenden Zahlen erraten müssen.
  */
 @Composable
-internal fun HintergrundSection(
-    zustand: HintergrundUiState,
-    onStarten: (art: String, name: String) -> Unit,
-    onLeeren: (art: String) -> Unit,
+internal fun BackgroundSection(
+    zustand: BackgroundUiState,
+    startOn: (art: String, name: String) -> Unit,
+    clearOn: (art: String) -> Unit,
     onAbbrechen: (id: String) -> Unit,
-    onWiederholen: (id: String) -> Unit,
+    retryOn: (id: String) -> Unit,
 ) {
     val ansicht = zustand.ansicht
     AppKarte {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             // „Aufträge“, nicht noch einmal der Name der Seite: Er steht schon darüber.
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
-                Abschnittstitel(stringResource(R.string.hintergrund_auftraege))
+                SectionTitle(stringResource(R.string.hintergrund_auftraege))
                 if (zustand.abruf.laedt) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
             }
-            zustand.abruf.fehlerMeldung?.let { Text(it.satz(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-            if (ansicht != null && !ansicht.jobProzessLaeuft) {
+            zustand.abruf.errorMessage?.let { Text(it.satz(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+            if (ansicht != null && !ansicht.jobProcessRunning) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                     Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error)
                     Text(stringResource(R.string.hintergrund_kein_prozess), color = MaterialTheme.colorScheme.error,
@@ -70,7 +70,7 @@ internal fun HintergrundSection(
             }
             if (ansicht == null) return@Column
             for (p in ansicht.pausen) {
-                Text(stringResource(R.string.hintergrund_pause, auftragsArtText(p.art)?.let { stringResource(it) } ?: p.art,
+                Text(stringResource(R.string.hintergrund_pause, jobKindText(p.art)?.let { stringResource(it) } ?: p.art,
                     fmtTag(p.bis) ?: "—", p.grund), style = MaterialTheme.typography.bodySmall)
             }
             if (ansicht.bildbedarf > 0) Text(pluralStringResource(R.plurals.hintergrund_bildbedarf,
@@ -79,7 +79,7 @@ internal fun HintergrundSection(
                 Text(stringResource(R.string.hintergrund_leer), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             for ((art, gruppe) in ansicht.auftraege.groupBy { it.art }) {
-                AuftragsGruppe(art, gruppe, onStarten, onLeeren, onAbbrechen, onWiederholen)
+                JobGroup(art, gruppe, startOn, clearOn, onAbbrechen, retryOn)
             }
         }
     }
@@ -91,70 +91,70 @@ internal fun HintergrundSection(
  * sonst stünden fünfmal „Leeren“ untereinander.
  */
 @Composable
-private fun AuftragsGruppe(
+private fun JobGroup(
     art: String,
-    gruppe: List<AuftragAnsicht>,
-    onStarten: (art: String, name: String) -> Unit,
-    onLeeren: (art: String) -> Unit,
+    gruppe: List<JobView>,
+    startOn: (art: String, name: String) -> Unit,
+    clearOn: (art: String) -> Unit,
     onAbbrechen: (id: String) -> Unit,
-    onWiederholen: (id: String) -> Unit,
+    retryOn: (id: String) -> Unit,
 ) {
     HorizontalDivider()
-    val name = auftragsArtText(art)?.let { stringResource(it) } ?: art
-    var leerenFragen by rememberSaveable(art) { mutableStateOf(false) }
-    if (leerenFragen) {
-        Rueckfrage(
+    val name = jobKindText(art)?.let { stringResource(it) } ?: art
+    var clearAsk by rememberSaveable(art) { mutableStateOf(false) }
+    if (clearAsk) {
+        Prompt(
             titel = stringResource(R.string.hintergrund_leeren_titel),
             text = stringResource(R.string.hintergrund_leeren_text, name),
             bestaetigen = stringResource(R.string.hintergrund_leeren),
-            onBestaetigen = { leerenFragen = false; onLeeren(art) },
-            onAbbrechen = { leerenFragen = false },
+            onBestaetigen = { clearAsk = false; clearOn(art) },
+            onAbbrechen = { clearAsk = false },
         )
     }
-    val jetztName = stringResource(R.string.hintergrund_jetzt_cd, name)
-    val leerenName = stringResource(R.string.hintergrund_leeren_cd, name)
+    val nowName = stringResource(R.string.hintergrund_jetzt_cd, name)
+    val clearName = stringResource(R.string.hintergrund_leeren_cd, name)
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
         Text(name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-        TextButton(onClick = { onStarten(art, name) }, modifier = Modifier.semantics { contentDescription = jetztName }) {
+        TextButton(onClick = { startOn(art, name) }, modifier = Modifier.semantics { contentDescription = nowName }) {
             Text(stringResource(R.string.hintergrund_jetzt))
         }
-        TextButton(onClick = { leerenFragen = true }, modifier = Modifier.semantics { contentDescription = leerenName }) {
+        TextButton(onClick = { clearAsk = true }, modifier = Modifier.semantics { contentDescription = clearName }) {
             Text(stringResource(R.string.hintergrund_leeren))
         }
     }
-    for (a in gruppe) AuftragZeile(a, name,
+    for (a in gruppe) JobRow(a, name,
         onAbbrechen = { onAbbrechen(a.id) },
-        onWiederholen = { onWiederholen(a.id) })
+        retryOn = { retryOn(a.id) })
 }
 
 /** Ein Auftrag; seine Knöpfe heissen „Auftrag abbrechen“, nicht „Abbrechen“ wie in jedem Dialog. */
 @Composable
-private fun AuftragZeile(a: AuftragAnsicht, artName: String, onAbbrechen: () -> Unit, onWiederholen: () -> Unit) {
+private fun JobRow(a: JobView, kindName: String, onAbbrechen: () -> Unit, retryOn: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             val kopf = listOfNotNull(
                 a.status.statusText?.let { stringResource(it) },
                 a.setNumber,
-                a.fortschrittText,
-                if (a.versuch > 1) stringResource(R.string.hintergrund_versuch, a.versuch, a.maxVersuche) else null,
+                a.progressText,
+                if (a.attempt > 1) stringResource(R.string.hintergrund_versuch, a.attempt, a.maxVersuche) else null,
             ).joinToString(" · ")
             Text(kopf, style = MaterialTheme.typography.bodyMedium)
-            a.faelligAb?.let { zeit ->
+            a.dueAb?.let { zeit ->
                 Text(stringResource(if (a.geplant) R.string.hintergrund_geplant else R.string.hintergrund_faellig,
                     fmtTag(zeit) ?: zeit), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             a.fehler?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error) }
         }
-        val wer = listOfNotNull(artName, a.setNumber).joinToString(" ")
-        if (a.abbrechbar) AuftragKnopf(stringResource(R.string.hintergrund_abbrechen), wer, onAbbrechen)
-        if (a.wiederholbar) AuftragKnopf(stringResource(R.string.hintergrund_auftrag_wiederholen), wer, onWiederholen)
+        val wer = listOfNotNull(kindName, a.setNumber).joinToString(" ")
+        if (a.abbrechbar) JobButton(stringResource(R.string.hintergrund_abbrechen), wer, onAbbrechen)
+        if (a.retryable) JobButton(stringResource(R.string.hintergrund_auftrag_wiederholen), wer, retryOn)
     }
 }
 
 /** Ein Knopf an einem Auftrag; vorgelesen mit Art und Set („Auftrag abbrechen: Bilder eines Sets 75192-1“). */
 @Composable
-private fun AuftragKnopf(aktion: String, wer: String, onClick: () -> Unit) {
+private fun JobButton(aktion: String, wer: String, onClick: () -> Unit) {
     val name = stringResource(R.string.aktion_fuer, aktion, wer)
     TextButton(onClick = onClick, modifier = Modifier.semantics { contentDescription = name }) { Text(aktion) }
 }

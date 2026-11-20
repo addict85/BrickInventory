@@ -10,14 +10,14 @@ import kotlinx.coroutines.flow.asStateFlow
  * prüfen, solange es genau zwei Wege gibt, sie zu setzen und zu räumen.
  */
 internal class Erfassung {
-    private val _state = MutableStateFlow(ErfassungUiState())
-    val state: StateFlow<ErfassungUiState> = _state.asStateFlow()
+    private val _state = MutableStateFlow(EntryUiState())
+    val state: StateFlow<EntryUiState> = _state.asStateFlow()
 
-    fun zeige(bezeichner: String, phase: Pruefphase) {
-        _state.value = ErfassungUiState(pruefung = Pruefschritt(bezeichner, phase))
+    fun zeige(identifier: String, phase: CheckPhase) {
+        _state.value = EntryUiState(check = CheckStep(identifier, phase))
     }
 
     fun fertig() {
-        _state.value = ErfassungUiState()
+        _state.value = EntryUiState()
     }
 }

@@ -9,7 +9,7 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
 @@ -68,7 +68,6 @@
       * Start scheiterte, kommen nach. Abgemeldet fragt niemand.
       */
-     fun imVordergrund() {
+     fun inForeground() {
 -        if (!state.value.isLoggedIn) return
          loadSettings()
          loadHouseholdMembers()

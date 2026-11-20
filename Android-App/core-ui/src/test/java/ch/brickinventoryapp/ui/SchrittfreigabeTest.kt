@@ -44,15 +44,15 @@ class SchrittfreigabeTest {
 
     /** Ein Server, der wie routes/api_v1/device.ts prüft: Signatur über genau seine Nachricht. */
     private class Server(private val schluessel: PublicKey, var challenge: Schrittantwort) : Schrittbindung {
-        val freigaben = mutableListOf<String>()
+        val releases = mutableListOf<String>()
         override suspend fun challenge(aktion: Schrittaktion) = challenge
         override suspend fun freigeben(challenge: String, signatur: ByteArray): Schrittantwort {
-            freigaben += challenge
+            releases += challenge
             val c = this.challenge as Schrittantwort.Challenge
             val passt = Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).run {
                 initVerify(schluessel); update(c.nachricht.toByteArray(Charsets.UTF_8)); verify(signatur)
             }
-            return if (passt && challenge == c.challenge) Schrittantwort.Frei else Schrittantwort.Abgelehnt("abgelehnt")
+            return if (passt && challenge == c.challenge) Schrittantwort.Free else Schrittantwort.Rejected("abgelehnt")
         }
     }
 
@@ -78,43 +78,43 @@ class SchrittfreigabeTest {
     @Test
     fun `mit Challenge geht es erst weiter, wenn der Server die Signatur annimmt`() = runBlocking {
         val server = Server(geraet.public, offen)
-        val a = Schrittablauf(server, freigabe).bestaetige(Schrittaktion.GUTSCHEIN) { signatur(geraet.private) }
+        val a = Schrittablauf(server, freigabe).confirm(Schrittaktion.GUTSCHEIN) { signatur(geraet.private) }
         assertEquals(Schrittablauf.Ausgang.Weiter, a)
-        assertEquals(listOf("c1"), server.freigaben)
+        assertEquals(listOf("c1"), server.releases)
     }
 
     @Test
     fun `lehnt der Server die Signatur ab, geht es nicht weiter`() = runBlocking {
         // Der Server kennt einen anderen Schlüssel als das Gerät (neuer Fingerabdruck, fremdes Gerät).
         val server = Server(paar().public, offen)
-        val a = Schrittablauf(server, Schrittfreigabe({ geraet.public })).bestaetige(Schrittaktion.GUTSCHEIN) { signatur(geraet.private) }
-        assertEquals(Schrittablauf.Ausgang.Abgelehnt("abgelehnt"), a)
+        val a = Schrittablauf(server, Schrittfreigabe({ geraet.public })).confirm(Schrittaktion.GUTSCHEIN) { signatur(geraet.private) }
+        assertEquals(Schrittablauf.Ausgang.Rejected("abgelehnt"), a)
     }
 
     @Test
     fun `ein Rueckruf ohne CryptoObject laesst nicht weiter und fragt den Server nicht`() = runBlocking {
         val server = Server(geraet.public, offen)
-        val a = Schrittablauf(server, freigabe).bestaetige(Schrittaktion.GUTSCHEIN) { null }
+        val a = Schrittablauf(server, freigabe).confirm(Schrittaktion.GUTSCHEIN) { null }
         assertEquals(Schrittablauf.Ausgang.Abgebrochen, a)
-        assertEquals(emptyList<String>(), server.freigaben)
+        assertEquals(emptyList<String>(), server.releases)
     }
 
     @Test
     fun `ohne Schluessel am Server fragt die App die Sperre gar nicht`() = runBlocking {
-        val server = Server(geraet.public, Schrittantwort.Abgelehnt("Bitte neu anmelden."))
+        val server = Server(geraet.public, Schrittantwort.Rejected("Bitte neu anmelden."))
         var gefragt = 0
-        val a = Schrittablauf(server, freigabe).bestaetige(Schrittaktion.VERWALTUNG) { gefragt++; signatur(geraet.private) }
-        assertEquals(Schrittablauf.Ausgang.Abgelehnt("Bitte neu anmelden."), a)
+        val a = Schrittablauf(server, freigabe).confirm(Schrittaktion.VERWALTUNG) { gefragt++; signatur(geraet.private) }
+        assertEquals(Schrittablauf.Ausgang.Rejected("Bitte neu anmelden."), a)
         assertEquals(0, gefragt)
     }
 
     @Test
     fun `ein Schritt ohne Aktion am Server bleibt bei der Pruefung im Geraet`() = runBlocking {
-        val server = Server(geraet.public, Schrittantwort.NichtGebunden)
+        val server = Server(geraet.public, Schrittantwort.NotBound)
         assertEquals(Schrittablauf.Ausgang.Weiter,
-            Schrittablauf(server, freigabe).bestaetige(Schrittaktion.LOKAL) { signatur(geraet.private) })
+            Schrittablauf(server, freigabe).confirm(Schrittaktion.LOKAL) { signatur(geraet.private) })
         assertEquals(Schrittablauf.Ausgang.Abgebrochen,
-            Schrittablauf(server, freigabe).bestaetige(Schrittaktion.LOKAL) { signatur(paar().private) })
-        assertEquals(emptyList<String>(), server.freigaben)
+            Schrittablauf(server, freigabe).confirm(Schrittaktion.LOKAL) { signatur(paar().private) })
+        assertEquals(emptyList<String>(), server.releases)
     }
 }

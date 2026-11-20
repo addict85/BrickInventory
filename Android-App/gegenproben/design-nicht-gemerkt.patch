@@ -1,6 +1,6 @@
 Gegenprobe: Das Design des Servers geht nicht in die Ablage
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.SitzungsDienstTest
+Test: ch.brickinventoryapp.zustand.SessionServiceTest
 Rot: das Design des Servers gilt und wird gemerkt
 
 diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/Sitzung.kt
@@ -13,5 +13,5 @@ diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung
 -    override fun setzeDesign(theme: Design) = werte.setzeDesign(theme)
 +    override fun setzeDesign(theme: Design) = Unit
  
-     override fun serverstartGeaendert(stand: StartzustandAnsicht?) = _state.update { it.copy(startupStatus = stand) }
+     override fun serverstartGeaendert(stand: StartStateView?) = _state.update { it.copy(startupStatus = stand) }
  

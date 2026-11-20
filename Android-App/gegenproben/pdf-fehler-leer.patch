@@ -1,18 +1,18 @@
 Gegenprobe: Die Teileliste übernimmt beim gescheiterten PDF-Auftrag nur den Satz des Servers, auch keinen
 Modul: feature-teile
-Test: ch.brickinventoryapp.teile.TeilelisteViewModelTest
+Test: ch.brickinventoryapp.teile.PartListViewModelTest
 Rot: ein Fehler hat immer einen Satz
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeilelisteViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeilelisteViewModel.kt
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeilelisteViewModel.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/TeilelisteViewModel.kt
+diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartListViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartListViewModel.kt
+--- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartListViewModel.kt
++++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/PartListViewModel.kt
 @@ -184,8 +184,7 @@
      /** Nie leer: Ein Abruf spricht wie jeder Abruf, ein gescheiterter Auftrag mit dem Satz des Servers. */
-     private fun fehlerText(grund: PdfFehlschlag): Meldung = when (grund) {
-         is PdfFehlschlag.Abruf -> fehlerMeldung(grund.fehler)
--        is PdfFehlschlag.Auftrag -> grund.satz?.takeIf { it.isNotBlank() }?.let(Meldung::Text)
--            ?: Meldung.Ressource(R.string.pdfexp_server_error)
-+        is PdfFehlschlag.Auftrag -> Meldung.Text(grund.satz.orEmpty())
+     private fun errorText(grund: PdfFailure): Meldung = when (grund) {
+         is PdfFailure.Abruf -> errorMessage(grund.fehler)
+-        is PdfFailure.Auftrag -> grund.satz?.takeIf { it.isNotBlank() }?.let(Meldung::Text)
+-            ?: Meldung.Resource(R.string.pdfexp_server_error)
++        is PdfFailure.Auftrag -> Meldung.Text(grund.satz.orEmpty())
      }
  
-     fun pdfGeoeffnet() = _zustand.update { it.copy(pdfDatei = null) }
+     fun pdfOpened() = _zustand.update { it.copy(pdfFile = null) }

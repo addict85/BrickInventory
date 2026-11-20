@@ -5,8 +5,8 @@ import ch.brickinventoryapp.sitzung.AppUiState
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.fach.Zustand
-import ch.brickinventoryapp.gemeinsam.ui.InfoPlakette
-import ch.brickinventoryapp.ui.components.ErfassenDialog
+import ch.brickinventoryapp.gemeinsam.ui.InfoBadge
+import ch.brickinventoryapp.ui.components.AddDialog
 import androidx.compose.runtime.saveable.rememberSaveable
 import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungAktionen
 import androidx.compose.foundation.layout.*
@@ -24,7 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.compose.*
 import ch.brickinventoryapp.sammlung.ui.BarcodeUiState
 import ch.brickinventoryapp.ui.titel
-import ch.brickinventoryapp.zustand.ui.BlickfeldUiState
+import ch.brickinventoryapp.zustand.ui.ScopeUiState
 import ch.brickinventoryapp.zustand.ui.LagerUiState
 import coil3.ImageLoader
 import coil3.request.crossfade
@@ -36,16 +36,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ui.util.NumericInput
-import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
+import ch.brickinventoryapp.sammlung.ui.viewmodel.EntryViewModel
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.ProduktBild
-import ch.brickinventoryapp.ui.components.bewegungReduziert
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.movementReduced
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.gemeinsam.ui.LagerortErfassung
 import ch.brickinventoryapp.gemeinsam.ui.OwnerPicker
 import ch.brickinventoryapp.gemeinsam.ui.Zustandszeile
-import ch.brickinventoryapp.gemeinsam.ui.AnzahlFeld
-import ch.brickinventoryapp.gemeinsam.ui.KaufpreisFeld
+import ch.brickinventoryapp.gemeinsam.ui.CountField
+import ch.brickinventoryapp.gemeinsam.ui.PurchasePriceField
 import ch.brickinventoryapp.ui.util.fmtInt
 
 /**
@@ -56,18 +56,18 @@ import ch.brickinventoryapp.ui.util.fmtInt
  * an einer Stelle, wann er erscheint, und hier nur, wie er aussieht.
  */
 @Composable
-internal fun BarcodeResultRoute(vm: ErfassungViewModel, imageLoader: ImageLoader) {
+internal fun BarcodeResultRoute(vm: EntryViewModel, imageLoader: ImageLoader) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
     val barcodeState by vm.barcodeState.collectAsStateWithLifecycle()
-    val lagerZustand by vm.lagerState.collectAsStateWithLifecycle()
+    val lagerZustand by vm.storageState.collectAsStateWithLifecycle()
     BarcodeResultDialog(BarcodeDialogZustand(state, blick, barcodeState, lagerZustand), vm, imageLoader)
 }
 
 /** Was der Barcode-Dialog zeigt. */
 data class BarcodeDialogZustand(
     val state: AppUiState,
-    val blick: BlickfeldUiState,
+    val blick: ScopeUiState,
     val barcodeState: BarcodeUiState,
     val lagerZustand: LagerUiState,
 )
@@ -92,31 +92,31 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
     // Lagerort zurückgesetzt auf die Vorgabe, nicht auf leer, damit sie bei einer
     // Neuerfassung vorausgewählt ist; die Vorgabe kann nach dem Scan eintreffen.
     val lagerZustand = zustand.lagerZustand
-    val lagerVorgabe = lagerZustand.vorgabe?.name ?: ""
-    var barcodeLagerort by rememberSaveable(barcodeState.result, lagerVorgabe) { mutableStateOf(lagerVorgabe) }
-    val fuerTeileliste = barcodeState.source == Scannerherkunft.TEILELISTE
+    val storageDefault = lagerZustand.vorgabe?.name ?: ""
+    var barcodeLocation by rememberSaveable(barcodeState.result, storageDefault) { mutableStateOf(storageDefault) }
+    val forPartList = barcodeState.source == Scannerherkunft.TEILELISTE
     // Derselbe Rahmen wie „Set erfassen“: Titel, Felder untereinander, rechts der volle Knopf.
-    ErfassenDialog(
-        titel = if (fuerTeileliste) stringResource(R.string.main_barcode_add_partslist)
+    AddDialog(
+        titel = if (forPartList) stringResource(R.string.main_barcode_add_partslist)
                 else stringResource(R.string.main_barcode_add_set),
         bestaetigen = stringResource(R.string.barcode_add),
         // Die Sperre gegen die Doppelerfassung sitzt in confirmAddBarcode(); hier sieht man,
         // dass das Tippen angekommen ist.
-        bestaetigenAn = !barcodeState.hinzufuegen.laeuft,
+        confirmAn = !barcodeState.hinzufuegen.laeuft,
         onBestaetigen = {
-            if (fuerTeileliste) {
+            if (forPartList) {
                 // Nur die Nummer: Aus der Teileliste entsteht kein Bestand.
                 aktionen.confirmAddBarcode(Erfassungswunsch(barcodeState.result))
             } else {
                 aktionen.confirmAddBarcode(Erfassungswunsch(
                     setNumber = barcodeState.result,
                     menge = barcodeQuantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
-                    kaufpreis = NumericInput.leseGeld(barcodePriceText),
+                    kaufpreis = NumericInput.readMoney(barcodePriceText),
                     zustand = barcodeCondition,
                     // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann beim
                     // eigenen Konto (gleiche Regel wie im Galerie-Dialog).
                     besitzer = if (blick.householdMembers.size > 1) barcodeOwner else null,
-                    lagerort = barcodeLagerort.trim().takeIf { it.isNotEmpty() },
+                    lagerort = barcodeLocation.trim().takeIf { it.isNotEmpty() },
                 ))
             }
         },
@@ -140,7 +140,7 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                             horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.Warning, null, Modifier.size(mitSchrift(20.dp)),
+                            Icon(Icons.Default.Warning, null, Modifier.size(withFont(20.dp)),
                                 tint = MaterialTheme.colorScheme.onErrorContainer)
                             Text(
                                 stringResource(R.string.main_barcode_unsure),
@@ -154,15 +154,15 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                 val imgUrl = barcodeState.imageLocal?.let { "${state.serverUrl}$it" } ?: barcodeState.imageUrl
                 val ctx = androidx.compose.ui.platform.LocalContext.current
                 ProduktBild(
-                    model = imgUrl?.let { coil3.request.ImageRequest.Builder(ctx).data(it).crossfade(!bewegungReduziert()).build() },
+                    model = imgUrl?.let { coil3.request.ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
                     imageLoader = imageLoader,
                     contentDescription = barcodeState.setName,
                     modifier = Modifier.fillMaxWidth().height(160.dp).clip(MaterialTheme.shapes.medium),
                     contentScale = ContentScale.Fit,
-                    ersatzGroesse = 56.dp,
+                    fallbackSize = 56.dp,
                 )
                 // Name und Nummer gehören zusammen, wie auf der Schachtel; der Hinweis folgt danach.
-                Column(verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
                     if (barcodeState.setName != null)
                         Text(barcodeState.setName, fontWeight = FontWeight.Bold,
                             style = MaterialTheme.typography.titleMedium)
@@ -171,30 +171,30 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                             color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                         if (barcodeState.theme != null)
                             Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.small) {
-                                Text(barcodeState.theme, Modifier.padding(horizontal = 6.dp, vertical = Abstaende.haar),
+                                Text(barcodeState.theme, Modifier.padding(horizontal = 6.dp, vertical = Abstaende.hairline),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer)
                             }
                     }
                 }
                 // Wie im Katalog: Wer ein Set schon hat, soll es sehen, bevor er es ein zweites Mal erfasst.
-                if (barcodeState.besitzMenge > 0 && !fuerTeileliste)
-                    InfoPlakette(stringResource(R.string.barcode_schon_besessen, barcodeState.besitzMenge), icon = Icons.Default.Check)
+                if (barcodeState.ownershipQuantity > 0 && !forPartList)
+                    InfoBadge(stringResource(R.string.barcode_schon_besessen, barcodeState.ownershipQuantity), icon = Icons.Default.Check)
                 HorizontalDivider()
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                     if (barcodeState.year != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.CalendarMonth, null, Modifier.size(mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.CalendarMonth, null, Modifier.size(withFont(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${barcodeState.year}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                         Text(stringResource(R.string.main_barcode_year), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (barcodeState.pieces != null) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(mitSchrift(18.dp)), tint = Color.Unspecified)
+                        Icon(ImageVector.vectorResource(R.drawable.ic_parts_bricks), null, Modifier.size(withFont(18.dp)), tint = Color.Unspecified)
                         Text(fmtInt(barcodeState.pieces), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                         Text(stringResource(R.string.main_barcode_pieces), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     if (barcodeState.minifigs != null && barcodeState.minifigs > 0)
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.Person, null, Modifier.size(mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Default.Person, null, Modifier.size(withFont(18.dp)), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text("${barcodeState.minifigs}", style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                             Text(stringResource(R.string.main_barcode_figs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -213,18 +213,18 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                         blick.householdMembers, barcodeOwner, { barcodeOwner = it }
                     )
                     // Dieselben Felder wie „Set hinzufügen“: Beschriftung, Hilfezeile, Prüfung.
-                    AnzahlFeld(barcodeQuantity, { barcodeQuantity = it }, stringResource(R.string.gallery_quantity_hint))
-                    KaufpreisFeld(barcodePriceText, { barcodePriceText = it }, stringResource(R.string.barcode_purchase_price))
+                    CountField(barcodeQuantity, { barcodeQuantity = it }, stringResource(R.string.gallery_quantity_hint))
+                    PurchasePriceField(barcodePriceText, { barcodePriceText = it }, stringResource(R.string.barcode_purchase_price))
                     Zustandszeile(
                         zustand = barcodeCondition,
                         onZustand = { barcodeCondition = it }
                     )
                     LagerortErfassung(
-                        barcodeLagerort,
+                        barcodeLocation,
                         // Der VORRAT, nicht die belegten Orte: Beim Erfassen soll
                         // auch ein leeres Regal zur Wahl stehen.
                         lagerZustand.eigene.map { it.name },
-                        { barcodeLagerort = it }
+                        { barcodeLocation = it }
                     )
                 }
     }

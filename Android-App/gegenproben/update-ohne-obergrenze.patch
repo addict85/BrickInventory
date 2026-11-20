@@ -6,7 +6,7 @@ Rot: mehr als angekuendigt wird nicht geschrieben
 diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
 --- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
 +++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/data/UpdateRepository.kt
-@@ -73,7 +73,7 @@ class UpdateLader @Inject constructor(
+@@ -73,7 +73,7 @@ class UpdateLoader @Inject constructor(
                              if (n < 0) break
                              geladen += n
                              // Abbrechen, BEVOR geschrieben wird: Sonst liegt das Zuviel schon auf der Platte.

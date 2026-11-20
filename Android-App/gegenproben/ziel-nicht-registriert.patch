@@ -1,16 +1,16 @@
 Gegenprobe: Ein Ziel (Konto) fehlt im Graphen der App
 Modul: app
-Test: ch.brickinventoryapp.app.ErreichbareRoutenTest
+Test: ch.brickinventoryapp.app.ReachableRoutesTest
 Rot: jedes Ziel steht im Graphen der App
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/KontoGraph.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/KontoGraph.kt
 --- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/KontoGraph.kt
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/KontoGraph.kt
-@@ -104,7 +104,4 @@ private fun NavGraphBuilder.unterseiten(navigation: KontoNavigation) {
-         CsvImportRoute(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
+@@ -104,7 +104,4 @@ private fun NavGraphBuilder.subpages(navigation: AccountNavigation) {
+         CsvImportRoute(hiltViewModel<SettingsViewModel>(), snackbarHostState) { navController.popBackStack() }
      }
  
 -    composable<KontoZiel.Konto> {
--        KontoRoute(snackbarHostState) { navController.popBackStack() }
+-        AccountRoute(snackbarHostState) { navController.popBackStack() }
 -    }
  }

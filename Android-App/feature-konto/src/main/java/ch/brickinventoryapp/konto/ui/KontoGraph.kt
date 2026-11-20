@@ -9,13 +9,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import ch.brickinventoryapp.konto.ui.screens.CsvImportRoute
-import ch.brickinventoryapp.konto.ui.screens.HaushaltRoute
-import ch.brickinventoryapp.konto.ui.screens.KontoRoute
-import ch.brickinventoryapp.konto.ui.screens.LagerorteRoute
+import ch.brickinventoryapp.konto.ui.screens.HouseholdRoute
+import ch.brickinventoryapp.konto.ui.screens.AccountRoute
+import ch.brickinventoryapp.konto.ui.screens.LocationsRoute
 import ch.brickinventoryapp.konto.ui.screens.PreisalarmeRoute
 import ch.brickinventoryapp.konto.ui.screens.SettingsRoute
-import ch.brickinventoryapp.konto.ui.viewmodel.EinstellungenViewModel
-import ch.brickinventoryapp.konto.ui.viewmodel.HaushaltViewModel
+import ch.brickinventoryapp.konto.ui.viewmodel.SettingsViewModel
+import ch.brickinventoryapp.konto.ui.viewmodel.HouseholdViewModel
 import ch.brickinventoryapp.konto.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
@@ -28,7 +28,7 @@ import ch.brickinventoryapp.zustand.ui.viewmodel.VertrauenViewModel
  * der Activity, weil ihr Hinweis über jedem Bildschirm steht bzw. das Thema der
  * ganzen App bestimmt.
  */
-interface KontoNavigation : Bereichsumgebung {
+interface AccountNavigation : Bereichsumgebung {
     val update: UpdateViewModel
     val darstellung: DarstellungViewModel
     val vertrauen: VertrauenViewModel
@@ -37,30 +37,30 @@ interface KontoNavigation : Bereichsumgebung {
     fun abgemeldet()
 
     /** Einen anderen Server eintragen; das gehört der Anmeldung. */
-    fun oeffneEinrichtung()
+    fun openSetup()
 
-    fun oeffneSet(setNumber: String)
+    fun openSet(setNumber: String)
 }
 
 /** Die Einstellungen und ihre Unterseiten. */
-fun NavGraphBuilder.kontoGraph(navigation: KontoNavigation) {
-    einstellungenZiel(navigation)
-    unterseiten(navigation)
+fun NavGraphBuilder.accountGraph(navigation: AccountNavigation) {
+    settingsTarget(navigation)
+    subpages(navigation)
 }
 
-private fun NavGraphBuilder.einstellungenZiel(navigation: KontoNavigation) {
+private fun NavGraphBuilder.settingsTarget(navigation: AccountNavigation) {
     composable<KontoZiel.Settings> {
         // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
         val settingsScrollState = remember { ScrollState(0) }
-        // Die Einstellungen lädt das EinstellungenViewModel beim Beobachten; Haushalt,
+        // Die Einstellungen lädt das SettingsViewModel beim Beobachten; Haushalt,
         // Gutscheine, Profil und Geräte holt jede Unterseite selbst, wenn man sie öffnet.
         navigation.Reiter(stringResource(R.string.nav_settings)) {
             ScrollPositionKeeper(
                 KontoZiel.Settings.rollSchluessel, settingsScrollState, navigation.rollgedaechtnis)
             SettingsRoute(
-                vm = hiltViewModel<EinstellungenViewModel>(),
+                vm = hiltViewModel<SettingsViewModel>(),
                 onLogout = { navigation.abmelden(); navigation.abgemeldet() },
-                onServerWechseln = navigation::oeffneEinrichtung,
+                onServerWechseln = navigation::openSetup,
                 // Die Rubriken führen nicht von hier weiter, sondern stehen auf „Mehr“
                 // (MehrBildschirm.kt).
                 scrollState = settingsScrollState,
@@ -76,37 +76,37 @@ private fun NavGraphBuilder.einstellungenZiel(navigation: KontoNavigation) {
  * Die Unterseiten der Einstellungen, ohne untere Leiste: Eine Unterseite trägt einen
  * Zurück-Pfeil und bringt ihren Snackbar-Halter selbst mit.
  */
-private fun NavGraphBuilder.unterseiten(navigation: KontoNavigation) {
+private fun NavGraphBuilder.subpages(navigation: AccountNavigation) {
     val navController = navigation.navController
     val snackbarHostState = navigation.snackbar
     composable<KontoZiel.Preisalarme> {
         val state by navigation.sitzung.collectAsStateWithLifecycle()
         PreisalarmeRoute(
-            vm = hiltViewModel<EinstellungenViewModel>(),
+            vm = hiltViewModel<SettingsViewModel>(),
             imageLoader = navigation.bilder,
             serverUrl = state.serverUrl,
             snackbarHostState = snackbarHostState,
             // Dieselbe Detailansicht wie aus Galerie und Finanzen — ein
             // zweiter Weg dorthin waere ein zweiter Ort fuer dieselben
             // Regeln.
-            onSetClick = navigation::oeffneSet,
+            onSetClick = navigation::openSet,
             onZurueck = { navController.popBackStack() },
         )
     }
 
     composable<KontoZiel.Lagerorte> {
-        LagerorteRoute(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
+        LocationsRoute(hiltViewModel<SettingsViewModel>(), snackbarHostState) { navController.popBackStack() }
     }
 
     composable<KontoZiel.Haushalt> {
-        HaushaltRoute(hiltViewModel<HaushaltViewModel>(), snackbarHostState) { navController.popBackStack() }
+        HouseholdRoute(hiltViewModel<HouseholdViewModel>(), snackbarHostState) { navController.popBackStack() }
     }
 
     composable<KontoZiel.CsvImport> {
-        CsvImportRoute(hiltViewModel<EinstellungenViewModel>(), snackbarHostState) { navController.popBackStack() }
+        CsvImportRoute(hiltViewModel<SettingsViewModel>(), snackbarHostState) { navController.popBackStack() }
     }
 
     composable<KontoZiel.Konto> {
-        KontoRoute(snackbarHostState) { navController.popBackStack() }
+        AccountRoute(snackbarHostState) { navController.popBackStack() }
     }
 }

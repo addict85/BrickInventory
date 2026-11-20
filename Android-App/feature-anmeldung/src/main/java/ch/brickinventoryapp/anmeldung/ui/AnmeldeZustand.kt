@@ -7,14 +7,14 @@ import ch.brickinventoryapp.model.ui.Meldung
  * Welches der drei Formulare der Anmeldebildschirm zeigt — dieselben wie in der
  * Webapp (`showPanel`).
  */
-enum class AnmeldeFormular { ANMELDEN, REGISTRIEREN, PASSWORT_VERGESSEN }
+enum class AnmeldeFormular { ANMELDEN, REGISTER, PASSWORD_FORGOTTEN }
 
 /**
  * Anmelden, Konto anlegen und „Passwort vergessen“ — eigener Zustand, weil nur der
  * Anmeldebildschirm ihn liest. Ob man angemeldet ist (`isLoggedIn`), bleibt in
  * AppUiState: Daran hängt, ob die App überhaupt etwas zeigt.
  */
-internal data class AnmeldeUiState(
+internal data class LoginUiState(
     /**
      * Welches Formular offen ist — wie `showPanel` in der Webapp. Kein eigener
      * Navigationseintrag: Sonst bedeutete der Zurück-Knopf des Geräts etwas anderes
@@ -55,8 +55,8 @@ internal data class AnmeldeUiState(
     /** Der Code, den man nach einem QR-Scan im Browser eintippt; null ohne laufende Kopplung. */
     val qrBestaetigung: String? = null,
     /** Nach der Bestätigung im Browser: welches Konto auf welchem Server; der Token erst nach dem Ja. */
-    val qrKonto: QrKonto? = null,
+    val qrAccount: QrAccount? = null,
 )
 
 /** Was die App vor der Übernahme eines QR-Zugangs zeigt: Ein untergeschobener Code meldete sonst still ein fremdes Konto an. */
-internal data class QrKonto(val benutzer: String, val server: String)
+internal data class QrAccount(val benutzer: String, val server: String)

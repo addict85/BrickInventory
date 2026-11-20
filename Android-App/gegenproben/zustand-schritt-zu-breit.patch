@@ -10,9 +10,9 @@ diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung
          }
      }
  
--    override fun waehrungUebernommen(currency: Waehrung) = werte.setzeWaehrung(currency)
+-    override fun waehrungUebernommen(currency: Waehrung) = werte.setCurrency(currency)
 +    override fun waehrungUebernommen(currency: Waehrung) {
-+        werte.setzeWaehrung(currency)
++        werte.setCurrency(currency)
 +        _state.update { it.copy(priceCondition = Zustand.GEBRAUCHT) }
 +    }
  

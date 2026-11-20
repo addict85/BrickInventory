@@ -18,7 +18,7 @@ import ch.brickinventoryapp.testing.Quellen
  */
 class TargetSdkConfigTest {
 
-    private val buildLogic = File(Quellen.projekt, "build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic")
+    private val buildLogic = File(Quellen.project, "build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic")
 
     private val gradle: String by lazy {
         val f = File(buildLogic, "Sdk.kt")
@@ -40,24 +40,24 @@ class TargetSdkConfigTest {
         s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
 
     private fun intAfter(key: String): Int {
-        val m = Regex("""\b$key\s*=\s*(\d+)""").find(Quellen.ohneKommentare(gradle))
+        val m = Regex("""\b$key\s*=\s*(\d+)""").find(Quellen.withoutComments(gradle))
         assert(m != null) { "$key nicht in Sdk.kt gefunden" }
         return m!!.groupValues[1].toInt()
     }
 
     @Test
     fun `kein Modulskript setzt die SDK-Stände selbst`() {
-        val skripte = Quellen.module.map { File(it, "build.gradle.kts") }
-        assert(skripte.size >= 12) { "Nur ${skripte.size} Modulskripte gefunden — Suche veraltet?" }
+        val scripts = Quellen.module.map { File(it, "build.gradle.kts") }
+        assert(scripts.size >= 12) { "Nur ${scripts.size} Modulskripte gefunden — Suche veraltet?" }
         val setzen = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=""")
-        val eigene = skripte.filter { setzen.containsMatchIn(Quellen.ohneKommentare(it.readText())) }
+        val eigene = scripts.filter { setzen.containsMatchIn(Quellen.withoutComments(it.readText())) }
             .map { it.parentFile!!.name }
         assert(eigene.isEmpty()) { "Diese Module setzen SDK-Stände selbst statt über build-logic: $eigene" }
         // Und die Konventionen nehmen sie aus Sdk.kt, nicht als eigene Zahl.
-        val konventionen = buildLogic.listFiles { f -> f.extension == "kt" && f.name != "Sdk.kt" }.orEmpty()
-        assert(konventionen.size >= 2) { "Keine Konventionen unter ${buildLogic.path}" }
+        val conventions = buildLogic.listFiles { f -> f.extension == "kt" && f.name != "Sdk.kt" }.orEmpty()
+        assert(conventions.size >= 2) { "Keine Konventionen unter ${buildLogic.path}" }
         val zahl = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=\s*\d""")
-        val fest = konventionen.filter { zahl.containsMatchIn(Quellen.ohneKommentare(it.readText())) }.map { it.name }
+        val fest = conventions.filter { zahl.containsMatchIn(Quellen.withoutComments(it.readText())) }.map { it.name }
         assert(fest.isEmpty()) { "SDK-Stand als Zahl neben Sdk.kt: $fest" }
     }
 

@@ -1,6 +1,6 @@
 Gegenprobe: Zoomleiste im Bilddialog entfernt: Zoomen nur mit zwei Fingern
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitTest
+Test: ch.brickinventoryapp.app.AccessibilityTest
 Rot: Bildzoom geht mit Knoepfen und Doppeltipp
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ZoomableImageDialog.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ZoomableImageDialog.kt
@@ -9,8 +9,8 @@ diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/component
 @@ -102,7 +102,6 @@ fun ZoomableImageDialog(
                  contentScale = ContentScale.Fit
              )
-             SchliessenKnopf(onDismiss)
--            BildZoomLeiste(zoomScale, ::setzeZoom, Modifier.align(Alignment.BottomCenter).padding(bottom = Abstaende.sehrGross))
+             CloseButton(onDismiss)
+-            ImageZoomBar(zoomScale, ::setzeZoom, Modifier.align(Alignment.BottomCenter).padding(bottom = Abstaende.veryLarge))
          }
      }
  }

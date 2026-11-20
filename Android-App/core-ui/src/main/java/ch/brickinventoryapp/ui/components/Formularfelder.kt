@@ -36,29 +36,29 @@ import ch.brickinventoryapp.ui.theme.Formen
  * Ein Text, der nach einer Handlung erscheint, wird angesagt: Ohne Live-Region hört
  * eine blinde Person nach „Anmelden“ nichts und weiss nicht, dass es scheiterte.
  */
-fun Modifier.ansagen(): Modifier = semantics { liveRegion = LiveRegionMode.Polite }
+fun Modifier.announce(): Modifier = semantics { liveRegion = LiveRegionMode.Polite }
 
 /**
  * Steht über einem gesperrten Hauptknopf und sagt, was fehlt: Blass allein liess
  * raten, warum er nicht geht (wie beim Anmelden).
  */
 @Composable
-fun SperrGrund(text: String) {
+fun LockReason(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** Eine Fehlerzeile unter einem Formular, in Fehlerfarbe und angesagt. */
 @Composable
-fun FehlerZeile(text: String, modifier: Modifier = Modifier) {
-    Text(text, modifier.ansagen(), color = MaterialTheme.colorScheme.error,
+fun ErrorRow(text: String, modifier: Modifier = Modifier) {
+    Text(text, modifier.announce(), color = MaterialTheme.colorScheme.error,
         style = MaterialTheme.typography.bodyMedium)
 }
 
 @Composable
-fun FehlerZeile(meldung: Meldung, modifier: Modifier = Modifier) = FehlerZeile(meldung.satz(), modifier)
+fun ErrorRow(meldung: Meldung, modifier: Modifier = Modifier) = ErrorRow(meldung.satz(), modifier)
 
 /** Was ins Feld gehört — davon hängt ab, was der Passwortmanager anbietet. */
-enum class PasswortArt {
+enum class PasswordKind {
     /** Das bestehende Passwort: Der Manager setzt es ein. */
     AKTUELL,
     /** Ein neues Passwort: Der Manager schlägt ein starkes vor und merkt es sich. */
@@ -73,38 +73,38 @@ enum class PasswortArt {
  * aufgedecktes Passwort gehört in kein Bildschirmfoto, egal auf welcher Seite.
  */
 @Composable
-fun PasswortFeld(
+fun PasswordField(
     wert: String,
-    onWert: (String) -> Unit,
+    onValue: (String) -> Unit,
     beschriftung: String,
     modifier: Modifier = Modifier,
-    art: PasswortArt = PasswortArt.AKTUELL,
-    /** Hilfe- oder Fehlertext unter dem Feld; mit [fehlerhaft] in Fehlerfarbe. */
+    art: PasswordKind = PasswordKind.AKTUELL,
+    /** Hilfe- oder Fehlertext unter dem Feld; mit [faulty] in Fehlerfarbe. */
     hinweis: String? = null,
-    fehlerhaft: Boolean = false,
+    faulty: Boolean = false,
     imeAction: ImeAction = ImeAction.Done,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
     var sichtbar by rememberSaveable { mutableStateOf(false) }
     if (sichtbar) Sichtschutz()
-    val autofill = if (art == PasswortArt.AKTUELL) ContentType.Password else ContentType.NewPassword
+    val autofill = if (art == PasswordKind.AKTUELL) ContentType.Password else ContentType.NewPassword
     OutlinedTextField(
         value = wert,
-        onValueChange = onWert,
+        onValueChange = onValue,
         label = { Text(beschriftung) },
         // Das Schloss überall, nicht nur in der Anmeldung: So erkennt man ein Passwortfeld
         // auf jeder Seite gleich.
         leadingIcon = { Icon(Icons.Default.Lock, null) },
         trailingIcon = {
-            val umschalten = stringResource(if (sichtbar) R.string.cd_password_hide else R.string.cd_password_show)
-            MitTooltip(umschalten) {
+            val toggle = stringResource(if (sichtbar) R.string.cd_password_hide else R.string.cd_password_show)
+            MitTooltip(toggle) {
                 IconButton(onClick = { sichtbar = !sichtbar }) {
-                    Icon(if (sichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = umschalten)
+                    Icon(if (sichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = toggle)
                 }
             }
         },
         visualTransformation = if (sichtbar) VisualTransformation.None else PasswordVisualTransformation(),
-        isError = fehlerhaft,
+        isError = faulty,
         supportingText = hinweis?.let { { Text(it) } },
         singleLine = true,
         shape = Formen.feld,

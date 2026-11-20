@@ -11,7 +11,7 @@ import ch.brickinventoryapp.model.fach.Fehlercode
  */
 data class Fehlerrumpf(val text: String?, val code: String?) {
     /** The code as an enum value; one the app doesn't know is null. */
-    val fehlercode: Fehlercode? get() = Fehlercode.aus(code)
+    val errorCode: Fehlercode? get() = Fehlercode.aus(code)
 
     companion object {
         /** No JSON, an empty body or missing fields each give null. */

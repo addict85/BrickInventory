@@ -15,7 +15,7 @@ import javax.inject.Singleton
  * WLAN (Hotspot) zählt als Mobilfunk.
  */
 @Singleton
-class Netzlage internal constructor(private val messen: () -> Art) {
+class Netzlage internal constructor(private val measure: () -> Art) {
     /** Die Messung über den ConnectivityManager; der interne Weg gibt Tests eine feste Lage. */
     @Inject constructor(@ApplicationContext context: Context) : this({ miss(context) })
 
@@ -24,9 +24,9 @@ class Netzlage internal constructor(private val messen: () -> Art) {
      * Aufzaehlung statt dreier Ja/Nein-Fragen: Der Aufrufer soll nicht selbst
      * entscheiden muessen, was gilt, wenn zwei davon zutraefen.
      */
-    enum class Art { KEIN_NETZ, WLAN, MOBIL, ROAMING }
+    enum class Art { KEIN_NETZ, WLAN, MOBILE, ROAMING }
 
-    fun aktuell(): Art = messen()
+    fun aktuell(): Art = measure()
 
     /**
      * Wann ein vorübergehend gescheiterter Abruf noch einmal geht: mit wachsender
@@ -37,36 +37,36 @@ class Netzlage internal constructor(private val messen: () -> Art) {
     class Wiederholung internal constructor(
         private val netz: () -> Art,
         private val versuche: Int,
-        private val erstePause: Long,
-        private val warte: suspend (Long) -> Unit,
+        private val firstPause: Long,
+        private val wait: suspend (Long) -> Unit,
     ) {
-        @Inject constructor(netzlage: Netzlage) : this(netzlage::aktuell, VERSUCHE, ERSTE_PAUSE_MS, { delay(it) })
+        @Inject constructor(netzlage: Netzlage) : this(netzlage::aktuell, ATTEMPTS, FIRST_PAUSE_MS, { delay(it) })
 
         suspend fun <T> wiederhole(call: suspend () -> Ergebnis<T>): Ergebnis<T> {
-            var pause = erstePause
+            var pause = firstPause
             repeat(versuche - 1) {
                 val r = call()
                 if (r !is Ergebnis.Fehler || !r.transient || netz() == Art.KEIN_NETZ) return r
-                warte(pause)
-                pause = (pause * 2).coerceAtMost(HOECHSTE_PAUSE_MS)
+                wait(pause)
+                pause = (pause * 2).coerceAtMost(HIGHEST_PAUSE_MS)
             }
             return call()
         }
 
         /** Dieselbe Regel mit weniger Versuchen — wo jemand auf die Antwort wartet und weiterblättern will. */
-        fun hoechstens(n: Int): Wiederholung = Wiederholung(netz, n.coerceIn(1, versuche), erstePause, warte)
+        fun atMost(n: Int): Wiederholung = Wiederholung(netz, n.coerceIn(1, versuche), firstPause, wait)
 
         companion object {
-            const val VERSUCHE = 5
-            const val ERSTE_PAUSE_MS = 1_000L
-            const val HOECHSTE_PAUSE_MS = 16_000L
+            const val ATTEMPTS = 5
+            const val FIRST_PAUSE_MS = 1_000L
+            const val HIGHEST_PAUSE_MS = 16_000L
 
             /** Für Tests und Abrufe, die selbst nicht wiederholen sollen: genau ein Versuch. */
             val EINMAL = Wiederholung({ Art.WLAN }, 1, 0L, {})
 
             /** Für Tests: feste Lage, Pausen werden nur mitgeschrieben. */
-            fun fuerTest(versuche: Int = VERSUCHE, netz: () -> Art = { Art.WLAN },
-                         warte: suspend (Long) -> Unit = {}) = Wiederholung(netz, versuche, ERSTE_PAUSE_MS, warte)
+            fun forTest(versuche: Int = ATTEMPTS, netz: () -> Art = { Art.WLAN },
+                         wait: suspend (Long) -> Unit = {}) = Wiederholung(netz, versuche, FIRST_PAUSE_MS, wait)
         }
     }
 
@@ -75,28 +75,28 @@ class Netzlage internal constructor(private val messen: () -> Art) {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
                 ?: return Art.KEIN_NETZ
             val netz = cm.activeNetwork ?: return Art.KEIN_NETZ
-            val faehig = cm.getNetworkCapabilities(netz) ?: return Art.KEIN_NETZ
-            if (!faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return Art.KEIN_NETZ
+            val capable = cm.getNetworkCapabilities(netz) ?: return Art.KEIN_NETZ
+            if (!capable.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return Art.KEIN_NETZ
 
-            val gemessen = !faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+            val gemessen = !capable.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
 
             return when {
-                faehig.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ->
-                    if (istRoaming(faehig)) Art.ROAMING else Art.MOBIL
+                capable.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ->
+                    if (isRoaming(capable)) Art.ROAMING else Art.MOBILE
                 // Ethernet zaehlt wie WLAN: fest, ungemessen, und auf einem
                 // Tablet in der Dockingstation genau das, was „zu Hause" meint.
-                faehig.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                    faehig.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ->
-                    if (gemessen) Art.MOBIL else Art.WLAN
+                capable.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    capable.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ->
+                    if (gemessen) Art.MOBILE else Art.WLAN
                 // Etwas anderes (Bluetooth-Tethering, VPN ohne erkennbaren
                 // Untergrund): vorsichtig als Mobilfunk behandeln. Bei einer
                 // Einstellung, die Datenvolumen kostet, ist die Vorgabe „lieber
                 // nicht" die richtige Richtung fuer den unbekannten Fall.
-                else -> Art.MOBIL
+                else -> Art.MOBILE
             }
         }
 
-        fun istRoaming(faehig: NetworkCapabilities): Boolean =
-            !faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
+        fun isRoaming(capable: NetworkCapabilities): Boolean =
+            !capable.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
     }
 }

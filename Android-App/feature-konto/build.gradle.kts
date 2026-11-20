@@ -19,6 +19,6 @@ dependencies {
     implementation(project(":core-ressourcen"))
 
     testImplementation(project(":core-testing"))
-    // UpdateViewModelTest baut eine Vertrauensablage (PinAblage aus core-sicherheit).
+    // UpdateViewModelTest baut eine Vertrauensablage (PinStore aus core-sicherheit).
     testImplementation(project(":core-sicherheit"))
 }

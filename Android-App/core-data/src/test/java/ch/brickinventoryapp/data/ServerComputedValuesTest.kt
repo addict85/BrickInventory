@@ -19,7 +19,7 @@ import ch.brickinventoryapp.testing.Quellen
 class ServerComputedValuesTest {
 
     private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.root, "$rel").readText()
 
     /** Kommentare zeilenweise ausblenden — sonst hält der eigene Erklärtext die Prüfung grün. */
     private fun code(s: String) = s.lines()
@@ -65,9 +65,9 @@ class ServerComputedValuesTest {
     @Test
     fun `die Minifiguren-Kacheln kommen vom Server, nicht aus der gefilterten Liste`() {
         val s = code(Quellen.bildschirm("teile/ui/screens/MinifigsScreen.kt"))
-        for (muster in listOf("figs.size", "figs.sumOf", "figs.count")) {
-            assert(!s.contains(muster)) {
-                "MinifigsScreen rechnet die Kacheln aus `figs` ($muster). Diese Liste ist " +
+        for (pattern in listOf("figs.size", "figs.sumOf", "figs.count")) {
+            assert(!s.contains(pattern)) {
+                "MinifigsScreen rechnet die Kacheln aus `figs` ($pattern). Diese Liste ist " +
                     "gefiltert — die Kachel „manuell erfasst\" stünde damit immer auf 0."
             }
         }

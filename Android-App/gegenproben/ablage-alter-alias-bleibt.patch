@@ -1,6 +1,6 @@
 Gegenprobe: nach dem Umhüllen bleibt der alte Keystore-Alias der Ablage liegen (Stand vor and-sec-r3 N2)
 Modul: core-sicherheit
-Test: ch.brickinventoryapp.sicherheit.KeystoreAltbestandTest
+Test: ch.brickinventoryapp.sicherheit.KeystoreLegacyStockTest
 Rot: nach dem Umschluesseln ist der alte Alias der Ablage weg
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
@@ -8,9 +8,9 @@ diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sich
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Ablageschluessel.kt
 @@ -65,7 +65,6 @@
       */
-     private fun umhuelleNeu(hex: String) {
+     private fun wrapNew(hex: String) {
          fangeAusserAbbruch { schreibe(tresor.verschluessle(hex)) }
--            .onSuccess { fangeAusserAbbruch { tresor.vergissAltbestand() } }
+-            .onSuccess { fangeAusserAbbruch { tresor.forgetLegacyStock() } }
              .onFailure { Protokoll.warnung("Ablage", "Ablageschlüssel nicht umgeschlüsselt", it) }
      }
  

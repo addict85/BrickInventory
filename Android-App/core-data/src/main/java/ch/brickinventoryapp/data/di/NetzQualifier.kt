@@ -13,7 +13,7 @@ internal annotation class ApiClient
 /** Der Client für Bilder: eigener Dispatcher, HTTP-Zwischenspeicher, Bild-Hosts. */
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
-internal annotation class BildClient
+internal annotation class ImageClient
 
 /** Der Client für Server-Sent-Events: ohne Lesezeitlimit. */
 @Qualifier

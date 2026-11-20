@@ -1,17 +1,17 @@
 Gegenprobe: emailSent der Antwort nicht ausgewertet
 Modul: feature-konto
-Test: ch.brickinventoryapp.konto.KontoViewModelTest
+Test: ch.brickinventoryapp.konto.AccountViewModelTest
 Rot: eine neue E-Mail ohne gesendete Mail
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt
 @@ -102,7 +102,7 @@
                          // Eine neue Adresse gilt erst nach dem Link: „gespeichert“ allein liesse
                          // glauben, sie gelte schon, und ohne Mail wartet sie umsonst.
-                         val neueAdresse = r.data.neueAdresse
--                        val ohneMail = neueAdresse && !r.data.mailGesendet
-+                        val ohneMail = false
-                         _kontoState.update { it.copy(codeNoetig = false,
+                         val newAddress = r.data.newAddress
+-                        val withoutMail = newAddress && !r.data.mailSent
++                        val withoutMail = false
+                         _accountState.update { it.copy(codeNoetig = false,
                              meldung = when {
-                                 ohneMail -> null
+                                 withoutMail -> null

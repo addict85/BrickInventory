@@ -16,18 +16,18 @@ import okhttp3.Request
 import java.io.IOException
 import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.data.repository.HaushaltRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.HouseholdRepository
+import ch.brickinventoryapp.data.repository.PartsRepository
 import ch.brickinventoryapp.data.repository.Bestandsabgleich
-import ch.brickinventoryapp.data.repository.FigurenRepository
+import ch.brickinventoryapp.data.repository.MinifigsRepository
 import ch.brickinventoryapp.data.repository.Kontosicht
 import ch.brickinventoryapp.data.repository.SetsRepository
 import ch.brickinventoryapp.data.repository.AlarmRepository
-import ch.brickinventoryapp.data.repository.MerklisteRepository
+import ch.brickinventoryapp.data.repository.WantedRepository
 import ch.brickinventoryapp.data.repository.SetDateienRepository
 import ch.brickinventoryapp.data.repository.SetKatalogRepository
-import ch.brickinventoryapp.zustand.ui.Blickfeld
-import ch.brickinventoryapp.zustand.ui.FilterAblage
+import ch.brickinventoryapp.zustand.ui.Scope
+import ch.brickinventoryapp.zustand.ui.FilterStore
 import ch.brickinventoryapp.model.ui.ScrollMemory
 import ch.brickinventoryapp.sitzung.Sitzung
 import ch.brickinventoryapp.zustand.ui.viewmodel.Filterwahl
@@ -47,14 +47,14 @@ import ch.brickinventoryapp.model.json.BrickJson
 import kotlinx.serialization.serializer
 import okhttp3.ResponseBody
 import retrofit2.Invocation
-import retrofit2.Response as RetrofitAntwort
+import retrofit2.Response as RetrofitResponse
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
 import java.util.WeakHashMap
 
-/** Die angezeigte Meldung als Satz, wie NummernTexte ihn bildet; null ohne Meldung. */
+/** Die angezeigte Meldung als Satz, wie NumbersTexts ihn bildet; null ohne Meldung. */
 val MeldungsKanal.text: String? get() = meldung.value.text
 
 /** Eine Meldung als prüfbarer Satz: „t<id>(werte)“, „m<id>:<anzahl>“ oder der Text selbst. */
@@ -62,7 +62,7 @@ val Meldung?.text: String?
     get() = when (this) {
         null -> null
         is Meldung.Text -> text
-        is Meldung.Ressource -> "t$id" + if (werte.isEmpty()) "" else werte.joinToString(", ", "(", ")")
+        is Meldung.Resource -> "t$id" + if (werte.isEmpty()) "" else werte.joinToString(", ", "(", ")")
         is Meldung.Menge -> "m$id:$anzahl"
     }
 
@@ -73,11 +73,11 @@ object TestApi {
     fun fuer(server: MockWebServer): BrickApiService = fuer(server.url("/").toString(),
         OkHttpClient.Builder().readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build())
 
-    fun fuer(basis: String, rufe: Call.Factory): BrickApiService {
+    fun fuer(basis: String, call: Call.Factory): BrickApiService {
         val json = BrickJson
         return Retrofit.Builder()
             .baseUrl(basis)
-            .callFactory(rufe)
+            .callFactory(call)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(BrickApiService::class.java)
@@ -109,7 +109,7 @@ object TestApi {
 }
 
 /** Gibt die Ressourcennummer zurück — der Test prüft, WELCHER Text kam. */
-object NummernTexte : Texte {
+object NumbersTexts : Texte {
     override fun text(id: Int, vararg args: Any?) = "t$id"
     override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
     override fun meldung(fehler: Ergebnis.Fehler) = "fehler"
@@ -121,42 +121,42 @@ object NummernTexte : Texte {
  * stellen mehrere Abrufe nebeneinander. Unbekannte Pfade bekommen 404; jede
  * Anfrage wird mitgeschrieben (Methode, Pfad samt Abfrage).
  */
-class PfadServer(vararg regeln: Pair<String, String>) {
+class PfadServer(vararg rules: Pair<String, String>) {
     val server = MockWebServer()
-    val antworten: MutableMap<String, String> = Collections.synchronizedMap(linkedMapOf(*regeln))
-    val anfragen: MutableList<String> = Collections.synchronizedList(mutableListOf())
-    /** Die Rümpfe in derselben Reihenfolge wie [anfragen]. */
+    val antworten: MutableMap<String, String> = Collections.synchronizedMap(linkedMapOf(*rules))
+    val requests: MutableList<String> = Collections.synchronizedList(mutableListOf())
+    /** Die Rümpfe in derselben Reihenfolge wie [requests]. */
     val koerper: MutableList<String> = Collections.synchronizedList(mutableListOf())
     /** Abweichender Statuscode je Pfad, z. B. 401 für „Sitzung abgelaufen“. */
     val codes: MutableMap<String, Int> = Collections.synchronizedMap(mutableMapOf())
     /** Antwort erst nach so vielen Millisekunden — für „was geschieht, solange der Server rechnet“. */
-    val verzoegert: MutableMap<String, Long> = Collections.synchronizedMap(mutableMapOf())
+    val delayed: MutableMap<String, Long> = Collections.synchronizedMap(mutableMapOf())
     /** Im Takt: Pfade, deren Antwort zurückgehalten wird, bis [freigeben] sie schickt. */
     val ausbleibend: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
-    private val gehalten: MutableList<() -> Unit> = Collections.synchronizedList(mutableListOf())
-    /** Antwortet vor den Regeln, etwa aus einer Reihe ([ReihenServer]); null heisst: nach Pfad. */
-    var vorrang: ((methode: String, pfad: String) -> Pair<Int, String>?)? = null
+    private val held: MutableList<() -> Unit> = Collections.synchronizedList(mutableListOf())
+    /** Antwortet vor den Regeln, etwa aus einer Reihe ([RowsServer]); null heisst: nach Pfad. */
+    var priority: ((methode: String, pfad: String) -> Pair<Int, String>?)? = null
     /** Im Takt: Antworten, die nicht zum DTO passten; [pruefeEinlesen] scheitert an ihnen. */
-    val einlesefehler: MutableList<String> = Collections.synchronizedList(mutableListOf())
+    val readError: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
     /** Schreibt die Anfrage mit und liefert Statuscode und Rumpf nach den Regeln. */
-    private fun beantworte(methode: String, pfad: String, rumpf: String): Pair<Int, String> {
-        anfragen += "$methode $pfad"
+    private fun answer(methode: String, pfad: String, rumpf: String): Pair<Int, String> {
+        requests += "$methode $pfad"
         koerper += rumpf
-        vorrang?.invoke(methode, pfad)?.let { return it }
-        val ohneAbfrage = pfad.substringBefore('?')
-        val antwort = antworten[ohneAbfrage]
-        return if (antwort == null) (codes[ohneAbfrage] ?: 404) to """{"success":false}"""
-               else (codes[ohneAbfrage] ?: 200) to antwort
+        priority?.invoke(methode, pfad)?.let { return it }
+        val withoutQuery = pfad.substringBefore('?')
+        val antwort = antworten[withoutQuery]
+        return if (antwort == null) (codes[withoutQuery] ?: 404) to """{"success":false}"""
+               else (codes[withoutQuery] ?: 200) to antwort
     }
 
     init {
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 val pfad = request.path.orEmpty()
-                val (code, rumpf) = beantworte(request.method.orEmpty(), pfad, request.body.readUtf8())
+                val (code, rumpf) = answer(request.method.orEmpty(), pfad, request.body.readUtf8())
                 val antwort = TestApi.antwort(rumpf, code)
-                verzoegert[pfad.substringBefore('?')]?.let { antwort.setHeadersDelay(it, TimeUnit.MILLISECONDS) }
+                delayed[pfad.substringBefore('?')]?.let { antwort.setHeadersDelay(it, TimeUnit.MILLISECONDS) }
                 return antwort
             }
         }
@@ -171,25 +171,25 @@ class PfadServer(vararg regeln: Pair<String, String>) {
     fun imTakt(): BrickApiService {
         val client = OkHttpClient.Builder().addInterceptor { kette ->
             val anfrage = kette.request()
-            val pfad = pfadMitAbfrage(anfrage)
-            check(verzoegert.isEmpty()) { "Im Takt gibt es keine verzögerte Antwort ($pfad); dafür ausbleibend" }
+            val pfad = pathWithQuery(anfrage)
+            check(delayed.isEmpty()) { "Im Takt gibt es keine verzögerte Antwort ($pfad); dafür ausbleibend" }
             val rumpf = anfrage.body?.let { b -> Buffer().also { b.writeTo(it) }.readUtf8() }.orEmpty()
-            val (code, text) = beantworte(anfrage.method, pfad, rumpf)
-            if (code in 200..299) pruefeGegenDto(anfrage, pfad, text)
+            val (code, text) = answer(anfrage.method, pfad, rumpf)
+            if (code in 200..299) checkAgainstDto(anfrage, pfad, text)
             Response.Builder().request(anfrage).protocol(Protocol.HTTP_1_1).code(code).message("OK")
                 .body(text.toResponseBody("application/json".toMediaType())).build()
         }.build()
-        val bleibtAus = { anfrage: Request, senden: () -> Unit ->
-            (pfadMitAbfrage(anfrage).substringBefore('?') in ausbleibend).also { if (it) gehalten += senden }
+        val staysFrom = { anfrage: Request, senden: () -> Unit ->
+            (pathWithQuery(anfrage).substringBefore('?') in ausbleibend).also { if (it) held += senden }
         }
         val api = TestApi.fuer("http://im-takt.test/", object : Call.Factory {
-            override fun newCall(request: Request): Call = SofortRuf(client.newCall(request), bleibtAus)
+            override fun newCall(request: Request): Call = ImmediatelyCall(client.newCall(request), staysFrom)
         })
         synchronized(herkunft) { herkunft[api] = this }
         return api
     }
 
-    private fun pfadMitAbfrage(anfrage: Request) =
+    private fun pathWithQuery(anfrage: Request) =
         anfrage.url.encodedPath + (anfrage.url.encodedQuery?.let { "?$it" } ?: "")
 
     /**
@@ -198,13 +198,13 @@ class PfadServer(vararg regeln: Pair<String, String>) {
      * verlässt den Takt. Ein AssertionError ist keine Exception: Retrofit reicht ihn im
      * aufrufenden Faden durch, und [pruefeEinlesen] nennt ihn beim Aufräumen.
      */
-    private fun pruefeGegenDto(anfrage: Request, pfad: String, text: String) {
+    private fun checkAgainstDto(anfrage: Request, pfad: String, text: String) {
         val typ = anfrage.tag(Invocation::class.java)?.let { antworttyp(it.method()) } ?: return
         try {
             BrickJson.decodeFromString(BrickJson.serializersModule.serializer(typ), text)
         } catch (e: IllegalArgumentException) {
             val grund = "${anfrage.method} $pfad: ${e.message?.lineSequence()?.firstOrNull()}"
-            einlesefehler += grund
+            readError += grund
             throw AssertionError("Testantwort passt nicht zum DTO — $grund", e)
         }
     }
@@ -215,13 +215,13 @@ class PfadServer(vararg regeln: Pair<String, String>) {
      */
     fun freigeben() {
         ausbleibend.clear()
-        val jetzt = synchronized(gehalten) { gehalten.toList().also { gehalten.clear() } }
+        val jetzt = synchronized(held) { held.toList().also { held.clear() } }
         jetzt.forEach { it() }
     }
 
     /** Scheitert, wenn eine Antwort im Takt nicht zum DTO passte. */
     fun pruefeEinlesen() {
-        val fehler = synchronized(einlesefehler) { einlesefehler.toList() }
+        val fehler = synchronized(readError) { readError.toList() }
         if (fehler.isNotEmpty()) {
             throw AssertionError("Testantworten passen nicht zum DTO; die Antwort vervollständigen:\n  " +
                 fehler.joinToString("\n  "))
@@ -235,70 +235,70 @@ class PfadServer(vararg regeln: Pair<String, String>) {
         fun von(api: BrickApiService): PfadServer? = synchronized(herkunft) { herkunft[api] }
     }
 
-    fun anfragenAn(pfad: String): List<String> = synchronized(anfragen) { anfragen.filter { pfad in it } }
+    fun requestsAn(pfad: String): List<String> = synchronized(requests) { requests.filter { pfad in it } }
 
     /**
      * Ein neuer Prozess bekommt einen eigenen Server mit denselben Antworten und
      * eigene Dienste. Abrufe, die das alte ViewModel noch unterwegs hat, landen
-     * so nicht in [anfragen] des neuen — sonst entscheidet die Ankunftsreihenfolge.
+     * so nicht in [requests] des neuen — sonst entscheidet die Ankunftsreihenfolge.
      */
-    fun <T> neuerProzess(io: CoroutineDispatcher? = null, block: (PfadServer, TestDienste) -> T): T {
-        val pfade = PfadServer(*antworten.toList().toTypedArray())
-        val t = if (io == null) TestDienste(pfade.server) else TestDienste(pfade.imTakt(), io = io)
-        try { return block(pfade, t) } finally { t.aufraeumen(); pfade.server.shutdown() }
+    fun <T> newProcess(io: CoroutineDispatcher? = null, block: (PfadServer, TestDienste) -> T): T {
+        val paths = PfadServer(*antworten.toList().toTypedArray())
+        val t = if (io == null) TestDienste(paths.server) else TestDienste(paths.imTakt(), io = io)
+        try { return block(paths, t) } finally { t.aufraeumen(); paths.server.shutdown() }
     }
 }
 
 /** Filterablage im Speicher. */
-class SpeicherAblage : FilterAblage {
+class StorageStore : FilterStore {
     val konten = mutableMapOf<String, String>()
     val lager = mutableMapOf<String, String>()
     override suspend fun konto(view: ScopeFilter.View) = konten[view.key] ?: ScopeFilter.ALL
     override suspend fun lager(view: ScopeFilter.View) = lager[view.key] ?: ""
-    override suspend fun setzeKonto(view: ScopeFilter.View, wert: String) { konten[view.key] = wert }
+    override suspend fun setAccount(view: ScopeFilter.View, wert: String) { konten[view.key] = wert }
     override suspend fun setzeLager(view: ScopeFilter.View, wert: String) { lager[view.key] = wert }
-    override suspend fun allesVergessen() { konten.clear(); lager.clear() }
+    override suspend fun everythingForgotten() { konten.clear(); lager.clear() }
 }
 
 /**
  * Die gemeinsamen Dienste der Bereichs-ViewModels, gegen einen Testserver oder
  * eine [FakeApi]. Mit [io] = Test-Dispatcher läuft auch die Ablage in virtueller Zeit.
  */
-class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io: CoroutineDispatcher = Dispatchers.IO) {
+class TestDienste(val api: BrickApiService, texts: Texte = NumbersTexts, val io: CoroutineDispatcher = Dispatchers.IO) {
 
-    constructor(server: MockWebServer, texte: Texte = NummernTexte) : this(TestApi.fuer(server), texte)
+    constructor(server: MockWebServer, texts: Texte = NumbersTexts) : this(TestApi.fuer(server), texts)
 
     val sitzung = Sitzung()
-    val blickfeld = Blickfeld(SpeicherAblage(), testHaushaltRepository(api), testTeileRepository(api))
+    val blickfeld = Scope(StorageStore(), testHouseholdRepository(api), testPartsRepository(api))
     val meldungen = MeldungsKanal()
 
     /** Eine Ablage für alle Repositories dieses Tests: Was eines schreibt, sehen die Listen der anderen. */
     val ablage = Testablage()
     val kontosicht: Kontosicht = testKontosicht(api, ablage)
-    val abgleich: Bestandsabgleich = testBestandsabgleich(api, ablage)
+    val sync: Bestandsabgleich = testBestandsabgleich(api, ablage)
 
     /** Dieselbe Instanz, wo ein ViewModel nur liest, wann sich der Bestand geändert hat. */
-    val aenderungen: Bestandsabgleich get() = abgleich
+    val changes: Bestandsabgleich get() = sync
     fun sets(): SetsRepository = testSetsRepository(api, ablage)
-    fun haushalt(): HaushaltRepository = testHaushaltRepository(api, ablage)
-    fun merkliste(): MerklisteRepository = testMerklisteRepository(api, ablage)
-    fun alarme(): AlarmRepository = testAlarmRepository(api, ablage)
-    fun setKatalog(): SetKatalogRepository = testSetKatalogRepository(api)
-    fun setDateien(): SetDateienRepository = testSetDateienRepository(api)
-    fun teile(): TeileRepository = testTeileRepository(api, ablage)
-    fun figuren(): FigurenRepository = testFigurenRepository(api, ablage)
+    fun haushalt(): HouseholdRepository = testHouseholdRepository(api, ablage)
+    fun merkliste(): WantedRepository = testWantedRepository(api, ablage)
+    fun alerts(): AlarmRepository = testAlarmRepository(api, ablage)
+    fun setCatalog(): SetKatalogRepository = testSetCatalogRepository(api)
+    fun setFiles(): SetDateienRepository = testSetFilesRepository(api)
+    fun teile(): PartsRepository = testPartsRepository(api, ablage)
+    fun figuren(): MinifigsRepository = testMinifigsRepository(api, ablage)
     val scrollMemory = ScrollMemory()
-    val hinweise = Meldungen(meldungen, texte)
+    val hinweise = Meldungen(meldungen, texts)
 
     /**
      * Filter setzen läuft wie in der App ausserhalb des ViewModels; [aufraeumen] beendet es.
      * Erst beim ersten Filter: Tests legen TestDienste vor setMain() an.
      */
-    private val filterBereichLazy = lazy {
+    private val filterAreaLazy = lazy {
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate)
     }
-    private val filterBereich by filterBereichLazy
-    fun filter(): Filterwahl = Filterwahl(blickfeld, filterBereich)
+    private val filterArea by filterAreaLazy
+    fun filter(): Filterwahl = Filterwahl(blickfeld, filterArea)
 
     private val erzeugt = mutableListOf<androidx.lifecycle.ViewModel>()
 
@@ -312,7 +312,7 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
     fun aufraeumen() {
         val jobs = erzeugt.mapNotNull { it.viewModelScope.coroutineContext[kotlinx.coroutines.Job] }
         erzeugt.forEach { it.viewModelScope.cancel() }
-        if (filterBereichLazy.isInitialized()) filterBereich.cancel()
+        if (filterAreaLazy.isInitialized()) filterArea.cancel()
         // Abbrechen allein reicht nicht: Eine Antwort, die schon unterwegs ist,
         // beendet ihre Koroutine erst danach auf Main. Kommt sie nach resetMain(),
         // wirft sie im gerade laufenden fremden Test.
@@ -324,17 +324,17 @@ class TestDienste(val api: BrickApiService, texte: Texte = NummernTexte, val io:
 }
 
 /** Ein Repository gegen einen Testserver; braucht es eine Ablage, bringt seine Fabrik eine mit. */
-fun <R, T> mitRepo(bau: (BrickApiService) -> R, block: (PfadServer, R) -> T): T {
-    val pfade = PfadServer()
+fun <R, T> withRepo(bau: (BrickApiService) -> R, block: (PfadServer, R) -> T): T {
+    val paths = PfadServer()
     try {
-        return block(pfade, bau(TestApi.fuer(pfade.server)))
-    } finally { pfade.server.shutdown() }
+        return block(paths, bau(TestApi.fuer(paths.server)))
+    } finally { paths.server.shutdown() }
 }
 
 /** Ein Abruf, der auch asynchron gestellt im aufrufenden Faden läuft (PfadServer.imTakt). */
-private class SofortRuf(private val echt: Call, private val bleibtAus: (Request, () -> Unit) -> Boolean) : Call by echt {
+private class ImmediatelyCall(private val echt: Call, private val staysFrom: (Request, () -> Unit) -> Boolean) : Call by echt {
     override fun enqueue(responseCallback: Callback) {
-        if (bleibtAus(echt.request()) { senden(responseCallback) }) return
+        if (staysFrom(echt.request()) { senden(responseCallback) }) return
         senden(responseCallback)
     }
 
@@ -344,7 +344,7 @@ private class SofortRuf(private val echt: Call, private val bleibtAus: (Request,
         responseCallback.onResponse(this, antwort)
     }
 
-    override fun clone(): Call = SofortRuf(echt.clone(), bleibtAus)
+    override fun clone(): Call = ImmediatelyCall(echt.clone(), staysFrom)
 }
 
 /**
@@ -354,7 +354,7 @@ private class SofortRuf(private val echt: Call, private val bleibtAus: (Request,
 private fun antworttyp(methode: Method): Type? {
     var typ = (methode.genericParameterTypes.lastOrNull() as? ParameterizedType)?.actualTypeArguments?.singleOrNull()
     if (typ is WildcardType) typ = typ.lowerBounds.singleOrNull()
-    if (typ is ParameterizedType && typ.rawType == RetrofitAntwort::class.java) typ = typ.actualTypeArguments.single()
+    if (typ is ParameterizedType && typ.rawType == RetrofitResponse::class.java) typ = typ.actualTypeArguments.single()
     if (typ is WildcardType) typ = typ.upperBounds.singleOrNull()
     return typ?.takeUnless { it == ResponseBody::class.java || it == Unit::class.java || it == Void::class.java }
 }
@@ -364,30 +364,30 @@ private fun antworttyp(methode: Method): Type? {
  * Netzfaden, jede Antwort wird gegen das DTO gelesen. Für Abläufe, die an der
  * Reihenfolge der Abrufe hängen statt am Pfad.
  */
-class ReihenServer {
+class RowsServer {
     /** Eine gestellte Anfrage, wie RecordedRequest sie zeigte. */
     class Anfrage(val method: String, val path: String, val body: Buffer)
 
-    private val pfade = PfadServer()
-    private val reihe = ArrayDeque<Pair<Int, String>>()
+    private val paths = PfadServer()
+    private val series = ArrayDeque<Pair<Int, String>>()
     private val gestellt = ArrayDeque<Anfrage>()
-    val api: BrickApiService = pfade.imTakt()
-    val requestCount: Int get() = pfade.anfragen.size
+    val api: BrickApiService = paths.imTakt()
+    val requestCount: Int get() = paths.requests.size
 
     init {
-        pfade.vorrang = { methode, pfad ->
-            gestellt += Anfrage(methode, pfad, Buffer().writeUtf8(pfade.koerper.last()))
-            reihe.removeFirstOrNull() ?: throw AssertionError("Keine Antwort mehr in der Reihe für $methode $pfad")
+        paths.priority = { methode, pfad ->
+            gestellt += Anfrage(methode, pfad, Buffer().writeUtf8(paths.koerper.last()))
+            series.removeFirstOrNull() ?: throw AssertionError("Keine Antwort mehr in der Reihe für $methode $pfad")
         }
     }
 
     fun enqueue(antwort: MockResponse) {
-        reihe += antwort.status.split(' ')[1].toInt() to antwort.getBody()?.readUtf8().orEmpty()
+        series += antwort.status.split(' ')[1].toInt() to antwort.getBody()?.readUtf8().orEmpty()
     }
 
     fun takeRequest(): Anfrage = gestellt.removeFirst()
 
-    fun pruefeEinlesen() = pfade.pruefeEinlesen()
+    fun pruefeEinlesen() = paths.pruefeEinlesen()
 
-    fun shutdown() = pfade.server.shutdown()
+    fun shutdown() = paths.server.shutdown()
 }

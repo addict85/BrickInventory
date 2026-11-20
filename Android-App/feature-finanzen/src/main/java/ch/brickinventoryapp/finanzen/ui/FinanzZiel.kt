@@ -10,6 +10,6 @@ sealed interface FinanzZiel {
         override val rollSchluessel get() = "finance"
     }
     @Serializable data object Gutscheine : FinanzZiel
-    /** Nur ein Schlüssel: Adresse und Titel liegen in der PdfAuswahl, nicht im gespeicherten Rückstapel. */
+    /** Nur ein Schlüssel: Adresse und Titel liegen in der PdfSelection, nicht im gespeicherten Rückstapel. */
     @Serializable data class PdfViewer(val schluessel: String) : FinanzZiel
 }

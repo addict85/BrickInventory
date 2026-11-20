@@ -43,7 +43,7 @@ import androidx.compose.ui.semantics.semantics
  * Die Jahres-Leiste am rechten Rand, wie in der Webapp. Position ist die Stelle in
  * der Liste, nicht ein linear verteiltes Jahr: Der Katalog stammt überwiegend aus
  * den letzten Jahrzehnten, und das Etikett soll das Jahr zeigen, das an dieser
- * Stelle wirklich liegt (CatalogYearMath.jahrAnPosition). Als Row, damit das
+ * Stelle wirklich liegt (CatalogYearMath.yearAnPosition). Als Row, damit das
  * Etikett über die Kacheln ragen kann, ohne Berührungen abzufangen.
  */
 @Composable
@@ -62,20 +62,20 @@ internal fun YearScrubber(
     var ziehAnteil by remember { mutableStateOf(0f) }
     var heightPx by rememberSaveable { mutableStateOf(1) }
     var sprungmenue by rememberSaveable { mutableStateOf(false) }
-    val thumbHeightPx = with(LocalDensity.current) { GRIFF_HOEHE.roundToPx() }
+    val thumbHeightPx = with(LocalDensity.current) { HANDLE_HEIGHT.roundToPx() }
 
     // Beim Ziehen zeigt der Griff, WOHIN es geht; sonst, WO die Liste steht.
-    val anteil = if (dragging) ziehAnteil else CatalogYearMath.anteilAusNummer(listenNummer, total)
-    val thumbOffsetY = CatalogYearMath.daumenOffset(anteil, heightPx, thumbHeightPx)
-    val etikett = CatalogYearMath.jahrFuer(anteil, total, verteilung, jahrGeladen)
+    val share = if (dragging) ziehAnteil else CatalogYearMath.anteilAusNummer(listenNummer, total)
+    val thumbOffsetY = CatalogYearMath.thumbOffset(share, heightPx, thumbHeightPx)
+    val etikett = CatalogYearMath.yearFor(share, total, verteilung, jahrGeladen)
 
     /** Beruehrung -> Anteil -> rollen. Wie js/rollbalken.js -> rollen(). */
     fun rollen(y: Float) {
-        ziehAnteil = CatalogYearMath.anteilAus(y, heightPx, thumbHeightPx)
-        onScrollTo(CatalogYearMath.nummerAus(ziehAnteil, total))
+        ziehAnteil = CatalogYearMath.shareFrom(y, heightPx, thumbHeightPx)
+        onScrollTo(CatalogYearMath.numberFrom(ziehAnteil, total))
     }
 
-    val sprungName = stringResource(R.string.catalog_jahr_springen)
+    val jumpName = stringResource(R.string.catalog_jahr_springen)
     Row(modifier) {
         // Etikett-Spur — nur sichtbar beim Ziehen, faengt keine Beruehrungen.
         Box(Modifier.fillMaxHeight()) {
@@ -103,16 +103,16 @@ internal fun YearScrubber(
         // unerreichbar war.
         Box(
             Modifier
-                .width(SPUR_BREITE)
+                .width(TRACK_WIDTH)
                 .fillMaxHeight()
                 .onSizeChanged { heightPx = it.height }
                 .semantics {
-                    contentDescription = sprungName
+                    contentDescription = jumpName
                     role = Role.Button
                     onClick { sprungmenue = true; true }
                 }
                 .focusable()
-                .onKeyEvent { e -> e.oeffnetMenue().also { if (it) sprungmenue = true } }
+                .onKeyEvent { e -> e.opensMenu().also { if (it) sprungmenue = true } }
                 .pointerInput(total) {
                     detectVerticalDragGestures(
                         onDragStart = { offset -> dragging = true; rollen(offset.y) },
@@ -147,7 +147,7 @@ internal fun YearScrubber(
                     .align(Alignment.TopEnd)
                     .offset { IntOffset(0, thumbOffsetY) }
             ) {
-                Box(Modifier.width(GRIFF_BREITE).height(GRIFF_HOEHE), Alignment.Center) {
+                Box(Modifier.width(HANDLE_WIDTH).height(HANDLE_HEIGHT), Alignment.Center) {
                     if (LocalIsBrickTheme.current) {
                         // Stein-Design: Griff als Noppe (heller Stud-Punkt)
                         Surface(
@@ -164,7 +164,7 @@ internal fun YearScrubber(
                     }
                 }
             }
-            JahrSprungMenue(sprungmenue, verteilung, onSchliessen = { sprungmenue = false }) { nummer ->
+            YearJumpMenu(sprungmenue, verteilung, onSchliessen = { sprungmenue = false }) { nummer ->
                 sprungmenue = false
                 onScrollTo(nummer.coerceIn(0, (total - 1).coerceAtLeast(0)))
             }
@@ -174,35 +174,35 @@ internal fun YearScrubber(
 
 /** Die Jahrgänge der Verteilung zum Antippen; wählbar auch mit TalkBack und Tastatur. */
 @Composable
-private fun JahrSprungMenue(
+private fun YearJumpMenu(
     offen: Boolean,
     verteilung: List<JahrAnzahlAnsicht>,
     onSchliessen: () -> Unit,
-    onSprung: (Int) -> Unit,
+    onJump: (Int) -> Unit,
 ) {
     DropdownMenu(expanded = offen, onDismissRequest = onSchliessen) {
-        for (eintrag in verteilung) {
-            val jahr = eintrag.year ?: continue
-            val nummer = CatalogYearMath.nummerVonJahr(jahr, verteilung) ?: continue
+        for (entry in verteilung) {
+            val jahr = entry.year ?: continue
+            val nummer = CatalogYearMath.numberOfYear(jahr, verteilung) ?: continue
             DropdownMenuItem(
                 text = { Text("$jahr") },
                 trailingIcon = {
-                    Text(pluralStringResource(R.plurals.gallery_stat_sets, eintrag.n, fmtInt(eintrag.n)),
+                    Text(pluralStringResource(R.plurals.gallery_stat_sets, entry.n, fmtInt(entry.n)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 },
-                onClick = { onSprung(nummer) },
+                onClick = { onJump(nummer) },
             )
         }
     }
 }
 
 /** Eingabe, Leertaste oder die Mitte des Steuerkreuzes öffnen das Sprungmenü. */
-private fun KeyEvent.oeffnetMenue(): Boolean =
+private fun KeyEvent.opensMenu(): Boolean =
     type == KeyEventType.KeyUp && (key == Key.Enter || key == Key.Spacebar || key == Key.DirectionCenter)
 
 /** Breite der Tippspur: die Mindestgrösse einer Tippfläche. */
-internal val SPUR_BREITE = 48.dp
+internal val TRACK_WIDTH = 48.dp
 
-private val GRIFF_BREITE = 24.dp
-private val GRIFF_HOEHE = 48.dp
+private val HANDLE_WIDTH = 24.dp
+private val HANDLE_HEIGHT = 48.dp

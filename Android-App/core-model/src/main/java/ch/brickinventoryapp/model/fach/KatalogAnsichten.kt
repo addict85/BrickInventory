@@ -15,7 +15,7 @@ data class KatalogSetAnsicht(
     val ownedQuantity: Int = 0,
 )
 
-data class KatalogDetailAnsicht(
+data class CatalogDetailView(
     val setNumber: String,
     val name: String? = null,
     val year: Int? = null,
@@ -27,7 +27,7 @@ data class KatalogDetailAnsicht(
     val minifigs: Int = 0,
     val owned: Boolean = false,
     val ownedQuantity: Int = 0,
-    val bricklink: BrickLinkAnsicht? = null,
+    val bricklink: BrickLinkView? = null,
     val preisvergleichUrl: String? = null,
 )
 
@@ -37,13 +37,13 @@ data class JahrAnzahlAnsicht(
 )
 
 /** Themen und Jahresspanne für die Filter des Katalogs. */
-data class KatalogMetaAnsicht(val themen: List<KatalogThemaAnsicht>, val jahrMin: Int?, val jahrMax: Int?)
+data class CatalogMetaView(val themen: List<CatalogThemeView>, val jahrMin: Int?, val jahrMax: Int?)
 
 /** Eine Seite des Katalogs; [gesamt] zählt alle Treffer des Filters. */
-data class KatalogSeiteAnsicht(val sets: List<KatalogSetAnsicht>, val gesamt: Int)
+data class CatalogPageView(val sets: List<KatalogSetAnsicht>, val gesamt: Int)
 
 /** Was ein Barcode ergab; [setNumber] leer heisst nicht gefunden, [unsicher] eine geratene Zuordnung. */
-data class BarcodeAnsicht(
+data class BarcodeView(
     val setNumber: String,
     val name: String? = null,
     val year: Int? = null,
@@ -55,7 +55,7 @@ data class BarcodeAnsicht(
     val unsicher: Boolean = false,
 )
 
-data class KatalogThemaAnsicht(
+data class CatalogThemeView(
     val id: Int,
     val name: String,
     val setCount: Int = 0,

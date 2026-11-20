@@ -8,9 +8,9 @@ diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/
 +++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/UpdateViewModel.kt
 @@ -185,7 +185,6 @@ class UpdateViewModel @Inject constructor(
       */
-     private fun ungueltigesApk(beschreibung: UpdateBeschreibung, ziel: File): Int? = when {
-         !pruefsummePasst(ziel, beschreibung.apkSha256) -> R.string.update_pruefsumme_falsch
--        !geraet.signaturPasst(ziel) -> R.string.update_signatur_falsch
-         !fassungPasst(geraet.apkFassung(ziel), beschreibung.versionCode, repo.laufendeFassung.code) -> R.string.update_fassung_falsch
+     private fun invalidApk(beschreibung: UpdateBeschreibung, ziel: File): Int? = when {
+         !checksumFits(ziel, beschreibung.apkSha256) -> R.string.update_pruefsumme_falsch
+-        !geraet.signatureFits(ziel) -> R.string.update_signatur_falsch
+         !versionFits(geraet.apkVersion(ziel), beschreibung.versionCode, repo.runningVersion.code) -> R.string.update_fassung_falsch
          else -> null
      }

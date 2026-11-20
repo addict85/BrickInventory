@@ -1,16 +1,16 @@
 Gegenprobe: Der Eintrag „CSV-Import“ fehlt auf der Seite „Mehr“
 Modul: app
-Test: ch.brickinventoryapp.app.ErreichbareRoutenTest
+Test: ch.brickinventoryapp.app.ReachableRoutesTest
 Rot: zu jedem Ziel ohne Werte führt ein Weg
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MehrBildschirm.kt
 @@ -118,7 +118,6 @@ private fun MehrGruppeInhalt(
-             MehrGruppe(R.string.nav_group_manage, trenner)
-             MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onZiel(KontoZiel.Lagerorte) }
-             MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onZiel(KontoZiel.Haushalt) }
--            MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onZiel(KontoZiel.CsvImport) }
+             MoreGroup(R.string.nav_group_manage, separator)
+             MehrEintrag(R.string.storage_manage, Icons.Outlined.Inventory2) { onTarget(KontoZiel.Lagerorte) }
+             MehrEintrag(R.string.household_title, Icons.Outlined.Group) { onTarget(KontoZiel.Haushalt) }
+-            MehrEintrag(R.string.csv_upload_title, Icons.Outlined.UploadFile) { onTarget(KontoZiel.CsvImport) }
          }
          3 -> {
-             MehrGruppe(R.string.nav_group_account, trenner)
+             MoreGroup(R.string.nav_group_account, separator)

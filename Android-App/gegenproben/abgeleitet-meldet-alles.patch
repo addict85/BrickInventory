@@ -1,18 +1,18 @@
 Gegenprobe: abgeleitet() reicht jede Änderung des Quellzustands weiter
 Modul: core-sitzung
-Test: ch.brickinventoryapp.sitzung.AbgeleiteterZustandTest
+Test: ch.brickinventoryapp.sitzung.DerivedStateTest
 Rot: ein abgeleiteter Zustand meldet nur echte Aenderungen
 
 diff --git a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AbgeleiteterZustand.kt b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AbgeleiteterZustand.kt
 index 10de68f..4ea4a01 100644
 --- a/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AbgeleiteterZustand.kt
 +++ b/Android-App/core-sitzung/src/main/java/ch/brickinventoryapp/sitzung/AbgeleiteterZustand.kt
-@@ -34,7 +34,7 @@ fun <A, R> StateFlow<A>.abgeleitet(rechne: (A) -> R): StateFlow<R> {
-         override val value: R get() = rechne(a.value)
+@@ -34,7 +34,7 @@ fun <A, R> StateFlow<A>.abgeleitet(compute: (A) -> R): StateFlow<R> {
+         override val value: R get() = compute(a.value)
          override val replayCache: List<R> get() = listOf(value)
          override suspend fun collect(collector: FlowCollector<R>): Nothing {
--            a.map(rechne).distinctUntilChanged().collect(collector)
-+            a.map(rechne).collect(collector)
+-            a.map(compute).distinctUntilChanged().collect(collector)
++            a.map(compute).collect(collector)
              awaitCancellation()
          }
      }

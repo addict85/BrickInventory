@@ -5,8 +5,8 @@ package ch.brickinventoryapp.model.fach
 
 /** Token-Umfang: "app" ohne Verwalterrechte, "voll" mit — immer ausdrücklich gewählt. */
 const val TOKEN_SCOPE_APP = "app"
-const val TOKEN_SCOPE_VOLL = "voll"
+const val TOKEN_SCOPE_FULL = "voll"
 
 /** Zweck einer Passkey-Abfrage (routes/auth.ts). */
-const val PASSKEY_ANMELDEN = "anmelden"
-const val PASSKEY_ZWEITER_FAKTOR = "zweiter_faktor"
+const val PASSKEY_SIGN_IN = "anmelden"
+const val PASSKEY_SECOND_FACTOR = "zweiter_faktor"

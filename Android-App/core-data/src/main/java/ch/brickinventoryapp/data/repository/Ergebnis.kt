@@ -30,7 +30,7 @@ sealed class Ergebnis<out T> {
         open val code: Fehlercode? get() = null
 
         /** Text der Ursache, nur fürs Log: Bibliothekstexte sind englisch und kein Satz an Menschen. */
-        open val technisch: String? get() = null
+        open val technical: String? get() = null
 
         /** Der Server war nicht erreichbar: Ein zweiter Versuch kann gelingen, der Plattenspeicher einspringen. */
         val transient: Boolean get() = when (this) {
@@ -39,7 +39,7 @@ sealed class Ergebnis<out T> {
         }
 
         /** Host nicht auflösbar, Verbindung abgelehnt oder unterwegs abgerissen. */
-        data class Netz(override val technisch: String? = null) : Fehler()
+        data class Netz(override val technical: String? = null) : Fehler()
 
         data object Zeitueberschreitung : Fehler()
 
@@ -47,7 +47,7 @@ sealed class Ergebnis<out T> {
         data object Abgebrochen : Fehler()
 
         /** HTTP 2xx ohne Rumpf. */
-        data class LeereAntwort(override val technisch: String? = null) : Fehler()
+        data class LeereAntwort(override val technical: String? = null) : Fehler()
 
         /** HTTP 401: Der Token gilt nicht (mehr). Kein Netzproblem, das ein Wiederholen behebt. */
         data class Abgewiesen(override val message: String = "", override val code: Fehlercode? = null) : Fehler()
@@ -65,16 +65,16 @@ sealed class Ergebnis<out T> {
          */
         data class Absage(override val message: String = "", override val code: Fehlercode? = null) : Fehler()
 
-        /** Die Server-Adresse ist http; die App sendet nur über https (util/KlartextAbgelehnt). */
+        /** Die Server-Adresse ist http; die App sendet nur über https (util/PlaintextRejected). */
         data object Klartext : Fehler()
 
         /** Jede andere Ausnahme, ohne nähere Einordnung. */
-        data class Unbekannt(override val technisch: String? = null) : Fehler()
+        data class Unbekannt(override val technical: String? = null) : Fehler()
     }
 }
 
 /** Die Daten eines Erfolgs umformen; Stand und Puffer bleiben, ein Fehler bleibt derselbe. */
-internal inline fun <T, R> Ergebnis<T>.abgebildet(f: (T) -> R): Ergebnis<R> = when (this) {
+internal inline fun <T, R> Ergebnis<T>.shown(f: (T) -> R): Ergebnis<R> = when (this) {
     is Ergebnis.Erfolg -> Ergebnis.Erfolg(f(data), stand, gepuffert)
     is Ergebnis.Fehler -> this
 }

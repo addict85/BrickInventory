@@ -4,10 +4,10 @@ import ch.brickinventoryapp.model.fach.Kontoauswahl
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.model.fach.FigurAnsicht
 import ch.brickinventoryapp.model.fach.TeilAnsicht
-import ch.brickinventoryapp.model.fach.Teilschluessel
+import ch.brickinventoryapp.model.fach.PartialKey
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.data.repository.SetKatalogRepository
-import ch.brickinventoryapp.data.repository.TeileRepository
+import ch.brickinventoryapp.data.repository.PartsRepository
 import ch.brickinventoryapp.teile.ui.screens.comparePartNumbers
 import ch.brickinventoryapp.teile.ui.screens.plColorCollator
 import ch.brickinventoryapp.model.util.IMG_PROXY
@@ -19,21 +19,21 @@ import javax.inject.Inject
 
 @Module
 @InstallIn(SingletonComponent::class)
-internal interface TeilelistenModul {
-    @Binds fun quelle(t: Teileliste): TeilelistenQuelle
+internal interface PartListsModule {
+    @Binds fun quelle(t: Teileliste): PartListsSource
 }
 
 /**
  * Die temporäre Teileliste: Ein Set in seine Teile und Figuren auflösen und
  * den eigenen Bestand dazu holen. Ohne Zustand — die Liste hält
- * TeilelisteViewModel; hier stehen nur die Abläufe gegen die Repositories.
+ * PartListViewModel; hier stehen nur die Abläufe gegen die Repositories.
  */
 internal class Teileliste @Inject constructor(
     private val katalog: SetKatalogRepository,
-    private val teileRepo: TeileRepository,
-) : TeilelistenQuelle {
+    private val partsRepo: PartsRepository,
+) : PartListsSource {
     /** Name und Zeilen eines Sets; gleiche Teile (Rebrickable-Nummer + Farbe) zusammengefasst. */
-    override suspend fun loeseSetAuf(setNumber: String, serverUrl: String): Pair<String, List<PlPart>> {
+    override suspend fun resolveSetOn(setNumber: String, serverUrl: String): Pair<String, List<PlPart>> {
         return fangeAusserAbbruch {
             // Die CSV-Endpunkte hängen nicht am Konto und gehen für jedes Set.
             val partsResult = katalog.getSetPartsList(setNumber)
@@ -43,28 +43,28 @@ internal class Teileliste @Inject constructor(
             val setName = (katalog.getSetInfo(setNumber) as? Ergebnis.Erfolg)
                 ?.data?.takeIf { it.isNotBlank() } ?: setNumber
             // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand
-            // (mitBestand) danach gefragt wird. Mehrere Rebrickable-Teile teilen sich
+            // (withInventory) danach gefragt wird. Mehrere Rebrickable-Teile teilen sich
             // oft eine BrickLink-Nummer; nach ihr zusammengefasst galt ein vorhandenes
             // Teil als fehlend. Angezeigt wird weiterhin die BrickLink-Nummer.
             val deduped = mutableMapOf<String, PlPart>()
             if (partsResult is Ergebnis.Erfolg) {
-                for (p in partsResult.data) fasseZusammen(deduped, "${p.partNumber}|${p.colorId}", teilZeile(p, serverUrl))
+                for (p in partsResult.data) combineTogether(deduped, "${p.partNumber}|${p.colorId}", partRow(p, serverUrl))
             }
             // Figuren als Ganzes, nicht in ihre Teile zerlegt — wie in der Webapp.
             if (figsResult is Ergebnis.Erfolg) {
-                for (f in figsResult.data) fasseZusammen(deduped, "fig:${f.figNumber}", figurZeile(f, serverUrl))
+                for (f in figsResult.data) combineTogether(deduped, "fig:${f.figNumber}", minifigRow(f, serverUrl))
             }
             Pair(setName, deduped.values.toList())
         }.getOrElse { Pair(setNumber, listOf()) }
     }
 
     /** Eine Zeile unter [key] ablegen; gibt es sie schon, zählt nur die Menge dazu. */
-    private fun fasseZusammen(deduped: MutableMap<String, PlPart>, key: String, zeile: PlPart) {
+    private fun combineTogether(deduped: MutableMap<String, PlPart>, key: String, zeile: PlPart) {
         val existing = deduped[key]
         deduped[key] = existing?.copy(quantity = existing.quantity + zeile.quantity) ?: zeile
     }
 
-    private fun teilZeile(p: TeilAnsicht, serverUrl: String): PlPart {
+    private fun partRow(p: TeilAnsicht, serverUrl: String): PlPart {
         val blNum = p.blPartNumber ?: p.partNumber
         return PlPart(
             partNumber    = p.partNumber,
@@ -75,7 +75,7 @@ internal class Teileliste @Inject constructor(
             colorId       = p.colorId,
             blColorId     = p.blColorId,
             quantity      = p.totalQuantity.takeIf { it > 0 } ?: 1,
-            imageUrl      = bildUeberServer(serverUrl.trimEnd('/'), p.imageLocal, p.imageUrl),
+            imageUrl      = imageViaServer(serverUrl.trimEnd('/'), p.imageLocal, p.imageUrl),
             imageLocal    = p.imageLocal
         )
     }
@@ -84,7 +84,7 @@ internal class Teileliste @Inject constructor(
      * Bilder immer über den Server: image_local und Pfade sind serverrelativ,
      * rohe CDN-Adressen brauchen die Kopfzeilen des Proxys.
      */
-    private fun bildUeberServer(serverBase: String, imageLocal: String?, bild: String?): String? = when {
+    private fun imageViaServer(serverBase: String, imageLocal: String?, bild: String?): String? = when {
         imageLocal != null -> "$serverBase$imageLocal"
         bild == null -> null
         bild.startsWith("/") -> "$serverBase$bild"
@@ -94,7 +94,7 @@ internal class Teileliste @Inject constructor(
         else -> "$serverBase$bild"
     }
 
-    private fun figurZeile(f: FigurAnsicht, serverUrl: String) = PlPart(
+    private fun minifigRow(f: FigurAnsicht, serverUrl: String) = PlPart(
         partNumber   = f.figNumber,
         blPartNumber = f.figNumber,  // Figurennummern sind die BrickLink-Nummern
         partName     = f.figName ?: f.figNumber,
@@ -109,27 +109,27 @@ internal class Teileliste @Inject constructor(
 
     /**
      * „Kann ich das bauen?" — dieselbe Liste mit gesetztem `vorhanden`, oder
-     * null bei einem Fehler. [nurLose] zählt nur Teile, die in keinem Set
-     * stecken (sonst müsste man ein anderes Set zerlegen); [mitUnterkonten]
+     * null bei einem Fehler. [onlyLose] zählt nur Teile, die in keinem Set
+     * stecken (sonst müsste man ein anderes Set zerlegen); [withSubAccounts]
      * false fragt nur das eigene Konto.
      */
-    override suspend fun mitBestand(
+    override suspend fun withInventory(
         teile: List<PlPart>,
-        nurLose: Boolean,
-        mitUnterkonten: Boolean,
+        onlyLose: Boolean,
+        withSubAccounts: Boolean,
     ): List<PlPart>? {
         if (teile.isEmpty()) return teile
         // Gefragt wird in der REBRICKABLE-Schreibweise: Genau die steht auch in
         // der eigenen Teile-Tabelle. Die BrickLink-Nummer daneben ist fuer den
         // Export da und taugt fuer den Abgleich nicht.
-        val anfrage = teile.map { Teilschluessel(nummer = it.partNumber, farbe = it.colorId) }
+        val anfrage = teile.map { PartialKey(nummer = it.partNumber, farbe = it.colorId) }
         // Das Blickfeld kommt aus dieser Ansicht, nicht aus dem Kontofilter des
         // Teile-Reiters. `null` heisst „alle Konten“.
-        val antwort = teileRepo.getOwnedParts(anfrage, if (mitUnterkonten) null else Kontoauswahl.Eigene)
+        val antwort = partsRepo.getOwnedParts(anfrage, if (withSubAccounts) null else Kontoauswahl.Eigene)
         val bestand = (antwort as? Ergebnis.Erfolg)?.data ?: return null
         return teile.map { p ->
-            val eintrag = bestand[Teilschluessel(p.partNumber, p.colorId)]
-            p.copy(vorhanden = if (eintrag == null) 0 else if (nurLose) eintrag.lose else eintrag.gesamt)
+            val entry = bestand[PartialKey(p.partNumber, p.colorId)]
+            p.copy(vorhanden = if (entry == null) 0 else if (onlyLose) entry.lose else entry.gesamt)
         }
     }
 

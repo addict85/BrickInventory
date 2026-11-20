@@ -1,6 +1,6 @@
 Gegenprobe: Die Zeitüberschreitung zeigt denselben Satz wie „kein Netz“
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.FehlerTexteTest
+Test: ch.brickinventoryapp.zustand.ErrorTextsTest
 Rot: jede Fehlerart hat einen eigenen Text
 
 diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt b/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand/ui/FehlerTexte.kt

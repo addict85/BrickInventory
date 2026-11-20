@@ -1,6 +1,6 @@
 Gegenprobe: Der Preisalarm zeigt Set und Preis auf dem Sperrbildschirm
 Modul: app
-Test: ch.brickinventoryapp.app.PreisalarmMeldungTest
+Test: ch.brickinventoryapp.app.PriceAlertMessageTest
 Rot: auf dem Sperrbildschirm
 
 diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/alarm/PreisalarmWorker.kt
@@ -12,6 +12,6 @@ diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste
                  .setContentText(text)
 -                .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
 -                .setPublicVersion(oeffentlich)
-                 .setGroup(KANAL)
+                 .setGroup(CHANNEL)
                  .setAutoCancel(true)
                  .setContentIntent(tippen)

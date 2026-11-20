@@ -1,17 +1,17 @@
 Gegenprobe: Die App-Sperre setzt auch ab Android 13 FLAG_SECURE statt nur das Vorschaubild zu verbergen
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.components.AppUebersichtSchutzTest
+Test: ch.brickinventoryapp.ui.components.AppOverviewProtectionTest
 Rot: ab Android 13 verbirgt die Sperre nur das Vorschaubild
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 @@ -44,7 +44,7 @@
- fun AppUebersichtSchutz(sperre: AppSperre) {
-     val minuten by sperre.minuten.collectAsState()
+ fun AppOverviewProtection(lock: AppLock) {
+     val minuten by lock.minuten.collectAsState()
      if (minuten <= 0) return
--    if (LocalSdkStufe.current < Build.VERSION_CODES.TIRAMISU) {
-+    if (LocalSdkStufe.current < 99) {
-         Sichtschutz(ueberdeckung = false)
+-    if (LocalSdkLevel.current < Build.VERSION_CODES.TIRAMISU) {
++    if (LocalSdkLevel.current < 99) {
+         Sichtschutz(coverage = false)
          return
      }

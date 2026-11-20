@@ -4,37 +4,37 @@ import java.time.Instant
 
 // Bewertung, Gewinn und Kennzahlen; Beträge kommen fertig vom Server.
 
-data class KennzahlenAnsicht(
+data class MetricsView(
     val totalSets: Int,
     val totalQuantity: Int,
     val totalInstructions: Int,
     val totalParts: Int,
     val totalMinifigs: Int,
-    val teileAusSets: Int? = null,
-    val teileEinzeln: Int? = null,
+    val partsFromSets: Int? = null,
+    val partsSingle: Int? = null,
 )
 
 data class TeileBewertungAnsicht(
     val currency: Waehrung = Waehrung.EUR,
-    val parts: List<ManuellesTeilAnsicht> = emptyList(),
+    val parts: List<ManualPartView> = emptyList(),
     val totalValue: String,
     val kaufpreiseFremdeWaehrung: Int = 0,
 )
 
 data class FigurenBewertungAnsicht(
     val currency: Waehrung = Waehrung.EUR,
-    val figs: List<ManuelleFigurAnsicht> = emptyList(),
+    val figs: List<ManualMinifigView> = emptyList(),
     val totalValue: String,
     val kaufpreiseFremdeWaehrung: Int = 0,
 )
 
 data class GewinnAnsicht(
     val currency: Waehrung = Waehrung.EUR,
-    val totals: GewinnSummenAnsicht,
-    val sets: List<GewinnZeileAnsicht> = emptyList(),
+    val totals: GainSumsView,
+    val sets: List<GainRowView> = emptyList(),
 )
 
-data class GewinnZeileAnsicht(
+data class GainRowView(
     val setNumber: String,
     val quantity: Int = 1,
     val currentPrice: Geld? = null,
@@ -49,7 +49,7 @@ data class GewinnZeileAnsicht(
     val kachelQuelle: String? = null,
 )
 
-data class GewinnSummenAnsicht(
+data class GainSumsView(
     val purchase: String,
     val current: String,
     val pnlPct: String? = null,
@@ -72,11 +72,11 @@ data class BewertungAnsicht(
     val condition: Zustand = Zustand.NEU,
     val ttlStunden: Int? = null,
     val kaufpreiseFremdeWaehrung: Int = 0,
-    val sets: List<BewertungSetAnsicht> = emptyList(),
-    val totals: SummenAnsicht = SummenAnsicht(),
+    val sets: List<ValuationSetView> = emptyList(),
+    val totals: SumsView = SumsView(),
 )
 
-data class BewertungSetAnsicht(
+data class ValuationSetView(
     val setNumber: String,
     val addedAt: Instant? = null,
     val name: String? = null,
@@ -92,13 +92,13 @@ data class BewertungSetAnsicht(
     val pnlProzent: Double? = null,
     val purchasePrice: Geld? = null,
     val noPrice: Boolean = false,
-    val acquisitions: List<BewertungsKaufAnsicht> = emptyList(),
+    val acquisitions: List<ValuationPurchaseView> = emptyList(),
     val mixed: Boolean = false,
     /** Warum zu diesem Set kein Preis da ist; null, wenn es einen gibt. */
     val error: String? = null,
 )
 
-data class SummenAnsicht(
+data class SumsView(
     val min: String = "0.00",
     val avg: String = "0.00",
     val max: String = "0.00",

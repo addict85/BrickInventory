@@ -6,7 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
-import ch.brickinventoryapp.testing.testFinanzenRepository
+import ch.brickinventoryapp.testing.testFinancesRepository
 import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.TestApi
@@ -20,7 +20,7 @@ import ch.brickinventoryapp.testing.TestApi
 class SessionAndLifecycleTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -42,17 +42,17 @@ class SessionAndLifecycleTest {
      */
     @Test
     fun `sicherAufrufen meldet 401 als abgewiesen`() {
-        val pfade = PfadServer()
-        pfade.codes["/api/v1/stats"] = 401
-        pfade.codes["/api/v1/finance/pnl"] = 500
+        val paths = PfadServer()
+        paths.codes["/api/v1/stats"] = 401
+        paths.codes["/api/v1/finance/pnl"] = 500
         try {
-            val finanzen = testFinanzenRepository(TestApi.fuer(pfade.server))
+            val finanzen = testFinancesRepository(TestApi.fuer(paths.server))
             val abgelaufen = runBlocking { finanzen.getStats() } as Ergebnis.Fehler
             val kaputt = runBlocking { finanzen.getPnl() } as Ergebnis.Fehler
             assertTrue("Ein 401 trägt das Kennzeichen nicht", abgelaufen is Ergebnis.Fehler.Abgewiesen)
             assertFalse("Ein 500 gilt als abgelaufene Sitzung", kaputt is Ergebnis.Fehler.Abgewiesen)
         } finally {
-            pfade.server.shutdown()
+            paths.server.shutdown()
         }
     }
 
@@ -86,7 +86,7 @@ class SessionAndLifecycleTest {
                 "LaunchedEffect endet erst beim Verlassen des Screens, nicht beim " +
                 "Wechsel in den Hintergrund — die App pollt dann weiter."
         }
-        // Die Schleife selbst steht im ViewModel (haltAktuell, MonitoringViewModelVerhaltenTest).
+        // Die Schleife selbst steht im ViewModel (haltAktuell, MonitoringViewModelBehaviorTest).
         val loop = src.indexOf("mon.haltAktuell()")
         val guard = src.indexOf("repeatOnLifecycle")
         assert(loop >= 0) { "Poll-Schleife nicht gefunden — Test veraltet?" }

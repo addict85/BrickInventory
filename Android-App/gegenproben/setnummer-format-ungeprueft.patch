@@ -7,10 +7,10 @@ diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sam
 --- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
 +++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
 @@ -66,7 +66,6 @@
- private fun nummerFehler(nummer: String, geprueft: Boolean): Int? = when {
+ private fun numberError(nummer: String, geprueft: Boolean): Int? = when {
      !geprueft -> null
      nummer.isBlank() -> R.string.erfassen_nummer_fehlt
--    !NumericInput.istSetnummer(nummer) -> R.string.erfassen_nummer_ungueltig
+-    !NumericInput.isSetNumber(nummer) -> R.string.erfassen_nummer_ungueltig
      else -> null
  }
  

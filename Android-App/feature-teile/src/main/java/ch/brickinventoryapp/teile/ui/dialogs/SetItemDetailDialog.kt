@@ -31,12 +31,12 @@ import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.ui.util.rememberTileImageWithFallback
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.DetailTopAppBar
-import ch.brickinventoryapp.ui.components.ZurueckKnopf
-import ch.brickinventoryapp.ui.components.farbUebersetzer
-import ch.brickinventoryapp.ui.components.kategorieUebersetzer
+import ch.brickinventoryapp.ui.components.BackButton
+import ch.brickinventoryapp.ui.components.farbTranslator
+import ch.brickinventoryapp.ui.components.categoryTranslator
 import ch.brickinventoryapp.gemeinsam.ui.mengeAusSet
-import ch.brickinventoryapp.gemeinsam.ui.LagerortFeld
-import ch.brickinventoryapp.teile.ui.screens.TeilDetailKopf
+import ch.brickinventoryapp.gemeinsam.ui.LocationField
+import ch.brickinventoryapp.teile.ui.screens.PartDetailHeader
 
 /**
  * Detail für ein Teil / eine Figur aus einem Set, auf dem Telefon als Blatt von unten:
@@ -61,7 +61,7 @@ internal fun SetItemDetailDialog(
  * der Merkliste): Titel mit Schliessen-Knopf, darunter der Inhalt, rollbar.
  */
 @Composable
-internal fun SetItemDetailBereich(
+internal fun SetItemDetailArea(
     zustand: SetItemUiState,
     lagerZustand: LagerUiState,
     aktionen: SetItemAktionen,
@@ -83,17 +83,17 @@ private fun SetItemDetail(
     onOpenSet: (String) -> Unit,
     alsDialog: Boolean,
 ) {
-    val farbe = farbUebersetzer()
-    // Die Auswahlliste gehört dem Besitzer des Teils; sie kommt mit dem Kopf (TeileViewModel).
+    val farbe = farbTranslator()
+    // Die Auswahlliste gehört dem Besitzer des Teils; sie kommt mit dem Kopf (PartsViewModel).
     if (!zustand.offen) return
 
     // rememberSaveable, nicht remember: Der geöffnete Zoom ist eine Entscheidung des
     // Nutzers und muss eine Drehung überstehen — wie an den übrigen Zoom-Stellen.
-    var zeigeZoom by rememberSaveable { mutableStateOf(false) }
+    var showZoom by rememberSaveable { mutableStateOf(false) }
     // stringResource() geht nur ausserhalb des LazyColumn-Rumpfs — dort ist
     // kein Composable-Kontext fuer jedes Element noetig, und einmal lesen
     // reicht.
-    val oeffneLabel = stringResource(R.string.setitem_open_set)
+    val openLabel = stringResource(R.string.setitem_open_set)
     val kopf = zustand.kopf
     // Volle Aufloesung UEBER den Server-Proxy — bei Teilen und Figuren ist das
     // ausdruecklich so entschieden (siehe resolveFullUrlViaProxy), damit kein
@@ -114,7 +114,7 @@ private fun SetItemDetail(
     val inhalt: @Composable () -> Unit = {
             Column(Modifier.fillMaxWidth()) {
                 when {
-                    zustand.abruf.laedt -> Box(Modifier.fillMaxWidth().padding(Abstaende.sehrGross), Alignment.Center) {
+                    zustand.abruf.laedt -> Box(Modifier.fillMaxWidth().padding(Abstaende.veryLarge), Alignment.Center) {
                         CircularProgressIndicator(Modifier.size(28.dp))
                     }
                     zustand.abruf is Laden.Fehler -> Text(
@@ -124,31 +124,31 @@ private fun SetItemDetail(
                     else -> {
                         // Derselbe Kopf wie beim selbst erfassten Teil; nur die Abschnitte darunter
                         // hängen an der Herkunft.
-                        val kategorie = kategorieUebersetzer()
+                        val kategorie = categoryTranslator()
                         val chips = buildList {
                             add(stringResource(R.string.setitem_total_qty) to mengeAusSet(kopf?.totalQuantity ?: 0))
                             kopf?.colorName?.let { add(stringResource(R.string.setitem_color) to farbe(it)) }
                             kopf?.categoryName?.let { add(stringResource(R.string.setitem_category) to kategorie(it)) }
                             if (kopf?.isSpare == true) add(stringResource(R.string.parts_spare_tag) to "✓")
                         }
-                        TeilDetailKopf(bild, imageLoader, kopf?.name, chips, onZoom = { zeigeZoom = true })
+                        PartDetailHeader(bild, imageLoader, kopf?.name, chips, onZoom = { showZoom = true })
                         Spacer(Modifier.height(Abstaende.klein))
                         // Nur für Teile (kopf.colorId ist bei Figuren null): Eine Minifigur
                         // steckt in ihrem Set, dessen Ort im Set-Detail steht — ein zweiter
                         // Ort könnte auseinanderlaufen. Bearbeitbar wie in der Webapp; das
                         // Feld schreibt auf alle Zeilen dieses Teil-Farb-Paares.
-                        val kopfFarbe = kopf?.colorId
-                        if (kopf != null && kopfFarbe != null) {
-                            Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.haar),
+                        val headerColor = kopf?.colorId
+                        if (kopf != null && headerColor != null) {
+                            Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.hairline),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.detail_storage),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     style = MaterialTheme.typography.bodyMedium)
-                                LagerortFeld(
+                                LocationField(
                                     wert = kopf.storage ?: "",
-                                    vorrat = lagerZustand.vorrat.map { it.name },
-                                    onWert = { aktionen.setzeTeilLagerort(kopf.nummer, kopfFarbe, it) },
+                                    stock = lagerZustand.stock.map { it.name },
+                                    onValue = { aktionen.setPartLocation(kopf.nummer, headerColor, it) },
                                     modifier = Modifier.padding(start = Abstaende.gross)
                                         .weight(1f).widthIn(max = 320.dp),
                                 )
@@ -191,12 +191,12 @@ private fun SetItemDetail(
                                         // onClickLabel sagt der Sprachausgabe, was das Antippen tut
                                         // — ohne liest sie nur die Setnummer vor. In der Webapp
                                         // steht derselbe Text als title-Attribut.
-                                        onClickLabel = oeffneLabel,
+                                        onClickLabel = openLabel,
                                         onClick = {
                                             // Erst schliessen, dann oeffnen:
                                             // Sonst laege der Dialog ueber dem
                                             // Set-Detail.
-                                            aktionen.schliesseSetItem()
+                                            aktionen.closeSetItem()
                                             onOpenSet(s.setNumber)
                                         },
                                     )
@@ -209,16 +209,16 @@ private fun SetItemDetail(
     }
 
     // Schliessen links wie in jedem Detailkopf (DetailTopAppBar), im Blatt wie neben der Liste.
-    val schliessen = { aktionen.schliesseSetItem() }
+    val schliessen = { aktionen.closeSetItem() }
     if (alsDialog) {
         ModalBottomSheet(onDismissRequest = schliessen) {
             Column(
-                Modifier.padding(start = Abstaende.gross, end = Abstaende.sehrGross, bottom = Abstaende.sehrGross)
+                Modifier.padding(start = Abstaende.gross, end = Abstaende.veryLarge, bottom = Abstaende.veryLarge)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    ZurueckKnopf(schliessen, schliessen = true)
+                    BackButton(schliessen, schliessen = true)
                     Box(Modifier.weight(1f)) {
                         ProvideTextStyle(MaterialTheme.typography.titleLarge) { titel() }
                     }
@@ -230,7 +230,7 @@ private fun SetItemDetail(
         Column(Modifier.fillMaxSize()) {
             DetailTopAppBar(
                 titel = kopf?.name ?: zustand.nummer,
-                untertitel = zustand.nummer + (kopf?.colorName?.let { " · " + farbe(it) } ?: ""),
+                subtitle = zustand.nummer + (kopf?.colorName?.let { " · " + farbe(it) } ?: ""),
                 onZurueck = schliessen,
                 schliessen = true,
             )
@@ -241,12 +241,12 @@ private fun SetItemDetail(
         }
     }
 
-    if (zeigeZoom && bild != null) {
+    if (showZoom && bild != null) {
         ZoomableImageDialog(
             imageUrl = bild,
             contentDescription = kopf.name,
             imageLoader = imageLoader,
-            onDismiss = { zeigeZoom = false },
+            onDismiss = { showZoom = false },
         )
     }
 }

@@ -19,26 +19,26 @@ import org.junit.Test
 class BestaetigungsfristTest {
 
     private var jetzt = 1_000L
-    private val frist = Bestaetigungsfrist(dauerMs = 60_000, uhr = { jetzt })
+    private val deadline = Bestaetigungsfrist(durationMs = 60_000, clock = { jetzt })
 
     @Test
     fun `ohne Bestaetigung gilt nichts`() {
-        assertFalse(frist.gilt())
+        assertFalse(deadline.gilt())
     }
 
     @Test
     fun `nach einer Minute wird wieder gefragt`() {
-        frist.bestaetigt()
+        deadline.confirmed()
         jetzt += 59_999
-        assertTrue(frist.gilt())
+        assertTrue(deadline.gilt())
         jetzt += 1
-        assertFalse(frist.gilt())
+        assertFalse(deadline.gilt())
     }
 
     @Test
     fun `wer die App verlaesst, wird wieder gefragt`() {
-        frist.bestaetigt()
-        frist.vergiss()
-        assertFalse(frist.gilt())
+        deadline.confirmed()
+        deadline.vergiss()
+        assertFalse(deadline.gilt())
     }
 }

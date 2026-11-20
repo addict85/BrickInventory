@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.data.cache
 
-import ch.brickinventoryapp.data.di.BildClient
+import ch.brickinventoryapp.data.di.ImageClient
 import ch.brickinventoryapp.data.Netzlage
-import ch.brickinventoryapp.data.GeraeteEinstellungen
-import ch.brickinventoryapp.data.VorwaermNetz
+import ch.brickinventoryapp.data.DevicesSettings
+import ch.brickinventoryapp.data.VorwaermNetwork
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -19,7 +19,7 @@ import javax.inject.Singleton
  * weil es den Server nichts angeht. Der Abgriff in NetzModule legt danach
  * spekulativ oder gebraucht ab.
  */
-object Vorwaermung
+object WarmUp
 
 /**
  * Bilder im Hintergrund holen, bevor jemand sie aufruft, aus allen Reitern und bis
@@ -32,15 +32,15 @@ object Vorwaermung
 class VorschauVorwaermer @Inject constructor(
     private val vorschau: VorschauSpeicher,
     private val netz: Netzlage,
-    private val prefs: GeraeteEinstellungen,
-    @param:BildClient private val bildClient: OkHttpClient,
+    private val prefs: DevicesSettings,
+    @param:ImageClient private val imageClient: OkHttpClient,
 ) {
     companion object {
         /**
          * Zwei gleichzeitig: Der Bild-Client hat sechs je Host, vier bleiben für das
          * Sichtbare — die Vorwärmung soll die App nicht ausbremsen.
          */
-        private const val GLEICHZEITIG = 2
+        private const val CONCURRENT = 2
 
         /** Nach jedem Schub kurz Luft lassen — dieselbe Ruecksicht wie oben. */
         private const val PAUSE_MS = 250L
@@ -57,26 +57,26 @@ class VorschauVorwaermer @Inject constructor(
      * ohne `else`, damit eine neue Lage hier nicht still unter erlaubt oder verboten
      * fällt.
      */
-    private suspend fun netzErlaubt(): Boolean = when (netz.aktuell()) {
+    private suspend fun networkAllowed(): Boolean = when (netz.aktuell()) {
         Netzlage.Art.KEIN_NETZ -> false
-        Netzlage.Art.WLAN      -> prefs.vorwaermenErlaubt(VorwaermNetz.WLAN).first()
-        Netzlage.Art.MOBIL     -> prefs.vorwaermenErlaubt(VorwaermNetz.MOBIL).first()
-        Netzlage.Art.ROAMING   -> prefs.vorwaermenErlaubt(VorwaermNetz.ROAMING).first()
+        Netzlage.Art.WLAN      -> prefs.warmUpAllowed(VorwaermNetwork.WLAN).first()
+        Netzlage.Art.MOBILE     -> prefs.warmUpAllowed(VorwaermNetwork.MOBILE).first()
+        Netzlage.Art.ROAMING   -> prefs.warmUpAllowed(VorwaermNetwork.ROAMING).first()
     }
 
     /**
      * Noch Platz unter der Grenze? Vor dem Sammeln gefragt, damit ein voller Speicher
      * nicht bei jedem Start Listenabrufe kostet.
      */
-    private fun nochPlatz(): Boolean =
-        vorschau.belegt() < VorschauSpeicher.GRENZE_VORWAERMEN
+    private fun stillSpace(): Boolean =
+        vorschau.belegt() < VorschauSpeicher.LIMIT_WARM_UP
 
     /**
      * Lohnt sich ein Durchlauf? Netz und Platz vor dem Sammeln — ohne Platz gäbe es
      * nichts abzulegen, im falschen Netz dürfte man nicht, und die Listenabrufe liefen
      * umsonst.
      */
-    suspend fun darfStarten(): Boolean = netzErlaubt() && nochPlatz()
+    suspend fun darfStarten(): Boolean = networkAllowed() && stillSpace()
 
     /**
      * Die übergebenen Adressen holen, bis die Grenze erreicht ist. Still: Fällt etwas
@@ -86,23 +86,23 @@ class VorschauVorwaermer @Inject constructor(
     suspend fun vorwaermen(adressen: List<String>) {
         val offen = adressen
             .distinct()
-            // Nur was die Ablage auch behaelt: Was `istVorschau` verneint,
+            // Nur was die Ablage auch behaelt: Was `isPreview` verneint,
             // wuerde der Abgriff gar nicht erst schreiben — es zu holen waere
             // reines Datenvolumen ohne Ertrag. Und was schon daliegt, braucht
             // das Netz nicht noch einmal.
-            .filter { vorschau.istVorschau(it) && !vorschau.hat(it) }
+            .filter { vorschau.isPreview(it) && !vorschau.hat(it) }
 
-        for (schub in offen.chunked(GLEICHZEITIG)) {
+        for (boost in offen.chunked(CONCURRENT)) {
             // Je Schub neu messen statt einmal am Anfang: Waehrenddessen legt
             // auch der normale Betrieb Bilder ab, und ein Zaehler, der das
             // nicht sieht, liefe an der Grenze vorbei.
-            if (!nochPlatz()) return
+            if (!stillSpace()) return
             // Die Netzlage AUCH je Schub, nicht nur am Anfang: Ein Durchlauf
             // dauert Minuten, und wer dabei aus dem WLAN geht, soll nicht den
             // Rest der Sammlung ueber den Datentarif bekommen. Dasselbe
             // Argument wie bei der Grenze eine Zeile darueber.
-            if (!netzErlaubt()) return
-            coroutineScope { schub.map { async { hole(it) } }.awaitAll() }
+            if (!networkAllowed()) return
+            coroutineScope { boost.map { async { fetch(it) } }.awaitAll() }
             delay(PAUSE_MS)
         }
     }
@@ -111,16 +111,16 @@ class VorschauVorwaermer @Inject constructor(
      * Ein Bild holen. Der Rumpf wird gelesen und weggeworfen — abgelegt hat
      * ihn zu diesem Zeitpunkt schon der Abgriff in NetzModule.
      */
-    private fun hole(adresse: String) {
+    private fun fetch(adresse: String) {
         runCatching {
             val anfrage = Request.Builder()
                 .url(adresse)
-                .tag(Vorwaermung::class.java, Vorwaermung)
+                .tag(WarmUp::class.java, WarmUp)
                 .build()
             // Kein `?.`: `body` ist seit OkHttp 5 nicht nullbar. Der Wert
             // wird ohnehin verworfen — gelesen wird nur, damit die Antwort
             // vollstaendig durch den Zwischenspeicher laeuft.
-            bildClient.newCall(anfrage).execute().use { it.body.bytes() }
+            imageClient.newCall(anfrage).execute().use { it.body.bytes() }
         }
     }
 }

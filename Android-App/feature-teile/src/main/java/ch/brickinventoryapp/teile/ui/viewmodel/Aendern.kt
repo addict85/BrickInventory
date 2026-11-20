@@ -13,9 +13,9 @@ import kotlinx.coroutines.launch
  * zu vielen Teilen nur einen Zustand, der Server nennt in `price_from_condition`, aus
  * welchem der Wert stammt.
  */
-internal fun erfassungsMeldung(meldungen: Meldungen, angelegt: Boolean, nummer: String?, preisAusZustand: Zustand?): String {
+internal fun entryMessage(meldungen: Meldungen, angelegt: Boolean, nummer: String?, priceFromState: Zustand?): String {
     val kopf = meldungen.text(if (angelegt) R.string.vm_added else R.string.vm_updated, nummer)
-    val hinweis = when (preisAusZustand) {
+    val hinweis = when (priceFromState) {
         Zustand.NEU -> meldungen.text(R.string.price_from_other_condition_new)
         Zustand.GEBRAUCHT -> meldungen.text(R.string.price_from_other_condition_used)
         else -> null
@@ -29,13 +29,13 @@ internal fun erfassungsMeldung(meldungen: Meldungen, angelegt: Boolean, nummer: 
  * Sitzungsschicht schon gemeldet.
  */
 internal fun ViewModel.aendere(
-    meldungen: Meldungen, erfolgsSatz: String, danach: () -> Unit = {},
+    meldungen: Meldungen, successSet: String, danach: () -> Unit = {},
     tun: suspend () -> Ergebnis<Unit>,
 ) {
     viewModelScope.launch {
         when (val r = tun()) {
             is Ergebnis.Erfolg -> {
-                meldungen.zeige(erfolgsSatz)
+                meldungen.zeige(successSet)
                 danach()
             }
             is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r))

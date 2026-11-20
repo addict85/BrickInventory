@@ -2,13 +2,13 @@ package ch.brickinventoryapp.finanzen.ui
 
 import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.fach.KlartextAnsicht
+import ch.brickinventoryapp.model.fach.PlaintextView
 import ch.brickinventoryapp.model.fach.BewertungAnsicht
-import ch.brickinventoryapp.model.fach.DiagrammAchse
+import ch.brickinventoryapp.model.fach.ChartAxis
 import ch.brickinventoryapp.model.fach.DiagrammPunkt
 import ch.brickinventoryapp.model.fach.FigurenBewertungAnsicht
 import ch.brickinventoryapp.model.fach.GewinnAnsicht
-import ch.brickinventoryapp.model.fach.GutscheinAnsicht
+import ch.brickinventoryapp.model.fach.VoucherView
 import ch.brickinventoryapp.model.fach.TeileBewertungAnsicht
 import ch.brickinventoryapp.model.ui.Laden
 
@@ -34,16 +34,16 @@ data class FinanceUiState(
      * Zeichnen (FinanceScreen): Die Sprache beim Laden ist nicht die beim Anzeigen.
      */
     val historyPoints: List<DiagrammPunkt> = emptyList(),
-    val historyYAxis: List<DiagrammAchse> = emptyList(),
+    val historyYAxis: List<ChartAxis> = emptyList(),
     /** Der ISO-Tag jedes Punkts (chart.x) — daraus entsteht die lokale x-Achse. */
-    val historyTage: List<String> = emptyList(),
+    val historyDays: List<String> = emptyList(),
     /** Währung der y-Achse; null = die der Bewertung. */
-    val historyWaehrung: Waehrung? = null,
+    val historyCurrency: Waehrung? = null,
     val historyPeriod: String = "week",
     /**
      * Welche Zeilenarten der Reiter zeigt: "sets", "parts", "figs". Im Zustand und
      * nicht im Bildschirm, weil ein `remember` den Wechsel in ein Detail nicht
-     * überlebt (wie die Listenfilter, ListenfilterImZustandTest). Eine Menge, damit
+     * überlebt (wie die Listenfilter, ListenfilterInStateTest). Eine Menge, damit
      * sich Arten kombinieren lassen; leer heisst alle — so muss keine Liste
      * nachgezogen werden, wenn eine Art dazukommt.
      */
@@ -56,7 +56,7 @@ data class FinanceUiState(
      * Eine Zeilenart dazunehmen oder wegnehmen. Hier statt im ViewModel, damit die
      * Regel ohne Android-Laufzeit prüfbar ist.
      */
-    fun mitUmgeschalteterKategorie(kategorie: String): FinanceUiState =
+    fun withToggledCategory(kategorie: String): FinanceUiState =
         copy(kategorien = if (kategorie in kategorien) kategorien - kategorie
                           else kategorien + kategorie)
 }
@@ -68,13 +68,13 @@ data class FinanceUiState(
  * Gutschein bleibt, was der Server schickt.
  */
 data class GutscheinUiState(
-    val gutscheine: List<GutscheinAnsicht> = emptyList(),
+    val gutscheine: List<VoucherView> = emptyList(),
     /** Ein Fehler steht statt „keine Gutscheine“, solange die Liste leer ist. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
     /** ids, deren PIN gerade im Klartext steht. */
     val pinSichtbar: Set<Int> = emptySet(),
     /** Der Gutschein, der gerade bearbeitet wird; null = neuer Eintrag. */
-    val bearbeitet: Int? = null,
+    val edited: Int? = null,
     // ── Die Formularfelder ──
     //
     // Als Zeichenketten, auch der Betrag: Während des Tippens ist „12,“ weder Zahl
@@ -90,29 +90,29 @@ data class GutscheinUiState(
      * Das freigegebene PDF, das der Graph im Betrachter öffnen soll, oder null. Im
      * Zustand statt als Rückruf, weil der Graph den NavController kennt; er quittiert.
      */
-    val pdfZiel: GutscheinPdfZiel? = null,
+    val pdfTarget: VoucherPdfTarget? = null,
     /** Die laufende Rückfrage nach Passwort und Code, oder null. */
-    val bestaetigung: GutscheinBestaetigung? = null,
+    val confirmation: VoucherConfirmation? = null,
     /**
      * Nummer und PIN im Klartext je id, solange die Seite offen ist. Nur hier, nie
      * in Ablage oder Cache; GutscheineUnterseite leert es beim Verlassen.
      */
-    val klartext: Map<Int, KlartextAnsicht> = emptyMap(),
+    val klartext: Map<Int, PlaintextView> = emptyMap(),
     /** Was die Oberfläche in die Zwischenablage legen soll; sie quittiert. */
-    val zuKopieren: Kopierauftrag? = null,
+    val copyTo: CopyJob? = null,
     val speichern: Vorgang = Vorgang.Fertig,
     /**
      * Die id der Karte, deren Guthaben gerade abgefragt wird, oder null. Eine id statt
      * eines Booleans, damit sich nur der gedrückte Knopf rührt — es läuft immer nur
      * eine Abfrage.
      */
-    val guthabenLaeuft: Int? = null,
+    val balanceRunning: Int? = null,
     /**
-     * Der Lauf über alle Karten, oder null. Getrennt von [guthabenLaeuft]: Das sagt,
+     * Der Lauf über alle Karten, oder null. Getrennt von [balanceRunning]: Das sagt,
      * welche Karte dran ist (Kreisel), dies, dass ein Durchgang läuft (Fortschritt,
      * Abbrechen).
      */
-    val guthabenLauf: GuthabenLauf? = null,
+    val balanceRun: BalanceRun? = null,
 )
 
 /**
@@ -121,9 +121,9 @@ data class GutscheinUiState(
  * BigDecimal, weil die App diese Summe selbst bildet und 0.1 + 0.2 als Double
  * nicht 0.3 ist.
  */
-internal fun gutscheinSumme(gutscheine: List<GutscheinAnsicht>): Pair<java.math.BigDecimal, Waehrung>? {
+internal fun voucherSum(gutscheine: List<VoucherView>): Pair<java.math.BigDecimal, Waehrung>? {
     val waehrung = gutscheine.map { it.currency }.distinct().singleOrNull() ?: return null
-    return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + g.amount.alsBigDecimal() }
+    return gutscheine.fold(java.math.BigDecimal.ZERO) { s, g -> s + g.amount.asBigDecimal() }
         .setScale(2, java.math.RoundingMode.HALF_UP) to waehrung
 }
 
@@ -131,7 +131,7 @@ internal fun gutscheinSumme(gutscheine: List<GutscheinAnsicht>): Pair<java.math.
  * Der Stand eines Laufs über alle Karten: Bei einer Abfrage je 30 Sekunden dauert
  * er Minuten, deshalb zählt er mit und nennt die Restzeit.
  */
-data class GuthabenLauf(
+data class BalanceRun(
     /** Wie viele Karten schon durch sind (erfolgreich oder nicht). */
     val erledigt: Int = 0,
     val gesamt: Int = 0,
@@ -142,21 +142,21 @@ data class GuthabenLauf(
 )
 
 /** Ein freigegebenes PDF; ohne [id] das aller Gutscheine. */
-data class GutscheinPdfZiel(val id: Int?, val ticket: String)
+data class VoucherPdfTarget(val id: Int?, val ticket: String)
 
 /** Was erst nach Gerätesperre und Passwort geschieht. */
-enum class GutscheinSchritt { PIN_ZEIGEN, NUMMER_KOPIEREN, PIN_KOPIEREN, PDF, EXPORT, LOESCHEN }
+enum class VoucherStep { PIN_ZEIGEN, NUMBER_COPY, PIN_COPY, PDF, EXPORT, DELETE }
 
 /**
  * Die Rückfrage nach Passwort (und Code), bevor [schritt] für Gutschein [id]
  * läuft; [id] ist null beim Export aller.
  */
-data class GutscheinBestaetigung(
-    val schritt: GutscheinSchritt,
+data class VoucherConfirmation(
+    val schritt: VoucherStep,
     val id: Int?,
     /** Der Server hat den Code des zweiten Faktors verlangt. */
     val codeNoetig: Boolean = false,
-    val vorgang: Vorgang = Vorgang.Fertig,
+    val operation: Vorgang = Vorgang.Fertig,
 )
 
-data class Kopierauftrag(val wert: String, val istNummer: Boolean)
+data class CopyJob(val wert: String, val isNumber: Boolean)

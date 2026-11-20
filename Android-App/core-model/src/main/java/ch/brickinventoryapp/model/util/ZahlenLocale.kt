@@ -7,7 +7,7 @@ import java.util.Locale
  * (de-DE schreibt 4.894,77, de-CH 4’894.77), sonst de-CH bzw. en-GB. In core-model,
  * weil auch die Preisalarm-Meldung im Hintergrund (core-dienste) ohne Oberfläche formatiert.
  */
-fun zahlenLocale(sprache: Locale, geraet: Locale): Locale {
+fun numbersLocale(sprache: Locale, geraet: Locale): Locale {
     val ziel = if (sprache.language == "de") "de" else "en"
     val land = sprache.country.takeIf { sprache.language == ziel && it.length == 2 }
         ?: geraet.country.takeIf { geraet.language == ziel && it.length == 2 }

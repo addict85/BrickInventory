@@ -1,6 +1,6 @@
 Gegenprobe: die Set-Zeile der Finanzen zeigt keinen Kaufpreis
 Modul: app
-Test: ch.brickinventoryapp.app.FinanzKaufpreisZeilenTest
+Test: ch.brickinventoryapp.app.FinancePurchasePriceRowsTest
 Rot: die Set-Zeile zeigt
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/FinanceSections.kt
@@ -13,8 +13,8 @@ diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/fin
 -                    }
 -                    rowPurchase?.let {
 -                        Text(
--                            if (rowQty > 1) stringResource(R.string.finance_purchase_total, fmtWert(it))
--                            else stringResource(R.string.finance_purchase_short, fmtWert(it)),
+-                            if (rowQty > 1) stringResource(R.string.finance_purchase_total, fmtValue(it))
+-                            else stringResource(R.string.finance_purchase_short, fmtValue(it)),
 -                            style = MaterialTheme.typography.bodySmall,
 -                            color = MaterialTheme.colorScheme.onSurfaceVariant
 -                        )

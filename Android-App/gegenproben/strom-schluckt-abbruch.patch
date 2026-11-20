@@ -1,13 +1,13 @@
 Gegenprobe: folgeStrom fängt wieder jede Exception und schluckt so das Abbrechen
 Modul: core-dienste
-Test: ch.brickinventoryapp.dienste.CsvStromAbbruchTest
+Test: ch.brickinventoryapp.dienste.CsvStreamAbortTest
 Rot: folgeStrom reicht das Abbrechen weiter
 
 diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/CsvStrom.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/CsvStrom.kt
 --- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/CsvStrom.kt
 +++ b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/CsvStrom.kt
 @@ -16,13 +16,13 @@
-     weiter: (CsvImportStandAnsicht) -> Boolean,
+     weiter: (CsvImportStatusView) -> Boolean,
  ): Boolean {
      var gescheitert = false
 -    fangeAusserAbbruch {

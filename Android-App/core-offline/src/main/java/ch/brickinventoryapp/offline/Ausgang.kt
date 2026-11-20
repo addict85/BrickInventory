@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.offline
 
-import ch.brickinventoryapp.offline.Ausgang.VerworfenerPosten
+import ch.brickinventoryapp.offline.Ausgang.DiscardedItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.update
  */
 data class Ausgangsposten(
     val id: Long,
-    val bearbeitung: Bearbeitung,
+    val bearbeitung: Editing,
     val erstellt: Long,
     val versuche: Int,
     val schluessel: String,
@@ -30,12 +30,12 @@ interface Ausgang {
      * Eine Bearbeitung, die der Server ablehnte; [ziel] benennt sie für den Hinweis („10001-1“).
      * [unlesbar]: Der Posten liess sich nach einem Update nicht mehr lesen und ging nie hinaus.
      */
-    data class VerworfenerPosten(val id: String, val ziel: String, val meldung: String, val httpCode: Int?,
+    data class DiscardedItem(val id: String, val ziel: String, val meldung: String, val httpCode: Int?,
                                  val unlesbar: Boolean = false)
 
     fun anzahl(bereich: String): Flow<Int>
-    suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long, schluessel: String): Long
-    /** Nur lesbare Posten; Lesen ändert nichts, Unlesbares räumt erst [raeumeUnlesbare]. */
+    suspend fun einreihen(bereich: String, bearbeitung: Editing, jetzt: Long, schluessel: String): Long
+    /** Nur lesbare Posten; Lesen ändert nichts, Unlesbares räumt erst [cleanUnreadable]. */
     suspend fun alle(bereich: String): List<Ausgangsposten>
     suspend fun erster(bereich: String): Ausgangsposten?
 
@@ -43,28 +43,28 @@ interface Ausgang {
      * Unlesbare Posten als verworfen melden und dann entfernen — nie still: Sie tragen
      * Änderungen, die es nur auf diesem Gerät gibt. Gibt ihre Zahl zurück.
      */
-    suspend fun raeumeUnlesbare(bereich: String): Int
+    suspend fun cleanUnreadable(bereich: String): Int
     suspend fun entferne(id: Long)
-    suspend fun versuchGescheitert(id: Long)
+    suspend fun attemptFailed(id: Long)
     suspend fun leere()
 
     /** Verworfenes bleibt, bis sein Hinweis gezeigt ist — auch über einen Neustart. */
-    suspend fun merkeVerworfen(bereich: String, v: VerworfenerPosten)
-    fun verworfene(bereich: String): Flow<List<VerworfenerPosten>>
-    suspend fun quittiereVerworfen(bereich: String, id: String)
+    suspend fun rememberDiscarded(bereich: String, v: DiscardedItem)
+    fun discarded(bereich: String): Flow<List<DiscardedItem>>
+    suspend fun acknowledgeDiscarded(bereich: String, id: String)
 }
 
 /** Im Speicher: für Tests und als Vorgabe, solange keine Datenbank gebunden ist. */
-class SpeicherAusgang : Ausgang {
+class StorageExit : Ausgang {
     private val posten = MutableStateFlow<List<Pair<String, Ausgangsposten>>>(emptyList())
-    private val naechsteId = java.util.concurrent.atomic.AtomicLong(1)
-    private val verworfen = MutableStateFlow<List<Pair<String, VerworfenerPosten>>>(emptyList())
+    private val nextId = java.util.concurrent.atomic.AtomicLong(1)
+    private val verworfen = MutableStateFlow<List<Pair<String, DiscardedItem>>>(emptyList())
 
     override fun anzahl(bereich: String): Flow<Int> =
         posten.map { l -> l.count { it.first == bereich } }.distinctUntilChanged()
 
-    override suspend fun einreihen(bereich: String, bearbeitung: Bearbeitung, jetzt: Long, schluessel: String): Long {
-        val id = naechsteId.getAndIncrement()
+    override suspend fun einreihen(bereich: String, bearbeitung: Editing, jetzt: Long, schluessel: String): Long {
+        val id = nextId.getAndIncrement()
         posten.update { it + (bereich to Ausgangsposten(id, bearbeitung, jetzt, 0, schluessel)) }
         return id
     }
@@ -74,11 +74,11 @@ class SpeicherAusgang : Ausgang {
     override suspend fun erster(bereich: String) = alle(bereich).minByOrNull { it.id }
 
     /** Im Speicher liegt nichts in Textform, also nichts Unlesbares. */
-    override suspend fun raeumeUnlesbare(bereich: String) = 0
+    override suspend fun cleanUnreadable(bereich: String) = 0
 
     override suspend fun entferne(id: Long) = posten.update { l -> l.filterNot { it.second.id == id } }
 
-    override suspend fun versuchGescheitert(id: Long) = posten.update { l ->
+    override suspend fun attemptFailed(id: Long) = posten.update { l ->
         l.map { if (it.second.id == id) it.first to it.second.copy(versuche = it.second.versuche + 1) else it }
     }
 
@@ -87,12 +87,12 @@ class SpeicherAusgang : Ausgang {
         verworfen.value = emptyList()
     }
 
-    override suspend fun merkeVerworfen(bereich: String, v: VerworfenerPosten) =
+    override suspend fun rememberDiscarded(bereich: String, v: DiscardedItem) =
         verworfen.update { l -> l.filterNot { it.first == bereich && it.second.id == v.id } + (bereich to v) }
 
-    override fun verworfene(bereich: String): Flow<List<VerworfenerPosten>> =
+    override fun discarded(bereich: String): Flow<List<DiscardedItem>> =
         verworfen.map { l -> l.filter { it.first == bereich }.map { it.second } }.distinctUntilChanged()
 
-    override suspend fun quittiereVerworfen(bereich: String, id: String) =
+    override suspend fun acknowledgeDiscarded(bereich: String, id: String) =
         verworfen.update { l -> l.filterNot { it.first == bereich && it.second.id == id } }
 }

@@ -1,6 +1,6 @@
 Gegenprobe: Mengen und Marken wieder als Zeichen vorgelesen („×12“, „✓“)
 Modul: app
-Test: ch.brickinventoryapp.app.KachelVorlesenTest
+Test: ch.brickinventoryapp.app.TileReadAloudTest
 Rot: Teilekachel liest Name einmal
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Vorlesen.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Vorlesen.kt
@@ -10,8 +10,8 @@ diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/component
   * Ersetzt, was TalkBack an diesem Text liest: Kurzformen wie „×12“, „✓“ oder eine
   * nackte Jahreszahl haben vorgelesen keine Bedeutung.
   */
--fun Modifier.vorgelesenAls(text: String): Modifier = clearAndSetSemantics { contentDescription = text }
-+fun Modifier.vorgelesenAls(text: String): Modifier = this
+-fun Modifier.readAloudAs(text: String): Modifier = clearAndSetSemantics { contentDescription = text }
++fun Modifier.readAloudAs(text: String): Modifier = this
  
  /** „a 1 b 2 - c 3 d 4“: Codes Zeichen für Zeichen vorlesen, nicht als Wort („i9j0“). */
- fun zeichenweise(code: String): String = code.toList().joinToString(" ")
+ fun charByChar(code: String): String = code.toList().joinToString(" ")

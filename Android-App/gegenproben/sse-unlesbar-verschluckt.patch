@@ -1,19 +1,19 @@
 Gegenprobe: sseStrom verschluckt eine unlesbare Nutzlast wieder still
 Modul: core-data
-Test: ch.brickinventoryapp.data.SseStromTest
+Test: ch.brickinventoryapp.data.SseStreamTest
 Rot: ein unlesbares Ereignis beendet den Strom sichtbar
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SseStrom.kt
-@@ -42,9 +42,7 @@ internal fun <T> sseStrom(
+@@ -42,9 +42,7 @@ internal fun <T> sseStream(
              // alles andere ist ein Fehler im Code und soll auffallen.
              val wert = try {
                  lies(data)
 -            } catch (e: IllegalArgumentException) {
--                trySend(SseEreignis.Unlesbar(e.message))
+-                trySend(SseEvent.Unlesbar(e.message))
 -                close()
 +            } catch (_: IllegalArgumentException) {
                  return
              }
-             trySend(SseEreignis.Daten(wert))
+             trySend(SseEvent.Daten(wert))

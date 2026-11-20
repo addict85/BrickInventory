@@ -1,6 +1,6 @@
 Gegenprobe: Wertachse des Preisverlaufs ohne runden Schritt
 Modul: core-ui-bestand
-Test: ch.brickinventoryapp.gemeinsam.AchsenRundTest
+Test: ch.brickinventoryapp.gemeinsam.AxesRoundTest
 Rot: Wertachse des Preisverlaufs steht auf runden Werten
 
 diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/PriceChartMath.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/PriceChartMath.kt

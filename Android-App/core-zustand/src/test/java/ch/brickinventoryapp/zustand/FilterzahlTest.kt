@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.zustand
 
-import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.fach.ColorPicker
 import ch.brickinventoryapp.model.fach.Kategoriewahl
-import ch.brickinventoryapp.model.fach.LagerortAnsicht
-import ch.brickinventoryapp.model.fach.MitgliedAnsicht
+import ch.brickinventoryapp.model.fach.LocationView
+import ch.brickinventoryapp.model.fach.MemberView
 import ch.brickinventoryapp.model.data.ScopeFilter
 import ch.brickinventoryapp.zustand.ui.Filterzahl
 import org.junit.Assert.assertEquals
@@ -12,10 +12,10 @@ import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /**
  * Die Zahl am Knopf „Filter“ zählt, was die Liste wirklich einschränkt — nicht,
- * was nur gemerkt ist, und nicht die Sortierung (eigenes Menü, SortierMenue).
+ * was nur gemerkt ist, und nicht die Sortierung (eigenes Menü, SortierMenu).
  *
  * Gegenproben:
- *   A  in konto() die Prüfung `wert in moeglich` entfernt → rot „ein Konto,
+ *   A  in konto() die Prüfung `wert in possible` entfernt → rot „ein Konto,
  *      das nicht mehr zum Haushalt gehört, zählt nicht“
  *   B  in lager() nur auf `isNotBlank` geprüft → rot „ein leerer Lagerort
  *      zählt nicht“
@@ -26,15 +26,15 @@ import ch.brickinventoryapp.model.data.Ersatzteilwahl
 class FilterzahlTest {
 
     private val haushalt = listOf(
-        MitgliedAnsicht(id = 1, username = "marco", isSelf = true),
-        MitgliedAnsicht(id = 2, username = "kind"),
+        MemberView(id = 1, username = "marco", isSelf = true),
+        MemberView(id = 2, username = "kind"),
     )
-    private val orte = listOf(LagerortAnsicht("Keller", sets = 3), LagerortAnsicht("Estrich", teile = 2))
+    private val orte = listOf(LocationView("Keller", sets = 3), LocationView("Estrich", teile = 2))
 
     @Test
     fun `ohne Abweichung steht keine Zahl`() {
         assertEquals(0, Filterzahl.galerie(haushalt, ScopeFilter.ALL, orte, "", ""))
-        assertEquals(0, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.ALLE, Farbwahl.Alle, Kategoriewahl.Alle))
+        assertEquals(0, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.ALLE, ColorPicker.Alle, Kategoriewahl.Alle))
     }
 
     @Test
@@ -59,7 +59,7 @@ class FilterzahlTest {
 
     @Test
     fun `bei den Teilen zaehlen Ersatzteile, Farbe und Kategorie`() {
-        assertEquals(3, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.OHNE, Farbwahl.Farbe("Red"), Kategoriewahl.Kategorie("Bricks")))
-        assertEquals(5, Filterzahl.teile(haushalt, "own", orte, "Keller", Ersatzteilwahl.NUR, Farbwahl.Farbe("Red"), Kategoriewahl.Kategorie("Bricks")))
+        assertEquals(3, Filterzahl.teile(haushalt, ScopeFilter.ALL, orte, "", Ersatzteilwahl.OHNE, ColorPicker.Farbe("Red"), Kategoriewahl.Kategorie("Bricks")))
+        assertEquals(5, Filterzahl.teile(haushalt, "own", orte, "Keller", Ersatzteilwahl.NUR, ColorPicker.Farbe("Red"), Kategoriewahl.Kategorie("Bricks")))
     }
 }

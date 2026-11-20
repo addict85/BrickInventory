@@ -1,17 +1,17 @@
 Gegenprobe: Unter einer öffentlichen Wurzel gilt wieder jeder Serverschlüssel (zweiter Pin ungeprüft)
 Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
+Test: ch.brickinventoryapp.anmeldung.CertificatePinTest
 Rot: ein neuer Serverschluessel unter derselben oeffentlichen Wurzel fragt bewusst nach
 
 diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 --- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
 @@ -250,7 +250,7 @@
-         val oeffentlicherPin = pin in systemWurzeln
-         if (!oeffentlicherPin && passtZumPin(chain, pin)) return
-         val lage = lage(chain, mit)
--        if (traegtPin(lage, pin, oeffentlicherPin, ausCode)) return if (oeffentlicherPin) pruefeBlatt(chain[0], schluessel, ausCode) else Unit
-+        if (traegtPin(lage, pin, oeffentlicherPin, ausCode)) return
-         val art = if (ausCode) ZertifikatUngeklaert.Art.CODE_ABWEICHUNG else ZertifikatUngeklaert.Art.GEAENDERT
-         throw gemeldet(ZertifikatUngeklaert(schluessel, lage.fingerabdruck, art, erwartet = pin, blatt = spkiFingerabdruck(chain[0])))
+         val publicPin = pin in systemRoots
+         if (!publicPin && fitsToPin(chain, pin)) return
+         val situation = situation(chain, mit)
+-        if (carriesPin(situation, pin, publicPin, fromCode)) return if (publicPin) checkSheet(chain[0], schluessel, fromCode) else Unit
++        if (carriesPin(situation, pin, publicPin, fromCode)) return
+         val art = if (fromCode) CertificateUnresolved.Art.CODE_ABWEICHUNG else CertificateUnresolved.Art.GEAENDERT
+         throw gemeldet(CertificateUnresolved(schluessel, situation.fingerabdruck, art, erwartet = pin, blatt = spkiFingerprint(chain[0])))
      }

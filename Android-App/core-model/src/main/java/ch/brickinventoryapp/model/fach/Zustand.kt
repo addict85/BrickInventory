@@ -17,7 +17,7 @@ import kotlinx.serialization.encoding.Encoder
  * Unbekanntes liest sich als [NEU], wie im Server (`=== 'U' ? 'U' : 'N'`): Ein neuer
  * Wert soll nicht die ganze Liste verwerfen.
  */
-@Serializable(with = ZustandSerializer::class)
+@Serializable(with = StateSerializer::class)
 enum class Zustand(val kennung: String) {
     NEU("N"),
     GEBRAUCHT("U");
@@ -33,7 +33,7 @@ enum class Zustand(val kennung: String) {
  * der Klasse, wie der erzeugte: Navigation erkennt daran ein Routenfeld als Enum.
  */
 @OptIn(InternalSerializationApi::class, ExperimentalSerializationApi::class)
-object ZustandSerializer : KSerializer<Zustand> {
+object StateSerializer : KSerializer<Zustand> {
     override val descriptor: SerialDescriptor =
         buildSerialDescriptor(Zustand::class.java.name, SerialKind.ENUM) {
             Zustand.entries.forEach { element(it.kennung, buildSerialDescriptor(it.kennung, StructureKind.OBJECT)) }

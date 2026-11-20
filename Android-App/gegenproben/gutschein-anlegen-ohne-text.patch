@@ -1,6 +1,6 @@
 Gegenprobe: Gutschein hinzufügen wieder mit text/icon, die den Text aus der Semantik nehmen
 Modul: app
-Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: Gutscheine anlegen schwebt, Guthaben und PDF stehen im Menue der Leiste
 
 diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
@@ -9,7 +9,7 @@ diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/fin
 @@ -244,11 +244,11 @@
   */
  @Composable
- internal fun GutscheinHinzufuegen(onClick: () -> Unit) {
+ internal fun VoucherAdd(onClick: () -> Unit) {
 -    ExtendedFloatingActionButton(onClick = onClick) {
 -        Icon(Icons.Default.Add, null)
 -        Spacer(Modifier.width(Abstaende.mittel))

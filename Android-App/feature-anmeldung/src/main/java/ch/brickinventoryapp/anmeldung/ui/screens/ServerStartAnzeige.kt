@@ -20,9 +20,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.fach.StartzustandAnsicht
+import ch.brickinventoryapp.model.fach.StartStateView
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
+import ch.brickinventoryapp.ui.components.outsideTheSystemBars
 
 /**
  * „Der Server startet gerade“ — mit Fortschritt statt einer Fehlermeldung, wie die
@@ -31,10 +31,10 @@ import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
  * dabei App oder Server kaputt aussehen, obwohl alles richtig läuft.
  */
 @Composable
-internal fun ServerStartAnzeige(status: StartzustandAnsicht, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxSize().ausserhalbDerSystemleisten(), contentAlignment = Alignment.Center) {
+internal fun ServerStartAnzeige(status: StartStateView, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxSize().outsideTheSystemBars(), contentAlignment = Alignment.Center) {
         Column(
-            Modifier.padding(Abstaende.riesig),
+            Modifier.padding(Abstaende.huge),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
         ) {
@@ -51,13 +51,13 @@ internal fun ServerStartAnzeige(status: StartzustandAnsicht, modifier: Modifier 
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center)
             }
-            val anteil = status.anteil
-            if (anteil != null) {
+            val share = status.share
+            if (share != null) {
                 LinearProgressIndicator(
-                    progress = { anteil },
+                    progress = { share },
                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(MaterialTheme.shapes.small),
                 )
-                Text("${(anteil * 100).toInt()} %",
+                Text("${(share * 100).toInt()} %",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold)
             } else {
@@ -66,11 +66,11 @@ internal fun ServerStartAnzeige(status: StartzustandAnsicht, modifier: Modifier 
                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(MaterialTheme.shapes.small),
                 )
             }
-            status.unterschritt?.takeIf { it.isNotBlank() }?.let {
+            status.undercut?.takeIf { it.isNotBlank() }?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Spacer(Modifier.height(Abstaende.winzig))
+            Spacer(Modifier.height(Abstaende.tiny))
             // Der Satz, der die Geduld erklaert. Ohne ihn sieht ein Balken, der
             // sich minutenlang kaum bewegt, wie ein Haenger aus.
             Text(

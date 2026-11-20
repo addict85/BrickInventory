@@ -3,7 +3,7 @@ package ch.brickinventoryapp.anmeldung.ui.screens
 import androidx.compose.foundation.BorderStroke
 import ch.brickinventoryapp.ui.theme.fensterFlaeche
 import androidx.compose.foundation.verticalScroll
-import ch.brickinventoryapp.ui.theme.mittigBis
+import ch.brickinventoryapp.ui.theme.centeredUntil
 import androidx.compose.foundation.rememberScrollState
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
@@ -29,15 +29,15 @@ import androidx.compose.ui.text.input.*
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.anmeldung.ui.AnmeldeFormular
-import ch.brickinventoryapp.anmeldung.ui.QrKonto
-import ch.brickinventoryapp.ui.components.ansagen
-import ch.brickinventoryapp.ui.components.ausserhalbDerSystemleisten
+import ch.brickinventoryapp.anmeldung.ui.QrAccount
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.outsideTheSystemBars
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.AnmeldeKarte
-import ch.brickinventoryapp.ui.components.MarkenKopf
-import ch.brickinventoryapp.ui.components.TastaturOhneLernen
+import ch.brickinventoryapp.ui.components.LoginCard
+import ch.brickinventoryapp.ui.components.BrandsHeader
+import ch.brickinventoryapp.ui.components.KeyboardWithoutLearn
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
@@ -78,40 +78,40 @@ fun LoginScreen(
     var code     by remember { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
     // Ein untergeschobener Tipp meldet hier an oder bestätigt einen Passkey. Den
-    // Sichtschutz für ein aufgedecktes Passwort bringt das PasswortFeld selbst mit.
+    // Sichtschutz für ein aufgedecktes Passwort bringt das PasswordField selbst mit.
     Ueberdeckungsschutz()
 
     // Passwort, Code und Adresse lernt die Tastatur nicht mit.
-    TastaturOhneLernen {
+    KeyboardWithoutLearn {
     val kopf: @Composable ColumnScope.() -> Unit = {
             // Derselbe Kopf wie beim Einrichten, das direkt davor kommt.
-            MarkenKopf()
+            BrandsHeader()
             Spacer(Modifier.height(Abstaende.mittel))
 
             // Der Chip wechselt den Server: TalkBack nennt das samt Adresse (die Fläche fasst
             // die Beschreibung mit ihrer Rolle „Schaltfläche“ zusammen). Die Adresse bricht
             // um statt gekürzt zu werden: Genau sie prüft man vor dem Anmelden.
-            val serverAendern = stringResource(R.string.login_server_aendern, serverUrl)
+            val changeServer = stringResource(R.string.login_server_aendern, serverUrl)
             Surface(
                 onClick = onChangeServer,
                 // Surface(onClick) setzt keine Rolle: TalkBack hörte sonst nur die Adresse.
                 modifier = Modifier.semantics {
                     role = Role.Button
-                    contentDescription = serverAendern
+                    contentDescription = changeServer
                 },
                 shape = Formen.chip,
                 color = MaterialTheme.colorScheme.surface,
                 // outline: Der Rand ist die einzige Grenze des Chips und braucht 3:1.
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             ) {
-                Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Abstaende.klein, vertical = Abstaende.winzig),
+                Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Abstaende.klein, vertical = Abstaende.tiny),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    Icon(Icons.Default.Cloud, null, Modifier.size(mitSchrift(16.dp)),
+                    Icon(Icons.Default.Cloud, null, Modifier.size(withFont(16.dp)),
                         tint = MaterialTheme.colorScheme.primary)
                     Text(serverUrl, Modifier.weight(1f, fill = false),
                         style = MaterialTheme.typography.labelMedium)
-                    Icon(Icons.Default.Edit, null, Modifier.size(mitSchrift(16.dp)),
+                    Icon(Icons.Default.Edit, null, Modifier.size(withFont(16.dp)),
                         tint = MaterialTheme.colorScheme.primary)
                 }
             }
@@ -123,7 +123,7 @@ fun LoginScreen(
             }
     }
     val karte: @Composable (breit: Boolean) -> Unit = { breit ->
-            AnmeldeKarte {
+            LoginCard {
                 when (formular) {
                     AnmeldeFormular.ANMELDEN -> AnmeldeFelder(
                         username = username, onUsername = { username = it },
@@ -137,27 +137,27 @@ fun LoginScreen(
                         onPasskey = onPasskey,
                         onPasskeyStattCode = onPasskeyStattCode.takeIf { passkeyStattCode && onPasskey != null })
 
-                    AnmeldeFormular.REGISTRIEREN -> RegistrierFelder(
+                    AnmeldeFormular.REGISTER -> RegistrierFields(
                         laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
-                        focusMgr = focusMgr, namenNebeneinander = breit,
+                        focusMgr = focusMgr, namesSideBySide = breit,
                         onRegistrieren = onRegistrieren, onFormular = onFormular)
 
-                    AnmeldeFormular.PASSWORT_VERGESSEN -> VergessenFelder(
+                    AnmeldeFormular.PASSWORD_FORGOTTEN -> ForgottenFields(
                         laeuft = kontoLaeuft, meldung = kontoMeldung, fehler = kontoFehler,
-                        onSenden = onPasswortVergessen, onFormular = onFormular)
+                        sendOn = onPasswortVergessen, onFormular = onFormular)
                 }
             }
     }
     // Rollbar und mittig, solange es passt: Mit Tastatur oder grosser Schrift läge der
     // Hauptknopf sonst unerreichbar unter dem Rand. Im Querformat Marke und Formular
     // nebeneinander wie beim Einrichten, sonst lag „Registrieren“ unter dem Falz.
-    BoxWithConstraints(Modifier.fillMaxSize().ausserhalbDerSystemleisten()) {
+    BoxWithConstraints(Modifier.fillMaxSize().outsideTheSystemBars()) {
         val hoehe = maxHeight
-        if (maxWidth > hoehe && maxWidth >= QUER_ZWEISPALTIG) {
+        if (maxWidth > hoehe && maxWidth >= ACROSS_TWO_COLUMN) {
             Row(
-                Modifier.fillMaxSize().mittigBis(Lesebreite.formular * 2)
-                    .padding(horizontal = Abstaende.riesig),
-                horizontalArrangement = Arrangement.spacedBy(Abstaende.riesig),
+                Modifier.fillMaxSize().centeredUntil(Lesebreite.formular * 2)
+                    .padding(horizontal = Abstaende.huge),
+                horizontalArrangement = Arrangement.spacedBy(Abstaende.huge),
             ) {
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).heightIn(min = hoehe)
                     .padding(vertical = Abstaende.gross),
@@ -171,7 +171,7 @@ fun LoginScreen(
             }
         } else Column(
             modifier = Modifier.verticalScroll(rememberScrollState()).heightIn(min = hoehe)
-                .mittigBis(Lesebreite.formular)
+                .centeredUntil(Lesebreite.formular)
                 .padding(horizontal = 28.dp, vertical = Abstaende.gross),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
@@ -190,11 +190,11 @@ fun LoginScreen(
  * an, und alles Erfasste landete dort. Wegtippen heisst Nein.
  */
 @Composable
-internal fun QrKontoFrage(konto: QrKonto, onQrKonto: (uebernehmen: Boolean) -> Unit) {
+internal fun QrAccountQuestion(konto: QrAccount, onQrAccount: (uebernehmen: Boolean) -> Unit) {
     val titel = stringResource(R.string.login_qr_konto_titel)
     AlertDialog(
         containerColor = fensterFlaeche(),
-        onDismissRequest = { onQrKonto(false) },
+        onDismissRequest = { onQrAccount(false) },
         modifier = Modifier.semantics { paneTitle = titel },
         title = { Text(titel, Modifier.semantics { heading() }) },
         text = {
@@ -202,16 +202,16 @@ internal fun QrKontoFrage(konto: QrKonto, onQrKonto: (uebernehmen: Boolean) -> U
             Text(stringResource(R.string.login_qr_konto_text, konto.benutzer, konto.server))
         },
         confirmButton = {
-            TextButton(onClick = { onQrKonto(true) }) { Text(stringResource(R.string.login_qr_konto_ja)) }
+            TextButton(onClick = { onQrAccount(true) }) { Text(stringResource(R.string.login_qr_konto_ja)) }
         },
         dismissButton = {
-            TextButton(onClick = { onQrKonto(false) }) { Text(stringResource(R.string.common_cancel)) }
+            TextButton(onClick = { onQrAccount(false) }) { Text(stringResource(R.string.common_cancel)) }
         },
     )
 }
 
 /** Ab dieser Breite im Querformat stehen Marke und Formular nebeneinander (wie SetupScreen). */
-private val QUER_ZWEISPALTIG = 840.dp
+private val ACROSS_TWO_COLUMN = 840.dp
 
 /**
  * Eine stehende Meldung im Formular — Fehler rot, Bestätigung ruhig. Eine Fassung
@@ -219,7 +219,7 @@ private val QUER_ZWEISPALTIG = 840.dp
  * gleich bleiben.
  */
 @Composable
-internal fun FormularMeldung(text: String, fehler: Boolean) {
+internal fun FormMessage(text: String, fehler: Boolean) {
     Surface(
         shape = Formen.kachel,
         color = if (fehler) MaterialTheme.colorScheme.errorContainer
@@ -239,7 +239,7 @@ internal fun FormularMeldung(text: String, fehler: Boolean) {
             Text(
                 text,
                 // Angesagt: Nach „Anmelden“ hörte eine blinde Person sonst nichts.
-                modifier = Modifier.ansagen(),
+                modifier = Modifier.announce(),
                 color = if (fehler) MaterialTheme.colorScheme.onErrorContainer
                         else MaterialTheme.colorScheme.onSecondaryContainer,
                 style = MaterialTheme.typography.bodySmall
@@ -250,7 +250,7 @@ internal fun FormularMeldung(text: String, fehler: Boolean) {
 
 /** Ein Knopf, der laedt: Kringel statt Beschriftung, solange etwas laeuft. */
 @Composable
-internal fun LadeKnopf(text: String, laeuft: Boolean, aktiv: Boolean, fehlt: String? = null, onClick: () -> Unit) {
+internal fun LoadButton(text: String, laeuft: Boolean, aktiv: Boolean, fehlt: String? = null, onClick: () -> Unit) {
     // Ein gesperrter Hauptknopf sagt, was fehlt: Blass allein liess raten, warum.
     if (!aktiv && !laeuft && fehlt != null) Text(fehlt, style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant)

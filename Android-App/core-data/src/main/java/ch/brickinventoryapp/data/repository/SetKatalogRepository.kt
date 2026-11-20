@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.data.repository
 
-import ch.brickinventoryapp.model.fach.BarcodeAnsicht
+import ch.brickinventoryapp.model.fach.BarcodeView
 import ch.brickinventoryapp.model.fach.SetAnsicht
 import ch.brickinventoryapp.vertrag.abbildung.alsAnsicht
 
@@ -32,25 +32,25 @@ interface SetKatalogRepository {
 
     suspend fun getSetMinifigsList(setNumber: String): Ergebnis<List<FigurAnsicht>>
 
-    suspend fun resolveBarcode(barcode: String): Ergebnis<BarcodeAnsicht>
+    suspend fun resolveBarcode(barcode: String): Ergebnis<BarcodeView>
 }
 
 @Singleton
-class SetKatalogRepositoryImpl @Inject constructor(private val api: SetsApi) : SetKatalogRepository {
+class SetCatalogRepositoryImpl @Inject constructor(private val api: SetsApi) : SetKatalogRepository {
     override suspend fun getSetExists(setNumber: String) =
-        sicherAufrufen { api.getSetExists(setNumber) }.abgebildet { r -> r.setNumber.takeIf { r.exists } }
+        sicherAufrufen { api.getSetExists(setNumber) }.shown { r -> r.setNumber.takeIf { r.exists } }
 
-    override suspend fun getSetDetail(setNumber: String) = sicherAufrufen { api.getSetDetail(setNumber) }.abgebildet { it.set?.alsAnsicht() }
+    override suspend fun getSetDetail(setNumber: String) = sicherAufrufen { api.getSetDetail(setNumber) }.shown { it.set?.alsAnsicht() }
 
-    override suspend fun getSetInfo(setNumber: String) = sicherAufrufen { api.getSetInfo(setNumber) }.abgebildet { it.name }
+    override suspend fun getSetInfo(setNumber: String) = sicherAufrufen { api.getSetInfo(setNumber) }.shown { it.name }
 
     override suspend fun getSetPartsList(setNumber: String) = sicherAufrufen { api.getSetPartsList(setNumber) }
-        .zugesagt({ it.success }, { it.error }) { r -> r.parts.map { it.alsAnsicht() } }
+        .promised({ it.success }, { it.error }) { r -> r.parts.map { it.alsAnsicht() } }
 
     override suspend fun getSetMinifigsList(setNumber: String) = sicherAufrufen { api.getSetMinifigsList(setNumber) }
-        .zugesagt({ it.success }, { it.error }) { r -> r.figs.map { it.alsAnsicht() } }
+        .promised({ it.success }, { it.error }) { r -> r.figs.map { it.alsAnsicht() } }
 
-    override suspend fun resolveBarcode(barcode: String) = sicherAufrufen { api.getBarcodeSet(barcode) }.abgebildet {
-        BarcodeAnsicht(it.setNumber, it.name, it.year, it.pieces, it.theme, it.minifigs, it.imageUrl, it.imageLocal, it.unsicher)
+    override suspend fun resolveBarcode(barcode: String) = sicherAufrufen { api.getBarcodeSet(barcode) }.shown {
+        BarcodeView(it.setNumber, it.name, it.year, it.pieces, it.theme, it.minifigs, it.imageUrl, it.imageLocal, it.unsicher)
     }
 }

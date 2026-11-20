@@ -18,7 +18,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.File
 import java.security.MessageDigest
-import ch.brickinventoryapp.data.util.UPDATE_ORDNER
+import ch.brickinventoryapp.data.util.UPDATE_FOLDER
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 
 /**
@@ -28,23 +28,23 @@ import ch.brickinventoryapp.model.util.fangeAusserAbbruch
  */
 
 /** Alle Release-Anhänge des Repositorys; darunter je Fassung ein unveränderliches Etikett. */
-internal const val UPDATE_RELEASE_WURZEL = "https://github.com/addict85/BrickInventory/releases/download"
+internal const val UPDATE_RELEASE_ROOT = "https://github.com/addict85/BrickInventory/releases/download"
 
 /**
  * Die Anhänge der als „Latest“ markierten Release; Releases sind unveränderlich,
  * ein fester Ort darin also nur über diese Umleitung. GitHub leitet auf
- * `…/download/<etikett>/…` weiter; folgen darf nur UpdateUmleitungen (core-data).
+ * `…/download/<etikett>/…` weiter; folgen darf nur UpdateRedirects (core-data).
  */
-const val UPDATE_RELEASE_BASIS = "https://github.com/addict85/BrickInventory/releases/latest/download"
+const val UPDATE_RELEASE_BASE = "https://github.com/addict85/BrickInventory/releases/latest/download"
 
 /**
  * Die signierte Beschreibung der neusten Fassung; geschrieben vom Signierjob. Wem
  * sie trauen darf, entscheidet allein ihre Signatur, nicht der Ort, der sie lieferte.
  */
-const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASIS/version-signiert.json"
+const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASE/version-signiert.json"
 
 /** Ein Fassungsetikett des Workflows (android-v…); sein Anhang wird nie ersetzt. */
-private val FASSUNGS_ETIKETT = Regex("android-v[0-9A-Za-z._-]{1,40}")
+private val VERSION_LABEL = Regex("android-v[0-9A-Za-z._-]{1,40}")
 
 /**
  * Absolute Obergrenze für das APK: Die erwartete Grösse steht in version.json, und
@@ -62,7 +62,7 @@ internal const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
 
 /**
  * Was in version.json steht. `apkUrl` wird trotzdem geprüft
- * ([istErlaubteApkAdresse]): Einer Adresse zu folgen, weil sie in einer geladenen
+ * ([isAllowedApkAddress]): Einer Adresse zu folgen, weil sie in einer geladenen
  * Datei stand, ist die gefährliche Stelle eines Selbst-Updaters.
  */
 @Serializable
@@ -73,20 +73,20 @@ data class UpdateBeschreibung(
     /**
      * Der Git-Commit, aus dem gebaut wurde — eine Herkunftsangabe, keine Prüfsumme:
      * Die käme aus derselben Datei wie die Adresse. Abgesichert wird das APK durch
-     * HTTPS und [signaturPasst]. Mit Standardwert, damit eine ältere version.json
+     * HTTPS und [signatureFits]. Mit Standardwert, damit eine ältere version.json
      * nicht scheitert.
      */
     @SerialName("commit") val commit: String = "",
     @SerialName("apkSize") val apkSize: Long = 0,
     /**
      * SHA-256 des APK. Trägt nur, weil die Beschreibung signiert ist
-     * ([gepruefteBeschreibung]); in einer unsignierten Datei fälschte man sie mit.
+     * ([checkedDescription]); in einer unsignierten Datei fälschte man sie mit.
      */
     @SerialName("apkSha256") val apkSha256: String = "",
     /**
      * Wann signiert wurde und bis wann das gilt (Sekunden seit 1970, UTC). Ohne sie
      * liesse sich eine ältere, echt signierte Beschreibung unbemerkt wieder
-     * hochladen ([bewerteFrische]); fehlen sie, gilt die Beschreibung als abgelaufen.
+     * hochladen ([valueFresh]); fehlen sie, gilt die Beschreibung als abgelaufen.
      */
     @SerialName("ausgestellt") val ausgestellt: Long = 0,
     @SerialName("gueltigBis") val gueltigBis: Long = 0,
@@ -97,16 +97,16 @@ data class UpdateBeschreibung(
  * zurückgenommenen Build ein Downgrade an, das Android mit
  * INSTALL_FAILED_VERSION_DOWNGRADE ablehnt.
  */
-internal fun istNeuer(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
+internal fun isNew(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
 
 /**
  * Zeigt die Adresse in unsere Release-Ablage — die neuste oder das Etikett einer
- * Fassung? Geparst verglichen, siehe [liegtUnter].
+ * Fassung? Geparst verglichen, siehe [liesBelow].
  */
-fun istErlaubteApkAdresse(url: String): Boolean {
-    if (liegtUnter(url, UPDATE_RELEASE_BASIS)) return true
+fun isAllowedApkAddress(url: String): Boolean {
+    if (liesBelow(url, UPDATE_RELEASE_BASE)) return true
     val etikett = url.toHttpUrlOrNull()?.pathSegments?.dropLast(1)?.lastOrNull() ?: return false
-    return FASSUNGS_ETIKETT.matches(etikett) && liegtUnter(url, "$UPDATE_RELEASE_WURZEL/$etikett")
+    return VERSION_LABEL.matches(etikett) && liesBelow(url, "$UPDATE_RELEASE_ROOT/$etikett")
 }
 
 /**
@@ -119,56 +119,56 @@ private fun fingerabdruecke(ctx: Context, apk: File): Signatur? {
     // Der Paketname muss stimmen, sonst signiert ein fremdes Paket mit
     // demselben Schluessel sich hier durch.
     if (info.packageName != ctx.packageName) return null
-    return signaturen(info)
+    return signatures(info)
 }
 
 /** Der versionCode im geladenen APK; `null`, wenn es nicht lesbar ist. */
 @Suppress("DEPRECATION") // die Fassung mit PackageInfoFlags gibt es erst ab API 33
-fun apkFassung(ctx: Context, apk: File): Long? =
+fun apkVersion(ctx: Context, apk: File): Long? =
     ctx.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
         ?.let { androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(it) }
 
 /** Dieselbe Ermittlung fuer die INSTALLIERTE App. */
-private fun eigeneFingerabdruecke(ctx: Context): Signatur? {
+private fun ownFingerprints(ctx: Context): Signatur? {
     val pm = ctx.packageManager
     val info = runCatching { pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNING_CERTIFICATES) }.getOrNull() ?: return null
-    return signaturen(info)
+    return signatures(info)
 }
 
 /**
  * Die Signatur aus einem PackageInfo samt Ahnenreihe (v3-Rotation). `null` bei
  * fehlender Signatur: „unbekannt“ gilt nie als „passt“.
  */
-private fun signaturen(info: android.content.pm.PackageInfo): Signatur? {
+private fun signatures(info: android.content.pm.PackageInfo): Signatur? {
     fun hex(s: Array<android.content.pm.Signature>?) = s.orEmpty().map { sig ->
         MessageDigest.getInstance("SHA-256").digest(sig.toByteArray()).joinToString("") { "%02x".format(it) }
     }
     val si = info.signingInfo ?: return null
     val aktuell = hex(si.apkContentsSigners)
-    val ahnen = if (si.hasMultipleSigners()) hex(si.apkContentsSigners) else hex(si.signingCertificateHistory)
-    return Signatur(aktuell.toSet(), ahnen).takeIf { aktuell.isNotEmpty() }
+    val ancestors = if (si.hasMultipleSigners()) hex(si.apkContentsSigners) else hex(si.signingCertificateHistory)
+    return Signatur(aktuell.toSet(), ancestors).takeIf { aktuell.isNotEmpty() }
 }
 
 /**
  * Stammt das APK vom Schlüssel der laufenden App oder von seinem Nachfolger
- * ([signaturFolgt])? Bei Unklarheit falsch — eine Prüfung, die im Zweifel
+ * ([signatureFollows])? Bei Unklarheit falsch — eine Prüfung, die im Zweifel
  * durchwinkt, ist keine.
  */
-fun signaturPasst(ctx: Context, apk: File): Boolean {
+fun signatureFits(ctx: Context, apk: File): Boolean {
     val neu = fingerabdruecke(ctx, apk) ?: return false
-    val alt = eigeneFingerabdruecke(ctx) ?: return false
-    return signaturFolgt(alt, neu)
+    val alt = ownFingerprints(ctx) ?: return false
+    return signatureFollows(alt, neu)
 }
 
 /**
  * Darf die App Pakete installieren? Eine Erlaubnis je App; bei minSdk
  * 30 entfällt die Frage auf keinem Gerät.
  */
-fun darfInstallieren(ctx: Context): Boolean =
+fun installMay(ctx: Context): Boolean =
     ctx.packageManager.canRequestPackageInstalls()
 
 /** Fuehrt in die Systemeinstellung, in der die Erlaubnis erteilt wird. */
-fun erlaubnisAbsicht(ctx: Context): Intent =
+fun permissionIntent(ctx: Context): Intent =
     Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
         .setData("package:${ctx.packageName}".toUri())
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -179,12 +179,12 @@ fun erlaubnisAbsicht(ctx: Context): Intent =
  * hier landen die Bytes in der Sitzung, und die Antwort kommt an einen eigenen,
  * nicht exportierten Empfänger. Blockiert: im Hintergrund aufrufen.
  */
-fun installiere(ctx: Context, apk: File) {
+fun install(ctx: Context, apk: File) {
     val installer = ctx.packageManager.packageInstaller
     val parameter = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         .apply { setAppPackageName(ctx.packageName) }
     val id = installer.createSession(parameter)
-    var uebergeben = false
+    var passed = false
     try {
         installer.openSession(id).use { sitzung ->
             apk.inputStream().use { ein ->
@@ -200,9 +200,9 @@ fun installiere(ctx: Context, apk: File) {
                     (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0))
             sitzung.commit(antwort.intentSender)
         }
-        uebergeben = true
+        passed = true
     } finally {
-        if (!uebergeben) fangeAusserAbbruch { installer.abandonSession(id) }
+        if (!passed) fangeAusserAbbruch { installer.abandonSession(id) }
     }
 }
 
@@ -212,7 +212,7 @@ object Installationsmeldung {
 }
 
 /** Die Aktion des Bestätigungsdialogs einer Installer-Sitzung (im SDK nur als SystemApi benannt). */
-internal const val INSTALLATION_BESTAETIGEN = "android.content.pm.action.CONFIRM_INSTALL"
+internal const val INSTALLATION_CONFIRM = "android.content.pm.action.CONFIRM_INSTALL"
 
 /**
  * Wohin die Bestätigung führt, wenn das ein System-Installer ist, sonst `null`.
@@ -221,12 +221,12 @@ internal const val INSTALLATION_BESTAETIGEN = "android.content.pm.action.CONFIRM
  * Uri-Rechten. Gestartet wird danach genau die geprüfte Komponente.
  */
 @Suppress("DEPRECATION") // die Fassungen mit ResolveInfoFlags gibt es erst ab API 33
-internal fun installerZiel(pm: PackageManager, bestaetigung: Intent): ComponentName? {
-    val rechte = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+internal fun installerZiel(pm: PackageManager, confirmation: Intent): ComponentName? {
+    val rights = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
-    if (bestaetigung.flags and rechte != 0 || bestaetigung.selector != null) return null
-    val ziel = pm.resolveActivity(bestaetigung, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo ?: return null
-    val installer = pm.queryIntentActivities(Intent(INSTALLATION_BESTAETIGEN), PackageManager.MATCH_DEFAULT_ONLY)
+    if (confirmation.flags and rights != 0 || confirmation.selector != null) return null
+    val ziel = pm.resolveActivity(confirmation, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo ?: return null
+    val installer = pm.queryIntentActivities(Intent(INSTALLATION_CONFIRM), PackageManager.MATCH_DEFAULT_ONLY)
         .mapNotNull { it.activityInfo }
         .filter { (it.applicationInfo?.flags ?: 0) and ApplicationInfo.FLAG_SYSTEM != 0 }
         .map { it.packageName }
@@ -242,7 +242,7 @@ internal class InstallationsEmpfaenger : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
         when (val status = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_FAILURE)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
-                val dialog = bestaetigung(intent)
+                val dialog = confirmation(intent)
                 val ziel = dialog?.let { installerZiel(ctx.packageManager, it) }
                 if (dialog != null && ziel != null) {
                     ctx.startActivity(Intent(dialog).setComponent(ziel).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -257,22 +257,22 @@ internal class InstallationsEmpfaenger : BroadcastReceiver() {
     }
 
     @Suppress("DEPRECATION")
-    private fun bestaetigung(intent: Intent): Intent? =
+    private fun confirmation(intent: Intent): Intent? =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) intent.getParcelableExtra(Intent.EXTRA_INTENT, Intent::class.java)
         else intent.getParcelableExtra(Intent.EXTRA_INTENT)
 }
 
 /** Die Datei, in die geladen wird. Immer dieselbe — ein altes APK ist Ballast. */
-fun updateDatei(ctx: Context): File =
-    File(File(ctx.filesDir, UPDATE_ORDNER).apply { mkdirs() }, "BrickInventory.apk")
+fun updateFile(ctx: Context): File =
+    File(File(ctx.filesDir, UPDATE_FOLDER).apply { mkdirs() }, "BrickInventory.apk")
 
-/** Die Gerätefunktionen dieser Datei hinter [UpdateGeraet]. */
-internal class AndroidUpdateGeraet @Inject constructor(@param:ApplicationContext private val ctx: Context) : UpdateGeraet {
-    override fun beschreibungsSchluessel(): List<ByteArray> = beschreibungsSchluessel(
+/** Die Gerätefunktionen dieser Datei hinter [UpdateDevice]. */
+internal class AndroidUpdateDevice @Inject constructor(@param:ApplicationContext private val ctx: Context) : UpdateDevice {
+    override fun descriptionKey(): List<ByteArray> = descriptionKey(
         ctx.resources.openRawResource(R.raw.beschreibungs_schluessel).bufferedReader().use { it.readText() })
-    override fun updateDatei(): File = updateDatei(ctx)
-    override fun signaturPasst(apk: File): Boolean = signaturPasst(ctx, apk)
-    override fun apkFassung(apk: File): Long? = apkFassung(ctx, apk)
-    override fun darfInstallieren(): Boolean = darfInstallieren(ctx)
-    override fun installiere(apk: File) = installiere(ctx, apk)
+    override fun updateFile(): File = updateFile(ctx)
+    override fun signatureFits(apk: File): Boolean = signatureFits(ctx, apk)
+    override fun apkVersion(apk: File): Long? = apkVersion(ctx, apk)
+    override fun installMay(): Boolean = installMay(ctx)
+    override fun install(apk: File) = install(ctx, apk)
 }

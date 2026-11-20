@@ -1,26 +1,26 @@
 Gegenprobe: Der Ausgang prüft den Bereich erst nach dem Senden
 Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.AusgangAbgleichTest
+Test: ch.brickinventoryapp.zustand.ExitSyncTest
 Rot: ein Konto-Wechsel vor dem Senden
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/lokal/Abgleich.kt
 @@ -116,9 +116,6 @@
-     private suspend fun lauf(bereich: String, betroffen: MutableSet<Bestandsart>): Abgleichsergebnis {
+     private suspend fun lauf(bereich: String, betroffen: MutableSet<StockKind>): Abgleichsergebnis {
          var p = ausgang.erster(bereich)
          while (p != null) {
 -            // Unmittelbar vor jedem Senden: Der Wächter hängt das Token an, das JETZT
 -            // gilt. Nach einem Konto-Wechsel ginge der Posten sonst unter fremdem Konto raus.
--            if (ablage.bereich() != bereich) return Abgleichsergebnis.NICHT_ANGEMELDET
-             when (val e = sender.sende(p.bearbeitung, p.schluessel)) {
+-            if (ablage.bereich() != bereich) return Abgleichsergebnis.NOT_SIGNED_IN
+             when (val e = sender.send(p.bearbeitung, p.schluessel)) {
                  Sendeergebnis.Angenommen -> {
                      ausgang.entferne(p.id)
 @@ -133,6 +130,7 @@
-                     verwirf(bereich, p, "", null, betroffen)
+                     discard(bereich, p, "", null, betroffen)
                  }
              }
-+            if (ablage.bereich() != bereich) return Abgleichsergebnis.NICHT_ANGEMELDET
++            if (ablage.bereich() != bereich) return Abgleichsergebnis.NOT_SIGNED_IN
              p = ausgang.erster(bereich)
          }
          return Abgleichsergebnis.FERTIG

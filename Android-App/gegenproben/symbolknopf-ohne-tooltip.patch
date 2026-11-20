@@ -3,12 +3,12 @@ Modul: app
 Test: ch.brickinventoryapp.app.IconButtonLabelTest
 Rot: jeder Symbolknopf zeigt seinen Namen als Tooltip
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
-@@ -83,10 +83,8 @@ fun detailSchluessel(art: String, nummer: String, farbe: Int? = null) = "$art|$n
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt
+@@ -83,10 +83,8 @@ fun detailKey(art: String, nummer: String, farbe: Int? = null) = "$art|$n
  @Composable
- fun ZurueckKnopf(onClick: () -> Unit, schliessen: Boolean = LocalImDetailBereich.current) {
+ fun BackButton(onClick: () -> Unit, schliessen: Boolean = LocalInDetailArea.current) {
      val text = stringResource(if (schliessen) R.string.detail_close else R.string.common_back)
 -    MitTooltip(text) {
 -        IconButton(onClick = onClick) {

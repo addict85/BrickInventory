@@ -2,9 +2,9 @@ package ch.brickinventoryapp.katalog.ui
 
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import ch.brickinventoryapp.model.fach.JahrAnzahlAnsicht
-import ch.brickinventoryapp.model.fach.KatalogDetailAnsicht
+import ch.brickinventoryapp.model.fach.CatalogDetailView
 import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
-import ch.brickinventoryapp.model.fach.KatalogThemaAnsicht
+import ch.brickinventoryapp.model.fach.CatalogThemeView
 import ch.brickinventoryapp.model.ui.Laden
 
 /**
@@ -36,9 +36,9 @@ data class CatalogUiState(
     val query: String = "",
     val themeId: Int? = null,
     val year: Int? = null,
-    val sort: Katalogsortierung = Katalogsortierung.VORGABE,
+    val sort: Katalogsortierung = Katalogsortierung.DEFAULT,
     // Meta
-    val themes: List<KatalogThemaAnsicht> = emptyList(),
+    val themes: List<CatalogThemeView> = emptyList(),
     val yearMin: Int? = null,
     val yearMax: Int? = null,
     /**
@@ -47,8 +47,8 @@ data class CatalogUiState(
      * CatalogYearMath), wie in der Webapp. Jahrgänge ohne Jahr sind schon weggeworfen,
      * ebenfalls wie dort.
      */
-    val jahrVerteilung: List<JahrAnzahlAnsicht> = emptyList(),
+    val yearDistribution: List<JahrAnzahlAnsicht> = emptyList(),
     // Detail
     /** Ein Fehler steht hier statt des Kringels, mit Grund und „Erneut versuchen“. */
-    val detail: Laden<KatalogDetailAnsicht> = Laden.Laedt,
+    val detail: Laden<CatalogDetailView> = Laden.Loads,
 )

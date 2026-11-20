@@ -25,8 +25,8 @@ class CameraXUpgradeTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    /** Kamerabildschirm samt Analyse und gemeinsamem Aufbau — siehe [Quellen.kameraQuelle]. */
-    private fun mitAnalyse(rel: String): String = Quellen.kameraQuelle(rel)
+    /** Kamerabildschirm samt Analyse und gemeinsamem Aufbau — siehe [Quellen.cameraSource]. */
+    private fun withAnalyse(rel: String): String = Quellen.cameraSource(rel)
 
     @Test
     fun `CameraX steht auf einer 16-KB-tauglichen Fassung`() {
@@ -49,7 +49,7 @@ class CameraXUpgradeTest {
     @Test
     fun `der Kamera-Provider wird abgesichert geholt`() {
         for (rel in screens) {
-            val src = code(mitAnalyse(rel))
+            val src = code(withAnalyse(rel))
             val idx = src.indexOf("val provider = future.get()")
             assert(idx >= 0) { "$rel: future.get() nicht gefunden — Test veraltet?" }
             assert(src.substring(0, idx).trimEnd().endsWith("try {")) {
@@ -79,7 +79,7 @@ class CameraXUpgradeTest {
      */
     @Test
     fun `die Bildanalyse bleibt auf YUV`() {
-        val src = code(mitAnalyse("sammlung/ui/screens/BarcodeScannerScreen.kt"))
+        val src = code(withAnalyse("sammlung/ui/screens/BarcodeScannerScreen.kt"))
         assert(src.contains("OUTPUT_IMAGE_FORMAT_YUV_420_888")) {
             "Die ImageAnalysis läuft nicht mehr auf YUV_420_888. ML Kit bekommt das " +
                 "mediaImage bisher direkt; bei RGBA würde CameraX zusätzlich seine " +

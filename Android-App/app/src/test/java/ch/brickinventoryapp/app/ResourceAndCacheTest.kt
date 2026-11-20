@@ -7,12 +7,12 @@ import ch.brickinventoryapp.testing.Quellen
 /**
  * Aufbauregeln, die ohne Gerät nur im Quelltext stehen: Kamera-Ressourcen, PDF-Cache-Budget,
  * feste Debug-Version und ein CSV-Statuspfad. Dass Abmelden alle Caches leert, prüft
- * AbmeldenRaeumtAllesTest ausgeführt.
+ * SignOutCleansEverythingTest ausgeführt.
  */
 class ResourceAndCacheTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -22,8 +22,8 @@ class ResourceAndCacheTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    /** Kamerabildschirm samt Analyse und gemeinsamem Aufbau — siehe [Quellen.kameraQuelle]. */
-    private fun mitAnalyse(rel: String): String = Quellen.kameraQuelle(rel)
+    /** Kamerabildschirm samt Analyse und gemeinsamem Aufbau — siehe [Quellen.cameraSource]. */
+    private fun withAnalyse(rel: String): String = Quellen.cameraSource(rel)
 
     // ── Kamera-Ressourcen ────────────────────────────────────────────────────
 
@@ -33,7 +33,7 @@ class ResourceAndCacheTest {
             "sammlung/ui/screens/BarcodeScannerScreen.kt" to "barcodeScanner.close()",
             "anmeldung/ui/screens/SetupScreen.kt" to "scanner.close()",
         )) {
-            val src = code(mitAnalyse(rel))
+            val src = code(withAnalyse(rel))
             assert(src.contains("DisposableEffect(Unit)") && src.contains("onDispose")) {
                 "$rel räumt nicht auf. remember() hat KEINEN Aufräum-Hook: Analyse-Thread " +
                     "und ML-Kit-Client (native Ressourcen) überleben sonst jeden Besuch " +

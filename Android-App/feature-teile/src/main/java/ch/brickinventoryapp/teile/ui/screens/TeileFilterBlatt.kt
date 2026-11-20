@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.teile.ui.screens
 
 import ch.brickinventoryapp.model.fach.Kategoriewahl
-import ch.brickinventoryapp.model.fach.Farbwahl
+import ch.brickinventoryapp.model.fach.ColorPicker
 import ch.brickinventoryapp.teile.ui.viewmodel.TeileAktionen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -9,73 +9,73 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.teile.ui.TeileUiState
+import ch.brickinventoryapp.teile.ui.PartsUiState
 import ch.brickinventoryapp.zustand.ui.Filterzahl
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.model.data.ScopeFilter
-import ch.brickinventoryapp.model.fach.LagerortAnsicht
-import ch.brickinventoryapp.model.fach.MitgliedAnsicht
-import ch.brickinventoryapp.gemeinsam.ui.AnsichtAbschnitt
-import ch.brickinventoryapp.gemeinsam.ui.FilterAbschnitt
-import ch.brickinventoryapp.gemeinsam.ui.FilterBlattRahmen
-import ch.brickinventoryapp.gemeinsam.ui.FilterWahl
-import ch.brickinventoryapp.gemeinsam.ui.KontoFilterAbschnitt
-import ch.brickinventoryapp.gemeinsam.ui.LagerortFilterAbschnitt
+import ch.brickinventoryapp.model.fach.LocationView
+import ch.brickinventoryapp.model.fach.MemberView
+import ch.brickinventoryapp.gemeinsam.ui.ViewSection
+import ch.brickinventoryapp.gemeinsam.ui.FilterSection
+import ch.brickinventoryapp.gemeinsam.ui.FilterSheetFrame
+import ch.brickinventoryapp.gemeinsam.ui.FilterChoice
+import ch.brickinventoryapp.gemeinsam.ui.AccountFilterSection
+import ch.brickinventoryapp.gemeinsam.ui.LocationFilterSection
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /** Das Filterblatt der Teile: Konto, Lagerort, Ersatzteile, Farbe und Kategorie, Ansicht. */
 @Composable
 internal fun TeileFilterBlatt(
     aktionen: TeileAktionen,
-    partsState: TeileUiState,
-    householdMembers: List<MitgliedAnsicht>,
+    partsState: PartsUiState,
+    householdMembers: List<MemberView>,
     scopeMode: String,
     onScopeChange: (String) -> Unit,
-    lagerorte: List<LagerortAnsicht>,
-    lagerModus: String,
-    onLagerChange: (String) -> Unit,
-    farbEintraege: List<TeileFilterEintrag>,
-    kategorieEintraege: List<TeileFilterEintrag>,
+    lagerorte: List<LocationView>,
+    storageMode: String,
+    onStorageChange: (String) -> Unit,
+    farbEntries: List<PartsFilterEntry>,
+    categoryEntries: List<PartsFilterEntry>,
     onSchliessen: () -> Unit,
 ) {
     val ersatz = partsState.filter.ersatz
     val farbe = partsState.filter.farbe
     val kategorie = partsState.filter.kategorie
     // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
-    val zuruecksetzen: () -> Unit = {
+    val reset: () -> Unit = {
         if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
-        if (Filterzahl.lager(lagerorte, lagerModus) > 0) onLagerChange("")
+        if (Filterzahl.lager(lagerorte, storageMode) > 0) onStorageChange("")
         if (ersatz != Ersatzteilwahl.ALLE) aktionen.setPartsSpare(Ersatzteilwahl.ALLE)
-        if (farbe != Farbwahl.Alle) aktionen.setPartsColorFilter(Farbwahl.Alle)
+        if (farbe != ColorPicker.Alle) aktionen.setPartsColorFilter(ColorPicker.Alle)
         if (kategorie != Kategoriewahl.Alle) aktionen.setPartsCategoryFilter(Kategoriewahl.Alle)
     }
-    val aktiv = Filterzahl.teile(householdMembers, scopeMode, lagerorte, lagerModus, ersatz, farbe, kategorie)
-    FilterBlattRahmen(onSchliessen = onSchliessen, onZuruecksetzen = zuruecksetzen.takeIf { aktiv > 0 }) {
-        KontoFilterAbschnitt(householdMembers, scopeMode, onScopeChange)
-        LagerortFilterAbschnitt(lagerorte, lagerModus, onLagerChange, nachTeilen = true)
+    val aktiv = Filterzahl.teile(householdMembers, scopeMode, lagerorte, storageMode, ersatz, farbe, kategorie)
+    FilterSheetFrame(onSchliessen = onSchliessen, resetOn = reset.takeIf { aktiv > 0 }) {
+        AccountFilterSection(householdMembers, scopeMode, onScopeChange)
+        LocationFilterSection(lagerorte, storageMode, onStorageChange, afterShare = true)
         // Ersatzteile — dieselbe Wahl wie parts-spare in der Webapp,
         // gefiltert auf dem SERVER (partsSpare im Zustand).
-        FilterAbschnitt(stringResource(R.string.filter_section_spare)) {
+        FilterSection(stringResource(R.string.filter_section_spare)) {
             for ((wert, text) in listOf(
                 Ersatzteilwahl.ALLE to R.string.parts_filter_all,
                 Ersatzteilwahl.OHNE to R.string.parts_filter_no_spare,
                 Ersatzteilwahl.NUR to R.string.parts_filter_spare,
             )) {
-                FilterWahl(stringResource(text), ersatz == wert) { aktionen.setPartsSpare(wert) }
+                FilterChoice(stringResource(text), ersatz == wert) { aktionen.setPartsSpare(wert) }
             }
         }
-        if (farbEintraege.isNotEmpty() || kategorieEintraege.isNotEmpty()) {
-            FilterAbschnitt(stringResource(R.string.filter_section_color_category)) {
-                TeileFilterZeile(
-                    farben = farbEintraege,
-                    kategorien = kategorieEintraege,
-                    farbeGewaehlt = farbe.wert.orEmpty(),
-                    kategorieGewaehlt = kategorie.wert.orEmpty(),
-                    onFarbe = { aktionen.setPartsColorFilter(Farbwahl.aus(it)) },
-                    onKategorie = { aktionen.setPartsCategoryFilter(Kategoriewahl.aus(it)) },
+        if (farbEntries.isNotEmpty() || categoryEntries.isNotEmpty()) {
+            FilterSection(stringResource(R.string.filter_section_color_category)) {
+                PartsFilterRow(
+                    farben = farbEntries,
+                    kategorien = categoryEntries,
+                    colorSelected = farbe.wert.orEmpty(),
+                    categorySelected = kategorie.wert.orEmpty(),
+                    onColor = { aktionen.setPartsColorFilter(ColorPicker.aus(it)) },
+                    onCategory = { aktionen.setPartsCategoryFilter(Kategoriewahl.aus(it)) },
                 )
             }
         }
-        AnsichtAbschnitt(partsState.filter.ansicht) { aktionen.setPartsView(it) }
+        ViewSection(partsState.filter.ansicht) { aktionen.setPartsView(it) }
     }
 }

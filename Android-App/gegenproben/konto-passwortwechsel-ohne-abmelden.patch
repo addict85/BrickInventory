@@ -1,16 +1,16 @@
 Gegenprobe: Nach dem Passwortwechsel wird nicht abgemeldet
 Modul: feature-konto
-Test: ch.brickinventoryapp.konto.KontoViewModelTest
+Test: ch.brickinventoryapp.konto.AccountViewModelTest
 Rot: nach dem Passwortwechsel wird abgemeldet
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt
 @@ -138,7 +138,6 @@
-             _kontoState.update { it.copy(speichern = Vorgang.Laeuft, meldung = null) }
+             _accountState.update { it.copy(speichern = Vorgang.Laeuft, meldung = null) }
              when (val r = konto.changePassword(aktuell, neu, code?.trim()?.ifBlank { null })) {
                  is Ergebnis.Erfolg -> {
--                    sitzungsDienst.abmelden()
-                     meldungen.zeige(Meldung.Ressource(R.string.konto_password_changed))
-                     _kontoState.value = KontoUiState()
+-                    sessionService.abmelden()
+                     meldungen.zeige(Meldung.Resource(R.string.konto_password_changed))
+                     _accountState.value = AccountUiState()
                  }

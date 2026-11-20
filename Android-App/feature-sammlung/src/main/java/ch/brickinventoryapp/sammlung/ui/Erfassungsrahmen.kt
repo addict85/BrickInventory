@@ -10,50 +10,50 @@ import androidx.navigation.NavBackStackEntry
 import ch.brickinventoryapp.model.fach.Erfassungswunsch
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 import ch.brickinventoryapp.sammlung.ui.dialogs.BarcodeResultRoute
-import ch.brickinventoryapp.sammlung.ui.dialogs.SetPruefungRoute
-import ch.brickinventoryapp.sammlung.ui.viewmodel.ErfassungViewModel
+import ch.brickinventoryapp.sammlung.ui.dialogs.SetCheckRoute
+import ch.brickinventoryapp.sammlung.ui.viewmodel.EntryViewModel
 import coil3.ImageLoader
 
 /** Schlüssel im SavedStateHandle des Ziels, das den Scanner geöffnet hat. */
 private const val SCAN = "erfassung.scan"
-private const val ART_BARCODE = "B"
-private const val ART_SETNUMMER = "S"
-private const val ART_EINTIPPEN = "E"
+private const val KIND_BARCODE = "B"
+private const val KIND_SET_NUMBER = "S"
+private const val KIND_TYPE_IN = "E"
 
 /**
  * Der Scanner gibt seinen Treffer dem Ziel darunter zurück und schliesst sich. Nur
  * Text und Aufzählung: Der Eintrag überdauert so auch den Prozess.
  */
-internal fun SavedStateHandle.legeScanAb(wert: String, setnummer: Boolean, herkunft: Scannerherkunft) {
-    this[SCAN] = arrayListOf(herkunft.name, if (setnummer) ART_SETNUMMER else ART_BARCODE, wert)
+internal fun SavedStateHandle.putScanAb(wert: String, setnummer: Boolean, herkunft: Scannerherkunft) {
+    this[SCAN] = arrayListOf(herkunft.name, if (setnummer) KIND_SET_NUMBER else KIND_BARCODE, wert)
 }
 
 /** Ohne Kamera „Nummer eintippen“: Das Ziel darunter öffnet die Eingabe wie nach einem Scan ohne Treffer. */
-internal fun SavedStateHandle.legeEintippenAb(herkunft: Scannerherkunft) {
-    this[SCAN] = arrayListOf(herkunft.name, ART_EINTIPPEN, "")
+internal fun SavedStateHandle.putTypeInAb(herkunft: Scannerherkunft) {
+    this[SCAN] = arrayListOf(herkunft.name, KIND_TYPE_IN, "")
 }
 
 /**
- * Bindet eine Erfassung an das Ziel [eintrag]: Ein zurückgegebener Scan wird dort
+ * Bindet eine Erfassung an das Ziel [entry]: Ein zurückgegebener Scan wird dort
  * aufgelöst, Prüfanzeige und Bestätigung stehen über diesem Ziel, und ein schon
- * vorhandenes Set öffnet [onVorhanden]. Das ViewModel gehört dem Ziel, nicht der
+ * vorhandenes Set öffnet [onPresent]. Das ViewModel gehört dem Ziel, nicht der
  * Activity — kein anderes Ziel liest seine Ergebnisse.
  */
 @Composable
 internal fun Erfassungsrahmen(
-    eintrag: NavBackStackEntry,
-    erfassung: ErfassungViewModel,
+    entry: NavBackStackEntry,
+    erfassung: EntryViewModel,
     bilder: ImageLoader,
-    onVorhanden: (String) -> Unit,
+    onPresent: (String) -> Unit,
 ) {
-    val scan by eintrag.savedStateHandle.getStateFlow<ArrayList<String>?>(SCAN, null).collectAsStateWithLifecycle()
+    val scan by entry.savedStateHandle.getStateFlow<ArrayList<String>?>(SCAN, null).collectAsStateWithLifecycle()
     LaunchedEffect(scan) {
-        val (herkunftName, art, wert) = scan ?: return@LaunchedEffect
-        eintrag.savedStateHandle.remove<ArrayList<String>>(SCAN)
-        val herkunft = Scannerherkunft.entries.firstOrNull { it.name == herkunftName } ?: Scannerherkunft.GALERIE
+        val (originName, art, wert) = scan ?: return@LaunchedEffect
+        entry.savedStateHandle.remove<ArrayList<String>>(SCAN)
+        val herkunft = Scannerherkunft.entries.firstOrNull { it.name == originName } ?: Scannerherkunft.GALERIE
         when (art) {
-            ART_SETNUMMER -> erfassung.useScannedSetNumber(wert, herkunft)
-            ART_EINTIPPEN -> erfassung.manuellErfassen(herkunft)
+            KIND_SET_NUMBER -> erfassung.useScannedSetNumber(wert, herkunft)
+            KIND_TYPE_IN -> erfassung.manuellErfassen(herkunft)
             else -> erfassung.resolveBarcode(wert, herkunft)
         }
     }
@@ -61,10 +61,10 @@ internal fun Erfassungsrahmen(
     LaunchedEffect(barcode.gefundenesSet) {
         val gefunden = barcode.gefundenesSet ?: return@LaunchedEffect
         erfassung.gallerySearchFoundConsumed()
-        onVorhanden(gefunden)
+        onPresent(gefunden)
     }
     if (barcode.result != null) BarcodeResultRoute(erfassung, bilder)
-    SetPruefungRoute(erfassung)
+    SetCheckRoute(erfassung)
 }
 
 /**
@@ -72,27 +72,27 @@ internal fun Erfassungsrahmen(
  * hängt am fragenden Ziel, ihre Prüfanzeige steht darüber.
  */
 @Composable
-fun setErfassung(eintrag: NavBackStackEntry, bilder: ImageLoader, onVorhanden: (String) -> Unit): (Erfassungswunsch) -> Unit {
-    val erfassung: ErfassungViewModel = hiltViewModel(eintrag)
-    Erfassungsrahmen(eintrag, erfassung, bilder, onVorhanden)
+fun setEntry(entry: NavBackStackEntry, bilder: ImageLoader, onPresent: (String) -> Unit): (Erfassungswunsch) -> Unit {
+    val erfassung: EntryViewModel = hiltViewModel(entry)
+    Erfassungsrahmen(entry, erfassung, bilder, onPresent)
     return erfassung::addSet
 }
 
 /**
  * Die Erfassung der Teileliste: am Ziel der Teileliste, der Bestätigungsdialog darüber.
- * [alsScan] bekommt die gescannte Setnummer, ob manuell erfasst werden soll, und die
+ * [asScan] bekommt die gescannte Setnummer, ob manuell erfasst werden soll, und die
  * beiden Quittungen — die Form bestimmt der Bereich, der die Sammlung nicht kennt.
  */
 @Composable
-fun <T> teilelistenErfassung(
-    eintrag: NavBackStackEntry,
+fun <T> partListsEntry(
+    entry: NavBackStackEntry,
     bilder: ImageLoader,
-    onVorhanden: (String) -> Unit,
-    alsScan: (setNumber: String?, manuell: Boolean, uebernommen: () -> Unit, quittiert: () -> Unit) -> T,
+    onPresent: (String) -> Unit,
+    asScan: (setNumber: String?, manuell: Boolean, uebernommen: () -> Unit, quittiert: () -> Unit) -> T,
 ): T {
-    val erfassung: ErfassungViewModel = hiltViewModel(eintrag)
-    Erfassungsrahmen(eintrag, erfassung, bilder, onVorhanden)
+    val erfassung: EntryViewModel = hiltViewModel(entry)
+    Erfassungsrahmen(entry, erfassung, bilder, onPresent)
     val scan by erfassung.barcodeState.collectAsStateWithLifecycle()
-    return alsScan(scan.fuerTeileliste, scan.manuelleErfassungAnfordern,
+    return asScan(scan.forPartList, scan.manuelleErfassungAnfordern,
         erfassung::clearBarcodeForPartsList, erfassung::manuelleErfassungQuittieren)
 }

@@ -5,7 +5,7 @@ import ch.brickinventoryapp.model.fach.Katalogsortierung
 interface KatalogAktionen {
     fun loadCatalogMeta()
     fun loadCatalogSets()
-    fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int)
+    fun catalogVisible(firstPage: Int, lastPage: Int)
     fun scrollCatalogTo(nummer: Int)
     fun catalogScrollConsumed()
     fun setCatalogQuery(q: String)

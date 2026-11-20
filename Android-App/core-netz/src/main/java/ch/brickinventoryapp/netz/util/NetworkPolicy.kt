@@ -32,31 +32,31 @@ object NetworkPolicy {
     val entwicklung: Boolean get() = BuildConfig.DEBUG
 
     /** May this request go out? https always, http only in a debug build to [ENTWICKLUNGS_HOSTS]. */
-    fun verbindungErlaubt(url: HttpUrl, entwicklung: Boolean): Boolean =
+    fun connectionAllowed(url: HttpUrl, entwicklung: Boolean): Boolean =
         url.isHttps || (entwicklung && url.host.lowercase() in ENTWICKLUNGS_HOSTS)
 
     /**
-     * Why setup won't accept an address. BENUTZERANGABE and ZUSATZ: `a@b`, line
+     * Why setup won't accept an address. USER_INPUT and EXTRA: `a@b`, line
      * breaks, `\`, `?` or `#` can make an address look like it points at one
      * server and lead to another; a server address needs none of that.
      */
-    enum class Adressfehler { UNLESBAR, KLARTEXT, BENUTZERANGABE, ZUSATZ }
+    enum class AddressError { UNLESBAR, PLAINTEXT, USER_INPUT, EXTRA }
 
     /** Input without a scheme counts as https: "nas.fritz.box" means https://nas.fritz.box. */
-    fun normalisiere(eingabe: String): String {
+    fun normalize(eingabe: String): String {
         val t = eingabe.trim()
         return (if (t.isEmpty() || t.contains("://")) t else "https://$t").trimEnd('/')
     }
 
     /** Null means: setup accepts the address. Whitespace at the edge carries manual input through. */
-    fun adressfehler(serverUrl: String, entwicklung: Boolean): Adressfehler? {
-        val roh = normalisiere(serverUrl)
-        if (roh.any { it.isWhitespace() || it.isISOControl() || it == '\\' }) return Adressfehler.ZUSATZ
-        val url = roh.toHttpUrlOrNull() ?: return Adressfehler.UNLESBAR
-        val autoritaet = roh.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore('#')
-        if ('@' in autoritaet || url.username.isNotEmpty() || url.password.isNotEmpty()) return Adressfehler.BENUTZERANGABE
-        if (url.query != null || url.fragment != null) return Adressfehler.ZUSATZ
-        return if (verbindungErlaubt(url, entwicklung)) null else Adressfehler.KLARTEXT
+    fun addressError(serverUrl: String, entwicklung: Boolean): AddressError? {
+        val roh = normalize(serverUrl)
+        if (roh.any { it.isWhitespace() || it.isISOControl() || it == '\\' }) return AddressError.EXTRA
+        val url = roh.toHttpUrlOrNull() ?: return AddressError.UNLESBAR
+        val authority = roh.substringAfter("://").substringBefore('/').substringBefore('?').substringBefore('#')
+        if ('@' in authority || url.username.isNotEmpty() || url.password.isNotEmpty()) return AddressError.USER_INPUT
+        if (url.query != null || url.fragment != null) return AddressError.EXTRA
+        return if (connectionAllowed(url, entwicklung)) null else AddressError.PLAINTEXT
     }
 
     /**
@@ -67,7 +67,7 @@ object NetworkPolicy {
     data class Adressansicht(val host: String, val adresse: String, val international: Boolean)
 
     fun ansicht(serverUrl: String): Adressansicht? {
-        val url = normalisiere(serverUrl).toHttpUrlOrNull() ?: return null
+        val url = normalize(serverUrl).toHttpUrlOrNull() ?: return null
         val host = if (':' in url.host) "[${url.host}]" else url.host
         val port = if (url.port == HttpUrl.defaultPort(url.scheme)) "" else ":${url.port}"
         val pfad = url.encodedPath.trimEnd('/')
@@ -79,8 +79,8 @@ object NetworkPolicy {
      * to setup and explains the move to https, instead of failing on the first
      * request with a network error.
      */
-    fun klartextAltbestand(serverUrl: String, entwicklung: Boolean): Boolean =
-        adressfehler(serverUrl, entwicklung) == Adressfehler.KLARTEXT
+    fun plaintextLegacyStock(serverUrl: String, entwicklung: Boolean): Boolean =
+        addressError(serverUrl, entwicklung) == AddressError.PLAINTEXT
 
     /** Is the address encrypted? Only then does the app offer a token without expiry. */
     fun istHttps(serverUrl: String): Boolean = serverUrl.trim().toHttpUrlOrNull()?.isHttps == true
@@ -95,13 +95,13 @@ object NetworkPolicy {
     }
 
     /** Both addresses point at the same server; an empty one points at none. */
-    fun gleicheHerkunft(a: String, b: String): Boolean {
+    fun sameOrigin(a: String, b: String): Boolean {
         val ha = herkunft(a) ?: return false
         return ha == herkunft(b)
     }
 
     /** The server's path behind a proxy ("/brick"), without a trailing slash; "" without a prefix. */
-    fun basisPfad(serverUrl: String): String? =
+    fun basePath(serverUrl: String): String? =
         serverUrl.trim().trimEnd('/').toHttpUrlOrNull()?.encodedPath?.trimEnd('/')
 
     /**
@@ -109,19 +109,19 @@ object NetworkPolicy {
      * host, the token belongs only to this one; segment-wise, `/brick` does not
      * cover `/brickfremd`.
      */
-    fun imBasisPfad(url: HttpUrl, serverUrl: String): Boolean {
-        val basis = basisPfad(serverUrl) ?: return false
+    fun inBasePath(url: HttpUrl, serverUrl: String): Boolean {
+        val basis = basePath(serverUrl) ?: return false
         return basis.isEmpty() || url.encodedPath == basis || url.encodedPath.startsWith("$basis/")
     }
 
     /** The same server: origin and path. A different path on the same host is a different application. */
-    fun gleicherServer(a: String, b: String): Boolean =
-        gleicheHerkunft(a, b) && basisPfad(a) == basisPfad(b)
+    fun sameServer(a: String, b: String): Boolean =
+        sameOrigin(a, b) && basePath(a) == basePath(b)
 }
 
 /**
  * A request without TLS that the guard does not send. Its own type, so the
  * data layer turns it into a message with guidance instead of "network error".
  */
-class KlartextAbgelehnt(val host: String) :
+class PlaintextRejected(val host: String) :
     IOException("Unverschlüsselte Verbindung zu $host abgelehnt: Die App spricht nur https.")

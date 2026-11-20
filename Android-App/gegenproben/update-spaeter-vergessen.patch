@@ -9,8 +9,8 @@ diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/
 @@ -33,7 +33,6 @@
  @Composable
  internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) {
-     val neuere = zustand.neuereFassung ?: return
--    if (zustand.dialogAbgelehnt) return
+     val neuere = zustand.newerVersion ?: return
+-    if (zustand.dialogRejected) return
      val ctx = LocalContext.current
  
      val laedt = zustand.fortschritt != null

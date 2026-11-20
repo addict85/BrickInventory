@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.verwaltung.ui.screens
 
-import ch.brickinventoryapp.model.fach.BricksetEintragAnsicht
-import ch.brickinventoryapp.model.fach.ZeitplanAnsicht
+import ch.brickinventoryapp.model.fach.BricksetEntryView
+import ch.brickinventoryapp.model.fach.ScheduleView
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
@@ -17,12 +17,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import ch.brickinventoryapp.ressourcen.R
 import androidx.compose.ui.text.font.FontFamily
-import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringAktionen
+import ch.brickinventoryapp.verwaltung.ui.viewmodel.MonitoringActions
 import ch.brickinventoryapp.ui.util.NumericInput
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.Rueckfrage
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.Prompt
+import ch.brickinventoryapp.ui.components.withFont
 
 /**
  * Die Abschnitte der Überwachungsseite unterhalb der Job-Liste — ganze Funktionen
@@ -35,7 +35,7 @@ import ch.brickinventoryapp.ui.components.mitSchrift
  * Kotlin dateiweit gilt.
  */
 internal fun BricksetQueueRow(
-    entry: BricksetEintragAnsicht,
+    entry: BricksetEntryView,
     onRetry: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
@@ -46,7 +46,7 @@ internal fun BricksetQueueRow(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+        Column(Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(entry.setNumber, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
@@ -58,7 +58,7 @@ internal fun BricksetQueueRow(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                BricksetAktionen(entry, onRetry, onDelete)
+                BricksetActions(entry, onRetry, onDelete)
             }
 
             // Last error expandable. Lokal gelesen: Über die Modulgrenze (core-model)
@@ -98,38 +98,38 @@ internal fun BricksetQueueRow(
  * nach, und beide Symbole nennen TalkBack das Set: Untereinander stand sonst nur „Löschen“.
  */
 @Composable
-private fun BricksetAktionen(
-    entry: BricksetEintragAnsicht,
+private fun BricksetActions(
+    entry: BricksetEntryView,
     onRetry: (String) -> Unit,
     onDelete: (String) -> Unit
 ) {
-    var loeschenFragen by rememberSaveable(entry.setNumber) { mutableStateOf(false) }
-    if (loeschenFragen) {
-        Rueckfrage(
+    var deleteAsk by rememberSaveable(entry.setNumber) { mutableStateOf(false) }
+    if (deleteAsk) {
+        Prompt(
             titel = stringResource(R.string.monitoring_queue_loeschen_titel),
             text = stringResource(R.string.monitoring_queue_loeschen_text, entry.setNumber),
             bestaetigen = stringResource(R.string.common_delete),
-            onBestaetigen = { loeschenFragen = false; onDelete(entry.setNumber) },
-            onAbbrechen = { loeschenFragen = false },
+            onBestaetigen = { deleteAsk = false; onDelete(entry.setNumber) },
+            onAbbrechen = { deleteAsk = false },
             symbol = Icons.Default.Delete,
         )
     }
     val wiederholen = stringResource(R.string.aktion_fuer, stringResource(R.string.monitoring_icon_retry), entry.setNumber)
     val loeschen = stringResource(R.string.aktion_fuer, stringResource(R.string.common_delete), entry.setNumber)
-    Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
         MitTooltip(wiederholen) {
             FilledTonalIconButton(onClick = { onRetry(entry.setNumber) }) {
-                Icon(Icons.Default.Refresh, contentDescription = wiederholen, Modifier.size(mitSchrift(14.dp)))
+                Icon(Icons.Default.Refresh, contentDescription = wiederholen, Modifier.size(withFont(14.dp)))
             }
         }
         MitTooltip(loeschen) {
             FilledTonalIconButton(
-                onClick = { loeschenFragen = true },
+                onClick = { deleteAsk = true },
                 colors = IconButtonDefaults.filledTonalIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.errorContainer
                 )
             ) {
-                Icon(Icons.Default.Delete, contentDescription = loeschen, Modifier.size(mitSchrift(14.dp)),
+                Icon(Icons.Default.Delete, contentDescription = loeschen, Modifier.size(withFont(14.dp)),
                     tint = MaterialTheme.colorScheme.onErrorContainer)
             }
         }
@@ -144,14 +144,14 @@ private fun BricksetAktionen(
  * gilt.
  */
 @Composable
-internal fun ZeitplanZeile(
+internal fun ScheduleRow(
     jobKey: String,
-    plan: ZeitplanAnsicht,
-    aktionen: MonitoringAktionen,
+    plan: ScheduleView,
+    aktionen: MonitoringActions,
 ) {
-    val taeglich = plan.type == "daily"
+    val daily = plan.type == "daily"
     var bearbeiten by rememberSaveable(jobKey) { mutableStateOf(false) }
-    val gezeigt = if (taeglich) plan.time.orEmpty() else (plan.minutes ?: 60).toString()
+    val gezeigt = if (daily) plan.time.orEmpty() else (plan.minutes ?: 60).toString()
     var eingabe by rememberSaveable(jobKey, gezeigt) { mutableStateOf(gezeigt) }
 
     Row(
@@ -160,16 +160,16 @@ internal fun ZeitplanZeile(
         Alignment.CenterVertically,
     ) {
         Text(
-            stringResource(if (taeglich) R.string.monitoring_schedule_daily
+            stringResource(if (daily) R.string.monitoring_schedule_daily
                            else R.string.monitoring_schedule_every),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (bearbeiten) {
-            ZeitplanEingabe(taeglich, eingabe, onEingabe = { eingabe = it },
+            ScheduleInput(daily, eingabe, onInput = { eingabe = it },
                 onSpeichern = {
-                    if (taeglich) aktionen.setzeZeitplan(jobKey, zeit = eingabe.trim())
-                    else aktionen.setzeZeitplan(jobKey, minuten = eingabe.toIntOrNull() ?: 60)
+                    if (daily) aktionen.setSchedule(jobKey, zeit = eingabe.trim())
+                    else aktionen.setSchedule(jobKey, minuten = eingabe.toIntOrNull() ?: 60)
                     bearbeiten = false
                 },
                 onAbbrechen = { bearbeiten = false })
@@ -177,14 +177,14 @@ internal fun ZeitplanZeile(
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                 verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    if (taeglich) plan.time.orEmpty()
+                    if (daily) plan.time.orEmpty()
                     else stringResource(R.string.monitoring_schedule_minutes, plan.minutes ?: 60),
                     fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
                 )
                 MitTooltip(stringResource(R.string.cd_edit_schedule)) {
                     FilledTonalIconButton(
                         onClick = { bearbeiten = true },
-                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(mitSchrift(14.dp))) }
+                    ) { Icon(Icons.Default.Edit, stringResource(R.string.cd_edit_schedule), Modifier.size(withFont(14.dp))) }
                 }
             }
         }
@@ -193,10 +193,10 @@ internal fun ZeitplanZeile(
 
 /** Das Eingabefeld des Zeitplans mit Speichern und Abbrechen. */
 @Composable
-private fun ZeitplanEingabe(
-    taeglich: Boolean,
+private fun ScheduleInput(
+    daily: Boolean,
     eingabe: String,
-    onEingabe: (String) -> Unit,
+    onInput: (String) -> Unit,
     onSpeichern: () -> Unit,
     onAbbrechen: () -> Unit,
 ) {
@@ -207,12 +207,12 @@ private fun ZeitplanEingabe(
             onValueChange = {
                 // Bei Minuten nur Ziffern; bei der Uhrzeit auch der
                 // Doppelpunkt — sonst liesse sich „03:00" nicht tippen.
-                onEingabe(if (taeglich) it.filter { z -> z.isDigit() || z == ':' }.take(5)
+                onInput(if (daily) it.filter { z -> z.isDigit() || z == ':' }.take(5)
                           else NumericInput.quantity(it))
             },
             // Aus den Sprachdateien: Auch „min“ steht im Bild und wird gelesen.
-            suffix = { if (!taeglich) Text(stringResource(R.string.monitoring_schedule_unit)) },
-            modifier = Modifier.width(if (taeglich) 96.dp else 90.dp),
+            suffix = { if (!daily) Text(stringResource(R.string.monitoring_schedule_unit)) },
+            modifier = Modifier.width(if (daily) 96.dp else 90.dp),
             singleLine = true,
             shape = Formen.kachel,
             keyboardOptions = NumericInput.ganzzahlTastatur(),

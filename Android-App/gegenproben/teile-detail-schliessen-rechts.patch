@@ -1,18 +1,18 @@
 Gegenprobe: Detailkopf mit Schliessen rechts vom Titel
 Modul: app
-Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
 Rot: Tablet zeigt Teil und Liste nebeneinander
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListeUndDetail.kt
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/ListAndDetail.kt
 @@ -122,8 +122,7 @@ fun DetailTopAppBar(
              }
          },
          expandedHeight = maxOf(TopAppBarDefaults.TopAppBarExpandedHeight, hoehe),
--        navigationIcon = { ZurueckKnopf(onZurueck, schliessen) },
+-        navigationIcon = { BackButton(onZurueck, schliessen) },
 -        actions = actions,
-+        actions = { actions(); ZurueckKnopf(onZurueck, schliessen) },
++        actions = { actions(); BackButton(onZurueck, schliessen) },
          colors = farben,
      )
  }

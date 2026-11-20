@@ -5,16 +5,16 @@ import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.model.fach.Katalogsortierung
 import androidx.compose.material.icons.automirrored.filled.MenuBook
-import ch.brickinventoryapp.ui.components.HinweisText
-import ch.brickinventoryapp.ui.components.KeinTrefferHinweis
-import ch.brickinventoryapp.ui.components.FehlerHinweis
-import ch.brickinventoryapp.ui.components.ZustandsHinweis
+import ch.brickinventoryapp.ui.components.HintText
+import ch.brickinventoryapp.ui.components.NoHitsHint
+import ch.brickinventoryapp.ui.components.ErrorHint
+import ch.brickinventoryapp.ui.components.StateHint
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.Role
-import ch.brickinventoryapp.ui.components.fokusRahmen
+import ch.brickinventoryapp.ui.components.focusFrame
 import ch.brickinventoryapp.katalog.ui.viewmodel.KatalogAktionen
-import ch.brickinventoryapp.ui.components.SkelettRaster
+import ch.brickinventoryapp.ui.components.SkeletonRaster
 import ch.brickinventoryapp.ui.theme.Formen
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
@@ -39,8 +39,8 @@ import coil3.ImageLoader
 import androidx.compose.ui.graphics.Color
 import ch.brickinventoryapp.data.repository.CATALOG_PAGE_SIZE
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.components.LesbareSpalten
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.ReadableColumns
+import ch.brickinventoryapp.ui.components.withFont
 
 /**
  * Katalog-Screen: gesamter Rebrickable-Set-Katalog, serverseitig paginiert.
@@ -76,7 +76,7 @@ fun CatalogScreen(
     val onYearChange: (Int?) -> Unit = { y -> katalog.setCatalogYear(y) }
     val onSortChange: (Katalogsortierung) -> Unit = { srt -> katalog.setCatalogSort(srt) }
     /** Das sichtbare Fenster melden; das ViewModel lädt, sobald die Liste ruht. */
-    val onSichtbar: (Int, Int) -> Unit = { von, bis -> katalog.catalogSichtbar(von, bis) }
+    val onVisible: (Int, Int) -> Unit = { von, bis -> katalog.catalogVisible(von, bis) }
     /** Die Leiste rechts rollt die Liste an eine Stelle — ohne zu filtern. */
     val onScrollTo: (Int) -> Unit = { nummer -> katalog.scrollCatalogTo(nummer) }
     /** Meldet, dass der Sprung ausgeführt wurde. */
@@ -98,10 +98,10 @@ fun CatalogScreen(
     LaunchedEffect(gridState, state.total, state.loadedPages.size) {
         snapshotFlow {
             val sichtbar = gridState.layoutInfo.visibleItemsInfo
-            val ersteSeite = ((sichtbar.firstOrNull()?.index ?: 0) / CATALOG_PAGE_SIZE) + 1
-            val letzteSeite = ((sichtbar.lastOrNull()?.index ?: 0) / CATALOG_PAGE_SIZE) + 1
-            ersteSeite to letzteSeite
-        }.collect { (von, bis) -> onSichtbar(von, bis) }
+            val firstPage = ((sichtbar.firstOrNull()?.index ?: 0) / CATALOG_PAGE_SIZE) + 1
+            val lastPage = ((sichtbar.lastOrNull()?.index ?: 0) / CATALOG_PAGE_SIZE) + 1
+            firstPage to lastPage
+        }.collect { (von, bis) -> onVisible(von, bis) }
     }
 
     // Kein eigener Sprung-Abruf daneben: Beide Wege — Rollen und Leiste — enden im
@@ -124,9 +124,9 @@ fun CatalogScreen(
         ?.substringAfterLast(" › ")
 
     // Rechts Platz nur, wenn die Jahres-Leiste dort steht; sonst gleiche Ränder links und rechts.
-    val mitJahresleiste = state.sort.nachJahr && state.jahrVerteilung.isNotEmpty()
-    val rasterRand = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel,
-        end = if (mitJahresleiste) SPUR_BREITE else Abstaende.mittel)
+    val withYearsBar = state.sort.afterYear && state.yearDistribution.isNotEmpty()
+    val rasterEdge = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel,
+        end = if (withYearsBar) TRACK_WIDTH else Abstaende.mittel)
     val gefiltert = state.query.isNotBlank() || state.themeId != null || state.year != null
     val fehler = state.abruf as? Laden.Fehler
     val laedt = state.abruf.laedt
@@ -140,7 +140,7 @@ fun CatalogScreen(
             pluralStringResource(R.plurals.catalog_result_count, state.total, state.total),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.haar)
+            modifier = Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.hairline)
         )
 
         androidx.compose.material3.pulltorefresh.PullToRefreshBox(
@@ -150,32 +150,32 @@ fun CatalogScreen(
         ) {
             when {
                 // Dieselben Masse wie das Raster darunter, damit beim Eintreffen nichts springt.
-                laedt && state.total == 0 -> SkelettRaster(
-                    LesbareSpalten(160.dp), kachelHoehe = 200.dp, innenabstand = rasterRand,
+                laedt && state.total == 0 -> SkeletonRaster(
+                    ReadableColumns(160.dp), kachelHoehe = 200.dp, innenabstand = rasterEdge,
                 )
                 // Derselbe Fehlerzustand wie Galerie, Teile und Merkliste.
-                fehler != null && state.total == 0 -> ZustandsHinweis {
-                    FehlerHinweis(fehler.meldung.satz(), onRefresh, fehler.art)
+                fehler != null && state.total == 0 -> StateHint {
+                    ErrorHint(fehler.meldung.satz(), onRefresh, fehler.art)
                 }
                 // Mit Suche oder Filter: sagen, woran es liegt, und den Weg zurück anbieten.
-                state.total == 0 && gefiltert -> ZustandsHinweis {
-                    KeinTrefferHinweis(stringResource(R.string.catalog_no_results))
+                state.total == 0 && gefiltert -> StateHint {
+                    NoHitsHint(stringResource(R.string.catalog_no_results))
                     Button(onClick = {
                         if (state.query.isNotBlank()) onQueryChange("")
                         if (state.themeId != null) onThemeChange(null)
                         if (state.year != null) onYearChange(null)
                     }) { Text(stringResource(R.string.filter_reset_all)) }
                 }
-                state.total == 0 -> ZustandsHinweis {
-                    HinweisText(Icons.AutoMirrored.Filled.MenuBook, stringResource(R.string.catalog_leer_titel),
+                state.total == 0 -> StateHint {
+                    HintText(Icons.AutoMirrored.Filled.MenuBook, stringResource(R.string.catalog_leer_titel),
                         stringResource(R.string.catalog_leer_text))
                     Button(onClick = onRefresh) { Text(stringResource(R.string.common_retry)) }
                 }
                 else -> Box(Modifier.fillMaxSize()) {
                     LazyVerticalGrid(
                         state = gridState,
-                        columns = LesbareSpalten(160.dp),
-                        contentPadding = rasterRand,
+                        columns = ReadableColumns(160.dp),
+                        contentPadding = rasterEdge,
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
                     ) {
@@ -195,14 +195,14 @@ fun CatalogScreen(
                     // der Webapp — sonst liegen die Jahre verstreut. firstVisibleItemIndex in
                     // derivedStateOf gelesen, damit der Bildschirm nur bei einer Änderung des
                     // abgeleiteten Werts neu auswertet (Lint FrequentlyChangingValue).
-                    val sichtbareNummer by remember(gridState) {
+                    val visibleNumber by remember(gridState) {
                         derivedStateOf { gridState.firstVisibleItemIndex }
                     }
-                    if (mitJahresleiste && state.total > 0) {
+                    if (withYearsBar && state.total > 0) {
                         YearScrubber(
-                            listenNummer = sichtbareNummer,
+                            listenNummer = visibleNumber,
                             total = state.total,
-                            verteilung = state.jahrVerteilung,
+                            verteilung = state.yearDistribution,
                             // Erste Wahl wie in der Webapp: das Jahr der
                             // Kachel, die an dieser Stelle steht. Genau diese
                             // Rechnung stand vorher weiter oben im Bildschirm
@@ -240,14 +240,14 @@ fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
         shape = Formen.kachel,
         color = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
                 else androidx.compose.ui.graphics.Color.Transparent,
-        modifier = Modifier.fillMaxWidth().fokusRahmen(Formen.kachel).semantics { role = Role.RadioButton }
+        modifier = Modifier.fillMaxWidth().focusFrame(Formen.kachel).semantics { role = Role.RadioButton }
     ) {
         Row(
             Modifier.padding(horizontal = Abstaende.mittel, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(label, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            if (selected) Icon(Icons.Default.Check, null, Modifier.size(mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
+            if (selected) Icon(Icons.Default.Check, null, Modifier.size(withFont(18.dp)), tint = MaterialTheme.colorScheme.primary)
         }
     }
 }

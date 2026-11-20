@@ -10,7 +10,7 @@ android {
 dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-data"))
-    // oeffneExtern.
+    // openExtern.
     implementation(project(":core-netz"))
     implementation(project(":core-ui"))
     implementation(project(":core-ui-bestand"))

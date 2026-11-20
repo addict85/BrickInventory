@@ -1,17 +1,17 @@
 Gegenprobe: Neuladen des Profils löscht den Fehler zur nicht gesendeten Mail
 Modul: feature-konto
-Test: ch.brickinventoryapp.konto.KontoViewModelTest
+Test: ch.brickinventoryapp.konto.AccountViewModelTest
 Rot: eine neue E-Mail ohne gesendete Mail
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/KontoViewModel.kt
+diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt
+--- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt
++++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/viewmodel/AccountViewModel.kt
 @@ -73,7 +73,7 @@
-     private suspend fun holeProfil() {
-         when (val r = konto.getProfil()) {
-             is Ergebnis.Erfolg -> _kontoState.update {
--                it.copy(abruf = Laden.Daten(Unit), profil = r.data)
-+                it.copy(abruf = Laden.Daten(Unit), profil = r.data, speichern = it.speichern.ohneFehler())
+     private suspend fun fetchProfile() {
+         when (val r = konto.getProfile()) {
+             is Ergebnis.Erfolg -> _accountState.update {
+-                it.copy(abruf = Laden.Daten(Unit), profile = r.data)
++                it.copy(abruf = Laden.Daten(Unit), profile = r.data, speichern = it.speichern.withoutError())
              }
-             is Ergebnis.Fehler -> _kontoState.update { it.copy(abruf = ladefehler(r)) }
+             is Ergebnis.Fehler -> _accountState.update { it.copy(abruf = loadError(r)) }
          }

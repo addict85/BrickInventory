@@ -10,10 +10,10 @@ diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/fin
                  g = g,
                  pinSichtbar = g.id in zustand.pinSichtbar,
                  // Verdecken braucht keine Bestätigung, aufdecken schon.
--                onPinSchalten = {
--                    if (g.id in zustand.pinSichtbar) onPinSchalten(g.id) else geschuetzt { onPinSchalten(g.id) }
+-                switchOnPin = {
+-                    if (g.id in zustand.pinSichtbar) switchOnPin(g.id) else geschuetzt { switchOnPin(g.id) }
 -                },
-+                onPinSchalten = { onPinSchalten(g.id) },
-                 onBearbeiten = { geschuetzt { onBearbeiten(g.id) } },
-                 onLoeschen = { geschuetzt { onLoeschen(g.id) } },
-                 onPdfOeffnen = { geschuetzt { onPdfOeffnen(g.id) } },
++                switchOnPin = { switchOnPin(g.id) },
+                 editOn = { geschuetzt { editOn(g.id) } },
+                 deleteOn = { geschuetzt { deleteOn(g.id) } },
+                 openOnPdf = { geschuetzt { openOnPdf(g.id) } },

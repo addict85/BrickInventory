@@ -7,10 +7,10 @@ package ch.brickinventoryapp.model.fach
 data class Teilelistenauftrag(val sets: List<Set>, val zeilen: List<Zeile>) {
     data class Set(val nummer: String, val name: String?)
 
-    /** [bild] ist serverrelativ, wo es geht; [blNummer] steht im PDF, [nummer] ist die Rebrickable-Nummer. */
+    /** [bild] ist serverrelativ, wo es geht; [blNumber] steht im PDF, [nummer] ist die Rebrickable-Nummer. */
     data class Zeile(
         val nummer: String,
-        val blNummer: String,
+        val blNumber: String,
         val name: String?,
         val farbname: String?,
         val farbHex: String,
@@ -22,5 +22,5 @@ data class Teilelistenauftrag(val sets: List<Set>, val zeilen: List<Zeile>) {
     )
 }
 
-/** Ein Stand des PDF-Auftrags am Server; [restSekunden] ist seine Schätzung, [fehler] sein Satz. */
-data class PdfAuftragsstand(val status: Laufstatus, val fehler: String? = null, val restSekunden: Double? = null)
+/** Ein Stand des PDF-Auftrags am Server; [restSeconds] ist seine Schätzung, [fehler] sein Satz. */
+data class PdfJobStatus(val status: Laufstatus, val fehler: String? = null, val restSeconds: Double? = null)

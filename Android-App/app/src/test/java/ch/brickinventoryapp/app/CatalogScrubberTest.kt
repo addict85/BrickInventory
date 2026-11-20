@@ -28,7 +28,7 @@ import ch.brickinventoryapp.testing.Quellen
 class CatalogScrubberTest {
 
     private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.root, "$rel").readText()
 
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
@@ -38,16 +38,16 @@ class CatalogScrubberTest {
         val s = code(read("katalog/ui/screens/CatalogScreen.kt"))
         val i = s.indexOf("YearScrubber(")
         assert(i > 0) { "die Leiste fehlt ganz" }
-        val aufruf = s.substring(i, minOf(i + 700, s.length))
+        val call = s.substring(i, minOf(i + 700, s.length))
         // Wie in der Webapp rollt die Leiste an
         // eine STELLE, statt auf das erste Set eines Jahres zu springen. Der
         // Unterschied zum Filter bleibt derselbe: Ein Filter wirft die anderen
         // Jahre weg, ein Rollen laesst sie stehen.
-        assert(aufruf.contains("onScrollTo = ")) {
+        assert(call.contains("onScrollTo = ")) {
             "Die Leiste rollt die Liste nicht — dann ist sie wieder ein Filter " +
                 "oder ein Sprung, aber nicht die Leiste der Webapp"
         }
-        assert(!aufruf.contains("onYearSelected") && !aufruf.contains("selectedYear")) {
+        assert(!call.contains("onYearSelected") && !call.contains("selectedYear")) {
             "Die Leiste haengt wieder am Jahr statt an der Stelle in der Liste"
         }
         // Was an der neuen Stelle gebraucht wird, holt der Sichtfenster-Lader.
@@ -63,7 +63,7 @@ class CatalogScrubberTest {
         // steht im Sichtfenster-Lader — dort enden beide Wege. Die Regel dazu
         // steht MIT der Messung in KatalogSprungEntprelltTest, nicht hier noch
         // einmal; an dieser Stelle bleibt nur, dass hier NICHT geladen wird.
-        assert(!aufruf.contains("onEnsurePage")) {
+        assert(!call.contains("onEnsurePage")) {
             "Die Leiste laedt wieder selbst — das ist ein Abruf je " +
                 "Beruehrungspunkt, siehe KatalogSprungEntprelltTest"
         }

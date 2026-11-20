@@ -9,10 +9,10 @@ index 25f2ada..cad01ca 100644
 +++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Vertrauenschiffre.kt
 @@ -23,7 +23,7 @@ class Vertrauenschiffre(
  ) {
-     private val chiffre = AblageChiffre(schluessel)
+     private val cipher = StoreCipher(schluessel)
      private val vertrauen = schluessel
 -    private val angaben: () -> ByteArray = angaben ?: schluessel
 +    private val angaben: () -> ByteArray = schluessel
  
      fun verschluessle(wert: String, bindung: String): String? = runCatching {
-         Base64.getEncoder().encodeToString(chiffre.verschluessle(wert.toByteArray(Charsets.UTF_8), ZWECK + bindung))
+         Base64.getEncoder().encodeToString(cipher.verschluessle(wert.toByteArray(Charsets.UTF_8), PURPOSE + bindung))

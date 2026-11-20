@@ -1,17 +1,17 @@
 Gegenprobe: Auch eine abgelehnte Änderung wird in der Ablage angewandt
 Modul: core-data
-Test: ch.brickinventoryapp.data.NachzugTest
+Test: ch.brickinventoryapp.data.FollowUpTest
 Rot: eine abgelehnte Aenderung aendert die Ablage nicht
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 @@ -75,7 +75,7 @@
-         }.zugesagt({ it.success }) { }
+         }.promised({ it.success }) { }
  
      override suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<Unit> =
--        ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage).takeIf { r.success } }) {
-+        ablage.nachgezogen({ r -> Nachzug.SetLagerort(setNumber, r.storage) }) {
+-        ablage.nachgezogen({ r -> FollowUp.SetLocation(setNumber, r.storage).takeIf { r.success } }) {
++        ablage.nachgezogen({ r -> FollowUp.SetLocation(setNumber, r.storage) }) {
              sicherAufrufen { api.setSetStorage(setNumber, LagerortRequest(storage = ort)) }
-         }.zugesagt({ it.success }) { }
+         }.promised({ it.success }) { }
  }

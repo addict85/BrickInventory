@@ -18,22 +18,22 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import ch.brickinventoryapp.data.Auftragslage
+import ch.brickinventoryapp.data.JobState
 import ch.brickinventoryapp.data.Auftragsablage
-import ch.brickinventoryapp.data.Entwerter
-import ch.brickinventoryapp.data.GeraeteAblage
+import ch.brickinventoryapp.data.Redeemer
+import ch.brickinventoryapp.data.DevicesStore
 import ch.brickinventoryapp.data.Entwertungsauftrag
-import ch.brickinventoryapp.data.EntwertungsPlaner
+import ch.brickinventoryapp.data.RedemptionPlanner
 import ch.brickinventoryapp.data.Entwertungsschritt
-import ch.brickinventoryapp.data.entwertungsSchritt
-import ch.brickinventoryapp.data.nurEntsperrt
-import ch.brickinventoryapp.data.di.Anwendungsbereiche
+import ch.brickinventoryapp.data.redemptionStep
+import ch.brickinventoryapp.data.onlyUnlocked
+import ch.brickinventoryapp.data.di.Scopes
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.netz.util.NetworkPolicy
 import ch.brickinventoryapp.netz.util.Protokoll
 import ch.brickinventoryapp.sicherheit.Geraetesperre
-import ch.brickinventoryapp.sicherheit.TokenVerschluesselung
+import ch.brickinventoryapp.sicherheit.TokenEncryption
 import androidx.hilt.work.HiltWorker
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -51,49 +51,49 @@ import javax.inject.Inject
 class EntwertungsWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val entwerter: Entwerter,
-    private val tresor: TokenVerschluesselung,
-    private val bereiche: Anwendungsbereiche,
-    private val sperre: Geraetesperre,
+    private val redeemer: Redeemer,
+    private val tresor: TokenEncryption,
+    private val areas: Scopes,
+    private val lock: Geraetesperre,
     /** Liest den Auftrag (Auftragsablage) und merkt einen gescheiterten (Entwertungsprotokoll). */
-    private val geraet: GeraeteAblage,
+    private val geraet: DevicesStore,
 ) : CoroutineWorker(context, params) {
 
-    /** Neu nur verschlüsselt ([AUFTRAG]); ein Auftrag älterer Fassung trägt noch Felder. */
-    private fun lage(): Auftragslage? {
-        inputData.getString(AUFTRAG)?.let { return geraet.auftragsablage().lies(it) }
+    /** Neu nur verschlüsselt ([JOB]); ein Auftrag älterer Fassung trägt noch Felder. */
+    private fun situation(): JobState? {
+        inputData.getString(JOB)?.let { return geraet.auftragsablage().lies(it) }
         val server = inputData.getString(SERVER) ?: return null
         val geheim = inputData.getString(TOKEN) ?: return null
         // Aufträge älterer Fassungen ohne Herkunft galten dem eingetragenen Server.
-        val herkunft = inputData.getString(HERKUNFT) ?: NetworkPolicy.herkunft(server)
-        return Auftragslage.Da(Entwertungsauftrag(server, geheim, inputData.getString(PIN), herkunft))
+        val herkunft = inputData.getString(ORIGIN) ?: NetworkPolicy.herkunft(server)
+        return JobState.Da(Entwertungsauftrag(server, geheim, inputData.getString(PIN), herkunft))
     }
 
     override suspend fun doWork(): Result {
-        val auftrag = when (val l = withContext(bereiche.io) { lage() }) {
+        val job = when (val l = withContext(areas.io) { situation() }) {
             null -> return Result.success()
-            is Auftragslage.Da -> l.auftrag
-            Auftragslage.Gesperrt -> return Result.retry()
-            Auftragslage.Unlesbar -> {
+            is JobState.Da -> l.job
+            JobState.Gesperrt -> return Result.retry()
+            JobState.Unlesbar -> {
                 // Ohne Adresse lässt sich auch nicht sagen, welcher Zugang noch gilt.
                 Protokoll.warnung("Abmelden", "Abmeldeauftrag nicht lesbar, aufgegeben")
                 return Result.failure()
             }
         }
-        val server = auftrag.serverUrl
-        val schritt = withContext(bereiche.io) {
-            entwertungsSchritt(tresor.oeffne(auftrag.tokenGeheim), runAttemptCount, sperre.gesperrt()) {
-                entwerter.entwerte(server, it, auftrag.pin, auftrag.herkunft)
+        val server = job.serverUrl
+        val schritt = withContext(areas.io) {
+            redemptionStep(tresor.oeffne(job.tokenSecret), runAttemptCount, lock.gesperrt()) {
+                redeemer.redeem(server, it, job.pin, job.herkunft)
             }
         }
         return when (schritt) {
             Entwertungsschritt.FERTIG -> Result.success()
-            Entwertungsschritt.NOCHMAL -> Result.retry()
-            Entwertungsschritt.AUFGEGEBEN -> {
+            Entwertungsschritt.AGAIN -> Result.retry()
+            Entwertungsschritt.GIVEN_UP -> {
                 Protokoll.warnung("Abmelden", "Token am Server nicht entwertet, Auftrag aufgegeben")
                 // Still aufzugeben hiesse: Das Token gilt am Server weiter, und niemand weiss es.
-                geraet.merkeGescheiterteEntwertung(server)
-                zeigeMeldung(applicationContext, server)
+                geraet.rememberFailedRedemption(server)
+                showMessage(applicationContext, server)
                 Result.failure()
             }
         }
@@ -101,37 +101,37 @@ class EntwertungsWorker @AssistedInject constructor(
 
     companion object {
         /** Der ganze Auftrag als Geheimtext (Auftragsablage). */
-        const val AUFTRAG = "auftrag_geheim"
+        const val JOB = "auftrag_geheim"
         /** Felder älterer Fassungen: nur noch gelesen. */
         const val SERVER = "server"
         const val TOKEN = "token_geheim"
         const val PIN = "pin"
-        const val HERKUNFT = "herkunft"
-        private const val KANAL = "abmeldung"
+        const val ORIGIN = "herkunft"
+        private const val CHANNEL = "abmeldung"
 
         /** Der Hinweis, den Nutzer in der Webapp unter „Angemeldete Geräte“ abzumelden. */
-        fun zeigeMeldung(context: Context, server: String) {
+        fun showMessage(context: Context, server: String) {
             // Ab Android 13 Laufzeitrecht; ohne es bleibt der Hinweis beim nächsten Start (AppViewModel).
             if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(
                     context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
-            val texte = LanguageManager.localizedContext(context)
+            val texts = LanguageManager.localizedContext(context)
             val mgr = context.getSystemService(NotificationManager::class.java) ?: return
-            mgr.createNotificationChannel(NotificationChannel(KANAL,
-                texte.getString(R.string.abmeldung_kanal), NotificationManager.IMPORTANCE_DEFAULT))
+            mgr.createNotificationChannel(NotificationChannel(CHANNEL,
+                texts.getString(R.string.abmeldung_kanal), NotificationManager.IMPORTANCE_DEFAULT))
             val adresse = NetworkPolicy.ansicht(server)?.adresse ?: server
-            NotificationManagerCompat.from(context).notify(KANAL, adresse.hashCode(), meldung(texte, adresse))
+            NotificationManagerCompat.from(context).notify(CHANNEL, adresse.hashCode(), meldung(texts, adresse))
         }
 
         /** Die Adresse des Servers nur entsperrt; gesperrt steht allein der Titel da. */
-        internal fun meldung(texte: Context, adresse: String): Notification {
-            val titel = texte.getString(R.string.abmeldung_gescheitert_titel)
-            val text = texte.getString(R.string.abmeldung_gescheitert_text, adresse)
-            return NotificationCompat.Builder(texte, KANAL)
+        internal fun meldung(texts: Context, adresse: String): Notification {
+            val titel = texts.getString(R.string.abmeldung_gescheitert_titel)
+            val text = texts.getString(R.string.abmeldung_gescheitert_text, adresse)
+            return NotificationCompat.Builder(texts, CHANNEL)
                 .setSmallIcon(android.R.drawable.ic_dialog_alert)
                 .setContentTitle(titel)
                 .setContentText(text)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-                .nurEntsperrt(texte, KANAL, titel, android.R.drawable.ic_dialog_alert)
+                .onlyUnlocked(texts, CHANNEL, titel, android.R.drawable.ic_dialog_alert)
                 .setAutoCancel(true)
                 .build()
         }
@@ -139,20 +139,20 @@ class EntwertungsWorker @AssistedInject constructor(
 }
 
 /** Der Auftrag unter dem Schlüssel der Angaben, für Planer und Arbeiter derselbe. */
-internal fun GeraeteAblage.auftragsablage() = Auftragsablage(this::verschluessleAngabe, this::oeffneAngabe)
+internal fun DevicesStore.auftragsablage() = Auftragsablage(this::verschluessleDetail, this::openDetail)
 
 /** Ein Auftrag je Abmeldung; ohne Netz wartet er, gescheitert kommt er mit Rückzug wieder. */
-internal class WorkManagerEntwertung @Inject constructor(
+internal class WorkManagerRedemption @Inject constructor(
     @param:ApplicationContext private val context: Context,
-    private val geraet: GeraeteAblage,
-) : EntwertungsPlaner {
-    override fun plane(auftrag: Entwertungsauftrag) {
+    private val geraet: DevicesStore,
+) : RedemptionPlanner {
+    override fun plane(job: Entwertungsauftrag) {
         // Gesperrt entsteht kein Geheimtext; dann weiss der Nutzer beim nächsten Start Bescheid,
         // statt dass die Adresse lesbar in der Warteschlange läge.
-        val geheim = geraet.auftragsablage().ablegen(auftrag)
-            ?: return geraet.merkeGescheiterteEntwertung(auftrag.serverUrl)
+        val geheim = geraet.auftragsablage().ablegen(job)
+            ?: return geraet.rememberFailedRedemption(job.serverUrl)
         val arbeit = OneTimeWorkRequestBuilder<EntwertungsWorker>()
-            .setInputData(Data.Builder().putString(EntwertungsWorker.AUFTRAG, geheim).build())
+            .setInputData(Data.Builder().putString(EntwertungsWorker.JOB, geheim).build())
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
             .build()

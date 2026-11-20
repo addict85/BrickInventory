@@ -19,16 +19,16 @@ val HouseholdStatusResponse.elternkonten: List<KontoName>
 val Acquisition.effectivePrice: Double? get() = purchasePrice ?: unitPrice
 
 /** Mengengewichtet vom Server, damit Kachel und Detail dieselbe Zahl zeigen. */
-val SetItem.anzeigeKaufpreis: Double? get() = avgPurchasePrice
+val SetItem.displayPurchasePrice: Double? get() = avgPurchasePrice
 
 /** Neu angelegte Zeilen eines CSV-Imports. */
-val CsvImportErgebnis.neuAngelegt: Int get() = added
+val CsvImportErgebnis.newCreated: Int get() = added
 
 /**
  * Der Server liest den Preis unter dem Namen seiner Spalte: `purchase_price` bei Sets,
  * `unit_price` bei Teilen und Figuren; unter dem falschen Namen bliebe er still gleich.
  */
-fun aenderungFuerSet(
+fun changeForSet(
     preis: Double? = null,
     condition: Zustand? = null,
     quantity: Int? = null,
@@ -38,8 +38,8 @@ fun aenderungFuerSet(
     purchasePrice = preis, condition = condition, quantity = quantity, date = date, ownerUserId = ownerUserId,
 )
 
-/** Für Teile und Minifiguren: Preis geht als `unit_price`. Siehe [aenderungFuerSet]. */
-fun aenderungFuerStueck(
+/** Für Teile und Minifiguren: Preis geht als `unit_price`. Siehe [changeForSet]. */
+fun changeForPiece(
     preis: Double? = null,
     condition: Zustand? = null,
     quantity: Int? = null,
@@ -50,4 +50,4 @@ fun aenderungFuerStueck(
 )
 
 /** Ein Ort im Vorrat, wie die Ablage ihn führt: [vorgabe] ist der Stern, den der Server neben der Liste schickt. */
-data class VorratsOrt(val ort: LagerortEintrag, val vorgabe: Boolean)
+data class StockLocation(val ort: LagerortEintrag, val vorgabe: Boolean)

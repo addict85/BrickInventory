@@ -16,28 +16,28 @@ import java.util.concurrent.atomic.AtomicReference
  * wird erst beim ersten Öffnen, auf Rooms Faden: Keystore und die einmalige Übernahme
  * eines Klartext-Altbestands gehören nicht auf den Hauptfaden.
  */
-internal class VerschluesselteBestandsfabrik(
+internal class EncryptedInventoryFactory(
     private val context: Context,
     private val ablage: Ablageschluessel,
 ) : SupportSQLiteOpenHelper.Factory {
     override fun create(configuration: SupportSQLiteOpenHelper.Configuration): SupportSQLiteOpenHelper {
-        val datei = context.getDatabasePath(configuration.name ?: BestandDatenbank.NAME)
-        val helfer = SpaeterGeoeffnet(configuration.name, { ablage.stand }) {
+        val datei = context.getDatabasePath(configuration.name ?: InventoryDatabase.NAME)
+        val helper = LaterOpened(configuration.name, { ablage.stand }) {
             System.loadLibrary("sqlcipher")
-            val passwort = sqlcipherPasswort(ablage.fuer(ZWECK))
-            bereite(datei, passwort, ablage.neuAngelegt)
+            val passwort = sqlcipherPassword(ablage.fuer(PURPOSE))
+            prepare(datei, passwort, ablage.newCreated)
             SupportOpenHelperFactory(passwort).create(configuration)
         }
         // Beim Abmelden (Ablageschluessel.erneuere): Mit dem alten Schlüssel bleibt nichts liegen.
-        ablage.vorErneuerung {
-            helfer.schliesse()
-            loescheDatenbank(datei)
+        ablage.beforeRenewal {
+            helper.schliesse()
+            deleteDatabase(datei)
         }
-        return helfer
+        return helper
     }
 
     private companion object {
-        const val ZWECK = "bestand.db"
+        const val PURPOSE = "bestand.db"
     }
 }
 
@@ -45,7 +45,7 @@ internal class VerschluesselteBestandsfabrik(
  * Reicht an den eigentlichen Helfer weiter, den es erst beim ersten Zugriff gibt. Nach
  * einem neuen Ablageschlüssel ([stand]) wird er neu gebaut, leer und mit dem neuen.
  */
-private class SpaeterGeoeffnet(
+private class LaterOpened(
     override val databaseName: String?,
     private val stand: () -> Long,
     private val erzeuge: () -> SupportSQLiteOpenHelper,
@@ -53,7 +53,7 @@ private class SpaeterGeoeffnet(
     @Volatile private var wal: Boolean? = null
     private val innen = AtomicReference<Pair<Long, SupportSQLiteOpenHelper>?>(null)
 
-    private fun helfer(): SupportSQLiteOpenHelper {
+    private fun helper(): SupportSQLiteOpenHelper {
         innen.get()?.takeIf { it.first == stand() }?.let { return it.second }
         synchronized(this) {
             innen.get()?.takeIf { it.first == stand() }?.let { return it.second }
@@ -73,41 +73,41 @@ private class SpaeterGeoeffnet(
         wal = enabled
     }
 
-    override val writableDatabase: SupportSQLiteDatabase get() = helfer().writableDatabase
-    override val readableDatabase: SupportSQLiteDatabase get() = helfer().readableDatabase
+    override val writableDatabase: SupportSQLiteDatabase get() = helper().writableDatabase
+    override val readableDatabase: SupportSQLiteDatabase get() = helper().readableDatabase
     override fun close() = schliesse()
 }
 
 /** SQLCipher nimmt x'…' als fertigen Schlüssel, ohne die langsame Ableitung aus einem Passwort. */
-internal fun sqlcipherPasswort(schluessel: ByteArray): ByteArray =
+internal fun sqlcipherPassword(schluessel: ByteArray): ByteArray =
     ("x'" + schluessel.joinToString("") { "%02x".format(it) } + "'").toByteArray(Charsets.US_ASCII)
 
 /** Liegt hier eine unverschlüsselte SQLite-Datei? Verschlüsselt beginnt sie mit Zufall. */
-internal fun istKlartextDatenbank(datei: File): Boolean {
-    if (!datei.isFile || datei.length() < KOPF.size) return false
-    val anfang = ByteArray(KOPF.size)
-    datei.inputStream().use { if (it.read(anfang) != KOPF.size) return false }
-    return anfang.contentEquals(KOPF)
+internal fun isPlaintextDatabase(datei: File): Boolean {
+    if (!datei.isFile || datei.length() < HEADER.size) return false
+    val anfang = ByteArray(HEADER.size)
+    datei.inputStream().use { if (it.read(anfang) != HEADER.size) return false }
+    return anfang.contentEquals(HEADER)
 }
 
-private val KOPF = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
+private val HEADER = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
 
 /**
  * Altbestand im Klartext einmal übernehmen (sqlcipher_export). Verschlüsselt mit einem
  * verlorenen Schlüssel ist er nicht mehr zu lesen: Dann beginnt die Ablage leer, der
  * Server hat den Bestand; nur noch nicht gesendete Änderungen gehen verloren.
  */
-private fun bereite(datei: File, passwort: ByteArray, schluesselNeu: Boolean) {
+private fun prepare(datei: File, passwort: ByteArray, keyNew: Boolean) {
     when {
         !datei.isFile -> Unit
-        istKlartextDatenbank(datei) -> verschluesseleKlartext(datei, passwort)
-        schluesselNeu -> loescheDatenbank(datei)
+        isPlaintextDatabase(datei) -> encryptPlaintext(datei, passwort)
+        keyNew -> deleteDatabase(datei)
     }
 }
 
-private fun verschluesseleKlartext(datei: File, passwort: ByteArray) {
+private fun encryptPlaintext(datei: File, passwort: ByteArray) {
     val ziel = File(datei.parentFile, datei.name + ".neu")
-    loescheDatenbank(ziel)
+    deleteDatabase(ziel)
     val alt = SQLiteDatabase.openDatabase(datei.path, "", null, SQLiteDatabase.OPEN_READWRITE, null, null)
     try {
         val fassung = alt.version
@@ -119,10 +119,10 @@ private fun verschluesseleKlartext(datei: File, passwort: ByteArray) {
     } finally {
         alt.close()
     }
-    loescheDatenbank(datei)
+    deleteDatabase(datei)
     if (!ziel.renameTo(datei)) throw IOException("Verschlüsselte Datenbank nicht an ihren Platz gelegt")
 }
 
-private fun loescheDatenbank(datei: File) {
-    for (endung in listOf("", "-wal", "-shm", "-journal")) File(datei.path + endung).delete()
+private fun deleteDatabase(datei: File) {
+    for (extension in listOf("", "-wal", "-shm", "-journal")) File(datei.path + extension).delete()
 }

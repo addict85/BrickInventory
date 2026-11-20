@@ -1,6 +1,6 @@
 Gegenprobe: Schrittanzeige steht immer bei Schritt 1
 Modul: feature-konto
-Test: ch.brickinventoryapp.konto.ZweiterFaktorMaskeTest
+Test: ch.brickinventoryapp.konto.SecondFactorMaskTest
 Rot: die Schrittanzeige
 
 diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/ZweiterFaktorPflichtMaske.kt
@@ -10,8 +10,8 @@ diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/
                  zustand.aktiv == true -> null
                  else -> 1
              }
--            if (schritt != null) Schrittanzeige(schritt)
-+            if (schritt != null) Schrittanzeige(1)
+-            if (schritt != null) StepIndicator(schritt)
++            if (schritt != null) StepIndicator(1)
              // In derselben Karte wie Anmelden und Startpasswort; Schritte und Abmelden aussen.
-             AnmeldeKarte {
+             LoginCard {
                  when {

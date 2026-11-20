@@ -14,7 +14,7 @@ import ch.brickinventoryapp.model.ui.Meldung
 @Composable
 fun Meldung.satz(): String = when (this) {
     is Meldung.Text -> text
-    is Meldung.Ressource ->
+    is Meldung.Resource ->
         if (werte.isEmpty()) stringResource(id) else stringResource(id, *werte.map { w -> if (w is Meldung) w.satz() else w }.toTypedArray())
     is Meldung.Menge -> pluralStringResource(id, anzahl, *werte.map { w -> if (w is Meldung) w.satz() else w }.toTypedArray())
 }

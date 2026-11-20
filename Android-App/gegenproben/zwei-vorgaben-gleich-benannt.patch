@@ -1,6 +1,6 @@
 Gegenprobe: Beide Vorgaben heissen wieder „Standard-Zustand“
 Modul: app
-Test: ch.brickinventoryapp.app.VorgabeZustandBegriffeTest
+Test: ch.brickinventoryapp.app.DefaultStateTermsTest
 Rot: die eigene Vorgabe und die fuer alle Konten heissen verschieden
 
 diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml

@@ -1,12 +1,12 @@
 Gegenprobe: Lagerortfeld im Erfassen-Dialog wieder ohne volle Breite
 Modul: app
-Test: ch.brickinventoryapp.app.BildschirmFotoVariantenTest
-Rot: dialogSetErfassen
+Test: ch.brickinventoryapp.app.ScreenPhotoVariantsTest
+Rot: addDialogSet
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LagerortFeld.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LagerortFeld.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LagerortFeld.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LagerortFeld.kt
-@@ -79,8 +79,7 @@ fun LagerortFeld(
+diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LocationField.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LocationField.kt
+--- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LocationField.kt
++++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/LocationField.kt
+@@ -79,8 +79,7 @@ fun LocationField(
              // So breit, wie der Aufrufer es vorgibt: Ohne Breite blieb das Feld bei Materials
              // 280 dp stehen — im Dialog schmaler als die anderen, im Detail halb so breit.
              modifier = Modifier.menuAnchor(

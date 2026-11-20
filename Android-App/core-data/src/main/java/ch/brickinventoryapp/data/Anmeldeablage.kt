@@ -2,7 +2,7 @@ package ch.brickinventoryapp.data
 
 /**
  * Was die Anmeldung im Gerät ablegt: Serveradresse, Token, Benutzername und den
- * Pin aus dem QR-Code. Im Gerät die [KontoAblage]; die Schnittstelle lässt
+ * Pin aus dem QR-Code. Im Gerät die [AccountStore]; die Schnittstelle lässt
  * die Anmeldung ohne DataStore prüfen.
  */
 interface Anmeldeablage {
@@ -12,15 +12,15 @@ interface Anmeldeablage {
     suspend fun saveAuthToken(token: String)
     suspend fun saveUsername(name: String)
     /** Dauerhaft (util/ServerVertrauen.kt); ersetzt einen vorgehaltenen. */
-    fun merkePin(schluessel: String, fingerabdruck: String)
+    fun rememberPin(schluessel: String, fingerabdruck: String)
     /** Der dauerhaft gemerkte Pin, ohne einen gerade vorgehaltenen. */
-    fun gemerkterPin(schluessel: String): String?
+    fun rememberedPin(schluessel: String): String?
     /**
      * Pin aus einem QR-Code nur für den laufenden Verbindungsaufbau: Erst eine
      * gelungene Anmeldung zeigt, dass Code und Server zusammengehören.
      */
-    fun halteVor(schluessel: String, fingerabdruck: String)
-    fun vergissVorgehaltenen(schluessel: String)
+    fun holdBefore(schluessel: String, fingerabdruck: String)
+    fun forgetRetained(schluessel: String)
 
     /**
      * Für eine QR-Kopplung mit einem anderen Server, solange man noch angemeldet ist:

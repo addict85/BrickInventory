@@ -8,9 +8,9 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainActivity.kt
 @@ -233,6 +233,7 @@
                          )
-                     } else if (faktorPflicht && angemeldet) {
-                         val faktorZustand by startKontoVm.zweiterFaktorState.collectAsStateWithLifecycle()
-+                        LaunchedEffect(Unit) { startKontoVm.ladeZweitenFaktor() }
+                     } else if (factorRequired && angemeldet) {
+                         val factorState by startAccountVm.secondFactorState.collectAsStateWithLifecycle()
++                        LaunchedEffect(Unit) { startAccountVm.loadSecondFactor() }
                          ZweiterFaktorPflichtMaske(
-                             zustand = faktorZustand,
-                             onEinrichten = startKontoVm::richteZweitenFaktorEin,
+                             zustand = factorState,
+                             onEinrichten = startAccountVm::setUpSecondFactorOne,

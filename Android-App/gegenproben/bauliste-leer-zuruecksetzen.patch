@@ -1,6 +1,6 @@
 Gegenprobe: Zurücksetzen auch auf der leeren Bauliste
 Modul: app
-Test: ch.brickinventoryapp.app.UnterseitenTest
+Test: ch.brickinventoryapp.app.SubpagesTest
 Rot: leere Bauliste
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsListScreen.kt
@@ -13,5 +13,5 @@ diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/
 -                if (sets.isNotEmpty() || generated) {
 +                if (true) {
                      Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                         Text(mengen.getQuantityString(R.plurals.partslist_sets_in_list, sets.size, sets.size),
+                         Text(quantities.getQuantityString(R.plurals.partslist_sets_in_list, sets.size, sets.size),
                              style = MaterialTheme.typography.labelLarge,

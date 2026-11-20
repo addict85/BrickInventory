@@ -1,16 +1,16 @@
 Gegenprobe: Ein Serverwechsel ruft die Hörer der Server-Clients nicht
 Modul: app
-Test: ch.brickinventoryapp.app.GeraeteSchutzTest
+Test: ch.brickinventoryapp.app.DevicesProtectionTest
 Rot: ein anderer Server bricht laufende Aufrufe ab
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenAblage.kt
 @@ -189,7 +189,6 @@ class TokenAblage @Inject constructor(
-         val neueHerkunft: suspend () -> Boolean = {
-             val anders = !NetworkPolicy.gleicherServer(serverUrlJetzt(), normalized)
+         val newOrigin: suspend () -> Boolean = {
+             val anders = !NetworkPolicy.sameServer(serverUrlJetzt(), normalized)
              // Laufende Aufrufe gehören dem alten Server; ihre Antworten sollen nichts mehr auslösen.
--            if (anders) serverwechselHoerer.forEach { it() }
+-            if (anders) serverwechselListener.forEach { it() }
              anders
          }
-         tokenSchranke.schreibe(neueSitzung = neueHerkunft) {
+         tokenLimit.schreibe(newSession = newOrigin) {

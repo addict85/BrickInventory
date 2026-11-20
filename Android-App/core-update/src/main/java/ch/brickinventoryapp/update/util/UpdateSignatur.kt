@@ -17,7 +17,7 @@ import java.util.Base64
  * (APK-Schlüssel) wird überlesen.
  */
 @Serializable
-internal data class SignierteBeschreibung(
+internal data class SignedDescription(
     @SerialName("daten") val daten: String,
     @SerialName("beschreibungssignatur") val beschreibungssignatur: String = "",
 )
@@ -28,11 +28,11 @@ internal data class SignierteBeschreibung(
  * nur einen Zweck, und ohne Übergangsweg kann ein erbeuteter APK-Schlüssel keine
  * Beschreibung mehr ausstellen. Erst prüfen, dann lesen: Ein ungeprüftes Feld darf nichts entscheiden.
  */
-fun gepruefteBeschreibung(roh: String, schluessel: List<ByteArray>): UpdateBeschreibung? {
-    val huelle = runCatching { BrickJson.decodeFromString<SignierteBeschreibung>(roh) }.getOrNull() ?: return null
-    val daten = runCatching { Base64.getDecoder().decode(huelle.daten) }.getOrNull() ?: return null
-    val signatur = runCatching { Base64.getDecoder().decode(huelle.beschreibungssignatur) }.getOrNull() ?: return null
-    val echt = schluessel.any { beschreibungsSignaturGilt(daten, signatur, it) }
+fun checkedDescription(roh: String, schluessel: List<ByteArray>): UpdateBeschreibung? {
+    val shell = runCatching { BrickJson.decodeFromString<SignedDescription>(roh) }.getOrNull() ?: return null
+    val daten = runCatching { Base64.getDecoder().decode(shell.daten) }.getOrNull() ?: return null
+    val signatur = runCatching { Base64.getDecoder().decode(shell.beschreibungssignatur) }.getOrNull() ?: return null
+    val echt = schluessel.any { descriptionSignatureApplies(daten, signatur, it) }
     if (!echt) return null
     return runCatching { BrickJson.decodeFromString<UpdateBeschreibung>(daten.decodeToString()) }.getOrNull()
 }
@@ -42,13 +42,13 @@ fun gepruefteBeschreibung(roh: String, schluessel: List<ByteArray>): UpdateBesch
  * Mehrere zugleich, damit ein Wechsel ohne Lücke geht: Der neue steht in der App, bevor
  * der Workflow mit ihm signiert. Text ausserhalb der Blöcke zählt nicht.
  */
-fun beschreibungsSchluessel(pem: String): List<ByteArray> =
+fun descriptionKey(pem: String): List<ByteArray> =
     Regex("""-----BEGIN PUBLIC KEY-----([A-Za-z0-9+/=\s]+)-----END PUBLIC KEY-----""").findAll(pem)
         .mapNotNull { block -> runCatching { Base64.getMimeDecoder().decode(block.groupValues[1].trim()) }.getOrNull() }
         .toList()
 
 /** ECDSA mit SHA-256, wie `openssl dgst -sha256 -sign` im Signierjob; andere Verfahren gelten nicht. */
-internal fun beschreibungsSignaturGilt(daten: ByteArray, signatur: ByteArray, spki: ByteArray): Boolean = runCatching {
+internal fun descriptionSignatureApplies(daten: ByteArray, signatur: ByteArray, spki: ByteArray): Boolean = runCatching {
     val schluessel = KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(spki))
     Signature.getInstance("SHA256withECDSA").run {
         initVerify(schluessel)
@@ -58,7 +58,7 @@ internal fun beschreibungsSignaturGilt(daten: ByteArray, signatur: ByteArray, sp
 }.getOrDefault(false)
 
 /** Trägt die Datei genau die signierte Prüfsumme? Leer heisst: keine Angabe, also nein. */
-fun pruefsummePasst(datei: File, erwartet: String): Boolean {
+fun checksumFits(datei: File, erwartet: String): Boolean {
     if (erwartet.isBlank() || !datei.isFile) return false
     val md = MessageDigest.getInstance("SHA-256")
     datei.inputStream().use { ein ->

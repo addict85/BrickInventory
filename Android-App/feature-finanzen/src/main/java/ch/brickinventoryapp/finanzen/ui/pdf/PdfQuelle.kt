@@ -4,8 +4,8 @@ import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import android.os.ParcelFileDescriptor
 import android.system.Os
 import android.system.OsConstants
-import ch.brickinventoryapp.data.util.ANLEITUNG_IM_SPEICHER_BIS
-import ch.brickinventoryapp.data.util.AnleitungsAblage
+import ch.brickinventoryapp.data.util.INSTRUCTION_IN_STORAGE_UNTIL
+import ch.brickinventoryapp.data.util.InstructionStore
 import java.io.ByteArrayInputStream
 import java.io.Closeable
 import java.io.File
@@ -14,16 +14,16 @@ import java.io.InputStream
 import java.io.InterruptedIOException
 import java.net.SocketException
 import java.net.UnknownHostException
-import ch.brickinventoryapp.data.DownloadGescheitert
+import ch.brickinventoryapp.data.DownloadFailed
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
  * Woher der Betrachter liest. Eine Schnittstelle, damit das ViewModel ohne Gerät
- * prüfbar ist; die Seiten rendert [oeffne], Drucken und Herunterladen lesen [eingang].
+ * prüfbar ist; die Seiten rendert [oeffne], Drucken und Herunterladen lesen [inbox].
  */
 interface PdfQuelle : Closeable {
     fun oeffne(): ParcelFileDescriptor
-    fun eingang(): InputStream
+    fun inbox(): InputStream
 }
 
 /** Wie weit der Betrachter ist; Fehler tragen den Text der Ursache oder einen [grund]. */
@@ -34,16 +34,16 @@ sealed class PdfLoadState {
     /** [klasse] wählt Überschrift und Rat wie überall in der App; [message] ist höchstens ein Zusatz. */
     data class Error(
         val message: String?,
-        val grund: PdfFehler = PdfFehler.UNBEKANNT,
+        val grund: PdfError = PdfError.UNBEKANNT,
         val klasse: Fehlerklasse? = null,
     ) : PdfLoadState()
 }
 
 /** Welche Art Fehler ein gescheiterter Download war; der Satz der Ausnahme ist Technik, keine Auskunft. */
-internal fun pdfFehlerklasse(e: Throwable): Fehlerklasse {
-    val status = (e as? DownloadGescheitert)?.status
+internal fun pdfErrorClass(e: Throwable): Fehlerklasse {
+    val status = (e as? DownloadFailed)?.status
     return when {
-        status == 401 || status == 403 -> Fehlerklasse.ANMELDUNG
+        status == 401 || status == 403 -> Fehlerklasse.LOGIN
         status != null && status >= 500 -> Fehlerklasse.SERVER
         status != null -> Fehlerklasse.UNBEKANNT
         e is UnknownHostException || e is SocketException || e is InterruptedIOException -> Fehlerklasse.OFFLINE
@@ -52,18 +52,18 @@ internal fun pdfFehlerklasse(e: Throwable): Fehlerklasse {
 }
 
 /** Fehler ohne eigenen Text; den Satz wählt die Oberfläche in der Sprache der App. */
-enum class PdfFehler { FREMDER_HOST, DOWNLOAD, UNBEKANNT }
+enum class PdfError { FREMDER_HOST, DOWNLOAD, UNBEKANNT }
 
 /**
  * Hält die Quelle, solange der Betrachter steht. Kommt sie erst nach dem Verlassen an
  * (der Download lief noch), wird sie sofort geschlossen statt bis zum Prozessende zu leben.
  */
-class PdfHalter : Closeable {
+class PdfHolder : Closeable {
     private var quelle: PdfQuelle? = null
     private var zu = false
 
     @Synchronized
-    fun halte(neu: PdfQuelle): Boolean {
+    fun hold(neu: PdfQuelle): Boolean {
         if (zu) {
             neu.close()
             return false
@@ -87,49 +87,49 @@ class PdfHalter : Closeable {
  * Der Bereich vergeht mit [close] oder spätestens mit dem Prozess, auch nach einem Absturz.
  * Hinüber in den Renderer geht er nur unveränderlich: versiegelt bzw. nur lesend geöffnet.
  */
-internal class PdfBereich(private val bereich: ParcelFileDescriptor, private val eingangOeffnen: () -> InputStream) : PdfQuelle {
+internal class PdfArea(private val bereich: ParcelFileDescriptor, private val openInbox: () -> InputStream) : PdfQuelle {
     // Ein eigener Deskriptor je Zugriff (PdfRenderer schliesst ihn mit); alle Duplikate
     // teilen die Leseposition, also vorn beginnen wie bei einer frisch geöffneten Datei.
     override fun oeffne(): ParcelFileDescriptor =
         bereich.dup().also { Os.lseek(it.fileDescriptor, 0, OsConstants.SEEK_SET) }
 
-    override fun eingang(): InputStream = eingangOeffnen()
+    override fun inbox(): InputStream = openInbox()
     override fun close() = bereich.close()
 
     companion object {
         /** Ein Gutschein-PDF (Nummer und PIN): nur im memfd. */
-        fun speicher(inhalt: ByteArray): PdfBereich {
+        fun speicher(inhalt: ByteArray): PdfArea {
             val bereich = memfd()
             fangeAusserAbbruch {
-                schreibeAlles(bereich.fileDescriptor, inhalt, inhalt.size)
-                versiegle(bereich.fileDescriptor)
+                writeEverything(bereich.fileDescriptor, inhalt, inhalt.size)
+                seal(bereich.fileDescriptor)
             }.onFailure { e ->
                 bereich.close()
                 throw e
             }
-            return PdfBereich(bereich) { ByteArrayInputStream(inhalt) }
+            return PdfArea(bereich) { ByteArrayInputStream(inhalt) }
         }
 
-        /** Eine Anleitung aus der verschlüsselten Ablage; grosse nicht in den Arbeitsspeicher ([ANLEITUNG_IM_SPEICHER_BIS]). */
-        fun anleitung(ablage: AnleitungsAblage, datei: File, anzeige: File): PdfBereich {
-            val imSpeicher = datei.length() <= ANLEITUNG_IM_SPEICHER_BIS
-            val (schreiber, bereich) = if (imSpeicher) memfd().let { it to it } else namenlos(anzeige)
+        /** Eine Anleitung aus der verschlüsselten Ablage; grosse nicht in den Arbeitsspeicher ([INSTRUCTION_IN_STORAGE_UNTIL]). */
+        fun anleitung(ablage: InstructionStore, datei: File, anzeige: File): PdfArea {
+            val inStorage = datei.length() <= INSTRUCTION_IN_STORAGE_UNTIL
+            val (schreiber, bereich) = if (inStorage) memfd().let { it to it } else nameless(anzeige)
             fangeAusserAbbruch {
                 ablage.lies(datei).use { ein ->
                     val puffer = ByteArray(64 * 1024)
                     while (true) {
                         val n = ein.read(puffer)
                         if (n < 0) break
-                        schreibeAlles(schreiber.fileDescriptor, puffer, n)
+                        writeEverything(schreiber.fileDescriptor, puffer, n)
                     }
                 }
-                if (imSpeicher) versiegle(bereich.fileDescriptor) else schreiber.close()
+                if (inStorage) seal(bereich.fileDescriptor) else schreiber.close()
             }.onFailure { e ->
                 if (schreiber !== bereich) schreiber.close()
                 bereich.close()
                 throw e
             }
-            return PdfBereich(bereich) { ablage.lies(datei) }
+            return PdfArea(bereich) { ablage.lies(datei) }
         }
 
         private fun memfd(): ParcelFileDescriptor {
@@ -150,27 +150,27 @@ internal class PdfBereich(private val bereich: ParcelFileDescriptor, private val
         private const val F_SEAL_WRITE = 8
 
         /** Nach dem Füllen: Niemand, auch nicht der Renderer mit seinem Duplikat, ändert den Inhalt noch. */
-        private fun versiegle(fd: FileDescriptor) {
+        private fun seal(fd: FileDescriptor) {
             Os.fcntlInt(fd, F_ADD_SEALS, F_SEAL_WRITE or F_SEAL_SHRINK or F_SEAL_GROW or F_SEAL_SEAL)
         }
 
         // Der Name ist gelöscht, bevor ein Byte Klartext hineinkommt; was bleibt, erreichen
         // nur die offenen Deskriptoren. Ein Absturz dazwischen hinterlässt eine leere Datei.
         // Zum Schreiben einer, der gleich wieder zugeht; an den Renderer geht nur der lesende.
-        private fun namenlos(ordner: File): Pair<ParcelFileDescriptor, ParcelFileDescriptor> {
-            ordner.mkdirs()
-            val datei = File.createTempFile("anzeige", ".pdf", ordner)
+        private fun nameless(folder: File): Pair<ParcelFileDescriptor, ParcelFileDescriptor> {
+            folder.mkdirs()
+            val datei = File.createTempFile("anzeige", ".pdf", folder)
             try {
                 val schreiber = ParcelFileDescriptor.open(datei, ParcelFileDescriptor.MODE_WRITE_ONLY)
-                val leser = fangeAusserAbbruch { ParcelFileDescriptor.open(datei, ParcelFileDescriptor.MODE_READ_ONLY) }
+                val reader = fangeAusserAbbruch { ParcelFileDescriptor.open(datei, ParcelFileDescriptor.MODE_READ_ONLY) }
                     .getOrElse { schreiber.close(); throw it }
-                return schreiber to leser
+                return schreiber to reader
             } finally {
                 datei.delete()
             }
         }
 
-        private fun schreibeAlles(fd: FileDescriptor, daten: ByteArray, laenge: Int) {
+        private fun writeEverything(fd: FileDescriptor, daten: ByteArray, laenge: Int) {
             var geschrieben = 0
             while (geschrieben < laenge) geschrieben += Os.write(fd, daten, geschrieben, laenge - geschrieben)
         }

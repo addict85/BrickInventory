@@ -1,6 +1,6 @@
 Gegenprobe: Die Manifest-Prüfung übersieht ein datatransport-Backend (Telemetrie von ML Kit)
 Modul: app
-Test: ch.brickinventoryapp.app.ManifestPruefenTest
+Test: ch.brickinventoryapp.app.ManifestCheckTest
 Rot: ein Telemetrie-Backend von ML Kit faellt auf
 
 diff --git a/Android-App/tools/manifest-pruefen.py b/Android-App/tools/manifest-pruefen.py

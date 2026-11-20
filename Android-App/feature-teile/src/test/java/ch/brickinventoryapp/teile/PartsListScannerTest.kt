@@ -11,8 +11,8 @@ class PartsListScannerTest {
 
     // Der Dialog steht in BarcodeResultDialog.kt; der Erfassungsrahmen zeigt ihn über dem scannenden Ziel.
     private val src: String by lazy {
-        File(Quellen.wurzel, "sammlung/ui/Erfassungsrahmen.kt").readText() + "\n" +
-            File(Quellen.wurzel, "sammlung/ui/dialogs/BarcodeResultDialog.kt").readText()
+        File(Quellen.root, "sammlung/ui/Erfassungsrahmen.kt").readText() + "\n" +
+            File(Quellen.root, "sammlung/ui/dialogs/BarcodeResultDialog.kt").readText()
     }
 
     /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
@@ -28,12 +28,12 @@ class PartsListScannerTest {
                 "Teileliste wären sie wirkungslos, würden aber wie eine echte Eingabe aussehen"
         }
         // Alle drei Felder müssen NACH der Bedingung stehen.
-        for ((muster, name) in listOf(
+        for ((pattern, name) in listOf(
             "OwnerPicker("            to "Eigentümer-Auswahl",
             "barcode_purchase_price"  to "Kaufpreis-Feld",
             "Zustandszeile("           to "Zustands-Umschalter",
         )) {
-            val pos = c.indexOf(muster, bedingung)
+            val pos = c.indexOf(pattern, bedingung)
             assert(pos > bedingung) { "$name steht nicht innerhalb des Erfassungs-Zweigs" }
         }
     }

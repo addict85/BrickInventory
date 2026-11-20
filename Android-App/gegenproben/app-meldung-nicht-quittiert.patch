@@ -10,8 +10,8 @@ diff --git a/Android-App/core-zustand/src/main/java/ch/brickinventoryapp/zustand
  
      /** Offline gespeicherte Änderungen, die noch zum Server müssen — für die Leiste im Gerüst. */
      val offeneAenderungen: StateFlow<Int> = ausgangsmelder.offene
--    fun clearSnackbar() { meldungen.quittiere() }
+-    fun clearSnackbar() { meldungen.acknowledge() }
 +    fun clearSnackbar() = Unit
  
      /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
-     val startpasswortNoetig: StateFlow<Boolean> = passwortPflicht.noetig
+     val startPasswordNeeded: StateFlow<Boolean> = passwordRequired.noetig

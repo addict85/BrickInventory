@@ -1,17 +1,17 @@
 Gegenprobe: Die App beachtet gueltigBis nicht (eine abgelaufene Beschreibung gilt als aktuell)
 Modul: core-update
-Test: ch.brickinventoryapp.update.UpdateFrischeTest
+Test: ch.brickinventoryapp.update.UpdateFreshTest
 Rot: eine abgelaufene oder fristlose Beschreibung ist nie aktuell
 
-diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
---- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
-+++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFrische.kt
-@@ -46,7 +46,7 @@ internal fun bewerteFrische(b: UpdateBeschreibung, gesehen: UpdateStand?, laufen
-     b.versionCode < laufend -> UpdateFrische.ZURUECKGESETZT
-     gesehen != null && (b.versionCode < gesehen.hoechsterCode || b.ausgestellt < gesehen.ausgestellt) ->
-         UpdateFrische.ZURUECKGESETZT
--    b.ausgestellt <= 0 || b.gueltigBis <= b.ausgestellt || b.gueltigBis <= jetztSek -> UpdateFrische.ABGELAUFEN
-+    b.ausgestellt <= 0 || b.gueltigBis <= b.ausgestellt -> UpdateFrische.ABGELAUFEN
-     else -> UpdateFrische.AKTUELL
+diff --git a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
+--- a/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
++++ b/Android-App/core-update/src/main/java/ch/brickinventoryapp/update/util/UpdateFresh.kt
+@@ -46,7 +46,7 @@ internal fun valueFresh(b: UpdateBeschreibung, gesehen: UpdateStatus?, laufen
+     b.versionCode < laufend -> UpdateFresh.ZURUECKGESETZT
+     gesehen != null && (b.versionCode < gesehen.highestCode || b.ausgestellt < gesehen.ausgestellt) ->
+         UpdateFresh.ZURUECKGESETZT
+-    b.ausgestellt <= 0 || b.gueltigBis <= b.ausgestellt || b.gueltigBis <= nowSec -> UpdateFresh.ABGELAUFEN
++    b.ausgestellt <= 0 || b.gueltigBis <= b.ausgestellt -> UpdateFresh.ABGELAUFEN
+     else -> UpdateFresh.AKTUELL
  }
  

@@ -1,6 +1,6 @@
 Gegenprobe: Teilekachel auch bei 200 % mit dem Bild über die ganze Breite
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
+Test: ch.brickinventoryapp.app.UisRulesTest
 Rot: Teile bei 200 Prozent zeigen mehrere Teile ganz
 
 diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
@@ -10,8 +10,8 @@ diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/
      val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
      // Ab grosser Schrift eine Listenzeile wie die Sets: Das Bild über die volle Breite
      // liess ein Teil je Bildschirm. Die Menge rückt dann vom Bild in den Text.
--    val zeile = grosseSchrift()
+-    val zeile = largeFont()
 +    val zeile = false
-     val weich = !bewegungReduziert()
+     val weich = !movementReduced()
      val menge: @Composable () -> Unit = {
          Surface(color = MaterialTheme.colorScheme.primary, shape = Formen.marke) {

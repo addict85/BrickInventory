@@ -23,14 +23,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.fach.GutscheinAnsicht
+import ch.brickinventoryapp.model.fach.VoucherView
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.ui.util.fmtMoney
-import ch.brickinventoryapp.finanzen.ui.inVierergruppen
+import ch.brickinventoryapp.finanzen.ui.inGroupsOfFour
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.mitSchrift
-import ch.brickinventoryapp.model.fach.KlartextAnsicht
+import ch.brickinventoryapp.ui.components.withFont
+import ch.brickinventoryapp.model.fach.PlaintextView
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
@@ -42,71 +42,71 @@ import ch.brickinventoryapp.ui.theme.Formen
  */
 @Composable
 internal fun GutscheinKarte(
-    g: GutscheinAnsicht,
+    g: VoucherView,
     pinSichtbar: Boolean,
-    onPinSchalten: () -> Unit,
-    onBearbeiten: () -> Unit,
-    onLoeschen: () -> Unit,
-    onPdfOeffnen: () -> Unit,
-    onKopieren: (istNummer: Boolean) -> Unit,
-    onGuthaben: () -> Unit,
-    guthabenLaeuft: Boolean,
+    switchOnPin: () -> Unit,
+    editOn: () -> Unit,
+    deleteOn: () -> Unit,
+    openOnPdf: () -> Unit,
+    onKopieren: (isNumber: Boolean) -> Unit,
+    onBalance: () -> Unit,
+    balanceRunning: Boolean,
     /** Nummer und PIN im Klartext, wenn sie auf dieser Seite schon geholt sind. */
-    klartext: KlartextAnsicht?,
+    klartext: PlaintextView?,
     modifier: Modifier = Modifier,
 ) {
-    var menue by rememberSaveable { mutableStateOf(false) }
+    var menu by rememberSaveable { mutableStateOf(false) }
     // Die ganze Nummer nur bei aufgedecktem PIN; sonst die Maske des Servers.
-    val nummer = inVierergruppen(if (pinSichtbar && klartext != null) klartext.number else g.number)
+    val nummer = inGroupsOfFour(if (pinSichtbar && klartext != null) klartext.number else g.number)
 
     OutlinedCard(modifier) {
-      Column(Modifier.padding(start = Abstaende.mittel, top = Abstaende.winzig, bottom = Abstaende.klein),
-             verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+      Column(Modifier.padding(start = Abstaende.mittel, top = Abstaende.tiny, bottom = Abstaende.klein),
+             verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Kopiert wird der Klartext ohne Vierergruppen: Ein Bezahlfeld nimmt sie nicht an.
-            KopierZeile(stringResource(R.string.vouchers_cd_copy_number, nummer), { onKopieren(true) },
+            KopierRow(stringResource(R.string.vouchers_cd_copy_number, nummer), { onKopieren(true) },
                 Modifier.weight(1f)) {
                 Text(nummer, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
             }
             Box {
                 MitTooltip(stringResource(R.string.vouchers_cd_menu, nummer)) {
-                    IconButton(onClick = { menue = true }) {
-                        if (guthabenLaeuft) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    IconButton(onClick = { menu = true }) {
+                        if (balanceRunning) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                         else Icon(Icons.Default.MoreVert, stringResource(R.string.vouchers_cd_menu, nummer))
                     }
                 }
-                DropdownMenu(menue, { menue = false }) {
+                DropdownMenu(menu, { menu = false }) {
                     // Guthaben NUR mit PIN: LEGO fragt Nummer UND PIN ab; ohne PIN wäre
                     // der Eintrag eine Falle, die immer dieselbe Absage erzeugt.
-                    if (g.pin != null) MenueEintrag(stringResource(R.string.vouchers_menu_balance),
+                    if (g.pin != null) MenuEntry(stringResource(R.string.vouchers_menu_balance),
                         stringResource(R.string.vouchers_cd_balance, nummer), Icons.Default.Sync,
-                        enabled = !guthabenLaeuft) { menue = false; onGuthaben() }
-                    if (g.hatPdf) MenueEintrag(stringResource(R.string.vouchers_menu_pdf),
+                        enabled = !balanceRunning) { menu = false; onBalance() }
+                    if (g.hatPdf) MenuEntry(stringResource(R.string.vouchers_menu_pdf),
                         stringResource(R.string.vouchers_cd_pdf, nummer), Icons.Default.PictureAsPdf) {
-                        menue = false; onPdfOeffnen()
+                        menu = false; openOnPdf()
                     }
-                    MenueEintrag(stringResource(R.string.common_edit),
-                        stringResource(R.string.vouchers_cd_edit, nummer), Icons.Default.Edit) { menue = false; onBearbeiten() }
-                    MenueEintrag(stringResource(R.string.common_delete),
-                        stringResource(R.string.vouchers_cd_delete, nummer), Icons.Default.Delete) { menue = false; onLoeschen() }
+                    MenuEntry(stringResource(R.string.common_edit),
+                        stringResource(R.string.vouchers_cd_edit, nummer), Icons.Default.Edit) { menu = false; editOn() }
+                    MenuEntry(stringResource(R.string.common_delete),
+                        stringResource(R.string.vouchers_cd_delete, nummer), Icons.Default.Delete) { menu = false; deleteOn() }
                 }
             }
         }
-        GutscheinBetrag(g)
+        VoucherAmount(g)
         val pin = g.pin
         if (pin != null) Row(verticalAlignment = Alignment.CenterVertically) {
             // Der PIN ist auch VERDECKT antippbar: Kopieren heisst nicht ansehen.
             val pinText = stringResource(R.string.vouchers_pin) + ": " + if (pinSichtbar) klartext?.pin ?: pin else "••••"
-            KopierZeile(stringResource(R.string.vouchers_cd_copy_pin, nummer), { onKopieren(false) }) {
+            KopierRow(stringResource(R.string.vouchers_cd_copy_pin, nummer), { onKopieren(false) }) {
                 Text(pinText, style = MaterialTheme.typography.bodyMedium)
             }
-            val pinSchalter = stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show)
-            MitTooltip(pinSchalter) {
-                IconButton(onClick = onPinSchalten) {
+            val pinToggle = stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show)
+            MitTooltip(pinToggle) {
+                IconButton(onClick = switchOnPin) {
                     // In primary wie das Kopiersymbol daneben: gleichrangige Handlungen, eine Farbe.
                     Icon(
                         if (pinSichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                        contentDescription = pinSchalter,
+                        contentDescription = pinToggle,
                         tint = MaterialTheme.colorScheme.primary,
                     )
                 }
@@ -118,7 +118,7 @@ internal fun GutscheinKarte(
 
 /** Ein Eintrag im Gutscheinmenü: sichtbarer Text, vorgelesen mit der Nummer. */
 @Composable
-private fun MenueEintrag(
+private fun MenuEntry(
     text: String,
     beschreibung: String,
     symbol: androidx.compose.ui.graphics.vector.ImageVector,
@@ -139,7 +139,7 @@ private fun MenueEintrag(
  * Kopiersymbol am Ende. Die Beschreibung nennt, WAS kopiert wird.
  */
 @Composable
-private fun KopierZeile(
+private fun KopierRow(
     beschreibung: String,
     onKopieren: () -> Unit,
     modifier: Modifier = Modifier,
@@ -155,13 +155,13 @@ private fun KopierZeile(
     ) {
         inhalt()
         // Dieselbe Grösse an Nummer und PIN (vorher 24 und 18 dp).
-        Icon(Icons.Default.ContentCopy, null, Modifier.size(mitSchrift(18.dp)), tint = MaterialTheme.colorScheme.primary)
+        Icon(Icons.Default.ContentCopy, null, Modifier.size(withFont(18.dp)), tint = MaterialTheme.colorScheme.primary)
     }
 }
 
 /** Betrag und Stand der letzten Guthabenabfrage. */
 @Composable
-private fun GutscheinBetrag(g: GutscheinAnsicht) {
+private fun VoucherAmount(g: VoucherView) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         modifier = Modifier.padding(end = Abstaende.mittel)) {
         Text(fmtMoney(g.amount, g.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -173,7 +173,7 @@ private fun GutscheinBetrag(g: GutscheinAnsicht) {
                 else stringResource(R.string.vouchers_balance_never),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.haar),
+                modifier = Modifier.padding(horizontal = Abstaende.klein, vertical = Abstaende.hairline),
             )
         }
     }

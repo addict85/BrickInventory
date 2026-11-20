@@ -1,14 +1,14 @@
 Gegenprobe: Die Schrittsperre zeigt den Inhalt ohne Bestätigung
 Modul: app
-Test: ch.brickinventoryapp.app.GeraeteSchutzTest
+Test: ch.brickinventoryapp.app.DevicesProtectionTest
 Rot: die Verwaltung zeigt sich erst nach der Geraetesperre
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
 @@ -151,7 +151,7 @@ fun Schrittsperre(grund: String, inhalt: @Composable () -> Unit) {
-     val frage = { schutz.bestaetige(grund) { entsperrt = true } }
-     LaunchedEffect(schutz) { if (!entsperrt) frage() }
+     val frage = { protection.confirm(grund) { entsperrt = true } }
+     LaunchedEffect(protection) { if (!entsperrt) frage() }
      LifecycleEventEffect(Lifecycle.Event.ON_STOP) { entsperrt = false }
 -    if (entsperrt) {
 +    if (entsperrt || grund.isNotEmpty()) {

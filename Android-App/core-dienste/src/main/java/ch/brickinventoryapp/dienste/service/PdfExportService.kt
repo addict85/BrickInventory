@@ -19,15 +19,15 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import ch.brickinventoryapp.data.di.Anwendungsbereiche
-import ch.brickinventoryapp.data.nurEntsperrt
+import ch.brickinventoryapp.data.di.Scopes
+import ch.brickinventoryapp.data.onlyUnlocked
 import ch.brickinventoryapp.data.util.LanguageManager
 import ch.brickinventoryapp.data.repository.Ergebnis
-import ch.brickinventoryapp.data.repository.fehlerTextZuCode
-import ch.brickinventoryapp.data.service.PdfFehlschlag
-import ch.brickinventoryapp.data.service.teilelistenAuswahl
-import ch.brickinventoryapp.model.fach.PdfFortschritt
-import ch.brickinventoryapp.model.fach.PdfSchritt
+import ch.brickinventoryapp.data.repository.errorTextToCode
+import ch.brickinventoryapp.data.service.PdfFailure
+import ch.brickinventoryapp.data.service.partListsSelection
+import ch.brickinventoryapp.model.fach.PdfProgress
+import ch.brickinventoryapp.model.fach.PdfStep
 
 /**
  * Foreground-Service für den PDF-Export der Teileliste: Er hält den Prozess wach,
@@ -40,8 +40,8 @@ class PdfExportService : Service() {
     companion object {
         const val CHANNEL_ID      = "pdf_export_channel"
         const val NOTIFICATION_ID = 43
-        /** Die Abschlussmeldung; [TeilelistenAufraeumer] nimmt sie mit der Datei weg. */
-        const val FERTIG_ID = NOTIFICATION_ID + 1
+        /** Die Abschlussmeldung; [PartListsAufraeumer] nimmt sie mit der Datei weg. */
+        const val DONE_ID = NOTIFICATION_ID + 1
 
         fun start(context: Context) {
             // Siehe CsvImportService: startForegroundService kann an der
@@ -64,11 +64,11 @@ class PdfExportService : Service() {
 
     private val satz: Satz = { id, args -> loc.getString(id, *args.toTypedArray()) }
 
-    @Inject lateinit var bereiche: Anwendungsbereiche
+    @Inject lateinit var areas: Scopes
 
     // Lebt mit dem Dienst (onDestroy bricht ab). lazy, weil Hilt die Felder erst
     // in super.onCreate() setzt.
-    private val serviceScope by lazy { CoroutineScope(SupervisorJob() + bereiche.io) }
+    private val serviceScope by lazy { CoroutineScope(SupervisorJob() + areas.io) }
     private var begleitung: Job? = null
 
     override fun onCreate() {
@@ -91,13 +91,13 @@ class PdfExportService : Service() {
             begleitung = serviceScope.launch {
                 manager.state.collect { s ->
                     when (s) {
-                        is PdfExportState.Running -> updateNotification(fortschrittText(s.fortschritt, satz))
+                        is PdfExportState.Running -> updateNotification(progressText(s.fortschritt, satz))
                         is PdfExportState.Done -> {
                             showFinalNotification(loc.getString(R.string.notif_pdf_done_tap), openPdfIntent())
                             stopSelf()
                         }
                         is PdfExportState.Error -> {
-                            showFinalNotification(loc.getString(R.string.notif_pdf_failed, fehlerText(s.grund, satz)), null)
+                            showFinalNotification(loc.getString(R.string.notif_pdf_failed, errorText(s.grund, satz)), null)
                             stopSelf()
                         }
                         PdfExportState.Idle -> {}
@@ -109,7 +109,7 @@ class PdfExportService : Service() {
     }
 
     private fun openPdfIntent(): PendingIntent {
-        val view = teilelistenAuswahl(this, loc.getString(R.string.pdfexp_oeffnen_mit))
+        val view = partListsSelection(this, loc.getString(R.string.pdfexp_oeffnen_mit))
         return PendingIntent.getActivity(
             this, 0, view,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -124,7 +124,7 @@ class PdfExportService : Service() {
             .setOngoing(true)
             .setSilent(true)
             .setProgress(0, 0, true)
-            .nurEntsperrt(this, CHANNEL_ID, loc.getString(R.string.notif_pdf_title), R.drawable.ic_stat_brick)
+            .onlyUnlocked(this, CHANNEL_ID, loc.getString(R.string.notif_pdf_title), R.drawable.ic_stat_brick)
             .build()
 
     private fun updateNotification(text: String) {
@@ -139,11 +139,11 @@ class PdfExportService : Service() {
             .setSmallIcon(R.drawable.ic_stat_brick)
             .setAutoCancel(true)
             .apply { tapIntent?.let { setContentIntent(it) } }
-            .nurEntsperrt(this, CHANNEL_ID, loc.getString(R.string.notif_pdf_title), R.drawable.ic_stat_brick)
+            .onlyUnlocked(this, CHANNEL_ID, loc.getString(R.string.notif_pdf_title), R.drawable.ic_stat_brick)
             .build()
         // Andere ID, damit die Abschluss-Notification das Foreground-Ende überlebt
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
-            .notify(FERTIG_ID, n)
+            .notify(DONE_ID, n)
     }
 
     private fun createNotificationChannel() {
@@ -168,20 +168,20 @@ class PdfExportService : Service() {
 internal typealias Satz = (id: Int, args: List<Any>) -> String
 
 /** Der Satz zu einem Schritt, wie ihn die Benachrichtigung zeigt. */
-internal fun fortschrittText(f: PdfFortschritt, satz: Satz): String = when (f.schritt) {
-    PdfSchritt.STARTET -> satz(R.string.pdfexp_starting, emptyList())
-    PdfSchritt.BILDER_LADEN -> satz(R.string.pdfexp_loading_images, emptyList())
-    PdfSchritt.ERSTELLT -> f.restSekunden?.takeIf { it > 0 }?.let { satz(R.string.pdfexp_creating_eta, listOf(it)) }
+internal fun progressText(f: PdfProgress, satz: Satz): String = when (f.schritt) {
+    PdfStep.STARTET -> satz(R.string.pdfexp_starting, emptyList())
+    PdfStep.IMAGES_LOAD -> satz(R.string.pdfexp_loading_images, emptyList())
+    PdfStep.CREATED -> f.restSeconds?.takeIf { it > 0 }?.let { satz(R.string.pdfexp_creating_eta, listOf(it)) }
         ?: satz(R.string.pdfexp_almost_done, emptyList())
-    PdfSchritt.ABSCHLUSS -> satz(R.string.pdfexp_finalizing, emptyList())
-    PdfSchritt.HERUNTERLADEN -> satz(R.string.pdfexp_downloading, emptyList())
+    PdfStep.COMPLETION -> satz(R.string.pdfexp_finalizing, emptyList())
+    PdfStep.DOWNLOAD -> satz(R.string.pdfexp_downloading, emptyList())
 }
 
 /** Nie leer: Ohne Satz des Servers spricht der Fehlercode, sonst die Art des Fehlers. */
-internal fun fehlerText(grund: PdfFehlschlag, satz: Satz): String = when (grund) {
-    is PdfFehlschlag.Auftrag -> grund.satz?.takeIf { it.isNotBlank() } ?: satz(R.string.pdfexp_server_error, emptyList())
-    is PdfFehlschlag.Abruf -> grund.fehler.message.takeIf { it.isNotBlank() }
-        ?: fehlerTextZuCode(grund.fehler.code)?.let { satz(it, emptyList()) }
+internal fun errorText(grund: PdfFailure, satz: Satz): String = when (grund) {
+    is PdfFailure.Auftrag -> grund.satz?.takeIf { it.isNotBlank() } ?: satz(R.string.pdfexp_server_error, emptyList())
+    is PdfFailure.Abruf -> grund.fehler.message.takeIf { it.isNotBlank() }
+        ?: errorTextToCode(grund.fehler.code)?.let { satz(it, emptyList()) }
         ?: when (val f = grund.fehler) {
             is Ergebnis.Fehler.Server -> satz(R.string.pdfexp_http_error, listOf(f.status))
             is Ergebnis.Fehler.Netz, Ergebnis.Fehler.Abgebrochen -> satz(R.string.err_network, emptyList())

@@ -17,11 +17,11 @@ import javax.inject.Inject
  */
 @AndroidEntryPoint
 class MeldungsEinstieg : ComponentActivity() {
-    @Inject lateinit var eingang: Meldungseingang
+    @Inject lateinit var inbox: Meldungseingang
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        startActivity(meldungWeiterreichen(this, intent, eingang))
+        startActivity(forwardMessage(this, intent, inbox))
         finish()
     }
 }
@@ -31,8 +31,8 @@ class MeldungsEinstieg : ComponentActivity() {
  * Einstieg hat keine Task-Affinität, die laufende App erhält so onNewIntent()
  * in ihrer eigenen Task statt einer zweiten Instanz.
  */
-internal fun meldungWeiterreichen(ctx: Context, ankunft: Intent?, eingang: Meldungseingang): Intent {
-    eingang.ablegen(ankunft?.getStringExtra(PreisalarmWorker.EXTRA_SET))
+internal fun forwardMessage(ctx: Context, arrival: Intent?, inbox: Meldungseingang): Intent {
+    inbox.ablegen(arrival?.getStringExtra(PreisalarmWorker.EXTRA_SET))
     return Intent(ctx, MainActivity::class.java).addFlags(
         Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
 }

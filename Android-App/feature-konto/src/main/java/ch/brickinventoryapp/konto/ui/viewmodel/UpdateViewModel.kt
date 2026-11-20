@@ -6,13 +6,13 @@ import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.ressourcen.R
 import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.konto.ui.UpdateUiState
-import ch.brickinventoryapp.update.util.gepruefteBeschreibung
-import ch.brickinventoryapp.update.util.pruefsummePasst
-import ch.brickinventoryapp.update.util.fassungPasst
+import ch.brickinventoryapp.update.util.checkedDescription
+import ch.brickinventoryapp.update.util.checksumFits
+import ch.brickinventoryapp.update.util.versionFits
 import ch.brickinventoryapp.update.util.Installationsmeldung
-import ch.brickinventoryapp.update.util.istErlaubteApkAdresse
-import ch.brickinventoryapp.update.util.anzubietendeFassung
-import ch.brickinventoryapp.update.util.pruefeFrische
+import ch.brickinventoryapp.update.util.isAllowedApkAddress
+import ch.brickinventoryapp.update.util.offerableVersion
+import ch.brickinventoryapp.update.util.checkFresh
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,8 +33,8 @@ import ch.brickinventoryapp.model.koroutinen.Dispatcher
 import ch.brickinventoryapp.data.Anmeldestand
 import ch.brickinventoryapp.update.data.UpdateRepository
 import kotlinx.coroutines.Job
-import ch.brickinventoryapp.update.util.UpdateGeraet
-import ch.brickinventoryapp.update.util.UpdateStandAblage
+import ch.brickinventoryapp.update.util.UpdateDevice
+import ch.brickinventoryapp.update.util.UpdateStatusStore
 import ch.brickinventoryapp.model.ui.Meldung
 
 /**
@@ -47,17 +47,17 @@ import ch.brickinventoryapp.model.ui.Meldung
 class UpdateViewModel @Inject constructor(
     private val repo: UpdateRepository,
     private val anmeldestand: Anmeldestand,
-    private val updateStand: UpdateStandAblage,
-    private val geraet: UpdateGeraet,
+    private val updateStatus: UpdateStatusStore,
+    private val geraet: UpdateDevice,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
-) : ViewModel(), UpdateAktionen.MitZustand {
+) : ViewModel(), UpdateAktionen.WithState {
 
-    private val _state = MutableStateFlow(UpdateUiState(startpruefung = updateStand.startpruefungAn()))
+    private val _state = MutableStateFlow(UpdateUiState(startpruefung = updateStatus.startpruefungAn()))
     val updateState = _state.asStateFlow()
     override val zustand: StateFlow<UpdateUiState> get() = updateState
 
-    /** Der laufende Download; [ladeAbbrechen] beendet ihn samt Teildatei. */
-    private var ladeJob: Job? = null
+    /** Der laufende Download; [cancelLoad] beendet ihn samt Teildatei. */
+    private var loadJob: Job? = null
 
     init {
         // Beim Abmelden zuruecksetzen: Ein Fortschritt oder „bereit zur
@@ -65,7 +65,7 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             anmeldestand.authTokenState.map { it.isNullOrBlank() }.distinctUntilChanged().drop(1)
                 .filter { abgemeldet -> abgemeldet }
-                .collect { _state.value = UpdateUiState(startpruefung = updateStand.startpruefungAn()) }
+                .collect { _state.value = UpdateUiState(startpruefung = updateStatus.startpruefungAn()) }
         }
         // Mit jeder Anmeldung still nach einer neuen Fassung sehen (wenn der Schalter an ist):
         // kein Ladebalken, keine Meldung ohne Netz. Hier, weil die Frage der ganzen App gilt.
@@ -78,7 +78,7 @@ class UpdateViewModel @Inject constructor(
         viewModelScope.launch {
             Installationsmeldung.fehler.filter { it != null }.collect { grund ->
                 Installationsmeldung.fehler.value = null
-                _state.update { it.copy(fehler = Meldung.Ressource(R.string.update_installation_fehlgeschlagen, listOfNotNull(grund))) }
+                _state.update { it.copy(fehler = Meldung.Resource(R.string.update_installation_fehlgeschlagen, listOfNotNull(grund))) }
             }
         }
     }
@@ -90,44 +90,44 @@ class UpdateViewModel @Inject constructor(
      *        Knopfdruck `false` — dann sieht der Nutzer beides.
      */
     override fun pruefeBeimStart() {
-        if (updateStand.startpruefungAn()) pruefeAufUpdate(still = true)
+        if (updateStatus.startpruefungAn()) pruefeAufUpdate(still = true)
     }
 
-    override fun setzeStartpruefung(an: Boolean) {
-        updateStand.setzeStartpruefung(an)
+    override fun setStartpruefung(an: Boolean) {
+        updateStatus.setStartpruefung(an)
         _state.update { it.copy(startpruefung = an) }
     }
 
     override fun pruefeAufUpdate(still: Boolean) {
         viewModelScope.launch {
-            _state.update { it.copy(pruefung = if (still) Vorgang.Fertig else Vorgang.Laeuft, fehler = null) }
+            _state.update { it.copy(check = if (still) Vorgang.Fertig else Vorgang.Laeuft, fehler = null) }
             fangeAusserAbbruch {
-                val roh = repo.holeBeschreibung()
+                val roh = repo.fetchDescription()
                 // Nur eine signierte Beschreibung zählt: Schreibrecht am Repository allein
                 // reicht dann nicht, um ein Update zu unterdrücken oder umzuleiten. Danach
                 // wird die Adresse trotzdem geprüft, nicht geglaubt.
                 val beschreibung = withContext(io) {
-                    gepruefteBeschreibung(roh, geraet.beschreibungsSchluessel())
+                    checkedDescription(roh, geraet.descriptionKey())
                 }
-                if (beschreibung == null || !istErlaubteApkAdresse(beschreibung.apkUrl)) {
+                if (beschreibung == null || !isAllowedApkAddress(beschreibung.apkUrl)) {
                     _state.update {
-                        it.copy(pruefung = Vorgang.Fertig, geprueft = true, neuereFassung = null,
-                            fehler = if (still) null else Meldung.Ressource(
+                        it.copy(check = Vorgang.Fertig, geprueft = true, newerVersion = null,
+                            fehler = if (still) null else Meldung.Resource(
                                 if (beschreibung == null) R.string.update_beschreibung_unsigniert else R.string.update_fremde_adresse))
                     }
                     return@launch
                 }
                 // Aus einer zurückgesetzten Beschreibung kein Angebot, aus einer abgelaufenen
-                // eines mit Hinweis; die Einstellungen sagen, warum (anzubietendeFassung).
-                val frische = pruefeFrische(updateStand, beschreibung, repo.laufendeFassung.code, System.currentTimeMillis() / 1000)
+                // eines mit Hinweis; die Einstellungen sagen, warum (offerableVersion).
+                val frische = checkFresh(updateStatus, beschreibung, repo.runningVersion.code, System.currentTimeMillis() / 1000)
                 _state.update {
-                    it.copy(pruefung = Vorgang.Fertig, geprueft = true,
-                        neuereFassung = anzubietendeFassung(beschreibung, frische, repo.laufendeFassung.code), fehler = null, frische = frische)
+                    it.copy(check = Vorgang.Fertig, geprueft = true,
+                        newerVersion = offerableVersion(beschreibung, frische, repo.runningVersion.code), fehler = null, frische = frische)
                 }
             }.onFailure { _ ->
                 _state.update {
-                    it.copy(pruefung = Vorgang.Fertig, geprueft = true,
-                        fehler = if (still) null else Meldung.Ressource(R.string.update_pruefung_fehlgeschlagen))
+                    it.copy(check = Vorgang.Fertig, geprueft = true,
+                        fehler = if (still) null else Meldung.Resource(R.string.update_pruefung_fehlgeschlagen))
                 }
             }
         }
@@ -138,8 +138,8 @@ class UpdateViewModel @Inject constructor(
      * bleibt — es gibt weiterhin eine neuere Fassung, und der Punkt am Konto-Symbol
      * sagt das weiter. Weggeklickt ist nur die Frage, nicht der Befund.
      */
-    override fun updateHinweisSchliessen() {
-        _state.update { it.copy(dialogAbgelehnt = true) }
+    override fun closeUpdateHint() {
+        _state.update { it.copy(dialogRejected = true) }
     }
 
     /**
@@ -149,39 +149,39 @@ class UpdateViewModel @Inject constructor(
      * Signatur stimmt mit der installierten App überein.
      */
     override fun ladeUpdate() {
-        val fassung = _state.value.neuereFassung ?: return
-        if (ladeJob?.isActive == true) return
-        ladeJob = viewModelScope.launch {
-            if (!istErlaubteApkAdresse(fassung.apkUrl)) {
-                _state.update { it.copy(fehler = Meldung.Ressource(R.string.update_fremde_adresse)) }
+        val fassung = _state.value.newerVersion ?: return
+        if (loadJob?.isActive == true) return
+        loadJob = viewModelScope.launch {
+            if (!isAllowedApkAddress(fassung.apkUrl)) {
+                _state.update { it.copy(fehler = Meldung.Resource(R.string.update_fremde_adresse)) }
                 return@launch
             }
-            _state.update { it.copy(fortschritt = 0, fehler = null, bereitZurInstallation = false) }
-            val ziel = geraet.updateDatei()
+            _state.update { it.copy(fortschritt = 0, fehler = null, readyToInstallation = false) }
+            val ziel = geraet.updateFile()
             fangeAusserAbbruch {
-                repo.ladeApk(fassung, ziel).collect { p -> _state.update { it.copy(fortschritt = p) } }
-                val falsch = withContext(io) { ungueltigesApk(fassung, ziel) }
+                repo.loadApk(fassung, ziel).collect { p -> _state.update { it.copy(fortschritt = p) } }
+                val falsch = withContext(io) { invalidApk(fassung, ziel) }
                 if (falsch != null) {
                     ziel.delete()
-                    _state.update { it.copy(fortschritt = null, fehler = Meldung.Ressource(falsch)) }
+                    _state.update { it.copy(fortschritt = null, fehler = Meldung.Resource(falsch)) }
                     return@launch
                 }
-                val erlaubt = geraet.darfInstallieren()
-                _state.update { it.copy(fortschritt = null, bereitZurInstallation = true, erlaubnisFehlt = !erlaubt) }
-                if (erlaubt) starteInstallation()
+                val erlaubt = geraet.installMay()
+                _state.update { it.copy(fortschritt = null, readyToInstallation = true, permissionAbsent = !erlaubt) }
+                if (erlaubt) startInstallation()
             }.onFailure { _ ->
                 ziel.delete()
                 _state.update {
-                    it.copy(fortschritt = null, fehler = Meldung.Ressource(R.string.update_laden_fehlgeschlagen))
+                    it.copy(fortschritt = null, fehler = Meldung.Resource(R.string.update_laden_fehlgeschlagen))
                 }
             }
         }
     }
 
     /** Der Download bricht ab, die Teildatei löscht die Datenschicht; ein neuer Versuch beginnt von vorn. */
-    override fun ladeAbbrechen() {
-        ladeJob?.cancel()
-        ladeJob = null
+    override fun cancelLoad() {
+        loadJob?.cancel()
+        loadJob = null
         _state.update { it.copy(fortschritt = null) }
     }
 
@@ -190,10 +190,10 @@ class UpdateViewModel @Inject constructor(
      * die signierte Prüfsumme (genau dieses APK), dann die Signatur, dann die Fassung —
      * alles, bevor der Nutzer gefragt wird (util/AppUpdate.kt).
      */
-    private fun ungueltigesApk(beschreibung: UpdateBeschreibung, ziel: File): Int? = when {
-        !pruefsummePasst(ziel, beschreibung.apkSha256) -> R.string.update_pruefsumme_falsch
-        !geraet.signaturPasst(ziel) -> R.string.update_signatur_falsch
-        !fassungPasst(geraet.apkFassung(ziel), beschreibung.versionCode, repo.laufendeFassung.code) -> R.string.update_fassung_falsch
+    private fun invalidApk(beschreibung: UpdateBeschreibung, ziel: File): Int? = when {
+        !checksumFits(ziel, beschreibung.apkSha256) -> R.string.update_pruefsumme_falsch
+        !geraet.signatureFits(ziel) -> R.string.update_signatur_falsch
+        !versionFits(geraet.apkVersion(ziel), beschreibung.versionCode, repo.runningVersion.code) -> R.string.update_fassung_falsch
         else -> null
     }
 
@@ -203,32 +203,32 @@ class UpdateViewModel @Inject constructor(
      * Die Signatur wird erneut geprüft, weil die Datei während des Ausflugs in die
      * Systemeinstellungen auf der Platte liegt.
      */
-    override fun starteInstallation() {
-        val gemeldet = _state.value.neuereFassung?.versionCode ?: 0
-        val pruefsumme = _state.value.neuereFassung?.apkSha256.orEmpty()
+    override fun startInstallation() {
+        val gemeldet = _state.value.newerVersion?.versionCode ?: 0
+        val checksum = _state.value.newerVersion?.apkSha256.orEmpty()
         viewModelScope.launch {
             // Rund 46 MB hashen und zwei APK-Analysen: auf dem Hauptfaden droht ein ANR.
             // Die Reihenfolge bleibt; `&&` bricht beim ersten Fehlschlag ab.
             val geprueft = withContext(io) {
-                val datei = geraet.updateDatei()
-                val echt = datei.isFile && pruefsummePasst(datei, pruefsumme) && geraet.signaturPasst(datei) &&
-                    fassungPasst(geraet.apkFassung(datei), gemeldet, repo.laufendeFassung.code)
+                val datei = geraet.updateFile()
+                val echt = datei.isFile && checksumFits(datei, checksum) && geraet.signatureFits(datei) &&
+                    versionFits(geraet.apkVersion(datei), gemeldet, repo.runningVersion.code)
                 if (!echt) datei.delete()
                 datei.takeIf { echt }
             }
             if (geprueft == null) {
                 _state.update {
-                    it.copy(bereitZurInstallation = false, fehler = Meldung.Ressource(R.string.update_signatur_falsch))
+                    it.copy(readyToInstallation = false, fehler = Meldung.Resource(R.string.update_signatur_falsch))
                 }
                 return@launch
             }
-            if (!geraet.darfInstallieren()) {
-                _state.update { it.copy(erlaubnisFehlt = true) }
+            if (!geraet.installMay()) {
+                _state.update { it.copy(permissionAbsent = true) }
                 return@launch
             }
-            withContext(io) { runCatching { geraet.installiere(geprueft) } }
+            withContext(io) { runCatching { geraet.install(geprueft) } }
                 .onFailure {
-                    _state.update { s -> s.copy(fehler = Meldung.Ressource(R.string.update_installer_fehlt)) }
+                    _state.update { s -> s.copy(fehler = Meldung.Resource(R.string.update_installer_fehlt)) }
                 }
         }
     }

@@ -1,6 +1,6 @@
 Gegenprobe: bei den Netzen des Vorwärmens fehlt der Hinweis zum gemessenen WLAN
 Modul: feature-verwaltung
-Test: ch.brickinventoryapp.verwaltung.CacheLeerenFragtTest
+Test: ch.brickinventoryapp.verwaltung.CacheClearAsksTest
 Rot: bei den Netzen steht der Hinweis
 
 diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringCache.kt

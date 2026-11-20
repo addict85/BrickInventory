@@ -9,8 +9,8 @@ diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/csv/CsvImpor
 @@ -40,7 +40,7 @@
          viewModelScope.launch {
              when (val r = csvImport.abbrechen()) {
-                 is Ergebnis.Erfolg -> meldungen.zeige(Meldung.Ressource(R.string.csv_cancel_requested))
--                is Ergebnis.Fehler -> meldungen.zeige(texte.meldungFuerSnackbar(r))
+                 is Ergebnis.Erfolg -> meldungen.zeige(Meldung.Resource(R.string.csv_cancel_requested))
+-                is Ergebnis.Fehler -> meldungen.zeige(texts.meldungFuerSnackbar(r))
 +                is Ergebnis.Fehler -> Unit
              }
          }

@@ -1,15 +1,15 @@
 package ch.brickinventoryapp.katalog.ui.viewmodel
 
 import ch.brickinventoryapp.model.fach.Katalogsortierung
-import ch.brickinventoryapp.zustand.ui.ladefehler
+import ch.brickinventoryapp.zustand.ui.loadError
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.laedt
-import ch.brickinventoryapp.zustand.ui.viewmodel.ladeBeimBeobachten
+import ch.brickinventoryapp.zustand.ui.viewmodel.observeLoadOn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ch.brickinventoryapp.model.fach.KatalogSetAnsicht
-import ch.brickinventoryapp.data.repository.KatalogRepository
+import ch.brickinventoryapp.data.repository.CatalogRepository
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.katalog.ui.CatalogUiState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,12 +25,12 @@ import ch.brickinventoryapp.data.MeldungsKanal
 import ch.brickinventoryapp.zustand.ui.viewmodel.Texte
 import ch.brickinventoryapp.data.alarm.Alarmeingabe
 import ch.brickinventoryapp.data.repository.AlarmRepository
-import ch.brickinventoryapp.data.repository.MerklisteRepository
+import ch.brickinventoryapp.data.repository.WantedRepository
 import ch.brickinventoryapp.katalog.ui.KatalogZiel
 import ch.brickinventoryapp.katalog.ui.Merkwunsch
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.model.ui.ScrollMemory
-import ch.brickinventoryapp.model.fach.MerkpostenAnsicht
+import ch.brickinventoryapp.model.fach.WantedItemView
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -39,7 +39,7 @@ import kotlinx.coroutines.flow.map
  * 150 ms wie in der Webapp (`_ladeSichtbareSeiten`). Ein Zug über die ganze Leiste
  * fällt so auf einen Abruf zusammen; kürzer als ein Berührungsabstand entprellte nichts.
  */
-internal const val SICHTFENSTER_RUHE_MS = 150L
+internal const val VIEWPORT_REST_MS = 150L
 
 /**
  * Der Katalog als eigenes ViewModel: Suche, Liste und Detail haben Jobs und eine
@@ -50,13 +50,13 @@ internal const val SICHTFENSTER_RUHE_MS = 150L
  */
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
-    private val katalog: KatalogRepository,
+    private val katalog: CatalogRepository,
     private val meldungen: MeldungsKanal,
     /** Texte in der Sprache der App und Fehlermeldungen wie überall (AppTexte). */
-    private val texte: Texte,
+    private val texts: Texte,
     /** Merkliste und Preisalarm: Das Detail zeigt den Posten und legt ihn an, ohne die Sammlung zu kennen. */
-    private val merkliste: MerklisteRepository,
-    private val alarme: AlarmRepository,
+    private val merkliste: WantedRepository,
+    private val alerts: AlarmRepository,
     private val rollgedaechtnis: ScrollMemory,
 ) : ViewModel(), KatalogAktionen {
 
@@ -65,7 +65,7 @@ class CatalogViewModel @Inject constructor(
 
     init {
         // Erst wer den Katalog sieht, lädt ihn; ein Zurückkehren lädt nur, was noch fehlt.
-        ladeBeimBeobachten(_catalogState) {
+        observeLoadOn(_catalogState) {
             val s = _catalogState.value
             if (s.loadedPages.isEmpty() && !s.abruf.laedt) { loadCatalogMeta(); loadCatalogSets() }
         }
@@ -111,11 +111,11 @@ class CatalogViewModel @Inject constructor(
             // Sets, die es in der neuen Liste nicht mehr gibt.
             rollgedaechtnis.vergiss(KatalogZiel.Catalog.rollSchluessel)
             _catalogState.update {
-                it.copy(abruf = Laden.Laedt,
+                it.copy(abruf = Laden.Loads,
                         loadedPages = emptyMap(), loadingPages = emptySet(), scrollTo = null,
-                        jahrVerteilung = emptyList())
+                        yearDistribution = emptyList())
             }
-            ladeJahrVerteilung(gen)
+            loadYearDistribution(gen)
             val s = _catalogState.value
             // Wiederholt wird im Repository, knapp: Der Fehlerzustand hat einen eigenen Knopf.
             val r = katalog.getCatalogSets(
@@ -130,8 +130,8 @@ class CatalogViewModel @Inject constructor(
                     }
                 }
                 is Ergebnis.Fehler -> {
-                    _catalogState.update { it.copy(abruf = ladefehler(r)) }
-                    if (_catalogState.value.loadedPages.isNotEmpty()) meldungen.zeige(texte.meldungFuerSnackbar(r))
+                    _catalogState.update { it.copy(abruf = loadError(r)) }
+                    if (_catalogState.value.loadedPages.isNotEmpty()) meldungen.zeige(texts.meldungFuerSnackbar(r))
                 }
             }
         }
@@ -143,10 +143,10 @@ class CatalogViewModel @Inject constructor(
      * übersprungen; Antworten einer älteren Filter-Generation verworfen, sonst hinge
      * eine späte Seite des alten Filters in der neuen Liste.
      */
-    private val sichtfenster = Sichtfensterlader(viewModelScope, SICHTFENSTER_RUHE_MS, ::ensureCatalogPage)
+    private val viewport = Sichtfensterlader(viewModelScope, VIEWPORT_REST_MS, ::ensureCatalogPage)
 
     /** Was das Raster gerade zeigt (Seiten, 1-basiert); geladen wird erst, wenn es ruht. */
-    override fun catalogSichtbar(ersteSeite: Int, letzteSeite: Int) = sichtfenster.sichtbar(ersteSeite, letzteSeite)
+    override fun catalogVisible(firstPage: Int, lastPage: Int) = viewport.sichtbar(firstPage, lastPage)
 
     fun ensureCatalogPage(seite: Int) {
         if (seite < 1) return
@@ -178,7 +178,7 @@ class CatalogViewModel @Inject constructor(
      * die Filter kennt; einmal je Listenaufbau wie in der Webapp. `gen` verwirft die
      * Antwort, wenn der Filter inzwischen gewechselt hat.
      */
-    private fun ladeJahrVerteilung(gen: Int) {
+    private fun loadYearDistribution(gen: Int) {
         viewModelScope.launch {
             val s = _catalogState.value
             val r = katalog.getCatalogYearVerteilung(
@@ -187,8 +187,8 @@ class CatalogViewModel @Inject constructor(
             if (r is Ergebnis.Erfolg) {
                 // Jahrgaenge OHNE Jahr wegwerfen — genau wie die Webapp es tut.
                 // Ihre Zahl bleibt in `total` enthalten; siehe
-                // CatalogYearMath.jahrAnPosition.
-                _catalogState.update { it.copy(jahrVerteilung = r.data.filter { j -> j.year != null }) }
+                // CatalogYearMath.yearAnPosition.
+                _catalogState.update { it.copy(yearDistribution = r.data.filter { j -> j.year != null }) }
             }
         }
     }
@@ -233,18 +233,18 @@ class CatalogViewModel @Inject constructor(
 
     // ── Detail ────────────────────────────────────────────────────────────────────
     /** Der Merkposten zu [setNumber] aus der Ablage der Merkliste; null, solange das Set nicht darauf steht. */
-    fun gemerkt(setNumber: String): Flow<MerkpostenAnsicht?> =
-        merkliste.beobachteMerkliste().map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
+    fun gemerkt(setNumber: String): Flow<WantedItemView?> =
+        merkliste.observeWanted().map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
 
     /** Merken und, wenn eine Schwelle dasteht, den Preisalarm gleich mit. */
     fun merke(w: Merkwunsch) {
         viewModelScope.launch {
             when (val r = merkliste.legeMerkpostenAn(w.setNumber, w.zustand, w.konto)) {
                 is Ergebnis.Fehler ->
-                    meldungen.zeige(texte.meldungFuerSnackbar(r)?.let { Meldung.Ressource(R.string.vm_error, listOf(it)) })
+                    meldungen.zeige(texts.meldungFuerSnackbar(r)?.let { Meldung.Resource(R.string.vm_error, listOf(it)) })
                 is Ergebnis.Erfolg -> {
-                    Alarmeingabe.zahl(w.schwelleRoh)?.let { alarme.setPreisalarm(w.setNumber, w.richtung, it, w.zustand) }
-                    meldungen.zeige(Meldung.Ressource(if (r.data) R.string.wanted_added else R.string.wanted_already))
+                    Alarmeingabe.zahl(w.thresholdRaw)?.let { alerts.setPreisalarm(w.setNumber, w.richtung, it, w.zustand) }
+                    meldungen.zeige(Meldung.Resource(if (r.data) R.string.wanted_added else R.string.wanted_already))
                 }
             }
         }
@@ -254,18 +254,18 @@ class CatalogViewModel @Inject constructor(
         catalogDetailJob?.cancel()
         catalogDetailJob = viewModelScope.launch {
             // Die Merkliste in die Ablage, damit [gemerkt] den Posten kennt; still, das Detail zählt.
-            launch { merkliste.aktualisiereMerkliste() }
-            _catalogState.update { it.copy(detail = Laden.Laedt) }
+            launch { merkliste.refreshWanted() }
+            _catalogState.update { it.copy(detail = Laden.Loads) }
             // Der Fehler gehört in den Zustand, nicht in eine Snackbar: Der Bildschirm hat
             // ohne Detail nichts zu zeigen und braucht einen Grund und „Erneut versuchen“.
             when (val r = katalog.getCatalogSetDetail(setNumber)) {
                 is Ergebnis.Erfolg -> {
                     val detail = r.data
                     val geladen = if (detail != null) Laden.Daten(detail)
-                    else Laden.Fehler(Fehlerklasse.UNBEKANNT, Meldung.Ressource(R.string.err_set_not_found))
+                    else Laden.Fehler(Fehlerklasse.UNBEKANNT, Meldung.Resource(R.string.err_set_not_found))
                     _catalogState.update { it.copy(detail = geladen) }
                 }
-                is Ergebnis.Fehler -> _catalogState.update { it.copy(detail = ladefehler(r)) }
+                is Ergebnis.Fehler -> _catalogState.update { it.copy(detail = loadError(r)) }
             }
         }
     }
@@ -275,16 +275,16 @@ class CatalogViewModel @Inject constructor(
      * Galerie, das Markieren dem Katalog; der Graph ruft beides nacheinander, damit
      * die Abhängigkeit an der Aufrufstelle steht.
      */
-    fun markiereAufgenommen(setNumber: String, quantity: Int) {
+    fun markCaptured(setNumber: String, quantity: Int) {
         // Das „besitze ich“-Abzeichen sofort setzen, ohne neu zu laden — über alle
         // geladenen Seiten, weil die Kachel auf jeder stehen kann.
         _catalogState.update { st ->
-            val markiere: (KatalogSetAnsicht) -> KatalogSetAnsicht = {
+            val mark: (KatalogSetAnsicht) -> KatalogSetAnsicht = {
                 if (it.setNumber == setNumber)
                     it.copy(owned = true, ownedQuantity = it.ownedQuantity + quantity) else it
             }
             st.copy(
-                loadedPages = st.loadedPages.mapValues { (_, seite) -> seite.map(markiere) },
+                loadedPages = st.loadedPages.mapValues { (_, seite) -> seite.map(mark) },
                 detail = st.detail.let {
                     if (it is Laden.Daten && it.wert.setNumber == setNumber)
                         Laden.Daten(it.wert.copy(owned = true, ownedQuantity = it.wert.ownedQuantity + quantity)) else it

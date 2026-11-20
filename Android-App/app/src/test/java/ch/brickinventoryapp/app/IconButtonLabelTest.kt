@@ -22,7 +22,7 @@ class IconButtonLabelTest {
     // Bearbeiten-Knoepfe im Monitoring. Die Mengen-Knoepfe trugen "+" und "-"
 
     private fun screens(): List<File> =
-        Quellen.wurzel
+        Quellen.root
             .walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
             .also {
                 // Untergrenze: ein leerer Dateilauf lässt jede
@@ -32,7 +32,7 @@ class IconButtonLabelTest {
 
     @Test
     fun `jeder IconButton hat eine Beschriftung`() {
-        val ohneLabel = mutableListOf<String>()
+        val withoutLabel = mutableListOf<String>()
 
         for (datei in screens()) {
             val zeilen = datei.readText().lines()
@@ -51,12 +51,12 @@ class IconButtonLabelTest {
                 if (!block.contains("Icon(")) return@forEachIndexed
                 val beschriftet = block.contains("stringResource") ||
                     block.contains("contentDescription =")
-                if (!beschriftet) ohneLabel += "${datei.name}:${i + 1}"
+                if (!beschriftet) withoutLabel += "${datei.name}:${i + 1}"
             }
         }
 
-        assert(ohneLabel.isEmpty()) {
-            "IconButton ohne Beschriftung — TalkBack sagt dort nur „Schaltfläche\": $ohneLabel"
+        assert(withoutLabel.isEmpty()) {
+            "IconButton ohne Beschriftung — TalkBack sagt dort nur „Schaltfläche\": $withoutLabel"
         }
     }
 
@@ -74,7 +74,7 @@ class IconButtonLabelTest {
         val ohne = mutableListOf<String>()
         for (datei in screens()) {
             if (datei.name == "MitTooltip.kt") continue
-            val zeilen = Quellen.ohneKommentare(datei.readText()).lines()
+            val zeilen = Quellen.withoutComments(datei.readText()).lines()
             zeilen.forEachIndexed { i, zeile ->
                 if (!zeile.contains("IconButton(")) return@forEachIndexed
                 val davor = zeilen.subList(maxOf(0, i - 2), i + 1).joinToString("\n")
@@ -106,7 +106,7 @@ class IconButtonLabelTest {
     fun `jedes clickable nennt seine Rolle`() {
         // Ohne Rolle sagt TalkBack bei einer anklickbaren Karte nichts darüber,
         // dass man sie antippen kann.
-        val ohneRolle = mutableListOf<String>()
+        val withoutRole = mutableListOf<String>()
         for (f in screens()) {
             // Glance (Startbildschirm-Widget) kennt keine Rolle: Dort wird daraus eine
             // RemoteViews-Fläche, die der Launcher selbst als antippbar ansagt.
@@ -114,9 +114,9 @@ class IconButtonLabelTest {
             // Importzeilen leeren statt entfernen: die Zeilennummern bleiben stimmig.
             val s = f.readText().lines().joinToString("\n") { if (it.startsWith("import ")) "" else it }
             Regex("""\.clickable(\((?:[^()]|\([^()]*\))*\))?""").findAll(s).forEach { m ->
-                if (!m.value.contains("role =")) ohneRolle += "${f.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}"
+                if (!m.value.contains("role =")) withoutRole += "${f.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}"
             }
         }
-        assert(ohneRolle.isEmpty()) { "clickable ohne role: $ohneRolle" }
+        assert(withoutRole.isEmpty()) { "clickable ohne role: $withoutRole" }
     }
 }

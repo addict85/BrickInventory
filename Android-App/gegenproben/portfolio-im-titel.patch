@@ -1,6 +1,6 @@
 Gegenprobe: die Wertentwicklung heisst wieder „Portfolio“
 Modul: app
-Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
 Rot: die Wertentwicklung heisst nach der Sammlung
 
 diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml

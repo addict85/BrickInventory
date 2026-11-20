@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.gemeinsam.ui
 
 import ch.brickinventoryapp.model.fach.Waehrung
-import ch.brickinventoryapp.model.fach.DiagrammAchse
+import ch.brickinventoryapp.model.fach.ChartAxis
 import ch.brickinventoryapp.model.fach.DiagrammPunkt
 import java.text.NumberFormat
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Currency
 import java.util.Locale
-import ch.brickinventoryapp.model.util.DatumJahr
+import ch.brickinventoryapp.model.util.DateYear
 import ch.brickinventoryapp.model.util.fmtDatum
-import ch.brickinventoryapp.ui.util.mitWaehrungsAbstand
+import ch.brickinventoryapp.ui.util.withCurrencyGap
 
 /*
  * Achsenbeschriftung der Wertentwicklung in der Sprache der App. Der Server
@@ -21,46 +21,46 @@ import ch.brickinventoryapp.ui.util.mitWaehrungsAbstand
  */
 
 /** Monatsauflösung erkennt man an der Form „MM/YY“, die der Server dann schreibt. */
-private val MONATLICH = Regex("""\d{2}/\d{2}""")
+private val MONTHLY = Regex("""\d{2}/\d{2}""")
 
 /** Kurzes Datum für die x-Achse, oder null, wenn [iso] kein Tag ist. */
-fun achsenDatum(iso: String, monatlich: Boolean, locale: Locale): String? {
+fun axesDate(iso: String, monthly: Boolean, locale: Locale): String? {
     val tag = runCatching { LocalDate.parse(iso.take(10)) }.getOrNull() ?: return null
-    if (!monatlich) return fmtDatum(iso, locale, DatumJahr.OHNE)
+    if (!monthly) return fmtDatum(iso, locale, DateYear.OHNE)
     return DateTimeFormatter.ofPattern("MMM yy", locale).format(tag)
 }
 
 /**
  * Ersetzt die Beschriftung jedes beschrifteten Punkts durch das lokale Datum.
- * Passen [tage] nicht Punkt für Punkt, bleibt der Text des Servers stehen.
+ * Passen [days] nicht Punkt für Punkt, bleibt der Text des Servers stehen.
  */
-fun lokaleAchse(punkte: List<DiagrammPunkt>, tage: List<String>, locale: Locale): List<DiagrammPunkt> {
-    if (tage.size != punkte.size) return punkte
+fun localAxis(punkte: List<DiagrammPunkt>, days: List<String>, locale: Locale): List<DiagrammPunkt> {
+    if (days.size != punkte.size) return punkte
     return punkte.mapIndexed { i, p ->
         if (p.xLabel.isBlank()) p
-        else p.copy(xLabel = achsenDatum(tage[i], MONATLICH.matches(p.xLabel), locale) ?: p.xLabel)
+        else p.copy(xLabel = axesDate(days[i], MONTHLY.matches(p.xLabel), locale) ?: p.xLabel)
     }
 }
 
 /**
  * y-Achse als ganze Beträge in der Währung der Antwort, Tausender nach [locale].
- * [kompakt] für grosse Schrift: „1,7k“ ohne Währung — ausgeschrieben nahm die Achse
+ * [compact] für grosse Schrift: „1,7k“ ohne Währung — ausgeschrieben nahm die Achse
  * bei 200 % ein Drittel der Diagrammbreite; der Betrag steht in der Kopfkarte darüber.
  */
-fun lokaleWerte(achse: List<DiagrammAchse>, waehrung: Waehrung, locale: Locale, kompakt: Boolean = false): List<DiagrammAchse> {
-    if (kompakt) return achse.map { it.copy(label = kompakterBetrag(it.wert.alsDouble(), locale)) }
+fun localValues(axis: List<ChartAxis>, waehrung: Waehrung, locale: Locale, compact: Boolean = false): List<ChartAxis> {
+    if (compact) return axis.map { it.copy(label = compactAmount(it.wert.asDouble(), locale)) }
     val nf = runCatching {
         NumberFormat.getCurrencyInstance(locale).apply {
             currency = Currency.getInstance(waehrung.code)
             maximumFractionDigits = 0
             minimumFractionDigits = 0
         }
-    }.getOrNull() ?: return achse
-    return achse.map { it.copy(label = mitWaehrungsAbstand(nf.format(it.wert.alsBigDecimal()))) }
+    }.getOrNull() ?: return axis
+    return axis.map { it.copy(label = withCurrencyGap(nf.format(it.wert.asBigDecimal()))) }
 }
 
 /** Ein Betrag in höchstens vier Zeichen und Einheit: 850, 1,7k, 12k, 1,2M. */
-fun kompakterBetrag(wert: Double, locale: Locale): String {
+fun compactAmount(wert: Double, locale: Locale): String {
     val nf = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 1; minimumFractionDigits = 0 }
     val betrag = kotlin.math.abs(wert)
     return when {

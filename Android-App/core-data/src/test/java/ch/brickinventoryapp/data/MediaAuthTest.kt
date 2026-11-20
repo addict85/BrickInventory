@@ -34,7 +34,7 @@ class MediaAuthTest {
     }
 
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -50,7 +50,7 @@ class MediaAuthTest {
     fun `Bilder werden nicht am ImageLoader vorbei geladen`() {
         // Ein eigener HttpURLConnection- oder OkHttp-Aufruf für Bilder hätte den
         // Interceptor nicht und liefe damit ohne Token.
-        for (rel in Quellen.wurzel.walkTopDown()
+        for (rel in Quellen.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = code(rel.readText())
             assert(!src.contains("HttpURLConnection")) {
@@ -59,7 +59,7 @@ class MediaAuthTest {
         }
     }
 
-    // Dass Abmelden den Bild-Cache leert, prüft AbmeldenRaeumtAllesTest (app) ausgeführt.
+    // Dass Abmelden den Bild-Cache leert, prüft SignOutCleansEverythingTest (app) ausgeführt.
 
     // ── PDFs ─────────────────────────────────────────────────────────────────
 
@@ -100,9 +100,9 @@ class MediaAuthTest {
         val viewer = code(read("data/AnleitungsRepository.kt"))
         // Geprüft wird die Aussage, nicht der Wortlaut des Aufrufs: Der Download läuft
         // über den injizierten Client, gleich wie die Argumente umbrechen.
-        val aufruf = Quellen.fenster(viewer, "downloadPdfWithResume(", 8)
-        assert(aufruf.isNotEmpty()) { "Der Download-Aufruf fehlt ganz" }
-        assert(aufruf.contains("httpClient")) {
+        val call = Quellen.fenster(viewer, "downloadPdfWithResume(", 8)
+        assert(call.isNotEmpty()) { "Der Download-Aufruf fehlt ganz" }
+        assert(call.contains("httpClient")) {
             "Das PDF muss über den injizierten OkHttpClient geladen werden, nicht frei"
         }
         assert(!viewer.contains("OkHttpClient()")) {
@@ -121,7 +121,7 @@ class MediaAuthTest {
         // (/images/parts/, /images/minifigs/) statt gemeinsam in
         // /data/part_images/. Die Adresse kommt fertig aus der API — wer sie
         // selbst zusammensetzt, bricht bei der nächsten Umsortierung.
-        for (rel in Quellen.wurzel.walkTopDown()
+        for (rel in Quellen.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = code(rel.readText())
             assert(!src.contains("/data/part_images") && !src.contains("instructions/shared")) {
@@ -143,7 +143,7 @@ class MediaAuthTest {
         // PdfExportManager für die Wiederholschleife), fehlt dem when der
         // null-Fall. Die Versuchung ist dann ein else — genau das soll hier
         // auffallen. Richtig ist ein expliziter `null ->`-Zweig.
-        for (f in Quellen.wurzel.walkTopDown()
+        for (f in Quellen.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
             var idx = src.indexOf("is Ergebnis.Erfolg")
@@ -159,8 +159,8 @@ class MediaAuthTest {
                 // type, also keine Erschöpfung möglich). Das wurde fälschlich
                 // beanstandet und liess sich nur durch sinnlosen Umbau am Code
                 // beheben.
-                val naechstesWhen = body.indexOf("when ", 1)
-                val bereich = if (naechstesWhen > 0) body.substring(0, naechstesWhen) else body
+                val nextWhen = body.indexOf("when ", 1)
+                val bereich = if (nextWhen > 0) body.substring(0, nextWhen) else body
                 assert(!bereich.contains("else ->")) {
                     "${f.name}: else-Zweig in einem when über Result — " +
                     "stattdessen einen expliziten null-Zweig ergänzen"
@@ -176,7 +176,7 @@ class MediaAuthTest {
         // zurück, der den Bearer-Token nicht anhängt; der Server antwortet dann mit 401,
         // und die Fläche bleibt ohne Fehlermeldung leer.
         val offenders = mutableListOf<String>()
-        for (f in Quellen.wurzel.walkTopDown()
+        for (f in Quellen.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
             var i = src.indexOf("AsyncImage(")
@@ -199,7 +199,7 @@ class MediaAuthTest {
     fun `kein UNUSED_PARAMETER-Suppress auf einem ImageLoader`() {
         // Der Suppress war das Symptom: Er hat die Warnung beseitigt, die auf
         // genau diesen Fehler hingewiesen hätte.
-        for (f in Quellen.wurzel.walkTopDown()
+        for (f in Quellen.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
             assert(!Regex("""@Suppress\("UNUSED_PARAMETER"\)\s*imageLoader""").containsMatchIn(src)) {

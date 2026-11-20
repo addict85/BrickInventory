@@ -1,16 +1,16 @@
 Gegenprobe: PfadServer.imTakt stellt Abrufe wieder auf OkHttp-Fäden statt im aufrufenden Faden
 Modul: feature-teile
-Test: ch.brickinventoryapp.teile.TeileViewModelTest
+Test: ch.brickinventoryapp.teile.PartsViewModelTest
 Rot: ein geaendertes Teil steht in der Ablage, ohne die Liste neu zu holen
 
 diff --git a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt b/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt
 --- a/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt
 +++ b/Android-App/core-testing/src/main/java/ch/brickinventoryapp/testing/TestApi.kt
-@@ -157,7 +157,7 @@ class PfadServer(vararg regeln: Pair<String, String>) {
-             (pfadMitAbfrage(anfrage).substringBefore('?') in ausbleibend).also { if (it) gehalten += senden }
+@@ -157,7 +157,7 @@ class PfadServer(vararg rules: Pair<String, String>) {
+             (pathWithQuery(anfrage).substringBefore('?') in ausbleibend).also { if (it) held += senden }
          }
          val api = TestApi.fuer("http://im-takt.test/", object : Call.Factory {
--            override fun newCall(request: Request): Call = SofortRuf(client.newCall(request), bleibtAus)
+-            override fun newCall(request: Request): Call = ImmediatelyCall(client.newCall(request), staysFrom)
 +            override fun newCall(request: Request): Call = client.newCall(request)
          })
          synchronized(herkunft) { herkunft[api] = this }

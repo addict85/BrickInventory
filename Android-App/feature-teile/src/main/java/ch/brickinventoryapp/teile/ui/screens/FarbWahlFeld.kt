@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.teile.ui.screens
 
-import ch.brickinventoryapp.ui.theme.farbeAusHex
+import ch.brickinventoryapp.ui.theme.colorFromHex
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,10 +25,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ressourcen.R
-import ch.brickinventoryapp.model.fach.FarbeAnsicht
+import ch.brickinventoryapp.model.fach.ColorView
 import ch.brickinventoryapp.model.fach.OHNE_FARBE
 import ch.brickinventoryapp.model.ui.farbName
-import ch.brickinventoryapp.model.ui.ohneKeineFarbe
+import ch.brickinventoryapp.model.ui.withoutNoColor
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
@@ -39,11 +39,11 @@ import ch.brickinventoryapp.ui.theme.Formen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun FarbWahlFeld(
-    farben: List<FarbeAnsicht>,
+    farben: List<ColorView>,
     aktuell: Int,
     aktuellerName: String?,
-    aktuellerHex: String?,
-    onWahl: (FarbeAnsicht) -> Unit,
+    currentHex: String?,
+    onWahl: (ColorView) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var offen by rememberSaveable { mutableStateOf(false) }
@@ -51,12 +51,12 @@ internal fun FarbWahlFeld(
     // Bestandszeile: Dort steht der Name, der beim Erfassen mitgeschickt wurde,
     // und der kann aelter sein als der Katalog. Ohne beides kein „Farbe 5“: Die
     // Nummer sagt niemandem etwas.
-    val keineFarbe = stringResource(R.string.parts_no_color)
-    val name = farbName(farben, aktuell, aktuellerName, keineFarbe)
+    val noColor = stringResource(R.string.parts_no_color)
+    val name = farbName(farben, aktuell, aktuellerName, noColor)
         ?: stringResource(R.string.parts_color_unknown)
-    val hex = if (aktuell == OHNE_FARBE) null else farben.firstOrNull { it.id == aktuell }?.hex ?: aktuellerHex
+    val hex = if (aktuell == OHNE_FARBE) null else farben.firstOrNull { it.id == aktuell }?.hex ?: currentHex
     // „Keine Farbe“ steht zur Wahl, damit sich eine falsch übernommene Farbe auch entfernen lässt.
-    val wahl = listOf(FarbeAnsicht(OHNE_FARBE, keineFarbe, null)) + ohneKeineFarbe(farben)
+    val wahl = listOf(ColorView(OHNE_FARBE, noColor, null)) + withoutNoColor(farben)
 
     ExposedDropdownMenuBox(
         expanded = offen && farben.isNotEmpty(),
@@ -67,7 +67,7 @@ internal fun FarbWahlFeld(
             value = name,
             onValueChange = {},
             readOnly = true,
-            leadingIcon = { FarbPunkt(hex, Modifier.padding(start = Abstaende.mittel)) },
+            leadingIcon = { FarbPoint(hex, Modifier.padding(start = Abstaende.mittel)) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen) },
             modifier = Modifier.fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
@@ -80,7 +80,7 @@ internal fun FarbWahlFeld(
             wahl.forEach { c ->
                 DropdownMenuItem(
                     text = { Text(c.name) },
-                    leadingIcon = { FarbPunkt(c.hex) },
+                    leadingIcon = { FarbPoint(c.hex) },
                     onClick = {
                         offen = false
                         // Dieselbe Farbe nochmal ist keine Aenderung — und der
@@ -96,7 +96,7 @@ internal fun FarbWahlFeld(
 
 /** Der Farbpunkt. Ein unlesbarer Hex-Wert ergibt KEINEN Punkt, keinen falschen. */
 @Composable
-private fun FarbPunkt(hex: String?, modifier: Modifier = Modifier) {
-    val farbe = farbeAusHex(hex) ?: return
+private fun FarbPoint(hex: String?, modifier: Modifier = Modifier) {
+    val farbe = colorFromHex(hex) ?: return
     Box(modifier.size(14.dp).clip(CircleShape).background(farbe))
 }

@@ -32,18 +32,18 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import ch.brickinventoryapp.app.AppSperreAblage
+import ch.brickinventoryapp.app.AppLockStore
 import ch.brickinventoryapp.app.MainActivity
-import ch.brickinventoryapp.ui.components.AppSperre
+import ch.brickinventoryapp.ui.components.AppLock
 import ch.brickinventoryapp.ressourcen.R
 import androidx.hilt.work.HiltWorker
 import ch.brickinventoryapp.data.Darstellungsablage
 import ch.brickinventoryapp.data.Widgetablage
-import ch.brickinventoryapp.data.Zugangsdaten
+import ch.brickinventoryapp.data.Credentials
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.data.repository.FinanzenRepository
+import ch.brickinventoryapp.data.repository.FinancesRepository
 import ch.brickinventoryapp.data.util.LanguageManager
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -57,22 +57,22 @@ import ch.brickinventoryapp.ui.theme.Abstaende
  * Netz den letzten Stand; holen tut allein [WidgetArbeiter]. Verschlüsselt wie die
  * übrigen Ablagen; ein Klartext-Altbestand gilt als leer.
  */
-internal object WidgetAblage {
+internal object WidgetStore {
     /** Die frühere eigene Datei; nur noch zum Leeren, damit kein alter Stand liegen bleibt. */
-    private const val ALTE_DATEI = "widget"
+    private const val OLD_FILE = "widget"
 
-    private fun ablage(ctx: Context) = EntryPointAccessors.fromApplication(ctx, WidgetZugang::class.java).widgetablage()
+    private fun ablage(ctx: Context) = EntryPointAccessors.fromApplication(ctx, WidgetAccess::class.java).widgetablage()
 
     fun lies(ctx: Context): WidgetZahlen? = runCatching {
-        ablage(ctx).widgetStand()?.let { BrickJson.decodeFromString(WidgetZahlen.serializer(), it) }
+        ablage(ctx).widgetStatus()?.let { BrickJson.decodeFromString(WidgetZahlen.serializer(), it) }
     }.getOrNull()
 
     fun leeren(ctx: Context) {
-        ablage(ctx).leereWidgetStand()
-        ctx.deleteSharedPreferences(ALTE_DATEI)
+        ablage(ctx).emptyWidgetStatus()
+        ctx.deleteSharedPreferences(OLD_FILE)
     }
 
-    fun schreibe(ctx: Context, z: WidgetZahlen) = ablage(ctx).setzeWidgetStand(BrickJson.encodeToString(WidgetZahlen.serializer(), z))
+    fun schreibe(ctx: Context, z: WidgetZahlen) = ablage(ctx).setWidgetStatus(BrickJson.encodeToString(WidgetZahlen.serializer(), z))
 }
 
 /**
@@ -81,8 +81,8 @@ internal object WidgetAblage {
  */
 @EntryPoint
 @InstallIn(SingletonComponent::class)
-interface WidgetZugang {
-    fun zugangsdaten(): Zugangsdaten
+interface WidgetAccess {
+    fun credentials(): Credentials
     fun darstellung(): Darstellungsablage
     fun widgetablage(): Widgetablage
 }
@@ -95,27 +95,27 @@ interface WidgetZugang {
 class WidgetArbeiter @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val finanzen: FinanzenRepository,
-    private val zugang: Zugangsdaten,
-    private val sperre: Geraetesperre,
+    private val finanzen: FinancesRepository,
+    private val access: Credentials,
+    private val lock: Geraetesperre,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): androidx.work.ListenableWorker.Result =
-        if (fangeAusserAbbruch { aktualisiere(applicationContext) }.getOrDefault(false)) androidx.work.ListenableWorker.Result.success()
+        if (fangeAusserAbbruch { refresh(applicationContext) }.getOrDefault(false)) androidx.work.ListenableWorker.Result.success()
         else androidx.work.ListenableWorker.Result.retry()
 
     /** false: später noch einmal. */
-    private suspend fun aktualisiere(ctx: Context): Boolean {
+    private suspend fun refresh(ctx: Context): Boolean {
         // Abgemeldet gibt es nichts zu zeigen; der alte Stand bliebe sonst fremd sichtbar.
-        if (zugang.tokenJetzt().isBlank()) {
-            if (ohneToken(sperre.gesperrt()) == OhneToken.SPAETER) return false
-            WidgetAblage.leeren(ctx)
+        if (access.tokenJetzt().isBlank()) {
+            if (ohneToken(lock.gesperrt()) == WithoutToken.LATER) return false
+            WidgetStore.leeren(ctx)
             SammlungsWidget().updateAll(ctx)
             return true
         }
         val pnl = (finanzen.getPnl() as? Ergebnis.Erfolg)?.data
         val verlauf = (finanzen.getPortfolioHistory("week") as? Ergebnis.Erfolg)?.data
-        widgetZahlen(pnl, verlauf, System.currentTimeMillis())?.let { WidgetAblage.schreibe(ctx, it) }
+        widgetNumbers(pnl, verlauf, System.currentTimeMillis())?.let { WidgetStore.schreibe(ctx, it) }
         SammlungsWidget().updateAll(ctx)
         return true
     }
@@ -124,30 +124,30 @@ class WidgetArbeiter @AssistedInject constructor(
         private const val NAME = "sammlungs-widget"
 
         fun einplanen(ctx: Context) = runCatching {
-            val auftrag = PeriodicWorkRequestBuilder<WidgetArbeiter>(1, TimeUnit.HOURS)
+            val job = PeriodicWorkRequestBuilder<WidgetArbeiter>(1, TimeUnit.HOURS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build()
-            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, auftrag)
+            WorkManager.getInstance(ctx).enqueueUniquePeriodicWork(NAME, ExistingPeriodicWorkPolicy.KEEP, job)
         }
 
-        fun abbestellen(ctx: Context) = runCatching { WorkManager.getInstance(ctx).cancelUniqueWork(NAME) }
+        fun unsubscribe(ctx: Context) = runCatching { WorkManager.getInstance(ctx).cancelUniqueWork(NAME) }
     }
 }
 
 /** Sammlungswert, G&V heute und gesamt; ein Tipp öffnet die App. */
 class SammlungsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val zugang = runCatching { EntryPointAccessors.fromApplication(context, WidgetZugang::class.java) }.getOrNull()
-        val angemeldet = fangeAusserAbbruch { zugang?.zugangsdaten()?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
+        val access = runCatching { EntryPointAccessors.fromApplication(context, WidgetAccess::class.java) }.getOrNull()
+        val angemeldet = fangeAusserAbbruch { access?.credentials()?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
         // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt und die App-Sperre nicht greift.
-        val zeigen = zugang?.darstellung()?.widgetWerteZeigen() == true &&
-            !AppSperre.verdecktWidget(AppSperreAblage(context))
-        val zahlen = widgetAnzeige(WidgetAblage.lies(context), angemeldet)
+        val zeigen = access?.darstellung()?.showWidgetValues() == true &&
+            !AppLock.hiddenWidget(AppLockStore(context))
+        val zahlen = widgetDisplay(WidgetStore.lies(context), angemeldet)
         // Die Texte in der Sprache der App, nicht des Systems (LanguageManager).
         val ctx = LanguageManager.localizedContext(context)
         val titel = ctx.getString(R.string.widget_titel)
         val zeilen = zahlen?.let {
-            val (wert, heute, gesamt) = widgetWerte(it, zeigen)
+            val (wert, heute, gesamt) = widgetValues(it, zeigen)
             listOf(
                 ctx.getString(R.string.widget_wert) to wert,
                 ctx.getString(R.string.widget_heute) to heute,
@@ -187,6 +187,6 @@ class SammlungsWidgetEmpfaenger : GlanceAppWidgetReceiver() {
 
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
-        WidgetArbeiter.abbestellen(context)
+        WidgetArbeiter.unsubscribe(context)
     }
 }

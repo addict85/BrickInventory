@@ -11,8 +11,8 @@ index 1bc1ead..c0f6e15 100644
      private val oeffne: (geheim: String, bindung: String) -> Tresorbefund,
  ) {
      /** null: gerade nicht verschlüsselbar (gesperrt); dann wird nichts in die Warteschlange gelegt. */
--    fun ablegen(auftrag: Entwertungsauftrag): String? = verschluessle(alsText(auftrag), BINDUNG)
-+    fun ablegen(auftrag: Entwertungsauftrag): String? = alsText(auftrag).also { verschluessle(it, BINDUNG) }
+-    fun ablegen(job: Entwertungsauftrag): String? = verschluessle(asText(job), BINDING)
++    fun ablegen(job: Entwertungsauftrag): String? = asText(job).also { verschluessle(it, BINDING) }
  
-     fun lies(geheim: String): Auftragslage = when (val b = oeffne(geheim, BINDUNG)) {
-         is Tresorbefund.Lesbar -> ausText(b.klartext)?.let { Auftragslage.Da(it) } ?: Auftragslage.Unlesbar
+     fun lies(geheim: String): JobState = when (val b = oeffne(geheim, BINDING)) {
+         is Tresorbefund.Readable -> fromText(b.klartext)?.let { JobState.Da(it) } ?: JobState.Unlesbar
