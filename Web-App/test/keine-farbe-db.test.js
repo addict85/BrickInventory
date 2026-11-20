@@ -201,7 +201,7 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async t => {
   });
 
   await t.test('keine Farbe fragt BrickLink nach (Not Applicable)', async () => {
-    const { resolveBlColorId } = _req('src/finanzen/rechnung/preise.js');
+    const { resolveBlColorId } = _req('src/finances/calculation/prices.js');
     assert.equal(await resolveBlColorId(9999), 0);
   });
 });

@@ -12,7 +12,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { priceHistoryMinifig } = _req('src/finanzen/priceHistory.js');
+const { priceHistoryMinifig } = _req('src/finances/priceHistory.js');
 const { holdsMinifig } = require('./helpers/bestand');
 
 test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { concurrency: 1 }, async t => {

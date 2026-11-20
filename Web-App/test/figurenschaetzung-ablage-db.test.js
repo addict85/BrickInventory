@@ -5,7 +5,7 @@
  * Die Teile der Figur und ihre Preise liegen im Cache — kein Abruf übers Netz.
  *
  * Gegenproben (31.10.2026, gemessen):
- *   a) in src/finanzen/repository/marktpreise.ts beim Schreiben der Schätzung
+ *   a) in src/finances/repository/marketPrices.ts beim Schreiben der Schätzung
  *      `condition` durch 'N' ersetzt → Teil 1 rot (der Eintrag „U" fehlt).
  *   b) in estimateMinifigsPrice() fetchPartPrice mit DEFAULT_PRICE_CONDITION statt
  *      `cond` → Teil 1 rot (beide Zustände 2 × 3 = 6, nicht 4 und 6).
@@ -30,8 +30,8 @@ test('Figurenschätzung und Setpreis je Zustand', async t => {
     keineDb(t, e);
     return;
   }
-  const mf = _req('src/finanzen/marketPrice.js');
-  const fc = _req('src/finanzen/financeCalc.js');
+  const mf = _req('src/finances/marketPrice.js');
+  const fc = _req('src/finances/financeCalc.js');
   const u = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ('schaetz_'||floor(random()*1e9),'x') RETURNING id`,
   );

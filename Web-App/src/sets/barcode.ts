@@ -1,6 +1,6 @@
 /** Set zum Barcode: eigener Katalog, Rebrickable, Brickset und EAN-Quellen. */
 import { isGuess, setnummerCandidates } from '../katalog';
-import { resolveImageLocal } from '../bilder';
+import { resolveImageLocal } from '../images';
 import { RbSet, RbSetMinifig, rbPage } from '../externalSources';
 import { withVersion, normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/setDetail';

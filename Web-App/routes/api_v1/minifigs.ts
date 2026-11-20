@@ -11,7 +11,7 @@ import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 export function buildMinifigsRouter(
   d: Pick<
     Dienste,
-    'settings' | 'auftraege' | 'household' | 'konto' | 'finanzen' | 'bestand' | 'minifigs' | 'collection'
+    'settings' | 'auftraege' | 'household' | 'konto' | 'finances' | 'bestand' | 'minifigs' | 'collection'
   >,
 ) {
   const { requireToken } = guardFor(d.konto);
@@ -78,7 +78,7 @@ export function buildMinifigsRouter(
     const uid = req.apiUser.user_id;
     const currency = await d.settings.userValue(uid, 'currency', 'EUR');
     // Blickfeld: Ohne scopeIds() fände sich für eine Figur des Unterkontos keine Erfassung.
-    const data = await d.finanzen.priceHistoryMinifig(viewOf(req), req.pfad.figNumber, currency);
+    const data = await d.finances.priceHistoryMinifig(viewOf(req), req.pfad.figNumber, currency);
     return { ...data };
   });
 

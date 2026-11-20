@@ -415,7 +415,7 @@ export async function oeffneMerkpostenDetail(arg) {
       .catch(() => {});
 
   // The HISTORY — the rows above it are already there. It comes from price_history, which the hourly
-  // price job fills; since this change, for a wanted item too (src/finanzen/preisLauf.ts). A fresh wanted
+  // price job fills; since this change, for a wanted item too (src/finances/priceRun.ts). A fresh wanted
   // item therefore starts with only one point, and a line needs two — that's not a bug, it's the start.
   api('GET', `/v1/sets/${encodeURIComponent(set_number)}/price-history`)
     .then(ph => {

@@ -1,5 +1,5 @@
 /**
- * Marktwert eines Sets je Zustand (src/finanzen/setValue.ts).
+ * Marktwert eines Sets je Zustand (src/finances/setValue.ts).
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
  *   cacheUsable ohne die kurze Frist für 0-Einträge → rot „ein gecachter
@@ -23,7 +23,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { valueSet } = _req('src/finanzen/setValue.js');
+const { valueSet } = _req('src/finances/setValue.js');
 
 const SN = '10290-1';
 const prices = (n, u) => {
@@ -126,8 +126,8 @@ test("guide_type ist überall 'sold', nicht 'stock'", () => {
     'clients/bricklink.ts',
     'src/katalog/bricklinkPreise.ts',
     'routes/api_v1/sets.ts',
-    'src/finanzen/financeCalc.ts',
-    'src/finanzen/preisLauf.ts',
+    'src/finances/financeCalc.ts',
+    'src/finances/priceRun.ts',
   ]) {
     const src = fs.readFileSync(path.join(ROOT, f), 'utf8');
     const code = src.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -151,7 +151,7 @@ test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
   // Ein 0-Eintrag galt für das volle TTL-Fenster als endgültige Antwort; die
   // Logik wich dann auf den ANDEREN Zustand aus. Ein Eintrag mit Preis gilt
   // das ganze Fenster, einer ohne nur kurz.
-  const { cacheUsable } = _req('src/finanzen/rechnung/preise.js');
+  const { cacheUsable } = _req('src/finances/calculation/prices.js');
   // Die Zeit ist ein Parameter: ein fester Augenblick statt der Uhr des Rechners.
   const JETZT = Date.UTC(2026, 0, 10, 12);
   const vor = (/** @type {number} */ h) => new Date(JETZT - h * 3600000).toISOString();
@@ -226,7 +226,7 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   // gewandert — sie wird jetzt über dieselben Zeilen gerechnet, die auch in
   // der Tabelle stehen. Damit kann Zeilensumme und Kopfzahl nicht mehr
   // auseinanderlaufen.
-  const sv = fs.readFileSync(path.join(ROOT, 'src/finanzen/setValue.ts'), 'utf8');
+  const sv = fs.readFileSync(path.join(ROOT, 'src/finances/setValue.ts'), 'utf8');
   assert.match(
     sv,
     /withCost\.reduce\(\(s, r\) => s \+ \(r\.purchase_price as number\) \* r\.quantity, 0\) \/ qty/,
@@ -320,7 +320,7 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
 test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
   // Die Anzeige leitete den Zustand aus den Erfassungen ab, die Bewertung las
   // einen gespeicherten Wert — die Kachel zeigte „Neu", bewertet wurde gebraucht.
-  const { effectiveCondition } = _req('src/finanzen/rechnung/zustand.js');
+  const { effectiveCondition } = _req('src/finances/calculation/condition.js');
   const { conditionFromAcquisitions } = _req('src/bestand/gemeinsam.js');
   for (const [acq, used] of [
     [0, 0],
@@ -348,7 +348,7 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // priceChartSVG(), Android hätte dieselbe Rechnung ein zweites Mal
   // gebraucht. Genau dieses Muster ist in diesem Projekt schon mehrfach
   // auseinandergelaufen (Zustandsauflösung, Bild-Allowlist, Verlaufsroute).
-  const { buildChart } = _req('src/finanzen/chartData.js');
+  const { buildChart } = _req('src/finances/chartData.js');
   const d = buildChart([
     {
       name: 'N',
@@ -378,13 +378,13 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   );
 
   // Alle drei Verlaufs-Endpunkte müssen ihn benutzen.
-  const ph = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
+  const ph = fs.readFileSync(path.join(ROOT, 'src/finances/priceHistory.ts'), 'utf8');
   // Teile- und Minifiguren-Verlauf sind seit hardened-96 ebenfalls in
-  // src/finanzen/priceHistory.ts (die Android-Routen brauchen dieselbe Antwort) — sie
+  // src/finances/priceHistory.ts (die Android-Routen brauchen dieselbe Antwort) — sie
   // teilen sich dort EINEN Aufbau, deshalb steht buildChart zweimal in der
   // Datei: einmal für Sets, einmal für beide manuellen Arten.
   const uses = (ph.match(/buildChart\(/g) || []).length;
-  assert.equal(uses, 2, `${uses} statt 2 buildChart-Aufrufe in src/finanzen/priceHistory.ts`);
+  assert.equal(uses, 2, `${uses} statt 2 buildChart-Aufrufe in src/finances/priceHistory.ts`);
   // Auch dort, wo die Verlaufs-Routen stehen: Ein Adapter baut keine Diagrammdaten.
   const v1fin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/finance.ts'), 'utf8');
   assert.doesNotMatch(
@@ -403,7 +403,7 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
 // ═══════════════════════════════════════════════════════════════════════════
 // Eine Zeile je Kaufpreis (hardened-90)
 // ═══════════════════════════════════════════════════════════════════════════
-const { valueAcquisitionRows, weightedPurchase, pnlPct } = _req('src/finanzen/setValue.js');
+const { valueAcquisitionRows, weightedPurchase, pnlPct } = _req('src/finances/setValue.js');
 
 const acq = (id, cond, qty, price, day) => ({
   id,

@@ -17,8 +17,8 @@ const db = testData();
 test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
-  const IM = _req('src/bilder/imageMisses.js');
-  const IQ = _req('src/bilder/bildbedarfLauf.js');
+  const IM = _req('src/images/imageMisses.js');
+  const IQ = _req('src/images/imageDemandRun.js');
   await IM.setUpImageGaps();
   await IQ.setUpImageDemand();
   const PREFIX = `PL${process.pid}`;

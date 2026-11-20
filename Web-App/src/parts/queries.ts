@@ -1,6 +1,6 @@
 import * as repo from './repository/partsList';
 import { blColorNumberFrom } from '../katalog';
-import { resolveImageLocal } from '../bilder';
+import { resolveImageLocal } from '../images';
 import { type RbSetTeil, firstBlNumber } from '../externalSources';
 import { asIds, type Sicht, type ScopeInput, type ScopeInput as Blickfeld } from '../household';
 import { istErsatzteil, colorId } from '../infra/validate';
@@ -217,7 +217,7 @@ export async function partStatsQuery(k: PartsContext, userIdChoice: Sicht | Blic
 
 export async function blColorMapQuery(k: PartsContext) {
   // farbkarte() caches the map for ten minutes.
-  const karte = await k.finanzen.farbkarte();
+  const karte = await k.finances.farbkarte();
   if (karte.size > 0) {
     const map: Record<string, unknown> = {};
     for (const [id, blId] of karte) map[id] = blId;
@@ -280,7 +280,7 @@ export async function manualPartsList(
   // prices the list stays usable; `ab` collects why for `degradiert`.
   const preise = await ab.oder(
     'marktpreise',
-    k.finanzen.marketPricesFromCacheForParts(withState, viewerId),
+    k.finances.marketPricesFromCacheForParts(withState, viewerId),
     new Map<string, number>(),
   );
   const withPrice = withState.map(t => ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id}`) ?? null }));

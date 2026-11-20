@@ -57,7 +57,7 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
   );
 
   try {
-    const n = (await _req('src/bilder/bildbedarfLauf.js')._workStack()).gesamt;
+    const n = (await _req('src/images/imageDemandRun.js')._workStack()).gesamt;
     const spacing = times.slice(1).map((z, i) => z - times[i]);
 
     await t.test('nacheinander, nie gleichzeitig', () => {
@@ -85,7 +85,7 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
     await t.test('höchstens 30 Anfragen je Minute', () => {
       // Die Rate ergibt sich aus Stapelgrösse und Takt; beide kommen aus dem
       // Modul, damit der Test keine Zahl wiederholt, die sich ändern darf.
-      const { STAPEL: stapel, TAKT_MS: takt } = _req('src/bilder/bildbedarfLauf.js');
+      const { STAPEL: stapel, TAKT_MS: takt } = _req('src/images/imageDemandRun.js');
       assert.ok(stapel > 0 && takt > 0, 'STAPEL oder TAKT_MS nicht auffindbar');
       const jeMinute = stapel * (60_000 / takt);
       assert.ok(jeMinute <= 30, `${jeMinute} Anfragen je Minute — höchstens 30 sind gewollt`);
@@ -129,7 +129,7 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async t => 
   );
   thumbTimes.length = 0;
   try {
-    const n = (await _req('src/bilder/bildbedarfLauf.js')._workStack()).gesamt;
+    const n = (await _req('src/images/imageDemandRun.js')._workStack()).gesamt;
     assert.equal(n, 10, `${n} Vorschauen statt 10 — Vorbedingung stimmt nicht`);
     const abst = thumbTimes.slice(1).map((z, i) => z - thumbTimes[i]);
     assert.ok(abst.length >= 5, `nur ${abst.length} Abstände`);
@@ -151,8 +151,8 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async t => 
 // Gegenprobe (09.11.2026): bildUserAgent() wieder auf `BrickInventoryManager/…` → rot
 // „der Bild-Auftrag holt mit der Browser-Kennung des Proxys“.
 test('der Bild-Auftrag holt mit der Browser-Kennung des Proxys', () => {
-  const dist = path.join(ROOT, 'dist', 'src/bilder/setImages.js');
-  assert.ok(fs.existsSync(dist), 'dist/src/bilder/setImages.js fehlt — erst bauen');
+  const dist = path.join(ROOT, 'dist', 'src/images/setImages.js');
+  assert.ok(fs.existsSync(dist), 'dist/src/images/setImages.js fehlt — erst bauen');
   const { IMAGE_HEADERS } = require(path.join(ROOT, 'dist', 'clients/bildCdn.js'));
   const ua = require(dist).bildUserAgent({ bildUserAgent: null });
   assert.equal(ua, IMAGE_HEADERS['User-Agent'], 'der Bild-Auftrag holt mit der Browser-Kennung des Proxys');

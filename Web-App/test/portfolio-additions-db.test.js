@@ -1,7 +1,7 @@
 /**
  * Neu erfasste Sets verändern die Prozentzahl der Portfolio-Kurve NICHT.
  *
- * Gegenprobe (durchgeführt): die Rückschreibung in src/finanzen/portfolioHistory.ts
+ * Gegenprobe (durchgeführt): die Rückschreibung in src/finances/portfolioHistory.ts
  * entfernt (Ersteintrag wieder am eigenen Tag statt am Anfang der Reihe) →
  * der erste Teilschritt wird rot, mit +264 % statt −0,18 %.
  *
@@ -36,7 +36,7 @@ test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe', { concurrency: 1 
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
   await aufraeumen();
 
-  const { portfolioVerlauf } = _req('src/finanzen/portfolioHistory.js');
+  const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
   const kurve = async (period = 'week') => portfolioVerlauf(uid, [uid], period, db, getSetting);
 

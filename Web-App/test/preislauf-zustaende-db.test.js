@@ -1,6 +1,6 @@
 /**
  * Der Preislauf holt je Set genau die Zustände, die das Konto führt oder sich merkt
- * (statesJeSet in src/finanzen/preisLauf.ts).
+ * (statesJeSet in src/finances/priceRun.ts).
  *
  * Gegenproben (09.11.2026 gemessen):
  *   A  in statesJeSet() die Merkliste nicht mehr gelesen → rot: „ein gemerkter Gebrauchtzustand zählt mit“
@@ -50,7 +50,7 @@ test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {
     });
   }
   await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, $2, 'U')`, [uid, GEMERKT]);
-  const { statesJeSet, conditionsNeededFor } = _req('src/finanzen/preisLauf.js');
+  const { statesJeSet, conditionsNeededFor } = _req('src/finances/priceRun.js');
   const sortiert = m => Object.fromEntries([...m].map(([k, v]) => [k, [...v].sort()]));
 
   const z = sortiert(await statesJeSet(uid, [MIXED, REIN, GEMERKT, FREMD]));

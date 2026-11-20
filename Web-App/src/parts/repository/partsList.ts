@@ -439,7 +439,7 @@ export function manualParts(
            ${teilmengeAus('t', 'part')} AS quantity,
            ${TEIL.bild} AS image_url, ${TEIL.bildDatei} AS image_local,
            -- unit_price is the entered price and may be empty, purchase_price
-           -- is the display value (0 means "nothing known"), see src/finanzen/preisRegel.ts.
+           -- is the display value (0 means "nothing known"), see src/finances/priceRule.ts.
            neu.unit_price,
            COALESCE(neu.unit_price, 0) AS purchase_price,
            t.source,

@@ -2,7 +2,7 @@
  * Preislauf bei aufgebrauchtem BrickLink-Kontingent: eine Zeile im Protokoll
  * statt einer je Set, und die übrigen Sets fragen gar nicht erst nach.
  *
- * Gegenprobe (06.11.2026): src/finanzen/preisLauf.ts auf den Stand vor der Änderung
+ * Gegenprobe (06.11.2026): src/finances/priceRun.ts auf den Stand vor der Änderung
  * (Meldung in fetchAndCachePrice() je Aufruf, kein Abbruch nach dem ersten
  * Treffer) → rot: „eine Zeile statt einer je Set“ (6 Zeilen) und „die
  * Abschlusszeile nennt die ausgelassenen Sets“.
@@ -26,7 +26,7 @@ test('Preislauf am Tageslimit', { concurrency: 1 }, async t => {
   t.after(() => db.pool.end().catch(() => {}));
   const { setGlobalSetting } = _req('src/settings/settings.js');
   const { kontingentPruefenUndZaehlen } = _req('src/externalSources/apiQuota.js');
-  const { runPriceRefresh } = _req('src/finanzen/preisLauf.js');
+  const { runPriceRefresh } = _req('src/finances/priceRun.js');
 
   const uid = (
     await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [`ptl_${process.pid}`])

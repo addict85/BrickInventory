@@ -6,10 +6,10 @@ import * as wantedListe from './repository/wantedListe';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../katalog';
-import type { FinancesServices } from '../finanzen';
+import type { FinancesServices } from '../finances';
 import type { SetsServices } from '../sets';
 import type { ForeignSourcesServices } from '../externalSources';
-import type { ImagesServices } from '../bilder';
+import type { ImagesServices } from '../images';
 import type { Uhr } from '../infra/uhr';
 
 export interface WantedDependencies {
@@ -18,9 +18,9 @@ export interface WantedDependencies {
   einstellungen: SettingsServices;
   household: HouseholdServices;
   katalog: CatalogServices;
-  finanzen: FinancesServices;
+  finances: FinancesServices;
   externalSources: ForeignSourcesServices;
-  bilder: ImagesServices;
+  images: ImagesServices;
   sets: SetsServices;
 }
 

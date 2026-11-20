@@ -28,7 +28,7 @@ function cleanup(k: ManagementContext, lauf?: JobRun): Promise<void> {
       ['Papierkorb', k.bestand.cleanTrashOn],
       ['PDF-Aufträge', k.katalog.pdf.raeumeAuf],
       ['alte Aufträge', k.auftraege.cleanCompletedOn],
-      ['verfallene Bildwünsche', k.bilder.deleteExpired],
+      ['verfallene Bildwünsche', k.images.deleteExpired],
       ['Idempotenzschlüssel', k.idempotency.cleanupIdempotency],
     ],
     lauf,
@@ -38,9 +38,9 @@ function cleanup(k: ManagementContext, lauf?: JobRun): Promise<void> {
 function cleanupDaily(k: ManagementContext, lauf?: JobRun): Promise<void> {
   return runSteps(
     [
-      ['Preisverlauf', k.finanzen.deleteOldPrices],
+      ['Preisverlauf', k.finances.deleteOldPrices],
       ...k.konto.onRaeumSteps('taeglich'),
-      ['Bild-Cache', () => k.bilder.cleanImageCacheOn(k.bilder.imageLimits().cacheMaxBytes, k.uhr.jetzt())],
+      ['Bild-Cache', () => k.images.cleanImageCacheOn(k.images.imageLimits().cacheMaxBytes, k.uhr.jetzt())],
       ['Kopien vor Migrationen', () => cleanOldBackupsOn(k.db)],
     ],
     lauf,

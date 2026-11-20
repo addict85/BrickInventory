@@ -5,7 +5,7 @@
  * Fläche), deckende werden JPEG auf Weiss. Ohne sharp rechnet Jimp dasselbe.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln, dist neu gebaut), alle in
- * src/bilder/thumbs.ts:
+ * src/images/thumbs.ts:
  *   A  in verkleinern() die Prüfung `isOpaque` entfernt (immer JPEG auf Weiss)
  *      → rot: „sharp: durchsichtig …“ (jpeg statt png)
  *   B  `fit: 'inside'` → `fit: 'cover'` → rot: „sharp: durchsichtig …“ und
@@ -26,7 +26,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const sharp = require('sharp');
 const { DATA_DIR } = _req('src/infra/appPaths.js');
-const { vorschauErzeugenAus } = _req('src/bilder/thumbs.js');
+const { vorschauErzeugenAus } = _req('src/images/thumbs.js');
 const ordner = path.join(DATA_DIR, 'images', 'sets');
 
 /** Ein grünes PNG 300 × 200 mit Alphakanal unter /images/sets/; `alpha` 0 = ganz durchsichtig, 1 = deckend. */

@@ -160,7 +160,7 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung', { concur
 
   // ── Und ohne Preis bleibt der Anzeigewert 0, nicht leer ──────────────────
   //
-  // src/finanzen/preisRegel.ts unterscheidet die beiden Bedeutungen: In der Erfassung
+  // src/finances/priceRule.ts unterscheidet die beiden Bedeutungen: In der Erfassung
   // heisst NULL „kein Preis bekannt", der Anzeigewert ist dann 0. Vor
   // Migration 0035 stand diese 0 in parts.purchase_price; jetzt bildet die
   // Leseabfrage sie.
@@ -185,6 +185,6 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung', { concur
   assert.equal(
     Number(withoutPrice.purchase_price),
     0,
-    'Der Anzeigewert muss 0 sein, nicht leer — siehe src/finanzen/preisRegel.ts',
+    'Der Anzeigewert muss 0 sein, nicht leer — siehe src/finances/priceRule.ts',
   );
 });

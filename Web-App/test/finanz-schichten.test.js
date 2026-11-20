@@ -3,14 +3,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const ORDNER = path.join(__dirname, '..', 'src/finanzen/rechnung');
+const ORDNER = path.join(__dirname, '..', 'src/finances/calculation');
 
 /**
  * Die Finanzschicht steht aufeinander — und zwar in EINE Richtung.
  */
 
 /** Die Reihenfolge — wer weiter unten steht, darf nichts weiter oben holen. */
-const SCHICHTEN = ['zustand', 'abfragen', 'preise', 'bewertung', 'gewinnVerlust'];
+const SCHICHTEN = ['condition', 'queries', 'prices', 'valuation', 'profitLoss'];
 
 function importsOf(name) {
   const s = fs.readFileSync(path.join(ORDNER, `${name}.ts`), 'utf8');
@@ -28,7 +28,7 @@ test('die Schichten sind vollstaendig da', () => {
   assert.deepEqual(
     da,
     [...SCHICHTEN].sort(),
-    'Die Dateien unter src/finanzen/rechnung/ stimmen nicht mehr mit der Schichtung ' +
+    'Die Dateien unter src/finances/calculation/ stimmen nicht mehr mit der Schichtung ' +
       'ueberein. Kommt eine dazu, gehoert sie an ihren Platz in SCHICHTEN — ' +
       'sonst prueft hier niemand ihre Richtung.',
   );
@@ -60,9 +60,9 @@ test('keine Schicht greift nach oben', () => {
 });
 
 test('die Fassade reicht nur durch', () => {
-  // src/finanzen/financeCalc.ts ist die Tuer fuer 16 Aufrufstellen. Steht dort wieder
+  // src/finances/financeCalc.ts ist die Tuer fuer 16 Aufrufstellen. Steht dort wieder
   // Logik, waechst sie zurueck auf 1529 Zeilen.
-  const facade = fs.readFileSync(path.join(__dirname, '..', 'src/finanzen/financeCalc.ts'), 'utf8');
+  const facade = fs.readFileSync(path.join(__dirname, '..', 'src/finances/financeCalc.ts'), 'utf8');
   const withoutComment = facade
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n')
@@ -74,7 +74,7 @@ test('die Fassade reicht nur durch', () => {
   assert.ok(
     !/\bfunction\b|\bdb\./.test(withoutComment),
     'In der Fassade steht wieder Logik. Sie gehoert in die Schicht, zu der sie ' +
-      'passt — dafuer gibt es src/finanzen/rechnung/.',
+      'passt — dafuer gibt es src/finances/calculation/.',
   );
 });
 

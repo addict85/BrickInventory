@@ -24,8 +24,8 @@ const { emptyQueue } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/verwalter');
 const db = testData();
-const IQ = _req('src/bilder/bildbedarfLauf.js');
-const IM = _req('src/bilder/imageMisses.js');
+const IQ = _req('src/images/imageDemandRun.js');
+const IM = _req('src/images/imageMisses.js');
 
 const einreihen = async sn => {
   await db.run(`DELETE FROM image_wanted WHERE set_number = $1`, [sn]);
@@ -169,7 +169,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     const fs = require('node:fs');
     const { ohneKommentare } = require('./helpers/sources');
     const proxy = ohneKommentare(require('./helpers/sources').proxyThumbSource());
-    const job = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/bilder/bildbedarfLauf.ts'), 'utf8'));
+    const job = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/images/imageDemandRun.ts'), 'utf8'));
     assert.match(
       proxy,
       /status === 404[\s\S]{0,200}rememberMissing/,

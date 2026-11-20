@@ -15,7 +15,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { tileValues } = _req('src/finanzen/setValue.js');
+const { tileValues } = _req('src/finances/setValue.js');
 const kachel = (zeilen, nr) => tileValues(zeilen.map(z => ({ purchase_price: null, pnl_pct: null, ...z }))).get(nr);
 
 test('mehrere Besitzer: der Kachelpreis wird nach Menge gewichtet', () => {

@@ -72,7 +72,7 @@ test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async 
     }
   }
 
-  const { portfolioVerlauf } = _req('src/finanzen/portfolioHistory.js');
+  const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
   const { getSetting } = _req('src/settings/settings.js');
   const kurve = async uids => {
     // Betrachter ist IMMER das Hauptkonto — genau darum geht es.

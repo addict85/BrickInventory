@@ -6,7 +6,7 @@
  * Browser-Kennung mit 403 abweist.
  *
  * Gegenprobe (09.11.2026 gemessen): in passThroughImage()
- * (src/bilder/http/bildProxy.ts) `originalMissing` fest auf false gesetzt →
+ * (src/images/http/imageProxy.ts) `originalMissing` fest auf false gesetzt →
  * rot: „nur die Vorschau im Cache: der Proxy holt das Original und legt es ab“
  * (keine Datei 71888-1.jpg) und „der Job-Prozess erzeugt …“; der Fall „frisch
  * vom CDN“ blieb grün.
@@ -189,7 +189,7 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
 
   // Nur die Vorschau im Proxy-Cache: So steht es nach der 30-Tage-Pflege, die das
   // unbenutzte Original löscht und die gelesene Vorschau stehen lässt.
-  const { proxyCacheKey } = _req('src/bilder/images.js');
+  const { proxyCacheKey } = _req('src/images/images.js');
   fs.mkdirSync(cache, { recursive: true });
   const previewInCache = await sharp(bild).resize(200, 200).jpeg().toBuffer();
   for (const sn of [ONLY_PREVIEW, LOCKED])

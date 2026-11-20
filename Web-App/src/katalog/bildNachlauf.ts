@@ -48,7 +48,7 @@ async function bildNachlauf(kx: CatalogContext, k: JobContext): Promise<void> {
       await setPartImageLocal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local);
       // Die Vorschau gleich anstossen, sonst bliebe es bis zum nächsten Neustart
       // bei der Originalgrösse.
-      kx.bilder.createPreview(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
+      kx.images.createPreview(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
     }
     await tick();
   }
@@ -62,7 +62,7 @@ async function bildNachlauf(kx: CatalogContext, k: JobContext): Promise<void> {
       // Eine Zeile: Der Katalog führt die Figur seit Migration 0034 genau einmal. Ein
       // Schreibfehler bricht den Lauf ab; der nächste findet die Datei und schreibt nach.
       await setMinifigImageLocal(kx, f.fig_number, local);
-      kx.bilder.createPreview(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
+      kx.images.createPreview(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
     }
     await tick();
   }

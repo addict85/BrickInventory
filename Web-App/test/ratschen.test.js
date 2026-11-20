@@ -1023,7 +1023,7 @@ test('kein Modul wird in einer Datei zweimal importiert', () => {
   // Je Modul ein Wert-Import und höchstens ein `import type`; neun Zeilen für
   // neun Namen aus derselben Datei verdecken, was wirklich gebraucht wird.
   // Gegenprobe (05.11.2026): `import { fehlertext } from '../infra/fehler';`
-  // zusätzlich in src/finanzen/preisalarm.ts → rot.
+  // zusätzlich in src/finances/priceAlert.ts → rot.
   const treffer = [];
   for (const f of quellen()) {
     const gesehen = new Set();

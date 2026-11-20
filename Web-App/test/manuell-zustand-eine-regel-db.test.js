@@ -15,7 +15,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { manualPartsList } = _req('src/parts/queries.js');
 const { readManualMinifigs } = _req('src/minifigs/queries.js');
-const { valueParts, valueMinifigs } = _req('src/finanzen/financeCalc.js');
+const { valueParts, valueMinifigs } = _req('src/finances/financeCalc.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { holdsMinifig, holdsPart } = require('./helpers/bestand');
 

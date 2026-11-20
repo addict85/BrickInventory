@@ -39,7 +39,7 @@ export async function dataZip(
     k.bestand.partsAsCsv(uid),
     k.bestand.minifigsAsCsv(uid),
     k.wanted.wantedListCsv(uid),
-    k.finanzen.preisalarm.preisalarmeAlsCsv(uid),
+    k.finances.preisalarm.preisalarmeAlsCsv(uid),
   ]);
   const archive = new ZipArchive({ zlib: { level: 9 } });
   archive.on('error', atError);

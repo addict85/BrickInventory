@@ -33,7 +33,7 @@ testSources(null, {
   },
 });
 const { priceGuideQuery } = _req('src/katalog/bricklinkPreise.js');
-const { fetchPartPrice, fetchMinifigPrice } = _req('src/finanzen/rechnung/preise.js');
+const { fetchPartPrice, fetchMinifigPrice } = _req('src/finances/calculation/prices.js');
 
 const N = `${process.pid}`;
 const SET = `91${N}-1`,

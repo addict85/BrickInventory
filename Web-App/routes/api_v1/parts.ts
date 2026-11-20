@@ -11,7 +11,7 @@ import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 export function buildPartsRouter(
   d: Pick<
     Dienste,
-    'settings' | 'auftraege' | 'household' | 'konto' | 'katalog' | 'finanzen' | 'bestand' | 'parts' | 'collection'
+    'settings' | 'auftraege' | 'household' | 'konto' | 'katalog' | 'finances' | 'bestand' | 'parts' | 'collection'
   >,
 ) {
   const { requireToken } = guardFor(d.konto);
@@ -140,7 +140,7 @@ export function buildPartsRouter(
   router.endpunkt('GET /api/v1/parts/:partNumber/:colorId/price-history', requireToken, async req => {
     const uid = req.apiUser.user_id;
     const currency = await d.settings.userValue(uid, 'currency', 'EUR');
-    const data = await d.finanzen.priceHistoryPart(viewOf(req), req.pfad.partNumber, req.pfad.colorId, currency);
+    const data = await d.finances.priceHistoryPart(viewOf(req), req.pfad.partNumber, req.pfad.colorId, currency);
     return { ...data };
   });
 

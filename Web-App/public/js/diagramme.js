@@ -392,7 +392,7 @@ function referenceLine(
  * @typedef {Partial<Pick<import('../../frontend-typen/vertrag').PriceHistoryResponse, 'chart' | 'history_new' | 'history_used' | 'by_condition'>> | null | undefined} Preisdaten */
 
 /**
- * Die Reihen des Preisverlaufs je Zustand, aus den Diagrammdaten des Servers (src/finanzen/chartData.ts). Vor
+ * Die Reihen des Preisverlaufs je Zustand, aus den Diagrammdaten des Servers (src/finances/chartData.ts). Vor
  * firstRealIndex stehen aufgefüllte Nullen; der Kaufpreis am Kauftag ist kein Marktpreis und steht als Punkt
  * da.
  * @param {Preisdaten} data @returns {{ key: string, name: string, color: string, pts: { x: string, y: number }[], kauf: number, purchaseTag: string | null }[]}

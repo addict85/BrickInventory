@@ -41,9 +41,9 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.katalog.bildwerk,
     // @ts-expect-error
-    d.finanzen.db,
+    d.finances.db,
     // @ts-expect-error
-    d.finanzen.preisCache,
+    d.finances.preisCache,
     // @ts-expect-error
     d.sets.db,
     // @ts-expect-error

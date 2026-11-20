@@ -11,7 +11,7 @@ import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../katalog';
 import type { ForeignSourcesServices } from '../externalSources';
-import type { FinancesServices } from '../finanzen';
+import type { FinancesServices } from '../finances';
 import type { InventoryServices } from '../bestand';
 import type { Uhr } from '../infra/uhr';
 
@@ -25,7 +25,7 @@ export interface PartsDependencies {
   household: HouseholdServices;
   katalog: CatalogServices;
   externalSources: ForeignSourcesServices;
-  finanzen: FinancesServices;
+  finances: FinancesServices;
   bestand: InventoryServices;
 }
 

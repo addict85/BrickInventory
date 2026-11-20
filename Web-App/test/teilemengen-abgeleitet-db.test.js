@@ -477,7 +477,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   assert.equal(Number(zus.total_quantity), 12, `Die vorberechnete Zahl ist 6 × 2 = 12, bekam ${zus.total_quantity}`);
 
   // Bewertung und CSV
-  const B = _req('src/finanzen/rechnung/bewertung.js');
+  const B = _req('src/finances/calculation/valuation.js');
   const bewP = await B.valueParts(haupt, [haupt]);
   const bewRow = (bewP.parts || []).find(x => x.part_number === '3070b');
   assert.ok(bewRow, `Die Teile-Bewertung kennt die manuelle Position nicht: ${JSON.stringify(bewP).slice(0, 200)}`);

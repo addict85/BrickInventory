@@ -134,7 +134,7 @@ function manDetailRows(type, id, colorId, item, acqs, ad) {
  * @param {string} type @param {string} id @param {number | string} colorId */
 function loadManPriceHistory(type, id, colorId) {
   // Same renderer as for the set — the endpoints deliver the same chart structure
-  // (src/finanzen/chartData.ts), so no second drawing logic is needed here.
+  // (src/finances/chartData.ts), so no second drawing logic is needed here.
   const histUrl =
     type === 'fig'
       ? `/v1/minifigs/${encodeURIComponent(id)}/price-history`

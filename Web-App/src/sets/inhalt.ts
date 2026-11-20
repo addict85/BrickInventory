@@ -1,5 +1,5 @@
 /** Stammdaten, Teile- und Figurenliste eines Sets. */
-import { proxyImageUrl } from '../bilder';
+import { proxyImageUrl } from '../images';
 import { type RbSetTeil, firstBlNumber } from '../externalSources';
 import { findSetInScope } from './erfassen';
 import { istErsatzteil } from '../infra/validate';
@@ -21,7 +21,7 @@ export async function setInfo(sk: SetsContext, setNumber: string): Promise<SetMa
 export async function setInfoForAccount(sk: SetsContext, uid: number, setNumber: string) {
   const n = withVersion(setNumber);
   const stamm = await setInfo(sk, n);
-  const foreignPlaceholder = !!stamm?.platzhalter && !(await sk.bilder.setNumberInScope(uid, n));
+  const foreignPlaceholder = !!stamm?.platzhalter && !(await sk.images.setNumberInScope(uid, n));
   if (!stamm || foreignPlaceholder) return { set_number: n, name: n, im_katalog: false as const };
   const { platzhalter: _placeholder, ...row } = stamm;
   return { set_number: n, ...row, name: row.name || n, im_katalog: true as const };

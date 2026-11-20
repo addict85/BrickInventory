@@ -55,7 +55,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
   try {
     // Die Liste löst seit einer früheren Runde gar keine Bildarbeit mehr aus (sie lief
     // an allen Drosselungen vorbei). Der Weg führt jetzt über den Proxy und
-    // src/bilder/bildbedarfLauf.ts — geprüft wird deshalb der MERKER selbst, nicht mehr
+    // src/images/imageDemandRun.ts — geprüft wird deshalb der MERKER selbst, nicht mehr
     // die Liste.
     await visit();
     assert.equal(versuche, 0, `${versuche} Downloads aus der Liste — sie darf keine mehr auslösen`);
@@ -64,7 +64,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
       // Der Kern der Sache: Der Server läuft im Cluster. Ein Merker im
       // Arbeitsspeicher hilft nur DEM Prozess, der ihn angelegt hat — bei vier
       // Arbeitsprozessen wird dasselbe Bild viermal geholt.
-      const IM = _req('src/bilder/imageMisses.js');
+      const IM = _req('src/images/imageMisses.js');
       IM.rememberMissing('set:' + PREFIX + '_probe');
       await IM._writeBuffer();
       IM._emptyForeground();
@@ -78,7 +78,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
     });
 
     await t.test('nach einer Woche wird erneut gesucht (gestellte Uhr statt Warten)', () => {
-      const IM = _req('src/bilder/imageMisses.js');
+      const IM = _req('src/images/imageMisses.js');
       IM.rememberMissing('set:' + PREFIX + '_frist');
       assert.equal(IM.isKnownMissing('set:' + PREFIX + '_frist'), true);
       testClock().vor(7 * 24 * 60 * 60 * 1000 + 1);
@@ -92,7 +92,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
     await t.test('ein Bild, das es gibt, wird nicht gemerkt', async () => {
       // Gegenrichtung: Sonst wäre der Test auch grün, wenn pauschal alles als
       // fehlend gälte — und kein Bild würde je geladen.
-      const IM = _req('src/bilder/imageMisses.js');
+      const IM = _req('src/images/imageMisses.js');
       IM._emptyForeground();
       assert.equal(IM.isKnownMissing('set:gibt-es-nicht-in-der-tabelle'), false);
     });

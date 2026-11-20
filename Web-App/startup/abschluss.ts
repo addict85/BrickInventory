@@ -8,8 +8,8 @@ import { logAndContinue } from '../src/infra/fehler';
 
 export async function closeBufferAndTicks(zugang: Db, d: Dienste): Promise<void> {
   // Beide fangen ihre Schreibfehler selbst.
-  await d.bilder.stopImageDemand();
-  await d.bilder.stopNone();
+  await d.images.stopImageDemand();
+  await d.images.stopNone();
   await zugang.notification.close().catch(logAndContinue('server:close'));
   await stopLog();
 }

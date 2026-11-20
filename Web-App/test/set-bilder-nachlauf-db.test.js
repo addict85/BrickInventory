@@ -39,7 +39,7 @@ test('Set-Bilder-Nachlauf: nur Sets mit Bezug, 404 ruht', { concurrency: 1 }, as
   const repo = _req('src/katalog/repository/bildlage.js');
   const { LESEVERTRAG } = _req('src/dienste.js');
   const { reloadSetImages } = _req('src/katalog/bildlage.js');
-  const IM = _req('src/bilder/imageMisses.js');
+  const IM = _req('src/images/imageMisses.js');
 
   const P = `zzbn${process.pid}`;
   const gehalten = `${P}a-1`;

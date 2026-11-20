@@ -88,8 +88,8 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
       [uid, SN],
     );
     const { changeSet } = require('./helpers/sources').areaPage('sets');
-    // Sets fragt den Zustand über die Finanzdienste seines Kontexts (sk.finanzen).
-    const finanzen = require('./helpers/sources').testArea('finanzen');
+    // Sets fragt den Zustand über die Finanzdienste seines Kontexts (sk.finances).
+    const finanzen = require('./helpers/sources').testArea('finances');
     const stateReal = finanzen.setState;
     finanzen.setState = async (...a) => {
       if (priceBroken) throw new Error('Zustand nicht lesbar');

@@ -51,7 +51,7 @@ export function buildSetsRouter(d: Pick<Dienste, 'household' | 'konto' | 'sets'>
   });
 
   router.endpunkt('GET /api/v1/sets/:setNumber/price-history', requireToken, async req => {
-    // Dieselbe Umsetzung wie /api/finance/price-history (src/finanzen/priceHistory.ts).
+    // Dieselbe Umsetzung wie /api/finance/price-history (src/finances/priceHistory.ts).
     const sn = req.pfad.setNumber;
     return { set_number: sn, ...(await d.sets.setPriceHistory(req.apiUser.user_id, viewOf(req), sn)) };
   });

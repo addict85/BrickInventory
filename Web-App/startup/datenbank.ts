@@ -93,6 +93,6 @@ export async function prepareDatabaseBefore(db: Db, d: Dienste, o: { jobs?: bool
     await legacyStockUpgrade(d);
     await keySwitch(d);
   }
-  await d.bilder.startNone();
-  await d.bilder.startImageDemand();
+  await d.images.startNone();
+  await d.images.startImageDemand();
 }

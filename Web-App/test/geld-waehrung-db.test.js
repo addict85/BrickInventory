@@ -44,7 +44,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
       ]),
       70,
     );
-    const { valueSet } = _req('src/finanzen/setValue.js');
+    const { valueSet } = _req('src/finances/setValue.js');
     const v = valueSet('X-1', [{ quantity: 2, condition: 'N' }], new Map([['X-1|N', 120.3333]]));
     assert.equal(v.total, 240.67);
     assert.equal(v.unit_price, 120.33);
@@ -87,7 +87,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   );
 
   await t.test('120,3333 × 3 ist 361,00, und ein Kaufpreis in EUR wird gezählt', async () => {
-    const { valueSets } = _req('src/finanzen/financeCalc.js');
+    const { valueSets } = _req('src/finances/financeCalc.js');
     const r = await valueSets(uid, [uid]);
     const set = r.sets.find(s => s.set_number === SN);
     assert.equal(set.total_avg, '361.00', '120,3333 × 3 ist 361,00');
@@ -101,7 +101,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Kachel kommt fertig vom Server', async () => {
-    const { gainAndLoss } = _req('src/finanzen/financeCalc.js');
+    const { gainAndLoss } = _req('src/finances/financeCalc.js');
     const r = await gainAndLoss(uid, [uid]);
     const zeile = r.sets.find(s => s.set_number === SN);
     assert.equal(zeile.kachel_preis, 120.33);
@@ -127,7 +127,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price) VALUES ($1,'N','CHF',4)`,
       [FIG],
     );
-    const { valueParts, valueMinifigs } = _req('src/finanzen/financeCalc.js');
+    const { valueParts, valueMinifigs } = _req('src/finances/financeCalc.js');
     const teile = await valueParts(uid, [uid]);
     const figuren = await valueMinifigs(uid, [uid]);
     const sicht = z => z && { markt: z.avg_price, kauf: z.purchase_price, pnl: z.pnl_prozent };
@@ -148,7 +148,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   });
 
   await t.test('mehrere Zeilen eines Sets: mengengewichtet, sonst der Kaufpreis', () => {
-    const { tileValues } = _req('src/finanzen/setValue.js');
+    const { tileValues } = _req('src/finances/setValue.js');
     const w = tileValues([
       {
         set_number: 'A',

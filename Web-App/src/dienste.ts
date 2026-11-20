@@ -2,13 +2,13 @@
  * startup/ hängen, das sie einbindet; Routerfabriken verengen ihn mit Pick<>. */
 import type { JobsServices } from './auftraege';
 import type { InventoryServices } from './bestand';
-import type { ImagesServices } from './bilder';
+import type { ImagesServices } from './images';
 import type { ThrottleServices } from './throttle';
 import type { SettingsServices } from './settings';
 import type { MinifigsServices } from './minifigs';
 import type { DevicesServices } from './devices';
 import type { FactorsServices } from './factors';
-import type { FinancesServices } from './finanzen';
+import type { FinancesServices } from './finances';
 import type { ForeignSourcesServices } from './externalSources';
 import type { VoucherServices } from './vouchers';
 import type { HouseholdServices } from './household';
@@ -44,9 +44,9 @@ export interface Dienste {
   profile: ProfileServices;
   idempotency: IdempotencyServices;
   externalSources: ForeignSourcesServices;
-  bilder: ImagesServices;
+  images: ImagesServices;
   katalog: CatalogServices;
-  finanzen: FinancesServices;
+  finances: FinancesServices;
   bestand: InventoryServices;
   sets: SetsServices;
   parts: PartsServices;

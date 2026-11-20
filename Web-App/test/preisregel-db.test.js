@@ -2,7 +2,7 @@
  * Die Regel „hat einen Preis" gilt an JEDER Stelle gleich.
  *
  * Gegenproben (durchgeführt):
- *   a) (13.11.2026) in fromRow() (src/finanzen/rechnung/preise.ts) avg_price wieder roh
+ *   a) (13.11.2026) in fromRow() (src/finances/calculation/prices.ts) avg_price wieder roh
  *      statt marketPriceFrom() → Teilschritt 2 rot: avg_price 0 neben qty_avg_price 12.34,
  *      die Clients zeigten „0.00“.
  *   b) In fetchPrice den Cache-Treffer wieder auf `parseFloat(avg_price) > 0`
@@ -54,7 +54,7 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
        VALUES ($1,'N','EUR',10,0,20,12.34,5,NOW())`,
       [SN],
     );
-    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
+    const { fetchPrice } = _req('src/finances/financeCalc.js');
     const pd = await fetchPrice(SN, 'N', 'sold', 'EUR', '24');
     assert.equal(pd.avg_price, 12.34, 'avg_price trägt den Marktpreis, hier den Mengenschnitt');
     assert.ok(
@@ -120,7 +120,7 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
        VALUES ($1,0,'N','EUR',5,7,NOW())`,
       [PN],
     );
-    const { fetchPartPrice } = _req('src/finanzen/financeCalc.js');
+    const { fetchPartPrice } = _req('src/finances/financeCalc.js');
     const teil = await fetchPartPrice(PN, 0, 'N', 'EUR', '24');
     await db.run(`DELETE FROM part_price_cache WHERE part_number=$1`, [PN]).catch(() => {});
     assert.equal(Number(teil.avg_price), 5);
@@ -137,7 +137,7 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
     const fs = require('node:fs');
     const path = require('node:path');
     const ROOT = path.join(__dirname, '..');
-    for (const rel of ['src/finanzen/financeCalc.ts', 'clients/bricklink.ts']) {
+    for (const rel of ['src/finances/financeCalc.ts', 'clients/bricklink.ts']) {
       const src = fs
         .readFileSync(path.join(ROOT, rel), 'utf8')
         .split('\n')

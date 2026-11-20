@@ -69,7 +69,7 @@ test('avg_price 0 neben einem Mengenschnitt: überall derselbe Wert', { concurre
   await holdsPart(db, uid, TEIL, { colorId: FARBE, menge: 4, preis: 0.2 });
   await holdsMinifig(db, uid, FIGUR, { menge: 1, preis: 5 });
 
-  const f = _req('src/finanzen/financeCalc.js');
+  const f = _req('src/finances/financeCalc.js');
 
   await t.test('Bewertung', async () => {
     const sets = await f.valueSets(uid, [uid]);
@@ -92,14 +92,14 @@ test('avg_price 0 neben einem Mengenschnitt: überall derselbe Wert', { concurre
   });
 
   await t.test('Wertkurve', async () => {
-    const { portfolioVerlauf } = _req('src/finanzen/portfolioHistory.js');
+    const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
     const kurve = await portfolioVerlauf(uid, [uid], 'month');
     assert.ok(kurve.points.length > 0, 'keine Punkte');
     assert.equal(kurve.points.at(-1).value, 75);
   });
 
   await t.test('Preisverlauf', async () => {
-    const pv = _req('src/finanzen/priceHistory.js');
+    const pv = _req('src/finances/priceHistory.js');
     assert.equal((await pv.priceHistorySet([uid], SET, 'CHF')).by_condition.N.market_price, SET_PRICE);
     assert.equal((await pv.priceHistoryPart([uid], TEIL, FARBE, 'CHF')).by_condition.N.market_price, PART_PRICE);
     assert.equal((await pv.priceHistoryMinifig([uid], FIGUR, 'CHF')).by_condition.N.market_price, MINIFIG_PRICE);

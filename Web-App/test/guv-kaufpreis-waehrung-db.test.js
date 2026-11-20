@@ -63,7 +63,7 @@ test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async t =
     await db.pool.end().catch(() => {});
   });
 
-  const { gainAndLoss } = _req('src/finanzen/financeCalc.js');
+  const { gainAndLoss } = _req('src/finances/financeCalc.js');
   const pnl = await gainAndLoss(uid, [uid]);
   const zeile = nr => pnl.sets.find(s => s.set_number === nr);
   assert.equal(pnl.currency, 'CHF');

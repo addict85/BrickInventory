@@ -23,7 +23,7 @@ test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async t => {
     return;
   }
 
-  const mf = _req('src/finanzen/marketPrice.js');
+  const mf = _req('src/finances/marketPrice.js');
   const u = await newUser(db);
   const fig = 'fig-cache-test-01';
 
@@ -66,7 +66,7 @@ test('ein veralteter Eintrag wird übergangen', async t => {
     return;
   }
 
-  const mf = _req('src/finanzen/marketPrice.js');
+  const mf = _req('src/finances/marketPrice.js');
   const u = await newUser(db);
   const fig = 'fig-cache-test-02';
 

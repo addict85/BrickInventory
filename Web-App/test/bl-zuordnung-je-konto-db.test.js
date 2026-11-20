@@ -117,7 +117,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
     );
   });
 
-  const { resolveBlPartNumber, fetchPartPrice } = _req('src/finanzen/rechnung/preise.js');
+  const { resolveBlPartNumber, fetchPartPrice } = _req('src/finances/calculation/prices.js');
   const { blNumberOf } = _req('src/katalog/blZuordnung.js');
 
   await t.test('Preisabruf: Anna fragt BrickLink nach 3001, Bruno nach 3003', async () => {
@@ -138,7 +138,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   });
 
   await t.test('Bewertung: Nummern je Konto', async () => {
-    const repo = require('./helpers/sources').testArea('finanzen').bewertung;
+    const repo = require('./helpers/sources').testArea('finances').bewertung;
     // Jedes Konto bewertet seinen Bestand; zwei fremde Konten stehen nie in einer Bewertung.
     const je2 = async f => [...(await asAccount(ANNA, () => f([ANNA]))), ...(await asAccount(BRUNO, () => f([BRUNO])))];
     const figuren = await je2(ids => repo.manualMinifigsToValuation(ids));

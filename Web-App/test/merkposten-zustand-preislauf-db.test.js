@@ -26,7 +26,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { holdsSet } = require('./helpers/bestand');
 const db = testData();
-const { statesJeSet, conditionsNeededFor } = _req('src/finanzen/preisLauf.js');
+const { statesJeSet, conditionsNeededFor } = _req('src/finances/priceRun.js');
 
 /** Sortiert vergleichen: die Reihenfolge in der Menge ist keine Aussage. */
 const sortiert = a => [...a].sort();

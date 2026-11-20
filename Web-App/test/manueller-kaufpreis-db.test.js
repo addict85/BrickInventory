@@ -55,7 +55,7 @@ test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur', { 
     assert.equal(
       Number(figur.purchase_price),
       0,
-      `Die Figur hat ${figur.purchase_price} statt 0 im Kaufpreis. src/finanzen/financeCalc.ts ` +
+      `Die Figur hat ${figur.purchase_price} statt 0 im Kaufpreis. src/finances/financeCalc.ts ` +
         'liest NULL als „kein Kaufpreis erfasst" und 0 als „0 erfasst" — die Figur ' +
         'verhielte sich damit anders als das Teil daneben.',
     );

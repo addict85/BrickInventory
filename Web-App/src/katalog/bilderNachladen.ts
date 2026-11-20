@@ -152,7 +152,7 @@ async function catchUpPreviews(k: CatalogContext, withoutPreview: string[]): Pro
     cleared: 0,
   });
   for (const web of withoutPreview) {
-    const r = await versuche('teile-enrich:vorschau', () => k.bilder.createPreview(web));
+    const r = await versuche('teile-enrich:vorschau', () => k.images.createPreview(web));
     if (r.ok && r.wert) thumbsCreated++;
   }
   console.log(`[img-redl] ${thumbsCreated} fehlende Vorschauen erzeugt (von ${withoutPreview.length})`);
@@ -210,7 +210,7 @@ async function reloadImage(k: CatalogContext, m: MissingImage): Promise<boolean>
       k.cdnDrossel.release();
     }
   }
-  if (ok) await k.bilder.createPreview(m.image_local).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));
+  if (ok) await k.images.createPreview(m.image_local).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));
   return ok;
 }
 

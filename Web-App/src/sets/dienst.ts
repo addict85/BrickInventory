@@ -21,24 +21,24 @@ export type { CatalogPart, ListenTeil, SetMaster } from './zeilen';
 async function priceForNewEntry(sk: SetsContext, userId: number, setNumber: string) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
   const blickfeld = valueOr(await versuche('sets:kaufpreis-blickfeld', sk.household.scopeIds(userId)), [userId]);
-  const cond = await sk.finanzen.setState(blickfeld, setNumber);
+  const cond = await sk.finances.setState(blickfeld, setNumber);
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
   const currency = String(await sk.einstellungen.userValue(userId, 'currency', 'EUR'));
   const cached = valueOr(
-    await versuche('set-service:cached', sk.finanzen.marketPriceFromCache(setNumber, currency, cond)),
+    await versuche('set-service:cached', sk.finances.marketPriceFromCache(setNumber, currency, cond)),
     null,
   );
   let pp = cached?.marktpreis || null;
   if (!pp)
     pp = valueOr(
-      await versuche('set-service:aktuellerMarktpreis', sk.finanzen.aktuellerMarktpreis(setNumber, userId, cond)),
+      await versuche('set-service:aktuellerMarktpreis', sk.finances.aktuellerMarktpreis(setNumber, userId, cond)),
       null,
     );
   if (!pp) {
     // Der Verlauf füllt die Lücke, wenn Cache und BrickLink-Kontingent beim CSV-Import leer ausgehen; sonst
     // entstünde die Erfassung ohne Kaufpreis.
     const hist = valueOr(
-      await versuche('set-service:hist', sk.finanzen.marketPriceFromHistory(setNumber, currency, cond)),
+      await versuche('set-service:hist', sk.finances.marketPriceFromHistory(setNumber, currency, cond)),
       null,
     );
     pp = hist?.marktpreis || null;
@@ -206,7 +206,7 @@ export async function changeSet(
       // Zustand der LETZTEN Erfassung, sonst käme der Preis für „Neu". Ohne Fang: Nach einem Lesefehler käme
       // sonst der Neupreis in ein gebrauchtes Set.
       const lastCond = await repo.stateNewestSetEntry(sk.db, ownerId, sn);
-      pp = await sk.finanzen.aktuellerMarktpreis(sn, ownerId, lastCond?.condition || null);
+      pp = await sk.finances.aktuellerMarktpreis(sn, ownerId, lastCond?.condition || null);
     }
     const val = pp !== null && !Number.isNaN(pp) ? pp : null;
     await writeInLastEntry(sk, 'purchase_price', val, ownerId, sn);

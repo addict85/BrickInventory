@@ -93,7 +93,7 @@ test.after(() => db.pool.end().catch(() => {}));
 // ── Regeln ──────────────────────────────────────────────────────────────────
 
 test('Bilddownloads sind nach oben begrenzt', () => {
-  const src = quelle('src/bilder/setImages.ts');
+  const src = quelle('src/images/setImages.ts');
   const fn = src.slice(src.indexOf('async function setBildHerunterladen'));
   const ende = fn.indexOf('\n}\n');
   const body = fn.slice(0, ende);

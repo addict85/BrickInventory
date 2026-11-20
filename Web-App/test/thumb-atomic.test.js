@@ -80,7 +80,7 @@ test('vorschauErzeugenAus schreibt über eine temporäre Datei', async () => {
     .toFile(original);
   try {
     const { ergebnis, spur } = await withRenameTrack(() =>
-      _req('src/bilder/thumbs.js').vorschauErzeugenAus(`/images/sets/${name}.jpg`),
+      _req('src/images/thumbs.js').vorschauErzeugenAus(`/images/sets/${name}.jpg`),
     );
     assert.equal(ergebnis, `/images/sets/${name}_thumb.jpg`);
     checkAtomic(spur, vorschau);
@@ -101,7 +101,7 @@ test('createProxyPreview schreibt über eine temporäre Datei', async t => {
     .toFile(quelle + '.jpg');
   fs.renameSync(quelle + '.jpg', quelle);
   const { ergebnis, spur } = await withRenameTrack(() =>
-    _req('src/bilder/proxyThumbs.js').createProxyPreview(quelle, ziel),
+    _req('src/images/proxyThumbs.js').createProxyPreview(quelle, ziel),
   );
   assert.equal(ergebnis, true);
   checkAtomic(spur, ziel);
@@ -111,8 +111,8 @@ test('createProxyPreview schreibt über eine temporäre Datei', async t => {
 
 test('eine unbrauchbar kleine Vorschau wird verworfen, ausgeliefert wird das Original', async t => {
   const deliverFromCache = (...a) =>
-    _req('src/bilder/http/bildCacheAuslieferung.js').deliverFromCache(
-      require('./helpers/sources').testServices().bilder,
+    _req('src/images/http/imageCacheDelivery.js').deliverFromCache(
+      require('./helpers/sources').testServices().images,
       ...a,
     );
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'cachevorschau-'));

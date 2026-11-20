@@ -18,7 +18,7 @@ function asAttachment(res: Response, datei: string): void {
   res.attachment(path.basename(datei));
 }
 
-export function buildDataFilesRouter(d: Pick<Dienste, 'household' | 'konto' | 'bilder'>) {
+export function buildDataFilesRouter(d: Pick<Dienste, 'household' | 'konto' | 'images'>) {
   const { inboundLock, requireLoginOrToken } = guardFor(d.konto);
   const router = express.Router();
 
@@ -48,7 +48,7 @@ export function buildDataFilesRouter(d: Pick<Dienste, 'household' | 'konto' | 'b
     async (req: WildcardRequest, res: Response) => {
       const segmente = pathSegments(req, 'pfad');
       const filePath = safeDataPath('instructions', segmente);
-      if (!filePath || !(await d.bilder.instructionReleased(signedInUserId(req), segmente)))
+      if (!filePath || !(await d.images.instructionReleased(signedInUserId(req), segmente)))
         return res.status(404).send('Datei nicht gefunden');
       asAttachment(res, filePath);
       deliverFile(res, filePath);

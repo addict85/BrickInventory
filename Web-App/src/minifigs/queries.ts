@@ -1,4 +1,4 @@
-import { resolveImageLocal } from '../bilder';
+import { resolveImageLocal } from '../images';
 import { asIds, type Sicht } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 import { withVersion } from '../infra/setNummer';
@@ -96,7 +96,7 @@ export async function readManualMinifigs(
   // live lookup per entry would make the list wait on BrickLink.
   const preise = await ab.oder(
     'marktpreise',
-    k.finanzen.marketPricesFromCacheForMinifigs(withCondition, viewerId),
+    k.finances.marketPricesFromCacheForMinifigs(withCondition, viewerId),
     new Map<string, number>(),
   );
   const withPrice = withCondition.map(f => ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));

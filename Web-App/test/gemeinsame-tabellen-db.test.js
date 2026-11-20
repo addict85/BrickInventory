@@ -35,15 +35,15 @@
  *   J  die Zeile von src/drossel in docs/architektur.md gestrichen → rot: dieselbe Prüfung
  *      (rate_limit_attempts ohne Besitzer)
  *   K  setWert.ts liest wieder `FROM set_acquisitions` statt setErfassungen() → rot: dieselbe
- *      Prüfung, aufwärts ['src/finanzen → set_acquisitions'] (15.11.2026)
+ *      Prüfung, aufwärts ['src/finances → set_acquisitions'] (15.11.2026)
  *   L  'src/sets → parts_version_user' aus TRIGGER_FREMDZIELE gestrichen → rot: „Trigger schreiben
  *      nur in Tabellen ihres Besitzers …“ (15.11.2026)
  *
  * Ein Lesebaustein in db/ zählt beim Bereich, der ihn importiert; was er liest, zeigt sein Ergebnis.
  * Liegt der Bereich unter dem Besitzer, bekommt er den Baustein über seinen Lesevertrag (src/dienste.ts
  * reicht ihn). Gegenproben (15.11.2026 gemessen, je einzeln):
- *   M  src/bilder/repository/bildBlickfeld.ts importiert countedSets wieder aus db/bestandSicht →
- *      rot: „… aufwärts über db/“ ['src/bilder → price_alerts', 'src/bilder → sets', 'src/bilder → wanted']
+ *   M  src/images/repository/imageScope.ts importiert countedSets wieder aus db/bestandSicht →
+ *      rot: „… aufwärts über db/“ ['src/images → price_alerts', 'src/images → sets', 'src/images → wanted']
  *   N  src/katalog/repository/katalogSuche.ts importiert mengeJoin wieder aus db/bestandsmenge → rot:
  *      dieselbe Prüfung, ['src/katalog → set_acquisitions']
  *   O  setBestand in db/bestandSicht.ts liest `FROM parts` → rot am Selbstbeweis „setBestand liest
@@ -152,29 +152,29 @@ const SHARED = {
     ],
   },
   rb_themes: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
-  price_cache: { type: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
+  price_cache: { type: KATALOG, eingabe: false, schreiber: ['src/finances/repository/priceCache.ts'] },
   price_history: {
     type: KATALOG,
     eingabe: false,
     schreiber: [
-      'src/finanzen/repository/preisCache.ts',
-      'src/finanzen/repository/preisLauf.ts',
-      'src/finanzen/repository/preisverlauf.ts',
+      'src/finances/repository/priceCache.ts',
+      'src/finances/repository/priceRun.ts',
+      'src/finances/repository/priceHistory.ts',
     ],
   },
-  part_price_cache: { type: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
-  part_price_history: { type: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/preisCache.ts'] },
+  part_price_cache: { type: KATALOG, eingabe: false, schreiber: ['src/finances/repository/priceCache.ts'] },
+  part_price_history: { type: KATALOG, eingabe: false, schreiber: ['src/finances/repository/priceCache.ts'] },
   minifig_price_cache: {
     type: KATALOG,
     eingabe: false,
-    schreiber: ['src/finanzen/repository/marktpreise.ts', 'src/finanzen/repository/preisCache.ts'],
+    schreiber: ['src/finances/repository/marketPrices.ts', 'src/finances/repository/priceCache.ts'],
   },
   minifig_price_history: {
     type: KATALOG,
     eingabe: false,
-    schreiber: ['src/finanzen/repository/marktpreise.ts', 'src/finanzen/repository/preisCache.ts'],
+    schreiber: ['src/finances/repository/marketPrices.ts', 'src/finances/repository/priceCache.ts'],
   },
-  exchange_rates: { type: KATALOG, eingabe: false, schreiber: ['src/finanzen/repository/wechselkurse.ts'] },
+  exchange_rates: { type: KATALOG, eingabe: false, schreiber: ['src/finances/repository/exchangeRates.ts'] },
   image_misses: { type: BETRIEB, eingabe: false },
   image_wanted: { type: BETRIEB, eingabe: false },
   parts_catalog_pending: {
@@ -262,7 +262,7 @@ const DYNAMISCH = {
     liest: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts'],
     schreibt: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts'],
   },
-  'src/finanzen/repository/preisverlauf.ts': {
+  'src/finances/repository/priceHistory.ts': {
     liest: [
       'minifig_price_cache',
       'minifig_price_history',
@@ -772,7 +772,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
       je[readDirection(stufen, b, besitzer.get(tabelle))].push(paar);
     }
     // Selbstbeweis der Einteilung, an echten Stufen.
-    assert.equal(readDirection(stufen, 'src/finanzen', besitzer.get('sets')), 'aufwärts');
+    assert.equal(readDirection(stufen, 'src/finances', besitzer.get('sets')), 'aufwärts');
     assert.ok(je.abwärts.includes('src/management → sets'), 'Selbstbeweis: die Verwaltung liest sets direkt');
     assert.ok(je.katalog.length > 10, 'Selbstbeweis: Katalogtabellen werden gelesen');
     assert.deepEqual(

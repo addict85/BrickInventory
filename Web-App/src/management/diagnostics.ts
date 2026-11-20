@@ -1,5 +1,5 @@
 /** Proben für Verwalter: Bild- und Preisabruf und die Fragen zu einer leeren Kachel. */
-import { proxyCacheKey, proxyCachePathFor, imgProxyFailures } from '../bilder';
+import { proxyCacheKey, proxyCachePathFor, imgProxyFailures } from '../images';
 import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../infra/fremdeAdressen';
 import { urlOrNull } from '../infra/validate';
 import type { AccountImageRow } from './repository/management';
@@ -179,7 +179,7 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
   out.katalog = katalog ? { ...katalog, applies_as_unknown: withoutBricklinkPrice(katalog) } : null;
   // Genau der Aufruf, den Finanzen macht.
   try {
-    out.finances_price = await k.finanzen.fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours);
+    out.finances_price = await k.finances.fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours);
   } catch (e) {
     out.finances_price = { error: fehlertext(e) };
   }

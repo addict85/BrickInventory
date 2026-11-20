@@ -195,8 +195,8 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     // dem Ausbau des Feldes (Migration 0022) nicht mehr gibt.
     await W.addWantedItem(U.enkel, '10276-1', 'N');
     const P = {
-      ..._req('src/finanzen/preisalarm.js'),
-      ...require('./helpers/sources').testArea('finanzen').preisalarm,
+      ..._req('src/finances/priceAlert.js'),
+      ...require('./helpers/sources').testArea('finances').preisalarm,
     };
     await P.setzeAlarm(U.enkel, '10276-1', 'EUR', { direction: 'unter', threshold: 249, condition: 'U' });
     assert.equal((await P.alertsFor(U.enkel, '10276-1')).length, 1, 'Aufbau: Alarm fehlt');
@@ -306,11 +306,11 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     //   b) image_local fest auf null → „die lokale Datei gewinnt" rot.
     const fs = require('node:fs');
     const path = require('node:path');
-    const IQ = _req('src/bilder/bildbedarfLauf.js');
+    const IQ = _req('src/images/imageDemandRun.js');
     const ORDNER = path.join(__dirname, '..', 'data', 'images', 'sets');
 
     // ZWEI Setnummern, und das ist kein Zufall: imageIfPresent() merkt sich
-    // ein „gibt es nicht" zehn Minuten lang (src/bilder/images.ts). Dieselbe Nummer
+    // ein „gibt es nicht" zehn Minuten lang (src/images/images.ts). Dieselbe Nummer
     // erst ohne und dann mit Datei zu prüfen, prüfte den Cache statt die Regel.
     const withoutFile = `wlimg${process.pid}a-1`;
     const withFile = `wlimg${process.pid}b-1`;
@@ -371,8 +371,8 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     //   c) Den `schon`-Zweig entfernt → „ein Merkposten, den das Ziel schon hat"
     //      wird rot (UNIQUE-Verletzung statt Zusammenführen).
     const P = {
-      ..._req('src/finanzen/preisalarm.js'),
-      ...require('./helpers/sources').testArea('finanzen').preisalarm,
+      ..._req('src/finances/priceAlert.js'),
+      ...require('./helpers/sources').testArea('finances').preisalarm,
     };
     const sn = `wlmv${process.pid}-1`;
     await db.run(

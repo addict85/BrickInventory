@@ -7,7 +7,7 @@ import * as manualMinifigs from './repository/manualMinifigs';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../katalog';
-import type { FinancesServices } from '../finanzen';
+import type { FinancesServices } from '../finances';
 import type { InventoryServices } from '../bestand';
 import type { JobsServices } from '../auftraege';
 import type { ForeignSourcesServices } from '../externalSources';
@@ -19,7 +19,7 @@ export interface MinifigsDependencies {
   einstellungen: SettingsServices;
   household: HouseholdServices;
   katalog: CatalogServices;
-  finanzen: FinancesServices;
+  finances: FinancesServices;
   bestand: InventoryServices;
   externalSources: ForeignSourcesServices;
   auftraege: JobsServices;

@@ -28,7 +28,7 @@ async function jeRow<Z>(art: string, rows: Z[], f: (z: Z) => Promise<boolean>): 
 
 async function backfillAcquisitions(k: InventoryContext) {
   await jeRow('Erfassungen', await k.nachtrag.setEntriesWithoutPrice(), async row => {
-    const price = await k.finanzen.aktuellerMarktpreis(row.set_number, row.user_id, row.condition || null);
+    const price = await k.finances.aktuellerMarktpreis(row.set_number, row.user_id, row.condition || null);
     return !!price && (await setEstimatedPrice(k, 'set', row.id, price));
   });
 }
@@ -36,7 +36,7 @@ async function backfillAcquisitions(k: InventoryContext) {
 // Dieselbe Lücke wie bei den Sets, für Teile- und Figuren-Erfassungen.
 async function backfillPartsEntries(k: InventoryContext) {
   await jeRow('Teile-Erfassungen', await k.nachtrag.partEntriesWithoutPrice(), async row => {
-    const price = await k.finanzen.currentPartMarketPrice(
+    const price = await k.finances.currentPartMarketPrice(
       row.part_number,
       row.color_id,
       row.user_id,
@@ -49,7 +49,7 @@ async function backfillPartsEntries(k: InventoryContext) {
 async function backfillMinifigsEntries(k: InventoryContext) {
   await jeRow('Figuren-Erfassungen', await k.nachtrag.minifigEntriesWithoutPrice(), async row => {
     // Die eigene BrickLink-Nummer des Kontos vor der gemeinsamen.
-    const price = await k.finanzen.currentMinifigMarketPrice(
+    const price = await k.finances.currentMinifigMarketPrice(
       row.fig_number,
       row.user_id,
       await k.katalog.blFetchNumber('fig', row.fig_number, row.user_id),

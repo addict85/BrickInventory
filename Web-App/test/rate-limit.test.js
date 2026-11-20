@@ -192,7 +192,7 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
 test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () => {
   // Woher dieser Test kommt
   const job = (
-    fs.readFileSync(path.join(ROOT, 'src/finanzen/preisLauf.ts'), 'utf8') +
+    fs.readFileSync(path.join(ROOT, 'src/finances/priceRun.ts'), 'utf8') +
     fs.readFileSync(path.join(ROOT, 'db/txLock.ts'), 'utf8')
   )
     .replace(/\/\*[\s\S]*?\*\//g, '')

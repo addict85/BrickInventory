@@ -1,6 +1,6 @@
 /**
  * Kaufpreise in fremder Währung werden zum Kurs ihres Kauftags umgerechnet
- * (Migration 0077, src/finanzen/rechnung/abfragen.ts); fehlt der Tag, gilt der
+ * (Migration 0077, src/finances/calculation/queries.ts); fehlt der Tag, gilt der
  * nächstfrühere Kurs, fehlt jeder Kurs, bleibt der Preis „fremde Währung,
  * nicht eingerechnet“. Die Kurse kommen von der EZB — hier von einem lokalen
  * Server mit derselben Dateiform (ZIP mit CSV, Tages-XML).
@@ -86,7 +86,7 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
     await db.pool.end().catch(() => {});
   });
   await db.run('DELETE FROM exchange_rates');
-  const { reloadRates } = _req('src/finanzen/wechselkurse.js');
+  const { reloadRates } = _req('src/finances/exchangeRates.js');
 
   await t.test('erst die Historie, dann die Tageskurse', async () => {
     assert.deepEqual(await reloadRates(lokal), { quelle: 'historie', rates: 5 }, 'N/A und leere Spalten zählen nicht');
@@ -126,20 +126,20 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
   await kauf(1, 900, 'XAU', '2026-01-06T11:00:00Z');
 
   await t.test('Set', async () => {
-    const { gainAndLoss } = _req('src/finanzen/financeCalc.js');
+    const { gainAndLoss } = _req('src/finances/financeCalc.js');
     const pnl = await gainAndLoss(uid, [uid]);
     const z = pnl.sets.find(s => s.set_number === SET);
     assert.equal(z.purchase_price, (92.5 + 38) / 2, 'mengengewichtet über die umgerechneten Preise');
     assert.equal(pnl.totals.kaufpreise_umgerechnet, 2);
     assert.equal(pnl.totals.kaufpreise_fremde_waehrung, 1, 'XAU ohne Kurs bleibt draussen');
-    const { valueSets } = _req('src/finanzen/financeCalc.js');
+    const { valueSets } = _req('src/finances/financeCalc.js');
     const b = await valueSets(uid, [uid]);
     assert.equal(b.kaufpreise_umgerechnet, 2);
     assert.equal(b.kaufpreise_fremde_waehrung, 1);
   });
 
   await t.test('Preisverlauf', async () => {
-    const { priceHistorySet } = _req('src/finanzen/priceHistory.js');
+    const { priceHistorySet } = _req('src/finances/priceHistory.js');
     const v = await priceHistorySet([uid], SET, 'CHF');
     assert.equal(v.purchase_price, 92.5, 'die erste Erfassung, umgerechnet');
     assert.equal(v.by_condition.N.purchase_price, (92.5 + 38) / 2);
@@ -148,7 +148,7 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
   await t.test('Teil', async () => {
     await holdsPart(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 2, am: '2026-01-07T09:00:00Z' });
     await db.run(`UPDATE part_acquisitions SET currency = 'USD' WHERE user_id = $1`, [uid]);
-    const { priceHistoryPart } = _req('src/finanzen/priceHistory.js');
+    const { priceHistoryPart } = _req('src/finances/priceHistory.js');
     const v = await priceHistoryPart([uid], TEIL, FARBE, 'CHF');
     // 2 USD / 1,26 × 0,96 = 1,5238
     assert.equal(v.by_condition.N.purchase_price, 1.5238);

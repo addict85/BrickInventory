@@ -1,6 +1,6 @@
 /** Sets erfassen: Web, App, CSV, Wanted-XML und Merkliste unter denselben Regeln. Was das
  * Netz braucht (Katalog, Bild, Marktpreis), hält die Anfrage nicht auf, es läuft als Auftrag. */
-import { rebrickableSetImage } from '../bilder';
+import { rebrickableSetImage } from '../images';
 import { normalisiereSetNummer, possibleSetNumber } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/sets';
@@ -200,9 +200,9 @@ async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, 
   imageUrl ??= rebrickableSetImage(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
   const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
-  const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.bilder.setBildLaden(imageUrl, sn), frist]));
+  const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.images.setBildLaden(imageUrl, sn), frist]));
   const lokal = valueOr(bild, null);
-  if (lokal) void versuche('set-anlegen:vorschau', sk.bilder.createPreview(lokal));
+  if (lokal) void versuche('set-anlegen:vorschau', sk.images.createPreview(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
   await sk.katalog.rememberSetCatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, disrupted: !rbResult.ok, bild: !!lokal };
@@ -225,7 +225,7 @@ export async function setSupplement(
     name = k.name ?? name;
   }
   for (const z of await repo.entriesWithoutPriceOfSets(sk.db, konto, sn)) {
-    const preis = await sk.finanzen.aktuellerMarktpreis(sn, konto, z.condition || null);
+    const preis = await sk.finances.aktuellerMarktpreis(sn, konto, z.condition || null);
     if (preis) await sk.bestand.setEstimatedPrice('set', z.id, preis);
   }
   return { name };

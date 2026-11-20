@@ -112,7 +112,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   const { setsLesen, readSet } = require('./helpers/sources').areaPage('sets');
 
   await t.test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', async () => {
-    const { aktuellerMarktpreis } = _req('src/finanzen/marketPrice.js');
+    const { aktuellerMarktpreis } = _req('src/finances/marketPrice.js');
     assert.equal(await aktuellerMarktpreis(SN, uid), 55, 'ohne Wunsch: nach den (neuen) Erfassungen');
     assert.equal(
       await aktuellerMarktpreis(SN, uid, 'U'),
@@ -202,7 +202,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   });
 
   await t.test('gainAndLoss bewertet nach dem Zustand der Erfassungen', async () => {
-    const { gainAndLoss } = _req('src/finanzen/financeCalc.js');
+    const { gainAndLoss } = _req('src/finances/financeCalc.js');
     const pnl = await gainAndLoss(uid, [uid]);
     const zeile = pnl.sets.find((/** @type {any} */ s) => s.set_number === SN);
     assert.ok(zeile, 'Das Set fehlt in der Gewinn-und-Verlust-Rechnung');

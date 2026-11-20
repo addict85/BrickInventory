@@ -21,13 +21,13 @@ const path = require('node:path');
 process.env.BILD_ABRUFE_JE_MINUTE = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 // Ohne Datenbank: Die Sets dieser Datei liegen im Blickfeld des Kontos, sonst legt der Proxy nichts ab.
-require('./helpers/sources').replaceServices('bilder', { setNumberInScope: async () => true });
+require('./helpers/sources').replaceServices('images', { setNumberInScope: async () => true });
 
 test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   const express = require('express');
   const passThroughImage = (...a) =>
-    _req('src/bilder/http/bildProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
-  const { proxyAddress, proxyCacheKey } = _req('src/bilder/images.js');
+    _req('src/images/http/imageProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
+  const { proxyAddress, proxyCacheKey } = _req('src/images/images.js');
   const { DATA_DIR, SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
   const { notes, ende } = require('./helpers/sources').imageNotes();

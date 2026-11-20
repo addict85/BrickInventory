@@ -5,7 +5,7 @@ import * as setAcquisitions from './repository/setAcquisitions';
 import type { HouseholdServices } from '../household';
 import type { JobsServices } from '../auftraege';
 import type { CatalogServices } from '../katalog';
-import type { FinancesServices } from '../finanzen';
+import type { FinancesServices } from '../finances';
 import type { InventoryServices } from '../bestand';
 import type { SetsServices } from '../sets';
 import type { PartsServices } from '../parts';
@@ -19,7 +19,7 @@ export interface CollectionDependencies {
   household: HouseholdServices;
   auftraege: JobsServices;
   katalog: CatalogServices;
-  finanzen: FinancesServices;
+  finances: FinancesServices;
   bestand: InventoryServices;
   sets: SetsServices;
   parts: PartsServices;

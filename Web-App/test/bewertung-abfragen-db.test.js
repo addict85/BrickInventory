@@ -11,7 +11,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = testData();
-const fc = _req('src/finanzen/financeCalc.js');
+const fc = _req('src/finances/financeCalc.js');
 const { holdsPart } = require('./helpers/bestand');
 
 const UID = 990101;
@@ -88,7 +88,7 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
     //
     // Es ist nur noch EINE Einzelabfrage, nicht zwei: Der Rückfall auf
     // `parts.bl_part_number` ist mit Migration 0037 weg, weil es die zweite
-    // Quelle nicht mehr gibt (die Begründung steht in src/finanzen/rechnung/preise.ts).
+    // Quelle nicht mehr gibt (die Begründung steht in src/finances/calculation/prices.ts).
     assert.equal(
       howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
       0,

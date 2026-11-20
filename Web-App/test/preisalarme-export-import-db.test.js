@@ -342,14 +342,14 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     assert.equal(body.errors, 3, `${body.errors} Fehler gemeldet statt 3: ${JSON.stringify(body.results)}`);
     assert.equal(body.added, 1, `${body.added} angelegt statt 1`);
     // Der Zustand „X" darf NICHT in der Tabelle stehen. Die Datenbank hätte
-    // ihn genommen; nur checkInput() in src/finanzen/preisalarm.ts weist ihn ab.
+    // ihn genommen; nur checkInput() in src/finances/priceAlert.ts weist ihn ab.
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1 AND condition NOT IN ('N','U')`, [MAIN]))
         .c,
       0,
       'Ein Alarm mit einem anderen Zustand als N oder U ist in der Tabelle gelandet. ' +
         'Die Tabelle hat darauf KEINE CHECK — das fängt allein die Prüfung in ' +
-        'src/finanzen/preisalarm.ts, und die bekommt man nur über setzeAlarm().',
+        'src/finances/priceAlert.ts, und die bekommt man nur über setzeAlarm().',
     );
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1', [MAIN])).c,

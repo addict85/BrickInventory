@@ -87,7 +87,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
       [nr + 'bl'],
     );
   }
-  const { valueParts, valueMinifigs } = _req('src/finanzen/financeCalc.js');
+  const { valueParts, valueMinifigs } = _req('src/finances/financeCalc.js');
 
   await t.test('zwölf Teile, eine Abfrage auf den Teile-Cache', async () => {
     const m = await abfragen(/FROM part_price_cache/, () => valueParts(uid, [uid]));

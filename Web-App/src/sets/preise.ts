@@ -18,7 +18,7 @@ export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht 
   const guideType = String(await sk.einstellungen.userValue(uid, 'price_guide_type', 'sold'));
   const ttlHours = String(await sk.einstellungen.userValue(uid, 'price_cache_ttl', '24'));
   const preis = await versuche('sets:preis', async () =>
-    sk.finanzen.fetchPrice(sn, await sk.finanzen.setState(blickfeld, sn), guideType, currency, ttlHours, null),
+    sk.finances.fetchPrice(sn, await sk.finances.setState(blickfeld, sn), guideType, currency, ttlHours, null),
   );
   if (!preis.ok)
     return {
@@ -51,20 +51,20 @@ export async function currencyOf(sk: SetsContext, uid: number): Promise<string> 
 }
 
 export function readSetAlerts(sk: SetsContext, uid: number, sn: string) {
-  return sk.finanzen.preisalarm.alertsFor(uid, normalisiereSetNummer(sn));
+  return sk.finances.preisalarm.alertsFor(uid, normalisiereSetNummer(sn));
 }
 
 export async function setAlarmOfSets(
   sk: SetsContext,
   uid: number,
   sn: string,
-  eingabe: Parameters<SetsContext['finanzen']['preisalarm']['setzeAlarm']>[3],
+  eingabe: Parameters<SetsContext['finances']['preisalarm']['setzeAlarm']>[3],
 ) {
-  return sk.finanzen.preisalarm.setzeAlarm(uid, normalisiereSetNummer(sn), await currencyOf(sk, uid), eingabe);
+  return sk.finances.preisalarm.setzeAlarm(uid, normalisiereSetNummer(sn), await currencyOf(sk, uid), eingabe);
 }
 
 export function deleteAlarmOfSets(sk: SetsContext, uid: number, sn: string, condition: Zustand | undefined) {
-  return sk.finanzen.preisalarm.loescheAlarm(uid, normalisiereSetNummer(sn), condition ?? 'N');
+  return sk.finances.preisalarm.loescheAlarm(uid, normalisiereSetNummer(sn), condition ?? 'N');
 }
 
 export async function startAlarmCsvImport(sk: SetsContext, uid: number, text: string) {
@@ -76,5 +76,5 @@ export async function startAlarmCsvImport(sk: SetsContext, uid: number, text: st
 }
 
 export async function setPriceHistory(sk: SetsContext, uid: number, sicht: Sicht | number[], sn: string) {
-  return sk.finanzen.priceHistorySet(sicht, sn, await currencyOf(sk, uid));
+  return sk.finances.priceHistorySet(sicht, sn, await currencyOf(sk, uid));
 }

@@ -21,7 +21,7 @@ const { dataOrSkip } = require('./helpers/db');
 test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurrency: 1 }, async t => {
   const db = testData();
   if (!(await dataOrSkip(t, _req))) return;
-  const { priceHistoryMinifig, statesForHistory } = _req('src/finanzen/priceHistory.js');
+  const { priceHistoryMinifig, statesForHistory } = _req('src/finances/priceHistory.js');
   const NAME = `verlauf-${process.pid}`,
     FN = `fig-vl${process.pid}`;
   const weg = async () => {

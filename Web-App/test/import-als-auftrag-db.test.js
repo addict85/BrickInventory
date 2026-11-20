@@ -29,8 +29,8 @@ const path = require('node:path');
 
 // Vor dem Laden des Workers: Der Alarm-Import wirft einen Fachfehler.
 const { fileError } = _req('src/infra/fehlerTexte.js');
-const pa = require.resolve(path.join(require('./helpers/sources').DIST, 'src/finanzen/preisalarm.js'));
-_req('src/finanzen/preisalarm.js');
+const pa = require.resolve(path.join(require('./helpers/sources').DIST, 'src/finances/priceAlert.js'));
+_req('src/finances/priceAlert.js');
 require.cache[pa].exports = Object.assign({}, require.cache[pa].exports, {
   alertsFromCsv: async () => {
     throw fileError('ungueltig', 'alarm_schwelle_ungueltig');

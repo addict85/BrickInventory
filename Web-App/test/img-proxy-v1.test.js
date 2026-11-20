@@ -33,7 +33,7 @@ const ohneKommentare = src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*
 const lies = (...p) => fs.readFileSync(path.join(...p), 'utf8');
 
 test('gebaute Adressen nehmen die neue Form, die alte wird weiter erkannt', () => {
-  const { proxyImageUrl, isProxyPath } = _req('src/bilder/images.js');
+  const { proxyImageUrl, isProxyPath } = _req('src/images/images.js');
   const cdn = 'https://cdn.rebrickable.com/media/sets/10305-1.jpg';
   assert.equal(proxyImageUrl(cdn), `${NEU}?url=${encodeURIComponent(cdn)}`);
   assert.equal(isProxyPath(`${ALT}?url=x`), true, 'gespeicherte alte Adressen gelten nicht mehr als Proxy');

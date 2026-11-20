@@ -10,7 +10,7 @@
  * Gegenproben (05.11.2026 gemessen, je einzeln):
  *   A  in routes/api_v1/finance.ts `sets: uebersetzt(…)` entfernt → rot:
  *      „Preisfehler auf Englisch“ (deutscher Text)
- *   B  in fetchPrice (src/finanzen/rechnung/preise.ts) wieder throw new
+ *   B  in fetchPrice (src/finances/calculation/prices.ts) wieder throw new
  *      Error(`… — kein BrickLink-Preis gefunden`) → rot: „Preisfehler auf
  *      Englisch“ (kein error_code)
  *   C  sub_teile der Brickset-Kachel entfernt → rot: „Kacheln mit Codes“

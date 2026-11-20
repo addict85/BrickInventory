@@ -8,7 +8,7 @@ import type { ConcurrentRateLimiter, ForeignSourcesServices } from '../externalS
 import type { JobsServices } from '../auftraege';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
-import type { ImagesServices } from '../bilder';
+import type { ImagesServices } from '../images';
 import * as anleitungen from './repository/anleitungen';
 import * as bildlage from './repository/bildlage';
 import * as blZuordnung from './repository/blZuordnung';
@@ -29,7 +29,7 @@ export interface CatalogDependencies {
   externalSources: ForeignSourcesServices;
   /** Höchstens zwei Bildabrufe beim CDN zugleich, je Satz Dienste einer. */
   cdnDrossel: ConcurrentRateLimiter;
-  bilder: ImagesServices;
+  images: ImagesServices;
   einstellungen: SettingsServices;
   auftraege: JobsServices;
   household: HouseholdServices;

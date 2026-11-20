@@ -2,11 +2,11 @@
  * Der Rückfall auf die Startseite bleibt als letzte Route in server.ts. */
 import express from 'express';
 import { sendStartPage, tokenToFragment } from '../src/profile/http/startPage';
-import { deliverImage } from '../src/bilder/http/bildAuslieferung';
+import { deliverImage } from '../src/images/http/imageDelivery';
 import { guardFor } from './api_v1/middleware';
 import type { Dienste } from '../src/dienste';
 
-export function buildPagesRouter(d: Pick<Dienste, 'konto' | 'profile' | 'bilder'>) {
+export function buildPagesRouter(d: Pick<Dienste, 'konto' | 'profile' | 'images'>) {
   const router = express.Router();
   const { requireLoginOrToken, inboundLock } = guardFor(d.konto);
 

@@ -85,7 +85,7 @@ async function resultFrom(kx: CollectionContext, n: ImportPayload, k: JobContext
     case 'merkliste_csv':
       return csvImportReport(await kx.wanted.importWantedListCsv(n.eingabe.owner, n.eingabe.text));
     case 'alarme_csv':
-      return kx.finanzen.preisalarm.alertsFromCsv(uid, n.eingabe.waehrung, n.eingabe.text);
+      return kx.finances.preisalarm.alertsFromCsv(uid, n.eingabe.waehrung, n.eingabe.text);
     case 'wanted_xml':
       return importWantedXml(kx, uid, n.eingabe, k);
   }

@@ -8,7 +8,7 @@ import { moneyInput } from '../infra/geld';
 import { publicError } from '../infra/fehler';
 import { Degradations } from '../infra/ergebnis';
 import { forSet } from '../katalog';
-import { imageIfPresent } from '../bilder';
+import { imageIfPresent } from '../images';
 import { toCsv, csvRowsFromRequest, csvDatum } from '../infra/csvExport';
 import { possibleSetNumber, withVersion, normalisiereSetNummer } from '../infra/setNummer';
 import type { WantedContext } from './context';
@@ -27,7 +27,7 @@ export async function pricesForBothConditions(k: WantedContext, uid: number, set
   for (const c of ['N', 'U']) {
     const pd = await ab.oder(
       `marktpreis_${c}`,
-      k.finanzen.fetchPrice(setNumber, c, guideType, currency, ttlHours),
+      k.finances.fetchPrice(setNumber, c, guideType, currency, ttlHours),
       null,
     );
     // A fallback price from the other condition would otherwise show as "market price (new)"; the list says "none".
@@ -132,13 +132,13 @@ export async function moveWantedItem(
   return withWantedItemLock(k, [ofId, zuId], sn, c, async t => {
     if (await t.wanted.isWanted(zuId, sn, c)) {
       const weg = await removeWantedItem(t, ofId, sn, c);
-      await t.finanzen.preisalarm.loescheAlarm(ofId, sn, c);
+      await t.finances.preisalarm.loescheAlarm(ofId, sn, c);
       return { verschoben: weg > 0, zusammengefuehrt: true };
     }
     const r = await t.wanted.transferWantedEntry(zuId, ofId, sn, c);
     const verschoben = (r.changes ?? 0) > 0;
     // Only carry the alert along if the item really moved.
-    if (verschoben) await t.finanzen.preisalarm.alarmTransfer(zuId, ofId, sn, c);
+    if (verschoben) await t.finances.preisalarm.alarmTransfer(zuId, ofId, sn, c);
     return { verschoben, zusammengefuehrt: false };
   });
 }
@@ -179,9 +179,9 @@ export async function wantedItemsOf(
   // detail view asks for the full image.
   return rows.map(({ alarm_direction, alarm_threshold, alarm_triggered, ...r }) => {
     // Synchronous and cached — no filesystem access per row. Same naming rule
-    // as when storing it (src/bilder/setImages.ts).
+    // as when storing it (src/images/setImages.ts).
     const lokal = imageIfPresent(`/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
-    if (!lokal && r.image_url) k.bilder.rememberUsed(String(r.image_url), String(r.set_number));
+    if (!lokal && r.image_url) k.images.rememberUsed(String(r.image_url), String(r.set_number));
     return {
       ...r,
       waehrung,
@@ -241,7 +241,7 @@ export async function fulfillWantedItem(
     });
     // After the WANTED-ITEM's condition: this is about the entry that was fulfilled.
     await removeWantedItem(t, ownerId, sn, wantedCondition);
-    await t.finanzen.preisalarm.loescheAlarm(ownerId, sn, wantedCondition);
+    await t.finances.preisalarm.loescheAlarm(ownerId, sn, wantedCondition);
     return r.action === 'added'
       ? { action: 'added', set_number: r.set_number, name: r.name, katalog_offen: r.katalog_offen }
       : { action: 'exists', set_number: r.set_number };

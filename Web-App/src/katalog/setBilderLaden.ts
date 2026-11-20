@@ -7,7 +7,7 @@ import { IMAGE_HEADERS } from '../externalSources';
 
 // Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
 // bekommt deshalb die Art mit.
-import { imageExtension, filePart, targetInFolder } from '../bilder';
+import { imageExtension, filePart, targetInFolder } from '../images';
 import { ALLOWED_IMAGE_HOSTS } from '../infra/fremdeAdressen';
 import * as repo from './repository/teileAnreicherung';
 import fs from 'node:fs';
@@ -43,9 +43,9 @@ async function downloadImage(
   const rel = `${webBase}${file}`;
   if (fs.existsSync(dest)) return rel;
   fs.mkdirSync(IMG_DIR, { recursive: true });
-  if (!(await k.bilder.loadImage(imgUrl, dest, ALLOWED_IMAGE_HOSTS, IMAGE_HEADERS))) return null;
+  if (!(await k.images.loadImage(imgUrl, dest, ALLOWED_IMAGE_HOSTS, IMAGE_HEADERS))) return null;
   try {
-    await k.bilder.createPreview(rel).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));
+    await k.images.createPreview(rel).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));
   } catch (e) {
     reportError('teile-enrich:vorschau', e);
   }
@@ -79,7 +79,7 @@ async function loadPartImage(k: CatalogContext, p: repo.ImageRequest): Promise<v
   if (!fs.existsSync(dest)) {
     await k.cdnDrossel.acquire();
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
-    const ok = await k.bilder
+    const ok = await k.images
       .loadImage(cdnUrl, dest, ALLOWED_IMAGE_HOSTS, IMAGE_HEADERS, text =>
         console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')),
       )

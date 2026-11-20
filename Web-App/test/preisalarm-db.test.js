@@ -69,8 +69,8 @@ test('Preisalarm gegen echte Datenbank', async t => {
   // Modulobjekt, und eine Zuweisung darauf tut nichts. Der Test lief gegen den
   // echten Versand, zählte null Meldungen — und die Ursache stand nirgends.
   const A = {
-    ..._req('src/finanzen/preisalarm.js'),
-    ...require('./helpers/sources').testArea('finanzen').preisalarm,
+    ..._req('src/finances/priceAlert.js'),
+    ...require('./helpers/sources').testArea('finances').preisalarm,
   };
   let sent = [];
   let sendingError = null;

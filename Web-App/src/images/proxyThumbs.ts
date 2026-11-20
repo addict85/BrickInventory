@@ -1,0 +1,120 @@
+import type { Client } from 'pg';
+import { fehlertext, reportError } from '../infra/fehler';
+import fs from 'node:fs';
+import { rememberMissing, isKnownMissing } from './imageMisses';
+import { imgProxyFailures, countProxyError } from './imgProxyStats';
+import { readableImage } from './imageGuard';
+import { jimpPreview } from './thumbs';
+import { LOCKS } from '../infra/lockNamespaces';
+import * as sperre from './repository/sessionLock';
+import type { ImagesContext } from './context';
+
+// Warteschlange, Sperre und Verkleinern gehören zusammen.
+
+export const PROXY_THUMB_SIZE = 200;
+
+/** Vorschaubilder sind die teuerste Arbeit im Server und belegen den
+ * Event-Loop; nie wartet eine Anfrage darauf, sie entstehen im Hintergrund. */
+const THUMB_MAX_PARALLEL = 1;
+/** Wer schnell durchscrollt, will diese Vorschauen nicht; ohne Deckel rechnete
+ * der Server den halben Katalog stur ab. */
+const THUMB_MAX_QUEUE = 40;
+/** Warteschlange und Sperrverbindung je Satz Dienste; die Sperre selbst gilt dem Server. */
+const stand = (k: ImagesContext) =>
+  k.faecher.fach('vorschauen', () => ({
+    laufend: 0,
+    _thumbQueue: [] as [string, string][],
+    _thumbInFlight: new Set<string>(),
+    lockClient: null as Client | null,
+  }));
+
+export function queueThumb(k: ImagesContext, srcFile: string, thumbFile: string) {
+  const { _thumbQueue, _thumbInFlight } = stand(k);
+  if (_thumbInFlight.has(thumbFile)) return;
+  // Gescheiterte Verkleinerungen (webp) nicht bei jedem Ansehen wiederholen.
+  if (isKnownMissing(k, 'thumb:' + thumbFile)) return;
+  // Voll? Verwerfen statt aufschieben: Das Bild geht in voller Grösse hinaus,
+  // die Vorschau kommt beim nächsten Aufruf.
+  if (_thumbQueue.length >= THUMB_MAX_QUEUE) return;
+  _thumbInFlight.add(thumbFile);
+  _thumbQueue.push([srcFile, thumbFile]);
+  drainThumbQueue(k);
+}
+
+export function drainThumbQueue(k: ImagesContext) {
+  const st = stand(k);
+  const { _thumbQueue, _thumbInFlight } = st;
+  while (st.laufend < THUMB_MAX_PARALLEL && _thumbQueue.length) {
+    const [src, dst] = _thumbQueue.shift()!;
+    st.laufend++;
+    createProxyPreview(k, src, dst)
+      .catch(e => countProxyError('proxy-vorschau:erzeugen', e))
+      .finally(() => {
+        st.laufend--;
+        _thumbInFlight.delete(dst);
+        drainThumbQueue(k);
+      });
+  }
+}
+/** EIN Vorschau-Lauf für den ganzen Server, nicht je Arbeitsprozess. */
+const THUMB_LOCK_KEY = LOCKS.PROXY_THUMBS;
+
+export async function withPreviewLock<T>(k: ImagesContext, work: () => Promise<T>): Promise<T | false> {
+  // NICHT aus dem Pool: Eine dort gehaltene Sperre nahm gewöhnlichen Anfragen
+  // die Verbindung.
+  const st = stand(k);
+  if (!st.lockClient) {
+    try {
+      st.lockClient = await k.db.ownConnection();
+    } catch (_) {
+      return false;
+    }
+    st.lockClient.on('error', () => {
+      st.lockClient = null;
+    });
+  }
+  const client = st.lockClient;
+  try {
+    if (!(await sperre.attemptsLock(client, THUMB_LOCK_KEY))) return false; // ein anderer Prozess rechnet gerade
+    try {
+      return await work();
+    } finally {
+      // Bleibt die Sperre hängen, rechnete keiner mehr: Die Verbindung geht zu und gibt sie frei.
+      await sperre.giveLockFree(client, THUMB_LOCK_KEY).catch(e => {
+        reportError('proxy-vorschau:pg_advisory_unlock', e);
+        st.lockClient = null;
+        void client.end().catch(f => reportError('proxy-vorschau:verbindung schliessen', f));
+      });
+    }
+  } catch (_) {
+    st.lockClient = null; // Verbindung hin — beim nächsten Mal neu aufbauen
+    return false;
+  }
+}
+
+export async function createProxyPreview(k: ImagesContext, srcFile: string, thumbFile: string) {
+  const p = withPreviewLock(k, async () => {
+    try {
+      // Abmessungen zuerst (imageGuard.ts): Die 5-MB-Grenze misst die KOMPRIMIERTE
+      // Grösse und fängt eine Dekompressionsbombe nicht ab.
+      if (!(await readableImage(srcFile))) {
+        // Gar nicht erst versuchen — und das merken, siehe queueThumb().
+        rememberMissing(k, 'thumb:' + thumbFile);
+        return false;
+      }
+      // ATOMAR schreiben: erst daneben, dann umbenennen.
+      const tmpThumb = `${thumbFile}.${process.pid}.${k.uhr.jetzt()}.tmp.jpg`;
+      await jimpPreview(srcFile, tmpThumb, PROXY_THUMB_SIZE);
+      await fs.promises.rename(tmpThumb, thumbFile);
+      return true;
+    } catch (e) {
+      // Kein stilles false: Ein dauerhaft scheiternder Erzeuger bliebe unsichtbar.
+      console.error(`[img-proxy] Vorschau fehlgeschlagen für ${srcFile}: ${fehlertext(e)}`);
+      rememberMissing(k, 'thumb:' + thumbFile);
+      imgProxyFailures.other++;
+      imgProxyFailures.lastError = `Vorschau fehlgeschlagen: ${fehlertext(e)}`;
+      return false;
+    }
+  });
+  return p;
+}

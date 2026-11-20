@@ -71,7 +71,7 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   // part_acquisitions — der Kaufpreis stand nur in der Stammtabelle, während
   // Detailansicht und Zustandsregel mit den Erfassungen arbeiten. …
   const src =
-    fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8') +
+    fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8') +
     '\n' +
     fs.readFileSync(path.join(ROOT, 'src/parts/manualParts.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualPart'), src.indexOf('async function changeManualPart'));
@@ -122,14 +122,14 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
     fn,
     /price: erfassungsPreis/,
     'Die Erfassung nimmt nicht den Preis, der ohne Marktpreis NULL ist ' +
-      '(src/finanzen/preisRegel.ts, erfassungsPreis) — in der Erfassung hiesse eine 0 ' +
+      '(src/finances/priceRule.ts, erfassungsPreis) — in der Erfassung hiesse eine 0 ' +
       '„für null Franken gekauft"',
   );
-  const regel = fs.readFileSync(path.join(ROOT, 'src/finanzen/preisRegel.ts'), 'utf8');
+  const regel = fs.readFileSync(path.join(ROOT, 'src/finances/priceRule.ts'), 'utf8');
   assert.match(
     regel,
     /erfassungsPreis:\s*kaufpreis > 0 \? kaufpreis : null/,
-    'src/finanzen/preisRegel.ts wandelt die 0 der Stammzeile nicht mehr in NULL für die Erfassung',
+    'src/finances/priceRule.ts wandelt die 0 der Stammzeile nicht mehr in NULL für die Erfassung',
   );
   assert.match(fn, /condition: effectiveCondition/, 'Die Erfassung braucht den Zustand');
 });
@@ -140,7 +140,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // eigene Nummer mit der BrickLink-Nummer überein. Der Abruf wurde
   // übersprungen, die Teile-Schätzung übernahm, und die liefert ohne
   // Teile-Zusammensetzung von Rebrickable nichts: gar kein Preis.
-  const src = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8');
+  const src = fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8');
   // Der Abruf heisst seit einer früheren Runde figMarketPriceWithOrigin: Er liefert
   // neben dem Preis den Zustand, aus dem dieser stammt. currentMinifigMarketPrice
   // steht als duenne Huelle daneben und gibt nur die Zahl weiter — geprueft
@@ -208,7 +208,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   // bei Marktpreis (Neu) und (Gebraucht) nur Striche, der Verlauf blieb leer —
   // obwohl Kaufpreise in beiden Zuständen erfasst waren.
   const src =
-    fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8') +
+    fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8') +
     '\n' +
     fs.readFileSync(path.join(ROOT, 'src/minifigs/manualMinifigs.ts'), 'utf8');
   const est = src.slice(
@@ -300,7 +300,7 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // Den Marktpreis aus Cache und Verlauf liest der Set-Dienst über finanzen (Besitzer von price_history).
   const sets =
     require('./helpers/sources').setCoreSource() +
-    fs.readFileSync(path.join(ROOT, 'src/finanzen/repository/preisCache.ts'), 'utf8');
+    fs.readFileSync(path.join(ROOT, 'src/finances/repository/priceCache.ts'), 'utf8');
   assert.match(
     sets,
     /FROM price_history[\s\S]{0,200}ORDER BY \(condition = \$3\) DESC, recorded_at DESC/,
@@ -313,7 +313,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
   // set_acquisitions-Zeile schon. conditionsNeededFor() fand daher nichts und
   // fiel auf 'N' zurück — ein als „Gebraucht" importiertes Set bekam den
   // Neupreis als Kaufpreis, weil die anschliessende Preisabfrage für 'U' noch …
-  const job = fs.readFileSync(path.join(ROOT, 'src/finanzen/preisLauf.ts'), 'utf8');
+  const job = fs.readFileSync(path.join(ROOT, 'src/finances/priceRun.ts'), 'utf8');
   const { hatParameter } = require('./helpers/sources');
   assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true), 'Der Hinweis-Parameter fehlt');
   assert.match(
@@ -333,7 +333,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
 
   // Und aktuellerMarktpreis muss ihn beim Anlegen mitgeben — genau an der
   // Stelle, wo die Zeile noch nicht existiert.
-  const preis = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8');
+  const preis = fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8');
   assert.match(
     preis,
     /preisFuerSetHolen\(k, setNumber, userId, condition\)/,
@@ -360,8 +360,8 @@ test('genau EINE Zustandsauflösung für Einzelsets — setState', () => {
   // Beide Aufrufer müssen ihn tatsächlich importieren, nicht eine eigene
   // Abfrage danebenstellen.
   // Die Verlaufsrouten rufen ihn nur noch mittelbar auf — über
-  // src/finanzen/priceHistory.ts, das sich Webapp und Android teilen.
-  const helper = fs.readFileSync(path.join(ROOT, 'src/finanzen/priceHistory.ts'), 'utf8');
+  // src/finances/priceHistory.ts, das sich Webapp und Android teilen.
+  const helper = fs.readFileSync(path.join(ROOT, 'src/finances/priceHistory.ts'), 'utf8');
   // UMFORMULIERT in: Geprüft wurde die Importzeile WÖRTLICH.
   // Seit dem Fix für die BrickLink-Schlüssel holt priceHistory.ts aus derselben
   // Datei zwei weitere Namen — die Zeile lautet jetzt
@@ -369,13 +369,13 @@ test('genau EINE Zustandsauflösung für Einzelsets — setState', () => {
   assert.match(
     helper,
     /import \{[^}]*\bsetState\b[^}]*\} from '\.\/financeCalc';/,
-    'src/finanzen/priceHistory.ts muss den gemeinsamen Helfer benutzen',
+    'src/finances/priceHistory.ts muss den gemeinsamen Helfer benutzen',
   );
 
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
-  const uses = (apiV1.match(/sk\.finanzen\.setState\(blickfeld, sn\)/g) || []).length;
+  const uses = (apiV1.match(/sk\.finances\.setState\(blickfeld, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
@@ -385,7 +385,7 @@ test('CDN-Anfragen erzwingen IPv4', () => {
   // Ohne IPv6-Route liefen Bildabrufe stumm bis zur Frist. Der Set-Bild-Download
   // beim Import geht über den gemeinsamen Abrufhelfer; dass der und der Pool
   // der Bild-CDNs IPv4 erzwingen, prüft der Test darunter am laufenden Code.
-  const setsFile = fs.readFileSync(path.join(ROOT, 'src/bilder/setImages.ts'), 'utf8');
+  const setsFile = fs.readFileSync(path.join(ROOT, 'src/images/setImages.ts'), 'utf8');
   assert.match(
     setsFile,
     /await (?:k\.externalSources\.quellen\s*\.)?(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
@@ -431,13 +431,13 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
     src.indexOf('for (const f of figsToFetch) {'),
   );
   // UMFORMULIERT in: Geprüft wurde der WORTLAUT der Zeile
-  //     const { vorschauErzeugenAus } = require('./src/bilder/thumbs');
+  //     const { vorschauErzeugenAus } = require('./src/images/thumbs');
   // Beim Umbau der späten require() auf echte import-Anweisungen wurde daraus
   // ein Import am Dateikopf — die Prüfung wurde rot, ohne dass sich ihre …
   assert.match(src, /vorschauErzeugenAus/, 'vorschauErzeugenAus ist in server.ts nicht mehr verfügbar');
   assert.match(
     partsLoop,
-    /(?:vorschauErzeugenAus|\w+\.bilder\.createPreview)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    /(?:vorschauErzeugenAus|\w+\.images\.createPreview)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Teile-Schleife muss vorschauErzeugenAus() nach einem erfolgreichen Download aufrufen',
   );
 
@@ -447,7 +447,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   );
   assert.match(
     figsLoop,
-    /(?:vorschauErzeugenAus|\w+\.bilder\.createPreview)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    /(?:vorschauErzeugenAus|\w+\.images\.createPreview)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Minifiguren-Schleife muss vorschauErzeugenAus() nach einem erfolgreichen Download aufrufen',
   );
 });

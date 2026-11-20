@@ -20,7 +20,7 @@ test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickabl
     return;
   }
 
-  const ph = _req('src/finanzen/priceHistory.js');
+  const ph = _req('src/finances/priceHistory.js');
   const u = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ('t_'||floor(random()*1e9),'x') RETURNING id`,
   );

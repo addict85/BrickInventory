@@ -6,7 +6,7 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
-export function buildSetsStorageRouter(d: Pick<Dienste, 'konto' | 'finanzen' | 'bestand' | 'sets'>) {
+export function buildSetsStorageRouter(d: Pick<Dienste, 'konto' | 'finances' | 'bestand' | 'sets'>) {
   const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -37,13 +37,13 @@ export function buildSetsStorageRouter(d: Pick<Dienste, 'konto' | 'finanzen' | '
 
   // Abholen statt Schieben; ohne Kontofilter, ein Alarm gehört einem Konto.
   router.endpunkt('GET /api/v1/alerts/pending', requireToken, async req => {
-    const r = await d.finanzen.preisalarm.triggeredSince(req.apiUser.user_id, req.abfrage.since);
+    const r = await d.finances.preisalarm.triggeredSince(req.apiUser.user_id, req.abfrage.since);
     return { alerts: r.alerts, now: r.now };
   });
 
   // Was gesetzt ist; ausgelöst: /alerts/pending.
   router.endpunkt('GET /api/v1/alerts', requireToken, async req => {
-    return { alerts: await d.finanzen.preisalarm.alleAlarme(req.apiUser.user_id) };
+    return { alerts: await d.finances.preisalarm.alleAlarme(req.apiUser.user_id) };
   });
 
   router.endpunkt(

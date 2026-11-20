@@ -158,7 +158,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
       VALUES ($1, 'N', 'EUR', 5, 5, TRUE, 0.5)`,
       [FIGUR],
     );
-    const { fetchMinifigPrice } = _req('src/finanzen/financeCalc.js');
+    const { fetchMinifigPrice } = _req('src/finances/financeCalc.js');
     const p = await fetchMinifigPrice(FIGUR, 'N', 'EUR', 24);
     assert.equal(Number(p.avg_price), 20);
     const zeile = await db.get(
@@ -175,7 +175,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
       VALUES ($1, 'N', 'EUR', 8, 8, TRUE, 0.75)`,
       [RBFIGUR],
     );
-    const { estimateMinifigsPrice } = _req('src/finanzen/marketPrice.js');
+    const { estimateMinifigsPrice } = _req('src/finances/marketPrice.js');
     const s = await estimateMinifigsPrice(RBFIGUR, 0, 'N');
     assert.deepEqual(s, { preis: 8, abdeckung: 0.75 });
   });

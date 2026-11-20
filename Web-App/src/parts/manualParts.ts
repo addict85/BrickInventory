@@ -23,10 +23,10 @@ export async function manualPartPurchase(
     condition = null,
   }: { partNumber: string; colorId: number; unitPrice?: unknown; condition?: string | null },
 ) {
-  // The rule lives in src/finanzen/preisRegel.ts; what remains here is only what
+  // The rule lives in src/finances/priceRule.ts; what remains here is only what
   // differs for a PART versus a minifig: the lookup key.
-  const r = await k.finanzen.manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
-    k.finanzen.marketPriceWithOrigin(partNumber, colorId, uid, zustand),
+  const r = await k.finances.manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
+    k.finances.marketPriceWithOrigin(partNumber, colorId, uid, zustand),
   );
   return {
     effectiveUnitPrice: r.unitPrice,
@@ -157,10 +157,10 @@ async function additionalAcquisition(
   const reCond =
     e.condition && ['N', 'U'].includes(e.condition)
       ? e.condition
-      : await k.finanzen.partState(uid, part_number, color_id);
+      : await k.finances.partState(uid, part_number, color_id);
   const reEntered = e.unit_price;
   const rePrice =
-    reEntered !== null ? reEntered : await k.finanzen.currentPartMarketPrice(part_number, color_id, uid, reCond);
+    reEntered !== null ? reEntered : await k.finances.currentPartMarketPrice(part_number, color_id, uid, reCond);
 
   // One acquisition per day and condition (src/bestand/acquisitions.ts).
   await k.bestand.bookDailyEntry('part', uid, [part_number, color_id], {
@@ -196,18 +196,18 @@ export async function changeManualPart(
       [partNumber, colorId],
       wish,
       cond,
-      () => k.finanzen.currentPartMarketPrice(partNumber, colorId, uid, cond),
+      () => k.finances.currentPartMarketPrice(partNumber, colorId, uid, cond),
       ab,
     );
   }
   if (body.unit_price !== undefined) {
-    // The rule lives in src/finanzen/preisRegel.ts; only the lookup and table are here.
-    const { unitPrice } = await k.finanzen.purchasePriceFromInput(
+    // The rule lives in src/finances/priceRule.ts; only the lookup and table are here.
+    const { unitPrice } = await k.finances.purchasePriceFromInput(
       body.unit_price,
       body.condition,
       existing.condition,
       uid,
-      zustand => k.finanzen.currentPartMarketPrice(partNumber, colorId, uid, zustand),
+      zustand => k.finances.currentPartMarketPrice(partNumber, colorId, uid, zustand),
     );
     // Into the LATEST acquisition: there NULL means "no price known", the 0 shown
     // on display is formed by the read query.

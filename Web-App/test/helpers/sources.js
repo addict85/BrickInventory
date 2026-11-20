@@ -17,7 +17,7 @@ const serverOnly = () =>
   fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
 
 const imgProxy = () =>
-  fs.readFileSync(path.join(ROOT, 'src/bilder/http/bildProxy.ts'), 'utf8') +
+  fs.readFileSync(path.join(ROOT, 'src/images/http/imageProxy.ts'), 'utf8') +
   '\n' +
   fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
 
@@ -29,18 +29,18 @@ const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbSour
 /** Die ganze Finanzschicht aneinandergehängt: Die Regeln („nur EINE
  *  Zustandsauflösung") gelten der Schicht, nicht der Fassade financeCalc.ts. */
 const finanzQuelle = () => {
-  const ordner = path.join(ROOT, 'src/finanzen/rechnung');
-  const teile = [serviceSource('src/finanzen/financeCalc.ts')];
+  const ordner = path.join(ROOT, 'src/finances/calculation');
+  const teile = [serviceSource('src/finances/financeCalc.ts')];
   for (const n of fs
     .readdirSync(ordner)
     .filter(x => x.endsWith('.ts'))
     .sort()) {
-    teile.push(serviceSource('src/finanzen/rechnung/' + n));
+    teile.push(serviceSource('src/finances/calculation/' + n));
   }
   // Selbstbeweis: Fände der Helfer die Module nicht, prüften die Regeln nur die
   // Fassade und wären still grün.
   if (teile.length < 4) {
-    throw new Error(`finanzQuelle(): nur ${teile.length} Dateien gefunden — liegt src/finanzen/rechnung/ noch da?`);
+    throw new Error(`finanzQuelle(): nur ${teile.length} Dateien gefunden — liegt src/finances/calculation/ noch da?`);
   }
   return teile.join('\n');
 };
@@ -149,10 +149,10 @@ function areaPage(bereich) {
   });
 }
 
-/** Schreibt mit, was die Bilder vormerken (rememberUsed, src/bilder/bildbedarf.ts): am Puffer
+/** Schreibt mit, was die Bilder vormerken (rememberUsed, src/images/imageDemand.ts): am Puffer
  *  selbst, damit jeder Weg dorthin zählt. `ende()` hört wieder auf. */
 /** @param {any} [kontext] @returns {{ notes: [string, string][], ende: () => void }} */
-function imageNotes(kontext = testContext('bilder')) {
+function imageNotes(kontext = testContext('images')) {
   const puffer = kontext.faecher.fach('bildbedarf:puffer', () => new Map());
   /** @type {[string, string][]} */
   const notes = [];
@@ -195,8 +195,8 @@ let _dataFactory = null;
  *  buildAndRequire() mehrmals ruft, damit ein ersetzter Teil nicht verloren geht. */
 const _imageWorker = {
   setBildLaden: (...a) =>
-    require(path.join(ROOT, 'dist', 'src/bilder/setImages.js')).setBildHerunterladen(testContext('bilder'), ...a),
-  createPreview: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/thumbs.js')).vorschauErzeugenAus(...a),
+    require(path.join(ROOT, 'dist', 'src/images/setImages.js')).setBildHerunterladen(testContext('images'), ...a),
+  createPreview: (...a) => require(path.join(ROOT, 'dist', 'src/images/thumbs.js')).vorschauErzeugenAus(...a),
 };
 
 /** Die ersetzten Klienten der Dienste (src/externalSources/sources.ts): leer heisst echt. */
@@ -466,14 +466,14 @@ function withoutHtmlComments(src) {
 /** Für `new RegExp`: jedes Sonderzeichen wörtlich. */
 const regexLiteral = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** Der Vorschau-Weg des Bild-Proxys (src/bilder/proxyThumbs.ts). */
+/** Der Vorschau-Weg des Bild-Proxys (src/images/proxyThumbs.ts). */
 function proxyThumbSource() {
   return [
-    'src/bilder/http/bildProxy.ts',
+    'src/images/http/imageProxy.ts',
     'routes/imgProxy.ts',
-    'src/bilder/proxyThumbs.ts',
-    'src/bilder/imgCacheServe.ts',
-    'src/bilder/http/bildCacheAuslieferung.ts',
+    'src/images/proxyThumbs.ts',
+    'src/images/imgCacheServe.ts',
+    'src/images/http/imageCacheDelivery.ts',
   ]
     .map(serviceSource)
     .join('\n');
@@ -570,11 +570,11 @@ function portfolioSource() {
   const path = require('node:path'),
     fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
-  const dir = path.join(ROOT, 'src/finanzen/portfolio');
-  const teile = [serviceSource('src/finanzen/portfolioHistory.ts')];
+  const dir = path.join(ROOT, 'src/finances/portfolio');
+  const teile = [serviceSource('src/finances/portfolioHistory.ts')];
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
-      teile.push(serviceSource('src/finanzen/portfolio/' + f));
+      teile.push(serviceSource('src/finances/portfolio/' + f));
     }
   }
   return teile.join('\n');

@@ -57,8 +57,8 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
       [MITV],
     );
 
-    const { fetchAndCachePrice } = _req('src/finanzen/preisLauf.js');
-    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
+    const { fetchAndCachePrice } = _req('src/finances/priceRun.js');
+    const { fetchPrice } = _req('src/finances/financeCalc.js');
 
     // Gegenprobe: in src/infra/setNummer.ts das withVersion() aus catalogEntry()
     // entfernt -> die Zeile mit „ohne Versionsanhang" wird rot.

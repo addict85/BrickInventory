@@ -96,10 +96,10 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
   for (const { set_number, image_url } of missing) {
     // Nur 404/410 heisst „gibt es nicht“; Drosselung beendet den Lauf, alles andere versucht der nächste.
     const info: { status?: number } = {};
-    const r = await versuche('nachlauf:setBildHerunterladen', k.bilder.setBildLaden(image_url, set_number, info));
+    const r = await versuche('nachlauf:setBildHerunterladen', k.images.setBildLaden(image_url, set_number, info));
     const local = r.ok ? r.wert : null;
     if (!local && (info.status === 404 || info.status === 410))
-      k.bilder.rememberMissing('set:' + set_number, `HTTP ${info.status} vom CDN`);
+      k.images.rememberMissing('set:' + set_number, `HTTP ${info.status} vom CDN`);
     if (!local && (info.status === 403 || info.status === 429)) {
       console.warn(`[set-img-bg] CDN drosselt (HTTP ${info.status}) — Rest im nächsten Lauf`);
       break;
@@ -107,7 +107,7 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
     // Ein Fehlschlag zählt im Abschluss; der nächste Lauf findet das Bild wieder ohne Eintrag.
     if (local && !(await versuche(`bilder:set ${set_number}`, k.bildlage.rememberSetImageLocal(set_number, local))).ok)
       gescheitert++;
-    if (local && !(await versuche('nachlauf:vorschauErzeugenAus', k.bilder.createPreview(local))).ok) gescheitert++;
+    if (local && !(await versuche('nachlauf:vorschauErzeugenAus', k.images.createPreview(local))).ok) gescheitert++;
     await new Promise(r => setTimeout(r, 300));
   }
   console.log(`[set-img-bg] Done${gescheitert ? `, ${gescheitert} Schritte gescheitert` : ''}`);
@@ -133,11 +133,11 @@ export async function backfillThumbnails(k: CatalogContext): Promise<void> {
     const d = datei(web);
     return d ? [{ web, datei: d }] : [];
   });
-  await versuche('nachlauf:vorschauen einpassen', k.bilder.fitTailoredPreviews(lokale));
+  await versuche('nachlauf:vorschauen einpassen', k.images.fitTailoredPreviews(lokale));
   for (const { web: localPath, datei: fsPath } of lokale) {
     const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
     if ((await exists(thumbPath)) || !(await exists(fsPath))) continue;
-    if ((await versuche('nachlauf:vorschauErzeugenAus', k.bilder.createPreview(localPath))).ok) generated++;
+    if ((await versuche('nachlauf:vorschauErzeugenAus', k.images.createPreview(localPath))).ok) generated++;
     else gescheitert++;
     if (generated % 10 === 0) await new Promise(r => setTimeout(r, 10));
   }

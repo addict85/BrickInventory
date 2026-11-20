@@ -49,8 +49,8 @@ export async function startJobs(d: Dienste): Promise<JobsLauf> {
       { schritt },
       { schluessel: `nachlauf:${schritt}`, afterSeconds, maxAttempts: 3 },
     );
-  if (await d.bilder.openImageDemand()) await d.bilder.imageDemandKick();
-  await d.finanzen.planeKursabruf();
+  if (await d.images.openImageDemand()) await d.images.imageDemandKick();
+  await d.finances.planeKursabruf();
   const worker = startJobWorker(d, { parallel: konfig().jobParallel, deadlineSec: konfig().jobDeadlineSec });
   void renewHeartbeat(d, worker);
   const lebenszeichen = setInterval(() => renewHeartbeat(d, worker), HEARTBEAT_MS);

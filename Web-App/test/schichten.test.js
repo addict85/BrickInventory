@@ -196,7 +196,7 @@ test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () =
   // Codezeilen im Biome-Format (Zeilenbreite 120).
   // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/auftraegeStarten.ts → rot
   // (db/); fetchAndCachePrice und statesJeSet zurück nach jobs/auftraegeStarten.ts → rot (113
-  // Zeilen); `import { STAPEL } from '../src/bilder/bildbedarf'` in jobs/auftragsWorker.ts → rot.
+  // Zeilen); `import { STAPEL } from '../src/images/imageDemand'` in jobs/auftragsWorker.ts → rot.
   const KERN = 'jobs/auftragsWorker.ts';
   const dateien = tsBelow('jobs');
   assert.ok(
@@ -473,7 +473,7 @@ test('SQL steht nur in Repositories und in db/', () => {
   // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
   // 31.10.2026 leer. Gegenproben (31.10.2026): `await db.get('SELECT 1')` in
   // src/household/household.ts → rot; `'SELECT 1'` in src/management/cleanup.ts → rot;
-  // (05.11.2026) das EXISTS-Fragment zurück nach src/finanzen/preisalarm.ts → rot.
+  // (05.11.2026) das EXISTS-Fragment zurück nach src/finances/priceAlert.ts → rot.
   const dateien = tsBelow('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
   assert.ok(dateien.length > 150, `nur ${dateien.length} Dateien gefunden`);
   assert.deepEqual(
@@ -766,13 +766,13 @@ function valueExports(index) {
 function indexWithoutAccess(indizes) {
   // Gegenproben (14.11.2026): `export { catalogStatus } from './setStamm'` zurück in
   // src/katalog/index.ts → rot (src/katalog.catalogStatus); `export { vorschauErzeugenAus } from './thumbs'`
-  // in src/bilder/index.ts → rot (asynchron).
+  // in src/images/index.ts → rot (asynchron).
   const alle = indizes.filter(i => !/^src\/(?:infra|vertrag|http)\//.test(i)).flatMap(valueExports);
   assert.ok(alle.length > 50, `nur ${alle.length} Wertexporte gefunden — greift die Suche noch?`);
   assert.ok(
     alle.some(x => x.name === 'src/household.asIds' && !x.zugang) &&
       declaration('src/sets/lesen', 'setsLesen')?.zugang &&
-      declaration('src/bilder/thumbs', 'vorschauErzeugenAus')?.zugang,
+      declaration('src/images/thumbs', 'vorschauErzeugenAus')?.zugang,
     'Selbstbeweis: asIds ist rein, setsLesen (Kontext) und vorschauErzeugenAus (asynchron) haben Zugang',
   );
   assert.deepEqual(
@@ -835,7 +835,7 @@ test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen',
   // spricht selbst HTTP nach aussen. Gegenprobe (10.11.2026): in
   // src/konto/passwortBestaetigung.ts wieder `return { status: 429, ...gesperrt }` → rot.
   const STATUS = /\bstatus\s*:\s*[1-5]\d\d\b|\bres\.status\(/;
-  // Gegenprobe (11.11.2026): `res.status(304)` zurück in src/bilder/imgCacheServe.ts → rot.
+  // Gegenprobe (11.11.2026): `res.status(304)` zurück in src/images/imgCacheServe.ts → rot.
   const withStatus = tsBelow('src', 'db', 'jobs')
     .filter(d => areaOf(d) !== 'http' && !isHttp(d))
     .filter(d => STATUS.test(sourceText(d)));
@@ -939,9 +939,9 @@ const LEVELS = [
   ['src/externalSources'],
   ['src/household', 'src/devices', 'src/factors'],
   ['src/konto'],
-  ['src/bilder', 'src/profile'],
+  ['src/images', 'src/profile'],
   ['src/idempotency', 'src/katalog'],
-  ['src/finanzen'],
+  ['src/finances'],
   ['src/bestand'],
   ['src/sets'],
   ['src/parts', 'src/minifigs', 'src/wanted', 'src/vouchers'],

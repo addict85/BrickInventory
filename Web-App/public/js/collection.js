@@ -526,7 +526,7 @@ export async function enrichGalleryWithPrices() {
   if (!pnl.success) return;
   setPnlBySet({});
   // The server computes the tile's amount and P&L (kachel_preis, kachel_pnl_pct in /finance/pnl,
-  // src/finanzen/setValue.ts tileValues); in a household, every row of a set carries the same values.
+  // src/finances/setValue.ts tileValues); in a household, every row of a set carries the same values.
   for (const s of pnl.sets) {
     if (!pnlBySet[s.set_number])
       pnlBySet[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };

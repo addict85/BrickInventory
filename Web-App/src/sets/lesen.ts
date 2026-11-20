@@ -1,5 +1,5 @@
 import { forSet, mergeInstructions } from '../katalog';
-import { resolveImageLocal } from '../bilder';
+import { resolveImageLocal } from '../images';
 import { reportError } from '../infra/fehler';
 import * as repo from './repository/sets';
 import { asIds, type Sicht, type ScopeInput as Blickfeld } from '../household';

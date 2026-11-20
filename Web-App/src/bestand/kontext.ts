@@ -14,7 +14,7 @@ import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { AccountServices } from '../konto';
 import type { CatalogServices } from '../katalog';
-import type { FinancesServices } from '../finanzen';
+import type { FinancesServices } from '../finances';
 import type { Uhr } from '../infra/uhr';
 
 export interface InventoryDependencies {
@@ -24,7 +24,7 @@ export interface InventoryDependencies {
   household: HouseholdServices;
   konto: AccountServices;
   katalog: CatalogServices;
-  finanzen: FinancesServices;
+  finances: FinancesServices;
   lesevertrag: InventoryReadContract;
 }
 

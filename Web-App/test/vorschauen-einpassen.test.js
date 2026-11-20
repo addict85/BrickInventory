@@ -3,7 +3,7 @@
  * einmal neu eingepasst: eigene Bilder neu erzeugt, im Proxy-Cache gelöscht. Ein Merker in run_state hält
  * es bei einem Lauf; richtige Vorschauen und quadratische Bilder bleiben unberührt.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln, dist neu gebaut), in src/bilder/vorschauenEinpassen.ts:
+ * Gegenproben (14.11.2026 gemessen, je einzeln, dist neu gebaut), in src/images/fitPreviews.ts:
  *   A  die Abfrage des Merkers entfernt → rot: „läuft nur einmal“ (die neue alte Vorschau wird ersetzt)
  *   B  zugeschnitten() prüft das Original nicht mehr (jede 200 × 200) → rot: „ersetzt nur zugeschnittene“
  *      (die Vorschau des quadratischen Bilds wird neu geschrieben)
@@ -18,7 +18,7 @@ const path = require('node:path');
 const _req = require('./helpers/sources').buildAndRequire();
 const sharp = require('sharp');
 const { DATA_DIR } = _req('src/infra/appPaths.js');
-const { fitTailoredPreviews, FITTED_MARKER } = _req('src/bilder/vorschauenEinpassen.js');
+const { fitTailoredPreviews, FITTED_MARKER } = _req('src/images/fitPreviews.js');
 
 const jpeg = (datei, width, height) =>
   sharp({ create: { width, height, channels: 3, background: '#2a6' } })

@@ -236,7 +236,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
   });
 
   await t.test('die Bewertung liefert je Kaufpreis eine Zeile, Altbestand ohne', async () => {
-    const { valueParts, valueMinifigs } = _req('src/finanzen/financeCalc.js');
+    const { valueParts, valueMinifigs } = _req('src/finances/financeCalc.js');
     await db.run(
       `INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, 'ma-preis', 5, 'manual'),
                   ($1, 'ma-alt', 5, 'manual')`,

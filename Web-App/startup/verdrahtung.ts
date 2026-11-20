@@ -16,8 +16,8 @@ import { createVouchers } from '../src/vouchers';
 import { createCollection } from '../src/collection';
 import { createManagement } from '../src/management';
 import { createCatalog } from '../src/katalog';
-import { type ImageWorker, createImages } from '../src/bilder';
-import { createFinances } from '../src/finanzen';
+import { type ImageWorker, createImages } from '../src/images';
+import { createFinances } from '../src/finances';
 import { createAccount } from '../src/konto';
 import { createFactors } from '../src/factors';
 import { createProfile } from '../src/profile';
@@ -89,10 +89,10 @@ export class KindNotSignedIn extends Error {}
 /** Jeder Bereich meldet seine Auftragsarten mit Nutzlast und Ausführer; die Warteschlange kennt keine. */
 function reportJobTypesAn(d: Dienste): void {
   const arten: Anmeldung[] = [
-    ...d.bilder.auftragsarten(),
+    ...d.images.auftragsarten(),
     ...d.konto.auftragsarten(),
     ...d.katalog.auftragsarten(IMPORT_PROCESS),
-    ...d.finanzen.auftragsarten(),
+    ...d.finances.auftragsarten(),
     ...d.sets.auftragsarten(),
     ...d.collection.jobKinds(),
     ...d.parts.jobKinds(),
@@ -135,16 +135,16 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
     { db, uhr, einstellungen, auftraege, ersatz: quellen },
     zeige('externalSources'),
   );
-  const bilder = createImages(
+  const images = createImages(
     { db, uhr, konfig, auftraege, household, externalSources, bildwerk, lesevertrag: LESEVERTRAG },
-    zeige('bilder'),
+    zeige('images'),
   );
   const katalog = createCatalog(
-    { db, uhr, einstellungen, auftraege, household, externalSources, bilder, throttle, lesevertrag: LESEVERTRAG },
+    { db, uhr, einstellungen, auftraege, household, externalSources, images, throttle, lesevertrag: LESEVERTRAG },
     zeige('katalog'),
   );
   // Den Eintrag beim Set macht der Katalog (höher); er horcht auf die Bilder, statt dass sie ihn rufen.
-  bilder.atSetImageLoaded((sn, quelle) => katalog.enterSetImageLocal(sn, quelle));
+  images.atSetImageLoaded((sn, quelle) => katalog.enterSetImageLocal(sn, quelle));
   return {
     throttle,
     settings: einstellungen,
@@ -157,7 +157,7 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
     profile,
     idempotency,
     externalSources,
-    bilder,
+    images,
     katalog,
   };
 }
@@ -166,14 +166,14 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
   const zeige = inspectIn(components.contexts);
   const grund = buildReason(db, components, zeige);
   const { throttle, settings: einstellungen, mail, auftraege, household, factors } = grund;
-  const { konto, idempotency, externalSources, bilder, katalog } = grund;
+  const { konto, idempotency, externalSources, images, katalog } = grund;
   const { konfig, uhr } = components;
-  const finanzen = createFinances(
+  const finances = createFinances(
     { db, uhr, konfig, einstellungen, auftraege, household, katalog, externalSources, mail, lesevertrag: LESEVERTRAG },
-    zeige('finanzen'),
+    zeige('finances'),
   );
   const bestand = createInventory(
-    { db, uhr, einstellungen, household, konto, katalog, finanzen, lesevertrag: LESEVERTRAG },
+    { db, uhr, einstellungen, household, konto, katalog, finances, lesevertrag: LESEVERTRAG },
     zeige('bestand'),
   );
   const sets = createSets(
@@ -183,8 +183,8 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
       konfig,
       katalog,
       externalSources,
-      bilder,
-      finanzen,
+      images,
+      finances,
       household,
       auftraege,
       bestand,
@@ -194,20 +194,20 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
     zeige('sets'),
   );
   const parts = createParts(
-    { db, uhr, einstellungen, auftraege, household, katalog, externalSources, finanzen, bestand },
+    { db, uhr, einstellungen, auftraege, household, katalog, externalSources, finances, bestand },
     zeige('parts'),
   );
   const minifigs = createMinifigs(
-    { db, uhr, einstellungen, household, katalog, externalSources, auftraege, finanzen, bestand },
+    { db, uhr, einstellungen, household, katalog, externalSources, auftraege, finances, bestand },
     zeige('minifigs'),
   );
   const wanted = createWanted(
-    { db, uhr, einstellungen, household, katalog, externalSources, bilder, finanzen, sets },
+    { db, uhr, einstellungen, household, katalog, externalSources, images, finances, sets },
     zeige('wanted'),
   );
   const vouchers = createVouchers({ db, uhr, einstellungen, konto, externalSources, throttle }, zeige('vouchers'));
   const collection = createCollection(
-    { db, uhr, household, auftraege, katalog, finanzen, bestand, sets, parts, minifigs, wanted },
+    { db, uhr, household, auftraege, katalog, finances, bestand, sets, parts, minifigs, wanted },
     zeige('collection'),
   );
   const management = createManagement(
@@ -221,8 +221,8 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
       idempotency,
       katalog,
       externalSources,
-      bilder,
-      finanzen,
+      images,
+      finances,
       bestand,
       sets,
       wanted,
@@ -231,7 +231,7 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
     },
     zeige('management'),
   );
-  return { ...grund, finanzen, bestand, sets, parts, minifigs, wanted, vouchers, collection, management };
+  return { ...grund, finances, bestand, sets, parts, minifigs, wanted, vouchers, collection, management };
 }
 
 /** Der Zugang des Prozesses samt Erststart, verdrahtet. Der Erststart legt das erste

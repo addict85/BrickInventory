@@ -5,7 +5,7 @@ import { DAILY_JOBS } from './timesOfDay';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, reportError, withoutMissingFile } from '../infra/fehler';
 import { Degradations, versuche } from '../infra/ergebnis';
-import { requestsJeMinute } from '../bilder';
+import { requestsJeMinute } from '../images';
 import { asFetchError } from '../externalSources';
 import { fachfehler, type ErrorCode } from '../infra/fehlerTexte';
 import type { ManagementContext } from './context';
@@ -76,7 +76,7 @@ export async function cacheStats(k: ManagementContext) {
 }
 
 export async function clearCaches(k: ManagementContext, alle: boolean) {
-  await k.finanzen.emptyPriceCache();
+  await k.finances.emptyPriceCache();
   if (alle) {
     await k.katalog.emptySubsetsCache();
     await k.katalog.emptyCatalogCache();
@@ -196,7 +196,7 @@ export async function rescheduleJobs(k: ManagementContext) {
  * werden mitgezählt. */
 export async function queueCatalogImages(kx: ManagementContext, allAgain: boolean) {
   const toForgotten = await (allAgain ? kx.management.setImageMisses() : kx.management.setImageMissesWithout404());
-  const verworfen = toForgotten.length ? await kx.bilder.forgetMissing(toForgotten.map(r => r.cache_key)) : 0;
+  const verworfen = toForgotten.length ? await kx.images.forgetMissing(toForgotten.map(r => r.cache_key)) : 0;
   // Was schon fertig ist, wird nicht wieder eingereiht.
   const vorhanden: Set<string> = new Set();
   try {
@@ -227,8 +227,8 @@ export async function queueCatalogImages(kx: ManagementContext, allAgain: boolea
 
   let newEnqueued = 0;
   if (openUrls.length) {
-    newEnqueued = await kx.bilder.catalogImagesReserve(openUrls, openSets);
-    await kx.bilder.imageDemandKick();
+    newEnqueued = await kx.images.catalogImagesReserve(openUrls, openSets);
+    await kx.images.imageDemandKick();
   }
   const offen = await kx.management.openImageJobs();
   // „Stunden oder Tage?" ist die erste Frage; die Rate kommt aus dem Job selbst.
@@ -252,7 +252,7 @@ export async function forgetImageMisses(
   const v = k.management;
   const schluessel = sets?.length ? sets.map(sn => `set:${sn}`) : (await v.setImageMisses()).map(r => r.cache_key);
   if (vorschauen) schluessel.push(...(await v.thumbnailImageMisses()).map(r => r.cache_key));
-  return schluessel.length ? k.bilder.forgetMissing(schluessel) : 0;
+  return schluessel.length ? k.images.forgetMissing(schluessel) : 0;
 }
 
 export function serverLogSince(k: ManagementContext, minuten: number) {

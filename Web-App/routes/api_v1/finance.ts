@@ -18,12 +18,12 @@ function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(
   );
 }
 
-export function buildFinanceRouter(d: Pick<Dienste, 'konto' | 'finanzen'>) {
+export function buildFinanceRouter(d: Pick<Dienste, 'konto' | 'finances'>) {
   const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/finance/valuation', requireToken, async req => {
-    const data = await d.finanzen.valueSets(req.apiUser.user_id, viewOf(req));
+    const data = await d.finances.valueSets(req.apiUser.user_id, viewOf(req));
     // Kein `rate_limit` in der Antwort: Er kostete drei Abfragen je Aufruf und
     // steht in der Überwachung.
     const { eintraege: sets, ...seite } = pageFrom(uebersetzt(data.sets, req), req.abfrage);
@@ -31,19 +31,19 @@ export function buildFinanceRouter(d: Pick<Dienste, 'konto' | 'finanzen'>) {
   });
 
   router.endpunkt('GET /api/v1/finance/parts-valuation', requireToken, async req => {
-    const data = await d.finanzen.valueParts(req.apiUser.user_id, viewOf(req));
+    const data = await d.finances.valueParts(req.apiUser.user_id, viewOf(req));
     const { eintraege: parts, ...seite } = pageFrom(uebersetzt(data.parts, req), req.abfrage);
     return { ...data, parts, ...seite };
   });
 
   router.endpunkt('GET /api/v1/finance/minifigs-valuation', requireToken, async req => {
-    const data = await d.finanzen.valueMinifigs(req.apiUser.user_id, viewOf(req));
+    const data = await d.finances.valueMinifigs(req.apiUser.user_id, viewOf(req));
     const { eintraege: figs, ...seite } = pageFrom(uebersetzt(data.figs, req), req.abfrage);
     return { ...data, figs, ...seite };
   });
 
   router.endpunkt('GET /api/v1/finance/pnl', requireToken, async req => {
-    const data = await d.finanzen.gainAndLoss(req.apiUser.user_id, viewOf(req));
+    const data = await d.finances.gainAndLoss(req.apiUser.user_id, viewOf(req));
     const { eintraege: sets, ...seite } = pageFrom(data.sets, req.abfrage);
     return { ...data, sets, ...seite };
   });
@@ -53,7 +53,7 @@ export function buildFinanceRouter(d: Pick<Dienste, 'konto' | 'finanzen'>) {
     // einzelwert(): ?period=a&period=b kommt als Array an und ginge sonst
     // unverändert in die Antwort zurück.
     const period = singleValue(req.abfrage.period, 'week');
-    return { ...(await d.finanzen.portfolioVerlauf(uid, viewOf(req), period)) };
+    return { ...(await d.finances.portfolioVerlauf(uid, viewOf(req), period)) };
   });
   return router;
 }

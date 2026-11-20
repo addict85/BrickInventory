@@ -71,9 +71,9 @@ const JE_AREA = {
   profile: 3,
   idempotency: 8,
   externalSources: 12,
-  bilder: 29,
+  images: 29,
   katalog: 64,
-  finanzen: 36,
+  finances: 36,
   bestand: 43, // mit den Schreibwegen, die sets, parts und figuren abgaben (Tabellenbesitz)
   sets: 41,
   parts: 13,
@@ -159,9 +159,9 @@ const RAW_ALLOWED = {
   'throttle.hourlyState': 'Guthabenschranke: prüft und zählt in der Transaktion von src/vouchers',
   'throttle.countHour': 'Guthabenschranke: prüft und zählt in der Transaktion von src/vouchers',
   'sets.setsOfAccount': 'Setnummern eines Kontos für das Löschen der Sammlung (src/collection), ohne Regel davor',
-  'finanzen.marketPriceFromCache':
+  'finances.marketPriceFromCache':
     'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Zwischenspeicher, ohne Regel',
-  'finanzen.marketPriceFromHistory': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Verlauf, ohne Regel',
+  'finances.marketPriceFromHistory': 'Rückfall der Set-Bewertung (src/sets/dienst.ts) auf den Verlauf, ohne Regel',
   'vouchers.reencryptAllVouchers':
     'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
   'vouchers.reencryptCopies':

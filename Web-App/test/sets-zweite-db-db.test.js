@@ -18,7 +18,7 @@
  *   D  setPrice() in src/sets/preise.ts ruft fetchPrice() ohne den Zugang der
  *      Sets → rot: „Marktpreis aus dem Cache der zweiten Datenbank“ und „der
  *      Prozesszugang …“
- *   E  setPriceHistory() ruft priceHistorySet() ohne sk.finanzen → rot:
+ *   E  setPriceHistory() ruft priceHistorySet() ohne sk.finances → rot:
  *      „Preisverlauf aus der zweiten Datenbank“ und „der Prozesszugang …“
  *   F  partListOfSets() ruft newestInventory(setNum) ohne sk.katalog → rot:
  *      „Teileliste aus dem Katalog …“ und „der Prozesszugang …“

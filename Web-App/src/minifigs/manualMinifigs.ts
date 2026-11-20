@@ -25,10 +25,10 @@ export async function manualMinifigPurchase(
     condition = null,
   }: { figNumber: string; blFigNumber?: string | null; unitPrice?: unknown; condition?: string | null },
 ) {
-  // Same rule as for parts (src/finanzen/preisRegel.ts), so a minifig without a
+  // Same rule as for parts (src/finances/priceRule.ts), so a minifig without a
   // market price doesn't count differently than a part.
-  const r = await k.finanzen.manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
-    k.finanzen.figMarketPriceWithOrigin(figNumber, uid, blFigNumber || null, zustand),
+  const r = await k.finances.manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
+    k.finances.figMarketPriceWithOrigin(figNumber, uid, blFigNumber || null, zustand),
   );
   return {
     effectiveUnitPrice: r.unitPrice,
@@ -168,7 +168,7 @@ export async function updateManualMinifig(
       [figNumber],
       wish,
       cond,
-      () => k.finanzen.currentMinifigMarketPrice(figNumber, uid, existing.bl_fig_number, cond),
+      () => k.finances.currentMinifigMarketPrice(figNumber, uid, existing.bl_fig_number, cond),
       ab,
     );
   }
@@ -179,13 +179,13 @@ export async function updateManualMinifig(
     await k.katalog.rememberOwnBlNumber(uid, 'fig', figNumber, newBlNum || figNumber);
   }
   if (body.unit_price !== undefined) {
-    // Same rule as for parts (src/finanzen/preisRegel.ts).
-    const { unitPrice } = await k.finanzen.purchasePriceFromInput(
+    // Same rule as for parts (src/finances/priceRule.ts).
+    const { unitPrice } = await k.finances.purchasePriceFromInput(
       body.unit_price,
       body.condition,
       existing.condition,
       uid,
-      zustand => k.finanzen.currentMinifigMarketPrice(figNumber, uid, newBlNum, zustand),
+      zustand => k.finances.currentMinifigMarketPrice(figNumber, uid, newBlNum, zustand),
     );
     // Into the NEWEST acquisition, as with parts.
     await k.bestand.setNewest('fig', 'preis', unitPrice, uid, [figNumber]);

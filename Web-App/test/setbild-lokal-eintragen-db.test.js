@@ -5,7 +5,7 @@
  * Vorschau schon da sind.
  *
  * Gegenproben (07.11.2026):
- *   A  in src/bilder/bildbedarfLauf.ts den Aufruf enterSetImageLocal() im Zweig
+ *   A  in src/images/imageDemandRun.ts den Aufruf enterSetImageLocal() im Zweig
  *      „Datei schon da“ gestrichen → rot: „der Bild-Job trägt die Datei ein“
  *   B  in passThroughImage() den else-Zweig mit enterSetImageLocal()
  *      gestrichen → rot: „der Proxy trägt vorhandene Dateien ein“
@@ -64,7 +64,7 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
     await emptyQueue(db);
     put(path.join(SET_IMAGES_DIR, `${job}.jpg`));
     put(path.join(SET_IMAGES_DIR, `${job}_thumb.jpg`));
-    const IQ = _req('src/bilder/bildbedarfLauf.js');
+    const IQ = _req('src/images/imageDemandRun.js');
     IQ.rememberUsed(cdn(job), job);
     await IQ._writeBuffer();
     await IQ._workStack();
@@ -76,8 +76,8 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [proxy]);
     const express = require('express');
     const passThroughImage = (...a) =>
-      _req('src/bilder/http/bildProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
-    const { proxyAddress, proxyCacheKey } = _req('src/bilder/images.js');
+      _req('src/images/http/imageProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
+    const { proxyAddress, proxyCacheKey } = _req('src/images/images.js');
     put(path.join(SET_IMAGES_DIR, `${proxy}.jpg`));
     put(path.join(SET_IMAGES_DIR, `${proxy}_thumb.jpg`));
     // Ein Cache-Treffer: Der Proxy fragt das CDN dann nicht.

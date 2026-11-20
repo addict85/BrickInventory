@@ -54,7 +54,7 @@ async function syncSetCatalog(k: CatalogContext, setNumber: string) {
           .downloadFile(p.image_url, dest)
           .catch(logAndContinue('katalog-sync:downloadFile'));
         if (fs.existsSync(dest)) {
-          await k.bilder.createPreview(rel).catch(logAndContinue('katalog-sync:vorschauErzeugenAus'));
+          await k.images.createPreview(rel).catch(logAndContinue('katalog-sync:vorschauErzeugenAus'));
           imageLocal = rel;
         }
       }

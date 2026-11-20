@@ -1,6 +1,6 @@
 import type * as repo from './repository/katalogSuche';
 
-import { fileMaster, imageIfPresent, resolveImageLocal } from '../bilder';
+import { fileMaster, imageIfPresent, resolveImageLocal } from '../images';
 import { resolveSingle, resolveViaInterface } from './bricklinkLink';
 import { forSet } from './preisvergleich';
 import { newestInventory } from './rbInventar';
@@ -156,9 +156,9 @@ export async function catalogSet(k: CatalogContext, userId: number, roh: string)
   // Jetzt dauerhaft ablegen; die Vorschau und den Eintrag in set_catalog macht der Bild-Job.
   if (!image_local && set.image_url) {
     // Ohne Datei zeigt die Seite image_url; der Bild-Job holt sie nach.
-    const r = await versuche('katalog:setBildHerunterladen', k.bilder.setBildLaden(set.image_url, set.set_number));
+    const r = await versuche('katalog:setBildHerunterladen', k.images.setBildLaden(set.image_url, set.set_number));
     image_local = r.ok ? r.wert : null;
-    if (image_local) k.bilder.rememberUsed(String(set.image_url || ''), set.set_number);
+    if (image_local) k.images.rememberUsed(String(set.image_url || ''), set.set_number);
   }
   return {
     ...set,

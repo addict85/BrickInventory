@@ -177,7 +177,7 @@ test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
   );
 
   // ── Und die Liste steht nur noch an EINER Stelle ──────────────────────────
-  const proxy = ohneKommentare(read('src/bilder/http/bildProxy.ts'));
+  const proxy = ohneKommentare(read('src/images/http/imageProxy.ts'));
   assert.doesNotMatch(
     proxy,
     /const ALLOWED_IMAGE_HOSTS = \[/,

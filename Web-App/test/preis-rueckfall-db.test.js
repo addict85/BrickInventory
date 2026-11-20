@@ -56,7 +56,7 @@ async function nachladen() {
     `SELECT id, payload FROM jobs WHERE type = 'preise_nachladen' AND status = 'offen' ORDER BY id DESC LIMIT 1`,
   );
   if (!a) return false;
-  const { preiseNachladen } = _req('src/finanzen/preiseNachladen.js');
+  const { preiseNachladen } = _req('src/finances/reloadPrices.js');
   await preiseNachladen(a.payload, { signal: new AbortController().signal, progress: async () => true });
   await db.run(`DELETE FROM jobs WHERE type = 'preise_nachladen'`);
   return true;
@@ -103,7 +103,7 @@ test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrenc
     [SET],
   );
 
-  const { valueSets } = _req('src/finanzen/financeCalc.js');
+  const { valueSets } = _req('src/finances/financeCalc.js');
   fetches = [];
   const vorher = await valueSets(uid, [uid]);
   assert.deepEqual(fetches, [], 'die Bewertung ruft selbst BrickLink ab');
@@ -149,7 +149,7 @@ test('„BrickLink kennt das Set nicht" gilt nur eine Weile', { concurrency: 1 }
   await aufraeumen();
   t.after(aufraeumen);
   const uid = await konto(NAME, SET);
-  const { valueSets } = _req('src/finanzen/financeCalc.js');
+  const { valueSets } = _req('src/finances/financeCalc.js');
   const value = async () => (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
 
   // Frisch markiert: kein Abruf, kein Preis, und der Grund steht dabei.

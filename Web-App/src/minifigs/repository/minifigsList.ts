@@ -139,7 +139,7 @@ export async function manualMinifigsList(
             ${teilmengeAus('m', 'fig')} AS quantity,
             m.source, m.storage_id,
             -- Price and condition from the LATEST acquisition (migration 0035).
-            -- The two meanings stay distinct, as src/finanzen/preisRegel.ts
+            -- The two meanings stay distinct, as src/finances/priceRule.ts
             -- spells them out: unit_price is the entered price and may be
             -- empty, purchase_price is the DISPLAY value and is never empty.
             neu.unit_price,

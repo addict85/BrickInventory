@@ -56,10 +56,10 @@ const _req = buildAndRequire();
 const { warte: pause, bis } = require('./helpers/zeit');
 const { portOf } = require('./helpers/server');
 // Ohne Datenbank: Kein Set liegt im Blickfeld, abgelegt wird nichts.
-require('./helpers/sources').replaceServices('bilder', { setNumberInScope: async () => false });
+require('./helpers/sources').replaceServices('images', { setNumberInScope: async () => false });
 const passThroughImage = (...a) =>
   _req('routes/imgProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
-const { cleanImageCacheOn } = _req('src/bilder/imgCacheServe.js');
+const { cleanImageCacheOn } = _req('src/images/imgCacheServe.js');
 const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
 
 const geholt = [];
@@ -297,7 +297,7 @@ test('images/sets zählt im Deckel mit und bleibt stehen', async () => {
 });
 
 test('Fehler werden gezählt und protokolliert', async () => {
-  const { imgProxyFailures: f } = _req('src/bilder/imgProxyStats.js');
+  const { imgProxyFailures: f } = _req('src/images/imgProxyStats.js');
   const vorher = { ...f };
   const fehler = [];
   const echtError = console.error;

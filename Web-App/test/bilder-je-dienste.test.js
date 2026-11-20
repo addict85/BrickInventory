@@ -4,9 +4,9 @@
  * spiegeln einander nichts vor. Es wird nichts abgefragt; der Zugang bleibt ungenutzt.
  *
  * Gegenproben (am 14.11.2026 gemessen, je einzeln):
- *   A  in src/bilder/imageMisses.ts `stand` wieder als Modulkonstante (ein Satz Maps
+ *   A  in src/images/imageMisses.ts `stand` wieder als Modulkonstante (ein Satz Maps
  *      für alle) → rot: „eine Fehlanzeige gilt nur ihrem Satz Dienste“
- *   B  in src/bilder/bildbedarf.ts imageOnceReserve() mit einem modulweiten
+ *   B  in src/images/imageDemand.ts imageOnceReserve() mit einem modulweiten
  *      Zwischenspeicher → rot: „jeder Satz merkt sich selbst, was er vorgemerkt hat“
  */
 const test = require('node:test');
@@ -21,24 +21,24 @@ const { buildServices } = _req('startup/verdrahtung.js');
 function satz() {
   const contexts = {};
   const d = buildServices(S.testAccess(), { contexts });
-  return { d, vorgemerkt: S.imageNotes(contexts.bilder).notes };
+  return { d, vorgemerkt: S.imageNotes(contexts.images).notes };
 }
 
 test('eine Fehlanzeige gilt nur ihrem Satz Dienste', () => {
   const a = satz().d,
     b = satz().d;
-  a.bilder.rememberMissing('set:99901-1', 'HTTP 404 vom CDN');
-  assert.equal(a.bilder.isKnownMissing('set:99901-1'), true);
-  assert.equal(b.bilder.isKnownMissing('set:99901-1'), false);
+  a.images.rememberMissing('set:99901-1', 'HTTP 404 vom CDN');
+  assert.equal(a.images.isKnownMissing('set:99901-1'), true);
+  assert.equal(b.images.isKnownMissing('set:99901-1'), false);
 });
 
 test('jeder Satz merkt sich selbst, was er vorgemerkt hat', () => {
   const a = satz(),
     b = satz();
   const url = 'https://cdn.rebrickable.com/media/sets/99902-1.jpg';
-  a.d.bilder.imageOnceReserve(url, '99902-1');
-  a.d.bilder.imageOnceReserve(url, '99902-1');
-  b.d.bilder.imageOnceReserve(url, '99902-1');
+  a.d.images.imageOnceReserve(url, '99902-1');
+  a.d.images.imageOnceReserve(url, '99902-1');
+  b.d.images.imageOnceReserve(url, '99902-1');
   assert.deepEqual(a.vorgemerkt, [[url, '99902-1']], 'innerhalb der Frist nur einmal');
   assert.deepEqual(b.vorgemerkt, [[url, '99902-1']], 'der zweite Satz kennt die Vormerkung des ersten nicht');
 });

@@ -28,7 +28,7 @@ function replace(rel, felder) {
 const disrupted = async () => {
   throw new Error('Tabelle gestört');
 };
-replace('src/finanzen/repository/preisalarme.js', {
+replace('src/finances/repository/priceAlerts.js', {
   alertsOfSets: disrupted,
   alertsInScope: disrupted,
   alertsOfAccount: disrupted,
@@ -45,7 +45,7 @@ test('Preisalarme: ein Lesefehler ist keine leere Liste', { concurrency: 1 }, as
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const p = testServices().finanzen.preisalarm;
+  const p = testServices().finances.preisalarm;
   const SN = `92${String(process.pid).slice(-4)}-1`;
 
   await t.test('alle Alarme', () => assert.rejects(p.alleAlarme(uid), /Tabelle gestört/));
@@ -60,7 +60,7 @@ test('Preisalarme: ein Lesefehler ist keine leere Liste', { concurrency: 1 }, as
   );
   await t.test('der Preislauf sieht den Fehler', () =>
     assert.rejects(
-      _req('src/finanzen/preisalarm.js').checkSet(SN, { buildAlertMail: () => ({}), sendMail: async () => ({}) }),
+      _req('src/finances/priceAlert.js').checkSet(SN, { buildAlertMail: () => ({}), sendMail: async () => ({}) }),
       /Tabelle gestört/,
     ),
   );

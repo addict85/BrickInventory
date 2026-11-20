@@ -35,8 +35,8 @@ const { dataOrSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const passThroughImage = (...a) =>
   _req('routes/imgProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
-const { SET_IMG_MAX_BYTES, setBildHerunterladen } = _req('src/bilder/setImages.js');
-const { imgProxyFailures } = _req('src/bilder/imgProxyStats.js');
+const { SET_IMG_MAX_BYTES, setBildHerunterladen } = _req('src/images/setImages.js');
+const { imgProxyFailures } = _req('src/images/imgProxyStats.js');
 const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
 
 fs.mkdirSync(path.join(wurzel, 'data', 'images', 'sets'), { recursive: true });

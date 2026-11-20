@@ -11,8 +11,8 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { fetchPartPrice } = _req('src/finanzen/financeCalc.js');
-const { priceHistoryPart } = _req('src/finanzen/priceHistory.js');
+const { fetchPartPrice } = _req('src/finances/financeCalc.js');
+const { priceHistoryPart } = _req('src/finances/priceHistory.js');
 const { holdsPart } = require('./helpers/bestand');
 
 test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async t => {

@@ -22,21 +22,21 @@ interface Kind {
 const kinds = (k: CollectionContext): Record<ErfassungsArt, Kind> => ({
   set: {
     notFound: 'erfassung_nicht_gefunden',
-    resolvePrice: (uid, [sn], cond) => k.finanzen.aktuellerMarktpreis(String(sn), uid, cond || null),
+    resolvePrice: (uid, [sn], cond) => k.finances.aktuellerMarktpreis(String(sn), uid, cond || null),
     // Same as explicit deletion: the set's parts and minifigs would otherwise
     // sit in the parts/minifigs list and finance totals without a set.
     cleanupWhenEmpty: (t, ownerId, [sn]) => t.sets.deleteSetRows([ownerId], String(sn)),
   },
   part: {
     notFound: 'nicht_gefunden',
-    resolvePrice: (uid, [pn, cid], cond) => k.finanzen.currentPartMarketPrice(String(pn), Number(cid), uid, cond),
+    resolvePrice: (uid, [pn, cid], cond) => k.finances.currentPartMarketPrice(String(pn), Number(cid), uid, cond),
     // Only the manual holding; set parts go with their set.
     cleanupWhenEmpty: (t, ownerId, keys) => t.bestand.deleteManual('part', ownerId, keys),
   },
   fig: {
     notFound: 'nicht_gefunden',
     resolvePrice: async (uid, [fn], cond) =>
-      k.finanzen.currentMinifigMarketPrice(
+      k.finances.currentMinifigMarketPrice(
         String(fn),
         uid,
         await k.katalog.blFetchNumber('fig', String(fn), uid),

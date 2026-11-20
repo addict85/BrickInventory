@@ -33,8 +33,8 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
   if (!(await dataOrSkip(t, _req))) return;
 
   const { alleAlarme, setzeAlarm, loescheAlarm } = {
-    ..._req('src/finanzen/preisalarm.js'),
-    ...require('./helpers/sources').testArea('finanzen').preisalarm,
+    ..._req('src/finances/priceAlert.js'),
+    ...require('./helpers/sources').testArea('finances').preisalarm,
   };
 
   for (const n of ['alarm_ich', 'alarm_fremd', 'alarm_kind'])

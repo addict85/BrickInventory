@@ -70,7 +70,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
     [subId, SN],
   );
 
-  const { priceHistorySet } = _req('src/finanzen/priceHistory.js');
+  const { priceHistorySet } = _req('src/finances/priceHistory.js');
   const { setsLesen } = require('./helpers/sources').handlerModule(_req);
 
   try {

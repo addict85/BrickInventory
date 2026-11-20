@@ -3,7 +3,7 @@
  *
  * Gegenproben zu den nach bild-proxy-deckel.test.js (Typprüfung, Platzhalter)
  * und img-cache-serve.test.js (304) verlegten Fällen stehen dort; für 304 je
- * die `req.fresh`-Zeile in src/bilder/http/bildCacheAuslieferung.ts entfernt → dort rot
+ * die `req.fresh`-Zeile in src/images/http/imageCacheDelivery.ts entfernt → dort rot
  * „bekannter Stand → 304 und KEIN Bild“ (08.11.2026). Doppelte Schrägstriche
  * im Pfad → sicherheit-querschnitt-db I (Normalisierung entfernt → dort rot).
  * Zähler und Protokoll der Fehlschläge, Inhaltsprüfung der Probe →

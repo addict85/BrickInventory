@@ -26,8 +26,8 @@ test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const P = _req('src/infra/protokoll.js');
-  const B = _req('src/bilder/bildbedarfLauf.js');
-  const F = _req('src/bilder/imageMisses.js');
+  const B = _req('src/images/imageDemandRun.js');
+  const F = _req('src/images/imageMisses.js');
   const { closeBufferAndTicks } = _req('startup/abschluss.js');
 
   // Welche Takte entstehen, und welche wieder enden.

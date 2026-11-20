@@ -86,8 +86,8 @@ test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
 
 test('beide Vorschau-Erzeuger melden Fehlschläge', () => {
   for (const [datei, muster] of /** @type {[string, RegExp][]} */ ([
-    ['src/bilder/thumbs.ts', /\[thumb\]/],
-    ['src/bilder/proxyThumbs.ts', /\[img-proxy\] Vorschau fehlgeschlagen/],
+    ['src/images/thumbs.ts', /\[thumb\]/],
+    ['src/images/proxyThumbs.ts', /\[img-proxy\] Vorschau fehlgeschlagen/],
   ])) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     assert.ok(

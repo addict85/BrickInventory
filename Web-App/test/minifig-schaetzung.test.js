@@ -22,7 +22,7 @@ const { dataOrSkip } = require('./helpers/db');
 test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency: 1 }, async t => {
   const db = testData();
   if (!(await dataOrSkip(t, _req))) return;
-  const { figMarketPriceWithOrigin } = _req('src/finanzen/marketPrice.js');
+  const { figMarketPriceWithOrigin } = _req('src/finances/marketPrice.js');
   const P = process.pid,
     NAME = `schaetzung-${P}`;
   const FA = `fig-sa${P}`,

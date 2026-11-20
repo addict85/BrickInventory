@@ -12,7 +12,7 @@
  *      Die wirksame Gegenprobe ist die alte REIHENFOLGE — Null-Zeile erst
  *      nach dem Rueckfall, Rueckfall springt heraus. Damit ist Teilschritt 1
  *      rot: zweiter Lauf 'updated' statt 'skipped'.
- *   c) Einen zweiten INSERT INTO price_cache in src/finanzen/preisLauf.ts gesetzt
+ *   c) Einen zweiten INSERT INTO price_cache in src/finances/priceRun.ts gesetzt
  *      → Teilschritt 2 rot.
  *   d) (13.11.2026) in savePrice() der Verlauf wieder mit logAndContinue
  *      und ohne Transaktion → Teilschritt 3 rot (keine Absage); nur die
@@ -77,7 +77,7 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
   try {
     // 1. Der Job schreibt die Null-Zeile mit — sonst kostet dasselbe Set
     //    jeden Lauf erneut zwei Abrufe.
-    const { fetchAndCachePrice } = _req('src/finanzen/preisLauf.js');
+    const { fetchAndCachePrice } = _req('src/finances/priceRun.js');
     fetches = [];
     assert.equal(await fetchAndCachePrice(JOB, 'N', 'sold', 'EUR', 24), 'updated');
     const nachLauf1 = fetches.length;
@@ -94,7 +94,7 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
     );
 
     // 2. Derselbe Fall ueber den Anfrageweg hinterlaesst dasselbe.
-    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
+    const { fetchPrice } = _req('src/finances/financeCalc.js');
     fetches = [];
     await fetchPrice(ROUTE, 'N', 'sold', 'EUR', 24);
     const fetchesRoute = fetches.length;
@@ -120,7 +120,7 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
 
     // 3. Scheitert der Verlaufspunkt, gilt auch der Cache nicht: Sonst hielte er den
     //    nächsten Abruf zurück, und die Lücke im Verlauf füllte niemand mehr.
-    const fk = require('./helpers/sources').testContext('finanzen');
+    const fk = require('./helpers/sources').testContext('finances');
     /** Derselbe Kontext, dessen Verlauf nicht schreibbar ist — ausserhalb und in der Transaktion. */
     const kaputt = z => ({
       ...z,
@@ -135,7 +135,7 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
     const k = kaputt(fk);
     const guide = { min_price: '8', avg_price: '10', max_price: '12', qty_avg_price: '9', total_quantity: '4' };
     await assert.rejects(
-      require(path.join(ROOT, 'dist', 'src/finanzen/rechnung/preise.js')).savePrice(k, FAIL, 'U', 'EUR', guide),
+      require(path.join(ROOT, 'dist', 'src/finances/calculation/prices.js')).savePrice(k, FAIL, 'U', 'EUR', guide),
       /Verlauf nicht schreibbar/,
     );
     assert.deepEqual(await traces(FAIL), { cache: [], hist: [] });
@@ -183,12 +183,12 @@ test('die Schreibregel steht nur an einer Stelle', () => {
   }
   assert.deepEqual(
     cacheWriter,
-    ['src/finanzen/repository/preisCache.ts'],
+    ['src/finances/repository/priceCache.ts'],
     'price_cache wird an mehr als einer Stelle beschrieben — genau daran sind die ' + 'beiden Wege auseinandergelaufen',
   );
   assert.deepEqual(
     historyWriter,
-    ['src/finanzen/repository/preisCache.ts'],
+    ['src/finances/repository/priceCache.ts'],
     'Ein Verlaufspunkt wird an mehr als einer Stelle gesetzt',
   );
 });

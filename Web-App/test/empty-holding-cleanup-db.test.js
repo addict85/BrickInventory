@@ -65,7 +65,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   const H = require('./helpers/sources').handlerModule(_req);
-  const FC = _req('src/finanzen/financeCalc.js');
+  const FC = _req('src/finances/financeCalc.js');
 
   try {
     const liste = await (await fetch(`${base}/api/v1/sets/${ROUTE}/acquisitions`)).json();
