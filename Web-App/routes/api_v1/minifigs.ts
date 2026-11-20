@@ -1,5 +1,5 @@
 import { kontoSchranke, viewOf, guardFor } from './middleware';
-import { normalizeLocation } from '../../src/bestand';
+import { normalizeLocation } from '../../src/inventory';
 import { csvReceive } from '../../src/http/dateiEmpfang';
 import type { CsvImportReport } from '../../src/infra/csvExport';
 import { pageFrom } from '../../src/infra/seite';
@@ -11,7 +11,7 @@ import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 export function buildMinifigsRouter(
   d: Pick<
     Dienste,
-    'settings' | 'auftraege' | 'household' | 'konto' | 'finances' | 'bestand' | 'minifigs' | 'collection'
+    'settings' | 'auftraege' | 'household' | 'konto' | 'finances' | 'inventory' | 'minifigs' | 'collection'
   >,
 ) {
   const { requireToken } = guardFor(d.konto);
@@ -39,7 +39,7 @@ export function buildMinifigsRouter(
   // Trifft alle Zeilen der Figur im Schreibbereich: Gemeint ist die Figur, nicht eine Zeile.
   router.endpunkt('PUT /api/v1/minifigs/:figNumber/storage', requireToken, async req => {
     const ort = normalizeLocation(req.eingabe.storage);
-    const n = await d.bestand.locationService.setLocation(
+    const n = await d.inventory.locationService.setLocation(
       'fig',
       { schreiber: req.apiUser.user_id },
       [req.pfad.figNumber],
@@ -101,10 +101,10 @@ export function buildMinifigsRouter(
     },
   );
 
-  // Dieselbe Abfrage wie bei Teilen (src/bestand/gemeinsam.ts), im Blickfeld des Haushalts.
+  // Dieselbe Abfrage wie bei Teilen (src/inventory/shared.ts), im Blickfeld des Haushalts.
   router.endpunkt('GET /api/v1/minifigs/:figNumber/sets', requireToken, async req => {
     const uids = viewOf(req);
-    const { item, sets } = await d.bestand.usingSets(uids, 'minifigs', {
+    const { item, sets } = await d.inventory.usingSets(uids, 'minifigs', {
       fig_number: req.pfad.figNumber,
     });
     return { item, sets };

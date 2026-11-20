@@ -1,6 +1,6 @@
 /** Eine Form für alle Verlaufs-Endpunkte, damit beide Oberflächen einen
  * Diagrammbauer brauchen. */
-import { marketPriceFrom } from '../katalog';
+import { marketPriceFrom } from '../catalog';
 
 export interface ChartPoint {
   x: string;

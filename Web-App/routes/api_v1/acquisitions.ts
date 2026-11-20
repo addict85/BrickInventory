@@ -1,5 +1,5 @@
 /** Kaufpreis-Erfassungen; die Regeln stehen in src/collection/acquisitions.ts. */
-import { acquisitionTotals } from '../../src/bestand';
+import { acquisitionTotals } from '../../src/inventory';
 import { Degradations } from '../../src/infra/ergebnis';
 import { viewOf, guardFor } from './middleware';
 import type { ErfassungsArt } from '../../src/collection';
@@ -12,13 +12,13 @@ function withoutClearAmount<T extends { amount: number | null }>(summe: T) {
   return amount === null ? rest : { ...rest, amount };
 }
 
-/** Summe in der Kontowährung (src/bestand/acquisitions.ts), in der Form des Vertrags. */
-async function inKontowaehrung<T extends Parameters<Dienste['bestand']['erfassungenInKontowaehrung']>[0][number]>(
-  d: Pick<Dienste, 'konto' | 'bestand' | 'parts' | 'minifigs' | 'collection'>,
+/** Summe in der Kontowährung (src/inventory/acquisitions.ts), in der Form des Vertrags. */
+async function inKontowaehrung<T extends Parameters<Dienste['inventory']['erfassungenInKontowaehrung']>[0][number]>(
+  d: Pick<Dienste, 'konto' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
   rows: T[],
   viewer: number,
 ) {
-  const { acquisitions, totals } = await d.bestand.erfassungenInKontowaehrung(rows, viewer);
+  const { acquisitions, totals } = await d.inventory.erfassungenInKontowaehrung(rows, viewer);
   return { acquisitions, totals: withoutClearAmount(totals) };
 }
 
@@ -32,7 +32,7 @@ type Aenderung = Erfassungsanfrage<Anfrage<'PUT /api/v1/sets/:setNumber/acquisit
 
 const aendern =
   (
-    d: Pick<Dienste, 'konto' | 'bestand' | 'parts' | 'minifigs' | 'collection'>,
+    d: Pick<Dienste, 'konto' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
     art: ErfassungsArt,
     schluessel: Schluessel,
   ) =>
@@ -41,7 +41,7 @@ const aendern =
 
 const loeschen =
   (
-    d: Pick<Dienste, 'konto' | 'bestand' | 'parts' | 'minifigs' | 'collection'>,
+    d: Pick<Dienste, 'konto' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
     art: ErfassungsArt,
     schluessel: Schluessel,
   ) =>
@@ -51,7 +51,7 @@ const setKey: Schluessel = p => [String(p.setNumber)];
 const partKey: Schluessel = p => [String(p.partNumber), Number(p.colorId)];
 const minifigKey: Schluessel = p => [String(p.figNumber)];
 
-export function buildAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'parts' | 'minifigs' | 'collection'>) {
+export function buildAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'inventory' | 'parts' | 'minifigs' | 'collection'>) {
   const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 

@@ -39,7 +39,7 @@ export const SOURCE_DISRUPTED = 'quelle_gestoert';
 export async function partListOfSets(sk: SetsContext, setNum: string, anreichern: (sn: string) => Promise<unknown>) {
   const n = withVersion(setNum),
     bare = withoutVersion(n);
-  const invId = await sk.katalog.newestInventory(setNum);
+  const invId = await sk.catalog.newestInventory(setNum);
   let teile: ListenTeil[] = [];
   let source = 'db';
   if (invId) {
@@ -48,8 +48,8 @@ export async function partListOfSets(sk: SetsContext, setNum: string, anreichern
   if (!teile.length) {
     source = 'api';
     // Ist Rebrickable gestört, sagt die Antwort das; eine leere Liste hiesse „das Set hat keine Teile“.
-    const mit = await versuche('sets:alleTeileDesSets', sk.katalog.allSetParts(n));
-    const rb = mit.ok && mit.wert ? mit : await versuche('sets:alleTeileDesSets', sk.katalog.allSetParts(bare));
+    const mit = await versuche('sets:alleTeileDesSets', sk.catalog.allSetParts(n));
+    const rb = mit.ok && mit.wert ? mit : await versuche('sets:alleTeileDesSets', sk.catalog.allSetParts(bare));
     if (!rb.ok) return { parts: [], source: SOURCE_DISRUPTED, error: rb.fehler.grund, ...einePage(0) };
     teile = (rb.wert || []).map((r: RbSetTeil) => ({
       part_number: r.part.part_num,
@@ -143,12 +143,12 @@ export async function minifigsListOfSets(sk: SetsContext, setNum: string) {
     owners: [] as { id: number; username: string }[],
   });
 
-  const katalog = await sk.katalog.minifigsFromCatalog(setNum);
+  const katalog = await sk.catalog.minifigsFromCatalog(setNum);
   if (katalog.length) return { figs: katalog.map(output), source: 'catalog' };
 
   type Fig = { fig_number: string; fig_name: string | null; quantity: number; image_url: string | null };
   let figs: Fig[] = [];
-  const invId = await sk.katalog.newestInventory(setNum);
+  const invId = await sk.catalog.newestInventory(setNum);
   if (invId) {
     figs = await repo.inventoryMinifigsOfSets(sk.db, invId);
   }
@@ -177,8 +177,8 @@ async function storeSetMinifigs(
       bild =
         valueOr(await versuche('sets:minifigur-info', k.externalSources.quellen.getMinifigInfo(f.fig_number)), null)
           ?.image_url || null;
-    await k.katalog.rememberMinifig(f.fig_number, f.fig_name, bild);
-    await k.katalog.merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
+    await k.catalog.rememberMinifig(f.fig_number, f.fig_name, bild);
+    await k.catalog.merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);
   }
 }
 
@@ -193,5 +193,5 @@ export async function importPartsOfSets(sk: SetsContext, uid: number, sn: string
 
 /** Die Route kennt den Auftragsweg der Teile nicht; ohne Inventar reichert der Job-Prozess an. */
 export function partListWithRework(sk: SetsContext, setNum: string) {
-  return partListOfSets(sk, setNum, sn => sk.katalog.enrichSetPartsAn(sn));
+  return partListOfSets(sk, setNum, sn => sk.catalog.enrichSetPartsAn(sn));
 }

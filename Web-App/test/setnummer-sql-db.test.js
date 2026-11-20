@@ -22,7 +22,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { withVersion } = _req('src/infra/setNummer.js');
-const { setnummerCandidates } = _req('src/katalog/produkttitel.js');
+const { setnummerCandidates } = _req('src/catalog/productTitle.js');
 
 const CORPUS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'setnummer-korpus.json'), 'utf8'));
 const RAND = ['10179-1', '10179-12', '10179-', '10179-1b', 'a-b', 'comcon001', 'sw0001a', '6', '-1', '--2', ''];

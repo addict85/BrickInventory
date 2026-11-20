@@ -71,7 +71,7 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
   const zugang = countingAccess(quellen.testAccess(), sql);
   const { buildServices } = _req('startup/verdrahtung.js');
   const alle = buildServices(zugang);
-  Object.assign(alle.katalog, recording(notiz));
+  Object.assign(alle.catalog, recording(notiz));
   const sets = alle.sets;
   quellen.replaceServices('katalog', recording(processNote));
 

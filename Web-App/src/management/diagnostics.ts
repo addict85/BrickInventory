@@ -175,7 +175,7 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
   // Dieselbe Währung wie die Bewertung, sonst zeigte die Probe andere Cache-Zeilen.
   out.currency = await k.settings.userValue(uid, 'currency', 'EUR');
   // „BrickLink kennt das Set nicht": Steht sie, liefert fetchPrice still 0.
-  const katalog = await k.katalog.catalogEntry(setNumber);
+  const katalog = await k.catalog.catalogEntry(setNumber);
   out.katalog = katalog ? { ...katalog, applies_as_unknown: withoutBricklinkPrice(katalog) } : null;
   // Genau der Aufruf, den Finanzen macht.
   try {
@@ -190,7 +190,7 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
     out.live = liveValues;
     for (const cond of ['N', 'U']) {
       try {
-        const g = await k.katalog.priceGuide(setNumber, cond, 'sold', cur);
+        const g = await k.catalog.priceGuide(setNumber, cond, 'sold', cur);
         liveValues[cond] = {
           avg_price: g?.avg_price,
           qty_avg_price: g?.qty_avg_price,

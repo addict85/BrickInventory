@@ -20,7 +20,7 @@ const { ANMELDUNG, SIGNED_OUT, checkResponse, openUi } = require('./helpers/ober
 const { buildDist } = require('./helpers/sources');
 
 buildDist();
-const { routeForRequest } = require(path.join(__dirname, '..', 'dist/src/vertrag/index.js'));
+const { routeForRequest } = require(path.join(__dirname, '..', 'dist/src/contract/index.js'));
 
 test('Standardantworten erfüllen den Vertrag ohne Ergänzung', () => {
   const deviations = [];

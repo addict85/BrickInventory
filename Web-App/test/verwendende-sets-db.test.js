@@ -13,7 +13,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { holdsMinifig, holdsSet, holdsPart, catalogSet } = require('./helpers/bestand');
 const db = testData();
-const { usingSets } = _req('src/bestand/gemeinsam.js');
+const { usingSets } = _req('src/inventory/shared.js');
 
 async function erreichbar() {
   try {

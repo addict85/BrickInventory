@@ -106,7 +106,7 @@ const C = {
   'GET /api/v1/minifigs/:figNumber/price-history': 'nur-v1',
   // Detail-Dialog fuer Teile/Figuren AUS SETS: welche Sets
   // verwenden dieses Teil? Beide gehen durch DIESELBE Funktion
-  // (usingSets in src/bestand/gemeinsam.ts) — die alte Oberflaeche hat
+  // (usingSets in src/inventory/shared.ts) — die alte Oberflaeche hat
   // dafuer nie etwas gehabt, es gibt also kein Gegenstueck zu paaren.
   'GET /api/v1/parts/:partNumber/:colorId/sets': 'nur-v1',
   'GET /api/v1/minifigs/:figNumber/sets': 'nur-v1',
@@ -301,7 +301,7 @@ const C = {
   'POST /api/v1/auth/zweiter-faktor/abschalten': 'nur-v1',
   'POST /api/v1/auth/zweiter-faktor/codes': 'nur-v1',
   'DELETE /api/v1/auth/users/:id/zweiter-faktor': 'nur-v1',
-  // Papierkorb (src/bestand/papierkorb.ts): nur unter v1, kein Alt-Pfad daneben.
+  // Papierkorb (src/inventory/trash.ts): nur unter v1, kein Alt-Pfad daneben.
   'GET /api/v1/papierkorb': 'nur-v1',
   'POST /api/v1/papierkorb/:id/wiederherstellen': 'nur-v1',
   'DELETE /api/v1/papierkorb/:id': 'nur-v1',

@@ -12,7 +12,7 @@ export function passwordToShort(passwort: unknown): boolean {
 }
 
 /** argon2id liest das ganze Passwort; die Grenze hält nur übergrosse Eingaben fern
- * (dieselbe wie im API-Vertrag, src/vertrag/konto.ts). */
+ * (dieselbe wie im API-Vertrag, src/contract/account.ts). */
 export const PASSWORD_MAX_CHARS = 1024;
 
 /** Mitgeliefert (haeufige-passwoerter.txt neben dieser Datei), ohne Netzabfrage. */

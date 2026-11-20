@@ -1,5 +1,5 @@
 /**
- * Der Anleitungsabruf als Auftrag 'anleitung' (src/katalog/anleitungLaden.ts):
+ * Der Anleitungsabruf als Auftrag 'anleitung' (src/catalog/loadInstruction.ts):
  * Abstand nur nach einem echten Abruf, die Cloudflare-Leiter als Pause der
  * ganzen Art, die Sperre gegen einen zweiten Job-Prozess, ein Set nur einmal
  * offen. Der Abruf selbst ist nachgestellt; geprüft wird, was der Bearbeiter
@@ -50,7 +50,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     keineDb(t, e);
     return;
   }
-  const Q = _req('src/katalog/anleitungLaden.js');
+  const Q = _req('src/catalog/loadInstruction.js');
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
     ...require('./helpers/sources').testArea('auftraege').auftraege,
@@ -121,7 +121,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
 
   await t.test('ein Set steht nur einmal offen', async () => {
     await db.run(`DELETE FROM jobs WHERE type = 'anleitung'`);
-    const E = _req('src/katalog/anleitungsAuftrag.js');
+    const E = _req('src/catalog/instructionJob.js');
     await E.anleitungEinreihen('10005');
     await E.anleitungEinreihen('10005-1');
     const z = await require('./helpers/sources').testServices().auftraege.countKind('anleitung');

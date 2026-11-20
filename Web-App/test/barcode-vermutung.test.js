@@ -8,7 +8,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { isGuess, CHECKED } = _req('src/katalog/barcodeQuelle.js');
+const { isGuess, CHECKED } = _req('src/catalog/barcodeSource.js');
 
 test('geprüfte Wege sind keine Vermutung', () => {
   for (const quelle of ['catalog_cache', 'rebrickable-ean', 'brickset-ean', 'brickset-item', 'rebrickable-direct']) {

@@ -8,7 +8,7 @@ import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
 export function buildAdminRouter(
-  d: Pick<Dienste, 'settings' | 'auftraege' | 'katalog' | 'konto' | 'externalSources' | 'management'>,
+  d: Pick<Dienste, 'settings' | 'auftraege' | 'catalog' | 'konto' | 'externalSources' | 'management'>,
 ) {
   const { requireApiAdmin } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1', { largeIds: true });
@@ -140,7 +140,7 @@ export function buildAdminRouter(
   });
 
   router.endpunkt('GET /api/v1/admin/brickset-queue', requireApiAdmin, async req => {
-    const rows = await d.katalog.bricksetList();
+    const rows = await d.catalog.bricksetList();
     const { eintraege, ...seite } = pageFrom(rows, req.abfrage);
     return { count: rows.length, entries: eintraege, ...seite };
   });

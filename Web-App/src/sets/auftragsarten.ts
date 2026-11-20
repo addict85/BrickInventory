@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../auftraege';
-import { ImagesPayload } from '../katalog';
+import { ImagesPayload } from '../catalog';
 import * as nachErfassung from './nachErfassung';
 import type { SetsContext } from './kontext';
 
@@ -30,7 +30,7 @@ export function setsJobTypes(sk: SetsContext): Anmeldung[] {
       art: 'bilder',
       nutzlast: ImagesPayload,
       ausfuehren: async (n, l) => {
-        if (n.only_images) await sk.katalog.loadSetImages(n.set_number);
+        if (n.only_images) await sk.catalog.loadSetImages(n.set_number);
         else await nachErfassung.loadSetImages(sk, n.set_number, l);
       },
     }),

@@ -74,7 +74,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
 
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
-  const { catalogPart } = _req('src/katalog/katalogPflege.js');
+  const { catalogPart } = _req('src/catalog/catalogMaintenance.js');
   const gemeinsam = nr =>
     db.get(
       `SELECT pc.part_name, pcc.image_url

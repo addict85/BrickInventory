@@ -25,7 +25,7 @@ export function withoutVersion(setNumber: string | number): string {
 }
 
 // Der Leser steht hier, weil die Markierung unter der Nummer MIT Anhang liegt
-// (src/katalog/bricklinkPreise.ts) und drei Stellen verschieden fragten.
+// (src/catalog/bricklinkPrices.ts) und drei Stellen verschieden fragten.
 interface CatalogEntry {
   is_gear?: boolean | null;
   bl_type?: string | null;

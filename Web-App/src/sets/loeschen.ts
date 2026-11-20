@@ -4,7 +4,7 @@ import type { SetsContext } from './kontext';
 
 // Für Löschen und Wegfall; sonst verwaisen Teile. In der Transaktion des Aufrufers (`t`).
 export async function deleteSetRows(t: SetsContext, uids: number[], setNumber: string) {
-  await t.bestand.setInhalt.entfernen(uids, setNumber);
+  await t.inventory.setInhalt.entfernen(uids, setNumber);
 }
 
 /** Standardmässig im ganzen Schreibbereich; eine Kontenwahl schränkt ihn ein, erweitert ihn nie. */
@@ -29,7 +29,7 @@ export async function deleteSet(sk: SetsContext, userId: Blickfeld, setNumber: s
     // Ein Eintrag je Konto: Wiederhergestellt wird in das Konto, dem es gehörte.
     const papierkorb: number[] = [];
     for (const b of besitzer) {
-      const id = await t.bestand.putInTrash('set', b.user_id, setNumber);
+      const id = await t.inventory.putInTrash('set', b.user_id, setNumber);
       if (id !== null) papierkorb.push(id);
     }
     await deleteSetRows(t, uids, setNumber);

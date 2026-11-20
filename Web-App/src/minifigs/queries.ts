@@ -1,6 +1,6 @@
 import { resolveImageLocal } from '../images';
 import { asIds, type Sicht } from '../household';
-import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
+import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../inventory';
 import { withVersion } from '../infra/setNummer';
 import { Degradations } from '../infra/ergebnis';
 import type { MinifigsContext } from './context';
@@ -90,7 +90,7 @@ export async function readManualMinifigs(
     size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null,
   );
   const mapped = figs.map(f => ({ ...f, image_local: resolveImageLocal(f.image_local) }));
-  const withCondition = await k.bestand.setzeManuellenZustand(uids, mapped, 'fig');
+  const withCondition = await k.inventory.setzeManuellenZustand(uids, mapped, 'fig');
 
   // The market price ONLY from the cache, in one query for the whole list: a
   // live lookup per entry would make the list wait on BrickLink.

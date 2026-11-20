@@ -146,8 +146,8 @@ test('Webapp: der Filter steht neben dem Kontofilter und geht an den Server', as
 
 test('die Längengrenze steht in Server, Fehlertext und Webapp gleich', async () => {
   const { LOCATION_MAX_CHARS: max, normalizeLocation } = {
-    ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testArea('bestand').locationService,
+    ..._req('src/inventory/storageLocation.js'),
+    ...require('./helpers/sources').testArea('inventory').locationService,
   };
   assert.ok(max > 0);
   assert.equal(normalizeLocation('x'.repeat(max)), 'x'.repeat(max));

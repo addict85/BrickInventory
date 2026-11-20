@@ -4,7 +4,7 @@
  * denselben — für Set, Teil und Figur. Echter Code, echte Datenbank.
  *
  * Gegenproben (13.11.2026 gemessen, jeweils zurückgenommen):
- *   A  marketPriceFrom() (src/katalog/bricklinkPreise.ts) nur noch avg_price → rot:
+ *   A  marketPriceFrom() (src/catalog/bricklinkPrices.ts) nur noch avg_price → rot:
  *      „Bewertung“ (Stückpreis 0 statt 37.5), „G&V“, „Preisverlauf“; Wertkurve grün
  *   B  marktpreisSql() (db/geldSql.ts) nur noch avg_price → rot: „Wertkurve“
  *      (60, der Kaufpreis als Startpunkt, statt 75) und „Preisverlauf“

@@ -31,7 +31,7 @@ const kinds = (k: CollectionContext): Record<ErfassungsArt, Kind> => ({
     notFound: 'nicht_gefunden',
     resolvePrice: (uid, [pn, cid], cond) => k.finances.currentPartMarketPrice(String(pn), Number(cid), uid, cond),
     // Only the manual holding; set parts go with their set.
-    cleanupWhenEmpty: (t, ownerId, keys) => t.bestand.deleteManual('part', ownerId, keys),
+    cleanupWhenEmpty: (t, ownerId, keys) => t.inventory.deleteManual('part', ownerId, keys),
   },
   fig: {
     notFound: 'nicht_gefunden',
@@ -39,10 +39,10 @@ const kinds = (k: CollectionContext): Record<ErfassungsArt, Kind> => ({
       k.finances.currentMinifigMarketPrice(
         String(fn),
         uid,
-        await k.katalog.blFetchNumber('fig', String(fn), uid),
+        await k.catalog.blFetchNumber('fig', String(fn), uid),
         cond,
       ),
-    cleanupWhenEmpty: (t, ownerId, keys) => t.bestand.deleteManual('fig', ownerId, keys),
+    cleanupWhenEmpty: (t, ownerId, keys) => t.inventory.deleteManual('fig', ownerId, keys),
   },
 });
 
@@ -58,7 +58,7 @@ interface Row {
 
 /** Only for the lock key and price fallback; the query inside the transaction checks the rights. */
 async function beforehand(k: CollectionContext, art: ErfassungsArt, uid: number, id: number, keys: Keys) {
-  return k.bestand.erfassung.imSchreibfeld(art, id, await k.household.schreibbereich(uid), keys);
+  return k.inventory.erfassung.imSchreibfeld(art, id, await k.household.schreibbereich(uid), keys);
 }
 
 /** 0 "empty" and null "no row" are cleaned up; a read error propagates, a fallback would hide the
@@ -82,7 +82,7 @@ async function rowInWriteScope(
   keys: Keys,
 ): Promise<Row> {
   const a = kinds(t)[art];
-  const z = await t.bestand.erfassung.imSchreibfeld(art, id, wids, keys);
+  const z = await t.inventory.erfassung.imSchreibfeld(art, id, wids, keys);
   if (!z) fachfehler('nicht_gefunden', a.notFound);
   return z;
 }
@@ -128,7 +128,7 @@ export async function changeAcquisition(
       t =>
         art === 'set'
           ? t.sets.setEntriesReassign(String(keys[0]), from, to, [id])
-          : t.bestand.manualEntryReassign(art, keys, id, from, to),
+          : t.inventory.manualEntryReassign(art, keys, id, from, to),
       { sperren: [{ konto: from, schluessel: inventoryKey(art, keys) }], repeatAtConflict: true },
     );
     return { from_user_id: from, to_user_id: to, ...moved };
@@ -167,7 +167,7 @@ export async function changeAcquisition(
       const targetEstimated = rawPrice !== undefined ? priceEstimated && priceVal != null : !!acq.price_estimated;
       // Checked against the values AFTER this change.
       if (newDate || rawPrice !== undefined || hasCondition) {
-        const clash = await t.bestand.entryAtSameTag(art, ownerId, keys, newDate || acq.tag, id, targetCondition, {
+        const clash = await t.inventory.entryAtSameTag(art, ownerId, keys, newDate || acq.tag, id, targetCondition, {
           preis: rawPrice !== undefined ? priceVal : acq.preis,
           geschaetzt: targetEstimated,
           waehrung: acq.currency,
@@ -175,7 +175,7 @@ export async function changeAcquisition(
         if (clash) fachfehler('konflikt', 'datum_belegt');
       }
       const hasQuantity = quantity !== undefined && quantity !== null;
-      await t.bestand.erfassung.aendere(art, id, wids, {
+      await t.inventory.erfassung.aendere(art, id, wids, {
         ...(hasQuantity ? { menge: inventoryQuantity(quantity, 1) } : {}),
         ...(rawPrice !== undefined ? { preis: { wert: priceVal, geschaetzt: targetEstimated } } : {}),
         ...(hasCondition ? { zustand: targetCondition } : {}),
@@ -197,7 +197,7 @@ export async function deleteAcquisition(k: CollectionContext, art: ErfassungsArt
     async t => {
       const acq = await rowInWriteScope(t, art, await t.household.schreibbereich(uid), id, keys);
       const ownerId = Number(acq.user_id);
-      await t.bestand.erfassung.loesche(art, id, ownerId);
+      await t.inventory.erfassung.loesche(art, id, ownerId);
       const q = await holdingQuantity(t, art, ownerId, keys);
       if (isEmpty(q)) await a.cleanupWhenEmpty(t, ownerId, keys);
       return q;

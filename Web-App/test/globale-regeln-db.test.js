@@ -72,8 +72,8 @@ test('globale Einstellungen: eine Regel je Schlüssel', { concurrency: 1 }, asyn
   });
 
   await t.test('jeder geschriebene Schlüssel hat eine Regel', () => {
-    const { GLOBAL_RULES } = _req('src/vertrag/globaleRegeln.js');
-    const { GLOBAL_SETTINGS } = _req('src/vertrag/einstellungen.js');
+    const { GLOBAL_RULES } = _req('src/contract/globalRules.js');
+    const { GLOBAL_SETTINGS } = _req('src/contract/settings.js');
     const { DAILY_JOBS } = _req('src/management/timesOfDay.js');
     const geschrieben = [
       ...GLOBAL_SETTINGS,
@@ -85,6 +85,6 @@ test('globale Einstellungen: eine Regel je Schlüssel', { concurrency: 1 }, asyn
       geschrieben.filter(k => !Object.hasOwn(GLOBAL_RULES, k)),
       [],
     );
-    assert.ok(require('node:fs').existsSync(path.join(ROOT, 'src/vertrag/globaleRegeln.ts')));
+    assert.ok(require('node:fs').existsSync(path.join(ROOT, 'src/contract/globalRules.ts')));
   });
 });

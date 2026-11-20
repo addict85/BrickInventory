@@ -9,16 +9,16 @@ export async function deletePart(
   cid: number,
 ): Promise<number | null> {
   return k.transaktion(async t => {
-    const id = await t.bestand.putInTrash('teil', besitzer, pn, cid);
-    const r = await t.bestand.deleteManual('part', besitzer, [pn, cid]);
+    const id = await t.inventory.putInTrash('teil', besitzer, pn, cid);
+    const r = await t.inventory.deleteManual('part', besitzer, [pn, cid]);
     return r.changes === 0 ? null : id;
   });
 }
 
 export async function deleteMinifig(k: CollectionContext, besitzer: number, fn: string): Promise<number | null> {
   return k.transaktion(async t => {
-    const id = await t.bestand.putInTrash('figur', besitzer, fn);
-    const r = await t.bestand.deleteManual('fig', besitzer, [fn]);
+    const id = await t.inventory.putInTrash('figur', besitzer, fn);
+    const r = await t.inventory.deleteManual('fig', besitzer, [fn]);
     return r.changes === 0 ? null : id;
   });
 }
@@ -27,10 +27,10 @@ export async function deleteMinifig(k: CollectionContext, besitzer: number, fn: 
  * each can be restored on its own. */
 export async function deleteEverythingOwn(k: CollectionContext, uid: number) {
   const sets = await k.sets.setsOfAccount(uid);
-  const teile = await k.bestand.manuell.partsOfAccount(uid);
-  const minifigs = await k.bestand.manuell.minifigsOfAccount(uid);
+  const teile = await k.inventory.manuell.partsOfAccount(uid);
+  const minifigs = await k.inventory.manuell.minifigsOfAccount(uid);
   const papierkorb: number[] = [];
-  // Field names below (sets, teile, figuren) are the API contract (src/vertrag/bestand.ts)
+  // Field names below (sets, teile, figuren) are the API contract (src/contract/inventory.ts)
   // and stay as-is.
   const n = { sets: 0, teile: 0, figuren: 0 };
   for (const s of sets) {

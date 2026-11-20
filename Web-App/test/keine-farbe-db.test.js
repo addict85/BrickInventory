@@ -1,6 +1,6 @@
 /**
  * „Keine Farbe“ ist 9999 wie bei Rebrickable, 0 bleibt Schwarz (Migration
- * 0071, src/katalog/farben.ts). Geprüft werden die Migration auf Altdaten, das
+ * 0071, src/catalog/colors.ts). Geprüft werden die Migration auf Altdaten, das
  * Erfassen ohne Farbe, die Farbliste ohne Rebrickable und der Preisabruf.
  *
  * Gegenproben (am 29.10.2026 gemessen):
@@ -178,7 +178,7 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Farbliste kommt aus rb_colors, die Notliste führt nur echte Rebrickable-IDs', async () => {
-    const { colorList } = _req('src/katalog/farben.js');
+    const { colorList } = _req('src/catalog/colors.js');
     const vorher = await db.all('SELECT id, name, rgb FROM rb_colors');
     try {
       await db.run('DELETE FROM rb_colors');

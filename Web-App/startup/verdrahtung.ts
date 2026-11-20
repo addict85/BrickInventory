@@ -8,14 +8,14 @@ import { createSets } from '../src/sets';
 import { createHousehold } from '../src/household';
 import { createMail } from '../src/mail';
 import { createIdempotency } from '../src/idempotency';
-import { createInventory } from '../src/bestand';
+import { createInventory } from '../src/inventory';
 import { createParts } from '../src/parts';
 import { createMinifigs } from '../src/minifigs';
 import { createWanted } from '../src/wanted';
 import { createVouchers } from '../src/vouchers';
 import { createCollection } from '../src/collection';
 import { createManagement } from '../src/management';
-import { createCatalog } from '../src/katalog';
+import { createCatalog } from '../src/catalog';
 import { type ImageWorker, createImages } from '../src/images';
 import { createFinances } from '../src/finances';
 import { createAccount } from '../src/konto';
@@ -91,7 +91,7 @@ function reportJobTypesAn(d: Dienste): void {
   const arten: Anmeldung[] = [
     ...d.images.auftragsarten(),
     ...d.konto.auftragsarten(),
-    ...d.katalog.auftragsarten(IMPORT_PROCESS),
+    ...d.catalog.auftragsarten(IMPORT_PROCESS),
     ...d.finances.auftragsarten(),
     ...d.sets.auftragsarten(),
     ...d.collection.jobKinds(),
@@ -139,12 +139,12 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
     { db, uhr, konfig, auftraege, household, externalSources, bildwerk, lesevertrag: LESEVERTRAG },
     zeige('images'),
   );
-  const katalog = createCatalog(
+  const catalog = createCatalog(
     { db, uhr, einstellungen, auftraege, household, externalSources, images, throttle, lesevertrag: LESEVERTRAG },
-    zeige('katalog'),
+    zeige('catalog'),
   );
   // Den Eintrag beim Set macht der Katalog (höher); er horcht auf die Bilder, statt dass sie ihn rufen.
-  images.atSetImageLoaded((sn, quelle) => katalog.enterSetImageLocal(sn, quelle));
+  images.atSetImageLoaded((sn, quelle) => catalog.enterSetImageLocal(sn, quelle));
   return {
     throttle,
     settings: einstellungen,
@@ -158,7 +158,7 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
     idempotency,
     externalSources,
     images,
-    katalog,
+    catalog,
   };
 }
 
@@ -166,48 +166,48 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
   const zeige = inspectIn(components.contexts);
   const grund = buildReason(db, components, zeige);
   const { throttle, settings: einstellungen, mail, auftraege, household, factors } = grund;
-  const { konto, idempotency, externalSources, images, katalog } = grund;
+  const { konto, idempotency, externalSources, images, catalog } = grund;
   const { konfig, uhr } = components;
   const finances = createFinances(
-    { db, uhr, konfig, einstellungen, auftraege, household, katalog, externalSources, mail, lesevertrag: LESEVERTRAG },
+    { db, uhr, konfig, einstellungen, auftraege, household, catalog, externalSources, mail, lesevertrag: LESEVERTRAG },
     zeige('finances'),
   );
-  const bestand = createInventory(
-    { db, uhr, einstellungen, household, konto, katalog, finances, lesevertrag: LESEVERTRAG },
-    zeige('bestand'),
+  const inventory = createInventory(
+    { db, uhr, einstellungen, household, konto, catalog, finances, lesevertrag: LESEVERTRAG },
+    zeige('inventory'),
   );
   const sets = createSets(
     {
       db,
       uhr,
       konfig,
-      katalog,
+      catalog,
       externalSources,
       images,
       finances,
       household,
       auftraege,
-      bestand,
+      inventory,
       einstellungen,
       konto,
     },
     zeige('sets'),
   );
   const parts = createParts(
-    { db, uhr, einstellungen, auftraege, household, katalog, externalSources, finances, bestand },
+    { db, uhr, einstellungen, auftraege, household, catalog, externalSources, finances, inventory },
     zeige('parts'),
   );
   const minifigs = createMinifigs(
-    { db, uhr, einstellungen, household, katalog, externalSources, auftraege, finances, bestand },
+    { db, uhr, einstellungen, household, catalog, externalSources, auftraege, finances, inventory },
     zeige('minifigs'),
   );
   const wanted = createWanted(
-    { db, uhr, einstellungen, household, katalog, externalSources, images, finances, sets },
+    { db, uhr, einstellungen, household, catalog, externalSources, images, finances, sets },
     zeige('wanted'),
   );
   const vouchers = createVouchers({ db, uhr, einstellungen, konto, externalSources, throttle }, zeige('vouchers'));
   const collection = createCollection(
-    { db, uhr, household, auftraege, katalog, finances, bestand, sets, parts, minifigs, wanted },
+    { db, uhr, household, auftraege, catalog, finances, inventory, sets, parts, minifigs, wanted },
     zeige('collection'),
   );
   const management = createManagement(
@@ -219,11 +219,11 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
       factors,
       konto,
       idempotency,
-      katalog,
+      catalog,
       externalSources,
       images,
       finances,
-      bestand,
+      inventory,
       sets,
       wanted,
       vouchers,
@@ -231,7 +231,7 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
     },
     zeige('management'),
   );
-  return { ...grund, finances, bestand, sets, parts, minifigs, wanted, vouchers, collection, management };
+  return { ...grund, finances, inventory, sets, parts, minifigs, wanted, vouchers, collection, management };
 }
 
 /** Der Zugang des Prozesses samt Erststart, verdrahtet. Der Erststart legt das erste

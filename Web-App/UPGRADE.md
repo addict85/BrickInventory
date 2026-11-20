@@ -2380,7 +2380,7 @@ wird). Hinweise:
 
 Erste Stufe der Umstellung des Quelltexts auf Englisch (CLAUDE.md): Tabellen- und
 Spaltennamen des Schemas, die bisher Deutsch waren, heissen jetzt Englisch; ebenso die
-Feldnamen im API-Vertrag (`src/vertrag/*.ts`), soweit sie nach aussen sichtbar sind.
+Feldnamen im API-Vertrag (`src/contract/*.ts`), soweit sie nach aussen sichtbar sind.
 Funktions-, Trigger- und Policy-Namen sowie die GUC-Einstellung `app.konto` bleiben
 vorerst Deutsch – das ist eine bewusste, kleinere Folgestufe, keine Lücke dieser Migration.
 Enum-Werte in CHECK-Constraints (z. B. `'passwort'`, `'teil'`, `'figur'`) sind gespeicherte
@@ -2416,7 +2416,7 @@ Daten, keine Bezeichner, und bleiben unverändert.
   Spaltennamen direkt ansprechen (SQL, pgweb-Abfragen, Backups mit `COPY`), müssen auf die
   neuen Namen umgestellt werden; `postgres/app-rolle.sh` (Leserolle-Allowlist) ist bereits
   angepasst.
-- **API-Felder geändert** (Vertrag, `src/vertrag/*.ts`, nach Regenerierung von
+- **API-Felder geändert** (Vertrag, `src/contract/*.ts`, nach Regenerierung von
   `docs/openapi.json`, `frontend-typen/vertrag.d.ts` und `Vertrag.kt`): Preisalarme
   (`GET/PUT .../alert`, `GET /alerts`, `GET /alerts/pending`) liefern/erwarten jetzt
   `direction`, `threshold`, `triggered`, `last_triggered_at`, `last_price` statt
@@ -2435,9 +2435,9 @@ Daten, keine Bezeichner, und bleiben unverändert.
   Stufe vorbehalten. **Folge für eigene Integrationen:** Wer diese Endpunkte direkt
   anspricht (nicht über die mitgelieferte Oberfläche oder die Android-App, die beide
   mit diesem Update mitgehen), muss die Feldnamen anpassen.
-- **Was diese Phase bewusst nicht anfasst:** `db/zeilen.ts`, `src/vertrag/*.ts` und die
+- **Was diese Phase bewusst nicht anfasst:** `db/zeilen.ts`, `src/contract/*.ts` und die
   übrigen Verzeichnisse mit deutschen Datei- und Verzeichnisnamen (`src/auftraege/`,
-  `src/finances/`, `src/katalog/`, `src/konto/`, `src/verwaltung/`, `src/bestand/`, …) bleiben
+  `src/finances/`, `src/catalog/`, `src/konto/`, `src/verwaltung/`, `src/inventory/`, …) bleiben
   in dieser Phase unbenannt; das ist Phase 2 (Web-Server) vorbehalten. Android-seitig ist nur
   `Vertrag.kt` (per Generator) auf die neuen Feldnamen gebracht; die übrigen Kotlin-Quellen,
   die diese Felder lesen (u. a. `AlarmRepository*`, `Preisalarmeingabe.kt`,

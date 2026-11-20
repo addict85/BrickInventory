@@ -6,9 +6,9 @@ import * as minifigParts from './repository/minifigParts';
 import * as manualMinifigs from './repository/manualMinifigs';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
-import type { CatalogServices } from '../katalog';
+import type { CatalogServices } from '../catalog';
 import type { FinancesServices } from '../finances';
-import type { InventoryServices } from '../bestand';
+import type { InventoryServices } from '../inventory';
 import type { JobsServices } from '../auftraege';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { Uhr } from '../infra/uhr';
@@ -18,9 +18,9 @@ export interface MinifigsDependencies {
   db: Db;
   einstellungen: SettingsServices;
   household: HouseholdServices;
-  katalog: CatalogServices;
+  catalog: CatalogServices;
   finances: FinancesServices;
-  bestand: InventoryServices;
+  inventory: InventoryServices;
   externalSources: ForeignSourcesServices;
   auftraege: JobsServices;
 }

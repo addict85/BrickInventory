@@ -187,7 +187,7 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency:
       abfragen++;
       return realQuery(...args);
     };
-    const csv = await _req('src/bestand/bestandExport.js').figurenCsv(uid);
+    const csv = await _req('src/inventory/inventoryExport.js').figurenCsv(uid);
     db.pool.query = realQuery;
 
     const r = zeilen(csv);
@@ -266,7 +266,7 @@ test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency: 1 }, 
       abfragen++;
       return realQuery(...args);
     };
-    const csv = await _req('src/bestand/bestandExport.js').partsCsv(uid);
+    const csv = await _req('src/inventory/inventoryExport.js').partsCsv(uid);
     db.pool.query = realQuery;
 
     const r = zeilen(csv);

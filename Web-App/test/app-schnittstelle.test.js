@@ -7,7 +7,7 @@
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln, zurückgenommen):
  *   A  im Vertrag 'GET /api/v1/settings/default-condition' umbenannt → rot: „jede Route der App …“
- *   B  SEITE ohne `page_size` (src/vertrag/grund.ts) → rot: „jeder Abfrageparameter …“
+ *   B  SEITE ohne `page_size` (src/contract/base.ts) → rot: „jeder Abfrageparameter …“
  *   C  im Vertrag `label` aus den Anmeldedaten gestrichen → rot: „jedes Rumpffeld …“ (LoginRequest)
  */
 const test = require('node:test');
@@ -16,7 +16,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const dok = _req('src/vertrag/openapi.js').openapi();
+const dok = _req('src/contract/openapi.js').openapi();
 const app = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'app-schnittstelle.json'), 'utf8'));
 
 /** @param {string} p */

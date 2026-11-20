@@ -18,7 +18,7 @@ import * as setWert from './repository/setValue';
 import * as wechselkurse from './repository/exchangeRates';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
-import type { CatalogServices } from '../katalog';
+import type { CatalogServices } from '../catalog';
 import type { JobsServices } from '../auftraege';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { Uhr } from '../infra/uhr';
@@ -30,7 +30,7 @@ export interface FinancesDependencies {
   einstellungen: SettingsServices;
   auftraege: JobsServices;
   household: HouseholdServices;
-  katalog: CatalogServices;
+  catalog: CatalogServices;
   externalSources: ForeignSourcesServices;
   faecher: Faecher;
   mail: MailServices;

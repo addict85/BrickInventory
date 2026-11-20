@@ -132,7 +132,7 @@ async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
   await catalogSet(db, sn, { name: 'Set ' + sn, year: 2020 });
   // `cond` geht nur noch in die Erfassung — die sets-Zeile hat seit
   // Migration 0032 keine condition-Spalte mehr.
-  await _req('src/bestand/acquisitions.js').addPurchaseAtTag('set', uid, [sn], {
+  await _req('src/inventory/acquisitions.js').addPurchaseAtTag('set', uid, [sn], {
     quantity: qty,
     price,
     condition: cond,

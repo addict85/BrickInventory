@@ -186,7 +186,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
   });
 
   await t.test('k.transaktion mit Sperren reicht die Option weiter', async () => {
-    const k = testContext('bestand');
+    const k = testContext('inventory');
     const sperren = [{ konto: 1, schluessel: 'x' }];
     let n = 0;
     const r = await k.transaktion(
@@ -233,7 +233,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
   });
 
   await t.test('setEstimatedPrice wiederholt bei Konflikt', async () => {
-    const { setEstimatedPrice } = _req('src/bestand/acquisitions.js');
+    const { setEstimatedPrice } = _req('src/inventory/acquisitions.js');
     const { holdsSet } = require('./helpers/bestand');
     const u = await konto('wv_preis');
     await holdsSet(db, u, '10179-1', 1);

@@ -33,7 +33,7 @@ const { mailAttrappe } = require('./helpers/mail-attrappe');
 mailAttrappe();
 const db = S.testData();
 const auth = _req('src/konto/geraeteToken.js');
-const { CONTRACT } = _req('src/vertrag/index.js');
+const { CONTRACT } = _req('src/contract/index.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');

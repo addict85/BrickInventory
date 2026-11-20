@@ -150,7 +150,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
 
   markup = html`${markup}${html`</tbody></table></div>`}`;
 
-  // Summenzeile: Der Server rechnet sie (acquisitionTotals in src/bestand/acquisitions.ts) und liefert sie
+  // Summenzeile: Der Server rechnet sie (acquisitionTotals in src/inventory/acquisitions.ts) und liefert sie
   // als `totals` mit. Vorher stand die Rechnung hier und noch dreimal woanders — zweimal in dieser Datei,
   // zweimal in der App, und mit verschiedenen Preisfeldern.
   markup = html`${markup}${acqSummary(totals)}`;

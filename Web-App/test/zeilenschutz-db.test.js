@@ -211,7 +211,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   });
 
   await t.test('im Systemrahmen sieht die Aufräumarbeit alle Konten', async () => {
-    const { papierkorb } = buildWith(app).contexts.bestand;
+    const { papierkorb } = buildWith(app).contexts.inventory;
     assert.equal(await papierkorb.removeOlder(30), 0);
     assert.equal(await inSystemContext('test', () => papierkorb.removeOlder(30)), 3);
     assert.deepEqual(await su.all('SELECT id FROM trash'), []);
@@ -477,11 +477,11 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     );
     st.after(() => su.run('DELETE FROM jobs WHERE dedupe_key = $1', [`pdf:${kennung}`]));
     const request = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
-    assert.equal((await request(C, () => d.katalog.pdf.lies(kennung, C)))?.user_id, C);
+    assert.equal((await request(C, () => d.catalog.pdf.lies(kennung, C)))?.user_id, C);
     // Mit der eigenen ID gefragt (wie die Route): keiner; mit der fremden: der Zeilenschutz verbirgt ihn.
-    assert.equal(await request(A, () => d.katalog.pdf.lies(kennung, A)), null);
-    assert.equal(await request(A, () => d.katalog.pdf.lies(kennung, C)), null);
-    await request(A, () => d.katalog.pdf.loesche(kennung, C));
+    assert.equal(await request(A, () => d.catalog.pdf.lies(kennung, A)), null);
+    assert.equal(await request(A, () => d.catalog.pdf.lies(kennung, C)), null);
+    await request(A, () => d.catalog.pdf.loesche(kennung, C));
     assert.equal((await su.all('SELECT 1 FROM jobs WHERE dedupe_key = $1', [`pdf:${kennung}`])).length, 1);
   });
 });

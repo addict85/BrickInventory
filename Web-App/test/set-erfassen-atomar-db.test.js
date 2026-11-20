@@ -10,7 +10,7 @@
  *   C  in setErfassen() placeJobOne() weggelassen → rot: „… und stellt den Auftrag ein“
  *   D  in setSupplement() die Schleife über die Erfassungen ohne Preis entfernt →
  *      rot: „der Auftrag ergänzt Katalog und Kaufpreis“ (Preis null)
- *   E  (10.11.) in rememberCatalogPlaceholder() (src/katalog/repository/setStamm.ts) das
+ *   E  (10.11.) in rememberCatalogPlaceholder() (src/catalog/repository/setMaster.ts) das
  *      INSERT INTO rb_sets entfernt → rot:
  *      alle drei Teile (set_catalog_rb_sets_fkey; die Route antwortet 409 statt 200)
  *   F  (10.11.) in rememberSetCatalog() `WHERE rb_sets.herkunft = 'api'` zu 'csv' →

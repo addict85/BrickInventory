@@ -267,8 +267,8 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // entstand dann ohne Kaufpreis — der Marktpreis erschien später trotzdem,
   // sobald der Preis-Job den Cache füllte. Genau diese Abweichung war gemeldet.
   const job =
-    fs.readFileSync(path.join(ROOT, 'src/bestand/kaufpreisNachtrag.ts'), 'utf8') +
-    fs.readFileSync(path.join(ROOT, 'src/bestand/repository/nachtrag.ts'), 'utf8');
+    fs.readFileSync(path.join(ROOT, 'src/inventory/purchasePriceBackfill.ts'), 'utf8') +
+    fs.readFileSync(path.join(ROOT, 'src/inventory/repository/backfill.ts'), 'utf8');
 
   assert.match(
     job,

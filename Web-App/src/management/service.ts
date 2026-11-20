@@ -58,7 +58,7 @@ export async function cacheStats(k: ManagementContext) {
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
     ab.oder(
       'cache',
-      Promise.all([k.katalog.cacheStand(), k.management.pricesInCache()]).then(([c, prices]) => ({ ...c, prices })),
+      Promise.all([k.catalog.cacheStand(), k.management.pricesInCache()]).then(([c, prices]) => ({ ...c, prices })),
       { prices: 0, subsets: 0, catalog: 0 },
     ),
     ab.oder('veraltete_preise', k.management.stalePrices(), 0),
@@ -78,8 +78,8 @@ export async function cacheStats(k: ManagementContext) {
 export async function clearCaches(k: ManagementContext, alle: boolean) {
   await k.finances.emptyPriceCache();
   if (alle) {
-    await k.katalog.emptySubsetsCache();
-    await k.katalog.emptyCatalogCache();
+    await k.catalog.emptySubsetsCache();
+    await k.catalog.emptyCatalogCache();
   }
 }
 
@@ -98,8 +98,8 @@ export async function bricksetLimitSet(k: ManagementContext, alt: number, neu: n
 export async function requeueInstructions(k: ManagementContext) {
   const fehlend = await k.management.setsWithoutInstructions();
   for (const { set_number } of fehlend) {
-    await k.katalog.deleteInstructions(set_number);
-    await k.katalog.anleitungEinreihen(set_number);
+    await k.catalog.deleteInstructions(set_number);
+    await k.catalog.anleitungEinreihen(set_number);
   }
   return fehlend.length;
 }
@@ -157,7 +157,7 @@ export async function retryBrickset(k: ManagementContext, sn: string) {
 
 export async function removeBrickset(k: ManagementContext, sn: string) {
   await k.externalSources.quellen.fromRetryQueue(sn);
-  await k.katalog.anleitungEinreihen(sn, { nurAusweichquelle: true });
+  await k.catalog.anleitungEinreihen(sn, { nurAusweichquelle: true });
 }
 
 /** Der offene geplante Auftrag bekommt sofort den neuen Termin. */

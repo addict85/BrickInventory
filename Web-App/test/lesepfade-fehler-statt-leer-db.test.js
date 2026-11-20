@@ -4,13 +4,13 @@
  * Fehler, indem der Test eine Tabelle seiner eigenen Datenbank kurz umbenennt.
  *
  * Gegenproben (am 11.11.2026 gemessen):
- *   A  src/katalog/farben.ts: loadedColors() wieder mit Ersatz `.catch(() => [])`
+ *   A  src/catalog/colors.ts: loadedColors() wieder mit Ersatz `.catch(() => [])`
  *      → rot: „Farbliste“ (die Notliste kam statt eines Fehlers)
- *   B  src/katalog/blZuordnung.ts: blNumberOf() wieder mit Ersatz null
+ *   B  src/catalog/blMapping.ts: blNumberOf() wieder mit Ersatz null
  *      → rot: „BrickLink-Zuordnung“
- *   C  src/katalog/instructions.ts: instructionsToSet() wieder mit Ersatz `[]`
+ *   C  src/catalog/instructions.ts: instructionsToSet() wieder mit Ersatz `[]`
  *      → rot: „Anleitungen eines Sets“
- *   D  src/katalog/dienst.ts: newestInventory() in catalogSet() wieder mit Ersatz null
+ *   D  src/catalog/service.ts: newestInventory() in catalogSet() wieder mit Ersatz null
  *      → rot: „Set-Detail“ (minifigs 0 statt eines Fehlers)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -32,10 +32,10 @@ const NAME = `lesepfade_${process.pid}`;
 test('Lesefehler im Katalog: Fehler statt leer', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const { colorList } = _req('src/katalog/farben.js');
-  const { blNumberOf } = _req('src/katalog/blZuordnung.js');
-  const { instructionsToSet } = _req('src/katalog/instructions.js');
-  const { catalogSet } = _req('src/katalog/dienst.js');
+  const { colorList } = _req('src/catalog/colors.js');
+  const { blNumberOf } = _req('src/catalog/blMapping.js');
+  const { instructionsToSet } = _req('src/catalog/instructions.js');
+  const { catalogSet } = _req('src/catalog/service.js');
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;

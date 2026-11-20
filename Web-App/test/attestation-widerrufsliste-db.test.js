@@ -6,7 +6,7 @@
  * Gegenproben (14.11.2026 gemessen):
  *   A  in jobs/auftraegeStarten.ts den Bearbeiter `widerrufsliste` umbenannt → rot:
  *      „der geplante Auftrag legt die Liste ab …“ und „eine unlesbare Antwort …“
- *   B  in loadRevocationList() (src/katalog) erst den Rohtext speichern, dann lesen → rot: „eine
+ *   B  in loadRevocationList() (src/catalog) erst den Rohtext speichern, dann lesen → rot: „eine
  *      unlesbare Antwort …“ (und „der geplante Auftrag …“: keine Seriennummern)
  *   C  ZEITPLAENE.widerrufsliste entfernt → rot: „… und plant den nächsten Lauf“
  */

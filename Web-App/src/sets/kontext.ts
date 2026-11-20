@@ -3,10 +3,10 @@ import type { Db } from '../../db/database';
 import type { JobsServices } from '../auftraege';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { ImagesServices } from '../images';
-import type { InventoryServices } from '../bestand';
+import type { InventoryServices } from '../inventory';
 import type { FinancesServices } from '../finances';
 import type { HouseholdServices } from '../household';
-import type { CatalogServices } from '../katalog';
+import type { CatalogServices } from '../catalog';
 import type { SettingsServices } from '../settings';
 import type { AccountServices } from '../konto';
 import type { Kontext } from '../infra/bereich';
@@ -20,11 +20,11 @@ export interface SetsDependencies {
   db: Db;
   externalSources: ForeignSourcesServices;
   images: ImagesServices;
-  katalog: CatalogServices;
+  catalog: CatalogServices;
   finances: FinancesServices;
   household: HouseholdServices;
   auftraege: JobsServices;
-  bestand: InventoryServices;
+  inventory: InventoryServices;
   einstellungen: SettingsServices;
   konto: AccountServices;
 }

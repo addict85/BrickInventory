@@ -22,7 +22,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { acquisitionTotals } = _req('src/bestand/acquisitions.js');
+const { acquisitionTotals } = _req('src/inventory/acquisitions.js');
 
 // ── Teil 1: die Rechnung ────────────────────────────────────────────────────
 

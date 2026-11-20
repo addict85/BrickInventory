@@ -5,7 +5,7 @@
  * bekommt einen Hinweis.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in PATH (src/vertrag/grund.ts) tokenId wieder /^[A-Za-z0-9_-]{1,64}$/
+ *   A  in PATH (src/contract/base.ts) tokenId wieder /^[A-Za-z0-9_-]{1,64}$/
  *      → rot: „ein Präfix der Kennung wird abgewiesen“ (200 statt 400)
  *   B  in DELETE /settings/tokens/:tokenId die Bestätigung gestrichen → rot:
  *      „ein fremder Zugang braucht das Passwort“ (200, Zugang weg)

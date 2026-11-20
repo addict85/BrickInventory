@@ -157,8 +157,8 @@ const vertrag = () => {
   if (!_contract) {
     require('./sources').buildDist();
     _contract = {
-      ...require(path.join(ROOT, 'dist', 'src', 'vertrag', 'index.js')),
-      Fehler: require(path.join(ROOT, 'dist', 'src', 'vertrag', 'grund.js')).Fehler,
+      ...require(path.join(ROOT, 'dist', 'src', 'contract', 'index.js')),
+      Fehler: require(path.join(ROOT, 'dist', 'src', 'contract', 'base.js')).Fehler,
     };
   }
   return _contract;

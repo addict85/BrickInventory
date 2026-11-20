@@ -78,8 +78,8 @@ test('Lagerort gegen echte Datenbank', async t => {
   }
   await seed();
   const L = {
-    ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testArea('bestand').locationService,
+    ..._req('src/inventory/storageLocation.js'),
+    ...require('./helpers/sources').testArea('inventory').locationService,
   };
   const household = {
     ..._req('src/household/rules.js'),

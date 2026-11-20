@@ -14,8 +14,8 @@ const ANFRAGEPFAD = [
   path.join('src', 'sets', 'loeschen.ts'),
   path.join('src', 'parts', 'queries.ts'),
   path.join('src', 'minifigs', 'queries.ts'),
-  path.join('src', 'bestand', 'gemeinsam.ts'),
-  path.join('src', 'bestand', 'kennzahlen.ts'),
+  path.join('src', 'inventory', 'shared.ts'),
+  path.join('src', 'inventory', 'metrics.ts'),
 ];
 
 /** Schema-Anweisungen. Nur in echtem SQL, nicht in Prosa. */

@@ -47,8 +47,8 @@ const db = testData();
 const zf = _req('src/factors/secondFactor.js');
 const geheimnis = _req('src/infra/geheimnis.js');
 const { idempotency, responseIsSecret } = _req('src/idempotency/http/middleware.js');
-const { notRetryable } = _req('src/vertrag/grund.js');
-const { CONTRACT } = _req('src/vertrag/index.js');
+const { notRetryable } = _req('src/contract/base.js');
+const { CONTRACT } = _req('src/contract/index.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 

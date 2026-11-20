@@ -640,7 +640,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
   });
 
   await t.test('der Katalog-Import tauscht als Laufzeitrolle', async () => {
-    const tausch = require(path.join(ROOT, 'dist', 'src', 'katalog', 'repository', 'csvTausch.js'));
+    const tausch = require(path.join(ROOT, 'dist', 'src', 'catalog', 'repository', 'csvSwap.js'));
     await als(neu, ROLLE, PASSWORT, async app => {
       await tausch.lockTable(app, 'rb_colors');
       try {

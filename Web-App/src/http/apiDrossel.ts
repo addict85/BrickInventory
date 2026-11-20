@@ -4,7 +4,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from './nutzerId';
 import { sendError } from './httpAntwort';
 import { prozessweit } from '../infra/prozessweit';
-import { keyForRequest, type Schluessel } from '../vertrag';
+import { keyForRequest, type Schluessel } from '../contract';
 
 export const WINDOW_MS = 5 * 60 * 1000;
 /** Einheiten je Konto und Fenster; ein Leseaufruf zählt 1. */

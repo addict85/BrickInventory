@@ -4,8 +4,8 @@ import type { Sicht } from '../household';
 import { publicError } from '../infra/fehler';
 import { Degradations, versuche } from '../infra/ergebnis';
 import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
-import { mengenwunsch } from '../bestand';
-import { KEINE_FARBE } from '../katalog';
+import { mengenwunsch } from '../inventory';
+import { KEINE_FARBE } from '../catalog';
 import type { Quellen } from '../externalSources';
 import * as V0 from '../infra/validate';
 import { moneyInput } from '../infra/geld';
@@ -41,13 +41,13 @@ export async function manualPartPurchase(
 
 /** One path for the webapp and the app, so purchase price and storage are handled the same everywhere. */
 export async function addManualPart(k: PartsContext, uid: number, rawBody: Record<string, unknown>) {
-  // Without a given location, the account's default location applies (src/bestand/lagerort.ts).
-  const ort = await k.bestand.locationService.locationForNewEntry(uid, rawBody?.storage);
+  // Without a given location, the account's default location applies (src/inventory/storageLocation.ts).
+  const ort = await k.inventory.locationService.locationForNewEntry(uid, rawBody?.storage);
   // The SAME conversion as in the body, on the same input — it cannot drift apart.
   const farbe = V0.colorId(rawBody?.color_id);
   const ergebnis = await addManualPartInternal(k, uid, rawBody);
   if (ort && ergebnis?.part_number) {
-    await k.bestand.locationService.setLocation('part', [uid], [ergebnis.part_number, String(farbe)], ort);
+    await k.inventory.locationService.setLocation('part', [uid], [ergebnis.part_number, String(farbe)], ort);
   }
   return ergebnis;
 }
@@ -90,14 +90,14 @@ async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Reco
   const rbColorCode = await k.manualParts.rbColorHex(color_id);
 
   // Description applies to ALL accounts (catalog), the stock to one.
-  await k.katalog.rememberPart(part_number, gefunden?.part_name, gefunden?.category_name);
-  await k.katalog.rememberPart(part_number, eingabe.name, eingabe.kategorie, k.db, uid);
-  await k.katalog.rememberPartColor(part_number, color_id, null, rbColorCode, gefunden?.image_url);
-  await k.katalog.rememberPartColor(part_number, color_id, color_name, color_hex, eingabe.bild, null, k.db, uid);
+  await k.catalog.rememberPart(part_number, gefunden?.part_name, gefunden?.category_name);
+  await k.catalog.rememberPart(part_number, eingabe.name, eingabe.kategorie, k.db, uid);
+  await k.catalog.rememberPartColor(part_number, color_id, null, rbColorCode, gefunden?.image_url);
+  await k.catalog.rememberPartColor(part_number, color_id, color_name, color_hex, eingabe.bild, null, k.db, uid);
 
   // Price, condition and quantity live in the acquisition, not on the row.
-  await k.bestand.manuell.putRowAn('part', uid, [part_number, color_id]);
-  await k.bestand.bookDailyEntry('part', uid, [part_number, color_id], {
+  await k.inventory.manuell.putRowAn('part', uid, [part_number, color_id]);
+  await k.inventory.bookDailyEntry('part', uid, [part_number, color_id], {
     quantity,
     price: erfassungsPreis,
     geschaetzt,
@@ -125,7 +125,7 @@ async function partDescription(
   if (part_name) return { part_name, gefunden };
 
   const hasColor = color_id !== KEINE_FARBE;
-  const lokal = await k.katalog.catalogPart(part_number, hasColor ? color_id : null, uid);
+  const lokal = await k.catalog.catalogPart(part_number, hasColor ? color_id : null, uid);
   if (lokal) {
     part_name = lokal.name;
     image_url = image_url || lokal.bild;
@@ -162,8 +162,8 @@ async function additionalAcquisition(
   const rePrice =
     reEntered !== null ? reEntered : await k.finances.currentPartMarketPrice(part_number, color_id, uid, reCond);
 
-  // One acquisition per day and condition (src/bestand/acquisitions.ts).
-  await k.bestand.bookDailyEntry('part', uid, [part_number, color_id], {
+  // One acquisition per day and condition (src/inventory/acquisitions.ts).
+  await k.inventory.bookDailyEntry('part', uid, [part_number, color_id], {
     quantity: e.quantity,
     price: (rePrice ?? 0) > 0 ? rePrice : null,
     condition: reCond,
@@ -190,7 +190,7 @@ export async function changeManualPart(
   const wish = mengenwunsch(body);
   if (wish) {
     const cond = await k.einstellungen.conditionForPrice(undefined, existing.condition, uid);
-    raus.quantity = await k.bestand.passeManualQuantityAn(
+    raus.quantity = await k.inventory.passeManualQuantityAn(
       'part',
       uid,
       [partNumber, colorId],
@@ -211,11 +211,11 @@ export async function changeManualPart(
     );
     // Into the LATEST acquisition: there NULL means "no price known", the 0 shown
     // on display is formed by the read query.
-    await k.bestand.setNewest('part', 'preis', unitPrice, uid, [partNumber, colorId]);
+    await k.inventory.setNewest('part', 'preis', unitPrice, uid, [partNumber, colorId]);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = V0.zustand(body.condition);
-    await k.bestand.setNewest('part', 'zustand', cond, uid, [partNumber, colorId]);
+    await k.inventory.setNewest('part', 'zustand', cond, uid, [partNumber, colorId]);
   }
   return { ...raus, ...ab.angabe() };
 }
@@ -288,19 +288,19 @@ export async function importPartsCsv(k: PartsContext, uid: number, text: string)
       };
 
       if (await manualPartExists(k, uid, partNumber, colorId)) {
-        await k.bestand.bookDailyEntry('part', uid, [partNumber, colorId], erfassung);
+        await k.inventory.bookDailyEntry('part', uid, [partNumber, colorId], erfassung);
         updated++;
         results.push({ part_number: partNumber, action: 'updated' });
         continue;
       }
       // Catalog before stock: better a description without stock than the other way round.
       const colorHex = await k.manualParts.rbColorHex(colorId);
-      if (eingetippt) await k.katalog.rememberPart(partNumber, partName, null, k.db, uid);
-      else await k.katalog.rememberPart(partNumber, partName, categoryName);
-      await k.katalog.rememberPartColor(partNumber, colorId, null, colorHex, imageUrl);
-      await k.katalog.rememberPartColor(partNumber, colorId, colorName, null, null, null, k.db, uid);
-      await k.bestand.manuell.putRowAn('part', uid, [partNumber, colorId]);
-      await k.bestand.bookDailyEntry('part', uid, [partNumber, colorId], erfassung);
+      if (eingetippt) await k.catalog.rememberPart(partNumber, partName, null, k.db, uid);
+      else await k.catalog.rememberPart(partNumber, partName, categoryName);
+      await k.catalog.rememberPartColor(partNumber, colorId, null, colorHex, imageUrl);
+      await k.catalog.rememberPartColor(partNumber, colorId, colorName, null, null, null, k.db, uid);
+      await k.inventory.manuell.putRowAn('part', uid, [partNumber, colorId]);
+      await k.inventory.bookDailyEntry('part', uid, [partNumber, colorId], erfassung);
       added++;
       results.push({ part_number: partNumber, action: 'added' });
     } catch (e) {

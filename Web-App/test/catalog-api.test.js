@@ -6,7 +6,7 @@
  *
  * Gegenproben: (05.11.2026) page_size in routes/api_v1/catalog.ts nicht gelesen
  * → rot: „Pagination“ (die Seite hat 60 statt 10 Sets). (10.11.2026) in
- * src/katalog/repository/katalogSuche.ts c.image_local aus SET_SPALTEN entfernt →
+ * src/catalog/repository/catalogSearch.ts c.image_local aus SET_SPALTEN entfernt →
  * rot: „die Liste nennt das lokale Bild …“ (undefined statt der Adresse); dort
  * `NOT ${PLATZHALTER}` aus katalogWo() entfernt → rot: „… ein Platzhalter fehlt“
  * (total 1 statt 0).

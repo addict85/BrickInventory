@@ -56,7 +56,7 @@ test('ohne Vorgabe kommt undefined statt eines geerbten Werts', () => {
 
 /** @type {[string, string, RegExp][]} */
 const PLACES = [
-  ['src/katalog/repository/katalogSuche.ts', 'ORDERS', /ORDERS\s*\[/],
+  ['src/catalog/repository/catalogSearch.ts', 'ORDERS', /ORDERS\s*\[/],
   ['src/sets/repository/sets.ts', 'SET_SORTS', /SET_SORTS\s*\[/],
   // Die Endungen je MIME-Typ der Uploads stehen seit 05.11.2026 im Empfang.
   ['src/http/dateiEmpfang.ts', 'o.typen', /o\.typen\s*\[/],

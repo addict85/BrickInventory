@@ -17,7 +17,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { newestInventory } = _req('src/katalog/rbInventar.js');
+const { newestInventory } = _req('src/catalog/rbInventory.js');
 
 test('ein Inventar wird unter beiden Schreibweisen gefunden', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
@@ -98,7 +98,7 @@ test('der Inventar-Nachschlag steht nur an einer Stelle', () => {
   // eingesetzt → rot.
   assert.deepEqual(
     stellen,
-    ['src/katalog/repository/katalogStamm.ts'],
+    ['src/catalog/repository/catalogMaster.ts'],
     'Der Inventar-Nachschlag steht an mehr als einer Stelle — genau daran sind ' +
       'vier verschiedene Kandidatenregeln entstanden',
   );

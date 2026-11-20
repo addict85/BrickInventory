@@ -30,27 +30,27 @@ async function pullAfter(
   await importParts(sk, setNumber, userId);
   checkAbort(lauf);
 
-  if (art === 'zweit') await schritt('bl-nummern', () => sk.katalog.reloadBlNumbers(lauf));
+  if (art === 'zweit') await schritt('bl-nummern', () => sk.catalog.reloadBlNumbers(lauf));
   if (art === 'neu') {
     await schritt('preis', () => sk.finances.preisFuerSetHolen(setNumber, userId));
-    await schritt('anleitung', () => sk.katalog.loadSetInstructions(setNumber));
+    await schritt('anleitung', () => sk.catalog.loadSetInstructions(setNumber));
   } else {
-    await schritt('anleitung-einreihen', () => sk.katalog.anleitungEinreihen(setNumber));
+    await schritt('anleitung-einreihen', () => sk.catalog.anleitungEinreihen(setNumber));
   }
   checkAbort(lauf);
-  await schritt('teile-anreichern', () => sk.katalog.enrichSetPartsAn(setNumber));
-  await schritt('figuren-anreichern', () => sk.katalog.enrichSetMinifigsAn(setNumber));
+  await schritt('teile-anreichern', () => sk.catalog.enrichSetPartsAn(setNumber));
+  await schritt('figuren-anreichern', () => sk.catalog.enrichSetMinifigsAn(setNumber));
   // Brickset füllt nur Lücken; der CSV-Import fragt es beim Anlegen nicht.
-  if (art === 'csv') await schritt('brickset', () => sk.katalog.fillFromBrickset(setNumber));
+  if (art === 'csv') await schritt('brickset', () => sk.catalog.fillFromBrickset(setNumber));
   checkAbort(lauf);
-  await schritt('bilder', () => sk.katalog.loadSetImages(setNumber));
+  await schritt('bilder', () => sk.catalog.loadSetImages(setNumber));
   if (ohne.length) await lauf?.fortschritt?.({ text: `ohne ${ohne.join(', ')}`, ohne });
 }
 
 async function loadSetImages(k: SetsContext, setNumber: string, lauf?: JobRun): Promise<void> {
-  await k.katalog.loadSetImages(setNumber);
+  await k.catalog.loadSetImages(setNumber);
   checkAbort(lauf);
-  await k.katalog.enrichSetMinifigsAn(setNumber);
+  await k.catalog.enrichSetMinifigsAn(setNumber);
 }
 
 export { pullAfter, loadSetImages };

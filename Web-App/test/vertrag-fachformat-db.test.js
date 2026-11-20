@@ -1,6 +1,6 @@
 /**
  * Der Vertrag ist die einzige Eingabeprüfung und liefert das Fachformat: Was er annimmt,
- * nimmt die Route an, so wie er es umgeformt hat (src/vertrag/grund.ts, z.transform).
+ * nimmt die Route an, so wie er es umgeformt hat (src/contract/base.ts, z.transform).
  * Geprüft über die echten Routen gegen die Datenbank.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln, zurückgenommen):

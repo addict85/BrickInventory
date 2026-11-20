@@ -7,13 +7,13 @@ export function probe(d: Dienste): unknown[] {
   return [
     // Kein Bereich gibt seinen Zugang oder seine Transaktion heraus.
     // @ts-expect-error
-    d.bestand.db,
+    d.inventory.db,
     // @ts-expect-error
-    d.bestand.transaktion,
+    d.inventory.transaktion,
     // @ts-expect-error
-    d.bestand.papierkorb,
+    d.inventory.papierkorb,
     // @ts-expect-error
-    d.bestand.manuelleMengen,
+    d.inventory.manuelleMengen,
     // @ts-expect-error
     d.auftraege.db,
     // @ts-expect-error
@@ -35,11 +35,11 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.konto.konten,
     // @ts-expect-error
-    d.katalog.db,
+    d.catalog.db,
     // @ts-expect-error
-    d.katalog.quellen,
+    d.catalog.quellen,
     // @ts-expect-error
-    d.katalog.bildwerk,
+    d.catalog.bildwerk,
     // @ts-expect-error
     d.finances.db,
     // @ts-expect-error
@@ -47,7 +47,7 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.sets.db,
     // @ts-expect-error
-    d.sets.katalog,
+    d.sets.catalog,
     // @ts-expect-error
     d.parts.partsList,
     // @ts-expect-error
@@ -63,7 +63,7 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.idempotency.db,
     // Die ausdrücklichen Dienste dagegen stehen da.
-    d.bestand.locationService.lagerorte,
+    d.inventory.locationService.lagerorte,
     d.auftraege.liesZustand,
     d.konto.verwalter.rememberAdminAction,
   ];

@@ -20,7 +20,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { hatPrice } = _req('src/katalog/bricklinkPreise.js');
+const { hatPrice } = _req('src/catalog/bricklinkPrices.js');
 
 test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;

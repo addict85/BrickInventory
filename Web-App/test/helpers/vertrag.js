@@ -1,5 +1,5 @@
 /**
- * Der Vertrag einer Route aus src/vertrag/, gefunden über den Pfad, wie
+ * Der Vertrag einer Route aus src/contract/, gefunden über den Pfad, wie
  * die App ihn schreibt ({setNumber}); Express nennt die Platzhalter :setNumber,
  * und die Namen dürfen abweichen ({id} gegen :acqId).
  */
@@ -14,7 +14,7 @@ const uniform = p => p.replace(/\{\w+\}|:\w+/g, '{}');
  * @returns {{ antwort?: import('zod').ZodType, eingabe?: import('zod').ZodType } | undefined}
  */
 function contractTo(_req, methode, pfad) {
-  const { CONTRACT } = _req('src/vertrag/index.js');
+  const { CONTRACT } = _req('src/contract/index.js');
   const treffer = Object.entries(CONTRACT).filter(([k]) => {
     const [m, p] = k.split(' ');
     return m === methode && uniform(p) === uniform(pfad);

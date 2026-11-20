@@ -26,7 +26,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsSet, holdsPart, holdsMinifig } = require('./helpers/bestand');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const pk = _req('src/bestand/papierkorb.js');
+const pk = _req('src/inventory/trash.js');
 
 const SN = `99041-${process.pid}`,
   PN = `pk${process.pid}`,

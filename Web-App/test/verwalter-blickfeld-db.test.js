@@ -24,7 +24,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/verwalter');
-const { routeZu } = _req('src/vertrag/index.js');
+const { routeZu } = _req('src/contract/index.js');
 const { z } = require('zod');
 
 /** Kommt ein Schlüssel irgendwo im JSON vor? */

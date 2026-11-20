@@ -25,8 +25,8 @@ function cleanup(k: ManagementContext, lauf?: JobRun): Promise<void> {
   return runSteps(
     [
       ...k.konto.onRaeumSteps('stuendlich'),
-      ['Papierkorb', k.bestand.cleanTrashOn],
-      ['PDF-Aufträge', k.katalog.pdf.raeumeAuf],
+      ['Papierkorb', k.inventory.cleanTrashOn],
+      ['PDF-Aufträge', k.catalog.pdf.raeumeAuf],
       ['alte Aufträge', k.auftraege.cleanCompletedOn],
       ['verfallene Bildwünsche', k.images.deleteExpired],
       ['Idempotenzschlüssel', k.idempotency.cleanupIdempotency],

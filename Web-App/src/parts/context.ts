@@ -9,10 +9,10 @@ import * as partColor from './repository/partColor';
 import type { JobsServices } from '../auftraege';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
-import type { CatalogServices } from '../katalog';
+import type { CatalogServices } from '../catalog';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { FinancesServices } from '../finances';
-import type { InventoryServices } from '../bestand';
+import type { InventoryServices } from '../inventory';
 import type { Uhr } from '../infra/uhr';
 
 export interface PartsDependencies {
@@ -23,10 +23,10 @@ export interface PartsDependencies {
   einstellungen: SettingsServices;
   auftraege: JobsServices;
   household: HouseholdServices;
-  katalog: CatalogServices;
+  catalog: CatalogServices;
   externalSources: ForeignSourcesServices;
   finances: FinancesServices;
-  bestand: InventoryServices;
+  inventory: InventoryServices;
 }
 
 export const access = (db: Db) => ({

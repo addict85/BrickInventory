@@ -1,6 +1,6 @@
 /**
  * Jede SCHREIBENDE Route der App (shared/app-schnittstelle.json) gegen ihren
- * Vertrag (src/vertrag/): Antwort und, wo der Vertrag eine nennt, die Eingabe.
+ * Vertrag (src/contract/): Antwort und, wo der Vertrag eine nennt, die Eingabe.
  *
  * Gegenproben (am 27.10. gemessen):
  *   A  in routes/api_v1/sets.ts PUT /storage/default mit `success: null` →

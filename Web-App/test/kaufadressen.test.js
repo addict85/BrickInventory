@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const P = require('./helpers/sources').buildAndRequire()('src/katalog/preisvergleich.js');
+const P = require('./helpers/sources').buildAndRequire()('src/catalog/priceComparison.js');
 
 test('die Suchadresse maskiert, was hineingeht', () => {
   const u = P.suchUrl('LEGO 75192 Millennium Falcon');
@@ -43,7 +43,7 @@ test('die Variante faellt weg, der Name kommt dazu', () => {
 });
 
 test('die Adresse des Preisvergleichs steht genau an EINER Stelle', () => {
-  // Der Waechter. Server: nur src/katalog/preisvergleich.ts; Oberfläche und App nehmen die
+  // Der Waechter. Server: nur src/catalog/priceComparison.ts; Oberfläche und App nehmen die
   // Adresse aus der Antwort (preisvergleich_url).
   const wurzel = path.join(__dirname, '..', '..');
   const treffer = [];
@@ -71,7 +71,7 @@ test('die Adresse des Preisvergleichs steht genau an EINER Stelle', () => {
     treffer.sort(),
     [
       path.join('Web-App', 'test', 'kaufadressen.test.js'),
-      path.join('Web-App', 'src/katalog/preisvergleich.ts'),
+      path.join('Web-App', 'src/catalog/priceComparison.ts'),
     ].sort(),
     'Die Adresse des Preisvergleichs steht an einer weiteren Stelle. Entweder ' +
       'kommt sie dort vom Server (Set-Detail: preisvergleich_url), oder der ' +

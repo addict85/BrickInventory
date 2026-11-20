@@ -46,7 +46,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
-const { addPurchaseAtTag, purchaseAtSameTag } = _req('src/bestand/acquisitions.js');
+const { addPurchaseAtTag, purchaseAtSameTag } = _req('src/inventory/acquisitions.js');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});

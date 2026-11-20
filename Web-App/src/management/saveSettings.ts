@@ -3,8 +3,8 @@
 import { SECRET_KEYS, isMasked, isValidGlobalValue } from '../settings';
 import { fachfehler } from '../infra/fehlerTexte';
 import { inSystemContext } from '../infra/kontoKontext';
-import { GLOBAL_SETTINGS, ACCOUNT_SETTINGS } from '../vertrag/einstellungen';
-import type { Eingabe } from '../vertrag';
+import { GLOBAL_SETTINGS, ACCOUNT_SETTINGS } from '../contract/settings';
+import type { Eingabe } from '../contract';
 import { isSensitive } from './dataExport';
 import { bricksetLimitSet } from './service';
 import type { ManagementContext } from './context';

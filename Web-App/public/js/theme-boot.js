@@ -4,7 +4,7 @@
 
 (() => {
   var KEY = 'bim_theme';
-  // Must match DESIGNS in src/vertrag/globaleRegeln.ts — a test keeps both in sync (theme.test.js).
+  // Must match DESIGNS in src/contract/globalRules.ts — a test keeps both in sync (theme.test.js).
   var ALLOWED = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
   /**

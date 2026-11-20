@@ -60,7 +60,7 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async t => {
     ..._req('src/household/household.js'),
     ...require('./helpers/sources').testArea('household'),
   };
-  const { getStats } = _req('src/bestand/kennzahlen.js');
+  const { getStats } = _req('src/inventory/metrics.js');
   const { setsLesen } = require('./helpers/sources').areaPage('sets');
 
   for (const modus of ['all', 'own']) {

@@ -9,7 +9,7 @@
  *      „Menge, Preis, Zustand und Datum einer fremden Erfassung bleiben“
  *   B  dasselbe in shortenEntry() → rot: „eine fremde manuelle Erfassung
  *      lässt sich weder kürzen noch entfernen“
- *   C  in deleteEntry() (src/bestand/repository/erfassungen.ts) die Konten-Bedingung entfernt → rot: „eine
+ *   C  in deleteEntry() (src/inventory/repository/acquisitions.ts) die Konten-Bedingung entfernt → rot: „eine
  *      fremde Erfassung lässt sich nicht aus einem Verschieben löschen“
  *   D  in removeManual() `AND user_id = $2` bei der Bestandszeile entfernt
  *      → rot: „die Bestandszeile eines fremden Kontos bleibt“
@@ -26,15 +26,15 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const erf = _req('src/bestand/repository/erfassungen.js');
+const erf = _req('src/inventory/repository/acquisitions.js');
 const manuell = {
-  ..._req('src/bestand/repository/manuelleMengen.js'),
-  ...require('./helpers/sources').testArea('bestand').manuelleMengen,
+  ..._req('src/inventory/repository/manualQuantities.js'),
+  ...require('./helpers/sources').testArea('inventory').manuelleMengen,
 };
 const versch = {
-  ..._req('src/bestand/repository/umhaengen.js'),
+  ..._req('src/inventory/repository/reassign.js'),
   deleteSetEntry: (tx, id, [konto]) => erf.deleteEntry(tx, 'set', id, konto),
-  deleteManualEntry: _req('src/bestand/repository/manuelleMengen.js').removeEntry,
+  deleteManualEntry: _req('src/inventory/repository/manualQuantities.js').removeEntry,
 };
 
 test('Repository schreibt nur in übergebene Konten', { concurrency: 1 }, async t => {

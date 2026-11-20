@@ -37,8 +37,8 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
   }
 
   // Ungebunden geladen: In der Transaktion bekommt der Dienst ihren Kontext `t`.
-  const { addPurchaseAtTag } = require(path.join(__dirname, '..', 'dist', 'src', 'bestand', 'acquisitions.js'));
-  const bestand = testContext('bestand');
+  const { addPurchaseAtTag } = require(path.join(__dirname, '..', 'dist', 'src', 'inventory', 'acquisitions.js'));
+  const bestand = testContext('inventory');
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('last','x')");
   const uid = (await db.get("SELECT id FROM users WHERE username='last'")).id;
@@ -169,7 +169,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
     assert.match(src, /moneyInput\(/, `${rel}: Preis ungeprüft`);
   }
-  const vertrag = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/vertrag/sets.ts'), 'utf8'));
+  const vertrag = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/contract/sets.ts'), 'utf8'));
   assert.match(
     vertrag,
     /const NewSet = [^;]*quantity: eingabe\.stueckzahl\(\)[^;]*purchase_price: eingabe\.geld\(/,

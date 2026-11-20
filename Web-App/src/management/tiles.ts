@@ -2,7 +2,7 @@
  * Ein zweiter Speicher konnte dem ersten widersprechen. */
 
 import { logAndContinue } from '../infra/fehler';
-import { IMAGE_LOAD_COUNTER } from '../katalog';
+import { IMAGE_LOAD_COUNTER } from '../catalog';
 import type { JobKind } from '../auftraege';
 import type { ManagementContext } from './context';
 

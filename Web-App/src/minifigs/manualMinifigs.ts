@@ -4,7 +4,7 @@ import type { Sicht } from '../household';
 import { publicError } from '../infra/fehler';
 import { Degradations, versuche } from '../infra/ergebnis';
 import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
-import { mengenwunsch } from '../bestand';
+import { mengenwunsch } from '../inventory';
 import type { Quellen } from '../externalSources';
 import * as V from '../infra/validate';
 import { moneyInput } from '../infra/geld';
@@ -43,10 +43,10 @@ export async function manualMinifigPurchase(
 /** Twin of manuellesTeilAnlegen — one implementation for webapp and app. */
 export async function addManualMinifig(k: MinifigsContext, uid: number, body: Record<string, unknown>) {
   // Without a given location, the account's default location applies.
-  const ort = await k.bestand.locationService.locationForNewEntry(uid, body?.storage);
+  const ort = await k.inventory.locationService.locationForNewEntry(uid, body?.storage);
   const ergebnis = await addManualMinifigInternal(k, uid, body);
   if (ort && ergebnis?.fig_number) {
-    await k.bestand.locationService.setLocation('fig', [uid], [String(ergebnis.fig_number)], ort);
+    await k.inventory.locationService.setLocation('fig', [uid], [String(ergebnis.fig_number)], ort);
   }
   return ergebnis;
 }
@@ -75,8 +75,8 @@ async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: R
       unitPrice: unit_price,
       condition,
     });
-    // One acquisition per day and condition (src/bestand/acquisitions.ts).
-    await k.bestand.bookDailyEntry('fig', uid, [num], {
+    // One acquisition per day and condition (src/inventory/acquisitions.ts).
+    await k.inventory.bookDailyEntry('fig', uid, [num], {
       quantity,
       // In the base row, 0 is a display value; in the acquisition it would
       // mean "bought for free".
@@ -97,14 +97,14 @@ async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: R
   });
   // The catalog first: if the request fails in between, a description without
   // a holding is invisible, a holding without a name is not.
-  await k.katalog.rememberMinifig(num, found?.fig_name, found?.image_url);
-  await k.katalog.rememberMinifig(num, eingabe.name, eingabe.bild, null, k.db, uid);
+  await k.catalog.rememberMinifig(num, found?.fig_name, found?.image_url);
+  await k.catalog.rememberMinifig(num, eingabe.name, eingabe.bild, null, k.db, uid);
   // Without quantity, price and condition: they sit in the acquisition below.
-  await k.bestand.manuell.putRowAn('fig', uid, [num]);
-  if (blNum) await k.katalog.rememberOwnBlNumber(uid, 'fig', num, blNum);
+  await k.inventory.manuell.putRowAn('fig', uid, [num]);
+  if (blNum) await k.catalog.rememberOwnBlNumber(uid, 'fig', num, blNum);
   // With the price actually used (market price or estimate), so acquisition
   // history and P&L agree.
-  await k.bestand.bookDailyEntry('fig', uid, [num], {
+  await k.inventory.bookDailyEntry('fig', uid, [num], {
     quantity,
     price: acquisitionPrice,
     geschaetzt: estimated,
@@ -128,7 +128,7 @@ async function minifigDescription(
   let found: Awaited<ReturnType<Quellen['getMinifigInfo']>> | null = null;
   if (fig_name) return { fig_name, found };
 
-  const lokal = await k.katalog.catalogMinifig(num, uid);
+  const lokal = await k.catalog.catalogMinifig(num, uid);
   if (lokal) {
     fig_name = lokal.name;
     image_url = image_url || lokal.bild;
@@ -162,7 +162,7 @@ export async function updateManualMinifig(
   const wish = mengenwunsch(body);
   if (wish) {
     const cond = await k.einstellungen.conditionForPrice(undefined, existing.condition, uid);
-    raus.quantity = await k.bestand.passeManualQuantityAn(
+    raus.quantity = await k.inventory.passeManualQuantityAn(
       'fig',
       uid,
       [figNumber],
@@ -176,7 +176,7 @@ export async function updateManualMinifig(
   if (body.bl_fig_number !== undefined) {
     newBlNum = body.bl_fig_number ? String(body.bl_fig_number).trim() : null;
     // Cleared means "no different number", not "never looked up".
-    await k.katalog.rememberOwnBlNumber(uid, 'fig', figNumber, newBlNum || figNumber);
+    await k.catalog.rememberOwnBlNumber(uid, 'fig', figNumber, newBlNum || figNumber);
   }
   if (body.unit_price !== undefined) {
     // Same rule as for parts (src/finances/priceRule.ts).
@@ -188,11 +188,11 @@ export async function updateManualMinifig(
       zustand => k.finances.currentMinifigMarketPrice(figNumber, uid, newBlNum, zustand),
     );
     // Into the NEWEST acquisition, as with parts.
-    await k.bestand.setNewest('fig', 'preis', unitPrice, uid, [figNumber]);
+    await k.inventory.setNewest('fig', 'preis', unitPrice, uid, [figNumber]);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = V.zustand(body.condition);
-    await k.bestand.setNewest('fig', 'zustand', cond, uid, [figNumber]);
+    await k.inventory.setNewest('fig', 'zustand', cond, uid, [figNumber]);
   }
   return { ...raus, ...ab.angabe() };
 }
@@ -253,16 +253,16 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
       };
 
       if (await findManualMinifig(k, uid, figNumber)) {
-        await k.bestand.bookDailyEntry('fig', uid, [figNumber], erfassung);
+        await k.inventory.bookDailyEntry('fig', uid, [figNumber], erfassung);
         updated++;
         results.push({ fig_number: figNumber, action: 'updated' });
         continue;
       }
       // A name from the file is an input of this account (katalogPflege.ts).
-      await k.katalog.rememberMinifig(figNumber, figName, imageUrl, null, k.db, typed ? uid : null);
-      await k.bestand.manuell.putRowAn('fig', uid, [figNumber]);
-      if (blFigNumber) await k.katalog.rememberOwnBlNumber(uid, 'fig', figNumber, blFigNumber);
-      await k.bestand.bookDailyEntry('fig', uid, [figNumber], erfassung);
+      await k.catalog.rememberMinifig(figNumber, figName, imageUrl, null, k.db, typed ? uid : null);
+      await k.inventory.manuell.putRowAn('fig', uid, [figNumber]);
+      if (blFigNumber) await k.catalog.rememberOwnBlNumber(uid, 'fig', figNumber, blFigNumber);
+      await k.inventory.bookDailyEntry('fig', uid, [figNumber], erfassung);
       added++;
       results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
     } catch (e) {

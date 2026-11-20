@@ -48,8 +48,8 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
   }
   await seed();
   const L = {
-    ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testArea('bestand').locationService,
+    ..._req('src/inventory/storageLocation.js'),
+    ...require('./helpers/sources').testArea('inventory').locationService,
   };
 
   await t.test('anlegen, und dasselbe zweimal anlegen ist kein zweiter Eintrag', async () => {

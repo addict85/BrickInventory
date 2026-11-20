@@ -46,7 +46,7 @@ export async function imageReleased(_uid: number, segmente: string[]): Promise<b
   return segmente[0] !== 'sets' || segmente.length === 2;
 }
 
-/** Namen wie src/katalog/instructions.ts sie vergibt: <set>_<n|bdp|brickinstructions>.pdf */
+/** Namen wie src/catalog/instructions.ts sie vergibt: <set>_<n|bdp|brickinstructions>.pdf */
 export async function instructionReleased(k: ImagesContext, uid: number, segmente: string[]): Promise<boolean> {
   const m = segmente.length === 1 ? /^(.+)_(\d+|bdp|brickinstructions)\.pdf$/.exec(segmente[0]!) : null;
   return !!m && inScope(k, uid, m[1]!, 'anleitungen');

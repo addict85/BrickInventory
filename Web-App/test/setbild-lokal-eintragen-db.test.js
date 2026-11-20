@@ -116,7 +116,7 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
   });
 
   await t.test('… und die Katalogsuche nennt danach die lokale Adresse', async () => {
-    const { catalogPage } = _req('src/katalog/dienst.js');
+    const { catalogPage } = _req('src/catalog/service.js');
     const seite = await catalogPage(1, { q: proxy, themeId: null }, 'num_asc', 1, 10);
     assert.deepEqual(
       seite.sets.map(x => [x.set_number, x.image_local]),

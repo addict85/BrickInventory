@@ -6,32 +6,32 @@ import { aufKonten, type Konten } from './konten';
 
 const nur = (konten?: Konten) => (konten ? ` WHERE ${aufKonten('user_id', konten)}` : '');
 
-/** Sets im Bestand (src/bestand): id, user_id, set_number, storage_id, added_at. */
+/** Sets im Bestand (src/inventory): id, user_id, set_number, storage_id, added_at. */
 export const setBestand = (konten?: Konten) =>
   `(SELECT id, user_id, set_number, storage_id, added_at FROM sets${nur(konten)})`;
 
-/** Teile im Bestand (src/bestand): id, user_id, set_number, part_number, color_id, source, storage_id, added_at. */
+/** Teile im Bestand (src/inventory): id, user_id, set_number, part_number, color_id, source, storage_id, added_at. */
 export const teilBestand = (konten?: Konten) =>
   `(SELECT id, user_id, set_number, part_number, color_id, source, storage_id, added_at FROM parts${nur(konten)})`;
 
-/** Figuren im Bestand (src/bestand): id, user_id, set_number, fig_number, source, storage_id. */
+/** Figuren im Bestand (src/inventory): id, user_id, set_number, fig_number, source, storage_id. */
 export const figurBestand = (konten?: Konten) =>
   `(SELECT id, user_id, set_number, fig_number, source, storage_id FROM minifigs${nur(konten)})`;
 
-/** Lagerorte (src/bestand): id, user_id, name. */
+/** Lagerorte (src/inventory): id, user_id, name. */
 export const lagerorte = (konten?: Konten) => `(SELECT id, user_id, name FROM storage_locations${nur(konten)})`;
 
 const ERFASSUNG = 'id, user_id, quantity, condition, created_at, currency, price_estimated, day';
 
-/** Käufe eines Sets (src/bestand): die Erfassungsspalten, set_number, purchase_price. */
+/** Käufe eines Sets (src/inventory): die Erfassungsspalten, set_number, purchase_price. */
 export const setErfassungen = (konten?: Konten) =>
   `(SELECT ${ERFASSUNG}, set_number, purchase_price FROM set_acquisitions${nur(konten)})`;
 
-/** Käufe manueller Teile (src/bestand): die Erfassungsspalten, part_number, color_id, unit_price. */
+/** Käufe manueller Teile (src/inventory): die Erfassungsspalten, part_number, color_id, unit_price. */
 export const teilErfassungen = (konten?: Konten) =>
   `(SELECT ${ERFASSUNG}, part_number, color_id, unit_price FROM part_acquisitions${nur(konten)})`;
 
-/** Käufe manueller Figuren (src/bestand): die Erfassungsspalten, fig_number, unit_price. */
+/** Käufe manueller Figuren (src/inventory): die Erfassungsspalten, fig_number, unit_price. */
 export const figurErfassungen = (konten?: Konten) =>
   `(SELECT ${ERFASSUNG}, fig_number, unit_price FROM minifig_acquisitions${nur(konten)})`;
 

@@ -24,7 +24,7 @@ const express = require('express');
 const _req = require('./helpers/sources').buildAndRequire();
 const { portOf } = require('./helpers/server');
 const { vertragsRouter } = _req('src/http/vertragsRouter.js');
-const { CONTRACT } = _req('src/vertrag/index.js');
+const { CONTRACT } = _req('src/contract/index.js');
 
 test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async t => {
   let aufrufe = 0;
@@ -98,7 +98,7 @@ test('jede Eingabe und Abfrage ist geschlossen', () => {
 });
 
 test('die Abfrage steht in der OpenAPI-Beschreibung', () => {
-  const dok = _req('src/vertrag/openapi.js').openapi();
+  const dok = _req('src/contract/openapi.js').openapi();
   const abfrage = dok.paths['/api/v1/sets'].get.parameters.filter(p => p.in === 'query');
   assert.deepEqual(abfrage.map(p => p.name).sort(), [
     'accounts',

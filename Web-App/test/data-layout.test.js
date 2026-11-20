@@ -28,8 +28,8 @@ const SOURCES = [
   'src/sets/anleitungen.ts',
   'src/images/thumbs.ts',
   'routes/api_v1/pdf.ts',
-  'src/katalog/teileAnreicherung.ts',
-  'src/katalog/katalogAbgleich.ts',
+  'src/catalog/partsEnrichment.ts',
+  'src/catalog/catalogSync.ts',
 ];
 
 test('keine Quelle schreibt mehr die alten Pfade', () => {
@@ -51,7 +51,7 @@ test('Teile- und Figurenbilder landen in getrennten Ordnern', async t => {
   // Am Verhalten: downloadImage() mit nachgestelltem https.get (ohne Netz).
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
-  const { downloadImage } = _req('src/katalog/teileAnreicherung.js');
+  const { downloadImage } = _req('src/catalog/partsEnrichment.js');
   const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } = _req('src/infra/appPaths.js');
   const https = require('node:https');
   const { Readable } = require('node:stream');
@@ -85,7 +85,7 @@ test('Teile- und Figurenbilder landen in getrennten Ordnern', async t => {
   assert.ok(fs.existsSync(path.join(PART_IMAGES_DIR, `${NUM}_0.png`)), 'Teilebild nicht im Teileordner');
   // Der einzige Aufruf für Figuren sitzt im Bild-Hintergrundlauf.
   assert.match(
-    read('src/katalog/bildNachlauf.ts'),
+    read('src/catalog/imageFollowUp.ts'),
     /downloadImage\(kx, f\.image_url, f\.fig_number, 0, 'minifig'\)/,
     'Der Figuren-Download muss die Art mitgeben — sonst landen Figuren wieder bei den Teilen',
   );

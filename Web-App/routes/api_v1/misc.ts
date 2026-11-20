@@ -2,12 +2,12 @@ import { viewOf, guardFor } from './middleware';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-export function buildMiscRouter(d: Pick<Dienste, 'konto' | 'bestand'>) {
+export function buildMiscRouter(d: Pick<Dienste, 'konto' | 'inventory'>) {
   const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/stats', requireToken, async req => {
-    return { stats: await d.bestand.inventoryMetrics(viewOf(req)) };
+    return { stats: await d.inventory.inventoryMetrics(viewOf(req)) };
   });
 
   const OVERVIEW = {

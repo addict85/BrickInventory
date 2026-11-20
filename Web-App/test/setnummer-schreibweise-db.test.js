@@ -21,7 +21,7 @@ const db = testData();
 // BrickLink vorgeben, BEVOR die Preiswege priceGuideQuery herausziehen. Der
 // echte Client wirft in genau dieser Lage — hier wird nur MITGEZAEHLT, wie
 // oft ueberhaupt gefragt wird.
-const blPath = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPreise.js'));
+const blPath = require.resolve(path.join(ROOT, 'dist', 'src/catalog/bricklinkPrices.js'));
 const echt = require(blPath);
 let fetches = [];
 require.cache[blPath].exports = Object.assign({}, echt, {
@@ -129,7 +129,7 @@ test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
   );
   assert.deepEqual(
     vorpruefer,
-    ['src/katalog/repository/katalogCache.ts'],
+    ['src/catalog/repository/catalogCache.ts'],
     'Der Katalog wird an mehr als einer Stelle gelesen',
   );
 });

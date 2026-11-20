@@ -6,7 +6,7 @@ import { DAILY_JOBS } from './timesOfDay';
 import { rescheduleJobs } from './service';
 import { jsonOrNull } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
-import { KonfigExport } from '../vertrag/einstellungen';
+import { KonfigExport } from '../contract/settings';
 import type { ManagementContext } from './context';
 
 /** Mailserver, Registrierung und API-Schlüssel nimmt nur das Formular, mit Passwort. */
@@ -36,8 +36,8 @@ export async function dataZip(
   const { ZipArchive } = require('archiver') as { ZipArchive: new (o: object) => ZipArchiveHandle };
   const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
     k.sets.setsAlsCsv(uid),
-    k.bestand.partsAsCsv(uid),
-    k.bestand.minifigsAsCsv(uid),
+    k.inventory.partsAsCsv(uid),
+    k.inventory.minifigsAsCsv(uid),
     k.wanted.wantedListCsv(uid),
     k.finances.preisalarm.preisalarmeAlsCsv(uid),
   ]);

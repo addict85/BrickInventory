@@ -6,7 +6,7 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
-export function buildSetsStorageRouter(d: Pick<Dienste, 'konto' | 'finances' | 'bestand' | 'sets'>) {
+export function buildSetsStorageRouter(d: Pick<Dienste, 'konto' | 'finances' | 'inventory' | 'sets'>) {
   const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -65,31 +65,31 @@ export function buildSetsStorageRouter(d: Pick<Dienste, 'konto' | 'finances' | '
    * Einstellung mit genau einem Wert ist. */
   router.endpunkt('PUT /api/v1/storage/default', requireToken, async req => {
     // Fehlt das Feld, meint der Client dasselbe wie null.
-    return { vorgabe: await d.bestand.setDefault(req.apiUser.user_id, req.eingabe.id ?? null) };
+    return { vorgabe: await d.inventory.setDefault(req.apiUser.user_id, req.eingabe.id ?? null) };
   });
 
   router.endpunkt('POST /api/v1/storage/locations', requireToken, async req => {
-    const konto = await d.bestand.lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
-    const { ort, war_neu } = await d.bestand.locationService.putLocationAn(konto, req.eingabe.name);
+    const konto = await d.inventory.lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
+    const { ort, war_neu } = await d.inventory.locationService.putLocationAn(konto, req.eingabe.name);
     if (!war_neu) fachfehler('konflikt', 'lagerort_doppelt');
     return { ort };
   });
 
   router.endpunkt('PUT /api/v1/storage/locations/:id', requireToken, async req => {
-    const konto = await d.bestand.lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
-    return { ort: await d.bestand.locationService.benenneOrtUm(konto, req.pfad.id, req.eingabe.name) };
+    const konto = await d.inventory.lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner ?? req.eingabe.owner);
+    return { ort: await d.inventory.locationService.benenneOrtUm(konto, req.pfad.id, req.eingabe.name) };
   });
 
   router.endpunkt('DELETE /api/v1/storage/locations/:id', requireToken, async req => {
-    const konto = await d.bestand.lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner);
-    await d.bestand.locationService.loescheOrt(konto, req.pfad.id);
+    const konto = await d.inventory.lagerSchreibkonto(req.apiUser.user_id, req.abfrage.owner);
+    await d.inventory.locationService.loescheOrt(konto, req.pfad.id);
     return {};
   });
 
   // Spannt Sets und Teile, gehört keiner Familie.
   router.endpunkt('GET /api/v1/storage', requireToken, async req => {
     const ids = viewOf(req);
-    return { orte: await d.bestand.locationService.lagerorte(ids) };
+    return { orte: await d.inventory.locationService.lagerorte(ids) };
   });
   return router;
 }

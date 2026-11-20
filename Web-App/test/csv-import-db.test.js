@@ -16,7 +16,7 @@
  * beim Tausch“ (rb_inventories_setnummer_mit_version in der Schattentabelle).
  *
  * Gegenproben zu „rb_sets bildet den Dump nach“ (10.11.2026, in
- * sameSetsAb(), src/katalog/repository/csvTausch.ts, je einzeln):
+ * sameSetsAb(), src/catalog/repository/csvSwap.ts, je einzeln):
  *   E  im Upsert `source='csv'` weggelassen → rot: „geändert“ (B bleibt 'api')
  *   F  das UPDATE auf source='api' entfernt → rot: „mit Bezug“ (C bleibt 'csv')
  *   G  das DELETE entfernt → rot: „ohne Bezug“ (D und F bleiben)
@@ -250,7 +250,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
 // Gegenprobe (15.11.2026): in createImportAccess() `pool: { max: 2 }` gestrichen → rot:
 // statement_timeout '30s' statt '0' (die Fristen der Anfragen träfen den Tausch).
 test('der Importprozess baut seinen Zugang über createDb, ohne Fristen der Anfragen', async t => {
-  const zugang = _req('src/katalog/index.js').createImportAccess();
+  const zugang = _req('src/catalog/index.js').createImportAccess();
   t.after(() => zugang.pool.end());
   let zeile;
   try {
@@ -271,7 +271,7 @@ test('der CSV-Download geht über abruf.ts, mit Frist, Deckel und Host-Liste', (
   for (const feld of ['hosts:', 'maxBytes:', 'zeitlimitMs:', 'signal'])
     assert.ok(call.includes(feld), `der Download ruft openHttps ohne ${feld}`);
   assert.doesNotMatch(
-    ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/katalog/csvAbgleich.ts'), 'utf8')),
+    ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/catalog/csvSync.ts'), 'utf8')),
     /from 'https'/,
     'der Job lädt nicht mehr selbst',
   );

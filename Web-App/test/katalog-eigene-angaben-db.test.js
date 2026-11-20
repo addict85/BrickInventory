@@ -86,7 +86,7 @@ test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurren
     B = api(bob),
     C = api(carol),
     K = api(kind);
-  const { partsCsv, figurenCsv } = _req('src/bestand/bestandExport.js');
+  const { partsCsv, figurenCsv } = _req('src/inventory/inventoryExport.js');
 
   const ALICE = ['Alices Prototyp', 'Tresorrot', 'AB1234', 'Privat', 'media/alice.jpg', 'Geheimfigur', 'Gefälscht'];
   await A('POST', '/parts', {

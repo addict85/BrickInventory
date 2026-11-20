@@ -3,17 +3,17 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { notFound } from '../../src/infra/fehlerTexte';
 
-export function buildCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
+export function buildCatalogRouter(d: Pick<Dienste, 'konto' | 'catalog'>) {
   const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/catalog/meta', requireToken, async _req => {
-    return { ...(await d.katalog.catalogMeta()) };
+    return { ...(await d.catalog.catalogMeta()) };
   });
 
   router.endpunkt('GET /api/v1/catalog/year-verteilung', requireToken, async req => {
     const q = req.abfrage;
-    const years = await d.katalog.yearDistribution(
+    const years = await d.catalog.yearDistribution(
       { q: (q.q ?? '').trim(), themeId: q.theme_id || null },
       q.sort !== 'year_asc',
     );
@@ -24,7 +24,7 @@ export function buildCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
     const q = req.abfrage;
     const page = Math.max(1, q.page ?? 1);
     const limit = Math.min(200, Math.max(1, q.page_size ?? q.limit ?? 60));
-    const seite = await d.katalog.catalogPage(
+    const seite = await d.catalog.catalogPage(
       req.apiUser.user_id,
       {
         q: (q.q ?? '').trim(),
@@ -40,8 +40,8 @@ export function buildCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
   });
 
   router.endpunkt('GET /api/v1/catalog/sets/:setNumber', requireToken, async req => {
-    const set = await d.katalog.catalogSet(req.apiUser.user_id, req.pfad.setNumber);
-    if (!set) notFound((await d.katalog.catalogLoaded()) ? 'set_nicht_im_katalog' : 'katalog_nicht_geladen');
+    const set = await d.catalog.catalogSet(req.apiUser.user_id, req.pfad.setNumber);
+    if (!set) notFound((await d.catalog.catalogLoaded()) ? 'set_nicht_im_katalog' : 'katalog_nicht_geladen');
     return { set };
   });
 
@@ -51,7 +51,7 @@ export function buildCatalogRouter(d: Pick<Dienste, 'konto' | 'katalog'>) {
     if (!raw) {
       return { links: {} };
     }
-    const map = await d.katalog.resolveBlLinks(
+    const map = await d.catalog.resolveBlLinks(
       raw
         .split(',')
         .map(s => s.trim())

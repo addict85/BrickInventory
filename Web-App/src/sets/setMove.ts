@@ -18,7 +18,8 @@ export interface Shift {
  * Transaktionsverbindung. */
 async function copyContents(t: SetsContext, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
-  for (const tab of ['parts', 'minifigs'] as const) n[tab] = await t.bestand.setInhalt.kopieren(tab, sn, fromId, toId);
+  for (const tab of ['parts', 'minifigs'] as const)
+    n[tab] = await t.inventory.setInhalt.kopieren(tab, sn, fromId, toId);
   if (!(await repo.hatInstructions(t.db, toId, sn)))
     n.instructions = await repo.copyInstructions(t.db, sn, fromId, toId);
   return n;
@@ -47,10 +48,10 @@ export async function setEntriesReassign(
   // Stammdaten beschreiben das Set, nicht das Exemplar: Liegt es beim Ziel
   // schon, genügt das Umhängen der Erfassungen.
   const dst = await repo.setRow(t.db, toId, sn);
-  if (!dst) await t.bestand.putSetAn(toId, sn, src.added_at);
+  if (!dst) await t.inventory.putSetAn(toId, sn, src.added_at);
 
   for (const a of wanted) {
-    await t.bestand.bookDailyEntry('set', toId, [sn], {
+    await t.inventory.bookDailyEntry('set', toId, [sn], {
       quantity: a.quantity,
       price: a.purchase_price,
       condition: a.condition,
@@ -58,7 +59,7 @@ export async function setEntriesReassign(
       geschaetzt: a.price_estimated,
       currency: a.currency,
     });
-    await t.bestand.erfassung.loesche('set', a.id, fromId);
+    await t.inventory.erfassung.loesche('set', a.id, fromId);
   }
 
   const counts = await copyContents(t, sn, fromId, toId);
@@ -68,7 +69,7 @@ export async function setEntriesReassign(
     return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: false };
   }
   await repo.removeInstructions(t.db, fromId, sn);
-  await t.bestand.setInhalt.entfernen([fromId], sn);
+  await t.inventory.setInhalt.entfernen([fromId], sn);
   return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: true };
 }
 

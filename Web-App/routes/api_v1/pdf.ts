@@ -5,7 +5,7 @@ import { streamFileToResponse } from '../../src/http/httpAntwort';
 import { kontoSchranke, guardFor } from './middleware';
 import { openStream, type Strom } from '../../src/konto/http/strom';
 import _pdfFs from 'node:fs/promises';
-import { pdfKey } from '../../src/katalog';
+import { pdfKey } from '../../src/catalog';
 import { responseLanguage, fachfehler, notFound } from '../../src/infra/fehlerTexte';
 import type { Request, Response } from 'express';
 import { inShell, vertragsRouter } from '../../src/http/vertragsRouter';
@@ -26,8 +26,8 @@ function streamStatus(job: {
 }
 
 /** Der einzige Weg der drei Abrufrouten an einen Auftrag: nur der eigene; ein Lesefehler geht weiter. */
-function pdfJobReadFor(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>, id: string, userId: number) {
-  return d.katalog.pdf.lies(id, userId);
+function pdfJobReadFor(d: Pick<Dienste, 'auftraege' | 'catalog' | 'konto'>, id: string, userId: number) {
+  return d.catalog.pdf.lies(id, userId);
 }
 /** Die Beugung steht als Platzhalter in der Tabelle, nicht hier. */
 function runningInflection(anzahl: number, sprache: string) {
@@ -45,7 +45,7 @@ const fertig = (s: string | undefined) => s === 'done' || s === 'error';
 /** NOTIFY meldet den Stand, gleich in welchem Prozess der Auftrag läuft; ohne
  * Nutzlast (beim Wiederverbinden) und im Rückfalltakt wird ebenfalls nachgesehen,
  * falls ein Signal während einer Verbindungsstörung verloren ging. */
-function sequenceJob(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>, strom: Strom, jobId: string, uid: number) {
+function sequenceJob(d: Pick<Dienste, 'auftraege' | 'catalog' | 'konto'>, strom: Strom, jobId: string, uid: number) {
   const pruefe = async () => {
     const job = await pdfJobReadFor(d, jobId, uid);
     if (strom.zu) return;
@@ -61,7 +61,7 @@ function sequenceJob(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>, strom:
  * und Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess.
  * Aufgeräumt wird nur nach vollständiger Auslieferung. */
 function deliverAndCleanOn(
-  d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>,
+  d: Pick<Dienste, 'auftraege' | 'catalog' | 'konto'>,
   req: Request,
   res: Response,
   jobId: string,
@@ -72,12 +72,12 @@ function deliverAndCleanOn(
   res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
   const aufraeumen = () => {
     _pdfFs.unlink(pdfPath).catch(withoutMissingFile('pdf:datei loeschen'));
-    d.katalog.pdf.loesche(jobId, uid).catch((e: unknown) => reportError('pdf:auftrag-loeschen', e));
+    d.catalog.pdf.loesche(jobId, uid).catch((e: unknown) => reportError('pdf:auftrag-loeschen', e));
   };
   streamFileToResponse(res, pdfPath, aufraeumen, req);
 }
 
-export function buildPdfRouter(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>) {
+export function buildPdfRouter(d: Pick<Dienste, 'auftraege' | 'catalog' | 'konto'>) {
   const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -86,7 +86,7 @@ export function buildPdfRouter(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto
     const { sets = [], parts = [] } = req.eingabe;
     if (!parts.length) fachfehler('ungueltig', 'keine_teile');
 
-    const r = await d.katalog.pdf.starten(uid, sets, parts);
+    const r = await d.catalog.pdf.starten(uid, sets, parts);
     if ('laufend' in r) {
       fachfehler('zu_viele', 'pdf_auftrag_laeuft', runningInflection(r.laufend, responseLanguage(req)));
     }
@@ -123,7 +123,7 @@ export function buildPdfRouter(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto
 
   router.endpunkt('GET /api/v1/sets/partslist-pdf/download/:jobId', requireToken, async (req, res) => {
     const jobId = req.pfad.jobId;
-    const pdfPath = await d.katalog.pdf.finishedFile(jobId, req.apiUser.user_id);
+    const pdfPath = await d.catalog.pdf.finishedFile(jobId, req.apiUser.user_id);
     deliverAndCleanOn(d, req, res, jobId, req.apiUser.user_id, pdfPath);
   });
   return router;

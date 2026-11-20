@@ -7,7 +7,7 @@ import { zaehle } from './queries';
 import type { loadSetEntries } from '../repository/acquisitions';
 import { aufRappen, inZehntel4, sumFrom } from '../../infra/geld';
 import type * as repo from '../repository/profitLoss';
-import { marketPriceFrom } from '../../katalog';
+import { marketPriceFrom } from '../../catalog';
 import type { FinancesContext } from '../context';
 
 type PnlSet = Awaited<ReturnType<typeof repo.setsWithEntries>>[number];

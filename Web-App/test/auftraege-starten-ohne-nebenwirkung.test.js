@@ -3,7 +3,7 @@
  * Import-Prozesses reicht die Bearbeitertabelle dem Katalogabgleich herein.
  *
  * Gegenprobe (15.11.2026 gemessen): in startup/verdrahtung.ts
- * `d.katalog.auftragsarten('')` statt des Pfads → rot: „der Katalogabgleich bekommt den Import-Prozess“.
+ * `d.catalog.auftragsarten('')` statt des Pfads → rot: „der Katalogabgleich bekommt den Import-Prozess“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,7 +17,7 @@ const { editor } = require(path.join(ROOT, 'dist/jobs/auftraegeStarten.js'));
 test('der Katalogabgleich bekommt den Import-Prozess', async () => {
   const aufrufe = [];
   // Vor dem Laden der Verdrahtung ersetzt: Die Anmeldung des Katalogs ruft das Modul.
-  const modul = require.resolve(path.join(ROOT, 'dist/src/katalog/csvAbgleich.js'));
+  const modul = require.resolve(path.join(ROOT, 'dist/src/catalog/csvSync.js'));
   const echt = require(modul);
   require.cache[modul].exports = { ...echt, csvAbgleich: async (...a) => aufrufe.push(a) };
   const stummel = { inTransaction: () => false, transaction: async () => {} };

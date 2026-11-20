@@ -1,13 +1,13 @@
-import { forSet, mergeInstructions } from '../katalog';
+import { forSet, mergeInstructions } from '../catalog';
 import { resolveImageLocal } from '../images';
 import { reportError } from '../infra/fehler';
 import * as repo from './repository/sets';
 import { asIds, type Sicht, type ScopeInput as Blickfeld } from '../household';
-import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
+import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../inventory';
 
 // Leseabfragen; Zustand aus den Erfassungen.
 
-import type { Abfrage } from '../vertrag';
+import type { Abfrage } from '../contract';
 import { versuche } from '../infra/ergebnis';
 import type { SetsContext } from './kontext';
 
@@ -114,7 +114,7 @@ export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, 
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
     // über das Blickfeld.
     repo.setDetailRow(sk.db, uids, setNumber, uids[0]),
-    sk.katalog.instructionsToSet(setNumber),
+    sk.catalog.instructionsToSet(setNumber),
     repo.ownInstructionsOfSets(sk.db, uids, setNumber),
   ]);
   if (!set) return null;
@@ -123,7 +123,7 @@ export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, 
   const agg = await zustandsAggregat(sk, uids, setNumber);
   // Die Kaufadressen vom Server: Eine Adresse an vier Stellen wären vier Wahrheiten.
   const [bricklink, preisvergleich] = await Promise.all([
-    sk.katalog.resolveBlLink(setNumber).catch((e: unknown) => {
+    sk.catalog.resolveBlLink(setNumber).catch((e: unknown) => {
       reportError('setdetail:bricklink', e);
       return null;
     }),

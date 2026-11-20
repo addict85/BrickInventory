@@ -1,5 +1,5 @@
 /**
- * BrickLink-Link-Auflösung für Katalog-Sets (src/katalog/bricklinkLink.ts).
+ * BrickLink-Link-Auflösung für Katalog-Sets (src/catalog/bricklinkLink.ts).
  *
  * Gegenproben (08.11.2026 gemessen, am Bündel in jsdom):
  *   A  in openCatModal wieder `blBtn.style.display = bl ? '' : 'none'` → rot:
@@ -13,7 +13,7 @@ const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { withVariant, bareNumber, blAddress, blSuchadresse } = _req('src/katalog/bricklinkLink.js');
+const { withVariant, bareNumber, blAddress, blSuchadresse } = _req('src/catalog/bricklinkLink.js');
 
 test('withVariant ergänzt den Rebrickable-Suffix', () => {
   assert.equal(withVariant('75192'), '75192-1');

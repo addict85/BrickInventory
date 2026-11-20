@@ -23,14 +23,14 @@ export type ImageSource = 'vorhanden' | 'rebrickable' | null;
 /** After the transaction, never inside it: the fetch may take time and fail without
  * taking the change down with it. */
 async function fetchImageLater(k: PartsContext, partNumber: string, farbe: number): Promise<ImageSource> {
-  const lokal = await k.katalog.catalogPart(partNumber, farbe);
+  const lokal = await k.catalog.catalogPart(partNumber, farbe);
   if (lokal?.bildQuelle === 'farbe') return 'vorhanden';
 
   // The change already stands; a failed fetch only drops the image.
   const info = await versuche('partColor:lookupPart', () => k.externalSources.quellen.lookupPart(partNumber, farbe));
   if (!info.ok || !info.wert?.image_url) return null;
   try {
-    await k.katalog.rememberPartColor(partNumber, farbe, null, null, info.wert.image_url, null);
+    await k.catalog.rememberPartColor(partNumber, farbe, null, null, info.wert.image_url, null);
     return 'rebrickable';
   } catch (e) {
     reportError('colorChange:image from Rebrickable', e);
@@ -67,12 +67,12 @@ export async function changePartColor(
 
     // The TARGET color's catalog entry must exist before the move: the parts list
     // reads name and color code from there, otherwise a color dot with no label.
-    await t.katalog.rememberPartColor(partNumber, neu, catalogColor?.name, catalogColor?.rgb, null, null, t.db);
-    await t.katalog.rememberPartColor(partNumber, neu, angaben.color_name, angaben.color_hex, null, null, t.db, uid);
+    await t.catalog.rememberPartColor(partNumber, neu, catalogColor?.name, catalogColor?.rgb, null, null, t.db);
+    await t.catalog.rememberPartColor(partNumber, neu, angaben.color_name, angaben.color_hex, null, null, t.db, uid);
 
     const ziel = await repo.lockManualPartRow(t.db, uid, partNumber, neu);
 
-    const { vereint, verschoben } = await t.bestand.manuell.recolorPartRow(
+    const { vereint, verschoben } = await t.inventory.manuell.recolorPartRow(
       uid,
       partNumber,
       { ...quelle, farbe: alt },

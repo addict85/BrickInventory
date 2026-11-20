@@ -38,7 +38,7 @@ test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async
     keineDb(t, e);
     return;
   }
-  const { addPurchaseAtTag } = _req('src/bestand/acquisitions.js');
+  const { addPurchaseAtTag } = _req('src/inventory/acquisitions.js');
   const NAME = `tagzone-${process.pid}`;
   const SN = `TZ${process.pid}-1`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);

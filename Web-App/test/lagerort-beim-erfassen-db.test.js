@@ -86,8 +86,8 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
   const figuren = _req('src/minifigs/manualMinifigs.js');
   const merkliste = _req('src/wanted/wanted.js');
   const L = {
-    ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testArea('bestand').locationService,
+    ..._req('src/inventory/storageLocation.js'),
+    ...require('./helpers/sources').testArea('inventory').locationService,
   };
 
   await t.test('1. Ein Set kommt mit seinem Lagerort in die Galerie', async () => {

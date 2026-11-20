@@ -30,7 +30,7 @@ const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/verwalter');
 const db = testData();
-const { CONTRACT } = _req('src/vertrag/index.js');
+const { CONTRACT } = _req('src/contract/index.js');
 
 test('verschachtelte Werte an schreibenden Routen', { concurrency: 1 }, async t => {
   try {

@@ -1,7 +1,7 @@
 /** Der Satz Dienste aus startup/verdrahtung.ts, hier, damit routes/ und jobs/ nicht an
  * startup/ hängen, das sie einbindet; Routerfabriken verengen ihn mit Pick<>. */
 import type { JobsServices } from './auftraege';
-import type { InventoryServices } from './bestand';
+import type { InventoryServices } from './inventory';
 import type { ImagesServices } from './images';
 import type { ThrottleServices } from './throttle';
 import type { SettingsServices } from './settings';
@@ -13,7 +13,7 @@ import type { ForeignSourcesServices } from './externalSources';
 import type { VoucherServices } from './vouchers';
 import type { HouseholdServices } from './household';
 import type { IdempotencyServices } from './idempotency';
-import type { CatalogServices } from './katalog';
+import type { CatalogServices } from './catalog';
 import type { AccountServices } from './konto';
 import type { MailServices } from './mail';
 import type { ProfileServices } from './profile';
@@ -45,9 +45,9 @@ export interface Dienste {
   idempotency: IdempotencyServices;
   externalSources: ForeignSourcesServices;
   images: ImagesServices;
-  katalog: CatalogServices;
+  catalog: CatalogServices;
   finances: FinancesServices;
-  bestand: InventoryServices;
+  inventory: InventoryServices;
   sets: SetsServices;
   parts: PartsServices;
   minifigs: MinifigsServices;

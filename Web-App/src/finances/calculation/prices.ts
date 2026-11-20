@@ -3,7 +3,7 @@
  * stehen, nicht umgekehrt. */
 
 import type { Preiszeile, SetPreiszeile } from '../repository/priceCache';
-import { type CatalogEntry, hatPrice, marketPriceFrom } from '../../katalog';
+import { type CatalogEntry, hatPrice, marketPriceFrom } from '../../catalog';
 import { asIds } from '../../household';
 import { logAndContinue, reportError } from '../../infra/fehler';
 import { Fachfehler, fachfehler } from '../../infra/fehlerTexte';
@@ -207,7 +207,7 @@ export async function fetchPrice(
   // also unter derselben Schreibweise wie die Tabelle.
   const catalogRow = pre?.catalog
     ? pre.catalog.get(withVersion(setNumber)) || null
-    : await k.katalog.catalogEntry(setNumber);
+    : await k.catalog.catalogEntry(setNumber);
   if (withoutBricklinkPrice(catalogRow))
     return { ...WITHOUT_PRICE, from_cache: true, no_price: true, bl_unbekannt: true };
   const ttl = hours(ttlHours);
@@ -215,7 +215,7 @@ export async function fetchPrice(
     name: `Price ${setNumber}`,
     lies: c =>
       pre?.cache ? pre.cache.get(`${setNumber}|${c}`) || null : priceFromCache(k, setNumber, c, currency, ttl),
-    frage: c => k.katalog.priceGuide(setNumber, c, guideType, currency),
+    frage: c => k.catalog.priceGuide(setNumber, c, guideType, currency),
     remember: async (c, g) => {
       const p = await savePrice(k, setNumber, c, currency, g);
       console.log(`  Price ${setNumber} cond=${c}: avg=${p.avg} qty_avg=${p.qavg}`);
@@ -350,14 +350,14 @@ export async function resolveBlColorId(k: FinancesContext, rbColorId: number): P
 // (bl_mapping), damit nicht zwei Orte auseinanderlaufen. Je Satz Dienste ein Gedächtnis.
 const blTeil = (k: FinancesContext) =>
   k.faecher.fach('blTeil', () =>
-    nachschlagwerk(k.uhr, (partNumber: string) => k.katalog.blFetchNumber('part', partNumber)),
+    nachschlagwerk(k.uhr, (partNumber: string) => k.catalog.blFetchNumber('part', partNumber)),
   );
 
 /** Mit `konto` zuerst dessen eigene Zuordnung (Migration 0094); sie geht am
  * gemeinsamen Gedächtnis vorbei, weil sie nur für dieses Konto gilt. */
 export async function resolveBlPartNumber(k: FinancesContext, partNumber: string, konto: number | null = null) {
   // Ohne Fang: Mit der Rebrickable-Nummer käme der Preis eines anderen Teils.
-  if (konto !== null) return (await k.katalog.blFetchNumber('part', partNumber, konto)) ?? partNumber;
+  if (konto !== null) return (await k.catalog.blFetchNumber('part', partNumber, konto)) ?? partNumber;
   return (await blTeil(k)(partNumber)) ?? partNumber;
 }
 
@@ -366,8 +366,8 @@ export async function resolveBlPartNumber(k: FinancesContext, partNumber: string
 export async function loadBlNumbersBefore(k: FinancesContext, partNumbers: string[]): Promise<void> {
   const offen = [...new Set(partNumbers.filter(Boolean).map(String))].filter(n => !blTeil(k).kennt(n));
   if (!offen.length) return;
-  // Die Abfrage steht in src/katalog/blZuordnung.ts.
-  for (const [rb, bl] of await k.katalog.blFetchNumbers('part', offen)) blTeil(k).merken(rb, bl);
+  // Die Abfrage steht in src/catalog/blMapping.ts.
+  for (const [rb, bl] of await k.catalog.blFetchNumbers('part', offen)) blTeil(k).merken(rb, bl);
 }
 
 /** Sonst fragte jedes Teil je Zustand einzeln. Schlüssel wie in fetchPartPrice:

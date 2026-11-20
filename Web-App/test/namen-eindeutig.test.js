@@ -21,7 +21,7 @@ const ALLOWED = new Map([
   ['log', 'drei Jobs, jeder schreibt mit seinem eigenen Praefix.'],
   [
     'setAngaben',
-    'clients/brickset und src/katalog/rebrickableKatalog — dieselbe Frage an ZWEI ' +
+    'clients/brickset und src/catalog/rebrickableCatalog — dieselbe Frage an ZWEI ' +
       'verschiedene Dienste. Der Dateiname sagt, welcher gemeint ist.',
   ],
   [

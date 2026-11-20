@@ -26,7 +26,7 @@ jobs/                   Auftrags-Worker, Bearbeitertabelle, Verdrahtung (keine F
 src/<bereich>/          Dienste (Fachlogik) und repository (SQL)
 db/, clients/           Datenbank und Aussenwelt (nur HTTP)
 src/http/               HTTP-Helfer für Routen und HTTP-Seiten (Fehlerantwort, Upload, Drossel)
-src/vertrag/            der API-Vertrag (zod-Schemas, Prüfung, OpenAPI), von allen Bereichen geteilt
+src/contract/            der API-Vertrag (zod-Schemas, Prüfung, OpenAPI), von allen Bereichen geteilt
 src/infra/              fachfreie Helfer
 ```
 
@@ -43,7 +43,7 @@ Absicht, solange es nur von unten gebraucht wird:
 - Die Texte der Fehler (`fehlerTexte`) und die Regel, welchen Proxys man traut
   (`proxyVertrauen`). Express importiert `src/infra` nicht; die HTTP-Hülle
   (`sendeFehler` in `httpAntwort`, Datei-Ein- und -Ausgang, Schranken je Konto,
-  Sitzungskeks) liegt eine Stufe höher in `src/http`, der Vertrag in `src/vertrag`
+  Sitzungskeks) liegt eine Stufe höher in `src/http`, der Vertrag in `src/contract`
   (Stufe 2). Dienste kennen Express nicht; was sie von der Anfrage brauchen,
   trägt der Aufrufrahmen (`kontoKontext`, siehe unten).
 - Den Zugang kennt `src/infra` nur als Schnittstelle (`Zugang` in
@@ -223,7 +223,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | Stufe | Bereiche |
 |---|---|
 | 1 | `src/infra` |
-| 2 | `src/vertrag` |
+| 2 | `src/contract` |
 | 3 | `src/http` |
 | 4 | `db`, `clients` |
 | 5 | `src/throttle` |
@@ -234,9 +234,9 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 10 | `src/household`, `src/devices`, `src/factors` |
 | 11 | `src/konto` |
 | 12 | `src/images`, `src/profile` |
-| 13 | `src/idempotency`, `src/katalog` |
+| 13 | `src/idempotency`, `src/catalog` |
 | 14 | `src/finances` |
-| 15 | `src/bestand` |
+| 15 | `src/inventory` |
 | 16 | `src/sets` |
 | 17 | `src/parts`, `src/minifigs`, `src/wanted`, `src/vouchers` |
 | 18 | `src/collection`, `src/management` |
@@ -287,7 +287,7 @@ Ausnahme: Der Schemastart (`db/schemaStart.ts`) setzt die Zeitzone in `global_se
 bevor es Dienste gibt. Die Tabelle hier ist die Quelle für den Test.
 
 Die Bestandszeilen eines Kontos (Sets, Teile, Figuren, ihre Käufe, Orte, Papierkorb) gehören
-`src/bestand`: Papierkorb, Lagerorte und Tageserfassung arbeiten über alle drei Arten, und nur der
+`src/inventory`: Papierkorb, Lagerorte und Tageserfassung arbeiten über alle drei Arten, und nur der
 tiefste Bereich, der sie schreibt, kann von den anderen gerufen werden. Sets, Teile und Figuren
 schreiben über `t.bestand`. Wählt eine Datei den Tabellennamen zur Laufzeit, misst der Test, was sie
 liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
@@ -306,9 +306,9 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 | `src/konto` | `api_tokens`, `api_tokens_consumed`, `qr_login_tokens`, `user_sessions`, `users`, `admin_takeovers`, `admin_log` |
 | `src/images` | `image_misses`, `image_wanted` |
 | `src/idempotency` | `idempotency` |
-| `src/katalog` | `bl_mapping`, `bl_mapping_custom`, `catalog_cache`, `minifig_custom`, `minifig_parts_cache`, `minifigs_catalog`, `part_catalog`, `part_color_catalog`, `rb_colors`, `rb_inventories`, `rb_inventory_minifigs`, `rb_inventory_parts`, `rb_part_categories`, `rb_parts`, `rb_sets`, `rb_themes`, `set_catalog`, `set_minifigs`, `set_parts`, `shared_instructions`, `subsets_cache`, `part_custom`, `part_color_custom` |
+| `src/catalog` | `bl_mapping`, `bl_mapping_custom`, `catalog_cache`, `minifig_custom`, `minifig_parts_cache`, `minifigs_catalog`, `part_catalog`, `part_color_catalog`, `rb_colors`, `rb_inventories`, `rb_inventory_minifigs`, `rb_inventory_parts`, `rb_part_categories`, `rb_parts`, `rb_sets`, `rb_themes`, `set_catalog`, `set_minifigs`, `set_parts`, `shared_instructions`, `subsets_cache`, `part_custom`, `part_color_custom` |
 | `src/finances` | `minifig_price_cache`, `minifig_price_history`, `part_price_cache`, `part_price_history`, `price_alerts`, `price_cache`, `price_history`, `exchange_rates` |
-| `src/bestand` | `minifig_acquisitions`, `minifigs`, `trash`, `part_acquisitions`, `parts`, `set_acquisitions`, `sets`, `storage_locations` |
+| `src/inventory` | `minifig_acquisitions`, `minifigs`, `trash`, `part_acquisitions`, `parts`, `set_acquisitions`, `sets`, `storage_locations` |
 | `src/sets` | `instructions` |
 | `src/parts` | `parts_catalog_pending`, `parts_summary`, `parts_summary_state`, `parts_version_user` |
 | `src/wanted` | `wanted` |
@@ -316,7 +316,7 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 
 ## API-Vertrag
 
-`src/vertrag/` beschreibt jede Route mit zod: Antwort und, für jede
+`src/contract/` beschreibt jede Route mit zod: Antwort und, für jede
 schreibende Route, die Eingabe. Daraus entstehen die Routentypen (tsc),
 `docs/openapi.json` (`npm run vertrag:openapi`), die Typen der Oberfläche und die
 Kotlin-Antworttypen der App (`vertrag.erzeugt`). Der Vertrag ist die einzige

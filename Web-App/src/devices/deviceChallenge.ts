@@ -4,7 +4,7 @@
  * hinterlegte ein erbeuteter Token einen Schlüssel ohne Sperre. */
 import { createPublicKey, randomBytes, verify, X509Certificate, type KeyObject } from 'node:crypto';
 import type { Familie } from './repository/deviceKeys';
-import type { ACTIONS } from '../vertrag/geraet';
+import type { ACTIONS } from '../contract/device';
 import { GOOGLE_ROOTS } from './attestation/googleRoots';
 import { checkChain } from './attestation/keyAttestation';
 import { applicableList, REVOCATION_STATE } from './attestation/revocationList';

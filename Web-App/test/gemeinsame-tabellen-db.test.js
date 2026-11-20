@@ -8,7 +8,7 @@
  *   A  routes/api_v1/wanted.ts: rememberNumber schreibt immer rememberBlNumber →
  *      rot: „Eingaben eines Kontos landen in keiner gemeinsamen Tabelle“
  *      (bl_mapping trägt die Marke)
- *   B  rememberMinifig() in src/katalog/katalogPflege.ts ohne den Zweig für `von` →
+ *   B  rememberMinifig() in src/catalog/catalogMaintenance.ts ohne den Zweig für `von` →
  *      rot: dieselbe Prüfung (minifigs_catalog)
  *   C  ein `INSERT INTO part_catalog` in src/parts/repository/manualParts.ts
  *      → rot: „jede schreibende Stelle auf eine Katalogtabelle ist eingetragen“
@@ -44,18 +44,18 @@
  * reicht ihn). Gegenproben (15.11.2026 gemessen, je einzeln):
  *   M  src/images/repository/imageScope.ts importiert countedSets wieder aus db/bestandSicht →
  *      rot: „… aufwärts über db/“ ['src/images → price_alerts', 'src/images → sets', 'src/images → wanted']
- *   N  src/katalog/repository/katalogSuche.ts importiert mengeJoin wieder aus db/bestandsmenge → rot:
- *      dieselbe Prüfung, ['src/katalog → set_acquisitions']
+ *   N  src/catalog/repository/catalogSearch.ts importiert mengeJoin wieder aus db/bestandsmenge → rot:
+ *      dieselbe Prüfung, ['src/catalog → set_acquisitions']
  *   O  setBestand in db/bestandSicht.ts liest `FROM parts` → rot am Selbstbeweis „setBestand liest
  *      sets“; setzt es den Namen zur Laufzeit zusammen, bleibt es grün: gezählt wird das Ergebnis.
  *
  * Wählt eine Datei den Tabellennamen zur Laufzeit, zählt, was sie beim Aufruf über einen mitschreibenden
  * Zugang liest und schreibt (DYNAMISCH, measureFile). Gegenproben (15.11.2026 gemessen, je einzeln):
- *   P  src/bestand/repository/lagerort.ts: TABELLEN.set = 'instructions' → rot: „gemessen, wie
+ *   P  src/inventory/repository/storageLocation.ts: TABELLEN.set = 'instructions' → rot: „gemessen, wie
  *      eingetragen“, „nur er schreibt hinein“ ['…/lagerort.ts → instructions'] und „lesen nie
- *      aufwärts“ ['src/bestand → instructions']; die Regex auf wörtliche Namen sah beides nicht
- *   Q  cacheNumbers() in src/katalog/repository/katalogCache.ts zählt wieder zaehle('price_cache') →
- *      rot: „gemessen, wie eingetragen“ und „lesen nie aufwärts“ ['src/katalog → price_cache']
+ *      aufwärts“ ['src/inventory → instructions']; die Regex auf wörtliche Namen sah beides nicht
+ *   Q  cacheNumbers() in src/catalog/repository/catalogCache.ts zählt wieder zaehle('price_cache') →
+ *      rot: „gemessen, wie eingetragen“ und „lesen nie aufwärts“ ['src/catalog → price_cache']
  *   R  src/wanted/repository/wanted.ts liest wieder `FROM sets s` statt setBestand() → rot:
  *      „25 direkte Lesestellen (abwärts), erlaubt sind 24“
  *
@@ -92,66 +92,66 @@ const KONTO = 'account_id'; // gehört einem Konto über einen anderen Schlüsse
 
 /** type, eingabe (false oder warum Eingaben hinein dürfen), schreiber (nur Katalog). */
 const SHARED = {
-  bl_mapping: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/blZuordnung.ts'] },
+  bl_mapping: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/blMapping.ts'] },
   catalog_cache: {
     type: KATALOG,
     eingabe: false,
-    schreiber: ['src/katalog/repository/katalogCache.ts', 'src/katalog/repository/rebrickableCache.ts'],
+    schreiber: ['src/catalog/repository/catalogCache.ts', 'src/catalog/repository/rebrickableCache.ts'],
   },
   set_catalog: {
     type: KATALOG,
     eingabe: false,
     schreiber: [
-      'src/katalog/repository/bildlage.ts',
-      'src/katalog/repository/csvTausch.ts',
-      'src/katalog/repository/setStamm.ts',
-      'src/katalog/repository/teileAnreicherung.ts',
+      'src/catalog/repository/imageState.ts',
+      'src/catalog/repository/csvSwap.ts',
+      'src/catalog/repository/setMaster.ts',
+      'src/catalog/repository/partsEnrichment.ts',
     ],
   },
-  part_catalog: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
+  part_catalog: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/catalogMaster.ts'] },
   part_color_catalog: {
     type: KATALOG,
     eingabe: false,
     schreiber: [
-      'src/katalog/repository/csvKatalog.ts',
-      'src/katalog/repository/katalogStamm.ts',
-      'src/katalog/repository/teileAnreicherung.ts',
+      'src/catalog/repository/csvCatalog.ts',
+      'src/catalog/repository/catalogMaster.ts',
+      'src/catalog/repository/partsEnrichment.ts',
     ],
   },
   minifigs_catalog: {
     type: KATALOG,
     eingabe: false,
-    schreiber: ['src/katalog/repository/katalogStamm.ts', 'src/katalog/repository/teileAnreicherung.ts'],
+    schreiber: ['src/catalog/repository/catalogMaster.ts', 'src/catalog/repository/partsEnrichment.ts'],
   },
-  set_parts: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
-  set_minifigs: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/katalogStamm.ts'] },
+  set_parts: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/catalogMaster.ts'] },
+  set_minifigs: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/catalogMaster.ts'] },
   subsets_cache: {
     type: KATALOG,
     eingabe: false,
-    schreiber: ['src/katalog/repository/katalogCache.ts', 'src/katalog/repository/rebrickableCache.ts'],
+    schreiber: ['src/catalog/repository/catalogCache.ts', 'src/catalog/repository/rebrickableCache.ts'],
   },
-  minifig_parts_cache: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/rebrickableCache.ts'] },
-  shared_instructions: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/anleitungen.ts'] },
+  minifig_parts_cache: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/rebrickableCache.ts'] },
+  shared_instructions: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/instructions.ts'] },
   rb_colors: {
     type: KATALOG,
     eingabe: false,
-    schreiber: ['src/katalog/repository/blZuordnung.ts', 'src/katalog/repository/csvTausch.ts'],
+    schreiber: ['src/catalog/repository/blMapping.ts', 'src/catalog/repository/csvSwap.ts'],
   },
-  rb_inventories: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
-  rb_inventory_minifigs: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
-  rb_inventory_parts: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
-  rb_part_categories: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
-  rb_parts: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  rb_inventories: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
+  rb_inventory_minifigs: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
+  rb_inventory_parts: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
+  rb_part_categories: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
+  rb_parts: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
   rb_sets: {
     type: KATALOG,
     eingabe: false,
     schreiber: [
-      'src/katalog/repository/bildlage.ts',
-      'src/katalog/repository/csvTausch.ts',
-      'src/katalog/repository/setStamm.ts',
+      'src/catalog/repository/imageState.ts',
+      'src/catalog/repository/csvSwap.ts',
+      'src/catalog/repository/setMaster.ts',
     ],
   },
-  rb_themes: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/csvTausch.ts'] },
+  rb_themes: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/csvSwap.ts'] },
   price_cache: { type: KATALOG, eingabe: false, schreiber: ['src/finances/repository/priceCache.ts'] },
   price_history: {
     type: KATALOG,
@@ -205,11 +205,11 @@ const SHARED = {
  * lesen und schreiben, gemessen (measureFile). Steht es hier, ist die Messung vollständig; Besitzer
  * und Stufen gelten für das Gemessene wie für wörtliche Namen. */
 const DYNAMISCH = {
-  'src/bestand/repository/erfassungen.ts': {
+  'src/inventory/repository/acquisitions.ts': {
     liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
     schreibt: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
   },
-  'src/bestand/repository/gemeinsam.ts': {
+  'src/inventory/repository/shared.ts': {
     liest: [
       'minifigs',
       'parts',
@@ -223,23 +223,23 @@ const DYNAMISCH = {
     ],
     schreibt: ['minifigs', 'parts', 'set_acquisitions', 'sets'],
   },
-  'src/bestand/repository/kaeufe.ts': {
+  'src/inventory/repository/purchases.ts': {
     liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
     schreibt: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
   },
-  'src/bestand/repository/kaufErfassungen.ts': {
+  'src/inventory/repository/purchaseAcquisitions.ts': {
     liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
     schreibt: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
   },
-  'src/bestand/repository/lagerort.ts': {
+  'src/inventory/repository/storageLocation.ts': {
     liest: ['minifigs', 'parts', 'sets', 'storage_locations', 'users'],
     schreibt: ['minifigs', 'parts', 'sets', 'storage_locations'],
   },
-  'src/bestand/repository/manuelleMengen.ts': {
+  'src/inventory/repository/manualQuantities.ts': {
     liest: ['minifig_acquisitions', 'part_acquisitions'],
     schreibt: ['minifig_acquisitions', 'part_acquisitions'],
   },
-  'src/bestand/repository/papierkorb.ts': {
+  'src/inventory/repository/trash.ts': {
     liest: [
       'minifig_acquisitions',
       'minifig_custom',
@@ -258,7 +258,7 @@ const DYNAMISCH = {
     ],
     schreibt: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts', 'set_acquisitions', 'sets', 'trash'],
   },
-  'src/bestand/repository/umhaengen.ts': {
+  'src/inventory/repository/reassign.ts': {
     liest: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts'],
     schreibt: ['minifig_acquisitions', 'minifigs', 'part_acquisitions', 'parts'],
   },
@@ -274,7 +274,7 @@ const DYNAMISCH = {
     schreibt: ['price_history'],
   },
   'src/vouchers/repository/vouchers.ts': { liest: ['vouchers'], schreibt: ['vouchers'] },
-  'src/katalog/repository/csvTausch.ts': {
+  'src/catalog/repository/csvSwap.ts': {
     liest: [
       'rb_colors',
       'rb_inventories',
@@ -297,11 +297,11 @@ const DYNAMISCH = {
       'set_catalog',
     ],
   },
-  'src/katalog/repository/katalogCache.ts': {
+  'src/catalog/repository/catalogCache.ts': {
     liest: ['catalog_cache', 'rb_sets', 'set_catalog', 'subsets_cache'],
     schreibt: ['catalog_cache', 'subsets_cache'],
   },
-  'src/katalog/repository/teileAnreicherung.ts': {
+  'src/catalog/repository/partsEnrichment.ts': {
     liest: [
       'bl_mapping',
       'minifigs_catalog',
@@ -448,9 +448,9 @@ const FREMDSCHREIBER = [
 /** Trigger, die in die Tabelle eines anderen Bereichs schreiben: „Besitzer der Triggertabelle →
  * Ziel“ und warum das nicht über den Dienst des Ziels geht. Eine Ratsche wie FREMDSCHREIBER. */
 const TRIGGER_FREMDZIELE = {
-  'src/bestand → parts_version_user':
+  'src/inventory → parts_version_user':
     'Der Teilezähler muss jede Änderung an Sets, Käufen, Teilen und Lagerorten sehen, auch ohne src/parts',
-  'src/katalog → parts_catalog_pending':
+  'src/catalog → parts_catalog_pending':
     'Katalogänderungen merken nur die Nummer vor; src/parts zieht die Zusammenfassung nach und leert die Liste',
 };
 
@@ -474,7 +474,7 @@ function stufenAusDoku() {
 
 /** „aufwärts“, „katalog“ oder „abwärts“ für den Leser `b` einer Tabelle des Besitzers `owner`. */
 function readDirection(stufen, b, owner) {
-  if (owner === 'src/katalog') return 'katalog';
+  if (owner === 'src/catalog') return 'katalog';
   return stufen.get(owner) > stufen.get(b) ? 'aufwärts' : 'abwärts';
 }
 

@@ -56,8 +56,8 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
   await seed();
 
   const L = {
-    ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testArea('bestand').locationService,
+    ..._req('src/inventory/storageLocation.js'),
+    ...require('./helpers/sources').testArea('inventory').locationService,
   };
   const S = require('./helpers/sources').areaPage('sets');
   const household = {
@@ -209,8 +209,8 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
   await seed();
 
   const L = {
-    ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testArea('bestand').locationService,
+    ..._req('src/inventory/storageLocation.js'),
+    ...require('./helpers/sources').testArea('inventory').locationService,
   };
   // Ein zweites Set OHNE Lagerort — ohne es hätte der Filter nichts
   // auszusieben, und „alle" wäre von „die richtigen" nicht zu unterscheiden.
@@ -229,7 +229,7 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
   await holdsPart(db, MAIN, '3001', { setNumber: SN, menge: 2, colorId: 4 });
   await holdsPart(db, MAIN, '3002', { setNumber: OHNE, menge: 2, colorId: 4 });
   // Die Schluessel sind eine FLACHE Liste in der Reihenfolge von BEDINGUNG
-  // (src/bestand/lagerort.ts): fuer ein Teil Nummer UND Farbe, also zwei Einträge.
+  // (src/inventory/storageLocation.ts): fuer ein Teil Nummer UND Farbe, also zwei Einträge.
   await L.setLocation('part', [MAIN], ['3001', 4], 'Estrich');
 
   const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });

@@ -4,8 +4,8 @@ import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from '../../konto/http/anmeldung';
 import { reportError } from '../../infra/fehler';
 import * as service from '../service';
-import { routeForRequest } from '../../vertrag';
-import { notRetryable } from '../../vertrag/grund';
+import { routeForRequest } from '../../contract';
+import { notRetryable } from '../../contract/base';
 import { sendError } from '../../http/httpAntwort';
 import type { IdempotencyServices } from '../area';
 

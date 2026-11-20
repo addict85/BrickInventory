@@ -13,7 +13,7 @@ function catalogParts(k: MinifigsContext, figNumber: string): Promise<CatalogRow
 export async function partsOfMinifig(kx: MinifigsContext, figNumber: string) {
   // Minifigs carry no version suffix, but a 'fig-' prefix instead.
   // A read error is not "unknown minifig" (not_found): it is rethrown.
-  const invId = await kx.katalog.inventoryForCandidates([figNumber, figNumber.replace('fig-', '')]);
+  const invId = await kx.catalog.inventoryForCandidates([figNumber, figNumber.replace('fig-', '')]);
   if (!invId) return { parts: [], source: 'not_found' };
 
   const teile = await kx.minifigParts.inventoryPartsOfMinifig(invId);
@@ -22,8 +22,8 @@ export async function partsOfMinifig(kx: MinifigsContext, figNumber: string) {
   if (!kat.length || kat.some(r => !r.bl_part_number || r.bl_part_number === r.part_number)) {
     const parentSet = await kx.minifigParts.setWithMinifig(figNumber);
     const enrich = parentSet
-      ? kx.katalog.enrichSetMinifigsAn(parentSet.set_number)
-      : kx.katalog.enrichSetPartsAn(figNumber);
+      ? kx.catalog.enrichSetMinifigsAn(parentSet.set_number)
+      : kx.catalog.enrichSetPartsAn(figNumber);
     await enrich.catch(logAndContinue('figuren:anreichern'));
     kat = await catalogParts(kx, figNumber);
   }

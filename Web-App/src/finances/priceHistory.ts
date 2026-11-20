@@ -3,7 +3,7 @@
 import { setState, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds, type Sicht } from '../household';
 import { buildChart } from './chartData';
-import { marketPriceFrom } from '../katalog';
+import { marketPriceFrom } from '../catalog';
 import { developmentPercent } from './setValue';
 import type { FinancesContext } from './context';
 
@@ -251,7 +251,7 @@ async function priceNumbersForMinifig(
   uid: number | number[],
   figNumber: string,
 ): Promise<string[]> {
-  const bl = await k.katalog.blNumberOf('fig', figNumber, uid);
+  const bl = await k.catalog.blNumberOf('fig', figNumber, uid);
   return [...new Set([figNumber, ...(bl ? [bl] : [])])];
 }
 

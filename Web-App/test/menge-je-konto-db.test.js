@@ -48,7 +48,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const { changeSet } = require('./helpers/sources').areaPage('sets');
-  const pk = _req('src/bestand/papierkorb.js');
+  const pk = _req('src/inventory/trash.js');
 
   await t.test('Hauptkonto verringert das Unterkonto, Rückgängig bringt den Kauf zurück', async () => {
     await holdsSet(db, uid, SN, 1, { preis: 199.99, am: '2026-06-01T10:00:00Z' });

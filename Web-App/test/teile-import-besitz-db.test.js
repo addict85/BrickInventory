@@ -129,7 +129,7 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
   });
 
   await t.test('eine leere Antwort wird gemerkt', async () => {
-    const { alleTeileDesSets } = _req('src/katalog/rebrickableKatalog.js');
+    const { alleTeileDesSets } = _req('src/catalog/rebrickableCatalog.js');
     const leer = `TIL${P}-1`;
     assert.deepEqual(await alleTeileDesSets(leer), []);
     assert.deepEqual(await alleTeileDesSets(leer), []);

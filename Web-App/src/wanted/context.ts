@@ -5,7 +5,7 @@ import * as wanted from './repository/wanted';
 import * as wantedListe from './repository/wantedListe';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
-import type { CatalogServices } from '../katalog';
+import type { CatalogServices } from '../catalog';
 import type { FinancesServices } from '../finances';
 import type { SetsServices } from '../sets';
 import type { ForeignSourcesServices } from '../externalSources';
@@ -17,7 +17,7 @@ export interface WantedDependencies {
   db: Db;
   einstellungen: SettingsServices;
   household: HouseholdServices;
-  katalog: CatalogServices;
+  catalog: CatalogServices;
   finances: FinancesServices;
   externalSources: ForeignSourcesServices;
   images: ImagesServices;

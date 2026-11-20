@@ -5,9 +5,9 @@ import { bookEntry } from './erfassen';
 import { fachfehler } from '../infra/fehlerTexte';
 import { inventoryQuantity, zustand } from '../infra/validate';
 import * as repo from './repository/sets';
-import type { Eingabe } from '../vertrag';
+import type { Eingabe } from '../contract';
 import { versuche, valueOr, Degradations } from '../infra/ergebnis';
-import { normalizeLocation } from '../bestand';
+import { normalizeLocation } from '../inventory';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import * as detailRepo from './repository/setDetail';
 import type { SetsContext } from './kontext';
@@ -17,7 +17,7 @@ export type { CatalogPart, ListenTeil, SetMaster } from './zeilen';
  * beide dieselben Regeln für Menge, Kaufpreis und Blickfeld erfüllen. */
 
 /** Reihenfolge Preis-Cache → BrickLink → Historie; bleibt alles leer, trägt
- * src/bestand/kaufpreisNachtrag.ts nach. */
+ * src/inventory/purchasePriceBackfill.ts nach. */
 async function priceForNewEntry(sk: SetsContext, userId: number, setNumber: string) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
   const blickfeld = valueOr(await versuche('sets:kaufpreis-blickfeld', sk.household.scopeIds(userId)), [userId]);
@@ -100,8 +100,8 @@ async function entriesAnQuantityAlign(
     const take = Math.min(r.quantity, -delta);
     const zeile = await repo.setEntryAsJson(sk.db, r.id);
     if (zeile) entfallen.push({ ...zeile, quantity: take });
-    if (take >= r.quantity) await sk.bestand.erfassung.loesche('set', r.id, userId);
-    else await sk.bestand.erfassung.aendere('set', r.id, [userId], { menge: r.quantity - take });
+    if (take >= r.quantity) await sk.inventory.erfassung.loesche('set', r.id, userId);
+    else await sk.inventory.erfassung.aendere('set', r.id, [userId], { menge: r.quantity - take });
     delta += take;
   }
   return entfallen;
@@ -129,7 +129,7 @@ async function writeInLastEntry(
   ownerId: number,
   sn: string,
 ) {
-  await sk.bestand.setNewest('set', feld === 'purchase_price' ? 'preis' : 'zustand', wert, ownerId, [sn]);
+  await sk.inventory.setNewest('set', feld === 'purchase_price' ? 'preis' : 'zustand', wert, ownerId, [sn]);
 }
 
 export async function changeSet(
@@ -182,17 +182,17 @@ export async function changeSet(
         const { ownBefore, eigenZiel } = await eigenesZiel(t);
         if (eigenZiel === ownBefore) return;
         // Gehörte das Set bisher nur einem anderen Konto, liefe die Anpassung sonst ins Leere.
-        if (ownBefore === 0 && eigenZiel > 0) await t.bestand.putSetAn(ziel, sn);
+        if (ownBefore === 0 && eigenZiel > 0) await t.inventory.putSetAn(ziel, sn);
         // Menge 0 geht durch den Papierkorb, damit ein Tippfehler sich zurückholen lässt.
         if (eigenZiel === 0) {
           entfallen = droppedResponse(await repo.setEntriesAsJson(t.db, ziel, sn));
-          papierkorb = await t.bestand.putInTrash('set', ziel, sn);
+          papierkorb = await t.inventory.putInTrash('set', ziel, sn);
           await deleteSetRows(t, [ziel], sn);
         } else {
           // Auch einzelne Käufe gehen durch den Papierkorb: Sonst verschwände ein Kaufpreis ohne Rückweg.
           const weg = await entriesAnQuantityAlign(t, ziel, sn, eigenZiel, plan);
           entfallen = droppedResponse(weg);
-          papierkorb = await t.bestand.putPurchasesInTrash(ziel, sn, weg);
+          papierkorb = await t.inventory.putPurchasesInTrash(ziel, sn, weg);
         }
       },
       { sperren: [{ konto: ziel, schluessel: sn }] },
@@ -253,7 +253,7 @@ export async function setBelongsAccount(sk: SetsContext, uid: number, sn: string
  * sie für alle, die darin nachsehen. */
 export async function setLocationOfSets(sk: SetsContext, uid: number, sn: string, storage: string | null | undefined) {
   const ort = normalizeLocation(storage);
-  const n = await sk.bestand.locationService.setLocation('set', { schreiber: uid }, [normalisiereSetNummer(sn)], ort);
+  const n = await sk.inventory.locationService.setLocation('set', { schreiber: uid }, [normalisiereSetNummer(sn)], ort);
   return { ort, n };
 }
 
@@ -261,8 +261,8 @@ export async function setLocationOfSets(sk: SetsContext, uid: number, sn: string
  * Anfragenden: Ein geerbter Stern wäre eine Aussage über eine fremde Wohnung. */
 export async function locationsWithDefault(sk: SetsContext, uid: number, owner: string | undefined) {
   const [orte, vorgabe] = await Promise.all([
-    sk.bestand.locationsFor(uid, owner),
-    sk.bestand.locationService.vorgabeVon(uid),
+    sk.inventory.locationsFor(uid, owner),
+    sk.inventory.locationService.vorgabeVon(uid),
   ]);
   return { orte, vorgabe };
 }

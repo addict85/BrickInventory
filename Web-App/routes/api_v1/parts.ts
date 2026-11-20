@@ -1,7 +1,7 @@
 import { kontoSchranke, viewOf, guardFor } from './middleware';
 import { csvReceive } from '../../src/http/dateiEmpfang';
 import type { CsvImportReport } from '../../src/infra/csvExport';
-import { normalizeLocation } from '../../src/bestand';
+import { normalizeLocation } from '../../src/inventory';
 import { pageFrom } from '../../src/infra/seite';
 import { Degradations } from '../../src/infra/ergebnis';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
@@ -11,7 +11,7 @@ import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 export function buildPartsRouter(
   d: Pick<
     Dienste,
-    'settings' | 'auftraege' | 'household' | 'konto' | 'katalog' | 'finances' | 'bestand' | 'parts' | 'collection'
+    'settings' | 'auftraege' | 'household' | 'konto' | 'catalog' | 'finances' | 'inventory' | 'parts' | 'collection'
   >,
 ) {
   const { requireToken } = guardFor(d.konto);
@@ -46,7 +46,7 @@ export function buildPartsRouter(
   );
 
   router.endpunkt('GET /api/v1/parts/brick-colors', requireToken, async _req => {
-    const colors = await d.katalog.colorList();
+    const colors = await d.catalog.colorList();
     return { colors };
   });
 
@@ -106,7 +106,7 @@ export function buildPartsRouter(
    * Teil, nicht eine seiner Set-Zeilen. */
   router.endpunkt('PUT /api/v1/parts/:partNumber/:colorId/storage', requireToken, async req => {
     const ort = normalizeLocation(req.eingabe.storage);
-    const n = await d.bestand.locationService.setLocation(
+    const n = await d.inventory.locationService.setLocation(
       'part',
       { schreiber: req.apiUser.user_id },
       [req.pfad.partNumber, req.pfad.colorId],
@@ -147,7 +147,7 @@ export function buildPartsRouter(
   // Im Blickfeld, damit die Liste zur Teileliste passt, aus der man kommt.
   router.endpunkt('GET /api/v1/parts/:partNumber/:colorId/sets', requireToken, async req => {
     const uids = viewOf(req);
-    const { item, sets } = await d.bestand.usingSets(uids, 'parts', {
+    const { item, sets } = await d.inventory.usingSets(uids, 'parts', {
       part_number: req.pfad.partNumber,
       color_id: req.pfad.colorId,
     });

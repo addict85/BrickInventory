@@ -122,7 +122,7 @@ test('Hostprüfung: nur Standardport, keine Userinfo, Eimer exakt', () => {
 test('der BDP-Eimer darf geholt werden — aber nur er', () => {
   assert.ok(
     hostAllowed('https://bdpinstructions.s3.amazonaws.com/11010.pdf', ALLOWED_DOWNLOAD_HOSTS),
-    'Der Rueckfall in src/katalog/instructions.ts baut genau diese Adresse — sie hier ' +
+    'Der Rueckfall in src/catalog/instructions.ts baut genau diese Adresse — sie hier ' +
       'abzulehnen heisst, ihn bauen zu lassen und ins Leere laufen zu lassen',
   );
 

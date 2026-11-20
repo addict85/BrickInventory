@@ -1,5 +1,5 @@
 /** Set zum Barcode: eigener Katalog, Rebrickable, Brickset und EAN-Quellen. */
-import { isGuess, setnummerCandidates } from '../katalog';
+import { isGuess, setnummerCandidates } from '../catalog';
 import { resolveImageLocal } from '../images';
 import { RbSet, RbSetMinifig, rbPage } from '../externalSources';
 import { withVersion, normalisiereSetNummer } from '../infra/setNummer';
@@ -21,7 +21,7 @@ export interface BarcodeHits {
 }
 
 /** Rebrickable zuerst: Dort stehen Figurenzahl und Bild am verlässlichsten.
- * Jede Antwort sagt, wie sie zustande kam (src/katalog/barcodeQuelle.ts). */
+ * Jede Antwort sagt, wie sie zustande kam (src/catalog/barcodeSource.ts). */
 async function barcodeResult(
   sk: SetsContext,
   setNumber: string,
@@ -64,7 +64,7 @@ async function barcodeResult(
     // In den Katalog wie jeder Abruf; der Treffer gilt auch, wenn das Ablegen scheitert.
     await versuche(
       'sets:katalog schreiben',
-      sk.katalog.rememberSetCatalog(
+      sk.catalog.rememberSetCatalog(
         setNumber,
         rbData.name ?? null,
         rbData.year ?? null,

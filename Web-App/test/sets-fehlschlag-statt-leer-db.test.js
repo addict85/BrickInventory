@@ -29,14 +29,14 @@ const stoerung = async () => {
   if (rebrickable === 'gestoert') throw new Error('Rebrickable antwortet nicht');
   return null;
 };
-replace('src/katalog/rebrickableKatalog.js', { alleTeileDesSets: stoerung });
+replace('src/catalog/rebrickableCatalog.js', { alleTeileDesSets: stoerung });
 testSources(null, { getSetMinifigs: stoerung });
 // Die Nacharbeit: Teile und Figuren gelingen, zwei Anreicherungen scheitern.
 const still = async () => {};
-replace('src/katalog/partsImport.js', { reloadBlNumbers: still });
+replace('src/catalog/partsImport.js', { reloadBlNumbers: still });
 replace('src/sets/setInhaltImport.js', { importParts: still, importMinifigs: still });
-replace('src/katalog/anleitungsAuftrag.js', { anleitungEinreihen: still });
-replace('src/katalog/teileAnreicherung.js', {
+replace('src/catalog/instructionJob.js', { anleitungEinreihen: still });
+replace('src/catalog/partsEnrichment.js', {
   enrichSetParts: stoerung,
   enrichSetMinifigs: still,
   downloadSetImages: stoerung,

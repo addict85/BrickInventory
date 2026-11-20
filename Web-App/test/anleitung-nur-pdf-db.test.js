@@ -35,7 +35,7 @@ const URLS = ['https://cdn.rebrickable.com/media/echt.pdf', 'https://cdn.rebrick
 S.testSources(null, {
   scrapeInstructions: async () => URLS.map((url, i) => ({ url, description: `Anleitung ${i}` })),
 });
-const { setAnleitungenLaden } = _req('src/katalog/instructions.js');
+const { setAnleitungenLaden } = _req('src/catalog/instructions.js');
 
 const CONTENT = {
   [URLS[0]]: Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(3000, 7)]),

@@ -288,7 +288,7 @@ export function renderInstructions(instr, sn) {
       const href = i.local_path || i.url;
       const isLocal = !!i.local_path;
       // Uploaded by hand or imported automatically? The server says so (is_manual, see
-      // mergeInstructions in src/katalog/instructions.ts). Previously the rule lived here as a
+      // mergeInstructions in src/catalog/instructions.ts). Previously the rule lived here as a
       // path comparison — a second version of the same question that the Android app could not rebuild at all.
       const isUpload = !!i.is_manual;
       const label = esc(i.description) || t('instr.label');

@@ -15,7 +15,7 @@ const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { Zwischenspeicher, Faecher } = _req('src/infra/zwischenspeicher.js');
-const { createCatalog } = _req('src/katalog/bereich.js');
+const { createCatalog } = _req('src/catalog/area.js');
 
 test('der älteste weicht, wenn der Speicher voll ist', () => {
   const z = new Zwischenspeicher(2);

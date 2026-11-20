@@ -1,5 +1,5 @@
 /**
- * Der Vertrag (src/vertrag/) deckt jede Route unter /api/v1 ab, die
+ * Der Vertrag (src/contract/) deckt jede Route unter /api/v1 ab, die
  * Express wirklich kennt, und docs/openapi.json ist sein aktueller Stand.
  * Die Routen kommen aus den gebauten Routern (ihr stack), nicht aus dem
  * Quelltext: Was dort hängt, beantwortet Anfragen.
@@ -7,7 +7,7 @@
  * Gegenproben (31.10.2026 gemessen):
  *   A  in docs/openapi.json einen Feldnamen (used_count) verändert → rot: „die
  *      eingecheckte openapi.json ist erzeugt“
- *   B  den Eintrag 'GET /api/v1/parts/stats' in src/vertrag/teile.ts
+ *   B  den Eintrag 'GET /api/v1/parts/stats' in src/contract/parts.ts
  *      umbenannt → rot: „jede Route hat einen Vertrag“ nennt ihn
  *   C  einen Eintrag 'GET /api/v1/gibt-es-nicht' ergänzt → rot: „kein Vertrag
  *      ohne Route“
@@ -27,8 +27,8 @@ const fs = require('node:fs');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { DATEI, alsText } = require('../scripts/vertrag-openapi.js');
-const { CONTRACT, AREAS } = _req('src/vertrag/index.js');
-const { openapi } = _req('src/vertrag/openapi.js');
+const { CONTRACT, AREAS } = _req('src/contract/index.js');
+const { openapi } = _req('src/contract/openapi.js');
 
 /** Methode und voller Pfad jeder Route eines Routers, auch in eingehängten Routern. */
 function routesOf(router, basis) {
@@ -96,11 +96,31 @@ test('jede lange Liste nimmt Seiten', () => {
   assert.deepEqual(limit, [], 'Seitengrösse heisst page_size; limit nur noch veraltet');
 });
 
+/** The contract file of each area key (the keys are tags in openapi.json and stay). */
+const CONTRACT_FILE = {
+  grund: 'base',
+  gemeinsam: 'shared',
+  bestand: 'inventory',
+  einstellungen: 'settings',
+  figuren: 'minifigs',
+  finanzen: 'finances',
+  geraet: 'device',
+  gutscheine: 'vouchers',
+  haushalt: 'household',
+  katalog: 'catalog',
+  konto: 'account',
+  merkliste: 'wanted',
+  sets: 'sets',
+  teile: 'parts',
+  verwaltung: 'management',
+};
+
 /** Die Vertragsdatei eines Schemas: wo sein Objekt exportiert ist, sonst der Bereich der Route, die es benennt. */
 function fileJeSchema() {
   const datei = new Map();
   for (const f of ['grund', 'gemeinsam', ...Object.keys(AREAS)])
-    for (const [n, w] of Object.entries(_req(`src/vertrag/${f}.js`))) if (!datei.has(n) && w?._zod) datei.set(n, f);
+    for (const [n, w] of Object.entries(_req(`src/contract/${CONTRACT_FILE[f]}.js`)))
+      if (!datei.has(n) && w?._zod) datei.set(n, f);
   for (const [b, m] of Object.entries(AREAS))
     for (const k of Object.keys(m.routen)) datei.set(k.replace(/[^A-Za-z0-9]+/g, '_').replace(/_+$/, ''), b);
   return datei;

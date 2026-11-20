@@ -17,7 +17,7 @@ const assert = require('node:assert/strict');
 const { z } = require('zod');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { unbekannteFelder } = _req('src/vertrag/unbekannteFelder.js');
+const { unbekannteFelder } = _req('src/contract/unknownFields.js');
 
 test('ein fremdes Feld, auch verschachtelt in Listen', () => {
   const Zeile = z.looseObject({ id: z.number(), name: z.string().nullable().optional() });

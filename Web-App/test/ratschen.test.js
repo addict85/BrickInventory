@@ -96,16 +96,16 @@ test('stille Fänge (Server, nur gemeldete, Oberfläche) werden weniger, nie meh
 test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
   // Die Regel steht in docs/architektur.md („Fehler“): Schreibpfade werfen, Lesepfade nehmen
   // versuche()/Abstriche, logAndContinue nur für Nebenwirkungen ohne Folgen; ein Ersatzwert
-  // (reportAndDeliver) begründet sich als „Ausnahme:“ im Code. Ausserhalb von src/katalog eigene Schranke.
-  // Gegenproben: in src/katalog/farben.ts wieder `.catch(reportAndDeliver('x', []))` → rot (8, Schranke 7);
+  // (reportAndDeliver) begründet sich als „Ausnahme:“ im Code. Ausserhalb von src/catalog eigene Schranke.
+  // Gegenproben: in src/catalog/colors.ts wieder `.catch(reportAndDeliver('x', []))` → rot (8, Schranke 7);
   // (14.11.2026) in routes/auth.ts beim Abmelden wieder `.catch(logAndContinue('x'))` → rot (86 von 85),
-  // mit Gesamtschranke 200 → rot „ausserhalb src/katalog“ (40 von 39).
+  // mit Gesamtschranke 200 → rot „ausserhalb src/catalog“ (40 von 39).
   // (15.11.2026) Katalog-Schreibwege werfen (Auftrag wiederholt); in teileAnreicherung.ts wieder
   // `.catch(logAndContinue('x'))` an rememberPart → rot (68 von 67).
   const LIMITS = { logAndContinue: 67, reportAndDeliver: 7 };
   const AT_LEAST = { logAndContinue: 20, reportAndDeliver: 3 };
   const OUTSIDE_CATALOG = { logAndContinue: 37 };
-  const inCatalog = (/** @type {string} */ f) => /[\\/]src[\\/]katalog[\\/]/.test(f);
+  const inCatalog = (/** @type {string} */ f) => /[\\/]src[\\/]catalog[\\/]/.test(f);
   for (const [name, limit] of Object.entries(LIMITS)) {
     const muster = [new RegExp(`\\b${name}\\(`, 'g')];
     const ist = zaehle(muster);
@@ -115,9 +115,9 @@ test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', 
     const aussen = OUTSIDE_CATALOG[name];
     if (aussen === undefined) continue;
     const n = zaehle(muster, f => !inCatalog(f));
-    assert.ok(n > 0 && n < ist, `ausserhalb src/katalog ${n} von ${ist} — greift die Trennung noch?`);
-    assert.ok(n <= aussen, `${n}-mal ${name} ausserhalb src/katalog, erlaubt sind ${aussen}`);
-    if (n < aussen) console.log(`  ℹ ${name} ausserhalb src/katalog: ${n} (Schranke ${aussen}) — Schranke nachziehen`);
+    assert.ok(n > 0 && n < ist, `ausserhalb src/catalog ${n} von ${ist} — greift die Trennung noch?`);
+    assert.ok(n <= aussen, `${n}-mal ${name} ausserhalb src/catalog, erlaubt sind ${aussen}`);
+    if (n < aussen) console.log(`  ℹ ${name} ausserhalb src/catalog: ${n} (Schranke ${aussen}) — Schranke nachziehen`);
   }
   const muster = /\b(?:logAndContinue|reportAndDeliver)\(/;
   const sets = quellen().filter(f => /[\\/]src[\\/]sets[\\/]/.test(f));
@@ -245,7 +245,7 @@ test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden wenig
   // Modulweiter Zustand (let und leer angelegte Map/Set/WeakMap/WeakSet): Ihn teilen alle
   // Zugänge eines Prozesses. Ein Bereich hält seinen in Fächern (src/infra/zwischenspeicher.ts),
   // bewusst prozessweiter steht mit Grund in src/infra/prozessweit.ts.
-  // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/katalog/kontext.ts
+  // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/catalog/context.ts
   // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60. (14.11.2026) Schranke 2 (Transaktionswächter,
   // Sicherungspunkte in db/); `const sitzungen = new Map<string, Sitzung>();` zurück in
   // src/vouchers/balanceLookup.ts → rot (3 von 2). Schranke 1: Der Transaktionswächter
@@ -395,7 +395,7 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
   // Gegenprobe (11.11.2026): in auftragAbbrechen() wieder `success: true` → rot.
   const SUCCESS_LIMIT = 7;
   const success = zaehle([/\bsuccess:\s*true\b/g], f =>
-    /^src[\\/](?!vertrag[\\/]|http[\\/])/.test(path.relative(WEB, f)),
+    /^src[\\/](?!contract[\\/]|http[\\/])/.test(path.relative(WEB, f)),
   );
   assert.ok(
     success <= SUCCESS_LIMIT,
@@ -416,7 +416,7 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
     console.log(`  ℹ success in Routen: ${inRoutes} (Schranke ${ROUTES_LIMIT}) — Schranke nachziehen`);
   // Routen reichen req.eingabe/req.pfad mit Vertragstyp durch, Dienste nehmen
   // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
-  // (src/vertrag, src/infra, src/http) und Fehlerparameter.
+  // (src/contract, src/infra, src/http) und Fehlerparameter.
   // Gegenprobe (11.11.2026): `condition: unknown` zurück in deleteAlarmOfSets → rot (75).
   const LIMIT_UNKNOWN = 63;
   const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
@@ -425,7 +425,7 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
     2,
   );
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
-  const RAW = /[\\/]src[\\/](?:vertrag|infra|http)[\\/]/;
+  const RAW = /[\\/]src[\\/](?:contract|infra|http)[\\/]/;
   const unbekannt = quellen()
     .filter(f => /[\\/]src[\\/]/.test(f) && !RAW.test(f))
     .reduce((n, f) => n + (ohneKommentare(fs.readFileSync(f, 'utf8')).match(MUSTER) || []).length, 0);
@@ -1311,7 +1311,7 @@ function topLevelLengths(/** @type {string[]} */ dateien) {
 
 test('server functions over 80/150 lines become fewer, never more', () => {
   // Ab 100 Zeilen zählen Top-Level-Funktionen samt Pfeilfunktionen; keine ist bekannt.
-  // Gegenproben: buildPdf in src/katalog/pdf/pdfZeichnen.ts wieder in einem Stück → rot „ab 100“ (13.11.2026);
+  // Gegenproben: buildPdf in src/catalog/pdf/pdfDrawing.ts wieder in einem Stück → rot „ab 100“ (13.11.2026);
   // createDb in db/database.ts wieder als eine Closure → rot „ab 100“ und „über 150“ (14.11.2026).
   const LIMIT_80 = 17,
     LIMIT_150 = 0,

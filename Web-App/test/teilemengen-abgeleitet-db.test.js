@@ -342,8 +342,8 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
 
   const P = _req('src/parts/queries.js');
   const M = _req('src/minifigs/queries.js');
-  const S = _req('src/bestand/kennzahlen.js');
-  const SH = _req('src/bestand/gemeinsam.js');
+  const S = _req('src/inventory/metrics.js');
+  const SH = _req('src/inventory/shared.js');
 
   // ── Kennzahlen, ein Konto ────────────────────────────────────────────────
   //
@@ -492,9 +492,9 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   assert.ok(bewFig, `Die Figuren-Bewertung kennt die manuelle Figur nicht: ${JSON.stringify(bewM).slice(0, 200)}`);
   assert.equal(Number(bewFig.quantity), 2, `Die Figuren-Bewertung liest 2, bekam ${bewFig.quantity}`);
 
-  const csvP = await _req('src/bestand/bestandExport.js').partsCsv(haupt);
+  const csvP = await _req('src/inventory/inventoryExport.js').partsCsv(haupt);
   assert.match(csvP, /3070b/, 'Der Teile-Export laesst die manuelle Position aus');
-  const csvM = await _req('src/bestand/bestandExport.js').figurenCsv(haupt);
+  const csvM = await _req('src/inventory/inventoryExport.js').figurenCsv(haupt);
   assert.match(csvM, /fig-m/, 'Der Figuren-Export laesst die manuelle Figur aus');
 
   // ── GEGENPROBE 1: die KATALOGZAHL ändern ────────────────────────────────

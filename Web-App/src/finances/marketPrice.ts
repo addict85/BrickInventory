@@ -10,7 +10,7 @@ import {
   resolveBlColorId,
 } from './calculation/prices';
 import { reportError, logAndContinue } from '../infra/fehler';
-import { marketPriceFrom } from '../katalog';
+import { marketPriceFrom } from '../catalog';
 import { KEINE_FARBE, zustand } from '../infra/validate';
 import type { FinancesContext } from './context';
 
@@ -232,7 +232,7 @@ export async function estimateMinifigsPrice(
         abdeckung: cached?.coverage != null ? parseFloat(String(cached.coverage)) : null,
       };
 
-    const parts = await k.katalog.minifigParts(figNumber);
+    const parts = await k.catalog.minifigParts(figNumber);
     if (!parts.length) {
       console.log(`[minifig-price-estimate] ${figNumber}: keine Teile-Zusammensetzung von Rebrickable erhalten`);
       return null;

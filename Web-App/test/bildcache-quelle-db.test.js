@@ -72,7 +72,7 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
       c.release();
     }
   }
-  const { newJobId, pdfFilePath } = _req('src/katalog/pdf/pdfAuftraege.js');
+  const { newJobId, pdfFilePath } = _req('src/catalog/pdf/pdfJobs.js');
   const jobId = newJobId(Date.now());
   const aufraeumen = async () => {
     await db.run('DELETE FROM part_color_catalog WHERE part_number LIKE $1', [`${T}%`]);
@@ -95,7 +95,7 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
     TAPPED,
   ]);
 
-  const { imagesFromCatalog, createPdf } = _req('src/katalog/pdf/pdfErzeugung.js');
+  const { imagesFromCatalog, createPdf } = _req('src/catalog/pdf/pdfGeneration.js');
   const fromClient = () => [
     { part_number: `${T}a`, color_id: 5, quantity: 1, image_url: BOESE, image_local: '/images/parts/fremd.jpg' },
     { part_number: `${T}b`, color_id: 5, quantity: 1, image_url: BOESE },

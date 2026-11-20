@@ -26,7 +26,7 @@ export const masked = (z: { number: string; pin: string | null }) => ({
 });
 
 type Checked = { number: string; pin: string | null; amount: number; currency: string | null };
-/** What the contract has already checked (src/vertrag/gutscheine.ts): the format of
+/** What the contract has already checked (src/contract/vouchers.ts): the format of
  * number, PIN and currency. */
 export interface NewVoucher {
   number: string;

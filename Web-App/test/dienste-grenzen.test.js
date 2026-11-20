@@ -4,8 +4,8 @@
  * greift darauf mit @ts-expect-error zu, und tsc muss jeden Zugriff ablehnen.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in createInventory (src/bestand/bereich.ts) wieder `...k,` vor die Dienste →
- *      rot: vier unbenutzte @ts-expect-error (d.bestand.db, .transaktion,
+ *   A  in createInventory (src/inventory/area.ts) wieder `...k,` vor die Dienste →
+ *      rot: vier unbenutzte @ts-expect-error (d.inventory.db, .transaktion,
  *      .papierkorb, .manuelleMengen)
  *   B  in createAccount `protokoll: k.protokoll,` ergänzt → rot: d.konto.protokoll
  *   C  `locationService` aus createInventory entfernt → rot: tsc meldet die Nutzer und die Probe

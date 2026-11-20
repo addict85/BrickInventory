@@ -53,7 +53,7 @@ test('Bilder werden eingebettet — JPEG und PNG', async () => {
   // ── Warum gerade das ─────────────────────────────────────────────────────
   // jpeg-exif war pdfkits JPEG-Leser. Wenn ein Versionssprung das Einbetten
   // bricht, dann hier — und Bauanleitungen bestehen ausschliesslich aus
-  // Bildseiten (src/katalog/instructions.ts, buildImagePDF_fromBuffers).
+  // Bildseiten (src/catalog/instructions.ts, buildImagePDF_fromBuffers).
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdfkit-'));
   const jpg = path.join(dir, 'p.jpg');
   const png = path.join(dir, 'p.png');

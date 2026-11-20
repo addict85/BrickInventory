@@ -37,7 +37,7 @@ const { adminWithFactor } = require('./helpers/verwalter');
 const { holdsSet, catalogSet } = require('./helpers/bestand');
 
 // Kein Abruf bei den Quellen: Das Neuladen findet hier nichts.
-const anlPath = require.resolve(path.join(require('./helpers/sources').DIST, 'src/katalog/instructions.js'));
+const anlPath = require.resolve(path.join(require('./helpers/sources').DIST, 'src/catalog/instructions.js'));
 const echt = require(anlPath);
 require.cache[anlPath].exports = Object.assign({}, echt, { setAnleitungenLaden: async () => [] });
 

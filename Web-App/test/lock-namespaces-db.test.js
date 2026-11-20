@@ -148,7 +148,7 @@ test('Sperr-Namensräume gegen echte Datenbank', async t => {
     const SET = '60511-1';
     const zweiter = (await db.get('SELECT hashtext($1) AS h', [SET])).h;
     const frei = {};
-    await testContext('bestand').transaktion(
+    await testContext('inventory').transaktion(
       async () => {
         frei.bild = await stillFree(LOCKS.IMAGE_DOWNLOAD, zweiter);
         // Auf eigener Verbindung: db.get liefe hier über die Transaktion, die die Sperre schon hält.

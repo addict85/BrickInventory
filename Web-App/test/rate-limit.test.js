@@ -43,10 +43,10 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
   // Alle Aufrufstellen gehen über den gemeinsamen Weg.
   for (const datei of [
     'clients/rebrickable.ts',
-    'src/katalog/partsImport.ts',
+    'src/catalog/partsImport.ts',
     'src/sets/barcode.ts',
-    'src/katalog/teileAnreicherung.ts',
-    'src/katalog/csvAbgleich.ts',
+    'src/catalog/partsEnrichment.ts',
+    'src/catalog/csvSync.ts',
   ]) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     assert.doesNotMatch(src, /rebrickableDailyLimiter/, `${datei}: zählt noch am gemeinsamen Zähler vorbei`);

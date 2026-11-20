@@ -23,7 +23,7 @@
  * Gegenproben (15.11.2026):
  *   G  `validToken: k.zugaenge.validToken` zurück in src/konto/bereich.ts → rot „Zahl
  *      der Dienstschlüssel“ (538, erlaubt 537) und „roh weiterreichen“ (konto.validToken)
- *   H  'katalog.catalogStatus' aus RAW_ALLOWED gestrichen → rot „roh weiterreichen“ (die Form
+ *   H  'catalog.catalogStatus' aus RAW_ALLOWED gestrichen → rot „roh weiterreichen“ (die Form
  *      mit(k.db, setStamm.catalogStatus), über den Bau als Repository-Funktion erkannt)
  *   I  JE_AREA.factors auf 17 → rot „Schlüssel je Bereich“ (factors 18, erlaubt 17)
  */
@@ -72,9 +72,9 @@ const JE_AREA = {
   idempotency: 8,
   externalSources: 12,
   images: 29,
-  katalog: 64,
+  catalog: 64,
   finances: 36,
-  bestand: 43, // mit den Schreibwegen, die sets, parts und figuren abgaben (Tabellenbesitz)
+  inventory: 43, // mit den Schreibwegen, die sets, parts und figuren abgaben (Tabellenbesitz)
   sets: 41,
   parts: 13,
   minifigs: 8,
@@ -168,11 +168,11 @@ const RAW_ALLOWED = {
     'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
   'vouchers.reencryptNumbers':
     'Altbestand beim Start: Das Umschlüsseln steht im Repository, eine Regel davor gibt es nicht',
-  'katalog.catalogStatus':
+  'catalog.catalogStatus':
     'Set-Stammdaten in der Transaktion der Set-Erfassung: Der Katalog schreibt sie, sets ruft im eigenen t',
-  'katalog.rememberCatalogPlaceholder':
+  'catalog.rememberCatalogPlaceholder':
     'Set-Stammdaten in der Transaktion der Set-Erfassung: Der Katalog schreibt sie, sets ruft im eigenen t',
-  'katalog.rememberSetCatalog':
+  'catalog.rememberSetCatalog':
     'Set-Stammdaten in der Transaktion der Set-Erfassung: Der Katalog schreibt sie, sets ruft im eigenen t',
 };
 
@@ -223,7 +223,7 @@ test('kein Dienstschlüssel reicht ein Repository roh weiter', () => {
     for (const s of boundRepositories(b, leavesOfArea, q)) roh.add(s);
   }
   assert.ok(
-    roh.has('auftraege.liesZustand') && roh.has('katalog.catalogStatus'),
+    roh.has('auftraege.liesZustand') && roh.has('catalog.catalogStatus'),
     'Selbstbeweis: beide Formen gefunden',
   );
   assert.deepEqual(

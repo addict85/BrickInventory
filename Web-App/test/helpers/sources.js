@@ -191,7 +191,7 @@ function testArea(bereich) {
   );
 }
 let _dataFactory = null;
-/** Das Bildwerk der Dienste (src/katalog/kontext.ts): eines je Datei, auch wenn sie
+/** Das Bildwerk der Dienste (src/catalog/context.ts): eines je Datei, auch wenn sie
  *  buildAndRequire() mehrmals ruft, damit ein ersetzter Teil nicht verloren geht. */
 const _imageWorker = {
   setBildLaden: (...a) =>
@@ -515,8 +515,8 @@ function setCoreSource() {
     ['src/sets/anleitungen.ts'],
     ['src/sets/preise.ts'],
     ['src/sets/erfassen.ts'],
-    ['src/katalog/partsImport.ts'],
-    ['src/katalog/minifigsImport.ts'],
+    ['src/catalog/partsImport.ts'],
+    ['src/catalog/minifigsImport.ts'],
     ['src/sets/setInhaltImport.ts'],
   ]
     .map(p => serviceSource(p[0]))
@@ -525,13 +525,13 @@ function setCoreSource() {
 
 /** Die Leseabfragen je Fachbereich als EIN Quelltext. */
 const HANDLER_MODULE = [
-  'src/bestand/gemeinsam',
+  'src/inventory/shared',
   'src/household/household',
   'src/parts/queries',
   'src/sets/lesen',
   'src/sets/loeschen',
   'src/minifigs/queries',
-  'src/bestand/kennzahlen',
+  'src/inventory/metrics',
 ];
 function handlerQuelle() {
   return HANDLER_MODULE.map(m => serviceSource(m + '.ts')).join('\n');
@@ -552,10 +552,10 @@ function startSource() {
   const dir = path.join(ROOT, 'startup');
   const teile = [
     'server.ts',
-    'src/katalog/bildNachlauf.ts',
+    'src/catalog/imageFollowUp.ts',
     'src/management/startFollowUpRuns.ts',
     'src/management/cleanup.ts',
-    'src/katalog/bildlage.ts',
+    'src/catalog/imageState.ts',
   ].map(f => serviceSource(f));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
@@ -884,10 +884,10 @@ function serviceSource(rel) {
       .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(rel), m[1])).replace(/\.js$/, ''))
       .map(z => (fs.existsSync(path.join(ROOT, z + '.ts')) ? z + '.ts' : z + '/index.ts')),
   );
-  // Der Katalog bindet seine Repositories in einer Fabrik (src/katalog/bereich.ts).
+  // Der Katalog bindet seine Repositories in einer Fabrik (src/catalog/area.ts).
   for (const m of ohneKommentare(s).matchAll(/\bkatalog\(\)\.(\w+)\./g))
-    if (fs.existsSync(path.join(ROOT, `src/katalog/repository/${m[1]}.ts`)))
-      repos.add(`src/katalog/repository/${m[1]}.ts`);
+    if (fs.existsSync(path.join(ROOT, `src/catalog/repository/${m[1]}.ts`)))
+      repos.add(`src/catalog/repository/${m[1]}.ts`);
   // Die übrigen Bereiche ebenso (src/<b>/bereich.ts, Zugriff über <b>Bereich()).
   for (const m of ohneKommentare(s).matchAll(/\b(\w+)Bereich\(\)\.(\w+)\./g)) {
     const factoryFile = ['bereich.ts', 'area.ts'].find(f => fs.existsSync(path.join(ROOT, `src/${m[1]}/${f}`)));

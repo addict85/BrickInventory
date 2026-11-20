@@ -32,11 +32,11 @@ const FOLLOWUP_RUNS = {
 function runners(k: ManagementContext): Record<FollowUpStep, () => Promise<unknown>> {
   return {
     geheimnisse: () => encryptSecrets(k),
-    vorschauen: () => k.katalog.backfillThumbnails(),
-    katalog: () => k.katalog.sameMissingAb(),
-    anleitungen: () => k.katalog.backfillInstructions(),
-    set_bilder: () => k.katalog.reloadSetImages(),
-    kaufpreise: () => k.bestand.backfillPurchasePrices(),
+    vorschauen: () => k.catalog.backfillThumbnails(),
+    katalog: () => k.catalog.sameMissingAb(),
+    anleitungen: () => k.catalog.backfillInstructions(),
+    set_bilder: () => k.catalog.reloadSetImages(),
+    kaufpreise: () => k.inventory.backfillPurchasePrices(),
   };
 }
 

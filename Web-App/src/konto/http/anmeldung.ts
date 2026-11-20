@@ -5,7 +5,7 @@ import { rotationDue, type TokenCheck } from '../geraeteToken';
 import type { LoginResult } from '../anmeldepruefung';
 import type { ConfirmationRejection, Faktor } from '../passwortBestaetigung';
 import { createHash } from 'node:crypto';
-import { routeZu } from '../../vertrag';
+import { routeZu } from '../../contract';
 import { errorText, responseLanguage } from '../../infra/fehlerTexte';
 import { reportAndDeliver } from '../../infra/fehler';
 import { nutzerId, signedInUserId } from '../../http/nutzerId';

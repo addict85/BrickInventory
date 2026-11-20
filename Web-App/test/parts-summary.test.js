@@ -90,7 +90,7 @@ try {
   db = testData();
   H = require('./helpers/sources').handlerModule(_req);
   PS = _req('src/parts/summary.js');
-  S = _req('src/bestand/kennzahlen.js');
+  S = _req('src/inventory/metrics.js');
 } catch (e) {
   skip = e.message;
 }

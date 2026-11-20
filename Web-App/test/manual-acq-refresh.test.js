@@ -104,7 +104,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
   });
   const { changeManualPart } = _req('src/parts/manualParts.js');
   const { updateManualMinifig } = _req('src/minifigs/manualMinifigs.js');
-  const { addPurchaseAtTag } = _req('src/bestand/acquisitions.js');
+  const { addPurchaseAtTag } = _req('src/inventory/acquisitions.js');
   const { testServer } = require('./helpers/server');
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const partRows = (pn, cid = 5) =>

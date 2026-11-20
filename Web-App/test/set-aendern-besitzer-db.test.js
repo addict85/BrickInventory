@@ -139,7 +139,7 @@ test('die letzte Erfassung wird an genau einer Stelle beschrieben', () => {
   }
   assert.deepEqual(
     stellen,
-    ['src/bestand/repository/kaeufe.ts'],
+    ['src/inventory/repository/purchases.ts'],
     'Die letzte Erfassung wird an mehr als einer Stelle beschrieben — genau so ' +
       'sind Preis und Zustand mit verschiedenen Konten auseinandergelaufen',
   );

@@ -64,7 +64,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
     [A],
   );
 
-  const { partsCsv, figurenCsv } = _req('src/bestand/bestandExport.js');
+  const { partsCsv, figurenCsv } = _req('src/inventory/inventoryExport.js');
   const { setsAlsCsv } = require('./helpers/sources').areaPage('sets');
   const { importPartsCsv } = _req('src/parts/manualParts.js');
   const { importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');

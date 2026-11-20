@@ -32,7 +32,7 @@ testSources(null, {
     return { avg_price: p, qty_avg_price: p, min_price: p, max_price: p, total_quantity: p === '0' ? '0' : '3' };
   },
 });
-const { priceGuideQuery } = _req('src/katalog/bricklinkPreise.js');
+const { priceGuideQuery } = _req('src/catalog/bricklinkPrices.js');
 const { fetchPartPrice, fetchMinifigPrice } = _req('src/finances/calculation/prices.js');
 
 const N = `${process.pid}`;

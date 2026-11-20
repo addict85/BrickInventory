@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { setnummerCandidates } = _req('src/katalog/produkttitel.js');
+const { setnummerCandidates } = _req('src/catalog/productTitle.js');
 
 const ROOT = path.join(__dirname, '..');
 const CORPUS_FILE = path.join(ROOT, '..', 'shared', 'setnummer-korpus.json');

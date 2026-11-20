@@ -14,7 +14,7 @@ export interface StepState {
   pflicht: boolean;
 }
 
-// Field names below (erledigt, konfiguriert, ...) are the API contract (src/vertrag/einstellungen.ts,
+// Field names below (erledigt, konfiguriert, ...) are the API contract (src/contract/settings.ts,
 // EinrichtungStand) and stay as-is; only identifiers around them are English.
 export interface SetupStatusResponse {
   erledigt: boolean;

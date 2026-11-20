@@ -7,7 +7,7 @@ import { reportError } from '../../infra/fehler';
 import { sendError } from '../../http/httpAntwort';
 import { istVerwalter } from './anmeldung';
 import type { AccountServices } from '../bereich';
-import { routeForRequest } from '../../vertrag';
+import { routeForRequest } from '../../contract';
 
 /** Ein Bearer-Token ohne Sitzung: So fragt die App. Hat die Anfrage beides, gilt die Sitzung (userIdTheRequest). */
 export function isAppToken(req: Request): boolean {

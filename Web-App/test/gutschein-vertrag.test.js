@@ -3,7 +3,7 @@
  * und weist mit dem Code der Regel ab; der Dienst bekommt nur Geprüftes.
  *
  * Gegenproben (15.11.2026 gemessen, je einzeln):
- *   A  in src/vertrag/gutscheine.ts `number: VOUCHER_NUMBER` → `number: z.string()` → rot:
+ *   A  in src/contract/vouchers.ts `number: VOUCHER_NUMBER` → `number: z.string()` → rot:
  *      „Nummer, PIN und Währung kommen im Fachformat an“ und „unbrauchbare Werte …“
  *   B  in voucherPinOrMask() die Maske nicht durchgelassen → rot: „beim Ändern darf die
  *      Maske zurückkommen …“
@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
 const { buildAndRequire } = require('./helpers/sources');
 
 const _req = buildAndRequire();
-const { routen } = _req('src/vertrag/gutscheine.js');
+const { routen } = _req('src/contract/vouchers.js');
 const anlegen = routen['POST /api/v1/vouchers'].eingabe;
 const aendern = routen['PUT /api/v1/vouchers/:id'].eingabe;
 

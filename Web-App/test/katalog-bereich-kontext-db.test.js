@@ -1,14 +1,14 @@
 /**
- * Der Bereich Katalog bekommt seinen Datenbankzugang übergeben (src/katalog/bereich.ts,
+ * Der Bereich Katalog bekommt seinen Datenbankzugang übergeben (src/catalog/area.ts,
  * gebaut von buildServices in startup/verdrahtung.ts): Lesen, Schreiben und
  * Transaktionen der Dienste gehen über diesen Zugang. Einen Prozess-Speicher, auf
  * den sie fallen könnten, gibt es nicht mehr (Verbot in test/ratschen.test.js).
  *
  * Gegenproben (A, B am 10.11.2026 gemessen, je einzeln; C am 14.11.2026):
- *   A  in src/katalog/rbInventar.ts newestInventory() über das Repository mit
+ *   A  in src/catalog/rbInventory.ts newestInventory() über das Repository mit
  *      standardDb() statt über den Kontext → rot: „Lesen geht über den übergebenen
  *      Zugang“ (gezählt: nichts)
- *   B  in src/externalSources/apiQuota.ts (damals src/katalog/) die Transaktion über standardDb() → rot:
+ *   B  in src/externalSources/apiQuota.ts (damals src/catalog/) die Transaktion über standardDb() → rot:
  *      „die Transaktion geht über den übergebenen Zugang“
  *   C  in buildAreas (startup/verdrahtung.ts) createCatalog mit { db: testAccess() }
  *      statt db → rot: „Lesen geht …“ (gezählt: nichts); das Kontingent zählen seit
@@ -62,7 +62,7 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
 
   const sql = [];
   const contexts = {};
-  const { katalog } = buildServices(countingAccess(quellen.testAccess(), sql), { contexts });
+  const { catalog: katalog } = buildServices(countingAccess(quellen.testAccess(), sql), { contexts });
 
   await t.test('Lesen geht über den übergebenen Zugang', async () => {
     assert.equal(await katalog.newestInventory(SN), INVENTORY);

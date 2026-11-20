@@ -50,8 +50,8 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
     return;
   }
   await seed();
-  const bestand = require('./helpers/sources').testArea('bestand');
-  const L = { ..._req('src/bestand/lagerort.js'), ...bestand.locationService, setDefault: bestand.setDefault };
+  const bestand = require('./helpers/sources').testArea('inventory');
+  const L = { ..._req('src/inventory/storageLocation.js'), ...bestand.locationService, setDefault: bestand.setDefault };
 
   const estrich = (await L.putLocationAn(U.ich, 'Estrich')).ort;
   const cellar = (await L.putLocationAn(U.ich, 'Keller')).ort;
@@ -141,7 +141,7 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
       rest,
       String(kiste.id),
       'Erwartet war die stumme, verwaiste Zeile — steht dort etwas anderes, ' +
-        'stimmt die Begruendung in src/bestand/lagerort.ts nicht mehr',
+        'stimmt die Begruendung in src/inventory/storageLocation.ts nicht mehr',
     );
   });
 

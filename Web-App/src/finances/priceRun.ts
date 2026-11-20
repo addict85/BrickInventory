@@ -2,7 +2,7 @@ import { savePrice, cacheUsable, priceFromCache, parallelLimit } from './finance
 import { reportError, fehlertext, logAndContinue } from '../infra/fehler';
 import { JobMove, type JobContext } from '../auftraege';
 import { withoutBricklinkPrice } from '../infra/setNummer';
-import { hatPrice } from '../katalog';
+import { hatPrice } from '../catalog';
 import { BricklinkNotReachable } from '../externalSources';
 import { receiptsSessionLock } from '../../db/txLock';
 import { LOCKS } from '../infra/lockNamespaces';
@@ -50,7 +50,7 @@ async function fetchAndCachePrice(
   currency: string,
   forceTtlHours?: string | number,
 ) {
-  if (withoutBricklinkPrice(await k.katalog.catalogEntry(setNumber))) return 'skipped_gear';
+  if (withoutBricklinkPrice(await k.catalog.catalogEntry(setNumber))) return 'skipped_gear';
 
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? ''), 10));
   // Dieselbe Frisch-Regel wie im Anfrageweg: Auch eine Null-Zeile wird nach sechs Stunden erneut versucht.
@@ -61,9 +61,9 @@ async function fetchAndCachePrice(
   if (!rl.allowed) return 'rate_limited';
 
   const fallback = condition === 'N' ? 'U' : 'N';
-  let g: Awaited<ReturnType<typeof k.katalog.priceGuide>>;
+  let g: Awaited<ReturnType<typeof k.catalog.priceGuide>>;
   try {
-    g = await k.katalog.priceGuide(setNumber, condition, guideType, currency);
+    g = await k.catalog.priceGuide(setNumber, condition, guideType, currency);
   } catch (e) {
     if (e instanceof BricklinkNotReachable) return 'nicht_erreichbar';
     log(`Error ${setNumber} (${condition}): ${fehlertext(e).substring(0, 60)}`);
@@ -78,7 +78,7 @@ async function fetchAndCachePrice(
     const rl2 = await k.externalSources.quotaFree('bricklink');
     if (rl2.allowed) {
       try {
-        const g2 = await k.katalog.priceGuide(setNumber, fallback, guideType, currency);
+        const g2 = await k.catalog.priceGuide(setNumber, fallback, guideType, currency);
         await savePrice(k, setNumber, fallback, currency, g2);
       } catch (e) {
         reportError('preis-job:rueckfall-zustand', e);

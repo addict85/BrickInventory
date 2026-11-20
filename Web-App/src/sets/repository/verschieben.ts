@@ -11,7 +11,7 @@ export async function removeInstructions(tx: DbInterface, uid: number, sn: strin
   await tx.run('DELETE FROM instructions WHERE user_id=$1 AND set_number=$2', [uid, sn]);
 }
 
-/** Teile und Figuren kopiert der Bestand (src/bestand/gemeinsam.ts). */
+/** Teile und Figuren kopiert der Bestand (src/inventory/shared.ts). */
 export async function copyInstructions(tx: DbInterface, sn: string, von: number, nach: number): Promise<number> {
   return (
     (

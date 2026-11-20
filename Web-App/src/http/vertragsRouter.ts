@@ -1,11 +1,11 @@
-/** Die HTTP-Seite des API-Vertrags: Router, Prüfung, Typen von req/res; src/vertrag kennt Express nicht. */
+/** Die HTTP-Seite des API-Vertrags: Router, Prüfung, Typen von req/res; src/contract kennt Express nicht. */
 import express from 'express';
 import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../infra/konfig';
-import { routeZu, type Schluessel, type ResponseBody, type Eingabe, type Abfrage } from '../vertrag';
-import { unbekannteFelder } from '../vertrag/unbekannteFelder';
-import { FLAT_INPUT, Fehler, PATH, type PathOf, type Route } from '../vertrag/grund';
+import { routeZu, type Schluessel, type ResponseBody, type Eingabe, type Abfrage } from '../contract';
+import { unbekannteFelder } from '../contract/unknownFields';
+import { FLAT_INPUT, Fehler, PATH, type PathOf, type Route } from '../contract/base';
 import { LARGEST_ID, idWert } from '../infra/validate';
 import { handleRouteError, sendError } from './httpAntwort';
 

@@ -295,8 +295,8 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       const NAME = `auftrag-pdf-${process.pid}`;
       await db.run('DELETE FROM users WHERE username=$1', [NAME]);
       const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-      const pdfA = _req('src/katalog/pdf/pdfAuftraege.js');
-      const jobId = _req('src/katalog/pdf/pdfAuftraege.js').newJobId(Date.now());
+      const pdfA = _req('src/catalog/pdf/pdfJobs.js');
+      const jobId = _req('src/catalog/pdf/pdfJobs.js').newJobId(Date.now());
       const worker = _req('jobs/auftraegeStarten.js').startJobWorker(require('./helpers/sources').testServices(), {
         arten: ['pdf'],
         taktMs: 50,

@@ -41,7 +41,7 @@ export async function ladeLagerortVerwaltung() {
     html`${html`<div data-stil="font-size:var(--fs-1);color:var(--mut);margin-bottom:6px">`}${html`${tRaw('storage.default_hint')}</div>`}${html`<div class="lager-raster" data-stil="display:grid;grid-template-columns:minmax(0,1fr) max-content max-content max-content;align-items:center;column-gap:0">`}${locations.map(
       o => {
         const occ = occupancy.get(o.name);
-        // Minifigs show up on their OWN, not lumped in with part counts (src/bestand/lagerort.ts): "18 part
+        // Minifigs show up on their OWN, not lumped in with part counts (src/inventory/storageLocation.ts): "18 part
         // types" would otherwise sometimes mean 18 part types and sometimes 12 plus 6 minifigs, and no one
         // could tell from the number what it means.
         const how = occ

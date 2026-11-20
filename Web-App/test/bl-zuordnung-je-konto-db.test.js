@@ -118,7 +118,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   });
 
   const { resolveBlPartNumber, fetchPartPrice } = _req('src/finances/calculation/prices.js');
-  const { blNumberOf } = _req('src/katalog/blZuordnung.js');
+  const { blNumberOf } = _req('src/catalog/blMapping.js');
 
   await t.test('Preisabruf: Anna fragt BrickLink nach 3001, Bruno nach 3003', async () => {
     assert.equal(await asAccount(ANNA, () => resolveBlPartNumber('3003', ANNA)), '3001');
@@ -166,7 +166,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   });
 
   await t.test('die gemeinsame Zuordnung wird nur gefüllt, nie ersetzt', async () => {
-    const { rememberBlNumber, rememberBlNumbers } = _req('src/katalog/blZuordnung.js');
+    const { rememberBlNumber, rememberBlNumbers } = _req('src/catalog/blMapping.js');
     await rememberBlNumber('fig', 'fig-000001', 'falsch');
     await rememberBlNumbers('fig', [{ rbId: 'fig-000001', blId: 'auch-falsch' }]);
     await rememberBlNumber('part', '3003', '3003b');

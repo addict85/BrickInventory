@@ -124,7 +124,7 @@ test("guide_type ist überall 'sold', nicht 'stock'", () => {
   // 'stock' wären eingestellte Angebote, also auch das, was niemand zahlt.
   for (const f of [
     'clients/bricklink.ts',
-    'src/katalog/bricklinkPreise.ts',
+    'src/catalog/bricklinkPrices.ts',
     'routes/api_v1/sets.ts',
     'src/finances/financeCalc.ts',
     'src/finances/priceRun.ts',
@@ -321,7 +321,7 @@ test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
   // Die Anzeige leitete den Zustand aus den Erfassungen ab, die Bewertung las
   // einen gespeicherten Wert — die Kachel zeigte „Neu", bewertet wurde gebraucht.
   const { effectiveCondition } = _req('src/finances/calculation/condition.js');
-  const { conditionFromAcquisitions } = _req('src/bestand/gemeinsam.js');
+  const { conditionFromAcquisitions } = _req('src/inventory/shared.js');
   for (const [acq, used] of [
     [0, 0],
     [1, 0],

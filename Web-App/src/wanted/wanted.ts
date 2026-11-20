@@ -7,7 +7,7 @@ import { fachfehler } from '../infra/fehlerTexte';
 import { moneyInput } from '../infra/geld';
 import { publicError } from '../infra/fehler';
 import { Degradations } from '../infra/ergebnis';
-import { forSet } from '../katalog';
+import { forSet } from '../catalog';
 import { imageIfPresent } from '../images';
 import { toCsv, csvRowsFromRequest, csvDatum } from '../infra/csvExport';
 import { possibleSetNumber, withVersion, normalisiereSetNummer } from '../infra/setNummer';
@@ -17,7 +17,7 @@ import type { WantedContext } from './context';
  * comes through, and a missing price is a dash, not an error. */
 export async function pricesForBothConditions(k: WantedContext, uid: number, setNumber: string) {
   const currency = String(await k.einstellungen.userValue(uid, 'currency', 'EUR'));
-  if (!possibleSetNumber(withVersion(setNumber)) || !(await k.katalog.setKnownInCatalog(setNumber)))
+  if (!possibleSetNumber(withVersion(setNumber)) || !(await k.catalog.setKnownInCatalog(setNumber)))
     return { currency, current: {} };
   const guideType = String(await k.einstellungen.userValue(uid, 'price_guide_type', 'sold'));
   const ttlHours = String(await k.einstellungen.userValue(uid, 'price_cache_ttl', '24'));

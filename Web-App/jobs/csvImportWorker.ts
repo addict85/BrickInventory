@@ -1,8 +1,8 @@
 /** Eigener Prozess für den Katalog-Import, damit der grosse Heap des Imports
- * den Job-Prozess nicht trifft. Die Arbeit macht src/katalog/csvImport.ts. */
+ * den Job-Prozess nicht trifft. Die Arbeit macht src/catalog/csvImport.ts. */
 import { fehlertext, logAndContinue } from '../src/infra/fehler';
 import { LESEVERTRAG } from '../src/dienste';
-import { createImportAccess, createCatalogImports, csvRow } from '../src/katalog';
+import { createImportAccess, createCatalogImports, csvRow } from '../src/catalog';
 
 // Ohne IPC-Kanal nach stderr statt TypeError.
 function post(msg: Record<string, unknown>) {

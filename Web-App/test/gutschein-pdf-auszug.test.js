@@ -9,7 +9,7 @@ const { valuesFromPdf, valuesFromText, parseNumber, pdfText } = _req('src/vouche
 // `require('pdfkit')` und NICHT ueber den Verzeichnispfad: pdfkit 0.20 hat
 // kein `main` mehr, nur noch `exports` — ein Pfad auf das Verzeichnis umgeht
 // die Aufloesung und scheitert. Der Baum macht es an seinen beiden eigenen
-// Stellen (routes/api_v1/pdf.ts, src/katalog/instructions.ts) genauso.
+// Stellen (routes/api_v1/pdf.ts, src/catalog/instructions.ts) genauso.
 const PDFDocument = require('pdfkit');
 
 /** Ein PDF mit den uebergebenen Zeilen bauen — je Zeile ein Textoperator. */

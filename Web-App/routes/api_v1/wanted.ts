@@ -10,7 +10,7 @@ import { csvReceive, xmlReceive } from '../../src/http/dateiEmpfang';
 import { WantedCorrections, type ImportInput } from '../../src/collection';
 import type { CsvImportReport } from '../../src/infra/csvExport';
 import type { z } from 'zod';
-import type { WantedXmlErgebnis } from '../../src/vertrag/merkliste';
+import type { WantedXmlErgebnis } from '../../src/contract/wanted';
 
 import { jsonOrNull } from '../../src/infra/validate';
 import { pageFrom } from '../../src/infra/seite';

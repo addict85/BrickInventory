@@ -43,11 +43,11 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { conc
   await db.run(`DELETE FROM set_catalog WHERE set_number=$1`, [name]);
   await holdsSet(db, uid, name, 1);
   // Der Bildpfad steht seit Migration 0033 im Katalog — und genau von dort
-  // sammelt der Nachlauf (src/katalog/teileAnreicherung.ts) die Pfade ein.
+  // sammelt der Nachlauf (src/catalog/partsEnrichment.ts) die Pfade ein.
   await catalogSet(db, name, { name: 'Test', image_local: `/images/sets/${name}.jpg` });
 
   try {
-    const { redownloadMissingImages } = _req('src/katalog/teileAnreicherung.js');
+    const { redownloadMissingImages } = _req('src/catalog/partsEnrichment.js');
     const r = await redownloadMissingImages();
 
     assert.ok(r && typeof r.thumbs === 'number', 'der Lauf muss melden, wie viele Vorschauen er erzeugt hat');
@@ -72,7 +72,7 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { conc
 
 test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
   const src = fs
-    .readFileSync(path.join(ROOT, 'src/katalog/bilderNachladen.ts'), 'utf8')
+    .readFileSync(path.join(ROOT, 'src/catalog/reloadImages.ts'), 'utf8')
     .split('\n')
     .filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
     .join('\n');

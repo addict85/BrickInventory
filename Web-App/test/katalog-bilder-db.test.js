@@ -4,7 +4,7 @@
  * Die Liste stösst dabei keine Bildarbeit an — das macht der Bild-Job.
  *
  * Gegenproben (am 10.11.2026 gemessen):
- *   A  in catalogPage() (src/katalog/dienst.ts) resolveImageLocal() weggelassen
+ *   A  in catalogPage() (src/catalog/service.ts) resolveImageLocal() weggelassen
  *      → rot: „… die Vorschau hat Vorrang“ (Originalpfad statt _thumb)
  *   B  in katalogSuche.ts c.image_local aus SET_SPALTEN entfernt → rot: „die Liste
  *      nennt das Bild aus set_catalog …“ (undefined)
@@ -67,7 +67,7 @@ test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const { catalogPage, catalogSet } = _req('src/katalog/dienst.js');
+  const { catalogPage, catalogSet } = _req('src/catalog/service.js');
 
   const bilder = async wer =>
     Object.fromEntries(

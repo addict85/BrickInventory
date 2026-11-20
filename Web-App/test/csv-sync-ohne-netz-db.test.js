@@ -63,10 +63,7 @@ test('Katalogabgleich ohne Netz', { concurrency: 1 }, async t => {
   await zustand.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   try {
     await t.test('ohne Netz ist der Server trotzdem bereit', async () => {
-      await assert.rejects(
-        _req('src/katalog/csvAbgleich.js').run(),
-        'der Auftrag soll den Fehler sehen und wiederholen',
-      );
+      await assert.rejects(_req('src/catalog/csvSync.js').run(), 'der Auftrag soll den Fehler sehen und wiederholen');
       const stand = await zustand.currentStartState();
       assert.equal(stand.ready, true, JSON.stringify(stand));
       const gespeichert = JSON.parse((await db.get(`SELECT value FROM run_state WHERE key='startup_status'`)).value);
@@ -76,7 +73,7 @@ test('Katalogabgleich ohne Netz', { concurrency: 1 }, async t => {
       const tmp = path.join(_req('src/infra/appPaths.js').DATA_DIR, 'colors.csv.tmp');
       tempFile = true;
       try {
-        await assert.rejects(_req('src/katalog/csvAbgleich.js').run());
+        await assert.rejects(_req('src/catalog/csvSync.js').run());
       } finally {
         tempFile = false;
       }

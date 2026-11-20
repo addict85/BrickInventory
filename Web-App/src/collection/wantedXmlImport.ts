@@ -47,8 +47,8 @@ async function importWantedXml(
       // Eine Korrektur des Kontos gilt nur für dieses; gemeinsam nur, was Rebrickable bestätigt hat.
       rememberNumber: (art, rbId, blId, quelle) =>
         quelle === 'korrigiert'
-          ? kx.katalog.rememberOwnBlNumber(uid, art, rbId, blId)
-          : kx.katalog.rememberBlNumber(art, rbId, blId),
+          ? kx.catalog.rememberOwnBlNumber(uid, art, rbId, blId)
+          : kx.catalog.rememberBlNumber(art, rbId, blId),
       fortschritt: stand => {
         // Der Stand reist über den Auftrag zur wartenden Anfrage (und deren Strom);
         // höchstens fünfmal je Sekunde, der letzte jeder Phase immer.

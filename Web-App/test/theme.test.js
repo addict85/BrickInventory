@@ -171,9 +171,9 @@ test('fuenf Listen nennen dieselben Designs', () => {
     'js/theme-boot.js',
   );
   const server = liste(
-    fs.readFileSync(path.join(__dirname, '..', 'src/vertrag/globaleRegeln.ts'), 'utf8'),
+    fs.readFileSync(path.join(__dirname, '..', 'src/contract/globalRules.ts'), 'utf8'),
     /const DESIGNS: readonly string\[\] = \[([^\]]*)\]/,
-    'src/vertrag/globaleRegeln.ts',
+    'src/contract/globalRules.ts',
   );
   // Die gemeinsame Quelle, aus der auch die App ihre Design-Tokens erzeugt.
   const geteilt = Object.keys(

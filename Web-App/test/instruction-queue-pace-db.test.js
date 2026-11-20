@@ -50,7 +50,7 @@ test('ein bereits versorgtes Set löst keinen Abruf aus', async t => {
       });
     }
 
-  const ins = _req('src/katalog/instructions.js');
+  const ins = _req('src/catalog/instructions.js');
   const sn = '99999-1';
   // Auch wenn eine Prüfung scheitert: Ein offener Pool hielte die Datei bis zur Zeitgrenze.
   t.after(async () => {

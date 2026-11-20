@@ -107,7 +107,7 @@ test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
     await c.query('SET search_path TO public');
   });
 
-  const cache = _req('src/katalog/repository/rebrickableCache.js');
+  const cache = _req('src/catalog/repository/rebrickableCache.js');
   const detail = _req('src/sets/repository/setDetail.js');
 
   await t.test('ein Abruf landet in rb_sets, und der Zwischenspeicher liest ihn von dort', async () => {

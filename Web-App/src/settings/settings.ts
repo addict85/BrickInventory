@@ -1,6 +1,6 @@
 import { encrypt, decrypt, umschluesseln, kontext } from '../infra/geheimnis';
 import { fachfehler, fileError } from '../infra/fehlerTexte';
-import { GLOBAL_RULES, DESIGNS, type GlobalKey } from '../vertrag/globaleRegeln';
+import { GLOBAL_RULES, DESIGNS, type GlobalKey } from '../contract/globalRules';
 import * as repo from './repository/values';
 import type { DbInterface } from '../../db/database';
 import type { SettingsContext } from './context';

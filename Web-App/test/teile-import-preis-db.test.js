@@ -71,7 +71,7 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
       null,
       `Der Import hat ${imp.unit_price} als Preis/Stk eingetragen, obwohl in der ` +
         'Datei keiner stand. Das Feld bedeutet „was der Mensch bezahlt hat" — ' +
-        'src/bestand/kaufpreisNachtrag.ts liest es genau so.',
+        'src/inventory/purchasePriceBackfill.ts liest es genau so.',
     );
 
     // Und die Regel dahinter: BEIDE Wege hinterlassen dasselbe.

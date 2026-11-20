@@ -48,7 +48,7 @@ test('Transaktionskontext je Verbindung', { concurrency: 1 }, async t => {
     const t1 = await imSystem(() => k.transaktion(async (/** @type {any} */ t) => t));
     const t2 = await imSystem(() => k.transaktion(async (/** @type {any} */ t) => t));
     assert.equal(t1, t2);
-    assert.equal(t1.katalog, t2.katalog, 'die tieferen Bereiche entstehen nicht neu');
+    assert.equal(t1.catalog, t2.catalog, 'die tieferen Bereiche entstehen nicht neu');
     assert.notEqual(t1, k);
   });
 

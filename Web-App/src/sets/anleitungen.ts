@@ -3,7 +3,7 @@ import { withoutMissingFile } from '../infra/fehler';
 import fs from 'node:fs';
 import path from 'node:path';
 import { APP_ROOT, DATA_DIR } from '../infra/appPaths';
-import { mergeInstructions } from '../katalog';
+import { mergeInstructions } from '../catalog';
 import { findSetInScope } from './erfassen';
 import { normalisiereSetNummer, possibleSetNumber } from '../infra/setNummer';
 import { fachfehler, notFound } from '../infra/fehlerTexte';
@@ -49,15 +49,15 @@ export async function anleitungLoeschen(sk: SetsContext, uid: number, id: number
 export async function loadInstructionsNew(sk: SetsContext, uid: number, roh: string, verwalter: boolean) {
   const sn = normalisiereSetNummer(roh);
   if (!possibleSetNumber(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  if (verwalter) await sk.katalog.deleteInstructions(sn);
+  if (verwalter) await sk.catalog.deleteInstructions(sn);
   else {
     if (!(await findSetInScope(sk, uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
-    if ((await sk.katalog.anzahlAnleitungen(sn)) > 0) fachfehler('verboten', 'nur_admins');
-    if (!(await sk.katalog.instructionNewLoadAllowed(sn)))
+    if ((await sk.catalog.anzahlAnleitungen(sn)) > 0) fachfehler('verboten', 'nur_admins');
+    if (!(await sk.catalog.instructionNewLoadAllowed(sn)))
       fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: 24 * 60 });
   }
-  const auftrag = await sk.katalog.anleitungEinreihen(sn, { jetzt: true });
-  const instructions = mergeInstructions(await sk.katalog.instructionsToSet(sn), []);
+  const auftrag = await sk.catalog.anleitungEinreihen(sn, { jetzt: true });
+  const instructions = mergeInstructions(await sk.catalog.instructionsToSet(sn), []);
   return { instructions, auftrag };
 }
 

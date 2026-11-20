@@ -1,11 +1,11 @@
 import * as repo from './repository/partsList';
-import { blColorNumberFrom } from '../katalog';
+import { blColorNumberFrom } from '../catalog';
 import { resolveImageLocal } from '../images';
 import { type RbSetTeil, firstBlNumber } from '../externalSources';
 import { asIds, type Sicht, type ScopeInput, type ScopeInput as Blickfeld } from '../household';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { summaryFresh } from './summary';
-import { clampPageSize, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand';
+import { clampPageSize, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../inventory';
 import { reportError, logAndContinue } from '../infra/fehler';
 import { Degradations } from '../infra/ergebnis';
 import { withVersion, withoutVersion } from '../infra/setNummer';
@@ -44,7 +44,7 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Degr
   // Rebrickable knows some sets only without the version suffix.
   const n = withVersion(set_number),
     alt = withoutVersion(n);
-  const invId = await ab.oder('katalog_inventar', k.katalog.newestInventory(set_number), null);
+  const invId = await ab.oder('katalog_inventar', k.catalog.newestInventory(set_number), null);
   if (invId) {
     const csvParts = await k.partsList.inventoryAsParts(invId, set_number);
     if (csvParts.length > 0)
@@ -63,7 +63,7 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Degr
   const rbKey = await k.einstellungen.globalValue('rebrickable_api_key');
   if (rbKey) {
     for (const sn of [n, alt]) {
-      const items = await ab.oder('rebrickable_teile', k.katalog.allSetParts(sn), []);
+      const items = await ab.oder('rebrickable_teile', k.catalog.allSetParts(sn), []);
       if (!items?.length) continue;
       const rbParts = items
         .filter((it: RbSetTeil) => !it.is_spare && it.part?.part_num)
@@ -174,7 +174,7 @@ export async function partsQuery(
   // Fetch missing BrickLink numbers in the background; an empty bl_id means "already checked".
   setImmediate(async () => {
     try {
-      if (await k.partsList.hasUnseenBlNumber(uids)) await k.katalog.reloadBlNumbers();
+      if (await k.partsList.hasUnseenBlNumber(uids)) await k.catalog.reloadBlNumbers();
     } catch (e) {
       reportError('parts:bl-numbers-refresh', e);
     }
@@ -247,7 +247,7 @@ export async function blColorMapQuery(k: PartsContext) {
       const blId = blColorNumberFrom(c);
       if (blId != null) {
         map[c.id] = blId;
-        k.katalog.merkeBlFarbnummer(c.id, blId).catch(logAndContinue('parts:merkeBlFarbnummer'));
+        k.catalog.merkeBlFarbnummer(c.id, blId).catch(logAndContinue('parts:merkeBlFarbnummer'));
       }
     }
     hasNext = !!data.next;
@@ -275,7 +275,7 @@ export async function manualPartsList(
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse } : null;
   const rows = await k.partsList.manualParts(uids, { search, storage }, seite);
-  const withState = await k.bestand.setzeManuellenZustand(uids, rows, 'part');
+  const withState = await k.inventory.setzeManuellenZustand(uids, rows, 'part');
   // One query for the whole list; the app reads `avg_price` in the detail view. Without
   // prices the list stays usable; `ab` collects why for `degradiert`.
   const preise = await ab.oder(

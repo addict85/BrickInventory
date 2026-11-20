@@ -85,9 +85,9 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
   const ortId = async name =>
     (await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, name])).id;
 
-  const bestand = require('./helpers/sources').testArea('bestand');
+  const bestand = require('./helpers/sources').testArea('inventory');
   const { setDefault, locationForNewEntry } = {
-    ..._req('src/bestand/lagerort.js'),
+    ..._req('src/inventory/storageLocation.js'),
     ...bestand.locationService,
     setDefault: bestand.setDefault,
   };

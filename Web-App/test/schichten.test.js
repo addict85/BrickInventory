@@ -281,7 +281,7 @@ test('ins Netz geht nur clients/ über src/infra/abruf.ts', () => {
   // Host-Liste, Grössendeckel, Frist und Abbruch stehen in abruf.ts; die Klienten
   // legen Hosts und Kopfzeilen fest. Ein Abruf daneben hätte nichts davon.
   // Gegenprobe (05.11.2026): `import { holeHttps } from '../infra/abruf'` in
-  // src/katalog/partsImport.ts zurück → rot: „src/katalog/partsImport.ts“.
+  // src/catalog/partsImport.ts zurück → rot: „src/catalog/partsImport.ts“.
   const ALLOWED = new Set(['src/infra/abruf.ts']);
   const treffer = tsBelow('src', 'routes', 'jobs', 'startup', 'db')
     .concat('server.ts')
@@ -646,7 +646,7 @@ function routesOnlyViaFactory() {
 
 /** Dienste, die noch einen rohen Griff nehmen; die Liste darf nur schrumpfen. Der Katalog
  * wird gerade geteilt (eigener Zweig): dort folgt die Umstellung auf `t`. */
-const RAW_HANDLE_STILL = new Set(['src/katalog/katalogPflege.ts']);
+const RAW_HANDLE_STILL = new Set(['src/catalog/catalogMaintenance.ts']);
 
 /** Eine Arbeitseinheit steht am Aufrufort: k.transaktion(t => …). */
 function workUnitAtCallLocation() {
@@ -654,13 +654,13 @@ function workUnitAtCallLocation() {
   // Kontext der Transaktion (t); Repositories nehmen den tx des Aufrufers. `.transaction(`
   // steht nur in src/infra/bereich.ts und db/.
   // Gegenproben: (13.11.2026) in src/collection/deletion.ts wieder `k.db.transaction(async tx =>`
-  // → rot; (13.11.2026) ebenso in src/bestand/lagerortSetzen.ts und in
+  // → rot; (13.11.2026) ebenso in src/inventory/setStorageLocation.ts und in
   // src/factors/repository/secondFactor.ts → rot „…: .transaction(“.
   // Ebenso db/txLock.ts: Bestandssperren sind eine Option von k.transaktion, kein eigener
   // Weg mit rohem tx; und kein Dienst nimmt einen rohen Griff (tx/dbh), er nimmt `t`.
   // Gegenproben (14.11.2026): eine Funktion mit `z.transaction(` in db/txLock.ts → rot
   // „db/txLock.ts: .transaction(“; `export async function probe(tx: DbInterface, …)` in
-  // src/bestand/papierkorb.ts → rot „…: Dienst mit rohem Griff probe“.
+  // src/inventory/trash.ts → rot „…: Dienst mit rohem Griff probe“.
   const treffer = [];
   const alle = [...tsBelow('src', 'routes', 'jobs', 'clients', 'startup'), 'server.ts', 'db/txLock.ts'];
   for (const d of alle) {
@@ -697,7 +697,7 @@ test('ein Fachbereich greift auf einen anderen nur über dessen Dienste und inde
   // unter src/<bereich>/http/, die nur Routen und der Zusammenbau holen.
   // Gegenprobe (11.11.2026): `export { catalogPart as _probe } from '../katalog/katalogPflege'`
   // in src/parts/manualParts.ts → rot.
-  const FREE = ['infra', 'vertrag', 'http'];
+  const FREE = ['infra', 'contract', 'http'];
   const tief = (d, z) => {
     const b = areaOf(`${z}/`);
     return (
@@ -765,7 +765,7 @@ function valueExports(index) {
  * in einer Transaktion über `t` läuft und ein Test es an der Verdrahtung ersetzt. */
 function indexWithoutAccess(indizes) {
   // Gegenproben (14.11.2026): `export { catalogStatus } from './setStamm'` zurück in
-  // src/katalog/index.ts → rot (src/katalog.catalogStatus); `export { vorschauErzeugenAus } from './thumbs'`
+  // src/catalog/index.ts → rot (src/catalog.catalogStatus); `export { vorschauErzeugenAus } from './thumbs'`
   // in src/images/index.ts → rot (asynchron).
   const alle = indizes.filter(i => !/^src\/(?:infra|vertrag|http)\//.test(i)).flatMap(valueExports);
   assert.ok(alle.length > 50, `nur ${alle.length} Wertexporte gefunden — greift die Suche noch?`);
@@ -819,7 +819,7 @@ const isHttp = rel => /^src\/[^/]+\/http\//.test(rel);
 test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen', () => {
   // Gegenproben (31.10.2026): `import type { Request } from 'express'` in
   // src/sets/dienst.ts → rot; dasselbe in src/konto/loginLimiter.ts → rot.
-  // (10.11.2026): dasselbe in src/infra/geld.ts, src/vertrag/grund.ts und
+  // (10.11.2026): dasselbe in src/infra/geld.ts, src/contract/base.ts und
   // db/txLock.ts → rot.
   const usesExpress = d =>
     /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)|require\(\s*['"]express['"]\s*\)/.test(sourceText(d));
@@ -869,7 +869,7 @@ test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/ht
   assert.deepEqual(hinein, []);
   const up = http.flatMap(d =>
     resolvedImports(d, { withTypes: true })
-      .filter(z => z.startsWith('src/') && !['http', 'infra', 'vertrag'].includes(areaOf(`${z}/`)))
+      .filter(z => z.startsWith('src/') && !['http', 'infra', 'contract'].includes(areaOf(`${z}/`)))
       .map(z => `${d} -> ${z}`),
   );
   assert.deepEqual(up, []);
@@ -929,7 +929,7 @@ test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () =>
  * eine Stufe, sonst ist der Test rot. */
 const LEVELS = [
   ['src/infra'],
-  ['src/vertrag'],
+  ['src/contract'],
   ['src/http'],
   ['db', 'clients'],
   ['src/throttle'],
@@ -940,9 +940,9 @@ const LEVELS = [
   ['src/household', 'src/devices', 'src/factors'],
   ['src/konto'],
   ['src/images', 'src/profile'],
-  ['src/idempotency', 'src/katalog'],
+  ['src/idempotency', 'src/catalog'],
   ['src/finances'],
-  ['src/bestand'],
+  ['src/inventory'],
   ['src/sets'],
   ['src/parts', 'src/minifigs', 'src/wanted', 'src/vouchers'],
   ['src/collection', 'src/management'],
@@ -988,7 +988,7 @@ function areaEdges() {
 test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
   // Gegenproben (05.11.2026): `import { getSetting } from '../src/settings/settings'`
   // in clients/brickset.ts → rot (clients → src/settings); dasselbe mit
-  // `import { withVersion } from '../sets/setNummer'` in src/katalog/dienst.ts,
+  // `import { withVersion } from '../sets/setNummer'` in src/catalog/service.ts,
   // nachdem setNummer wieder unter src/sets lag → rot (katalog → sets).
   // Gegenproben (15.11.2026, Übersetzer statt Regex): `import type { Db } from '../../db/database'`
   // in src/infra/bereich.ts → rot (src/infra → db); die Stufe von src/dienste.ts gestrichen
@@ -1040,7 +1040,7 @@ test('docs/architektur.md nennt die Rangfolge der Bereiche wie LEVELS', () => {
 
 test('die Warteschlange kennt keine Fachbereiche und Nutzlastformen, Ereignisse laufen über ereignis.ts', () => {
   // Gegenproben (15.11.2026): `import type { CatalogServices } from '../katalog'` in
-  // src/auftraege/dienst.ts → rot (Kante src/auftraege → src/katalog); `const P = z.object({})` in
+  // src/auftraege/dienst.ts → rot (Kante src/auftraege → src/catalog); `const P = z.object({})` in
   // src/auftraege/arten.ts → rot (Nutzlastform); `'brickset'` zurück in src/auftraege/dienst.ts → rot.
   const ALLOWED = new Set(['src/infra', 'src/settings', 'db']);
   const fremd = areaEdges()

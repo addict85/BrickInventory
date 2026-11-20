@@ -24,7 +24,7 @@ export interface Erfassung {
 export async function bookEntry(sk: SetsContext, e: Erfassung) {
   const pp = e.kaufpreis !== null && e.kaufpreis !== undefined && !Number.isNaN(e.kaufpreis) ? e.kaufpreis : null;
   const cond = e.zustand === 'N' || e.zustand === 'U' ? e.zustand : 'N';
-  await sk.bestand.bookDailyEntry('set', e.konto, [e.setNumber], {
+  await sk.inventory.bookDailyEntry('set', e.konto, [e.setNumber], {
     quantity: e.menge,
     price: pp,
     condition: cond,
@@ -109,7 +109,7 @@ export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecord
   if (!possibleSetNumber(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
   const besitzer = await sk.household.schreibziel(e.requester, e.ownerWish);
   const zustand = await sk.einstellungen.conditionForPrice(e.zustand ?? null, null, besitzer);
-  const ort = await sk.bestand.locationService.locationForNewEntry(besitzer, e.lagerort ?? null);
+  const ort = await sk.inventory.locationService.locationForNewEntry(besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;
   const erfassung = {
     konto: besitzer,
@@ -138,7 +138,7 @@ export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecord
     if (e.ifPresent === 'aufstocken' && (await repo.setRowOfAccount(t.db, besitzer, sn))) {
       await bookEntry(t, erfassung);
       // Nur ein genannter Ort: Die Vorgabe des Kontos verschöbe sonst ein einsortiertes Set.
-      if (ort && e.lagerort) await t.bestand.locationService.setLocation('set', [besitzer], [sn], ort);
+      if (ort && e.lagerort) await t.inventory.locationService.setLocation('set', [besitzer], [sn], ort);
       await nacharbeit('zweit');
       return { action: 'updated' as const, set_number: sn, besitzer };
     }
@@ -146,10 +146,10 @@ export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecord
       const vorhanden = await findSetInScope(t, e.requester, sn);
       if (vorhanden) return { action: 'exists' as const, ...vorhanden };
     }
-    const katalog = await t.katalog.rememberCatalogPlaceholder(sn);
-    await t.bestand.putSetAn(besitzer, sn);
+    const katalog = await t.catalog.rememberCatalogPlaceholder(sn);
+    await t.inventory.putSetAn(besitzer, sn);
     await bookEntry(t, erfassung);
-    if (ort) await t.bestand.locationService.setLocation('set', [besitzer], [sn], ort);
+    if (ort) await t.inventory.locationService.setLocation('set', [besitzer], [sn], ort);
     await nacharbeit('ergaenzen');
     return {
       action: 'added' as const,
@@ -174,7 +174,7 @@ async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, 
     minifigs: number | null = null,
     imageUrl: string | null = null,
     themeId: number | null = null;
-  const rbResult = await versuche('set-service:setAngaben', sk.katalog.setInfo(sn));
+  const rbResult = await versuche('set-service:setAngaben', sk.catalog.setInfo(sn));
   const rb = valueOr(rbResult, null);
   if (rb) {
     name = rb.name;
@@ -204,7 +204,7 @@ async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, 
   const lokal = valueOr(bild, null);
   if (lokal) void versuche('set-anlegen:vorschau', sk.images.createPreview(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
-  await sk.katalog.rememberSetCatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
+  await sk.catalog.rememberSetCatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, disrupted: !rbResult.ok, bild: !!lokal };
 }
 
@@ -217,7 +217,7 @@ export async function setSupplement(
   sendProgress: Fortschritt | null = null,
   withBrickset = true,
 ): Promise<{ name: string | null }> {
-  const stand = await sk.katalog.catalogStatus(sn);
+  const stand = await sk.catalog.catalogStatus(sn);
   let name = stand && !stand.platzhalter ? stand.name : null;
   if (!stand || stand.platzhalter || !stand.image_local) {
     const k = await fetchCatalog(sk, sn, withBrickset, sendProgress);
@@ -226,7 +226,7 @@ export async function setSupplement(
   }
   for (const z of await repo.entriesWithoutPriceOfSets(sk.db, konto, sn)) {
     const preis = await sk.finances.aktuellerMarktpreis(sn, konto, z.condition || null);
-    if (preis) await sk.bestand.setEstimatedPrice('set', z.id, preis);
+    if (preis) await sk.inventory.setEstimatedPrice('set', z.id, preis);
   }
   return { name };
 }

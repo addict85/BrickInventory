@@ -83,7 +83,7 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
       c0.release();
     }
 
-    // Zeichengleich die Abfrage aus src/katalog/blZuordnung.ts (blFetchNumber).
+    // Zeichengleich die Abfrage aus src/catalog/blMapping.ts (blFetchNumber).
     const blPlan = await plan(
       `SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_mapping
         WHERE type = 'part' AND rb_id = 'x'`,
