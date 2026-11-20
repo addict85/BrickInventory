@@ -282,8 +282,8 @@ test('die Webapp hängt keinen Token an eine Adresse', () => {
   const append = [/'\?token='\s*\+/, /\?token=\$/];
   const dateien = [
     path.join(ROOT, 'public', 'js', 'api.js'),
-    path.join(ROOT, 'public', 'js', 'bilder.js'),
-    path.join(ROOT, 'public', 'js', 'fortschritt.js'),
+    path.join(ROOT, 'public', 'js', 'images.js'),
+    path.join(ROOT, 'public', 'js', 'progress.js'),
     path.join(ROOT, 'public', 'js', 'monitor.js'),
     path.join(ROOT, 'public', 'js', 'collection.js'),
     path.join(ROOT, 'public', 'js', 'settings.js'),

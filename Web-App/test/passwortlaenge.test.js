@@ -37,7 +37,7 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
 });
 
 test('Server und Webapp nennen dieselbe Zahl', () => {
-  const web = ohneKommentare(read('public/js/formular.js'));
+  const web = ohneKommentare(read('public/js/form.js'));
   const webNumber = /export const PASSWORD_MIN_CHARS = (\d+)/.exec(web);
   assert.ok(webNumber, 'Die Webapp fuehrt keine Konstante mehr — dann steht die Zahl wieder verstreut');
   assert.equal(Number(webNumber[1]), PASSWORD_MIN_CHARS, 'Webapp und Server verlangen verschiedene Laengen');
@@ -60,10 +60,10 @@ test('die Fehlermeldung nennt dieselbe Zahl wie die Regel', () => {
 
 test('die Webapp prueft vor dem Absenden', () => {
   // Sonst schickte sie ab und zeigte erst den Serverfehler.
-  const core = ohneKommentare(read('public/js/formular.js'));
+  const core = ohneKommentare(read('public/js/form.js'));
   const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
   // Anmelden, Registrieren und Zurücksetzen stehen seit dem Umbau in sitzung.js.
-  const sitzung = ohneKommentare(read('public/js/sitzung.js'));
+  const sitzung = ohneKommentare(read('public/js/session.js'));
   const webCalls =
     (core.match(/passwordRuleText\(/g) || []).length +
     (settings.match(/passwordRuleText\(/g) || []).length +

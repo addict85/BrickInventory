@@ -16,7 +16,7 @@ const ROOT = path.join(__dirname, '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 /**
- * Nur den Formular-Lauscher aus js/aktionen.js herausschneiden.
+ * Nur den Formular-Lauscher aus js/actions.js herausschneiden.
  *
  * Dieselbe Technik wie in test/app-scrollbar.test.js: Die ganze Datei
  * auszuwerten hiesse, den halben Verteiler mitsamt Registry nachzubauen. Der
@@ -24,9 +24,9 @@ const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
  * aus, und das ist gewollt: Dann ist der Lauscher umgebaut worden.
  */
 function listenerCode() {
-  const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'aktionen.js'), 'utf8');
+  const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
   const von = roh.indexOf("  document.addEventListener('submit'");
-  assert.ok(von > 0, 'Der submit-Lauscher steht nicht mehr in js/aktionen.js');
+  assert.ok(von > 0, 'Der submit-Lauscher steht nicht mehr in js/actions.js');
   const bis = roh.indexOf('});', roh.indexOf('button.click()', von)) + 3;
   const stueck = roh.slice(von, bis);
   assert.match(stueck, /preventDefault/, 'Der herausgeschnittene Block ist nicht der richtige');

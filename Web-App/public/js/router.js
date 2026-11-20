@@ -1,7 +1,7 @@
 import { G } from './dom.js';
-import { toast, discardToasts } from './meldungen.js';
+import { toast, discardToasts } from './messages.js';
 import { tRaw } from '../i18n.js';
-import { onDialogChange, isOpen, topDialog } from './dialoge.js';
+import { onDialogChange, isOpen, topDialog } from './dialogs.js';
 import { jumpTo } from './targets.js';
 import { loggedInAccount } from './state.js';
 
@@ -178,7 +178,7 @@ function dialogAddress(id) {
 }
 
 /**
- * Öffnen und Schliessen jedes Dialogs (aus dialoge.js, also nach einer Mikroaufgabe). Ob der Eintrag schon
+ * Öffnen und Schliessen jedes Dialogs (aus dialogs.js, also nach einer Mikroaufgabe). Ob der Eintrag schon
  * stimmt, sagt deshalb der Verlauf selbst, nicht ein Merker: Nach „Zurück“ fehlt der Dialog dort bereits.
  */
 /** @param {HTMLElement} dialog @param {boolean} offen */

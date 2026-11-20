@@ -31,11 +31,11 @@ const STEP_MS = 15; // Abstand zwischen zwei Punkten — schneller als die Ruhe
  */
 async function measureMove(debounced) {
   let code =
-    withoutModuleShell(fs.readFileSync(path.join(JS, 'bausteine.js'), 'utf8')) +
+    withoutModuleShell(fs.readFileSync(path.join(JS, 'components.js'), 'utf8')) +
     '\n' +
     withoutModuleShell(fs.readFileSync(path.join(JS, 'load-guard.js'), 'utf8')) +
     '\n' +
-    withoutModuleShell(fs.readFileSync(path.join(JS, 'katalog.js'), 'utf8'));
+    withoutModuleShell(fs.readFileSync(path.join(JS, 'catalog.js'), 'utf8'));
   if (!debounced) {
     const vorher = code;
     code = code.replace(/_catLadeTimer = setTimeout\(tun, \d+\)/, 'tun()');

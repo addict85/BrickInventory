@@ -60,7 +60,7 @@
       }, 1500);
   }
 
-  // If the Rebrickable banner was showing at the last start, the boot shell keeps its space free (js/konto.js).
+  // If the Rebrickable banner was showing at the last start, the boot shell keeps its space free (js/account.js).
   try {
     if (localStorage.getItem('bim_rb_band')) document.documentElement.setAttribute('data-rb-band', '');
   } catch (_) {
@@ -113,7 +113,7 @@
   window.__bimNurDunkel = theme => theme === 'werkbank';
 
   /**
-   * Setter for konto.js and the admin save handler. Only valid values are applied AND cached — an empty
+   * Setter for account.js and the admin save handler. Only valid values are applied AND cached — an empty
    * or missing value must not overwrite the cache.
    * @param {string} theme
    */

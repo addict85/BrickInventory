@@ -9,19 +9,19 @@ import {
   pnlBadge,
   estimatedPurchase,
   rowsButton,
-} from './bausteine.js';
+} from './components.js';
 import { registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { escJs, esc, html, rawHtml } from './escaping.js';
 import { api } from './api.js';
-import { bildTag, placeholderContent, imgUrl, thumbUrl } from './bilder.js';
+import { bildTag, placeholderContent, imgUrl, thumbUrl } from './images.js';
 import { emptyState, reportHits, ico, G, alle, setzeHtml } from './dom.js';
 import { fmtDatum, fmtGeld, fmtN } from './format.js';
-import { scopeQuery } from './kontofilter.js';
+import { scopeQuery } from './account-filter.js';
 import { pnlBySet, setFinanceHeaderValue } from './state.js';
-import { hasCurve, loadPortfolioChart, setCostBasis } from './wertkurve.js';
-import { baseFrom, showMetrics } from './finanz-kennzahlen.js';
-/** @typedef {import('./finanz-kennzahlen.js').Basis} Basis */
+import { hasCurve, loadPortfolioChart, setCostBasis } from './value-curve.js';
+import { baseFrom, showMetrics } from './finance-metrics.js';
+/** @typedef {import('./finance-metrics.js').Basis} Basis */
 
 /**
  * "Market price present or not" badge with only two states: whether the price came from the

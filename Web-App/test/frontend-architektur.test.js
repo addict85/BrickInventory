@@ -13,7 +13,7 @@
  *      Zustand nur in zustand.js“
  *   E  in bausteine.js `import { loadGallery } from './sammlung.js'` → rot:
  *      „Kern importiert keine Ansicht“ (und der Kreis-Test)
- *   G  (08.11.2026) in minifigs.js wieder `import('./teile.js').ManuellesTeil` als JSDoc-Typ
+ *   G  (08.11.2026) in minifigs.js wieder `import('./parts.js').ManuellesTeil` als JSDoc-Typ
  *      (teile.js importiert minifigs.js) → rot: „kein Importkreis“, der Kreis nennt beide Dateien
  *   F  im Kapitel „Oberfläche“ von docs/architektur.md `zustand.js` in
  *      `00-staat.js` umbenannt → rot; das Kapitel gestrichen → rot

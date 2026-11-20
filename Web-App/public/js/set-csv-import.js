@@ -4,7 +4,7 @@ import { LANG, t, tRaw } from '../i18n.js';
 import { errorMessage, api, apiData, strom } from './api.js';
 import { G } from './dom.js';
 import { fmtPct } from './format.js';
-import { toast } from './meldungen.js';
+import { toast } from './messages.js';
 import {
   gibStart,
   importCounter,
@@ -16,8 +16,8 @@ import {
   showProgress,
   setCsvPollActive,
   showImportCompletion,
-} from './fortschritt.js';
-import { confirmDelete } from './rueckfrage.js';
+} from './progress.js';
+import { confirmDelete } from './confirm-prompt.js';
 
 // Set CSV import from the gallery: preflight check, the job's stream, and polling if the stream drops.
 // CSV import via SSE stream — choosing a file starts the import directly (like the parts import)
@@ -114,7 +114,7 @@ async function startSetCsvImport() {
 
 // Processes a CSV status object for the starting window's overlay. Returns true once the import is done.
 /**
- * @param {import('./fortschritt.js').ImportStand} s
+ * @param {import('./progress.js').ImportStand} s
  * @param {{ total: number, prevDone: number | null | undefined, prevResultCount: number }} ctx
  * @param {HTMLInputElement | null} fi
  */
@@ -146,7 +146,7 @@ function csvApplyOverlayStatus(s, ctx, fi) {
     if (s.results && s.results.length > ctx.prevResultCount) {
       const newResults = s.results.slice(ctx.prevResultCount);
       newResults.forEach(r => {
-        // Same builder as in fortschritt.js — the reasoning lives there.
+        // Same builder as in progress.js — the reasoning lives there.
         const z = logRow(r);
         if (z) addCsvLog(z.text, z.art);
       });
@@ -165,7 +165,7 @@ function csvApplyOverlayStatus(s, ctx, fi) {
       if (s.results) {
         const remaining = s.results.slice(ctx.prevResultCount);
         remaining.forEach(r => {
-          // Same row builder as in fortschritt.js. No esc(), because addCsvLog sets textContent; the
+          // Same row builder as in progress.js. No esc(), because addCsvLog sets textContent; the
           // timeout-retry hint only applies here.
           const z = logRow(r, tRaw('csv.timeout_retry'));
           if (z) addCsvLog(z.text, z.art);
@@ -202,7 +202,7 @@ async function csvPollLoop(ctx, fi) {
       // apiData instead of api: api() would overwrite the `status` field with the HTTP status, and the
       // loop would never end.
       const s = await apiData('GET', '/v1/sets/import/csv/status');
-      if (s && csvApplyOverlayStatus(/** @type {import('./fortschritt.js').ImportStand} */ (s), ctx, fi)) break;
+      if (s && csvApplyOverlayStatus(/** @type {import('./progress.js').ImportStand} */ (s), ctx, fi)) break;
     } catch (e) {
       console.warn('Poll error:', e);
     }

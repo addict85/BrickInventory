@@ -3,17 +3,17 @@ import { echt, registerActions } from './registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { esc, html, rawHtml, joinHtml } from './escaping.js';
 import { api } from './api.js';
-import { bildTag, placeholderContent, fullUrl, imgUrl, thumbUrl, setDialogbild } from './bilder.js';
+import { bildTag, placeholderContent, fullUrl, imgUrl, thumbUrl, setDialogbild } from './images.js';
 import { emptyState, reportHits, ico, G, TRASH_ICON_SVG, knopfBesetzt, resetButton, setzeHtml } from './dom.js';
 import { fmtDatum, fmtN, readAmount } from './format.js';
-import { setnummerFieldValid, amountFromField, quantityFromField } from './formular.js';
-import { toast } from './meldungen.js';
-import { detailRow, kachelName, listLoadError, skeletonRows, uploadCsv } from './bausteine.js';
-import { addScopeParam } from './kontofilter.js';
+import { setnummerFieldValid, amountFromField, quantityFromField } from './form.js';
+import { toast } from './messages.js';
+import { detailRow, kachelName, listLoadError, skeletonRows, uploadCsv } from './components.js';
+import { addScopeParam } from './account-filter.js';
 import { accountCurrency } from './state.js';
-import { alarmBlock, ladeAlarm, setAlarmField } from './detailfelder.js';
-import { chartWidth, priceChartSVG, renderMarketRows } from './diagramme.js';
-import { emptyLocationField, selectedOwner, selectedStorage, householdAccounts } from './konten-orte.js';
+import { alarmBlock, ladeAlarm, setAlarmField } from './detail-fields.js';
+import { chartWidth, priceChartSVG, renderMarketRows } from './charts.js';
+import { emptyLocationField, selectedOwner, selectedStorage, householdAccounts } from './account-locations.js';
 
 // What you want, kept apart from what you own — hence its own table: in `sets` a wanted item
 // would count in the gallery, parts, portfolio and finances, and every view would need a filter.
@@ -370,7 +370,7 @@ export async function oeffneMerkpostenDetail(arg) {
   // Without a name, the number is already in the title.
   G('mk-m-sub').textContent = [w.name ? w.set_number : '', conditionText(w.condition)].filter(Boolean).join(' · ');
   // Full resolution, but also through our own server: fullUrl() sends an absolute CDN address through the
-  // image proxy (bilder.js). The local image takes priority — it's already there.
+  // image proxy (images.js). The local image takes priority — it's already there.
   const img = w.image_local || w.image_url ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';
   setDialogbild(G('mk-m-img'), img, img);
   setzeHtml(G('mk-m-sparkline-content'), html`<span class="text-mut schrift-1">${tRaw('common.loading')}</span>`);

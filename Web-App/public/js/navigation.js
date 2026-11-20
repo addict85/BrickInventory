@@ -6,10 +6,10 @@ import { G, emptyState, alle, eins, setzeHtml, rollArt } from './dom.js';
 import { loggedInAccount, lastImportAt } from './state.js';
 import { loadSchedules, loadMonitor, stopMonitor } from './monitor.js';
 import { resetMinifigsFilter, loadManualFigsTable, loadMinifigs } from './minifigs.js';
-import { initCatalog, resetCatalog } from './katalog.js';
+import { initCatalog, resetCatalog } from './catalog.js';
 import { pollJobStatus, stopJobPolling } from './admin.js';
-import { ladeAlarmUebersicht } from './alarme.js';
-import { ladeLagerortVerwaltung } from './lagerorte.js';
+import { ladeAlarmUebersicht } from './alerts.js';
+import { ladeLagerortVerwaltung } from './storage-locations.js';
 import {
   loadApiLimits,
   loadCacheStats,
@@ -18,19 +18,19 @@ import {
   loadRateLimitStats,
   loadSettings,
 } from './settings.js';
-import { loadTls, loadTokens } from './zugaenge.js';
-import { loadHousehold } from './haushalt.js';
-import { ladeGutscheine } from './gutscheine.js';
+import { loadTls, loadTokens } from './accesses.js';
+import { loadHousehold } from './household.js';
+import { ladeGutscheine } from './vouchers.js';
 import { ladeMerkliste, resetWantedFilter } from './wanted.js';
-import { loadTrash } from './papierkorb.js';
+import { loadTrash } from './trash.js';
 import { ladePasskeys } from './passkeys.js';
-import { ladeZweitenFaktor } from './zweiter-faktor.js';
-import { loadParts, resetPartsFilter, loadManualParts } from './teile.js';
-import { loadBrickColors } from './teil-erfassen.js';
+import { ladeZweitenFaktor } from './second-factor.js';
+import { loadParts, resetPartsFilter, loadManualParts } from './parts.js';
+import { loadBrickColors } from './part-add.js';
 import { reportView, reportFilter } from './router.js';
-import { setLagerModus, setScopeMode } from './kontofilter.js';
-import { collectionSubtitle } from './konten-orte.js';
-import { setScrollLabel } from './rollbalken.js';
+import { setLagerModus, setScopeMode } from './account-filter.js';
+import { collectionSubtitle } from './account-locations.js';
+import { setScrollLabel } from './scrollbar.js';
 import { tRaw } from '../i18n.js';
 import { subscribe, emit } from './events.js';
 import { esc } from './escaping.js';

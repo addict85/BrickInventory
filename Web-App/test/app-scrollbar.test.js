@@ -16,7 +16,7 @@ const ROOT = path.join(__dirname, '..');
  * Den Scrollbalken-Code auswerten.
  */
 function scrollbarCode() {
-  const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'rollbalken.js'), 'utf8');
+  const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'scrollbar.js'), 'utf8');
   return roh.replace(/^import .*$/gm, '').replace(/^export\s+/gm, '');
 }
 

@@ -10,13 +10,13 @@ import {
   estimatedPurchase,
   kachelName,
   accountDisplay,
-} from './bausteine.js';
+} from './components.js';
 import { echt, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
 import { html, rawHtml } from './escaping.js';
 import { api } from './api.js';
 import { loadGuard } from './load-guard.js';
-import { bildTag, fullUrl, placeholderContent, imgUrl, observeLazyImages, thumbUrl } from './bilder.js';
+import { bildTag, fullUrl, placeholderContent, imgUrl, observeLazyImages, thumbUrl } from './images.js';
 import {
   emptyState,
   reportHits,
@@ -31,9 +31,9 @@ import {
   atPhoneSwitch,
 } from './dom.js';
 import { fmtDatum, fmtGeld, fmtN, isGift } from './format.js';
-import { toast } from './meldungen.js';
-import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './kontofilter.js';
-import { deletedWithUndo } from './papierkorb.js';
+import { toast } from './messages.js';
+import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './account-filter.js';
+import { deletedWithUndo } from './trash.js';
 import {
   accountCurrency,
   loggedInAccount,
@@ -43,9 +43,9 @@ import {
   pnlBySet,
   setPnlBySet,
 } from './state.js';
-import { confirmDelete, deleteWithChoice } from './rueckfrage.js';
-import { COLUMNS_SORT, setsTabelle, tableRow, valueCell } from './sets-tabelle.js';
-import { loadStats } from './kennzahlen.js';
+import { confirmDelete, deleteWithChoice } from './confirm-prompt.js';
+import { COLUMNS_SORT, setsTabelle, tableRow, valueCell } from './sets-table.js';
+import { loadStats } from './metrics.js';
 /** @typedef {import('./state.js').Tile} Tile */
 
 /**

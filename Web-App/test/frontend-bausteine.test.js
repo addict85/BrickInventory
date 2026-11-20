@@ -11,11 +11,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const JS = path.join(__dirname, '..', 'public', 'js');
-const COMPONENT = 'bausteine.js';
+const COMPONENT = 'components.js';
 const { buildTestbuendel } = require('./helpers/buendel');
 process.env.TEST_BUENDEL = buildTestbuendel(
   'bausteine',
-  "import { detailRow, loadDisplay } from './bausteine.js';\nwindow.__build = { detailRow, loadDisplay };\n",
+  "import { detailRow, loadDisplay } from './components.js';\nwindow.__build = { detailRow, loadDisplay };\n",
 );
 const { openUi } = require('./helpers/oberflaeche');
 

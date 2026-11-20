@@ -1,6 +1,6 @@
 /**
  * Karten und Zeilen mit data-click lassen sich mit der Tastatur auslösen —
- * am echten Bündel in jsdom (public/js/aktionen.js).
+ * am echten Bündel in jsdom (public/js/actions.js).
  *
  * Gegenprobe (am 27.10. gemessen): den keydown-Zuhörer in aktionen.js
  * entfernt → rot: „Eingabe auf einer Karte".

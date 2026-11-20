@@ -18,7 +18,7 @@ const ROOT = path.join(__dirname, '..');
 const lies = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
 
-const PROGRESS = 'public/js/fortschritt.js';
+const PROGRESS = 'public/js/progress.js';
 
 test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
   const quellen = fs

@@ -3,10 +3,10 @@ import { tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
-import { toast } from './meldungen.js';
+import { toast } from './messages.js';
 import { loggedInAccount } from './state.js';
 import { html } from './escaping.js';
-import { bestaetigeMitPasswort, withSecondFactor, fetchSetPasskey } from './rueckfrage.js';
+import { bestaetigeMitPasswort, withSecondFactor, fetchSetPasskey } from './confirm-prompt.js';
 
 // ═══ Passkeys (server: src/factors/repository/passkeys.ts, routes/auth.ts) ═══════════════
 // No third-party script: the server sends the options as JSON (Base64URL), the browser needs an
@@ -243,5 +243,5 @@ export async function passkeyLoeschen(id, name) {
   if (passkeysPossible()) fetchSetPasskey(() => getAssertion('zweiter_faktor'));
 }
 
-// Names below are registry-exposed (index.html/verbindung.js) — kept unchanged.
+// Names below are registry-exposed (index.html/connection.js) — kept unchanged.
 registerActions({ passkeyAnmelden, passkeyZweiterFaktor, ladePasskeys, passkeyHinzufuegen, passkeyLoeschen });

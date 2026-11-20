@@ -25,7 +25,7 @@ private const val SERVER = "http://nas:3000/"
  * Warteschlange (server.ts, "Generate missing thumbnails"). Der vorherige
  * Wiederholversuch fragte dieselbe (fehlende) Vorschau-Datei ein zweites Mal
  * an — dieselbe 404, keine Besserung. Die Webapp fällt in genau diesem Fall
- * auf die volle Auflösung zurück (public/js/aktionen.js, data-orig); Android
+ * auf die volle Auflösung zurück (public/js/actions.js, data-orig); Android
  * hatte dieses Verhalten bisher nicht.
  */
 class ThumbFallbackTest {

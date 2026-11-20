@@ -6,11 +6,11 @@ import { registerActions, echt } from './registry.js';
 import { accountCurrency, loggedInAccount, gallerySets, openSet, setOpenSet } from './state.js';
 import { escJs, esc, html, safeUrl, rawHtml } from './escaping.js';
 import { api } from './api.js';
-import { fullUrl, setDialogbild, PLACEHOLDER_SET } from './bilder.js';
+import { fullUrl, setDialogbild, PLACEHOLDER_SET } from './images.js';
 import { G, ico, activeTab, setzeHtml } from './dom.js';
 import { fmtDatum, fmtGeld } from './format.js';
-import { meldeAmFeld, toast, discardToasts } from './meldungen.js';
-import { deletedWithUndo } from './papierkorb.js';
+import { meldeAmFeld, toast, discardToasts } from './messages.js';
+import { deletedWithUndo } from './trash.js';
 import {
   alarmBlock,
   closeModal,
@@ -19,14 +19,14 @@ import {
   locationBlock,
   setAlarmField,
   setQuantitiesField,
-} from './detailfelder.js';
-import { confirmDelete } from './rueckfrage.js';
+} from './detail-fields.js';
+import { confirmDelete } from './confirm-prompt.js';
 import { delSet, reimportParts } from './collection.js';
-import { detailRow, accountDisplay, orStroke, skeletonRows, oeffneErfassen } from './bausteine.js';
-import { chartWidth, priceChartSVG, renderMarketRows } from './diagramme.js';
+import { detailRow, accountDisplay, orStroke, skeletonRows, oeffneErfassen } from './components.js';
+import { chartWidth, priceChartSVG, renderMarketRows } from './charts.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { openAcqModal, renderAcqModalBody } from './kauf-dialoge.js';
-import { summary, renderAcquisitionSummary } from './kaufpreis-anzeige.js';
+import { openAcqModal, renderAcqModalBody } from './purchase-dialogs.js';
+import { summary, renderAcquisitionSummary } from './purchase-price-display.js';
 
 // Moving happens only per acquisition (the acquisition dialog, row by row), never for a whole set:
 // several acquisitions of one set in a household can belong to different accounts. The server needs
@@ -378,7 +378,7 @@ export function openImageLightbox(src, name = '') {
 }
 
 // `removeAttribute`, NOT `src=''`: an empty src is not an empty address, it is the address of the
-// PAGE. The browser loads it as an image, fails, and the error listener in aktionen.js reported on
+// PAGE. The browser loads it as an image, fails, and the error listener in actions.js reported on
 // every close of the zoom `[img] could not load: https://<host>/`. Without the attribute the
 // browser loads nothing at all.
 export function closeImageLightbox() {
@@ -386,7 +386,7 @@ export function closeImageLightbox() {
   G('lightbox-img').removeAttribute('src');
 }
 
-// Escape closes the zoom via js/dialoge.js, like every dialog.
+// Escape closes the zoom via js/dialogs.js, like every dialog.
 G('set-modal').addEventListener('click', e => e.target === e.currentTarget && closeModal());
 
 /** @type {number | null} */
@@ -557,7 +557,7 @@ async function redownloadInstr(sn) {
 
 registerTarget({ setDetail: openModal });
 
-// Names below are registry-exposed (data-click/data-change in index.html, or verbindung.js) — kept unchanged.
+// Names below are registry-exposed (data-click/data-change in index.html, or connection.js) — kept unchanged.
 registerActions({
   teileNeuImportieren,
   autosaveSet,

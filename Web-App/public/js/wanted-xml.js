@@ -6,12 +6,12 @@ import { registerActions } from './registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
 import { escHex, rawHex, esc, html, rawHtml, joinHtml } from './escaping.js';
 import { apiRaw } from './api.js';
-import { bildTag, placeholderContent, fullUrl, imgUrl } from './bilder.js';
+import { bildTag, placeholderContent, fullUrl, imgUrl } from './images.js';
 import { ico, G, XML_ICON_SVG, setzeHtml } from './dom.js';
-import { toast } from './meldungen.js';
+import { toast } from './messages.js';
 import { loadManualFigsTable } from './minifigs.js';
-import { loadManualParts } from './teile.js';
-import { loadBrickColors } from './teil-erfassen.js';
+import { loadManualParts } from './parts.js';
+import { loadBrickColors } from './part-add.js';
 
 /**
  * The server's report (WantedXmlErgebnis). The contract does not yet name the per-item fields the table

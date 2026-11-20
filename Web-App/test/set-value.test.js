@@ -306,7 +306,7 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
     /const createMay = req\.query\.gen !== '0'/,
     'Der Proxy kennt kein „Vorschau nutzen, aber keine erzeugen"',
   );
-  const kat = fs.readFileSync(path.join(ROOT, 'public', 'js', 'katalog.js'), 'utf8');
+  const kat = fs.readFileSync(path.join(ROOT, 'public', 'js', 'catalog.js'), 'utf8');
   assert.match(kat, /imgUrl\(thumbUrl\(src\), 'nur'\)/, 'Die Katalog-Kachel lässt weiter Verkleinerungen erzeugen');
   // Die Galerie NICHT — dort lohnt es sich.
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'collection.js'), 'utf8');

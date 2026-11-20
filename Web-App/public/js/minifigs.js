@@ -12,11 +12,11 @@ import {
   rowsButton,
   skeletonTiles,
   kachelName,
-} from './bausteine.js';
+} from './components.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { escHex, esc, html, rawHtml, joinHtml } from './escaping.js';
 import { api } from './api.js';
-import { bildTag, placeholderContent, fullUrl, imgUrl, thumbUrl } from './bilder.js';
+import { bildTag, placeholderContent, fullUrl, imgUrl, thumbUrl } from './images.js';
 import {
   emptyState,
   reportHits,
@@ -29,13 +29,13 @@ import {
   telefonBreite,
 } from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
-import { amountFromField, quantityFromField, purchaseDateValid } from './formular.js';
-import { toast } from './meldungen.js';
-import { addLagerParam, addScopeParam, scopeQuery } from './kontofilter.js';
-import { deletedWithUndo } from './papierkorb.js';
+import { amountFromField, quantityFromField, purchaseDateValid } from './form.js';
+import { toast } from './messages.js';
+import { addLagerParam, addScopeParam, scopeQuery } from './account-filter.js';
+import { deletedWithUndo } from './trash.js';
 import { accountCurrency } from './state.js';
-import { emptyLocationField, selectedOwner, selectedStorage } from './konten-orte.js';
-import { confirmDelete } from './rueckfrage.js';
+import { emptyLocationField, selectedOwner, selectedStorage } from './account-locations.js';
+import { confirmDelete } from './confirm-prompt.js';
 
 // ── MINIFIGUREN ──────────────────────────────────────────────────────────────
 /**
@@ -356,7 +356,7 @@ let _setMinifigsEmpty = null; // null: noch nicht geladen
 let _manualMinifigsEmpty = null;
 
 /**
- * Wie bei den Teilen (reconcilePartsEmpty in teile.js): ein Leerzustand für den Reiter, und nur wenn beide
+ * Wie bei den Teilen (reconcilePartsEmpty in parts.js): ein Leerzustand für den Reiter, und nur wenn beide
  * Listen leer sind.
  */
 function reconcileMinifigsEmpty() {
@@ -583,7 +583,7 @@ export function manualQuery(view, searchId) {
   const p = new URLSearchParams();
   addScopeParam(p, view);
   // Der Lagerortfilter steht in derselben Leiste und gehoert damit zum gleichen Versprechen. Es gibt ihn nur
-  // fuer Galerie und Teile (LAGER_VIEWS in kontofilter.js); fuer 'minifigs' haengt addLagerParam nichts an, und
+  // fuer Galerie und Teile (LAGER_VIEWS in account-filter.js); fuer 'minifigs' haengt addLagerParam nichts an, und
   // deshalb kennt getManualMinifigs ihn auch nicht.
   addLagerParam(p, view);
   const q = G(searchId)?.value?.trim();

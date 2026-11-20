@@ -23,7 +23,7 @@ const path = require('node:path');
 
 const PUB = path.join(__dirname, '..', 'public');
 const HTML = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
-const ACT = fs.readFileSync(path.join(PUB, 'js', 'aktionen.js'), 'utf8');
+const ACT = fs.readFileSync(path.join(PUB, 'js', 'actions.js'), 'utf8');
 const JS_FILES = fs.readdirSync(path.join(PUB, 'js')).filter(f => isAppModule(f));
 
 test('nirgends mehr Inline-Handler — weder in index.html noch in den Templates', () => {
@@ -36,7 +36,7 @@ test('nirgends mehr Inline-Handler — weder in index.html noch in den Templates
   const found = [];
   for (const [name, src] of [
     ['index.html', HTML],
-    ...JS_FILES.concat(['aktionen.js']).map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')]),
+    ...JS_FILES.concat(['actions.js']).map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')]),
   ]) {
     for (const m of strip(src).matchAll(RE)) found.push(`${name}: ${m[0]}`);
   }
@@ -108,7 +108,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
 
   // Der Selbstbeweis zählt über ALLE Dateien, nicht je Datei
   let buttonsTotal = 0;
-  for (const file of ['collection.js', 'sets-tabelle.js', 'teile.js', 'minifigs.js', 'set-detail.js']) {
+  for (const file of ['collection.js', 'sets-table.js', 'parts.js', 'minifigs.js', 'set-detail.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     // `del\w*` und nicht `delete\w*`: Die Galerie-Kachel ruft `delSetStop`.
     // Mit dem engeren Muster fand die Suche dort NICHTS — und der Selbstbeweis
@@ -166,7 +166,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   // Inline-Style und dauerhaft sichtbar, Teile hatten gar keinen.
   for (const [file, expected] of /** @type {[string, number][]} */ ([
     ['collection.js', 1],
-    ['teile.js', 1],
+    ['parts.js', 1],
     ['minifigs.js', 2],
   ])) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');

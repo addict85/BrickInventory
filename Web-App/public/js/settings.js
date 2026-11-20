@@ -1,18 +1,18 @@
 import { emit } from './events.js';
-import { loadHousehold } from './haushalt.js';
+import { loadHousehold } from './household.js';
 import { loadUsers } from './user-management.js';
 import { registerTarget } from './targets.js';
 import { registerActions } from './registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { ico, G, knopfBesetzt, setzeHtml } from './dom.js';
-import { responseError, feldFehler, passwordRuleText } from './formular.js';
-import { _updateLangSelect, applyTheme, initDefaultCondition, showUsernames } from './konto.js';
-import { meldeAmFeld, toast } from './meldungen.js';
-import { loadParts } from './teile.js';
+import { responseError, feldFehler, passwordRuleText } from './form.js';
+import { _updateLangSelect, applyTheme, initDefaultCondition, showUsernames } from './account.js';
+import { meldeAmFeld, toast } from './messages.js';
+import { loadParts } from './parts.js';
 import { loadMinifigs } from './minifigs.js';
 import { reportSection } from './router.js';
-import { clearerReason } from './bausteine.js';
+import { clearerReason } from './components.js';
 import {
   accountCurrency,
   loggedInAccount,
@@ -27,8 +27,8 @@ import {
   withSecondFactor,
   confirmWithPassword,
   saveSettings,
-} from './rueckfrage.js';
-import { LAND_TO_CURRENCY } from './gutscheine.js';
+} from './confirm-prompt.js';
+import { LAND_TO_CURRENCY } from './vouchers.js';
 // Settings: profile, theme, source credentials, mail, cache, QR login and config
 // import/export. Household, user management, alerts and storage locations have their own files.
 

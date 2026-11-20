@@ -5,7 +5,7 @@
  * preisalarm-db.test.js gegen echte Daten.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut), in
- * public/js/detailfelder.js:
+ * public/js/detail-fields.js:
  *   A  ALARM_REST 800 → 300 → rot: „Webapp: beim Tippen …“ (PUT vor der Ruhezeit)
  *   B  in alarmGetippt die Ruhezeit nicht zurückgesetzt (kein clearTimeout) →
  *      rot: ebenda (drei PUT statt einem)

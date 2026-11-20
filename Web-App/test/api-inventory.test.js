@@ -290,7 +290,7 @@ const C = {
   // Stand der Ersteinrichtung vor der Anmeldung (public/js/setup-status.js).
   // Nur die Webapp zeigt ihn; die App hat ihre eigene Einrichtung.
   'GET /api/v1/einrichtung/stand': 'nur-web',
-  // Einrichtungs-Assistent (public/js/einrichtung.js).
+  // Einrichtungs-Assistent (public/js/setup.js).
   'GET /api/v1/settings/einrichtung': 'nur-v1',
   'POST /api/v1/settings/einrichtung/fertig': 'nur-v1',
   'POST /api/v1/settings/quelle-testen': 'nur-v1',

@@ -488,14 +488,14 @@ function adminSource() {
   return [
     'admin.js',
     'set-detail.js',
-    'detailfelder.js',
-    'diagramme.js',
-    'fadenkreuz.js',
-    'rueckfrage.js',
-    'kauf-dialoge.js',
-    'manuell-detail.js',
-    'erfassung-zustand.js',
-    'kaufpreis-anzeige.js',
+    'detail-fields.js',
+    'charts.js',
+    'crosshair.js',
+    'confirm-prompt.js',
+    'purchase-dialogs.js',
+    'manual-detail.js',
+    'entry-state.js',
+    'purchase-price-display.js',
   ]
     .map(f => fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8'))
     .join('\n');
@@ -593,17 +593,17 @@ function coreSource() {
     'events.js',
     'dom.js',
     'format.js',
-    'meldungen.js',
-    'verbindung.js',
+    'messages.js',
+    'connection.js',
     'api.js',
-    'bilder.js',
-    'formular.js',
-    'konto.js',
-    'fortschritt.js',
+    'images.js',
+    'form.js',
+    'account.js',
+    'progress.js',
     'monitor.js',
-    'kontofilter.js',
-    'rollbalken.js',
-    'sitzung.js',
+    'account-filter.js',
+    'scrollbar.js',
+    'session.js',
   ]
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8'))
     .join('\n');
@@ -945,7 +945,14 @@ function loginSource() {
 
 /** Die Dateien je Ansicht; eine geteilte Ansicht bleibt so unter einem Namen prüfbar. */
 const VIEWS = {
-  einstellungen: ['settings.js', 'zugaenge.js', 'haushalt.js', 'user-management.js', 'alarme.js', 'lagerorte.js'],
+  einstellungen: [
+    'settings.js',
+    'accesses.js',
+    'household.js',
+    'user-management.js',
+    'alerts.js',
+    'storage-locations.js',
+  ],
 };
 
 /** Alle Dateien einer Ansicht (Schlüssel aus VIEWS) als EIN Text. */

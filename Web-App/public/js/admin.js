@@ -4,7 +4,7 @@ import { locale, t, tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { ico, G, setzeHtml, ifVisible } from './dom.js';
 import { fmtDatum } from './format.js';
-import { toast } from './meldungen.js';
+import { toast } from './messages.js';
 import { html } from './escaping.js';
 
 // ── JOB STATUS ───────────────────────────────────────────
@@ -246,7 +246,7 @@ export async function loadBricksetQueue() {
 }
 
 /**
- * The element first, then data-arg: with data-self="1" the dispatcher (js/aktionen.js) puts the button
+ * The element first, then data-arg: with data-self="1" the dispatcher (js/actions.js) puts the button
  * there first. Reversed, the button ended up as the set number in the address, and the server never found
  * an entry.
  */

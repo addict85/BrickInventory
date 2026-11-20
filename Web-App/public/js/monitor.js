@@ -4,7 +4,7 @@ import { asHtml, escHtmlAttr, esc, html, rawHtml } from './escaping.js';
 import { api, apiData } from './api.js';
 import { ico, G, setzeHtml, ifVisible } from './dom.js';
 import { fmtDatum } from './format.js';
-import { meldeAmFeld, toast } from './meldungen.js';
+import { meldeAmFeld, toast } from './messages.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
 /** @typedef {import('../../frontend-typen/vertrag').AuftragPause} AuftragPause */
 /** @typedef {import('../../frontend-typen/vertrag').Auftrag} Auftrag */

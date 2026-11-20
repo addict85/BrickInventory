@@ -490,11 +490,11 @@ test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
 });
 
 test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {
-  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'bausteine.js'), 'utf8');
+  const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'components.js'), 'utf8');
   assert.match(gal, /export function condBadges/, 'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
   // Eine Plakette, keine Kopien mit fest eingetragenen Farben statt der CSS-Klassen:
   // keine Zeile darf eine Zustands-Beschriftung UND eine eigene Farbe tragen.
-  for (const f of ['public/js/teile.js', 'public/js/minifigs.js', 'public/js/finances.js']) {
+  for (const f of ['public/js/parts.js', 'public/js/minifigs.js', 'public/js/finances.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l => /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));
     assert.equal(inline.length, 0, `${f}: Zustandsfarben gehören in die CSS-Klassen cond-new/cond-used`);

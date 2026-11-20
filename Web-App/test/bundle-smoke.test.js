@@ -142,10 +142,10 @@ test('unbehandelte Fehler landen nicht nur in der Konsole', () => {
   // Fehler in einem Rückruf oder eine Zusage, die niemand einsammelt. Ohne
   // Auffangnetz sieht der Benutzer davon nichts — er klickt, und es passiert
   // einfach nichts.
-  const init = fs.readFileSync(path.join(ROOT, 'public', 'js', 'fehlerfang.js'), 'utf8');
+  const init = fs.readFileSync(path.join(ROOT, 'public', 'js', 'error-capture.js'), 'utf8');
   assert.match(init, /addEventListener\('unhandledrejection'/, 'Abgewiesene Zusagen brauchen ein Auffangnetz');
   assert.match(init, /addEventListener\('error'/, 'Skriptfehler ebenso');
-  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'sitzung.js'), 'utf8');
+  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'session.js'), 'utf8');
   assert.match(
     sitzung,
     /startApp\(\)\s*\{\s*\n\s*bindGlobalErrorHandlers\(\);/,
@@ -161,7 +161,7 @@ test('ein 401 führt zurück zur Anmeldung, nicht in eine tote Oberfläche', () 
     /if \(res\.status === 401\) emit\('sitzungBeendet', path\);/,
     'Der 401 muss zentral behandelt werden, nicht an 88 Aufrufstellen',
   );
-  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'sitzung.js'), 'utf8');
+  const sitzung = fs.readFileSync(path.join(ROOT, 'public', 'js', 'session.js'), 'utf8');
   const von = sitzung.indexOf("subscribe('sitzungBeendet'");
   assert.ok(von > 0, 'Niemand reagiert auf das Sitzungsende');
   const fn = sitzung.slice(von, sitzung.indexOf('\n});\n', von));

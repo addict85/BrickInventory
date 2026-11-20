@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const QUELLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'fehlerfang.js'), 'utf8');
+const QUELLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'error-capture.js'), 'utf8');
 
 /**
  * Das Auffangnetz faengt nur UNSERE Fehler.

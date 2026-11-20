@@ -14,7 +14,7 @@ const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 const { BUENDEL, placeBundleSafe } = require('./helpers/buendel');
 placeBundleSafe();
 const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
-const ADMIN = fs.readFileSync(path.join(ROOT, 'public', 'js', 'detailfelder.js'), 'utf8');
+const ADMIN = fs.readFileSync(path.join(ROOT, 'public', 'js', 'detail-fields.js'), 'utf8');
 
 /**
  * Die drei Bedienelemente des Alarms — AUS DEM ECHTEN QUELLTEXT geschnitten.

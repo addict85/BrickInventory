@@ -568,45 +568,6 @@ test('Importkanten zwischen Ansichten werden weniger, nie mehr', () => {
     console.log(`  ℹ Kanten zwischen Ansichten: ${kanten.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-// Dateien unter public/js, die Phase 2b bewusst auf Englisch umbenannt hat (Datei, Bezeichner,
-// Kommentare): Ihre englischen Namen sind dort Absicht, nicht die Sorte Einzelfund, die
-// englischeDateinamen() zählt. Wer eine weitere Datei dieser Phase umstellt, trägt sie hier ein
-// und zieht die LIMIT unten NICHT hoch — die zusätzliche Datei fällt aus der Zählung heraus.
-const UI_ENGLISH_CONVERTED = [
-  'settings.js',
-  'wanted.js',
-  'user-management.js',
-  'collection.js',
-  'finances.js',
-  'setup-status.js',
-  'logviewer.js',
-  'mobile.js',
-  'theme-boot.js',
-  'pdfjs-boot.js',
-  'set-csv-import.js',
-  'sets-tabelle.js',
-  'set-detail.js',
-  'manuell-detail.js',
-];
-
-test('englische Dateinamen der Oberfläche werden weniger, nie mehr', () => {
-  // Innen heissen die Dinge deutsch (docs/architektur.md, „Namen“); übrig sind Begriffe der
-  // Technik (api, dom, router …). Gezählt wird ein englisches Wort im Dateinamen.
-  // Gegenprobe (15.11.2026): public/js/collection.js zurück auf gallery.js → rot (22 statt 21).
-  const ENGLISH =
-    /^(?:.*-)?(?:gallery|catalog|parts|finance|settings|actions|scope|scrollbar|acquisition|modals?|admin|init|main|mobile|monitor|registry|router|boot|viewer|logviewer|pdfviewer|detail|import|wanted|sets|api|dom|format|passkeys|minifigs|theme)(?:-.*)?\.js$/;
-  const LIMIT = 13;
-  assert.ok(ENGLISH.test('set-detail.js') && ENGLISH.test('gallery.js') && !ENGLISH.test('sammlung.js'));
-  const english = fs
-    .readdirSync(path.join(WEB, 'public', 'js'))
-    .filter(n => isAppModule(n) || ['main.js', 'logviewer.js', 'pdfjs-boot.js'].includes(n))
-    .filter(n => ENGLISH.test(n))
-    .filter(n => !UI_ENGLISH_CONVERTED.includes(n));
-  assert.ok(english.length <= LIMIT, `${english.length} englische Dateinamen in public/js: ${english.join(', ')}`);
-  if (english.length < LIMIT)
-    console.log(`  ℹ englische Dateinamen: ${english.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
-});
-
 test('Testdateien heissen nach ihrer Funktion, nicht nach einer Prüfrunde', () => {
   // Ein Rundenname sagt nicht, was rot ist; man sucht die Datei über das Thema.
   // Gegenprobe (15.11.2026): sicherheit-server-grenzen-db.test.js zurück auf
@@ -1156,9 +1117,9 @@ test('Funktionen der Oberfläche über 100 und über 80 Zeilen werden weniger, n
   // wieder in einem Stück (vor dem Aufteilen) → rot mit „finanzen.js loadFinance“.
   const LIMIT_80 = 20;
   const KNOWN_100 = [
-    'public/js/kauf-dialoge.js acqSave',
-    'public/js/diagramme.js priceChartSVG',
-    'public/js/diagramme.js portfolioChartSVG',
+    'public/js/purchase-dialogs.js acqSave',
+    'public/js/charts.js priceChartSVG',
+    'public/js/charts.js portfolioChartSVG',
     'public/js/init.js plGenerate',
     'public/js/init.js plExportPdf',
     'public/js/minifigs.js renderFigs',

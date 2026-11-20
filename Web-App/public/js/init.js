@@ -2,14 +2,14 @@ import { registerActions } from './registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, esc, html } from './escaping.js';
 import { errorMessage, api, apiRaw, strom } from './api.js';
-import { bildTag, placeholderContent, imgUrl, thumbUrl } from './bilder.js';
+import { bildTag, placeholderContent, imgUrl, thumbUrl } from './images.js';
 import { emptyState, ico, G, knopfBesetzt, alle, setzeHtml } from './dom.js';
-import { feldFehler, isSetnummer } from './formular.js';
-import { toast } from './meldungen.js';
+import { feldFehler, isSetnummer } from './form.js';
+import { toast } from './messages.js';
 import { buildWantedXmlPieces } from './bricklink-xml.js';
 
 // Auffangnetz für unbehandelte Fehler und die temporäre Teileliste. Gestartet wird die Anwendung von
-// sitzung.js (startApp), nicht beim Laden dieses Moduls.
+// session.js (startApp), nicht beim Laden dieses Moduls.
 
 // ── TEILELISTE (temporary parts list, resets on page leave) ──────────────────
 /**

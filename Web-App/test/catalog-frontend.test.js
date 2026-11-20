@@ -1,5 +1,5 @@
 /**
- * Frontend-Tests für public/js/katalog.js in jsdom (devDependency).
+ * Frontend-Tests für public/js/catalog.js in jsdom (devDependency).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,14 +27,14 @@ function stripModuleSyntax(src) {
 
 // Die Ansichts-Bausteine kommen MIT in die Sandbox, nicht als Attrappe.
 const BAUSTEINE = stripModuleSyntax(
-  fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'bausteine.js'), 'utf8'),
+  fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'components.js'), 'utf8'),
 );
 const CODE =
   BAUSTEINE +
   '\n' +
   stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'load-guard.js'), 'utf8')) +
   '\n' +
-  stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'katalog.js'), 'utf8'));
+  stripModuleSyntax(fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'catalog.js'), 'utf8'));
 const dom = new JSDOM(
   `<!doctype html><html><body>
   <input id="cat-search" />
@@ -226,7 +226,7 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   // Kacheln nachladen und die Seite länger wird.
   check('Griff folgt der wachsenden Seite', /ResizeObserver/.test(kern), null);
 
-  const quelle = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'katalog.js'), 'utf8');
+  const quelle = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'catalog.js'), 'utf8');
   check('kein eigener Scrollkasten mehr', !/cat-scroller/.test(quelle), null);
   // Der Beobachter misst wieder gegen das FENSTER.
   check('Beobachter ohne eigene Wurzel', !/root: G\(/.test(quelle), null);

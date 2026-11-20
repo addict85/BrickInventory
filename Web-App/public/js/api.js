@@ -1,7 +1,7 @@
 import { LANG, tRaw } from '../i18n.js';
 import { emit } from './events.js';
-import { rememberSessionEnd } from './meldungen.js';
-import { receiveResponse, showConnection } from './verbindung.js';
+import { rememberSessionEnd } from './messages.js';
+import { receiveResponse, showConnection } from './connection.js';
 
 // Die Hülle um die eigene API. Jeder Aufruf geht hierüber, damit Sprache, Verbindungsband, Sitzungsende und
 // Zwischenspeicher für alle gleich gelten.

@@ -1,5 +1,5 @@
 /**
- * Der eigene Scrollbalken (js/rollbalken.js) für Maus-Nutzer und im Kontrastmodus, gemessen in Chrome.
+ * Der eigene Scrollbalken (js/scrollbar.js) für Maus-Nutzer und im Kontrastmodus, gemessen in Chrome.
  * Er bleibt, weil Marco einen eigenen Balken verlangt hat und er die Seite rollt (kein Scrollkasten); die
  * Prüfung hält fest, dass er dabei sichtbar und bedienbar ist.
  *

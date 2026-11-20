@@ -3,11 +3,11 @@ import { t, tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
-import { feldFehler, passwordRuleText } from './formular.js';
-import { toast } from './meldungen.js';
+import { feldFehler, passwordRuleText } from './form.js';
+import { toast } from './messages.js';
 import { loggedInAccount } from './state.js';
 import { html, rawHtml } from './escaping.js';
-import { bestaetigeMitPasswort, withSecondFactor } from './rueckfrage.js';
+import { bestaetigeMitPasswort, withSecondFactor } from './confirm-prompt.js';
 // Settings, Administration section: create, lock, unlock accounts, manage rights. Only
 // administrators see it — the server checks every action itself.
 /** @typedef {import('../../frontend-typen/vertrag').KontoInListe} Konto */

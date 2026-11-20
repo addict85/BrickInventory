@@ -612,7 +612,7 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
   // Sicht darauf, ob ein Test eine Datei liest, die es gar nicht gibt — und
   // genau dieser Waechter ist hier prompt rot geworden. …
   const { ohneKommentare } = require('./helpers/sources');
-  const js = ohneKommentare(fsO.readFileSync(path.join(ROOT, 'public', 'js', 'gutscheine.js'), 'utf8'));
+  const js = ohneKommentare(fsO.readFileSync(path.join(ROOT, 'public', 'js', 'vouchers.js'), 'utf8'));
   const html = fsO.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const css = fsO.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
 
@@ -647,7 +647,7 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
 
   await t.test('die Notiz ist auch aus der Oberflaeche verschwunden', () => {
     for (const [name, inhalt] of [
-      ['gutscheine.js', js],
+      ['vouchers.js', js],
       ['index.html', html],
       ['styles.css', css],
     ]) {

@@ -1,5 +1,5 @@
 /**
- * Der Dispatcher (js/aktionen.js) und die Bildfehler in jsdom am Bündel aus
+ * Der Dispatcher (js/actions.js) und die Bildfehler in jsdom am Bündel aus
  * main.js, das zusätzlich die Registry auf window legt: Jeder Handlername aus
  * Markup und Vorlagen ist zur Laufzeit angemeldet, ein Klick reicht Argumente,
  * Feldwert und `this` durch, ein Bildfehler wird einmal wiederholt, bevor der
@@ -18,7 +18,7 @@
  *   F  der Zweig für data-onerror="keep" entfernt → rot: „der Zoom behält …“
  *   G  in openLogViewer wieder `'<script>' + …` statt logviewer.js → rot:
  *      „das Protokollfenster lädt sein Skript als Datei“
- *   H  `import './aktionen.js';` aus main.js gestrichen → rot: alle Fälle hier
+ *   H  `import './actions.js';` aus main.js gestrichen → rot: alle Fälle hier
  */
 const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');

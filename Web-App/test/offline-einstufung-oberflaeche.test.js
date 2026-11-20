@@ -37,7 +37,7 @@ function buildBundle() {
     stdin: {
       contents:
         "import './main.js';\nimport { actionNames } from './registry.js';\n" +
-        "import { WRITING_ACTIONS, READING_ACTIONS } from './verbindung.js';\n" +
+        "import { WRITING_ACTIONS, READING_ACTIONS } from './connection.js';\n" +
         'window.__rating = { actionNames, WRITING_ACTIONS, READING_ACTIONS };\n',
       resolveDir: JS,
       loader: 'js',

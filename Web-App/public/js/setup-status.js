@@ -2,7 +2,7 @@ import { registerActions } from './registry.js';
 import { tRaw, locale } from '../i18n.js';
 import { api } from './api.js';
 import { G } from './dom.js';
-import { toast } from './meldungen.js';
+import { toast } from './messages.js';
 
 // ═══ Setup status (server: routes/api_v1/setup.ts) ═
 // The login page checks with this what is still missing before the first account, and
