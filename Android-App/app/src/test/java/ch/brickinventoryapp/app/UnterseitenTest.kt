@@ -296,7 +296,7 @@ class UnterseitenTest {
     @Test
     fun `Preisalarme nennen den Namen zuerst und in der Rueckfrage`() {
         welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
-            {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
+            {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
         val vm = einstellungen()
         zeige {
             PreisalarmeRoute(vm = vm,
@@ -347,7 +347,7 @@ class UnterseitenTest {
     fun `Konto nennt die beantragte E-Mail unter dem Feld`() {
         welt.pfade.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true,
-            "email_neu":"neu@example.org"}}"""
+            "new_email":"neu@example.org"}}"""
         val konto = welt.t.merke(KontoViewModel(
             testKontoRepository(welt.t.api, welt.t.io),
             welt.t.meldungen, welt.t.sitzung, SitzungsAttrappe()))

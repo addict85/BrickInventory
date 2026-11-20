@@ -72,10 +72,10 @@ class PreisalarmeAnzeigeTest {
     }
 
     private val alarme = """{"success":true,"alerts":[
-        {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF",
-         "name":"Millennium Falcon","image_local":"/beispiel/set1_thumb.png","besitzt":true,"ausgeloest":false},
-        {"set_number":"10179-1","condition":"N","richtung":"unter","schwelle":900.0,"currency_code":"CHF",
-         "name":"Ultimate Falcon","besitzt":false,"ausgeloest":true}]}"""
+        {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF",
+         "name":"Millennium Falcon","image_local":"/beispiel/set1_thumb.png","besitzt":true,"triggered":false},
+        {"set_number":"10179-1","condition":"N","direction":"unter","threshold":900.0,"currency_code":"CHF",
+         "name":"Ultimate Falcon","besitzt":false,"triggered":true}]}"""
 
     private fun einstellungen() = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
         testKontoRepository(welt.t.api, welt.t.io), testVerwaltungRepository(welt.t.api),

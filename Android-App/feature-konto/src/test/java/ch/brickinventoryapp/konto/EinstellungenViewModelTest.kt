@@ -77,7 +77,7 @@ class EinstellungenViewModelTest {
     fun auf() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         pfade = PfadServer(
-            "/api/v1/alerts" to """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","schwelle":500.0}]}""",
+            "/api/v1/alerts" to """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","threshold":500.0}]}""",
             "/api/v1/sets/75192-1/alert" to """{"success":true}""",
             "/api/v1/storage/locations/3" to """{"success":true,"ort":{"id":3,"name":"Keller"}}""",
             "/api/v1/storage/locations" to """{"success":true,"orte":[{"id":3,"name":"Keller"}]}""",

@@ -214,7 +214,7 @@ class CatalogViewModelTest {
         advanceUntilIdle()
         val alarm = synchronized(fake.argumente) { fake.argumente.single { it.first == "setPreisalarm" }.second }
         assertEquals("10305-1", alarm[0])
-        assertEquals(PreisalarmRequest(richtung = Alarmrichtung.UEBER, schwelle = 120.0, condition = Zustand.GEBRAUCHT), alarm[1])
+        assertEquals(PreisalarmRequest(direction = Alarmrichtung.UEBER, threshold = 120.0, condition = Zustand.GEBRAUCHT), alarm[1])
         assertEquals(Meldung.Ressource(R.string.wanted_added), t.meldungen.meldung.value)
     }
 

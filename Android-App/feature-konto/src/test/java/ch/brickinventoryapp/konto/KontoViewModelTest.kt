@@ -189,10 +189,10 @@ class KontoViewModelTest {
         server.enqueue(antwort("""{"success":true,"tokens":[
             {"token_prefix":"abcd1234","token_id":"abcd1234abcd1234","label":"Rechner","created_at":"2026-01-01T00:00:00Z",
              "last_used":null,"expires_at":"2027-03-01T00:00:00Z","hard_expires_at":"2026-12-01T00:00:00Z",
-             "never_expires":false,"scope":"voll","ip_bereich":"192.168.1.0/24","rotiert_am":"2026-09-01T00:00:00Z","aktuell":false},
+             "never_expires":false,"scope":"voll","ip_range":"192.168.1.0/24","rotated_at":"2026-09-01T00:00:00Z","aktuell":false},
             {"token_prefix":"ffff0000","token_id":"ffff0000ffff0000","label":"","created_at":"2026-01-01T00:00:00Z",
              "last_used":null,"expires_at":null,"hard_expires_at":null,"never_expires":true,"scope":"app",
-             "ip_bereich":null,"rotiert_am":"2026-10-01T00:00:00Z","aktuell":true}]}"""))
+             "ip_range":null,"rotated_at":"2026-10-01T00:00:00Z","aktuell":true}]}"""))
         vm.ladeGeraete()
         bis("Liste") { vm.geraeteState.value.geraete.size == 2 }
         val (voll, eigen) = vm.geraeteState.value.geraete
@@ -338,7 +338,7 @@ class KontoViewModelTest {
     fun `eine neue E-Mail meldet den Link und zeigt sie als ausstehend`() {
         server.enqueue(antwort("""{"success":true,"emailChanged":true,"emailSent":true}"""))
         server.enqueue(antwort("""{"success":true,"user":{"id":1,"username":"marco","email":"alt@example.org",
-            "email_verified":true,"email_neu":"neu@example.org"}}"""))
+            "email_verified":true,"new_email":"neu@example.org"}}"""))
         vm.speichereProfil("marco", " neu@example.org ", "", "", "pw")
         bis("neu geladen") { vm.kontoState.value.profil != null }
         assertEquals(R.string.konto_email_link_gesendet, (vm.kontoState.value.meldung as Meldung.Ressource).id)
@@ -351,7 +351,7 @@ class KontoViewModelTest {
     fun `eine neue E-Mail ohne gesendete Mail meldet einen Fehler statt gespeichert`() {
         server.enqueue(antwort("""{"success":true,"emailChanged":true,"emailSent":false}"""))
         server.enqueue(antwort("""{"success":true,"user":{"id":1,"username":"marco","email":"alt@example.org",
-            "email_verified":true,"email_neu":"neu@example.org"}}"""))
+            "email_verified":true,"new_email":"neu@example.org"}}"""))
         vm.speichereProfil("marco", "neu@example.org", "", "", "pw")
         bis("neu geladen") { vm.kontoState.value.profil != null }
         assertEquals("Der Fehler übersteht das Neuladen", "t${R.string.konto_email_nicht_gesendet}", vm.kontoState.value.speichern.fehlerMeldung.text)

@@ -78,7 +78,7 @@ class SetDetailViewModelTest {
             "/api/v1/sets/75192-1/price-history" to """{"success":true,"set_number":"75192-1"}""",
             "/api/v1/sets/75192-1/acquisitions" to """{"success":true,"acquisitions":[{"id":1,"quantity":2}]}""",
             "/api/v1/alerts" to """{"success":true,"alerts":[]}""",
-            "/api/v1/sets/75192-1/alert" to """{"success":true,"alert":{"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":450.0}}""",
+            "/api/v1/sets/75192-1/alert" to """{"success":true,"alert":{"set_number":"75192-1","condition":"N","direction":"unter","threshold":450.0}}""",
         )
         t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
@@ -164,7 +164,7 @@ class SetDetailViewModelTest {
         assertTrue(vm.setDetailState.value.preisalarme.isEmpty())
         val vorher = pfade.anfragenAn("GET /api/v1/alerts").size
         vm.setzePreisalarm("75192-1", Alarmrichtung.UNTER, "450", Zustand.NEU)
-        pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":450.0}]}"""
+        pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","direction":"unter","threshold":450.0}]}"""
         uhr.advanceTimeBy(900)
         assertEquals(1, pfade.anfragenAn("PUT /api/v1/sets/75192-1/alert").size)
         // Der Zustand liest die Ablage nur beim Laden: ohne Nachladen bliebe er leer.

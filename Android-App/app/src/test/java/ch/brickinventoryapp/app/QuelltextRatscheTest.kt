@@ -236,7 +236,7 @@ class QuelltextRatscheTest {
     @Test
     fun `lange Kommentare im Workflow und in Tests werden weniger`() {
         val WORKFLOW = 1
-        val TESTS = 51
+        val TESTS = 50
         val DATUM_UND_KENNUNG = 0
         val GESCHICHTE = 0
         val wf = File(Quellen.projekt, "../.github/workflows/android.yml").readLines()

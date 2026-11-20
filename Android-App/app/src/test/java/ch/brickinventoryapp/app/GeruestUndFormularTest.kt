@@ -251,7 +251,7 @@ class GeruestUndFormularTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
-                {"set_number":"75192-1","condition":"N","richtung":"ueber","schwelle":750.0,"currency_code":"CHF"}]}"""
+                {"set_number":"75192-1","condition":"N","direction":"ueber","threshold":750.0,"currency_code":"CHF"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
                 testKontoRepository(welt.t.api, welt.t.io),
                 testVerwaltungRepository(welt.t.api), welt.t.alarme(),
@@ -336,7 +336,7 @@ class GeruestUndFormularTest {
         val welt = Beispiele.Welt(KontextTexte())
         try {
             welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
-                {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
+                {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF","name":"Millennium Falcon"}]}"""
             val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
                 testKontoRepository(welt.t.api, welt.t.io),
                 testVerwaltungRepository(welt.t.api), welt.t.alarme(),

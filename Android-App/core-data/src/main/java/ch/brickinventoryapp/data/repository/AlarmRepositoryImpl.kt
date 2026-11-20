@@ -42,7 +42,7 @@ class AlarmRepositoryImpl @Inject constructor(
     override suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Geld,
                                        condition: Zustand): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> r.alert?.takeIf { r.success }?.let { Nachzug.AlarmGesetzt(it.alsAnsicht()) } }) {
-            sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(richtung = richtung, schwelle = schwelle.alsDouble(), condition = condition)) }
+            sicherAufrufen { api.setPreisalarm(setNumber, PreisalarmRequest(direction = richtung, threshold = schwelle.alsDouble(), condition = condition)) }
         }.zugesagt({ it.success }) { }
 
     override suspend fun deletePreisalarm(setNumber: String, condition: Zustand): Ergebnis<Unit> =

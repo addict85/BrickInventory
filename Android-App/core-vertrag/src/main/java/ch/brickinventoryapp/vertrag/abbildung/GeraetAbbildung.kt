@@ -13,5 +13,5 @@ fun AppToken.alsGeraet(): GeraetAnsicht = GeraetAnsicht(
     // ISO-Zeitstempel lassen sich als Text vergleichen.
     laeuftAb = listOfNotNull(expiresAt.takeUnless { neverExpires }, hardExpiresAt).minOrNull(),
     vollerZugriff = scope == TOKEN_SCOPE_VOLL,
-    ipBereich = ipBereich?.takeIf { it.isNotBlank() },
+    ipBereich = ipRange?.takeIf { it.isNotBlank() },
 )

@@ -71,7 +71,7 @@ fun Merkposten.alsAnsicht() = MerkpostenAnsicht(
 )
 
 fun MerkpostenAlarm.alsAnsicht() = MerkpostenAlarmAnsicht(
-    richtung = richtung,
-    schwelle = schwelle.alsGeldPflicht(),
-    ausgeloest = ausgeloest,
+    richtung = direction,
+    schwelle = threshold.alsGeldPflicht(),
+    ausgeloest = triggered,
 )

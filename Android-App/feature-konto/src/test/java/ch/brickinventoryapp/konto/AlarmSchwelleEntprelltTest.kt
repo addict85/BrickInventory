@@ -43,7 +43,7 @@ class AlarmSchwelleEntprelltTest {
     fun auf() {
         Dispatchers.setMain(UnconfinedTestDispatcher(uhr))
         pfade = PfadServer(
-            "/api/v1/alerts" to """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","schwelle":500.0}]}""",
+            "/api/v1/alerts" to """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","threshold":500.0}]}""",
             "/api/v1/sets/75192-1/alert" to """{"success":true}""",
         )
         t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)

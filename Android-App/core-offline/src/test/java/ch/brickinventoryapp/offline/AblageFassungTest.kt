@@ -56,8 +56,8 @@ class AblageFassungTest {
         condition = Zustand.NEU, conditions = listOf(Zustand.NEU), userId = 3, owners = listOf(konto), acquisitions = listOf(kauf), storage = "Kiste")
     private val gutschein = Gutschein(id = 7, number = "6061", amount = 20.0, currency = Waehrung.EUR, hatPdf = true,
         createdAt = "2025-05-01T09:00:00Z", updatedAt = "2026-01-01T09:00:00Z", guthabenGeprueftAm = "2026-02-03")
-    private val alarm = Preisalarm(setNumber = "75192-1", condition = Zustand.GEBRAUCHT, richtung = Alarmrichtung.UEBER, schwelle = 800.0,
-        currencyCode = Waehrung.CHF, ausgeloest = true, zuletztAm = "2026-03-04T05:06:07Z", zuletztPreis = 810.0, name = "Falke", imageLocal = "l",
+    private val alarm = Preisalarm(setNumber = "75192-1", condition = Zustand.GEBRAUCHT, direction = Alarmrichtung.UEBER, threshold = 800.0,
+        currencyCode = Waehrung.CHF, triggered = true, lastTriggeredAt = "2026-03-04T05:06:07Z", lastPrice = 810.0, name = "Falke", imageLocal = "l",
         imageUrl = "u", setImgUrl = "s", besitzt = false)
     private val kennzahlen = StatsResponse(success = true, stats = DashboardStats(currency = "CHF", defaultCondition = "N",
         userDefaultCondition = "U", totalSets = 1, totalQuantity = 2, totalPieces = 3, totalInstructions = 4, totalParts = 5, setParts = 6,
@@ -98,8 +98,8 @@ class AblageFassungTest {
             Faecher.MANUELLE_FIGUREN.form.dekodiere(BrickJson, """{"fig_number":"sw0002","bl_fig_number":"sw0002a","quantity":1,"user_id":3}"""))
         assertEquals(Gutschein(id = 7, number = "6061", amount = 20.0, currency = Waehrung.EUR, hatPdf = true).alsAnsicht(),
             Faecher.GUTSCHEINE.form.dekodiere(BrickJson, """{"id":7,"number":"6061","amount":20.0,"currency":"EUR","hat_pdf":true}"""))
-        assertEquals(Preisalarm(setNumber = "75192-1", condition = Zustand.GEBRAUCHT, richtung = Alarmrichtung.UEBER, schwelle = 800.0,
-            currencyCode = Waehrung.CHF, zuletztPreis = 810.0).alsAnsicht(),
+        assertEquals(Preisalarm(setNumber = "75192-1", condition = Zustand.GEBRAUCHT, direction = Alarmrichtung.UEBER, threshold = 800.0,
+            currencyCode = Waehrung.CHF, lastPrice = 810.0).alsAnsicht(),
             Faecher.PREISALARME.form.dekodiere(BrickJson,
                 """{"set_number":"75192-1","condition":"U","richtung":"ueber","schwelle":800.0,"currency_code":"CHF","zuletzt_preis":810.0}"""))
         assertEquals(DashboardStats(totalSets = 1, totalQuantity = 2, totalPieces = 3,

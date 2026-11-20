@@ -71,8 +71,8 @@ class MerklisteViewModelTest {
         pfade = PfadServer(
             "/api/v1/wanted" to """{"success":true,"merkposten":[{"set_number":"10294-1","condition":"N","user_id":1}]}""",
             "/api/v1/wanted/10294-1/N/uebernehmen" to """{"success":true,"action":"added","set_number":"10294-1"}""",
-            "/api/v1/alerts" to """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","richtung":"unter","schwelle":500.0}]}""",
-            "/api/v1/sets/10294-1/alert" to """{"success":true,"alert":{"set_number":"10294-1","condition":"N","richtung":"unter","schwelle":450.0}}""",
+            "/api/v1/alerts" to """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","direction":"unter","threshold":500.0}]}""",
+            "/api/v1/sets/10294-1/alert" to """{"success":true,"alert":{"set_number":"10294-1","condition":"N","direction":"unter","threshold":450.0}}""",
         )
         t = TestDienste(pfade.imTakt(), io = Dispatchers.Main)
     }
@@ -183,7 +183,7 @@ class MerklisteViewModelTest {
         vm.setzePreisalarm("10294-1", Alarmrichtung.UNTER, "450", Zustand.NEU)
         // Gespeichert führt der Server 450; der Zustand liest die Ablage nur beim Laden,
         // ohne Nachladen bliebe er bei 500.
-        pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","richtung":"unter","schwelle":450.0}]}"""
+        pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","direction":"unter","threshold":450.0}]}"""
         uhr.advanceTimeBy(900)
         assertEquals("Nur die letzte Eingabe wird gespeichert", 1, pfade.anfragenAn("PUT /api/v1/sets/10294-1/alert").size)
         assertTrue("nachgeladen", pfade.anfragenAn("GET /api/v1/alerts").size > vorher)

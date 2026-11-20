@@ -40,5 +40,5 @@ fun BrickColor.alsAnsicht() = FarbeAnsicht(id, name, hex)
 fun Gutschein.alsAnsicht() = GutscheinAnsicht(id, number, pin, amount.alsGeldPflicht(), currency, hatPdf,
     zeitpunkt(createdAt), zeitpunkt(guthabenGeprueftAm))
 
-fun Preisalarm.alsAnsicht() = PreisalarmAnsicht(setNumber, condition, richtung, schwelle.alsGeldPflicht(), currencyCode,
-    ausgeloest, zeitpunkt(zuletztAm), zuletztPreis.alsGeld(), name, imageLocal, imageUrl, setImgUrl, besitzt)
+fun Preisalarm.alsAnsicht() = PreisalarmAnsicht(setNumber, condition, direction, threshold.alsGeldPflicht(), currencyCode,
+    triggered, zeitpunkt(lastTriggeredAt), lastPrice.alsGeld(), name, imageLocal, imageUrl, setImgUrl, besitzt)

@@ -293,9 +293,9 @@ class FormulareUndRaenderTest {
     @Test
     fun `Hintergrundarbeiten mit einem Titel, buendigen Karten, eigener Darstellung und Schaltern`() {
         welt.pfade.antworten["/api/v1/admin/auftraege"] = """{"success":true,
-            "auftraege":[{"id":"17","art":"bilder","status":"laeuft","versuche":1,"max_versuche":5,
-               "faellig_ab":"2026-10-30T10:00:00Z","frist_bis":null,"gestartet":null,"erstellt":"2026-10-30T09:59:00Z",
-               "aktualisiert":null,"fortschritt":null,"fehler":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
+            "auftraege":[{"id":"17","type":"bilder","status":"laeuft","attempts":1,"max_attempts":5,
+               "due_at":"2026-10-30T10:00:00Z","deadline_at":null,"started_at":null,"created_at":"2026-10-30T09:59:00Z",
+               "updated_at":null,"progress":null,"error_message":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
             "zusammenfassung":[],"pausen":[],"bildbedarf":0,
             "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
         val vm = MonitoringViewModel(testVerwaltungRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io), welt.t.meldungen)
@@ -399,7 +399,7 @@ class FormulareUndRaenderTest {
     @Test
     fun `Preisalarme nennen die Richtung einmal und enden am Rand der Karte`() {
         welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
-            {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}]}"""
+            {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"}]}"""
         val vm = welt.t.merke(EinstellungenViewModel(welt.t.sitzung, welt.t.filter(), welt.t.hinweise, welt.t.abgleich,
             testKontoRepository(welt.t.api, welt.t.io), testVerwaltungRepository(welt.t.api), welt.t.alarme(), testTeileRepository(welt.t.api),
             object : DateiLeser {

@@ -39,7 +39,7 @@ class AblageformTest {
         storage = "Kiste 1", conditions = listOf(Zustand.NEU, Zustand.GEBRAUCHT), owners = listOf(KontoName(id = 3, username = "lea")), maxPurchasePrice = 99.5, avgPurchasePrice = 88.25, usedCount = 1,
         instructions = listOf(Instruction(id = 4, url = "a.pdf", description = "Heft 1", localPath = "lokal/a.pdf", isManual = true)), bricklink = BrickLinkRef(type = "GEAR", number = "g1", url = "bl", exact = false, resolved = true), preisvergleichUrl = "pv")
     private val merk = Merkposten(setNumber = "20001-1", condition = Zustand.GEBRAUCHT, createdAt = "2021-02-02", userId = 7, name = "Schiff", year = 2001, numParts = 900, imageUrl = "u", imageLocal = "l", marktpreis = 12.5,
-        waehrung = Waehrung.CHF, owned = true, alarm = MerkpostenAlarm(richtung = Alarmrichtung.UEBER, schwelle = 30.0, ausgeloest = true), preisvergleichUrl = "pv")
+        waehrung = Waehrung.CHF, owned = true, alarm = MerkpostenAlarm(direction = Alarmrichtung.UEBER, threshold = 30.0, triggered = true), preisvergleichUrl = "pv")
     private val teil = Part(partNumber = "3001", blPartNumber = "3001b", partName = "Stein", colorId = 5, blColorId = 11, colorName = "Rot", colorHex = "FF0000", categoryName = "Steine", imageUrl = "u", imageLocal = "l", totalQuantity = 9, inSets = "10001-1", isSpare = true)
 
     @Test
@@ -56,7 +56,10 @@ class AblageformTest {
         // Das Servermodell selbst als JSON: so liegen Zeilen, die vor der eigenen Ablageform geschrieben wurden.
         val alt = BrickJson.encodeToString(SetItem.serializer(), set)
         assertEquals(set.alsAnsicht(), Faecher.SETS.form.dekodiere(BrickJson, alt))
-        assertEquals(merk.alsAnsicht(), Faecher.MERKLISTE.form.dekodiere(BrickJson, BrickJson.encodeToString(Merkposten.serializer(), merk)))
+        // Rows from before the English contract carry the alert under its German keys.
+        val altMerk = BrickJson.encodeToString(Merkposten.serializer(), merk)
+            .replace("\"direction\"", "\"richtung\"").replace("\"threshold\"", "\"schwelle\"").replace("\"triggered\"", "\"ausgeloest\"")
+        assertEquals(merk.alsAnsicht(), Faecher.MERKLISTE.form.dekodiere(BrickJson, altMerk))
         assertEquals(teil.alsAnsicht(), Faecher.TEILE.form.dekodiere(BrickJson, BrickJson.encodeToString(Part.serializer(), teil)))
     }
 

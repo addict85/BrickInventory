@@ -48,14 +48,14 @@ class HintergrundarbeitenTest {
 
     private val liste = """{"success":true,
         "auftraege":[
-          {"id":"17","art":"bilder","status":"laeuft","versuche":1,"max_versuche":5,"faellig_ab":"2026-10-30T10:00:00Z",
-           "frist_bis":null,"gestartet":"2026-10-30T10:00:05Z","erstellt":"2026-10-30T09:59:00Z","aktualisiert":null,
-           "fortschritt":{"erledigt":3,"gesamt":12,"text":"Bilder"},"fehler":null,"user_id":4,"geplant":false,"set_number":"75192-1"},
-          {"id":"18","art":"preise","status":"fehler","versuche":3,"max_versuche":3,"faellig_ab":"2026-10-30T11:00:00Z",
-           "frist_bis":null,"gestartet":null,"erstellt":"2026-10-30T09:00:00Z","aktualisiert":null,
-           "fortschritt":null,"fehler":"BrickLink antwortet nicht","user_id":null,"geplant":true,"set_number":null}],
-        "zusammenfassung":[{"art":"bilder","status":"laeuft","anzahl":1}],
-        "pausen":[{"art":"preise","bis":"2026-10-30T12:00:00Z","grund":"Kontingent"}],
+          {"id":"17","type":"bilder","status":"laeuft","attempts":1,"max_attempts":5,"due_at":"2026-10-30T10:00:00Z",
+           "deadline_at":null,"started_at":"2026-10-30T10:00:05Z","created_at":"2026-10-30T09:59:00Z","updated_at":null,
+           "progress":{"erledigt":3,"gesamt":12,"text":"Bilder"},"error_message":null,"user_id":4,"geplant":false,"set_number":"75192-1"},
+          {"id":"18","type":"preise","status":"fehler","attempts":3,"max_attempts":3,"due_at":"2026-10-30T11:00:00Z",
+           "deadline_at":null,"started_at":null,"created_at":"2026-10-30T09:00:00Z","updated_at":null,
+           "progress":null,"error_message":"BrickLink antwortet nicht","user_id":null,"geplant":true,"set_number":null}],
+        "zusammenfassung":[{"type":"bilder","status":"laeuft","anzahl":1}],
+        "pausen":[{"type":"preise","until_at":"2026-10-30T12:00:00Z","reason":"Kontingent"}],
         "bildbedarf":7,
         "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":false}}"""
 

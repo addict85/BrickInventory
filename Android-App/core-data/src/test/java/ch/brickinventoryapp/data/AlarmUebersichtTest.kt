@@ -86,7 +86,7 @@ class AlarmUebersichtTest {
     @Test
     fun `ein fehlendes besitzt-Feld macht die Zeile nicht tot`() {
         val alarm = BrickJson.decodeFromString(Preisalarm.serializer(),
-            """{"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"}""")
+            """{"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"}""")
         assertTrue("Ohne das Feld gilt das Set als nicht vorhanden — die ganze Rubrik waere tot", alarm.besitzt)
         val weg = BrickJson.decodeFromString(Preisalarm.serializer(), """{"set_number":"75192-1","besitzt":false}""")
         assertFalse(weg.besitzt)

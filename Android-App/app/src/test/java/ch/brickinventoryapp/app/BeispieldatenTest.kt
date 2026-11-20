@@ -288,7 +288,7 @@ object Beispiele {
         // Drei Fälle der Merkliste: mit Preis und Alarm, ohne Preis („Preis folgt“), schon vorhanden.
         "/api/v1/wanted" to """{"success":true,"merkposten":[
             {"set_number":"10305-1","image_local":"/beispiel/set1.png","name":"Lion Knights' Castle","year":2022,"condition":"N","user_id":1,"created_at":"2026-08-21T09:00:00Z",
-             "marktpreis":399.9,"waehrung":"CHF","alarm":{"richtung":"unter","schwelle":349.0,"ausgeloest":false}},
+             "marktpreis":399.9,"waehrung":"CHF","alarm":{"direction":"unter","threshold":349.0,"triggered":false}},
             {"set_number":"42115-1","image_local":"/beispiel/set3.png","name":"Lamborghini Sián FKP 37","year":2020,"condition":"U","user_id":1,"created_at":"2026-09-05T18:30:00Z","waehrung":"CHF"},
             {"set_number":"10294-1","image_local":"/beispiel/set2.png","name":"Titanic","year":2021,"condition":"N","user_id":1,"created_at":"2026-10-12T07:15:00Z","marktpreis":449.95,"waehrung":"CHF","owned":true}]}""",
         "/api/v1/sets/75192-1" to """{"success":true,"quantity":1,"set":{"set_number":"75192-1","image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,

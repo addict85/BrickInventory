@@ -87,9 +87,9 @@ class UiModellAbbildungTest {
 
     @Test
     fun `Preisalarm, Gutschein, Diagramm und Farbe tragen ihre Werte`() {
-        val alarm = Preisalarm(setNumber = "75192-1", richtung = Alarmrichtung.UNTER, schwelle = 500.0).alsAnsicht()
+        val alarm = Preisalarm(setNumber = "75192-1", direction = Alarmrichtung.UNTER, threshold = 500.0).alsAnsicht()
         assertTrue(alarm.unter)
-        assertFalse(Preisalarm(richtung = Alarmrichtung.UEBER).alsAnsicht().unter)
+        assertFalse(Preisalarm(direction = Alarmrichtung.UEBER).alsAnsicht().unter)
         assertEquals(Geld(5_000_000), alarm.schwelle)
         val g = Gutschein(id = 3, number = "6061", pin = "1", amount = 20.0, currency = Waehrung("CHF")).alsAnsicht()
         assertEquals(listOf(3, Geld(200_000), Waehrung.CHF), listOf(g.id, g.amount, g.currency))
@@ -161,6 +161,10 @@ class UiModellAbbildungTest {
             "PortfolioHistoryResponse.getPunkte", "PortfolioHistoryResponse.getTage", "PortfolioHistoryResponse.getVeraenderungProzent",
             "PortfolioHistoryResponse.getWaehrung-lSQNSqI", "PortfolioHistoryResponse.getYAchse",
             "VerwendendeSetsResponse.getKopf",
+            // The contract is English since Phase 1, the UI models still carry the German names.
+            "MerkpostenAlarm.getAusgeloest", "MerkpostenAlarm.getRichtung", "MerkpostenAlarm.getSchwelle-Zm0ExB4",
+            "Preisalarm.getAusgeloest", "Preisalarm.getRichtung", "Preisalarm.getSchwelle-Zm0ExB4",
+            "Preisalarm.getZuletztAm", "Preisalarm.getZuletztPreis-tjUkdn4", "Profil.getEmailNeu",
             // Der Betrag heisst im Fachtyp nach dem, was er ist; geprüft oben in „Preisalarm, Gutschein, Diagramm …“.
             "ChartPoint.getWert-Zm0ExB4", "ChartYAxis.getWert-Zm0ExB4", "PriceChartPoint.getPreis-Zm0ExB4",
         )

@@ -33,9 +33,9 @@ class AlarmUndVorratAblageTest {
     private val ablage = Offlineablage(SpeicherBestand(), SpeicherAusgang(), { bereich })
     private val pfade = PfadServer(
         "/api/v1/alerts" to """{"success":true,"alerts":[
-            {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF","name":"Falcon"},
-            {"set_number":"10294-1","condition":"U","richtung":"ueber","schwelle":440.0,"currency_code":"CHF","name":"Titanic"}]}""",
-        "/api/v1/sets/75192-1/alert" to """{"success":true,"alert":{"set_number":"75192-1","condition":"N","richtung":"ueber","schwelle":800.0}}""",
+            {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF","name":"Falcon"},
+            {"set_number":"10294-1","condition":"U","direction":"ueber","threshold":440.0,"currency_code":"CHF","name":"Titanic"}]}""",
+        "/api/v1/sets/75192-1/alert" to """{"success":true,"alert":{"set_number":"75192-1","condition":"N","direction":"ueber","threshold":800.0}}""",
         "/api/v1/sets/10294-1/alert" to """{"success":true,"removed":1}""",
         "/api/v1/storage/locations" to """{"success":true,"orte":[{"id":1,"user_id":9,"name":"Keller"},{"id":2,"user_id":9,"name":"Regal"}],
             "vorgabe":{"id":2,"user_id":9,"name":"Regal"}}""",

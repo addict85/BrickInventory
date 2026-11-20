@@ -22,7 +22,7 @@ import ch.brickinventoryapp.model.fach.ProtokollZeileAnsicht
 val LoginResponse.verwalter: Boolean get() = user?.isAdmin == true && tokenInfo?.scope == TOKEN_SCOPE_VOLL
 
 fun Profil.alsAnsicht() =
-    ProfilAnsicht(id, username, email, firstName, lastName, emailBestaetigt = emailVerified, emailNeu = emailNeu?.ifBlank { null })
+    ProfilAnsicht(id, username, email, firstName, lastName, emailBestaetigt = emailVerified, emailNeu = newEmail?.ifBlank { null })
 
 fun GetrenntesKonto.alsAnsicht() = GetrenntesKontoAnsicht(id, username, via)
 

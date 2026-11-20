@@ -236,9 +236,9 @@ class UmbruchWaechterTest {
     /** Ein Alarm scharf, einer ausgelöst mit letztem Preis — die Zeile, die zeichenweise umbrach. */
     private fun preisalarme(schrift: Float) {
         welt.pfade.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
-            {"set_number":"75192-1","condition":"N","richtung":"unter","schwelle":750.0,"currency_code":"CHF"},
-            {"set_number":"10294-1","condition":"N","richtung":"ueber","schwelle":440.0,"currency_code":"CHF",
-             "ausgeloest":true,"zuletzt_am":"2026-10-30T09:00:00Z","zuletzt_preis":449.95}]}"""
+            {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"},
+            {"set_number":"10294-1","condition":"N","direction":"ueber","threshold":440.0,"currency_code":"CHF",
+             "triggered":true,"last_triggered_at":"2026-10-30T09:00:00Z","last_price":449.95}]}"""
         val vm = einstellungen().also { it.ladeAlarmUebersicht() }
         pruefe("Preisalarme $schrift", schrift, { vm.alarmUebersicht.value.geladen }) {
             PreisalarmeRoute(vm = vm, imageLoader = bilder, serverUrl = "",
@@ -312,9 +312,9 @@ class UmbruchWaechterTest {
     private fun hintergrundarbeiten(schrift: Float) {
         welt.pfade.antworten["/api/v1/admin/auftraege"] = """{"success":true,
             "auftraege":[
-              {"id":"17","art":"bilder","status":"laeuft","versuche":1,"max_versuche":5,"faellig_ab":"2026-10-30T10:00:00Z",
-               "frist_bis":null,"gestartet":"2026-10-30T10:00:05Z","erstellt":"2026-10-30T09:59:00Z","aktualisiert":null,
-               "fortschritt":{"erledigt":3,"gesamt":12,"text":"Bilder"},"fehler":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
+              {"id":"17","type":"bilder","status":"laeuft","attempts":1,"max_attempts":5,"due_at":"2026-10-30T10:00:00Z",
+               "deadline_at":null,"started_at":"2026-10-30T10:00:05Z","created_at":"2026-10-30T09:59:00Z","updated_at":null,
+               "progress":{"erledigt":3,"gesamt":12,"text":"Bilder"},"error_message":null,"user_id":4,"geplant":false,"set_number":"75192-1"}],
             "zusammenfassung":[],"pausen":[],"bildbedarf":7,
             "job_prozess":{"lebenszeichen":null,"alter_sekunden":null,"laeuft":true}}"""
         val vm = MonitoringViewModel(testVerwaltungRepository(welt.t.api), testKontoRepository(welt.t.api, welt.t.io), welt.t.meldungen)
