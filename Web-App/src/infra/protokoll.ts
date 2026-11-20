@@ -4,25 +4,25 @@
 import * as logs from './repository/appLogs';
 import { prozessweit } from './prozessweit';
 
-export { anfrageKontext } from './kontoKontext';
-import { anfrageKontext } from './kontoKontext';
+export { requestContext } from './kontoKontext';
+import { requestContext } from './kontoKontext';
 
 /** Kein Leerraum, keine Steuer- oder Anführungszeichen. */
-const KENNUNG_RE = /^[A-Za-z0-9._:-]{1,64}$/;
-const K = prozessweit('anfrageKennung', () => ({ folge: 0 }));
+const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
+const K = prozessweit('anfrageKennung', () => ({ sequence: 0 }));
 
 /** Ungefiltert könnte ein Client Zeilenumbrüche oder fremde Kennungen ins
  * Protokoll schreiben und Einträge vortäuschen. */
 export function anfrageKennung(roh: unknown): string {
   const wert = typeof roh === 'string' ? roh : '';
-  if (KENNUNG_RE.test(wert)) return wert;
-  K.folge = (K.folge + 1) % 1_679_616;
-  return K.folge.toString(36).padStart(4, '0');
+  if (ID_RE.test(wert)) return wert;
+  K.sequence = (K.sequence + 1) % 1_679_616;
+  return K.sequence.toString(36).padStart(4, '0');
 }
 
 type Stufe = 'debug' | 'info' | 'warn' | 'error';
-const STUFEN: Stufe[] = ['debug', 'info', 'warn', 'error'];
-const LOG_STUFE: Record<Stufe | 'log', Stufe> = {
+const LEVELS: Stufe[] = ['debug', 'info', 'warn', 'error'];
+const LOG_LEVEL: Record<Stufe | 'log', Stufe> = {
   log: 'info',
   debug: 'debug',
   info: 'info',
@@ -36,7 +36,7 @@ export interface Ausgabe {
   err(zeile: string): void;
   jetzt(): number;
 }
-const PROZESS: Ausgabe = {
+const PROCESS: Ausgabe = {
   out: z => {
     process.stdout.write(z + '\n');
   },
@@ -49,7 +49,7 @@ const PROZESS: Ausgabe = {
 type Abfrager = logs.Abfrager;
 
 const MAX_TEXT = 4000;
-const MELDE_ABSTAND_MS = 60_000;
+const REPORT_GAP_MS = 60_000;
 
 /** Grosse Objekte gekappt, bevor sie durch Puffer und DB wandern. */
 function logText(a: unknown): string {
@@ -63,14 +63,14 @@ function logText(a: unknown): string {
   }
 }
 
-const istKontext = (a: unknown): a is Record<string, unknown> =>
+const isContext = (a: unknown): a is Record<string, unknown> =>
   typeof a === 'object' && a !== null && !Array.isArray(a) && !(a instanceof Error);
 
-export function zerlege(args: unknown[]): { nachricht: string; kontext?: Record<string, unknown> } {
+export function split(args: unknown[]): { nachricht: string; kontext?: Record<string, unknown> } {
   const teile = [...args];
   let kontext: Record<string, unknown> | undefined;
   const letztes = teile[teile.length - 1];
-  if (teile.length > 1 && istKontext(letztes)) {
+  if (teile.length > 1 && isContext(letztes)) {
     kontext = letztes;
     teile.pop();
   }
@@ -84,22 +84,22 @@ export function zerlege(args: unknown[]): { nachricht: string; kontext?: Record<
 }
 
 interface Zustand {
-  ausgabe: Ausgabe;
+  output: Ausgabe;
   pool: Abfrager | null;
   puffer: { level: string; message: string }[];
   timer: NodeJS.Timeout | null;
   fehlgeschlagen: number;
-  letzterFehler: string;
-  zuletztGemeldet: number;
-  meldeTimer: NodeJS.Timeout | null;
-  aufraeumTakt: NodeJS.Timeout | null;
+  lastError: string;
+  lastlyReported: number;
+  reportTimer: NodeJS.Timeout | null;
+  onRaeumTick: NodeJS.Timeout | null;
 }
 const P = prozessweit('protokoll', () => ({ z: null as Zustand | null }));
 const pidTag = String(process.pid).slice(-4);
 
 /** Felder in fester Reihenfolge. */
-export function jsonZeile(stufe: Stufe, args: unknown[], zeit: number, rid?: string): string {
-  const { nachricht, kontext } = zerlege(args);
+export function jsonRow(stufe: Stufe, args: unknown[], zeit: number, rid?: string): string {
+  const { nachricht, kontext } = split(args);
   return JSON.stringify({
     zeit: new Date(zeit).toISOString(),
     stufe,
@@ -110,97 +110,97 @@ export function jsonZeile(stufe: Stufe, args: unknown[], zeit: number, rid?: str
   });
 }
 
-function schreibfehler(anzahl: number, e: unknown): void {
+function writeError(anzahl: number, e: unknown): void {
   if (!P.z) return;
   P.z.fehlgeschlagen += anzahl;
-  P.z.letzterFehler = e instanceof Error ? e.message : String(e);
-  if (P.z.ausgabe.jetzt() - P.z.zuletztGemeldet >= MELDE_ABSTAND_MS) {
-    meldeSchreibfehler();
+  P.z.lastError = e instanceof Error ? e.message : String(e);
+  if (P.z.output.jetzt() - P.z.lastlyReported >= REPORT_GAP_MS) {
+    reportWriteError();
     return;
   }
-  if (!P.z.meldeTimer) {
-    P.z.meldeTimer = setTimeout(meldeSchreibfehler, MELDE_ABSTAND_MS - (P.z.ausgabe.jetzt() - P.z.zuletztGemeldet));
-    P.z.meldeTimer.unref();
+  if (!P.z.reportTimer) {
+    P.z.reportTimer = setTimeout(reportWriteError, REPORT_GAP_MS - (P.z.output.jetzt() - P.z.lastlyReported));
+    P.z.reportTimer.unref();
   }
 }
 
 /** Direkt auf stderr, nicht über console — sonst wieder nach app_logs. */
-export function meldeSchreibfehler(): void {
+export function reportWriteError(): void {
   if (!P.z) return;
-  if (P.z.meldeTimer) {
-    clearTimeout(P.z.meldeTimer);
-    P.z.meldeTimer = null;
+  if (P.z.reportTimer) {
+    clearTimeout(P.z.reportTimer);
+    P.z.reportTimer = null;
   }
   if (!P.z.fehlgeschlagen) return;
-  P.z.ausgabe.err(
-    jsonZeile(
+  P.z.output.err(
+    jsonRow(
       'warn',
-      [`app_logs: ${P.z.fehlgeschlagen} Zeile(n) nicht geschrieben`, { letzter_fehler: P.z.letzterFehler }],
-      P.z.ausgabe.jetzt(),
+      [`app_logs: ${P.z.fehlgeschlagen} Zeile(n) nicht geschrieben`, { last_error: P.z.lastError }],
+      P.z.output.jetzt(),
     ),
   );
   P.z.fehlgeschlagen = 0;
-  P.z.zuletztGemeldet = P.z.ausgabe.jetzt();
+  P.z.lastlyReported = P.z.output.jetzt();
 }
 
-export function leereProtokoll(): Promise<void> {
+export function emptyLog(): Promise<void> {
   if (!P.z?.pool || !P.z.puffer.length) return Promise.resolve();
   const rows = P.z.puffer.splice(0);
-  return logs.schreibeLogZeilen(P.z.pool, rows).then(
+  return logs.writeLogRows(P.z.pool, rows).then(
     () => undefined,
-    (e: unknown) => schreibfehler(rows.length, e),
+    (e: unknown) => writeError(rows.length, e),
   );
 }
 
-export function protokollInDieDatenbank(pool: Abfrager): void {
+export function logInDieDatabase(pool: Abfrager): void {
   if (!P.z) return;
   P.z.pool = pool;
-  void leereProtokoll();
-  if (P.z.aufraeumTakt) clearInterval(P.z.aufraeumTakt);
-  P.z.aufraeumTakt = setInterval(
+  void emptyLog();
+  if (P.z.onRaeumTick) clearInterval(P.z.onRaeumTick);
+  P.z.onRaeumTick = setInterval(
     () => {
-      logs.loescheAlteLogZeilen(pool).catch((e: unknown) => schreibfehler(0, e));
+      logs.deleteOldLogRows(pool).catch((e: unknown) => writeError(0, e));
     },
     6 * 60 * 60 * 1000,
   );
-  P.z.aufraeumTakt.unref();
+  P.z.onRaeumTick.unref();
 }
 
 /** Als Letztes vor dem Schliessen des Pools, damit die Meldungen der übrigen
  * Abschlüsse noch in app_logs landen; danach geht nur noch stdout. */
-export async function stoppeProtokoll(): Promise<void> {
+export async function stopLog(): Promise<void> {
   if (!P.z) return;
   if (P.z.timer) clearTimeout(P.z.timer);
-  if (P.z.aufraeumTakt) clearInterval(P.z.aufraeumTakt);
-  P.z.timer = P.z.aufraeumTakt = null;
-  await leereProtokoll();
-  meldeSchreibfehler();
+  if (P.z.onRaeumTick) clearInterval(P.z.onRaeumTick);
+  P.z.timer = P.z.onRaeumTick = null;
+  await emptyLog();
+  reportWriteError();
   P.z.pool = null;
 }
 
 /** Gibt eine Funktion zurück, die den alten Zustand wiederherstellt (Tests). */
-export function installiereProtokoll(ausgabe: Ausgabe = PROZESS): () => void {
+export function installLog(output: Ausgabe = PROCESS): () => void {
   const alt = { log: console.log, debug: console.debug, info: console.info, warn: console.warn, error: console.error };
   P.z = {
-    ausgabe,
+    output,
     pool: null,
     puffer: [],
     timer: null,
     fehlgeschlagen: 0,
-    letzterFehler: '',
-    zuletztGemeldet: -Infinity,
-    meldeTimer: null,
-    aufraeumTakt: null,
+    lastError: '',
+    lastlyReported: -Infinity,
+    reportTimer: null,
+    onRaeumTick: null,
   };
-  for (const name of ['log', ...STUFEN] as const) {
-    const stufe = LOG_STUFE[name];
+  for (const name of ['log', ...LEVELS] as const) {
+    const stufe = LOG_LEVEL[name];
     console[name] = (...args: unknown[]) => {
       if (!P.z) return;
-      const rid = anfrageKontext.getStore()?.rid;
-      const zeile = jsonZeile(stufe, args, P.z.ausgabe.jetzt(), rid);
-      (stufe === 'warn' || stufe === 'error' ? P.z.ausgabe.err : P.z.ausgabe.out)(zeile);
+      const rid = requestContext.getStore()?.rid;
+      const zeile = jsonRow(stufe, args, P.z.output.jetzt(), rid);
+      (stufe === 'warn' || stufe === 'error' ? P.z.output.err : P.z.output.out)(zeile);
       // app_logs behält das bisherige Textformat; die Protokollansicht liest es so.
-      const { nachricht, kontext } = zerlege(args);
+      const { nachricht, kontext } = split(args);
       const text = `[${pidTag}${rid ? '/' + rid : ''}] ${nachricht}${kontext ? ' ' + logText(kontext) : ''}`;
       P.z.puffer.push({ level: name === 'log' ? 'log' : stufe, message: text.substring(0, MAX_TEXT) });
       // Ohne Pool wüchse der Puffer unbegrenzt; jede Zeile steht ohnehin auf stdout.
@@ -208,14 +208,14 @@ export function installiereProtokoll(ausgabe: Ausgabe = PROZESS): () => void {
       if (P.z.timer) clearTimeout(P.z.timer);
       P.z.timer = setTimeout(() => {
         if (P.z) P.z.timer = null;
-        void leereProtokoll();
+        void emptyLog();
       }, 1500);
     };
   }
   return () => {
     if (P.z?.timer) clearTimeout(P.z.timer);
-    if (P.z?.meldeTimer) clearTimeout(P.z.meldeTimer);
-    if (P.z?.aufraeumTakt) clearInterval(P.z.aufraeumTakt);
+    if (P.z?.reportTimer) clearTimeout(P.z.reportTimer);
+    if (P.z?.onRaeumTick) clearInterval(P.z.onRaeumTick);
     P.z = null;
     Object.assign(console, alt);
   };

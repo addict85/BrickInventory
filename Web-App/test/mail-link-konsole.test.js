@@ -18,7 +18,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const umgebung = require('./helpers/sources').umgebung;
+const environment = require('./helpers/sources').environment;
 const { linkForConsole } = _req('src/mail/mailer.js');
 
 // Der Absender reicht den Link selbst; aus dem Text gesucht wird nicht mehr.
@@ -40,12 +40,12 @@ test('NODE_ENV öffnet nichts — auch nicht development', () => {
   const alt = process.env.NODE_ENV;
   try {
     for (const art of ['development', 'test', 'production']) {
-      umgebung({ NODE_ENV: art });
+      environment({ NODE_ENV: art });
       assert.equal(linkForConsole(TEXT), 'https://lego.example.org/reset?token=…', art);
     }
   } finally {
-    if (alt === undefined) umgebung({ NODE_ENV: undefined });
-    else umgebung({ NODE_ENV: alt });
+    if (alt === undefined) environment({ NODE_ENV: undefined });
+    else environment({ NODE_ENV: alt });
   }
 });
 

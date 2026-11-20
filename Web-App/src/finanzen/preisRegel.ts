@@ -1,29 +1,29 @@
-import { geldEingabe } from '../infra/geld';
-import type { FinanzenKontext } from './kontext';
+import { moneyInput } from '../infra/geld';
+import type { FinancesContext } from './kontext';
 
 /** Für Teile und Figuren an einer Stelle; leer heisst „nimm den Marktpreis", nicht „Preis null".
  * @param marktpreis beim Aufrufer, weil Teil und Figur verschiedene Schlüssel haben. */
-export async function kaufpreisAusEingabe(
-  k: FinanzenKontext,
+export async function purchasePriceFromInput(
+  k: FinancesContext,
   roh: unknown,
-  zustandRoh: unknown,
-  zustandJetzt: string | null | undefined,
+  stateRaw: unknown,
+  stateNow: string | null | undefined,
   nutzerId: number,
   marktpreis: (zustand: string) => Promise<number | null>,
 ): Promise<{ unitPrice: number | null; purchasePrice: number | null }> {
-  const zahl = geldEingabe(roh, 'Preis');
+  const zahl = moneyInput(roh, 'Preis');
   if (zahl !== null) return { unitPrice: zahl, purchasePrice: zahl };
-  const zustand = await k.einstellungen.conditionForPrice(zustandRoh, zustandJetzt, nutzerId);
+  const zustand = await k.einstellungen.conditionForPrice(stateRaw, stateNow, nutzerId);
   return { unitPrice: null, purchasePrice: await marktpreis(zustand) };
 }
 
 /** Ohne Marktpreis steht in der Stammzeile 0, in der Erfassung NULL — für
  * Teile und Figuren gleich. */
 export async function manuellerKaufpreis(
-  k: FinanzenKontext,
+  k: FinancesContext,
   nutzerId: number,
   eingabe: { unitPrice?: unknown; condition?: string | null },
-  marktpreis: (zustand: string) => Promise<{ preis: number | null; ausZustand: string | null }>,
+  marktpreis: (zustand: string) => Promise<{ preis: number | null; fromState: string | null }>,
 ): Promise<{
   unitPrice: number | null;
   /** Für die STAMMZEILE — nie null. */
@@ -32,10 +32,10 @@ export async function manuellerKaufpreis(
   erfassungsPreis: number | null;
   zustand: string;
   /** Nur gesetzt, wenn der Marktpreis aus dem ANDEREN Zustand übernommen wurde. */
-  preisAusZustand: string | null;
+  priceFromState: string | null;
   geschaetzt: boolean;
 }> {
-  const unitPrice = geldEingabe(eingabe.unitPrice, 'Stückpreis');
+  const unitPrice = moneyInput(eingabe.unitPrice, 'Stückpreis');
 
   const zustand = await k.einstellungen.conditionForPrice(eingabe.condition ?? null, null, nutzerId);
 
@@ -48,7 +48,7 @@ export async function manuellerKaufpreis(
     erfassungsPreis: kaufpreis > 0 ? kaufpreis : null,
     zustand,
     // Eine Herkunft ohne Wert wäre ein Hinweis auf etwas, das nirgends steht.
-    preisAusZustand: kaufpreis > 0 && markt?.ausZustand ? markt.ausZustand : null,
+    priceFromState: kaufpreis > 0 && markt?.fromState ? markt.fromState : null,
     geschaetzt: unitPrice === null && kaufpreis > 0,
   };
 }

@@ -1,8 +1,8 @@
 /** RFC 6238 (TOTP, SHA-1, 6 digits, 30 s): the form every authenticator app
  * understands. No third-party package, with node:crypto. */
-import { verschluessele, entschluessele, kontext, suchwert, suchwertAlt } from '../infra/geheimnis';
+import { encrypt, decrypt, kontext, searchValue, searchValueAlt } from '../infra/geheimnis';
 import crypto from 'node:crypto';
-import type { DbSchnittstelle } from '../../db/database';
+import type { DbInterface } from '../../db/database';
 import * as repo from './repository/secondFactor';
 import type { FactorsContext } from './context';
 import { imSystemrahmen } from '../infra/bereich';
@@ -93,7 +93,7 @@ function normalizeCode(code: string): string {
   return code.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 /** HMAC with its own sub-key and bound to the account: a leak of the table alone can't be brute-forced. */
-const hashCode = (uid: number, code: string) => suchwert('zweiter-faktor-code', `${uid}:${normalizeCode(code)}`);
+const hashCode = (uid: number, code: string) => searchValue('zweiter-faktor-code', `${uid}:${normalizeCode(code)}`);
 /** Codes before 2026-11-01: 10 characters (50 bits), unsalted SHA-256. They still count for 90 days
  * after the update (0122), not invalid right away: someone who only has them on paper needs time to replace them. */
 const LEGACY_LENGTH = 10;
@@ -106,7 +106,7 @@ function newRecoveryCodes(): string[] {
   );
 }
 
-async function regenerateCodes(tx: DbSchnittstelle, uid: number): Promise<string[]> {
+async function regenerateCodes(tx: DbInterface, uid: number): Promise<string[]> {
   const codes = newRecoveryCodes();
   await repo.replaceCodes(
     tx,
@@ -136,7 +136,7 @@ export async function status(
 /** Not yet active. @returns null if the factor is already active */
 export async function beginSetup(k: FactorsContext, uid: number): Promise<string | null> {
   const secret = base32(crypto.randomBytes(20));
-  return (await k.secondFactor.createSecret(uid, verschluessele(secret, secondFactorContext(uid)))) ? secret : null;
+  return (await k.secondFactor.createSecret(uid, encrypt(secret, secondFactorContext(uid)))) ? secret : null;
 }
 
 export async function confirmSetup(k: FactorsContext, uid: number, code: string): Promise<string[] | null> {
@@ -144,7 +144,7 @@ export async function confirmSetup(k: FactorsContext, uid: number, code: string)
     const z = await repo.lockUnconfirmedSecret(t.db, uid);
     if (!z) return null;
     const schritt = matchingStep(
-      entschluessele(z.secret, secondFactorContext(uid)) ?? '',
+      decrypt(z.secret, secondFactorContext(uid)) ?? '',
       String(code ?? '').trim(),
       t.uhr.jetzt(),
     );
@@ -167,17 +167,15 @@ export async function checkCode(
   if (/^\d{6}$/.test(eingabe)) {
     if (!withOneTimeCode) return null;
     const z = await k.secondFactor.activeSecret(uid);
-    const schritt = z
-      ? matchingStep(entschluessele(z.secret, secondFactorContext(uid)) ?? '', eingabe, k.uhr.jetzt())
-      : null;
+    const schritt = z ? matchingStep(decrypt(z.secret, secondFactorContext(uid)) ?? '', eingabe, k.uhr.jetzt()) : null;
     if (schritt === null) return null;
     return (await k.secondFactor.consumeStep(uid, schritt)) ? 'totp' : null;
   }
   // Codes from before a key change: their plaintext isn't stored, rehashing isn't possible.
-  const vorWechsel = suchwertAlt('zweiter-faktor-code', `${uid}:${normalizeCode(eingabe)}`);
+  const beforeSwitch = searchValueAlt('zweiter-faktor-code', `${uid}:${normalizeCode(eingabe)}`);
   if (
     (await k.secondFactor.consumeCode(uid, hashCode(uid, eingabe))) ||
-    (vorWechsel && (await k.secondFactor.consumeCode(uid, vorWechsel)))
+    (beforeSwitch && (await k.secondFactor.consumeCode(uid, beforeSwitch)))
   ) {
     await k.secondFactor.markCodesCurrent(uid);
     return 'wiederherstellung';

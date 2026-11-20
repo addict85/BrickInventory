@@ -1,76 +1,76 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
+/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/bereich.ts). */
 import type { Db } from '../../db/database';
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import * as acquisitions from './acquisitions';
-import * as bestandExportDienst from './bestandExport';
-import * as gemeinsamDienst from './gemeinsam';
+import * as inventoryExportService from './bestandExport';
+import * as sharedService from './gemeinsam';
 import * as inhalt from './inhalt';
-import * as kennzahlenDienst from './kennzahlen';
+import * as metricsService from './kennzahlen';
 import * as manuelleMenge from './manuelleMenge';
-import * as papierkorbDienst from './papierkorb';
+import * as trashService from './papierkorb';
 import * as kaufpreisNachtrag from './kaufpreisNachtrag';
 import * as lagerortRechte from './lagerortRechte';
-import * as lagerortDienst from './lagerort';
+import * as locationService from './lagerort';
 import * as lagerortSetzen from './lagerortSetzen';
 import { schreibwege } from './schreibwege';
-import { zugang, type BestandAbhaengigkeiten, type BestandKontext } from './kontext';
+import { zugang, type InventoryDependencies, type InventoryContext } from './kontext';
 
-export type { BestandAbhaengigkeiten, BestandKontext } from './kontext';
+export type { InventoryDependencies, InventoryContext } from './kontext';
 
-export function erzeugeBestand(a: BestandAbhaengigkeiten, einblick?: Einblick<BestandKontext>) {
-  return baueBereich(
+export function createInventory(a: InventoryDependencies, inspect?: Inspect<InventoryContext>) {
+  return buildArea(
     a,
     (db: Db) => zugang(db, a.lesevertrag),
-    (k: BestandKontext) => ({
-      bucheTageserfassung: mit(k)(acquisitions.kaufAmTagErfassen),
-      erfassungAmSelbenTag: mit(k)(acquisitions.kaufAmSelbenTag),
-      setzeGeschaetztenPreis: mit(k)(acquisitions.setzeGeschaetztenPreis),
+    (k: InventoryContext) => ({
+      bookDailyEntry: mit(k)(acquisitions.addPurchaseAtTag),
+      entryAtSameTag: mit(k)(acquisitions.purchaseAtSameTag),
+      setEstimatedPrice: mit(k)(acquisitions.setEstimatedPrice),
       erfassungenInKontowaehrung: mit(k)(acquisitions.erfassungenInKontowaehrung),
-      teileAlsCsv: mit(k)(bestandExportDienst.teileCsv),
-      figurenAlsCsv: mit(k)(bestandExportDienst.figurenCsv),
-      verwendendeSets: mit(k)(gemeinsamDienst.verwendendeSets),
-      loescheManuell: mit(k)(gemeinsamDienst.loescheManuell),
+      partsAsCsv: mit(k)(inventoryExportService.partsCsv),
+      minifigsAsCsv: mit(k)(inventoryExportService.figurenCsv),
+      usingSets: mit(k)(sharedService.usingSets),
+      deleteManual: mit(k)(sharedService.deleteManual),
       setInhalt: {
-        teileEintragen: mit(k)(inhalt.teileEintragen),
-        figurenEintragen: mit(k)(inhalt.figurenEintragen),
+        enterParts: mit(k)(inhalt.enterParts),
+        enterMinifigs: mit(k)(inhalt.enterMinifigs),
         entfernen: mit(k)(inhalt.entfernen),
         kopieren: mit(k)(inhalt.kopieren),
       },
       manuell: {
-        legeZeileAn: mit(k)(inhalt.legeZeileAn),
-        teileDesKontos: mit(k)(inhalt.teileDesKontos),
-        figurenDesKontos: mit(k)(inhalt.figurenDesKontos),
-        teilzeileUmfaerben: mit(k)(inhalt.teilzeileUmfaerben),
+        putRowAn: mit(k)(inhalt.putRowAn),
+        partsOfAccount: mit(k)(inhalt.partsOfAccount),
+        minifigsOfAccount: mit(k)(inhalt.minifigsOfAccount),
+        recolorPartRow: mit(k)(inhalt.recolorPartRow),
       },
-      setzeManuellenZustand: mit(k)(gemeinsamDienst.manuellenZustandSetzen),
-      bestandsKennzahlen: mit(k)(kennzahlenDienst.getStats),
-      passeManuelleMengeAn: mit(k)(manuelleMenge.passeManuelleMengeAn),
-      legeInPapierkorb: mit(k)(papierkorbDienst.legeInPapierkorb),
-      legeKaeufeInPapierkorb: mit(k)(papierkorbDienst.legeKaeufeInPapierkorb),
-      listePapierkorb: mit(k)(papierkorbDienst.listePapierkorb),
-      stelleWiederHer: mit(k)(papierkorbDienst.stelleWiederHer),
-      loescheEndgueltig: mit(k)(papierkorbDienst.loescheEndgueltig),
-      leerePapierkorb: mit(k)(papierkorbDienst.leerePapierkorb),
-      raeumePapierkorbAuf: mit(k)(papierkorbDienst.raeumePapierkorbAuf),
-      kaufpreiseNachtragen: mit(k)(kaufpreisNachtrag.run),
-      lagerortDienst: {
-        benenneOrtUm: mit(k)(lagerortDienst.benenneOrtUm),
-        lagerorte: mit(k)(lagerortDienst.lagerorte),
-        legeOrtAn: mit(k)(lagerortDienst.legeOrtAn),
-        loescheOrt: mit(k)(lagerortDienst.loescheOrt),
-        ortFuerNeuerfassung: mit(k)(lagerortDienst.ortFuerNeuerfassung),
-        vorgabeVon: mit(k)(lagerortDienst.vorgabeVon),
-        setzeLagerort: mit(k)(lagerortSetzen.setzeLagerort),
+      setzeManuellenZustand: mit(k)(sharedService.manuellenZustandSetzen),
+      inventoryMetrics: mit(k)(metricsService.getStats),
+      passeManualQuantityAn: mit(k)(manuelleMenge.passeManualQuantityAn),
+      putInTrash: mit(k)(trashService.putInTrash),
+      putPurchasesInTrash: mit(k)(trashService.putPurchasesInTrash),
+      listTrash: mit(k)(trashService.listTrash),
+      placeAgainHer: mit(k)(trashService.placeAgainHer),
+      deleteFinal: mit(k)(trashService.deleteFinal),
+      emptyTrash: mit(k)(trashService.emptyTrash),
+      cleanTrashOn: mit(k)(trashService.cleanTrashOn),
+      backfillPurchasePrices: mit(k)(kaufpreisNachtrag.run),
+      locationService: {
+        benenneOrtUm: mit(k)(locationService.benenneOrtUm),
+        lagerorte: mit(k)(locationService.lagerorte),
+        putLocationAn: mit(k)(locationService.putLocationAn),
+        loescheOrt: mit(k)(locationService.loescheOrt),
+        locationForNewEntry: mit(k)(locationService.locationForNewEntry),
+        vorgabeVon: mit(k)(locationService.vorgabeVon),
+        setLocation: mit(k)(lagerortSetzen.setLocation),
       },
 
       ...schreibwege(k),
 
-      setzeVorgabe: mit(k)(lagerortRechte.setzeVorgabe),
+      setDefault: mit(k)(lagerortRechte.setDefault),
       lagerSchreibkonto: mit(k)(lagerortRechte.lagerSchreibkonto),
-      orteFuer: mit(k)(lagerortRechte.orteFuer),
+      locationsFor: mit(k)(lagerortRechte.locationsFor),
     }),
-    einblick,
+    inspect,
   );
 }
 
-export type BestandDienste = ReturnType<typeof erzeugeBestand>;
+export type InventoryServices = ReturnType<typeof createInventory>;

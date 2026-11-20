@@ -47,11 +47,11 @@ const zeit = d => tlv([0x17], Buffer.from(d.toISOString().replace(/[-:T]/g, '').
 const ECDSA_SHA256 = seq(oid('1.2.840.10045.4.3.2'));
 
 /**
- * @param {{ subjekt: string, aussteller: string, oeffentlich: import('node:crypto').KeyObject,
- *   signierer: import('node:crypto').KeyObject, ca?: boolean, erweiterungen?: Buffer[], von?: Date, bis?: Date }} z
+ * @param {{ subject: string, aussteller: string, oeffentlich: import('node:crypto').KeyObject,
+ *   signierer: import('node:crypto').KeyObject, ca?: boolean, extensions?: Buffer[], von?: Date, bis?: Date }} z
  */
-function zertifikat({ subjekt, aussteller, oeffentlich, signierer, ca = false, erweiterungen = [], von, bis }) {
-  const ext = [...erweiterungen];
+function zertifikat({ subject, aussteller, oeffentlich, signierer, ca = false, extensions = [], von, bis }) {
+  const ext = [...extensions];
   if (ca)
     ext.push(seq(oid('2.5.29.19'), tlv([0x01], Buffer.from([0xff])), oktette(seq(tlv([0x01], Buffer.from([0xff]))))));
   const tbs = seq(
@@ -60,7 +60,7 @@ function zertifikat({ subjekt, aussteller, oeffentlich, signierer, ca = false, e
     ECDSA_SHA256,
     name(aussteller),
     seq(zeit(von ?? new Date(Date.now() - 86_400_000)), zeit(bis ?? new Date(Date.now() + 365 * 86_400_000))),
-    name(subjekt),
+    name(subject),
     oeffentlich.export({ format: 'der', type: 'spki' }),
     ...(ext.length ? [kontext(3, seq(...ext))] : []),
   );
@@ -74,13 +74,13 @@ const pem = der =>
     .match(/.{1,64}/g)
     .join('\n')}\n-----END CERTIFICATE-----\n`;
 
-function neueWurzel(cn = 'Test-Attestierungswurzel') {
+function newRoot(cn = 'Test-Attestierungswurzel') {
   const k = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
-  const der = zertifikat({ subjekt: cn, aussteller: cn, oeffentlich: k.publicKey, signierer: k.privateKey, ca: true });
+  const der = zertifikat({ subject: cn, aussteller: cn, oeffentlich: k.publicKey, signierer: k.privateKey, ca: true });
   return { ...k, cn, der, pem: pem(der) };
 }
 
-const WURZEL = neueWurzel();
+const WURZEL = newRoot();
 const PAKET = 'ch.brickinventoryapp';
 /** Der SHA-256 des Signaturzertifikats der Test-App. */
 const DIGEST = createHash('sha256').update('brickinventory-test-signatur').digest();
@@ -92,7 +92,7 @@ const DIGEST_HEX = DIGEST.toString('hex').toUpperCase();
  * @param {{ run: (sql: string, p: unknown[]) => Promise<unknown> }} db
  * @param {string[]} [nummern] @param {Date} [stand]
  */
-function widerrufslisteAblegen(db, nummern = [], stand = new Date()) {
+function storeRevocationList(db, nummern = [], stand = new Date()) {
   return db.run(
     `INSERT INTO run_state (key, value) VALUES ('attestation_widerruf', $1)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -108,35 +108,35 @@ const UMGEBUNG = {
 };
 
 /**
- * @typedef {{ challenge: Buffer, wurzel?: ReturnType<typeof neueWurzel>, sicherheit?: number,
- *   paket?: string, digest?: Buffer, ohneSperre?: boolean, auchOhneAnmeldung?: boolean,
- *   ohneErweiterung?: boolean, frist?: number, herkunft?: number, kurve?: number, algorithmus?: number,
- *   bootloaderOffen?: boolean, bootZustand?: number, ohneRootOfTrust?: boolean, patch?: number }} Abweichung
- * ohneSperre: noAuthRequired statt userAuthType; auchOhneAnmeldung: beide, wie es ein
+ * @typedef {{ challenge: Buffer, wurzel?: ReturnType<typeof newRoot>, sicherheit?: number,
+ *   paket?: string, digest?: Buffer, withoutLock?: boolean, alsoWithoutLogin?: boolean,
+ *   withoutExtension?: boolean, frist?: number, herkunft?: number, kurve?: number, algorithm?: number,
+ *   openBootloader?: boolean, bootState?: number, withoutRootOfTrust?: boolean, patch?: number }} Abweichung
+ * withoutLock: noAuthRequired statt userAuthType; alsoWithoutLogin: beide, wie es ein
  * manipuliertes KeyMint melden könnte; sicherheit: 0 Software, 1 TEE, 2 StrongBox;
- * bootZustand: 0 Verified, 1 SelfSigned, 2 Unverified, 3 Failed; patch: osPatchLevel JJJJMM.
+ * bootState: 0 Verified, 1 SelfSigned, 2 Unverified, 3 Failed; patch: osPatchLevel JJJJMM.
  */
 
 /** @param {Abweichung} o */
 function beschreibung(o) {
   const hw = [
     kontext(1, set(ganz(2))),
-    kontext(2, ganz(o.algorithmus ?? 3)),
+    kontext(2, ganz(o.algorithm ?? 3)),
     kontext(3, ganz(256)),
     kontext(10, ganz(o.kurve ?? 1)),
-    ...(o.ohneSperre || o.auchOhneAnmeldung ? [kontext(503, nichts())] : []),
-    ...(o.ohneSperre ? [] : [kontext(504, ganz(3))]),
+    ...(o.withoutLock || o.alsoWithoutLogin ? [kontext(503, nichts())] : []),
+    ...(o.withoutLock ? [] : [kontext(504, ganz(3))]),
     ...(o.frist ? [kontext(505, ganz(o.frist))] : []),
     kontext(702, ganz(o.herkunft ?? 0)),
-    ...(o.ohneRootOfTrust
+    ...(o.withoutRootOfTrust
       ? []
       : [
           kontext(
             704,
             seq(
               oktette(Buffer.alloc(32, 9)),
-              wahr(!o.bootloaderOffen),
-              aufz(o.bootZustand ?? 0),
+              wahr(!o.openBootloader),
+              aufz(o.bootState ?? 0),
               oktette(Buffer.alloc(32, 3)),
             ),
           ),
@@ -165,25 +165,25 @@ function kette(o) {
   const w = o.wurzel ?? WURZEL;
   const zwischen = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const blatt = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
-  const zDer = zertifikat({
-    subjekt: 'Test-Zwischenstufe',
+  const zThe = zertifikat({
+    subject: 'Test-Zwischenstufe',
     aussteller: w.cn,
     oeffentlich: zwischen.publicKey,
     signierer: w.privateKey,
     ca: true,
   });
-  const ext = o.ohneErweiterung ? [] : [seq(oid('1.3.6.1.4.1.11129.2.1.17'), oktette(beschreibung(o)))];
-  const bDer = zertifikat({
-    subjekt: 'Android Keystore Key',
+  const ext = o.withoutExtension ? [] : [seq(oid('1.3.6.1.4.1.11129.2.1.17'), oktette(beschreibung(o)))];
+  const bThe = zertifikat({
+    subject: 'Android Keystore Key',
     aussteller: 'Test-Zwischenstufe',
     oeffentlich: blatt.publicKey,
     signierer: zwischen.privateKey,
-    erweiterungen: ext,
+    extensions: ext,
     von: new Date(0),
     bis: new Date('2048-01-01T00:00:00Z'),
   });
   return {
-    kette: [bDer, zDer, w.der].map(d => d.toString('base64')),
+    kette: [bThe, zThe, w.der].map(d => d.toString('base64')),
     privateKey: blatt.privateKey,
     oeffentlich: blatt.publicKey.export({ format: 'der', type: 'spki' }).toString('base64'),
   };
@@ -200,8 +200,8 @@ module.exports = {
   DIGEST,
   DIGEST_HEX,
   UMGEBUNG,
-  neueWurzel,
+  newRoot,
   kette,
   beschreibung,
-  widerrufslisteAblegen,
+  storeRevocationList,
 };

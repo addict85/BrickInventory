@@ -1,18 +1,18 @@
 /**
  * Jede schreibende Route prüft den Typ ihrer Eingabe: mit eigenem Schema aus
- * dem Vertrag, sonst mit FLACHE_EINGABE (nur einfache Werte und Listen davon).
+ * dem Vertrag, sonst mit FLAT_INPUT (nur einfache Werte und Listen davon).
  * Ein Objekt statt eines Textes ({"$ne":1}) ist 400, bevor die Route läuft.
  *
  * Gegenproben (am 03.11.2026 gemessen):
- *   A  in eingabePruefen() ohne Rückfall auf FLACHE_EINGABE (Routen ohne
+ *   A  in checkInput() ohne Rückfall auf FLAT_INPUT (Routen ohne
  *      Schema laufen durch) → rot: beide Tests
- *   B  FLACHE_EINGABE als z.record(z.string(), z.unknown()) → rot: beide Tests
+ *   B  FLAT_INPUT als z.record(z.string(), z.unknown()) → rot: beide Tests
  *   C  (05.11.2026) Eingabeschema von PUT /api/v1/sets/:setNumber entfernt
  *      → rot: „jede schreibende Route hat ein Eingabeschema"
  *   E  (05.11.2026) in alsSchema (validate.ts) die Objektprüfung gestrichen
  *      → rot: „jede schreibende Route weist ein Objekt …" (wanted …/uebernehmen:
  *      quantity {"$ne":1} galt als „fehlt" und wurde 1)
- *   D  (05.11.2026) OHNE_RUMPF als z.looseObject({}) → rot: „jede schreibende
+ *   D  (05.11.2026) WITHOUT_BODY als z.looseObject({}) → rot: „jede schreibende
  *      Route weist ein Objekt …" für alle Routen ohne Rumpf
  *   F  (05.11.2026) das Schema von POST /api/v1/sets/add-stream entfernt → rot:
  *      „jede schreibende Route hat ein Eingabeschema"
@@ -24,13 +24,13 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const db = testDaten();
-const { VERTRAG } = _req('src/vertrag/index.js');
+const { adminWithFactor } = require('./helpers/verwalter');
+const db = testData();
+const { CONTRACT } = _req('src/vertrag/index.js');
 
 test('verschachtelte Werte an schreibenden Routen', { concurrency: 1 }, async t => {
   try {
@@ -55,7 +55,7 @@ test('verschachtelte Werte an schreibenden Routen', { concurrency: 1 }, async t 
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  await verwalterMitFaktor(_req, uid);
+  await adminWithFactor(_req, uid);
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: true }, t });
   const sende = async (methode, pfad, rumpf) => {
     const r = await fetch(base + pfad, {
@@ -81,14 +81,14 @@ test('verschachtelte Werte an schreibenden Routen', { concurrency: 1 }, async t 
   });
 
   await t.test('jede schreibende Route hat ein Eingabeschema', () => {
-    const ohneSchema = Object.entries(VERTRAG)
+    const withoutSchema = Object.entries(CONTRACT)
       .filter(([k, r]) => !k.startsWith('GET ') && !r.eingabe && !r.formular)
       .map(([k]) => k);
-    assert.deepEqual(ohneSchema, []);
+    assert.deepEqual(withoutSchema, []);
   });
 
   await t.test('jede schreibende Route weist ein Objekt in einem ihrer Felder ab', async () => {
-    const routen = Object.entries(VERTRAG).filter(([k, r]) => !k.startsWith('GET ') && !r.formular);
+    const routen = Object.entries(CONTRACT).filter(([k, r]) => !k.startsWith('GET ') && !r.formular);
     assert.ok(routen.length >= 100, `nur ${routen.length} schreibende Routen`);
     const durch = [];
     for (const [k, r] of routen) {

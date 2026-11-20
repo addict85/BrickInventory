@@ -3,7 +3,7 @@
  * Server mit den echten Stylesheets.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  diagrammBreite() liefert immer 700 → rot: „Diagrammschrift
+ *   A  chartWidth() liefert immer 700 → rot: „Diagrammschrift
  *      Finanzen“ (5,6 px) und die Set-Ansicht (6,2 px)
  *   B  (29.10.) Marke in der Kopfleiste wieder <h1> → rot: „Sprunglink und genau eine
  *      h1 je Reiter“ (je Reiter zwei h1)
@@ -11,7 +11,7 @@
  *      Tab-Halt war .ubadge-knopf)
  *   D  (29.10.) --fs-0 wieder .6875rem → rot: „Tippziele und Schrift je
  *      Reiter“ (span.tab-label 11 px); .delbtn wieder 36 px → rot (36×36)
- *   E  (02.11.) in markiereGruppe die Klasse gruppe-aktiv nicht mehr gesetzt
+ *   E  (02.11.) in markGroup die Klasse gruppe-aktiv nicht mehr gesetzt
  *      → rot: „Teile und Minifiguren in der Leiste auffindbar“ (aria-current);
  *      (29.10.) `.ntab.ntab-sammlung{display:none}` aus styles.css entfernt
  *      → rot: am Rechner wieder zwei Navigationen (teile: true)
@@ -26,8 +26,8 @@
  *      Fuss“); die drei .alarm-zeile-Regeln aus mobile.css entfernt → rot
  *      (Felder neben der Beschriftung)
  *   J  (08.11.) in mobile.css `.alarm-zeile .alarm-preis` wieder flex 1 1 100% und `.alarm-waehrung`
- *      ohne Regel → rot: „Set-Ansicht: Diagramm, Löschen, Preisalarm“ (waehrungNeben: false)
- *   I  (29.10.) in loadPartsData wieder ladeAnzeige() → rot: „Skelett beim
+ *      ohne Regel → rot: „Set-Ansicht: Diagramm, Löschen, Preisalarm“ (currencyBeside: false)
+ *   I  (29.10.) in loadPartsData wieder loadDisplay() → rot: „Skelett beim
  *      Laden der Teile“; die prefers-reduced-motion-Regel entfernt → rot:
  *      „weniger Bewegung“ (Dialog 0,2 s); die Animation an .tab.active
  *      entfernt → rot (ohne Einstellung keine Übergänge)
@@ -37,22 +37,22 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { haeltSet } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { holdsSet } = require('./helpers/bestand');
 
 /** Kleinste Schrift in px über alle Beschriftungen der Diagramme unter `wurzel`. */
 const DIAGRAMMSCHRIFT = wurzel => `(() => {
   const svgs = [...document.querySelectorAll(${JSON.stringify(wurzel)} + ' svg.diagramm')];
   return svgs.map(svg => {
     const massstab = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width;
-    const groessen = [...svg.querySelectorAll('text')].map(x => parseFloat(getComputedStyle(x).fontSize) * massstab);
+    const sizes = [...svg.querySelectorAll('text')].map(x => parseFloat(getComputedStyle(x).fontSize) * massstab);
     return { rolle: svg.getAttribute('role'), name: svg.getAttribute('aria-label') || '',
-             kleinste: Math.min(...groessen), anzahl: groessen.length };
+             kleinste: Math.min(...sizes), anzahl: sizes.length };
   });
 })()`;
 
 /** Sichtbare Bedienelemente unter 44 × 44 px und Text unter 12 px. */
-const KLEINES = `(() => {
+const SMALL = `(() => {
   const sichtbar = e => { const q = e.getBoundingClientRect(); return q.width > 0 && q.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
   const klein = [...document.querySelectorAll('button, a[href], input:not([type=hidden]), select, [role=button], label.btn')]
     // Ein verstecktes Dateifeld wird über sein Knopf-Label getippt; gemessen wird das Label.
@@ -69,16 +69,16 @@ const KLEINES = `(() => {
 })()`;
 
 test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `telefon_${process.pid}`,
     telefon: true,
     // Zwölf Teile in zwölf Farben — der Fall, der vorher zwölf fast leere Zeilen ergab.
     // Die Teile kommen 1,5 s später, damit das Skelett davor zu sehen ist.
-    abfangen: [
+    intercept: [
       {
         muster: '*/api/v1/parts?*',
-        enthaelt: '/api/v1/parts?',
-        verzoegerung: 1500,
+        contains: '/api/v1/parts?',
+        delay: 1500,
         antwort: {
           success: true,
           total: 12,
@@ -107,7 +107,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
       },
     ],
     bestand: async (db, uid) => {
-      await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
+      await holdsSet(db, uid, '10300-1', 1, { preis: 199 });
       await db.run(`DELETE FROM price_history WHERE set_number = '10300-1'`);
       for (const [tage, preis] of [
         [90, 210],
@@ -129,14 +129,14 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
   const { b, bis, ruhig } = app;
   // Gemessen wird der Endzustand: Ein Dialog, der gerade aufgeht (etwa die
   // Einrichtung nach der Anmeldung), steht im ersten Bild auf scale(.985).
-  const ruhe = () =>
+  const rest = () =>
     b.auswerten(`Promise.all(document.getAnimations()
     .filter(a => a.effect?.getComputedTiming().iterations !== Infinity)
     .map(a => a.finished.catch(() => {}))).then(() => true)`);
   const reiter = async name => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="${name}"]').click(); true`);
     await warte(400);
-    await ruhe();
+    await rest();
   };
 
   await t.test('Skelett beim Laden der Teile', async () => {
@@ -153,10 +153,10 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
   });
 
   await t.test('Tippziele und Schrift je Reiter', async () => {
-    const reiterListe = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
+    const tabList = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
     const klein = [],
       schrift = [];
-    for (const r of reiterListe) {
+    for (const r of tabList) {
       await reiter(r);
       // Die Einstellungen zeigen je einen Abschnitt; gemessen werden alle.
       const seiten =
@@ -168,8 +168,8 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
           await b.auswerten(`document.querySelector('.einst-nav a[data-arg="${seite}"]').click(); true`);
           await warte(100);
         }
-        await ruhe();
-        const m = await b.auswerten(KLEINES);
+        await rest();
+        const m = await b.auswerten(SMALL);
         klein.push(...m.klein.map(k => `${r}: ${k}`));
         schrift.push(...m.schrift.map(k => `${r}: ${k}`));
       }
@@ -179,10 +179,10 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
   });
 
   await t.test('Sprunglink und genau eine h1 je Reiter', async () => {
-    const reiterListe = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
-    assert.ok(reiterListe.length >= 8, `nur ${reiterListe.length} Reiter`);
+    const tabList = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
+    assert.ok(tabList.length >= 8, `nur ${tabList.length} Reiter`);
     const falsch = [];
-    for (const r of reiterListe) {
+    for (const r of tabList) {
       await reiter(r);
       const h1 = await b.auswerten(
         `[...document.querySelectorAll('h1')].filter(h => h.getClientRects().length > 0).map(h => h.textContent.trim())`,
@@ -216,13 +216,13 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
       const sichtbar = [...document.querySelectorAll('#global-settings-grid > .ssec')].filter(s => s.getClientRects().length > 0);
       const nav = document.querySelector('.einst-nav').getBoundingClientRect();
       return { sichtbar: sichtbar.map(s => s.id), aktuell: document.querySelector('.einst-nav a[aria-current="page"]')?.dataset.arg,
-               navZeilen: new Set([...document.querySelectorAll('.einst-nav a')].map(a => Math.round(a.getBoundingClientRect().top))).size,
-               navHoehe: Math.round(nav.height), seitenBreite: document.documentElement.scrollWidth }; })()`);
+               navRows: new Set([...document.querySelectorAll('.einst-nav a')].map(a => Math.round(a.getBoundingClientRect().top))).size,
+               navHoehe: Math.round(nav.height), pagesWidth: document.documentElement.scrollWidth }; })()`);
     const vorher = await stand();
     assert.equal(vorher.sichtbar.length, 1, `sichtbar: ${vorher.sichtbar}`);
     assert.equal(vorher.aktuell, vorher.sichtbar[0]);
-    assert.equal(vorher.navZeilen, 1, 'am Telefon steht die Leiste in einer Zeile');
-    assert.ok(vorher.seitenBreite <= 390, `Seite ${vorher.seitenBreite} px breit`);
+    assert.equal(vorher.navRows, 1, 'am Telefon steht die Leiste in einer Zeile');
+    assert.ok(vorher.pagesWidth <= 390, `Seite ${vorher.pagesWidth} px breit`);
     await b.auswerten(`document.querySelector('.einst-nav a[data-arg="einst-smtp"]').click(); true`);
     await ruhig();
     const nachher = await stand();
@@ -236,11 +236,11 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     await ruhig();
     const telefon = await b.auswerten(`(() => { const s = document.querySelector('.ntab[data-tab="gallery"]');
       return { text: s.innerText.trim(), aktuell: s.getAttribute('aria-current'),
-               teileSichtbar: document.querySelector('.ntab[data-tab="parts"]').getClientRects().length > 0 }; })()`);
+               partsVisible: document.querySelector('.ntab[data-tab="parts"]').getClientRects().length > 0 }; })()`);
     // Der Platz heisst immer „Sammlung“; welche Ansicht offen ist, sagt der Umschalter oben.
     assert.equal(telefon.text, 'Sammlung', 'Der erste Platz der Leiste wechselt seinen Namen');
     assert.equal(telefon.aktuell, 'page');
-    assert.equal(telefon.teileSichtbar, false, 'Am Telefon passen nur fünf Ziele in die Leiste');
+    assert.equal(telefon.partsVisible, false, 'Am Telefon passen nur fünf Ziele in die Leiste');
     // Am Rechner EINE Navigation: „Sammlung“ in der Leiste, Sets/Teile/
     // Minifiguren nur im Umschalter auf der Seite (vorher beides).
     await b.tab('Emulation.setDeviceMetricsOverride', {
@@ -251,14 +251,14 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     });
     await bis('innerWidth === 1280', 'Fensterbreite');
     await ruhig();
-    const rechner = await b.auswerten(`(() => { const r = n => document.querySelector('.ntab[data-tab="' + n + '"]');
+    const calculator = await b.auswerten(`(() => { const r = n => document.querySelector('.ntab[data-tab="' + n + '"]');
       return { teile: r('parts').getClientRects().length > 0, figuren: r('minifigs').getClientRects().length > 0,
-               umschalter: document.querySelector('#tab-parts .sammlung-wahl').getClientRects().length > 0,
-               sammlungAktiv: r('gallery').classList.contains('gruppe-aktiv') }; })()`);
+               toggle: document.querySelector('#tab-parts .sammlung-wahl').getClientRects().length > 0,
+               collectionActive: r('gallery').classList.contains('gruppe-aktiv') }; })()`);
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await bis('innerWidth === 390', 'Fensterbreite');
     await ruhig();
-    assert.deepEqual(rechner, { teile: false, figuren: false, umschalter: true, sammlungAktiv: true });
+    assert.deepEqual(calculator, { teile: false, figuren: false, toggle: true, collectionActive: true });
     await reiter('gallery');
     assert.equal(await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').innerText.trim()`), 'Sammlung');
   });
@@ -271,13 +271,13 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
       const gruppen = [...document.querySelectorAll('#parts-main .parts-group')];
       return { gruppen: gruppen.length,
         schmal: gruppen.filter(g => g.querySelector('.group-hd').getBoundingClientRect().width < liste.width - 1).length,
-        zerstreut: gruppen.filter(g => new Set([...g.querySelectorAll('.part-card')].map(k => Math.round(k.getBoundingClientRect().top))).size > 1).length,
+        scattered: gruppen.filter(g => new Set([...g.querySelectorAll('.part-card')].map(k => Math.round(k.getBoundingClientRect().top))).size > 1).length,
         breit: [...document.querySelectorAll('#parts-main .part-card')].filter(k => k.getBoundingClientRect().width > liste.width * 0.6).length };
     })()`);
     assert.equal(raster.gruppen, 12);
     assert.deepEqual(
-      { schmal: raster.schmal, zerstreut: raster.zerstreut, breit: raster.breit },
-      { schmal: 0, zerstreut: 0, breit: 0 },
+      { schmal: raster.schmal, scattered: raster.scattered, breit: raster.breit },
+      { schmal: 0, scattered: 0, breit: 0 },
       'Farbüberschrift nicht über die volle Breite, oder die Teile stehen nicht im Raster',
     );
     const sichtbar = id => `document.getElementById('${id}').getClientRects().length > 0`;
@@ -353,21 +353,21 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
       const felder = [...zeile.querySelectorAll('.alarm-feld')].map(f => f.getBoundingClientRect());
       const z = zeile.getBoundingClientRect();
       const preis = zeile.querySelector('.alarm-preis');
-      return { unterTitel: felder.every(f => f.top >= titel.bottom - 1), zeilen: new Set(felder.map(f => Math.round(f.top))).size,
+      return { belowTitle: felder.every(f => f.top >= titel.bottom - 1), zeilen: new Set(felder.map(f => Math.round(f.top))).size,
                beschriftung: preis?.textContent.trim(), hoehe: Math.min(...felder.map(f => f.height)),
                // Die Währung steht in der Zeile des Preisfelds, nicht darunter.
-               waehrungNeben: (() => { const w = zeile.querySelector('.alarm-waehrung').getBoundingClientRect(), p = felder[2];
+               currencyBeside: (() => { const w = zeile.querySelector('.alarm-waehrung').getBoundingClientRect(), p = felder[2];
                  return w.top >= p.top - 1 && w.bottom <= p.bottom + 1 && w.left >= p.right - 1; })(),
                breite: Math.round((felder[1].right - felder[0].left) / z.width * 100) };
     })()`);
     assert.deepEqual(
       { ...alarm, breite: alarm.breite >= 90 },
       {
-        unterTitel: true,
+        belowTitle: true,
         zeilen: 2,
         beschriftung: 'Grenzpreis',
         hoehe: alarm.hoehe,
-        waehrungNeben: true,
+        currencyBeside: true,
         breite: true,
       },
       `Preisalarm: ${JSON.stringify(alarm)}`,
@@ -378,16 +378,16 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
   await t.test('weniger Bewegung: Dialog und Reiter ohne Animation', async () => {
     // Ein Probe-Dialog ohne role="dialog", damit die Fokusführung der echten
     // Dialoge (js/dialoge.js) nicht anspringt.
-    const dauer = () =>
+    const duration = () =>
       b.auswerten(`(() => { const o = document.createElement('div');
       o.className = 'ovl open'; const m = document.createElement('div'); m.className = 'modal'; o.append(m); document.body.append(o);
       const d = getComputedStyle(o.firstElementChild).animationDuration; o.remove();
       return { dialog: parseFloat(d), reiter: parseFloat(getComputedStyle(document.querySelector('.tab.active')).animationDuration) }; })()`);
-    const ruhig = await dauer();
+    const ruhig = await duration();
     await b.tab('Emulation.setEmulatedMedia', {
       features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
     });
-    const bewegt = await dauer();
+    const bewegt = await duration();
     await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
     assert.ok(
       bewegt.dialog >= 0.15 && bewegt.reiter >= 0.15,

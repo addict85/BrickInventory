@@ -2,14 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
 import {
-  verschluesselePuffer,
-  entschluesselePuffer,
-  istVerschluesselterPuffer,
-  altenPufferLesen,
+  encryptBuffer,
+  decryptBuffer,
+  isEncryptedBuffer,
+  readOldBuffer,
   kontext,
   pufferUmschluesseln,
 } from '../infra/geheimnis';
-import { ohneFehlendeDatei } from '../infra/fehler';
+import { withoutMissingFile } from '../infra/fehler';
 
 /** The PDFs carry the card number and PIN in plain text; encrypted, a copy of
  * data/ without the key does not give them away. */
@@ -33,7 +33,7 @@ function fileContext(file: string) {
 
 /** Only the finished file gets its name. */
 export async function writeVoucherPdf(file: string, pdf: Buffer): Promise<void> {
-  await replaceFile(file, verschluesselePuffer(pdf, fileContext(file)));
+  await replaceFile(file, encryptBuffer(pdf, fileContext(file)));
 }
 
 async function replaceFile(file: string, content: Buffer): Promise<void> {
@@ -45,13 +45,13 @@ async function replaceFile(file: string, content: Buffer): Promise<void> {
 
 /** null if the key or location do not match, or the file is unencrypted. */
 export async function readVoucherPdf(file: string): Promise<Buffer | null> {
-  return entschluesselePuffer(await fs.promises.readFile(file), fileContext(file));
+  return decryptBuffer(await fs.promises.readFile(file), fileContext(file));
 }
 
 /** If the file is missing, the page is regenerated without aborting the export. */
 export async function readVoucherPdfOrNothing(file: string | null): Promise<Buffer | null> {
   if (!file) return null;
-  return readVoucherPdf(file).catch(ohneFehlendeDatei('gutschein:pdf lesen', null));
+  return readVoucherPdf(file).catch(withoutMissingFile('gutschein:pdf lesen', null));
 }
 
 /** Unencrypted and BIENC1 files to BIENC2, on every start; BIENC2 stays, unless
@@ -65,7 +65,7 @@ export async function encryptLegacyVoucherFiles(o: { alle?: boolean } = {}): Pro
     for (const name of fs.readdirSync(dir).filter(f => /^\d+\.pdf$/.test(f))) {
       const file = path.join(dir, name);
       const raw = await fs.promises.readFile(file);
-      if (istVerschluesselterPuffer(raw)) {
+      if (isEncryptedBuffer(raw)) {
         const neu = o.alle ? pufferUmschluesseln(raw, fileContext(file)) : undefined;
         if (neu) {
           await replaceFile(file, neu);
@@ -73,7 +73,7 @@ export async function encryptLegacyVoucherFiles(o: { alle?: boolean } = {}): Pro
         }
         continue;
       }
-      const plain = altenPufferLesen(raw, fileContext(file));
+      const plain = readOldBuffer(raw, fileContext(file));
       if (!plain) continue;
       await writeVoucherPdf(file, plain);
       n++;

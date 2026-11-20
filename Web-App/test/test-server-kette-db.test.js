@@ -4,11 +4,11 @@
  * nachgebaute Router.
  *
  * Gegenproben (13.11.2026 gemessen, je einzeln):
- *   A  in startup/app.ts `app.use(nurEigeneHerkunft)` entfernt → rot:
+ *   A  in startup/app.ts `app.use(onlyOwnOrigin)` entfernt → rot:
  *      „fremde Herkunft mit Sitzungskeks: 403“ (200 statt 403)
  *   B  testServer wieder mit eigenen Routern (routerServer statt baueApp) → rot:
  *      alle drei Fälle (kein CSP-Kopf, keine Absage am Eingang, keine fremde Herkunft)
- *   C  in startup/app.ts die Eingangssperre (anmeldungAmEingang) aus apiEingang() entfernt
+ *   C  in startup/app.ts die Eingangssperre (loginAtInbox) aus apiInbox() entfernt
  *      → rot: „ein Verwalter ohne zweiten Faktor wird am Eingang abgewiesen“
  */
 const test = require('node:test');
@@ -18,12 +18,12 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
+const { adminWithFactor } = require('./helpers/verwalter');
 
 test('testServer läuft durch die echte Kette', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `kette_echt_${process.pid}`;
   await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
@@ -31,7 +31,7 @@ test('testServer läuft durch die echte Kette', { concurrency: 1 }, async t => {
     (await db.get(`INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', true) RETURNING id`, [n])).id;
   const mit = await anlegen(NAME);
   const ohne = await anlegen(`${NAME}_ohne`);
-  await verwalterMitFaktor(_req, mit);
+  await adminWithFactor(_req, mit);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]).catch(() => {});
     await db.pool.end().catch(() => {});

@@ -14,12 +14,12 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const BOESE = '03:00"><img id="eingeschleust" src="x">';
 
 test('der Zeitplan setzt Serverwerte maskiert ein', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/admin/job-status': { success: true, job: { running: false } },
     '/v1/admin/auftraege': {
       success: true,

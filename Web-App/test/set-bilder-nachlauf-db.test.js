@@ -3,9 +3,9 @@
  * bildloses Set (404) nicht bei jedem Start erneut.
  *
  * Gegenproben (durchgeführt):
- * - Bezug-Bedingung aus setBilderOhneDatei entfernt → „nur Katalog“ steht in der
+ * - Bezug-Bedingung aus setImagesWithoutFile entfernt → „nur Katalog“ steht in der
  *   Auswahl, Teil 1 rot.
- * - merkeFehlend im Nachlauf entfernt → der 404-Satz steht im zweiten Lauf wieder
+ * - rememberMissing im Nachlauf entfernt → der 404-Satz steht im zweiten Lauf wieder
  *   in der Auswahl, Teil 2 rot.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
@@ -20,9 +20,9 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const antworten = new Map();
 const angefragt = [];
 
-const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
-testBildwerk(null, {
+testImageWorker(null, {
   setBildLaden: async (_url, sn, info) => {
     angefragt.push(sn);
     const status = antworten.get(sn);
@@ -30,30 +30,30 @@ testBildwerk(null, {
     return null;
   },
 });
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet, katalogSet } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet, catalogSet } = require('./helpers/bestand');
+const db = testData();
 
 test('Set-Bilder-Nachlauf: nur Sets mit Bezug, 404 ruht', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const repo = _req('src/katalog/repository/bildlage.js');
   const { LESEVERTRAG } = _req('src/dienste.js');
-  const { setBilderNachladen } = _req('src/katalog/bildlage.js');
+  const { reloadSetImages } = _req('src/katalog/bildlage.js');
   const IM = _req('src/bilder/imageMisses.js');
 
   const P = `zzbn${process.pid}`;
   const gehalten = `${P}a-1`;
-  const nurKatalog = `${P}b-1`;
+  const onlyCatalog = `${P}b-1`;
   const gemerkt = `${P}c-1`;
-  const bildlos = `${P}d-1`;
-  const alle = [gehalten, nurKatalog, gemerkt, bildlos];
+  const imageless = `${P}d-1`;
+  const alle = [gehalten, onlyCatalog, gemerkt, imageless];
 
   const USER = `bildnachlauf-${process.pid}`;
   await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [USER])).id;
-  for (const sn of alle) await katalogSet(db, sn, { image_url: `https://cdn.example/${sn}.jpg` });
-  await haeltSet(db, uid, gehalten, 1);
-  await haeltSet(db, uid, bildlos, 1);
+  for (const sn of alle) await catalogSet(db, sn, { image_url: `https://cdn.example/${sn}.jpg` });
+  await holdsSet(db, uid, gehalten, 1);
+  await holdsSet(db, uid, imageless, 1);
   await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,$2,'N')`, [uid, gemerkt]);
   await db.run(
     `INSERT INTO image_misses (cache_key, checked_at, reason) VALUES ($1, NOW(), 'HTTP 404 vom CDN')
@@ -61,24 +61,24 @@ test('Set-Bilder-Nachlauf: nur Sets mit Bezug, 404 ruht', { concurrency: 1 }, as
     ['set:' + gemerkt],
   );
   const eigene = async () =>
-    (await repo.setBilderOhneDatei(db, LESEVERTRAG)).map(r => r.set_number).filter(sn => sn.startsWith(P));
+    (await repo.setImagesWithoutFile(db, LESEVERTRAG)).map(r => r.set_number).filter(sn => sn.startsWith(P));
 
   try {
     await t.test('Auswahl: gehaltene Sets ja, reine Katalogsätze und frische 404 nein', async () => {
-      assert.deepEqual(await eigene(), [gehalten, bildlos]);
+      assert.deepEqual(await eigene(), [gehalten, imageless]);
     });
 
     await t.test('ein 404 wird vermerkt und fehlt im nächsten Lauf', async () => {
-      IM._leereVordergrund();
-      antworten.set(bildlos, 404);
+      IM._emptyForeground();
+      antworten.set(imageless, 404);
       angefragt.length = 0;
-      await setBilderNachladen();
-      await IM._schreibePuffer();
+      await reloadSetImages();
+      await IM._writeBuffer();
       assert.deepEqual(
         angefragt.filter(sn => sn.startsWith(P)),
-        [gehalten, bildlos],
+        [gehalten, imageless],
       );
-      const m = await db.get(`SELECT reason FROM image_misses WHERE cache_key = $1`, ['set:' + bildlos]);
+      const m = await db.get(`SELECT reason FROM image_misses WHERE cache_key = $1`, ['set:' + imageless]);
       assert.match(m?.reason ?? '', /404/);
       // Ohne Statuscode (Netzaussetzer) bleibt das Set in der Auswahl.
       assert.deepEqual(await eigene(), [gehalten]);

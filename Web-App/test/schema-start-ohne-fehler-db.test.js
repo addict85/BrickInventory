@@ -6,10 +6,10 @@ const assert = require('node:assert/strict');
 // damit auf die echte Datenbank.
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 /**
  * Der Schemastart darf keinen Fehler verschlucken.
@@ -24,17 +24,17 @@ test('der Schemastart meldet keinen verschluckten Fehler', async t => {
   });
 
   const gemeldet = [];
-  const echtesWarn = console.warn;
+  const realWarn = console.warn;
   console.warn = (...args) => {
     const text = args.map(a => (typeof a === 'string' ? a : String(a?.message ?? a))).join(' ');
     if (text.includes('[weiter-trotz-fehler]')) gemeldet.push(text);
-    echtesWarn.apply(console, args);
+    realWarn.apply(console, args);
   };
 
   try {
-    if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+    if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   } finally {
-    console.warn = echtesWarn;
+    console.warn = realWarn;
   }
 
   assert.deepEqual(

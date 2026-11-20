@@ -17,11 +17,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { katalogSet } = require('./helpers/bestand');
-const db = testDaten();
+const { catalogSet } = require('./helpers/bestand');
+const db = testData();
 
 // Dieselbe Begruendung wie in test/teilepreise-nur-erfassungen-db.test.js:
 // Diese Datei baut die Datenbank mehrfach von null auf. Wer danach laeuft,
@@ -43,7 +43,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-const spaltenVon = async tabelle =>
+const columnsOf = async tabelle =>
   (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
     .map(r => r.column_name)
     .sort();
@@ -59,7 +59,7 @@ const dbDa = async t => {
 };
 
 /** Frische Datenbank, Schema, alle Migrationen. */
-async function volleKette() {
+async function fullChain() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -87,7 +87,7 @@ test('nach der ganzen Kette trägt sets keine quantity mehr', { concurrency: 1 }
     client.release();
   }
 
-  const nachher = await spaltenVon('sets');
+  const nachher = await columnsOf('sets');
   assert.ok(
     !nachher.includes('quantity'),
     'sets.quantity ist nach allen Migrationen noch da — Migration 0036 hat nicht ' +
@@ -101,7 +101,7 @@ test('nach der ganzen Kette trägt sets keine quantity mehr', { concurrency: 1 }
   }
 
   // Nicht verschwunden, sondern umgezogen.
-  const erf = await spaltenVon('set_acquisitions');
+  const erf = await columnsOf('set_acquisitions');
   for (const sp of ['user_id', 'set_number', 'quantity', 'purchase_price', 'condition', 'created_at']) {
     assert.ok(erf.includes(sp), `set_acquisitions.${sp} fehlt — dann gibt es die Stueckzahl nirgends mehr`);
   }
@@ -133,7 +133,7 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
   /** Zeilen ohne Kommentare — ein Erklärtext, der eine Anweisung ZITIERT, ist
    *  kein Schreibzugriff. Genau diese Falle hat in diesem Baum schon eine
    *  Regel ihren eigenen Begründungstext melden lassen. */
-  const codeZeilen = txt =>
+  const codeRows = txt =>
     txt.split('\n').filter(z => {
       const t = z.trim();
       return !(t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('--'));
@@ -156,7 +156,7 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei);
     const txt = fs.readFileSync(datei, 'utf8');
-    for (const z of codeZeilen(txt)) {
+    for (const z of codeRows(txt)) {
       for (const [was, muster] of /** @type {[string, RegExp][]} */ ([
         ['setzt', setzt],
         ['schreibt fort', fortschreiben],
@@ -216,13 +216,13 @@ test('niemand schreibt die Stückzahl eines Sets mehr', () => {
 test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
-  await volleKette();
+  await fullChain();
 
   const haupt = await db.get(`INSERT INTO users (username,password_hash) VALUES ('mengeleser','x') RETURNING id`);
   const kind = await db.get(`INSERT INTO users (username,password_hash) VALUES ('mengeleser_kind','x') RETURNING id`);
   const SN = '10290-1';
 
-  await katalogSet(db, SN, { name: 'Pickup Truck', year: 2022, pieces: 1677 });
+  await catalogSet(db, SN, { name: 'Pickup Truck', year: 2022, pieces: 1677 });
   // Zwei Konten halten dasselbe Set — der Haushaltszweig von setsLesen() fasst
   // sie zu EINER Kachel zusammen und muss die Mengen addieren.
   await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2),($3,$2)`, [haupt.id, SN, kind.id]);
@@ -240,7 +240,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
     [haupt.id, SN, kind.id],
   );
 
-  const H = require('./helpers/sources').bereichsSeite('sets');
+  const H = require('./helpers/sources').areaPage('sets');
 
   // ── Ein Konto ────────────────────────────────────────────────────────────
   const eins = await H.setsLesen([haupt.id], { page_size: 60 });
@@ -268,7 +268,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
   );
 
   // ── Detail ───────────────────────────────────────────────────────────────
-  const detail = await H.setLesen(haupt.id, SN);
+  const detail = await H.readSet(haupt.id, SN);
   assert.ok(detail, 'Das Set-Detail antwortet nicht');
   assert.equal(Number(detail.quantity), 3, `Detail eines Kontos: erwartet 3, bekam ${detail.quantity}`);
 
@@ -294,7 +294,7 @@ test('die Lesewege liefern die Stückzahl aus den Erfassungen', { concurrency: 1
       'Liste die Menge nicht aus set_acquisitions.',
   );
 
-  const detail2 = await H.setLesen(haupt.id, SN);
+  const detail2 = await H.readSet(haupt.id, SN);
   assert.equal(Number(detail2.quantity), 8, `Das Detail folgt der Änderung nicht: ${detail2.quantity} statt 8`);
 
   // ── Und ohne Erfassung ist die Menge 0, nicht 1 ──────────────────────────

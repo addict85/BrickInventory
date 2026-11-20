@@ -3,15 +3,15 @@
  * „Passwortwechsel nötig“ und „2. Faktor Pflicht für Verwalter“ gelten trotzdem.
  *
  * Gegenproben (am 08.11.2026 gemessen):
- *   A  eingangsSperre aus den beiden Datei-Routen in routes/datenDateien.ts
+ *   A  inboundLock aus den beiden Datei-Routen in routes/datenDateien.ts
  *      gestrichen → rot: Uploads und Anleitungen in „Passwortwechsel“ und
  *      „Verwalter ohne zweiten Faktor“ (200 statt 403)
- *   B  eingangsSperre aus registerImgProxy gestrichen → rot: dieselben
+ *   B  inboundLock aus registerImgProxy gestrichen → rot: dieselben
  *      Teiltests beim Bild-Proxy (nicht mehr 403)
- *   C  Prüfung zweiterFaktorPflicht in eingangsSperre gestrichen → rot:
+ *   C  Prüfung zweiterFaktorPflicht in inboundLock gestrichen → rot:
  *      „Verwalter ohne zweiten Faktor“, „Passwortwechsel“ bleibt grün
  *   D  (09.11.2026) in routes/seiten.ts die Bildroute wieder ohne
- *      requireLoginOrToken, eingangsSperre → rot: beide Sperr-Teiltests bei
+ *      requireLoginOrToken, inboundLock → rot: beide Sperr-Teiltests bei
  *      /images/parts/probe.png (200 statt 403)
  *
  * REQUIRE_DB=1.
@@ -27,16 +27,16 @@ fs.writeFileSync(path.join(WURZEL, 'package.json'), '{}');
 process.env.APP_ROOT = WURZEL;
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
 const NAMEN = ['ds_normal', 'ds_wechsel', 'ds_chef', 'ds_chef2fa'].map(n => `${n}_${process.pid}`);
 
 test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];
@@ -67,8 +67,8 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
 
   const sitzung = {};
   const { app, base } = testServer(_req, { sitzung, t });
-  _req('routes/imgProxy.js').registerImgProxy(app, require('./helpers/sources').testDienste());
-  app.use('/', _req('routes/seiten.js').baueSeitenRouter(require('./helpers/sources').testDienste()));
+  _req('routes/imgProxy.js').registerImgProxy(app, require('./helpers/sources').testServices());
+  app.use('/', _req('routes/seiten.js').buildPagesRouter(require('./helpers/sources').testServices()));
   const hole = async (uid, weg) => {
     const k = await db.get('SELECT is_admin FROM users WHERE id = $1', [uid]);
     Object.assign(sitzung, { userId: uid, isAdmin: k.is_admin === true });

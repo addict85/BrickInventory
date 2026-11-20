@@ -1,8 +1,8 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 
 export type QrStand = 'offen' | 'wartet' | 'bestaetigt' | 'abgeholt' | 'abgelehnt' | 'abgelaufen';
 
-export interface QrZeile {
+export interface QrRow {
   id: number;
   user_id: number;
   token_days: number | null;
@@ -17,13 +17,13 @@ const STAND = `CASE WHEN rejected_at IS NOT NULL THEN 'abgelehnt' WHEN picked_up
   WHEN used_at IS NOT NULL THEN 'wartet' ELSE 'offen' END`;
 const SPALTEN = `id::int AS id, user_id, token_days, device AS geraet, ip_range, code_hash, ${STAND} AS stand`;
 
-export async function raeumeQrKopplungenAuf(db: DbSchnittstelle): Promise<void> {
+export async function cleanQrPairingsOn(db: DbInterface): Promise<void> {
   await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`);
 }
 
 /** @returns null, wenn schon `hoechstens` Kopplungen offen sind */
-export async function legeQrKopplungAn(
-  db: DbSchnittstelle,
+export async function putQrPairingAn(
+  db: DbInterface,
   hash: string,
   uid: number,
   bis: Date,
@@ -42,28 +42,28 @@ export async function legeQrKopplungAn(
 
 /** Atomar: Nur der erste Scan meldet sein Gerät an; die Frist beginnt neu für die Bestätigung. */
 export function melde(
-  db: DbSchnittstelle,
+  db: DbInterface,
   hash: string,
-  a: { abholung: string; codeHash: string; geraet: string; ipBereich: string | null; fristS: number },
-): Promise<QrZeile | undefined> {
-  return db.get<QrZeile>(
+  a: { abholung: string; codeHash: string; geraet: string; ipArea: string | null; fristS: number },
+): Promise<QrRow | undefined> {
+  return db.get<QrRow>(
     `UPDATE qr_login_tokens SET used_at = NOW(), pickup_code = $2, code_hash = $3, device = $4, ip_range = $5,
             expires_at = NOW() + make_interval(secs => $6)
       WHERE token = $1 AND used_at IS NULL AND expires_at > NOW() RETURNING ${SPALTEN}`,
-    [hash, a.abholung, a.codeHash, a.geraet, a.ipBereich, a.fristS],
+    [hash, a.abholung, a.codeHash, a.geraet, a.ipArea, a.fristS],
   );
 }
 
-export function nachAbholung(db: DbSchnittstelle, abholung: string): Promise<QrZeile | undefined> {
-  return db.get<QrZeile>(`SELECT ${SPALTEN} FROM qr_login_tokens WHERE pickup_code = $1`, [abholung]);
+export function afterPickup(db: DbInterface, abholung: string): Promise<QrRow | undefined> {
+  return db.get<QrRow>(`SELECT ${SPALTEN} FROM qr_login_tokens WHERE pickup_code = $1`, [abholung]);
 }
 
-export function qrKopplungDesKontos(db: DbSchnittstelle, id: number, uid: number): Promise<QrZeile | undefined> {
-  return db.get<QrZeile>(`SELECT ${SPALTEN} FROM qr_login_tokens WHERE id = $1 AND user_id = $2`, [id, uid]);
+export function qrPairingOfAccount(db: DbInterface, id: number, uid: number): Promise<QrRow | undefined> {
+  return db.get<QrRow>(`SELECT ${SPALTEN} FROM qr_login_tokens WHERE id = $1 AND user_id = $2`, [id, uid]);
 }
 
 /** Nur aus „bestätigt": Zwei gleichzeitige Abholungen bekommen nicht zwei Tokens. */
-export async function markiereAbgeholt(db: DbSchnittstelle, id: number): Promise<boolean> {
+export async function markPickedUp(db: DbInterface, id: number): Promise<boolean> {
   return !!(
     await db.run(
       `UPDATE qr_login_tokens SET picked_up_at = NOW()
@@ -73,7 +73,7 @@ export async function markiereAbgeholt(db: DbSchnittstelle, id: number): Promise
   ).changes;
 }
 
-export async function markiereBestaetigt(db: DbSchnittstelle, id: number): Promise<boolean> {
+export async function markConfirmed(db: DbInterface, id: number): Promise<boolean> {
   return !!(
     await db.run(
       `UPDATE qr_login_tokens SET confirmed_at = NOW()
@@ -84,7 +84,7 @@ export async function markiereBestaetigt(db: DbSchnittstelle, id: number): Promi
 }
 
 /** @returns die Zahl der Fehlversuche danach */
-export async function zaehleQrFehlversuch(db: DbSchnittstelle, id: number): Promise<number> {
+export async function countQrFailedAttempt(db: DbInterface, id: number): Promise<number> {
   const z = await db.get<{ n: number }>(
     'UPDATE qr_login_tokens SET failed_attempts = failed_attempts + 1 WHERE id = $1 RETURNING failed_attempts AS n',
     [id],
@@ -92,7 +92,7 @@ export async function zaehleQrFehlversuch(db: DbSchnittstelle, id: number): Prom
   return z?.n ?? 0;
 }
 
-export async function markiereAbgelehnt(db: DbSchnittstelle, id: number): Promise<void> {
+export async function markRejected(db: DbInterface, id: number): Promise<void> {
   await db.run(
     'UPDATE qr_login_tokens SET rejected_at = COALESCE(rejected_at, NOW()) WHERE id = $1 AND picked_up_at IS NULL',
     [id],

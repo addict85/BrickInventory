@@ -10,7 +10,7 @@
  *   B  die Regel `.ntab .tab-label { position:absolute … }` für geringe Höhe
  *      entfernt → rot: „untere Leiste schmal, Namen bleiben“ (59 px); seit
  *      15.11.2026 die Regel für 601–640 px (`flex-direction: row`) → rot: ebenda
- *   C  rbHinweisWeg/rbHinweisZeigen wieder mit sessionStorage → rot: „Band
+ *   C  rbHinweisWeg/showRbHint wieder mit sessionStorage → rot: „Band
  *      bleibt weg, auch nach neuer Sitzung“
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
@@ -18,18 +18,18 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { haeltSet } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { holdsSet } = require('./helpers/bestand');
 
 test('Geringe Höhe: Kopf, Leiste und Band', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `hoehe_${process.pid}`,
     bestand: async (db, uid) => {
       await db.run(`DELETE FROM global_settings WHERE key = 'rebrickable_api_key'`);
       await db.run(
         `INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1') ON CONFLICT (key) DO UPDATE SET value = '1'`,
       );
-      for (let i = 0; i < 12; i++) await haeltSet(db, uid, `${71000 + i}-1`, 1, { preis: 10 + i });
+      for (let i = 0; i < 12; i++) await holdsSet(db, uid, `${71000 + i}-1`, 1, { preis: 10 + i });
     },
   });
   if (app.grund) {

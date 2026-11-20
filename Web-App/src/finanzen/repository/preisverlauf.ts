@@ -1,8 +1,8 @@
-import type { DbSchnittstelle } from '../../../db/database';
-import type { FinanzenLesevertrag } from '../lesevertrag';
+import type { DbInterface } from '../../../db/database';
+import type { FinancesReadContract } from '../lesevertrag';
 import { kaufpreisIn, marktpreisSql, mittelUeber } from '../../../db/geldSql';
 
-export function tagespreiseDesSets(db: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
+export function dailyPricesOfSets(db: DbInterface, setNumber: string, currency: string, zustand: string) {
   return db.all<{
     qty_avg_price: number | null;
     avg_price: number | null;
@@ -20,7 +20,7 @@ export function tagespreiseDesSets(db: DbSchnittstelle, setNumber: string, curre
   );
 }
 
-export function cachePreiseDesSets(db: DbSchnittstelle, setNumber: string, currency: string) {
+export function cachePricesOfSets(db: DbInterface, setNumber: string, currency: string) {
   return db.all<{
     condition: string;
     avg_price: number | null;
@@ -36,9 +36,9 @@ export function cachePreiseDesSets(db: DbSchnittstelle, setNumber: string, curre
   );
 }
 
-export function ersterKaufDesSets(
-  db: DbSchnittstelle,
-  l: FinanzenLesevertrag,
+export function firstPurchaseOfSets(
+  db: DbInterface,
+  l: FinancesReadContract,
   uids: number[],
   setNumber: string,
   currency: string,
@@ -60,9 +60,9 @@ export function ersterKaufDesSets(
   );
 }
 
-export function kaufschnittDesSets(
-  db: DbSchnittstelle,
-  l: FinanzenLesevertrag,
+export function purchaseChnittOfSets(
+  db: DbInterface,
+  l: FinancesReadContract,
   uids: number[],
   setNumber: string,
   currency: string,
@@ -79,7 +79,7 @@ export function kaufschnittDesSets(
   );
 }
 
-export function loescheAltenVerlauf(db: DbSchnittstelle, tage: string) {
+export function deleteOldHistory(db: DbInterface, tage: string) {
   return db.run(
     `DELETE FROM price_history
       WHERE recorded_at < NOW() - ($1 || ' days')::interval`,
@@ -95,7 +95,7 @@ const PREISTABELLEN = {
 
 /** `keySql` ist ein fester Ausdruck der Aufrufer, keine Eingabe. */
 export function manualSeries(
-  db: DbSchnittstelle,
+  db: DbInterface,
   art: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
@@ -112,8 +112,8 @@ export function manualSeries(
   );
 }
 
-export function cachePreiseNachSchluessel(
-  db: DbSchnittstelle,
+export function cachePricesAfterKey(
+  db: DbInterface,
   art: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
@@ -127,9 +127,9 @@ export function cachePreiseNachSchluessel(
   );
 }
 
-export function kaufschnitteNachSchluessel(
-  db: DbSchnittstelle,
-  l: FinanzenLesevertrag,
+export function purchaseChnitteAfterKey(
+  db: DbInterface,
+  l: FinancesReadContract,
   art: 'part' | 'fig',
   acqKeySql: string,
   acqKeyVals: unknown[],

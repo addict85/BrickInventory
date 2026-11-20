@@ -5,41 +5,41 @@
 import { logAndContinue } from '../../infra/fehler';
 import type * as repo from '../repository/bewertung';
 import { asIds, type Sicht } from '../../haushalt';
-import { hatPreis, marktpreisAus } from '../../katalog';
+import { hatPrice, marketPriceFrom } from '../../katalog';
 import { resolveImageLocal, proxyImageUrl } from '../../bilder';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
-import { mitVersion } from '../../infra/setNummer';
+import { withVersion } from '../../infra/setNummer';
 import {
   DEFAULT_PRICE_CONDITION,
   parallelLimit,
-  ladeBlNummernVor,
+  loadBlNumbersBefore,
   ladeTeilepreiseVor,
   ladeFigurenpreiseVor,
-  preisAusVorrat,
-  setPreisAusVorrat,
-  teilSchluessel,
+  priceFromStock,
+  setPriceFromStock,
+  partKey,
   type Blickfeld,
-  type PreisDaten,
+  type PriceData,
 } from './preise';
 import { zaehle } from './abfragen';
-import type { ladeSetErfassungen } from '../repository/erfassungen';
+import type { loadSetEntries } from '../repository/erfassungen';
 import { KEINE_FARBE, zustand } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
 import type { Nutzlast } from '../../auftraege';
-import { PREISPOSTEN_HOECHSTENS, merkePreiseVor } from '../preisPosten';
-import { fehlerText } from '../../infra/fehlerTexte';
-import type { FinanzenKontext } from '../kontext';
+import { PRICE_ITEM_AT_MOST, rememberPricesBefore } from '../preisPosten';
+import { errorText } from '../../infra/fehlerTexte';
+import type { FinancesContext } from '../kontext';
 
 type Zustand = 'N' | 'U';
 type Posten = Nutzlast<'preise_nachladen'>['posten'][number];
-type FigurPreis = PreisDaten & { estimated_from_parts?: true; abdeckung?: number | null };
+type MinifigPrice = PriceData & { estimated_from_parts?: true; abdeckung?: number | null };
 
 /** @returns Map key → Erfassungszeilen; key ist `konto|nummer|farbe` bzw. `konto|nummer` */
-async function loadManualAcquisitions(k: FinanzenKontext, uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
+async function loadManualAcquisitions(k: FinancesContext, uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
   // Ein Hauptkonto bewertet den ganzen Haushalt; die Währung ist beim
   // Verknüpfen erzwungen gleich, sonst summierte das zwei Währungen.
-  const rows = await k.bewertung.manuelleErfassungen(kind, asIds(uid), waehrung);
-  const out = new Map<string, repo.ManuelleErfassung[]>();
+  const rows = await k.bewertung.manualEntries(kind, asIds(uid), waehrung);
+  const out = new Map<string, repo.ManualEntry[]>();
   for (const r of rows) {
     const key =
       kind === 'part' ? `${r.user_id}|${r.part_number}|${r.color_id ?? KEINE_FARBE}` : `${r.user_id}|${r.fig_number}`;
@@ -50,49 +50,49 @@ async function loadManualAcquisitions(k: FinanzenKontext, uid: Blickfeld, kind: 
   return out;
 }
 
-function fremdeKaufpreise(jeEintrag: Map<string, Array<{ kaufpreis_fremd?: boolean }>>): number {
+function foreignPurchasePrices(jeEntry: Map<string, Array<{ kaufpreis_fremd?: boolean }>>): number {
   let n = 0;
-  for (const zeilen of jeEintrag.values()) n += zeilen.filter(z => z.kaufpreis_fremd).length;
+  for (const zeilen of jeEntry.values()) n += zeilen.filter(z => z.kaufpreis_fremd).length;
   return n;
 }
 
 /** Die Bewertung meldet alles, was fehlt; der Auftrag je Konto und Währung nimmt es auf. */
-async function merkePreiseFuerKontoVor(
-  k: FinanzenKontext,
+async function rememberPricesForAccountBefore(
+  k: FinancesContext,
   viewerId: number,
   waehrung: string,
   posten: Posten[],
 ): Promise<number> {
   if (!posten.length) return 0;
-  await merkePreiseVor(k, { user_id: viewerId, waehrung, posten: posten.slice(0, PREISPOSTEN_HOECHSTENS) }).catch(
+  await rememberPricesBefore(k, { user_id: viewerId, waehrung, posten: posten.slice(0, PRICE_ITEM_AT_MOST) }).catch(
     logAndContinue('bewertung:preise vormerken'),
   );
   return posten.length;
 }
 
-type BewertungsSet = Awaited<ReturnType<typeof repo.setsZurBewertung>>[number];
-type SetErfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];
+type BewertungsSet = Awaited<ReturnType<typeof repo.setsToValuation>>[number];
+type SetEntry = Awaited<ReturnType<typeof loadSetEntries>>[number];
 /** Was jede Zeile braucht: Einstellungen des Betrachters und die vorgeladenen Tabellen. */
 type Bewertungslage = {
   ttl: number;
   jetzt: number;
-  pre: Parameters<typeof setPreisAusVorrat>[4];
+  pre: Parameters<typeof setPriceFromStock>[4];
   fehlt: Posten[];
-  ohneZugang: string | null;
+  withoutAccess: string | null;
 };
 
 /** Eine Zeile der Bewertung: Je Kaufpreis der Preis SEINES Zustands, verdichtet
  * in valueSet(), damit die Bewertungsregel an EINER Stelle bleibt. */
-function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage) {
+function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
   // Ohne Erfassung gilt das Set als neu (effectiveCondition ohne Zähler).
   const fallbackCond: Zustand = 'N';
   const needed: Zustand[] = acqs.length ? [...new Set(acqs.map(a => zustand(a.condition)))] : [fallbackCond];
-  const preise = new Map<Zustand, PreisDaten>(
-    needed.map(c => [c, setPreisAusVorrat(set.set_number, c, l.ttl, l.jetzt, l.pre)]),
+  const preise = new Map<Zustand, PriceData>(
+    needed.map(c => [c, setPriceFromStock(set.set_number, c, l.ttl, l.jetzt, l.pre)]),
   );
   const preisMap = new Map<string, number>();
   for (const [cond, p] of preise) {
-    const markt = marktpreisAus(p);
+    const markt = marketPriceFrom(p);
     if (markt !== null) preisMap.set(`${set.set_number}|${cond}`, markt);
     if (p.ausstehend) l.fehlt.push({ art: 'set', nummer: set.set_number, zustand: cond });
   }
@@ -102,11 +102,11 @@ function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage)
   const purchase = weightedPurchase(rows);
   // Min/Max müssen zur selben Mengenaufteilung passen wie der Schnitt.
   const qty = valued.quantity || 1;
-  const gewichtet = (key: 'min_price' | 'max_price' | 'qty_avg_price') =>
+  const weighted = (key: 'min_price' | 'max_price' | 'qty_avg_price') =>
     valued.by_condition
       .map(bc => (preise.get(bc.condition as Zustand)?.[key] ?? 0) * bc.quantity)
       .reduce((a, b) => a + b, 0) / qty;
-  const einPreis = needed.map(c => preise.get(c)).find(p => p && !p.ausstehend);
+  const onePrice = needed.map(c => preise.get(c)).find(p => p && !p.ausstehend);
   const ausstehend = needed.some(c => preise.get(c)?.ausstehend === true);
   const unitAvg = valued.unit_price ?? 0;
   const conditions = valued.by_condition.map(bc => bc.condition);
@@ -124,31 +124,31 @@ function bewerteSet(set: BewertungsSet, acqs: SetErfassung[], l: Bewertungslage)
     conditions,
     mixed: conditions.length > 1,
     purchase_price: purchase,
-    min_price: gewichtet('min_price'),
+    min_price: weighted('min_price'),
     avg_price: unitAvg,
-    max_price: gewichtet('max_price'),
-    qty_avg_price: gewichtet('qty_avg_price'),
+    max_price: weighted('max_price'),
+    qty_avg_price: weighted('qty_avg_price'),
     // Aus dem ungerundeten Stückpreis: 120,3333 × 2 ist 240,67, nicht 240,66.
     total_avg: aufRappen((valued.unit_z ?? 0) * qty).toFixed(2),
     wert_gesamt: aufRappen((valued.unit_z ?? 0) * qty),
-    total_qty_avg: aufRappen((inZehntel4(gewichtet('qty_avg_price')) ?? 0) * qty).toFixed(2),
+    total_qty_avg: aufRappen((inZehntel4(weighted('qty_avg_price')) ?? 0) * qty).toFixed(2),
     pnl_pct: calcPnlPct(purchase, unitAvg),
     pnl_prozent: pnlProzent(purchase, unitAvg),
     acquisitions: rows,
     from_cache: true,
-    is_fallback: einPreis?.is_fallback === true,
+    is_fallback: onePrice?.is_fallback === true,
     // Ein ausstehender Preis ist noch keiner; ein Haken hiesse „geladen“.
-    no_price: (!!einPreis || ausstehend) && valued.unit_price == null,
+    no_price: (!!onePrice || ausstehend) && valued.unit_price == null,
     bl_unbekannt: needed.some(c => preise.get(c)?.bl_unbekannt === true),
     preis_ausstehend: ausstehend,
-    ...(ausstehend && l.ohneZugang && valued.unit_price == null
-      ? { error: l.ohneZugang, error_code: 'kein_bricklink_zugang' }
+    ...(ausstehend && l.withoutAccess && valued.unit_price == null
+      ? { error: l.withoutAccess, error_code: 'kein_bricklink_zugang' }
       : {}),
   };
 }
 
 /** Summen aus den Zeilenwerten, gerundet erst am Schluss. */
-function bewertungsSummen(
+function valuationSums(
   zeilen: Array<{ quantity: number; min_price: number; max_price: number; qty_avg_price: number; total_avg: string }>,
 ) {
   let zMin = 0,
@@ -171,10 +171,10 @@ function bewertungsSummen(
 }
 
 /** Eine Umsetzung für Sitzungsroute und Token-API. */
-export async function bewerteSets(kx: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
+export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
   // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
   // Filter „Unterkonten" fehlt das fragende Konto in ids.
-  const uids = await kx.haushalt.blickfeldAus(idsWahl);
+  const uids = await kx.haushalt.scopeFrom(idsChoice);
   const [currency, ttlHours, guideType] = await Promise.all([
     kx.einstellungen.userValue(viewerId, 'currency', 'EUR'),
     kx.einstellungen.userValue(viewerId, 'price_cache_ttl', '24'),
@@ -188,7 +188,7 @@ export async function bewerteSets(kx: FinanzenKontext, viewerId: number, idsWahl
     // ttl_hours bleibt für ältere Clients Text.
     ttl_stunden: Number(ttlHours) || 24,
   };
-  const sets = await kx.bewertung.setsZurBewertung(uids);
+  const sets = await kx.bewertung.setsToValuation(uids);
   if (!sets.length)
     return {
       ...kopf,
@@ -204,38 +204,38 @@ export async function bewerteSets(kx: FinanzenKontext, viewerId: number, idsWahl
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
   const [catRows, cacheRows, acqRows] = await Promise.all([
     // catalog_cache führt Nummern mit Versionsanhang, price_cache unter der Schreibweise des Aufrufers.
-    kx.bewertung.katalogMerkmale(setNumbers.map(mitVersion)),
-    kx.preisCache.setPreiseFrisch(setNumbers, currency, ttl),
-    kx.erfassungen.ladeSetErfassungen(uids, currency),
+    kx.bewertung.catalogFeatures(setNumbers.map(withVersion)),
+    kx.preisCache.setPricesFresh(setNumbers, currency, ttl),
+    kx.erfassungen.loadSetEntries(uids, currency),
   ]);
   // Ohne BrickLink-Zugang kann der Auftrag nichts holen: Das steht dann an der Zeile.
-  const ohneZugang = (await kx.einstellungen.globalValue('bricklink_consumer_key'))
+  const withoutAccess = (await kx.einstellungen.globalValue('bricklink_consumer_key'))
     ? null
-    : fehlerText(
+    : errorText(
         'kein_bricklink_zugang',
         (await kx.einstellungen.userValue(viewerId, 'language', 'de')) === 'en' ? 'en' : 'de',
       );
-  const lage: Bewertungslage = {
+  const situation: Bewertungslage = {
     ttl,
     jetzt: kx.uhr.jetzt(),
     fehlt: [],
-    ohneZugang,
+    withoutAccess,
     pre: {
       catalog: new Map(catRows.map(r => [r.set_number, r])),
       cache: new Map(cacheRows.map(r => [`${r.set_number}|${r.condition}`, r])),
     },
   };
   // Je Konto und Set: Im Haushalt ist jede Zeile der Bestand EINES Kontos.
-  const jeKontoUndSet = new Map<string, SetErfassung[]>();
+  const jeAccountAndSet = new Map<string, SetEntry[]>();
   for (const a of acqRows) {
     const k = `${a.user_id}|${a.set_number}`,
-      l = jeKontoUndSet.get(k);
+      l = jeAccountAndSet.get(k);
     if (l) l.push(a);
-    else jeKontoUndSet.set(k, [a]);
+    else jeAccountAndSet.set(k, [a]);
   }
   const results = await kx.haushalt.besitzerAnhaengen(
     uids,
-    sets.map(set => bewerteSet(set, jeKontoUndSet.get(`${set.user_id}|${set.set_number}`) || [], lage)),
+    sets.map(set => bewerteSet(set, jeAccountAndSet.get(`${set.user_id}|${set.set_number}`) || [], situation)),
   );
   return {
     ...kopf,
@@ -243,8 +243,8 @@ export async function bewerteSets(kx: FinanzenKontext, viewerId: number, idsWahl
     kaufpreise_fremde_waehrung: zaehle(acqRows, 'kaufpreis_fremd'),
     kaufpreise_umgerechnet: zaehle(acqRows, 'kaufpreis_umgerechnet'),
     sets: results,
-    totals: bewertungsSummen(results),
-    preise_ausstehend: await merkePreiseFuerKontoVor(kx, viewerId, currency, lage.fehlt),
+    totals: valuationSums(results),
+    preise_ausstehend: await rememberPricesForAccountBefore(kx, viewerId, currency, situation.fehlt),
   };
 }
 
@@ -255,19 +255,19 @@ function conditionsOf(acqs: { condition?: string | null }[]): Zustand[] {
 }
 
 /** Je vorkommendem Zustand ein Preis; der erste mit Wert trägt die Zusatzangaben der Zeile. */
-function preiseJeZustand<P extends PreisDaten>(key: string, conds: Zustand[], preisVon: (c: Zustand) => P) {
+function pricesJeState<P extends PriceData>(key: string, conds: Zustand[], priceOf: (c: Zustand) => P) {
   const priceMap = new Map<string, number>();
   let priceData: P | null = null;
   for (const cond of conds) {
-    const pd = preisVon(cond);
-    const v = marktpreisAus(pd);
+    const pd = priceOf(cond);
+    const v = marketPriceFrom(pd);
     if (v !== null) priceMap.set(`${key}|${cond}`, v);
-    if (!priceData || (!hatPreis(priceData) && v !== null)) priceData = pd;
+    if (!priceData || (!hatPrice(priceData) && v !== null)) priceData = pd;
   }
   return { priceMap, priceData };
 }
 
-function bewerteManuell(key: string, acqs: repo.ManuelleErfassung[], priceMap: Map<string, number>, menge: number) {
+function valueManual(key: string, acqs: repo.ManualEntry[], priceMap: Map<string, number>, menge: number) {
   // 'N': Der Rückfall greift nur ohne Erfassungen, und dort gilt „Neu".
   const valued = valueSet(key, acqs, priceMap, 'N', menge);
   const rows = valueAcquisitionRows(key, acqs, priceMap);
@@ -301,14 +301,14 @@ function gesamt(zeilen: Array<{ total_value: string }>) {
 }
 
 /** Eine Umsetzung für Sitzungsroute und Token-API. */
-export async function bewerteFiguren(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
-  const uids = asIds(await k.haushalt.blickfeldAus(idsWahl));
+export async function valueMinifigs(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
+  const uids = asIds(await k.haushalt.scopeFrom(idsChoice));
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
     k.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
-  const manualFigs = await k.bewertung.manuelleFigurenZurBewertung(uids);
+  const manualFigs = await k.bewertung.manualMinifigsToValuation(uids);
   if (!manualFigs.length)
     return {
       currency,
@@ -320,15 +320,15 @@ export async function bewerteFiguren(k: FinanzenKontext, viewerId: number, idsWa
     };
 
   const acqByFig = await loadManualAcquisitions(k, uids, 'fig', currency);
-  const mitBl = manualFigs.filter(f => f.bl_fig_number);
-  const [figVorrat, schaetzungen] = await Promise.all([
+  const withBl = manualFigs.filter(f => f.bl_fig_number);
+  const [figStock, estimates] = await Promise.all([
     ladeFigurenpreiseVor(
       k,
-      mitBl.map(f => String(f.bl_fig_number)),
+      withBl.map(f => String(f.bl_fig_number)),
       currency,
       ttlHours,
     ),
-    k.marktpreise.geschaetzteFigurenpreise(
+    k.marktpreise.estimatedMinifigsPrices(
       manualFigs.filter(f => !f.bl_fig_number).map(f => f.fig_number),
       currency,
       ttl,
@@ -343,14 +343,14 @@ export async function bewerteFiguren(k: FinanzenKontext, viewerId: number, idsWa
       // auch wenn ein anderes gebraucht ist.
       const key = fig.fig_number;
       const acqs = acqByFig.get(`${fig.user_id}|${key}`) || [];
-      const { priceMap, priceData } = preiseJeZustand(key, conditionsOf(acqs), (cond): FigurPreis => {
+      const { priceMap, priceData } = pricesJeState(key, conditionsOf(acqs), (cond): MinifigPrice => {
         if (fig.bl_fig_number) {
-          const p = preisAusVorrat(c => figVorrat.get(`${fig.bl_fig_number}|${c}`), cond, ttl, k.uhr.jetzt());
+          const p = priceFromStock(c => figStock.get(`${fig.bl_fig_number}|${c}`), cond, ttl, k.uhr.jetzt());
           if (p.ausstehend) fehlt.push({ art: 'figur', nummer: fig.bl_fig_number, zustand: cond });
           return p;
         }
         // Ohne BL-Nummer aus den Teilepreisen geschätzt (der Auftrag rechnet die Schätzung).
-        const s = schaetzungen.get(`${key}|${cond}`);
+        const s = estimates.get(`${key}|${cond}`);
         if (s)
           return {
             min_price: 0,
@@ -371,27 +371,27 @@ export async function bewerteFiguren(k: FinanzenKontext, viewerId: number, idsWa
           ausstehend: true as const,
         };
       });
-      return { ...fig, ...priceData, ...bewerteManuell(key, acqs, priceMap, fig.quantity || 1) };
+      return { ...fig, ...priceData, ...valueManual(key, acqs, priceMap, fig.quantity || 1) };
     }),
   );
   return {
     currency,
     figs: results,
     ...gesamt(results),
-    kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByFig),
+    kaufpreise_fremde_waehrung: foreignPurchasePrices(acqByFig),
     kaufpreise_umgerechnet: zaehle([...acqByFig.values()].flat(), 'kaufpreis_umgerechnet'),
-    preise_ausstehend: await merkePreiseFuerKontoVor(k, viewerId, currency, fehlt),
+    preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, fehlt),
   };
 }
 
-export async function bewerteTeile(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
-  const uids = asIds(await k.haushalt.blickfeldAus(idsWahl));
+export async function valueParts(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
+  const uids = asIds(await k.haushalt.scopeFrom(idsChoice));
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
     k.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
-  const manualParts = await k.bewertung.manuelleTeileZurBewertung(uids);
+  const manualParts = await k.bewertung.manualPartsToValuation(uids);
   if (!manualParts.length)
     return {
       currency,
@@ -402,13 +402,13 @@ export async function bewerteTeile(k: FinanzenKontext, viewerId: number, idsWahl
       preise_ausstehend: 0,
     };
 
-  const blNummer = (p: repo.ManuellesTeil) => String(p.bl_part_number || p.part_number);
-  await ladeBlNummernVor(k, manualParts.map(blNummer));
+  const blNumber = (p: repo.ManuellesTeil) => String(p.bl_part_number || p.part_number);
+  await loadBlNumbersBefore(k, manualParts.map(blNumber));
   const acqByPart = await loadManualAcquisitions(k, uids, 'part', currency);
-  const teilVorrat = await ladeTeilepreiseVor(
+  const partStock = await ladeTeilepreiseVor(
     k,
     manualParts.map(p => ({
-      partNumber: blNummer(p),
+      partNumber: blNumber(p),
       rbColorId: p.color_id ?? KEINE_FARBE,
     })),
     currency,
@@ -419,14 +419,14 @@ export async function bewerteTeile(k: FinanzenKontext, viewerId: number, idsWahl
   const tasks = manualParts.map(part => async () => {
     const key = `${part.part_number}|${part.color_id ?? KEINE_FARBE}`;
     const acqs = acqByPart.get(`${part.user_id}|${key}`) || [];
-    const vorratsSchluessel = await teilSchluessel(k, blNummer(part), part.color_id ?? KEINE_FARBE);
-    const { priceMap, priceData } = preiseJeZustand(key, conditionsOf(acqs), cond => {
-      const p = preisAusVorrat(c => teilVorrat.get(`${vorratsSchluessel}|${c}`), cond, ttl, k.uhr.jetzt());
+    const stockKey = await partKey(k, blNumber(part), part.color_id ?? KEINE_FARBE);
+    const { priceMap, priceData } = pricesJeState(key, conditionsOf(acqs), cond => {
+      const p = priceFromStock(c => partStock.get(`${stockKey}|${c}`), cond, ttl, k.uhr.jetzt());
       if (p.ausstehend)
-        fehlt.push({ art: 'teil', nummer: blNummer(part), farbe: part.color_id ?? KEINE_FARBE, zustand: cond });
+        fehlt.push({ art: 'teil', nummer: blNumber(part), farbe: part.color_id ?? KEINE_FARBE, zustand: cond });
       return p;
     });
-    const wert = bewerteManuell(key, acqs, priceMap, part.quantity || 1);
+    const wert = valueManual(key, acqs, priceMap, part.quantity || 1);
     return {
       id: part.id,
       user_id: part.user_id,
@@ -452,8 +452,8 @@ export async function bewerteTeile(k: FinanzenKontext, viewerId: number, idsWahl
     currency,
     parts: results,
     ...gesamt(results),
-    kaufpreise_fremde_waehrung: fremdeKaufpreise(acqByPart),
+    kaufpreise_fremde_waehrung: foreignPurchasePrices(acqByPart),
     kaufpreise_umgerechnet: zaehle([...acqByPart.values()].flat(), 'kaufpreis_umgerechnet'),
-    preise_ausstehend: await merkePreiseFuerKontoVor(k, viewerId, currency, fehlt),
+    preise_ausstehend: await rememberPricesForAccountBefore(k, viewerId, currency, fehlt),
   };
 }

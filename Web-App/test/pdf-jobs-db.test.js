@@ -6,7 +6,7 @@
  * das notify() entfernt → rot: „der Statusstrom meldet das Ende sofort“
  * (erst der 15-Sekunden-Rückfall hätte es gemeldet). Seit der Status im
  * Auftrag steht (Migration 0083) am 30.10.2026 wiederholt: in erledigt()
- * (src/auftraege/auftraege.ts) meldeStand() entfernt → rot: derselbe Test.
+ * (src/auftraege/auftraege.ts) reportStatus() entfernt → rot: derselbe Test.
  *
  * Gegenproben zur Teileliste (am 02.11.2026 gemessen), je rot: „die
  * Teileliste wird geprüft …“: `eingabe: PdfEingabe` aus dem Vertrag
@@ -27,9 +27,9 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
@@ -60,33 +60,33 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
   // Tokens liegen GEHASHT in der Tabelle (src/konto/geraeteToken.ts) — der Klartextpfad
   // wurde bewusst entfernt. Der Test legt deshalb den Hash ab und schickt den
   // Klartext, genau wie ein echter Client.
-  const { tokenAbdruck } = _req('src/konto/geraeteToken.js');
-  const tokenFuer = async (uid, label) => {
+  const { tokenDigest } = _req('src/konto/geraeteToken.js');
+  const tokenFor = async (uid, label) => {
     const t = require('node:crypto').randomBytes(24).toString('hex');
     await db.run('INSERT INTO api_tokens (token, user_id, label, expires_at) VALUES ($1,$2,$3,NULL)', [
-      tokenAbdruck(t),
+      tokenDigest(t),
       uid,
       label,
     ]);
     return t;
   };
-  const tokA = await tokenFuer(idA, 'test-a');
-  const tokB = await tokenFuer(idB, 'test-b');
+  const tokA = await tokenFor(idA, 'test-a');
+  const tokB = await tokenFor(idB, 'test-b');
 
   const app = express();
   // Den Rumpf liest wie im Betrieb der Parser des Servers, nicht der Router.
   app.use(express.json({ limit: '4mb' })); // wie server.ts für diese Route
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/pdf.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/pdf.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
   /** Auftrag direkt anlegen — der Lauf selbst ginge ins Netz. */
-  async function auftragLegen(jobId, userId, status = 'done') {
+  async function jobPut(jobId, userId, status = 'done') {
     await db.run(
       `INSERT INTO jobs (type, user_id, dedupe_key, status, locked_by, deadline_at)
                   VALUES ('pdf', $2, $1, $3, CASE WHEN $3 = 'laeuft' THEN 'test' END,
                           CASE WHEN $3 = 'laeuft' THEN NOW() + INTERVAL '1 hour' END)`,
-      [jobs.pdfSchluessel(jobId), userId, status === 'done' ? 'erledigt' : 'laeuft'],
+      [jobs.pdfKey(jobId), userId, status === 'done' ? 'erledigt' : 'laeuft'],
     );
     await fs.mkdir(PDF_JOB_DIR, { recursive: true });
     if (status === 'done') {
@@ -97,8 +97,8 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
     fetch(`${basis}/api/v1/sets/partslist-pdf/${pfad}`, { headers: { Authorization: `Bearer ${token}` } });
 
   try {
-    const jobA = jobs.neueJobId(Date.now());
-    await auftragLegen(jobA, idA);
+    const jobA = jobs.newJobId(Date.now());
+    await jobPut(jobA, idA);
 
     await t.test('der eigene Auftrag ist abrufbar', async () => {
       const s = await hol(`status/${jobA}`, tokA);
@@ -123,9 +123,9 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
 
     await t.test('der Deckel greift beim dritten gleichzeitigen Auftrag', async () => {
       await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
-      await auftragLegen(jobs.neueJobId(Date.now()), idA, 'running');
-      await auftragLegen(jobs.neueJobId(Date.now()), idA, 'running');
-      await auftragLegen(jobs.neueJobId(Date.now()), idB, 'running'); // fremder Lauf zählt nicht mit
+      await jobPut(jobs.newJobId(Date.now()), idA, 'running');
+      await jobPut(jobs.newJobId(Date.now()), idA, 'running');
+      await jobPut(jobs.newJobId(Date.now()), idB, 'running'); // fremder Lauf zählt nicht mit
 
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
         method: 'POST',
@@ -145,13 +145,13 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
 
     await t.test('abgelaufene Läufe sperren niemanden dauerhaft aus', async () => {
       await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
-      const alt1 = jobs.neueJobId(Date.now()),
-        alt2 = jobs.neueJobId(Date.now());
-      await auftragLegen(alt1, idA, 'running');
-      await auftragLegen(alt2, idA, 'running');
+      const alt1 = jobs.newJobId(Date.now()),
+        alt2 = jobs.newJobId(Date.now());
+      await jobPut(alt1, idA, 'running');
+      await jobPut(alt2, idA, 'running');
       // Stürzt ein Worker mitten im Lauf ab, bleibt der Auftrag auf 'running'.
       await db.run(`UPDATE jobs SET created_at = NOW() - INTERVAL '1 day' WHERE dedupe_key = ANY($1)`, [
-        [alt1, alt2].map(jobs.pdfSchluessel),
+        [alt1, alt2].map(jobs.pdfKey),
       ]);
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
         method: 'POST',
@@ -163,31 +163,31 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
 
     await t.test('der Statusstrom meldet das Ende sofort', async () => {
       await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
-      const job = jobs.neueJobId(Date.now());
-      await auftragLegen(job, idA, 'running');
+      const job = jobs.newJobId(Date.now());
+      await jobPut(job, idA, 'running');
       const ctrl = new AbortController();
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf/stream/${job}`, {
         headers: { Authorization: `Bearer ${tokA}` },
         signal: ctrl.signal,
       });
       assert.equal(r.status, 200);
-      const leser = r.body.getReader();
+      const reader = r.body.getReader();
       const dec = new TextDecoder();
       let text = '';
       const start = Date.now();
       // Der Worker meldet das Ende über erledigt(); der Auftrag gehört hier dem Belegenden 'test'.
-      const zeile = await db.get(`SELECT id FROM jobs WHERE dedupe_key = $1`, [jobs.pdfSchluessel(job)]);
+      const zeile = await db.get(`SELECT id FROM jobs WHERE dedupe_key = $1`, [jobs.pdfKey(job)]);
       setTimeout(
         () =>
           Object.assign({}, _req('src/auftraege/auftraege.js'), {
             ..._req('src/auftraege/dienst.js'),
-            ...require('./helpers/sources').testBereich('auftraege').auftraege,
+            ...require('./helpers/sources').testArea('auftraege').auftraege,
           }).erledigt({ id: String(zeile.id), locked_by: 'test', type: 'pdf' }),
         300,
       );
       while (!text.includes('"done"') && Date.now() - start < 8000) {
         const { value, done } = await Promise.race([
-          leser.read(),
+          reader.read(),
           new Promise(f => setTimeout(() => f({ done: true }), 8000 - (Date.now() - start))),
         ]);
         if (done) break;
@@ -237,9 +237,9 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
     });
 
     await t.test('die Auftragskennung kommt aus kryptografischem Zufall', () => {
-      const ids = new Set(Array.from({ length: 200 }, () => jobs.neueJobId(Date.now())));
+      const ids = new Set(Array.from({ length: 200 }, () => jobs.newJobId(Date.now())));
       assert.equal(ids.size, 200, 'Kennungen wiederholen sich');
-      for (const id of ids) assert.ok(jobs.gueltigeAuftragsKennung(id), `eigene Kennung ist ungültig: ${id}`);
+      for (const id of ids) assert.ok(jobs.validJobId(id), `eigene Kennung ist ungültig: ${id}`);
       const zufallsteil = [...ids][0].split('-')[1];
       assert.match(zufallsteil, /^[0-9a-f]{12}$/, 'kein 6-Byte-Hex — stammt die Kennung noch aus Math.random()?');
     });
@@ -249,8 +249,8 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       await fs.unlink(path.join(PDF_JOB_DIR, f)).catch(() => {});
     }
     await db.run(`DELETE FROM jobs WHERE type = 'pdf'`).catch(() => {});
-    await testZugang()
-      .benachrichtigung.close()
+    await testAccess()
+      .notification.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});
   }

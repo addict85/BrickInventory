@@ -4,16 +4,16 @@
 import https from 'node:https';
 import { PassThrough, type Readable } from 'node:stream';
 import type { IncomingHttpHeaders, IncomingMessage, ClientRequest } from 'node:http';
-import { hostErlaubt, naechsteUmleitung, UMLEITUNGS_GRENZE } from './fremdeAdressen';
-import { oeffentlicherLookup } from './zielAdresse';
+import { hostAllowed, nextRedirect, REDIRECT_LIMIT } from './fremdeAdressen';
+import { publicLookup } from './zielAdresse';
 
-export type AbrufGrund = 'adresse' | 'umleitung' | 'zu-gross' | 'zeitlimit' | 'netz' | 'abgebrochen';
+export type FetchReason = 'adresse' | 'umleitung' | 'zu-gross' | 'zeitlimit' | 'netz' | 'abgebrochen';
 
 export class AbrufFehler extends Error {
-  readonly grund: AbrufGrund;
+  readonly grund: FetchReason;
   /** Wie in clients/abrufFehler.ts: ein erneuter Versuch kann gelingen. */
   readonly isTransient: boolean;
-  constructor(grund: AbrufGrund, text: string, ursache?: unknown) {
+  constructor(grund: FetchReason, text: string, ursache?: unknown) {
     super(text, ursache === undefined ? undefined : { cause: ursache });
     this.name = 'AbrufFehler';
     this.grund = grund;
@@ -21,15 +21,15 @@ export class AbrufFehler extends Error {
   }
 }
 
-export interface AbrufOptionen {
+export interface FetchOptions {
   /** Gilt für die erste Adresse und für jeden Sprung. */
   hosts: readonly string[];
   maxBytes: number;
   /** Gesamtfrist vom ersten Sprung bis zum letzten Byte. */
   zeitlimitMs: number;
   kopfzeilen?: Record<string, string>;
-  umleitungen?: number;
-  /** Bringt seine eigene Namensauflösung mit; ohne ihn prüft oeffentlicherLookup das Ziel. */
+  redirects?: number;
+  /** Bringt seine eigene Namensauflösung mit; ohne ihn prüft publicLookup das Ziel. */
   agent?: https.Agent;
   /** POST folgt keiner Umleitung: Ein 303 hiesse GET, ein 307 sendete den Rumpf weiter. */
   methode?: 'GET' | 'POST';
@@ -38,26 +38,26 @@ export interface AbrufOptionen {
   signal?: AbortSignal;
 }
 
-export interface AbrufKopf {
+export interface FetchHeader {
   status: number;
   kopf: IncomingHttpHeaders;
   /** Die Adresse nach allen Umleitungen. */
   url: string;
 }
 
-export interface AbrufAntwort extends AbrufKopf {
+export interface FetchResponse extends FetchHeader {
   koerper: Buffer;
 }
 
-export interface AbrufStrom extends AbrufKopf {
+export interface FetchStream extends FetchHeader {
   /** Der Körper, begrenzt auf maxBytes; darüber endet er mit AbrufFehler. */
   strom(): Readable;
   verwerfen(): void;
 }
 
-const UMLEITUNG = new Set([301, 302, 303, 307, 308]);
+const REDIRECT = new Set([301, 302, 303, 307, 308]);
 /** Ohne Anfrageteil: Dort stehen API-Schlüssel (Brickset), und Fehlertexte landen im Log. */
-function adresseKurz(u: string): string {
+function addressShort(u: string): string {
   try {
     const x = new URL(u);
     return (x.origin + x.pathname).slice(0, 120);
@@ -67,7 +67,7 @@ function adresseKurz(u: string): string {
 }
 
 /** Fremder Antworttext fürs Log: einzeilig und kurz, damit er keine Zeilen fälscht. */
-export function auszug(text: unknown, n = 120): string {
+export function excerpt(text: unknown, n = 120): string {
   return (
     String(text ?? '')
       // biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen herauszufiltern ist der Zweck dieser Stelle.
@@ -83,7 +83,7 @@ interface Lauf {
   abbrechen: (f: AbrufFehler) => void;
 }
 
-function laufe(start: string, o: AbrufOptionen): Promise<Lauf> {
+function run(start: string, o: FetchOptions): Promise<Lauf> {
   return new Promise((fertig, scheitern) => {
     let req: ClientRequest | null = null;
     let antwort: IncomingMessage | null = null;
@@ -98,35 +98,35 @@ function laufe(start: string, o: AbrufOptionen): Promise<Lauf> {
       req?.destroy?.();
     };
     const frist = setTimeout(
-      () => abbrechen(new AbrufFehler('zeitlimit', `Zeitlimit ${o.zeitlimitMs} ms: ${adresseKurz(start)}`)),
+      () => abbrechen(new AbrufFehler('zeitlimit', `Zeitlimit ${o.zeitlimitMs} ms: ${addressShort(start)}`)),
       o.zeitlimitMs,
     );
     frist.unref?.();
-    const beiAbbruch = () =>
-      abbrechen(new AbrufFehler('abgebrochen', `Abgebrochen: ${adresseKurz(start)}`, o.signal?.reason));
-    if (o.signal?.aborted) return beiAbbruch();
-    o.signal?.addEventListener('abort', beiAbbruch, { once: true });
+    const atAbort = () =>
+      abbrechen(new AbrufFehler('abgebrochen', `Abgebrochen: ${addressShort(start)}`, o.signal?.reason));
+    if (o.signal?.aborted) return atAbort();
+    o.signal?.addEventListener('abort', atAbort, { once: true });
 
     const sprung = (u: string, kopf: Record<string, string>, rest: number) => {
-      if (!u.startsWith('https://') || !hostErlaubt(u, o.hosts))
-        return abbrechen(new AbrufFehler('adresse', `Adresse nicht erlaubt: ${adresseKurz(u)}`));
+      if (!u.startsWith('https://') || !hostAllowed(u, o.hosts))
+        return abbrechen(new AbrufFehler('adresse', `Adresse nicht erlaubt: ${addressShort(u)}`));
       try {
-        const beiAntwort = (r: IncomingMessage) => {
+        const atResponse = (r: IncomingMessage) => {
           if (erledigt) {
             r.resume?.();
             return;
           }
           const status = r.statusCode ?? 0;
-          if (UMLEITUNG.has(status) && (o.umleitungen ?? UMLEITUNGS_GRENZE) > 0 && (o.methode ?? 'GET') === 'GET') {
+          if (REDIRECT.has(status) && (o.redirects ?? REDIRECT_LIMIT) > 0 && (o.methode ?? 'GET') === 'GET') {
             r.resume?.();
             if (rest <= 0)
-              return abbrechen(new AbrufFehler('umleitung', `Zu viele Umleitungen: ${adresseKurz(start)}`));
-            const weiter = naechsteUmleitung(u, r.headers?.location, kopf, o.hosts);
+              return abbrechen(new AbrufFehler('umleitung', `Zu viele Umleitungen: ${addressShort(start)}`));
+            const weiter = nextRedirect(u, r.headers?.location, kopf, o.hosts);
             if (!weiter)
               return abbrechen(
                 new AbrufFehler(
                   'umleitung',
-                  `Umleitung ${status} nicht befolgbar (fehlend, kein https oder fremder Host): ${adresseKurz(u)}`,
+                  `Umleitung ${status} nicht befolgbar (fehlend, kein https oder fremder Host): ${addressShort(u)}`,
                 ),
               );
             return sprung(weiter.url, weiter.kopfzeilen, rest - 1);
@@ -134,17 +134,17 @@ function laufe(start: string, o: AbrufOptionen): Promise<Lauf> {
           const laenge = Number(r.headers?.['content-length']);
           if (laenge > o.maxBytes) {
             r.resume?.();
-            return abbrechen(new AbrufFehler('zu-gross', `Antwort über ${o.maxBytes} Byte: ${adresseKurz(u)}`));
+            return abbrechen(new AbrufFehler('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(u)}`));
           }
           antwort = r;
           erledigt = true;
           fertig({ antwort: r, url: u, frist, abbrechen });
         };
-        const verbindung = o.agent ? { agent: o.agent } : { lookup: oeffentlicherLookup };
+        const verbindung = o.agent ? { agent: o.agent } : { lookup: publicLookup };
         req =
           o.methode === 'POST'
-            ? https.request(u, { method: 'POST', family: 4, headers: kopf, ...verbindung }, beiAntwort)
-            : https.get(u, { family: 4, headers: kopf, ...verbindung }, beiAntwort);
+            ? https.request(u, { method: 'POST', family: 4, headers: kopf, ...verbindung }, atResponse)
+            : https.get(u, { family: 4, headers: kopf, ...verbindung }, atResponse);
         req.on('error', (e: Error) => {
           const code = (e as NodeJS.ErrnoException).code;
           abbrechen(
@@ -152,23 +152,23 @@ function laufe(start: string, o: AbrufOptionen): Promise<Lauf> {
               ? e
               : new AbrufFehler(
                   code === 'EZIELGESPERRT' ? 'adresse' : 'netz',
-                  `${code || e.message}: ${adresseKurz(u)}`,
+                  `${code || e.message}: ${addressShort(u)}`,
                   e,
                 ),
           );
         });
         if (o.methode === 'POST') req.end(o.rumpf);
       } catch (e) {
-        abbrechen(new AbrufFehler('adresse', `Abruf nicht möglich: ${adresseKurz(u)}`, e));
+        abbrechen(new AbrufFehler('adresse', `Abruf nicht möglich: ${addressShort(u)}`, e));
       }
     };
-    sprung(start, o.kopfzeilen ?? {}, o.umleitungen ?? UMLEITUNGS_GRENZE);
+    sprung(start, o.kopfzeilen ?? {}, o.redirects ?? REDIRECT_LIMIT);
   });
 }
 
 /** Ganze Antwort in den Speicher — für API-Antworten und kleine Bilder. */
-export async function holeHttps(url: string, o: AbrufOptionen): Promise<AbrufAntwort> {
-  const { antwort: r, url: ende, frist, abbrechen } = await laufe(url, o);
+export async function holeHttps(url: string, o: FetchOptions): Promise<FetchResponse> {
+  const { antwort: r, url: ende, frist, abbrechen } = await run(url, o);
   return new Promise((fertig, scheitern) => {
     const teile: Buffer[] = [];
     let n = 0,
@@ -184,7 +184,7 @@ export async function holeHttps(url: string, o: AbrufOptionen): Promise<AbrufAnt
       const b = typeof d === 'string' ? Buffer.from(d) : d;
       n += b.length;
       if (n > o.maxBytes)
-        return fehler(new AbrufFehler('zu-gross', `Antwort über ${o.maxBytes} Byte: ${adresseKurz(ende)}`));
+        return fehler(new AbrufFehler('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(ende)}`));
       teile.push(b);
     });
     r.on('end', () => {
@@ -195,14 +195,14 @@ export async function holeHttps(url: string, o: AbrufOptionen): Promise<AbrufAnt
       }
     });
     r.on('error', (e: Error) =>
-      fehler(e instanceof AbrufFehler ? e : new AbrufFehler('netz', `${e.message}: ${adresseKurz(ende)}`, e)),
+      fehler(e instanceof AbrufFehler ? e : new AbrufFehler('netz', `${e.message}: ${addressShort(ende)}`, e)),
     );
   });
 }
 
 /** Nur der Kopf; der Körper als begrenzter Strom — für Dateien und den Bild-Proxy. */
-export async function oeffneHttps(url: string, o: AbrufOptionen): Promise<AbrufStrom> {
-  const { antwort: r, url: ende, frist, abbrechen } = await laufe(url, o);
+export async function openHttps(url: string, o: FetchOptions): Promise<FetchStream> {
+  const { antwort: r, url: ende, frist, abbrechen } = await run(url, o);
   return {
     status: r.statusCode ?? 0,
     kopf: r.headers ?? {},
@@ -217,7 +217,7 @@ export async function oeffneHttps(url: string, o: AbrufOptionen): Promise<AbrufS
       r.on('data', (d: Buffer) => {
         n += d.length;
         if (n > o.maxBytes) {
-          const f = new AbrufFehler('zu-gross', `Antwort über ${o.maxBytes} Byte: ${adresseKurz(ende)}`);
+          const f = new AbrufFehler('zu-gross', `Antwort über ${o.maxBytes} Byte: ${addressShort(ende)}`);
           aus.destroy(f);
           abbrechen(f);
         }
@@ -228,7 +228,7 @@ export async function oeffneHttps(url: string, o: AbrufOptionen): Promise<AbrufS
         aus.destroy(e);
       });
       aus.on('close', () => {
-        if (!r.complete) abbrechen(new AbrufFehler('netz', `Abgebrochen: ${adresseKurz(ende)}`));
+        if (!r.complete) abbrechen(new AbrufFehler('netz', `Abgebrochen: ${addressShort(ende)}`));
       });
       r.pipe(aus);
       return aus;

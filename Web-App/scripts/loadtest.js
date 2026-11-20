@@ -30,14 +30,14 @@ function arg(name, fallback) {
   return i !== -1 && process.argv[i + 1] ? Number(process.argv[i + 1]) : fallback;
 }
 const USERS = arg('users', 20); // gleichzeitige virtuelle Nutzer
-const DAUER_S = arg('dauer', 10); // Messdauer je Durchgang
+const DURATION_S = arg('dauer', 10); // Messdauer je Durchgang
 const N_SETS = arg('sets', 800); // Sammlungsgrösse (wie in Durchgang 119)
 
-const dbModul = require(path.join(ROOT, 'dist/db/database.js'));
-const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
+const dbModule = require(path.join(ROOT, 'dist/db/database.js'));
+const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
 // Die Routen rufen die Bereiche über ihre Verdrahtung, wie im Server.
 const verdrahtung = require(path.join(ROOT, 'dist/startup/verdrahtung.js'));
-const dienste = verdrahtung.baueDienste(db);
+const dienste = verdrahtung.buildServices(db);
 
 /**
  * Lesbarer Text eines gefangenen Fehlers.
@@ -194,7 +194,7 @@ function buildApp() {
     konfig: require(path.join(ROOT, 'dist/src/infra/konfig.js')).konfig(),
     sitzungsGeheimnis: 'lasttest-sitzungsgeheimnis-lang-genug',
     dienste,
-    sitzungsSpeicher: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {any} */ next) => {
+    sessionStorage: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {any} */ next) => {
       req.session = { userId: USER.id, username: USER.username, isAdmin: false };
       next();
     },
@@ -204,7 +204,7 @@ function buildApp() {
 // Die Endpunkte, die eine Sitzung tatsächlich anfasst: Galerie öffnen, Teile
 // durchblättern, Finanzen ansehen.
 /** @type {Array<[string, string]>} */
-const PFADE = [
+const PATHS = [
   ['Galerie (Seite 1)', '/api/v1/sets?page=1&page_size=60'],
   ['Galerie (Seite 5)', '/api/v1/sets?page=5&page_size=60'],
   ['Teile-Liste', '/api/v1/parts?page=1&page_size=60'],
@@ -225,7 +225,7 @@ const PFADE = [
  * @param {number} p
  * @returns {number}
  */
-const perzentil = (arr, p) => {
+const percentile = (arr, p) => {
   if (!arr.length) return 0;
   const s = [...arr].sort((a, b) => a - b);
   // Der Index ist durch das Math.min gedeckelt und die Liste ist nicht leer —
@@ -253,7 +253,7 @@ async function main() {
   const base = `http://localhost:${srv.address().port}`;
 
   // Aufwärmen: erster Treffer baut Caches und Abfragepläne auf.
-  for (const [, pfad] of PFADE) await miss(base, pfad).catch(() => {});
+  for (const [, pfad] of PATHS) await miss(base, pfad).catch(() => {});
 
   // ── Durchgang 1: allein (Referenz) ─────────────────────────────────────────
   console.log('Referenz ohne Nebenlast (je 5 Aufrufe, Median):');
@@ -262,25 +262,25 @@ async function main() {
   // laut Typ nicht gibt.
   /** @type {Record<string, number>} */
   const allein = {};
-  for (const [name, pfad] of PFADE) {
+  for (const [name, pfad] of PATHS) {
     // Der Median wird EINMAL berechnet und in einer Variablen gehalten, statt
     // ihn nach dem Schreiben wieder aus der Karte zu lesen. Das ist nicht nur
     // typsicher (ein Lesezugriff auf eine Karte kann leer sein), sondern sagt
     // auch besser, was hier passiert.
     const w = [];
     for (let i = 0; i < 5; i++) w.push((await miss(base, pfad)).ms);
-    const median = perzentil(w, 0.5);
+    const median = percentile(w, 0.5);
     allein[name] = median;
     console.log(`  ${name.padEnd(24)} ${median.toFixed(0).padStart(6)} ms`);
   }
 
-  // ── Durchgang 2: USERS gleichzeitig, DAUER_S lang ──────────────────────────
-  console.log(`\n${USERS} gleichzeitige Nutzer, ${DAUER_S} s …`);
+  // ── Durchgang 2: USERS gleichzeitig, DURATION_S lang ──────────────────────────
+  console.log(`\n${USERS} gleichzeitige Nutzer, ${DURATION_S} s …`);
   /** @type {Record<string, number[]>} */
-  const messung = Object.fromEntries(PFADE.map(([n]) => [n, []]));
+  const measurement = Object.fromEntries(PATHS.map(([n]) => [n, []]));
   /** @type {Record<string, number>} */
   const fehler = {};
-  const ende = Date.now() + DAUER_S * 1000;
+  const ende = Date.now() + DURATION_S * 1000;
   let gesamt = 0;
 
   /** @param {number} id */
@@ -291,13 +291,13 @@ async function main() {
       // Der Rueckfall auf den ersten Eintrag macht sichtbar, dass die Liste
       // nie leer ist — ein Index in ein Array bleibt auch mit Tupel-Elementen
       // moeglicherweise daneben.
-      const eintrag = PFADE[Math.floor(Math.random() * PFADE.length)];
-      if (!eintrag) continue; // PFADE ist nie leer; das sagt es dem Pruefer
+      const eintrag = PATHS[Math.floor(Math.random() * PATHS.length)];
+      if (!eintrag) continue; // PATHS ist nie leer; das sagt es dem Pruefer
       const [name, p] = eintrag;
       try {
         const { ms, ok, status } = await miss(base, p);
-        messung[name] ??= [];
-        messung[name].push(ms);
+        measurement[name] ??= [];
+        measurement[name].push(ms);
         gesamt++;
         if (!ok) fehler[`${name} → HTTP ${status}`] = (fehler[`${name} → HTTP ${status}`] || 0) + 1;
       } catch (e) {
@@ -313,26 +313,26 @@ async function main() {
   console.log(`\n${gesamt} Anfragen in ${sek.toFixed(1)} s = ${(gesamt / sek).toFixed(0)}/s\n`);
   console.log('Endpunkt                   allein     p50     p95     max   Faktor   n');
   console.log('─'.repeat(76));
-  for (const [name] of PFADE) {
+  for (const [name] of PATHS) {
     // Ein Endpunkt, den in der Laufzeit kein Nutzer erwischt hat, hat keine
     // Messwerte — `?? []` ist hier kein Beruhigungsmittel, sondern der Fall.
-    const w = messung[name] ?? [];
-    const referenz = allein[name] ?? 0;
-    const p50 = perzentil(w, 0.5),
-      p95 = perzentil(w, 0.95),
+    const w = measurement[name] ?? [];
+    const reference = allein[name] ?? 0;
+    const p50 = percentile(w, 0.5),
+      p95 = percentile(w, 0.95),
       max = Math.max(0, ...w);
-    const faktor = referenz > 0 ? p50 / referenz : 0;
+    const faktor = reference > 0 ? p50 / reference : 0;
     console.log(
-      `${name.padEnd(24)} ${referenz.toFixed(0).padStart(6)}  ${p50.toFixed(0).padStart(6)}  ` +
+      `${name.padEnd(24)} ${reference.toFixed(0).padStart(6)}  ${p50.toFixed(0).padStart(6)}  ` +
         `${p95.toFixed(0).padStart(6)}  ${max.toFixed(0).padStart(6)}  ${faktor.toFixed(1).padStart(6)}x  ${String(w.length).padStart(4)}`,
     );
   }
-  const fehlerListe = Object.entries(fehler);
-  if (fehlerListe.length) {
+  const errorList = Object.entries(fehler);
+  if (errorList.length) {
     // Ein Lauf mit Fehlern misst nicht, was er vorgibt: rot, auch für den Test, der das Skript startet.
     process.exitCode = 1;
     console.log('\n⚠️  Fehler:');
-    for (const [k, n] of fehlerListe) console.log(`  ${n}× ${k}`);
+    for (const [k, n] of errorList) console.log(`  ${n}× ${k}`);
   } else {
     console.log('\n✅ Keine Fehler — alle Antworten HTTP 200.');
   }

@@ -3,7 +3,7 @@
  * gültiger Weg in den Haushalt (24 h); beliebig viele brauchte niemand, und
  * die Tabelle wuchs mit jedem Klick.
  *
- * Gegenprobe (01.11.2026 gemessen): die Prüfung in einladungAnlegen() gestrichen
+ * Gegenprobe (01.11.2026 gemessen): die Prüfung in createInvitation() gestrichen
  * → rot: „die sechste …" (200 statt 409).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -13,14 +13,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
 test('offene Haushaltseinladungen sind begrenzt', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `einladung_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;

@@ -7,7 +7,7 @@
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  Kategorie im SQL wieder COALESCE(…, 'Unbekannt') → rot: „Kategorie in
  *      Tabelle und Filter“
- *   B  bestaetigtAngemeldet() wieder location.replace('/') → rot: „Bestätigung
+ *   B  confirmedSignedIn() wieder location.replace('/') → rot: „Bestätigung
  *      angemeldet“ (kein Toast)
  *   C  .v-mehr > .mehr-liste wieder min-width:14rem → rot: „Weitere Aktionen bei
  *      320 px und 200 %“
@@ -27,33 +27,33 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { musterHaushalt, haeltTeil } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { patternHousehold, holdsPart } = require('./helpers/bestand');
 const { buildAndRequire } = require('./helpers/sources');
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 const offen = `getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`;
-const rechteck = sel => `(() => { const r = document.querySelector(${JSON.stringify(sel)})?.getBoundingClientRect();
+const rect = sel => `(() => { const r = document.querySelector(${JSON.stringify(sel)})?.getBoundingClientRect();
   return r ? { l: Math.round(r.left), r: Math.round(r.right), o: Math.round(r.top), u: Math.round(r.bottom), b: Math.round(r.width) } : null; })()`;
-const schneiden = (a, b) => a.l < b.r && b.l < a.r && a.o < b.u && b.o < a.u;
+const cut = (a, b) => a.l < b.r && b.l < a.r && a.o < b.u && b.o < a.u;
 
 test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async t => {
   const NAME = `r14_${process.pid}`,
     KIND = `${NAME}_kind`,
     WARTET = `${NAME}_wartet`;
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: NAME,
     bestand: async (db, uid) => {
-      await musterHaushalt(db, uid);
+      await patternHousehold(db, uid);
       await db.run(
         `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ('99901', 'Rätselteil', '999') ON CONFLICT DO NOTHING`,
       );
-      await haeltTeil(db, uid, '99901', { setNumber: '10294-1', colorId: 0, menge: 3 });
+      await holdsPart(db, uid, '99901', { setNumber: '10294-1', colorId: 0, menge: 3 });
       await db.run(
         `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ('99902', 'Kennstein', 'Bricks') ON CONFLICT DO NOTHING`,
       );
-      await haeltTeil(db, uid, '99902', { setNumber: '10294-1', colorId: 0, menge: 2 });
+      await holdsPart(db, uid, '99902', { setNumber: '10294-1', colorId: 0, menge: 2 });
       await db.run(
         `INSERT INTO users (username, new_email, password_hash, is_active, email_verified, registration_pending)
       VALUES ($1, $2, 'x', true, false, true)`,
@@ -68,7 +68,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
   const { b, bis, db, port, uid, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
-  const smtpVorher = await db.all(
+  const smtpBefore = await db.all(
     "SELECT key, value FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')",
   );
   await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')");
@@ -95,8 +95,8 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
       await bis(`!!document.querySelector('#mk-list .fehler-zustand')`, 'Fehlerzustand');
       const z =
         await b.auswerten(`(() => { const f = document.querySelector('#mk-list .fehler-zustand').getBoundingClientRect();
-        return { kasten: document.getElementById('mk-kasten').open, unterLeiste: f.top > document.querySelector('nav:not(.einst-nav)').getBoundingClientRect().top - 40 }; })()`);
-      assert.deepEqual(z, { kasten: false, unterLeiste: false });
+        return { kasten: document.getElementById('mk-kasten').open, belowBar: f.top > document.querySelector('nav:not(.einst-nav)').getBoundingClientRect().top - 40 }; })()`);
+      assert.deepEqual(z, { kasten: false, belowBar: false });
     } finally {
       await b.auswerten(`window.fetch = window.__echtFetch; true`);
     }
@@ -120,7 +120,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     try {
       await b.auswerten(`scrollTo(0, 0); true`);
       await warte(300);
-      const knopf = await b.auswerten(rechteck('#tab-gallery .knopf-schwebend'));
+      const knopf = await b.auswerten(rect('#tab-gallery .knopf-schwebend'));
       for (const sel of [
         '#gs',
         '#tab-gallery .brick-stats',
@@ -128,7 +128,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
         // Am Telefon ist der Umschalter die sichtbare Überschrift (UX-Prüfung 19 M4).
         '#tab-gallery .sammlung-wahl',
       ])
-        assert.equal(schneiden(knopf, await b.auswerten(rechteck(sel))), false, `über ${sel}`);
+        assert.equal(cut(knopf, await b.auswerten(rect(sel))), false, `über ${sel}`);
     } finally {
       await schrift('');
     }
@@ -167,7 +167,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     );
     await b.auswerten(klick('#set-modal .v-mehr > summary'));
     await bis(`document.querySelector('#set-modal .v-mehr').open`, 'Menü offen');
-    const r = await b.auswerten(rechteck('#set-modal .v-mehr > .mehr-liste'));
+    const r = await b.auswerten(rect('#set-modal .v-mehr > .mehr-liste'));
     assert.ok(r.l >= 0 && r.r <= 320, `Menü von ${r.l} bis ${r.r}`);
     await b.auswerten(`document.querySelector('#set-modal .v-mehr').open = false; true`);
   });
@@ -266,12 +266,12 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
   });
 
   await t.test('Bestätigung angemeldet', async () => {
-    const { tokenAbdruck } = buildAndRequire()('src/konto/geraeteToken.js');
+    const { tokenDigest } = buildAndRequire()('src/konto/geraeteToken.js');
     const NEU = `${NAME}-neu@example.org`,
       TOKEN = `r14-${process.pid}-${Date.now()}`;
     await db.run(
       `UPDATE users SET new_email = $2, new_email_token = $3, new_email_until = NOW() + INTERVAL '1 hour' WHERE id = $1`,
-      [uid, NEU, tokenAbdruck(TOKEN)],
+      [uid, NEU, tokenDigest(TOKEN)],
     );
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=${TOKEN}` });
     await bis(
@@ -310,7 +310,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     );
   });
 
-  // Aufräumen hier, nicht in t.after: Dort endet der Pool aus starteApp zuerst.
-  for (const z of smtpVorher)
+  // Aufräumen hier, nicht in t.after: Dort endet der Pool aus startApp zuerst.
+  for (const z of smtpBefore)
     await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT DO NOTHING', [z.key, z.value]);
 });

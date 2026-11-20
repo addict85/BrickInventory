@@ -1,22 +1,22 @@
 /**
  * Die Oberfläche fragt den Code nach, wenn der Server für eine heikle
  * Änderung zweiter_faktor_noetig meldet, und wiederholt die Anfrage mit
- * `code` (mitZweitemFaktor in public/js/admin.js). Geprüft am Pflichtwechsel
+ * `code` (withSecondFactor in public/js/admin.js). Geprüft am Pflichtwechsel
  * des Startpassworts, echtes Bündel in jsdom.
  *
  * Gegenproben (01.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  im Pflichtwechsel (api.js) wieder api() direkt statt
- *      mitZweitemFaktor → rot: „der Code-Dialog erscheint"
- *   B  in mitZweitemFaktor `code` nicht mitgeschickt → rot: „die zweite
+ *      withSecondFactor → rot: „der Code-Dialog erscheint"
+ *   B  in withSecondFactor `code` nicht mitgeschickt → rot: „die zweite
  *      Anfrage trägt den Code"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/oberflaeche');
 
 test('Pflichtwechsel mit zweitem Faktor fragt den Code nach', async () => {
   const wechsel = [];
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/auth/me': { loggedIn: true, user: { id: 1, username: 'anna', is_admin: false, mustChangePassword: true } },
     '/v1/auth/change-password': (_url, o) => {
       const body = JSON.parse(o.body);

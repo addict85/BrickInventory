@@ -9,11 +9,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
-const { haeltFigur, haeltTeil } = require('./helpers/bestand');
+const db = testData();
+const { holdsMinifig, holdsPart } = require('./helpers/bestand');
 
 // Dieselbe Begruendung wie in test/sets-ohne-kaufpreisspalte-db.test.js: Diese
 // Datei baut die Datenbank mehrfach von null auf.
@@ -34,7 +34,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-const spaltenVon = async tabelle =>
+const columnsOf = async tabelle =>
   (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
     .map(r => r.column_name)
     .sort();
@@ -65,7 +65,7 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr', { conc
     client.release();
   }
 
-  const nachher = await spaltenVon('parts');
+  const nachher = await columnsOf('parts');
   for (const sp of ['unit_price', 'purchase_price', 'condition']) {
     assert.ok(
       !nachher.includes(sp),
@@ -81,9 +81,9 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr', { conc
     assert.ok(nachher.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);
   }
 
-  const figsNachher = await spaltenVon('minifigs');
+  const figsAfter = await columnsOf('minifigs');
   for (const sp of ['unit_price', 'purchase_price', 'condition']) {
-    assert.ok(!figsNachher.includes(sp), `minifigs.${sp} ist nach allen Migrationen noch da`);
+    assert.ok(!figsAfter.includes(sp), `minifigs.${sp} ist nach allen Migrationen noch da`);
   }
 
   // Nicht verschwunden, sondern umgezogen.
@@ -91,7 +91,7 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr', { conc
     ['part_acquisitions', ['user_id', 'part_number', 'color_id', 'quantity', 'unit_price', 'condition', 'created_at']],
     ['minifig_acquisitions', ['user_id', 'fig_number', 'quantity', 'unit_price', 'condition', 'created_at']],
   ]) {
-    const vorhanden = await spaltenVon(tab);
+    const vorhanden = await columnsOf(tab);
     for (const sp of spalten) {
       assert.ok(vorhanden.includes(sp), `${tab}.${sp} fehlt — dann gibt es den Kaufpreis nirgends mehr`);
     }
@@ -121,10 +121,10 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung', { concur
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ('fig-5','Testfigur')
                 ON CONFLICT (fig_number) DO NOTHING`);
   // Nur die Bestandszeilen, ohne Menge: Die beiden Erfassungen weiter unten
-  // tragen sie (Migration 0038). haeltTeil() mit menge 0 legt deshalb keine
+  // tragen sie (Migration 0038). holdsPart() mit menge 0 legt deshalb keine
   // eigene Erfassung an — die Tagesregel liesse daneben keine zweite zu.
-  await haeltTeil(db, uid, '3002', { menge: 0, colorId: 1 });
-  await haeltFigur(db, uid, 'fig-5', { menge: 0 });
+  await holdsPart(db, uid, '3002', { menge: 0, colorId: 1 });
+  await holdsMinifig(db, uid, 'fig-5', { menge: 0 });
 
   // ZWEI Erfassungen, verschiedene Tage und Zustaende. Die neuere ist die, die
   // als „der Preis dieses Teils" angezeigt werden muss — die aeltere darf ihn
@@ -168,22 +168,22 @@ test('die Listen liefern Preis und Zustand aus der neuesten Erfassung', { concur
                 ON CONFLICT (part_number) DO NOTHING`);
   // Menge 0 fuer die Bestandszeile, die Erfassung kommt darunter mit
   // AUSDRUECKLICH leerem Preis — das ist die Aussage dieses Falls.
-  await haeltTeil(db, uid, '3003', { menge: 0, colorId: 0 });
+  await holdsPart(db, uid, '3003', { menge: 0, colorId: 0 });
   await db.run(
     `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
                 VALUES ($1,'3003',0,1,NULL,'N')`,
     [uid],
   );
   const teile2 = await H.manualPartsList([uid], uid);
-  const ohnePreis = (Array.isArray(teile2) ? teile2 : teile2.parts || []).find(p => p.part_number === '3003');
-  assert.ok(ohnePreis, 'Das Teil ohne Preis fehlt in der Antwort');
+  const withoutPrice = (Array.isArray(teile2) ? teile2 : teile2.parts || []).find(p => p.part_number === '3003');
+  assert.ok(withoutPrice, 'Das Teil ohne Preis fehlt in der Antwort');
   assert.equal(
-    ohnePreis.unit_price,
+    withoutPrice.unit_price,
     null,
     'Ohne Preis muss unit_price leer sein — das ist die Aussage „nichts eingegeben"',
   );
   assert.equal(
-    Number(ohnePreis.purchase_price),
+    Number(withoutPrice.purchase_price),
     0,
     'Der Anzeigewert muss 0 sein, nicht leer — siehe src/finanzen/preisRegel.ts',
   );

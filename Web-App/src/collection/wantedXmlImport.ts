@@ -1,20 +1,20 @@
 /** Der Wanted-XML-Import als Auftrag: Er legt Teile, Figuren und Sets an und
  * fragt auf Wunsch Rebrickable — beides gehört nicht in den Web-Prozess. */
-import type { Nutzlast, AuftragsKontext } from '../auftraege';
+import type { Nutzlast, JobContext } from '../auftraege';
 import { logAndContinue } from '../infra/fehler';
 import type { CollectionContext } from './context';
 
-export type WantedXmlEingabe = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];
+export type WantedXmlInput = Extract<Nutzlast<'csv_import'>, { quelle: 'wanted_xml' }>['eingabe'];
 
-async function importiereWantedXml(
+async function importWantedXml(
   kx: CollectionContext,
   uid: number,
-  e: WantedXmlEingabe,
-  k: AuftragsKontext,
+  e: WantedXmlInput,
+  k: JobContext,
 ): Promise<Record<string, unknown>> {
   // Zwei Merker: angefragt (für die Kette) und laufend (für den Abbruch).
-  let auftragAngefragt = false;
-  let auftragLaeuft = false;
+  let jobRequested = false;
+  let jobRunning = false;
   // Über eine Kette, weil der Rückruf synchron ist und das Schreiben nicht;
   // sonst stünde im Balken eine kleinere Zahl nach einer grösseren.
   let kette: Promise<unknown> = Promise.resolve();
@@ -23,68 +23,68 @@ async function importiereWantedXml(
     kette = kette.then(schritt).catch(logAndContinue(wo));
   };
   // Erst die Kette abwarten, dann schliessen: Sonst stünde der Balken anderswo noch auf „läuft".
-  const schliesseBalken = async (
+  const closeBar = async (
     angaben: Parameters<CollectionContext['auftraege']['beendeAuftrag']>[1],
     zeilen?: Parameters<CollectionContext['auftraege']['beendeAuftrag']>[2],
   ) => {
     await kette;
-    if (auftragLaeuft)
+    if (jobRunning)
       await kx.auftraege.beendeAuftrag(uid, angaben, zeilen).catch(logAndContinue('wanted-import:auftrag-ende'));
   };
   let zuletzt = 0,
-    letztePhase = '';
-  const anDenBalken = (stand: { fertig: number; gesamt: number }, unbedingt = false) => {
-    if (!auftragLaeuft) return;
+    lastPhase = '';
+  const anDenBar = (stand: { fertig: number; gesamt: number }, unbedingt = false) => {
+    if (!jobRunning) return;
     danach('wanted-import:auftrag', () =>
-      kx.auftraege.meldeAuftrag(uid, { done: stand.fertig, total: stand.gesamt }, unbedingt),
+      kx.auftraege.reportJob(uid, { done: stand.fertig, total: stand.gesamt }, unbedingt),
     );
   };
   try {
     const bericht = await kx.wanted.importWantedList(uid, e.xml, {
       vorschau: !e.schreiben,
-      ueberRebrickable: e.ueberRebrickable,
+      viaRebrickable: e.viaRebrickable,
       ...(e.korrekturen ? { korrekturen: e.korrekturen } : {}),
       // Eine Korrektur des Kontos gilt nur für dieses; gemeinsam nur, was Rebrickable bestätigt hat.
-      merkeNummer: (art, rbId, blId, quelle) =>
+      rememberNumber: (art, rbId, blId, quelle) =>
         quelle === 'korrigiert'
-          ? kx.katalog.merkeEigeneBlNummer(uid, art, rbId, blId)
-          : kx.katalog.merkeBlNummer(art, rbId, blId),
+          ? kx.katalog.rememberOwnBlNumber(uid, art, rbId, blId)
+          : kx.katalog.rememberBlNumber(art, rbId, blId),
       fortschritt: stand => {
         // Der Stand reist über den Auftrag zur wartenden Anfrage (und deren Strom);
         // höchstens fünfmal je Sekunde, der letzte jeder Phase immer.
         const jetzt = kx.uhr.jetzt();
-        if (jetzt - zuletzt >= 200 || stand.fertig === stand.gesamt || stand.phase !== letztePhase) {
+        if (jetzt - zuletzt >= 200 || stand.fertig === stand.gesamt || stand.phase !== lastPhase) {
           zuletzt = jetzt;
-          letztePhase = stand.phase;
+          lastPhase = stand.phase;
           const f = { ...stand, erledigt: stand.fertig };
           danach('wanted-import:stand', () => k.fortschritt(f));
         }
         // Beim ERSTEN Schreib-Fortschritt angelegt: Vorher ist der Nenner nicht bekannt.
-        if (e.schreiben && !auftragAngefragt && stand.phase === 'schreiben') {
-          auftragAngefragt = true;
+        if (e.schreiben && !jobRequested && stand.phase === 'schreiben') {
+          jobRequested = true;
           danach('wanted-import:auftrag', async () => {
-            auftragLaeuft = await kx.auftraege.starteAuftrag(uid, { total: stand.gesamt, current: e.dateiName });
+            jobRunning = await kx.auftraege.startJob(uid, { total: stand.gesamt, current: e.fileName });
           });
         }
-        anDenBalken(stand);
+        anDenBar(stand);
       },
-      ...(e.schreiben ? { abbruch: async () => auftragLaeuft && (await kx.auftraege.istAbgebrochen(uid)) } : {}),
-      anleger: {
+      ...(e.schreiben ? { abbruch: async () => jobRunning && (await kx.auftraege.isAborted(uid)) } : {}),
+      creator: {
         teil: (u, body) => kx.parts.addManualPart(u, body),
         figur: (u, body) => kx.minifigs.addManualMinifig(u, body),
         // Kaufpreis ist MAXPRICE aus der Datei.
         set: (u, sn, menge, zustand, kaufpreis) =>
           kx.sets.setErfassen({
-            anfragender: u,
+            requester: u,
             setNumber: sn,
             menge,
             kaufpreis,
             zustand,
-            wennVorhanden: 'aufstocken',
+            ifPresent: 'aufstocken',
           }),
       },
     });
-    await schliesseBalken(
+    await closeBar(
       {
         ok: bericht.angelegt + bericht.aufgestockt,
         // Offene Posten sind eine Anmerkung (⚠), weder angelegt noch gescheitert.
@@ -105,9 +105,9 @@ async function importiereWantedXml(
   } catch (f) {
     // Der Balken MUSS zu sein, auch nach einem Fehler, sonst zeigte er überall
     // einen Import, den es nicht mehr gibt.
-    await schliesseBalken({ ok: 0, fehler: 0, done: 0, abgebrochen: true });
+    await closeBar({ ok: 0, fehler: 0, done: 0, abgebrochen: true });
     throw f;
   }
 }
 
-export { importiereWantedXml };
+export { importWantedXml };

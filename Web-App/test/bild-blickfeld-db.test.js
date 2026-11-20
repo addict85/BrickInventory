@@ -5,19 +5,19 @@
  * zu Migration 0105). Gefragt wird der echte Server mit echten Dateien unter data/.
  *
  * Gegenproben (01.11.2026 gemessen, A und E am 10.11.2026 neu):
- *   A  bildFreigegeben() prüft sets/ wieder gegen das Blickfeld
- *      (`imBlickfeld(uid, stamm, 'nummern')`) → rot: „Set-Bilder gehen an jedes
+ *   A  imageReleased() prüft sets/ wieder gegen das Blickfeld
+ *      (`inScope(uid, stamm, 'nummern')`) → rot: „Set-Bilder gehen an jedes
  *      angemeldete Konto“ (404 statt 200)
- *   B  anleitungFreigegeben() in routes/datenDateien.ts entfernt → rot:
+ *   B  instructionReleased() in routes/datenDateien.ts entfernt → rot:
  *      „Anleitungen nur zu eigenen Sets“ (200 statt 404)
- *   C  bildFreigegeben() lässt nur sets/ durch (Teile wie Sets geprüft) → rot:
+ *   C  imageReleased() lässt nur sets/ durch (Teile wie Sets geprüft) → rot:
  *      „Teilebilder sind Katalog“ (404)
- *   D  blickfeldIds() durch [uid] ersetzt → rot: „Anleitungen nur zu eigenen Sets“
- *   E  in setInfoFuerKonto() (src/sets/inhalt.ts) image_local für Sets ausserhalb
+ *   D  scopeIds() durch [uid] ersetzt → rot: „Anleitungen nur zu eigenen Sets“
+ *   E  in setInfoForAccount() (src/sets/inhalt.ts) image_local für Sets ausserhalb
  *      des Blickfelds wieder auf null → rot: „die API nennt das lokale Bild jedes Sets“
- *   F  beiHaushaltsaenderung() in bildBlickfeld.ts nicht aufgerufen (60 s
+ *   F  atHouseholdChange() in bildBlickfeld.ts nicht aufgerufen (60 s
  *      Treffer-Frist bleibt) → rot: „nach dem Lösen der Verknüpfung …“ (200 statt 404)
- *   G  (08.11.2026) liefereBild ohne die 401-Zeile bzw. mit `public` statt
+ *   G  (08.11.2026) deliverImage ohne die 401-Zeile bzw. mit `public` statt
  *      `private` → rot: „ohne Anmeldung kein Bild …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -32,23 +32,23 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { katalogSet } = require('./helpers/bestand');
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { catalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { warte } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
-const freierPort = () =>
+const { portOf } = require('./helpers/server');
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
 
 const P = process.pid;
-const SN = { unter: `BBU${P}-1`, fremd: `BBF${P}-1`, gemerkt: `BBW${P}-1`, keins: `BBX${P}-1` };
+const SN = { unter: `BBU${P}-1`, fremd: `BBF${P}-1`, gemerkt: `BBW${P}-1`, none: `BBX${P}-1` };
 const TEIL = `BBT${P}_0.png`;
 const DATEN = path.join(ROOT, 'data');
 const DATEIEN = [
@@ -63,7 +63,7 @@ const DATEIEN = [
 ].map(([o, n]) => path.join(DATEN, o, n));
 
 test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const namen = ['bb_haupt', 'bb_unter', 'bb_fremd'].map(n => `${n}_${P}`);
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -86,7 +86,7 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     SN.fremd,
   ]);
   await db.run('INSERT INTO wanted (user_id, set_number) VALUES ($1, $2)', [ids[0], SN.gemerkt]);
-  for (const sn of [SN.unter, SN.fremd]) await katalogSet(db, sn, { name: sn, image_local: `/images/sets/${sn}.jpg` });
+  for (const sn of [SN.unter, SN.fremd]) await catalogSet(db, sn, { name: sn, image_local: `/images/sets/${sn}.jpg` });
   for (const f of DATEIEN) {
     fs.mkdirSync(path.dirname(f), { recursive: true });
     fs.writeFileSync(f, `Inhalt ${path.basename(f)}`);
@@ -98,7 +98,7 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     ['unter', ids[1]],
     ['fremd', ids[2]],
   ])
-    token[k] = await auth.tokenAnlegen(id, 'Prüfung', true);
+    token[k] = await auth.createToken(id, 'Prüfung', true);
   t.after(async () => {
     for (const f of DATEIEN) fs.rmSync(f, { force: true });
     await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[SN.unter, SN.fremd]]).catch(() => {});
@@ -106,7 +106,7 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     await db.pool.end().catch(() => {});
   });
 
-  const port = await freierPort();
+  const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -178,7 +178,7 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
       assert.deepEqual(r, { status: 200, text: `Inhalt ${sn}.jpg` }, `${wer} → ${sn}`);
     }
     assert.equal((await hole('fremd', bild(SN.unter, '_thumb'))).status, 200);
-    assert.equal((await hole('haupt', bild(SN.keins))).status, 404, 'eine fehlende Datei bleibt 404');
+    assert.equal((await hole('haupt', bild(SN.none))).status, 404, 'eine fehlende Datei bleibt 404');
   });
 
   await t.test('Teilebilder sind Katalog', async () => {
@@ -190,7 +190,7 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     assert.equal((await hole('fremd', `/data/instructions/${SN.fremd}_1.pdf`)).status, 200);
     const fremd = await hole('haupt', `/data/instructions/${SN.fremd}_1.pdf`);
     assert.equal(fremd.status, 404);
-    assert.deepEqual(fremd, await hole('haupt', `/data/instructions/${SN.keins}_1.pdf`));
+    assert.deepEqual(fremd, await hole('haupt', `/data/instructions/${SN.none}_1.pdf`));
     assert.equal(
       (await hole('haupt', `/data/instructions/${SN.gemerkt}_bdp.pdf`)).status,
       404,

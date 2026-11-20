@@ -3,32 +3,32 @@ import crypto from 'node:crypto';
 import * as V from '../infra/validate';
 import * as repo from './repository/zugaenge';
 import type { TokenScope } from './repository/zugaenge';
-import { hinweisNebenher } from './kontoHinweis';
-import { zaehleFehlversuch, zuVieleFehlversuche } from './tokenFehlversuche';
-import { imSystemkontext } from '../infra/kontoKontext';
+import { hintInBackground } from './kontoHinweis';
+import { countFailedAttempt, toManyFailedAttempts } from './tokenFehlversuche';
+import { inSystemContext } from '../infra/kontoKontext';
 import {
   cacheStand,
-  tokenAusCache,
-  merkeEintrag,
-  vergissEintrag,
-  tokenVergessen,
-  leereTokenCache,
-  type CacheEintrag,
-  type TokenBenutzer,
+  tokenFromCache,
+  rememberEntry,
+  forgetEntry,
+  tokenForgotten,
+  emptyTokenCache,
+  type CacheEntry,
+  type TokenUser,
 } from './tokenCache';
-import type { KontoKontext } from './kontext';
-import { meldeFehler } from '../infra/fehler';
+import type { AccountContext } from './kontext';
+import { reportError } from '../infra/fehler';
 import { fachfehler } from '../infra/fehlerTexte';
 import { versuche } from '../infra/ergebnis';
 
-export type { TokenScope, TokenBenutzer };
+export type { TokenScope, TokenUser };
 
 /** Ob die Kennung (Präfix des gespeicherten Hashs) zum Token der Anfrage gehört. */
-export function eigenerZugang(token: string | null, kennung: string): boolean {
-  return !!token && tokenAbdruck(token).startsWith(kennung);
+export function ownAccess(token: string | null, kennung: string): boolean {
+  return !!token && tokenDigest(token).startsWith(kennung);
 }
 
-export function tokenAbdruck(token: string): string {
+export function tokenDigest(token: string): string {
   return crypto.createHash('sha256').update(token).digest('hex');
 }
 
@@ -40,32 +40,32 @@ const TAG_MS = 86_400_000;
 /** Ab 30 Tagen meldet jede Antwort die Rotation; ein unbegrenzter Token gilt
  * nach 60 Tagen nur noch für den Tausch — so stirbt eine gestohlene Kopie,
  * sobald das echte Gerät tauscht, und ein Gerät, das nie tauscht, fällt auf. */
-export const ROTATION_FAELLIG_TAGE = 30;
-export const ROTATION_PFLICHT_TAGE = 60;
+export const ROTATION_DUE_DAYS = 30;
+export const ROTATION_REQUIRED_DAYS = 60;
 /** Falls die Antwort des Tauschs verloren geht. */
-export const UEBERLAPPUNG_MS = 5 * 60 * 1000;
+export const OVERLAP_MS = 5 * 60 * 1000;
 /** So lange nach dem Ende der Überlappung gilt ein alter Token als Nachzügler, nicht als Kopie. */
-export const WIEDERVERWENDUNG_SCHONFRIST_S = 60;
+export const REUSE_GRACE_PERIOD_S = 60;
 
 /** `null` heisst „unbegrenzt", nicht „sofort abgelaufen". */
-function fristErreicht(zeitpunkt: string | Date | null | undefined, jetzt: number): boolean {
+function deadlineReached(zeitpunkt: string | Date | null | undefined, jetzt: number): boolean {
   return !!zeitpunkt && new Date(zeitpunkt).getTime() <= jetzt;
 }
 
-const tageSeit = (zeitpunkt: string | Date | null | undefined, jetzt: number): number =>
+const daysSince = (zeitpunkt: string | Date | null | undefined, jetzt: number): number =>
   zeitpunkt ? (jetzt - new Date(zeitpunkt).getTime()) / TAG_MS : 0;
 
-export function rotationFaellig(u: TokenBenutzer, jetzt = Date.now()): boolean {
-  return tageSeit(u.rotated_at, jetzt) >= ROTATION_FAELLIG_TAGE;
+export function rotationDue(u: TokenUser, jetzt = Date.now()): boolean {
+  return daysSince(u.rotated_at, jetzt) >= ROTATION_DUE_DAYS;
 }
 
-export function rotationPflicht(u: TokenBenutzer, jetzt = Date.now()): boolean {
-  return u.never_expires === true && tageSeit(u.rotated_at, jetzt) >= ROTATION_PFLICHT_TAGE;
+export function rotationRequired(u: TokenUser, jetzt = Date.now()): boolean {
+  return u.never_expires === true && daysSince(u.rotated_at, jetzt) >= ROTATION_REQUIRED_DAYS;
 }
 
 /** /24 bzw. /48: genug, um ein fremdes Netz zu erkennen; die genaue Adresse
  * wird nicht gespeichert. */
-export function ipBereich(ip: string | null | undefined): string | null {
+export function ipArea(ip: string | null | undefined): string | null {
   if (!ip) return null;
   const v4 = /^(?:::ffff:)?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/i.exec(ip);
   if (v4) return `${v4[1]}.${v4[2]}.${v4[3]}.0/24`;
@@ -81,36 +81,36 @@ export function ipBereich(ip: string | null | undefined): string | null {
     .join(':')}::/48`;
 }
 
-export interface TokenPruefung {
-  nutzer: TokenBenutzer | null;
+export interface TokenCheck {
+  nutzer: TokenUser | null;
   grund?: 'token_rotation_noetig' | 'zu_viele_anfragen';
 }
 
 /** `zweck: 'rotation'` lässt einen unbegrenzten Token auch nach der
  * Pflichtfrist durch — nur für den Tausch selbst. */
 /** Für den Strom: lebt der Zugang noch? Gefragt wird mit dem Klartext, der Hash bleibt im Konto. */
-export async function tokenGilt(k: KontoKontext, klartext: string): Promise<boolean> {
-  return !!(await k.zugaenge.gueltigerToken(tokenAbdruck(klartext)));
+export async function tokenGilt(k: AccountContext, klartext: string): Promise<boolean> {
+  return !!(await k.zugaenge.validToken(tokenDigest(klartext)));
 }
 
 export async function pruefeToken(
-  k: KontoKontext,
+  k: AccountContext,
   token: string | null | undefined,
   o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {},
-): Promise<TokenPruefung> {
+): Promise<TokenCheck> {
   if (!token) return { nutzer: null };
   const now = k.uhr.jetzt();
-  const ergebnis = (u: TokenBenutzer): TokenPruefung =>
-    o.zweck !== 'rotation' && rotationPflicht(u, now)
+  const ergebnis = (u: TokenUser): TokenCheck =>
+    o.zweck !== 'rotation' && rotationRequired(u, now)
       ? { nutzer: null, grund: 'token_rotation_noetig' }
       : { nutzer: u };
 
   const stand = cacheStand(k);
-  const hit = tokenAusCache(k, token, stand, now);
+  const hit = tokenFromCache(k, token, stand, now);
   if (hit) {
     // Beide Fristen auch hier: Dieser Zweig fragt die Datenbank nicht.
-    if (fristErreicht(hit.user.expires_at, now) || fristErreicht(hit.user.hard_expires_at, now)) {
-      vergissEintrag(k, token);
+    if (deadlineReached(hit.user.expires_at, now) || deadlineReached(hit.user.hard_expires_at, now)) {
+      forgetEntry(k, token);
       return { nutzer: null };
     }
     _touchLastUsed(k, hit, o.ip);
@@ -118,67 +118,67 @@ export async function pruefeToken(
   }
 
   // Erst nach dem Cache: Wer einen gültigen Token im Cache hat, wird nie gebremst.
-  if (zuVieleFehlversuche(o.ip)) return { nutzer: null, grund: 'zu_viele_anfragen' };
-  const hashed = tokenAbdruck(token);
-  const row: TokenBenutzer | undefined = await k.zugaenge.gueltigerToken(hashed);
+  if (toManyFailedAttempts(o.ip)) return { nutzer: null, grund: 'zu_viele_anfragen' };
+  const hashed = tokenDigest(token);
+  const row: TokenUser | undefined = await k.zugaenge.validToken(hashed);
   if (!row) {
-    vergissEintrag(k, token);
-    if (!(await meldeWiederverwendung(k, hashed))) await zaehleFehlversuch(k, o.ip);
+    forgetEntry(k, token);
+    if (!(await reportReuse(k, hashed))) await countFailedAttempt(k, o.ip);
     return { nutzer: null };
   }
   // Verwalterrecht nur mit Scope `voll`, an dieser einen Stelle entschieden,
   // damit alle Wächter es gleich sehen.
   row.is_admin = row.konto_is_admin === true && row.scope === 'voll';
   if (row.previous_token) {
-    await k.zugaenge.beendeUeberlappung(row.previous_token, hashed);
+    await k.zugaenge.endOverlap(row.previous_token, hashed);
     row.previous_token = null;
-    leereTokenCache(k);
+    emptyTokenCache(k);
   }
 
-  const entry: CacheEintrag = { user: row, cachedAt: now, dbKey: hashed };
-  merkeEintrag(k, token, entry, stand);
+  const entry: CacheEntry = { user: row, cachedAt: now, dbKey: hashed };
+  rememberEntry(k, token, entry, stand);
   _touchLastUsed(k, entry, o.ip);
   return ergebnis(row);
 }
 
 /** Ein ersetzter Token kam nach der Schonfrist wieder: Familie sperren, Inhaber benachrichtigen. */
-async function meldeWiederverwendung(k: KontoKontext, hash: string): Promise<boolean> {
-  const z = await k.zugaenge.sperreFamilie(hash, WIEDERVERWENDUNG_SCHONFRIST_S);
+async function reportReuse(k: AccountContext, hash: string): Promise<boolean> {
+  const z = await k.zugaenge.lockFamily(hash, REUSE_GRACE_PERIOD_S);
   if (!z) return false;
-  leereTokenCache(k);
+  emptyTokenCache(k);
   console.warn(`[tokens] ersetzter Token erneut benutzt — Familie von Konto ${z.user_id} gesperrt`);
-  hinweisNebenher(k, z.user_id, 'token_wiederverwendet', z.label ?? undefined);
+  hintInBackground(k, z.user_id, 'token_wiederverwendet', z.label ?? undefined);
   return true;
 }
 
 export async function nutzerZumToken(
-  k: KontoKontext,
+  k: AccountContext,
   token: string | null | undefined,
   o: { ip?: string | null | undefined; zweck?: 'nutzung' | 'rotation' } = {},
-): Promise<TokenBenutzer | null> {
+): Promise<TokenUser | null> {
   return (await pruefeToken(k, token, o)).nutzer;
 }
 
 /** Höchstens einmal je Tag und Token, ohne den Anfrageweg aufzuhalten. Die
  * Entscheidung fällt am gelesenen Datensatz, damit sie über mehrere Worker
  * gilt; die WHERE-Klausel fängt den Wettlauf. */
-function _touchLastUsed(k: KontoKontext, entry: CacheEintrag, ip?: string | null): void {
+function _touchLastUsed(k: AccountContext, entry: CacheEntry, ip?: string | null): void {
   const jetzt = k.uhr.jetzt();
   const u = entry.user;
   const zuletzt = u.last_used ? new Date(u.last_used).getTime() : 0;
-  const ziel = jetzt + k.konfig.tokenLeerlaufTage * TAG_MS;
-  const fristHinkt = u.sliding === true && !!u.expires_at && new Date(u.expires_at).getTime() < ziel - TAG_MS;
-  if ((jetzt - zuletzt < TAG_MS && !fristHinkt) || entry.schreibt) return;
+  const ziel = jetzt + k.konfig.tokenIdleDays * TAG_MS;
+  const deadlineLags = u.sliding === true && !!u.expires_at && new Date(u.expires_at).getTime() < ziel - TAG_MS;
+  if ((jetzt - zuletzt < TAG_MS && !deadlineLags) || entry.schreibt) return;
   entry.schreibt = true;
   void k.zugaenge
-    .beruehreToken(entry.dbKey, k.konfig.tokenLeerlaufTage, ipBereich(ip))
+    .touchToken(entry.dbKey, k.konfig.tokenIdleDays, ipArea(ip))
     .then(() => {
       // Den Cache mitziehen, sonst wiese der Treffer-Zweig einen gerade
       // erneuerten Token am alten Fristende einmal ab.
       u.last_used = new Date(jetzt);
-      if (fristHinkt || (u.sliding === true && u.expires_at)) u.expires_at = new Date(ziel);
+      if (deadlineLags || (u.sliding === true && u.expires_at)) u.expires_at = new Date(ziel);
     })
-    .catch((e: unknown) => meldeFehler('token:last_used schreiben', e))
+    .catch((e: unknown) => reportError('token:last_used schreiben', e))
     .finally(() => {
       entry.schreibt = false;
     });
@@ -191,29 +191,29 @@ export function escapeLike(s: unknown): string {
 
 /** 0, weil null schon „nichts gewählt, Gleitfrist" heisst und beide mit der
  * Nonce in einem Feld reisen. */
-export const UNBEGRENZT = 0;
+export const UNLIMITED = 0;
 
 /** „unbegrenzt" ist nicht die Vorgabe: Es nimmt die einzige selbsttätige
  * Reissleine für ein verlorenes Gerät weg. */
-const TOKEN_LAUFZEITEN: Record<string, number> = {
+const TOKEN_RUNTIMES: Record<string, number> = {
   '1m': 30,
   '2m': 60,
   '6m': 180,
   '12m': 365,
-  unbegrenzt: UNBEGRENZT,
+  unbegrenzt: UNLIMITED,
 };
 
 /** Die Wahlen, die der QR-Dialog anbieten darf. */
-export const LAUFZEIT_WAHLEN: readonly string[] = Object.freeze(Object.keys(TOKEN_LAUFZEITEN));
+export const RUNTIME_CHOICES: readonly string[] = Object.freeze(Object.keys(TOKEN_RUNTIMES));
 
-/** ausTabelle statt direktem Zugriff: 'constructor' lieferte sonst eine geerbte Funktion.
+/** fromTable statt direktem Zugriff: 'constructor' lieferte sonst eine geerbte Funktion.
  * @returns Tage, oder null für „keine feste Frist" */
-export function laufzeitTage(wahl: unknown): number | null {
+export function runtimeDays(wahl: unknown): number | null {
   if (wahl === undefined || wahl === null || wahl === '') return null;
-  return V.ausTabelle(TOKEN_LAUFZEITEN, String(wahl)) ?? null;
+  return V.fromTable(TOKEN_RUNTIMES, String(wahl)) ?? null;
 }
 
-export interface TokenOptionen {
+export interface TokenOptions {
   /** Vorgabe `app`: Verwalterrechte gibt es nur auf ausdrücklichen Wunsch. */
   scope?: TokenScope;
   ip?: string | null | undefined;
@@ -221,32 +221,32 @@ export interface TokenOptionen {
 
 /** Je Konto und Art (Sitzung, Token): Anmelden darf die Tabellen nicht beliebig füllen.
  * Es fällt der am längsten unbenutzte Zugang. */
-export const ZUGAENGE_HOECHSTENS = 50;
+export const ACCESSES_AT_MOST = 50;
 
 /** @param dauerhaft  true = Gerätezugang mit Gleitfrist; false = sieben feste
  *                   Tage — Benutzung durch einen Angreifer soll ihn nicht verlängern.
- * @param festeTage  `UNBEGRENZT` (0) = ohne Ablauf, nur über HTTPS und mit Rotationspflicht. */
-export async function tokenAnlegen(
-  k: KontoKontext,
+ * @param fixedDays  `UNLIMITED` (0) = ohne Ablauf, nur über HTTPS und mit Rotationspflicht. */
+export async function createToken(
+  k: AccountContext,
   userId: number,
   label = 'Android App',
   dauerhaft = false,
-  festeTage: number | null = null,
-  o: TokenOptionen = {},
+  fixedDays: number | null = null,
+  o: TokenOptions = {},
 ): Promise<string> {
   const token = crypto.randomBytes(32).toString('hex');
-  const hash = tokenAbdruck(token);
-  await k.zugaenge.legeTokenAn({
+  const hash = tokenDigest(token);
+  await k.zugaenge.putTokenAn({
     hash,
     userId,
     label,
     scope: o.scope === 'voll' ? 'voll' : 'app',
-    bereich: ipBereich(o.ip),
-    art: !dauerhaft ? 'kurz' : festeTage === UNBEGRENZT ? 'unbegrenzt' : 'gleitend',
-    leerlaufTage: k.konfig.tokenLeerlaufTage,
-    festeTage: festeTage && festeTage > 0 ? festeTage : null,
+    bereich: ipArea(o.ip),
+    art: !dauerhaft ? 'kurz' : fixedDays === UNLIMITED ? 'unbegrenzt' : 'gleitend',
+    idleDays: k.konfig.tokenIdleDays,
+    fixedDays: fixedDays && fixedDays > 0 ? fixedDays : null,
   });
-  if (await k.zugaenge.kappeTokens(userId, hash, ZUGAENGE_HOECHSTENS - 1)) leereTokenCache(k);
+  if (await k.zugaenge.capTokens(userId, hash, ACCESSES_AT_MOST - 1)) emptyTokenCache(k);
   return token;
 }
 
@@ -261,31 +261,31 @@ export interface Tausch {
 }
 
 /** Ein zweiter Tausch so kurz danach ist gleichzeitig (409), keine verlorene Antwort. */
-export const TAUSCH_SPERRE_S = 30;
+export const SWAP_LOCK_S = 30;
 
-/** Der alte gilt danach höchstens UEBERLAPPUNG_MS. Ein zweiter Tausch ersetzt den unbenutzten
- * Nachfolger nur aus demselben Netz (sonst Kopie: Familie endet) und erst nach TAUSCH_SPERRE_S. */
-export async function rotiereToken(kx: KontoKontext, alt: string, ip?: string | null): Promise<Tausch | null> {
-  const altHash = tokenAbdruck(alt);
+/** Der alte gilt danach höchstens OVERLAP_MS. Ein zweiter Tausch ersetzt den unbenutzten
+ * Nachfolger nur aus demselben Netz (sonst Kopie: Familie endet) und erst nach SWAP_LOCK_S. */
+export async function rotateToken(kx: AccountContext, alt: string, ip?: string | null): Promise<Tausch | null> {
+  const altHash = tokenDigest(alt);
   const neu = crypto.randomBytes(32).toString('hex');
-  const neuHash = tokenAbdruck(neu);
+  const newHash = tokenDigest(neu);
   let kopie: { user_id: number; label: string | null } | null = null;
   // Der Tausch kommt ohne Sitzung: Der alte Token ist der einzige Ausweis.
-  const ergebnis = await imSystemkontext('tokentausch', () =>
+  const ergebnis = await inSystemContext('tokentausch', () =>
     kx.transaktion(async t => {
-      const z = await repo.tauschQuelleSperren(t.db, altHash);
+      const z = await repo.lockSwapSource(t.db, altHash);
       if (!z) return null;
-      const offen = z.replaced_by ? await repo.unbenutzterNachfolger(t.db, z.replaced_by, altHash) : undefined;
-      const bereich = ipBereich(ip);
+      const offen = z.replaced_by ? await repo.unusedSuccessor(t.db, z.replaced_by, altHash) : undefined;
+      const bereich = ipArea(ip);
       if (offen?.ip_range && bereich && offen.ip_range !== bereich) {
-        await repo.loescheFamilie(t.db, z.user_id, z.created_at);
+        await repo.deleteFamily(t.db, z.user_id, z.created_at);
         kopie = { user_id: z.user_id, label: z.label };
         return null;
       }
-      if (offen && offen.alter_s < TAUSCH_SPERRE_S) return 'laeuft' as const;
-      if (z.replaced_by) await repo.loescheUnbenutztenNachfolger(t.db, z.replaced_by, altHash);
-      const zeile = await repo.legeNachfolgerAn(t.db, neuHash, altHash, z, t.konfig.tokenLeerlaufTage, ipBereich(ip));
-      const vorher = await repo.befristeVorgaenger(t.db, altHash, neuHash, UEBERLAPPUNG_MS / 1000);
+      if (offen && offen.alter_s < SWAP_LOCK_S) return 'laeuft' as const;
+      if (z.replaced_by) await repo.deleteUnusedSuccessor(t.db, z.replaced_by, altHash);
+      const zeile = await repo.putSuccessorAn(t.db, newHash, altHash, z, t.konfig.tokenIdleDays, ipArea(ip));
+      const vorher = await repo.limitTimePredecessor(t.db, altHash, newHash, OVERLAP_MS / 1000);
       return {
         token: neu,
         scope: z.scope,
@@ -297,47 +297,45 @@ export async function rotiereToken(kx: KontoKontext, alt: string, ip?: string | 
       };
     }),
   );
-  if (ergebnis || kopie) leereTokenCache(kx);
+  if (ergebnis || kopie) emptyTokenCache(kx);
   if (kopie) {
     const k: { user_id: number; label: string | null } = kopie;
     console.warn(`[tokens] zweiter Tausch aus einem anderen Netz — Familie von Konto ${k.user_id} gesperrt`);
-    hinweisNebenher(kx, k.user_id, 'token_wiederverwendet', k.label ?? undefined);
+    hintInBackground(kx, k.user_id, 'token_wiederverwendet', k.label ?? undefined);
   }
   if (ergebnis === 'laeuft') fachfehler('konflikt', 'tausch_laeuft');
   return ergebnis;
 }
 
-export async function tokenLoeschen(k: KontoKontext, token: string): Promise<void> {
+export async function tokenLoeschen(k: AccountContext, token: string): Promise<void> {
   if (!token) return;
-  await k.zugaenge.loescheToken(tokenAbdruck(token));
-  tokenVergessen(k, token);
+  await k.zugaenge.loescheToken(tokenDigest(token));
+  tokenForgotten(k, token);
 }
 
 /** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer
  * Erfolg, während die alten Tokens weitergelten. */
-export async function alleTokensWiderrufen(k: KontoKontext, userId: number): Promise<void> {
-  await k.zugaenge.loescheTokensDesKontos(userId);
-  leereTokenCache(k);
+export async function revokeAllTokens(k: AccountContext, userId: number): Promise<void> {
+  await k.zugaenge.deleteTokensOfAccount(userId);
+  emptyTokenCache(k);
 }
 
 /** Altzeilen bekommen zuerst ihre Gleitfrist, damit sie fallen wie neue. Jeder Schritt
  * läuft; scheitert einer, wirft der Lauf danach, und das Aufräumen wiederholt ihn. */
-export async function tokensAufraeumen(k: KontoKontext) {
+export async function tokensCleanup(k: AccountContext) {
   const ohne: string[] = [];
-  const schritt = async (was: string, arbeit: () => Promise<number>) => {
-    const r = await versuche(`tokens:${was}`, arbeit);
+  const schritt = async (was: string, work: () => Promise<number>) => {
+    const r = await versuche(`tokens:${was}`, work);
     if (!r.ok) ohne.push(was);
     return r.ok ? r.wert : 0;
   };
-  const m = await schritt('Altzeilen nachziehen', () => k.zugaenge.ziehAltzeilenNach(k.konfig.tokenLeerlaufTage));
+  const m = await schritt('Altzeilen nachziehen', () => k.zugaenge.pullAltzeilenAfter(k.konfig.tokenIdleDays));
   if (m)
-    console.log(
-      `[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${k.konfig.tokenLeerlaufTage} Tagen gesetzt`,
-    );
-  const abgelaufen = await schritt('abgelaufene', () => k.zugaenge.loescheAbgelaufene());
-  const n = await schritt('ungenutzte', () => k.zugaenge.loescheUngenutzte(k.konfig.tokenLeerlaufTage));
-  await schritt('verbrauchte', () => k.zugaenge.loescheVerwaisteVerbrauchte());
-  if (n) console.log(`[tokens] ${n} Token seit über ${k.konfig.tokenLeerlaufTage} Tagen ungenutzt — entfernt`);
+    console.log(`[tokens] ${m} Token ohne Ablaufdatum auf die Gleitfrist von ${k.konfig.tokenIdleDays} Tagen gesetzt`);
+  const abgelaufen = await schritt('abgelaufene', () => k.zugaenge.deleteExpired());
+  const n = await schritt('ungenutzte', () => k.zugaenge.deleteUnused(k.konfig.tokenIdleDays));
+  await schritt('verbrauchte', () => k.zugaenge.deleteOrphanedConsumed());
+  if (n) console.log(`[tokens] ${n} Token seit über ${k.konfig.tokenIdleDays} Tagen ungenutzt — entfernt`);
   if (ohne.length) throw new Error(`Token-Aufräumen ohne: ${ohne.join(', ')}`);
   return abgelaufen + n;
 }

@@ -2,13 +2,13 @@
 // CSV-Import — beide Listen teilen Filter und Leerzustand.
 import { subscribe, emit } from './events.js';
 import {
-  ladeAnzeige,
-  skelettKacheln,
-  listeLadefehler,
-  teileAufschluesselung,
+  loadDisplay,
+  skeletonTiles,
+  listLoadError,
+  partsBreakdown,
   condBadges,
   ownerBadges,
-  zeilenKnopf,
+  rowsButton,
   kachelName,
 } from './bausteine.js';
 import { registerActions, echt } from './registry.js';
@@ -16,26 +16,26 @@ import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, esc, html, rawHtml } from './escaping.js';
 import { api } from './api.js';
 import { loadGuard } from './load-guard.js';
-import { bildTag, fullUrl, imgUrl, observeLazyImages, platzhalterInhalt, thumbUrl } from './bilder.js';
+import { bildTag, fullUrl, imgUrl, observeLazyImages, placeholderContent, thumbUrl } from './bilder.js';
 import {
   G,
-  leerZustand,
-  meldeTreffer,
-  zuruecksetzenKnopf,
+  emptyState,
+  reportHits,
+  resetButton,
   TRASH_ICON_SVG,
-  aktiverReiter,
+  activeTab,
   setzeHtml,
   fuegeHtmlEin,
-  beiTelefonWechsel,
+  atPhoneSwitch,
 } from './dom.js';
 import { fmtBig, fmtN } from './format.js';
 import { toast } from './meldungen.js';
 import { addScopeParam, addLagerParam, scopeQuery } from './kontofilter.js';
 import { gallerySets, accountCurrency } from './state.js';
 import { confirmDelete } from './rueckfrage.js';
-import { manuellQuery, manuelleTabelle, tabellenAnsicht } from './minifigs.js';
-import { geloeschtMitRueckgaengig } from './papierkorb.js';
-/** @typedef {import('../../frontend-typen/vertrag').GET_api_v1_parts['parts'][number]} TeilZeile */
+import { manualQuery, manualTable, tablesView } from './minifigs.js';
+import { deletedWithUndo } from './papierkorb.js';
+/** @typedef {import('../../frontend-typen/vertrag').GET_api_v1_parts['parts'][number]} PartRow */
 
 // ── PARTS ─────────────────────────────────────────────
 /** @type {import('../../frontend-typen/vertrag').PartsFilterColor[]} */
@@ -62,13 +62,13 @@ export async function loadParts() {
   await loadPartsData();
 }
 /** Platzhalter einer Kennzahl, solange sie lädt — „—“ hiesse „kein Wert“. */
-const WERT_SKELETT = '<span class="skelett-zeile skelett-wert" aria-hidden="true"></span>';
+const VALUE_SKELETON = '<span class="skelett-zeile skelett-wert" aria-hidden="true"></span>';
 
 async function loadPartsStats() {
   const felder = ['ps-total', 'ps-unique', 'ps-colors'];
   const box = G('parts-stats-bar');
   if (!G('ps-total').dataset.geladen) {
-    for (const id of felder) setzeHtml(G(id), rawHtml(WERT_SKELETT));
+    for (const id of felder) setzeHtml(G(id), rawHtml(VALUE_SKELETON));
     box?.setAttribute('aria-busy', 'true');
   }
   const d = await api('GET', `/v1/parts/stats${scopeQuery('parts')}`);
@@ -83,7 +83,7 @@ async function loadPartsStats() {
   // Wie die Kachel der Sammlung: Teile aus Sets und einzeln erfasste zusammen.
   const einzeln = s.manual_parts || 0;
   G('ps-total').textContent = fmtBig((s.total_parts || 0) + einzeln);
-  G('ps-total-sub').textContent = teileAufschluesselung(s.total_parts || 0, einzeln);
+  G('ps-total-sub').textContent = partsBreakdown(s.total_parts || 0, einzeln);
   G('ps-unique').textContent = fmtBig(s.unique_parts || 0);
   G('ps-colors').textContent = String(s.unique_colors || 0);
 }
@@ -95,7 +95,7 @@ async function loadPartsFilters() {
   ]);
   partsColors = cd.colors || [];
   partsCats = catd.categories || [];
-  zeichneTeileFilter();
+  drawPartsFilter();
 }
 
 /**
@@ -103,7 +103,7 @@ async function loadPartsFilters() {
  * die manuellen Teile bringen ihre Farben und Kategorien deshalb mit ein. Ohne Auswahl bleibt ein Feld
  * verborgen.
  */
-export function zeichneTeileFilter() {
+export function drawPartsFilter() {
   const farben = new Map(
     partsColors.map(c => [
       c.color_name ?? '',
@@ -116,8 +116,8 @@ export function zeichneTeileFilter() {
     if (p.category_name != null && p.category_name !== '' && !kategorien.has(String(p.category_name)))
       kategorien.set(String(p.category_name), catLabel(p.category_name));
   }
-  fuelleFilter('parts-color', tRaw('parts.filter.all_colors'), farben, activeColor);
-  fuelleFilter('parts-cat', tRaw('parts.filter.all_categories'), kategorien, activeCat);
+  fillFilter('parts-color', tRaw('parts.filter.all_colors'), farben, activeColor);
+  fillFilter('parts-cat', tRaw('parts.filter.all_categories'), kategorien, activeCat);
 }
 
 /**
@@ -126,7 +126,7 @@ export function zeichneTeileFilter() {
  * @param {Map<string, string>} eintraege
  * @param {string | null} gewaehlt
  */
-function fuelleFilter(id, alle, eintraege, gewaehlt) {
+function fillFilter(id, alle, eintraege, gewaehlt) {
   const el = G(id);
   if (!el) return;
   // Eine gewählte Farbe bleibt auswählbar, auch wenn ein anderer Filter sie gerade ausblendet.
@@ -154,34 +154,34 @@ function setCatFilter() {
  * Passt ein manuell erfasstes Teil zu Farbe und Kategorie der Filterleiste?
  * @param {{ color_name?: string | null, category_name?: unknown }} p
  */
-export function teilPasstZumFilter(p) {
+export function partFitsToFilter(p) {
   if (activeColor && p.color_name !== activeColor) return false;
   if (activeCat && String(p.category_name ?? '') !== String(activeCat)) return false;
   return true;
 }
 
 /** @type {boolean | null} */
-let _setTeileLeer = null; // null: noch nicht geladen
+let _setPartsEmpty = null; // null: noch nicht geladen
 /**
  * @type {boolean | null}
  */
-let _manuelleLeer = null;
+let _manualEmpty = null;
 
 /**
  * Ein Leerzustand für den ganzen Reiter: Er steht nur da, wenn weder manuell erfasste Teile noch Teile aus
  * Sets zu sehen sind. Eine leere Teilliste verschwindet stumm, solange die andere etwas zeigt.
- * @param {boolean} [manuelleLeer]
+ * @param {boolean} [manualEmpty]
  */
-export function teileLeerAbgleichen(manuelleLeer) {
-  if (manuelleLeer !== undefined) _manuelleLeer = manuelleLeer;
+export function reconcilePartsEmpty(manualEmpty) {
+  if (manualEmpty !== undefined) _manualEmpty = manualEmpty;
   G('tab-parts')?.classList.remove('sammlung-leer');
   const box = G('manual-parts-box');
   // Erst sichtbar, wenn die Liste geladen ist und etwas zeigt: Vorher stand die leere Box „Manuell erfasste
   // Teile“ über dem Skelett.
-  if (box) box.style.display = _manuelleLeer === false ? '' : 'none';
-  if (_setTeileLeer !== true) return;
+  if (box) box.style.display = _manualEmpty === false ? '' : 'none';
+  if (_setPartsEmpty !== true) return;
   const main = G('parts-main');
-  if (_manuelleLeer === false) {
+  if (_manualEmpty === false) {
     main.replaceChildren();
     return;
   }
@@ -189,16 +189,16 @@ export function teileLeerAbgleichen(manuelleLeer) {
   const gefiltert = !!(activeColor || activeCat || q || G('parts-spare')?.value);
   G('tab-parts')?.classList.toggle('sammlung-leer', !gefiltert);
   // Wie in allen Listen: „Noch keine …“ ohne Filter, sonst „Keine Treffer“.
-  if (gefiltert) meldeTreffer(q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'));
+  if (gefiltert) reportHits(q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'));
   setzeHtml(
     main,
     gefiltert
-      ? leerZustand({
+      ? emptyState({
           ico: 'suche',
           titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'),
-          knopf: zuruecksetzenKnopf('parts'),
+          knopf: resetButton('parts'),
         })
-      : leerZustand({
+      : emptyState({
           ico: 'teil',
           titel: tRaw('parts.empty'),
           text: tRaw(gallerySets.length ? 'parts.hint_import' : 'parts.none_manual_hint'),
@@ -208,14 +208,14 @@ export function teileLeerAbgleichen(manuelleLeer) {
 }
 
 /** Suche, Ersatzteil-, Farb- und Kategoriefilter leeren (Knopf im Leerzustand). */
-export function teileFilterZuruecksetzen() {
+export function resetPartsFilter() {
   activeColor = null;
   activeCat = null;
   for (const id of ['parts-search', 'parts-spare', 'parts-color', 'parts-cat']) {
     const el = G(id);
     if (el) el.value = '';
   }
-  teileFilterGeaendert();
+  partsFilterChanged();
 }
 
 // Seitenweise mit Endlos-Scroll statt der ganzen Wand auf einmal: Alle Teil/Farb-Kombinationen waren 20 MB
@@ -250,7 +250,7 @@ function partsParams(page) {
   p.set('exclude_manual', '1');
   // in_sets ist serverseitig Opt-in (kostet bei 380 Sets rund 155 ms und 2 MB). Nur die Tabellenansicht hat
   // eine Spalte dafür, die Kachel nicht.
-  if (tabellenAnsicht('parts-view')) p.set('with_sets', '1');
+  if (tablesView('parts-view')) p.set('with_sets', '1');
   p.set('page', String(page));
   p.set('page_size', String(PARTS_PAGE_SIZE));
   addScopeParam(p, 'parts');
@@ -267,10 +267,10 @@ async function loadPartsData() {
   _partsDone = false;
   _partsLoading = false;
   _partsLastColor = null;
-  _setTeileLeer = null;
+  _setPartsEmpty = null;
 
   const main = G('parts-main');
-  setzeHtml(main, skelettKacheln(12, tRaw('parts.loading'), 'teil'));
+  setzeHtml(main, skeletonTiles(12, tRaw('parts.loading'), 'teil'));
   await loadPartsPage(true);
 }
 
@@ -288,7 +288,7 @@ async function loadPartsPage(isFirst) {
     _partsLoading = false;
     return;
   }
-  if (listeLadefehler(G('parts-main'), d, { erneut: 'loadParts', behalten: !isFirst })) {
+  if (listLoadError(G('parts-main'), d, { erneut: 'loadParts', behalten: !isFirst })) {
     _partsLoading = false;
     return;
   }
@@ -298,8 +298,8 @@ async function loadPartsPage(isFirst) {
   _partsPage = page;
 
   if (isFirst && !parts.length) {
-    _setTeileLeer = true;
-    teileLeerAbgleichen();
+    _setPartsEmpty = true;
+    reconcilePartsEmpty();
     _partsDone = true;
     _partsLoading = false;
     updatePartsSentinel();
@@ -307,13 +307,13 @@ async function loadPartsPage(isFirst) {
   }
 
   if (isFirst) {
-    _setTeileLeer = false;
-    teileLeerAbgleichen();
+    _setPartsEmpty = false;
+    reconcilePartsEmpty();
     preparePartsShell();
   }
   // Wie in der Sammlung: Eine Suche sagt Vorlesern, wie viele Einträge sie fand.
   if (isFirst && (activeColor || activeCat || G('parts-search')?.value.trim() || G('parts-spare')?.value))
-    meldeTreffer(tRaw('treffer.eintraege', { n: _partsTotal || parts.length }));
+    reportHits(tRaw('treffer.eintraege', { n: _partsTotal || parts.length }));
   appendParts(parts);
 
   _partsShown += parts.length;
@@ -330,7 +330,7 @@ async function loadPartsPage(isFirst) {
 /** Grundgerüst je nach Ansichtsmodus anlegen (einmal pro Neuaufbau). */
 function preparePartsShell() {
   const main = G('parts-main');
-  if (tabellenAnsicht('parts-view')) {
+  if (tablesView('parts-view')) {
     setzeHtml(
       main,
       html`${html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.parts')}"><thead><tr>`}${html`<th>${tRaw('col.image_th')}</th><th>${tRaw('col.part_nr')}</th><th>${tRaw('col.name')}</th>`}${html`<th>${tRaw('col.color')}</th><th>${tRaw('col.category')}</th><th>${tRaw('detail.qty')}</th>`}${html`<th>${tRaw('col.sets')}</th>`}${html`</tr></thead><tbody class="parts-body"></tbody></table></div>`}`,
@@ -346,10 +346,10 @@ function preparePartsShell() {
 
 /**
  * Eine Seite an die bestehende Darstellung anhängen.
- * @param {TeilZeile[]} parts
+ * @param {PartRow[]} parts
  */
 function appendParts(parts) {
-  if (tabellenAnsicht('parts-view')) {
+  if (tablesView('parts-view')) {
     const tb = G('parts-main').querySelector('tbody.parts-body');
     if (!tb) return;
     fuegeHtmlEin(tb, 'beforeend', parts.map(partsTableRow));
@@ -368,7 +368,7 @@ function appendParts(parts) {
   }
 
   // Nach Farbe gruppieren — der Server liefert bereits farbsortiert.
-  /** @type {{ color: string, hex: string | null | undefined, parts: TeilZeile[] }[]} */
+  /** @type {{ color: string, hex: string | null | undefined, parts: PartRow[] }[]} */
   const groups = [];
   for (const p of parts) {
     // Gruppiert wird über den ENGLISCHEN Namen — er ist der stabile Schlüssel aus der Datenbank. Übersetzt
@@ -428,13 +428,13 @@ function bumpGroupCount(groupEl, add) {
  * einem echten Wahrheitswert macht — die Zeichenkette "0" wäre in JavaScript wahr.
  * @param {{ is_spare?: boolean | null }} p
  */
-function ersatzteilPlakette(p) {
+function sparePartBadge(p) {
   return p.is_spare ? html`<span class="spare-tag">${t('parts.spare_tag')}</span>` : '';
 }
 
 /** Alternativtext eines Teilbilds: Name und Farbe, wie sie auf der Kachel stehen. */
 
-/** @param {TeilZeile} p */
+/** @param {PartRow} p */
 function partsCard(p) {
   const k = kachelName();
   // data-orig speist den Zoom (aktionen.js, openImageLightboxFromEl): ÜBER den Server-Proxy in voller
@@ -446,29 +446,29 @@ function partsCard(p) {
   // erfassten Teilen gab es zu einem Teil aus einem Set nichts zu sehen — kein Bild in voller Groesse, keine
   // Angabe, aus welchem Set es stammt.
   return html`<div class="part-card" data-stil="cursor:pointer" tabindex="0" role="button"${k.attr} data-click="openSetItemDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}">
-    ${rawSrc ? bildTag({ src: imgUrl(thumbUrl(rawSrc) || rawSrc, true), alt: '', klasse: 'part-img', fade: true, orig: imgUrl(fullUrl(rawSrc), false), ph: 'teil' }) : html`<span class="bild-ph part-img" aria-hidden="true">${platzhalterInhalt('teil')}</span>`}
+    ${rawSrc ? bildTag({ src: imgUrl(thumbUrl(rawSrc) || rawSrc, true), alt: '', klasse: 'part-img', fade: true, orig: imgUrl(fullUrl(rawSrc), false), ph: 'teil' }) : html`<span class="bild-ph part-img" aria-hidden="true">${placeholderContent('teil')}</span>`}
     <div class="part-num" title="${p.part_number}">${p.bl_part_number || p.part_number}</div>
     <div class="part-name">${p.part_name || '—'}</div>
     <div class="part-color"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${colorName(p.color_name)}</div>
     <div class="kachel-mehr"${k.teil(0)}>
     <div class="part-qty">×${(p.total_quantity || 0).toLocaleString(locale())}</div>
-    ${ersatzteilPlakette(p)}
+    ${sparePartBadge(p)}
     </div>
   </div>`;
 }
 
-/** @param {TeilZeile} p */
+/** @param {PartRow} p */
 function partsTableRow(p) {
   // Dieselbe Handlung wie auf der Kachel — eine Ansicht darf nicht koennen, was die andere nicht kann. Genau
   // daran ist in diesem Projekt schon mehrfach etwas auseinandergelaufen.
   return html`<tr data-stil="cursor:pointer" data-click="openSetItemDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}">
-    <td>${p.image_local || p.image_url ? bildTag({ src: imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url, true), alt: '', klasse: 'bild-klein', ph: 'teil' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('teil')}</span>`}</td>
-    <td>${zeilenKnopf(
+    <td>${p.image_local || p.image_url ? bildTag({ src: imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url, true), alt: '', klasse: 'bild-klein', ph: 'teil' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${placeholderContent('teil')}</span>`}</td>
+    <td>${rowsButton(
       { click: 'openSetItemDetail', arg: 'part', arg2: p.part_number, arg3: p.color_id || 0 },
       html`<span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${p.part_number}">${p.bl_part_number || p.part_number}</span>`,
       tRaw('zeile.oeffnen', { name: p.part_name || p.part_number, nr: p.bl_part_number || p.part_number }),
     )}</td>
-    <td data-stil="max-width:200px">${p.part_name || '—'} ${ersatzteilPlakette(p)}</td>
+    <td data-stil="max-width:200px">${p.part_name || '—'} ${sparePartBadge(p)}</td>
     <td><div data-stil="display:flex;align-items:center;gap:5px"><div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>${colorName(p.color_name)}</div></td>
     <td>${catLabel(p.category_name)}</td>
     <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${(p.total_quantity || 0).toLocaleString(locale())}</span></td>
@@ -488,12 +488,12 @@ function updatePartsSentinel() {
         : '',
     );
   } else {
-    setzeHtml(s, ladeAnzeige('', { stil: 'padding:1rem' }));
+    setzeHtml(s, loadDisplay('', { stil: 'padding:1rem' }));
   }
 }
 
 /** Ohne IntersectionObserver hängt der Lauscher am Fenster, einmal je Seite. */
-let scrollGebunden = false;
+let scrollBound = false;
 /** @type {IntersectionObserver | null} */
 let _partsIO = null;
 function bindPartsSentinel() {
@@ -508,9 +508,9 @@ function bindPartsSentinel() {
       { rootMargin: '600px' }, // Vorlauf, damit vor dem Sichtbarwerden geladen wird
     );
     _partsIO.observe(s);
-  } else if (!scrollGebunden) {
+  } else if (!scrollBound) {
     // Fallback für Browser ohne IntersectionObserver
-    scrollGebunden = true;
+    scrollBound = true;
     window.addEventListener(
       'scroll',
       () => {
@@ -534,19 +534,19 @@ function maybeLoadMoreParts() {
  * Der Suchtext gilt für BEIDE Listen des Reiters: Die Filterleiste steht über den manuellen Teilen, also
  * müssen sie mitfiltern. Eine Entprellung für beide, damit keine Liste vergessen werden kann.
  */
-function teileFilterGeaendert() {
+function partsFilterChanged() {
   loadPartsData();
   loadManualParts();
 }
 G('parts-search').addEventListener('input', () => {
   clearTimeout(G('parts-search')._t);
-  G('parts-search')._t = setTimeout(teileFilterGeaendert, 350);
+  G('parts-search')._t = setTimeout(partsFilterChanged, 350);
 });
 G('parts-spare').addEventListener('change', loadPartsData);
 // Die Reihenfolge ist eine Vorliebe, kein Filter: Sie bleibt im Browser stehen.
-const TEILE_ORDNUNG_KEY = 'bim_teile_ordnung';
+const PARTS_ORDER_KEY = 'bim_teile_ordnung';
 try {
-  const gemerkt = localStorage.getItem(TEILE_ORDNUNG_KEY);
+  const gemerkt = localStorage.getItem(PARTS_ORDER_KEY);
   if (gemerkt && [...G('parts-ordnung').querySelectorAll('option')].some(o => o.value === gemerkt))
     G('parts-ordnung').value = gemerkt;
 } catch (_) {
@@ -554,7 +554,7 @@ try {
 }
 G('parts-ordnung').addEventListener('change', () => {
   try {
-    localStorage.setItem(TEILE_ORDNUNG_KEY, G('parts-ordnung').value);
+    localStorage.setItem(PARTS_ORDER_KEY, G('parts-ordnung').value);
   } catch (_) {
     /* nur Komfort */
   }
@@ -564,26 +564,26 @@ G('parts-ordnung').addEventListener('change', () => {
  * Der Ansichtsumschalter gilt für beide Listen. Die Set-Teile laden neu (Tabelle braucht with_sets=1), die
  * manuellen werden nur neu gezeichnet: Sie haben die Daten schon, ein zweiter Abruf wäre nur Wartezeit.
  */
-function teileAnsichtGeaendert() {
+function partsViewChanged() {
   loadPartsData();
   renderManualParts();
 }
-G('parts-view').addEventListener('change', teileAnsichtGeaendert);
-beiTelefonWechsel(() => {
-  if (G('parts-view').value === 'table') teileAnsichtGeaendert();
+G('parts-view').addEventListener('change', partsViewChanged);
+atPhoneSwitch(() => {
+  if (G('parts-view').value === 'table') partsViewChanged();
 });
 
 // ── MANUAL PARTS ─────────────────────────────────────────────────────────────
 /** @type {ManuellesTeil[]} */
 let manualPartsCache = [];
 /** Die zuletzt geladenen manuell erfassten Teile (nur lesen). */
-export function manuelleTeile() {
+export function manualParts() {
   return manualPartsCache;
 }
 
 export async function loadManualParts() {
   const [d, v] = await Promise.all([
-    api('GET', `/v1/parts/manual${manuellQuery('parts', 'parts-search')}`),
+    api('GET', `/v1/parts/manual${manualQuery('parts', 'parts-search')}`),
     // Derselbe Filter wie die Liste darüber: Sonst stünden Zähler und Menge aus dem einen Blickfeld neben
     // einer Summe aus einem anderen.
     api('GET', `/v1/finance/parts-valuation${scopeQuery('parts')}`),
@@ -600,17 +600,17 @@ export async function loadManualParts() {
 
 export function renderManualParts() {
   const el = G('manual-parts-list');
-  zeichneTeileFilter();
-  const teile = manualPartsCache.filter(teilPasstZumFilter);
-  teileLeerAbgleichen(!teile.length);
+  drawPartsFilter();
+  const teile = manualPartsCache.filter(partFitsToFilter);
+  reconcilePartsEmpty(!teile.length);
   if (G('manual-parts-n'))
     G('manual-parts-n').textContent = teile.length ? tRaw('parts.group_types', { n: teile.length }) : '';
   if (!teile.length) {
     el.replaceChildren();
     return;
   }
-  if (tabellenAnsicht('parts-view')) {
-    setzeHtml(el, manuelleTabelle(teile, 'part'));
+  if (tablesView('parts-view')) {
+    setzeHtml(el, manualTable(teile, 'part'));
     if (typeof window.__bimLabelTables === 'function') window.__bimLabelTables(el.querySelector('table'));
     return;
   }
@@ -622,7 +622,7 @@ export function renderManualParts() {
       const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
       const img = imgSrc
         ? bildTag({ src: imgSrc, alt: '', klasse: 'man-tile-img', ph: 'teil' })
-        : `<span class="bild-ph man-tile-img" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
+        : `<span class="bild-ph man-tile-img" aria-hidden="true">${placeholderContent('teil')}</span>`;
       const colorRow = p.color_name
         ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
         : '';
@@ -665,7 +665,7 @@ export async function updateManualPart(partNumber, colorId, body, owner) {
   if (d.success) {
     toast(tRaw('settings.saved'), 'success');
     loadManualParts();
-    if (aktiverReiter() === 'finance') emit('finanzenLaden');
+    if (activeTab() === 'finance') emit('finanzenLaden');
   } else toast(d.error || t('settings.error'), 'error');
 }
 
@@ -686,7 +686,7 @@ export async function deleteManualPart(partNumber, colorId, owner) {
     `/v1/parts/${encodeURIComponent(partNumber)}/${colorId}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
   );
   if (d.success) {
-    geloeschtMitRueckgaengig(
+    deletedWithUndo(
       tRaw('parts.deleted'),
       d,
       undefined,

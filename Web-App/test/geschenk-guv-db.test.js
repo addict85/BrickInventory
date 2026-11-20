@@ -7,14 +7,14 @@
  * Gegen eine Untergrenze von 0,01 gerechnet stünde dort „+327.600 %“.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in entwicklungProzent() (src/finanzen/setValue.ts) die Bedingung `!(kauf > 0)`
+ *   A  in developmentPercent() (src/finanzen/setValue.ts) die Bedingung `!(kauf > 0)`
  *      entfernt und durch `Math.max(kauf, 0.01)` im Nenner ersetzt → rot:
  *      „Set“, „Kachel“, „Preisverlauf“, „Teil und Figur“ (pnl_pct 1200000.0)
  *   B  in conditionRows() (src/finanzen/priceHistory.ts) wieder
  *      `purchase_price: base > 0 ? base : null` → rot: „Teil und Figur“
  *      (by_condition.N.purchase_price null statt 0)
  * Gegenprobe (08.11.2026 gemessen):
- *   C  in gewinnUndVerlust grand_total nur aus den Sets (`summeAus(setResults…)`) →
+ *   C  in gainAndLoss grand_total nur aus den Sets (`sumFrom(setResults…)`) →
  *      rot: „der Gesamtwert kommt fertig …“ ('240.00')
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -25,11 +25,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet, erfasse, haeltTeil, haeltFigur, katalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { holdsSet, record, holdsPart, holdsMinifig, catalogSet } = require('./helpers/bestand');
 
 const NAME = `geschenk_${process.pid}`;
 const SET = `8${process.pid}1-1`,
@@ -38,11 +38,11 @@ const SET = `8${process.pid}1-1`,
   FIGUR = `gf${process.pid}`;
 
 test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
-  await katalogSet(db, SET, { name: SET });
+  await catalogSet(db, SET, { name: SET });
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
                 VALUES ($1, 'N', 'CHF', 120, NOW()) ON CONFLICT DO NOTHING`,
@@ -73,13 +73,13 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
     await db.pool.end().catch(() => {});
   });
 
-  await haeltSet(db, uid, SET, 0);
-  await erfasse(db, uid, SET, 2, { preis: 0, am: '2026-01-05' });
-  await haeltTeil(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 0 });
-  await haeltFigur(db, uid, FIGUR, { menge: 1, preis: 0 });
+  await holdsSet(db, uid, SET, 0);
+  await record(db, uid, SET, 2, { preis: 0, am: '2026-01-05' });
+  await holdsPart(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 0 });
+  await holdsMinifig(db, uid, FIGUR, { menge: 1, preis: 0 });
 
-  const { gewinnUndVerlust } = _req('src/finanzen/financeCalc.js');
-  const pnl = await gewinnUndVerlust(uid, [uid]);
+  const { gainAndLoss } = _req('src/finanzen/financeCalc.js');
+  const pnl = await gainAndLoss(uid, [uid]);
 
   await t.test('Set', () => {
     const z = pnl.sets.find(s => s.set_number === SET);
@@ -103,8 +103,8 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
   });
 
   await t.test('Preisverlauf', async () => {
-    const { preisverlaufSet } = _req('src/finanzen/priceHistory.js');
-    const v = await preisverlaufSet([uid], SET, 'CHF');
+    const { priceHistorySet } = _req('src/finanzen/priceHistory.js');
+    const v = await priceHistorySet([uid], SET, 'CHF');
     assert.equal(v.purchase_price, 0);
     assert.equal(v.pnl_pct, null);
     assert.equal(v.pnl_prozent, null);
@@ -114,10 +114,10 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
   });
 
   await t.test('Teil und Figur', async () => {
-    const { preisverlaufTeil, preisverlaufFigur } = _req('src/finanzen/priceHistory.js');
-    const teil = await preisverlaufTeil([uid], TEIL, FARBE, 'CHF');
+    const { priceHistoryPart, priceHistoryMinifig } = _req('src/finanzen/priceHistory.js');
+    const teil = await priceHistoryPart([uid], TEIL, FARBE, 'CHF');
     assert.deepEqual(teil.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null, pnl_prozent: null });
-    const figur = await preisverlaufFigur([uid], FIGUR, 'CHF');
+    const figur = await priceHistoryMinifig([uid], FIGUR, 'CHF');
     assert.deepEqual(figur.by_condition.N, { market_price: 6, purchase_price: 0, pnl_pct: null, pnl_prozent: null });
     const { valueAcquisitionRows } = _req('src/finanzen/setValue.js');
     const [zeile] = valueAcquisitionRows(

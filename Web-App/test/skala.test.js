@@ -9,7 +9,7 @@
  *   A  in index.html ein `font-size:.78rem` eingesetzt → rot, mit Fundstelle
  *   B  `var(--fs-9)` (gibt es nicht) eingesetzt        → rot: „Stufe fehlt"
  */
-const { istAppModul } = require('../scripts/build-frontend');
+const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -25,7 +25,7 @@ function dateien() {
     path.join(PUB, 'index.html'),
     ...fs
       .readdirSync(js)
-      .filter(n => istAppModul(n))
+      .filter(n => isAppModule(n))
       .map(n => path.join(js, n)),
   ];
 }

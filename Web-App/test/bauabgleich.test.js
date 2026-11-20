@@ -19,9 +19,9 @@ const lies = p => ohneKommentare(fs.readFileSync(p, 'utf8'));
 const web = rel => lies(path.join(WEB, rel));
 
 test('Webapp: fragt den Endpunkt in Rebrickable-Schreibweise, unterscheidet lose und eigenes Blickfeld', async () => {
-  const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+  const { openUi, reiter, warte } = require('./helpers/oberflaeche');
   const anfragen = [];
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/sets/10294-1/parts-list': {
       success: true,
       parts: [

@@ -3,8 +3,8 @@
  * einem ungeschlüsselten SHA-256 abzulegen (der sich für kleine Wertebereiche
  * durchprobieren liesse).
  *
- * Gegenprobe (14.11.2026 gemessen): in namensAbdruck() und adressAbdruck() wieder
- * `try { suchwert(…) } catch { createHash('sha256')… }` → rot: „Missing expected
+ * Gegenprobe (14.11.2026 gemessen): in namedDigest() und adressDigest() wieder
+ * `try { searchValue(…) } catch { createHash('sha256')… }` → rot: „Missing expected
  * rejection“ (die Bremse zählte ohne Schlüssel weiter).
  */
 const test = require('node:test');
@@ -25,7 +25,7 @@ const limiter = _req('src/konto/loginLimiter.js');
 
 test('ohne Datenschlüssel sagt die Anmeldebremse ab, statt ungeschlüsselt zu hashen', async () => {
   await assert.rejects(
-    limiter.anmeldungErlaubt('203.0.113.5', `ohne_schluessel_${process.pid}`),
+    limiter.loginAllowed('203.0.113.5', `ohne_schluessel_${process.pid}`),
     /unter[\\/]datenschluessel|ENOTDIR/,
   );
   fs.rmSync(sperre, { recursive: true, force: true });

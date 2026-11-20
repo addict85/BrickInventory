@@ -6,9 +6,9 @@ import tls from 'node:tls';
 import type { PeerCertificate } from 'node:tls';
 import type { MailContext } from './context';
 import addressparser from 'nodemailer/lib/addressparser';
-import { emailGueltig } from '../infra/validate';
+import { emailValid } from '../infra/validate';
 import { fehlertext } from '../infra/fehler';
-import { loeseAuf, mailserverAdresse } from '../infra/zielAdresse';
+import { resolveOn, mailServerAddress } from '../infra/zielAdresse';
 const setting = (k: MailContext, key: string) => k.einstellungen.globalValue(key, '');
 
 function normalizeFingerprint(value: unknown): string {
@@ -29,7 +29,7 @@ async function getTransporter(k: MailContext) {
   const fp = normalizeFingerprint(await setting(k, 'smtp_tls_fingerprint'));
   if (!host || !user) return null;
   // Resolved and checked here, then connected to exactly this address; the name stays for SNI and the certificate.
-  const adresse = await loeseAuf(host, ip => mailserverAdresse(ip));
+  const adresse = await resolveOn(host, ip => mailServerAddress(ip));
   const checkPeer = (name: string, cert: PeerCertificate) => {
     if (!fp) return tls.checkServerIdentity(name, cert);
     if (normalizeFingerprint(cert.fingerprint256) === fp) return undefined;
@@ -119,7 +119,7 @@ export function maskAddress(adresse: string, full: boolean): string {
 /** For nodemailer the string must be exactly this one address, otherwise the
  * mail would go to a different one than the checked one (display name, list). */
 export function isSingleRecipient(to: string): boolean {
-  const list = emailGueltig(to) ? addressparser(to, { flatten: true }) : [];
+  const list = emailValid(to) ? addressparser(to, { flatten: true }) : [];
   return list.length === 1 && list[0]!.address === to && !list[0]!.name;
 }
 
@@ -143,7 +143,7 @@ export async function sendMail(
 ) {
   if (!isSingleRecipient(to)) {
     console.warn(
-      `📧 Empfänger abgelehnt (${maskAddress(to, k.konfig.mailKonsoleMitToken)}): keine einzelne reine Adresse`,
+      `📧 Empfänger abgelehnt (${maskAddress(to, k.konfig.mailConsoleWithToken)}): keine einzelne reine Adresse`,
     );
     return { success: false, error: 'empfaenger_ungueltig', mode: 'smtp' };
   }
@@ -152,15 +152,15 @@ export async function sendMail(
     transporter = await getTransporter(k);
   } catch (e) {
     // Exception: the response carries the failure (success: false); smtpErrorText gives the text without credentials.
-    console.error(`📧 SMTP Fehler (${maskAddress(to, k.konfig.mailKonsoleMitToken)}):`, smtpErrorText(e).text);
+    console.error(`📧 SMTP Fehler (${maskAddress(to, k.konfig.mailConsoleWithToken)}):`, smtpErrorText(e).text);
     return { success: false, error: smtpErrorText(e).text, mode: 'smtp' };
   }
   const from = await getFrom(k);
   if (!transporter) {
-    const link = linkForConsole(realLink, k.konfig.mailKonsoleMitToken ? '1' : undefined);
+    const link = linkForConsole(realLink, k.konfig.mailConsoleWithToken ? '1' : undefined);
     console.log('\n══════════════════════════════════════════════════');
     console.log('📧  E-Mail (SMTP nicht konfiguriert):');
-    console.log(`    An:      ${maskAddress(to, k.konfig.mailKonsoleMitToken)}`);
+    console.log(`    An:      ${maskAddress(to, k.konfig.mailConsoleWithToken)}`);
     console.log(`    Betreff: ${subject}`);
     if (link) console.log(`    Link:    ${link}`);
     console.log('══════════════════════════════════════════════════\n');
@@ -176,11 +176,11 @@ export async function sendMail(
       html,
       ...(sender ? { envelope: { from: sender, to: [to] } } : {}),
     });
-    console.log(`📧 E-Mail gesendet an ${maskAddress(to, k.konfig.mailKonsoleMitToken)}: ${info.messageId}`);
+    console.log(`📧 E-Mail gesendet an ${maskAddress(to, k.konfig.mailConsoleWithToken)}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
     const { text } = smtpErrorText(e);
-    console.error(`📧 SMTP Fehler (${maskAddress(to, k.konfig.mailKonsoleMitToken)}):`, text);
+    console.error(`📧 SMTP Fehler (${maskAddress(to, k.konfig.mailConsoleWithToken)}):`, text);
     return { success: false, error: text, mode: 'smtp' };
   }
 }

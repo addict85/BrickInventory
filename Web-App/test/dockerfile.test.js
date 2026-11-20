@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { fehltVoraussetzung } = require('./helpers/db');
+const { missingPrecondition } = require('./helpers/db');
 
 const ROOT = path.join(__dirname, '..');
 
@@ -109,7 +109,7 @@ test('Geheimnisse und Sicherungen bleiben aus Image und Repository', t => {
   const baum = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: ROOT, encoding: 'utf8' });
   if (baum.error || baum.status !== 0) {
     const grund = `kein Git-Arbeitsbaum unter ${ROOT} (${baum.error?.message || baum.stderr.trim()})`;
-    fehltVoraussetzung(t, grund, `.gitignore lässt sich nicht prüfen, ${grund}`);
+    missingPrecondition(t, grund, `.gitignore lässt sich nicht prüfen, ${grund}`);
     return;
   }
   const git = spawnSync(
@@ -181,11 +181,11 @@ test('das Image startet als brickinv, der Entrypoint läuft so und als root', ()
     ersatz('su-exec', 'echo "su-exec $1" >> "$SPUR"; shift; KENNUNG=1000 exec "$@"');
     ersatz('node', 'echo "node $*" >> "$SPUR"');
     const ep = fs.readFileSync(path.join(ROOT, 'docker-entrypoint.sh'), 'utf8').replaceAll('/app/', `${app}/`);
-    const skript = path.join(ort, 'entrypoint.sh');
-    fs.writeFileSync(skript, ep, { mode: 0o755 });
+    const script = path.join(ort, 'entrypoint.sh');
+    fs.writeFileSync(script, ep, { mode: 0o755 });
     const lauf = kennung => {
       fs.rmSync(spur, { force: true });
-      const r = spawnSync('sh', [skript], {
+      const r = spawnSync('sh', [script], {
         encoding: 'utf8',
         cwd: ort,
         env: { PATH: `${bin}:/usr/bin:/bin`, KENNUNG: kennung, SPUR: spur },

@@ -11,13 +11,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { BUENDEL: BUNDLE, stelleBuendelSicher } = require('./helpers/buendel');
-const { portVon } = require('./helpers/server');
-stelleBuendelSicher();
+const { BUENDEL: BUNDLE, placeBundleSafe } = require('./helpers/buendel');
+const { portOf } = require('./helpers/server');
+placeBundleSafe();
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 test('das Bündel ist gebaut', () => {
-  assert.ok(fs.existsSync(BUNDLE), 'public/js/app.bundle.js fehlt trotz stelleBuendelSicher()');
+  assert.ok(fs.existsSync(BUNDLE), 'public/js/app.bundle.js fehlt trotz placeBundleSafe()');
 });
 
 test('index.html lädt das Bündel und die Sprachdatei in der richtigen Reihenfolge', () => {
@@ -64,9 +64,9 @@ test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () =
   // Woher dieser Test kommt
   const http = require('node:http');
   const srv = http.createServer((q, r) => {
-    const sende = (code, typ, körper) => {
+    const sende = (code, typ, body) => {
       r.writeHead(code, { 'content-type': typ });
-      r.end(körper);
+      r.end(body);
     };
     if (q.url === '/api/html502') return sende(502, 'text/html', '<html>502 Bad Gateway</html>');
     if (q.url === '/api/json500')
@@ -75,14 +75,14 @@ test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () =
     return sende(200, 'application/json', JSON.stringify({ success: true, wert: 42 }));
   });
   await new Promise(r => srv.listen(0, () => r(null)));
-  const port = portVon(srv);
+  const port = portOf(srv);
 
   const { JSDOM } = require('jsdom');
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: `http://localhost:${port}/` });
   const { window } = dom;
   window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
   window.scrollTo = () => {};
-  const echterFetch = globalThis.fetch; // VOR dem Überschreiben festhalten
+  const realFetch = globalThis.fetch; // VOR dem Überschreiben festhalten
   Object.assign(globalThis, {
     window,
     document: window.document,
@@ -101,7 +101,7 @@ test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () =
     location: window.location,
     history: window.history,
     URLSearchParams: window.URLSearchParams,
-    fetch: (u, o) => echterFetch(`http://localhost:${port}${u}`, o),
+    fetch: (u, o) => realFetch(`http://localhost:${port}${u}`, o),
   });
 
   try {
@@ -155,7 +155,7 @@ test('unbehandelte Fehler landen nicht nur in der Konsole', () => {
 
 test('ein 401 führt zurück zur Anmeldung, nicht in eine tote Oberfläche', () => {
   // Woher dieser Test kommt
-  const core = require('./helpers/sources').coreQuelle();
+  const core = require('./helpers/sources').coreSource();
   assert.match(
     core,
     /if \(res\.status === 401\) emit\('sitzungBeendet', path\);/,

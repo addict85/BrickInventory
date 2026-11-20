@@ -10,29 +10,29 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, ohneKommentare, testDaten } = require('./helpers/sources');
+const { buildAndRequire, ohneKommentare, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = testDaten();
-const { drossleBeruehren } = _req('src/konto/sitzungsBeruehrung.js');
+const db = testData();
+const { touchThrottle } = _req('src/konto/sitzungsBeruehrung.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 
 const gesehen = [];
-let zaehlen = false;
+let count = false;
 const altQuery = db.pool.query.bind(db.pool);
 db.pool.query = (text, ...rest) => {
-  if (zaehlen) gesehen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
+  if (count) gesehen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
   return altQuery(text, ...rest);
 };
-const wieOft = muster => gesehen.filter(q => muster.test(q)).length;
+const howOften = muster => gesehen.filter(q => muster.test(q)).length;
 const LESEN = /SELECT sess FROM "?user_sessions"?/;
-const SCHREIBEN = /UPDATE "?user_sessions"? SET expire/;
+const WRITE = /UPDATE "?user_sessions"? SET expire/;
 
 /** Ein Server mit echtem Sitzungsspeicher; `frist` steuert die Drosselung. */
-async function starteServer(frist) {
+async function startServer(frist) {
   const speicher = new pgSession({ pool: db.pool, tableName: 'user_sessions', createTableIfMissing: false });
-  if (frist !== null) drossleBeruehren(speicher, frist);
+  if (frist !== null) touchThrottle(speicher, frist);
   const app = express();
   app.use(
     session({
@@ -71,23 +71,23 @@ test('Sitzung: gelesen wird immer, geschrieben nur alle paar Minuten', async t =
   const server = [];
   try {
     // ── 1. Mit Drosselung: N Lesevorgänge, EIN Schreibvorgang ──────────────
-    const a = await starteServer(5 * 60 * 1000);
+    const a = await startServer(5 * 60 * 1000);
     server.push(a.srv);
     const keksA = await anmelden(a.base);
     gesehen.length = 0;
-    zaehlen = true;
+    count = true;
     let letzte = null;
     for (let i = 0; i < N; i++) letzte = await (await fetch(a.base + '/bild', { headers: { cookie: keksA } })).json();
-    zaehlen = false;
+    count = false;
 
-    assert.equal(wieOft(LESEN), N, `gelesen wird bei jeder Anfrage — erwartet ${N}, gezählt ${wieOft(LESEN)}`);
+    assert.equal(howOften(LESEN), N, `gelesen wird bei jeder Anfrage — erwartet ${N}, gezählt ${howOften(LESEN)}`);
     // GENAU einer, und beide Abweichungen sind Fehler: mehr heisst, die
     // Drosselung greift nicht; NULL heisst, sie drosselt zu viel und die
     // Ablaufzeit wird nie nachgeführt.
     assert.equal(
-      wieOft(SCHREIBEN),
+      howOften(WRITE),
       1,
-      `${wieOft(SCHREIBEN)} Schreibvorgänge bei ${N} Anfragen — erwartet genau 1 ` +
+      `${howOften(WRITE)} Schreibvorgänge bei ${N} Anfragen — erwartet genau 1 ` +
         `(mehr: die Drosselung greift nicht; keiner: sie drosselt zu viel)`,
     );
 
@@ -107,17 +107,17 @@ test('Sitzung: gelesen wird immer, geschrieben nur alle paar Minuten', async t =
     // ── GEGENPROBE: ohne Frist schreibt jede Anfrage ───────────────────────
     // Dieselbe Strecke mit Frist 0. Bliebe die Zahl auch hier bei 1, käme die
     // Ersparnis oben von etwas anderem als der Drosselung.
-    const b = await starteServer(0);
+    const b = await startServer(0);
     server.push(b.srv);
     const keksB = await anmelden(b.base);
     gesehen.length = 0;
-    zaehlen = true;
+    count = true;
     for (let i = 0; i < N; i++) await fetch(b.base + '/bild', { headers: { cookie: keksB } });
-    zaehlen = false;
+    count = false;
     assert.equal(
-      wieOft(SCHREIBEN),
+      howOften(WRITE),
       N,
-      `Gegenprobe: ohne Frist müssten es ${N} Schreibvorgänge sein, gezählt ${wieOft(SCHREIBEN)}`,
+      `Gegenprobe: ohne Frist müssten es ${N} Schreibvorgänge sein, gezählt ${howOften(WRITE)}`,
     );
 
     // ── 4. Und startup/app.ts benutzt die Drosselung überhaupt ──────────────────
@@ -127,7 +127,7 @@ test('Sitzung: gelesen wird immer, geschrieben nur alle paar Minuten', async t =
     const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
     assert.match(
       quelle,
-      /drossleBeruehren\(sitzungsSpeicher[,)]/,
+      /touchThrottle\(sessionStorage[,)]/,
       'startup/app.ts drosselt seinen Sitzungsspeicher nicht — dann zahlt die Webapp weiter zwei Abfragen je Anfrage',
     );
   } finally {

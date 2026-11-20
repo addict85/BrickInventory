@@ -1,7 +1,7 @@
 /**
  * Ein Bereich hinter dem Dateiende ist kein „Datei nicht gefunden".
  *
- * Gegenprobe (durchgefuehrt): in antwortAufDateiFehler() wieder bedingungslos
+ * Gegenprobe (durchgefuehrt): in responseOnFileError() wieder bedingungslos
  * `res.status(404)` gesetzt → Schritt „416" wird rot, die anderen bleiben gruen.
  */
 const test = require('node:test');
@@ -11,20 +11,20 @@ const os = require('node:os');
 const path = require('node:path');
 const express = require('express');
 
-const { liefereDatei } = require('./helpers/sources').buildAndRequire()('src/http/dateiAusliefern.js');
-const { portVon } = require('./helpers/server');
+const { deliverFile } = require('./helpers/sources').buildAndRequire()('src/http/dateiAusliefern.js');
+const { portOf } = require('./helpers/server');
 
 const DATEI = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'anleitung-')), 'BI-3004.pdf');
 fs.writeFileSync(DATEI, Buffer.alloc(5000, 7));
-const GROESSE = fs.statSync(DATEI).size;
+const SIZE = fs.statSync(DATEI).size;
 
 /** Server mit GENAU dem Rumpf, den die Anleitungs-Route in server.ts hat. */
 function starte() {
   const app = express();
-  app.get('/data/instructions/*pfad', (_req, res) => liefereDatei(res, DATEI));
-  app.get('/fehlt', (_req, res) => liefereDatei(res, DATEI + '.gibtesnicht'));
+  app.get('/data/instructions/*pfad', (_req, res) => deliverFile(res, DATEI));
+  app.get('/fehlt', (_req, res) => deliverFile(res, DATEI + '.gibtesnicht'));
   const srv = app.listen(0);
-  const basis = `http://127.0.0.1:${portVon(srv)}`;
+  const basis = `http://127.0.0.1:${portOf(srv)}`;
   return { srv, basis };
 }
 
@@ -37,7 +37,7 @@ test('Bereichsanfragen an eine Anleitung', async t => {
   await t.test('ohne Bereich kommt die ganze Datei', async () => {
     const r = await hol('/data/instructions/BI-3004.pdf');
     assert.equal(r.status, 200);
-    assert.equal((await r.arrayBuffer()).byteLength, GROESSE);
+    assert.equal((await r.arrayBuffer()).byteLength, SIZE);
   });
 
   await t.test('ein Bereich mittendrin wird fortgesetzt', async () => {
@@ -45,11 +45,11 @@ test('Bereichsanfragen an eine Anleitung', async t => {
     // holt den Rest. Faellt dieser Schritt, ist der Fortsetz-Weg selbst kaputt.
     const r = await hol('/data/instructions/BI-3004.pdf', 'bytes=2500-');
     assert.equal(r.status, 206);
-    assert.equal(r.headers.get('content-range'), `bytes 2500-${GROESSE - 1}/${GROESSE}`);
+    assert.equal(r.headers.get('content-range'), `bytes 2500-${SIZE - 1}/${SIZE}`);
   });
 
   await t.test('ein Bereich HINTER dem Dateiende ist 416, nicht 404', async () => {
-    const r = await hol('/data/instructions/BI-3004.pdf', `bytes=${GROESSE}-`);
+    const r = await hol('/data/instructions/BI-3004.pdf', `bytes=${SIZE}-`);
     assert.equal(
       r.status,
       416,
@@ -58,7 +58,7 @@ test('Bereichsanfragen an eine Anleitung', async t => {
     );
     // Die Laengenangabe ist die Auskunft, mit der ein Client sich selbst
     // korrigieren kann — sie muss die 416 begleiten.
-    assert.equal(r.headers.get('content-range'), `bytes */${GROESSE}`);
+    assert.equal(r.headers.get('content-range'), `bytes */${SIZE}`);
   });
 
   await t.test('eine fehlende Datei bleibt 404', async () => {

@@ -4,12 +4,12 @@
  * was los ist, und Bedienelemente, die nicht gegen das eigene Konto zielen.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in zeigeKennzahlen den Titel wieder fest „Kaufpreis gesamt“ und die
+ *   A  in showMetrics den Titel wieder fest „Kaufpreis gesamt“ und die
  *      Unterzeile „Summe der Kaufpreise“ → rot: „Kaufpreis-Karte nennt ihren Bezug“
  *   B  die Fusszeile der Teile wieder mit parts.stat.types → rot: „Fusszeile
  *      der Teile nennt Einträge“
- *   C  .diagramm-wert wieder mit max-height:180px, diagrammBreite teilt wieder
- *      durch die Schriftgrösse und schriftFaktor liefert 1 (der alte Stand) →
+ *   C  .diagramm-wert wieder mit max-height:180px, chartWidth teilt wieder
+ *      durch die Schriftgrösse und fontFactor liefert 1 (der alte Stand) →
  *      rot: „Diagramm wächst mit der Schrift“
  *   D  in openModal wieder nur toast('Fehler') → rot: „unbekanntes Set“
  *   E  nutzerAktionen ohne die Ausnahme für das eigene Konto → rot:
@@ -27,11 +27,11 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { musterSammlung } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { patternCollection } = require('./helpers/bestand');
 
 test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
-  const app = await starteApp(t, { name: `r11_${process.pid}`, bestand: musterSammlung, alleDesigns: true });
+  const app = await startApp(t, { name: `r11_${process.pid}`, bestand: patternCollection, allDesigns: true });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -69,7 +69,7 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     // max-height steht ein verkleinertes Bild mittig in einem breiten Rahmen.
     const mass = `(() => { const svg = document.querySelector('#portfolio-chart svg');
       const k = svg.getScreenCTM().a;
-      return { breite: svg.viewBox.baseVal.width * k, behaelter: document.getElementById('portfolio-chart').clientWidth,
+      return { breite: svg.viewBox.baseVal.width * k, container: document.getElementById('portfolio-chart').clientWidth,
         schrift: Math.min(...[...svg.querySelectorAll('text')].map(x => parseFloat(getComputedStyle(x).fontSize) * k)) }; })()`;
     const vorher = await b.auswerten(mass);
     // Das alte Bild weg, damit gemessen wird, was bei 200 % neu gezeichnet ist.
@@ -82,7 +82,7 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     const nachher = await b.auswerten(mass);
     await b.auswerten(`document.documentElement.style.fontSize = ''; true`);
     assert.ok(
-      nachher.breite >= nachher.behaelter * 0.95,
+      nachher.breite >= nachher.container * 0.95,
       `Diagramm wächst mit der Schrift: ${JSON.stringify(nachher)}`,
     );
     assert.ok(
@@ -126,12 +126,12 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     const vorher = await b.auswerten(hoehe);
     await b.auswerten(`document.querySelector('#set-modal .mehr-menue > summary').click(); true`);
     await bis(`document.querySelector('#set-modal .mehr-menue').open`, 'Menü offen');
-    const lage =
+    const situation =
       await b.auswerten(`({ liste: document.querySelector('#set-modal .mehr-liste').getBoundingClientRect().bottom,
       fuss: document.querySelector('#set-modal .mehr-menue > summary').getBoundingClientRect().top })`);
     assert.ok(
-      lage.liste <= lage.fuss + 1,
-      `Weitere Aktionen überlagern den Inhalt (über ihrem Knopf): ${JSON.stringify(lage)}`,
+      situation.liste <= situation.fuss + 1,
+      `Weitere Aktionen überlagern den Inhalt (über ihrem Knopf): ${JSON.stringify(situation)}`,
     );
     assert.ok(Math.abs((await b.auswerten(hoehe)) - vorher) < 2, 'die Fusszeile wächst nicht');
     await b.auswerten(`document.querySelector('#set-modal [data-dialog-zu]').click(); true`);
@@ -153,11 +153,11 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     const z =
       await b.auswerten(`(() => { const zeile = n => [...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === n);
       const eigene = zeile(${JSON.stringify(`r11_${process.pid}`)}), andere = zeile(${JSON.stringify(ANDERE)});
-      return { eigene: eigene.querySelectorAll('button').length, andereDirekt: andere.querySelectorAll('.nutzer-aktionen > button').length,
-        andereMehr: andere.querySelectorAll('.v-mehr .mehr-liste button').length }; })()`);
+      return { eigene: eigene.querySelectorAll('button').length, otherDirect: andere.querySelectorAll('.nutzer-aktionen > button').length,
+        otherMore: andere.querySelectorAll('.v-mehr .mehr-liste button').length }; })()`);
     assert.equal(z.eigene, 0, 'keine Aktionen gegen das eigene Konto');
     assert.deepEqual(
-      [z.andereDirekt, z.andereMehr],
+      [z.otherDirect, z.otherMore],
       [1, 2],
       'Passwort direkt, Deaktivieren und Löschen hinter „Weitere“; die Rolle steht am Chip',
     );

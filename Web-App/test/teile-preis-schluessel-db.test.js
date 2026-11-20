@@ -7,16 +7,16 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { fetchPartPrice } = _req('src/finanzen/financeCalc.js');
-const { preisverlaufTeil } = _req('src/finanzen/priceHistory.js');
-const { haeltTeil } = require('./helpers/bestand');
+const { priceHistoryPart } = _req('src/finanzen/priceHistory.js');
+const { holdsPart } = require('./helpers/bestand');
 
 test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // part_price_history steht nur in db/migrations/0003.
   const migClient = await db.pool.connect();
   try {
@@ -31,13 +31,13 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async t => {
   const BL = `pt${p}bl`; // so kennt BrickLink es
   const FARBE = 0; // 0 wird nicht übersetzt (resolveBlColorId)
   const RB2 = `qt${p}`; // zweites Teil: GAR KEINE Zuordnung
-  const WAEHRUNG = 'CHF';
+  const CURRENCY = 'CHF';
 
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
   // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).
-  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)`, [uid, WAEHRUNG]);
+  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)`, [uid, CURRENCY]);
   // Die Zuordnung steht seit Migration 0037 in bl_mapping (type, rb_id, bl_id).
   await db.run(
     `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part',$1,$2)
@@ -52,10 +52,10 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async t => {
        VALUES ($1,$2,'N',$3,12.00,12.00,NOW())
        ON CONFLICT (part_number,color_id,condition,currency_code)
        DO UPDATE SET avg_price=12.00, qty_avg_price=12.00, fetched_at=NOW()`,
-      [BL, FARBE, WAEHRUNG],
+      [BL, FARBE, CURRENCY],
     );
 
-    const preis = await fetchPartPrice(RB, FARBE, 'N', WAEHRUNG, 24);
+    const preis = await fetchPartPrice(RB, FARBE, 'N', CURRENCY, 24);
     assert.equal(
       Number(preis?.avg_price),
       12,
@@ -78,10 +78,10 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async t => {
     await db.run(
       `INSERT INTO part_price_history (part_number,color_id,condition,currency_code,avg_price,qty_avg_price)
        VALUES ($1,$2,'N',$3,11.00,11.00)`,
-      [RB, FARBE, WAEHRUNG],
+      [RB, FARBE, CURRENCY],
     );
 
-    const v = await preisverlaufTeil(uid, RB, FARBE, WAEHRUNG);
+    const v = await priceHistoryPart(uid, RB, FARBE, CURRENCY);
     assert.ok(
       v.history_new.length >= 1,
       'Der Verlauf ist leer. Punkte unter der Rebrickable-Nummer sind alter Bestand — ' +
@@ -102,16 +102,16 @@ test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async t => {
     );
 
     // 3. OHNE Zuordnung gilt die Rebrickable-Nummer
-    await haeltTeil(db, uid, RB2, { menge: 1, colorId: FARBE });
+    await holdsPart(db, uid, RB2, { menge: 1, colorId: FARBE });
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
        VALUES ($1,$2,'N',$3,15.00,15.00,NOW())
        ON CONFLICT (part_number,color_id,condition,currency_code)
        DO UPDATE SET avg_price=15.00, qty_avg_price=15.00, fetched_at=NOW()`,
-      [RB2, FARBE, WAEHRUNG],
+      [RB2, FARBE, CURRENCY],
     );
 
-    const preis2 = await fetchPartPrice(RB2, FARBE, 'N', WAEHRUNG, 24);
+    const preis2 = await fetchPartPrice(RB2, FARBE, 'N', CURRENCY, 24);
     assert.equal(
       Number(preis2?.avg_price),
       15,

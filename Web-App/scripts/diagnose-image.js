@@ -14,8 +14,8 @@ if (!setNumber) {
 }
 
 const ROOT = path.join(__dirname, '..');
-const dbModul = require(path.join(ROOT, 'dist/db/database.js'));
-const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
+const dbModule = require(path.join(ROOT, 'dist/db/database.js'));
+const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
 const { DATA_DIR } = require(path.join(ROOT, 'dist/src/infra/appPaths.js'));
 
 const zeile = (/** @type {string} */ k, /** @type {any} */ v) => console.log(`   ${String(k).padEnd(14)} ${v}`);
@@ -93,12 +93,12 @@ function hole(url) {
   }
 
   // ── 3. Was die API daraus macht ───────────────────────────────────────────
-  const effektiv = rows[0]?.image_url || cat?.image_url || null;
+  const effective = rows[0]?.image_url || cat?.image_url || null;
   const lokal = rows[0]?.image_local || cat?.image_local || null;
   console.log('\n3. Was die API ausliefert (COALESCE seither):');
   zeile('image_local', lokal || '∅ leer');
-  zeile('image_url', effektiv || '∅ leer');
-  if (!lokal && !effektiv) {
+  zeile('image_url', effective || '∅ leer');
+  if (!lokal && !effective) {
     console.log('   ⚠️  BEIDE leer — die Clients haben nichts anzuzeigen. Das ist die Ursache.');
   }
 
@@ -110,11 +110,11 @@ function hole(url) {
     const orig = abs.replace(/_thumb(\.[^.]+)$/, '$1');
     const thumb = orig.replace(/(\.[^.]+)$/, '_thumb$1');
     /** @type {Array<[string, string]>} */
-    const paare = [
+    const pairs = [
       ['Original', orig],
       ['Vorschau', thumb],
     ];
-    for (const [was, p] of paare) {
+    for (const [was, p] of pairs) {
       const st = fs.existsSync(p) ? fs.statSync(p) : null;
       zeile(was, st ? `${p}  (${st.size} Bytes)` : `FEHLT: ${p}`);
     }
@@ -124,10 +124,10 @@ function hole(url) {
 
   // ── 5. Antwortet das CDN? ─────────────────────────────────────────────────
   console.log('\n5. Erreichbarkeit der CDN-Adresse:');
-  if (!effektiv || effektiv.startsWith('/')) console.log('   (keine externe Adresse zu prüfen)');
+  if (!effective || effective.startsWith('/')) console.log('   (keine externe Adresse zu prüfen)');
   else {
-    const r = await hole(effektiv);
-    zeile('Adresse', effektiv);
+    const r = await hole(effective);
+    zeile('Adresse', effective);
     zeile('Antwort', `${r.status}${r.typ ? '  ' + r.typ : ''}${r.bytes ? '  ' + r.bytes + ' Bytes' : ''}`);
     if (r.status === 404) {
       console.log('   ⚠️  404 — die hinterlegte Adresse zeigt ins Leere. Bei ganz neuen Sets');

@@ -11,7 +11,7 @@
  *      im Importstand in der Sprache des Lesers“
  *   C  kaufpreisSpalten() ohne kaufpreis_original → rot: „Fremdwährung:
  *      Betrag und Währung stehen da“
- *   D  katalogZeile() wieder nur mit der eigenen Konto-ID → rot: „Katalog:
+ *   D  catalogRow() wieder nur mit der eigenen Konto-ID → rot: „Katalog:
  *      Set des Unterkontos ist vorhanden“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -20,15 +20,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = testDaten();
-const { datenOderSkip } = require('./helpers/db');
+const db = testData();
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/bestand');
 
 test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `r16s_${process.pid}`,
     KIND = `${NAME}_kind`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, KIND]]);
@@ -95,7 +95,7 @@ test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1,
     const belegt = (
       await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Keller Regal A') RETURNING id`, [uid])
     ).id;
-    await haeltSet(db, uid, '10294-1', 1, { preis: 100 });
+    await holdsSet(db, uid, '10294-1', 1, { preis: 100 });
     await db.run('UPDATE sets SET storage_id = $2 WHERE user_id = $1', [uid, belegt]);
     const vorrat = await hole('/storage/locations');
     assert.deepEqual(vorrat.body.orte.map(o => o.name).sort(), ['Dachboden Kiste 3', 'Keller Regal A']);
@@ -125,7 +125,7 @@ test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1,
   await t.test('Katalog: Set des Unterkontos ist vorhanden', async () => {
     await db.run(`INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts) VALUES ('99161-1', 'Probe-Set', 2024, 1, 10)
                   ON CONFLICT (set_num) DO NOTHING`);
-    await haeltSet(db, kid, '99161-1', 2);
+    await holdsSet(db, kid, '99161-1', 2);
     const r = await hole('/catalog/sets/99161-1');
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.deepEqual([r.body.set.owned, r.body.set.owned_quantity], [true, 2]);

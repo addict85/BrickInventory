@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { meldeFehler } from '../../infra/fehler';
+import { reportError } from '../../infra/fehler';
 import { PUBLIC_DIR } from '../../infra/appPaths';
 import type { ProfileServices } from '../area';
 
@@ -15,7 +15,7 @@ export async function sendStartPage(
       res.type('html').send(html);
     },
     (e: unknown) => {
-      meldeFehler('startseite:rendern', e);
+      reportError('startseite:rendern', e);
       res.sendFile('index.html', { root: PUBLIC_DIR });
     },
   );

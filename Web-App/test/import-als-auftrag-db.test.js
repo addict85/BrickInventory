@@ -3,16 +3,16 @@
  * Die Anfrage reicht ein und waiting; ohne Job-Prozess bleibt der Auftrag offen.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  in jobs/auftraegeStarten.ts csv_import immer über fuehreCsvImportAus
+ *   A  in jobs/auftraegeStarten.ts csv_import immer über runCsvImportFrom
  *      (ohne Blick auf `quelle`) → rot: „mit Worker kommt das Ergebnis“
- *   B  importAlsAuftrag() vergisst das Ergebnis nicht (setzeErgebnis(id, null)
+ *   B  importAlsAuftrag() vergisst das Ergebnis nicht (setResult(id, null)
  *      gestrichen) → rot: derselbe Test (result bleibt in der Tabelle)
  *   C  importAlsAuftrag() ruft importPartsCsv direkt statt einzureichen
  *      → rot: „ohne Worker bleibt der Auftrag offen“ (und der zweite Fall)
- *   D  fuehreImportAus() fängt den Fachfehler nicht ab → rot: „ein Fachfehler
+ *   D  runImportFrom() fängt den Fachfehler nicht ab → rot: „ein Fachfehler
  *      kommt mit Code an“ (500 import_fehlgeschlagen)
- *   E  (14.11.2026) die Aufrufe hier ohne alsKonto (ohne Konto der Anfrage) → rot: alle
- *      drei (import_abgebrochen: auftragsStand läuft unter Zeilenschutz und sieht den
+ *   E  (14.11.2026) die Aufrufe hier ohne asAccount (ohne Konto der Anfrage) → rot: alle
+ *      drei (import_abgebrochen: jobStatus läuft unter Zeilenschutz und sieht den
  *      eigenen Auftrag nur im Konto der Anfrage).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -21,24 +21,24 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, alsKonto } = require('./helpers/sources');
+const { buildAndRequire, asAccount } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
 const path = require('node:path');
 
 // Vor dem Laden des Workers: Der Alarm-Import wirft einen Fachfehler.
-const { dateiFehler } = _req('src/infra/fehlerTexte.js');
+const { fileError } = _req('src/infra/fehlerTexte.js');
 const pa = require.resolve(path.join(require('./helpers/sources').DIST, 'src/finanzen/preisalarm.js'));
 _req('src/finanzen/preisalarm.js');
 require.cache[pa].exports = Object.assign({}, require.cache[pa].exports, {
-  alarmeAusCsv: async () => {
-    throw dateiFehler('ungueltig', 'alarm_schwelle_ungueltig');
+  alertsFromCsv: async () => {
+    throw fileError('ungueltig', 'alarm_schwelle_ungueltig');
   },
 });
 
 test('Import als Auftrag', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `importauftrag_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -50,8 +50,8 @@ test('Import als Auftrag', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   // Wie die Route: im Konto der Anfrage; den eigenen Auftrag liest sie unter Zeilenschutz.
-  const { runImport: alsAuftrag } = _req('src/collection/importJobs.js');
-  const importAlsAuftrag = (...a) => alsKonto(uid, () => alsAuftrag(...a));
+  const { runImport: asJob } = _req('src/collection/importJobs.js');
+  const importAlsAuftrag = (...a) => asAccount(uid, () => asJob(...a));
   const csv = teil => `part_number,color_id,quantity\n${teil},0,2\n`;
 
   await t.test('ohne Worker bleibt der Auftrag offen', async () => {

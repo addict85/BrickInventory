@@ -6,10 +6,10 @@
  * Bündel in jsdom mit Antworten in der Form des Servers.
  *
  * Gegenproben (am 28.10. gemessen):
- *   A  zeigeKennzahlen() nicht aufgerufen → rot: beide Fälle („Einstand fehlt oben“)
+ *   A  showMetrics() nicht aufgerufen → rot: beide Fälle („Einstand fehlt oben“)
  *   B  summenZellen() ohne Einstandszelle → rot: „ohne Marktpreise“
  *      („Die Summenzeile der Sets zeigt den Einstand nicht“)
- *   C  Zähler ohnePreis ohne die Teile → rot: beide Fälle (3 statt 4, 2 statt 3)
+ *   C  Zähler withoutPrice ohne die Teile → rot: beide Fälle (3 statt 4, 2 statt 3)
  *   E  den Leerzustand in renderFinance entfernt → rot: „nichts erfasst“
  *      (fünfmal „fehlt“; 28.10.)
  *   D  G&V-Betrag wieder als Gesamtwert − Einstand → rot: „mit Marktpreisen“
@@ -19,7 +19,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 // Beide Schreibweisen: de-DE (1.097,93) und de-CH (1’097.93).
@@ -29,33 +29,33 @@ const zahl = s =>
     .replace(/\.(?=\d{3}\b)/g, '')
     .replace(',', '.');
 
-function antworten({ mitPreis }) {
-  const setPreis = mitPreis ? 700 : 0;
+function antworten({ withPrice }) {
+  const setPrice = withPrice ? 700 : 0;
   return {
     '/v1/finance/valuation': {
       success: true,
       currency: 'EUR',
-      totals: { min: mitPreis ? '650' : '0', avg: String(setPreis), max: mitPreis ? '760' : '0' },
+      totals: { min: withPrice ? '650' : '0', avg: String(setPrice), max: withPrice ? '760' : '0' },
       sets: [
         {
           set_number: '10294-1',
           name: 'Titanic',
           quantity: 1,
           purchase_price: 629,
-          avg_price: setPreis,
-          total_avg: String(setPreis),
-          wert_gesamt: setPreis,
+          avg_price: setPrice,
+          total_avg: String(setPrice),
+          wert_gesamt: setPrice,
           acquisitions: [
             {
               id: 1,
               condition: 'N',
               quantity: 1,
               purchase_price: 629,
-              avg_price: setPreis || null,
-              wert_gesamt: setPreis,
+              avg_price: setPrice || null,
+              wert_gesamt: setPrice,
             },
           ],
-          ...(mitPreis ? {} : { error: '10294-1 — kein BrickLink-Preis gefunden' }),
+          ...(withPrice ? {} : { error: '10294-1 — kein BrickLink-Preis gefunden' }),
         },
         {
           set_number: '42143-1',
@@ -101,19 +101,19 @@ function antworten({ mitPreis }) {
         sets_purchase: '1028.00',
         parts_purchase: '69.93',
         figs_purchase: '0.00',
-        grand_total: String(setPreis),
-        pnl_pct: mitPreis ? '11.3' : null,
-        pnl_prozent: mitPreis ? 11.3 : null,
-        pnl_purchase: mitPreis ? '629.00' : '0.00',
-        pnl_current: mitPreis ? '700.00' : '0.00',
+        grand_total: String(setPrice),
+        pnl_pct: withPrice ? '11.3' : null,
+        pnl_prozent: withPrice ? 11.3 : null,
+        pnl_purchase: withPrice ? '629.00' : '0.00',
+        pnl_current: withPrice ? '700.00' : '0.00',
         positionen: 4,
-        positionen_bewertet: mitPreis ? 1 : 0,
-        positionen_ohne_marktpreis: mitPreis ? 3 : 4,
+        positionen_bewertet: withPrice ? 1 : 0,
+        positionen_ohne_marktpreis: withPrice ? 3 : 4,
         positionen_ohne_kaufpreis: 0,
-        basis_einstand: mitPreis ? '629.00' : '0.00',
-        basis_marktwert: mitPreis ? '700.00' : '0.00',
-        basis_guv_betrag: mitPreis ? '71.00' : '0.00',
-        ohne_marktpreis_einstand: mitPreis ? '468.93' : '1097.93',
+        basis_einstand: withPrice ? '629.00' : '0.00',
+        basis_marktwert: withPrice ? '700.00' : '0.00',
+        basis_guv_betrag: withPrice ? '71.00' : '0.00',
+        ohne_marktpreis_einstand: withPrice ? '468.93' : '1097.93',
         ohne_kaufpreis_marktwert: '0.00',
       },
     },
@@ -121,14 +121,14 @@ function antworten({ mitPreis }) {
 }
 
 async function finanzen(opt) {
-  const o = await oeffneOberflaeche(antworten(opt));
+  const o = await openUi(antworten(opt));
   await reiter(o.w, 'finance');
   await warte(() => o.d.querySelector('#fin-tbl tfoot'));
   return o;
 }
 
 test('ohne Marktpreise: Einstand oben und in den Summen, Hinweis statt „—“', async () => {
-  const { w, d } = await finanzen({ mitPreis: false });
+  const { w, d } = await finanzen({ withPrice: false });
   try {
     assert.match(zahl(text(d.getElementById('fin-einstand'))), /1097\.93/, 'Einstand fehlt oben');
     assert.equal(text(d.getElementById('fin-wert')), 'Marktpreis fehlt für 4 Positionen');
@@ -146,7 +146,7 @@ test('ohne Marktpreise: Einstand oben und in den Summen, Hinweis statt „—“
 });
 
 test('mit Marktpreisen: Gesamtwert und G&V', async () => {
-  const { w, d } = await finanzen({ mitPreis: true });
+  const { w, d } = await finanzen({ withPrice: true });
   try {
     assert.match(zahl(text(d.getElementById('fin-wert'))), /700\.00/);
     assert.match(text(d.getElementById('fin-basis')), /3 Positionen ohne Marktpreis nicht gerechnet/);
@@ -166,7 +166,7 @@ test('mit Marktpreisen: Gesamtwert und G&V', async () => {
 });
 
 test('nichts erfasst: ein Leerzustand, kein „Preis fehlt“', async () => {
-  const o = await oeffneOberflaeche({});
+  const o = await openUi({});
   try {
     await reiter(o.w, 'finance');
     await warte(() => o.d.querySelector('#fin-tbl .leer'));

@@ -10,7 +10,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte, ANMELDUNG } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte, ANMELDUNG } = require('./helpers/oberflaeche');
 
 const teil = {
   id: 1,
@@ -44,7 +44,7 @@ const gefiltert = (schluessel, eintrag) => url => ({
 });
 
 async function oeffne() {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/finance/parts-valuation': { ...ANMELDUNG['/v1/finance/parts-valuation'], parts: [teil], total_value: '1.00' },
     '/v1/finance/minifigs-valuation': {
       ...ANMELDUNG['/v1/finance/minifigs-valuation'],

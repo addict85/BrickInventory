@@ -10,7 +10,7 @@
  * Gegenproben (05.11.2026 gemessen, je einzeln):
  *   A  in routes/api_v1/finance.ts `sets: uebersetzt(…)` entfernt → rot:
  *      „Preisfehler auf Englisch“ (deutscher Text)
- *   B  in holePreis (src/finanzen/rechnung/preise.ts) wieder throw new
+ *   B  in fetchPrice (src/finanzen/rechnung/preise.ts) wieder throw new
  *      Error(`… — kein BrickLink-Preis gefunden`) → rot: „Preisfehler auf
  *      Englisch“ (kein error_code)
  *   C  sub_teile der Brickset-Kachel entfernt → rot: „Kacheln mit Codes“
@@ -19,15 +19,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
+const { adminWithFactor } = require('./helpers/verwalter');
 
 test('Servertexte in der Sprache der Anfrage', { concurrency: 1 }, async t => {
-  const db = testDaten();
-  if (!(await datenOderSkip(t, _req))) return;
+  const db = testData();
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `sprache-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (
@@ -42,7 +42,7 @@ test('Servertexte in der Sprache der Anfrage', { concurrency: 1 }, async t => {
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition) VALUES ($1,'10294-1',1,600,'N')`,
     [uid],
   );
-  await verwalterMitFaktor(_req, uid);
+  await adminWithFactor(_req, uid);
   const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
   const hole = async (pfad, sprache) =>
     (await fetch(`${base}/api/v1/${pfad}`, { headers: { 'Accept-Language': sprache } })).json();

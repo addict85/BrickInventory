@@ -1,6 +1,6 @@
 /** Values as the table holds them; decrypting, validating and defaults live in
  * src/settings/settings.ts. */
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 
 export interface Entry {
   key: string;
@@ -8,10 +8,10 @@ export interface Entry {
 }
 
 export async function userValue(
-  db: DbSchnittstelle,
+  db: DbInterface,
   userId: number,
   key: string,
-  d: DbSchnittstelle = db,
+  d: DbInterface = db,
 ): Promise<string | null> {
   const r = await d.get<{ value: string }>('SELECT value FROM user_settings WHERE user_id = $1 AND key = $2', [
     userId,
@@ -20,12 +20,12 @@ export async function userValue(
   return r?.value ?? null;
 }
 
-export async function globalValue(db: DbSchnittstelle, key: string): Promise<string | null> {
+export async function globalValue(db: DbInterface, key: string): Promise<string | null> {
   const r = await db.get<{ value: string }>('SELECT value FROM global_settings WHERE key = $1', [key]);
   return r?.value ?? null;
 }
 
-export async function writeUserValue(db: DbSchnittstelle, userId: number, key: string, value: string): Promise<void> {
+export async function writeUserValue(db: DbInterface, userId: number, key: string, value: string): Promise<void> {
   await db.run(
     `INSERT INTO user_settings (user_id, key, value, updated_at) VALUES ($1, $2, $3, NOW())
      ON CONFLICT (user_id, key) DO UPDATE SET value = $3, updated_at = NOW()`,
@@ -33,12 +33,12 @@ export async function writeUserValue(db: DbSchnittstelle, userId: number, key: s
   );
 }
 
-export async function deleteUserValue(db: DbSchnittstelle, userId: number, key: string): Promise<void> {
+export async function deleteUserValue(db: DbInterface, userId: number, key: string): Promise<void> {
   await db.run('DELETE FROM user_settings WHERE user_id = $1 AND key = $2', [userId, key]);
 }
 
 /** A value from accounts `uids`; which account provides it is left open. */
-export async function firstValueIn(db: DbSchnittstelle, uids: number[], key: string): Promise<string | null> {
+export async function firstValueIn(db: DbInterface, uids: number[], key: string): Promise<string | null> {
   const r = await db.get<{ value: string }>('SELECT value FROM user_settings WHERE user_id = ANY($1) AND key = $2', [
     uids,
     key,
@@ -46,11 +46,11 @@ export async function firstValueIn(db: DbSchnittstelle, uids: number[], key: str
   return r?.value ?? null;
 }
 
-export async function userValues(db: DbSchnittstelle, userId: number): Promise<Entry[]> {
+export async function userValues(db: DbInterface, userId: number): Promise<Entry[]> {
   return db.all<Entry>('SELECT key, value FROM user_settings WHERE user_id = $1', [userId]);
 }
 
-export async function writeGlobalValue(db: DbSchnittstelle, key: string, value: string | null): Promise<void> {
+export async function writeGlobalValue(db: DbInterface, key: string, value: string | null): Promise<void> {
   await db.run(
     `INSERT INTO global_settings (key, value, updated_at) VALUES ($1, $2, NOW())
      ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
@@ -58,11 +58,11 @@ export async function writeGlobalValue(db: DbSchnittstelle, key: string, value: 
   );
 }
 
-export async function deleteGlobalValueRows(db: DbSchnittstelle, keys: string[]): Promise<void> {
+export async function deleteGlobalValueRows(db: DbInterface, keys: string[]): Promise<void> {
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [keys]);
 }
 
-export async function globalValues(db: DbSchnittstelle, keys?: readonly string[]): Promise<Entry[]> {
+export async function globalValues(db: DbInterface, keys?: readonly string[]): Promise<Entry[]> {
   return keys
     ? db.all<Entry>('SELECT key, value FROM global_settings WHERE key = ANY($1)', [[...keys]])
     : db.all<Entry>('SELECT key, value FROM global_settings');
@@ -70,7 +70,7 @@ export async function globalValues(db: DbSchnittstelle, keys?: readonly string[]
 
 /** Only while the old value is still there — otherwise another process has already written. */
 export async function replaceGlobalValue(
-  db: DbSchnittstelle,
+  db: DbInterface,
   key: string,
   oldValue: string,
   newValue: string | null,

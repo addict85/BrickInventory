@@ -16,16 +16,16 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
 test('Idempotenz: die Frist folgt der längsten Anfrage', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const dienst = _req('src/idempotency/service.js');
-  const { HTTP_FRISTEN } = _req('src/infra/httpFristen.js');
+  const { HTTP_DEADLINES } = _req('src/infra/httpFristen.js');
   assert.ok(
-    dienst.ORPHANED_AFTER_S * 1000 > HTTP_FRISTEN.requestTimeout,
+    dienst.ORPHANED_AFTER_S * 1000 > HTTP_DEADLINES.requestTimeout,
     'die Frist ist kürzer als die längste Anfrage',
   );
 

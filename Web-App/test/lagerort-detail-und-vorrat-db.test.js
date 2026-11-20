@@ -7,14 +7,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 // Ein Bestand ist seit Migration 0036 ZWEI Zeilen: eine in `sets` („dieses
-// Konto haelt dieses Set") und eine je Kauf in `set_acquisitions`. haeltSet()
+// Konto haelt dieses Set") und eine je Kauf in `set_acquisitions`. holdsSet()
 // legt beide an — siehe test/helpers/bestand.js.
-const { haeltSet, haeltTeil, katalogSet } = require('./helpers/bestand');
+const { holdsSet, holdsPart, catalogSet } = require('./helpers/bestand');
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
@@ -22,7 +22,7 @@ test.after(async () => {
 });
 
 const SN = '10179-1';
-let HAUPT = 0,
+let MAIN = 0,
   KIND = 0;
 
 async function seed() {
@@ -36,14 +36,14 @@ async function seed() {
     client.release();
   }
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('haupt','x'),('kind','x')`);
-  HAUPT = (await db.get("SELECT id FROM users WHERE username='haupt'")).id;
+  MAIN = (await db.get("SELECT id FROM users WHERE username='haupt'")).id;
   KIND = (await db.get("SELECT id FROM users WHERE username='kind'")).id;
-  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [HAUPT, KIND]);
+  await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [MAIN, KIND]);
   // Der Setname steht im Katalog, die Stueckzahl in der Erfassung, nicht an der Bestandszeile.
-  await katalogSet(db, SN, { name: 'Falcon' });
+  await catalogSet(db, SN, { name: 'Falcon' });
   // Das Set gehört dem HAUPTKONTO. Das Unterkonto hat gar keine Zeile — genau
   // die Lage, in der ein Eintrag in seinem Vorrat nichts beschreibt.
-  await haeltSet(db, HAUPT, SN, 1);
+  await holdsSet(db, MAIN, SN, 1);
 }
 
 test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
@@ -57,30 +57,30 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
 
   const L = {
     ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
+    ...require('./helpers/sources').testArea('bestand').locationService,
   };
-  const S = require('./helpers/sources').bereichsSeite('sets');
+  const S = require('./helpers/sources').areaPage('sets');
   const household = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ...require('./helpers/sources').testArea('haushalt'),
   };
-  const schreibbar = await household.schreibbereich(HAUPT);
+  const writable = await household.schreibbereich(MAIN);
   // Vorbedingung: Das Blickfeld umfasst wirklich BEIDE Konten, sonst prüft
   // Befund 2 unten nichts.
   assert.ok(
-    schreibbar.includes(HAUPT) && schreibbar.includes(KIND),
-    `schreibbereich lieferte ${schreibbar} — der Haushalt steht nicht`,
+    writable.includes(MAIN) && writable.includes(KIND),
+    `schreibbereich lieferte ${writable} — der Haushalt steht nicht`,
   );
 
   assert.equal(
-    await L.setzeLagerort('set', schreibbar, [SN], 'Estrich'),
+    await L.setLocation('set', writable, [SN], 'Estrich'),
     1,
     'Das Setzen muss genau die eine Zeile des Hauptkontos treffen',
   );
 
   await t.test('Befund 1: der Detail-Aufruf liefert den Namen des Lagerorts', async () => {
-    const detail = await S.setLesen(schreibbar, SN);
+    const detail = await S.readSet(writable, SN);
     assert.equal(
       detail.storage,
       'Estrich',
@@ -89,8 +89,8 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     );
 
     // Liste und Detail müssen dasselbe sagen. Genau zwischen diesen beiden ist
-    // schon die MENGE auseinandergelaufen (siehe setLesen in src/sets/lesen.ts).
-    const liste = await S.setsLesen(schreibbar, { page: 1, page_size: 10 });
+    // schon die MENGE auseinandergelaufen (siehe readSet in src/sets/lesen.ts).
+    const liste = await S.setsLesen(writable, { page: 1, page_size: 10 });
     const zeile = (liste.sets || []).find(s => s.set_number === SN);
     assert.ok(zeile, 'Das Set fehlt in der Liste');
     assert.equal(
@@ -104,7 +104,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     // `SELECT s.*` ohne aufgeloesten Namen. Sie liefert storage_id und kein
     // storage — genau das gemeldete Bild.
     const alt = await db.get(`SELECT s.* FROM sets s WHERE s.user_id = ANY($1) AND s.set_number = $2 LIMIT 1`, [
-      schreibbar,
+      writable,
       SN,
     ]);
     assert.equal(
@@ -116,8 +116,8 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
   });
 
   await t.test('Befund 2: der Ort entsteht nur im Konto, dessen Zeile er beschreibt', async () => {
-    const haupt = (await L.orteVon([HAUPT])).map(o => o.name);
-    const kind = (await L.orteVon([KIND])).map(o => o.name);
+    const haupt = (await L.locationsOf([MAIN])).map(o => o.name);
+    const kind = (await L.locationsOf([KIND])).map(o => o.name);
     assert.deepEqual(haupt, ['Estrich'], `Vorrat des Hauptkontos: ${haupt}`);
     assert.deepEqual(
       kind,
@@ -133,9 +133,9 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
       `INSERT INTO storage_locations (user_id, name)
        SELECT id, $2 FROM users WHERE id = ANY($1)
        ON CONFLICT (user_id, lower(name)) DO NOTHING`,
-      [schreibbar, 'Estrich'],
+      [writable, 'Estrich'],
     );
-    const kindNachAlt = (await L.orteVon([KIND])).map(o => o.name);
+    const kindNachAlt = (await L.locationsOf([KIND])).map(o => o.name);
     assert.deepEqual(
       kindNachAlt,
       ['Estrich'],
@@ -153,13 +153,13 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     // Diese Eigenschaft hatte der frühere Weg über eine Transaktion mit
     // Rücknahme. Sie muss bleiben, auch wenn die Rücknahme weggefallen ist:
     // Jetzt wird vorher gefragt, wer überhaupt eine Zeile hält.
-    const n = await L.setzeLagerort('set', schreibbar, ['99999-1'], 'Garage');
+    const n = await L.setLocation('set', writable, ['99999-1'], 'Garage');
     assert.equal(n, 0, 'Ein Set, das niemand hält, darf keine Zeile treffen');
     for (const [wer, id] of [
-      ['Hauptkonto', HAUPT],
+      ['Hauptkonto', MAIN],
       ['Unterkonto', KIND],
     ]) {
-      const orte = (await L.orteVon([id])).map(o => o.name);
+      const orte = (await L.locationsOf([id])).map(o => o.name);
       assert.ok(
         !orte.includes('Garage'),
         `Der Vorrat des ${wer} hat „Garage" bekommen, obwohl kein Set getroffen wurde: ${orte}`,
@@ -172,19 +172,19 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     // Zeile hält". Hält das Unterkonto ein Exemplar, gehört der Ort auch dorthin
     // — und zwar als EIGENE Zeile, weil ein Regal in einer Wohnung steht
     // (Migration 0020). …
-    await haeltSet(db, KIND, SN, 1);
-    const n = await L.setzeLagerort('set', schreibbar, [SN], 'Keller');
+    await holdsSet(db, KIND, SN, 1);
+    const n = await L.setLocation('set', writable, [SN], 'Keller');
     assert.equal(n, 2, `${n} Zeilen getroffen, erwartet 2 (beide Konten halten das Set)`);
     for (const [wer, id] of [
-      ['Hauptkonto', HAUPT],
+      ['Hauptkonto', MAIN],
       ['Unterkonto', KIND],
     ]) {
-      const orte = (await L.orteVon([id])).map(o => o.name);
+      const orte = (await L.locationsOf([id])).map(o => o.name);
       assert.ok(orte.includes('Keller'), `Der Vorrat des ${wer} hat „Keller" nicht: ${orte}`);
     }
     // Und das Detail fasst beide zusammen, statt einen zu verschweigen.
-    await L.setzeLagerort('set', [HAUPT], [SN], 'Estrich');
-    const detail = await S.setLesen(schreibbar, SN);
+    await L.setLocation('set', [MAIN], [SN], 'Estrich');
+    const detail = await S.readSet(writable, SN);
     assert.equal(
       detail.storage,
       'Estrich, Keller',
@@ -210,14 +210,14 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
 
   const L = {
     ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
+    ...require('./helpers/sources').testArea('bestand').locationService,
   };
   // Ein zweites Set OHNE Lagerort — ohne es hätte der Filter nichts
   // auszusieben, und „alle" wäre von „die richtigen" nicht zu unterscheiden.
   const OHNE = '21058-1';
-  await katalogSet(db, OHNE, { name: 'Cheops' });
-  await haeltSet(db, HAUPT, OHNE, 1);
-  await L.setzeLagerort('set', [HAUPT], [SN], 'Estrich');
+  await catalogSet(db, OHNE, { name: 'Cheops' });
+  await holdsSet(db, MAIN, OHNE, 1);
+  await L.setLocation('set', [MAIN], [SN], 'Estrich');
 
   // Ein Teil in derselben Kiste und eines ohne — für die Teileliste daneben.
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES
@@ -226,13 +226,13 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES
                   ('3001',4,'Rot'), ('3002',4,'Rot')
                 ON CONFLICT (part_number, color_id) DO NOTHING`);
-  await haeltTeil(db, HAUPT, '3001', { setNumber: SN, menge: 2, colorId: 4 });
-  await haeltTeil(db, HAUPT, '3002', { setNumber: OHNE, menge: 2, colorId: 4 });
+  await holdsPart(db, MAIN, '3001', { setNumber: SN, menge: 2, colorId: 4 });
+  await holdsPart(db, MAIN, '3002', { setNumber: OHNE, menge: 2, colorId: 4 });
   // Die Schluessel sind eine FLACHE Liste in der Reihenfolge von BEDINGUNG
   // (src/bestand/lagerort.ts): fuer ein Teil Nummer UND Farbe, also zwei Einträge.
-  await L.setzeLagerort('part', [HAUPT], ['3001', 4], 'Estrich');
+  await L.setLocation('part', [MAIN], ['3001', 4], 'Estrich');
 
-  const { base } = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
   const hole = async pfad => {
     const r = await fetch(base + pfad);
     assert.equal(r.status, 200, `${pfad} antwortete ${r.status}`);
@@ -280,11 +280,11 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
 
   await t.test('Teile: derselbe Filter, derselbe Weg', async () => {
     const alle = await hole('/api/v1/parts?page=1&page_size=60');
-    const nummernAlle = (alle.parts || []).map(p => p.part_number).sort();
+    const numbersAll = (alle.parts || []).map(p => p.part_number).sort();
     assert.deepEqual(
-      nummernAlle,
+      numbersAll,
       ['3001', '3002'],
-      `Vorbedingung: beide Teile ohne Filter, bekam ${JSON.stringify(nummernAlle)}`,
+      `Vorbedingung: beide Teile ohne Filter, bekam ${JSON.stringify(numbersAll)}`,
     );
 
     const d = await hole(`/api/v1/parts?page=1&page_size=60&storage=${encodeURIComponent('Estrich')}`);

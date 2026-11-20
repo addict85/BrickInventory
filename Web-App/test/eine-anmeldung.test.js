@@ -15,7 +15,7 @@ const ROUTES = path.join(__dirname, '..', 'routes');
  * was „angemeldet" heisst, oder handeln von der Sitzung selbst. Wer sie
  * benutzt, statt sie zu definieren, gehört nicht hierher.
  */
-const ERLAUBT = {
+const ALLOWED = {
   'api_v1/middleware.ts':
     'requireToken übersetzt die Sitzung IN die gemeinsame Form (req.apiUser). ' + 'Hier entsteht sie.',
   'auth/zweiterFaktor.ts':
@@ -29,20 +29,20 @@ const ERLAUBT = {
 };
 
 /** Alle .ts unter routes/, auch in Unterordnern. */
-function routenDateien(dir, praefix = '') {
+function routesFiles(dir, praefix = '') {
   const gefunden = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) gefunden.push(...routenDateien(path.join(dir, e.name), praefix + e.name + '/'));
+    if (e.isDirectory()) gefunden.push(...routesFiles(path.join(dir, e.name), praefix + e.name + '/'));
     else if (e.name.endsWith('.ts')) gefunden.push([praefix + e.name, path.join(dir, e.name)]);
   }
   return gefunden;
 }
 
 test('kein Handler fragt die Sitzung selbst nach der Nutzerkennung', () => {
-  const dateien = routenDateien(ROUTES);
+  const dateien = routesFiles(ROUTES);
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Router-Dateien gefunden — dann prüft der Rest nichts.`);
 
-  const verstoesse = [];
+  const violations = [];
   const gebraucht = new Set();
   for (const [rel, voll] of dateien) {
     const src = fs
@@ -58,27 +58,27 @@ test('kein Handler fragt die Sitzung selbst nach der Nutzerkennung', () => {
       // die Ausnahme noch etwas beschreibt. Wer sie stattdessen ueberspringt,
       // merkt nie, wenn sie gegenstandslos wird — und dann nimmt ein toter
       // Eintrag eine ganze Datei dauerhaft von der Pruefung aus.
-      if (rel in ERLAUBT) gebraucht.add(rel);
-      else verstoesse.push(`${rel}:${zeile}  ${m[0]}`);
+      if (rel in ALLOWED) gebraucht.add(rel);
+      else violations.push(`${rel}:${zeile}  ${m[0]}`);
     }
   }
 
-  const veraltet = Object.keys(ERLAUBT)
+  const veraltet = Object.keys(ALLOWED)
     .filter(k => !gebraucht.has(k))
     .sort();
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Eintraege in ERLAUBT beschreiben nichts mehr:\n  ' +
+    'Diese Eintraege in ALLOWED beschreiben nichts mehr:\n  ' +
       veraltet.join('\n  ') +
       '\nDie Datei liest die Sitzung gar nicht (mehr) direkt — raus damit.',
   );
 
   assert.deepEqual(
-    verstoesse,
+    violations,
     [],
     'Diese Stellen lesen die Sitzung direkt statt nutzerId()/istVerwalter()/nutzerName():\n  ' +
-      verstoesse.join('\n  ') +
+      violations.join('\n  ') +
       '\nMit einem Bearer-Token — dem einzigen Ausweis der App — ist das immer ' +
       'undefined. Das fällt nicht als Fehler auf: Die Route antwortet mit 401, ' +
       'oder schlimmer, sie liefert stillschweigend die Ansicht eines ' +
@@ -91,7 +91,7 @@ test('kein Router bringt einen eigenen Wächter mit', () => {
   // und requireAdmin selbst — sitzungsgebunden, während src/konto/http/anmeldung.ts und
   // routes/api_v1/middleware.ts längst token-fähige Fassungen hatten. Drei
   // Fassungen einer Regel, und die App konnte nur eine erfüllen.
-  const dateien = routenDateien(ROUTES);
+  const dateien = routesFiles(ROUTES);
   const eigene = [];
   for (const [rel, voll] of dateien) {
     const src = fs.readFileSync(voll, 'utf8');

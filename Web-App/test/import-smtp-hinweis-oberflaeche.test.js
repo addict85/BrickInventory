@@ -8,10 +8,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 test('die übergangenen SMTP-Felder stehen in einer Meldung', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/settings/import': {
       success: true,
       imported: 3,

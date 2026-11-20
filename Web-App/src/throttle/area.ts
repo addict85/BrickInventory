@@ -1,13 +1,13 @@
-/** The area's factory: services as a closure over k (baueBereich, src/infra/bereich.ts). */
-import { baueBereich, mit, type Einblick } from '../infra/bereich';
+/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
+import { buildArea, mit, type Inspect } from '../infra/bereich';
 import * as counter from './counter';
 import { access, type ThrottleDependencies, type ThrottleContext } from './context';
 
 export type { ThrottleDependencies, ThrottleContext } from './context';
 
 /** Login attempts, balance lookups and source fetches all count in one table; only this area may write. */
-export function createThrottle(a: ThrottleDependencies, einblick?: Einblick<ThrottleContext>) {
-  return baueBereich(
+export function createThrottle(a: ThrottleDependencies, inspect?: Inspect<ThrottleContext>) {
+  return buildArea(
     a,
     access,
     (k: ThrottleContext) => ({
@@ -22,7 +22,7 @@ export function createThrottle(a: ThrottleDependencies, einblick?: Einblick<Thro
       hourlyState: k.counter.hourlyState,
       countHour: k.counter.countHour,
     }),
-    einblick,
+    inspect,
   );
 }
 

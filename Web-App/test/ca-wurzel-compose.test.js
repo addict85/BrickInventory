@@ -39,10 +39,10 @@ const einhaengungen = name =>
   dienst(name)
     .map(l => l.match(/^\s+-\s+([^\s:]+):(\/\S*)\s*$/))
     .filter(Boolean)
-    .map(m => ({ quelle: m[1], ziel: m[2].replace(/:ro$/, ''), nurLesen: m[2].endsWith(':ro') }));
+    .map(m => ({ quelle: m[1], ziel: m[2].replace(/:ro$/, ''), readOnly: m[2].endsWith(':ro') }));
 
 /** Das Skript hinter `command: [sh, -c, |]` von Caddy, wie Compose es übergibt ($$ → $). */
-function caddySkript() {
+function caddyScript() {
   const z = dienst('caddy');
   const i = z.findIndex(l => /^\s+- \|\s*$/.test(l));
   const rumpf = [];
@@ -65,9 +65,9 @@ test('kein Dienst ausser Caddy hängt Caddys Daten ein, die App nur das Zertifik
     );
   }
   const ca = einhaengungen('app').find(e => e.quelle === 'ca-wurzel');
-  assert.deepEqual(ca, { quelle: 'ca-wurzel', ziel: '/caddy-ca', nurLesen: true });
+  assert.deepEqual(ca, { quelle: 'ca-wurzel', ziel: '/caddy-ca', readOnly: true });
   assert.ok(dienst('app').some(l => /^\s+CA_ZERTIFIKAT:\s*\/caddy-ca\/root\.crt\s*$/.test(l)));
-  assert.ok(einhaengungen('caddy').some(e => e.quelle === 'ca-wurzel' && e.ziel === '/ca-wurzel' && !e.nurLesen));
+  assert.ok(einhaengungen('caddy').some(e => e.quelle === 'ca-wurzel' && e.ziel === '/ca-wurzel' && !e.readOnly));
   assert.match(compose, /^volumes:\n(?:\s*#.*\n)*\s+ca-wurzel:\s*$/m, 'das Volume ca-wurzel ist nicht angelegt');
 });
 
@@ -76,13 +76,13 @@ test('die Schleife kopiert nur root.crt, auch wenn Caddy die CA erst später anl
   const ca = path.join(tmp, 'data', 'caddy', 'pki', 'authorities', 'local'),
     vol = path.join(tmp, 'vol');
   fs.mkdirSync(vol);
-  const skript = caddySkript();
-  assert.match(skript, /exec caddy run /, 'Caddy startet nicht mehr am Ende des Skripts');
-  const umgebogen = skript
+  const script = caddyScript();
+  assert.match(script, /exec caddy run /, 'Caddy startet nicht mehr am Ende des Skripts');
+  const rerouted = script
     .replaceAll('/data/', `${tmp}/data/`)
     .replaceAll('/ca-wurzel', vol)
     .replace(/exec caddy run .*/, 'exec sleep 60');
-  const p = spawn('sh', ['-c', umgebogen], {
+  const p = spawn('sh', ['-c', rerouted], {
     detached: true,
     stdio: 'ignore',
     env: { PATH: process.env.PATH, CA_OHNE_NAMENSBESCHRAENKUNG: 'ja', VORGELAGERTER_PROXY: 'keiner' },

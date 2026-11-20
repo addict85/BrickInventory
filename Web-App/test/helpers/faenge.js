@@ -5,7 +5,7 @@
  */
 
 /** Ersetzt Kommentare und den Inhalt von Zeichenketten durch Leerzeichen bzw. `x`. */
-function maskiere(s) {
+function mask(s) {
   let o = '',
     i = 0;
   const n = s.length;
@@ -71,7 +71,7 @@ function schliesst(s, i, auf, zu) {
 }
 
 /** Anweisungen der obersten Ebene eines Rumpfs (grob: an `;` getrennt). */
-function anweisungen(rumpf) {
+function instructions(rumpf) {
   const r = [];
   let t = 0,
     cur = '';
@@ -93,8 +93,8 @@ function anweisungen(rumpf) {
  * Jeder Fang einer Datei mit maskiertem Rumpf (`rumpf`), Originaltext (`roh`) und Zeile.
  * Bei `.catch(…)` nur Pfeilfunktionen: `.catch(logAndContinue('x'))` zählt eine andere Ratsche.
  */
-function faenge(quelle) {
-  const s = maskiere(quelle);
+function catches(quelle) {
+  const s = mask(quelle);
   const raus = [];
   const re = /\bcatch\b\s*(?:\(\s*\w*\s*(?::\s*\w+)?\s*\))?\s*\{|\.catch\(/g;
   for (const m of s.matchAll(re)) {
@@ -124,17 +124,17 @@ function faenge(quelle) {
   return raus;
 }
 
-const PROTOKOLL = /^(?:void\s+)?(?:console\.\w+|meldeFehler|log|warn)\s*\(/;
+const LOG = /^(?:void\s+)?(?:console\.\w+|reportError|log|warn)\s*\(/;
 
 /**
  * „Nur melden und weiter“: kein `throw`, mindestens eine Meldung, sonst höchstens ein
  * `return …`, `continue` oder `break`. Ein Ersatzwert nach der Meldung zählt mit, er ist
- * meldeUndLiefere ohne den Namen.
+ * reportAndDeliver ohne den Namen.
  */
-function nurGemeldet(f) {
+function onlyReported(f) {
   if (/\bthrow\b/.test(f.rumpf)) return false;
-  const st = anweisungen(f.rumpf);
-  const rest = st.filter(x => !PROTOKOLL.test(x));
+  const st = instructions(f.rumpf);
+  const rest = st.filter(x => !LOG.test(x));
   return (
     rest.length < st.length &&
     (rest.length === 0 || (rest.length === 1 && /^(?:return|continue|break)\b/.test(rest[0])))
@@ -142,10 +142,10 @@ function nurGemeldet(f) {
 }
 
 /** Ohne Meldung an die Oberfläche oder ins Protokoll, ohne `throw`: Der Fehler ist weg. */
-const MELDET_OBERFLAECHE =
-  /\bthrow\b|\b(?:toast|zeige\w*|melde\w*|setze(?:Fehler|Status)\w*|fehler\w*|console\.\w+|reject|alert)\s*\(|\.(?:textContent|hidden)\s*=/;
+const REPORTS_UI =
+  /\bthrow\b|\b(?:toast|show\w*|report\w*|setze(?:Fehler|Status)\w*|error\w*|console\.\w+|reject|alert)\s*\(|\.(?:textContent|hidden)\s*=/;
 function stillImBrowser(f) {
-  return !MELDET_OBERFLAECHE.test(f.rumpf);
+  return !REPORTS_UI.test(f.rumpf);
 }
 
-module.exports = { maskiere, faenge, nurGemeldet, stillImBrowser };
+module.exports = { mask, catches, onlyReported, stillImBrowser };

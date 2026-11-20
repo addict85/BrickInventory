@@ -15,28 +15,28 @@
  * Meldungen sind richtig; die zweite ist die, auf die es ankommt.
  */
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
+environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sources');
 const { testServer } = require('./helpers/server');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 // Die Einhaengung aus server.ts LESEN, nicht abschreiben: Ein Pruefstand mit
 // fester Adresse bleibt gruen, waehrend der Router laengst woanders haengt.
 const AUTH = einhaengung('auth');
-const db = testDaten();
+const db = testData();
 
 const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run("DELETE FROM users WHERE username = 'qr_pruefling'");
   const nutzer = await db.get(
@@ -66,10 +66,10 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
   // ── Fall 1: Die Variable fehlt ────────────────────────────────────────────
   const vorher = process.env.APP_BASE_URL;
   t.after(() => {
-    if (vorher === undefined) umgebung({ APP_BASE_URL: undefined });
-    else umgebung({ APP_BASE_URL: vorher });
+    if (vorher === undefined) environment({ APP_BASE_URL: undefined });
+    else environment({ APP_BASE_URL: vorher });
   });
-  umgebung({ APP_BASE_URL: undefined });
+  environment({ APP_BASE_URL: undefined });
 
   const abgelehnt = await hole();
   assert.equal(
@@ -94,7 +94,7 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
   // ── Fall 2: Die Variable ist gesetzt ──────────────────────────────────────
   // Mit ueberzaehligem Schraegstrich, denn genau der wuerde sich sonst zu
   // `https://host//?set=…` durchschlagen.
-  umgebung({ APP_BASE_URL: 'https://lego.example.org//' });
+  environment({ APP_BASE_URL: 'https://lego.example.org//' });
   const gut = await hole();
   assert.equal(gut.status, 200, 'Mit APP_BASE_URL muss ein Code entstehen.');
   const d = await gut.json();
@@ -129,8 +129,8 @@ test('3. eine Quelle fuer QR-Code, Mail-Knopf und Reset-Links', () => {
   // eine vierte Schreibweise begonnen.
   // Die Variable liest src/infra/konfig.ts (appBaseUrl, ohne Schraegstrich am
   // Ende); basisUrl() ist der eine Weg dorthin.
-  const helfer = lies('src/infra/basisUrl.ts');
-  assert.match(helfer, /konfig\(\)\.appBaseUrl/, 'src/infra/basisUrl.ts liest die Konfiguration nicht.');
+  const helper = lies('src/infra/basisUrl.ts');
+  assert.match(helper, /konfig\(\)\.appBaseUrl/, 'src/infra/basisUrl.ts liest die Konfiguration nicht.');
   assert.match(
     lies('src/infra/konfig.ts'),
     /APP_BASE_URL\?\.trim\(\)\.replace\(\/\\\/\+\$\/, ''\)/,

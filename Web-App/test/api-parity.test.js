@@ -15,10 +15,10 @@ process.env.DATABASE_URL = DB_URL;
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { routerEinhaengungen, testDaten } = require('./helpers/sources');
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
+const { routerEinhaengungen, testData } = require('./helpers/sources');
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/bestand');
 
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 const USER = { id: null, username: 'parity-tester' };
@@ -55,13 +55,13 @@ async function seed() {
 
   // Bearer-Token wie ihn die Android-App nutzt — als HASH abgelegt.
   await db.run(`INSERT INTO api_tokens (token, user_id, label) VALUES ($1, $2, 'parity') ON CONFLICT DO NOTHING`, [
-    _req('src/konto/geraeteToken.js').tokenAbdruck(TOKEN),
+    _req('src/konto/geraeteToken.js').tokenDigest(TOKEN),
     USER.id,
   ]);
 
   // Sets: eines mit gemischten Erfassungen (Zustand-Aggregat!), eines ohne
-  await haeltSet(db, USER.id, '75192-1', 0, { egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
-  await haeltSet(db, USER.id, '6346-1', 0, { egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, USER.id, '75192-1', 0, { anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, USER.id, '6346-1', 0, { anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, purchase_price, condition)
      VALUES ($1,'75192-1',649.99,'N'), ($1,'75192-1',420.00,'U'), ($1,'6346-1',25.00,'N') ON CONFLICT DO NOTHING`,
@@ -80,10 +80,10 @@ async function seed() {
     .catch(() => {});
 
   // Teile + Minifiguren (je Set-Quelle und manuelle Position)
-  await haeltTeil(db, USER.id, '3001', { setNumber: '75192-1', menge: 10, colorId: 4, egalWennDa: true });
-  await haeltTeil(db, USER.id, '3020', { menge: 0, colorId: 0, egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
-  await haeltFigur(db, USER.id, 'sw0850', { setNumber: '75192-1', menge: 1, egalWennDa: true });
-  await haeltFigur(db, USER.id, 'sw0001', { menge: 0, egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsPart(db, USER.id, '3001', { setNumber: '75192-1', menge: 10, colorId: 4, anywayIfDa: true });
+  await holdsPart(db, USER.id, '3020', { menge: 0, colorId: 0, anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsMinifig(db, USER.id, 'sw0850', { setNumber: '75192-1', menge: 1, anywayIfDa: true });
+  await holdsMinifig(db, USER.id, 'sw0001', { menge: 0, anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
 
   // Erfassungen für Teile/Minifiguren (eigene Acquisition-Endpunkte)
   await db.run(
@@ -107,8 +107,8 @@ async function seed() {
     .catch(() => {});
 
   // Zwei identische Wegwerf-Sets für die Schreib-Paritätstests (PUT/DELETE)
-  await haeltSet(db, USER.id, '40567-1', 0, { egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
-  await haeltSet(db, USER.id, '40568-1', 0, { egalWennDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, USER.id, '40567-1', 0, { anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, USER.id, '40568-1', 0, { anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
      VALUES ($1,'40567-1',1,35.00,'N'), ($1,'40568-1',1,35.00,'N') ON CONFLICT DO NOTHING`,
@@ -166,9 +166,9 @@ test('API-Parität Webapp ↔ Android', async t => {
     next();
   });
   // Die Einhaengepunkte kommen aus server.ts
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   for (const r of routerEinhaengungen())
-    app.use(r.mount, require('./helpers/sources').routerAus(_req, 'routes/' + r.name + '.js'));
+    app.use(r.mount, require('./helpers/sources').routerFrom(_req, 'routes/' + r.name + '.js'));
 
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
@@ -217,17 +217,21 @@ test('API-Parität Webapp ↔ Android', async t => {
     ['Haushalt', '/api/v1/settings/household'],
   ]) {
     await t.test(`Zusammengelegt: ${name} — Sitzung und Token gleichwertig`, async () => {
-      const mitSitzung = await get(pfad);
-      const mitToken = await get(pfad, { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
+      const withSession = await get(pfad);
+      const withToken = await get(pfad, { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
       assert.equal(
-        mitSitzung.status,
+        withSession.status,
         200,
-        `${pfad} mit Sitzung -> ${mitSitzung.status}: ${JSON.stringify(mitSitzung.body)}`,
+        `${pfad} mit Sitzung -> ${withSession.status}: ${JSON.stringify(withSession.body)}`,
       );
-      assert.equal(mitToken.status, 200, `${pfad} mit Token -> ${mitToken.status}: ${JSON.stringify(mitToken.body)}`);
+      assert.equal(
+        withToken.status,
+        200,
+        `${pfad} mit Token -> ${withToken.status}: ${JSON.stringify(withToken.body)}`,
+      );
       assert.deepEqual(
-        core(mitToken.body),
-        core(mitSitzung.body),
+        core(withToken.body),
+        core(withSession.body),
         `${pfad}: Sitzung und Token liefern Verschiedenes — die Route hängt an der Auth-Art`,
       );
     });
@@ -310,18 +314,19 @@ test('API-Parität Webapp ↔ Android', async t => {
 
   await t.test('Bewertung: gleiche Antwortform mit beiden Ausweisen', async () => {
     // Was hier vorher stand, und warum es weg ist
-    const mitSitzung = (await get('/api/v1/finance/valuation')).body;
-    const mitToken = (await get('/api/v1/finance/valuation', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' }))
-      .body;
+    const withSession = (await get('/api/v1/finance/valuation')).body;
+    const withToken = (
+      await get('/api/v1/finance/valuation', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })
+    ).body;
     assert.deepEqual(
-      Object.keys(mitToken).sort(),
-      Object.keys(mitSitzung).sort(),
+      Object.keys(withToken).sort(),
+      Object.keys(withSession).sort(),
       'Sitzung und Token liefern verschiedene Felder — dann sieht die App etwas ' +
         'anderes als die Webapp, je nachdem womit sie sich ausweist',
     );
-    assert.equal(mitToken.total_value, mitSitzung.total_value);
+    assert.equal(withToken.total_value, withSession.total_value);
     assert.ok(
-      !('rate_limit' in mitToken),
+      !('rate_limit' in withToken),
       'rate_limit ist wieder in der Bewertung — es liest niemand, und es kostet ' + 'drei Abfragen je Aufruf',
     );
   });
@@ -438,10 +443,10 @@ test('API-Parität Webapp ↔ Android', async t => {
   await t.test('ohne Auth: beide Absicherungen lehnen ab', async () => {
     // Es gibt nur EINEN Adressraum (/api/v1): Eine Adresse ausserhalb antwortete
     // mit 404, und das sähe aus wie eine bestandene Abweisung.
-    const mitToken = await get('/api/v1/sets', { 'x-no-session': '1' });
-    const nurSitzung = await get('/api/v1/settings/raw', { 'x-no-session': '1' });
-    assert.equal(mitToken.status, 401, 'requireToken laesst ohne Ausweis durch');
-    assert.equal(nurSitzung.status, 401, 'requireLogin laesst ohne Sitzung durch');
+    const withToken = await get('/api/v1/sets', { 'x-no-session': '1' });
+    const onlySession = await get('/api/v1/settings/raw', { 'x-no-session': '1' });
+    assert.equal(withToken.status, 401, 'requireToken laesst ohne Ausweis durch');
+    assert.equal(onlySession.status, 401, 'requireLogin laesst ohne Sitzung durch');
   });
 
   srv.close();

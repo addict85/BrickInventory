@@ -1,10 +1,10 @@
 /** Die öffentliche Seite des Bereichs; was die Datenbank braucht, ist ein Dienst. */
 
 export {
-  HAUSHALT_KANAL,
+  HOUSEHOLD_CHANNEL,
   asIds,
-  blickfeldArt,
+  scopeKind,
 } from './regeln';
-export type { Blickfeld, BlickfeldEingabe, ScopeMode, Schreiber, Sicht } from './regeln';
-export { erzeugeHaushalt } from './bereich';
-export type { HaushaltAbhaengigkeiten, HaushaltDienste, HaushaltKontext } from './bereich';
+export type { Blickfeld, ScopeInput, ScopeMode, Schreiber, Sicht } from './regeln';
+export { createHousehold } from './bereich';
+export type { HouseholdDependencies, HouseholdServices, HouseholdContext } from './bereich';

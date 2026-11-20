@@ -6,32 +6,32 @@
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut), in
  * public/js/detailfelder.js:
- *   A  ALARM_RUHE 800 → 300 → rot: „Webapp: beim Tippen …“ (PUT vor der Ruhezeit)
+ *   A  ALARM_REST 800 → 300 → rot: „Webapp: beim Tippen …“ (PUT vor der Ruhezeit)
  *   B  in alarmGetippt die Ruhezeit nicht zurückgesetzt (kein clearTimeout) →
  *      rot: ebenda (drei PUT statt einem)
- *   C  in sendeAlarm `const loeschen = zahl == null` → `false` → rot: „Webapp:
+ *   C  in sendAlarm `const loeschen = zahl == null` → `false` → rot: „Webapp:
  *      ein leeres Feld …“
  *   D  wechsleAlarmZustand ruft speichereAlarm → rot: ebenda (Zustandswechsel schreibt)
- *   E  in zeigeOffeneAlarme `if (!marke) return;` entfernt → rot: „Webapp: offene
+ *   E  in showOpenAlerts `if (!marke) return;` entfernt → rot: „Webapp: offene
  *      Alarme …“ (Meldung beim ersten Besuch)
  *   F  dort die Marke aus Date.now() statt d.now → rot: ebenda
  *   I  (12.11.2026) dort die Beträge wieder mit toFixed(2) und dem Code davor →
  *      rot: ebenda („CHF 199.50“ statt „199,50 CHF“)
- *   G  in zeigeAlarmMerker alert_fired/alert_armed vertauscht → rot: „Webapp: beim Tippen …“
+ *   G  in showAlarmMarker alert_fired/alert_armed vertauscht → rot: „Webapp: beim Tippen …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt, ANMELDUNG } = require('./helpers/oberflaeche');
+const { openUi, warte, takt, ANMELDUNG } = require('./helpers/oberflaeche');
 const Q = require('./helpers/sources');
 
 const SN = '10305-1';
 const de = Q.loadTranslations().de;
 // Dieselbe Ruhezeit wie in der App (Alarmeingabe.RUHE_MS): Beide speichern beim Tippen.
-const RUHE = 800;
+const REST = 800;
 
 /** Set-Detail öffnen, wie ein Klick auf die Kachel. */
 async function detail(antworten = {}) {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     [`/v1/sets/${SN}`]: {
       success: true,
       set: { set_number: SN, name: 'Burg', quantity: 1, conditions: ['N'], instructions: [] },
@@ -61,24 +61,24 @@ async function detail(antworten = {}) {
   return o;
 }
 const schreibend = o => o.aufrufe.filter(a => /\/alert(\?|$)/.test(a.url) && a.method !== 'GET');
-const tippe = (o, wert) => {
+const tap = (o, wert) => {
   const f = o.d.getElementById('m-alert-val');
   f.value = wert;
   f.dispatchEvent(new o.w.Event('input', { bubbles: true }));
 };
 
 test('Webapp: beim Tippen gespeichert, entprellt mit der Ruhezeit der App', async () => {
-  assert.ok(RUHE >= 300, `RUHE_MS der App nicht gefunden (${RUHE})`);
+  assert.ok(REST >= 300, `RUHE_MS der App nicht gefunden (${REST})`);
   const o = await detail();
   try {
     for (const w of ['2', '24', '249']) {
-      tippe(o, w);
-      await takt(RUHE / 4);
+      tap(o, w);
+      await takt(REST / 4);
     }
-    await takt((RUHE * 3) / 4 - 120);
+    await takt((REST * 3) / 4 - 120);
     assert.deepEqual(schreibend(o), [], 'gespeichert, bevor die Ruhezeit um war');
     assert.ok(await warte(() => schreibend(o).length > 0, 400), 'nicht in der Ruhezeit der App gespeichert');
-    await takt(RUHE);
+    await takt(REST);
     const [put, ...mehr] = schreibend(o);
     assert.equal(mehr.length, 0, `${mehr.length + 1} Schreibaufrufe statt einem`);
     assert.equal(put.method, 'PUT');
@@ -121,8 +121,8 @@ test('Webapp: ein leeres Feld löscht, ein Zustandswechsel lädt nur', async () 
     zustand.value = 'N';
     zustand.dispatchEvent(new o.w.Event('change', { bubbles: true }));
     await o.ruhig();
-    tippe(o, '');
-    assert.ok(await warte(() => schreibend(o).length === 1, RUHE + 1000), 'nichts gelöscht');
+    tap(o, '');
+    assert.ok(await warte(() => schreibend(o).length === 1, REST + 1000), 'nichts gelöscht');
     assert.equal(schreibend(o)[0].method, 'DELETE');
     assert.match(schreibend(o)[0].url, /condition=N$/);
   } finally {
@@ -138,7 +138,7 @@ test('Webapp: offene Alarme — der erste Besuch merkt nur, danach die Meldung w
     alerts: [{ set_number: SN, direction: 'unter', threshold: 200, last_price: 199.5, currency_code: 'CHF' }],
   };
   const meldungen = o => [...o.d.querySelectorAll('#toasts > *')].map(t => t.textContent.trim());
-  const erst = await oeffneOberflaeche({ '/v1/alerts/pending': offen });
+  const erst = await openUi({ '/v1/alerts/pending': offen });
   try {
     await erst.ruhig();
     const abruf = erst.aufrufe.filter(a => a.url.includes('/v1/alerts/pending'));
@@ -157,7 +157,7 @@ test('Webapp: offene Alarme — der erste Besuch merkt nur, danach die Meldung w
   } finally {
     erst.w.close();
   }
-  const dann = await oeffneOberflaeche(
+  const dann = await openUi(
     { '/v1/alerts/pending': offen },
     {
       vorher: w =>

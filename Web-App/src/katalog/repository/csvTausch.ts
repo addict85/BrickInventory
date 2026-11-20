@@ -1,6 +1,6 @@
 import type { PoolClient } from 'pg';
-import { pflegeTabelle } from '../../../db/tabellePflegen';
-import type { KatalogLesevertrag } from '../lesevertrag';
+import { maintainTable } from '../../../db/tabellePflegen';
+import type { CatalogReadContract } from '../lesevertrag';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { logAndContinue } from '../../infra/fehler';
 
@@ -8,7 +8,7 @@ import { logAndContinue } from '../../infra/fehler';
  * hängen. Tabellen- und Spaltennamen kommen nur aus dem Quelltext. */
 
 /** Nur diese Tabellen tauscht das Repository; ein anderer Name wirft, statt eine fremde zu leeren. */
-export const CSV_TABELLEN = [
+export const CSV_TABLES = [
   'rb_colors',
   'rb_part_categories',
   'rb_parts',
@@ -18,10 +18,10 @@ export const CSV_TABELLEN = [
   'rb_inventory_minifigs',
   'rb_inventory_parts',
 ] as const;
-export type CsvTabelle = (typeof CSV_TABELLEN)[number];
+export type CsvTable = (typeof CSV_TABLES)[number];
 
-function nurCsvTabelle(tabelle: string): CsvTabelle {
-  const t = CSV_TABELLEN.find(x => x === tabelle);
+function onlyCsvTable(tabelle: string): CsvTable {
+  const t = CSV_TABLES.find(x => x === tabelle);
   if (!t) throw new Error(`keine CSV-Tabelle: ${tabelle}`);
   return t;
 }
@@ -32,22 +32,22 @@ function sperrschluessel(tabelle: string): number {
   return h;
 }
 
-export async function sperreTabelle(c: PoolClient, tabelle: string): Promise<void> {
+export async function lockTable(c: PoolClient, tabelle: string): Promise<void> {
   // Ein laufender Tausch derselben Tabelle darf länger dauern als lock_timeout.
   await c.query('SET lock_timeout = 0');
   await c.query('SELECT pg_advisory_lock($1, $2)', [LOCKS.CSV_IMPORT, sperrschluessel(tabelle)]);
 }
 
-export async function gibTabelleFrei(c: PoolClient, tabelle: string): Promise<void> {
+export async function giveTableFree(c: PoolClient, tabelle: string): Promise<void> {
   await c.query('SELECT pg_advisory_unlock($1, $2)', [LOCKS.CSV_IMPORT, sperrschluessel(tabelle)]);
   await c.query('RESET lock_timeout');
 }
 
 /** Mit Schlüsseln (ON CONFLICT braucht sie), ohne CHECKs (geprüft wird beim Tausch, nach den
  * Triggern der Zieltabelle), temporär (die Laufzeitrolle darf in public nichts anlegen). */
-export async function legeSchattenAn(c: PoolClient, tabelle: CsvTabelle, schatten: string): Promise<void> {
+export async function putShadowAn(c: PoolClient, tabelle: CsvTable, schatten: string): Promise<void> {
   await c.query(`DROP TABLE IF EXISTS pg_temp.${schatten}`);
-  await c.query(`CREATE TEMP TABLE ${schatten} (LIKE ${nurCsvTabelle(tabelle)} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
+  await c.query(`CREATE TEMP TABLE ${schatten} (LIKE ${onlyCsvTable(tabelle)} INCLUDING ALL EXCLUDING CONSTRAINTS)`);
 }
 
 /** Ein abgewiesener Block bricht den Import ab. */
@@ -61,7 +61,7 @@ function beiKonflikt(spalten: string[], k: Konflikt | undefined): string {
   return `ON CONFLICT (${k.join(',')}) DO UPDATE SET ${rest.join(',')}`;
 }
 
-export async function fuegeBlockEin(
+export async function addBlockOne(
   c: PoolClient,
   schatten: string,
   spalten: string[],
@@ -76,7 +76,7 @@ export async function fuegeBlockEin(
   );
 }
 
-async function imSchritt(c: PoolClient, schritte: () => Promise<void>): Promise<void> {
+async function inStep(c: PoolClient, schritte: () => Promise<void>): Promise<void> {
   await c.query('BEGIN');
   try {
     await schritte();
@@ -87,9 +87,9 @@ async function imSchritt(c: PoolClient, schritte: () => Promise<void>): Promise<
   }
 }
 
-export function tausche(c: PoolClient, tabelle: CsvTabelle, schatten: string, spalten: string[]): Promise<void> {
-  const ziel = nurCsvTabelle(tabelle);
-  return imSchritt(c, async () => {
+export function swap(c: PoolClient, tabelle: CsvTable, schatten: string, spalten: string[]): Promise<void> {
+  const ziel = onlyCsvTable(tabelle);
+  return inStep(c, async () => {
     await c.query(`DELETE FROM ${ziel}`);
     await c.query(`INSERT INTO ${ziel} (${spalten.join(',')}) SELECT ${spalten.join(',')} FROM ${schatten}`);
   });
@@ -98,16 +98,16 @@ export function tausche(c: PoolClient, tabelle: CsvTabelle, schatten: string, sp
 /** rb_sets bildet den Dump nach: einfügen, ändern, entfernen. Nur ein Set, an dem
  * Bestand, Merkliste oder Preisalarm hängt, bleibt als 'api'-Zeile, sonst verlöre
  * ein Konto Name und Bild. Danach hat jede Zeile ihren set_catalog-Eintrag (0105). */
-export async function gleicheSetsAb(
+export async function sameSetsAb(
   c: PoolClient,
-  l: Pick<KatalogLesevertrag, 'setZaehlt'>,
+  l: Pick<CatalogReadContract, 'setZaehlt'>,
   schatten: string,
   spalten: string[],
 ): Promise<void> {
   const neu = spalten.filter(s => s !== 'set_num');
   const verschwunden = `NOT EXISTS (SELECT 1 FROM ${schatten} n WHERE n.set_num = rb_sets.set_num)`;
   const bezug = l.setZaehlt('rb_sets.set_num');
-  await imSchritt(c, async () => {
+  await inStep(c, async () => {
     await c.query(`INSERT INTO rb_sets (${spalten.join(',')}, source) SELECT ${spalten.join(',')}, 'csv' FROM ${schatten}
                    ON CONFLICT (set_num) DO UPDATE SET ${neu.map(s => `${s}=EXCLUDED.${s}`).join(',')}, source='csv'
                    WHERE (${neu.map(s => `rb_sets.${s}`).join(',')}, rb_sets.source)
@@ -123,11 +123,11 @@ export async function gleicheSetsAb(
   });
 }
 
-export async function entferneSchatten(c: PoolClient, schatten: string): Promise<void> {
+export async function removeShadow(c: PoolClient, schatten: string): Promise<void> {
   await c.query(`DROP TABLE IF EXISTS pg_temp.${schatten}`);
 }
 
 /** Nach einem vollständigen Tausch ist die Planer-Statistik bedeutungslos. */
 export function pflege(c: PoolClient, tabelle: string) {
-  return pflegeTabelle(sql => c.query(sql), tabelle);
+  return maintainTable(sql => c.query(sql), tabelle);
 }

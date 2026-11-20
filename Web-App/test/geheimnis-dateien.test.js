@@ -4,11 +4,11 @@
  * bleibt alles wie bisher.
  *
  * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  in ladeKonfig geheimnisseAusDateien() nicht aufgerufen → rot: „das
+ *   A  in ladeKonfig secretsFromFiles() nicht aufgerufen → rot: „das
  *      Sitzungsgeheimnis kommt aus der Datei" und „beide gesetzt ist ein Fehler"
  *   B  den abschliessenden Zeilenumbruch nicht entfernt → rot: „das
  *      Sitzungsgeheimnis …" und „das Datenbankpasswort …"
- *   C  in datenbankVerbindung den Aufruf gestrichen → rot: „das
+ *   C  in databaseConnection den Aufruf gestrichen → rot: „das
  *      Datenbankpasswort kommt aus der Datei"
  */
 const test = require('node:test');
@@ -18,7 +18,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { ladeKonfig, datenbankVerbindung, KonfigFehler } = _req('src/infra/konfig.js');
+const { ladeKonfig, databaseConnection, KonfigFehler } = _req('src/infra/konfig.js');
 
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'geheimnis-datei-'));
 test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
@@ -35,15 +35,15 @@ test('das Sitzungsgeheimnis kommt aus der Datei', () => {
   };
   const k = ladeKonfig(env);
   assert.equal(k.sessionSecret, 'aus-der-datei-lang-genug-fuer-den-start-42');
-  assert.equal(k.adminPasswort, 'Verwalter-aus-Datei-1');
+  assert.equal(k.adminPassword, 'Verwalter-aus-Datei-1');
   assert.equal(env.SESSION_SECRET_FILE, undefined, 'X_FILE bleibt stehen, ein zweiter Lauf meldete „beide gesetzt"');
   assert.equal(ladeKonfig(env).sessionSecret, 'aus-der-datei-lang-genug-fuer-den-start-42');
 });
 
 test('das Datenbankpasswort kommt aus der Datei', () => {
-  const v = datenbankVerbindung({ PGPASSWORD_FILE: datei('db', 'db-aus-datei\n'), PGUSER: 'brickinventory_app' });
+  const v = databaseConnection({ PGPASSWORD_FILE: datei('db', 'db-aus-datei\n'), PGUSER: 'brickinventory_app' });
   assert.equal(v.password, 'db-aus-datei');
-  const url = datenbankVerbindung({ DATABASE_URL_FILE: datei('url', 'postgres://a:b@c/d\n') });
+  const url = databaseConnection({ DATABASE_URL_FILE: datei('url', 'postgres://a:b@c/d\n') });
   assert.equal(url.connectionString, 'postgres://a:b@c/d');
 });
 

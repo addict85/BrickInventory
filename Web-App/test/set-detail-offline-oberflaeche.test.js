@@ -10,7 +10,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const SET = {
@@ -26,7 +26,7 @@ const SET = {
 };
 
 test('offline: Set-Detail aus der geladenen Sammlung, Angaben als Paare', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
     '/v1/sets/21318-1': () => {
       throw new TypeError('Failed to fetch');
@@ -66,7 +66,7 @@ test('Haushalt: jede Menge ein output mit dem Konto im Namen', async () => {
       { id: 2, username: 'lena' },
     ],
   };
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/sets/household-members': {
       success: true,
       members: [

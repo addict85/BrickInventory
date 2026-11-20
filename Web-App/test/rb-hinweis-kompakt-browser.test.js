@@ -13,10 +13,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
+const { startApp } = require('./helpers/app-browser');
 
 test('Schlüssel-Band am Telefon', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, { name: `rbband_${process.pid}`, telefon: true });
+  const app = await startApp(t, { name: `rbband_${process.pid}`, telefon: true });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -36,8 +36,8 @@ test('Schlüssel-Band am Telefon', { concurrency: 1, timeout: 300_000 }, async t
       await ruhig();
       const h = await b.auswerten(`Math.round(document.getElementById('rb-hinweis').getBoundingClientRect().height)`);
       assert.ok(h <= 56, `Band bei ${breite} px ${h} px hoch`);
-      const ueberlauf = await b.auswerten(`document.documentElement.scrollWidth > innerWidth`);
-      assert.equal(ueberlauf, false, `Band schiebt die Seite bei ${breite} px auf`);
+      const overflow = await b.auswerten(`document.documentElement.scrollWidth > innerWidth`);
+      assert.equal(overflow, false, `Band schiebt die Seite bei ${breite} px auf`);
     }
   });
 

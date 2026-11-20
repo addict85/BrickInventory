@@ -9,21 +9,21 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 /** Antwort des abgefangenen Downloads: null plus ein Statuscode nach Wunsch. */
-let antwortStatus = null;
+let responseStatus = null;
 
-const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
-testBildwerk(null, {
+testImageWorker(null, {
   setBildLaden: async (_u, _sn, info) => {
-    if (antwortStatus && info) info.status = antwortStatus;
+    if (responseStatus && info) info.status = responseStatus;
     return null; // Fehlschlag — der Statuscode entscheidet über den Rest
   },
 });
 const { keineDb } = require('./helpers/db');
-const { leereWarteschlange } = require('./helpers/bildwarteschlange');
+const { emptyQueue } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const db = testDaten();
+const { adminWithFactor } = require('./helpers/verwalter');
+const db = testData();
 const IQ = _req('src/bilder/bildbedarfLauf.js');
 const IM = _req('src/bilder/imageMisses.js');
 
@@ -44,18 +44,18 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
-  await leereWarteschlange(db);
+  await emptyQueue(db);
   const P = `MR${process.pid}`;
 
   await t.test('404 wird gemerkt, mit Grund', async () => {
     const sn = `${P}_404`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
-    IM._leereVordergrund();
-    antwortStatus = 404;
+    IM._emptyForeground();
+    responseStatus = 404;
     await einreihen(sn);
-    const e = await IQ._arbeiteStapel();
-    await IM._schreibePuffer();
-    assert.equal(e.nichtGeladen, 1);
+    const e = await IQ._workStack();
+    await IM._writeBuffer();
+    assert.equal(e.notLoaded, 1);
     const m = await merker(sn);
     assert.ok(
       m,
@@ -69,8 +69,8 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     // Marcos Protokoll
     const sn = `${P}_leise`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
-    IM._leereVordergrund();
-    antwortStatus = 404;
+    IM._emptyForeground();
+    responseStatus = 404;
     await einreihen(sn);
 
     const echtErr = console.error,
@@ -80,12 +80,12 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     console.error = (...a) => alsError.push(a.map(String).join(' '));
     console.warn = (...a) => alsWarn.push(a.map(String).join(' '));
     try {
-      await IQ._arbeiteStapel();
+      await IQ._workStack();
     } finally {
       console.error = echtErr;
       console.warn = echtWarn;
     }
-    await IM._schreibePuffer();
+    await IM._writeBuffer();
 
     const queueErr = alsError.filter(z => z.startsWith('[image-queue]'));
     const queueWarn = alsWarn.filter(z => z.startsWith('[image-queue]'));
@@ -108,8 +108,8 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     // das, was jemand sehen soll.
     const sn = `${P}_laut`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
-    IM._leereVordergrund();
-    antwortStatus = null;
+    IM._emptyForeground();
+    responseStatus = null;
     await einreihen(sn);
 
     const echtErr = console.error,
@@ -119,7 +119,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     console.error = (...a) => alsError.push(a.map(String).join(' '));
     console.warn = (...a) => alsWarn.push(a.map(String).join(' '));
     try {
-      await IQ._arbeiteStapel();
+      await IQ._workStack();
     } finally {
       console.error = echtErr;
       console.warn = echtWarn;
@@ -146,12 +146,12 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     // Verbindung ab, bleibt das Feld leer.
     const sn = `${P}_timeout`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
-    IM._leereVordergrund();
-    antwortStatus = null;
+    IM._emptyForeground();
+    responseStatus = null;
     await einreihen(sn);
-    const e = await IQ._arbeiteStapel();
-    await IM._schreibePuffer();
-    assert.equal(e.nichtGeladen, 1, 'Der Fehlschlag muss trotzdem gezählt werden');
+    const e = await IQ._workStack();
+    await IM._writeBuffer();
+    assert.equal(e.notLoaded, 1, 'Der Fehlschlag muss trotzdem gezählt werden');
     assert.equal(
       await merker(sn),
       undefined,
@@ -168,9 +168,13 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     // war der eigentliche Fehler. Die Regel wird hier zusammengehalten.
     const fs = require('node:fs');
     const { ohneKommentare } = require('./helpers/sources');
-    const proxy = ohneKommentare(require('./helpers/sources').proxyThumbQuelle());
+    const proxy = ohneKommentare(require('./helpers/sources').proxyThumbSource());
     const job = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/bilder/bildbedarfLauf.ts'), 'utf8'));
-    assert.match(proxy, /status === 404[\s\S]{0,200}merkeFehlend/, 'Im Proxy hängt die Fehlanzeige nicht mehr am 404');
+    assert.match(
+      proxy,
+      /status === 404[\s\S]{0,200}rememberMissing/,
+      'Im Proxy hängt die Fehlanzeige nicht mehr am 404',
+    );
     assert.match(
       job,
       /info\.status === 404/,
@@ -178,12 +182,12 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     );
     assert.doesNotMatch(
       job,
-      /\n\s*merkeFehlend\(k, 'set:' \+ r\.set_number\);/,
+      /\n\s*rememberMissing\(k, 'set:' \+ r\.set_number\);/,
       'Es gibt wieder einen unbedingten Vermerk für Sets',
     );
   });
 
-  antwortStatus = null;
+  responseStatus = null;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']).catch(() => {});
 });
@@ -198,7 +202,7 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar', { concurrency
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
-  await leereWarteschlange(db);
+  await emptyQueue(db);
 
   const P = `VG${process.pid}`;
   const NUTZER = `vg-${process.pid}`;
@@ -206,14 +210,14 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar', { concurrency
   await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
 
-  await verwalterMitFaktor(_req, uid);
+  await adminWithFactor(_req, uid);
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
 
   try {
     await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']);
-    IM._leereVordergrund();
-    IM.merkeFehlend(`set:${P}_1`, 'HTTP 404 vom CDN');
-    await IM._schreibePuffer();
+    IM._emptyForeground();
+    IM.rememberMissing(`set:${P}_1`, 'HTTP 404 vom CDN');
+    await IM._writeBuffer();
 
     await t.test('image-diag nennt den Merker und den Grund', async () => {
       const a = await (await fetch(`${base}/api/v1/admin/image-diag/${P}_1`)).json();
@@ -236,7 +240,7 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar', { concurrency
       assert.equal(r.entfernt, 1);
       assert.equal(await merker(`${P}_1`), undefined, 'Der Eintrag steht noch');
       assert.equal(
-        IM.istBekanntFehlend(`set:${P}_1`),
+        IM.isKnownMissing(`set:${P}_1`),
         false,
         'Im Arbeitsspeicher gilt das Bild weiter als fehlend — dann ändert ' +
           'sich bis zum nächsten Auffrischen nichts',
@@ -244,8 +248,8 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar', { concurrency
     });
 
     await t.test('Vorschau-Vermerke bleiben unangetastet', async () => {
-      IM.merkeFehlend('thumb:/irgendwo/xyz_thumb.jpg', 'Vorschau konnte nicht erzeugt werden');
-      await IM._schreibePuffer();
+      IM.rememberMissing('thumb:/irgendwo/xyz_thumb.jpg', 'Vorschau konnte nicht erzeugt werden');
+      await IM._writeBuffer();
       await (
         await fetch(`${base}/api/v1/admin/forget-image-misses`, {
           method: 'POST',

@@ -6,18 +6,18 @@
  * abgelaufener Sitzung. Die Startfrage antwortet 8 s spät und sagt das Gegenteil.
  *
  * Gegenproben (14.11.2026 gemessen, Bündel neu gebaut):
- *   A  in checkRegistrationEnabled die Prüfung `lauf !== _anmeldewegeLauf`
+ *   A  in checkRegistrationEnabled die Prüfung `lauf !== _loginMethodsRun`
  *      entfernt → rot: „die jüngste Antwort gilt“ (link-forgot verborgen)
  *   B  `dataset.anmeldewege = 'geladen'` entfernt → rot: Zeitüberschreitung
  *      „Anmeldewege eingetragen“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
+const { startApp } = require('./helpers/app-browser');
 
 test('Anmeldewege: die jüngste Antwort gilt', { timeout: 120_000 }, async t => {
   const name = `aw_${process.pid}`;
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name,
     bestand: (db, uid) => db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]),
   });

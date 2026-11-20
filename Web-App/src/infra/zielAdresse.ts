@@ -61,8 +61,8 @@ export function normalisiert(ip: string): string {
   const g = gruppen(ip);
   const gemappt = g.slice(0, 5).every(x => x === 0) && g[5] === 0xffff;
   const nat64 = g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every(x => x === 0);
-  const kompatibel = g.slice(0, 6).every(x => x === 0) && (g[6] !== 0 || (g[7] ?? 0) > 1);
-  if (!gemappt && !nat64 && !kompatibel) return ip;
+  const compatible = g.slice(0, 6).every(x => x === 0) && (g[6] !== 0 || (g[7] ?? 0) > 1);
+  if (!gemappt && !nat64 && !compatible) return ip;
   const [h = 0, l = 0] = g.slice(6);
   return [h >> 8, h & 255, l >> 8, l & 255].join('.');
 }
@@ -70,28 +70,25 @@ export function normalisiert(ip: string): string {
 const typ = (ip: string) => (net.isIPv6(ip) ? 'ipv6' : 'ipv4');
 
 /** Für Abrufe öffentlicher Dienste (Rebrickable, LEGO, CDNs). */
-export function oeffentlicheAdresse(roh: string): boolean {
+export function publicAddress(roh: string): boolean {
   if (!net.isIP(roh)) return false;
   const ip = normalisiert(roh);
   return ![NIE, LOOPBACK, INTERN].some(b => b.check(ip, typ(ip)));
 }
 
-type Schnittstellen = ReturnType<typeof os.networkInterfaces>;
+type Interfaces = ReturnType<typeof os.networkInterfaces>;
 
 /** Für den Mailserver: Der Verwalter darf einen im eigenen Netz wollen. Gesperrt
  * bleiben die Netze des eigenen Containers (Datenbank, Proxy) samt Loopback;
  * ohne Container ist Loopback ein lokaler Mailserver und bleibt erlaubt. */
-export function mailserverAdresse(
-  roh: string,
-  o: { imContainer?: boolean; schnittstellen?: Schnittstellen } = {},
-): boolean {
+export function mailServerAddress(roh: string, o: { imContainer?: boolean; interfaces?: Interfaces } = {}): boolean {
   if (!net.isIP(roh)) return false;
   const ip = normalisiert(roh);
   if (NIE.check(ip, typ(ip))) return false;
   if (!(o.imContainer ?? imContainer())) return true;
   if (LOOPBACK.check(ip, typ(ip))) return false;
   const eigene = new net.BlockList();
-  for (const a of Object.values(o.schnittstellen ?? os.networkInterfaces()).flat()) {
+  for (const a of Object.values(o.interfaces ?? os.networkInterfaces()).flat()) {
     if (!a || a.internal || !a.cidr) continue;
     netz(eigene, a.cidr, a.family === 'IPv6' ? 'ipv6' : 'ipv4');
   }
@@ -102,7 +99,7 @@ function imContainer(): boolean {
   return fs.existsSync('/.dockerenv') || fs.existsSync('/run/.containerenv');
 }
 
-export class ZielGesperrt extends Error {
+export class TargetLocked extends Error {
   readonly code = 'EZIELGESPERRT';
   constructor(host: string) {
     super(`${host.slice(0, 80)} löst auf keine erlaubte Adresse auf`);
@@ -110,33 +107,33 @@ export class ZielGesperrt extends Error {
 }
 
 type Adresse = { address: string; family: number };
-type LookupRueckruf = (err: NodeJS.ErrnoException | null, address: string | Adresse[], family?: number) => void;
+type LookupCallback = (err: NodeJS.ErrnoException | null, address: string | Adresse[], family?: number) => void;
 
 /** Als `lookup` für net/tls/https: Gesperrte Adressen fallen heraus, bleibt keine, scheitert die Verbindung. */
-export function pruefenderLookup(erlaubt: (ip: string) => boolean) {
-  return (host: string, opt: dns.LookupOptions, rueckruf: LookupRueckruf): void => {
+export function checkingLookup(erlaubt: (ip: string) => boolean) {
+  return (host: string, opt: dns.LookupOptions, callback: LookupCallback): void => {
     dns.lookup(host, { ...opt, all: true }, (err, adressen) => {
-      if (err) return rueckruf(err, '');
+      if (err) return callback(err, '');
       const gut = adressen.filter(a => erlaubt(a.address));
       const erste = gut[0];
-      if (!erste) return rueckruf(new ZielGesperrt(host), '');
-      if (opt.all) return rueckruf(null, gut);
-      rueckruf(null, erste.address, erste.family);
+      if (!erste) return callback(new TargetLocked(host), '');
+      if (opt.all) return callback(null, gut);
+      callback(null, erste.address, erste.family);
     });
   };
 }
 
 /** Für jeden Abruf nach draussen, den kein eigener Agent mit eigener Auflösung trägt. */
-export const oeffentlicherLookup = pruefenderLookup(oeffentlicheAdresse);
+export const publicLookup = checkingLookup(publicAddress);
 
 /** Einmal auflösen und eine erlaubte Adresse nennen, IPv4 zuerst: Ohne IPv6-Route
  * liefe die Verbindung sonst bis zur Frist. Für Klienten ohne `lookup` (nodemailer). */
-export function loeseAuf(host: string, erlaubt: (ip: string) => boolean): Promise<string> {
-  if (net.isIP(host)) return erlaubt(host) ? Promise.resolve(host) : Promise.reject(new ZielGesperrt(host));
+export function resolveOn(host: string, erlaubt: (ip: string) => boolean): Promise<string> {
+  if (net.isIP(host)) return erlaubt(host) ? Promise.resolve(host) : Promise.reject(new TargetLocked(host));
   return new Promise((fertig, scheitern) =>
-    pruefenderLookup(erlaubt)(host, { all: true }, (err, adressen) => {
+    checkingLookup(erlaubt)(host, { all: true }, (err, adressen) => {
       const wahl = Array.isArray(adressen) ? (adressen.find(a => a.family === 4) ?? adressen[0]) : undefined;
-      if (err || !wahl) return scheitern(err ?? new ZielGesperrt(host));
+      if (err || !wahl) return scheitern(err ?? new TargetLocked(host));
       fertig(wahl.address);
     }),
   );

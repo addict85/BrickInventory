@@ -30,14 +30,14 @@ const { bis } = require('./helpers/zeit');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
 const { PDFDocument } = require(path.join(ROOT, 'node_modules', '@cantoo/pdf-lib'));
 
-async function pdfMit(seiten) {
+async function pdfWith(seiten) {
   const d = await PDFDocument.create();
   for (let i = 0; i < seiten; i++) d.addPage([200, 200]);
   return Buffer.from(await d.save());
@@ -51,7 +51,7 @@ async function hochladen(base, daten) {
 }
 
 /** Ein Upload, dessen Rumpf erst auf Zuruf endet: Er hält seinen Platz. */
-function haengenderUpload(base) {
+function hangingUpload(base) {
   const u = new URL(`${base}/api/v1/vouchers/pdf`);
   const grenze = 'xyzgrenze';
   const req = http.request({
@@ -98,8 +98,8 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
     B = await neu(`schranke_b_${process.pid}`);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[A, B]]);
-    await testZugang()
-      .benachrichtigung.close()
+    await testAccess()
+      .notification.close()
       .catch(() => {}); // der CSV-Strom hört auf NOTIFY
     await db.pool.end().catch(() => {});
   });
@@ -108,7 +108,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
     b = server(B);
 
   await t.test('250 Seiten: 422 mit verständlicher Meldung', async () => {
-    const r = await hochladen(a.base, await pdfMit(250));
+    const r = await hochladen(a.base, await pdfWith(250));
     assert.equal(r.status, 422, JSON.stringify(r.body));
     assert.equal(r.body.code, 'pdf_zu_viele_seiten');
     assert.match(r.body.error, /250 Seiten, höchstens 200/);
@@ -126,7 +126,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
       }
     };
     try {
-      const r = await readInBackground(await pdfMit(3));
+      const r = await readInBackground(await pdfWith(3));
       assert.equal(r.art, 'gelesen');
       assert.equal(r.seiten, 3);
     } finally {
@@ -136,13 +136,13 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
   });
 
   await t.test('ein zweites Gutschein-PDF desselben Kontos wartet nicht', async () => {
-    const erster = haengenderUpload(a.base);
+    const erster = hangingUpload(a.base);
     try {
       await new Promise(r => setTimeout(r, 200));
-      const zweiter = await hochladen(a.base, await pdfMit(1));
+      const zweiter = await hochladen(a.base, await pdfWith(1));
       assert.equal(zweiter.status, 429, JSON.stringify(zweiter.body));
       assert.equal(zweiter.body.code, 'upload_laeuft');
-      const fremd = await hochladen(b.base, await pdfMit(1));
+      const fremd = await hochladen(b.base, await pdfWith(1));
       assert.notEqual(fremd.status, 429, 'ein anderes Konto ist nicht betroffen');
     } finally {
       erster.ende(); // sonst wartet das Schliessen des Servers auf ihn
@@ -151,7 +151,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
   });
 
   await t.test('… nach dem Ende geht es wieder', async () => {
-    const r = await hochladen(a.base, await pdfMit(1));
+    const r = await hochladen(a.base, await pdfWith(1));
     assert.notEqual(r.status, 429, JSON.stringify(r.body));
   });
 
@@ -183,7 +183,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
 test('der Platz ist frei, sobald die Antwort übergeben ist', () => {
   const { EventEmitter } = require('node:events');
   const { kontoSchranke } = _req('routes/api_v1/middleware.js');
-  const schranke = kontoSchranke('voucherPdf');
+  const limit = kontoSchranke('voucherPdf');
   const anfrage = () => {
     const res = Object.assign(new EventEmitter(), {
       statusCode: 200,
@@ -199,7 +199,7 @@ test('der Platz ist frei, sobald die Antwort übergeben ist', () => {
       headersSent: false,
     });
     let weiter = false;
-    schranke({ session: { userId: 987654 }, headers: {}, get: () => undefined }, res, () => {
+    limit({ session: { userId: 987654 }, headers: {}, get: () => undefined }, res, () => {
       weiter = true;
     });
     return { res, weiter };

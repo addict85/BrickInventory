@@ -3,9 +3,9 @@
  * Ohne BrickLink-Preis wird der Minifiguren-Preis aus den Teilen geschätzt.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in figMarktpreisMitHerkunft() nur [blFigNumber] versucht → rot: „die
+ *   A  in figMarketPriceWithOrigin() nur [blFigNumber] versucht → rot: „die
  *      eigene Nummer wird bei BrickLink versucht“
- *   B  schaetzeFigurenpreis() mit festem 'N' statt effCond → rot: „im Zustand
+ *   B  estimateMinifigsPrice() mit festem 'N' statt effCond → rot: „im Zustand
  *      der Anfrage“ (2 statt 3)
  *   C  den Cache-Eintrag der Schätzung nicht mehr geschrieben → rot: „die
  *      Schätzung wird zwischengespeichert“
@@ -15,14 +15,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
 test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency: 1 }, async t => {
-  const db = testDaten();
-  if (!(await datenOderSkip(t, _req))) return;
-  const { figMarktpreisMitHerkunft } = _req('src/finanzen/marketPrice.js');
+  const db = testData();
+  if (!(await dataOrSkip(t, _req))) return;
+  const { figMarketPriceWithOrigin } = _req('src/finanzen/marketPrice.js');
   const P = process.pid,
     NAME = `schaetzung-${P}`;
   const FA = `fig-sa${P}`,
@@ -58,7 +58,7 @@ test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency:
       `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price) VALUES ($1,777,'N','CHF',1)`,
       [TA],
     );
-    const r = await figMarktpreisMitHerkunft(FA, uid, null, 'N');
+    const r = await figMarketPriceWithOrigin(FA, uid, null, 'N');
     assert.deepEqual({ preis: r.preis, geschaetzt: r.geschaetzt }, { preis: 7, geschaetzt: false });
   });
 
@@ -76,12 +76,12 @@ test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency:
       [TA],
     );
     // Teil TA: Neu 1, Gebraucht 1.5; Teil TB ohne Preis → halbe Abdeckung.
-    const neu = await figMarktpreisMitHerkunft(FB, uid, null, 'N');
+    const neu = await figMarketPriceWithOrigin(FB, uid, null, 'N');
     assert.deepEqual(
       { preis: neu.preis, geschaetzt: neu.geschaetzt, abdeckung: neu.abdeckung },
       { preis: 2, geschaetzt: true, abdeckung: 0.5 },
     );
-    const gebraucht = await figMarktpreisMitHerkunft(FB, uid, null, 'U');
+    const gebraucht = await figMarketPriceWithOrigin(FB, uid, null, 'U');
     assert.equal(gebraucht.preis, 3, 'im Zustand der Anfrage');
   });
 
@@ -102,7 +102,7 @@ test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency:
     assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM minifig_price_history WHERE fig_number=$1', [FB])).n, 2);
     // Ohne Teilepreise bleibt der gespeicherte Wert: kein neuer Abruf je Teil.
     await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [TA]);
-    assert.equal((await figMarktpreisMitHerkunft(FB, uid, null, 'N')).preis, 2);
+    assert.equal((await figMarketPriceWithOrigin(FB, uid, null, 'N')).preis, 2);
   });
 
   await t.test('ohne ein bepreistes Teil gibt es keinen Preis, nicht 0', async () => {
@@ -110,6 +110,6 @@ test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency:
       FC,
       JSON.stringify([{ part_num: TB, color_id: 777, quantity: 3 }]),
     ]);
-    assert.equal((await figMarktpreisMitHerkunft(FC, uid, null, 'N')).preis, null);
+    assert.equal((await figMarketPriceWithOrigin(FC, uid, null, 'N')).preis, null);
   });
 });

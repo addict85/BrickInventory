@@ -23,7 +23,7 @@ function quellen() {
   return ['public/index.html', ...js].map(p => [p, fs.readFileSync(path.join(ROOT, p), 'utf8')]);
 }
 
-function zahlenfelder() {
+function numberFields() {
   const treffer = [];
   for (const [p, s] of quellen()) {
     for (const m of s.matchAll(/<input\b[^>]*>/g)) {
@@ -36,7 +36,7 @@ function zahlenfelder() {
 }
 
 test('1. jedes type="number" trägt einen inputmode', () => {
-  const felder = zahlenfelder();
+  const felder = numberFields();
   // Selbstnachweis: Findet die Suche überhaupt etwas? Ohne das wäre eine
   // leere Liste für immer grün, ohne je ein Feld angesehen zu haben.
   assert.ok(felder.length >= 20, `Nur ${felder.length} Zahlenfelder gefunden — Muster veraltet?`);
@@ -56,10 +56,10 @@ test('2. Preise und Schwellen bekommen `decimal`, nicht `numeric`', () => {
   // heisst das: Man kann 12 tippen, aber nicht 12.50. Der Unterschied fällt
   // erst auf, wenn jemand einen Rappenbetrag eingeben will.
   const falsch = [];
-  for (const f of zahlenfelder()) {
-    const kommaFeld = /step=["']?0?\.\d/.test(f.tag);
+  for (const f of numberFields()) {
+    const commaField = /step=["']?0?\.\d/.test(f.tag);
     const modus = (f.tag.match(/inputmode=["']?(\w+)/i) || [])[1];
-    if (kommaFeld && modus !== 'decimal') falsch.push(`${f.datei}:${f.zeile} (${modus})`);
+    if (commaField && modus !== 'decimal') falsch.push(`${f.datei}:${f.zeile} (${modus})`);
   }
   assert.deepEqual(
     falsch,
@@ -72,8 +72,8 @@ test('2. Preise und Schwellen bekommen `decimal`, nicht `numeric`', () => {
 
 test('3. Geldfelder sind Textfelder: type="number" verwirft „149,95“', () => {
   // Chrome liefert für ein Zahlenfeld mit Komma je nach Sprache "" oder 149;
-  // gelesen wird mit leseBetrag() (geldeingabe.test.js prüft das Verhalten).
-  const falsch = zahlenfelder()
+  // gelesen wird mit readAmount() (geldeingabe.test.js prüft das Verhalten).
+  const falsch = numberFields()
     .filter(f => /inputmode=["']?decimal/i.test(f.tag) && /type=["']?number/.test(f.tag))
     .map(f => `${f.datei}:${f.zeile}`);
   assert.deepEqual(falsch, []);

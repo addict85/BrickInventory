@@ -9,12 +9,12 @@ const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 
 test('keine Schema-Anweisung in routes/ oder den Leseabfragen', () => {
-  const skript = path.join(__dirname, '..', 'scripts', 'check-schema-am-start.js');
-  let ausgabe = '';
+  const script = path.join(__dirname, '..', 'scripts', 'check-schema-am-start.js');
+  let output = '';
   try {
-    ausgabe = execFileSync(process.execPath, [skript], { encoding: 'utf8' });
+    output = execFileSync(process.execPath, [script], { encoding: 'utf8' });
   } catch (e) {
     assert.fail((e.stdout || '') + (e.stderr || ''));
   }
-  assert.match(ausgabe, /^GRUEN/m, ausgabe);
+  assert.match(output, /^GRUEN/m, output);
 });

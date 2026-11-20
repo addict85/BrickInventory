@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { KontoName, type Route, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT_ODER_LEER } from './grund';
-import { DEGRADIERT, GenericResponse } from './gemeinsam';
+import { KontoName, type Route, bestaetigt, WITHOUT_BODY, KENNUNG, TEXT_OR_EMPTY } from './grund';
+import { DEGRADED, GenericResponse } from './gemeinsam';
 
 export const HaushaltBeigetreten = GenericResponse.extend({ linked_to: KontoName });
 
@@ -46,20 +46,20 @@ export const HouseholdStatusResponse = z.looseObject({
   sub_accounts: z.array(HouseholdMember),
   open_invites: z.number().int(),
   former_links: z.array(GetrenntesKonto),
-  degradiert: DEGRADIERT,
+  degradiert: DEGRADED,
 });
 
 export const routen = {
   'GET /api/v1/settings/household': { klein: true, antwort: HouseholdStatusResponse },
   'GET /api/v1/sets/household-members': { klein: true, antwort: HouseholdMembersResponse },
-  'POST /api/v1/settings/household/invite': { eingabe: OHNE_RUMPF, antwort: HouseholdInviteResponse, geheim: true },
+  'POST /api/v1/settings/household/invite': { eingabe: WITHOUT_BODY, antwort: HouseholdInviteResponse, geheim: true },
   'POST /api/v1/settings/household/redeem/pruefen': {
     antwort: HouseholdInviteCheckResponse,
-    eingabe: z.strictObject({ code: TEXT_ODER_LEER(64) }),
+    eingabe: z.strictObject({ code: TEXT_OR_EMPTY(64) }),
   },
   'POST /api/v1/settings/household/redeem': {
     antwort: HaushaltBeigetreten,
-    ...bestaetigt({ code: TEXT_ODER_LEER(64) }, 'password', 'faktor_code'),
+    ...bestaetigt({ code: TEXT_OR_EMPTY(64) }, 'password', 'faktor_code'),
   },
   'POST /api/v1/settings/household/unlink': {
     eingabe: z.strictObject({

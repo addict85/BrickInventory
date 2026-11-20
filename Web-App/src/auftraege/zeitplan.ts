@@ -1,87 +1,87 @@
-import type { AuftragsArt, NutzlastEingabe } from './auftraege';
+import type { JobKind, PayloadInput } from './auftraege';
 import type { Zeitplan } from './arten';
-import { weckeWorker, stelleAuftragEin } from './dienst';
-import type { AuftraegeKontext } from './kontext';
+import { wakeWorker, placeJobOne } from './dienst';
+import type { JobsContext } from './kontext';
 
 /** Je geplanter Art genau ein offener Auftrag `plan:<art>`: Eine geänderte Uhrzeit verschiebt nur faellig_ab. */
-export const planSchluessel = (art: AuftragsArt) => `plan:${art}`;
+export const planKey = (art: JobKind) => `plan:${art}`;
 
-function planVon(k: AuftraegeKontext, art: AuftragsArt): Zeitplan {
+function planOf(k: JobsContext, art: JobKind): Zeitplan {
   const plan = k.arten.von(art)?.zeitplan;
   if (!plan) throw new Error(`${art} hat keinen Zeitplan`);
   return plan;
 }
 
-export const hatZeitplan = (k: AuftraegeKontext, art: AuftragsArt): boolean => !!k.arten.von(art)?.zeitplan;
+export const hatSchedule = (k: JobsContext, art: JobKind): boolean => !!k.arten.von(art)?.zeitplan;
 
-export function leseUhrzeit(s: string | null | undefined, vorgabe: string): { h: number; min: number } {
+export function readTimeOfDay(s: string | null | undefined, vorgabe: string): { h: number; min: number } {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(s ?? '').trim()) ?? /^(\d{1,2}):(\d{2})$/.exec(vorgabe);
   const h = Number(m?.[1] ?? 4),
     min = Number(m?.[2] ?? 0);
-  return h > 23 || min > 59 ? leseUhrzeit(vorgabe, '04:00') : { h, min };
+  return h > 23 || min > 59 ? readTimeOfDay(vorgabe, '04:00') : { h, min };
 }
 
 /** In der Zeitzone des Prozesses. */
-export function naechsteUhrzeit(zeit: { h: number; min: number }, jetzt: Date): Date {
+export function nextTimeOfDay(zeit: { h: number; min: number }, jetzt: Date): Date {
   const z = new Date(jetzt);
   z.setHours(zeit.h, zeit.min, 0, 0);
   if (z <= jetzt) z.setDate(z.getDate() + 1);
   return z;
 }
 
-export async function taeglicheUhrzeit(
-  k: AuftraegeKontext,
-  einstellung: string,
+export async function dailyTimeOfDay(
+  k: JobsContext,
+  setting: string,
   vorgabe: string,
 ): Promise<{ h: number; min: number }> {
-  return leseUhrzeit(await k.einstellungen.globalValue(einstellung), vorgabe);
+  return readTimeOfDay(await k.einstellungen.globalValue(setting), vorgabe);
 }
 
-export async function naechsterLauf(k: AuftraegeKontext, art: AuftragsArt, jetzt = k.uhr.datum()): Promise<Date> {
-  const plan = planVon(k, art);
+export async function nextRun(k: JobsContext, art: JobKind, jetzt = k.uhr.datum()): Promise<Date> {
+  const plan = planOf(k, art);
   if ('taeglich' in plan)
-    return naechsteUhrzeit(await taeglicheUhrzeit(k, plan.taeglich.einstellung, plan.taeglich.vorgabe), jetzt);
-  const roh = plan.minuten.einstellung ? await k.einstellungen.globalValue(plan.minuten.einstellung) : null;
+    return nextTimeOfDay(await dailyTimeOfDay(k, plan.taeglich.setting, plan.taeglich.vorgabe), jetzt);
+  const roh = plan.minuten.setting ? await k.einstellungen.globalValue(plan.minuten.setting) : null;
   const min = Math.max(plan.minuten.mindestens ?? 1, parseInt(String(roh ?? ''), 10) || plan.minuten.vorgabe);
   return new Date(jetzt.getTime() + min * 60_000);
 }
 
 /** Ohne Zeitplan nichts: Der Worker ruft es nach jedem Auftrag. */
-export async function planeNaechsten<A extends AuftragsArt>(
-  k: AuftraegeKontext,
+export async function planeNext<A extends JobKind>(
+  k: JobsContext,
   art: A,
-  nutzlast: NutzlastEingabe<A> = {} as NutzlastEingabe<A>,
+  nutzlast: PayloadInput<A> = {} as PayloadInput<A>,
 ): Promise<string | null> {
-  if (!hatZeitplan(k, art)) return null;
-  return stelleAuftragEin(k, art, nutzlast, {
-    schluessel: planSchluessel(art),
-    faelligAb: await naechsterLauf(k, art),
-    maxVersuche: 3,
+  if (!hatSchedule(k, art)) return null;
+  return placeJobOne(k, art, nutzlast, {
+    schluessel: planKey(art),
+    dueAb: await nextRun(k, art),
+    maxAttempts: 3,
   });
 }
 
-export async function planeAlle(k: AuftraegeKontext): Promise<void> {
-  for (const a of k.arten.alle()) if (a.zeitplan) await planeNaechsten(k, a.art);
+export async function planeAll(k: JobsContext): Promise<void> {
+  for (const a of k.arten.alle()) if (a.zeitplan) await planeNext(k, a.art);
 }
 
-export async function zeitplanGeaendert(k: AuftraegeKontext, art: AuftragsArt): Promise<void> {
-  await k.auftraege.setzeFaelligkeit(planSchluessel(art), await naechsterLauf(k, art));
-  await weckeWorker(k, art);
+export async function scheduleChanged(k: JobsContext, art: JobKind): Promise<void> {
+  await k.auftraege.setDueDate(planKey(art), await nextRun(k, art));
+  await wakeWorker(k, art);
 }
 
 /** @returns false, wenn er gerade läuft */
-export async function ziehePlanVor<A extends AuftragsArt>(
-  k: AuftraegeKontext,
+export async function pullPlanBefore<A extends JobKind>(
+  k: JobsContext,
   art: A,
-  sekunden = 0,
-  nutzlast: NutzlastEingabe<A> = {} as NutzlastEingabe<A>,
+  seconds = 0,
+  nutzlast: PayloadInput<A> = {} as PayloadInput<A>,
 ): Promise<boolean> {
-  planVon(k, art);
-  if (await k.auftraege.zieheTerminVor(planSchluessel(art), sekunden, k.arten.pruefe(art, nutzlast))) {
-    await weckeWorker(k, art);
+  planOf(k, art);
+  if (await k.auftraege.pullAppointmentBefore(planKey(art), seconds, k.arten.pruefe(art, nutzlast))) {
+    await wakeWorker(k, art);
     return true;
   }
-  if (await k.auftraege.laeuftArt(art)) return false;
-  await stelleAuftragEin(k, art, nutzlast, { schluessel: planSchluessel(art), nachSekunden: sekunden, maxVersuche: 3 });
+  if (await k.auftraege.runningKind(art)) return false;
+  await placeJobOne(k, art, nutzlast, { schluessel: planKey(art), afterSeconds: seconds, maxAttempts: 3 });
   return true;
 }

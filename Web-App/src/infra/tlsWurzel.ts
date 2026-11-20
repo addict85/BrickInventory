@@ -17,7 +17,7 @@ export interface TlsStand {
 
 const Z = prozessweit('tlsStand', () => ({ v: null as { pfad: string; mtimeMs: number; stand: TlsStand } | null }));
 
-export function tlsStandAus(pem: string): TlsStand {
+export function tlsStatusFrom(pem: string): TlsStand {
   const zert = new crypto.X509Certificate(pem);
   const spki = zert.publicKey.export({ type: 'spki', format: 'der' });
   const roh = crypto.createHash('sha256').update(spki).digest();
@@ -34,7 +34,7 @@ export function tlsStandAus(pem: string): TlsStand {
 /** Neu gelesen, sobald sich die Datei ändert: Caddy legt sie erst beim ersten
  * Start an, ein Neustart der App soll nicht nötig sein. */
 export async function tlsStand(): Promise<TlsStand | null> {
-  const pfad = konfig().caZertifikat;
+  const pfad = konfig().caCertificate;
   if (!pfad) return null;
   try {
     // Stand und Inhalt aus derselben geöffneten Datei: Tauscht Caddy sie dazwischen, passt der Zwischenstand sonst nicht.
@@ -42,7 +42,7 @@ export async function tlsStand(): Promise<TlsStand | null> {
     try {
       const st = await datei.stat();
       if (Z.v?.pfad === pfad && Z.v.mtimeMs === st.mtimeMs) return Z.v.stand;
-      const stand = tlsStandAus(await datei.readFile('utf8'));
+      const stand = tlsStatusFrom(await datei.readFile('utf8'));
       Z.v = { pfad, mtimeMs: st.mtimeMs, stand };
       return stand;
     } finally {
@@ -55,7 +55,7 @@ export async function tlsStand(): Promise<TlsStand | null> {
   }
 }
 
-export async function tlsAuskunft() {
+export async function tlsInfo() {
   const stand = await tlsStand();
   return {
     https: konfig().hinterTls,

@@ -1,13 +1,13 @@
 /** Startzustand und Gesundheit: ohne Anmeldung (compose.yaml) und vor den
  * übrigen /api/v1-Routen eingehängt, gefragt wird schon während des Starts. */
 import express from 'express';
-import { versuche, wertOder } from '../src/infra/ergebnis';
-import { fehlerText, antwortSprache } from '../src/infra/fehlerTexte';
-import { nutzerIdDerAnfrage, istVerwalter } from '../src/konto/http/anmeldung';
-import { oeffentlicherStartZustand } from '../src/auftraege';
+import { versuche, valueOr } from '../src/infra/ergebnis';
+import { errorText, responseLanguage } from '../src/infra/fehlerTexte';
+import { userIdTheRequest, istVerwalter } from '../src/konto/http/anmeldung';
+import { publicStartState } from '../src/auftraege';
 import type { Dienste } from '../src/dienste';
 
-export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'management'>) {
+export function buildGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'management'>) {
   // Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
   const router = express.Router({ caseSensitive: true });
 
@@ -15,8 +15,8 @@ export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'm
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
-    const angemeldet = !!wertOder(await versuche('startup-status:anmeldung', nutzerIdDerAnfrage(d.konto, req)), null);
-    res.json(oeffentlicherStartZustand(await d.auftraege.aktuellerStartZustand(), angemeldet));
+    const angemeldet = !!valueOr(await versuche('startup-status:anmeldung', userIdTheRequest(d.konto, req)), null);
+    res.json(publicStartState(await d.auftraege.currentStartState(), angemeldet));
   });
 
   // live = Prozess, ready = Datenbank.
@@ -29,7 +29,7 @@ export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'm
       success: false,
       code: 'datenbank_nicht_erreichbar',
       status: 'unavailable',
-      error: fehlerText('datenbank_nicht_erreichbar', antwortSprache(req)),
+      error: errorText('datenbank_nicht_erreichbar', responseLanguage(req)),
     });
   });
   // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
@@ -37,7 +37,7 @@ export function baueGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'konto' | 'm
   // Überwachung fragt mit einem Token ohne Geräteschlüssel.
   router.get('/health', async (req, res) => {
     const verwalter =
-      !!wertOder(await versuche('health:anmeldung', nutzerIdDerAnfrage(d.konto, req)), null) && istVerwalter(req);
+      !!valueOr(await versuche('health:anmeldung', userIdTheRequest(d.konto, req)), null) && istVerwalter(req);
     res.json(await d.management.healthReport(verwalter));
   });
   return router;

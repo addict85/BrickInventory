@@ -1,8 +1,8 @@
 import { mengeAus, teilmengeAus } from '../../../db/bestandsmenge';
-import type { BestandLesevertrag } from '../lesevertrag';
-import type { DbSchnittstelle } from '../../../db/database';
+import type { InventoryReadContract } from '../lesevertrag';
+import type { DbInterface } from '../../../db/database';
 
-export function setZahlen(db: DbSchnittstelle, l: BestandLesevertrag, uids: number[]) {
+export function setNumbers(db: DbInterface, l: InventoryReadContract, uids: number[]) {
   return db.get<{ total_sets: string; total_quantity: string }>(
     `SELECT COUNT(DISTINCT s.set_number) AS total_sets,
                    COALESCE(SUM(${mengeAus()}), 0) AS total_quantity
@@ -13,7 +13,7 @@ export function setZahlen(db: DbSchnittstelle, l: BestandLesevertrag, uids: numb
   );
 }
 
-export function anleitungsZahlen(db: DbSchnittstelle, l: BestandLesevertrag, uids: number[], eigene: number[]) {
+export function instructionNumbers(db: DbInterface, l: InventoryReadContract, uids: number[], eigene: number[]) {
   return db.get<{ total_instructions: string }>(
     `
       SELECT
@@ -24,7 +24,7 @@ export function anleitungsZahlen(db: DbSchnittstelle, l: BestandLesevertrag, uid
   );
 }
 
-export function teileImBestand(db: DbSchnittstelle, l: BestandLesevertrag, uids: number[]) {
+export function partsInInventory(db: DbInterface, l: InventoryReadContract, uids: number[]) {
   return db.get<{ t: string | null }>(
     `SELECT SUM(${teilmengeAus('p', 'part')}*${mengeAus('sm', 1)}) AS t
               FROM parts p ${l.mengeJoin('p', 'sm', '= ANY($1)')} ${l.teilmengeJoin('p', 'part')}
@@ -34,7 +34,7 @@ export function teileImBestand(db: DbSchnittstelle, l: BestandLesevertrag, uids:
 }
 
 /** Nur die einzeln erfassten Teile, für die Aufschlüsselung „aus Sets · einzeln“. */
-export function teileEinzeln(db: DbSchnittstelle, l: BestandLesevertrag, uids: number[]) {
+export function partsSingle(db: DbInterface, l: InventoryReadContract, uids: number[]) {
   return db.get<{ t: string | null }>(
     `SELECT SUM(${teilmengeAus('p', 'part')}*${mengeAus('sm', 1)}) AS t
               FROM parts p ${l.mengeJoin('p', 'sm', '= ANY($1)')} ${l.teilmengeJoin('p', 'part')}
@@ -43,7 +43,7 @@ export function teileEinzeln(db: DbSchnittstelle, l: BestandLesevertrag, uids: n
   );
 }
 
-export function figurenImBestand(db: DbSchnittstelle, l: BestandLesevertrag, uids: number[]) {
+export function minifigsInInventory(db: DbInterface, l: InventoryReadContract, uids: number[]) {
   return db.get<{ t: string | null }>(
     `SELECT SUM(${teilmengeAus('m', 'fig')}*${mengeAus('sm', 1)}) AS t
               FROM minifigs m ${l.mengeJoin('m', 'sm', '= ANY($1)')} ${l.teilmengeJoin('m', 'fig')}

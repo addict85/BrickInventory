@@ -1,4 +1,4 @@
-import { meldeFehler } from '../infra/fehler';
+import { reportError } from '../infra/fehler';
 import { colorId } from '../infra/validate';
 import * as repo from './repository/partColor';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -23,38 +23,38 @@ export type ImageSource = 'vorhanden' | 'rebrickable' | null;
 /** After the transaction, never inside it: the fetch may take time and fail without
  * taking the change down with it. */
 async function fetchImageLater(k: PartsContext, partNumber: string, farbe: number): Promise<ImageSource> {
-  const lokal = await k.katalog.katalogTeil(partNumber, farbe);
+  const lokal = await k.katalog.catalogPart(partNumber, farbe);
   if (lokal?.bildQuelle === 'farbe') return 'vorhanden';
 
   // The change already stands; a failed fetch only drops the image.
   const info = await versuche('partColor:lookupPart', () => k.fremdquellen.quellen.lookupPart(partNumber, farbe));
   if (!info.ok || !info.wert?.image_url) return null;
   try {
-    await k.katalog.merkeTeilFarbe(partNumber, farbe, null, null, info.wert.image_url, null);
+    await k.katalog.rememberPartColor(partNumber, farbe, null, null, info.wert.image_url, null);
     return 'rebrickable';
   } catch (e) {
-    meldeFehler('colorChange:image from Rebrickable', e);
+    reportError('colorChange:image from Rebrickable', e);
     return null;
   }
 }
 
 /** @param uid        Owner of the row — NOT the viewer; the write permission
- *                   check is the route's job, via schreibzielOderNull().
+ *                   check is the route's job, via writeTargetOrNull().
  * @param neueFarbe  KEINE_FARBE (9999) means "unspecified". */
 export async function changePartColor(
   k: PartsContext,
   uid: number,
   partNumber: string,
-  alteFarbe: number,
+  oldColor: number,
   neueFarbe: number,
   angaben: { color_name?: string | null; color_hex?: string | null } = {},
 ): Promise<ColorChange> {
-  const alt = colorId(alteFarbe);
+  const alt = colorId(oldColor);
   const neu = colorId(neueFarbe);
 
   // rb_colors first, because the catalog applies to all accounts; the caller's
   // own values only fill in what's missing there.
-  const katalogFarbe = await k.partColor.rbColor(neu);
+  const catalogColor = await k.partColor.rbColor(neu);
 
   const wechsel = await k.transaktion(async (t): Promise<Omit<ColorChange, 'bild'>> => {
     const quelle = await repo.lockManualPartRow(t.db, uid, partNumber, alt);
@@ -67,12 +67,12 @@ export async function changePartColor(
 
     // The TARGET color's catalog entry must exist before the move: the parts list
     // reads name and color code from there, otherwise a color dot with no label.
-    await t.katalog.merkeTeilFarbe(partNumber, neu, katalogFarbe?.name, katalogFarbe?.rgb, null, null, t.db);
-    await t.katalog.merkeTeilFarbe(partNumber, neu, angaben.color_name, angaben.color_hex, null, null, t.db, uid);
+    await t.katalog.rememberPartColor(partNumber, neu, catalogColor?.name, catalogColor?.rgb, null, null, t.db);
+    await t.katalog.rememberPartColor(partNumber, neu, angaben.color_name, angaben.color_hex, null, null, t.db, uid);
 
     const ziel = await repo.lockManualPartRow(t.db, uid, partNumber, neu);
 
-    const { vereint, verschoben } = await t.bestand.manuell.teilzeileUmfaerben(
+    const { vereint, verschoben } = await t.bestand.manuell.recolorPartRow(
       uid,
       partNumber,
       { ...quelle, farbe: alt },

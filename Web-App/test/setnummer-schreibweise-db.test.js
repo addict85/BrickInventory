@@ -13,35 +13,35 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
-// BrickLink vorgeben, BEVOR die Preiswege preisfuehrerAbfrage herausziehen. Der
+// BrickLink vorgeben, BEVOR die Preiswege priceGuideQuery herausziehen. Der
 // echte Client wirft in genau dieser Lage — hier wird nur MITGEZAEHLT, wie
 // oft ueberhaupt gefragt wird.
-const blPfad = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPreise.js'));
-const echt = require(blPfad);
-let abrufe = [];
-require.cache[blPfad].exports = Object.assign({}, echt, {
-  preisfuehrerAbfrage: async (_k, sn, cond) => {
-    abrufe.push(`${sn}|${cond}`);
+const blPath = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPreise.js'));
+const echt = require(blPath);
+let fetches = [];
+require.cache[blPath].exports = Object.assign({}, echt, {
+  priceGuideQuery: async (_k, sn, cond) => {
+    fetches.push(`${sn}|${cond}`);
     throw new Error(`${sn} — kein BrickLink-Preis verfuegbar`);
   },
 });
 
 test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
-  const { mitVersion, ohneVersion } = _req('src/infra/setNummer.js');
-  assert.equal(mitVersion('10179'), '10179-1');
-  assert.equal(mitVersion('10179-1'), '10179-1');
-  assert.equal(mitVersion('75192-2'), '75192-2');
-  assert.equal(ohneVersion('10179'), '10179');
-  assert.equal(ohneVersion('75192-2'), '75192');
+  const { withVersion, withoutVersion } = _req('src/infra/setNummer.js');
+  assert.equal(withVersion('10179'), '10179-1');
+  assert.equal(withVersion('10179-1'), '10179-1');
+  assert.equal(withVersion('75192-2'), '75192-2');
+  assert.equal(withoutVersion('10179'), '10179');
+  assert.equal(withoutVersion('75192-2'), '75192');
 });
 
 test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const BLANK = `g${process.pid}`; // so fragt der Aufrufer
   const MITV = `${BLANK}-1`; // so legt clients/bricklink.ts es ab
@@ -58,12 +58,12 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
     );
 
     const { fetchAndCachePrice } = _req('src/finanzen/preisLauf.js');
-    const { holePreis } = _req('src/finanzen/financeCalc.js');
+    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
 
-    // Gegenprobe: in src/infra/setNummer.ts das mitVersion() aus katalogEintrag()
+    // Gegenprobe: in src/infra/setNummer.ts das withVersion() aus catalogEntry()
     // entfernt -> die Zeile mit „ohne Versionsanhang" wird rot.
     for (const nummer of [BLANK, MITV]) {
-      abrufe = [];
+      fetches = [];
       const r = await fetchAndCachePrice(nummer, 'N', 'sold', 'EUR', 24);
       assert.equal(
         r,
@@ -71,12 +71,12 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
         `„${nummer}": Der Job fragt BrickLink, obwohl im Katalog steht, dass es ` +
           'keinen Preis gibt — und zaehlt das Ergebnis als Fehler statt als uebersprungen',
       );
-      assert.equal(abrufe.length, 0, `„${nummer}": ${abrufe.length} BrickLink-Abruf(e) umsonst`);
+      assert.equal(fetches.length, 0, `„${nummer}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
 
-      abrufe = [];
-      const p = await holePreis(nummer, 'N', 'sold', 'EUR', 24);
+      fetches = [];
+      const p = await fetchPrice(nummer, 'N', 'sold', 'EUR', 24);
       assert.equal(p.no_price, true, `„${nummer}": Der Anfrageweg meldet keinen preislosen Eintrag`);
-      assert.equal(abrufe.length, 0, `„${nummer}": ${abrufe.length} BrickLink-Abruf(e) umsonst`);
+      assert.equal(fetches.length, 0, `„${nummer}": ${fetches.length} BrickLink-Abruf(e) umsonst`);
     }
   } finally {
     await aufraeumen();

@@ -1,10 +1,10 @@
 import { setBestand } from '../../../db/bestandSicht';
-import type { DbSchnittstelle, Treffer } from '../../../db/database';
+import type { DbInterface, Treffer } from '../../../db/database';
 import { marktpreisSql } from '../../../db/geldSql';
-import { LIKE_ESCAPE, enthaeltMuster } from '../../../db/likeSuche';
-import { ausTabelle } from '../../infra/validate';
+import { LIKE_ESCAPE, containsPattern } from '../../../db/likeSuche';
+import { fromTable } from '../../infra/validate';
 
-export function markSetWanted(db: DbSchnittstelle, userId: number, sn: string, c: string, seit: Date | string | null) {
+export function markSetWanted(db: DbInterface, userId: number, sn: string, c: string, seit: Date | string | null) {
   return db.get<{ war_neu: boolean }>(
     `INSERT INTO wanted (user_id, set_number, condition, created_at)
      VALUES ($1,$2,$3, COALESCE($4::timestamptz, NOW()))
@@ -15,18 +15,18 @@ export function markSetWanted(db: DbSchnittstelle, userId: number, sn: string, c
   );
 }
 
-export function removeWantedEntry(db: DbSchnittstelle, userId: number, setNumber: string, c: string) {
+export function removeWantedEntry(db: DbInterface, userId: number, setNumber: string, c: string) {
   return db.run('DELETE FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [userId, setNumber, c]);
 }
 
-export function isWanted(db: DbSchnittstelle, zuId: number, sn: string, c: string) {
+export function isWanted(db: DbInterface, zuId: number, sn: string, c: string) {
   return db.get<Treffer>('SELECT 1 FROM wanted WHERE user_id=$1 AND set_number=$2 AND condition=$3', [zuId, sn, c]);
 }
 
-export function transferWantedEntry(db: DbSchnittstelle, zuId: number, vonId: number, sn: string, c: string) {
+export function transferWantedEntry(db: DbInterface, zuId: number, ofId: number, sn: string, c: string) {
   return db.run('UPDATE wanted SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4', [
     zuId,
-    vonId,
+    ofId,
     sn,
     c,
   ]);
@@ -67,7 +67,7 @@ export type WantedRow = {
   owned: boolean;
 };
 
-export function wantedListInScope(db: DbSchnittstelle, userIds: number[], f: WantedSelection, waehrung: string) {
+export function wantedListInScope(db: DbInterface, userIds: number[], f: WantedSelection, waehrung: string) {
   const werte: unknown[] = [userIds];
   let wo = '';
   if (f.setOnly) {
@@ -76,7 +76,7 @@ export function wantedListInScope(db: DbSchnittstelle, userIds: number[], f: Wan
   }
   // Number AND name, as in the gallery; the name comes from the JOIN on rb_sets.
   if (f.search) {
-    werte.push(enthaeltMuster(f.search));
+    werte.push(containsPattern(f.search));
     wo +=
       ` AND (w.set_number ILIKE $${werte.length}${LIKE_ESCAPE}` + ` OR rb.name ILIKE $${werte.length}${LIKE_ESCAPE})`;
   }
@@ -84,8 +84,8 @@ export function wantedListInScope(db: DbSchnittstelle, userIds: number[], f: Wan
     werte.push(f.condition);
     wo += ` AND w.condition = $${werte.length}`;
   }
-  // ausTabelle(): direct access would also find inherited properties like "constructor".
-  const ordnung = ausTabelle(WANTED_SORTS, f.sort, WANTED_SORTS.added_desc);
+  // fromTable(): direct access would also find inherited properties like "constructor".
+  const ordnung = fromTable(WANTED_SORTS, f.sort, WANTED_SORTS.added_desc);
   werte.push(waehrung);
   const pWaehrung = `$${werte.length}`;
   return db.all<WantedRow>(
@@ -116,7 +116,7 @@ export function wantedListInScope(db: DbSchnittstelle, userIds: number[], f: Wan
   );
 }
 
-export function wantedListForExport(db: DbSchnittstelle, uid: number) {
+export function wantedListForExport(db: DbInterface, uid: number) {
   return db.all<Record<string, unknown>>(
     `SELECT w.set_number,
             w.condition,

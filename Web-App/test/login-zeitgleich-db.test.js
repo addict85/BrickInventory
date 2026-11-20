@@ -4,7 +4,7 @@
  * Gezählt statt gestoppt: argon2id kostet kaum mehr als die schwankende Datenbankarbeit.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in pruefeAnmeldedaten() ohne Treffer kein Vergleich gegen DUMMY_HASH → rot:
+ *   A  in checkCredentials() ohne Treffer kein Vergleich gegen DUMMY_HASH → rot:
  *      „unbekannt: genau ein Hash“ (0 statt 1)
  *   B  DUMMY_HASH mit geringeren Kosten (memoryCost 4096) → rot: „unbekannt: dieselben
  *      Kosten wie ein echtes Konto“
@@ -17,24 +17,24 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const argon2 = require('@node-rs/argon2');
-const { pruefeAnmeldedaten } = _req('src/konto/anmeldepruefung.js');
-const { hashePasswort } = _req('src/konto/passwortHash.js');
+const { checkCredentials } = _req('src/konto/anmeldepruefung.js');
+const { hashePassword } = _req('src/konto/passwortHash.js');
 
-/** Minimaler Request: pruefeAnmeldedaten braucht davon nur die IP (Zähler). */
+/** Minimaler Request: checkCredentials braucht davon nur die IP (Zähler). */
 const anfrage = (i = 7) => ({ ip: `203.0.113.${i}`, headers: {}, socket: {} });
 /** Kosten eines argon2-Hashes: alles vor dem Salz. */
 const kosten = (/** @type {string} */ hash) => hash.split('$').slice(0, 4).join('$');
 
 test('unbekannter Anmeldename rechnet denselben Hash wie ein falsches Passwort', async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const name = 'zeit_bekannt';
-  const hash = await hashePasswort('richtigesPasswort1');
+  const hash = await hashePassword('richtigesPasswort1');
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   await db.run(
     'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
@@ -56,7 +56,7 @@ test('unbekannter Anmeldename rechnet denselben Hash wie ein falsches Passwort',
       ['unbekannt', 'zeit_gibtsnicht', 20],
     ])) {
       gerechnet = [];
-      const r = await pruefeAnmeldedaten(anfrage(ip), wer, 'falschesPasswort1');
+      const r = await checkCredentials(anfrage(ip), wer, 'falschesPasswort1');
       // Vorbedingung: wirklich abgelehnt, mit 401 — nicht 429 (Sperre) oder 400 (Formfehler).
       assert.equal(r.ok, false, `${was}: hätte abgelehnt werden müssen`);
       assert.equal(r.absage.art, 'nicht_angemeldet', `${was}: erwartet nicht_angemeldet (${r.absage.error})`);

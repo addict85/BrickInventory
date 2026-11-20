@@ -12,7 +12,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, takt, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, takt, warte } = require('./helpers/oberflaeche');
 
 const SET = {
   success: true,
@@ -33,7 +33,7 @@ async function detail(o) {
 }
 
 test('Set-Detail öffnet sofort mit Platzhalter', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/sets/10294-1': spaeter(SET),
     '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
   });
@@ -50,7 +50,7 @@ test('Set-Detail öffnet sofort mit Platzhalter', async () => {
 });
 
 test('Set-Detail: geschlossen bleibt geschlossen', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/sets/10294-1': spaeter(SET),
     '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
   });
@@ -69,7 +69,7 @@ test('Merkliste zeigt Platzhalterzeilen, bis die Liste da ist', async () => {
     success: true,
     merkposten: [{ set_number: '10276-1', condition: 'N', name: 'Kolosseum', added_at: '2026-10-01T00:00:00Z' }],
   };
-  const o = await oeffneOberflaeche({ '/v1/wanted': spaeter(liste) });
+  const o = await openUi({ '/v1/wanted': spaeter(liste) });
   try {
     await reiter(o.w, 'wanted');
     assert.ok(o.d.querySelector('#mk-list .skelett-liste[aria-busy="true"]'), 'keine Platzhalter');

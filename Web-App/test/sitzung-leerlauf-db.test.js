@@ -28,16 +28,16 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = testDaten();
-const { drossleBeruehren, beruehrenMs } = _req('src/konto/sitzungsBeruehrung.js');
-const { sitzungLeerlaufMs, sitzungLeerlaufSek, LEERLAUF_VORGABE_MIN } = _req('src/konto/sitzungsFrist.js');
-// Die Vorgabe als gereichte Konfiguration, wie baueDienste sie reicht.
-const VORGABE = { sitzungLeerlaufMin: LEERLAUF_VORGABE_MIN };
-const SITZUNG_LEERLAUF_MS = sitzungLeerlaufMs(VORGABE);
-const SITZUNG_LEERLAUF_SEK = sitzungLeerlaufSek(VORGABE);
-const BERUEHREN_MS = beruehrenMs(SITZUNG_LEERLAUF_MS);
+const db = testData();
+const { touchThrottle, touchMs } = _req('src/konto/sitzungsBeruehrung.js');
+const { sessionIdleMs, sessionIdleSec, IDLE_DEFAULT_MIN } = _req('src/konto/sitzungsFrist.js');
+// Die Vorgabe als gereichte Konfiguration, wie buildServices sie reicht.
+const VORGABE = { sitzungLeerlaufMin: IDLE_DEFAULT_MIN };
+const SESSION_IDLE_MS = sessionIdleMs(VORGABE);
+const SESSION_IDLE_SEC = sessionIdleSec(VORGABE);
+const TOUCH_MS = touchMs(SESSION_IDLE_MS);
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -48,17 +48,17 @@ const UID = 990717;
 /**
  * Ein Server wie in server.ts, nur mit kurzen Fristen.
  *
- * @param ttlSek    Leerlauf-Frist in Sekunden (als Bruchzahl erlaubt).
- * @param drosselMs Frist der Drosselung; `null` = gar nicht drosseln.
+ * @param ttlSec    Leerlauf-Frist in Sekunden (als Bruchzahl erlaubt).
+ * @param throttleMs Frist der Drosselung; `null` = gar nicht drosseln.
  */
-async function starteServer(ttlSek, drosselMs) {
+async function startServer(ttlSec, throttleMs) {
   const speicher = new pgSession({
     pool: db.pool,
     tableName: 'user_sessions',
     createTableIfMissing: false,
-    ...(ttlSek === null ? {} : { ttl: ttlSek }),
+    ...(ttlSec === null ? {} : { ttl: ttlSec }),
   });
-  if (drosselMs !== null) drossleBeruehren(speicher, drosselMs);
+  if (throttleMs !== null) touchThrottle(speicher, throttleMs);
   const app = express();
   app.use(
     session({
@@ -86,7 +86,7 @@ const anmelden = async base => {
   return (r.headers.get('set-cookie') || '').split(';')[0];
 };
 const wer = async (base, keks) => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).uid;
-const { warte: schlafe } = require('./helpers/zeit');
+const { warte: sleep } = require('./helpers/zeit');
 
 /**
  * Aufräumen — und zwar in `after`, nicht am Ende eines Falls.
@@ -105,7 +105,7 @@ test('ohne Betrieb verfällt die Sitzung', async t => {
 
   // 5 s statt 2 s: Unter Last (paralleler Volllauf) lagen zwischen Anmelden
   // und erstem Lesen schon über 2 s, und die Vorbedingung kippte.
-  const { srv, base } = await starteServer(5, null);
+  const { srv, base } = await startServer(5, null);
   try {
     const keks = await anmelden(base);
     assert.equal(
@@ -114,7 +114,7 @@ test('ohne Betrieb verfällt die Sitzung', async t => {
       'direkt nach dem Anmelden muss die Sitzung gelten — sonst misst der Rest nichts',
     );
 
-    await schlafe(7000); // 5 s Frist, 2 s Reserve — siehe Kopf
+    await sleep(7000); // 5 s Frist, 2 s Reserve — siehe Kopf
     assert.equal(
       await wer(base, keks),
       null,
@@ -136,13 +136,13 @@ test('mit Betrieb bleibt die Sitzung', async t => {
   // Dasselbe Verhältnis wie im Betrieb: Die Drosselung ist ein Fünftel der
   // Frist, nicht länger. Mit einer Drosselung länger als die Frist wird
   // dieser Fall rot — gemessen, siehe Kopf.
-  const { srv, base } = await starteServer(5, 1000);
+  const { srv, base } = await startServer(5, 1000);
   try {
     const keks = await anmelden(base);
     // Über die Frist HINAUS arbeiten: 20 Anfragen à 400 ms = 8 s bei 5 s
     // Frist. Ohne Nachführen wäre die Sitzung nach etwa Anfrage 13 tot.
     for (let i = 0; i < 20; i++) {
-      await schlafe(400);
+      await sleep(400);
       assert.equal(
         await wer(base, keks),
         UID,
@@ -159,19 +159,19 @@ test('die Drosselung ist kürzer als die Frist', () => {
   // Der Kern der Kopplung, ohne Server: Wäre sie länger, flöge der ARBEITENDE
   // Benutzer heraus statt des untätigen.
   assert.ok(
-    BERUEHREN_MS * 2 <= SITZUNG_LEERLAUF_MS,
-    `Die Drosselung (${BERUEHREN_MS} ms) ist nicht deutlich kürzer als die ` +
-      `Leerlauf-Frist (${SITZUNG_LEERLAUF_MS} ms) — dann wird der Ablauf nicht ` +
+    TOUCH_MS * 2 <= SESSION_IDLE_MS,
+    `Die Drosselung (${TOUCH_MS} ms) ist nicht deutlich kürzer als die ` +
+      `Leerlauf-Frist (${SESSION_IDLE_MS} ms) — dann wird der Ablauf nicht ` +
       'rechtzeitig nachgeführt und eine tätige Sitzung stirbt mitten im Betrieb.',
   );
 
   // Und die Vorgabe ist die, die im README steht.
-  assert.equal(SITZUNG_LEERLAUF_MS, LEERLAUF_VORGABE_MIN * 60_000);
-  assert.equal(SITZUNG_LEERLAUF_SEK, LEERLAUF_VORGABE_MIN * 60);
+  assert.equal(SESSION_IDLE_MS, IDLE_DEFAULT_MIN * 60_000);
+  assert.equal(SESSION_IDLE_SEC, IDLE_DEFAULT_MIN * 60);
   // Bei vier Stunden bleibt die Drosselung bei den bisherigen fünf Minuten:
   // ein Viertel davon wäre eine Stunde, es gewinnt das Minimum.
   assert.equal(
-    BERUEHREN_MS,
+    TOUCH_MS,
     5 * 60 * 1000,
     'Bei der Vorgabe von vier Stunden sollen es weiter fünf Minuten sein — ' +
       'sonst schreibt die Webapp wieder mehr als nötig',

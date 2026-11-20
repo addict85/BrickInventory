@@ -17,18 +17,18 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
-const { haeltSet, katalogSet } = require('./helpers/bestand');
+const { holdsSet, catalogSet } = require('./helpers/bestand');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-let HAUPT = 0,
+let MAIN = 0,
   KIND = 0;
 // Drei Sets, weil jeder Fall eine eigene, noch nicht verschobene Erfassung
 // braucht: Eine gelungene Verschiebung verbraucht sie.
@@ -43,11 +43,11 @@ const SN_A = '75192-1',
  * Schlüsselbildung stehen, prüfte dieser Test eine Sperre, die es so nicht
  * gibt.
  */
-const SPERR_SQL = 'SELECT pg_advisory_xact_lock($1, hashtext($2))';
+const LOCK_SQL = 'SELECT pg_advisory_xact_lock($1, hashtext($2))';
 const { LOCKS } = _req('src/infra/lockNamespaces.js');
-const schluessel = (userId, scopeKey) => [LOCKS.INVENTAR, `${userId}|${scopeKey}`];
+const schluessel = (userId, scopeKey) => [LOCKS.INVENTORY, `${userId}|${scopeKey}`];
 
-async function sperrZeilen(userId, scopeKey, erteilt) {
+async function lockRows(userId, scopeKey, granted) {
   const z = await db.get(
     `SELECT COUNT(*)::int AS c FROM pg_locks
       WHERE locktype = 'advisory' AND classid = $1::oid
@@ -56,7 +56,7 @@ async function sperrZeilen(userId, scopeKey, erteilt) {
         -- pg_locks gilt für den ganzen Server; parallele Testdateien halten in
         -- ihrer eigenen Datenbank dieselben Schlüssel.
         AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
-    [...schluessel(userId, scopeKey), erteilt],
+    [...schluessel(userId, scopeKey), granted],
   );
   return Number(z.c);
 }
@@ -65,25 +65,25 @@ async function sperrZeilen(userId, scopeKey, erteilt) {
  * Wartet, bis auf genau diesem Schlüssel ein Warter steht — oder bis die
  * Route fertig ist.
  */
-async function befundWarter(userId, scopeKey, istFertig, grenzeMs = 5000) {
-  const bis = Date.now() + grenzeMs;
+async function findingWarter(userId, scopeKey, isDone, limitMs = 5000) {
+  const bis = Date.now() + limitMs;
   for (;;) {
-    if (istFertig()) return 'fertig';
-    if ((await sperrZeilen(userId, scopeKey, false)) > 0) return 'wartet';
+    if (isDone()) return 'fertig';
+    if ((await lockRows(userId, scopeKey, false)) > 0) return 'wartet';
     if (Date.now() > bis) return 'nichts';
     await new Promise(r => setTimeout(r, 20));
   }
 }
 
 /** Die Verschiebung, mit einer Schranke, damit ein Hänger eine Meldung wird. */
-function verschiebe(base, sn, acqIds, grenzeMs = 10000) {
+function move(base, sn, acqIds, limitMs = 10000) {
   const lauf = fetch(`${base}/api/v1/sets/${sn}/move`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ to_user_id: KIND, acquisition_ids: acqIds }),
   });
   const zustand = { fertig: false };
-  const verfolgt = lauf.then(
+  const tracked = lauf.then(
     r => {
       zustand.fertig = true;
       return r;
@@ -93,27 +93,27 @@ function verschiebe(base, sn, acqIds, grenzeMs = 10000) {
       throw e;
     },
   );
-  zustand.antwort = verfolgt;
+  zustand.antwort = tracked;
   // Der Wecker wird GELÖSCHT, sobald die Antwort da ist. Ohne das bleibt ein
   // offener Timer von zehn Sekunden stehen, hält den Prozess am Leben und
   // schiebt das Ende der Datei nach hinten — in einem Lauf mit achtzig
   // Dateien ist das nicht nichts.
-  let wecker;
-  zustand.mitSchranke = Promise.race([
-    verfolgt,
+  let alarm;
+  zustand.withLimit = Promise.race([
+    tracked,
     new Promise((_, ab) => {
-      wecker = setTimeout(
+      alarm = setTimeout(
         () =>
           ab(
             new Error(
-              `Die Verschiebung von ${sn} war nach ${grenzeMs} ms nicht fertig — ` +
+              `Die Verschiebung von ${sn} war nach ${limitMs} ms nicht fertig — ` +
                 'sie hängt an einer Sperre, die sie nicht nehmen dürfte',
             ),
           ),
-        grenzeMs,
+        limitMs,
       );
     }),
-  ]).finally(() => clearTimeout(wecker));
+  ]).finally(() => clearTimeout(alarm));
   return zustand;
 }
 
@@ -125,7 +125,7 @@ async function erfassungsIds(userId, sn) {
   return z.map(r => r.id);
 }
 
-async function aufbau() {
+async function setup() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -137,12 +137,12 @@ async function aufbau() {
   }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x')`);
   const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
-  HAUPT = await id('haupt');
+  MAIN = await id('haupt');
   KIND = await id('kind');
-  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [HAUPT, KIND]);
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [MAIN, KIND]);
   for (const sn of [SN_A, SN_B, SN_C]) {
-    await katalogSet(db, sn, { name: sn });
-    await haeltSet(db, HAUPT, sn, 1, { preis: 100 });
+    await catalogSet(db, sn, { name: sn });
+    await holdsSet(db, MAIN, sn, 1, { preis: 100 });
   }
 }
 
@@ -153,9 +153,9 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
     keineDb(t, e);
     return;
   }
-  await aufbau();
+  await setup();
 
-  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
 
   /**
    * Nimmt die Sperre auf eigener Verbindung, führt `fn` aus, gibt sie frei.
@@ -165,13 +165,13 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
    * Transaktionssperre endet mit der Transaktion. Sie wäre weg, bevor die
    * Route sie bemerken könnte.
    */
-  async function mitSperre(userId, scopeKey, fn) {
+  async function withLock(userId, scopeKey, fn) {
     const halter = await db.pool.connect();
     try {
       await halter.query('BEGIN');
-      await halter.query(SPERR_SQL, schluessel(userId, scopeKey));
+      await halter.query(LOCK_SQL, schluessel(userId, scopeKey));
       assert.equal(
-        await sperrZeilen(userId, scopeKey, true),
+        await lockRows(userId, scopeKey, true),
         1,
         `Vorbedingung: der Halter hat die Sperre (${userId}, ${scopeKey}) nicht bekommen — ` +
           'dann sagt dieser Fall nichts über die Route',
@@ -187,24 +187,24 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
   }
 
   await t.test('A. Sperre auf (Quellkonto, Set) — die Verschiebung wartet', async () => {
-    const acq = await erfassungsIds(HAUPT, SN_A);
+    const acq = await erfassungsIds(MAIN, SN_A);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_A}`);
 
-    await mitSperre(HAUPT, SN_A, async freigeben => {
-      const v = verschiebe(srv.base, SN_A, acq);
-      const befund = await befundWarter(HAUPT, SN_A, () => v.fertig);
+    await withLock(MAIN, SN_A, async freigeben => {
+      const v = move(srv.base, SN_A, acq);
+      const befund = await findingWarter(MAIN, SN_A, () => v.fertig);
 
       assert.equal(
         befund,
         'wartet',
         {
           fertig:
-            `Die Verschiebung lief DURCH, während die Sperre auf (${HAUPT}, ${SN_A}) ` +
+            `Die Verschiebung lief DURCH, während die Sperre auf (${MAIN}, ${SN_A}) ` +
             'gehalten wurde. Dann nimmt die Route die Sperre nicht — zwei gleichzeitige ' +
             'Verschiebungen desselben Sets lesen denselben Stand, und die zweite ' +
             'schreibt die erste tot.',
           nichts:
-            `Es erschien kein Warter auf (${HAUPT}, ${SN_A}), und fertig wurde die ` +
+            `Es erschien kein Warter auf (${MAIN}, ${SN_A}), und fertig wurde die ` +
             'Verschiebung auch nicht. Sie hängt also an etwas anderem — nicht an der ' +
             'Sperre, um die es hier geht.',
         }[befund],
@@ -215,7 +215,7 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
       // Ohne diesen Teil wäre „wartet" auch von einer Route erfüllt, die
       // dauerhaft hängt. Eine Sperre, die nie aufgeht, ist kein Fortschritt.
       await freigeben();
-      const r = await v.mitSchranke;
+      const r = await v.withLimit;
       assert.equal(
         r.status,
         200,
@@ -238,22 +238,22 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
     // diese Verschiebung mit, und nur dieser Fall wird rot — A bleibt grün.
     // Ohne B stünden alle Verschiebungen eines Kontos hintereinander an, auch
     // die völlig unbeteiligten, und nichts würde es sagen.
-    const acq = await erfassungsIds(HAUPT, SN_B);
+    const acq = await erfassungsIds(MAIN, SN_B);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_B}`);
 
-    await mitSperre(HAUPT, SN_A, async () => {
-      const v = verschiebe(srv.base, SN_B, acq);
-      const r = await v.mitSchranke; // wirft, falls sie doch hängt
+    await withLock(MAIN, SN_A, async () => {
+      const v = move(srv.base, SN_B, acq);
+      const r = await v.withLimit; // wirft, falls sie doch hängt
       assert.equal(
         r.status,
         200,
         `Die Verschiebung von ${SN_B} kam mit ${r.status} zurück, während die Sperre auf ` +
-          `(${HAUPT}, ${SN_A}) lag — ein anderes Set darf davon nicht betroffen sein`,
+          `(${MAIN}, ${SN_A}) lag — ein anderes Set darf davon nicht betroffen sein`,
       );
       assert.equal(
-        await sperrZeilen(HAUPT, SN_A, false),
+        await lockRows(MAIN, SN_A, false),
         0,
-        `Es stand ein Warter auf (${HAUPT}, ${SN_A}) — dann sperrt die Route auf dem ` +
+        `Es stand ein Warter auf (${MAIN}, ${SN_A}) — dann sperrt die Route auf dem ` +
           'Konto und nicht auf (Konto, Set), und zwei fremde Sets blockieren sich',
       );
     });
@@ -264,12 +264,12 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
     // Konto, aus dem etwas WEGgeht — dort wird gelesen, gerechnet und
     // gelöscht. GEMESSEN: Steht `toId` in der Route, werden A UND dieser Fall
     // rot. Und allein fängt dieser Fall eine Sperre auf BEIDEN Konten: auch …
-    const acq = await erfassungsIds(HAUPT, SN_C);
+    const acq = await erfassungsIds(MAIN, SN_C);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_C}`);
 
-    await mitSperre(KIND, SN_C, async () => {
-      const v = verschiebe(srv.base, SN_C, acq);
-      const r = await v.mitSchranke;
+    await withLock(KIND, SN_C, async () => {
+      const v = move(srv.base, SN_C, acq);
+      const r = await v.withLimit;
       assert.equal(
         r.status,
         200,
@@ -277,7 +277,7 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
           `(${KIND}, ${SN_C}) lag. Die Route sperrt dann über das falsche Konto.`,
       );
       assert.equal(
-        await sperrZeilen(KIND, SN_C, false),
+        await lockRows(KIND, SN_C, false),
         0,
         `Es stand ein Warter auf (${KIND}, ${SN_C}) — die Route sperrt über das Zielkonto`,
       );

@@ -2,7 +2,7 @@
  * einen falschen Durchschnitt bekämen. */
 import { inZehntel4, aufRappen, alsText } from '../infra/geld';
 import { zustand } from '../infra/validate';
-import type { FinanzenKontext } from './kontext';
+import type { FinancesContext } from './kontext';
 
 export interface SetValue {
   unit_price: number | null;
@@ -22,7 +22,7 @@ function num(v: unknown): number {
 /** In EINER Abfrage für viele Sets.
  * @returns Map "setNumber|condition" → Marktpreis */
 export async function loadConditionPrices(
-  k: FinanzenKontext,
+  k: FinancesContext,
   setNumbers: string[],
   currency: string,
   ttlHours?: number,
@@ -35,7 +35,7 @@ export async function loadConditionPrices(
   const params: (string[] | string | number)[] = [list, currency];
   if (ttlHours) params.push(ttlHours);
 
-  const rows = await k.setWert.cachePreiseFuerSets(params, ttlClause);
+  const rows = await k.setWert.cachePricesForSets(params, ttlClause);
 
   for (const r of rows) {
     const p = num(r.marktpreis);
@@ -103,12 +103,12 @@ export function valueSet(
 
 /** Für Listen loadConditionPrices() + valueSet(), damit es bei einer Abfrage bleibt. */
 export async function getSetValue(
-  k: FinanzenKontext,
+  k: FinancesContext,
   userId: number,
   setNumber: string,
   currency: string,
 ): Promise<SetValue> {
-  const acqs = await k.setWert.setErfassungenZumWert(userId, setNumber);
+  const acqs = await k.setWert.setEntriesToValue(userId, setNumber);
   const prices = await loadConditionPrices(k, [setNumber], currency);
   return valueSet(setNumber, acqs, prices, 'N', 1);
 }
@@ -118,7 +118,7 @@ export async function getSetValue(
 /** Die eine Regel für Sets, Teile, Figuren, Kachel und Verlauf. null bei
  * Kaufpreis 0: Gegen ein Geschenk gibt es keine Prozentzahl (gegen 0,01
  * stand dort „+327.600 %"). */
-export function entwicklungProzent(kauf: number | null | undefined, markt: number | null | undefined): number | null {
+export function developmentPercent(kauf: number | null | undefined, markt: number | null | undefined): number | null {
   if (kauf == null || !(kauf > 0) || markt == null || !(markt > 0)) return null;
   return ((markt - kauf) / kauf) * 100;
 }
@@ -129,7 +129,7 @@ export function pnlProzent(purchase: number | null, market: number | null): numb
 }
 
 export function pnlPct(purchase: number | null, market: number | null): string | null {
-  return entwicklungProzent(purchase, market)?.toFixed(1) ?? null;
+  return developmentPercent(purchase, market)?.toFixed(1) ?? null;
 }
 
 export interface AcquisitionValueRow {
@@ -151,7 +151,7 @@ export interface AcquisitionValueRow {
 }
 
 /** Was eine Erfassung für ihren Wert mitbringt; purchase_price bei Sets, unit_price sonst. */
-export interface ErfassungFuerWert {
+export interface EntryForValue {
   id: number;
   condition?: string | null;
   quantity: number | string;
@@ -167,7 +167,7 @@ export interface ErfassungFuerWert {
 /** @param prices Map "setNumber|condition" → Marktpreis (loadConditionPrices) */
 export function valueAcquisitionRows(
   setNumber: string,
-  acquisitions: ErfassungFuerWert[],
+  acquisitions: EntryForValue[],
   prices: Map<string, number>,
 ): AcquisitionValueRow[] {
   return (acquisitions || []).map(a => {
@@ -206,13 +206,13 @@ export function weightedPurchase(rows: AcquisitionValueRow[]): number | null {
   return withCost.reduce((s, r) => s + (r.purchase_price as number) * r.quantity, 0) / qty;
 }
 
-export interface KachelWert {
+export interface TileValue {
   kachel_preis: number | null;
   kachel_pnl_pct: number | null;
   kachel_quelle: 'markt' | 'kauf' | null;
 }
 
-export interface KachelQuelle {
+export interface TileSource {
   set_number: string;
   quantity: number;
   current_price: number | null;
@@ -224,13 +224,13 @@ export interface KachelQuelle {
 
 /** Im Haushalt zählt der nach Menge gewichtete Basispreis: „Irgendeine Zeile"
  * ergäbe je nach Reihenfolge eine andere Prozentzahl. */
-export function kachelWerte(zeilen: KachelQuelle[]): Map<string, KachelWert> {
-  const jeSet = new Map<string, KachelQuelle[]>();
+export function tileValues(zeilen: TileSource[]): Map<string, TileValue> {
+  const jeSet = new Map<string, TileSource[]>();
   for (const z of zeilen) jeSet.set(z.set_number, [...(jeSet.get(z.set_number) || []), z]);
-  const aus = new Map<string, KachelWert>();
+  const aus = new Map<string, TileValue>();
   for (const [nr, zs] of jeSet) {
     const markt = Number(zs[0]?.current_price) || 0;
-    const gewichtet = (feld: 'baseline_price' | 'purchase_price') => {
+    const weighted = (feld: 'baseline_price' | 'purchase_price') => {
       let summe = 0,
         menge = 0;
       for (const z of zs) {
@@ -247,11 +247,11 @@ export function kachelWerte(zeilen: KachelQuelle[]): Map<string, KachelWert> {
       const t = zs[0]!.baseline_pnl_pct || zs[0]!.pnl_pct;
       pct = t == null ? null : Number(t);
     } else {
-      const basis = gewichtet('baseline_price');
-      const e = entwicklungProzent(basis, markt);
+      const basis = weighted('baseline_price');
+      const e = developmentPercent(basis, markt);
       pct = e == null ? null : Math.round(e * 10) / 10;
     }
-    const kauf = gewichtet('purchase_price');
+    const kauf = weighted('purchase_price');
     const quelle = markt > 0 ? 'markt' : kauf != null ? 'kauf' : null;
     aus.set(nr, {
       kachel_preis:

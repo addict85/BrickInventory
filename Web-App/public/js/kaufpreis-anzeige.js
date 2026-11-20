@@ -3,7 +3,7 @@
 import { tRaw } from '../i18n.js';
 import { esc, html } from './escaping.js';
 import { ico } from './dom.js';
-import { fmtDatum, fmtGeld, fmtGeldCode, fmtN, istGeschenk } from './format.js';
+import { fmtDatum, fmtGeld, fmtGeldCode, fmtN, isGift } from './format.js';
 import { accountCurrency } from './state.js';
 /** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} Erfassungssumme */
 /** @typedef {import('../../frontend-typen/vertrag').Acquisition} Erfassung */
@@ -21,19 +21,19 @@ export function acqSummary(totals) {
   const menge = totals?.quantity ?? 0;
   return html`<div id="acq-summary" data-stil="display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;padding:.75rem .5rem 0;border-top:2px solid var(--bdr);margin-top:.25rem">
     <span data-stil="font-size:var(--fs-2);color:var(--mut)">${tRaw('detail.qty')}: <strong id="acq-total-qty">${menge}</strong></span>
-    <span id="acq-total-price" class="preis preis-stark">${summenText(totals)}</span>
-    ${summenHinweis(totals)}
+    <span id="acq-total-price" class="preis preis-stark">${sumsText(totals)}</span>
+    ${sumsHint(totals)}
   </div>`;
 }
 
 /** Die Summe in der Währung des Kontos; fremde Käufe hat der Server zum Kurs des Kauftags umgerechnet.
  * @param {Erfassungssumme | null | undefined} totals */
-export function summenText(totals) {
+export function sumsText(totals) {
   return totals?.amount != null ? fmtN(totals.amount, totals.currency || accountCurrency) : '—';
 }
 
 /** @param {Erfassungssumme | null | undefined} totals */
-function summenHinweis(totals) {
+function sumsHint(totals) {
   return html`<span id="acq-summe-hinweis" class="acq-legende" data-stil="flex-basis:100%"${totals?.ohne_kurs ? '' : ' hidden'}>${totals?.ohne_kurs ? tRaw('acq.ohne_kurs', { n: totals.ohne_kurs }) : ''}</span>`;
 }
 
@@ -41,7 +41,7 @@ function summenHinweis(totals) {
  * „≈ 241,23 €“ neben einem Kauf in fremder Währung: Die Summe rechnet mit diesem Betrag.
  * @param {Erfassung} a @param {Erfassungssumme | null | undefined} totals
  */
-export function umgerechnetText(a, totals) {
+export function convertedText(a, totals) {
   const konto = totals?.currency || accountCurrency;
   if (!a.currency || a.currency === konto || a.preis_konto == null) return '';
   return '≈ ' + fmtN(a.preis_konto, konto);
@@ -58,7 +58,7 @@ export function umgerechnetText(a, totals) {
 export function erfassungsPreis(a, betrag) {
   if (betrag == null) return '';
   // 0 heisst geschenkt; Kachel, Tabelle und Finanzen sagen es so, nicht „0,00 €“.
-  if (istGeschenk(betrag) && !a.price_estimated) return html`<strong>${tRaw('finance.gift')}</strong>`;
+  if (isGift(betrag) && !a.price_estimated) return html`<strong>${tRaw('finance.gift')}</strong>`;
   const fremd = !!a.currency && a.currency !== accountCurrency;
   const zahl = fremd
     ? html`<strong>${fmtGeldCode(betrag, a.currency || accountCurrency)}</strong>${a.preis_konto != null ? html` <span class="acq-umgerechnet-inline" title="${tRaw('acq.umgerechnet_titel')}">≈ ${fmtGeld(a.preis_konto, accountCurrency)}</span>` : ''}`
@@ -72,7 +72,7 @@ export function erfassungsPreis(a, betrag) {
  * Erklärt das „≈“, sobald eine Zeile einen geschätzten Preis trägt.
  * @param {Erfassung[]} acqs
  */
-function legendeGeschaetzt(acqs) {
+function legendEstimated(acqs) {
   return acqs.some(a => a.price_estimated)
     ? html`<div class="acq-legende">${tRaw('acq.legende_geschaetzt')}</div>`
     : '';
@@ -97,7 +97,7 @@ export function renderAcquisitionSummary(acqs, _sn) {
       ${price}
       ${dateFmt ? html`<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
     </div>`;
-  })}${legendeGeschaetzt(acqs)}`;
+  })}${legendEstimated(acqs)}`;
 }
 
 // Kurzübersicht für Teile und Figuren (mit unit_price statt purchase_price)
@@ -122,17 +122,17 @@ export function renderManAcqSummary(acqs, _type, _id, _colorId) {
       ${price}
       ${dateFmt ? html`<span data-stil="font-size:var(--fs-1);color:var(--mut)">${dateFmt}</span>` : ''}
     </div>`;
-  })}${legendeGeschaetzt(acqs)}`;
+  })}${legendEstimated(acqs)}`;
 }
 
 /** Kurzfassung im Set-Detail samt Knopf zum Kaufpreis-Dialog.
  * @param {Erfassung[] | null | undefined} acqs @param {string} sn */
-export function kurzfassung(acqs, sn) {
+export function summary(acqs, sn) {
   return html`${renderAcquisitionSummary(acqs, sn)}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`;
 }
 
 /** Dasselbe für ein manuell erfasstes Teil oder eine Figur.
  * @param {Erfassung[] | null | undefined} acqs @param {string} type @param {string} id @param {number} colorId */
-export function kurzfassungMan(acqs, type, id, colorId) {
+export function summaryMan(acqs, type, id, colorId) {
   return html`${renderManAcqSummary(acqs, type, id, colorId)}${html`<button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`;
 }

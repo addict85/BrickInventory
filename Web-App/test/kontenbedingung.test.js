@@ -29,7 +29,7 @@ test('ein Wert im Text wirft', () => {
   const boese = ['= 1 OR TRUE', '= ANY($1) OR TRUE', "= ANY('{1}')", 'IS NOT NULL', '= $1; DROP TABLE sets'];
   for (const k of boese) {
     assert.throws(() => sicht.setBestand(k), /Kontobedingung/, `setBestand(${k})`);
-    assert.throws(() => sicht.gezaehlteSets(k), /Kontobedingung/, `gezaehlteSets(${k})`);
+    assert.throws(() => sicht.countedSets(k), /Kontobedingung/, `countedSets(${k})`);
     assert.throws(() => menge.mengeJoin('s', 'sm', k), /Kontobedingung/, `mengeJoin(${k})`);
     assert.throws(() => menge.teilmengeJoin('p', 'fig', 'tm', k), /Kontobedingung/, `teilmengeJoin(${k})`);
   }

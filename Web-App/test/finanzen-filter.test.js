@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const posten = (feld, nr, name) => ({
   [`${feld}_number`]: nr,
@@ -28,7 +28,7 @@ const posten = (feld, nr, name) => ({
 });
 
 async function finanzen() {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/finance/valuation': {
       success: true,
       currency: 'EUR',
@@ -83,8 +83,8 @@ test('die drei Arten, und jede hat einen Abschnitt', async () => {
   const arten = ['sets', 'parts', 'figs'];
   const o = await finanzen();
   try {
-    const webArten = [...o.d.querySelectorAll('#fin-filter [data-click="finFilter"]')].map(b => b.dataset.arg);
-    assert.deepEqual(webArten, ['alle', ...arten]);
+    const webKinds = [...o.d.querySelectorAll('#fin-filter [data-click="finFilter"]')].map(b => b.dataset.arg);
+    assert.deepEqual(webKinds, ['alle', ...arten]);
     // Ein Chip ohne zugehörigen Abschnitt wäre ein Knopf, der nichts tut.
     assert.deepEqual(o.sichtbar(), arten);
   } finally {

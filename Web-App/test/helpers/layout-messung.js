@@ -12,7 +12,7 @@ const AXE = fs.readFileSync(
 );
 
 /** Der oberste offene Dialog (wie obersterDialog in dialoge.js), sonst null. */
-const OBERSTER = `(() => { let d = null, z = -Infinity;
+const TOPMOST = `(() => { let d = null, z = -Infinity;
   for (const el of document.querySelectorAll('.ovl[role=dialog]')) {
     const offen = el.style.display ? el.style.display !== 'none' : el.classList.contains('open');
     const zi = parseInt(getComputedStyle(el).zIndex, 10) || 0;
@@ -23,7 +23,7 @@ const OBERSTER = `(() => { let d = null, z = -Infinity;
  * Befunde, die eine Prüfung findet. */
 const AXE_LAUF = `(async () => {
   if (!window.axe) { (0, eval)(${JSON.stringify(AXE)}); }
-  const d = ${OBERSTER}; const wurzel = d?.querySelector('.modal') || d || document;
+  const d = ${TOPMOST}; const wurzel = d?.querySelector('.modal') || d || document;
   const r = await axe.run(wurzel, { resultTypes: ['violations'], rules: { region: { enabled: false } } });
   return r.violations
     .flatMap(v => v.nodes.slice(0, 4).map(n => v.id + ': ' + n.target.join(' ') + (n.any?.[0]?.message ? ' — ' + n.any[0].message.slice(0, 90) : '')));
@@ -38,7 +38,7 @@ const AXE_LAUF = `(async () => {
  */
 const LAYOUT = telefon => `(() => {
   const telefon = ${telefon ? 'true' : 'false'};
-  const wurzel = ${OBERSTER} || document.body;
+  const wurzel = ${TOPMOST} || document.body;
   const rgba = (s) => { const c = String(s).match(/color\\(srgb ([^)]+)\\)/);
     if (c) { const [r, g, b, a = 1] = c[1].replace('/', ' ').split(/\\s+/).filter(Boolean).map(Number); return { r: r * 255, g: g * 255, b: b * 255, a }; }
     const m = String(s).match(/rgba?\\(([^)]+)\\)/); if (!m) return null;
@@ -290,8 +290,8 @@ const LAYOUT = telefon => `(() => {
  * VORBEREITEN markiert die Ziele und liefert ihre Zahl; danach drückt der
  * Test Tab und fragt BESUCHT, wo der Fokus steht.
  */
-const TAB_VORBEREITEN = `(() => {
-  const d = ${OBERSTER}; if (!d) return null;
+const TAB_PREPARE = `(() => {
+  const d = ${TOPMOST}; if (!d) return null;
   const SEL = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [tabindex]:not([tabindex="-1"])';
   const bereit = (e) => !e.disabled && !e.closest('[inert], [hidden]') &&
     (e.matches('.datei-versteckt') ? e.parentElement.checkVisibility() : e.checkVisibility({ visibilityProperty: true }));
@@ -314,28 +314,28 @@ const TAB_VORBEREITEN = `(() => {
   const f = d.firstElementChild || d; if (!f.hasAttribute('tabindex')) f.setAttribute('tabindex', '-1'); f.focus();
   return { n, funde };
 })()`;
-const TAB_STAND = `(() => { const a = document.activeElement, d = ${OBERSTER};
+const TAB_STAND = `(() => { const a = document.activeElement, d = ${TOPMOST};
   return { id: a?.dataset?.tabprobe ?? null, drin: !!d && d.contains(a),
            wo: a ? a.tagName.toLowerCase() + (a.id ? '#' + a.id : '') : '' }; })()`;
-const TAB_FEHLT = besucht => `(() => { const b = new Set(${JSON.stringify(besucht)}); const raus = [];
+const TAB_MISSING = visited => `(() => { const b = new Set(${JSON.stringify(visited)}); const raus = [];
   for (const e of document.querySelectorAll('[data-tabprobe]')) { if (!b.has(e.dataset.tabprobe)) raus.push(e.dataset.tabname); delete e.dataset.tabprobe; delete e.dataset.tabname; }
   return [...new Set(raus)]; })()`;
 
 /** Drückt Tab, bis jedes Ziel einmal dran war; ein Datumsfeld nimmt je Teil einen Tab. */
-async function tabPruefung(b) {
-  const v = await b.auswerten(TAB_VORBEREITEN);
+async function tabCheck(b) {
+  const v = await b.auswerten(TAB_PREPARE);
   if (!v) return [];
   const funde = [...v.funde],
-    besucht = [];
-  for (let i = 0; i < 3 * v.n + 6 && new Set(besucht).size < v.n; i++) {
+    visited = [];
+  for (let i = 0; i < 3 * v.n + 6 && new Set(visited).size < v.n; i++) {
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
     const st = await b.auswerten(TAB_STAND);
     if (!st.drin) funde.push('Fokus verlässt den Dialog (auf ' + st.wo + ')');
-    if (st.id !== null) besucht.push(st.id);
+    if (st.id !== null) visited.push(st.id);
   }
-  for (const f of await b.auswerten(TAB_FEHLT(besucht))) funde.push('nicht per Tab erreichbar: ' + f);
+  for (const f of await b.auswerten(TAB_MISSING(visited))) funde.push('nicht per Tab erreichbar: ' + f);
   return [...new Set(funde)];
 }
 
-module.exports = { AXE, AXE_LAUF, LAYOUT, tabPruefung };
+module.exports = { AXE, AXE_LAUF, LAYOUT, tabCheck };

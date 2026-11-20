@@ -50,11 +50,11 @@ test('die API-Kontingente heissen nach der API, nicht nach einem Pfad', () => {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const fn of [
       'zaehleKontingent',
-      'kontingentStand',
-      'kontingentGrenze',
+      'quotaStatus',
+      'quotaLimit',
       'kontingentPruefenUndZaehlen',
       'kontingentUebersicht',
-      'grenzeDerQuelle',
+      'limitTheSource',
     ]) {
       const re = new RegExp(`${fn}\\(\\s*'([^']+)'`, 'g');
       for (const m of src.matchAll(re)) {
@@ -201,8 +201,8 @@ test('jeder Quellordner kommt auch im Container an', () => {
   const dirs = srcDirs();
   const bau = dockerfile.slice(0, dockerfile.lastIndexOf('\nFROM '));
   const kopie = bau.search(/^COPY \. \.\s*$/m),
-    uebersetzen = bau.indexOf('scripts/build-ts.js');
-  assert.ok(kopie > 0 && kopie < uebersetzen, 'Das Bau-Stage kopiert den Kontext nicht ganz vor dem Übersetzen');
+    translate = bau.indexOf('scripts/build-ts.js');
+  assert.ok(kopie > 0 && kopie < translate, 'Das Bau-Stage kopiert den Kontext nicht ganz vor dem Übersetzen');
   const ausgeschlossen = fs
     .readFileSync(path.join(ROOT, '.dockerignore'), 'utf8')
     .split('\n')

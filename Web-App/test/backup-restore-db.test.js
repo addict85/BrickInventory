@@ -8,7 +8,7 @@
  * `--exclude-table-data=user_sessions` gestrichen → rot: „Sitzungen, Zähler
  * und Protokoll kommen leer zurück …“.
  *
- * Gegenprobe (13.11.2026 gemessen): AUFRUF_FRIST auf 1 ms → 9 Fälle rot statt eines
+ * Gegenprobe (13.11.2026 gemessen): CALL_DEADLINE auf 1 ms → 9 Fälle rot statt eines
  * Hängers (Sicherung, backup.sh, restore.sh).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL UND die PostgreSQL-Klienten
@@ -21,25 +21,25 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { testName, raeumeReste } = require('./helpers/testnamen');
+const { testName, cleanRemainder } = require('./helpers/testnamen');
 const { execFileSync, spawnSync } = require('node:child_process');
 
 /** Ein synchroner Aufruf blockiert die ganze Datei: Wartet psql oder restore.sh auf
  * eine Sperre, kommt auch die Dateifrist aus test/helpers/auslauf.js nie an die Reihe,
  * und der Lauf hängt bis zum Abbruch der CI. Mit Frist wird daraus ein roter Test. */
-const AUFRUF_FRIST = 120_000;
+const CALL_DEADLINE = 120_000;
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { ROOT, testDaten } = require('./helpers/sources');
+const { ROOT, testData } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
-const { keineDb, fehltVoraussetzung } = require('./helpers/db');
-const { haeltSet, haeltTeil, mengeVon, teilmengeVon, katalogSet } = require('./helpers/bestand');
-const db = testDaten();
+const { keineDb, missingPrecondition } = require('./helpers/db');
+const { holdsSet, holdsPart, quantityOf, subsetOf, catalogSet } = require('./helpers/bestand');
+const db = testData();
 
 /** pg_dump/psql finden — auf dem PATH oder in einer Distributions-Installation. */
 function klient(name) {
-  const direkt = spawnSync('which', [name], { encoding: 'utf8', timeout: AUFRUF_FRIST });
+  const direkt = spawnSync('which', [name], { encoding: 'utf8', timeout: CALL_DEADLINE });
   if (direkt.status === 0) return direkt.stdout.trim();
   const basis = '/usr/lib/postgresql';
   if (!fs.existsSync(basis)) return null;
@@ -73,18 +73,18 @@ test('Sicherung und Wiederherstellung', async t => {
    */
   const fassung = bin => {
     if (!bin) return '—';
-    const r = spawnSync(bin, ['--version'], { encoding: 'utf8', stdio: 'pipe', timeout: AUFRUF_FRIST });
+    const r = spawnSync(bin, ['--version'], { encoding: 'utf8', stdio: 'pipe', timeout: CALL_DEADLINE });
     return (r.stdout || r.stderr || '').trim() || '?';
   };
   if (!pgDump || !psql) {
     await db.pool.end().catch(() => {});
-    fehltVoraussetzung(t, 'pg_dump/psql nicht gefunden — Suite übersprungen');
+    missingPrecondition(t, 'pg_dump/psql nicht gefunden — Suite übersprungen');
     return;
   }
 
   const url = process.env.DATABASE_URL;
-  const arbeit = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-backup-'));
-  const dump = path.join(arbeit, 'db.sql');
+  const work = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-backup-'));
+  const dump = path.join(work, 'db.sql');
 
   // psql mit einem Dump füttern
   const lauf = (args, datei) =>
@@ -92,7 +92,7 @@ test('Sicherung und Wiederherstellung', async t => {
       encoding: 'utf8',
       stdio: 'pipe',
       env: { ...process.env },
-      timeout: AUFRUF_FRIST,
+      timeout: CALL_DEADLINE,
     });
   /** Exit-Code; `grund()` liefert danach die Meldung von psql dazu. */
   let letzterLauf = null;
@@ -100,7 +100,7 @@ test('Sicherung und Wiederherstellung', async t => {
     letzterLauf = lauf(['-v', 'ON_ERROR_STOP=1'], datei);
     return letzterLauf.status;
   };
-  const einspielenOhneStopp = datei => {
+  const applyWithoutStop = datei => {
     letzterLauf = lauf([], datei);
     return letzterLauf.status;
   };
@@ -121,13 +121,13 @@ test('Sicherung und Wiederherstellung', async t => {
 
     await db.run(`INSERT INTO users (username, password_hash) VALUES ('sicherung','x')`);
     const uid = (await db.get(`SELECT id FROM users WHERE username='sicherung'`)).id;
-    await haeltSet(db, uid, '10214-1', 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, uid, '10214-1', 0); // Menge 0: die Erfassung dahinter traegt sie
     // Der Name steht seit Migration 0033 im Katalog. Auch ihn muss die
     // Sicherung zurueckbringen — und zwar aus einer ANDEREN Tabelle als die
     // Menge. Genau das ist der Fall, an dem eine unvollstaendige Sicherung
     // auffaellt: Ein Dump, der nur den Bestand nimmt, laesst jedes Set
     // namenlos zurueck.
-    await katalogSet(db, '10214-1', { name: 'Tower Bridge', year: 2010 });
+    await catalogSet(db, '10214-1', { name: 'Tower Bridge', year: 2010 });
     // Der Zustand steht seit Migration 0032 in der Erfassung. Die Sicherung
     // muss ihn von DORT zurueckbringen — sonst prueft dieser Test nach dem
     // Umbau eine Spalte, die es nicht mehr gibt, und waere stillschweigend
@@ -137,7 +137,7 @@ test('Sicherung und Wiederherstellung', async t => {
        VALUES ($1,'10214-1',2,44.50,'U')`,
       [uid],
     );
-    await haeltTeil(db, uid, '3001', { menge: 17, colorId: 4 });
+    await holdsPart(db, uid, '3001', { menge: 17, colorId: 4 });
     // Was nicht in die Sicherung gehört: eine Sitzung, ein Anmeldezähler, eine Protokollzeile.
     await db.run(
       `INSERT INTO user_sessions (sid, sess, expire) VALUES ('sicherung-sid', '{"userId":1}', NOW() + INTERVAL '1 day')`,
@@ -155,7 +155,7 @@ test('Sicherung und Wiederherstellung', async t => {
 
   await t.test('pg_dump erzeugt einen vollständigen Dump', () => {
     assert.ok(optionen.includes('--clean'), `backup.sh: DUMP_OPTIONEN nicht gefunden (${optionen})`);
-    execFileSync(pgDump, [...optionen, '-f', dump, url], { stdio: 'pipe', timeout: AUFRUF_FRIST });
+    execFileSync(pgDump, [...optionen, '-f', dump, url], { stdio: 'pipe', timeout: CALL_DEADLINE });
     const inhalt = fs.readFileSync(dump, 'utf8');
     assert.match(
       inhalt.slice(-500),
@@ -191,7 +191,7 @@ test('Sicherung und Wiederherstellung', async t => {
     // Jahr darunter: Ein Dump, der nur `sets` mitnimmt, laesst jedes Set bei
     // null Exemplaren zurueck.
     assert.equal(
-      await mengeVon(db, s.user_id, '10214-1'),
+      await quantityOf(db, s.user_id, '10214-1'),
       2,
       'Die Stückzahl ist nicht zurückgekommen — set_acquisitions fehlt im Dump',
     );
@@ -212,7 +212,7 @@ test('Sicherung und Wiederherstellung', async t => {
     const p2 = await db.get(`SELECT user_id, part_number, color_id FROM parts`);
     assert.equal(p2.part_number, '3001');
     assert.equal(
-      await teilmengeVon(db, p2.user_id, '3001', p2.color_id),
+      await subsetOf(db, p2.user_id, '3001', p2.color_id),
       17,
       'Die Stückzahl ist nicht zurückgekommen — part_acquisitions fehlt im Dump',
     );
@@ -243,7 +243,7 @@ test('Sicherung und Wiederherstellung', async t => {
   await t.test('ein abgeschnittener Dump wird an der Endmarke erkannt', () => {
     // Der Fall, gegen den die Prüfung in backup.sh steht: pg_dump scheitert am
     // Anfang der Pipe, gzip läuft durch, die Datei ist formal gültig.
-    const torso = path.join(arbeit, 'torso.sql');
+    const torso = path.join(work, 'torso.sql');
     const inhalt = fs.readFileSync(dump, 'utf8');
     fs.writeFileSync(torso, inhalt.slice(0, Math.floor(inhalt.length * 0.6)));
 
@@ -258,7 +258,7 @@ test('Sicherung und Wiederherstellung', async t => {
     // Ein Dump, der mitten in einem Befehl abbricht. OHNE ON_ERROR_STOP meldet
     // psql dafür Exit 0 — das ist die ganze Begründung für die Variable in
     // restore.sh, und hier steht sie als Messung statt als Behauptung.
-    const kaputt = path.join(arbeit, 'kaputt.sql');
+    const kaputt = path.join(work, 'kaputt.sql');
     fs.writeFileSync(
       kaputt,
       'CREATE TABLE sicherungsprobe (id int);\n' +
@@ -267,7 +267,7 @@ test('Sicherung und Wiederherstellung', async t => {
     );
 
     assert.equal(
-      einspielenOhneStopp(kaputt),
+      applyWithoutStop(kaputt),
       0,
       'Ohne ON_ERROR_STOP müsste psql den Fehler verschlucken — tut es das nicht ' +
         'mehr, ist die Begründung in restore.sh überholt und gehört angepasst',
@@ -291,13 +291,13 @@ test('Sicherung und Wiederherstellung', async t => {
     // die ganze Datei wäre allein durch die Erklärung erfüllt gewesen — beim
     // ersten Versuch war es das auch, und die Gegenprobe blieb grün, obwohl
     // die Prüfung entfernt war.
-    const ohneKommentar = t =>
+    const withoutComment = t =>
       t
         .split('\n')
         .filter(z => !/^\s*#/.test(z))
         .join('\n');
-    const bCode = ohneKommentar(backup);
-    const rCode = ohneKommentar(restore);
+    const bCode = withoutComment(backup);
+    const rCode = withoutComment(restore);
 
     assert.match(
       bCode,
@@ -319,7 +319,7 @@ test('Sicherung und Wiederherstellung', async t => {
 
   await t.test('aufräumen', async () => {
     await db.run('DROP TABLE IF EXISTS sicherungsprobe').catch(() => {});
-    fs.rmSync(arbeit, { recursive: true, force: true });
+    fs.rmSync(work, { recursive: true, force: true });
     await db.pool.end().catch(() => {});
   });
 });
@@ -346,26 +346,26 @@ test('backup.sh: der Datenschlüssel kommt nicht ins Archiv', t => {
     "#!/bin/sh\nprintf -- '-- Dump\\n-- PostgreSQL database dump complete\\n'\n",
     { mode: 0o755 },
   );
-  const arbeit = path.join(tmp, 'installation');
-  fs.mkdirSync(path.join(arbeit, 'data', 'uploads'), { recursive: true });
-  fs.writeFileSync(path.join(arbeit, 'data', 'uploads', 'anleitung.pdf'), '%PDF-1.4');
+  const work = path.join(tmp, 'installation');
+  fs.mkdirSync(path.join(work, 'data', 'uploads'), { recursive: true });
+  fs.writeFileSync(path.join(work, 'data', 'uploads', 'anleitung.pdf'), '%PDF-1.4');
   const schluessel = 'k'.repeat(44);
-  fs.writeFileSync(path.join(arbeit, 'data', '.datenschluessel'), schluessel, { mode: 0o600 });
+  fs.writeFileSync(path.join(work, 'data', '.datenschluessel'), schluessel, { mode: 0o600 });
 
   const sichern = env =>
     spawnSync('sh', [path.join(ROOT, 'scripts', 'backup.sh'), path.join(tmp, 'ziel')], {
-      cwd: arbeit,
+      cwd: work,
       encoding: 'utf8',
       env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja', ...env },
-      timeout: AUFRUF_FRIST,
+      timeout: CALL_DEADLINE,
     });
 
   const ohne = sichern({});
   assert.equal(ohne.status, 0, ohne.stderr);
-  const archiv = fs.readdirSync(path.join(tmp, 'ziel')).find(n => n.startsWith('data_'));
-  const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archiv)], {
+  const archive = fs.readdirSync(path.join(tmp, 'ziel')).find(n => n.startsWith('data_'));
+  const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archive)], {
     encoding: 'utf8',
-    timeout: AUFRUF_FRIST,
+    timeout: CALL_DEADLINE,
   });
   assert.match(inhalt, /data\/uploads\/anleitung\.pdf/, 'Vorbedingung: data/ ist im Archiv');
   assert.doesNotMatch(inhalt, /datenschluessel/, 'der Schlüssel liegt im Archiv');
@@ -394,24 +394,24 @@ test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', t =
     "#!/bin/sh\nprintf -- '-- Dump\\n-- PostgreSQL database dump complete\\n'\n",
     { mode: 0o755 },
   );
-  const arbeit = path.join(tmp, 'installation');
-  fs.mkdirSync(path.join(arbeit, 'data', 'uploads'), { recursive: true });
-  fs.mkdirSync(path.join(arbeit, 'schluessel'));
-  fs.writeFileSync(path.join(arbeit, 'data', 'uploads', 'rechnung.pdf'), '%PDF-1.4');
+  const work = path.join(tmp, 'installation');
+  fs.mkdirSync(path.join(work, 'data', 'uploads'), { recursive: true });
+  fs.mkdirSync(path.join(work, 'schluessel'));
+  fs.writeFileSync(path.join(work, 'data', 'uploads', 'rechnung.pdf'), '%PDF-1.4');
   const schluessel = 'n'.repeat(44);
-  fs.writeFileSync(path.join(arbeit, 'schluessel', 'datenschluessel'), schluessel, { mode: 0o600 });
+  fs.writeFileSync(path.join(work, 'schluessel', 'datenschluessel'), schluessel, { mode: 0o600 });
   const tresor = path.join(tmp, 'tresor');
   const r = spawnSync('sh', [path.join(ROOT, 'scripts', 'backup.sh'), path.join(tmp, 'ziel')], {
-    cwd: arbeit,
+    cwd: work,
     encoding: 'utf8',
     env: { ...process.env, PATH: `${bin}:${process.env.PATH}`, BACKUP_KLARTEXT: 'ja', BACKUP_SCHLUESSEL_ZIEL: tresor },
-    timeout: AUFRUF_FRIST,
+    timeout: CALL_DEADLINE,
   });
   assert.equal(r.status, 0, r.stderr);
-  const archiv = fs.readdirSync(path.join(tmp, 'ziel')).find(n => n.startsWith('data_'));
-  const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archiv)], {
+  const archive = fs.readdirSync(path.join(tmp, 'ziel')).find(n => n.startsWith('data_'));
+  const inhalt = execFileSync('tar', ['tzf', path.join(tmp, 'ziel', archive)], {
     encoding: 'utf8',
-    timeout: AUFRUF_FRIST,
+    timeout: CALL_DEADLINE,
   });
   assert.match(inhalt, /data\/uploads\/rechnung\.pdf/);
   assert.doesNotMatch(inhalt, /schluessel/);
@@ -453,11 +453,11 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
   const su = (await admin.query('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rows[0]?.rolsuper;
   if (!su || !klient('pg_dump')) {
     await admin.end();
-    fehltVoraussetzung(t, 'kein Superuser oder pg_dump');
+    missingPrecondition(t, 'kein Superuser oder pg_dump');
     return;
   }
   const name = testName('rst');
-  await raeumeReste(admin, 'rst');
+  await cleanRemainder(admin, 'rst');
   const [ziel, alt, APP, MIG, LESEN, BOESE, SYS, SYSWEB] = [
     name,
     `${name}_alt`,
@@ -477,13 +477,13 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
     await admin.end();
     fs.rmSync(tmp, { recursive: true, force: true });
   });
-  const suNutzer = decodeURIComponent(basis.username),
+  const suUser = decodeURIComponent(basis.username),
     suPw = decodeURIComponent(basis.password);
-  const umgebung = {
+  const environment = {
     ...process.env,
     PGHOST: basis.hostname,
     PGPORT: basis.port || '5432',
-    PGUSER: suNutzer,
+    PGUSER: suUser,
     PGPASSWORD: suPw,
     PGDATABASE: ziel,
     DB_APP_USER: APP,
@@ -496,7 +496,7 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
     DB_SYSTEM_PASSWORD: `sys-${process.pid}`,
     DB_SYSTEM_WEB_USER: SYSWEB,
   };
-  const dbUrl = (db, nutzer = suNutzer, pw = suPw) => {
+  const dbUrl = (db, nutzer = suUser, pw = suPw) => {
     const u = new URL(basis);
     u.pathname = '/' + db;
     u.username = nutzer;
@@ -508,22 +508,22 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
       process.execPath,
       [
         '-e',
-        "const { db } = require('./dist/startup/verdrahtung.js').verdrahteProzess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })",
+        "const { db } = require('./dist/startup/verdrahtung.js').wireProcess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e.message); process.exit(1); })",
       ],
-      { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: url }, timeout: AUFRUF_FRIST },
+      { cwd: ROOT, encoding: 'utf8', env: { ...process.env, DATABASE_URL: url }, timeout: CALL_DEADLINE },
     );
   const rolle = () =>
     spawnSync('sh', [path.join(ROOT, 'postgres', 'app-rolle.sh')], {
       encoding: 'utf8',
-      env: umgebung,
-      timeout: AUFRUF_FRIST,
+      env: environment,
+      timeout: CALL_DEADLINE,
     });
 
   await admin.query(`CREATE DATABASE ${id(ziel)}`);
   assert.equal(rolle().status, 0);
-  const s = schema(dbUrl(ziel, MIG, umgebung.DB_MIGRATION_PASSWORD));
+  const s = schema(dbUrl(ziel, MIG, environment.DB_MIGRATION_PASSWORD));
   assert.equal(s.status, 0, s.stderr);
-  const app = new Client({ connectionString: dbUrl(ziel, MIG, umgebung.DB_MIGRATION_PASSWORD) });
+  const app = new Client({ connectionString: dbUrl(ziel, MIG, environment.DB_MIGRATION_PASSWORD) });
   await app.connect();
   try {
     await app.query(`INSERT INTO users (username, password_hash) VALUES ('rueckspiel', 'x')`);
@@ -541,7 +541,7 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
   fs.mkdirSync(bin);
   fs.writeFileSync(
     path.join(tmp, 'pgpass'),
-    `*:*:*:${MIG}:${umgebung.DB_MIGRATION_PASSWORD}\n*:*:*:${suNutzer}:${suPw}\n`,
+    `*:*:*:${MIG}:${environment.DB_MIGRATION_PASSWORD}\n*:*:*:${suUser}:${suPw}\n`,
     { mode: 0o600 },
   );
   fs.writeFileSync(
@@ -550,7 +550,7 @@ test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t 
 case "$2 $4" in
   exec*) shift 5; unset PGPASSWORD; PGPASSFILE='${path.join(tmp, 'pgpass')}' exec psql "$@" ;;
   'run db-rolle') exec sh '${path.join(ROOT, 'postgres', 'app-rolle.sh')}' ;;
-  'run migration') cd '${ROOT}' && DATABASE_URL='${dbUrl(ziel, MIG, umgebung.DB_MIGRATION_PASSWORD)}' exec '${process.execPath}' dist/startup/migrieren.js ;;
+  'run migration') cd '${ROOT}' && DATABASE_URL='${dbUrl(ziel, MIG, environment.DB_MIGRATION_PASSWORD)}' exec '${process.execPath}' dist/startup/migrieren.js ;;
   'run '*) echo "unbekannter Dienst $4" >&2; exit 9 ;;
 esac
 `,
@@ -563,13 +563,13 @@ esac
       cwd: tmp,
       input: 'ja\n',
       encoding: 'utf8',
-      env: { ...umgebung, PATH: `${bin}:${process.env.PATH}` },
-      timeout: AUFRUF_FRIST,
+      env: { ...environment, PATH: `${bin}:${process.env.PATH}` },
+      timeout: CALL_DEADLINE,
     });
   const sichern = (db, datei) => {
     execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', datei, dbUrl(db)], {
       stdio: 'pipe',
-      timeout: AUFRUF_FRIST,
+      timeout: CALL_DEADLINE,
     });
     execFileSync('gzip', [datei]);
     return `${datei}.gz`;
@@ -617,7 +617,7 @@ esac
     const dump = sichern(alt, path.join(tmp, 'alt.sql'));
     assert.match(
       execFileSync('gunzip', ['-c', dump], { encoding: 'utf8' }),
-      new RegExp(`OWNER TO ${suNutzer};`),
+      new RegExp(`OWNER TO ${suUser};`),
       'Vorbedingung',
     );
     const r = zurueck(dump);
@@ -644,7 +644,7 @@ esac
     const sql = path.join(tmp, 'fremd.sql');
     execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', sql, dbUrl(ziel)], {
       stdio: 'pipe',
-      timeout: AUFRUF_FRIST,
+      timeout: CALL_DEADLINE,
     });
     const inhalt = fs.readFileSync(sql, 'utf8');
     const ende = inhalt.lastIndexOf('--\n-- PostgreSQL database dump complete');

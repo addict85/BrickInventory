@@ -30,11 +30,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { katalogSet } = require('./helpers/bestand');
-const db = testDaten();
+const { catalogSet } = require('./helpers/bestand');
+const db = testData();
 
 // Dieselbe Begruendung wie in test/setmenge-aus-erfassungen-db.test.js: Diese
 // Datei baut die Datenbank mehrfach von null auf. Wer danach laeuft, muss sie
@@ -57,7 +57,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-const spaltenVon = async tabelle =>
+const columnsOf = async tabelle =>
   (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
     .map(r => r.column_name)
     .sort();
@@ -76,7 +76,7 @@ const dbDa = async t => {
 };
 
 /** Frische Datenbank, Schema, alle Migrationen. */
-async function volleKette() {
+async function fullChain() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -106,7 +106,7 @@ test('nach der ganzen Kette tragen parts und minifigs keine quantity mehr', { co
 
   for (const tab of ['parts', 'minifigs']) {
     assert.ok(
-      !(await spaltenVon(tab)).includes('quantity'),
+      !(await columnsOf(tab)).includes('quantity'),
       `${tab}.quantity ist nach allen Migrationen noch da — Migration 0038 hat ` +
         `nicht geloescht, oder etwas legt die Spalte danach wieder an.`,
     );
@@ -114,7 +114,7 @@ test('nach der ganzen Kette tragen parts und minifigs keine quantity mehr', { co
 
   // Was eine Bestandszeile noch ist: DIESES Konto hat DIESES Teil, aus DEM
   // Set, an DEM Ort, in DEM Zustand.
-  const teile = await spaltenVon('parts');
+  const teile = await columnsOf('parts');
   for (const sp of ['id', 'user_id', 'part_number', 'color_id', 'set_number', 'source', 'storage_id']) {
     assert.ok(teile.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);
   }
@@ -127,7 +127,7 @@ test('nach der ganzen Kette tragen parts und minifigs keine quantity mehr', { co
     ['part_acquisitions', 'quantity'],
     ['minifig_acquisitions', 'quantity'],
   ]) {
-    assert.ok((await spaltenVon(tab)).includes(sp), `${tab}.${sp} fehlt — dann gibt es die Stueckzahl nirgends mehr`);
+    assert.ok((await columnsOf(tab)).includes(sp), `${tab}.${sp} fehlt — dann gibt es die Stueckzahl nirgends mehr`);
   }
 
   // Die vier Indizes aus Schritt 5 und 6. Die beiden eindeutigen sind nicht
@@ -185,7 +185,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
   // ihren eigenen Begruendungstext melden lassen — und die Kommentare in
   // src/sets/setMove.ts und db/migrations/0038 zitieren die entfernten
   // Anweisungen woertlich.
-  const codeZeilen = txt =>
+  const codeRows = txt =>
     txt.split('\n').filter(z => {
       const t = z.trim();
       return !(t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('--'));
@@ -210,7 +210,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei);
     const txt = fs.readFileSync(datei, 'utf8');
-    for (const z of codeZeilen(txt)) {
+    for (const z of codeRows(txt)) {
       for (const [was, m] of muster) {
         if (m.test(z)) stellen.push(`${rel} (${was}): ${z.trim().slice(0, 90)}`);
       }
@@ -265,7 +265,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
 test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
-  await volleKette();
+  await fullChain();
 
   const haupt = (await db.get(`INSERT INTO users (username,password_hash) VALUES ('tmleser','x') RETURNING id`)).id;
   const kind = (await db.get(`INSERT INTO users (username,password_hash) VALUES ('tmleser_kind','x') RETURNING id`)).id;
@@ -273,7 +273,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   const SN = '75192-1';
 
   // Die Lage
-  await katalogSet(db, SN, { name: 'Millennium Falcon', year: 2017, pieces: 7541 });
+  await catalogSet(db, SN, { name: 'Millennium Falcon', year: 2017, pieces: 7541 });
   await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2),($3,$2)`, [haupt, SN, kind]);
   // Verschiedene Tage: idx_set_acq_tag_zustand (Migration 0008) erlaubt je Konto, Set
   // und TAG nur eine Erfassung.
@@ -374,14 +374,14 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
 
   // ── Die Listen ───────────────────────────────────────────────────────────
   const liste = await P.partsQuery([haupt], { page_size: 60 });
-  const zeileVon = (l, nr) => (l.parts || []).find(x => x.part_number === nr);
+  const rowOf = (l, nr) => (l.parts || []).find(x => x.part_number === nr);
   assert.equal(
-    Number(zeileVon(liste, '3001').total_quantity),
+    Number(rowOf(liste, '3001').total_quantity),
     12,
     'Die Teileliste multipliziert die Katalogzahl nicht mit der Setmenge',
   );
   assert.equal(
-    Number(zeileVon(liste, '3070b').total_quantity),
+    Number(rowOf(liste, '3070b').total_quantity),
     5,
     'Die Teileliste liest die manuelle Position nicht aus den Erfassungen',
   );
@@ -389,20 +389,20 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   // der JSON-Typ daran, welcher Zweig geantwortet hat — genau dieser Fehler
   // ist in src/parts/queries.ts schon einmal aufgeflogen.
   assert.equal(
-    typeof zeileVon(liste, '3001').total_quantity,
+    typeof rowOf(liste, '3001').total_quantity,
     'number',
     'total_quantity muss eine Zahl sein, keine Zeichenkette',
   );
 
-  const figListe = await M.readMinifigs([haupt], { page_size: 60 });
-  const figVon = (l, nr) => (l.figs || []).find(x => x.fig_number === nr);
+  const figList = await M.readMinifigs([haupt], { page_size: 60 });
+  const figOf = (l, nr) => (l.figs || []).find(x => x.fig_number === nr);
   assert.equal(
-    Number(figVon(figListe, 'sw0001').total_quantity),
+    Number(figOf(figList, 'sw0001').total_quantity),
     2,
     'Die Figurenliste multipliziert nicht mit der Setmenge',
   );
   assert.equal(
-    Number(figVon(figListe, 'fig-m').total_quantity),
+    Number(figOf(figList, 'fig-m').total_quantity),
     2,
     'Die Figurenliste liest die manuelle Figur nicht aus den Erfassungen',
   );
@@ -424,9 +424,9 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
 
   // ── Die Listen der MANUELLEN Positionen ─────────────────────────────────
   const man = await P.manualPartsList([haupt], haupt, { page_size: 60 });
-  const manZeile = man.find(x => x.part_number === '3070b');
-  assert.ok(manZeile, 'Die manuelle Position fehlt in der Liste');
-  assert.equal(Number(manZeile.quantity), 5, `Manuelle Teileliste: 2 + 3 = 5, bekam ${manZeile.quantity}`);
+  const manRow = man.find(x => x.part_number === '3070b');
+  assert.ok(manRow, 'Die manuelle Position fehlt in der Liste');
+  assert.equal(Number(manRow.quantity), 5, `Manuelle Teileliste: 2 + 3 = 5, bekam ${manRow.quantity}`);
   const manFig = (await M.readManualMinifigs([haupt], haupt, { page_size: 60 })).find(x => x.fig_number === 'fig-m');
   assert.ok(manFig, 'Die manuelle Figur fehlt in der Liste');
   assert.equal(Number(manFig.quantity), 2, `Manuelle Figurenliste: 2, bekam ${manFig.quantity}`);
@@ -453,7 +453,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   // Hier zeigt sich die gemeinsame Katalogzahl am deutlichsten: Zwei Konten,
   // ein Set, EINE Zahl — und zwar die JE EXEMPLAR, ohne Multiplikation, weil
   // der Dialog das Set zeigt, nicht den Bestand.
-  const verw = await SH.verwendendeSets([haupt, kind], 'parts', { part_number: '3001', color_id: 4 });
+  const verw = await SH.usingSets([haupt, kind], 'parts', { part_number: '3001', color_id: 4 });
   assert.equal(verw.sets.length, 2, `Beide Konten halten das Set, erwartet zwei Zeilen, bekam ${verw.sets.length}`);
   for (const s of verw.sets) {
     assert.equal(Number(s.quantity), 6, `Jede Zeile muss die Katalogzahl 6 tragen, bekam ${s.quantity}`);
@@ -478,21 +478,21 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
 
   // Bewertung und CSV
   const B = _req('src/finanzen/rechnung/bewertung.js');
-  const bewP = await B.bewerteTeile(haupt, [haupt]);
-  const bewZeile = (bewP.parts || []).find(x => x.part_number === '3070b');
-  assert.ok(bewZeile, `Die Teile-Bewertung kennt die manuelle Position nicht: ${JSON.stringify(bewP).slice(0, 200)}`);
-  assert.equal(Number(bewZeile.quantity), 5, `Die Bewertung liest 2 + 3 = 5, bekam ${bewZeile.quantity}`);
+  const bewP = await B.valueParts(haupt, [haupt]);
+  const bewRow = (bewP.parts || []).find(x => x.part_number === '3070b');
+  assert.ok(bewRow, `Die Teile-Bewertung kennt die manuelle Position nicht: ${JSON.stringify(bewP).slice(0, 200)}`);
+  assert.equal(Number(bewRow.quantity), 5, `Die Bewertung liest 2 + 3 = 5, bekam ${bewRow.quantity}`);
   assert.ok(
     !(bewP.parts || []).some(x => x.part_number === '3001'),
     'Das Set-Teil steht in der Teile-Bewertung — dann wird es zweimal bewertet, ' +
       'einmal hier und einmal ueber sein Set',
   );
-  const bewM = await B.bewerteFiguren(haupt, [haupt]);
+  const bewM = await B.valueMinifigs(haupt, [haupt]);
   const bewFig = (bewM.figs || []).find(x => x.fig_number === 'fig-m');
   assert.ok(bewFig, `Die Figuren-Bewertung kennt die manuelle Figur nicht: ${JSON.stringify(bewM).slice(0, 200)}`);
   assert.equal(Number(bewFig.quantity), 2, `Die Figuren-Bewertung liest 2, bekam ${bewFig.quantity}`);
 
-  const csvP = await _req('src/bestand/bestandExport.js').teileCsv(haupt);
+  const csvP = await _req('src/bestand/bestandExport.js').partsCsv(haupt);
   assert.match(csvP, /3070b/, 'Der Teile-Export laesst die manuelle Position aus');
   const csvM = await _req('src/bestand/bestandExport.js').figurenCsv(haupt);
   assert.match(csvM, /fig-m/, 'Der Figuren-Export laesst die manuelle Figur aus');
@@ -520,7 +520,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
     'Das Kind muss der GEMEINSAMEN Katalogzahl ebenso folgen: 9 × 1 = 9',
   );
   assert.equal(
-    Number(zeileVon(await P.partsQuery([haupt], { page_size: 60 }), '3001').total_quantity),
+    Number(rowOf(await P.partsQuery([haupt], { page_size: 60 }), '3001').total_quantity),
     18,
     'Die Liste folgt der Katalogzahl nicht: 9 × 2 = 18',
   );
@@ -537,7 +537,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   );
   await db.run(`UPDATE part_acquisitions SET quantity = 7 WHERE id=$1`, [eine.id]);
   assert.equal(
-    Number(zeileVon(await P.partsQuery([haupt], { page_size: 60 }), '3070b').total_quantity),
+    Number(rowOf(await P.partsQuery([haupt], { page_size: 60 }), '3070b').total_quantity),
     10,
     'Nach 2 → 7 muss die manuelle Position 10 sein (7 + 3) — dann liest die Liste ' + 'sie nicht aus part_acquisitions',
   );
@@ -549,7 +549,7 @@ test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concur
   // nicht LEEREN — deshalb LEFT JOIN in db/bestandsmenge.ts. Sie bedeutet
   // dann null Stueck, nicht eines.
   await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number='3070b'`, [haupt]);
-  const leer = zeileVon(await P.partsQuery([haupt], { page_size: 60 }), '3070b');
+  const leer = rowOf(await P.partsQuery([haupt], { page_size: 60 }), '3070b');
   assert.ok(
     leer,
     'Die Zeile ohne Erfassung ist aus der Liste verschwunden — ein ' +

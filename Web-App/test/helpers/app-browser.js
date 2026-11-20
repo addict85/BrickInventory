@@ -3,14 +3,14 @@
  * Bestand, Chrome über das DevTools-Protokoll. Für Tests, die Layout messen
  * (Schriftgrösse, Tippziele, Sichtbarkeit) — das kann jsdom nicht.
  *
- * Ohne Chrome oder Test-DB liefert `starteApp` null; der Aufrufer überspringt.
+ * Ohne Chrome oder Test-DB liefert `startApp` null; der Aufrufer überspringt.
  */
 const fs = require('node:fs');
 const os = require('node:os');
 const net = require('node:net');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
-const { portVon } = require('./server');
+const { portOf } = require('./server');
 
 const ROOT = path.join(__dirname, '..', '..');
 const warte = ms => new Promise(r => setTimeout(r, ms));
@@ -37,10 +37,10 @@ function chrome() {
   return bin;
 }
 
-const freierPort = () =>
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
@@ -84,7 +84,7 @@ async function cdp(wsUrl) {
   let n = 0;
   const offen = new Map();
   const ereignisse = [];
-  const hoerer = [];
+  const listener = [];
   ws.onmessage = m => {
     const d = JSON.parse(m.data);
     if (d.id && offen.has(d.id)) {
@@ -93,7 +93,7 @@ async function cdp(wsUrl) {
       d.error ? f(new Error(d.error.message)) : r(d.result);
     } else if (d.method) {
       ereignisse.push(d);
-      for (const h of hoerer) h(d);
+      for (const h of listener) h(d);
     }
   };
   const senden = (method, params = {}, sessionId) =>
@@ -110,7 +110,7 @@ async function cdp(wsUrl) {
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
     return r.result.value;
   };
-  return { tab, auswerten, ereignisse, hoerer, sessionId, schliessen: () => ws.close() };
+  return { tab, auswerten, ereignisse, listener, sessionId, schliessen: () => ws.close() };
 }
 
 /**
@@ -119,22 +119,22 @@ async function cdp(wsUrl) {
  * @param [opt.name] Kontoname
  * @param [opt.bestand] async (db, uid) => {} legt Testdaten an
  * @param [opt.telefon] true: 390 × 844, mobile
- * @param [opt.bewegung] true: prefers-reduced-motion no-preference (sonst reduce)
+ * @param [opt.movement] true: prefers-reduced-motion no-preference (sonst reduce)
  * @param [opt.sprache] Sprache des Kontos (Standard de)
  * @param [opt.locale] Locale des Browsers (Standard de-DE)
- * @param [opt.alleDesigns] true: alle Design-Stylesheets laden. Die Seite lädt nur das aktive; wer data-theme
+ * @param [opt.allDesigns] true: alle Design-Stylesheets laden. Die Seite lädt nur das aktive; wer data-theme
  *        selbst setzt, sähe die übrigen sonst ohne Gestaltung.
- * @param [opt.abfangen] [{ muster, enthaelt, antwort?, verzoegerung? }]: Anfragen,
- *        deren URL auf das CDP-Muster passt und `enthaelt` enthält, bekommen
- *        `antwort` als JSON (ohne `antwort` die echte), um `verzoegerung` ms später
+ * @param [opt.intercept] [{ muster, contains, antwort?, delay? }]: Anfragen,
+ *        deren URL auf das CDP-Muster passt und `contains` enthält, bekommen
+ *        `antwort` als JSON (ohne `antwort` die echte), um `delay` ms später
  */
-async function starteApp(t, opt = {}) {
+async function startApp(t, opt = {}) {
   const bin = chrome();
   if (!bin) return { grund: 'kein Chrome gefunden' };
   const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   process.env.DATABASE_URL = URL_DB;
   const _req = require('./sources').buildAndRequire();
-  const db = require('./sources').testDaten();
+  const db = require('./sources').testData();
   const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
   try {
     await db.initSchema();
@@ -171,8 +171,8 @@ async function starteApp(t, opt = {}) {
   // Verwalter ohne Code-Generator kämen nur bis zu dessen Einrichtung; angemeldet
   // wird mit einem Wiederherstellungscode im Codefeld.
   const verwalter = (await db.get('SELECT is_admin FROM users WHERE id = $1', [uid])).is_admin;
-  const [wiederherstellung = '', ...weitereCodes] = verwalter
-    ? await require('./verwalter').verwalterMitFaktor(_req, uid)
+  const [wiederherstellung = '', ...furtherCodes] = verwalter
+    ? await require('./verwalter').adminWithFactor(_req, uid)
     : [];
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(
@@ -192,7 +192,7 @@ async function starteApp(t, opt = {}) {
   let port = 0,
     server;
   for (let versuch = 0; versuch < 4; versuch++) {
-    port = await freierPort();
+    port = await freePort();
     server = starte(t, process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
       cwd: ROOT,
       env: {
@@ -262,7 +262,7 @@ async function starteApp(t, opt = {}) {
   await b.tab('Network.enable');
   // Laufende fetch/XHR-Anfragen für ruhig(); Bilder zählen nicht, sie hängen am CDN.
   const laufend = new Set();
-  b.hoerer.push(d => {
+  b.listener.push(d => {
     if (d.method === 'Network.responseReceived' && d.params.response.status === 401)
       abgewiesen.push(d.params.response.url.replace(/^https?:\/\/[^/]+/, ''));
     if (d.method === 'Network.requestWillBeSent' && ['Fetch', 'XHR'].includes(d.params.type))
@@ -270,13 +270,13 @@ async function starteApp(t, opt = {}) {
     if (d.method === 'Network.loadingFinished' || d.method === 'Network.loadingFailed')
       laufend.delete(d.params.requestId);
   });
-  if (opt.abfangen?.length) {
+  if (opt.intercept?.length) {
     await b.tab('Fetch.enable', {
-      patterns: opt.abfangen.map(a => ({ urlPattern: a.muster, requestStage: 'Request' })),
+      patterns: opt.intercept.map(a => ({ urlPattern: a.muster, requestStage: 'Request' })),
     });
-    b.hoerer.push(d => {
+    b.listener.push(d => {
       if (d.method !== 'Fetch.requestPaused') return;
-      const a = opt.abfangen.find(x => d.params.request.url.includes(x.enthaelt));
+      const a = opt.intercept.find(x => d.params.request.url.includes(x.contains));
       if (!a) {
         b.tab('Fetch.continueRequest', { requestId: d.params.requestId }).catch(() => {});
         return;
@@ -285,7 +285,7 @@ async function starteApp(t, opt = {}) {
       if (!a.antwort) {
         setTimeout(
           () => b.tab('Fetch.continueRequest', { requestId: d.params.requestId }).catch(() => {}),
-          a.verzoegerung || 0,
+          a.delay || 0,
         );
         return;
       }
@@ -299,7 +299,7 @@ async function starteApp(t, opt = {}) {
               body: Buffer.from(JSON.stringify(a.antwort)).toString('base64'),
             })
             .catch(() => {}),
-        a.verzoegerung || 0,
+        a.delay || 0,
       );
     });
   }
@@ -308,7 +308,7 @@ async function starteApp(t, opt = {}) {
   await b.tab('Emulation.setLocaleOverride', { locale: opt.locale || 'de-DE' });
   // Gemessen wird der Endzustand, nicht ein Übergang.
   await b.tab('Emulation.setEmulatedMedia', {
-    features: [{ name: 'prefers-reduced-motion', value: opt.bewegung ? 'no-preference' : 'reduce' }],
+    features: [{ name: 'prefers-reduced-motion', value: opt.movement ? 'no-preference' : 'reduce' }],
   });
 
   const bis = async (ausdruck, was, versuche = 100) => {
@@ -319,12 +319,12 @@ async function starteApp(t, opt = {}) {
     const zustand = await b.auswerten(`document.body.innerText.slice(0, 300)`).catch(e => e.message);
     const s401 = abgewiesen.length ? `\n401 auf: ${abgewiesen.join(', ')}` : '';
     // Ausnahmen der Seite (etwa Trusted Types): ohne sie zeigt ein CI-Lauf nur die Zeitüberschreitung.
-    const ausnahmen = b.ereignisse
+    const exceptions = b.ereignisse
       .filter(e => e.method === 'Runtime.exceptionThrown')
       .slice(-5)
       .map(e => e.params.exceptionDetails.exception?.description ?? e.params.exceptionDetails.text);
-    const sAus = ausnahmen.length ? `\nAusnahmen der Seite:\n${ausnahmen.join('\n')}` : '';
-    throw new Error(`Zeitüberschreitung: ${was} — ${zustand}${s401}${sAus}\nServer:\n${server.log().slice(-3000)}`);
+    const sFrom = exceptions.length ? `\nAusnahmen der Seite:\n${exceptions.join('\n')}` : '';
+    throw new Error(`Zeitüberschreitung: ${was} — ${zustand}${s401}${sFrom}\nServer:\n${server.log().slice(-3000)}`);
   };
   await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/` });
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
@@ -353,7 +353,7 @@ async function starteApp(t, opt = {}) {
     return !!g && g.children.length > 0 && !g.querySelector('.skelett-raster'); })()`,
     'Start abgeschlossen',
   );
-  if (opt.alleDesigns)
+  if (opt.allDesigns)
     await b.auswerten(`(() => { const v = document.getElementById('design-stile');
       return Promise.all([...v.content.querySelectorAll('link')].map(l => new Promise(r => {
         l.onload = l.onerror = r; v.before(document.adoptNode(l)); }))).then(() => true); })()`);
@@ -363,7 +363,7 @@ async function starteApp(t, opt = {}) {
     for (let still = 0; still < 2 && Date.now() < ende; await warte(50)) still = laufend.size ? 0 : still + 1;
     await b.auswerten('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))');
   };
-  return { b, bis, warte, ruhig, port, uid, db, abgewiesen, weitereCodes };
+  return { b, bis, warte, ruhig, port, uid, db, abgewiesen, furtherCodes };
 }
 
-module.exports = { starteApp, warte, chrome };
+module.exports = { startApp, warte, chrome };

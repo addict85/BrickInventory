@@ -5,7 +5,7 @@ import { istVerwalter, ipThrottle } from '../../src/konto/http/anmeldung';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-export function baueEinrichtungRouter(d: Pick<Dienste, 'konto' | 'profile'>) {
+export function buildSetupRouter(d: Pick<Dienste, 'konto' | 'profile'>) {
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt(

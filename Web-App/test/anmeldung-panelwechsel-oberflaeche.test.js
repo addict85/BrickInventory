@@ -10,13 +10,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 const klick = (d, id) => d.getElementById(id).click();
 const fokus = d => d.activeElement?.id || d.activeElement?.tagName;
 
 test('Fokus beim Wechsel der Felder der Anmeldekarte', async () => {
-  const { w, d } = await oeffneOberflaeche({}, { angemeldet: false });
+  const { w, d } = await openUi({}, { angemeldet: false });
   try {
     await warte(() => d.getElementById('panel-login')?.style.display !== 'none');
     klick(d, 'link-forgot');
@@ -33,7 +33,7 @@ test('Fokus beim Wechsel der Felder der Anmeldekarte', async () => {
 });
 
 test('Passwort vergessen: Titel, Erklärung und Enter sendet ab', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche(
+  const { w, d, aufrufe } = await openUi(
     { '/v1/auth/forgot-password': { success: true, message: 'Falls die Adresse existiert, kommt ein Link.' } },
     { angemeldet: false },
   );

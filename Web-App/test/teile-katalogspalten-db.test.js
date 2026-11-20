@@ -18,11 +18,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { haeltFigur, haeltSet, haeltTeil, katalogSet } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsMinifig, holdsSet, holdsPart, catalogSet } = require('./helpers/bestand');
+const db = testData();
 
 // Dieselbe Begruendung wie in test/sets-ohne-kaufpreisspalte-db.test.js: Diese
 // Datei baut die Datenbank mehrfach von null auf und wendet Migrationen von
@@ -45,7 +45,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-const spaltenVon = async tabelle =>
+const columnsOf = async tabelle =>
   (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
     .map(r => r.column_name)
     .sort();
@@ -82,7 +82,7 @@ test('nach der ganzen Kette tragen parts und minifigs nur noch den Bestand', { c
   // er nicht genannt hat: quantity (Stueckzahl), condition, unit_price und
   // purchase_price (die drei gehen in Etappe 6 in die Erfassungen) und
   // bl_part_number (geht in die Mapping-Tabelle).
-  const nachher = await spaltenVon('parts');
+  const nachher = await columnsOf('parts');
   for (const sp of [
     'part_name',
     'color_name',
@@ -103,18 +103,18 @@ test('nach der ganzen Kette tragen parts und minifigs nur noch den Bestand', { c
     assert.ok(nachher.includes(sp), `parts.${sp} fehlt — genau diese Spalten soll die Tabelle behalten`);
   }
 
-  const figsNachher = await spaltenVon('minifigs');
+  const figsAfter = await columnsOf('minifigs');
   for (const sp of ['fig_name', 'image_url', 'image_local']) {
-    assert.ok(!figsNachher.includes(sp), `minifigs.${sp} ist nach allen Migrationen noch da`);
+    assert.ok(!figsAfter.includes(sp), `minifigs.${sp} ist nach allen Migrationen noch da`);
   }
   for (const sp of ['id', 'user_id', 'set_number', 'fig_number', 'source', 'storage_id']) {
-    assert.ok(figsNachher.includes(sp), `minifigs.${sp} fehlt`);
+    assert.ok(figsAfter.includes(sp), `minifigs.${sp} fehlt`);
   }
 
   // ── Und sie sind nicht verschwunden, sondern umgezogen ───────────────────
-  const pc = await spaltenVon('part_catalog');
-  const pcc = await spaltenVon('part_color_catalog');
-  const mc = await spaltenVon('minifigs_catalog');
+  const pc = await columnsOf('part_catalog');
+  const pcc = await columnsOf('part_color_catalog');
+  const mc = await columnsOf('minifigs_catalog');
   for (const sp of ['part_number', 'part_name', 'category_name']) {
     assert.ok(pc.includes(sp), `part_catalog.${sp} fehlt — dann gibt es den Namen nirgends mehr`);
   }
@@ -127,7 +127,7 @@ test('nach der ganzen Kette tragen parts und minifigs nur noch den Bestand', { c
   // is_spare zieht nicht in einen neuen Katalog: Es ist eine Eigenschaft der
   // TEILELISTE eines Sets und steht dort seit jeher.
   assert.ok(
-    (await spaltenVon('set_parts_catalog')).includes('is_spare'),
+    (await columnsOf('set_parts_catalog')).includes('is_spare'),
     'set_parts_catalog.is_spare fehlt — dann gibt es das Ersatzteilkennzeichen nirgends',
   );
 });
@@ -151,8 +151,8 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen', { con
   const uid = u.id;
 
   // Ein Set mit zwei Teilen: eines Pflichtteil, eines Ersatzteil.
-  await katalogSet(db, '75192-1', { name: 'Falcon' });
-  await haeltSet(db, uid, '75192-1', 2);
+  await catalogSet(db, '75192-1', { name: 'Falcon' });
+  await holdsSet(db, uid, '75192-1', 2);
   await db.run(`INSERT INTO set_parts (set_number,part_number,color_id,is_spare,quantity)
     VALUES ('75192-1','3001',4,false,6), ('75192-1','3002',1,true,2)`);
   await db.run(`INSERT INTO part_catalog (part_number,part_name,category_name)
@@ -162,9 +162,9 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen', { con
            ('3002',1,'Blue','0055BF','http://cdn/3002b.png')`);
   const ort = await db.get(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3') RETURNING id`, [uid]);
   // Die Stückzahl steht seit Migration 0038 im Set-Teile-Katalog, nicht an
-  // der Zeile — haeltTeil() legt beides an.
-  await haeltTeil(db, uid, '3001', { setNumber: '75192-1', menge: 6, colorId: 4, storageId: ort.id });
-  await haeltTeil(db, uid, '3002', { setNumber: '75192-1', menge: 2, colorId: 1 });
+  // der Zeile — holdsPart() legt beides an.
+  await holdsPart(db, uid, '3001', { setNumber: '75192-1', menge: 6, colorId: 4, storageId: ort.id });
+  await holdsPart(db, uid, '3002', { setNumber: '75192-1', menge: 2, colorId: 1 });
 
   const handlers = _req('src/parts/queries.js');
 
@@ -199,19 +199,19 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen', { con
   );
 
   // Der Lagerortfilter — und seine ZAEHLUNG
-  const inKiste = await handlers.partsQuery(uid, { exclude_manual: '1', storage: 'Kiste 3' });
+  const inBox = await handlers.partsQuery(uid, { exclude_manual: '1', storage: 'Kiste 3' });
   assert.deepEqual(
-    inKiste.parts.map(p => String(p.part_number)),
+    inBox.parts.map(p => String(p.part_number)),
     ['3001'],
     'Der Lagerortfilter liefert die falschen Teile',
   );
   assert.equal(
-    inKiste.total,
+    inBox.total,
     1,
-    `Die Zählabfrage des Lagerortfilters gibt ${inKiste.total} statt 1 — ` +
+    `Die Zählabfrage des Lagerortfilters gibt ${inBox.total} statt 1 — ` +
       'sie braucht dieselben JOINs wie die Hauptabfrage (joinClause)',
   );
-  assert.equal(inKiste.parts[0].storage, 'Kiste 3', 'Der Lagerortname kommt nicht aus storage_locations an');
+  assert.equal(inBox.parts[0].storage, 'Kiste 3', 'Der Lagerortname kommt nicht aus storage_locations an');
 
   // ── Suche über den Katalognamen ──────────────────────────────────────────
   const gesucht = await handlers.partsQuery(uid, { exclude_manual: '1', search: 'brick 2x3' });
@@ -237,11 +237,11 @@ test('die Figurenliste liefert Name und Bild aus minifigs_catalog', { concurrenc
 
   const u = await db.get(`INSERT INTO users (username,password_hash) VALUES ('figleser','x') RETURNING id`);
   const uid = u.id;
-  await katalogSet(db, '75192-1', { name: 'Falcon' });
-  await haeltSet(db, uid, '75192-1', 3);
+  await catalogSet(db, '75192-1', { name: 'Falcon' });
+  await holdsSet(db, uid, '75192-1', 3);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name,image_url)
     VALUES ('fig-000123','Chewbacca','http://cdn/chewie.png')`);
-  await haeltFigur(db, uid, 'fig-000123', { setNumber: '75192-1', menge: 1 });
+  await holdsMinifig(db, uid, 'fig-000123', { setNumber: '75192-1', menge: 1 });
 
   const handlers = _req('src/minifigs/queries.js');
   const liste = await handlers.readMinifigs(uid, {});

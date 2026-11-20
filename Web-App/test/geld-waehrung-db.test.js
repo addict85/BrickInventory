@@ -6,15 +6,15 @@
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in bewertung.ts total_avg wieder aus dem gerundeten Stückpreis
  *      ((unitAvg * qty).toFixed(2)) → rot: „120,3333 × 3 ist 361,00“ (360.99)
- *   B  kaufpreise_fremde_waehrung in bewerteSets fest auf 0 → rot:
+ *   B  kaufpreise_fremde_waehrung in valueSets fest auf 0 → rot:
  *      „ein Kaufpreis in EUR wird gezählt“
  *   C  erfassung_waehrung() in der Datenbank auf den alten Rumpf (Konto, sonst
  *      EUR) zurückgesetzt → rot: „ohne Kontowährung gilt die der Installation“
- *   D  kachelWerte() in gewinnVerlust.ts nicht angehängt → rot: „die Kachel
+ *   D  tileValues() in gewinnVerlust.ts nicht angehängt → rot: „die Kachel
  *      kommt fertig vom Server“
- *   E  (30.10.) in bewerteTeile hasCost wieder `acqs.length > 0` →
+ *   E  (30.10.) in valueParts hasCost wieder `acqs.length > 0` →
  *      rot: „nur ein Kaufpreis in EUR: keine G&V“ (Teil: kauf 0, pnl 21000 statt null)
- *   F  (30.10.) dasselbe in bewerteFiguren → rot: „nur ein
+ *   F  (30.10.) dasselbe in valueMinifigs → rot: „nur ein
  *      Kaufpreis in EUR: keine G&V“ (Figur: kauf 0, pnl 40000 statt null)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -25,10 +25,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   const geld = _req('src/infra/geld.js');
@@ -38,7 +38,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
     assert.equal(geld.alsText(1.005), '1.01');
     assert.equal(geld.aufRappen(-12345), -1.23);
     assert.equal(
-      geld.summeAus([
+      geld.sumFrom([
         { preis: 0.07, menge: 1000 },
         { preis: null, menge: 5 },
       ]),
@@ -50,24 +50,24 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
     assert.equal(v.unit_price, 120.33);
   });
 
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `geld-${process.pid}`,
     SN = `GW${process.pid}-1`;
-  const TEIL_EUR = `gwe${process.pid}`,
+  const PART_EUR = `gwe${process.pid}`,
     TEIL_CHF = `gwc${process.pid}`,
     FIG = `gwf${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NAME + '-2']]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const ohne = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME + '-2']))
     .id;
-  const globalVorher = await db.get(`SELECT value FROM global_settings WHERE key='currency'`);
+  const globalBefore = await db.get(`SELECT value FROM global_settings WHERE key='currency'`);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, ohne]]);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    await db.run('DELETE FROM part_price_cache WHERE part_number = ANY($1)', [[TEIL_EUR, TEIL_CHF]]);
+    await db.run('DELETE FROM part_price_cache WHERE part_number = ANY($1)', [[PART_EUR, TEIL_CHF]]);
     await db.run('DELETE FROM minifig_price_cache WHERE fig_number=$1', [FIG]);
-    if (globalVorher) await db.run(`UPDATE global_settings SET value=$1 WHERE key='currency'`, [globalVorher.value]);
+    if (globalBefore) await db.run(`UPDATE global_settings SET value=$1 WHERE key='currency'`, [globalBefore.value]);
     else await db.run(`DELETE FROM global_settings WHERE key='currency'`);
     await db.pool.end().catch(() => {});
   });
@@ -87,8 +87,8 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   );
 
   await t.test('120,3333 × 3 ist 361,00, und ein Kaufpreis in EUR wird gezählt', async () => {
-    const { bewerteSets } = _req('src/finanzen/financeCalc.js');
-    const r = await bewerteSets(uid, [uid]);
+    const { valueSets } = _req('src/finanzen/financeCalc.js');
+    const r = await valueSets(uid, [uid]);
     const set = r.sets.find(s => s.set_number === SN);
     assert.equal(set.total_avg, '361.00', '120,3333 × 3 ist 361,00');
     assert.equal(set.wert_gesamt, 361);
@@ -101,8 +101,8 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Kachel kommt fertig vom Server', async () => {
-    const { gewinnUndVerlust } = _req('src/finanzen/financeCalc.js');
-    const r = await gewinnUndVerlust(uid, [uid]);
+    const { gainAndLoss } = _req('src/finanzen/financeCalc.js');
+    const r = await gainAndLoss(uid, [uid]);
     const zeile = r.sets.find(s => s.set_number === SN);
     assert.equal(zeile.kachel_preis, 120.33);
     assert.equal(zeile.kachel_pnl_pct, 20.3);
@@ -111,13 +111,13 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   });
 
   await t.test('nur ein Kaufpreis in EUR: keine G&V statt Tausender-Prozent', async () => {
-    const { haeltTeil, haeltFigur } = require('./helpers/bestand');
-    await haeltTeil(db, uid, TEIL_EUR, { colorId: 5, preis: 1 });
-    await haeltTeil(db, uid, TEIL_CHF, { colorId: 5, preis: 0.1 });
-    await haeltFigur(db, uid, FIG, { preis: 3 });
-    await db.run(`UPDATE part_acquisitions SET currency='EUR' WHERE user_id=$1 AND part_number=$2`, [uid, TEIL_EUR]);
+    const { holdsPart, holdsMinifig } = require('./helpers/bestand');
+    await holdsPart(db, uid, PART_EUR, { colorId: 5, preis: 1 });
+    await holdsPart(db, uid, TEIL_CHF, { colorId: 5, preis: 0.1 });
+    await holdsMinifig(db, uid, FIG, { preis: 3 });
+    await db.run(`UPDATE part_acquisitions SET currency='EUR' WHERE user_id=$1 AND part_number=$2`, [uid, PART_EUR]);
     await db.run(`UPDATE minifig_acquisitions SET currency='EUR' WHERE user_id=$1 AND fig_number=$2`, [uid, FIG]);
-    for (const nr of [TEIL_EUR, TEIL_CHF])
+    for (const nr of [PART_EUR, TEIL_CHF])
       await db.run(
         `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
                     VALUES ($1,5,'N','CHF',2.1,2.1)`,
@@ -127,13 +127,13 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price) VALUES ($1,'N','CHF',4)`,
       [FIG],
     );
-    const { bewerteTeile, bewerteFiguren } = _req('src/finanzen/financeCalc.js');
-    const teile = await bewerteTeile(uid, [uid]);
-    const figuren = await bewerteFiguren(uid, [uid]);
+    const { valueParts, valueMinifigs } = _req('src/finanzen/financeCalc.js');
+    const teile = await valueParts(uid, [uid]);
+    const figuren = await valueMinifigs(uid, [uid]);
     const sicht = z => z && { markt: z.avg_price, kauf: z.purchase_price, pnl: z.pnl_prozent };
     assert.deepEqual(
       {
-        eur: sicht(teile.parts.find(z => z.part_number === TEIL_EUR)),
+        eur: sicht(teile.parts.find(z => z.part_number === PART_EUR)),
         chf: sicht(teile.parts.find(z => z.part_number === TEIL_CHF)),
         figur: sicht(figuren.figs.find(z => z.fig_number === FIG)),
         fremd: [teile.kaufpreise_fremde_waehrung, figuren.kaufpreise_fremde_waehrung],
@@ -148,8 +148,8 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   });
 
   await t.test('mehrere Zeilen eines Sets: mengengewichtet, sonst der Kaufpreis', () => {
-    const { kachelWerte } = _req('src/finanzen/setValue.js');
-    const w = kachelWerte([
+    const { tileValues } = _req('src/finanzen/setValue.js');
+    const w = tileValues([
       {
         set_number: 'A',
         quantity: 1,
@@ -188,7 +188,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
     await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [ohne, SN]);
     await db.run('INSERT INTO set_acquisitions (user_id, set_number, quantity) VALUES ($1,$2,1)', [ohne, SN]);
     assert.equal((await db.get('SELECT currency FROM set_acquisitions WHERE user_id=$1', [ohne])).currency, 'GBP');
-    const { createVoucher } = require('./helpers/sources').testBereich('vouchers').vouchers;
+    const { createVoucher } = require('./helpers/sources').testArea('vouchers').vouchers;
     await createVoucher(ohne, { number: '1234567', pin: null, amount: 10, currency: null });
     await createVoucher(uid, { number: '7654321', pin: null, amount: 10, currency: null });
     const g = await db.all('SELECT user_id, currency FROM vouchers WHERE user_id = ANY($1) ORDER BY id', [[uid, ohne]]);

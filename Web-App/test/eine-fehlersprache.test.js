@@ -16,13 +16,13 @@ const ROOT = path.join(__dirname, '..');
 
 /** Wo eine feste Zeichenkette bleiben DARF — und warum. Zurzeit nirgends. */
 /** @type {Record<string, string>} */
-const ERLAUBT = {};
+const ALLOWED = {};
 
 /** Alle .ts unter den angegebenen Ordnern, auch in Unterordnern. */
-function tsDateien(dir, praefix = '') {
+function tsFiles(dir, praefix = '') {
   const gefunden = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (e.isDirectory()) gefunden.push(...tsDateien(path.join(dir, e.name), praefix + e.name + '/'));
+    if (e.isDirectory()) gefunden.push(...tsFiles(path.join(dir, e.name), praefix + e.name + '/'));
     else if (e.name.endsWith('.ts')) gefunden.push([praefix + e.name, path.join(dir, e.name)]);
   }
   return gefunden;
@@ -30,17 +30,17 @@ function tsDateien(dir, praefix = '') {
 
 test('keine Route verschickt einen festen Fehlersatz', () => {
   const dateien = [
-    ...tsDateien(path.join(ROOT, 'routes')).map(([r, p]) => [r, p]),
-    ...tsDateien(path.join(ROOT, 'src')).map(([r, p]) => [r, p]),
-    ...tsDateien(path.join(ROOT, 'jobs')).map(([r, p]) => [r, p]),
+    ...tsFiles(path.join(ROOT, 'routes')).map(([r, p]) => [r, p]),
+    ...tsFiles(path.join(ROOT, 'src')).map(([r, p]) => [r, p]),
+    ...tsFiles(path.join(ROOT, 'jobs')).map(([r, p]) => [r, p]),
   ];
   assert.ok(dateien.length >= 30, `Nur ${dateien.length} Dateien gefunden — dann prüft der Rest nichts.`);
 
-  const verstoesse = [];
+  const violations = [];
   const gebraucht = new Set();
   for (const [, voll] of dateien) {
-    // Der Schlüssel in ERLAUBT ist der Pfad ab Web-App/ — hier zusammensetzen.
-    const unterOrdner = path.relative(ROOT, voll).split(path.sep).join('/');
+    // Der Schlüssel in ALLOWED ist der Pfad ab Web-App/ — hier zusammensetzen.
+    const belowFolder = path.relative(ROOT, voll).split(path.sep).join('/');
     const src = fs
       .readFileSync(voll, 'utf8')
       .split('\n')
@@ -60,8 +60,8 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
       // nicht in den Verstoessen, sondern belegt, dass die Ausnahme noch
       // gebraucht wird. Ueberspringt man sie stattdessen gleich, kann ihr
       // Eintrag jahrelang stehen bleiben, ohne noch etwas zu beschreiben.
-      if (unterOrdner in ERLAUBT) gebraucht.add(unterOrdner);
-      else verstoesse.push(`${unterOrdner}:${zeile}  ${text.slice(0, 60)}`);
+      if (belowFolder in ALLOWED) gebraucht.add(belowFolder);
+      else violations.push(`${belowFolder}:${zeile}  ${text.slice(0, 60)}`);
     }
   }
 
@@ -70,23 +70,23 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
   // als `{ de: '…', en: '…' }`, nie als `error: '…'`. Der Eintrag verbarg
   // also nichts, nahm aber ausgerechnet die Datei, in der ALLE Fehlertexte
   // stehen, von dieser Pruefung aus. Damit das nicht wiederkommt:
-  const veraltet = Object.keys(ERLAUBT)
+  const veraltet = Object.keys(ALLOWED)
     .filter(k => !gebraucht.has(k))
     .sort();
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Eintraege in ERLAUBT beschreiben nichts mehr:\n  ' +
+    'Diese Eintraege in ALLOWED beschreiben nichts mehr:\n  ' +
       veraltet.join('\n  ') +
       '\nDie Datei enthaelt keinen festen Fehlersatz (mehr). Der Eintrag nimmt sie ' +
       'trotzdem von der Pruefung aus — raus damit.',
   );
 
   assert.deepEqual(
-    verstoesse,
+    violations,
     [],
-    'Diese Stellen schicken einen festen Satz statt sendeFehler(req, res, …, code):\n  ' +
-      verstoesse.join('\n  ') +
+    'Diese Stellen schicken einen festen Satz statt sendError(req, res, …, code):\n  ' +
+      violations.join('\n  ') +
       '\nDamit steht die Meldung nur in einer Sprache da — in einer Oberfläche, ' +
       'die es in zweien gibt.',
   );
@@ -94,31 +94,31 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
 
 test('jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter', () => {
   // Ein fehlender Platzhalter heisst, dass in einer Sprache „{name}" auf dem Bildschirm steht.
-  const { FEHLER, fehlerText } = require('./helpers/sources').buildAndRequire()('src/infra/fehlerTexte.js');
+  const { FEHLER, errorText } = require('./helpers/sources').buildAndRequire()('src/infra/fehlerTexte.js');
   const codes = Object.keys(FEHLER);
   assert.ok(codes.length >= 60, `Nur ${codes.length} Einträge — greift die Tabelle noch?`);
-  const schief = [];
+  const skewed = [];
   for (const code of codes) {
     const vars = {};
     for (const sprache of ['de', 'en']) {
-      if (!String(FEHLER[code][sprache] || '').trim()) schief.push(`${code}: ${sprache} fehlt`);
+      if (!String(FEHLER[code][sprache] || '').trim()) skewed.push(`${code}: ${sprache} fehlt`);
       for (const [, n] of String(FEHLER[code][sprache] || '').matchAll(/\{(\w+)\}/g)) vars[n] = `«${n}»`;
     }
     // Mit allen Platzhaltern beider Sprachen gefüllt, bleibt in keiner eine Klammer stehen.
     for (const sprache of ['de', 'en']) {
-      const text = fehlerText(code, sprache, vars);
-      if (/\{\w+\}/.test(text)) schief.push(`${code}/${sprache}: ${text}`);
-      for (const n of Object.keys(vars)) if (!text.includes(`«${n}»`)) schief.push(`${code}/${sprache}: {${n}} fehlt`);
+      const text = errorText(code, sprache, vars);
+      if (/\{\w+\}/.test(text)) skewed.push(`${code}/${sprache}: ${text}`);
+      for (const n of Object.keys(vars)) if (!text.includes(`«${n}»`)) skewed.push(`${code}/${sprache}: {${n}} fehlt`);
     }
   }
-  assert.deepEqual(schief, []);
+  assert.deepEqual(skewed, []);
 });
 
 test('die Webapp sagt dem Server, welche Sprache sie zeigt', async () => {
   // Ohne diesen Kopf fiele der Server auf Deutsch zurück, und die Tabelle oben wäre wirkungslos.
-  const { oeffneOberflaeche } = require('./helpers/oberflaeche');
+  const { openUi } = require('./helpers/oberflaeche');
   for (const sprache of ['en', 'de']) {
-    const { w, aufrufe } = await oeffneOberflaeche({}, { sprache });
+    const { w, aufrufe } = await openUi({}, { sprache });
     try {
       const api = aufrufe.filter(a => a.url.includes('/api/v1/'));
       assert.ok(api.length >= 5, `nur ${api.length} Anfragen`);

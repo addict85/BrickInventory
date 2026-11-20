@@ -8,10 +8,10 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const WURZEL = path.join(__dirname, '..', '..');
-const ECHTER_ORT = path.join(WURZEL, '.github', 'workflows');
+const REAL_LOCATION = path.join(WURZEL, '.github', 'workflows');
 
 /** Alle `.github/workflows`-Ordner im Baum, ohne node_modules und .git. */
-function workflowOrdner(start) {
+function workflowFolder(start) {
   const gefunden = [];
   // .claude: lokale Arbeitskopien (git worktree) der Werkzeuge, kein Teil des Repositorys.
   const uebersprungen = new Set(['node_modules', '.git', 'dist', 'build', '.gradle', '.claude']);
@@ -33,16 +33,17 @@ function workflowOrdner(start) {
 }
 
 test('jeder Workflow liegt dort, wo GitHub ihn liest', () => {
-  const ordner = workflowOrdner(WURZEL);
+  const ordner = workflowFolder(WURZEL);
 
   // Selbstbeweis 1: Der Durchlauf hat wirklich gesucht und den echten Ort
   // gefunden. Ohne das könnte ein kaputtes Muster alles durchwinken.
   assert.ok(
-    ordner.includes(ECHTER_ORT),
-    `Der Durchlauf hat ${ECHTER_ORT} nicht gefunden — dann prüft er nichts. ` + `Gefunden: ${JSON.stringify(ordner)}`,
+    ordner.includes(REAL_LOCATION),
+    `Der Durchlauf hat ${REAL_LOCATION} nicht gefunden — dann prüft er nichts. ` +
+      `Gefunden: ${JSON.stringify(ordner)}`,
   );
 
-  const daneben = ordner.filter(o => o !== ECHTER_ORT);
+  const daneben = ordner.filter(o => o !== REAL_LOCATION);
   assert.deepEqual(
     daneben,
     [],
@@ -56,7 +57,7 @@ test('jeder Workflow liegt dort, wo GitHub ihn liest', () => {
 
 test('im Wurzelverzeichnis stehen die Workflows, die es geben soll', () => {
   const dateien = fs
-    .readdirSync(ECHTER_ORT)
+    .readdirSync(REAL_LOCATION)
     .filter(f => /\.ya?ml$/.test(f))
     .sort();
 
@@ -72,25 +73,25 @@ test('im Wurzelverzeichnis stehen die Workflows, die es geben soll', () => {
 
 test('ein Workflow benutzt jede Action überall in derselben Fassung', () => {
   // Warum
-  const fassungen = new Map(); // Action -> Map(Fassung -> [Dateien])
-  for (const f of fs.readdirSync(ECHTER_ORT).filter(f => /\.ya?ml$/.test(f))) {
+  const versions = new Map(); // Action -> Map(Fassung -> [Dateien])
+  for (const f of fs.readdirSync(REAL_LOCATION).filter(f => /\.ya?ml$/.test(f))) {
     const yml = fs
-      .readFileSync(path.join(ECHTER_ORT, f), 'utf8')
+      .readFileSync(path.join(REAL_LOCATION, f), 'utf8')
       .split('\n')
       .filter(z => !z.trimStart().startsWith('#'))
       .join('\n');
     for (const m of yml.matchAll(/uses:\s*([\w.-]+\/[\w.\-/]+)@([\w.-]+)/g)) {
       const [, action, fassung] = m;
-      if (!fassungen.has(action)) fassungen.set(action, new Map());
-      const je = fassungen.get(action);
+      if (!versions.has(action)) versions.set(action, new Map());
+      const je = versions.get(action);
       if (!je.has(fassung)) je.set(fassung, []);
       if (!je.get(fassung).includes(f)) je.get(fassung).push(f);
     }
   }
 
   // Selbstbeweis 3: Ohne gefundene Actions ist die Schleife darunter leer.
-  assert.ok(fassungen.size >= 8, `Nur ${fassungen.size} Actions gefunden — Muster veraltet?`);
-  const mehrfach = [...fassungen].filter(([, je]) => [...je.values()].reduce((n, d) => n + d.length, 0) > 1);
+  assert.ok(versions.size >= 8, `Nur ${versions.size} Actions gefunden — Muster veraltet?`);
+  const mehrfach = [...versions].filter(([, je]) => [...je.values()].reduce((n, d) => n + d.length, 0) > 1);
   // Von 3 auf 2 gesenkt, als android-playstore.yml entfernt wurde: Mit einem
   // Workflow weniger gibt es weniger Ueberlappung. GEMESSEN sind es jetzt
   // actions/checkout@v7 (in allen drei Laeufen) und actions/upload-artifact@v7
@@ -101,19 +102,19 @@ test('ein Workflow benutzt jede Action überall in derselben Fassung', () => {
     `Nur ${mehrfach.length} Actions stehen an mehr als einer Stelle — dann ` + 'kann diese Prüfung nichts finden.',
   );
 
-  const uneinig = [...fassungen]
+  const disagreeing = [...versions]
     .filter(([, je]) => je.size > 1)
     .map(([action, je]) => `${action}: ` + [...je].map(([v, d]) => `${v} (${d.join(', ')})`).join(' vs. '));
-  assert.deepEqual(uneinig, [], 'Dieselbe Action steht in zwei Fassungen:\n  ' + uneinig.join('\n  '));
+  assert.deepEqual(disagreeing, [], 'Dieselbe Action steht in zwei Fassungen:\n  ' + disagreeing.join('\n  '));
 });
 
 test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
   // Warum
   const TESTBEFEHLE = [/npm\s+test/, /testDebugUnitTest/];
 
-  const pruefend = [];
-  for (const f of fs.readdirSync(ECHTER_ORT).filter(f => /\.ya?ml$/.test(f))) {
-    const roh = fs.readFileSync(path.join(ECHTER_ORT, f), 'utf8');
+  const checking = [];
+  for (const f of fs.readdirSync(REAL_LOCATION).filter(f => /\.ya?ml$/.test(f))) {
+    const roh = fs.readFileSync(path.join(REAL_LOCATION, f), 'utf8');
     // Kommentarzeilen raus: In den Erklärblöcken dieser Dateien stehen die
     // Testbefehle als Fliesstext, und ein Workflow wäre sonst allein deswegen
     // "prüfend", weil er über das Prüfen SCHREIBT.
@@ -121,19 +122,19 @@ test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
       .split('\n')
       .filter(z => !z.trimStart().startsWith('#'))
       .join('\n');
-    if (TESTBEFEHLE.some(r => r.test(yml))) pruefend.push([f, yml]);
+    if (TESTBEFEHLE.some(r => r.test(yml))) checking.push([f, yml]);
   }
 
   // Selbstbeweis: Es gibt mindestens die zwei — Web und Android. Fände das
   // Muster keinen, wäre die Schleife darunter leer und die Prüfung still grün.
   assert.ok(
-    pruefend.length >= 2,
-    `Nur ${pruefend.length} testausführende Workflows gefunden — Muster veraltet? ` +
+    checking.length >= 2,
+    `Nur ${checking.length} testausführende Workflows gefunden — Muster veraltet? ` +
       'Ohne Fund prüft der Rest dieses Tests nichts.',
   );
 
   const eng = [];
-  for (const [f, yml] of pruefend) {
+  for (const [f, yml] of checking) {
     // Der `branches:`-Eintrag UNTER `push:` — nicht der unter `pull_request:`
     // und nicht irgendeiner weiter unten im Text.
     const push = yml.match(/\n\s*push:\s*\n((?:\s{4,}.*\n|\s*\n)*)/);
@@ -158,7 +159,7 @@ test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
 // dem `if:` des Prüfjobs gestrichen → rot „… fremdes Repository …“; eine
 // Action wieder als `@v7` statt per SHA → rot „… per Commit-SHA …“.
 test('das Docker-Image entsteht nur aus einem Push auf main dieses Repositorys', () => {
-  const yml = fs.readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8');
+  const yml = fs.readFileSync(path.join(REAL_LOCATION, 'docker-publish.yml'), 'utf8');
   const job = yml.split(/\n {2}pruefen:\n/)[1]?.split(/\n {4}steps:\n/)[0] ?? '';
   assert.match(job, /\n {4}if: /, 'der Prüfjob hat kein if:');
   assert.match(job, /workflow_run\.event == 'push'/, 'ein PR-Lauf der CI darf kein Image auslösen');
@@ -173,7 +174,7 @@ test('das Docker-Image entsteht nur aus einem Push auf main dieses Repositorys',
 // Gegenprobe (01.11.2026 gemessen): `--no-build-cache` aus „Release bauen“
 // gestrichen → rot „… ohne Build-Cache …“.
 test('das Release-APK wird ohne Build-Cache gebaut', () => {
-  const yml = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
+  const yml = fs.readFileSync(path.join(REAL_LOCATION, 'android.yml'), 'utf8');
   const schritt = yml.split(/\n {6}- name: Release bauen\n/)[1]?.split(/\n {6}- name: /)[0] ?? '';
   const aufrufe = schritt.split('\n').filter(z => !z.trimStart().startsWith('#') && /gradlew/.test(z));
   assert.ok(aufrufe.length > 0, 'Schritt „Release bauen“ mit gradlew nicht gefunden');
@@ -182,8 +183,8 @@ test('das Release-APK wird ohne Build-Cache gebaut', () => {
 
 test('jede Action ist per Commit-SHA festgelegt', () => {
   const lose = [];
-  for (const f of fs.readdirSync(ECHTER_ORT).filter(n => n.endsWith('.yml'))) {
-    const zeilen = fs.readFileSync(path.join(ECHTER_ORT, f), 'utf8').split('\n');
+  for (const f of fs.readdirSync(REAL_LOCATION).filter(n => n.endsWith('.yml'))) {
+    const zeilen = fs.readFileSync(path.join(REAL_LOCATION, f), 'utf8').split('\n');
     zeilen.forEach((z, i) => {
       const m = z.match(/^\s*-?\s*uses:\s*([^\s#]+)/);
       // Ein lokaler Workflow (./.github/workflows/…) läuft immer im Commit des Aufrufers.
@@ -199,7 +200,7 @@ test('jede Action ist per Commit-SHA festgelegt', () => {
 // haben“; die Kotlin-Zeile der
 // Matrix entfernt → rot „CodeQL prüft java-kotlin nicht“.
 test('der Sicherheitslauf prüft Code, Abhängigkeiten, Image und den laufenden Server', () => {
-  const roh = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
+  const roh = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
   const yml = roh
     .split('\n')
     .filter(z => !z.trimStart().startsWith('#'))
@@ -229,7 +230,7 @@ function dependabot() {
     .split(/\n {2}- (?=package-ecosystem:)/)
     .slice(1)
     .map(b => ({
-      oekosystem: b.match(/^package-ecosystem: (\S+)/)?.[1],
+      ecosystem: b.match(/^package-ecosystem: (\S+)/)?.[1],
       ordner: b.match(/\n {4}directory: (\S+)/)?.[1],
       text: b,
     }));
@@ -243,7 +244,7 @@ function dependabot() {
 // rot „Hauptversion“.
 test('Dependabot pflegt npm, Gradle, Images und Actions aus der Wurzel-Konfiguration', () => {
   const eintraege = dependabot();
-  const finde = (oe, ordner) => eintraege.find(e => e.oekosystem === oe && e.ordner === ordner);
+  const finde = (oe, ordner) => eintraege.find(e => e.ecosystem === oe && e.ordner === ordner);
   for (const [oe, ordner] of [
     ['npm', '/Web-App'],
     // Der Name zusammengesetzt: abgleich-baumbruecken liest jede Erwähnung als Pfad in den Baum.
@@ -259,7 +260,7 @@ test('Dependabot pflegt npm, Gradle, Images und Actions aus der Wurzel-Konfigura
   }
   for (const oe of ['npm', 'gradle'])
     assert.match(
-      eintraege.find(e => e.oekosystem === oe).text,
+      eintraege.find(e => e.ecosystem === oe).text,
       /\n {4}cooldown:\s*\n\s*default-days: [1-9]/,
       `${oe}: neue Fassungen ohne Wartezeit`,
     );
@@ -281,7 +282,7 @@ test('Dependabot pflegt npm, Gradle, Images und Actions aus der Wurzel-Konfigura
 });
 
 /** Der `run:`-Block des Schritts mit `id: <id>`, ohne Einrückung. */
-function schrittSkript(yml, id) {
+function stepScript(yml, id) {
   const z = yml.split('\n');
   const i = z.findIndex(l => l.trim() === `id: ${id}`);
   const r = z.findIndex((l, j) => j > i && /^\s+run: \|\s*$/.test(l));
@@ -298,18 +299,18 @@ function schrittSkript(yml, id) {
 // `docker-compose` in dependabot.yml gestrichen → rot „docker-compose: … ohne Update-Pfad“;
 // `matrix.image` im Trivy-Job durch ein festes Image ersetzt → rot.
 test('die Images aus compose.yaml haben einen Update-Pfad und gehen durch Trivy', () => {
-  const yml = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
+  const yml = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
   const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'compose-images-'));
   fs.mkdirSync(path.join(ort, 'Web-App'));
   fs.copyFileSync(path.join(WURZEL, 'Web-App', 'compose.yaml'), path.join(ort, 'Web-App', 'compose.yaml'));
-  const ausgabe = path.join(ort, 'ausgabe');
-  const r = spawnSync('bash', ['-e', '-c', schrittSkript(yml, 'lesen')], {
+  const output = path.join(ort, 'ausgabe');
+  const r = spawnSync('bash', ['-e', '-c', stepScript(yml, 'lesen')], {
     cwd: ort,
-    env: { ...process.env, GITHUB_OUTPUT: ausgabe },
+    env: { ...process.env, GITHUB_OUTPUT: output },
     encoding: 'utf8',
   });
   assert.equal(r.status, 0, r.stdout + r.stderr);
-  const images = JSON.parse(fs.readFileSync(ausgabe, 'utf8').match(/^images=(.*)$/m)?.[1] ?? '[]');
+  const images = JSON.parse(fs.readFileSync(output, 'utf8').match(/^images=(.*)$/m)?.[1] ?? '[]');
   fs.rmSync(ort, { recursive: true, force: true });
   // Caddy baut compose.yaml selbst (Dockerfile.caddy), auch für caddy-rechte; pgweb gibt es nicht mehr.
   assert.deepEqual(images.map(i => i.split(':')[0]).sort(), ['postgres']);
@@ -324,7 +325,7 @@ test('die Images aus compose.yaml haben einen Update-Pfad und gehen durch Trivy'
   // Digests in compose.yaml und Dockerfile, SHAs der Actions: Dependabot zieht sie nach.
   for (const oe of ['docker-compose', 'docker', 'github-actions'])
     assert.ok(
-      dependabot().some(e => e.oekosystem === oe),
+      dependabot().some(e => e.ecosystem === oe),
       `${oe}: Digests und Action-SHAs stehen ohne Update-Pfad fest`,
     );
   // Gegenprobe (03.11.2026 gemessen): wieder exit-code '0' → rot „nicht scharf".
@@ -337,8 +338,8 @@ test('die Images aus compose.yaml haben einen Update-Pfad und gehen durch Trivy'
 // web-ci.yml gestrichen → rot, die Liste nennt „web-ci.yml:test".
 test('Checkouts behalten keine Zugangsdaten, ausser wo der Job schreibt', () => {
   const ohne = [];
-  for (const datei of fs.readdirSync(ECHTER_ORT).filter(n => n.endsWith('.yml'))) {
-    const z = fs.readFileSync(path.join(ECHTER_ORT, datei), 'utf8').split('\n');
+  for (const datei of fs.readdirSync(REAL_LOCATION).filter(n => n.endsWith('.yml'))) {
+    const z = fs.readFileSync(path.join(REAL_LOCATION, datei), 'utf8').split('\n');
     let job = '';
     z.forEach((l, i) => {
       job = l.match(/^ {2}([\w-]+):\s*$/)?.[1] ?? job;
@@ -355,7 +356,7 @@ test('Checkouts behalten keine Zugangsdaten, ausser wo der Job schreibt', () => 
 // → rot „… darf Nachweise ablegen“.
 test('das Image trägt Herkunft und Stückliste, bescheinigt am signierten Digest', () => {
   const yml = fs
-    .readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8')
+    .readFileSync(path.join(REAL_LOCATION, 'docker-publish.yml'), 'utf8')
     .split('\n')
     .filter(l => !/^\s*#/.test(l))
     .join('\n');
@@ -387,12 +388,12 @@ test('das Image trägt Herkunft und Stückliste, bescheinigt am signierten Diges
 // web-ci gestrichen → rot „… nach npm ci“; im Job trivy-eigenbau
 // `trivyignores:` ergänzt → rot „Caddy wird ohne Ausnahmen geprüft“.
 test('der signierte Bau ohne Cache, Trivy vor der Signatur, Paketsignaturen in der CI', () => {
-  const ohneKommentar = t =>
+  const withoutComment = t =>
     t
       .split('\n')
       .filter(l => !/^\s*#/.test(l))
       .join('\n');
-  const pub = ohneKommentar(fs.readFileSync(path.join(ECHTER_ORT, 'docker-publish.yml'), 'utf8'));
+  const pub = withoutComment(fs.readFileSync(path.join(REAL_LOCATION, 'docker-publish.yml'), 'utf8'));
   assert.doesNotMatch(pub, /cache-(from|to)|type=gha/, 'der signierte Bau liest keinen Cache');
   const bau = pub.split(/\n {2}build:\n/)[1].split(/\n {2}merge:\n/)[0];
   assert.match(bau, /^\s+no-cache: true\s*$/m, 'der signierte Bau liest keinen Cache');
@@ -405,22 +406,22 @@ test('der signierte Bau ohne Cache, Trivy vor der Signatur, Paketsignaturen in d
   assert.match(schritt, /exit-code: '1'/);
   assert.match(schritt, /severity: HIGH,CRITICAL/);
 
-  const ci = ohneKommentar(fs.readFileSync(path.join(ECHTER_ORT, 'web-ci.yml'), 'utf8'));
+  const ci = withoutComment(fs.readFileSync(path.join(REAL_LOCATION, 'web-ci.yml'), 'utf8'));
   const ci0 = ci.indexOf('npm ci --ignore-scripts'),
     sig = ci.indexOf('run: npm audit signatures');
   assert.ok(ci0 > 0 && sig > ci0, 'npm audit signatures läuft nach npm ci');
 
-  const sich = ohneKommentar(fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8'));
+  const sich = withoutComment(fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8'));
   const eigen = sich.slice(sich.indexOf('\n  trivy-eigenbau:'), sich.indexOf('\n  zap:'));
   assert.match(eigen, /docker build -f Web-App\/Dockerfile\.caddy /);
   assert.match(eigen, /exit-code: '1'/);
   assert.doesNotMatch(eigen, /trivyignores/, 'Caddy wird ohne Ausnahmen geprüft');
-  const ausnahmen = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.yaml'), 'utf8');
-  assert.doesNotMatch(ausnahmen, /^\s*# (caddy|pgweb)/m, 'Caddy oder pgweb mit hingenommenen Lücken');
+  const exceptions = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.yaml'), 'utf8');
+  assert.doesNotMatch(exceptions, /^\s*# (caddy|pgweb)/m, 'Caddy oder pgweb mit hingenommenen Lücken');
 });
 
 /** Die Einträge von .github/trivy-betrieb.yaml (nur die Form, die die Datei benutzt). */
-function trivyAusnahmen(roh) {
+function trivyExceptions(roh) {
   assert.match(roh, /^vulnerabilities:\s*$/m, 'kein Abschnitt vulnerabilities');
   return roh
     .split(/\n {2}- id: /)
@@ -445,12 +446,12 @@ function trivyAusnahmen(roh) {
 
 // Gegenproben (11.11.2026 gemessen, je einzeln): bei CVE-2026-9947 `purls:` samt
 // Einträgen gestrichen → rot „… an keine Datei und kein Paket gebunden“; in
-// sicherheit.yml wieder `trivyignores: .github/trivy-betrieb.ignore` → rot
+// sicherheit.yml wieder `trivyignores: .github/trivy-operation.ignore` → rot
 // „trivy-compose liest die YAML-Ausnahmen“; bei CVE-2025-61726 `expired_at`
 // gestrichen → rot „… ohne Ablaufdatum“.
 test('Trivy-Ausnahmen der Betriebs-Images: an Datei oder Paket gebunden, mit Frist und Grund', () => {
   const roh = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.yaml'), 'utf8');
-  const liste = trivyAusnahmen(roh);
+  const liste = trivyExceptions(roh);
   assert.ok(liste.length >= 40, `nur ${liste.length} Ausnahmen gelesen — greift der Leser noch?`);
   const ids = liste.map(e => e.id);
   assert.deepEqual(
@@ -474,9 +475,9 @@ test('Trivy-Ausnahmen der Betriebs-Images: an Datei oder Paket gebunden, mit Fri
   );
 
   // trivy-action reicht genau EINE .yaml-Datei als TRIVY_IGNOREFILE durch; mehrere oder gemischt brechen ab.
-  const sich = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
+  const sich = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
   assert.match(
-    jobVon(sich, 'trivy-compose'),
+    jobOf(sich, 'trivy-compose'),
     /^\s+trivyignores: \.github\/trivy-betrieb\.yaml\s*$/m,
     'trivy-compose liest die YAML-Ausnahmen',
   );
@@ -489,7 +490,7 @@ test('Trivy-Ausnahmen der Betriebs-Images: an Datei oder Paket gebunden, mit Fri
 // ── Android-Release (sec17) ──────────────────────────────────────────────────
 
 /** Der run-Block eines Schritts, gesucht über seinen Namen. */
-function schrittNach(yml, name) {
+function stepAfter(yml, name) {
   const z = yml.split('\n');
   const i = z.findIndex(l => l.trim() === `- name: ${name}`);
   assert.ok(i >= 0, `Schritt „${name}“ nicht gefunden`);
@@ -503,7 +504,7 @@ function schrittNach(yml, name) {
 }
 
 /** Ein Job ohne Kommentarzeilen, von seiner Kopfzeile bis zum nächsten Job. */
-function jobVon(yml, name) {
+function jobOf(yml, name) {
   const ohne = yml
     .split('\n')
     .filter(z => !z.trimStart().startsWith('#'))
@@ -514,7 +515,7 @@ function jobVon(yml, name) {
 }
 
 /** Führt [skript] in bash aus, mit einem `gh`-Ersatz, der je Aufruf [antworten] befragt. */
-function mitGh(t, skript, antworten, env = {}) {
+function withGh(t, script, antworten, env = {}) {
   const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'gh-ersatz-'));
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   const regeln = Object.entries(antworten)
@@ -525,7 +526,7 @@ function mitGh(t, skript, antworten, env = {}) {
     `#!/bin/bash\ncase "$*" in\n${regeln}\n  *) echo "unbekannt: $*" >&2; exit 9 ;;\nesac\n`,
     { mode: 0o755 },
   );
-  return spawnSync('bash', ['-e', '-c', skript], {
+  return spawnSync('bash', ['-e', '-c', script], {
     cwd: ort,
     encoding: 'utf8',
     env: {
@@ -542,8 +543,8 @@ function mitGh(t, skript, antworten, env = {}) {
 // rot „Etiketten bauen ohne Cache“; im Gegenproben-Job `cache-read-only` gestrichen → rot
 // „… schreibt den Gradle-Cache“.
 test('Etiketten bauen ohne Gradle-Cache, und nur der Baujob schreibt ihn (sec17 M1)', () => {
-  const android = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
-  const bau = jobVon(android, 'build');
+  const android = fs.readFileSync(path.join(REAL_LOCATION, 'android.yml'), 'utf8');
+  const bau = jobOf(android, 'build');
   assert.match(
     bau,
     /setup-gradle@[0-9a-f]{40}[^\n]*\n\s+with:\n\s+cache-disabled: \$\{\{ startsWith\(github\.ref, 'refs\/tags\/android-v'\) \}\}/,
@@ -555,11 +556,11 @@ test('Etiketten bauen ohne Gradle-Cache, und nur der Baujob schreibt ihn (sec17 
     'Etiketten bauen mit leerem Gradle-Benutzerverzeichnis',
   );
   for (const datei of ['android.yml', 'sicherheit.yml']) {
-    const yml = fs.readFileSync(path.join(ECHTER_ORT, datei), 'utf8');
+    const yml = fs.readFileSync(path.join(REAL_LOCATION, datei), 'utf8');
     const jobs = [...yml.matchAll(/\n {2}([\w-]+):\n/g)].map(m => m[1]).filter(j => j !== 'build');
-    for (const job of jobs.filter(j => /setup-gradle@/.test(jobVon(yml, j))))
+    for (const job of jobs.filter(j => /setup-gradle@/.test(jobOf(yml, j))))
       assert.match(
-        jobVon(yml, job),
+        jobOf(yml, job),
         /setup-gradle@[0-9a-f]{40}[^\n]*\n(?:\s+if: [^\n]+\n)?\s+with:\n\s+cache-read-only: true/,
         `${datei}:${job} schreibt den Gradle-Cache`,
       );
@@ -570,16 +571,16 @@ test('Etiketten bauen ohne Gradle-Cache, und nur der Baujob schreibt ihn (sec17 
 // „… sperrt nicht“; den Schritt „Abhängigkeiten ohne bekannte Lücke“ gestrichen → rot
 // „… ohne grüne Lückenprüfung“; im gh-Ersatz ein roter Job → rot „ein roter …“.
 test('die Lückenprüfung der App sperrt, und ohne sie wird kein Etikett signiert (sec17 M2)', t => {
-  const sicherheit = fs.readFileSync(path.join(ECHTER_ORT, 'sicherheit.yml'), 'utf8');
-  const job = jobVon(sicherheit, 'android-abhaengigkeiten');
+  const sicherheit = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
+  const job = jobOf(sicherheit, 'android-abhaengigkeiten');
   assert.doesNotMatch(job.split('\n    steps:')[0], /continue-on-error/, 'der ganze Job darf nicht rot werden dürfen');
-  const pruefung = job.split('- name: Bekannte Lücken')[1].split('- name: ')[0];
-  assert.match(pruefung, /exit-code: '1'/, 'die Lückenprüfung der App sperrt nicht');
-  assert.match(pruefung, /severity: HIGH,CRITICAL/);
-  assert.match(pruefung, /ignore-unfixed: true/);
+  const check = job.split('- name: Bekannte Lücken')[1].split('- name: ')[0];
+  assert.match(check, /exit-code: '1'/, 'die Lückenprüfung der App sperrt nicht');
+  assert.match(check, /severity: HIGH,CRITICAL/);
+  assert.match(check, /ignore-unfixed: true/);
   assert.match(job, /log4j-core:2\.14\.1/, 'die Gegenprobe mit einer bekannt verwundbaren Fassung fehlt');
   assert.match(job, /steps\.gegenprobe\.outcome/);
-  const liste = pruefung.match(/trivyignores: (\S+)/)?.[1];
+  const liste = check.match(/trivyignores: (\S+)/)?.[1];
   assert.ok(liste && fs.existsSync(path.join(WURZEL, liste)), `Ausnahmeliste fehlt: ${liste}`);
   const zeilen = fs.readFileSync(path.join(WURZEL, liste), 'utf8').split('\n');
   zeilen.forEach((z, i) => {
@@ -588,17 +589,17 @@ test('die Lückenprüfung der App sperrt, und ohne sie wird kein Etikett signier
     assert.match(zeilen[i - 1] ?? '', /^# \S.{10,}/, `Ausnahme ohne Grund darüber: ${z}`);
   });
   const name = sicherheit.match(/\n {2}android-abhaengigkeiten:\n {4}name: ([^\n]+)/)[1];
-  const release = fs.readFileSync(path.join(ECHTER_ORT, 'android-release.yml'), 'utf8');
-  const skript = schrittNach(release, 'Abhängigkeiten ohne bekannte Lücke');
-  assert.match(skript, /workflows\/sicherheit\.yml\/runs\?head_sha=\$COMMIT/, 'Etikett ohne grüne Lückenprüfung');
+  const release = fs.readFileSync(path.join(REAL_LOCATION, 'android-release.yml'), 'utf8');
+  const script = stepAfter(release, 'Abhängigkeiten ohne bekannte Lücke');
+  assert.match(script, /workflows\/sicherheit\.yml\/runs\?head_sha=\$COMMIT/, 'Etikett ohne grüne Lückenprüfung');
   assert.ok(name.startsWith('Trivy (Android-Abhängigkeiten'), `Jobname „${name}“ passt nicht zur Abfrage`);
-  const lauf = fazit =>
-    mitGh(
+  const lauf = conclusion =>
+    withGh(
       t,
-      skript,
+      script,
       {
         'workflows/sicherheit.yml/runs': '17',
-        'actions/runs/17/jobs': fazit,
+        'actions/runs/17/jobs': conclusion,
       },
       { COMMIT: 'a'.repeat(40) },
     );
@@ -616,18 +617,18 @@ test('die Lückenprüfung der App sperrt, und ohne sie wird kein Etikett signier
 // Anmerkung eines anderen Jobs …“. Der gh-Ersatz wertet kein --jq aus: Die Zählung der
 // Anmerkungen (`if length == 1`) prüft dieser Test nicht.
 test('signiert wird nur bei geschütztem main, aus main, für ein echtes Etikett und ohne Umgehung durch Administratoren (sec17 B1, B3)', t => {
-  const release = fs.readFileSync(path.join(ECHTER_ORT, 'android-release.yml'), 'utf8');
-  const main = schrittNach(release, 'main ist geschützt');
-  const regeln = arten => mitGh(t, main, { 'rules/branches/main': arten }).status;
+  const release = fs.readFileSync(path.join(REAL_LOCATION, 'android-release.yml'), 'utf8');
+  const main = stepAfter(release, 'main ist geschützt');
+  const regeln = arten => withGh(t, main, { 'rules/branches/main': arten }).status;
   assert.equal(regeln('non_fast_forward,pull_request,required_status_checks'), 0);
   assert.notEqual(regeln('non_fast_forward,required_status_checks'), 0, 'ohne PR-Pflicht wird nicht signiert');
   assert.notEqual(regeln('pull_request'), 0, 'ohne Pflicht-Checks wird nicht signiert');
-  const signieren = fs.readFileSync(path.join(ECHTER_ORT, 'android-signieren.yml'), 'utf8');
-  const umgebung = schrittNach(signieren, 'Environment ist geschützt');
+  const signieren = fs.readFileSync(path.join(REAL_LOCATION, 'android-signieren.yml'), 'utf8');
+  const environment = stepAfter(signieren, 'Environment ist geschützt');
   const env = (bypass, regel = 'branch:main') =>
-    mitGh(
+    withGh(
       t,
-      umgebung,
+      environment,
       {
         'environments/release/deployment-branch-policies': regel,
         'environments/release': JSON.stringify({
@@ -647,17 +648,17 @@ test('signiert wird nur bei geschütztem main, aus main, für ein echtes Etikett
   );
   assert.notEqual(env(false, 'branch:main,tag:android-v*'), 0, 'nur der Zweig main');
 
-  const etikett = schrittNach(release, 'Etikett zeigt auf den gebauten Commit');
+  const etikett = stepAfter(release, 'Etikett zeigt auf den gebauten Commit');
   const c = 'c'.repeat(40);
-  const ausgabe = t2 => {
+  const output = t2 => {
     const f = path.join(fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'aus-')), 'o');
     fs.writeFileSync(f, '');
     t2.after(() => fs.rmSync(path.dirname(f), { recursive: true, force: true }));
     return f;
   };
   const pruefe = (name, ziel, extra = {}) => {
-    const o = ausgabe(t);
-    const r = mitGh(
+    const o = output(t);
+    const r = withGh(
       t,
       etikett,
       { [`git/ref/tags/${name}`]: `commit ${ziel}` },
@@ -676,39 +677,39 @@ test('signiert wird nur bei geschütztem main, aus main, für ein echtes Etikett
   );
   assert.notEqual(pruefe('android-v1;x', c).status, 0, 'ein Name mit Sonderzeichen gilt nicht');
   assert.notEqual(
-    mitGh(
+    withGh(
       t,
       etikett,
       {},
-      { GITHUB_OUTPUT: ausgabe(t), EINGABE: '', AUS_LAUF: 'android-v9', LAUF_COMMIT: c, LAUF_ID: '99' },
+      { GITHUB_OUTPUT: output(t), EINGABE: '', AUS_LAUF: 'android-v9', LAUF_COMMIT: c, LAUF_ID: '99' },
     ).status,
     0,
     'ohne Etikett (etwa nur ein Zweig des Namens) gilt nichts',
   );
 
-  const summen = schrittNach(release, 'Prüfsummen aus der Übergabe');
+  const sums = stepAfter(release, 'Prüfsummen aus der Übergabe');
   assert.match(
-    summen,
+    sums,
     /select\(\.name == "Übergabe an das Signieren" and \.conclusion == "success"\)/,
     'die Anmerkung eines anderen Jobs zählt nicht',
   );
-  const android = fs.readFileSync(path.join(ECHTER_ORT, 'android.yml'), 'utf8');
+  const android = fs.readFileSync(path.join(REAL_LOCATION, 'android.yml'), 'utf8');
   assert.match(
-    jobVon(android, 'uebergabe'),
+    jobOf(android, 'uebergabe'),
     /^ {4}name: Übergabe an das Signieren$/m,
     'der Name des Übergabejobs passt nicht zur Abfrage',
   );
   assert.match(
-    schrittNach(android, 'Prüfsummen des Baujobs bezeugen'),
+    stepAfter(android, 'Prüfsummen des Baujobs bezeugen'),
     /::notice title=Prüfsummen zum Signieren::apk=\$APK_SOLL aab=\$AAB_SOLL/,
   );
   const a = 'a'.repeat(64),
     b = 'b'.repeat(64);
   const lies = (jobs, notiz) => {
-    const o = ausgabe(t);
-    const r = mitGh(
+    const o = output(t);
+    const r = withGh(
       t,
-      summen,
+      sums,
       { 'actions/runs/99/jobs': jobs, 'check-runs/55/annotations': notiz },
       { GITHUB_OUTPUT: o, LAUF: '99' },
     );
@@ -726,9 +727,9 @@ test('signiert wird nur bei geschütztem main, aus main, für ein echtes Etikett
 // „vor dem Veröffentlichen …“; in android-bescheinigung.yml `sha256sum -c -` durch
 // `cat > /dev/null` ersetzt → rot „ein verändertes Byte …“.
 test('veröffentlicht und bescheinigt wird nur, was der Signierjob ausgab (sec17 B-N1, B-N7)', t => {
-  const android = fs.readFileSync(path.join(ECHTER_ORT, 'android-release.yml'), 'utf8');
-  const bescheinigung = fs.readFileSync(path.join(ECHTER_ORT, 'android-bescheinigung.yml'), 'utf8');
-  const release = jobVon(android, 'release');
+  const android = fs.readFileSync(path.join(REAL_LOCATION, 'android-release.yml'), 'utf8');
+  const bescheinigung = fs.readFileSync(path.join(REAL_LOCATION, 'android-bescheinigung.yml'), 'utf8');
+  const release = jobOf(android, 'release');
   assert.match(
     release,
     /- name: Artefakt gegen die Prüfsummen des Signierjobs/,
@@ -736,7 +737,7 @@ test('veröffentlicht und bescheinigt wird nur, was der Signierjob ausgab (sec17
   );
   assert.doesNotMatch(release, /attest-build-provenance|id-token: write/, 'der Release-Job bescheinigt nicht selbst');
   assert.match(release, /needs: \[etikett, signieren, bescheinigen\]/);
-  assert.match(jobVon(android, 'bescheinigen'), /uses: \.\/\.github\/workflows\/android-bescheinigung\.yml/);
+  assert.match(jobOf(android, 'bescheinigen'), /uses: \.\/\.github\/workflows\/android-bescheinigung\.yml/);
   assert.match(bescheinigung, /\non:\n {2}workflow_call:\n/);
   assert.doesNotMatch(
     bescheinigung,
@@ -763,9 +764,9 @@ test('veröffentlicht und bescheinigt wird nur, was der Signierjob ausgab (sec17
     fs.writeFileSync(path.join(ort, 'signiert', d), s);
   }
   const env = { RUNNER_TEMP: ort, APK_SOLL: summe('apk'), BESCHREIBUNG_SOLL: summe('{}'), AAB_SOLL: summe('aab') };
-  const skript = schrittNach(bescheinigung, 'Gegen die Prüfsummen des Signierjobs');
+  const script = stepAfter(bescheinigung, 'Gegen die Prüfsummen des Signierjobs');
   const lauf = () =>
-    spawnSync('bash', ['-e', '-c', skript], { cwd: ort, encoding: 'utf8', env: { ...process.env, ...env } });
+    spawnSync('bash', ['-e', '-c', script], { cwd: ort, encoding: 'utf8', env: { ...process.env, ...env } });
   assert.equal(lauf().status, 0, lauf().stdout + lauf().stderr);
   fs.writeFileSync(path.join(ort, 'signiert', 'version-signiert.json'), '{ }');
   assert.notEqual(lauf().status, 0, 'ein verändertes Byte wird bescheinigt');

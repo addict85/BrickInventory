@@ -32,30 +32,30 @@
  *      Untertitel unter „Importieren“)
  *   P  (einzeln, 320 px Seitenschrift 200 %) Finanzzeile ohne die
  *      Container-Abfrage 17rem → „Finanzen“ (schmal 0 px: .fin-name)
- * Gegenproben (04.11.2026, Bestand mit Unterkonto, musterHaushalt):
+ * Gegenproben (04.11.2026, Bestand mit Unterkonto, patternHousehold):
  *   Q  .toast-aktion wieder --b500, .pl-chip-name wieder --mut →
  *      classic/rechner „Toast mit Aktion“ (3,67:1) und „Bauliste mit Sets“ (4,37:1)
  *   R  .haushalt-liste wieder max-content max-content ohne Umbruch des Knopfs
  *      → 390 px Seitenschrift 200 % „Sicht haushalt“ (Überlauf 432 px);
- *      mit musterSammlung statt musterHaushalt blieb dieselbe Prüfung grün —
+ *      mit patternCollection statt patternHousehold blieb dieselbe Prüfung grün —
  *      die Lücke, durch die der Befund der UI-Prüfung 12 rutschte.
  * Gegenproben (04.11.2026, je einzeln; Wortbruch, Zeichenfläche, Auswahlfeld):
  *   S  Zeitraumknöpfe wieder im 2×2-Raster ohne nowrap, Diagrammkarte mit
  *      vollem Innenrand → 320 px Seitenschrift 200 % „Finanzen“ (Wortbruch
  *      „Woch|e“, „Mona|t“); nur Raster und nowrap zurück blieb grün, weil der
  *      schmalere Innenrand allein schon Platz schafft
- *   T  achsenLage immer aussen → 320 px Seitenschrift 200 % „Finanzen“
+ *   T  axesSituation immer aussen → 320 px Seitenschrift 200 % „Finanzen“
  *      (schmal (Diagramm) -2 px Kurve) und „Set-Detail“ (101 px)
  *   U  Merklisten-Filter wieder je halbe Zeile → 320 px EN „Merkliste“
  *      (Auswahl gekürzt „All conditions“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./app-browser');
-const { musterHaushalt } = require('./bestand');
-const { AXE_LAUF, LAYOUT, tabPruefung } = require('./layout-messung');
+const { startApp, warte } = require('./app-browser');
+const { patternHousehold } = require('./bestand');
+const { AXE_LAUF, LAYOUT, tabCheck } = require('./layout-messung');
 
-const GERAETE = { rechner: [1280, 900, false], telefon: [390, 844, true] };
+const DEVICES = { rechner: [1280, 900, false], telefon: [390, 844, true] };
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 /** Eine Datei in ein verstecktes Dateifeld legen und `change` auslösen. */
@@ -78,7 +78,7 @@ const PDF =
   '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 400]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n';
 const reiter = r => klick(`.ntab[data-tab="${r}"]`);
 /** @type {[string, string[]][]} */
-const ANSICHTEN = [
+const VIEWS = [
   ['Sammlung', [reiter('gallery')]],
   ['Teile', [reiter('parts')]],
   ['Minifiguren', [reiter('minifigs')]],
@@ -151,7 +151,7 @@ const ANSICHTEN = [
   ],
 ];
 
-const SCHLIESSEN = `(() => {
+const CLOSE = `(() => {
   document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   document.querySelectorAll('.ovl.open').forEach(o => o.querySelector('[data-click^="close"], [data-click^="schliesse"], .mx')?.click());
   document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
@@ -161,19 +161,19 @@ const SCHLIESSEN = `(() => {
   return true; })()`;
 
 /** Registriert den Test für ein Design und ein Gerät. */
-function pruefeOberflaeche(design, geraet) {
+function checkUi(design, geraet) {
   test(`Oberfläche ${design}, ${geraet}: axe und Layout`, { concurrency: 1, timeout: 300_000 }, async t => {
-    const app = await starteApp(t, {
+    const app = await startApp(t, {
       name: `ofl_${design}_${geraet}_${process.pid}`,
-      bestand: musterHaushalt,
-      alleDesigns: true,
+      bestand: patternHousehold,
+      allDesigns: true,
     });
     if (app.grund) {
       t.skip(app.grund);
       return;
     }
     const { b } = app;
-    const [w, h, mobil] = GERAETE[geraet];
+    const [w, h, mobil] = DEVICES[geraet];
     await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobil });
     // Ohne Rebrickable-Schlüssel öffnet nach dem Start der Einrichtungsassistent.
     await warte(1000);
@@ -189,12 +189,12 @@ function pruefeOberflaeche(design, geraet) {
       await bild();
     };
 
-    for (const [ansicht, schritte] of ANSICHTEN) {
+    for (const [ansicht, schritte] of VIEWS) {
       const funde = [];
       // Steht die Anmeldemaske da, misst der Rest nur sie; dann lieber die Ursache nennen.
       if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
         assert.fail(`Sitzung vor „${ansicht}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'keine'}`);
-      await b.auswerten(SCHLIESSEN);
+      await b.auswerten(CLOSE);
       await b.auswerten(
         `document.documentElement.setAttribute('data-theme', '${design}'); document.documentElement.removeAttribute('data-dunkel'); true`,
       );
@@ -209,17 +209,17 @@ function pruefeOberflaeche(design, geraet) {
         for (const f of await b.auswerten(LAYOUT(mobil))) funde.push(`${wo}: ${f}`);
         for (const f of await b.auswerten(AXE_LAUF)) funde.push(`${wo}: axe ${f}`);
       }
-      for (const f of await tabPruefung(b)) funde.push(`Tastatur: ${f}`);
+      for (const f of await tabCheck(b)) funde.push(`Tastatur: ${f}`);
       await t.test(ansicht, () => assert.deepEqual(funde, []));
     }
-    await b.auswerten(SCHLIESSEN);
+    await b.auswerten(CLOSE);
   });
 }
 
 /** Funde, die grosse Schrift betreffen: Überlauf, Abschneiden, Überlappung, Tippziel, Leiste, schmaler oder verdeckter Text, Wortbruch.
  * Ein gekürztes Auswahlfeld zählt nur bei normaler Schrift: Bei 200 % passt nicht jeder Eintrag in 320 px. */
 const GROSS = /^(Überlauf|abgeschnitten|Überlappung|Tippziel|Leiste|schmal|verdeckt|Wortbruch)/;
-const LEISTE = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkVisibility()).map(t => t.querySelector('.tab-label'))
+const BAR = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkVisibility()).map(t => t.querySelector('.tab-label'))
   .filter(l => l.getBoundingClientRect().width <= 1 || l.scrollWidth > l.clientWidth + 1).map(l => 'Leiste: „' + l.textContent.trim() + '“ abgeschnitten')`;
 
 /**
@@ -228,14 +228,14 @@ const LEISTE = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkV
  * (Page.setFontSizes), 'seite' setzt die Grundschrift der Seite auf 200 %,
  * 'schmal' misst 320 px bei normaler Schrift auf Englisch.
  */
-function pruefeGrosseSchrift(modus, breite = 320) {
+function checkLargeFont(modus, breite = 320) {
   test(`Oberfläche ${breite} px (${modus}): alle Ansichten`, { concurrency: 1, timeout: 300_000 }, async t => {
     // Schmal auf Englisch: Die längeren Beschriftungen sind dort der enge Fall.
-    const app = await starteApp(t, {
+    const app = await startApp(t, {
       name: `ofl_gross_${modus}_${process.pid}`,
-      bestand: musterHaushalt,
+      bestand: patternHousehold,
       sprache: modus === 'schmal' ? 'en' : 'de',
-      alleDesigns: true,
+      allDesigns: true,
     });
     if (app.grund) {
       t.skip(app.grund);
@@ -259,9 +259,9 @@ function pruefeGrosseSchrift(modus, breite = 320) {
         : modus === 'schmal'
           ? ['classic', 'noppe']
           : ['classic'];
-    for (const [ansicht, schritte] of ANSICHTEN) {
+    for (const [ansicht, schritte] of VIEWS) {
       const funde = [];
-      await b.auswerten(SCHLIESSEN);
+      await b.auswerten(CLOSE);
       for (const s of schritte) {
         await b.auswerten(s);
         await warte(250);
@@ -278,13 +278,13 @@ function pruefeGrosseSchrift(modus, breite = 320) {
           );
           await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
           const wo = `${design} ${dunkel ? 'dunkel' : 'hell'}`;
-          for (const f of [...(await b.auswerten(LAYOUT(true))), ...(await b.auswerten(LEISTE))])
+          for (const f of [...(await b.auswerten(LAYOUT(true))), ...(await b.auswerten(BAR))])
             if (GROSS.test(f) || (modus === 'schmal' && f.startsWith('Auswahl'))) funde.push(`${wo}: ${f}`);
         }
       await t.test(ansicht, () => assert.deepEqual(funde, []));
     }
-    await b.auswerten(SCHLIESSEN);
+    await b.auswerten(CLOSE);
   });
 }
 
-module.exports = { pruefeOberflaeche, pruefeGrosseSchrift };
+module.exports = { checkUi, checkLargeFont };

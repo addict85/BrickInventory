@@ -2,16 +2,16 @@
  * Eine Absage darf nicht heissen wie die Nutzlast: Die Einladung trägt ihren
  * Code im Feld `code`, eine Absage steht in `fehler` und kommt als 409 mit
  * Satz in der Sprache des Anfragenden zurück. Geprüft an den Haushaltsrouten
- * gegen die Datenbank, an fehlerText() und an der Haushaltskarte in jsdom.
+ * gegen die Datenbank, an errorText() und an der Haushaltskarte in jsdom.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
  *   A  die Invite-Route entscheidet an `'code' in r` statt `'fehler' in r` →
  *      rot: „Einladen liefert den Code als Nutzlast“ (der Erfolg wird zur
  *      Absage, 500 statt 200)
- *   B  einladungEinloesen() meldet `konto_mit_sich_selbst` unter `code` statt
+ *   B  redeemInvitation() meldet `konto_mit_sich_selbst` unter `code` statt
  *      `fehler` → rot: „jede Absage beim Einlösen …“ (200 statt 409)
- *   C  in fehlerText() die Prüfung `if (!eintrag)` gestrichen → rot:
- *      „fehlerText fällt bei unbekanntem Code nicht um“ (TypeError)
+ *   C  in errorText() die Prüfung `if (!eintrag)` gestrichen → rot:
+ *      „errorText fällt bei unbekanntem Code nicht um“ (TypeError)
  *   D  in speichereWaehrung() `await loadHousehold()` gestrichen (Bündel neu
  *      gebaut) → rot: „nach dem Währungswechsel …“ (Karte zeigt weiter EUR)
  */
@@ -22,12 +22,12 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { oeffneOberflaeche, sicht, warte } = require('./helpers/oberflaeche');
+const { openUi, sicht, warte } = require('./helpers/oberflaeche');
 
 test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const namen = [`absage_a_${process.pid}`, `absage_b_${process.pid}`, `absage_c_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -52,7 +52,7 @@ test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json() };
   };
-  const einladung = async id => {
+  const invitation = async id => {
     const r = await post(id, 'invite');
     assert.equal(r.status, 200, JSON.stringify(r.body));
     return r.body.code;
@@ -76,23 +76,23 @@ test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
   await t.test('jede Absage beim Einlösen kommt als 409 mit Satz', async () => {
     absage(await post(b, 'redeem', { code: 'kurz', password: PASS }), 'einladungscode_ungueltig');
     absage(await post(b, 'redeem', { code: 'ABCD-EFGH-IJKL', password: PASS }), 'einladungscode_abgelaufen');
-    absage(await post(a, 'redeem', { code: await einladung(a), password: PASS }), 'konto_mit_sich_selbst');
-    const waehrung = await post(c, 'redeem', { code: await einladung(a), password: PASS });
+    absage(await post(a, 'redeem', { code: await invitation(a), password: PASS }), 'konto_mit_sich_selbst');
+    const waehrung = await post(c, 'redeem', { code: await invitation(a), password: PASS });
     absage(waehrung, 'waehrung_ungleich');
     assert.match(waehrung.body.error, /CHF/, 'Die Währungen stehen nicht im Satz');
 
-    const ok = await post(b, 'redeem', { code: await einladung(a), password: PASS });
+    const ok = await post(b, 'redeem', { code: await invitation(a), password: PASS });
     assert.equal(ok.status, 200, JSON.stringify(ok.body));
     assert.equal(ok.body.linked_to.id, a);
-    absage(await post(b, 'redeem', { code: await einladung(a), password: PASS }), 'konto_bereits_verknuepft');
-    absage(await post(a, 'redeem', { code: await einladung(b), password: PASS }), 'verknuepfung_erzeugt_kreis');
+    absage(await post(b, 'redeem', { code: await invitation(a), password: PASS }), 'konto_bereits_verknuepft');
+    absage(await post(a, 'redeem', { code: await invitation(b), password: PASS }), 'verknuepfung_erzeugt_kreis');
     // Die Vorprüfung sagt dasselbe, bevor jemand sein Passwort eingibt.
-    absage(await post(a, 'redeem/pruefen', { code: await einladung(b) }), 'verknuepfung_erzeugt_kreis');
+    absage(await post(a, 'redeem/pruefen', { code: await invitation(b) }), 'verknuepfung_erzeugt_kreis');
   });
 
   await t.test('eine abgesagte Einladung bleibt einlösbar', async () => {
     // Die Absage gibt den Code frei: Er war nicht der Fehler.
-    const code = await einladung(c);
+    const code = await invitation(c);
     absage(await post(a, 'redeem', { code, password: PASS }), 'waehrung_ungleich');
     await db.run(`DELETE FROM user_settings WHERE user_id = $1 AND key = 'currency'`, [c]);
     const r = await post(a, 'redeem', { code, password: PASS });
@@ -100,19 +100,19 @@ test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
   });
 });
 
-test('fehlerText fällt bei unbekanntem Code nicht um', () => {
+test('errorText fällt bei unbekanntem Code nicht um', () => {
   // Eine Fehlermeldung ist das Letzte, was selbst noch abstürzen darf.
-  const { fehlerText } = _req('src/infra/fehlerTexte.js');
+  const { errorText } = _req('src/infra/fehlerTexte.js');
   const fehler = console.error;
   console.error = () => {};
   try {
-    assert.equal(fehlerText('gibt_es_nicht', 'de'), 'gibt_es_nicht');
-    assert.equal(fehlerText('gibt_es_nicht', 'en'), 'gibt_es_nicht');
+    assert.equal(errorText('gibt_es_nicht', 'de'), 'gibt_es_nicht');
+    assert.equal(errorText('gibt_es_nicht', 'en'), 'gibt_es_nicht');
   } finally {
     console.error = fehler;
   }
   assert.notEqual(
-    fehlerText('einladungscode_abgelaufen', 'de'),
+    errorText('einladungscode_abgelaufen', 'de'),
     'einladungscode_abgelaufen',
     'Vorbedingung: ein bekannter Code hat einen Satz',
   );
@@ -121,7 +121,7 @@ test('fehlerText fällt bei unbekanntem Code nicht um', () => {
 test('nach dem Währungswechsel wird die Haushaltskarte neu gezeichnet', async () => {
   // Die Karte nennt die Währung; ohne Neuladen stünde bis zum nächsten Seitenaufruf die alte da.
   let waehrung = 'EUR';
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     '/v1/settings': (_u, o) => {
       if (o.method === 'POST') waehrung = JSON.parse(o.body).currency;
       return { success: true };

@@ -8,9 +8,9 @@
  *      „verschieben: der Merkposten bleibt beim alten Konto“
  *   B  fulfillWantedItem() ohne withWantedItemLock → rot: „übernehmen: kein Set im
  *      Bestand, der Merkposten steht noch“
- *   C  alarmUebertragen() wieder mit .catch(meldeFehler) → rot: „verschieben:
+ *   C  alarmTransfer() wieder mit .catch(reportError) → rot: „verschieben:
  *      der Fehler kommt an“
- *   D  uebertrageAlarm() ohne NOT EXISTS → rot: „Ziel mit eigenem Alarm“
+ *   D  transferAlarm() ohne NOT EXISTS → rot: „Ziel mit eigenem Alarm“
  *      (Primärschlüsselverletzung)
  */
 require('./helpers/systemrahmen');
@@ -19,10 +19,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 const U = {};
 
@@ -56,7 +56,7 @@ async function seed() {
 
 const schalte = an =>
   db.exec(`CREATE OR REPLACE FUNCTION bremse_an() RETURNS boolean LANGUAGE sql AS $$ SELECT ${an} $$`);
-async function mitBremse(fn) {
+async function withBrake(fn) {
   await schalte(true);
   try {
     return await fn();
@@ -66,7 +66,7 @@ async function mitBremse(fn) {
 }
 
 test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   await seed();
   const W = _req('src/wanted/wanted.js');
@@ -86,7 +86,7 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
   await t.test('verschieben: der Fehler kommt an', async () => {
     await W.addWantedItem(U.von, '75192-1', 'N');
     await alarm(U.von);
-    await mitBremse(() => assert.rejects(W.moveWantedItem(U.von, '75192-1', 'N', U.zu), /erzwungen/));
+    await withBrake(() => assert.rejects(W.moveWantedItem(U.von, '75192-1', 'N', U.zu), /erzwungen/));
   });
 
   await t.test('verschieben: der Merkposten bleibt beim alten Konto', async () => {
@@ -116,7 +116,7 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
   });
 
   await t.test('übernehmen: kein Set im Bestand, der Merkposten steht noch', async () => {
-    await mitBremse(() =>
+    await withBrake(() =>
       assert.rejects(W.fulfillWantedItem(U.zu, U.zu, '75192-1', 'N', { quantity: 1 }), /erzwungen/),
     );
     assert.equal(

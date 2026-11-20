@@ -6,12 +6,12 @@
  *      entlang einer direkten Verknüpfung"
  *   B  die Prüfung auf eine umgekehrte Verknüpfung entfernt → rot:
  *      „gegenseitig verknüpfen wird abgelehnt"
- *   C  kontenTrennen() ignoriert main_user_id → rot: „ein Konto kann mehreren
+ *   C  unlinkAccounts() ignoriert main_user_id → rot: „ein Konto kann mehreren
  *      Hauptkonten angehören"
  *   D  beim Einlösen den Hinweis nicht gelöscht → rot: „die Umstellung trennt
  *      Ketten und hinterlässt einen Hinweis"
- *   E  (31.10.2026) in lagerKonten() den Ansichtsfilter angewandt
- *      (`blickfeldIds(uid, blickfeldArt(req.query.accounts))`) → rot: „die
+ *   E  (31.10.2026) in storageAccounts() den Ansichtsfilter angewandt
+ *      (`scopeIds(uid, scopeKind(req.query.accounts))`) → rot: „die
  *      Lagerorte eines Unterkontos folgen dem Recht …“
  *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL,
@@ -25,12 +25,12 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
-const { haeltFigur, haeltSet, haeltTeil, mengeVon, katalogSet } = require('./helpers/bestand');
+const { holdsMinifig, holdsSet, holdsPart, quantityOf, catalogSet } = require('./helpers/bestand');
 
 /**
  * Die ECHTE Verschiebe-Route aufrufen — mit injizierter Session, wie in
@@ -48,7 +48,7 @@ async function startApi() {
   });
   // Die Erfassungs-Routen liegen seit einer früheren Runde nur noch in der gemeinsamen
   // Fabrik — eine Adresse für Webapp UND App.
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 }
@@ -121,18 +121,18 @@ async function seed() {
 /** Set + Erfassung für ein Konto anlegen. */
 async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
   // Nur die Bestandszeile. Die Menge traegt die Erfassung weiter unten
-  // (kaufAmTagErfassen) — seit Migration 0036 der einzige Ort. Das
+  // (addPurchaseAtTag) — seit Migration 0036 der einzige Ort. Das
   // frueher noetige `DO UPDATE SET quantity = sets.quantity + $3` faellt damit
   // weg: Zwei Aufrufe fuer dasselbe Set addieren sich jetzt dadurch, dass
   // ZWEI Erfassungen entstehen.
-  await haeltSet(db, uid, sn, 0, { egalWennDa: true });
+  await holdsSet(db, uid, sn, 0, { anywayIfDa: true });
   // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
   // Bestand MUSS dort eine Zeile stehen (die Migration traegt sie nach und
   // prueft das). Die Vorlage stellt also die Lage her, die es wirklich gibt.
-  await katalogSet(db, sn, { name: 'Set ' + sn, year: 2020 });
+  await catalogSet(db, sn, { name: 'Set ' + sn, year: 2020 });
   // `cond` geht nur noch in die Erfassung — die sets-Zeile hat seit
   // Migration 0032 keine condition-Spalte mehr.
-  await _req('src/bestand/acquisitions.js').kaufAmTagErfassen('set', uid, [sn], {
+  await _req('src/bestand/acquisitions.js').addPurchaseAtTag('set', uid, [sn], {
     quantity: qty,
     price,
     condition: cond,
@@ -152,34 +152,34 @@ test('Haushalt gegen echte Datenbank', async t => {
   const household = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ...require('./helpers/sources').testArea('haushalt'),
   };
-  const handlers = require('./helpers/sources').handlerModul(_req);
+  const handlers = require('./helpers/sources').handlerModule(_req);
 
   await t.test('Verknüpfen braucht beide Seiten und dieselbe Währung', async () => {
-    const inv = await household.einladungAnlegen(U.eltern);
+    const inv = await household.createInvitation(U.eltern);
     assert.ok(inv.code, 'kein Code erzeugt');
 
     // Andere Währung → Ablehnung, und der Code bleibt benutzbar.
     await db.run(`UPDATE user_settings SET value='EUR' WHERE user_id=$1 AND key='currency'`, [U.kindA]);
     // Auf den CODE statt auf den deutschen Satz: Den Satz baut erst die Antwort.
-    await assert.rejects(household.einladungEinloesen(U.kindA, inv.code), { code: 'waehrung_ungleich' });
+    await assert.rejects(household.redeemInvitation(U.kindA, inv.code), { code: 'waehrung_ungleich' });
 
     await db.run(`UPDATE user_settings SET value='CHF' WHERE user_id=$1 AND key='currency'`, [U.kindA]);
-    const ok = await household.einladungEinloesen(U.kindA, inv.code);
+    const ok = await household.redeemInvitation(U.kindA, inv.code);
     assert.equal(ok.linked_to.id, U.eltern);
 
     // Zweite Einlösung desselben Codes muss scheitern.
-    await assert.rejects(household.einladungEinloesen(U.kindB, inv.code), { code: /einladungscode/ });
+    await assert.rejects(household.redeemInvitation(U.kindB, inv.code), { code: /einladungscode/ });
 
-    const inv2 = await household.einladungAnlegen(U.eltern);
-    assert.ok((await household.einladungEinloesen(U.kindB, inv2.code)).linked_to);
+    const inv2 = await household.createInvitation(U.eltern);
+    assert.ok((await household.redeemInvitation(U.kindB, inv2.code)).linked_to);
   });
 
   await t.test('Blickfeld und Kontofilter', async () => {
-    const all = await household.blickfeldIds(U.eltern, 'all');
-    const own = await household.blickfeldIds(U.eltern, 'own');
-    const subs = await household.blickfeldIds(U.eltern, 'subs');
+    const all = await household.scopeIds(U.eltern, 'all');
+    const own = await household.scopeIds(U.eltern, 'own');
+    const subs = await household.scopeIds(U.eltern, 'subs');
     assert.deepEqual(
       [...all].sort((a, b) => a - b),
       [U.eltern, U.kindA, U.kindB].sort((a, b) => a - b),
@@ -191,8 +191,8 @@ test('Haushalt gegen echte Datenbank', async t => {
     );
 
     // Ein Kind sieht nur sich — auch wenn es 'all' fragt.
-    assert.deepEqual(await household.blickfeldIds(U.kindA, 'all'), [U.kindA]);
-    assert.deepEqual(await household.blickfeldIds(U.kindA, 'subs'), [U.kindA]);
+    assert.deepEqual(await household.scopeIds(U.kindA, 'all'), [U.kindA]);
+    assert.deepEqual(await household.scopeIds(U.kindA, 'subs'), [U.kindA]);
 
     // Schreiben: nur die Richtung Eltern → eigenes Kind.
     assert.equal(await household.darfSchreibenFuer(U.eltern, U.kindA), true);
@@ -203,13 +203,13 @@ test('Haushalt gegen echte Datenbank', async t => {
 
   await t.test('Rechte gelten nur entlang einer direkten Verknüpfung', async () => {
     // Nach diesem Block steht: eltern → kindA → enkel.
-    const inv = await household.einladungAnlegen(U.kindA);
+    const inv = await household.createInvitation(U.kindA);
     assert.ok(inv.code, 'Ein Unterkonto muss selbst einladen dürfen');
-    await household.einladungEinloesen(U.enkel, inv.code);
+    await household.redeemInvitation(U.enkel, inv.code);
 
-    assert.deepEqual(await household.blickfeldIds(U.kindA, 'all'), [U.kindA, U.enkel]);
+    assert.deepEqual(await household.scopeIds(U.kindA, 'all'), [U.kindA, U.enkel]);
     assert.ok(
-      !(await household.blickfeldIds(U.eltern, 'all')).includes(U.enkel),
+      !(await household.scopeIds(U.eltern, 'all')).includes(U.enkel),
       'Über eine Kette darf eltern das Konto enkel nicht sehen — enkel hat nur kindA zugestimmt',
     );
     assert.equal(
@@ -250,24 +250,24 @@ test('Haushalt gegen echte Datenbank', async t => {
   await t.test('ein Konto kann mehreren Hauptkonten angehören', async () => {
     // enkel nimmt zusätzlich die Einladung von eltern an: Jetzt sieht eltern
     // es direkt, mit eigener Zustimmung.
-    const inv = await household.einladungAnlegen(U.eltern);
-    await household.einladungEinloesen(U.enkel, inv.code);
-    assert.ok((await household.blickfeldIds(U.eltern, 'all')).includes(U.enkel));
+    const inv = await household.createInvitation(U.eltern);
+    await household.redeemInvitation(U.enkel, inv.code);
+    assert.ok((await household.scopeIds(U.eltern, 'all')).includes(U.enkel));
     assert.equal(await household.darfSchreibenFuer(U.eltern, U.enkel), true);
 
-    const st = await household.haushaltsStand(U.enkel);
+    const st = await household.householdStatus(U.enkel);
     assert.deepEqual(st.parents.map(p => p.username).sort(), ['eltern', 'kindA']);
     assert.equal(st.is_sub, true);
     assert.ok(st.linked_to, 'Ältere Apps brauchen weiterhin linked_to');
 
     // Dieselbe Verknüpfung ein zweites Mal ergibt eine verständliche Absage.
-    const nochmal = (await household.einladungAnlegen(U.eltern)).code;
-    await assert.rejects(household.einladungEinloesen(U.enkel, nochmal), { code: 'konto_bereits_verknuepft' });
+    const nochmal = (await household.createInvitation(U.eltern)).code;
+    await assert.rejects(household.redeemInvitation(U.enkel, nochmal), { code: 'konto_bereits_verknuepft' });
 
     // Lösen von EINEM Elternkonto lässt das andere stehen.
-    await household.kontenTrennen(U.enkel, null, U.eltern);
+    await household.unlinkAccounts(U.enkel, null, U.eltern);
     assert.deepEqual(
-      (await household.haushaltsStand(U.enkel)).parents.map(p => p.username),
+      (await household.householdStatus(U.enkel)).parents.map(p => p.username),
       ['kindA'],
     );
     assert.equal(
@@ -281,12 +281,12 @@ test('Haushalt gegen echte Datenbank', async t => {
   await t.test('gegenseitig verknüpfen wird abgelehnt', async () => {
     // kindA ist Unterkonto von eltern. Nähme eltern eine Einladung von kindA
     // an, dürften beide beim jeweils anderen schreiben.
-    const inv = await household.einladungAnlegen(U.kindA);
-    await assert.rejects(household.einladungEinloesen(U.eltern, inv.code), { code: 'verknuepfung_erzeugt_kreis' });
+    const inv = await household.createInvitation(U.kindA);
+    await assert.rejects(household.redeemInvitation(U.eltern, inv.code), { code: 'verknuepfung_erzeugt_kreis' });
     // Der Code ist nach der Absage wieder frei.
     // Die Absage hat den Code nicht verbraucht.
-    await household.einladungEinloesen(U.fremd, inv.code);
-    await household.kontenTrennen(U.fremd);
+    await household.redeemInvitation(U.fremd, inv.code);
+    await household.unlinkAccounts(U.fremd);
   });
 
   await t.test('die Umstellung trennt Ketten und hinterlässt einen Hinweis', async () => {
@@ -296,9 +296,9 @@ test('Haushalt gegen echte Datenbank', async t => {
     const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0046-haushalt-mehrere-eltern.sql'), 'utf8');
     await db.run('DELETE FROM household_former_links');
     await db.exec(sql);
-    household.meldeHaushaltsaenderung();
+    household.reportHouseholdChange();
 
-    const st = await household.haushaltsStand(U.eltern);
+    const st = await household.householdStatus(U.eltern);
     assert.deepEqual(
       st.former_links.map(f => [f.username, f.via]),
       [['enkel', 'kindA']],
@@ -306,21 +306,21 @@ test('Haushalt gegen echte Datenbank', async t => {
     );
     assert.ok(!st.blickfeld.some(m => m.username === 'enkel'));
     assert.deepEqual(
-      (await household.haushaltsStand(U.kindA)).former_links,
+      (await household.householdStatus(U.kindA)).former_links,
       [],
       'Direkte Verknüpfungen sind keine getrennten Ketten',
     );
 
     // Nimmt enkel die Einladung an, verschwindet der Hinweis von selbst.
-    await household.einladungEinloesen(U.enkel, (await household.einladungAnlegen(U.eltern)).code);
-    assert.deepEqual((await household.haushaltsStand(U.eltern)).former_links, []);
-    await household.kontenTrennen(U.enkel, null, U.eltern);
+    await household.redeemInvitation(U.enkel, (await household.createInvitation(U.eltern)).code);
+    assert.deepEqual((await household.householdStatus(U.eltern)).former_links, []);
+    await household.unlinkAccounts(U.enkel, null, U.eltern);
 
     // Verwerfen löscht nur den eigenen Hinweis.
     await db.exec(sql);
-    assert.equal((await household.verwerfeGetrennt(U.kindB, U.enkel)).removed, 0);
-    assert.equal((await household.verwerfeGetrennt(U.eltern, U.enkel)).removed, 1);
-    assert.deepEqual((await household.haushaltsStand(U.eltern)).former_links, []);
+    assert.equal((await household.discardSeparated(U.kindB, U.enkel)).removed, 0);
+    assert.equal((await household.discardSeparated(U.eltern, U.enkel)).removed, 1);
+    assert.deepEqual((await household.householdStatus(U.eltern)).former_links, []);
   });
 
   await t.test('dasselbe Set in zwei Konten wird zu EINER Zeile', async () => {
@@ -328,7 +328,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     await giveSet(U.kindB, '75192-1', 2, 160);
     await giveSet(U.kindA, '10290-1', 1, 50);
 
-    const r = await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'all'), {});
+    const r = await handlers.setsLesen(await household.scopeIds(U.eltern, 'all'), {});
     const falcon = r.sets.filter(s => s.set_number === '75192-1');
     assert.equal(falcon.length, 1, 'Set erscheint mehrfach');
     assert.equal(falcon[0].quantity, 3, 'Mengen nicht addiert');
@@ -342,11 +342,11 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(Math.round(falcon[0].avg_purchase_price), 140);
 
     // Filter: eigene Sicht des Elternkontos ist leer, 'subs' zeigt beide Sets.
-    assert.equal((await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'own'), {})).sets.length, 0);
-    assert.equal((await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'subs'), {})).sets.length, 2);
+    assert.equal((await handlers.setsLesen(await household.scopeIds(U.eltern, 'own'), {})).sets.length, 0);
+    assert.equal((await handlers.setsLesen(await household.scopeIds(U.eltern, 'subs'), {})).sets.length, 2);
 
     // Und ein Kind sieht nur seine eigenen.
-    const kindB = await handlers.setsLesen(await household.blickfeldIds(U.kindB, 'all'), {});
+    const kindB = await handlers.setsLesen(await household.scopeIds(U.kindB, 'all'), {});
     assert.deepEqual(
       kindB.sets.map(s => s.set_number),
       ['75192-1'],
@@ -356,8 +356,8 @@ test('Haushalt gegen echte Datenbank', async t => {
   });
 
   await t.test('Kennzahlen folgen dem Filter', async () => {
-    const all = await handlers.getStats(await household.blickfeldIds(U.eltern, 'all'));
-    const own = await handlers.getStats(await household.blickfeldIds(U.eltern, 'own'));
+    const all = await handlers.getStats(await household.scopeIds(U.eltern, 'all'));
+    const own = await handlers.getStats(await household.scopeIds(U.eltern, 'own'));
 
     // Warum hier jetzt 2 steht und vorher 3
     assert.equal(parseInt(all.total_sets, 10), 2, 'verschiedene Sets im Haushalt — wie die Galerie sie zeigt');
@@ -368,10 +368,10 @@ test('Haushalt gegen echte Datenbank', async t => {
   await t.test('Verschieben nimmt Teile, Minifiguren und Anleitungen mit', async () => {
     // Inhalt für das Set von kindA anlegen — plus ein manuell erfasstes Teil,
     // das ausdrücklich NICHT mitwandern darf.
-    await haeltTeil(db, U.kindA, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
-    await haeltTeil(db, U.kindA, '3002', { setNumber: '75192-1', menge: 5, colorId: 1 });
-    await haeltTeil(db, U.kindA, '9999', { menge: 3, colorId: 0 });
-    await haeltFigur(db, U.kindA, 'sw0001', { setNumber: '75192-1', menge: 2 });
+    await holdsPart(db, U.kindA, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
+    await holdsPart(db, U.kindA, '3002', { setNumber: '75192-1', menge: 5, colorId: 1 });
+    await holdsPart(db, U.kindA, '9999', { menge: 3, colorId: 0 });
+    await holdsMinifig(db, U.kindA, 'sw0001', { setNumber: '75192-1', menge: 2 });
     await db.run(`INSERT INTO instructions (user_id,set_number,url) VALUES ($1,'75192-1','http://x/1.pdf')`, [U.kindA]);
 
     const r = await moveSet(U.eltern, '75192-1', U.kindA, U.kindB);
@@ -412,7 +412,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     );
 
     // Im Haushalt steht das Set weiterhin einmal, jetzt mit einem Besitzer.
-    const list = await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'all'), {});
+    const list = await handlers.setsLesen(await household.scopeIds(U.eltern, 'all'), {});
     const falcon = list.sets.find(s => s.set_number === '75192-1');
     assert.equal(falcon.quantity, 3);
     assert.deepEqual(
@@ -465,17 +465,17 @@ test('Haushalt gegen echte Datenbank', async t => {
   });
 
   await t.test('Entkoppeln lässt die Daten beim Besitzer', async () => {
-    await household.kontenTrennen(U.eltern, U.kindA);
-    assert.deepEqual(await household.blickfeldIds(U.eltern, 'all'), [U.eltern, U.kindB]);
+    await household.unlinkAccounts(U.eltern, U.kindA);
+    assert.deepEqual(await household.scopeIds(U.eltern, 'all'), [U.eltern, U.kindB]);
     // Das Kind behält seinen Bestand.
-    const kindA = await handlers.setsLesen(await household.blickfeldIds(U.kindA, 'all'), {});
+    const kindA = await handlers.setsLesen(await household.scopeIds(U.kindA, 'all'), {});
     assert.deepEqual(
       kindA.sets.map(s => s.set_number),
       ['10290-1'],
     );
     // Und darf sich danach wieder verknüpfen lassen.
-    const inv = await household.einladungAnlegen(U.eltern);
-    await household.einladungEinloesen(U.kindA, inv.code);
+    const inv = await household.createInvitation(U.eltern);
+    await household.redeemInvitation(U.kindA, inv.code);
   });
 
   await t.test('einzelner Kaufpreis wechselt den Eigentümer', async () => {
@@ -484,8 +484,8 @@ test('Haushalt gegen echte Datenbank', async t => {
     // können. Hier wandert EINE Zeile — die Quelle behält den Rest samt Teilen.
     await giveSet(U.kindA, '21318-1', 1, 200, 'N', '2026-01-05');
     await giveSet(U.kindA, '21318-1', 1, 240, 'N', '2026-02-05');
-    await haeltTeil(db, U.kindA, '3020', { setNumber: '21318-1', menge: 4, colorId: 2 });
-    await haeltFigur(db, U.kindA, 'fig-tree', { setNumber: '21318-1', menge: 1 });
+    await holdsPart(db, U.kindA, '3020', { setNumber: '21318-1', menge: 4, colorId: 2 });
+    await holdsMinifig(db, U.kindA, 'fig-tree', { setNumber: '21318-1', menge: 1 });
     await db.run(
       `INSERT INTO instructions (user_id,set_number,url)
                   VALUES ($1,'21318-1','http://x/tree.pdf')`,
@@ -511,7 +511,7 @@ test('Haushalt gegen echte Datenbank', async t => {
 
     // Mengen stimmen auf beiden Seiten …
     // Aus den Erfassungen (Migration 0036) — die Spalte gibt es nicht mehr.
-    const qty = async uid => await mengeVon(db, uid, '21318-1');
+    const qty = async uid => await quantityOf(db, uid, '21318-1');
     assert.equal(await qty(U.kindA), 1, 'Quelle nicht heruntergezählt');
     assert.equal(await qty(U.eltern), 1);
 
@@ -526,13 +526,13 @@ test('Haushalt gegen echte Datenbank', async t => {
     // das Ziel bekommt eine Kopie. Ein Umhängen hätte die Quelle mit einem
     // Exemplar ohne Teile zurückgelassen.
     // Wird EIN Kaufpreis von zweien umgehängt, muss ALLES in beiden Konten …
-    const inBeiden = async table => {
+    const inBoth = async table => {
       const n = async uid =>
         (await db.get(`SELECT COUNT(*)::int AS n FROM ${table} WHERE user_id=$1 AND set_number='21318-1'`, [uid])).n;
       return { quelle: await n(U.kindA), ziel: await n(U.eltern) };
     };
     for (const table of ['sets', 'parts', 'minifigs', 'instructions']) {
-      const r = await inBeiden(table);
+      const r = await inBoth(table);
       assert.equal(r.quelle, 1, `${table}: Quelle verlor den Eintrag trotz verbleibendem Exemplar`);
       assert.equal(r.ziel, 1, `${table}: Ziel bekam keinen Eintrag`);
     }
@@ -600,10 +600,10 @@ test('Haushalt gegen echte Datenbank', async t => {
     // Der Filter führt jedes Unterkonto namentlich. Serverseitig heisst das:
     // accounts=<id>. Eine FREMDE ID darf nicht durchschlagen — sonst wäre der
     // Filter ein Zugriffsweg statt einer Ansichtshilfe.
-    assert.deepEqual(await household.blickfeldIds(U.eltern, U.kindA), [U.kindA]);
+    assert.deepEqual(await household.scopeIds(U.eltern, U.kindA), [U.kindA]);
     assert.deepEqual(
-      await household.blickfeldIds(U.eltern, U.fremd),
-      await household.blickfeldIds(U.eltern, 'all'),
+      await household.scopeIds(U.eltern, U.fremd),
+      await household.scopeIds(U.eltern, 'all'),
       'eine kontofremde ID muss auf das ganze Blickfeld zurückfallen',
     );
     // Ein Unterkonto kann sich damit nicht ins Geschwisterkonto sehen: kindB
@@ -611,31 +611,31 @@ test('Haushalt gegen echte Datenbank', async t => {
     // kindAs EIGENES Blickfeld, das sein Unterkonto enkel enthält.
     // Geprüft wird die Aussage, nicht die Liste: Entscheidend ist, dass kindB
     // nicht darin vorkommt.
-    const ausSichtKindA = await household.blickfeldIds(U.kindA, U.kindB);
-    assert.ok(!ausSichtKindA.includes(U.kindB), 'Der Filter darf kein Geschwisterkonto öffnen');
+    const fromViewKindA = await household.scopeIds(U.kindA, U.kindB);
+    assert.ok(!fromViewKindA.includes(U.kindB), 'Der Filter darf kein Geschwisterkonto öffnen');
     assert.deepEqual(
-      ausSichtKindA,
-      await household.blickfeldIds(U.kindA, 'all'),
+      fromViewKindA,
+      await household.scopeIds(U.kindA, 'all'),
       'Eine fremde ID muss auf das eigene Blickfeld zurückfallen',
     );
 
     // Manuell erfasste Teile und Minifiguren hängen an eigenen Endpunkten —
     // gemeldet war, dass der Filter dort nicht greift.
-    await haeltTeil(db, U.kindA, 'm-A', { menge: 1, colorId: 0 });
-    await haeltTeil(db, U.kindB, 'm-B', { menge: 1, colorId: 0 });
-    await haeltFigur(db, U.kindA, 'mf-A', { menge: 1 });
-    await haeltFigur(db, U.kindB, 'mf-B', { menge: 1 });
+    await holdsPart(db, U.kindA, 'm-A', { menge: 1, colorId: 0 });
+    await holdsPart(db, U.kindB, 'm-B', { menge: 1, colorId: 0 });
+    await holdsMinifig(db, U.kindA, 'mf-A', { menge: 1 });
+    await holdsMinifig(db, U.kindB, 'mf-B', { menge: 1 });
 
     const nummern = rows => rows.map(r => r.part_number ?? r.fig_number);
-    const nurA = nummern(await handlers.manualPartsList(await household.blickfeldIds(U.eltern, U.kindA)));
-    const alle = nummern(await handlers.manualPartsList(await household.blickfeldIds(U.eltern, 'all')));
+    const nurA = nummern(await handlers.manualPartsList(await household.scopeIds(U.eltern, U.kindA)));
+    const alle = nummern(await handlers.manualPartsList(await household.scopeIds(U.eltern, 'all')));
     // kindA hat aus einem früheren Test noch ein manuelles Teil ('9999') —
     // deshalb auf Enthaltensein prüfen statt auf die exakte Liste.
     assert.ok(nurA.includes('m-A'), 'eigenes Teil fehlt');
     assert.ok(!nurA.includes('m-B'), 'der Filter zeigt das Teil des Geschwisterkontos');
     assert.ok(alle.includes('m-A') && alle.includes('m-B'), 'ohne Filter müssen beide erscheinen');
 
-    const figsA = nummern(await handlers.readManualMinifigs(await household.blickfeldIds(U.eltern, U.kindA)));
+    const figsA = nummern(await handlers.readManualMinifigs(await household.scopeIds(U.eltern, U.kindA)));
     assert.ok(figsA.includes('mf-A'));
     assert.ok(!figsA.includes('mf-B'), 'der Filter zeigt die Figur des Geschwisterkontos');
   });

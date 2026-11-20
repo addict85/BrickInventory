@@ -14,12 +14,12 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/bestand');
+const db = testData();
 
 async function erreichbar() {
   try {
@@ -59,15 +59,15 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async t => {
 
   // 75192-1 besitzen BEIDE — das ist der Fall, den eine Prüfung auf
   // „fremde Setnummern bleiben stehen" allein nicht fängt.
-  await haeltSet(db, haupt, '75192-1', 1);
-  await haeltSet(db, kind, '75192-1', 1);
-  await haeltSet(db, kind, '21318-1', 1);
-  await haeltTeil(db, kind, '3001', { setNumber: '21318-1', menge: 10, colorId: 4 });
-  await haeltFigur(db, kind, 'fig1', { setNumber: '21318-1', menge: 1 });
+  await holdsSet(db, haupt, '75192-1', 1);
+  await holdsSet(db, kind, '75192-1', 1);
+  await holdsSet(db, kind, '21318-1', 1);
+  await holdsPart(db, kind, '3001', { setNumber: '21318-1', menge: 10, colorId: 4 });
+  await holdsMinifig(db, kind, 'fig1', { setNumber: '21318-1', menge: 1 });
   // Manuelle Elemente auf beiden Seiten: Die des Kindes müssen bleiben.
-  await haeltTeil(db, kind, '3003', { colorId: 1, menge: 2 });
-  await haeltFigur(db, kind, 'fig2', { menge: 1 });
-  await haeltTeil(db, haupt, '3004', { colorId: 1, menge: 2 });
+  await holdsPart(db, kind, '3003', { colorId: 1, menge: 2 });
+  await holdsMinifig(db, kind, 'fig2', { menge: 1 });
+  await holdsPart(db, haupt, '3004', { colorId: 1, menge: 2 });
 
   const { base } = testServer(_req, { sitzung: { userId: haupt, username: 'haupt' }, t });
   const hole = async (pfad, methode = 'GET', body) =>
@@ -101,8 +101,8 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async t => {
   const figuren = await db.get(`SELECT COUNT(*)::int c FROM minifigs WHERE user_id=$1`, [kind]);
   assert.equal(teile.c, 2, 'Teile des verknüpften Kontos bleiben (aus dem Set und manuell)');
   assert.equal(figuren.c, 2, 'Minifiguren des verknüpften Kontos bleiben (aus dem Set und manuell)');
-  const meineTeile = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1`, [haupt]);
-  assert.equal(meineTeile.c, 0, 'Das eigene manuelle Teil muss weg sein');
+  const myParts = await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1`, [haupt]);
+  assert.equal(myParts.c, 0, 'Das eigene manuelle Teil muss weg sein');
 });
 
 test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () => {
@@ -112,12 +112,16 @@ test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () =
   const src = require('./helpers/sources').kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
   const i = src.indexOf("router.endpunkt('DELETE /api/v1/sets/:setNumber'");
   assert.ok(i > 0, 'Löschroute nicht gefunden');
-  assert.match(src.slice(i, i + 900), /loescheSetFuer\(sichtVon\(req\)/, 'Die Route löscht nicht über den Dienst');
-  const dienst = require('./helpers/sources').funktionsRumpf(
+  assert.match(src.slice(i, i + 900), /deleteSetFor\(viewOf\(req\)/, 'Die Route löscht nicht über den Dienst');
+  const dienst = require('./helpers/sources').functionBody(
     fs.readFileSync(path.join(ROOT, 'src/sets/loeschen.ts'), 'utf8'),
-    'loescheSetFuer',
+    'deleteSetFor',
   );
-  assert.match(dienst, /schreibbar\.includes\(/, 'Die gewählte Menge muss gegen schreibbereich() geschnitten werden');
+  assert.match(
+    dienst,
+    /(?:schreibbar|writable)\.includes\(/,
+    'Die gewählte Menge muss gegen schreibbereich() geschnitten werden',
+  );
 });
 
 test('der Knopf überlässt die Auswahl dem Server', () => {
@@ -135,5 +139,5 @@ test('der Knopf überlässt die Auswahl dem Server', () => {
   );
   assert.doesNotMatch(block, /\/v1\/sets/, 'Der Knopf listet und löscht wieder selbst');
   const loeschen = fs.readFileSync(path.join(ROOT, 'src/collection/deletion.ts'), 'utf8');
-  assert.match(loeschen, /loescheSet\(\[uid\]/, 'Sets werden nur im EIGENEN Konto gelöscht');
+  assert.match(loeschen, /deleteSet\(\[uid\]/, 'Sets werden nur im EIGENEN Konto gelöscht');
 });

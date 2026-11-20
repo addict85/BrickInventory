@@ -1,5 +1,5 @@
 /**
- * Auch Uploads, Downloads und Ströme laufen über die API-Hülle (api/apiRoh in
+ * Auch Uploads, Downloads und Ströme laufen über die API-Hülle (api/apiRaw in
  * js/api.js) — am echten Bündel in jsdom. Dann gelten für sie dieselben
  * Regeln wie für jeden anderen Aufruf: die Sprache der Oberfläche geht mit,
  * ein 401 beendet die Sitzung sichtbar, ein Netzfehler zeigt das Band.
@@ -8,17 +8,17 @@
  *   A  importAlarmeCsv wieder mit `fetch('/api/v1/alerts/import/csv', …)` →
  *      rot: „Upload trägt die Sprache“ (kein Accept-Language) und
  *      „401 beim Upload“ (die Anmeldemaske blieb verborgen)
- *   B  in apiRoh die Zeile `if (res.status === 401) melde('sitzungBeendet', path)`
+ *   B  in apiRaw die Zeile `if (res.status === 401) melde('sitzungBeendet', path)`
  *      entfernt → rot: „401 beim Upload“
- *   C  in csvHochladen (bausteine.js) `d.skipped_hint` aus der Meldung
+ *   C  in uploadCsv (bausteine.js) `d.skipped_hint` aus der Meldung
  *      genommen → rot: „übersprungene Zeilen“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 /** Wählt im Alarm-Import eine CSV-Datei, wie es der Dateidialog täte. */
-function waehleAlarmCsv(w) {
+function chooseAlarmCsv(w) {
   const feld = w.document.getElementById('alerts-csv-file');
   const datei = new w.File(['set_number,threshold\n10294-1,100\n'], 'alarme.csv', { type: 'text/csv' });
   Object.defineProperty(feld, 'files', { value: [datei], configurable: true });
@@ -26,14 +26,14 @@ function waehleAlarmCsv(w) {
 }
 
 test('Upload trägt die Sprache und geht als FormData ohne JSON-Kopf', async () => {
-  const { w, aufrufe } = await oeffneOberflaeche(
+  const { w, aufrufe } = await openUi(
     {
       '/v1/alerts/import/csv': { success: true, added: 1, updated: 0, errors: 0 },
     },
     { sprache: 'en' },
   );
   try {
-    waehleAlarmCsv(w);
+    chooseAlarmCsv(w);
     assert.ok(
       await warte(() => aufrufe.some(a => a.url.endsWith('/alerts/import/csv'))),
       'Upload wurde nicht abgeschickt',
@@ -53,12 +53,12 @@ test('Upload trägt die Sprache und geht als FormData ohne JSON-Kopf', async () 
 });
 
 test('401 beim Upload beendet die Sitzung wie bei jedem anderen Aufruf', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/alerts/import/csv': { $status: 401, success: false, error: 'Nicht angemeldet', code: 'nicht_angemeldet' },
   });
   try {
     assert.equal(d.getElementById('login-screen').style.display, 'none', 'Vorbedingung: angemeldet');
-    waehleAlarmCsv(w);
+    chooseAlarmCsv(w);
     assert.ok(
       await warte(() => d.getElementById('login-screen').style.display === 'flex'),
       'Nach 401 steht die Anmeldemaske nicht da',
@@ -70,7 +70,7 @@ test('401 beim Upload beendet die Sitzung wie bei jedem anderen Aufruf', async (
 });
 
 test('der CSV-Import meldet übersprungene Zeilen und Zusatzhinweise in einer Meldung', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/alerts/import/csv': {
       success: true,
       added: 1,
@@ -82,7 +82,7 @@ test('der CSV-Import meldet übersprungene Zeilen und Zusatzhinweise in einer Me
     },
   });
   try {
-    waehleAlarmCsv(w);
+    chooseAlarmCsv(w);
     assert.ok(
       await warte(() => /zwei Zeilen übersprungen/.test(d.getElementById('toasts')?.textContent || '')),
       'Der Hinweis auf übersprungene Zeilen fehlt in der Meldung',

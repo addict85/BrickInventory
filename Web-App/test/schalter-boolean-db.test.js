@@ -16,20 +16,20 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
-const FLAGGE = '^(is|has|must|never)_|_verified$';
+const FLAG = '^(is|has|must|never)_|_verified$';
 
 /** Flaggen-Spalten, die nicht BOOLEAN sind, und Schranken auf 0/1 — im Schema `schema`. */
-async function zahlenFlaggen(db, schema) {
+async function numbersFlags(db, schema) {
   const spalten = await db.all(
     `SELECT table_name || '.' || column_name || ': ' || data_type AS z FROM information_schema.columns
       WHERE table_schema = $1 AND column_name ~ $2 AND data_type <> 'boolean'
         AND table_name IN (SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_type = 'BASE TABLE')
       ORDER BY 1`,
-    [schema, FLAGGE],
+    [schema, FLAG],
   );
   const schranken = await db.all(
     `SELECT conname AS z FROM pg_constraint
@@ -42,7 +42,7 @@ async function zahlenFlaggen(db, schema) {
 }
 
 test('keine Ja/Nein-Spalte trägt 0/1', async t => {
-  const db = testDaten();
+  const db = testData();
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -54,20 +54,20 @@ test('keine Ja/Nein-Spalte trägt 0/1', async t => {
       const booleans = await db.get(
         `SELECT COUNT(*)::int AS n FROM information_schema.columns
         WHERE table_schema = 'public' AND column_name ~ $1 AND data_type = 'boolean'`,
-        [FLAGGE],
+        [FLAG],
       );
       assert.ok(booleans.n >= 10, `nur ${booleans.n} Flaggen-Spalten gefunden — greift das Muster noch?`);
       await db.exec(`DROP SCHEMA IF EXISTS schalter_probe CASCADE; CREATE SCHEMA schalter_probe;
         CREATE TABLE schalter_probe.p (is_probe integer NOT NULL DEFAULT 0, CONSTRAINT p_probe_null_eins CHECK (is_probe IN (0, 1)))`);
       try {
-        assert.deepEqual(await zahlenFlaggen(db, 'schalter_probe'), ['p.is_probe: integer', 'p_probe_null_eins']);
+        assert.deepEqual(await numbersFlags(db, 'schalter_probe'), ['p.is_probe: integer', 'p_probe_null_eins']);
       } finally {
         await db.exec('DROP SCHEMA schalter_probe CASCADE');
       }
     });
 
     await t.test('im Schema der Anwendung ist jede davon BOOLEAN', async () => {
-      assert.deepEqual(await zahlenFlaggen(db, 'public'), []);
+      assert.deepEqual(await numbersFlags(db, 'public'), []);
     });
   } finally {
     await db.pool.end();

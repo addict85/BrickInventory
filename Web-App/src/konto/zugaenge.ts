@@ -1,24 +1,19 @@
 /** Die App-Zugänge eines Kontos in den Einstellungen: lesen und einzeln oder
  * alle anderen beenden. Der Token-Cache gälte sonst noch kurz nach. */
-import { hinweisNebenher } from './kontoHinweis';
-import { leereTokenCache } from './tokenCache';
-import type { KontoKontext } from './kontext';
+import { hintInBackground } from './kontoHinweis';
+import { emptyTokenCache } from './tokenCache';
+import type { AccountContext } from './kontext';
 
-export function zugaengeListe(k: KontoKontext, uid: number) {
-  return k.konten.zugaengeDesKontos(uid);
+export function accessesList(k: AccountContext, uid: number) {
+  return k.konten.accessesOfAccount(uid);
 }
 
 /** Einen fremden Zugang erfährt der Inhaber per Mail; den eigenen hat er selbst beendet. */
-export async function zugangBeenden(
-  k: KontoKontext,
-  uid: number,
-  kennung: string,
-  eigenesGeraet: boolean,
-): Promise<number> {
-  const { anzahl, label } = await k.konten.zugangLoeschen(uid, kennung);
+export async function endAccess(k: AccountContext, uid: number, kennung: string, ownDevice: boolean): Promise<number> {
+  const { anzahl, label } = await k.konten.deleteAccess(uid, kennung);
   if (anzahl) {
-    leereTokenCache(k);
-    if (!eigenesGeraet) hinweisNebenher(k, uid, 'zugang_beendet', label ?? undefined);
+    emptyTokenCache(k);
+    if (!ownDevice) hintInBackground(k, uid, 'zugang_beendet', label ?? undefined);
   }
   return anzahl;
 }

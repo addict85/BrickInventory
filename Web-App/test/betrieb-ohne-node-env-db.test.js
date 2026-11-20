@@ -4,8 +4,8 @@
  * Geprüft am echten Server (dist/server.js), gestartet ohne NODE_ENV.
  *
  * Gegenprobe (05.11.2026 gemessen, drei Stellen zugleich zurück auf
- * `produktion`): starte() in server.ts → rot „MAIL_KONSOLE_MIT_TOKEN=1 …“;
- * warneBeiSuperuser() → rot „als Superuser …“; handleRouteError → rot
+ * `production`): starte() in server.ts → rot „MAIL_KONSOLE_MIT_TOKEN=1 …“;
+ * warnAtSuperuser() → rot „als Superuser …“; handleRouteError → rot
  * „ein 5xx …“. Je ein roter Teil zu jeder Stelle.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (als Superuser verbunden).
@@ -13,7 +13,7 @@
  * @superuser (Ratsche in test/rollen-trennung-db.test.js)
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { environment } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -22,8 +22,8 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { startVerbote, ladeKonfig, cookieSicher } = _req('src/infra/konfig.js');
+const { dataOrSkip } = require('./helpers/db');
+const { startBans, ladeKonfig, cookieSafe } = _req('src/infra/konfig.js');
 
 /** Ohne NODE_ENV starten; `PATH` allein, damit nichts aus der Testumgebung hineinfällt. */
 function starte(env, ms = 25_000) {
@@ -56,12 +56,12 @@ function starte(env, ms = 25_000) {
   });
 }
 
-test('startVerbote ohne NODE_ENV', () => {
-  assert.ok(startVerbote({ MAIL_KONSOLE_MIT_TOKEN: '1', APP_BASE_URL: 'https://x.example' }).length >= 1);
-  assert.deepEqual(startVerbote({ NODE_ENV: 'test', MAIL_KONSOLE_MIT_TOKEN: '1' }), []);
+test('startBans ohne NODE_ENV', () => {
+  assert.ok(startBans({ MAIL_KONSOLE_MIT_TOKEN: '1', APP_BASE_URL: 'https://x.example' }).length >= 1);
+  assert.deepEqual(startBans({ NODE_ENV: 'test', MAIL_KONSOLE_MIT_TOKEN: '1' }), []);
   const k = ladeKonfig({});
-  assert.equal(k.betrieb, true);
-  assert.equal(cookieSicher(k), true, 'ohne NODE_ENV ein sicheres Cookie wie im Betrieb');
+  assert.equal(k.operation, true);
+  assert.equal(cookieSafe(k), true, 'ohne NODE_ENV ein sicheres Cookie wie im Betrieb');
 });
 
 test('MAIL_KONSOLE_MIT_TOKEN=1 ohne NODE_ENV: Start verweigert', { timeout: 40_000 }, async () => {
@@ -72,11 +72,11 @@ test('MAIL_KONSOLE_MIT_TOKEN=1 ohne NODE_ENV: Start verweigert', { timeout: 40_0
 });
 
 test('als Superuser ohne NODE_ENV: Start verweigert', { timeout: 60_000 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const istSuper = (await db.get('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rolsuper;
-  assert.equal(istSuper, true, 'Vorbedingung: die Test-DB verbindet als Superuser');
+  const isSuper = (await db.get('SELECT rolsuper FROM pg_roles WHERE rolname = current_user')).rolsuper;
+  assert.equal(isSuper, true, 'Vorbedingung: die Test-DB verbindet als Superuser');
   const r = await starte({ DATABASE_URL: URL_DB });
   assert.equal(r.code, 1, r.log.slice(-600));
   assert.match(r.log, /als Superuser — Start verweigert/);
@@ -84,7 +84,7 @@ test('als Superuser ohne NODE_ENV: Start verweigert', { timeout: 60_000 }, async
 
 test('ein 5xx nennt ohne NODE_ENV keine Interna', () => {
   const alt = process.env.NODE_ENV;
-  umgebung({ NODE_ENV: undefined });
+  environment({ NODE_ENV: undefined });
   try {
     const { handleRouteError } = _req('src/http/httpAntwort.js');
     let antwort;
@@ -106,6 +106,6 @@ test('ein 5xx nennt ohne NODE_ENV keine Interna', () => {
     assert.equal(antwort.code, 'interner_fehler');
     assert.doesNotMatch(antwort.error, /geheim_intern/);
   } finally {
-    umgebung({ NODE_ENV: alt });
+    environment({ NODE_ENV: alt });
   }
 });

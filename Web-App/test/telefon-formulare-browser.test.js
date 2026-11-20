@@ -20,20 +20,20 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
+const { startApp } = require('./helpers/app-browser');
 
 /**
  * Breite des längsten Textes eines Feldes gegen die Innenbreite: Ein Platzhalter oder ein Eintrag der
  * Auswahl, der nicht hineinpasst, wird abgeschnitten. Gemessen mit der Schrift des Feldes selbst.
  */
-const TEXTBREITE = `(el, texte) => { const cs = getComputedStyle(el), c = document.createElement('canvas').getContext('2d');
+const TEXT_WIDTH = `(el, texte) => { const cs = getComputedStyle(el), c = document.createElement('canvas').getContext('2d');
   c.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
   const innen = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
   const breit = Math.max(...texte.map(x => c.measureText(x).width));
   return { id: el.id, innen: Math.round(innen), breit: Math.round(breit), passt: breit <= innen }; }`;
 
 test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, { name: `telform_${process.pid}`, telefon: true });
+  const app = await startApp(t, { name: `telform_${process.pid}`, telefon: true });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -51,7 +51,7 @@ test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, as
     await b.auswerten(`document.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
     await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog offen');
     await ruhig();
-    const m = await b.auswerten(`(() => { const breite = ${TEXTBREITE};
+    const m = await b.auswerten(`(() => { const breite = ${TEXT_WIDTH};
       const preis = document.getElementById('add-price'), waehrung = document.getElementById('add-currency');
       const modal = document.querySelector('#add-set-modal .modal').getBoundingClientRect();
       const p = preis.getBoundingClientRect(), w = waehrung.getBoundingClientRect();
@@ -76,16 +76,16 @@ test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, as
     // Seit Runde 24 hinter dem Trichterknopf wie in der Sammlung; aufgeklappt gilt dieselbe Ordnung.
     await b.auswerten(`(() => { const k = document.querySelector('#tab-catalog .filter-knopf');
       if (k.getAttribute('aria-expanded') !== 'true') k.click(); return true; })()`);
-    const m = await b.auswerten(`(() => { const breite = ${TEXTBREITE};
+    const m = await b.auswerten(`(() => { const breite = ${TEXT_WIDTH};
       const ids = ['cat-theme', 'cat-year-from', 'cat-year-to', 'cat-sort'], f = id => document.getElementById(id);
       const r = id => f(id).getBoundingClientRect();
       const zeilen = new Set(['cat-search', ...ids].map(id => Math.round(r(id).top)));
       return { zeilen: zeilen.size, felder: ids.map(id => breite(f(id), [...f(id).options].map(o => o.text))),
-               jahreGleich: Math.abs(r('cat-year-to').top - r('cat-year-from').top) < 2,
-               themaVoll: Math.abs(r('cat-theme').width - f('cat-theme').parentElement.clientWidth) < 2, seite: document.documentElement.scrollWidth }; })()`);
+               yearsEqual: Math.abs(r('cat-year-to').top - r('cat-year-from').top) < 2,
+               themeFull: Math.abs(r('cat-theme').width - f('cat-theme').parentElement.clientWidth) < 2, seite: document.documentElement.scrollWidth }; })()`);
     assert.equal(m.zeilen, 4, `Suche, Thema, die Jahre und die Sortierung stehen in ${m.zeilen} Zeilen`);
-    assert.equal(m.jahreGleich, true, 'Jahr ab und Jahr bis stehen nicht in einer Zeile');
-    assert.equal(m.themaVoll, true, 'Thema ist nicht so breit wie die Filterleiste');
+    assert.equal(m.yearsEqual, true, 'Jahr ab und Jahr bis stehen nicht in einer Zeile');
+    assert.equal(m.themeFull, true, 'Thema ist nicht so breit wie die Filterleiste');
     assert.deepEqual(
       m.felder.filter(x => !x.passt),
       [],

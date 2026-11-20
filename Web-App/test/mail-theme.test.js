@@ -77,10 +77,10 @@ test('Vorlage, Knopf und Infobox zeichnen im übergebenen Design', () => {
     ['emailBtn', th => emailBtn('https://lego.example.org/', 'Los', th)],
     ['infoBox', th => infoBox('Hinweis', th)],
   ])) {
-    const mitBrick = bau(brick);
-    assert.ok(mitBrick.includes(brick.primary) || mitBrick.includes(brick.bg), `${name}: das Design kommt nicht an`);
+    const withBrick = bau(brick);
+    assert.ok(withBrick.includes(brick.primary) || withBrick.includes(brick.bg), `${name}: das Design kommt nicht an`);
     assert.ok(
-      !mitBrick.includes(classic.primary) && !mitBrick.includes(classic.bg),
+      !withBrick.includes(classic.primary) && !withBrick.includes(classic.bg),
       `${name}: feste Farbe von classic`,
     );
     // Ohne Angabe gilt classic: Eine Mail soll nie am Design scheitern.

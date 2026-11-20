@@ -4,9 +4,9 @@
  * src/katalog/produkttitel.ts.
  */
 import type { Rebrickable } from './rebrickable';
-import { meldeUndLiefere } from '../src/infra/fehler';
+import { reportAndDeliver } from '../src/infra/fehler';
 
-export async function produktTitel(
+export async function productTitle(
   httpsGetRobust: Rebrickable['httpsGetRobust'],
   ean13: string,
 ): Promise<string | null> {
@@ -20,6 +20,6 @@ export async function produktTitel(
     return JSON.parse(antwort.body)?.items?.[0]?.title || null;
   } catch (e) {
     // Ausnahme: letzte von mehreren Barcode-Quellen; ohne Antwort gilt die EAN als unbekannt.
-    return meldeUndLiefere('upcitemdb:abruf', null)(e);
+    return reportAndDeliver('upcitemdb:abruf', null)(e);
   }
 }

@@ -6,16 +6,16 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
-async function neuerNutzer(db) {
+async function newUser(db) {
   return db.get(`INSERT INTO users (username, password_hash) VALUES ('t_'||floor(random()*1e9),'x') RETURNING id`);
 }
 
 test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async t => {
-  const db = testDaten();
+  const db = testData();
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -24,7 +24,7 @@ test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async t => {
   }
 
   const mf = _req('src/finanzen/marketPrice.js');
-  const u = await neuerNutzer(db);
+  const u = await newUser(db);
   const fig = 'fig-cache-test-01';
 
   await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [fig]);
@@ -37,7 +37,7 @@ test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async t => {
 
   const t0 = Date.now();
   const wert = await mf.estimateFigPriceFromParts(fig, u.id, 'N');
-  const dauer = Date.now() - t0;
+  const duration = Date.now() - t0;
 
   assert.equal(
     wert,
@@ -45,7 +45,7 @@ test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async t => {
     'Der zwischengespeicherte Wert wird nicht genommen — die Schätzung rechnet ' +
       'wieder alles neu, mit einer Preisabfrage je Teil.',
   );
-  assert.ok(dauer < 2000, `${dauer} ms — hier darf nichts über das Netz gehen`);
+  assert.ok(duration < 2000, `${duration} ms — hier darf nichts über das Netz gehen`);
 
   const h = await db.get('SELECT COUNT(*)::int AS c FROM minifig_price_history WHERE fig_number = $1', [fig]);
   assert.equal(
@@ -58,7 +58,7 @@ test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async t => {
 });
 
 test('ein veralteter Eintrag wird übergangen', async t => {
-  const db = testDaten();
+  const db = testData();
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -67,7 +67,7 @@ test('ein veralteter Eintrag wird übergangen', async t => {
   }
 
   const mf = _req('src/finanzen/marketPrice.js');
-  const u = await neuerNutzer(db);
+  const u = await newUser(db);
   const fig = 'fig-cache-test-02';
 
   await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [fig]);

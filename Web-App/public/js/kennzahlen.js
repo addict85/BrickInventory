@@ -1,7 +1,7 @@
 // The metrics above the collection (sets, parts, minifigs, instructions).
 import { tRaw } from '../i18n.js';
 import { api } from './api.js';
-import { teileAufschluesselung } from './bausteine.js';
+import { partsBreakdown } from './bausteine.js';
 import { G } from './dom.js';
 import { fmtBig } from './format.js';
 import { scopeQuery } from './kontofilter.js';
@@ -40,8 +40,7 @@ export async function loadStats() {
     // would look like a bug. On a phone it sits in #bstat-hinweis below the whole row, not inside it.
     const noLists = !d.stats.total_parts && d.stats.total_sets > 0;
     const explanation = noLists ? tRaw('parts.stat.ohne_listen', { n: d.stats.total_sets }) : '';
-    G('bstat-parts-sub').textContent =
-      explanation || teileAufschluesselung(d.stats.set_parts ?? 0, d.stats.manual_parts ?? 0);
+    G('bstat-parts-sub').textContent = explanation || partsBreakdown(d.stats.set_parts ?? 0, d.stats.manual_parts ?? 0);
     G('bstat-hinweis').textContent = explanation;
     metric('bstat-minifigs', 'gallery.stat.figuren', d.stats.total_minifigs || 0);
     metric('bstat-instr', 'gallery.stat.anleitungen', d.stats.total_instructions || 0);

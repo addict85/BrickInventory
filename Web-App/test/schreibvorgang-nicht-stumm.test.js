@@ -24,20 +24,20 @@ const NUTZERDATEN = [
 test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
   /** @type {string[]} */
   const dateien = [];
-  const sammle = d => {
+  const collect = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (['node_modules', '.git', 'dist', 'coverage', 'public', 'test'].includes(e.name)) continue;
       const p = path.join(d, e.name);
-      if (e.isDirectory()) sammle(p);
+      if (e.isDirectory()) collect(p);
       else if (e.name.endsWith('.ts')) dateien.push(p);
     }
   };
-  sammle(ROOT);
+  collect(ROOT);
   assert.ok(dateien.length >= 60, `nur ${dateien.length} Dateien gefunden — der Pfad stimmt nicht`);
 
   // Warum hier geklammert und nicht nur ein Fenster gelesen wird
-  const aufruf = /\b(?:db|tx|dbh|client)\.(?:run|query)\(|\bpool\.query\(/g;
-  const stillDanach = /^\s*\)?\s*\.catch\(\s*\(?\s*_?\w*\s*\)?\s*=>\s*(\{\s*\}|null|undefined)\s*\)/;
+  const call = /\b(?:db|tx|dbh|client)\.(?:run|query)\(|\bpool\.query\(/g;
+  const stillAfterwards = /^\s*\)?\s*\.catch\(\s*\(?\s*_?\w*\s*\)?\s*=>\s*(\{\s*\}|null|undefined)\s*\)/;
   const schreib = new RegExp(`\\b(INSERT\\s+INTO|UPDATE|DELETE\\s+FROM)\\s+(${NUTZERDATEN.join('|')})\\b`, 'i');
 
   const ohneKommentare = src =>
@@ -49,11 +49,11 @@ test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
       })
       .join('\n');
 
-  const verstoesse = [];
+  const violations = [];
   let geprueft = 0;
   for (const datei of dateien) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const m of src.matchAll(aufruf)) {
+    for (const m of src.matchAll(call)) {
       // Bis zur schliessenden Klammer des Aufrufs
       let tiefe = 1,
         i = m.index + m[0].length;
@@ -63,12 +63,12 @@ test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
         else if (c === ')') tiefe--;
         i++;
       }
-      const anweisung = src.slice(m.index, i);
-      if (!schreib.test(anweisung)) continue;
+      const instruction = src.slice(m.index, i);
+      if (!schreib.test(instruction)) continue;
       geprueft++;
-      if (stillDanach.test(src.slice(i, i + 90))) {
+      if (stillAfterwards.test(src.slice(i, i + 90))) {
         const zeile = src.slice(0, m.index).split('\n').length;
-        verstoesse.push(`${path.relative(ROOT, datei)}:${zeile}`);
+        violations.push(`${path.relative(ROOT, datei)}:${zeile}`);
       }
     }
   }
@@ -78,10 +78,10 @@ test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
   assert.ok(geprueft >= 30, `nur ${geprueft} schreibende Aufrufe auf Nutzerdaten gefunden — Muster veraltet`);
 
   assert.deepEqual(
-    verstoesse,
+    violations,
     [],
     'Diese Schreibvorgaenge auf Nutzerdaten scheitern spurlos:\n  ' +
-      verstoesse.join('\n  ') +
+      violations.join('\n  ') +
       '\nEntweder den Fehler weiterreichen (gar kein catch) oder ihn mit ' +
       'logAndContinue(kontext) protokollieren.',
   );

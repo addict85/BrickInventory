@@ -20,15 +20,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testQuellen, testBildwerk, alsKonto } = require('./helpers/sources');
+const { buildAndRequire, testSources, testImageWorker, asAccount } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
 test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const netz = [];
-  testQuellen(t, {
+  testSources(t, {
     holeSet: async sn => {
       netz.push(sn);
       return null;
@@ -38,10 +38,10 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
       return null;
     },
   });
-  testBildwerk(t, { setBildLaden: async () => null });
-  const sets = require('./helpers/sources').bereichsSeite('sets');
+  testImageWorker(t, { setBildLaden: async () => null });
+  const sets = require('./helpers/sources').areaPage('sets');
   const P = process.pid % 100000;
-  const HAUPT = `einweg-h-${P}`,
+  const MAIN = `einweg-h-${P}`,
     KIND = `einweg-k-${P}`;
   const SN = `${60000 + (P % 9000)}-1`,
     FREMD = `${50000 + (P % 9000)}-1`;
@@ -52,7 +52,7 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
       await db.run("DELETE FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1", [sn]);
       await db.run('DELETE FROM rb_sets WHERE set_num = $1', [sn]);
     }
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND]]);
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, KIND]]);
   };
   await weg();
   t.after(async () => {
@@ -61,7 +61,7 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
   });
   const neu = async n =>
     (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [n])).id;
-  const h = await neu(HAUPT),
+  const h = await neu(MAIN),
     k = await neu(KIND);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [h, k]);
   const menge = async (uid, sn) =>
@@ -71,14 +71,14 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
         [uid, sn],
       )
     ).n;
-  const erfasse = (uid, e) => alsKonto(uid, () => sets.setErfassen({ anfragender: uid, ...e }));
+  const record = (uid, e) => asAccount(uid, () => sets.setErfassen({ requester: uid, ...e }));
 
   await t.test('kein Netz beim Import, Nacharbeit in derselben Transaktion', async () => {
-    const r = await erfasse(h, {
+    const r = await record(h, {
       setNumber: SN,
       menge: 1,
       lagerort: 'Kiste 1',
-      wennVorhanden: 'aufstocken',
+      ifPresent: 'aufstocken',
       nacharbeit: 'csv',
     });
     assert.equal(r.action, 'added');
@@ -99,7 +99,7 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
       h,
       String(vorgabe.id),
     ]);
-    const r = await erfasse(h, { setNumber: SN, menge: 2, wennVorhanden: 'aufstocken' });
+    const r = await record(h, { setNumber: SN, menge: 2, ifPresent: 'aufstocken' });
     assert.equal(r.action, 'updated');
     assert.equal(await menge(h, SN), 3);
     assert.deepEqual(netz, [], 'kein Netz beim Import');
@@ -114,15 +114,15 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
   });
 
   await t.test('getippt heisst ein Set im Blickfeld „exists“', async () => {
-    const r = await erfasse(h, { setNumber: SN, menge: 1 });
+    const r = await record(h, { setNumber: SN, menge: 1 });
     assert.equal(r.action, 'exists');
     assert.equal(await menge(h, SN), 3);
   });
 
   await t.test('hat nur das andere Konto das Set, legt der Import es im eigenen an', async () => {
-    assert.equal((await erfasse(k, { setNumber: FREMD, menge: 1 })).action, 'added');
-    assert.equal((await erfasse(h, { setNumber: FREMD, menge: 1 })).action, 'exists', 'getippt: im Blickfeld');
-    assert.equal((await erfasse(h, { setNumber: FREMD, menge: 1, wennVorhanden: 'aufstocken' })).action, 'added');
+    assert.equal((await record(k, { setNumber: FREMD, menge: 1 })).action, 'added');
+    assert.equal((await record(h, { setNumber: FREMD, menge: 1 })).action, 'exists', 'getippt: im Blickfeld');
+    assert.equal((await record(h, { setNumber: FREMD, menge: 1, ifPresent: 'aufstocken' })).action, 'added');
     assert.equal(await menge(h, FREMD), 1);
     assert.equal(await menge(k, FREMD), 1);
   });
@@ -136,7 +136,7 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
       END $$;
       CREATE TRIGGER ${FUNKTION} BEFORE INSERT ON jobs FOR EACH ROW EXECUTE FUNCTION ${FUNKTION}();`);
     await db.run("DELETE FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1", [SN]);
-    await assert.rejects(erfasse(h, { setNumber: SN, menge: 1, wennVorhanden: 'aufstocken' }), /Auftrag abgelehnt/);
+    await assert.rejects(record(h, { setNumber: SN, menge: 1, ifPresent: 'aufstocken' }), /Auftrag abgelehnt/);
     assert.equal(await menge(h, SN), 3);
   });
 });

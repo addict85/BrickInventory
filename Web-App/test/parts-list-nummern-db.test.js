@@ -11,11 +11,11 @@ const express = require('express');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { portVon } = require('./helpers/server');
-const db = testDaten();
+const { portOf } = require('./helpers/server');
+const db = testData();
 
 async function seed() {
   await db.run('DROP SCHEMA public CASCADE');
@@ -44,7 +44,7 @@ async function seed() {
                 ('part','3070b','3070'), ('part','3069b','3070')`);
 }
 
-async function dbErreichbar() {
+async function dbReachable() {
   try {
     await db.get('SELECT 1 AS ok');
     return true;
@@ -54,7 +54,7 @@ async function dbErreichbar() {
 }
 
 test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, async t => {
-  if (!(await dbErreichbar())) {
+  if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
     return;
@@ -68,14 +68,14 @@ test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, 
     /** @type {any} */ (req).apiUser = { user_id: 1, is_admin: 0 };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   t.after(async () => {
     srv.close();
     await db.pool.end().catch(() => {});
   });
 
-  const r = await fetch(`http://127.0.0.1:${portVon(srv)}/api/v1/sets/60052-1/parts-list`);
+  const r = await fetch(`http://127.0.0.1:${portOf(srv)}/api/v1/sets/60052-1/parts-list`);
   const d = await r.json();
   assert.equal(d.success, true, JSON.stringify(d));
   const nach = nr => d.parts.find(p => p.part_number === nr);

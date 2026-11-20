@@ -2,11 +2,11 @@ import { registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { ico, G, alle, eins, setzeHtml, fuegeHtmlEin } from './dom.js';
-import { passwortRegelText, formularFehler } from './formular.js';
-import { rbHinweisVerbergen, rbHinweisZeigen } from './konto.js';
-import { toast, verwirfToasts } from './meldungen.js';
-import { oeffneErfassen, verstaendlicherGrund } from './bausteine.js';
-import { mitZweitemFaktor, speichereEinstellungen } from './rueckfrage.js';
+import { passwordRuleText, formError } from './formular.js';
+import { hideRbHint, showRbHint } from './konto.js';
+import { toast, discardToasts } from './meldungen.js';
+import { oeffneErfassen, clearerReason } from './bausteine.js';
+import { withSecondFactor, saveSettings } from './rueckfrage.js';
 import { html } from './escaping.js';
 
 // ═══ First-run setup wizard (server: routes/api_v1/settings.ts /settings/einrichtung) ═
@@ -41,7 +41,7 @@ function render() {
   G('ew-zurueck').style.display = _now > 0 ? '' : 'none';
   G('ew-weiter').textContent = _now === _steps.length - 1 ? tRaw('setup.finish') : tRaw('setup.next');
   // Toasts belong to the step they arose in; they're shown at the field anyway.
-  verwirfToasts();
+  discardToasts();
 }
 
 /**
@@ -65,7 +65,7 @@ function setStatus(source, ok) {
 function sourceError(source, text, details = '', fields = []) {
   const box = G(`ew-fehler-${source}`);
   if (!box) return;
-  formularFehler(box, text, fields);
+  formError(box, text, fields);
   if (text && details && details !== text)
     fuegeHtmlEin(
       box,
@@ -93,7 +93,7 @@ export async function checkSetup() {
   for (const [q, ok] of Object.entries(_saved)) setStatus(q, ok ? true : null);
   render();
   G('einrichtung-modal').classList.add('open');
-  rbHinweisVerbergen();
+  hideRbHint();
 }
 
 function close() {
@@ -109,7 +109,7 @@ async function finish() {
 export function einrichtungSpaeter() {
   close();
   // Saved in the wizard, the checkmark is already there; the cache doesn't know yet.
-  if (!G('ew-stand-rebrickable')?.classList.contains('ok')) rbHinweisZeigen();
+  if (!G('ew-stand-rebrickable')?.classList.contains('ok')) showRbHint();
 }
 
 export function einrichtungZurueck() {
@@ -133,22 +133,22 @@ export async function einrichtungPasswort() {
     neu = G('ew-pw-neu').value,
     again = G('ew-pw-wdh').value;
   const box = G('ew-pw-fehler');
-  formularFehler(box, '');
-  const rule = passwortRegelText(neu);
+  formError(box, '');
+  const rule = passwordRuleText(neu);
   if (rule) {
-    formularFehler(box, rule, ['ew-pw-neu']);
+    formError(box, rule, ['ew-pw-neu']);
     return;
   }
   if (neu !== again) {
-    formularFehler(box, tRaw('settings.password.mismatch'), ['ew-pw-wdh']);
+    formError(box, tRaw('settings.password.mismatch'), ['ew-pw-wdh']);
     return;
   }
-  const d = await mitZweitemFaktor(z =>
+  const d = await withSecondFactor(z =>
     api('POST', '/v1/auth/change-password', { current: old, newPassword: neu, ...z }),
   );
   if (!d) return;
   if (!d?.success) {
-    formularFehler(box, d?.error || tRaw('settings.error'), [
+    formError(box, d?.error || tRaw('settings.error'), [
       d?.code === 'aktuelles_passwort_falsch' ? 'ew-pw-alt' : 'ew-pw-neu',
     ]);
     return;
@@ -184,7 +184,7 @@ export async function einrichtungQuelle(source) {
     return;
   }
   if (Object.keys(values).length) {
-    const s = await speichereEinstellungen(tRaw('settings.api_key_title'), values);
+    const s = await saveSettings(tRaw('settings.api_key_title'), values);
     if (!s) return;
     if (!s?.success) {
       sourceError(source, s?.error || tRaw('settings.error'), '', Object.values(fields));
@@ -200,7 +200,7 @@ export async function einrichtungQuelle(source) {
   }
   const { grund, details } = d?.code
     ? { grund: d.error, details: d.details == null ? undefined : String(d.details) }
-    : verstaendlicherGrund(d);
+    : clearerReason(d);
   sourceError(
     source,
     grund || tRaw('settings.error'),

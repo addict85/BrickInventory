@@ -31,28 +31,28 @@ const zlib = require('node:zlib');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 // Vor dem Laden: appPaths rechnet DATA_DIR aus APP_ROOT beim Einlesen aus.
-const SANDKASTEN = fs.mkdtempSync(path.join(os.tmpdir(), 'gutschein-bombe-'));
-fs.mkdirSync(path.join(SANDKASTEN, 'data'), { recursive: true });
-fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}');
-process.env.APP_ROOT = SANDKASTEN;
+const SANDBOX = fs.mkdtempSync(path.join(os.tmpdir(), 'gutschein-bombe-'));
+fs.mkdirSync(path.join(SANDBOX, 'data'), { recursive: true });
+fs.writeFileSync(path.join(SANDBOX, 'package.json'), '{"name":"sandkasten"}');
+process.env.APP_ROOT = SANDBOX;
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const { pdfText, valuesFromPdf, PdfTooLarge, STREAM_MAX_BYTES, UNPACKED_MAX_BYTES, STREAMS_MAX } =
   _req('src/vouchers/pdfParsing.js');
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
-  fs.rmSync(SANDKASTEN, { recursive: true, force: true });
+  fs.rmSync(SANDBOX, { recursive: true, force: true });
 });
 
 /** Ein PDF aus rohen Strominhalten — genug für pdfText. */
-function pdfAus(stroeme) {
+function pdfFrom(streams) {
   const teile = [Buffer.from('%PDF-1.4\n')];
-  stroeme.forEach((s, i) => {
+  streams.forEach((s, i) => {
     teile.push(
       Buffer.from(`${i + 1} 0 obj\n<< /Length ${s.length} /Filter /FlateDecode >>\nstream\n`),
       s,
@@ -63,7 +63,7 @@ function pdfAus(stroeme) {
   return Buffer.concat(teile);
 }
 
-function dauer(f) {
+function duration(f) {
   const t = process.hrtime.bigint();
   let fehler = null;
   try {
@@ -75,27 +75,27 @@ function dauer(f) {
 }
 
 // Über der Grenze je Strom, unter der Summe: Fall 1 prüft die Grenze je Strom.
-const BOMBE = pdfAus([zlib.deflateSync(Buffer.alloc(15 * 1024 * 1024))]);
+const BOMBE = pdfFrom([zlib.deflateSync(Buffer.alloc(15 * 1024 * 1024))]);
 
 test('1. ein Strom, der über die Grenze entpackt, wird abgewiesen', () => {
   assert.ok(BOMBE.length < 100 * 1024, `Vorbedingung: Bombe wiegt ${BOMBE.length} Bytes`);
-  const { fehler } = dauer(() => pdfText(BOMBE));
+  const { fehler } = duration(() => pdfText(BOMBE));
   assert.ok(fehler instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${fehler}`);
 });
 
 test('2. viele Ströme knapp unter der Grenze zählen zusammen', () => {
   const fast = zlib.deflateSync(Buffer.alloc(STREAM_MAX_BYTES - 1024));
   const n = Math.ceil(UNPACKED_MAX_BYTES / STREAM_MAX_BYTES) + 1;
-  const { fehler } = dauer(() => pdfText(pdfAus(Array(n).fill(fast))));
+  const { fehler } = duration(() => pdfText(pdfFrom(Array(n).fill(fast))));
   assert.ok(fehler instanceof PdfTooLarge, `${n} Ströme: erwartet PdfTooLarge, bekam ${fehler}`);
 });
 
 test('3. mehr Ströme als erlaubt werden abgewiesen', () => {
   const klein = zlib.deflateSync(Buffer.from('BT (x) Tj ET'));
-  const { fehler } = dauer(() => pdfText(pdfAus(Array(STREAMS_MAX + 1).fill(klein))));
+  const { fehler } = duration(() => pdfText(pdfFrom(Array(STREAMS_MAX + 1).fill(klein))));
   assert.ok(fehler instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${fehler}`);
   assert.equal(
-    pdfText(pdfAus(Array(10).fill(klein))).split('\n').length,
+    pdfText(pdfFrom(Array(10).fill(klein))).split('\n').length,
     10,
     'Zehn kleine Ströme sind erlaubt und werden gelesen',
   );
@@ -107,10 +107,10 @@ test('4. offene Anfänge kosten keine quadratische Rechenzeit', () => {
     'stream ohne Ende': Buffer.from('%PDF-1.4\n' + 'stream\n'.repeat(n)),
     'Literal ohne Ende': Buffer.from('%PDF-1.4\nstream\n(' + '\\('.repeat(n) + '\nendstream'),
     'Feld ohne Ende': Buffer.from('%PDF-1.4\nstream\n[(' + '\\('.repeat(n) + ')\nendstream'),
-    'Leerraum im Text': pdfAus([Buffer.from('(im Wert von 1' + ' '.repeat(n) + ') Tj')]),
+    'Leerraum im Text': pdfFrom([Buffer.from('(im Wert von 1' + ' '.repeat(n) + ') Tj')]),
   };
   for (const [name, pdf] of Object.entries(faelle)) {
-    const { fehler, ms } = dauer(() => valuesFromPdf(pdf));
+    const { fehler, ms } = duration(() => valuesFromPdf(pdf));
     assert.equal(fehler, null, `${name}: ${fehler}`);
     assert.ok(ms < 500, `${name}: ${ms.toFixed(0)} ms — das Lesen ist nicht linear`);
   }
@@ -121,7 +121,7 @@ test('5. gültige Textoperatoren werden weiter gelesen', () => {
     'BT /F1 14 Tf 60 700 Td [(Ihre LEGO-Geschenkkarte im Wert von )-20(400 CHF:)] TJ\n' +
     '0 -20 Td (5045076374450011166) Tj <50494E3A2035323235> Tj\n' +
     "(Karte \\(neu\\) \\061) ' (Geschenk (Ostern)) Tj <</MCID 0>> BDC ET";
-  const text = pdfText(pdfAus([zlib.deflateSync(Buffer.from(inhalt, 'latin1'))]));
+  const text = pdfText(pdfFrom([zlib.deflateSync(Buffer.from(inhalt, 'latin1'))]));
   assert.deepEqual(text.split('\n'), [
     'Ihre LEGO-Geschenkkarte im Wert von 400 CHF:',
     '5045076374450011166',
@@ -130,14 +130,14 @@ test('5. gültige Textoperatoren werden weiter gelesen', () => {
     'Geschenk (Ostern)',
   ]);
   assert.deepEqual(
-    valuesFromPdf(pdfAus([Buffer.from(inhalt, 'latin1')])),
+    valuesFromPdf(pdfFrom([Buffer.from(inhalt, 'latin1')])),
     { number: '5045076374450011166', pin: '5225', amount: 400, currency: 'CHF' },
     'Auch unkomprimiert',
   );
 });
 
 /** Zwei Schriften, eine mit eigener Kodierung; `inhalt` wählt sie per Tf. */
-async function zweiSchriften(inhalt) {
+async function twoFonts(inhalt) {
   const PL = require('@cantoo/pdf-lib');
   const doc = await PL.PDFDocument.create();
   const seite = doc.addPage([595, 842]);
@@ -166,14 +166,14 @@ test('6. beim Ersetzen zählt die letzte Schrift VOR dem Operator', async () => 
   const { replaceAmount } = _req('src/vouchers/pdfExport.js');
   const rest = 'BT /F1 12 Tf (5045076374450011166) Tj (PIN: 5225) Tj ET\n';
   const unsicher = await replaceAmount(
-    await zweiSchriften('BT /F1 12 Tf (Karte) Tj /F9 14 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
+    await twoFonts('BT /F1 12 Tf (Karte) Tj /F9 14 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
     250,
   );
   assert.equal(unsicher.data, null, 'Der Betrag in der eigenen Kodierung wurde ersetzt');
   assert.equal(unsicher.rejected, 1);
 
   const sicher = await replaceAmount(
-    await zweiSchriften('BT /F9 14 Tf (Karte) Tj /F1 12 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
+    await twoFonts('BT /F9 14 Tf (Karte) Tj /F1 12 Tf (im Wert von 400 CHF:) Tj ET\n' + rest),
     250,
   );
   assert.ok(sicher.data, `WinAnsi abgelehnt: ${sicher.grund}`);

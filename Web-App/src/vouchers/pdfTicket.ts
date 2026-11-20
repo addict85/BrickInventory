@@ -3,7 +3,7 @@
 import crypto from 'node:crypto';
 import type { VoucherContext } from './context';
 
-export const TICKET_SEK = 60;
+export const TICKET_SEC = 60;
 const hash = (t: string) => crypto.createHash('sha256').update(t).digest('hex');
 const ticketsFor = (k: VoucherContext) =>
   k.faecher.fach('pdfTickets', () => new Map<string, { uid: number; target: string; until: number }>());
@@ -13,7 +13,7 @@ export function issueTicket(k: VoucherContext, uid: number, target: string): str
   const now = k.uhr.jetzt();
   for (const [key, v] of tickets) if (v.until < now) tickets.delete(key);
   const ticket = crypto.randomBytes(32).toString('base64url');
-  tickets.set(hash(ticket), { uid, target, until: now + TICKET_SEK * 1000 });
+  tickets.set(hash(ticket), { uid, target, until: now + TICKET_SEC * 1000 });
   return ticket;
 }
 

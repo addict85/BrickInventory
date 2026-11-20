@@ -20,22 +20,22 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const gesendet = [];
-require('./helpers/sources').ersetzeDienste('mail', {
+require('./helpers/sources').replaceServices('mail', {
   sendSmtpTest: async to => {
     gesendet.push(to);
     return { success: true, mode: 'console' };
   },
 });
 const { routerServer } = require('./helpers/server');
-const { datenOderSkip } = require('./helpers/db');
-const db = S.testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = S.testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const NAME = `smtprelais_${process.pid}`,
   PASS = 'chef-Passwort-1';
 
 test('SMTP-Test nur an die eigene Adresse oder mit Passwort', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const eigene = `${NAME}@example.org`;
   const uid = (

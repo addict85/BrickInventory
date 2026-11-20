@@ -9,17 +9,17 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche } = require('./helpers/oberflaeche');
+const { openUi } = require('./helpers/oberflaeche');
 
 for (const sprache of ['de', 'en']) {
   test(`kein Knopf beginnt mit einem Plus (${sprache})`, async () => {
-    const { w, d } = await oeffneOberflaeche({}, { sprache });
+    const { w, d } = await openUi({}, { sprache });
     try {
       const knoepfe = [...d.querySelectorAll('button, .btn')];
       assert.ok(knoepfe.length > 100, 'Knöpfe nicht gefunden');
       // Ein Plus vor einem WORT; das Zoom-Plus im PDF-Betrachter ist ein eigenes Zeichen.
-      const mitPlus = knoepfe.map(k => k.textContent.trim()).filter(t => /^[+＋]\s*\p{L}/u.test(t));
-      assert.deepEqual(mitPlus, []);
+      const withPlus = knoepfe.map(k => k.textContent.trim()).filter(t => /^[+＋]\s*\p{L}/u.test(t));
+      assert.deepEqual(withPlus, []);
       const pl = d.querySelector('[data-click="plAddSet"]');
       assert.equal(pl.querySelector('use')?.getAttribute('href'), '#i-plus', 'Teileliste: Knopf ohne Plus-Symbol');
     } finally {

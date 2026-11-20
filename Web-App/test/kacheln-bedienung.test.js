@@ -12,13 +12,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const TABBAR = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]';
 const tabbar = wurzel => [...wurzel.querySelectorAll(TABBAR)].filter(el => el.getAttribute('tabindex') !== '-1');
 
 test('Galerie: der Papierkorb steht nicht in der Tab-Folge', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/sets': {
       success: true,
       total: 2,
@@ -52,7 +52,7 @@ test('Galerie: der Papierkorb steht nicht in der Tab-Folge', async () => {
 });
 
 test('Merkliste: ohne Namen steht die Nummer einmal, rechts bleibt Platz', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/wanted': {
       success: true,
       merkposten: [

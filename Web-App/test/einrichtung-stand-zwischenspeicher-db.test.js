@@ -13,7 +13,7 @@
  *      → rot: „ein geschriebener Wert gilt sofort“
  *   E  der Zweig `if (erledigt) return …` entfernt
  *      → rot: „nach Abschluss wird kein Schlüssel gelesen“
- *   F  (15.11.2026) in prozessEreignis() verbinde() ohne s.listen(…) → rot: „ein Wert aus einem
+ *   F  (15.11.2026) in processEvent() verbinde() ohne s.listen(…) → rot: „ein Wert aus einem
  *      anderen Prozess …“ (kein LISTEN); mit listen, aber Fremdes wie das eigene Echo verworfen
  *      → rot: dieselbe Prüfung („blieb beim alten Wert“)
  *
@@ -25,25 +25,25 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { bis } = require('./helpers/zeit');
-const db = testDaten();
+const db = testData();
 
 after(() => db.pool.end().catch(() => {}));
 
 test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
-  const zaehlerWeg = () => db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'einrichtung-stand|%'");
-  await zaehlerWeg();
+  const counterRoute = () => db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'einrichtung-stand|%'");
+  await counterRoute();
   t.after(async () => {
-    await zaehlerWeg();
+    await counterRoute();
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
     for (const z of vorher) {
       await db.run(
@@ -59,7 +59,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
   // Am Pool statt am Repository: Importe sind gebunden, ein ersetzter Export käme nie an.
   const gelesen = [];
   // In den Pools der App (Laufzeit-, System- und Web-Systemrolle), nicht im Zugang der Testdaten.
-  const zugang = require('./helpers/sources').testZugang();
+  const zugang = require('./helpers/sources').testAccess();
   const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
   const echt = pools.map(p => p.query);
   for (const [i, p] of pools.entries())
@@ -90,16 +90,16 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
 
   await t.test('ein Wert aus einem anderen Prozess leert den Stand hier (NOTIFY)', async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
-    const weg = require('./helpers/sources').testDienste().settings.listenForGlobalChanges();
+    const weg = require('./helpers/sources').testServices().settings.listenForGlobalChanges();
     t.after(async () => {
       weg();
-      await zugang.benachrichtigung.close();
+      await zugang.notification.close();
     });
-    assert.ok(await bis(() => zugang.benachrichtigung.hoertZu('globale_einstellung')), 'kein LISTEN');
+    assert.ok(await bis(() => zugang.notification.listensTo('globale_einstellung')), 'kein LISTEN');
     stand.forgetSetupStatus();
     assert.equal((await stand.setupStatus()).konfiguriert, false);
     // Ein zweiter Satz Dienste mit eigenen Fächern schreibt wie ein anderer Prozess.
-    const anderer = _req('startup/verdrahtung.js').baueDienste(zugang);
+    const anderer = _req('startup/verdrahtung.js').buildServices(zugang);
     await anderer.settings.setGlobalValue('rebrickable_api_key', 'probe2');
     assert.ok(
       await bis(async () => (await stand.setupStatus()).konfiguriert, 3000),

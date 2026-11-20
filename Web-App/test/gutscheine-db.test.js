@@ -15,10 +15,10 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -33,7 +33,7 @@ const U = {};
 const PASS = 'Gutschein-Passwort-1';
 
 /** Ein Gutschein-PDF mit erfundenen Werten — nie ein echtes, das Repo ist oeffentlich. */
-function pdfMit(zeilen) {
+function pdfWith(zeilen) {
   return new Promise(fertig => {
     const doc = new PDFDocument({ compress: true });
     const st = [];
@@ -55,7 +55,7 @@ async function seed() {
   } finally {
     client.release();
   }
-  for (const name of ['opa', 'enkel', 'chef']) {
+  for (const name of ['grandparent', 'enkel', 'chef']) {
     await db.run('INSERT INTO users (username, password_hash) VALUES ($1,$2)', [
       name,
       require(path.join(ROOT, 'node_modules', 'bcryptjs')).hashSync(PASS, 4),
@@ -66,12 +66,12 @@ async function seed() {
   // stellt genau die zwei Durchgriffe her, die es hier NICHT geben darf.
   await db.run('UPDATE users SET is_admin = true WHERE id = $1', [U.chef]);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [
-    U.opa,
+    U.grandparent,
     U.enkel,
   ]);
 }
 
-async function dbErreichbar() {
+async function dbReachable() {
   try {
     await db.get('SELECT 1 AS ok');
     return true;
@@ -81,7 +81,7 @@ async function dbErreichbar() {
 }
 
 test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
-  if (!(await dbErreichbar())) {
+  if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
     return;
@@ -105,11 +105,11 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     req.session.isAdmin = req.params.admin === '1';
     res.json({ ok: true });
   });
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  const alsNutzer = async (id, admin = false) => {
+  const asUser = async (id, admin = false) => {
     const r = await fetch(`${basis}/einloggen/${id}/${admin ? 1 : 0}`);
     // Erst den Rumpf ganz lesen: express-session hält das letzte Byte zurück,
     // bis die Sitzung gespeichert ist; fetch() kehrt schon mit den Kopfzeilen zurück.
@@ -133,15 +133,15 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       body: JSON.stringify(koerper),
     });
 
-  const keksOpa = await alsNutzer(U.opa);
-  const keksEnkel = await alsNutzer(U.enkel);
-  const keksChef = await alsNutzer(U.chef, true);
+  const cookieGrandparent = await asUser(U.grandparent);
+  const cookieGrandchild = await asUser(U.enkel);
+  const keksChef = await asUser(U.chef, true);
 
-  let opasGutschein;
+  let grandparentsVoucher;
 
   try {
     await t.test('manuell anlegen: die drei Werte landen in der Datenbank', async () => {
-      const r = await jsonAn('/api/v1/vouchers', keksOpa, 'POST', {
+      const r = await jsonAn('/api/v1/vouchers', cookieGrandparent, 'POST', {
         number: '5045076374450011166',
         pin: '5225',
         amount: 400,
@@ -154,15 +154,15 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.equal(b.voucher.amount, 400, 'der Betrag kommt als ZAHL zurueck, nicht als Zeichenkette');
       assert.equal(b.voucher.currency, 'CHF');
       assert.equal(b.voucher.hat_pdf, false);
-      opasGutschein = b.voucher.id;
+      grandparentsVoucher = b.voucher.id;
 
       // Und wirklich exakt — NUMERIC, nicht Gleitkomma.
-      const zeile = await db.get('SELECT amount::text AS a FROM vouchers WHERE id=$1', [opasGutschein]);
+      const zeile = await db.get('SELECT amount::text AS a FROM vouchers WHERE id=$1', [grandparentsVoucher]);
       assert.equal(Number(zeile.a), 400, 'der Betrag steht exakt in der Datenbank');
     });
 
     await t.test('dieselbe Karte ein zweites Mal gibt 409, nicht stillschweigend nichts', async () => {
-      const r = await jsonAn('/api/v1/vouchers', keksOpa, 'POST', {
+      const r = await jsonAn('/api/v1/vouchers', cookieGrandparent, 'POST', {
         number: '5045076374450011166',
         pin: '5225',
         amount: 400,
@@ -180,7 +180,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
         [{ number: '1234567890127', amount: 10, currency: 'Franken' }, 'waehrung_ungueltig'],
       ];
       for (const [koerper, code] of faelle) {
-        const r = await jsonAn('/api/v1/vouchers', keksOpa, 'POST', koerper);
+        const r = await jsonAn('/api/v1/vouchers', cookieGrandparent, 'POST', koerper);
         assert.equal(r.status, 400, `${JSON.stringify(koerper)} haette abgewiesen werden muessen`);
         assert.equal((await r.json()).code, code, `falscher Grund fuer ${JSON.stringify(koerper)}`);
       }
@@ -191,7 +191,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       // 0 — ohne die untere Grenze haette ein leeres Formularfeld einen
       // Gutschein ueber nichts angelegt, und zwar ohne jede Fehlermeldung.
       const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers')).n;
-      await jsonAn('/api/v1/vouchers', keksOpa, 'POST', { number: '9999999999999', amount: '' });
+      await jsonAn('/api/v1/vouchers', cookieGrandparent, 'POST', { number: '9999999999999', amount: '' });
       const nachher = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers')).n;
       assert.equal(nachher, vorher, 'es darf keine Zeile dazugekommen sein');
     });
@@ -201,19 +201,19 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       // opa ist Hauptkonto von enkel. Bei Sets, Teilen und der Merkliste saehe
       // opa alles von enkel — hier ist es umgekehrt UND gesperrt: Weder sieht
       // enkel opas Gutschein, noch opa einen von enkel.
-      const r = await hole('/api/v1/vouchers', keksEnkel);
+      const r = await hole('/api/v1/vouchers', cookieGrandchild);
       const b = await r.json();
       assert.deepEqual(b.vouchers, [], 'die Liste eines anderen Kontos muss leer sein');
     });
 
     await t.test('ein fremdes Konto kann den Gutschein nicht lesen, aendern oder loeschen', async () => {
       for (const [methode, pfad, keks, wer] of [
-        ['POST', `/api/v1/vouchers/${opasGutschein}/pdf-freigabe`, keksEnkel, 'Haushalt'],
-        ['PUT', `/api/v1/vouchers/${opasGutschein}`, keksEnkel, 'Haushalt'],
-        ['DELETE', `/api/v1/vouchers/${opasGutschein}`, keksEnkel, 'Haushalt'],
-        ['POST', `/api/v1/vouchers/${opasGutschein}/pdf-freigabe`, keksChef, 'Administrator'],
-        ['PUT', `/api/v1/vouchers/${opasGutschein}`, keksChef, 'Administrator'],
-        ['DELETE', `/api/v1/vouchers/${opasGutschein}`, keksChef, 'Administrator'],
+        ['POST', `/api/v1/vouchers/${grandparentsVoucher}/pdf-freigabe`, cookieGrandchild, 'Haushalt'],
+        ['PUT', `/api/v1/vouchers/${grandparentsVoucher}`, cookieGrandchild, 'Haushalt'],
+        ['DELETE', `/api/v1/vouchers/${grandparentsVoucher}`, cookieGrandchild, 'Haushalt'],
+        ['POST', `/api/v1/vouchers/${grandparentsVoucher}/pdf-freigabe`, keksChef, 'Administrator'],
+        ['PUT', `/api/v1/vouchers/${grandparentsVoucher}`, keksChef, 'Administrator'],
+        ['DELETE', `/api/v1/vouchers/${grandparentsVoucher}`, keksChef, 'Administrator'],
       ]) {
         const r =
           methode === 'GET'
@@ -222,7 +222,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
         assert.equal(r.status, 404, `${wer} durfte ${methode} ${pfad} nicht`);
       }
       // Und die Zeile steht noch.
-      const n = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE id=$1', [opasGutschein])).n;
+      const n = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE id=$1', [grandparentsVoucher])).n;
       assert.equal(n, 1, 'der Gutschein muss die Versuche ueberlebt haben');
     });
 
@@ -233,10 +233,10 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
 
     // ── Der PDF-Weg ─────────────────────────────────────────────────────────
     await t.test('aus dem PDF: Werte werden gelesen und der Gutschein angelegt', async () => {
-      const pdf = await pdfMit(['Ihre LEGO-Geschenkkarte im Wert von 250 CHF:', '5045076374450019999', 'PIN: 4711']);
+      const pdf = await pdfWith(['Ihre LEGO-Geschenkkarte im Wert von 250 CHF:', '5045076374450019999', 'PIN: 4711']);
       const form = new FormData();
       form.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutschein.pdf');
-      const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
+      const r = await hole('/api/v1/vouchers/pdf', cookieGrandparent, { method: 'POST', body: form });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
       assert.equal(b.voucher.number, '…9999');
@@ -247,20 +247,23 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
 
       // Die Datei liegt unter data/vouchers/<uid>/ und NICHT unter uploads/.
       const zeile = await db.get('SELECT pdf_path FROM vouchers WHERE id=$1', [b.voucher.id]);
-      assert.equal(zeile.pdf_path, `${U.opa}/${b.voucher.id}.pdf`);
+      assert.equal(zeile.pdf_path, `${U.grandparent}/${b.voucher.id}.pdf`);
       const datei = path.join(VOUCHER_DIR, zeile.pdf_path);
       assert.ok(fs.existsSync(datei), `die PDF-Datei fehlt: ${datei}`);
     });
 
     await t.test('das PDF kommt wieder heraus — zum Anzeigen und zum Herunterladen', async () => {
-      const liste = await (await hole('/api/v1/vouchers', keksOpa)).json();
-      const mitPdf = liste.vouchers.find(v => v.hat_pdf);
-      assert.ok(mitPdf, 'Vorbedingung: ein Gutschein mit PDF');
+      const liste = await (await hole('/api/v1/vouchers', cookieGrandparent)).json();
+      const withPdf = liste.vouchers.find(v => v.hat_pdf);
+      assert.ok(withPdf, 'Vorbedingung: ein Gutschein mit PDF');
 
       const ticket = async () =>
-        (await (await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', { password: PASS })).json())
-          .ticket;
-      const anzeigen = await hole(`/api/v1/vouchers/${mitPdf.id}/pdf?ticket=${await ticket()}`, keksOpa);
+        (
+          await (
+            await jsonAn(`/api/v1/vouchers/${withPdf.id}/pdf-freigabe`, cookieGrandparent, 'POST', { password: PASS })
+          ).json()
+        ).ticket;
+      const anzeigen = await hole(`/api/v1/vouchers/${withPdf.id}/pdf?ticket=${await ticket()}`, cookieGrandparent);
       assert.equal(anzeigen.status, 200);
       assert.match(anzeigen.headers.get('content-type') || '', /application\/pdf/);
       assert.match(
@@ -276,11 +279,14 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       const bytes = Buffer.from(await anzeigen.arrayBuffer());
       assert.equal(bytes.subarray(0, 5).toString(), '%PDF-', 'es muss wirklich ein PDF zurueckkommen');
 
-      const laden = await hole(`/api/v1/vouchers/${mitPdf.id}/pdf?download=1&ticket=${await ticket()}`, keksOpa);
+      const laden = await hole(
+        `/api/v1/vouchers/${withPdf.id}/pdf?download=1&ticket=${await ticket()}`,
+        cookieGrandparent,
+      );
       assert.match(laden.headers.get('content-disposition') || '', /^attachment/);
       assert.equal(
         laden.headers.get('content-disposition'),
-        `attachment; filename="gutschein-${mitPdf.id}.pdf"`,
+        `attachment; filename="gutschein-${withPdf.id}.pdf"`,
         'der Dateiname trägt die id, nicht die Kartennummer',
       );
     });
@@ -288,66 +294,71 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     // Gegenproben (03.11.2026 gemessen, je einzeln): in GET /vouchers/:id/pdf die
     // Ticketprüfung entfernt → rot „ohne Ticket kein PDF“; in redeemTicket() das
     // Löschen weggelassen → rot „ein Ticket gilt einmal“; den Vergleich des Ziels
-    // gestrichen → rot „… nur für sein PDF“; bestaetigeMitFaktor() in der Freigabe
+    // gestrichen → rot „… nur für sein PDF“; confirmWithFactor() in der Freigabe
     // entfernt → rot „Freigabe nur mit Passwort“; protokolliere() entfernt → rot
     // „die Freigabe steht im Protokoll“; Frist auf -1 s → rot „… 60 Sekunden“.
     await t.test('das PDF nur mit einem Einmal-Ticket aus einer bestätigten Freigabe', async () => {
-      const liste = await (await hole('/api/v1/vouchers', keksOpa)).json();
-      const mitPdf = liste.vouchers.find(v => v.hat_pdf);
-      const pdf = ticket => hole(`/api/v1/vouchers/${mitPdf.id}/pdf${ticket ? `?ticket=${ticket}` : ''}`, keksOpa);
-      const ohneTicket = await pdf();
+      const liste = await (await hole('/api/v1/vouchers', cookieGrandparent)).json();
+      const withPdf = liste.vouchers.find(v => v.hat_pdf);
+      const pdf = ticket =>
+        hole(`/api/v1/vouchers/${withPdf.id}/pdf${ticket ? `?ticket=${ticket}` : ''}`, cookieGrandparent);
+      const withoutTicket = await pdf();
       assert.deepEqual(
-        [ohneTicket.status, (await ohneTicket.json()).code],
+        [withoutTicket.status, (await withoutTicket.json()).code],
         [403, 'pdf_freigabe_noetig'],
         'ohne Ticket kein PDF',
       );
-      const ohnePw = await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', {});
+      const withoutPw = await jsonAn(`/api/v1/vouchers/${withPdf.id}/pdf-freigabe`, cookieGrandparent, 'POST', {});
       assert.deepEqual(
-        [ohnePw.status, (await ohnePw.json()).code],
+        [withoutPw.status, (await withoutPw.json()).code],
         [400, 'aktuelles_passwort_falsch'],
         'Freigabe nur mit Passwort',
       );
       await db.run("DELETE FROM admin_log WHERE action IN ('gutschein_pdf', 'gutschein_export')");
       const f = await (
-        await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', { password: PASS })
+        await jsonAn(`/api/v1/vouchers/${withPdf.id}/pdf-freigabe`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       assert.deepEqual([f.success, typeof f.ticket, f.gueltig_sek], [true, 'string', 60]);
       assert.ok(f.ticket.length >= 32);
       assert.equal(
-        (await hole(`/api/v1/vouchers/${opasGutschein}/pdf?ticket=${f.ticket}`, keksOpa)).status,
+        (await hole(`/api/v1/vouchers/${grandparentsVoucher}/pdf?ticket=${f.ticket}`, cookieGrandparent)).status,
         403,
         'ein Ticket gilt nur für sein PDF',
       );
       const f2 = await (
-        await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', { password: PASS })
+        await jsonAn(`/api/v1/vouchers/${withPdf.id}/pdf-freigabe`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       assert.equal(
-        (await hole(`/api/v1/vouchers/${mitPdf.id}/pdf?ticket=${f2.ticket}`, keksEnkel)).status,
+        (await hole(`/api/v1/vouchers/${withPdf.id}/pdf?ticket=${f2.ticket}`, cookieGrandchild)).status,
         403,
         'ein Ticket gilt nur für sein Konto',
       );
       const f3 = await (
-        await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', { password: PASS })
+        await jsonAn(`/api/v1/vouchers/${withPdf.id}/pdf-freigabe`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       const erst = await pdf(f3.ticket);
       assert.equal(erst.status, 200);
       await erst.arrayBuffer();
       assert.equal((await pdf(f3.ticket)).status, 403, 'ein Ticket gilt einmal');
       const alt = await (
-        await jsonAn(`/api/v1/vouchers/${mitPdf.id}/pdf-freigabe`, keksOpa, 'POST', { password: PASS })
+        await jsonAn(`/api/v1/vouchers/${withPdf.id}/pdf-freigabe`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
-      const echteZeit = Date.now;
-      Date.now = () => echteZeit() + 61_000;
+      const realTime = Date.now;
+      Date.now = () => realTime() + 61_000;
       try {
         assert.equal((await pdf(alt.ticket)).status, 403, 'ein Ticket gilt 60 Sekunden');
       } finally {
-        Date.now = echteZeit;
+        Date.now = realTime;
       }
-      const ex = await jsonAn('/api/v1/vouchers/export/pdf-freigabe', keksOpa, 'POST', { password: PASS });
+      const ex = await jsonAn('/api/v1/vouchers/export/pdf-freigabe', cookieGrandparent, 'POST', { password: PASS });
       const exTicket = (await ex.json()).ticket;
-      assert.equal((await hole('/api/v1/vouchers/export/pdf', keksOpa)).status, 403, 'der Export ohne Ticket');
       assert.equal(
-        (await hole(`/api/v1/vouchers/${mitPdf.id}/pdf?ticket=${exTicket}`, keksOpa)).status,
+        (await hole('/api/v1/vouchers/export/pdf', cookieGrandparent)).status,
+        403,
+        'der Export ohne Ticket',
+      );
+      assert.equal(
+        (await hole(`/api/v1/vouchers/${withPdf.id}/pdf?ticket=${exTicket}`, cookieGrandparent)).status,
         403,
         'das Export-Ticket öffnet kein einzelnes PDF',
       );
@@ -364,10 +375,10 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
 
     await t.test('ein PDF ohne lesbare Werte gibt 422 und legt nichts an', async () => {
       const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers')).n;
-      const pdf = await pdfMit(['Rechnung Nr. 12', 'Vielen Dank.']);
+      const pdf = await pdfWith(['Rechnung Nr. 12', 'Vielen Dank.']);
       const form = new FormData();
       form.append('file', new Blob([pdf], { type: 'application/pdf' }), 'rechnung.pdf');
-      const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
+      const r = await hole('/api/v1/vouchers/pdf', cookieGrandparent, { method: 'POST', body: form });
       assert.equal(r.status, 422);
       const b = await r.json();
       assert.equal(b.gelesen.number, null, 'die Oberflaeche erfaehrt, dass nichts gelesen wurde');
@@ -381,13 +392,13 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       // einen Gutschein. Ohne das muesste der Nutzer bei einem unleserlichen
       // PDF auf das Hochladen verzichten — und haette den Gutschein nie
       // wieder zur Hand.
-      const pdf = await pdfMit(['Geschenkkarte', '5045076374450017777']);
+      const pdf = await pdfWith(['Geschenkkarte', '5045076374450017777']);
       const form = new FormData();
       form.append('file', new Blob([pdf], { type: 'application/pdf' }), 'g.pdf');
       form.append('amount', '125');
       form.append('currency', 'EUR');
       form.append('pin', '9090');
-      const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
+      const r = await hole('/api/v1/vouchers/pdf', cookieGrandparent, { method: 'POST', body: form });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
       assert.equal(b.gelesen.number, '5045076374450017777', 'die Nummer kam aus dem PDF');
@@ -398,7 +409,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     await t.test('etwas, das kein PDF ist, wird abgewiesen', async () => {
       const form = new FormData();
       form.append('file', new Blob([Buffer.from('kein PDF')], { type: 'text/plain' }), 'x.txt');
-      const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
+      const r = await hole('/api/v1/vouchers/pdf', cookieGrandparent, { method: 'POST', body: form });
       // Ganz lesen: Bis die Sitzung gespeichert ist, hält der Server das Ende der
       // Antwort und damit den Upload-Platz des Kontos; der nächste Fall bekäme 429.
       await r.arrayBuffer();
@@ -417,10 +428,13 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       form.append('number', '5045076374450018888');
       form.append('pin', '1212');
       form.append('amount', '20');
-      const r = await hole('/api/v1/vouchers/pdf', keksOpa, { method: 'POST', body: form });
+      const r = await hole('/api/v1/vouchers/pdf', cookieGrandparent, { method: 'POST', body: form });
       assert.equal(r.status, 422);
       assert.equal((await r.json()).code, 'pdf_unlesbar');
-      const nummer_suche = _req('src/vouchers/repository/vouchers.js').numberSearch(U.opa, '5045076374450018888');
+      const nummer_suche = _req('src/vouchers/repository/vouchers.js').numberSearch(
+        U.grandparent,
+        '5045076374450018888',
+      );
       assert.equal(
         (await db.get('SELECT count(*)::int AS n FROM vouchers WHERE number_search = $1', [nummer_suche])).n,
         0,
@@ -429,12 +443,12 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
 
     // ── Aendern ─────────────────────────────────────────────────────────────
     await t.test('aendern laesst stehen, was nicht mitkommt', async () => {
-      const r = await jsonAn(`/api/v1/vouchers/${opasGutschein}`, keksOpa, 'PUT', { amount: 350 });
+      const r = await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', { amount: 350 });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
       assert.equal(b.voucher.amount, 350, 'der neue Betrag');
       const k = await (
-        await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksOpa, 'POST', { password: PASS })
+        await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}/klartext`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       assert.deepEqual([k.number, k.pin], ['5045076374450011166', '5225'], 'Nummer und PIN dürfen nicht verschwinden');
     });
@@ -442,55 +456,61 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     // Gegenprobe (03.11.2026 gemessen): in PUT die Maske nicht erkannt → rot
     // „die Maske aus dem Formular ändert nichts“ (400 nummer_ungueltig).
     await t.test('die Maske aus dem Formular ändert nichts', async () => {
-      const r = await jsonAn(`/api/v1/vouchers/${opasGutschein}`, keksOpa, 'PUT', {
+      const r = await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', {
         number: '…1166',
         pin: '•••',
         amount: 360,
       });
       assert.equal(r.status, 200, await r.text());
       const k = await (
-        await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksOpa, 'POST', { password: PASS })
+        await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}/klartext`, cookieGrandparent, 'POST', { password: PASS })
       ).json();
       assert.deepEqual([k.number, k.pin], ['5045076374450011166', '5225']);
     });
 
-    // Gegenproben (03.11.2026 gemessen, je einzeln): fuerAussen() wieder mit
-    // z.number/z.pin → rot „die Liste zeigt nur das Ende“; bestaetigeMitFaktor()
+    // Gegenproben (03.11.2026 gemessen, je einzeln): forOuter() wieder mit
+    // z.number/z.pin → rot „die Liste zeigt nur das Ende“; confirmWithFactor()
     // in /klartext entfernt → rot „Klartext nur mit Passwort“; protokolliere()
     // entfernt → rot „… steht im Protokoll“.
     await t.test('die Liste zeigt nur das Ende, Klartext nur mit Passwort, und er steht im Protokoll', async () => {
-      const liste = (await (await hole('/api/v1/vouchers', keksOpa)).json()).vouchers;
-      const mitPin = liste.find(v => v.id === opasGutschein);
-      assert.deepEqual([mitPin.number, mitPin.pin], ['…1166', '•••'], 'die Liste zeigt nur das Ende');
+      const liste = (await (await hole('/api/v1/vouchers', cookieGrandparent)).json()).vouchers;
+      const withPin = liste.find(v => v.id === grandparentsVoucher);
+      assert.deepEqual([withPin.number, withPin.pin], ['…1166', '•••'], 'die Liste zeigt nur das Ende');
       assert.ok(
         !JSON.stringify(liste).includes('5045076374450011166') && !JSON.stringify(liste).includes('5225'),
         'Nummer oder PIN im Klartext in der Liste',
       );
-      const ohne = await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksOpa, 'POST', {});
+      const ohne = await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}/klartext`, cookieGrandparent, 'POST', {});
       assert.deepEqual(
         [ohne.status, (await ohne.json()).code],
         [400, 'aktuelles_passwort_falsch'],
         'Klartext nur mit Passwort',
       );
-      const fremd = await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksEnkel, 'POST', { password: PASS });
+      const fremd = await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}/klartext`, cookieGrandchild, 'POST', {
+        password: PASS,
+      });
       assert.equal(fremd.status, 404, 'ein fremdes Konto liest den Klartext');
       await db.run("DELETE FROM admin_log WHERE action = 'gutschein_klartext'");
-      const k = await jsonAn(`/api/v1/vouchers/${opasGutschein}/klartext`, keksOpa, 'POST', { password: PASS });
+      const k = await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}/klartext`, cookieGrandparent, 'POST', {
+        password: PASS,
+      });
       assert.deepEqual(await k.json(), {
         success: true,
-        id: opasGutschein,
+        id: grandparentsVoucher,
         number: '5045076374450011166',
         pin: '5225',
       });
       assert.deepEqual(
         await db.all("SELECT admin_id, target_id, details FROM admin_log WHERE action = 'gutschein_klartext'"),
-        [{ admin_id: U.opa, target_id: U.opa, details: '…1166' }],
+        [{ admin_id: U.grandparent, target_id: U.grandparent, details: '…1166' }],
         'der Abruf steht im Protokoll',
       );
     });
 
     await t.test('eine Karte auf die Nummer einer anderen umschreiben gibt 409', async () => {
-      const r = await jsonAn(`/api/v1/vouchers/${opasGutschein}`, keksOpa, 'PUT', { number: '5045076374450019999' });
+      const r = await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', {
+        number: '5045076374450019999',
+      });
       assert.equal(r.status, 409);
     });
 
@@ -502,7 +522,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       // Die Tabelle haelt den SHA-256-Hex des Tokens, nicht den Klartext — …
       const alsHash = t => crypto.createHash('sha256').update(t).digest('hex');
       await db.run(`INSERT INTO api_tokens (user_id, token, expires_at) VALUES ($1,$2, NOW() + INTERVAL '1 day')`, [
-        U.opa,
+        U.grandparent,
         alsHash('test-token-gutscheine'),
       ]);
       const r = await fetch(`${basis}/api/v1/vouchers`, {
@@ -524,25 +544,25 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     });
 
     // ── Loeschen ────────────────────────────────────────────────────────────
-    // Gegenprobe (03.11.2026 gemessen): bestaetigeMitFaktor() in DELETE
+    // Gegenprobe (03.11.2026 gemessen): confirmWithFactor() in DELETE
     // /vouchers/:id entfernt → rot „löschen ohne Passwort" (200 statt 400).
     await t.test('loeschen nimmt Zeile UND Datei mit', async () => {
-      const liste = await (await hole('/api/v1/vouchers', keksOpa)).json();
-      const mitPdf = liste.vouchers.find(v => v.hat_pdf);
-      const zeile = await db.get('SELECT pdf_path FROM vouchers WHERE id=$1', [mitPdf.id]);
+      const liste = await (await hole('/api/v1/vouchers', cookieGrandparent)).json();
+      const withPdf = liste.vouchers.find(v => v.hat_pdf);
+      const zeile = await db.get('SELECT pdf_path FROM vouchers WHERE id=$1', [withPdf.id]);
       const datei = path.join(VOUCHER_DIR, zeile.pdf_path);
       assert.ok(fs.existsSync(datei), 'Vorbedingung: die Datei liegt da');
 
-      const ohne = await hole(`/api/v1/vouchers/${mitPdf.id}`, keksOpa, { method: 'DELETE' });
+      const ohne = await hole(`/api/v1/vouchers/${withPdf.id}`, cookieGrandparent, { method: 'DELETE' });
       assert.deepEqual(
         [ohne.status, (await ohne.json()).code],
         [400, 'aktuelles_passwort_falsch'],
         'löschen ohne Passwort',
       );
       assert.ok(fs.existsSync(datei), 'ohne Passwort ist die Datei weg');
-      const r = await jsonAn(`/api/v1/vouchers/${mitPdf.id}`, keksOpa, 'DELETE', { password: PASS });
+      const r = await jsonAn(`/api/v1/vouchers/${withPdf.id}`, cookieGrandparent, 'DELETE', { password: PASS });
       assert.equal(r.status, 200);
-      assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE id=$1', [mitPdf.id])).n, 0);
+      assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE id=$1', [withPdf.id])).n, 0);
       assert.ok(!fs.existsSync(datei), 'die Datei muss mit der Zeile verschwinden');
     });
 
@@ -563,7 +583,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       // ON DELETE CASCADE. Ohne das blieben Nummer und PIN eines geloeschten
       // Kontos in der Datenbank stehen — Zahlen, die weiter einloesbar sind.
       await require('./helpers/sources')
-        .testBereich('vouchers')
+        .testArea('vouchers')
         .vouchers.createVoucher(U.enkel, { number: '5045076374450013333', pin: null, amount: 60, currency: null });
       assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE user_id=$1', [U.enkel])).n, 1);
       await db.run('DELETE FROM users WHERE id = $1', [U.enkel]);
@@ -584,8 +604,8 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
  * der Server tut, pruefen die Zusicherungen darueber gegen eine echte
  * Datenbank.
  */
-const testOberflaeche = require('node:test');
-testOberflaeche('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
+const testUi = require('node:test');
+testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
   const fsO = require('node:fs');
   // Die Pfade unten stehen AUSGESCHRIEBEN und nicht hinter einem Helfer mit
   // Variable: Ein `path.join(ROOT, rel)` nimmt test/eigenbruecken.test.js die
@@ -610,17 +630,17 @@ testOberflaeche('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
     // einen Kopieren Button einfügen (mit einem Icon)."
     const treffer = js.match(/data-click="gutscheinKopieren"/g) || [];
     assert.equal(treffer.length, 2, `erwartet 2 Kopieren-Knoepfe, gefunden ${treffer.length}`);
-    assert.match(js, /KOPIE_ICON_SVG/, 'der Knopf traegt kein Symbol');
+    assert.match(js, /COPY_ICON_SVG/, 'der Knopf traegt kein Symbol');
     // Kopiert wird die ROHE Nummer: Die Vierergruppen sind eine Lesehilfe,
     // ein Bezahlfeld nimmt sie nicht an.
-    const kopierRumpf = js.slice(js.indexOf('function gutscheinKopieren'));
+    const kopierBody = js.slice(js.indexOf('function gutscheinKopieren'));
     assert.match(
-      kopierRumpf.slice(0, 400),
+      kopierBody.slice(0, 400),
       /String\(k\.number\)/,
       'in gutscheinKopieren wird nicht die rohe Nummer genommen',
     );
     assert.ok(
-      !/\.replace\(\/\(\.\{4\}\)\//.test(kopierRumpf.slice(0, 400)),
+      !/\.replace\(\/\(\.\{4\}\)\//.test(kopierBody.slice(0, 400)),
       'die Kopierfunktion gruppiert die Nummer — ein Bezahlfeld nimmt das nicht an',
     );
   });

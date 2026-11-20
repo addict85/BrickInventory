@@ -7,13 +7,13 @@
  * Gegenproben (am 28.10. gemessen):
  *   A  in teile.js den alten Leerzustand der Set-Teile wieder unbedingt
  *      gezeichnet → rot: „Teile: manuelle da, aus Sets leer" und „beide leer"
- *   B  in figurenLeerAbgleichen() (minifigs.js) die Ausnahme für vorhandene
+ *   B  in reconcileMinifigsEmpty() (minifigs.js) die Ausnahme für vorhandene
  *      manuelle Figuren entfernt → rot: „Figuren: manuelle da, aus Sets leer"
- *   C  teilPasstZumFilter() immer wahr → rot: „Farbfilter … wirkt auf beide Listen"
+ *   C  partFitsToFilter() immer wahr → rot: „Farbfilter … wirkt auf beide Listen"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const ROT = {
   part_number: '3001',
@@ -25,7 +25,7 @@ const ROT = {
   conditions: ['U'],
   category_name: '11',
 };
-const BLAU = {
+const BLUE = {
   part_number: '3002',
   part_name: 'Brick 2 x 2',
   color_id: 1,
@@ -49,7 +49,7 @@ const text = el => (el?.textContent || '').replace(/\s+/g, ' ');
 const sichtbar = el => !!el && el.style.display !== 'none';
 
 async function teile(antworten) {
-  const o = await oeffneOberflaeche(antworten);
+  const o = await openUi(antworten);
   await reiter(o.w, 'parts');
   await warte(() => !o.d.querySelector('#parts-main .loading, #parts-main .lade'), 3000);
   await o.ruhig();
@@ -103,7 +103,7 @@ test('Teile: nur aus Sets — kein leerer Kasten für manuelle', async () => {
 });
 
 test('Farbfilter steht über den Listen und wirkt auf beide Listen', async () => {
-  const { w, d, aufrufe, ruhig } = await teile({ '/v1/parts/manual': { success: true, parts: [ROT, BLAU] } });
+  const { w, d, aufrufe, ruhig } = await teile({ '/v1/parts/manual': { success: true, parts: [ROT, BLUE] } });
   try {
     const wahl = d.getElementById('parts-color');
     assert.ok(sichtbar(wahl), 'Das Farbfeld ist verborgen, obwohl es zwei Farben gibt');
@@ -135,7 +135,7 @@ test('Farbfilter steht über den Listen und wirkt auf beide Listen', async () =>
 });
 
 async function figuren(antworten) {
-  const o = await oeffneOberflaeche(antworten);
+  const o = await openUi(antworten);
   await reiter(o.w, 'minifigs');
   await o.ruhig();
   return o;

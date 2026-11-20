@@ -2,17 +2,17 @@
  * Der Rückfall auf die Startseite bleibt als letzte Route in server.ts. */
 import express from 'express';
 import { sendStartPage, tokenToFragment } from '../src/profile/http/startPage';
-import { liefereBild } from '../src/bilder/http/bildAuslieferung';
-import { waechterFuer } from './api_v1/middleware';
+import { deliverImage } from '../src/bilder/http/bildAuslieferung';
+import { guardFor } from './api_v1/middleware';
 import type { Dienste } from '../src/dienste';
 
-export function baueSeitenRouter(d: Pick<Dienste, 'konto' | 'profile' | 'bilder'>) {
+export function buildPagesRouter(d: Pick<Dienste, 'konto' | 'profile' | 'bilder'>) {
   const router = express.Router();
-  const { requireLoginOrToken, eingangsSperre } = waechterFuer(d.konto);
+  const { requireLoginOrToken, inboundLock } = guardFor(d.konto);
 
   // Wie die übrigen Dateirouten: Wer erst das Passwort wechseln oder den
   // zweiten Faktor einrichten muss, bekommt auch keine Bilder.
-  router.get('/images/*pfad', requireLoginOrToken, eingangsSperre, (req, res) => liefereBild(d, req, res));
+  router.get('/images/*pfad', requireLoginOrToken, inboundLock, (req, res) => deliverImage(d, req, res));
 
   // Erst ein Knopf auf der Seite wirkt (POST), sonst bestätigte schon der
   // Link-Scanner des Mailanbieters eine fremde Adresse.

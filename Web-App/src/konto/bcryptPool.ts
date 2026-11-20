@@ -13,56 +13,54 @@ type Offen = { auftrag: Auftrag; ok: (v: unknown) => void; fehler: (e: Error) =>
 export interface Pool {
   hash(passwort: string, runden: number): Promise<string>;
   vergleiche(passwort: string, hash: string): Promise<boolean>;
-  stand(): { arbeiter: number; frei: number; wartend: number; hauptthread: boolean };
+  stand(): { worker: number; frei: number; wartend: number; hauptthread: boolean };
   beende(): Promise<void>;
 }
 
-/** leerlaufMs: Ein untätiger Arbeiter endet danach und gibt seinen Speicher frei. */
-export function neuerPool(
-  groesse: number,
-  datei = path.join(__dirname, 'bcryptArbeiter.js'),
-  leerlaufMs = 60_000,
-): Pool {
+const imHauptthread = (a: Auftrag) =>
+  a.art === 'hash' ? bcrypt.hash(a.passwort, Number(a.wert)) : bcrypt.compare(a.passwort, String(a.wert));
+const NO_WORKER = '[bcrypt] Worker-Thread startet nicht, Prüfungen laufen im Hauptthread:';
+
+/** idleMs: Ein untätiger Arbeiter endet danach und gibt seinen Speicher frei. */
+export function newPool(groesse: number, datei = path.join(__dirname, 'bcryptArbeiter.js'), idleMs = 60_000): Pool {
   let hauptthread = !fs.existsSync(datei);
   const frei: Worker[] = [],
     alle = new Set<Worker>(),
-    schlange: Offen[] = [];
-  const ruhe = new Map<Worker, NodeJS.Timeout>();
+    queue: Offen[] = [];
+  const rest = new Map<Worker, NodeJS.Timeout>();
   const laufend = new Map<Worker, { id: number; o: Offen }>();
-  let naechsteId = 0,
+  let nextId = 0,
     beendet = false;
 
-  const imHauptthread = (a: Auftrag) =>
-    a.art === 'hash' ? bcrypt.hash(a.passwort, Number(a.wert)) : bcrypt.compare(a.passwort, String(a.wert));
   const starte = (w: Worker, o: Offen) => {
-    const id = ++naechsteId;
+    const id = ++nextId;
     laufend.set(w, { id, o });
     w.ref();
     w.postMessage({ id, ...o.auftrag });
   };
   const naechster = (w: Worker) => {
     laufend.delete(w);
-    const o = schlange.shift();
+    const o = queue.shift();
     if (o) {
       starte(w, o);
       return;
     }
     w.unref();
     frei.push(w);
-    ruhe.set(
+    rest.set(
       w,
       setTimeout(() => {
-        ruhe.delete(w);
+        rest.delete(w);
         frei.splice(frei.indexOf(w), 1);
         void w.terminate();
-      }, leerlaufMs).unref(),
+      }, idleMs).unref(),
     );
   };
-  const nimmFrei = (): Worker | undefined => {
+  const takeFree = (): Worker | undefined => {
     const w = frei.pop();
     if (w) {
-      clearTimeout(ruhe.get(w));
-      ruhe.delete(w);
+      clearTimeout(rest.get(w));
+      rest.delete(w);
     }
     return w;
   };
@@ -84,8 +82,8 @@ export function neuerPool(
     });
     w.on('exit', () => {
       alle.delete(w);
-      clearTimeout(ruhe.get(w));
-      ruhe.delete(w);
+      clearTimeout(rest.get(w));
+      rest.delete(w);
       if (frei.includes(w)) frei.splice(frei.indexOf(w), 1);
       const l = laufend.get(w);
       laufend.delete(w);
@@ -93,16 +91,13 @@ export function neuerPool(
       // Startet ein Arbeiter gar nicht, startet auch der nächste nicht.
       if (!geantwortet) {
         hauptthread = true;
-        console.warn(
-          '[bcrypt] Worker-Thread startet nicht, Prüfungen laufen im Hauptthread:',
-          grund?.message ?? 'beendet',
-        );
+        console.warn(NO_WORKER, grund?.message ?? 'beendet');
       }
       if (l)
         void (
           hauptthread ? imHauptthread(l.o.auftrag) : Promise.reject(grund ?? new Error('bcrypt-Arbeiter beendet'))
         ).then(l.o.ok, l.o.fehler);
-      for (const o of schlange.splice(0)) void auftrag(o.auftrag).then(o.ok, o.fehler);
+      for (const o of queue.splice(0)) void auftrag(o.auftrag).then(o.ok, o.fehler);
     });
     return w;
   };
@@ -110,15 +105,15 @@ export function neuerPool(
     if (hauptthread) return imHauptthread(a);
     return new Promise((ok, fehler) => {
       const o = { auftrag: a, ok, fehler };
-      const w = nimmFrei() ?? (alle.size < groesse ? neu() : undefined);
+      const w = takeFree() ?? (alle.size < groesse ? neu() : undefined);
       if (w) starte(w, o);
-      else schlange.push(o);
+      else queue.push(o);
     });
   };
   return {
     hash: (passwort, runden) => auftrag({ art: 'hash', passwort, wert: runden }) as Promise<string>,
     vergleiche: (passwort, hash) => auftrag({ art: 'vergleich', passwort, wert: hash }) as Promise<boolean>,
-    stand: () => ({ arbeiter: alle.size, frei: frei.length, wartend: schlange.length, hauptthread }),
+    stand: () => ({ worker: alle.size, frei: frei.length, wartend: queue.length, hauptthread }),
     beende: async () => {
       beendet = true;
       await Promise.all([...alle].map(w => w.terminate()));

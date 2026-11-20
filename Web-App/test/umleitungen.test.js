@@ -10,13 +10,13 @@ const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { naechsteUmleitung, hostErlaubt, UMLEITUNGS_GRENZE, ERLAUBTE_BILD_HOSTS, ERLAUBTE_DOWNLOAD_HOSTS } =
+const { nextRedirect, hostAllowed, REDIRECT_LIMIT, ALLOWED_IMAGE_HOSTS, ALLOWED_DOWNLOAD_HOSTS } =
   _req('src/infra/fremdeAdressen.js');
 
-const KOPF = { Authorization: 'key GEHEIM', 'User-Agent': 'test' };
+const HEADER = { Authorization: 'key GEHEIM', 'User-Agent': 'test' };
 
 test('eine Umleitung nimmt den Schluessel nicht mit auf einen fremden Host', () => {
-  const w = naechsteUmleitung('https://rebrickable.com/a', 'https://angreifer.tld/b', KOPF);
+  const w = nextRedirect('https://rebrickable.com/a', 'https://angreifer.tld/b', HEADER);
   assert.ok(w, 'Der Sprung selbst ist erlaubt — nur eben ohne Geheimnis');
   assert.equal(w.url, 'https://angreifer.tld/b');
   assert.equal(w.kopfzeilen.Authorization, undefined, 'Der API-Schluessel darf einen Hostwechsel nicht ueberleben');
@@ -31,24 +31,20 @@ test('auf demselben Host bleibt der Schluessel', () => {
   // Sonst waere die Regel unbrauchbar: rebrickable.com leitet innerhalb der
   // eigenen Adressen um (Schraegstrich am Ende), und ohne Schluessel kaeme
   // dort ein 401 zurueck.
-  const w = naechsteUmleitung('https://rebrickable.com/a', 'https://rebrickable.com/a/', KOPF);
+  const w = nextRedirect('https://rebrickable.com/a', 'https://rebrickable.com/a/', HEADER);
   assert.equal(w.kopfzeilen.Authorization, 'key GEHEIM');
 });
 
 test('ein Downgrade auf http wird nicht befolgt', () => {
   assert.equal(
-    naechsteUmleitung('https://rebrickable.com/a', 'http://rebrickable.com/a', KOPF),
+    nextRedirect('https://rebrickable.com/a', 'http://rebrickable.com/a', HEADER),
     null,
     'Sonst geht derselbe Schluessel im Klartext hinaus',
   );
   // Positiv auf https geprueft, nicht negativ auf http: Eine Verbotsliste
   // vergisst irgendwann ein Schema.
   for (const boese of ['file:///etc/passwd', 'ftp://x.tld/a', 'data:text/plain,x'])
-    assert.equal(
-      naechsteUmleitung('https://rebrickable.com/a', boese, KOPF),
-      null,
-      `${boese} darf nicht befolgt werden`,
-    );
+    assert.equal(nextRedirect('https://rebrickable.com/a', boese, HEADER), null, `${boese} darf nicht befolgt werden`);
 });
 
 test('ein relatives Umleitungsziel wird aufgeloest', () => {
@@ -56,31 +52,26 @@ test('ein relatives Umleitungsziel wird aufgeloest', () => {
   // in `new URL(location)` und damit in ein "Invalid URL" — richtig
   // abgewiesen, aber aus dem falschen Grund: eine gueltige Umleitung kam nicht
   // an.
-  const w = naechsteUmleitung('https://rebrickable.com/sets/123/', '/sets/123-1/', KOPF);
+  const w = nextRedirect('https://rebrickable.com/sets/123/', '/sets/123-1/', HEADER);
   assert.equal(w.url, 'https://rebrickable.com/sets/123-1/');
   assert.equal(w.kopfzeilen.Authorization, 'key GEHEIM', 'Derselbe Host — der Schluessel bleibt');
 });
 
 test('ohne Location-Kopfzeile gibt es kein Ziel', () => {
-  assert.equal(naechsteUmleitung('https://rebrickable.com/a', undefined, KOPF), null);
-  assert.equal(naechsteUmleitung('https://rebrickable.com/a', '', KOPF), null);
+  assert.equal(nextRedirect('https://rebrickable.com/a', undefined, HEADER), null);
+  assert.equal(nextRedirect('https://rebrickable.com/a', '', HEADER), null);
 });
 
 test('mit Host-Liste zaehlt auch das Umleitungsziel', () => {
   // Der Dateidownload prueft den Host bei JEDEM Sprung, weil er das Geholte
   // ausliefert (data/instructions/ ist fuer angemeldete Nutzer abrufbar).
   assert.equal(
-    naechsteUmleitung(
-      'https://cdn.rebrickable.com/a.pdf',
-      'https://angreifer.tld/a.pdf',
-      KOPF,
-      ERLAUBTE_DOWNLOAD_HOSTS,
-    ),
+    nextRedirect('https://cdn.rebrickable.com/a.pdf', 'https://angreifer.tld/a.pdf', HEADER, ALLOWED_DOWNLOAD_HOSTS),
     null,
     'Sonst holt der Server eine beliebige Adresse und gibt sie zurueck',
   );
   assert.ok(
-    naechsteUmleitung('https://cdn.rebrickable.com/a.pdf', 'https://www.lego.com/a.pdf', KOPF, ERLAUBTE_DOWNLOAD_HOSTS),
+    nextRedirect('https://cdn.rebrickable.com/a.pdf', 'https://www.lego.com/a.pdf', HEADER, ALLOWED_DOWNLOAD_HOSTS),
     'Anleitungen liegen bei lego.com — die muessen weiter ankommen',
   );
 });
@@ -88,17 +79,17 @@ test('mit Host-Liste zaehlt auch das Umleitungsziel', () => {
 test('die Host-Pruefung faellt nicht auf einen angehaengten Namen herein', () => {
   // Dieselbe Falle wie beim Bearer-Token der App und bei der Update-Adresse:
   // ein blosses endsWith() ohne den Punkt davor.
-  assert.ok(hostErlaubt('https://cdn.rebrickable.com/x', ERLAUBTE_BILD_HOSTS));
-  assert.ok(hostErlaubt('https://rebrickable.com/x', ERLAUBTE_BILD_HOSTS));
+  assert.ok(hostAllowed('https://cdn.rebrickable.com/x', ALLOWED_IMAGE_HOSTS));
+  assert.ok(hostAllowed('https://rebrickable.com/x', ALLOWED_IMAGE_HOSTS));
   for (const boese of [
     'https://evil-rebrickable.com/x',
     'https://rebrickable.com.angreifer.tld/x',
     'https://xlego.com/x',
     'https://lego.com.angreifer.tld/x',
   ])
-    assert.ok(!hostErlaubt(boese, ERLAUBTE_DOWNLOAD_HOSTS), `${boese} darf nicht durchgehen`);
+    assert.ok(!hostAllowed(boese, ALLOWED_DOWNLOAD_HOSTS), `${boese} darf nicht durchgehen`);
   // Unparsebar heisst NICHT holen — und nicht: werfen.
-  assert.equal(hostErlaubt('kein-url', ERLAUBTE_BILD_HOSTS), false);
+  assert.equal(hostAllowed('kein-url', ALLOWED_IMAGE_HOSTS), false);
 });
 
 /**
@@ -116,13 +107,13 @@ test('Hostprüfung: nur Standardport, keine Userinfo, Eimer exakt', () => {
     'https://www.lego.com/cdn/a.pdf',
     'https://assets.lego.com/a.pdf',
   ])
-    assert.ok(hostErlaubt(gut, ERLAUBTE_DOWNLOAD_HOSTS), `${gut} muss erlaubt sein`);
+    assert.ok(hostAllowed(gut, ALLOWED_DOWNLOAD_HOSTS), `${gut} muss erlaubt sein`);
   for (const boese of ['https://cdn.rebrickable.com:22/', 'https://cdn.rebrickable.com:8443/x'])
-    assert.ok(!hostErlaubt(boese, ERLAUBTE_BILD_HOSTS), `${boese}: fremder Port`);
+    assert.ok(!hostAllowed(boese, ALLOWED_IMAGE_HOSTS), `${boese}: fremder Port`);
   for (const boese of ['https://evil.com@cdn.rebrickable.com/', 'https://a:b@cdn.rebrickable.com/'])
-    assert.ok(!hostErlaubt(boese, ERLAUBTE_BILD_HOSTS), `${boese}: Userinfo`);
+    assert.ok(!hostAllowed(boese, ALLOWED_IMAGE_HOSTS), `${boese}: Userinfo`);
   for (const boese of ['https://x.bdpinstructions.s3.amazonaws.com/a.pdf', 'https://x.cdn.rebrickable.com/a.png'])
-    assert.ok(!hostErlaubt(boese, ERLAUBTE_DOWNLOAD_HOSTS), `${boese}: Unterdomäne`);
+    assert.ok(!hostAllowed(boese, ALLOWED_DOWNLOAD_HOSTS), `${boese}: Unterdomäne`);
 });
 
 /**
@@ -130,7 +121,7 @@ test('Hostprüfung: nur Standardport, keine Userinfo, Eimer exakt', () => {
  */
 test('der BDP-Eimer darf geholt werden — aber nur er', () => {
   assert.ok(
-    hostErlaubt('https://bdpinstructions.s3.amazonaws.com/11010.pdf', ERLAUBTE_DOWNLOAD_HOSTS),
+    hostAllowed('https://bdpinstructions.s3.amazonaws.com/11010.pdf', ALLOWED_DOWNLOAD_HOSTS),
     'Der Rueckfall in src/katalog/instructions.ts baut genau diese Adresse — sie hier ' +
       'abzulehnen heisst, ihn bauen zu lassen und ins Leere laufen zu lassen',
   );
@@ -143,14 +134,14 @@ test('der BDP-Eimer darf geholt werden — aber nur er', () => {
     'https://bdpinstructions.s3.amazonaws.com.angreifer.tld/x.pdf',
   ]) {
     assert.ok(
-      !hostErlaubt(fremd, ERLAUBTE_DOWNLOAD_HOSTS),
+      !hostAllowed(fremd, ALLOWED_DOWNLOAD_HOSTS),
       `${fremd} darf nicht durchgehen — sonst ist jeder fremde Eimer erlaubt`,
     );
   }
 
   // Und die Bildliste bleibt unberuehrt: Von dort kommen PDFs, keine Bilder.
   assert.ok(
-    !hostErlaubt('https://bdpinstructions.s3.amazonaws.com/11010.pdf', ERLAUBTE_BILD_HOSTS),
+    !hostAllowed('https://bdpinstructions.s3.amazonaws.com/11010.pdf', ALLOWED_IMAGE_HOSTS),
     'Der PDF-Eimer hat in der BILDliste nichts zu suchen — der Bild-Proxy ' +
       'liefert an den Browser aus, und das ist eine andere Frage',
   );
@@ -176,12 +167,12 @@ test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
   assert.deepEqual(fremd, [], 'eigener Abrufweg an Hostliste, Umleitungs- und Grössengrenze vorbei');
   assert.match(
     ohneKommentare(read('src/infra/abruf.ts')),
-    /naechsteUmleitung\(u, r\.headers\?\.location, kopf, o\.hosts\)/,
+    /nextRedirect\(u, r\.headers\?\.location, kopf, o\.hosts\)/,
     'der Helfer prüft die Umleitungsziele nicht gegen die Hostliste',
   );
   assert.match(
     ohneKommentare(read('clients/rebrickable.ts')),
-    /hosts: ERLAUBTE_DOWNLOAD_HOSTS/,
+    /hosts: ALLOWED_DOWNLOAD_HOSTS/,
     'downloadFile prueft die Umleitungsziele nicht mehr — die Datei wird ausgeliefert',
   );
 
@@ -198,13 +189,13 @@ test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
   // beides zusammen, nicht eines statt des anderen.
   assert.match(
     proxy,
-    /hostErlaubt\(url, ERLAUBTE_BILD_HOSTS\)/,
+    /hostAllowed\(url, ALLOWED_IMAGE_HOSTS\)/,
     'Der Bild-Proxy prueft nicht mehr ueber die gemeinsame Regel',
   );
   // Die Bild-Diagnose steht seit 05.11.2026 im Verwaltungsdienst.
   assert.match(
     ohneKommentare(read('src/management/diagnostics.ts')),
-    /hostErlaubt\(url, ERLAUBTE_BILD_HOSTS\)/,
+    /hostAllowed\(url, ALLOWED_IMAGE_HOSTS\)/,
     'Die Bild-Diagnose prueft nicht mehr ueber die gemeinsame Regel',
   );
 });
@@ -212,5 +203,5 @@ test('Abrufe nach draussen gehen nur über src/infra/abruf.ts', () => {
 test('die Grenze ist die, die downloadFile schon hatte', () => {
   // Selbstbeweis: Die Zahl kommt aus dem Baum, nicht aus dem Kopf. Stand
   // vorher als `redirects > 5` in downloadFile.
-  assert.equal(UMLEITUNGS_GRENZE, 5);
+  assert.equal(REDIRECT_LIMIT, 5);
 });

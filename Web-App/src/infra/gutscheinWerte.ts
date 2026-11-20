@@ -8,7 +8,7 @@ export function gutscheinNummer(v: unknown): string {
   return n;
 }
 
-export function gutscheinPin(v: unknown): string | null {
+export function voucherPin(v: unknown): string | null {
   if (v === null || v === undefined) return null;
   const p = typeof v === 'string' ? v.trim() : '-';
   if (!p) return null;
@@ -17,7 +17,7 @@ export function gutscheinPin(v: unknown): string | null {
 }
 
 /** Ohne Angabe null: Dann setzt die Datenbank die Währung des Kontos (Migration 0073). */
-export function gutscheinWaehrung(v: unknown): string | null {
+export function voucherCurrency(v: unknown): string | null {
   if (v === null || v === undefined || v === '') return null;
   const w = typeof v === 'string' ? v.toUpperCase() : '';
   if (!/^[A-Z]{3}$/.test(w)) fachfehler('ungueltig', 'waehrung_ungueltig');
@@ -25,19 +25,19 @@ export function gutscheinWaehrung(v: unknown): string | null {
 }
 
 /** Nach aussen nur das Ende: Ein erbeutetes App-Token soll nicht alle Codes samt PIN abgreifen. */
-export const PIN_MASKE = '•••';
-export const nummerMaske = (nummer: string) => `…${nummer.slice(-4)}`;
+export const PIN_MASK = '•••';
+export const numberMask = (nummer: string) => `…${nummer.slice(-4)}`;
 
-export function gutscheinNummerOderMaske(v: unknown): string {
+export function voucherNumberOrMask(v: unknown): string {
   return typeof v === 'string' && /^…\d{4}$/.test(v) ? v : gutscheinNummer(v);
 }
 
 /** Beim Ändern heisst null „bleibt“ und leer „entfernen“: Die Leere bleibt darum stehen. */
-export function gutscheinPinOderMaske(v: unknown): string | null {
-  if (v === PIN_MASKE || (typeof v === 'string' && !v.trim())) return v === PIN_MASKE ? v : '';
-  return gutscheinPin(v);
+export function voucherPinOrMask(v: unknown): string | null {
+  if (v === PIN_MASK || (typeof v === 'string' && !v.trim())) return v === PIN_MASK ? v : '';
+  return voucherPin(v);
 }
 
-export function gutscheinWaehrungAenderung(v: unknown): string | null {
-  return v === '' ? '' : gutscheinWaehrung(v);
+export function voucherCurrencyChange(v: unknown): string | null {
+  return v === '' ? '' : voucherCurrency(v);
 }

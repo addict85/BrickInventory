@@ -8,13 +8,13 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 /** Stellen, an denen die Wiederholung Absicht ist. Jede mit Grund. */
-const ERLAUBT = new Map([
+const ALLOWED = new Map([
   ['test/rate-limit.test.js:l.tryConsume()', 'Der Aufruf ZÄHLT hoch — dreimal hintereinander ist genau der Punkt'],
 ]);
 
 /** Leerraum entfernen, aber nicht in Zeichenketten oder Regex-Literalen. */
 /** @param {string} t */
-function knapp(t) {
+function tight(t) {
   let out = '',
     grenze = null;
   for (let i = 0; i < t.length; i++) {
@@ -72,8 +72,8 @@ function rechts(s, i) {
   return s.slice(i, j);
 }
 
-/** @param {string} wurzel @param {string[]} endungen @param {string[]} aus */
-function dateien(wurzel, endungen, aus) {
+/** @param {string} wurzel @param {string[]} extensions @param {string[]} aus */
+function dateien(wurzel, extensions, aus) {
   /** @type {string[]} */
   const out = [];
   /** @param {string} d */
@@ -88,7 +88,7 @@ function dateien(wurzel, endungen, aus) {
       const p = path.join(d, x.name);
       if (aus.some(a => p.includes(a))) continue;
       if (x.isDirectory()) lauf(p);
-      else if (endungen.some(s => x.name.endsWith(s))) out.push(p);
+      else if (extensions.some(s => x.name.endsWith(s))) out.push(p);
     }
   };
   lauf(wurzel);
@@ -118,11 +118,11 @@ for (const p of quellen) {
     // A) derselbe Operand beidseits von || bzw. &&
     for (const m of z.matchAll(/\|\||&&/g)) {
       geprueft++;
-      const l = knapp(links(z, m.index));
-      const r = knapp(rechts(z, m.index + 2));
+      const l = tight(links(z, m.index));
+      const r = tight(rechts(z, m.index + 2));
       if (l.length >= 8 && l === r) {
         const kurz = `${path.relative(ROOT, p)}:${l}`;
-        if (!ERLAUBT.has(kurz)) fehler.push(`${rel}:${i + 1}  ${l} ${m[0]} ${l}`);
+        if (!ALLOWED.has(kurz)) fehler.push(`${rel}:${i + 1}  ${l} ${m[0]} ${l}`);
         break;
       }
     }
@@ -153,5 +153,5 @@ if (fehler.length) {
 }
 console.log(
   `✅ Doppelte Operanden: ${quellen.length} Dateien, ${geprueft} Stellen geprüft, ` +
-    `${ERLAUBT.size} begründete Ausnahme(n).`,
+    `${ALLOWED.size} begründete Ausnahme(n).`,
 );

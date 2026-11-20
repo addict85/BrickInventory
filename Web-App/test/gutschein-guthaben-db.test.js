@@ -7,10 +7,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testQuellen, testKontext } = require('./helpers/sources');
+const { buildAndRequire, testData, testSources, testContext } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
 const S = _req('src/vouchers/balanceThrottle.js');
 
@@ -18,35 +18,35 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-let HAUPT = 0,
+let MAIN = 0,
   FREMD = 0;
-let MIT_PIN = 0,
-  OHNE_PIN = 0,
-  FREMDER = 0;
+let WITH_PIN = 0,
+  WITHOUT_PIN = 0,
+  FOREIGN = 0;
 
-const NUMMER = '5045076374450011166';
+const NUMBER = '5045076374450011166';
 const PIN = '5225';
 
 // ── Der Ersatz für fetch ───────────────────────────────────────────────────
 const protokoll = [];
 /** Was die nächste Guthaben-Abfrage antworten soll. */
-let naechsteAntwort = null;
+let nextResponse = null;
 
-function antwort({ status = 200, json = {}, text = '', kekse = [] } = {}) {
+function antwort({ status = 200, json = {}, text = '', cookies = [] } = {}) {
   return {
     ok: status >= 200 && status < 300,
     status,
     text: async () => text || JSON.stringify(json),
     json: async () => json,
-    headers: { getSetCookie: () => kekse },
+    headers: { getSetCookie: () => cookies },
   };
 }
 
-function jwt(sekunden) {
+function jwt(seconds) {
   const kopf = Buffer.from('{"alg":"none"}').toString('base64url');
   const nutz = Buffer.from(
     JSON.stringify({
-      exp: Math.floor(Date.now() / 1000) + sekunden,
+      exp: Math.floor(Date.now() / 1000) + seconds,
     }),
   ).toString('base64url');
   return `${kopf}.${nutz}.x`;
@@ -69,20 +69,20 @@ function guthaben(cent, waehrung = 'CHF', text = null) {
 }
 
 // Der Abruf an LEGO, gestellt an der Verdrahtung: Die Route reicht keinen durch.
-testQuellen(null, {
-  legoAbruf: async url => {
+testSources(null, {
+  legoFetch: async url => {
     const s = String(url);
     protokoll.push(s);
     if (s.includes('/gift-cards/balance')) return antwort({ text: '<html></html>' });
-    if (s.includes('/Login')) return antwort({ kekse: [`gqauth=${jwt(3600)}; Path=/`] });
-    return naechsteAntwort ?? guthaben(25000);
+    if (s.includes('/Login')) return antwort({ cookies: [`gqauth=${jwt(3600)}; Path=/`] });
+    return nextResponse ?? guthaben(25000);
   },
 });
 
 /** Die Zahl der Abfragen an den Guthaben-Endpunkt (nicht Seite/Login). */
 const abfragen = () => protokoll.filter(u => u.includes('giftCardBalanceQuery')).length;
 
-async function aufbau() {
+async function setup() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -93,20 +93,21 @@ async function aufbau() {
     c.release();
   }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('fremd','x')`);
-  HAUPT = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
+  MAIN = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   FREMD = (await db.get(`SELECT id FROM users WHERE username='fremd'`)).id;
 
-  const { createVoucher } = require('./helpers/sources').testBereich('vouchers').vouchers;
-  MIT_PIN = (await createVoucher(HAUPT, { number: NUMMER, pin: PIN, amount: 100, currency: 'CHF' })).id;
-  OHNE_PIN = (await createVoucher(HAUPT, { number: '5045076374450022277', pin: null, amount: 50, currency: 'CHF' })).id;
-  FREMDER = (await createVoucher(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' }))
+  const { createVoucher } = require('./helpers/sources').testArea('vouchers').vouchers;
+  WITH_PIN = (await createVoucher(MAIN, { number: NUMBER, pin: PIN, amount: 100, currency: 'CHF' })).id;
+  WITHOUT_PIN = (await createVoucher(MAIN, { number: '5045076374450022277', pin: null, amount: 50, currency: 'CHF' }))
+    .id;
+  FOREIGN = (await createVoucher(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' }))
     .id;
 }
 
 /** Die Schranke zurücksetzen — sonst steht jeder Fall im Schatten des vorigen. */
-async function schrankeFrei() {
+async function limitFree() {
   await S.forgetThrottle();
-  testKontext('vouchers')
+  testContext('vouchers')
     .faecher.fach('voucherBalanceSessions', () => new Map())
     .clear();
 }
@@ -119,11 +120,11 @@ async function schrankeFrei() {
  * Uhr der Schranke steht in der Datenbank, also wird dort gealtert; geprüft
  * wird damit genau die Rechnung, die im Betrieb gilt.
  */
-async function letzterAbrufVor(sekunden) {
+async function lastFetchBefore(seconds) {
   await db.run(
     `UPDATE voucher_balance_throttle
         SET last_checked_at = NOW() - make_interval(secs => $1) WHERE id = 1`,
-    [sekunden],
+    [seconds],
   );
 }
 
@@ -134,17 +135,17 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     keineDb(t, e);
     return;
   }
-  await aufbau();
+  await setup();
 
-  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
   const fremdSrv = testServer(_req, { sitzung: { userId: FREMD }, t });
 
   const abfrage = (basis, id) => fetch(`${basis}/api/v1/vouchers/${id}/guthaben`, { method: 'POST' });
 
   await t.test('1. der abgefragte Betrag landet im Feld Betrag', async () => {
-    await schrankeFrei();
-    naechsteAntwort = guthaben(25000, 'CHF', 'CHF 250.00');
-    const r = await abfrage(srv.base, MIT_PIN);
+    await limitFree();
+    nextResponse = guthaben(25000, 'CHF', 'CHF 250.00');
+    const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 200, `Antwort ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(
@@ -162,7 +163,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     assert.equal(d.waehrung_geaendert, false);
 
     const z = await db.get('SELECT amount, currency, balance_checked_at, updated_at FROM vouchers WHERE id=$1', [
-      MIT_PIN,
+      WITH_PIN,
     ]);
     assert.equal(Number(z.amount), 250, 'In der Tabelle steht der neue Betrag');
     assert.equal(z.currency, 'CHF');
@@ -179,14 +180,11 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
 
   await t.test('2. die zweite Abfrage prallt an der Schranke ab — ohne einen Aufruf', async () => {
     const vorher = abfragen();
-    const r = await abfrage(srv.base, MIT_PIN);
+    const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 429, `Antwort ${r.status} statt 429: ${JSON.stringify(d)}`);
     assert.equal(d.grund, 'abstand');
-    assert.ok(
-      d.wartenSek > 0 && d.wartenSek <= S.ABSTAND_SEK,
-      `wartenSek = ${d.wartenSek} — erwartet 1…${S.ABSTAND_SEK}`,
-    );
+    assert.ok(d.wartenSek > 0 && d.wartenSek <= S.GAP_SEC, `wartenSek = ${d.wartenSek} — erwartet 1…${S.GAP_SEC}`);
     assert.ok(/30/.test(d.error), `Der Satz nennt die Grenze nicht: ${d.error}`);
     assert.equal(
       abfragen(),
@@ -200,7 +198,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     // Marcos Nachtrag: „(über alle Benutzer)". Ein Zähler je Konto oder je
     // Arbeitsprozess wäre hier grün und in Wahrheit N-mal so hoch.
     const vorher = abfragen();
-    const r = await abfrage(fremdSrv.base, FREMDER);
+    const r = await abfrage(fremdSrv.base, FOREIGN);
     const d = await r.json();
     assert.equal(
       r.status,
@@ -213,29 +211,29 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
   });
 
   await t.test('4. nach 31 Sekunden ist der Platz wieder frei', async () => {
-    await letzterAbrufVor(31);
-    naechsteAntwort = guthaben(12345);
-    const r = await abfrage(srv.base, MIT_PIN);
+    await lastFetchBefore(31);
+    nextResponse = guthaben(12345);
+    const r = await abfrage(srv.base, WITH_PIN);
     assert.equal(r.status, 200, `Antwort ${r.status} — der Platz müsste frei sein`);
     assert.equal(
-      Number((await db.get('SELECT amount FROM vouchers WHERE id=$1', [MIT_PIN])).amount),
+      Number((await db.get('SELECT amount FROM vouchers WHERE id=$1', [WITH_PIN])).amount),
       123.45,
       'Und der neue Betrag steht in der Tabelle',
     );
   });
 
   await t.test('5. ohne PIN wird gar nicht gefragt — und der Platz bleibt frei', async () => {
-    await schrankeFrei();
+    await limitFree();
     const vorher = abfragen();
-    const r = await abfrage(srv.base, OHNE_PIN);
+    const r = await abfrage(srv.base, WITHOUT_PIN);
     const d = await r.json();
     assert.equal(r.status, 400, `Antwort ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'guthaben_pin_fehlt');
     assert.equal(abfragen(), vorher, 'Ohne PIN hat LEGO nichts zu antworten');
     // Und jetzt der eigentliche Punkt: Die Absage darf den einen Platz je
     // 30 Sekunden NICHT verbraucht haben.
-    naechsteAntwort = guthaben(777);
-    const r2 = await abfrage(srv.base, MIT_PIN);
+    nextResponse = guthaben(777);
+    const r2 = await abfrage(srv.base, WITH_PIN);
     assert.equal(
       r2.status,
       200,
@@ -245,9 +243,9 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
   });
 
   await t.test('6. ein fremder Gutschein ist nicht erreichbar', async () => {
-    await schrankeFrei();
+    await limitFree();
     const vorher = abfragen();
-    const r = await abfrage(srv.base, FREMDER);
+    const r = await abfrage(srv.base, FOREIGN);
     assert.equal(
       r.status,
       404,
@@ -258,13 +256,13 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
   });
 
   await t.test('7. ein unbekanntes Ausgabeland hält die Abfrage auf', async () => {
-    await schrankeFrei();
+    await limitFree();
     await db.run(
       `INSERT INTO global_settings (key,value) VALUES ('gutschein_land','de-XX')
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     );
     const vorher = abfragen();
-    const r = await abfrage(srv.base, MIT_PIN);
+    const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 400, `Antwort ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'guthaben_land_ungueltig');
@@ -278,14 +276,14 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
   });
 
   await t.test('8. das eingestellte Land geht wirklich mit', async () => {
-    await schrankeFrei();
+    await limitFree();
     await db.run(
       `INSERT INTO global_settings (key,value) VALUES ('gutschein_land','de-DE')
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
     );
     protokoll.length = 0;
-    naechsteAntwort = guthaben(5000, 'EUR');
-    const r = await abfrage(srv.base, MIT_PIN);
+    nextResponse = guthaben(5000, 'EUR');
+    const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 200, `Antwort ${r.status}: ${JSON.stringify(d)}`);
     assert.ok(
@@ -301,13 +299,13 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
       'Eine geänderte Währung ist eine geänderte Summe — sie muss gemeldet werden.',
     );
     await db.run(`DELETE FROM global_settings WHERE key='gutschein_land'`);
-    await db.run(`UPDATE vouchers SET currency='CHF' WHERE id=$1`, [MIT_PIN]);
+    await db.run(`UPDATE vouchers SET currency='CHF' WHERE id=$1`, [WITH_PIN]);
   });
 
   await t.test('9. Bot-Schutz: die Abfrage ruht danach — auch für andere Konten', async () => {
-    await schrankeFrei();
-    naechsteAntwort = antwort({ status: 403, text: 'Attention Required! Cloudflare' });
-    const r = await abfrage(srv.base, MIT_PIN);
+    await limitFree();
+    nextResponse = antwort({ status: 403, text: 'Attention Required! Cloudflare' });
+    const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 429, `Antwort ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.grund, 'botschutz');
@@ -316,26 +314,26 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
 
     // Der Platz ist auch nach 31 Sekunden noch zu: Die SPERRE gilt, nicht der
     // Abstand. Genau das ist Marcos „dass nicht mehr Aufrufe generiert werden".
-    await letzterAbrufVor(31);
+    await lastFetchBefore(31);
     const vorher = abfragen();
-    naechsteAntwort = guthaben(25000);
-    const r2 = await abfrage(srv.base, MIT_PIN);
+    nextResponse = guthaben(25000);
+    const r2 = await abfrage(srv.base, WITH_PIN);
     const d2 = await r2.json();
     assert.equal(r2.status, 429, `Antwort ${r2.status}: ${JSON.stringify(d2)}`);
     assert.equal(d2.grund, 'botschutz', 'Nach einem Bot-Schutz-Treffer gilt die Pause');
     assert.equal(abfragen(), vorher, 'Und es geht dabei nichts hinaus');
 
     // Dasselbe für das fremde Konto — die Sperre ist installationsweit.
-    const r3 = await abfrage(fremdSrv.base, FREMDER);
+    const r3 = await abfrage(fremdSrv.base, FOREIGN);
     assert.equal(r3.status, 429);
     assert.equal((await r3.json()).grund, 'botschutz');
     assert.equal(abfragen(), vorher);
   });
 
   await t.test('10. eine leergekaufte Karte: 0 wird gespeichert und bleibt änderbar', async () => {
-    await schrankeFrei();
-    naechsteAntwort = guthaben(0);
-    const r = await abfrage(srv.base, MIT_PIN);
+    await limitFree();
+    nextResponse = guthaben(0);
+    const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 200, `Antwort ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(
@@ -344,10 +342,10 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
       'Eine Karte ohne Guthaben ist eine AUSKUNFT — „0" ist das Ergebnis, nicht ' + 'ein Fehler der Abfrage.',
     );
 
-    // Und der Nachsatz, der ohne Nachmessen durchgerutscht wäre: pruefeWerte
+    // Und der Nachsatz, der ohne Nachmessen durchgerutscht wäre: checkValues
     // weist amount <= 0 ab. Wer danach die PIN ändert, schickt keinen Betrag
     // mit — der gespeicherte 0 ginge durch dieselbe Prüfung.
-    const p = await fetch(`${srv.base}/api/v1/vouchers/${MIT_PIN}`, {
+    const p = await fetch(`${srv.base}/api/v1/vouchers/${WITH_PIN}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin: '9999' }),
@@ -360,17 +358,17 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
         'Karte liesse sich dann nicht mehr bearbeiten.',
     );
     assert.equal(pd.voucher.pin, '•••', 'nach aussen nur die Maske');
-    const gespeichert = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [MIT_PIN]);
+    const gespeichert = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [WITH_PIN]);
     assert.equal(
-      _req('src/infra/geheimnis.js').entschluessele(
+      _req('src/infra/geheimnis.js').decrypt(
         gespeichert.pin,
-        _req('src/vouchers/repository/vouchers.js').pinContext(gespeichert.user_id, MIT_PIN),
+        _req('src/vouchers/repository/vouchers.js').pinContext(gespeichert.user_id, WITH_PIN),
       ),
       '9999',
     );
     assert.equal(pd.voucher.amount, 0, 'Und der Betrag bleibt, was er war');
     // Ein von Hand eingetippter Nullbetrag bleibt verboten.
-    const n = await fetch(`${srv.base}/api/v1/vouchers/${MIT_PIN}`, {
+    const n = await fetch(`${srv.base}/api/v1/vouchers/${WITH_PIN}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount: 0 }),
@@ -384,29 +382,29 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
   });
 
   await t.test('11. ein Fehler der Gegenseite wird gemeldet, nicht verschluckt', async () => {
-    await schrankeFrei();
+    await limitFree();
     // Die PIN wird AUS DER TABELLE gelesen und nicht aus der Konstanten oben:
     // Fall 10 hat sie auf „9999" geändert. Mein erster Entwurf nahm `PIN` und
     // meldete einen Leck, den es nicht gab — der Text enthielt eine Ziffernfolge,
     // die gar nicht mehr die PIN dieser Karte war. Die Zusicherung muss gegen
     // DEN Wert prüfen, den die Route an verdecke() gibt.
-    const pinZeile = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [MIT_PIN]);
-    const pinJetzt = _req('src/infra/geheimnis.js').entschluessele(
-      pinZeile.pin,
-      _req('src/vouchers/repository/vouchers.js').pinContext(pinZeile.user_id, MIT_PIN),
+    const pinRow = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [WITH_PIN]);
+    const pinNow = _req('src/infra/geheimnis.js').decrypt(
+      pinRow.pin,
+      _req('src/vouchers/repository/vouchers.js').pinContext(pinRow.user_id, WITH_PIN),
     );
-    naechsteAntwort = antwort({ status: 500, text: `kaputt für ${NUMMER} mit ${pinJetzt}` });
-    const r = await abfrage(srv.base, MIT_PIN);
+    nextResponse = antwort({ status: 500, text: `kaputt für ${NUMBER} mit ${pinNow}` });
+    const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 502, `Antwort ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'guthaben_fehlgeschlagen');
-    assert.ok(!d.error.includes(pinJetzt), `Die PIN steht in der Antwort an den Browser: ${d.error}`);
-    assert.ok(!d.error.includes(NUMMER), `Die ganze Kartennummer steht in der Antwort: ${d.error}`);
+    assert.ok(!d.error.includes(pinNow), `Die PIN steht in der Antwort an den Browser: ${d.error}`);
+    assert.ok(!d.error.includes(NUMBER), `Die ganze Kartennummer steht in der Antwort: ${d.error}`);
     assert.ok(d.error.includes('1166'), 'Die letzten vier Ziffern dürfen stehen — sonst weiss niemand, welche Karte');
 
     // Der Platz IST verbraucht: Die Anfrage wurde abgesetzt.
     const vorher = abfragen();
-    const r2 = await abfrage(srv.base, MIT_PIN);
+    const r2 = await abfrage(srv.base, WITH_PIN);
     assert.equal(
       r2.status,
       429,
@@ -424,19 +422,19 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     const zaehler = async uid =>
       (await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [`guthaben-konto|${uid}`]))?.count ?? 0;
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'guthaben-konto|%'");
-    await schrankeFrei();
-    naechsteAntwort = guthaben(1000);
-    assert.equal((await abfrage(srv.base, MIT_PIN)).status, 200);
-    assert.equal(await zaehler(HAUPT), 1, 'eine Abfrage zählt für ihr Konto');
+    await limitFree();
+    nextResponse = guthaben(1000);
+    assert.equal((await abfrage(srv.base, WITH_PIN)).status, 200);
+    assert.equal(await zaehler(MAIN), 1, 'eine Abfrage zählt für ihr Konto');
 
     await db.run('UPDATE rate_limit_attempts SET count = $2 WHERE key = $1', [
-      `guthaben-konto|${HAUPT}`,
+      `guthaben-konto|${MAIN}`,
       S.ACCOUNT_PER_HOUR,
     ]);
-    await schrankeFrei();
+    await limitFree();
     await db.run(`UPDATE voucher_balance_throttle SET locked_until = NOW() + INTERVAL '10 minutes' WHERE id = 1`);
     const vorher = abfragen();
-    const r = await abfrage(srv.base, MIT_PIN);
+    const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
     assert.equal(r.status, 429, JSON.stringify(d));
     assert.equal(d.grund, 'konto');
@@ -444,17 +442,17 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     assert.ok(d.wartenSek > 0 && d.wartenSek <= 3600, String(d.wartenSek));
     assert.equal(abfragen(), vorher, 'trotz Grenze ging eine Abfrage hinaus');
 
-    await schrankeFrei();
-    naechsteAntwort = antwort({ status: 403, text: 'Bot' });
-    assert.equal((await abfrage(srv.base, MIT_PIN)).status, 429);
+    await limitFree();
+    nextResponse = antwort({ status: 403, text: 'Bot' });
+    assert.equal((await abfrage(srv.base, WITH_PIN)).status, 429);
     const s = await db.get('SELECT last_checked_at, locked_until FROM voucher_balance_throttle WHERE id = 1');
     assert.deepEqual(
       s,
       { last_checked_at: null, locked_until: null },
       'das gesperrte Konto belegt den Platz oder löst die Pause aus',
     );
-    naechsteAntwort = guthaben(9900);
-    const fremd = await abfrage(fremdSrv.base, FREMDER);
+    nextResponse = guthaben(9900);
+    const fremd = await abfrage(fremdSrv.base, FOREIGN);
     assert.equal(fremd.status, 200, 'ein anderes Konto wird von der Grenze des ersten aufgehalten');
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'guthaben-konto|%'");
   });

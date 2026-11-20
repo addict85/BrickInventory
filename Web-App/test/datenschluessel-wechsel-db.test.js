@@ -1,6 +1,6 @@
 /**
  * Schlüsselwechsel: Geheimnisse unter Schlüssel A geschrieben, dann mit
- * DATA_KEY=B und DATA_KEY_ALT=A gestartet (schluesselWechsel wie im Start).
+ * DATA_KEY=B und DATA_KEY_ALT=A gestartet (keySwitch wie im Start).
  * Danach liest B allein alles, A allein nichts mehr; der Suchwert der
  * Gutscheinnummer passt zu B. Wiederherstellungscodes von vor dem Wechsel
  * gelten, solange A als DATA_KEY_ALT bereitsteht.
@@ -12,14 +12,14 @@
  *      Suchwert der Nummer …“
  *   C  pufferUmschluesseln() liefert immer undefined → rot: „B allein liest
  *      alles“ (Gutschein-PDF)
- *   D  in pruefeCode() den Rückfall auf suchwertAlt entfernt → rot: „ein
+ *   D  in pruefeCode() den Rückfall auf searchValueAlt entfernt → rot: „ein
  *      Wiederherstellungscode von vor dem Wechsel …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { environment } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
@@ -28,33 +28,33 @@ const path = require('node:path');
 
 const WURZEL = fs.mkdtempSync(path.join(os.tmpdir(), 'schluesselwechsel-'));
 fs.writeFileSync(path.join(WURZEL, 'package.json'), '{}');
-umgebung({ APP_ROOT: WURZEL });
+environment({ APP_ROOT: WURZEL });
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const A = crypto.randomBytes(32).toString('base64'),
   B = crypto.randomBytes(32).toString('base64');
-umgebung({ DATA_KEY: A });
+environment({ DATA_KEY: A });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const G = _req('src/infra/geheimnis.js');
 const zf = _req('src/factors/secondFactor.js');
 const gut = {
   ..._req('src/vouchers/repository/vouchers.js'),
-  ...require('./helpers/sources').testBereich('vouchers').vouchers,
+  ...require('./helpers/sources').testArea('vouchers').vouchers,
 };
 const dateien = _req('src/vouchers/voucherFiles.js');
-const { schluesselWechsel } = _req('startup/datenbank.js');
+const { keySwitch } = _req('startup/datenbank.js');
 
 /** Schlüssel umstellen, wie ein Neustart mit anderer Umgebung. */
-function schluessel(aktuell, vorig) {
-  umgebung({ DATA_KEY: aktuell });
-  if (vorig) umgebung({ DATA_KEY_ALT: vorig });
-  else umgebung({ DATA_KEY_ALT: undefined });
-  G._vergissSchluessel();
+function schluessel(aktuell, previous) {
+  environment({ DATA_KEY: aktuell });
+  if (previous) environment({ DATA_KEY_ALT: previous });
+  else environment({ DATA_KEY_ALT: undefined });
+  G._forgetKey();
 }
 
 test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `wechsel_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -75,11 +75,11 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
 
   // ── unter A schreiben ────────────────────────────────────────────────────
   schluessel(A, null);
-  const apiKontext = G.kontext('global_settings.value', 'rebrickable_api_key');
+  const apiContext = G.kontext('global_settings.value', 'rebrickable_api_key');
   await db.run(
     `INSERT INTO global_settings (key, value) VALUES ('rebrickable_api_key', $1)
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-    [G.verschluessele('api-geheim-123', apiKontext)],
+    [G.encrypt('api-geheim-123', apiContext)],
   );
   const secret = await zf.beginSetup(uid);
   const codes = await zf.confirmSetup(uid, zf.hotp(zf.fromBase32(secret), zf.timeStep()));
@@ -88,18 +88,18 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
   await dateien.writeVoucherPdf(pdf, Buffer.from('%PDF-1.4 Gutschein'));
 
   /** Was der aktuelle Schlüssel lesen kann. */
-  const liesAlles = async () => {
+  const readEverything = async () => {
     const api = (await db.get(`SELECT value FROM global_settings WHERE key = 'rebrickable_api_key'`)).value;
     const faktor = (await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid])).secret;
     const v = await db.get('SELECT number, pin, number_search FROM vouchers WHERE id = $1', [g.id]);
-    const datei = G.entschluesselePuffer(fs.readFileSync(pdf), G.kontext('gutschein-pdf', `${uid}/${g.id}.pdf`));
+    const datei = G.decryptBuffer(fs.readFileSync(pdf), G.kontext('gutschein-pdf', `${uid}/${g.id}.pdf`));
     return {
-      api: G.entschluessele(api, apiKontext),
-      faktor: G.entschluessele(faktor, zf.secondFactorContext(uid)),
-      number: G.entschluessele(v.number, gut.numberContext(uid, g.id)),
-      pin: G.entschluessele(v.pin, gut.pinContext(uid, g.id)),
+      api: G.decrypt(api, apiContext),
+      faktor: G.decrypt(faktor, zf.secondFactorContext(uid)),
+      number: G.decrypt(v.number, gut.numberContext(uid, g.id)),
+      pin: G.decrypt(v.pin, gut.pinContext(uid, g.id)),
       pdf: datei?.toString() ?? null,
-      suchePasst: v.number_search === gut.numberSearch(uid, '6299-1234-5678'),
+      searchFits: v.number_search === gut.numberSearch(uid, '6299-1234-5678'),
     };
   };
   const KLAR = {
@@ -108,9 +108,9 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
     number: '6299-1234-5678',
     pin: '4711',
     pdf: '%PDF-1.4 Gutschein',
-    suchePasst: true,
+    searchFits: true,
   };
-  assert.deepEqual(await liesAlles(), KLAR, 'Vorbedingung: A liest alles');
+  assert.deepEqual(await readEverything(), KLAR, 'Vorbedingung: A liest alles');
 
   // ── Start mit B und dem vorigen A ────────────────────────────────────────
   schluessel(B, A);
@@ -121,14 +121,14 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
   console.warn = () => {};
   let geschrieben;
   try {
-    geschrieben = await schluesselWechsel(require('./helpers/sources').testDienste());
+    geschrieben = await keySwitch(require('./helpers/sources').testServices());
   } finally {
     console.warn = warn;
   }
 
   await t.test('B allein liest alles, der Suchwert der Nummer passt zu B', async () => {
     schluessel(B, null);
-    assert.deepEqual(await liesAlles(), KLAR);
+    assert.deepEqual(await readEverything(), KLAR);
     assert.ok(geschrieben >= 4, `nur ${geschrieben} Werte neu geschrieben`);
   });
 
@@ -137,13 +137,13 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
     const warn2 = console.warn;
     console.warn = () => {};
     try {
-      assert.deepEqual(await liesAlles(), {
+      assert.deepEqual(await readEverything(), {
         api: null,
         faktor: null,
         number: null,
         pin: null,
         pdf: null,
-        suchePasst: false,
+        searchFits: false,
       });
     } finally {
       console.warn = warn2;

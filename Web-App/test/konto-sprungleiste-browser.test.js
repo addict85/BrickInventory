@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
+const { startApp } = require('./helpers/app-browser');
 
 async function groesse(b, breite, telefon) {
   await b.tab('Emulation.setDeviceMetricsOverride', {
@@ -31,20 +31,20 @@ const MASS = `(() => {
   const titel = document.querySelector('#tab-profil .ptitle').getBoundingClientRect();
   const links = [...nav.querySelectorAll('a')].map(a => a.getBoundingClientRect());
   return {
-    lage: getComputedStyle(nav).position,
-    unterTitel: r.top >= titel.bottom - 1,
+    situation: getComputedStyle(nav).position,
+    belowTitle: r.top >= titel.bottom - 1,
     hoehe: Math.round(r.height),
-    linkHoehe: Math.round(Math.max(...links.map(l => l.height))),
+    linkHeight: Math.round(Math.max(...links.map(l => l.height))),
     zeilen: new Set(links.map(l => Math.round(l.top))).size,
     rollt: nav.scrollWidth > nav.clientWidth + 1,
-    seiteBreiter: document.documentElement.scrollWidth > innerWidth,
+    pageWider: document.documentElement.scrollWidth > innerWidth,
     farbe: getComputedStyle(nav.querySelector('a')).color,
     grund: getComputedStyle(document.body).backgroundColor,
   };
 })()`;
 
 test('N5 Sprungleiste im Konto', { timeout: 240_000 }, async t => {
-  const app = await starteApp(t, { name: `r26_${process.pid}` });
+  const app = await startApp(t, { name: `r26_${process.pid}` });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -64,22 +64,25 @@ test('N5 Sprungleiste im Konto', { timeout: 240_000 }, async t => {
         await app.ruhig();
         const m = await app.b.auswerten(MASS);
         // Seit Runde 27 klebt sie unter dem Kopf (sticky); fest wie die Hauptnavigation (fixed) bleibt falsch.
-        assert.equal(m.lage, 'sticky', 'Leiste klebt fest wie die Hauptnavigation');
-        assert.ok(m.unterTitel, 'Leiste steht nicht unter dem Titel');
+        assert.equal(m.situation, 'sticky', 'Leiste klebt fest wie die Hauptnavigation');
+        assert.ok(m.belowTitle, 'Leiste steht nicht unter dem Titel');
         assert.equal(m.zeilen, 1, 'Leiste bricht um');
-        assert.ok(m.linkHoehe >= 40, `Links zu klein: ${m.linkHoehe} px`);
-        assert.equal(m.seiteBreiter, false, 'Seite breiter als das Fenster');
+        assert.ok(m.linkHeight >= 40, `Links zu klein: ${m.linkHeight} px`);
+        assert.equal(m.pageWider, false, 'Seite breiter als das Fenster');
         assert.equal(m.rollt, telefon, telefon ? 'rollt am Telefon nicht' : 'rollt am Rechner');
         assert.notEqual(m.farbe, m.grund, 'Linkfarbe gleich dem Grund');
         for (const ziel of ['konto-t-gefahr', 'konto-t-profil']) {
           await app.b.auswerten(`document.querySelector('.konto-nav a[data-arg="${ziel}"]').click(); true`);
           await app.ruhig(500);
-          const lage =
+          const situation =
             await app.b.auswerten(`(() => { const r = document.getElementById('${ziel}').getBoundingClientRect();
             return { oben: r.top, unten: r.bottom, h: innerHeight, fokus: document.activeElement.id, hash: location.hash }; })()`);
-          assert.equal(lage.fokus, ziel, `${ziel}: Fokus`);
-          assert.ok(lage.oben >= 0 && lage.unten <= lage.h, `${ziel}: nicht im Bild (${lage.oben}–${lage.unten})`);
-          assert.equal(lage.hash, '#/konto', `${ziel}: Adresse verändert`);
+          assert.equal(situation.fokus, ziel, `${ziel}: Fokus`);
+          assert.ok(
+            situation.oben >= 0 && situation.unten <= situation.h,
+            `${ziel}: nicht im Bild (${situation.oben}–${situation.unten})`,
+          );
+          assert.equal(situation.hash, '#/konto', `${ziel}: Adresse verändert`);
         }
         await app.b.auswerten(`scrollTo(0, 0); true`);
       });

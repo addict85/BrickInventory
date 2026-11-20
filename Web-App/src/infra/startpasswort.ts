@@ -5,14 +5,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from './appPaths';
 
-export function startpasswortDatei(): string {
+export function startpasswortFile(): string {
   return path.join(DATA_DIR, 'admin-startpasswort.txt');
 }
 
 /** Neu angelegt (O_EXCL) und dann umbenannt: rename ersetzt einen vorbereiteten Symlink,
  * statt ihm zu folgen, und zwei gleichzeitige Erststarts stossen nicht zusammen. */
-export function schreibeStartpasswort(name: string, passwort: string): string {
-  const datei = startpasswortDatei();
+export function writeStartpasswort(name: string, passwort: string): string {
+  const datei = startpasswortFile();
   fs.mkdirSync(path.dirname(datei), { recursive: true });
   const neu = `${datei}.${process.pid}.${randomBytes(6).toString('hex')}`;
   fs.writeFileSync(neu, `${name}\n${passwort}\n`, { mode: 0o600, flag: 'wx' });
@@ -20,8 +20,8 @@ export function schreibeStartpasswort(name: string, passwort: string): string {
   return datei;
 }
 
-export function entferneStartpasswort(): void {
-  const datei = startpasswortDatei();
+export function removeStartpasswort(): void {
+  const datei = startpasswortFile();
   if (!fs.existsSync(datei)) return;
   fs.rmSync(datei, { force: true });
   console.log(`[start] Startpasswort-Datei ${datei} gelöscht: Das Passwort wurde geändert.`);

@@ -12,12 +12,12 @@
  * Zweiter Fall: „BrickLink kennt dieses Set nicht" (catalog_cache NONE) galt
  * für immer. Ein neues Set, das beim ersten Nachschlagen noch nicht im
  * BrickLink-Katalog stand, bekam nie einen Marktpreis — mit grünem Haken.
- *   C  die Frist in ohneBricklinkPreis() entfernt → rot: „alte Markierung
+ *   C  die Frist in withoutBricklinkPrice() entfernt → rot: „alte Markierung
  *      verhindert den Abruf"
  *
  * Seit 05.11.2026 liest die Bewertung nur den Cache; geholt wird im Auftrag
  * preise_nachladen (hier von Hand ausgeführt). Gegenprobe (gemessen):
- *   D  in setPreisAusVorrat() den Rückfall auf den anderen Zustand entfernt →
+ *   D  in setPriceFromStock() den Rückfall auf den anderen Zustand entfernt →
  *      rot: „kein Marktpreis“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -30,20 +30,20 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet, katalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { holdsSet, catalogSet } = require('./helpers/bestand');
 
 // BrickLink nachstellen — wie in preis-schreibweg-db: esbuild exportiert über
 // Getter, also den Eintrag im require-Zwischenspeicher ersetzen.
-const blPfad = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPreise.js'));
-const echt = require(blPfad);
-let abrufe = [];
-require.cache[blPfad].exports = Object.assign({}, echt, {
-  preisfuehrerAbfrage: async (_k, _sn, cond) => {
-    abrufe.push(cond);
+const blPath = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPreise.js'));
+const echt = require(blPath);
+let fetches = [];
+require.cache[blPath].exports = Object.assign({}, echt, {
+  priceGuideQuery: async (_k, _sn, cond) => {
+    fetches.push(cond);
     return cond === 'N'
       ? { min_price: '100', avg_price: '111', max_price: '120', qty_avg_price: '110', total_quantity: '7' }
       : { min_price: '0', avg_price: '0', max_price: '0', qty_avg_price: '0', total_quantity: '0' };
@@ -77,13 +77,13 @@ async function konto(name, set) {
                 ON CONFLICT (user_id, key) DO UPDATE SET value = 'EUR'`,
     [uid],
   );
-  await katalogSet(db, set, { name: 'Rückfallprobe', year: 2026 });
-  await haeltSet(db, uid, set, 1, { preis: 119, zustand: 'U' });
+  await catalogSet(db, set, { name: 'Rückfallprobe', year: 2026 });
+  await holdsSet(db, uid, set, 1, { preis: 119, zustand: 'U' });
   return uid;
 }
 
 test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `rueckfall_${process.pid}`,
     SET = `9${process.pid % 10000}-1`;
@@ -103,38 +103,38 @@ test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrenc
     [SET],
   );
 
-  const { bewerteSets } = _req('src/finanzen/financeCalc.js');
-  abrufe = [];
-  const vorher = await bewerteSets(uid, [uid]);
-  assert.deepEqual(abrufe, [], 'die Bewertung ruft selbst BrickLink ab');
+  const { valueSets } = _req('src/finanzen/financeCalc.js');
+  fetches = [];
+  const vorher = await valueSets(uid, [uid]);
+  assert.deepEqual(fetches, [], 'die Bewertung ruft selbst BrickLink ab');
   assert.equal(vorher.preise_ausstehend, 1, 'der fehlende Preis steht nicht als Auftrag an');
   assert.ok(await nachladen());
-  const zeile = (await bewerteSets(uid, [uid])).sets.find(s => s.set_number === SET);
+  const zeile = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.ok(zeile, 'Set fehlt in der Bewertung');
   assert.equal(
     zeile.avg_price,
     111,
-    `kein Marktpreis: ${JSON.stringify({ avg: zeile.avg_price, no_price: zeile.no_price, abrufe })}`,
+    `kein Marktpreis: ${JSON.stringify({ avg: zeile.avg_price, no_price: zeile.no_price, fetches })}`,
   );
-  assert.deepEqual(abrufe, ['N'], 'Gebraucht ist frisch geprüft und darf nicht erneut abgerufen werden');
+  assert.deepEqual(fetches, ['N'], 'Gebraucht ist frisch geprüft und darf nicht erneut abgerufen werden');
 
   // Jetzt sind beide frisch — der nächste Aufruf kommt ohne BrickLink aus.
-  abrufe = [];
+  fetches = [];
   assert.equal(await nachladen(), false, 'ein frischer Preis stellt keinen Auftrag ein');
-  const zweite = (await bewerteSets(uid, [uid])).sets.find(s => s.set_number === SET);
+  const zweite = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.equal(zweite.avg_price, 111);
-  assert.deepEqual(abrufe, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch im Cache liegen');
+  assert.deepEqual(fetches, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch im Cache liegen');
 
   // Beide frisch ohne Preis: kein Abruf, kein Preis.
   await db.run(
     `UPDATE price_cache SET avg_price = 0, min_price = 0, max_price = 0, qty_avg_price = 0, fetched_at = NOW() WHERE set_number = $1`,
     [SET],
   );
-  abrufe = [];
-  const dritte = (await bewerteSets(uid, [uid])).sets.find(s => s.set_number === SET);
+  fetches = [];
+  const dritte = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.equal(await nachladen(), false, 'beide frisch ohne Preis: kein Auftrag');
   assert.equal(dritte.avg_price, 0);
-  assert.deepEqual(abrufe, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch ohne Preis sind');
+  assert.deepEqual(fetches, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch ohne Preis sind');
 });
 
 test('„BrickLink kennt das Set nicht" gilt nur eine Weile', { concurrency: 1 }, async t => {
@@ -149,28 +149,28 @@ test('„BrickLink kennt das Set nicht" gilt nur eine Weile', { concurrency: 1 }
   await aufraeumen();
   t.after(aufraeumen);
   const uid = await konto(NAME, SET);
-  const { bewerteSets } = _req('src/finanzen/financeCalc.js');
-  const bewerte = async () => (await bewerteSets(uid, [uid])).sets.find(s => s.set_number === SET);
+  const { valueSets } = _req('src/finanzen/financeCalc.js');
+  const value = async () => (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
 
   // Frisch markiert: kein Abruf, kein Preis, und der Grund steht dabei.
   await db.run(
     `INSERT INTO catalog_cache (set_number, bl_type, is_gear, fetched_at) VALUES ($1, 'NONE', true, NOW())`,
     [SET],
   );
-  abrufe = [];
-  const frisch = await bewerte();
-  assert.deepEqual(abrufe, [], 'frische Markierung: es wird trotzdem abgerufen');
+  fetches = [];
+  const frisch = await value();
+  assert.deepEqual(fetches, [], 'frische Markierung: es wird trotzdem abgerufen');
   assert.equal(frisch.no_price, true);
   assert.equal(frisch.bl_unbekannt, true, 'der Grund fehlt — die Anzeige kann ihn nicht nennen');
 
   // Zehn Tage alt: Es wird wieder gefragt, und der Preis kommt an.
   await db.run(`UPDATE catalog_cache SET fetched_at = NOW() - INTERVAL '10 days' WHERE set_number = $1`, [SET]);
-  abrufe = [];
-  await bewerte();
+  fetches = [];
+  await value();
   assert.ok(
-    (await nachladen()) && abrufe.length > 0,
+    (await nachladen()) && fetches.length > 0,
     'alte Markierung verhindert den Abruf — das Set bliebe für immer ohne Preis',
   );
-  const alt = await bewerte();
+  const alt = await value();
   assert.equal(alt.avg_price, 111);
 });

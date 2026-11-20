@@ -2,14 +2,14 @@ import { echt, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
-import { formularFehler } from './formular.js';
+import { formError } from './formular.js';
 import { toast } from './meldungen.js';
 import { loadUsers } from './user-management.js';
 import { html, rawHtml } from './escaping.js';
 import { fmtDatum } from './format.js';
 import { emit } from './events.js';
 import { loggedInAccount } from './state.js';
-import { bestaetigeMitPasswort, frageCode, mitZweitemFaktor, mitPasswortBestaetigen } from './rueckfrage.js';
+import { bestaetigeMitPasswort, questionCode, withSecondFactor, confirmWithPassword } from './rueckfrage.js';
 
 // ═══ Second factor in the profile (server: src/factors/secondFactor.ts) ══════════════
 // Flow: password → QR code and key → confirm code → show the ten recovery codes once. After that: disable
@@ -94,7 +94,7 @@ export async function zfEinrichten() {
   const d =
     first?.code !== 'aktuelles_passwort_erforderlich'
       ? first
-      : await mitPasswortBestaetigen(tRaw('zf.title'), (password, z) =>
+      : await confirmWithPassword(tRaw('zf.title'), (password, z) =>
           api('POST', '/v1/auth/zweiter-faktor/einrichten', { password, ...z }),
         );
   if (!d) return;
@@ -169,7 +169,7 @@ export async function zfBestaetigen() {
     error = G('zf-fehler');
   const code = (field?.value || '').trim();
   if (!code) {
-    if (error) formularFehler(error, tRaw('zf.code_leer'), ['zf-code']);
+    if (error) formError(error, tRaw('zf.code_leer'), ['zf-code']);
     return;
   }
   const d = await api('POST', '/v1/auth/zweiter-faktor/bestaetigen', { code });
@@ -177,7 +177,7 @@ export async function zfBestaetigen() {
     // At the field instead of a toast: the error belongs to the code, and a toast would still sit next to
     // "set up" after the correct code.
     if (error) {
-      formularFehler(error, d?.error || tRaw('settings.error'), ['zf-code']);
+      formError(error, d?.error || tRaw('settings.error'), ['zf-code']);
       field?.select?.();
     } else toast(d?.error || tRaw('settings.error'), 'error');
     return;
@@ -187,7 +187,7 @@ export async function zfBestaetigen() {
 }
 
 export async function zfNeueCodes() {
-  const code = await frageCode(tRaw('zf.new_codes'), tRaw('zf.code_fuer_codes'));
+  const code = await questionCode(tRaw('zf.new_codes'), tRaw('zf.code_fuer_codes'));
   if (!code) return;
   const d = await api('POST', '/v1/auth/zweiter-faktor/codes', { code });
   if (!d?.success) {
@@ -202,14 +202,14 @@ export async function zfNeueCodes() {
 export async function zfAbschalten() {
   const isAdmin = !!loggedInAccount?.isAdmin;
   let adminPassword = '';
-  const d = await mitPasswortBestaetigen(
+  const d = await confirmWithPassword(
     tRaw(isAdmin ? 'zf.neu_einrichten' : 'zf.disable'),
     (password, z) => {
       adminPassword = password;
       return api('POST', '/v1/auth/zweiter-faktor/abschalten', { password, ...z });
     },
     tRaw(isAdmin ? 'zf.neu_einrichten_text' : 'zf.disable_confirm'),
-    { knopf: isAdmin ? 'zf.neu_einrichten' : 'confirm.btn.abschalten', art: 'bd', mitCode: true },
+    { knopf: isAdmin ? 'zf.neu_einrichten' : 'confirm.btn.abschalten', art: 'bd', withCode: true },
   );
   if (!d) return;
   if (!d?.success) {
@@ -255,7 +255,7 @@ export async function zfZuruecksetzen(uid, name) {
     { knopf: 'confirm.btn.zuruecksetzen', art: 'bp' },
   );
   if (admin_password === null) return;
-  const d = await mitZweitemFaktor(z =>
+  const d = await withSecondFactor(z =>
     api('DELETE', `/v1/auth/users/${uid}/zweiter-faktor`, { admin_password, ...z }),
   );
   if (d === null) return;

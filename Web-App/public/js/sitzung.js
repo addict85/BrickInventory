@@ -6,25 +6,25 @@ import { html } from './escaping.js';
 import { subscribe, emit } from './events.js';
 import { resetScopeModes } from './kontofilter.js';
 import { LANG, applyLang, setLangValue, tRaw } from '../i18n.js';
-import { api, apiRoh, leereZwischenspeicher } from './api.js';
+import { api, apiRaw, emptyCache } from './api.js';
 import { G, knopfBesetzt, alle, setzeHtml } from './dom.js';
-import { feldFehler, formularFehler, passwortRegelText } from './formular.js';
-import { applyTheme, initDefaultCondition, zeigeBenutzernamen, rbHinweisZeigen, _updateLangSelect } from './konto.js';
+import { feldFehler, formError, passwordRuleText } from './formular.js';
+import { applyTheme, initDefaultCondition, showUsernames, showRbHint, _updateLangSelect } from './konto.js';
 import { toast } from './meldungen.js';
-import { mailLinkAnnehmen, mailLinkOffen } from './maillink.js';
+import { acceptMailLink, openMailLink } from './maillink.js';
 import { setGallerySets, setAccount, setSettingsSnapshot, setAccountCurrency, loggedInAccount } from './state.js';
-import { routeBeimStart } from './router.js';
+import { routeOnStart } from './router.js';
 import { plInit, resetPartsList, plRenderSets } from './init.js';
 import { bindGlobalErrorHandlers } from './fehlerfang.js';
 import { checkSession, sessionUnresolved, removeStartupScaffold, waitForStartup, showOffline } from './startkasten.js';
-import { gibCheckOnLoad, gibZuruecksetzen } from './fortschritt.js';
+import { gibCheckOnLoad, resetGive } from './fortschritt.js';
 import { checkSetup } from './einrichtung.js';
 import { setupCheckButtonRefresh } from './setup-status.js';
-import { initScrollbalken } from './rollbalken.js';
-import { bindTabs, seitennameAktualisieren } from './navigation.js';
+import { initScrollbar } from './rollbalken.js';
+import { bindTabs, refreshPageName } from './navigation.js';
 import { loadHouseholdMembers } from './konten-orte.js';
-import { mitZweitemFaktor } from './rueckfrage.js';
-import { zeigeOffeneAlarme } from './detailfelder.js';
+import { withSecondFactor } from './rueckfrage.js';
+import { showOpenAlerts } from './detailfelder.js';
 
 /** Startet die Anwendung. Aufruf ausschliesslich aus js/main.js, nach der Auswertung aller Module. */
 export function startApp() {
@@ -32,15 +32,15 @@ export function startApp() {
   bindTabs();
   plRenderSets();
   // Eigener Scrollbalken; der des Browsers ist per CSS ausgeblendet.
-  initScrollbalken();
+  initScrollbar();
   checkAuth();
 }
 
-subscribe('passwortWechselNoetig', () => zeigePflichtwechsel());
-subscribe('zweiterFaktorPflicht', () => zeigeZweitpflicht());
+subscribe('passwortWechselNoetig', () => showRequiredSwitch());
+subscribe('zweiterFaktorPflicht', () => showSecondRequired());
 
 /** Konto der abgelaufenen Sitzung: Meldet sich ein anderes an, lädt die Seite neu statt dessen Stand zu zeigen. */
-let _abgelaufenesKonto = /** @type {number | null} */ (null);
+let _expiredAccount = /** @type {number | null} */ (null);
 /**
  * Ein 401 heisst: Die Sitzung ist nicht mehr gültig. Statt eines Hinweises je Klick über alten Daten geht es
  * zurück zur Anmeldung mit „Sitzung abgelaufen“ — wie in der Android-App.
@@ -48,23 +48,23 @@ let _abgelaufenesKonto = /** @type {number | null} */ (null);
 subscribe('sitzungBeendet', path => {
   if (path.startsWith('/v1/auth/me') || path.startsWith('/v1/auth/login')) return;
   if (!loggedInAccount) return; // war nie angemeldet — nichts zu beenden
-  _abgelaufenesKonto = loggedInAccount.id;
+  _expiredAccount = loggedInAccount.id;
   setAccount(null);
   // Gleich nach der Anmeldung schon ohne Sitzung, auf einer Seite ohne HTTPS: Das Secure-Cookie fehlt.
   // „Abgelaufen“ schickte den Betreiber in eine Schleife aus erneuten Anmeldungen.
-  const ohneKeks = Date.now() - _angemeldetUm < 60_000 && !_keksGesetzt && ohneHttps();
-  showLogin({ abgelaufen: true, hinweis: ohneKeks ? tRaw('auth.cookie_fehlt') : undefined });
+  const withoutCookie = Date.now() - _signedInUm < 60_000 && !_cookieSet && withoutHttps();
+  showLogin({ abgelaufen: true, hinweis: withoutCookie ? tRaw('auth.cookie_fehlt') : undefined });
 });
 /** Zeitpunkt der letzten Anmeldung per Formular (für den Fall oben). */
-let _angemeldetUm = 0;
+let _signedInUm = 0;
 /** Der Server hat bestätigt, dass er das Cookie gesetzt hat (keks_fehlt: false); dann ist ein 401 echt. */
-let _keksGesetzt = false;
+let _cookieSet = false;
 /** http://localhost gilt dem Browser als sicherer Kontext, trägt aber kein Secure-Cookie vom Server. */
-const ohneHttps = () => window.isSecureContext === false || location.protocol === 'http:';
+const withoutHttps = () => window.isSecureContext === false || location.protocol === 'http:';
 // Vorab nur der Satz für jeden Nutzer; was der Betreiber tun muss (COOKIE_SECURE), sagt auth.cookie_fehlt
 // erst, wenn das Cookie wirklich fehlt.
-const _ohneHttpsHinweis = G('login-ohne-https');
-if (_ohneHttpsHinweis) _ohneHttpsHinweis.hidden = !ohneHttps();
+const _withoutHttpsHint = G('login-ohne-https');
+if (_withoutHttpsHint) _withoutHttpsHint.hidden = !withoutHttps();
 
 // ── AUTH & PANELS ─────────────────────────────────────
 /** @type {string | null} */
@@ -74,7 +74,7 @@ let _resetToken = null;
  */
 /** @type {string | null} */
 let _verifyToken = null;
-let _verifyAngemeldet = false;
+let _verifySignedIn = false;
 
 /**
  * @param {string} name
@@ -99,7 +99,7 @@ function showPanel(name, fokus = false) {
 // Mit dem Startpasswort lässt der Server nur den Wechsel zu (403 passwort_wechsel_noetig); die Anwendung käme
 // sonst mit lauter Fehlern hoch.
 
-function zeigePflichtwechsel() {
+function showRequiredSwitch() {
   G('login-screen').style.display = 'flex';
   removeStartupScaffold();
   G('app').style.display = 'none';
@@ -114,7 +114,7 @@ function zeigePflichtwechsel() {
 }
 // Verwalter ohne zweiten Faktor: Der Server lässt nur dessen Einrichtung zu (403 zweiter_faktor_pflicht);
 // js/zweiter-faktor.js zeichnet sie in das Feld.
-function zeigeZweitpflicht() {
+function showSecondRequired() {
   G('login-screen').style.display = 'flex';
   removeStartupScaffold();
   G('app').style.display = 'none';
@@ -124,34 +124,34 @@ function zeigeZweitpflicht() {
 function pflichtAbmelden() {
   G('btn-logout')?.click();
 }
-function oeffneApp() {
-  if (loggedInAccount?.mustChangePassword) zeigePflichtwechsel();
-  else if (loggedInAccount?.zweiterFaktorPflicht) zeigeZweitpflicht();
+function openApp() {
+  if (loggedInAccount?.mustChangePassword) showRequiredSwitch();
+  else if (loggedInAccount?.zweiterFaktorPflicht) showSecondRequired();
   else showApp();
 }
 G('btn-pflicht')?.addEventListener('click', async () => {
   const alt = G('pflicht-alt').value,
     neu = G('pflicht-neu').value,
     err = G('pflicht-err');
-  formularFehler(err, '');
-  const regel = passwortRegelText(neu);
+  formError(err, '');
+  const regel = passwordRuleText(neu);
   if (regel) {
-    formularFehler(err, regel, ['pflicht-neu']);
+    formError(err, regel, ['pflicht-neu']);
     return;
   }
   if (neu !== G('pflicht-wdh').value) {
-    formularFehler(err, tRaw('settings.password.mismatch'), ['pflicht-wdh']);
+    formError(err, tRaw('settings.password.mismatch'), ['pflicht-wdh']);
     return;
   }
-  const d = await mitZweitemFaktor(z =>
+  const d = await withSecondFactor(z =>
     api('POST', '/v1/auth/change-password', { current: alt, newPassword: neu, ...z }),
   );
   if (!d) return;
   if (!d.success) {
     // Stimmt das mitgenommene Passwort nicht, muss das Feld wieder her.
-    const altFalsch = d.code === 'aktuelles_passwort_falsch';
-    if (altFalsch) G('pflicht-alt-zeile').hidden = false;
-    formularFehler(err, d.error || tRaw('settings.error'), [altFalsch ? 'pflicht-alt' : 'pflicht-neu']);
+    const altWrong = d.code === 'aktuelles_passwort_falsch';
+    if (altWrong) G('pflicht-alt-zeile').hidden = false;
+    formError(err, d.error || tRaw('settings.error'), [altWrong ? 'pflicht-alt' : 'pflicht-neu']);
     return;
   }
   location.reload();
@@ -168,7 +168,7 @@ G('btn-pflicht')?.addEventListener('click', async () => {
   } else if (token && (location.pathname.includes('reset-password') || params.get('type') === 'reset')) {
     _resetToken = token;
     showPanel('reset');
-  } else if (token && mailLinkAnnehmen(token, location.pathname)) showPanel('maillink');
+  } else if (token && acceptMailLink(token, location.pathname)) showPanel('maillink');
   if (token) history.replaceState({}, '', location.pathname);
 })();
 // Ein weiterer Link im selben Tab ändert nur das Fragment: neu laden, sonst bliebe der alte Token.
@@ -199,9 +199,9 @@ G('btn-register')?.addEventListener('click', async () => {
   const p = G('reg-pass').value,
     p2 = G('reg-pass2').value;
   const err = G('reg-err');
-  formularFehler(err, '');
+  formError(err, '');
   if (!u || !e || !p) {
-    formularFehler(
+    formError(
       err,
       tRaw('register.req_fields'),
       [!u && 'reg-user', !e && 'reg-email', !p && 'reg-pass'].filter(x => typeof x === 'string'),
@@ -211,13 +211,13 @@ G('btn-register')?.addEventListener('click', async () => {
   // Reihenfolge: zu kurz VOR ungleich — dieselbe wie in der App (LoginScreen.kt). Deren Kommentar behauptete
   // schon vorher „dieselben drei Pruefungen wie im Web-Formular, und in derselben Reihenfolge"; wahr war
   // daran bis hierher weder das eine noch das andere, weil die Webapp die Laenge gar nicht prueft.
-  const regel = passwortRegelText(p);
+  const regel = passwordRuleText(p);
   if (regel) {
-    formularFehler(err, regel, ['reg-pass']);
+    formError(err, regel, ['reg-pass']);
     return;
   }
   if (p !== p2) {
-    formularFehler(err, tRaw('settings.password.mismatch'), ['reg-pass2']);
+    formError(err, tRaw('settings.password.mismatch'), ['reg-pass2']);
     return;
   }
   const btn = G('btn-register');
@@ -236,16 +236,16 @@ G('btn-register')?.addEventListener('click', async () => {
     G('reg-success').style.display = 'block';
     G('reg-success').textContent = tRaw(d.email_sent === false ? 'register.nicht_gesendet' : 'register.gesendet');
   } else {
-    formularFehler(err, d.error || tRaw('settings.error'));
+    formError(err, d.error || tRaw('settings.error'));
   }
 });
 
 G('btn-forgot')?.addEventListener('click', async () => {
   const email = G('forgot-email').value.trim();
   const err = G('forgot-err');
-  formularFehler(err, '');
+  formError(err, '');
   if (!email) {
-    formularFehler(err, tRaw('register.email_required'), ['forgot-email']);
+    formError(err, tRaw('register.email_required'), ['forgot-email']);
     return;
   }
   const btn = G('btn-forgot');
@@ -253,7 +253,7 @@ G('btn-forgot')?.addEventListener('click', async () => {
   const d = await api('POST', '/v1/auth/forgot-password', { email });
   frei();
   if (d && d.success === false) {
-    formularFehler(err, d.error || tRaw('common.network_error'), ['forgot-email']);
+    formError(err, d.error || tRaw('common.network_error'), ['forgot-email']);
     return;
   }
   G('forgot-form').style.display = 'none';
@@ -263,17 +263,17 @@ G('btn-forgot')?.addEventListener('click', async () => {
 G('btn-verify')?.addEventListener('click', async () => {
   const err = G('verify-err'),
     btn = G('btn-verify');
-  formularFehler(err, '');
+  formError(err, '');
   btn.disabled = true;
   const d = await api('POST', '/v1/auth/email-bestaetigen', { token: _verifyToken });
   btn.disabled = false;
   if (!d.success) {
-    formularFehler(err, d.error || tRaw('settings.error'));
+    formError(err, d.error || tRaw('settings.error'));
     return;
   }
   _verifyToken = null;
-  if (_verifyAngemeldet) {
-    await bestaetigtAngemeldet();
+  if (_verifySignedIn) {
+    await confirmedSignedIn();
     return;
   }
   history.replaceState({}, '', '/');
@@ -283,7 +283,7 @@ G('btn-verify')?.addEventListener('click', async () => {
 });
 G('link-verify-to-login')?.addEventListener('click', e => {
   e.preventDefault();
-  if (_verifyAngemeldet) {
+  if (_verifySignedIn) {
     location.replace('/');
     return;
   }
@@ -295,18 +295,18 @@ G('btn-reset')?.addEventListener('click', async () => {
   const p = G('reset-pass').value,
     p2 = G('reset-pass2').value;
   const err = G('reset-err');
-  formularFehler(err, '');
+  formError(err, '');
   if (!p || p !== p2) {
-    formularFehler(err, tRaw('settings.password.mismatch'), [p ? 'reset-pass2' : 'reset-pass']);
+    formError(err, tRaw('settings.password.mismatch'), [p ? 'reset-pass2' : 'reset-pass']);
     return;
   }
-  const regel = passwortRegelText(p);
+  const regel = passwordRuleText(p);
   if (regel) {
-    formularFehler(err, regel, ['reset-pass']);
+    formError(err, regel, ['reset-pass']);
     return;
   }
   if (!_resetToken) {
-    formularFehler(err, tRaw('reset.invalid_token'));
+    formError(err, tRaw('reset.invalid_token'));
     return;
   }
   const btn = G('btn-reset');
@@ -321,7 +321,7 @@ G('btn-reset')?.addEventListener('click', async () => {
     G('reset-success').textContent = tRaw('reset.done');
     setTimeout(() => showPanel('login'), 2000);
   } else {
-    formularFehler(err, d.error || tRaw('settings.error'));
+    formError(err, d.error || tRaw('settings.error'));
   }
 });
 
@@ -345,20 +345,20 @@ export async function checkAuth() {
   showOffline(false);
   // Der Nutzer steht unter `user` mit `is_admin`, wie in der Login-Antwort; loggedInAccount behält isAdmin, id und
   // username. Auch angemeldet (neue Adresse im Profil) wird erst bestätigt, dann öffnet die Anwendung.
-  _verifyAngemeldet = !!d.loggedIn;
-  if (_verifyToken) zeigeBestaetigungsziel(!!d.loggedIn);
+  _verifySignedIn = !!d.loggedIn;
+  if (_verifyToken) showConfirmationTarget(!!d.loggedIn);
   // Angemeldet heisst: `user` ist da; der Vertrag lässt es offen, weil /auth/me auch abgemeldet antwortet.
-  if (d.loggedIn && !_verifyToken && !mailLinkOffen()) {
+  if (d.loggedIn && !_verifyToken && !openMailLink()) {
     setAccount(
       /** @type {import('./state.js').Account} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
     );
-    oeffneApp();
+    openApp();
   } else {
     G('login-screen').style.display = 'flex';
     removeStartupScaffold();
     G('app').style.display = 'none';
     // Don't override reset/verified panels that were already set from URL params
-    if (!_resetToken && !_verifyToken && !mailLinkOffen() && !G('verified-msg')?.style.display.includes('block')) {
+    if (!_resetToken && !_verifyToken && !openMailLink() && !G('verified-msg')?.style.display.includes('block')) {
       showPanel('login');
     }
     checkRegistrationEnabled();
@@ -369,7 +369,7 @@ export async function checkAuth() {
  * gleichen Mails die eines fremden Kontos öffnet, sieht dessen Namen, bevor er dessen Adresse bestätigt.
  * @param {boolean} angemeldet
  */
-async function zeigeBestaetigungsziel(angemeldet) {
+async function showConfirmationTarget(angemeldet) {
   const el = G('verify-ziel'),
     btn = G('btn-verify');
   if (!el || !btn) return;
@@ -378,13 +378,13 @@ async function zeigeBestaetigungsziel(angemeldet) {
   const p = angemeldet ? await api('GET', '/v1/auth/profile') : null;
   const u = p?.success ? p.user : null;
   if (!v?.success) {
-    formularFehler(G('verify-err'), v?.error || tRaw('settings.error'));
+    formError(G('verify-err'), v?.error || tRaw('settings.error'));
     // Angemeldet trotzdem sagen, was für das eigene Konto wartet; bestätigen lässt sich der Link nicht.
     if (u) {
       el.textContent = u.new_email
         ? tRaw('verify.ausstehend', { email: u.new_email, konto: u.username })
         : tRaw('verify.nichts_ausstehend', { konto: u.username });
-      bestaetigungAngemeldet(u.new_email);
+      confirmationSignedIn(u.new_email);
     }
     return;
   }
@@ -397,7 +397,7 @@ async function zeigeBestaetigungsziel(angemeldet) {
   btn.removeAttribute('data-i18n');
   btn.textContent = tRaw('verify.button_konto', { konto: v.username });
   btn.disabled = false;
-  if (u) bestaetigungAngemeldet(u.new_email);
+  if (u) confirmationSignedIn(u.new_email);
 }
 /**
  * Angemeldet führt die Seite zurück in die Sammlung; wartet nichts, ist „Bestätigen“ nicht mehr der
@@ -408,7 +408,7 @@ let _verifyEmail = null;
 /**
  * @param {string | null | undefined} email
  */
-function bestaetigungAngemeldet(email) {
+function confirmationSignedIn(email) {
   _verifyEmail = email || null;
   const zurueck = G('link-verify-to-login');
   if (zurueck) {
@@ -419,7 +419,7 @@ function bestaetigungAngemeldet(email) {
   G('btn-verify')?.classList.toggle('bs', !email);
 }
 /** Ohne Neuladen in die App, damit die Rückmeldung stehen bleibt. */
-async function bestaetigtAngemeldet() {
+async function confirmedSignedIn() {
   history.replaceState({}, '', '/');
   await checkAuth();
   toast(_verifyEmail ? tRaw('verify.bestaetigt', { email: _verifyEmail }) : tRaw('verify.bestaetigt_kurz'), 'success');
@@ -447,13 +447,13 @@ function showLogin(o = {}) {
     hinweis.hidden = !o.abgelaufen;
     hinweis.textContent = o.abgelaufen ? o.hinweis || tRaw('auth.session_expired') : '';
   }
-  formularFehler(G('lerr'), '');
+  formError(G('lerr'), '');
   // Der Fortschrittsbalken gehört js/fortschritt.js — dort steht auch, was „zurücksetzen“ für ihn bedeutet
   // (Anzeige aus, beide Abfragen gestoppt, Protokoll geleert). Hier stand früher sein Innenleben
   // ausgeschrieben.
-  gibZuruecksetzen();
+  resetGive();
   sessionStorage.removeItem('webToken');
-  leereZwischenspeicher();
+  emptyCache();
   // Clear sensitive data from all tabs before hiding Das Diagramm nur leeren, nicht seinen Abschnitt: Der
   // trägt Kopf und Zeitraumwahl, die nach der nächsten Anmeldung sonst fehlten.
   ['fin-tbl', 'portfolio-chart', 'portfolio-pnl', 'gallery-grid', 'parts-main', 'monitor-content'].forEach(id => {
@@ -481,17 +481,17 @@ function showLogin(o = {}) {
 }
 /** Zähler der Abfragen nach den Anmeldewegen. Abmelden und abgelaufene Sitzung
  * fragen beide; kommt die ältere Antwort zuletzt an, gilt sie nicht mehr. */
-let _anmeldewegeLauf = 0;
+let _loginMethodsRun = 0;
 async function checkRegistrationEnabled() {
   // Derselbe Anlass wie die Anmeldewege: Wer die Anmeldeseite zeigt, soll wissen, ob die
   // Ersteinrichtung noch offen ist — beim Start wie nach dem Abmelden.
   setupCheckButtonRefresh();
-  const lauf = ++_anmeldewegeLauf;
+  const lauf = ++_loginMethodsRun;
   // Steht erst wieder, wenn die jüngste Antwort eingetragen ist (Browser-Tests warten darauf).
   delete G('login-screen').dataset.anmeldewege;
   try {
     const d = await api('GET', '/v1/auth/registration-status');
-    if (lauf !== _anmeldewegeLauf || d.success === false) return;
+    if (lauf !== _loginMethodsRun || d.success === false) return;
     const wrap = G('link-register-wrap');
     if (wrap) wrap.style.display = d.enabled ? '' : 'none';
     // Nur Wege anbieten, die der Server kann; fehlt die Angabe (älterer Server), bleibt alles wie es war.
@@ -510,19 +510,19 @@ function showApp() {
   }, 1000);
   G('login-screen').style.display = 'none';
   G('app').style.display = 'block';
-  zeigeBenutzernamen();
+  showUsernames();
   initDefaultCondition();
   // Kontoauswahl beim Erfassen — bleibt verborgen, wenn es nichts zu wählen gibt.
   const haushalt = loadHouseholdMembers();
   // Ausgeloeste Preisalarme seit dem letzten Besuch — das Gegenstueck zum stuendlichen Abruf der Android-App.
-  zeigeOffeneAlarme();
+  showOpenAlerts();
   // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
   if (loggedInAccount?.isAdmin) checkSetup();
   // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil erst
-  // hier eine Sitzung besteht. Geöffnet wird über die Adresse #/set/…: routeBeimStart() unten schliesst jeden
+  // hier eine Sitzung besteht. Geöffnet wird über die Adresse #/set/…: routeOnStart() unten schliesst jeden
   // Dialog, den die Adresse nicht nennt. Der Parameter fällt weg, damit F5 nicht erneut einen Link einlöst.
-  const setAusLink = new URLSearchParams(location.search).get('set');
-  if (setAusLink) history.replaceState({}, '', `${location.pathname}#/set/${encodeURIComponent(setAusLink)}`);
+  const setFromLink = new URLSearchParams(location.search).get('set');
+  if (setFromLink) history.replaceState({}, '', `${location.pathname}#/set/${encodeURIComponent(setFromLink)}`);
   // Apply saved language immediately (from localStorage) so static elements translate before server responds
   setLangValue(localStorage.getItem('bim_lang') || LANG);
   applyLang(LANG, false);
@@ -584,22 +584,22 @@ function showApp() {
   // Anmeldung nimmt dem Verwalter seine Startseite. Ein Band weist einmal je Sitzung darauf hin. Erst die
   // Einstellungen, dann Beträge: Sonst stünden die Preise kurz in der Vorgabewährung und sprängen dann um
   // (UI-Prüfung 6, N12).
-  const bandEntschieden = einstellungen
+  const bandDecided = einstellungen
     .catch(() => {})
     .finally(() => {
-      if (loggedInAccount?.isAdmin) rbHinweisZeigen();
+      if (loggedInAccount?.isAdmin) showRbHint();
       emit('sammlungLaden');
     });
   // Das Gerüst deckt die App, bis Band und Kontofilter feststehen: Sonst rutschte der Kopf beim Laden um das
   // Band nach unten und das Suchfeld schrumpfte um die Kontoauswahl. Antwortet der Server nicht, nach 2,5 s.
-  Promise.race([Promise.allSettled([bandEntschieden, haushalt]), new Promise(r => setTimeout(r, 2500))]).then(
+  Promise.race([Promise.allSettled([bandDecided, haushalt]), new Promise(r => setTimeout(r, 2500))]).then(
     removeStartupScaffold,
   );
-  routeBeimStart();
-  seitennameAktualisieren();
+  routeOnStart();
+  refreshPageName();
 }
 /** @type {[string, string][]} */
-const LOGIN_PFLICHT = [
+const LOGIN_REQUIRED = [
   ['lu', 'login.user_leer'],
   ['lp', 'login.passwort_leer'],
 ];
@@ -614,12 +614,12 @@ for (const id of ['lu', 'lp', 'lc'])
 async function doLogin() {
   // Leere Pflichtfelder meldet das Feld selbst, wie in den übrigen Formularen; die Sammelmeldung oben bleibt
   // für das, was erst der Server weiss (falsche Anmeldedaten, Sperre).
-  formularFehler(G('lerr'), '');
+  formError(G('lerr'), '');
   // Steht das Codefeld da, ist der Code Pflicht: Ohne ihn kam vom Server nur ein stilles 401, das obendrein
   // gegen die Anmeldedrossel zählte.
   /** @type {[string, string][]} */
   const pflicht =
-    G('lc-zeile').style.display === 'none' ? LOGIN_PFLICHT : [...LOGIN_PFLICHT, ['lc', 'login.code_leer']];
+    G('lc-zeile').style.display === 'none' ? LOGIN_REQUIRED : [...LOGIN_REQUIRED, ['lc', 'login.code_leer']];
   const leer = pflicht.filter(([id]) => !(id === 'lp' ? G(id).value : G(id).value.trim()));
   for (const [id, schluessel] of pflicht) feldFehler(id, leer.some(([l]) => l === id) ? tRaw(schluessel) : '');
   if (leer.length) {
@@ -645,7 +645,7 @@ async function doLogin() {
     G('lc').focus();
     // Hat das Konto Passkeys, geht einer statt des Codes (js/passkeys.js).
     G('lc-passkey').hidden = !d.passkey;
-    formularFehler(G('lerr'), code ? d.error || '' : '', code ? ['lc'] : []);
+    formError(G('lerr'), code ? d.error || '' : '', code ? ['lc'] : []);
     return;
   }
   G('lc-zeile').style.display = 'none';
@@ -657,7 +657,7 @@ async function doLogin() {
     return;
   }
   if (d.success) {
-    if (_abgelaufenesKonto !== null && _abgelaufenesKonto !== d.user?.id) {
+    if (_expiredAccount !== null && _expiredAccount !== d.user?.id) {
       location.reload();
       return;
     }
@@ -667,15 +667,15 @@ async function doLogin() {
     // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(), damit die Auswahlfelder gleich mit dem
     // zurückgesetzten Wert entstehen.
     resetScopeModes();
-    formularFehler(G('lerr'), '');
+    formError(G('lerr'), '');
     G('login-hinweis').hidden = true;
-    _angemeldetUm = Date.now();
-    _keksGesetzt = d.keks_fehlt === false;
-    oeffneApp();
+    _signedInUm = Date.now();
+    _cookieSet = d.keks_fehlt === false;
+    openApp();
   } else {
     const err = d.error || tRaw('settings.error');
     // Beide gefüllt (siehe oben): Meist stimmt das Passwort nicht, also dorthin.
-    formularFehler(G('lerr'), err, ['lp', 'lu']);
+    formError(G('lerr'), err, ['lp', 'lu']);
     if (d.unverified || d.code === 'email_nicht_bestaetigt') {
       setzeHtml(
         G('lerr'),
@@ -689,7 +689,7 @@ G('btn-logout').onclick = async () => {
   const _wt = sessionStorage.getItem('webToken');
   // Zuerst abgemeldet: Laufende Anfragen, die jetzt mit 401 enden, melden kein „Sitzung abgelaufen“.
   setAccount(null);
-  await apiRoh('POST', '/v1/auth/logout', {
+  await apiRaw('POST', '/v1/auth/logout', {
     headers: _wt ? { Authorization: 'Bearer ' + _wt } : {},
   }).catch(() => {});
   sessionStorage.removeItem('webToken');

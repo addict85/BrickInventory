@@ -11,7 +11,7 @@
  *      Fingerabdruck bricht ab" und „ohne Fingerabdruck gilt der Hostname …"
  *   C  `ca` nicht an nodemailer übergeben → rot: „mit PEM wird zugestellt …",
  *      „ohne Fingerabdruck …" und „das Formular …"
- *   D  isValidGlobalValue() ohne GLOBALE_REGELN → rot: „das Formular …"
+ *   D  isValidGlobalValue() ohne GLOBAL_RULES → rot: „das Formular …"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL, openssl im Pfad.
  */
@@ -27,11 +27,11 @@ const { execFileSync } = require('node:child_process');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATA_KEY = Buffer.alloc(32, 9).toString('base64');
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { routerServer, portVon } = require('./helpers/server');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { routerServer, portOf } = require('./helpers/server');
+const db = testData();
 const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
@@ -87,23 +87,23 @@ function smtpServer(z) {
           } else daten += zeile + '\n';
           continue;
         }
-        const befehl = zeile.slice(0, 4).toUpperCase();
-        if (befehl === 'EHLO') s.write('250-test\r\n250 AUTH PLAIN\r\n');
-        else if (befehl === 'AUTH') s.write('235 ok\r\n');
-        else if (befehl === 'DATA') {
+        const command = zeile.slice(0, 4).toUpperCase();
+        if (command === 'EHLO') s.write('250-test\r\n250 AUTH PLAIN\r\n');
+        else if (command === 'AUTH') s.write('235 ok\r\n');
+        else if (command === 'DATA') {
           daten = '';
           s.write('354 weiter\r\n');
-        } else if (befehl === 'QUIT') s.end('221 bye\r\n');
+        } else if (command === 'QUIT') s.end('221 bye\r\n');
         else s.write('250 ok\r\n');
       }
     });
   });
   srv.on('tlsClientError', () => {});
-  return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, post, port: portVon(srv) })));
+  return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, post, port: portOf(srv) })));
 }
 
 test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const SCHLUESSEL = [
     'smtp_host',
@@ -159,16 +159,16 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
   let nr = 0;
   const sende = async server => {
     const betreff = `Probe ${++nr}`,
-      vorherZahl = server.post.length;
+      beforeNumber = server.post.length;
     const r = await mailer.sendMail({ to: 'ziel@example.org', subject: betreff, text: 'Hallo' });
-    const zugestellt = server.post.length > vorherZahl && server.post.at(-1).includes(betreff);
-    return { zugestellt, error: r.error ?? null };
+    const delivered = server.post.length > beforeNumber && server.post.at(-1).includes(betreff);
+    return { delivered, error: r.error ?? null };
   };
 
   await t.test('ohne PEM wird nichts zugestellt, auch nicht mit der Altlast', async () => {
     await setze({ smtp_port: a.port, smtp_insecure_tls: '1' });
     const r = await sende(a);
-    assert.equal(r.zugestellt, false);
+    assert.equal(r.delivered, false);
     assert.match(r.error, /Zertifikat \(PEM\) oder seinen SHA-256-Fingerabdruck/);
     assert.equal(await mailer.reportSmtpLegacySetting(), true);
     assert.equal((await mailer.testSmtp()).code, 'smtp_zertifikat');
@@ -176,27 +176,27 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
 
   await t.test('mit PEM wird zugestellt, mit richtigem Fingerabdruck auch', async () => {
     await setze({ smtp_port: a.port, smtp_tls_ca: richtig.pem });
-    assert.deepEqual(await sende(a), { zugestellt: true, error: null });
+    assert.deepEqual(await sende(a), { delivered: true, error: null });
     await setze({
       smtp_port: a.port,
       smtp_tls_ca: richtig.pem,
       smtp_tls_fingerprint: richtig.fp.replace(/:/g, '').toLowerCase(),
     });
-    assert.deepEqual(await sende(a), { zugestellt: true, error: null });
+    assert.deepEqual(await sende(a), { delivered: true, error: null });
   });
 
   await t.test('ein falscher Fingerabdruck bricht ab', async () => {
     await setze({ smtp_port: a.port, smtp_tls_ca: richtig.pem, smtp_tls_fingerprint: fremd.fp });
     const r = await sende(a);
-    assert.equal(r.zugestellt, false);
+    assert.equal(r.delivered, false);
     assert.match(r.error, /Fingerabdruck/);
   });
 
   await t.test('ohne Fingerabdruck gilt der Hostname, mit ihm genau das Zertifikat', async () => {
     await setze({ smtp_port: b.port, smtp_tls_ca: fremd.pem });
-    assert.equal((await sende(b)).zugestellt, false);
+    assert.equal((await sende(b)).delivered, false);
     await setze({ smtp_port: b.port, smtp_tls_ca: fremd.pem, smtp_tls_fingerprint: fremd.fp });
-    assert.deepEqual(await sende(b), { zugestellt: true, error: null });
+    assert.deepEqual(await sende(b), { delivered: true, error: null });
   });
 
   await t.test('das Formular nimmt nur lesbare Werte und räumt die Altlast ab', async () => {
@@ -225,6 +225,6 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
     assert.equal(gespeichert.smtp_tls_fingerprint, richtig.fp);
     assert.equal(gespeichert.smtp_insecure_tls, undefined);
     assert.equal(await mailer.reportSmtpLegacySetting(), false);
-    assert.deepEqual(await sende(a), { zugestellt: true, error: null });
+    assert.deepEqual(await sende(a), { delivered: true, error: null });
   });
 });

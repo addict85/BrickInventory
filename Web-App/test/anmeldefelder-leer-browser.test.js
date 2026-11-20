@@ -6,27 +6,27 @@
  * Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  in showLogin() das Leeren von #lp entfernt → rot: beide Teilfälle
  *      („das Passwort steht noch im Feld“)
- *   B  in listeLadefehler() die Zeile für Status 401 entfernt und in toast()
+ *   B  in listLoadError() die Zeile für Status 401 entfernt und in toast()
  *      den Filter für 401-Meldungen → rot: „Sitzungsablauf“ (Fehler-Toast
  *      „Nicht angemeldet …“ neben dem Hinweis)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterSammlung } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternCollection } = require('./helpers/bestand');
 
 const felder = `({ lu: document.getElementById('lu').value, lp: document.getElementById('lp').value,
-  lc: document.getElementById('lc').value, maske: getComputedStyle(document.getElementById('login-screen')).display,
+  lc: document.getElementById('lc').value, mask: getComputedStyle(document.getElementById('login-screen')).display,
   hinweis: document.getElementById('login-hinweis').hidden ? '' : document.getElementById('login-hinweis').textContent,
   fehler: [...document.querySelectorAll('#toasts .toast.error')].map(t => t.textContent) })`;
 
 test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }, async t => {
-  const app = await starteApp(t, { name: `ablauf_${process.pid}`, bestand: musterSammlung });
+  const app = await startApp(t, { name: `ablauf_${process.pid}`, bestand: patternCollection });
   if (app.grund) {
     t.skip(app.grund);
     return;
   }
-  const maske = `getComputedStyle(document.getElementById('login-screen')).display !== 'none'`;
+  const mask = `getComputedStyle(document.getElementById('login-screen')).display !== 'none'`;
 
   await t.test('Sitzungsablauf: Name bleibt, Passwort weg, genau eine Meldung', async () => {
     assert.notEqual(await app.b.auswerten(`document.getElementById('lp').value`), '', 'Vorbedingung: Passwort im Feld');
@@ -34,7 +34,7 @@ test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }
     // Zwei Ansichten im selben Takt: Die Sammlung lädt neu, während die Teile schon 401 bekommen.
     await app.b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click();
       document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
-    await app.bis(maske, 'Anmeldemaske nach 401');
+    await app.bis(mask, 'Anmeldemaske nach 401');
     // Auch die zweite 401 ist beantwortet und ihr Hinweis gezeichnet.
     await app.ruhig();
     const f = await app.b.auswerten(felder);
@@ -47,7 +47,7 @@ test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }
   await t.test('Abmelden leert Name, Passwort und Code', async () => {
     // Verwalter brauchen den zweiten Faktor; der erste Code ging an die erste Anmeldung.
     await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1';
-      document.getElementById('lc').value = ${JSON.stringify(app.weitereCodes[0])};
+      document.getElementById('lc').value = ${JSON.stringify(app.furtherCodes[0])};
       document.getElementById('btn-login').click(); true`);
     await app.bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'wieder angemeldet', 300);
     assert.equal(
@@ -57,7 +57,7 @@ test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }
     );
     await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('lc').value = '123456';
       window.__alt = true; document.getElementById('btn-logout').click(); true`);
-    await app.bis(`!window.__alt && ${maske}`, 'Anmeldemaske');
+    await app.bis(`!window.__alt && ${mask}`, 'Anmeldemaske');
     const f = await app.b.auswerten(felder);
     assert.equal(f.lp, '', 'das Passwort steht noch im Feld');
     assert.equal(f.lc, '', 'der Code steht noch im Feld');

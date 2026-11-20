@@ -3,17 +3,17 @@
  * beim Herunterfahren abmelden, sonst wartet httpServer.close() auf ihn. */
 import type { Request, Response } from 'express';
 import { registerSse } from '../../http/sseRegistry';
-import { SSE_ZUGANG_BEENDET, wacheUeberZugang } from './zugangsWache';
-import type { KontoDienste } from '../bereich';
+import { SSE_ACCESS_ENDED, watchViaAccess } from './zugangsWache';
+import type { AccountServices } from '../bereich';
 
 export interface Strom {
   sende(daten: object): void;
   ende(): void;
   /** Läuft beim Ende mit, auch wenn es der Client oder die Wache auslöst. */
-  beiEnde(f: () => void): void;
+  atEnd(f: () => void): void;
   readonly zu: boolean;
   /** Wie sende(), aber bei geschlossenem Strom StromGeschlossen: Die Arbeit dahinter bricht ab. */
-  sendeOderBrichAb(daten: object): void;
+  sendOrAbortAb(daten: object): void;
 }
 
 /** Der Client ist weg. Ein Abbruch, kein Fehler: Wer ihn fängt, meldet nichts. */
@@ -24,15 +24,15 @@ export class StromGeschlossen extends Error {
   }
 }
 
-export interface StromOptionen {
+export interface StreamOptions {
   /** Dieselbe Nachricht nicht zweimal hintereinander. */
-  nurAenderungen?: boolean;
+  onlyChanges?: boolean;
   /** Bei Gegendruck schliessen: Ein hängender Client liesse Node unbegrenzt puffern. */
-  gegendruck?: string;
-  herzschlag?: boolean;
+  backpressure?: string;
+  heartbeat?: boolean;
 }
 
-export function oeffneStrom(konto: KontoDienste, req: Request, res: Response, o: StromOptionen = {}): Strom {
+export function openStream(konto: AccountServices, req: Request, res: Response, o: StreamOptions = {}): Strom {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-store, no-transform');
   res.setHeader('Connection', 'keep-alive');
@@ -48,12 +48,12 @@ export function oeffneStrom(konto: KontoDienste, req: Request, res: Response, o:
     if (!res.writableEnded) res.end();
   };
   abmelden.push(
-    wacheUeberZugang(konto, req, () => {
-      res.write(SSE_ZUGANG_BEENDET);
+    watchViaAccess(konto, req, () => {
+      res.write(SSE_ACCESS_ENDED);
       ende();
     }),
   );
-  if (o.herzschlag !== false) {
+  if (o.heartbeat !== false) {
     const uhr = setInterval(() => res.write(': keep-alive\n\n'), 20_000);
     abmelden.push(() => clearInterval(uhr));
   }
@@ -61,24 +61,24 @@ export function oeffneStrom(konto: KontoDienste, req: Request, res: Response, o:
   const sende = (daten: object) => {
     if (zu || res.destroyed) return;
     const json = JSON.stringify(daten);
-    if (o.nurAenderungen && json === zuletzt) return;
+    if (o.onlyChanges && json === zuletzt) return;
     zuletzt = json;
-    if (!res.write(`data: ${json}\n\n`) && o.gegendruck) {
-      console.warn(`[strom] Gegendruck (${o.gegendruck}) — Verbindung wird geschlossen`);
+    if (!res.write(`data: ${json}\n\n`) && o.backpressure) {
+      console.warn(`[strom] Gegendruck (${o.backpressure}) — Verbindung wird geschlossen`);
       ende();
     }
   };
   return {
     sende,
     ende,
-    beiEnde: f => {
+    atEnd: f => {
       if (zu) f();
       else abmelden.push(f);
     },
     get zu() {
       return zu;
     },
-    sendeOderBrichAb: daten => {
+    sendOrAbortAb: daten => {
       if (zu) throw new StromGeschlossen();
       sende(daten);
     },

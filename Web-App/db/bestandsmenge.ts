@@ -39,7 +39,7 @@ export function mengeAus(alias = 'sm', fehlt: 0 | 1 = 0): string {
  * Die Stückzahl eines Sets über ein ganzes BLICKFELD, als fertige Abfrage.
  * @param konten 'eines' für eine Konto-ID, 'blickfeld' für eine Liste.
  */
-export function mengeSummeSql(konten: 'eines' | 'blickfeld'): string {
+export function quantitySumSql(konten: 'eines' | 'blickfeld'): string {
   return `SELECT COALESCE(${SUMME}, 0) AS q
             FROM set_acquisitions a
             JOIN sets s ON s.user_id = a.user_id AND s.set_number = a.set_number
@@ -47,17 +47,17 @@ export function mengeSummeSql(konten: 'eines' | 'blickfeld'): string {
              AND a.set_number = $2`;
 }
 
-import type { DbSchnittstelle } from './database';
+import type { DbInterface } from './database';
 import { aufKonten, type Konten } from './konten';
 import { colorId } from '../src/infra/validate';
 
 /** Was ein Leser hier können muss, und nicht mehr: `db` oder eine Transaktion. */
-type Schreiber = Pick<DbSchnittstelle, 'get'>;
+type Schreiber = Pick<DbInterface, 'get'>;
 
 /**
  * Die Stückzahl EINER Set-Zeile — als Zahl, nicht als SQL-Schnipsel.
  */
-export async function mengeDesSets(userId: number, setNumber: string, dbh: Schreiber): Promise<number | null> {
+export async function quantityOfSets(userId: number, setNumber: string, dbh: Schreiber): Promise<number | null> {
   const zeile = await dbh.get<{ menge: unknown }>(
     `SELECT ${mengeSkalar('s')} AS menge
        FROM sets s WHERE s.user_id = $1 AND s.set_number = $2`,
@@ -70,7 +70,7 @@ export async function mengeDesSets(userId: number, setNumber: string, dbh: Schre
 // trägt.
 
 /** Welcher Bestand. Sets stehen hier nicht: ihre Spalte ist seit 0036 weg. */
-export interface ErfassungsZeile {
+export interface EntryRow {
   id: number;
   quantity: number;
   purchase_price?: number | null;
@@ -82,7 +82,7 @@ export interface ErfassungsZeile {
   owner_user_id: number;
 }
 
-export type Bestandsart = 'part' | 'fig';
+export type StockKind = 'part' | 'fig';
 
 /** Je Art: Tabellen, Schluessel und Spaltennamen. Einmal, als Tabelle. */
 const ART = {
@@ -106,7 +106,7 @@ const ART = {
 
 /** Die JOIN-Quellen `<alias>_e` (Erfassungen) und `<alias>_k` (Katalog) für
  * die Stückzahl der Bestandszeile `bezug`; `konten` wie bei [mengeJoin]. */
-export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', konten?: Konten): string {
+export function teilmengeJoin(bezug: string, art: StockKind, alias = 'tm', konten?: Konten): string {
   const a = ART[art];
   const farbErf = a.farbe ? `, x.color_id AS fk` : '';
   const farbVgl = a.farbe ? ` AND ${alias}_e.fk = ${bezug}.color_id` : '';
@@ -130,7 +130,7 @@ export function teilmengeJoin(bezug: string, art: Bestandsart, alias = 'tm', kon
 /**
  * Die Stückzahl der Bestandszeile — die Fallunterscheidung selbst.
  */
-export function teilmengeAus(bezug: string, _art: Bestandsart, alias = 'tm'): string {
+export function teilmengeAus(bezug: string, _art: StockKind, alias = 'tm'): string {
   return `CASE WHEN COALESCE(${bezug}.source, 'set') = 'manual'
                THEN COALESCE(${alias}_e.menge, 0)
                ELSE COALESCE(${alias}_k.quantity, 1) END`;
@@ -139,11 +139,11 @@ export function teilmengeAus(bezug: string, _art: Bestandsart, alias = 'tm'): st
 /**
  * Die Stückzahl EINER manuellen Position — als Zahl, nicht als Schnipsel.
  */
-export async function mengeDerPosition(
-  art: Bestandsart,
+export async function quantityThePosition(
+  art: StockKind,
   userId: number,
   keys: (string | number | null)[],
-  dbh: Pick<DbSchnittstelle, 'get'>,
+  dbh: Pick<DbInterface, 'get'>,
 ): Promise<number | null> {
   const a = ART[art];
   const farbe = a.farbe ? ' AND b.color_id = $3' : '';
@@ -183,10 +183,10 @@ export function kontowaehrungJoin(tabelle: string, alias = 'kw'): string {
 /** Die drei Erfassungstabellen; der eindeutige Index (Migration 0070) läuft
  * über Konto, Element, Tag, Zustand, Preis, Schätzung und Währung. */
 export type ErfassungsArt = 'set' | 'part' | 'fig';
-export const ERFASSUNGS_TABELLEN = {
+export const ENTRY_TABLES = {
   set: { table: 'set_acquisitions', price: 'purchase_price', keys: ['set_number'] },
   part: { table: 'part_acquisitions', price: 'unit_price', keys: ['part_number', 'color_id'] },
   fig: { table: 'minifig_acquisitions', price: 'unit_price', keys: ['fig_number'] },
 } as const;
-export const preisSpalte = (art: ErfassungsArt): string => ERFASSUNGS_TABELLEN[art].price;
-export const schluesselSpalten = (art: ErfassungsArt): readonly string[] => ERFASSUNGS_TABELLEN[art].keys;
+export const priceColumn = (art: ErfassungsArt): string => ENTRY_TABLES[art].price;
+export const keyColumns = (art: ErfassungsArt): readonly string[] => ENTRY_TABLES[art].keys;

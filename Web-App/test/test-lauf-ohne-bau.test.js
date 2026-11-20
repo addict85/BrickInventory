@@ -20,17 +20,17 @@ test('ein Lauf im Lauf baut nicht', { timeout: 120_000 }, t => {
   require('./helpers/sources').buildAndRequire();
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'test-lauf-ohne-bau-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
-  const ausgabe = path.join(ordner, 'marke.txt');
+  const output = path.join(ordner, 'marke.txt');
   const datei = path.join(ordner, 'marke.test.js');
   fs.writeFileSync(
     datei,
-    `require('node:test')('marke', () => require('node:fs').writeFileSync(${JSON.stringify(ausgabe)}, String(process.env.TEST_LAUF_GEBAUT)));\n`,
+    `require('node:test')('marke', () => require('node:fs').writeFileSync(${JSON.stringify(output)}, String(process.env.TEST_LAUF_GEBAUT)));\n`,
   );
-  const zeiten = () =>
+  const times = () =>
     ['dist/server.js', 'dist/db/migrations', 'public/js/app.bundle.js'].map(
       f => fs.statSync(path.join(ROOT, f)).mtimeMs,
     );
-  const vorher = zeiten();
+  const vorher = times();
   const env = { ...process.env, TEST_LAUF_GEBAUT: '1' };
   for (const k of ['TEST_DATABASE_URL', 'TEST_DB_VORLAGE', 'TEST_DB_BASIS', 'TEST_DB_EIGEN', 'NODE_TEST_CONTEXT'])
     delete env[k];
@@ -41,6 +41,6 @@ test('ein Lauf im Lauf baut nicht', { timeout: 120_000 }, t => {
     timeout: 100_000,
   });
   assert.equal(r.status, 0, (r.stdout + r.stderr).slice(-2000));
-  assert.deepEqual(zeiten(), vorher, 'dist/ und Bündel bleiben unberührt');
-  assert.equal(fs.readFileSync(ausgabe, 'utf8'), '1', 'die Kinder erben die Marke');
+  assert.deepEqual(times(), vorher, 'dist/ und Bündel bleiben unberührt');
+  assert.equal(fs.readFileSync(output, 'utf8'), '1', 'die Kinder erben die Marke');
 });

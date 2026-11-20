@@ -9,29 +9,29 @@ interface Strom {
   on?(e: 'close', f: () => void): unknown;
 }
 
-const _offen = prozessweit('offeneStroeme', () => new Set<Strom>());
+const _open = prozessweit('offeneStroeme', () => new Set<Strom>());
 
 /** @returns Funktion zum Abmelden — im Aufräumpfad der Route aufrufen. */
 export function registerSse(res: Strom): () => void {
-  _offen.add(res);
+  _open.add(res);
   // Trennt der Client, ohne dass die Route aufräumt, bliebe ein toter Eintrag.
-  res.on?.('close', () => _offen.delete(res));
+  res.on?.('close', () => _open.delete(res));
   return () => {
-    _offen.delete(res);
+    _open.delete(res);
   };
 }
 
 /** VOR `httpServer.close()`: Offene Ströme enden nie von selbst. */
 export function closeAllSse(): number {
-  const anzahl = _offen.size;
-  for (const res of [..._offen]) {
+  const anzahl = _open.size;
+  for (const res of [..._open]) {
     try {
       if (!res.writableEnded) res.write('event: shutdown\ndata: {"reason":"shutdown"}\n\n');
       res.end();
     } catch (_) {
       /* Antwort war schon tot — nur der Eintrag muss weg */
     }
-    _offen.delete(res);
+    _open.delete(res);
   }
   return anzahl;
 }

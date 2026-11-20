@@ -5,8 +5,8 @@ import { emit } from './events.js';
 import { registerActions } from './registry.js';
 import { t, tRaw, colorName } from '../i18n.js';
 import { escHex, rawHex, esc, html, rawHtml, joinHtml } from './escaping.js';
-import { apiRoh } from './api.js';
-import { bildTag, platzhalterInhalt, fullUrl, imgUrl } from './bilder.js';
+import { apiRaw } from './api.js';
+import { bildTag, placeholderContent, fullUrl, imgUrl } from './bilder.js';
 import { ico, G, XML_ICON_SVG, setzeHtml } from './dom.js';
 import { toast } from './meldungen.js';
 import { loadManualFigsTable } from './minifigs.js';
@@ -237,7 +237,7 @@ async function readReally(write) {
   drawProgress(null);
   let d;
   try {
-    const r = await apiRoh('POST', `/v1/wanted-list/import/xml?${p}`, { body: fd });
+    const r = await apiRaw('POST', `/v1/wanted-list/import/xml?${p}`, { body: fd });
     d = await readStream(r);
   } catch {
     d = {};
@@ -309,12 +309,12 @@ function drawSummary(d) {
   );
 }
 
-/** What a row shows. See the reasoning on PostenErgebnis. */
+/** What a row shows. See the reasoning on ItemResult. */
 /** @param {Item} p @param {number} i */
 function row(p, i) {
   const image = p.bild
     ? bildTag({ src: imgUrl(fullUrl(p.bild), true), alt: '', klasse: 'bild-40', ph: 'teil' })
-    : html`<span class="bild-ph bild-40" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
+    : html`<span class="bild-ph bild-40" aria-hidden="true">${placeholderContent('teil')}</span>`;
   const dot = p.farbHex
     ? html`<span data-stil="display:inline-block;width:10px;height:10px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px"
         data-farbe="${escHex(p.farbHex, 'var(--s300)')}"></span>`

@@ -22,18 +22,18 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = testDaten();
+const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `pwbest_${process.pid}`,
   PASS = 'Passwort12345';
 
 test('Passwort bestätigen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -50,8 +50,8 @@ test('Passwort bestätigen', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const mitSitzung = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  const ohneSitzung = testServer(_req, { sitzung: {}, t });
+  const withSession = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
+  const withoutSession = testServer(_req, { sitzung: {}, t });
   const post = async (srv, pfad, body, kopf = {}) => {
     const r = await fetch(`${srv.base}${AUTH}${pfad}`, {
       method: 'POST',
@@ -62,36 +62,36 @@ test('Passwort bestätigen', { concurrency: 1 }, async t => {
   };
 
   await t.test('ein Token prägt keinen weiteren', async () => {
-    const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Probe');
-    const r = await post(ohneSitzung, '/token-create', { password: PASS }, { Authorization: `Bearer ${token}` });
+    const token = await _req('src/konto/geraeteToken.js').createToken(uid, 'Probe');
+    const r = await post(withoutSession, '/token-create', { password: PASS }, { Authorization: `Bearer ${token}` });
     assert.equal(r.status, 403, JSON.stringify(r.body));
     assert.equal(r.body.code, 'nur_mit_sitzung');
   });
 
   await t.test('aus der Sitzung nur mit dem Passwort', async () => {
-    assert.equal((await post(mitSitzung, '/token-create', {})).status, 400);
-    const r = await post(mitSitzung, '/token-create', { password: PASS });
+    assert.equal((await post(withSession, '/token-create', {})).status, 400);
+    const r = await post(withSession, '/token-create', { password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.ok(r.body.token);
   });
 
   await t.test('nach fünf Fehlversuchen ist Schluss — auch mit dem richtigen Passwort', async () => {
     for (let i = 0; i < 5; i++) {
-      const r = await post(mitSitzung, '/change-password', { current: 'falsch' + i, newPassword: 'NeuesPasswort123' });
+      const r = await post(withSession, '/change-password', { current: 'falsch' + i, newPassword: 'NeuesPasswort123' });
       assert.equal(r.status, 400, `Versuch ${i + 1}`);
     }
-    const r = await post(mitSitzung, '/change-password', { current: PASS, newPassword: 'NeuesPasswort123' });
+    const r = await post(withSession, '/change-password', { current: PASS, newPassword: 'NeuesPasswort123' });
     assert.equal(r.status, 429, JSON.stringify(r.body));
     // Dieselbe Bremse gilt für den zweiten Faktor.
-    assert.equal((await post(mitSitzung, '/zweiter-faktor/einrichten', { password: PASS })).status, 429);
+    assert.equal((await post(withSession, '/zweiter-faktor/einrichten', { password: PASS })).status, 429);
   });
 
   await t.test('ein Erfolg setzt den Zähler zurück', async () => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`passwort-bestaetigen|${uid}|%`]);
-    for (let i = 0; i < 4; i++) await post(mitSitzung, '/zweiter-faktor/einrichten', { password: 'falsch' });
-    assert.equal((await post(mitSitzung, '/zweiter-faktor/einrichten', { password: PASS })).status, 200);
+    for (let i = 0; i < 4; i++) await post(withSession, '/zweiter-faktor/einrichten', { password: 'falsch' });
+    assert.equal((await post(withSession, '/zweiter-faktor/einrichten', { password: PASS })).status, 200);
     assert.equal(
-      (await post(mitSitzung, '/zweiter-faktor/einrichten', { password: 'falsch' })).status,
+      (await post(withSession, '/zweiter-faktor/einrichten', { password: 'falsch' })).status,
       400,
       'nach dem Erfolg zählt wieder von vorn',
     );

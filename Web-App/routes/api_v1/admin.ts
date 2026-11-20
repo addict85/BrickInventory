@@ -1,17 +1,17 @@
 /** /api/v1/admin — jede Route über requireApiAdmin, damit kein Handler die
  * Prüfung vergessen kann. */
-import { waechterFuer } from './middleware';
-import { proxyHinweisStand } from '../../src/http/proxyHinweis';
-import { seiteAus } from '../../src/infra/seite';
+import { guardFor } from './middleware';
+import { proxyHintStatus } from '../../src/http/proxyHinweis';
+import { pageFrom } from '../../src/infra/seite';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
-export function baueAdminRouter(
+export function buildAdminRouter(
   d: Pick<Dienste, 'settings' | 'auftraege' | 'katalog' | 'konto' | 'fremdquellen' | 'management'>,
 ) {
-  const { requireApiAdmin } = waechterFuer(d.konto);
-  const router = vertragsRouter('/api/v1', { grosseIds: true });
+  const { requireApiAdmin } = guardFor(d.konto);
+  const router = vertragsRouter('/api/v1', { largeIds: true });
 
   router.endpunkt('GET /api/v1/admin/auftraege', requireApiAdmin, async req => {
     return { ...(await d.management.jobsOverview({ status: req.abfrage.status, art: req.abfrage.art })) };
@@ -22,7 +22,7 @@ export function baueAdminRouter(
   });
 
   router.endpunkt('POST /api/v1/admin/auftraege/:id/wiederholen', requireApiAdmin, async req => {
-    return { ...(await d.auftraege.auftragWiederholen(req.pfad.id)) };
+    return { ...(await d.auftraege.retryJob(req.pfad.id)) };
   });
 
   router.endpunkt('POST /api/v1/admin/auftraege/art/:art/jetzt', requireApiAdmin, async req => {
@@ -40,7 +40,7 @@ export function baueAdminRouter(
   });
 
   router.endpunkt('GET /api/v1/admin/protokoll', requireApiAdmin, async _req => {
-    return { eintraege: await d.konto.verwalter.verwaltungsProtokoll() };
+    return { eintraege: await d.konto.verwalter.managementLog() };
   });
 
   router.endpunkt('GET /api/v1/admin/cache-stats', requireApiAdmin, async _req => {
@@ -86,9 +86,9 @@ export function baueAdminRouter(
 
   router.endpunkt('GET /api/v1/admin/api-limits', requireApiAdmin, async _req => {
     const [rb, bl, bs] = await Promise.all([
-      d.fremdquellen.kontingentGrenze('rebrickable'),
-      d.fremdquellen.kontingentGrenze('bricklink'),
-      d.fremdquellen.kontingentGrenze('brickset'),
+      d.fremdquellen.quotaLimit('rebrickable'),
+      d.fremdquellen.quotaLimit('bricklink'),
+      d.fremdquellen.quotaLimit('brickset'),
     ]);
     return { limits: { rebrickable: rb, bricklink: bl, brickset: bs } };
   });
@@ -140,8 +140,8 @@ export function baueAdminRouter(
   });
 
   router.endpunkt('GET /api/v1/admin/brickset-queue', requireApiAdmin, async req => {
-    const rows = await d.katalog.bricksetListe();
-    const { eintraege, ...seite } = seiteAus(rows, req.abfrage);
+    const rows = await d.katalog.bricksetList();
+    const { eintraege, ...seite } = pageFrom(rows, req.abfrage);
     return { count: rows.length, entries: eintraege, ...seite };
   });
 
@@ -158,7 +158,7 @@ export function baueAdminRouter(
   });
 
   router.endpunkt('GET /api/v1/admin/jobs', requireApiAdmin, async req => {
-    return { ...(await d.management.jobMonitor()), proxy_hinweis: proxyHinweisStand(req.app) };
+    return { ...(await d.management.jobMonitor()), proxy_hinweis: proxyHintStatus(req.app) };
   });
 
   // Body: { name, time: "HH:MM" } für tägliche Jobs oder { name: 'priceJob',

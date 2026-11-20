@@ -6,7 +6,7 @@
  * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgenommen):
  *   E  die Farbkette in plRenderTable wieder auf `?? p.color_id ?? ''` →
  *      rot: beide Fälle (COLOR 999 in der Datei, keine Meldung)
- *   F  statt `exportierbar` wieder `expanded` ins XML gegeben → rot: dieselbe
+ *   F  statt `exportable` wieder `expanded` ins XML gegeben → rot: dieselbe
  *      Prüfung (Posten ohne COLOR in der Datei)
  *   G  die Erfolgsmeldung wieder als deutscher Text eingetippt → rot: „die
  *      Meldungen sind übersetzt“ (englische Oberfläche)
@@ -16,7 +16,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const ROT = {
   part_number: '3001',
@@ -27,7 +27,7 @@ const ROT = {
   quantity: 6,
 };
 // Rebrickable-Farbe 999 kennt die Zuordnung nicht: Eine geratene Farbe bestellte das falsche Teil.
-const UNBEKANNT = {
+const UNKNOWN = {
   part_number: '3002',
   part_name: 'Brick 2 x 3',
   color_id: 999,
@@ -37,9 +37,9 @@ const UNBEKANNT = {
 };
 
 async function exportiere(sprache) {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
-      '/v1/sets/10294-1/parts-list': { success: true, parts: [ROT, UNBEKANNT] },
+      '/v1/sets/10294-1/parts-list': { success: true, parts: [ROT, UNKNOWN] },
       '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
       '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
       '/v1/parts/bl-color-map': { success: true, map: { 4: 5 } },

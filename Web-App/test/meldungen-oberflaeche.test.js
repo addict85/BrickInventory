@@ -14,19 +14,19 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 // Seit dem 29.10. zeigt eine Liste ihren Ladefehler selbst (fehlerZustand);
 // eine Meldung kommt von einer Handlung — hier „Auf die Merkliste“.
 const FEHLER = { '/v1/wanted': { success: false, error: 'Merkliste kaputt' } };
-async function merkpostenAnlegen(w, d) {
+async function createWantedItem(w, d) {
   await reiter(w, 'wanted');
   d.getElementById('mk-num').value = '10294-1';
   d.getElementById('mk-add').click();
 }
 
 /** Zeitgeber ab jetzt mitschreiben, statt sie laufen zu lassen. */
-function zeitgeberFangen(w) {
+function catchZeitgeber(w) {
   const gefangen = [];
   const echt = w.setTimeout;
   w.setTimeout = (fn, ms, ...rest) => {
@@ -40,10 +40,10 @@ function zeitgeberFangen(w) {
 }
 
 test('Fehler und Knopf-Meldungen laufen nicht ab', async () => {
-  const { w, d } = await oeffneOberflaeche(FEHLER);
+  const { w, d } = await openUi(FEHLER);
   try {
-    const gefangen = zeitgeberFangen(w);
-    await merkpostenAnlegen(w, d);
+    const gefangen = catchZeitgeber(w);
+    await createWantedItem(w, d);
     await warte(() => d.querySelector('#toasts .toast.error'));
     const meldung = d.querySelector('#toasts .toast.error');
     assert.match(meldung.textContent, /Merkliste kaputt/);
@@ -59,11 +59,11 @@ test('Fehler und Knopf-Meldungen laufen nicht ab', async () => {
 });
 
 test('Maus auf der Meldung hält die Frist an', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/wanted': (_u, o) => (o.method === 'POST' ? { success: true, war_neu: true } : { success: true, items: [] }),
   });
   try {
-    // Wie zeitgeberFangen, aber clearTimeout nimmt einen gefangenen Zeitgeber wieder heraus.
+    // Wie catchZeitgeber, aber clearTimeout nimmt einen gefangenen Zeitgeber wieder heraus.
     const offen = new Map();
     let n = 1e6;
     const setzen = w.setTimeout,
@@ -76,7 +76,7 @@ test('Maus auf der Meldung hält die Frist an', async () => {
       return setzen.call(w, fn, ms, ...rest);
     };
     w.clearTimeout = id => (offen.has(id) ? offen.delete(id) : loeschen.call(w, id));
-    await merkpostenAnlegen(w, d);
+    await createWantedItem(w, d);
     await warte(() => d.querySelector('#toasts .toast.success'));
     const meldung = d.querySelector('#toasts .toast.success');
     meldung.dispatchEvent(new w.MouseEvent('mouseenter'));
@@ -91,10 +91,10 @@ test('Maus auf der Meldung hält die Frist an', async () => {
 });
 
 test('gleiche Fehler stapeln sich nicht', async () => {
-  const { w, d } = await oeffneOberflaeche(FEHLER);
+  const { w, d } = await openUi(FEHLER);
   try {
     for (let i = 0; i < 3; i++) {
-      await merkpostenAnlegen(w, d);
+      await createWantedItem(w, d);
       await warte(() => d.querySelectorAll('#toasts .toast.error').length > 0);
     }
     await warte(() => d.querySelector('#toasts .toast-anzahl:not([hidden])')?.textContent === '×3', 1000);
@@ -107,9 +107,9 @@ test('gleiche Fehler stapeln sich nicht', async () => {
 });
 
 test('Klick räumt die Meldung weg', async () => {
-  const { w, d } = await oeffneOberflaeche(FEHLER);
+  const { w, d } = await openUi(FEHLER);
   try {
-    await merkpostenAnlegen(w, d);
+    await createWantedItem(w, d);
     await warte(() => d.querySelector('#toasts .toast.error'));
     const meldung = d.querySelector('#toasts .toast.error');
     meldung.querySelector('.toast-text').click();

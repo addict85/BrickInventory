@@ -1,18 +1,18 @@
 /** /api/v1/settings — ein Router, weil die Reihenfolge vor und nach router.use(requireLogin)
  * hier an einer Stelle entschieden wird; settingsGlobal.ts hängt dahinter. */
-import { bearerToken, waechterFuer } from './middleware';
-import { baueSettingsGlobalRouter } from './settingsGlobal';
-import { nutzerIdDerAnfrage, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
-import { tlsAuskunft } from '../../src/infra/tlsWurzel';
+import { bearerToken, guardFor } from './middleware';
+import { buildSettingsGlobalRouter } from './settingsGlobal';
+import { userIdTheRequest, confirmWithFactor, perSession } from '../../src/konto/http/anmeldung';
+import { tlsInfo } from '../../src/infra/tlsWurzel';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
-import { eigenerZugang } from '../../src/konto';
+import { ownAccess } from '../../src/konto';
 
-export function baueSettingsRouter(
+export function buildSettingsRouter(
   d: Pick<Dienste, 'settings' | 'mail' | 'haushalt' | 'konto' | 'profile' | 'management'>,
 ) {
-  const { requireToken, requireLoginOrToken } = waechterFuer(d.konto);
+  const { requireToken, requireLoginOrToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
   const requireLogin = requireLoginOrToken;
@@ -20,7 +20,7 @@ export function baueSettingsRouter(
   // Vor router.use(requireLogin): Anmelde- und Startbildschirm brauchen das
   // Design, und es verrät nichts über Konten.
   router.endpunkt('GET /api/v1/settings/theme', async (req, res) => {
-    const uid = await nutzerIdDerAnfrage(d.konto, req);
+    const uid = await userIdTheRequest(d.konto, req);
     res.set('Cache-Control', 'no-cache');
     res.set('Vary', 'Cookie, Authorization');
     return { ...(await d.settings.themeFor(uid)) };
@@ -31,7 +31,7 @@ export function baueSettingsRouter(
     const eigener = bearerToken(req);
     // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
     // Gerät ausgesperrt wird.
-    const tokens = await d.konto.sitzungen.zugaengeListe(req.apiUser.user_id);
+    const tokens = await d.konto.sitzungen.accessesList(req.apiUser.user_id);
     return {
       tokens: tokens.map(t => ({
         token_prefix: t.token.substring(0, 8),
@@ -45,7 +45,7 @@ export function baueSettingsRouter(
         scope: t.scope,
         ip_range: t.ip_range,
         rotated_at: t.rotated_at,
-        aktuell: eigenerZugang(eigener, t.token),
+        aktuell: ownAccess(eigener, t.token),
       })),
     };
   });
@@ -56,30 +56,30 @@ export function baueSettingsRouter(
   router.endpunkt('DELETE /api/v1/settings/tokens/:tokenId', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     const eigener = bearerToken(req);
-    const eigenesGeraet = eigenerZugang(eigener, req.pfad.tokenId);
-    if (!eigenesGeraet && !(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
-    return { deleted: await d.konto.sitzungen.zugangBeenden(uid, req.pfad.tokenId, eigenesGeraet) };
+    const ownDevice = ownAccess(eigener, req.pfad.tokenId);
+    if (!ownDevice && !(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password))) return;
+    return { deleted: await d.konto.sitzungen.endAccess(uid, req.pfad.tokenId, ownDevice) };
   });
 
   // Mit Passwort: Eine erbeutete Sitzung soll den Inhaber nicht aussperren können.
   // `zugaenge` nimmt die App-Zugänge mit, damit ein Code für alles reicht.
   router.endpunkt('POST /api/v1/settings/sessions/andere-beenden', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
-    if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
-    const { sitzungen, zugaenge, version } = await d.konto.sitzungen.beendeAndere(uid, {
+    if (!(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password))) return;
+    const { sitzungen, zugaenge, version } = await d.konto.sitzungen.endOther(uid, {
       sitzung: req.sessionID,
       token: bearerToken(req),
       zugaenge: !!req.eingabe.zugaenge,
     });
     // Nur eine echte Sitzung merkt sich die Version; sonst bekäme die App eine.
-    if (perSitzung(req)) req.session.sitzungsVersion = version;
-    if (sitzungen || zugaenge) d.konto.hinweisNebenher(uid, 'zugaenge_beendet');
+    if (perSession(req)) req.session.sitzungsVersion = version;
+    if (sitzungen || zugaenge) d.konto.hintInBackground(uid, 'zugaenge_beendet');
     return { deleted: sitzungen, zugaenge };
   });
 
   /** Ausdrücklich aufgezählt: Die App bekommt nur, was sie liest, keine globalen
    * oder Verwalterfelder. */
-  const APP_FELDER = [
+  const APP_FIELDS = [
     'currency',
     'price_condition',
     'price_cache_ttl',
@@ -87,7 +87,7 @@ export function baueSettingsRouter(
     'user_default_condition',
   ] as const;
 
-  const APP_VORGABEN: Record<string, string> = {
+  const APP_DEFAULTS: Record<string, string> = {
     currency: 'EUR',
     price_condition: 'N',
     price_cache_ttl: '24',
@@ -99,10 +99,10 @@ export function baueSettingsRouter(
     const uid = req.apiUser.user_id;
     // readSettings(): price_cache_ttl und default_price_condition sind global.
     const alle = await d.settings.readSettings(uid, false);
-    const gespeichert = Object.fromEntries(APP_FELDER.map(feld => [feld, alle[feld] ?? APP_VORGABEN[feld] ?? '']));
+    const gespeichert = Object.fromEntries(APP_FIELDS.map(feld => [feld, alle[feld] ?? APP_DEFAULTS[feld] ?? '']));
     return {
       settings: {
-        ...(gespeichert as Record<(typeof APP_FELDER)[number], string>),
+        ...(gespeichert as Record<(typeof APP_FIELDS)[number], string>),
         // Die Regel steht einmal, in src/settings/settings.ts.
         effective_condition: await d.settings.userDefaultCondition(uid),
         // Das wirksame Design des Kontos, nicht die Vorgabe des Verwalters.
@@ -148,17 +148,17 @@ export function baueSettingsRouter(
 
   // ── Haushalt: Konten verknüpfen (Regeln in src/haushalt/haushalt.ts) ─────────────
   router.endpunkt('GET /api/v1/settings/household', requireToken, async req => {
-    return { ...(await d.haushalt.haushaltsStand(req.apiUser.user_id)) };
+    return { ...(await d.haushalt.householdStatus(req.apiUser.user_id)) };
   });
 
   router.endpunkt('POST /api/v1/settings/household/invite', requireToken, async req => {
-    return { ...(await d.haushalt.einladungAnlegen(req.apiUser.user_id)) };
+    return { ...(await d.haushalt.createInvitation(req.apiUser.user_id)) };
   });
 
   router.endpunkt('POST /api/v1/settings/household/redeem/pruefen', requireToken, async req => {
-    const zuOft = await d.konto.kontoGedrosselt('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
+    const zuOft = await d.konto.accountThrottled('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
     if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
-    return { ...(await d.haushalt.pruefeEinladung(req.apiUser.user_id, req.eingabe.code)) };
+    return { ...(await d.haushalt.checkInvitation(req.apiUser.user_id, req.eingabe.code)) };
   });
 
   // Mit Passwort: Das Hauptkonto schreibt danach den Bestand dieses Kontos; ein
@@ -166,25 +166,25 @@ export function baueSettingsRouter(
   router.endpunkt('POST /api/v1/settings/household/redeem', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
-    if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password, 'faktor_code'))) return;
-    return { ...(await d.konto.haushaltBeitreten(uid, req.eingabe.code)) };
+    if (!(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password, 'faktor_code'))) return;
+    return { ...(await d.konto.joinHousehold(uid, req.eingabe.code)) };
   });
 
   router.endpunkt('POST /api/v1/settings/household/unlink', requireToken, async req => {
     return {
-      ...(await d.haushalt.kontenTrennen(req.apiUser.user_id, req.eingabe.sub_user_id, req.eingabe.main_user_id)),
+      ...(await d.haushalt.unlinkAccounts(req.apiUser.user_id, req.eingabe.sub_user_id, req.eingabe.main_user_id)),
     };
   });
 
   router.endpunkt('POST /api/v1/settings/household/former/dismiss', requireToken, async req => {
-    return { ...(await d.haushalt.verwerfeGetrennt(req.apiUser.user_id, req.eingabe.sub_user_id)) };
+    return { ...(await d.haushalt.discardSeparated(req.apiUser.user_id, req.eingabe.sub_user_id)) };
   });
 
   router.use('/settings', requireLogin);
 
   /** Zum Abgleich von Hand; derselbe Wert steht als `fp` im QR-Code der App. */
   router.endpunkt('GET /api/v1/settings/tls', requireToken, async _req => {
-    return { ...(await tlsAuskunft()) };
+    return { ...(await tlsInfo()) };
   });
 
   // Leer heisst „Vorgabe des Verwalters".
@@ -194,6 +194,6 @@ export function baueSettingsRouter(
     return { ...(await d.settings.themeFor(uid)) };
   });
 
-  router.haengeEin(baueSettingsGlobalRouter(d));
+  router.attachOne(buildSettingsGlobalRouter(d));
   return router;
 }

@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const antwort = waehrung => ({
   '/v1/settings/raw': { success: true, settings: { currency: waehrung, language: 'de', rebrickable_api_key: 'probe' } },
@@ -39,8 +39,8 @@ const antwort = waehrung => ({
   },
 });
 
-async function einstand(browserSprache, waehrung = 'EUR') {
-  const o = await oeffneOberflaeche(antwort(waehrung), { browserSprache });
+async function einstand(browserLanguage, waehrung = 'EUR') {
+  const o = await openUi(antwort(waehrung), { browserLanguage });
   try {
     await reiter(o.w, 'finance');
     await warte(() => o.d.getElementById('fin-einstand').textContent.includes('1'));

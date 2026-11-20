@@ -1,37 +1,37 @@
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../auftraege';
-import { BilderNutzlast } from '../katalog';
+import { ImagesPayload } from '../katalog';
 import * as nachErfassung from './nachErfassung';
-import type { SetsKontext } from './kontext';
+import type { SetsContext } from './kontext';
 
 const KONTO = z.number().int().positive();
 const SETNR = z.string().min(1).max(64);
 
-const NacharbeitNutzlast = z.object({
+const ReworkPayload = z.object({
   set_number: SETNR,
   user_id: KONTO,
   art: z.enum(['zweit', 'neu', 'csv', 'ergaenzen']).optional(),
 });
 
 declare module '../auftraege/auftraege' {
-  interface AuftragsNutzlasten {
-    nacharbeit: typeof NacharbeitNutzlast;
+  interface JobPayloads {
+    nacharbeit: typeof ReworkPayload;
   }
 }
 
-export function setsAuftragsarten(sk: SetsKontext): Anmeldung[] {
+export function setsJobTypes(sk: SetsContext): Anmeldung[] {
   return [
     auftragsart({
       art: 'nacharbeit',
-      nutzlast: NacharbeitNutzlast,
-      ausfuehren: (n, l) => nachErfassung.zieheNach(sk, n.set_number, n.user_id, n.art ?? 'neu', l),
+      nutzlast: ReworkPayload,
+      ausfuehren: (n, l) => nachErfassung.pullAfter(sk, n.set_number, n.user_id, n.art ?? 'neu', l),
     }),
     auftragsart({
       art: 'bilder',
-      nutzlast: BilderNutzlast,
+      nutzlast: ImagesPayload,
       ausfuehren: async (n, l) => {
-        if (n.nur_bilder) await sk.katalog.ladeSetBilder(n.set_number);
-        else await nachErfassung.ladeSetBilder(sk, n.set_number, l);
+        if (n.only_images) await sk.katalog.loadSetImages(n.set_number);
+        else await nachErfassung.loadSetImages(sk, n.set_number, l);
       },
     }),
   ];

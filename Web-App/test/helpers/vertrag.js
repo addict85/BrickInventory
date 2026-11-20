@@ -5,7 +5,7 @@
  */
 
 /** @param {string} p */
-const gleichfoermig = p => p.replace(/\{\w+\}|:\w+/g, '{}');
+const uniform = p => p.replace(/\{\w+\}|:\w+/g, '{}');
 
 /**
  * @param {(rel: string) => any} _req  buildAndRequire() der Testdatei
@@ -13,11 +13,11 @@ const gleichfoermig = p => p.replace(/\{\w+\}|:\w+/g, '{}');
  * @param {string} pfad
  * @returns {{ antwort?: import('zod').ZodType, eingabe?: import('zod').ZodType } | undefined}
  */
-function vertragZu(_req, methode, pfad) {
-  const { VERTRAG } = _req('src/vertrag/index.js');
-  const treffer = Object.entries(VERTRAG).filter(([k]) => {
+function contractTo(_req, methode, pfad) {
+  const { CONTRACT } = _req('src/vertrag/index.js');
+  const treffer = Object.entries(CONTRACT).filter(([k]) => {
     const [m, p] = k.split(' ');
-    return m === methode && gleichfoermig(p) === gleichfoermig(pfad);
+    return m === methode && uniform(p) === uniform(pfad);
   });
   return treffer.length === 1 ? treffer[0][1] : undefined;
 }
@@ -32,4 +32,4 @@ function appSchnittstelle() {
   return JSON.parse(require('node:fs').readFileSync(datei, 'utf8'));
 }
 
-module.exports = { vertragZu, gleichfoermig, appSchnittstelle };
+module.exports = { contractTo, uniform, appSchnittstelle };

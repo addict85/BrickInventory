@@ -23,15 +23,15 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0105-set-stamm-aus-rb-sets.sql'), 'utf8');
 const SCHEMA = `probe0105_${process.pid}`;
 
 test('Migration 0105: Set-Stamm aus rb_sets', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});

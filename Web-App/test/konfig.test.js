@@ -6,9 +6,9 @@
  * Gegenproben (am 27.10. gemessen):
  *   A  in jobs/csvImportWorker.ts wieder `process.env.PGUSER || 'brickinv'`
  *      → rot: „niemand sonst liest die Verbindungsvariablen"
- *   B  in datenbankVerbindung die Zeile für DATABASE_URL entfernt →
+ *   B  in databaseConnection die Zeile für DATABASE_URL entfernt →
  *      rot: „DATABASE_URL geht vor"
- *   C  in standardPasswortInBenutzung den Zweig für connectionString auf
+ *   C  in standardPasswordInUse den Zweig für connectionString auf
  *      `return false` gesetzt → rot: „das Beispielpasswort wird erkannt"
  *
  * Seit dem 30.10. liest NUR src/infra/konfig.ts die Umgebung; ein ungültiger Wert
@@ -23,9 +23,9 @@
  *      src/konto/sitzungsFrist statt der Meldung)
  *   G  (30.10.) in ladeKonfig `veraltet` immer leer → rot: „ungültige Werte:
  *      alle auf einmal, mit Namen“ (WEB_WORKERS wurde nicht mehr genannt)
- *   H  (11.11.2026) in attestationWurzeln() die Prüfung auf entwicklungsUmgebung
+ *   H  (11.11.2026) in attestationWurzeln() die Prüfung auf developmentEnvironment
  *      gestrichen → rot: „eigene Attestierungswurzeln nur in Entwicklung und Test“
- *   I  (15.11.2026) in altschluesselBis() den Vergleich mit dem Stichtag gestrichen
+ *   I  (15.11.2026) in legacyKeyUntil() den Vergleich mit dem Stichtag gestrichen
  *      (jedes gültige Datum gilt) → rot im selben Test (2099-12-31 ging durch)
  */
 const test = require('node:test');
@@ -35,13 +35,12 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenbankVerbindung, standardPasswortInBenutzung, ladeKonfig, KonfigFehler, VARIABLEN } =
-  _req('src/infra/konfig.js');
+const { databaseConnection, standardPasswordInUse, ladeKonfig, KonfigFehler, VARIABLES } = _req('src/infra/konfig.js');
 const { ohneKommentare } = require('./helpers/sources');
 const { spawnSync } = require('node:child_process');
 
 test('ohne Angaben dieselben Standardwerte wie compose.yaml', () => {
-  assert.deepEqual(datenbankVerbindung({}), {
+  assert.deepEqual(databaseConnection({}), {
     host: 'postgres',
     port: 5432,
     user: 'brickinventory',
@@ -51,21 +50,18 @@ test('ohne Angaben dieselben Standardwerte wie compose.yaml', () => {
 });
 
 test('das Beispielpasswort wird erkannt — einzeln und in DATABASE_URL', () => {
-  assert.equal(standardPasswortInBenutzung({}), true);
-  assert.equal(standardPasswortInBenutzung({ PGPASSWORD: 'eigenes' }), false);
-  assert.equal(
-    standardPasswortInBenutzung({ DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@db/x' }),
-    true,
-  );
-  assert.equal(standardPasswortInBenutzung({ DATABASE_URL: 'postgres://brickinventory:anderes@db/x' }), false);
-  assert.equal(standardPasswortInBenutzung({ DATABASE_URL: 'kaputt' }), false);
+  assert.equal(standardPasswordInUse({}), true);
+  assert.equal(standardPasswordInUse({ PGPASSWORD: 'eigenes' }), false);
+  assert.equal(standardPasswordInUse({ DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@db/x' }), true);
+  assert.equal(standardPasswordInUse({ DATABASE_URL: 'postgres://brickinventory:anderes@db/x' }), false);
+  assert.equal(standardPasswordInUse({ DATABASE_URL: 'kaputt' }), false);
 });
 
 test('DATABASE_URL geht vor', () => {
-  assert.deepEqual(datenbankVerbindung({ DATABASE_URL: 'postgres://a:b@c/d', PGUSER: 'x' }), {
+  assert.deepEqual(databaseConnection({ DATABASE_URL: 'postgres://a:b@c/d', PGUSER: 'x' }), {
     connectionString: 'postgres://a:b@c/d',
   });
-  assert.equal(datenbankVerbindung({ PGPORT: '6543', PGUSER: 'u' }).port, 6543);
+  assert.equal(databaseConnection({ PGPORT: '6543', PGUSER: 'u' }).port, 6543);
 });
 
 test('niemand sonst liest die Verbindungsvariablen', () => {
@@ -172,6 +168,6 @@ test('der Server startet mit falschem Wert nicht', () => {
 
 test('.env.example nennt jede Variable', () => {
   const beispiel = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8');
-  const fehlt = VARIABLEN.filter(v => !new RegExp(`^#? ?${v}=`, 'm').test(beispiel));
+  const fehlt = VARIABLES.filter(v => !new RegExp(`^#? ?${v}=`, 'm').test(beispiel));
   assert.deepEqual(fehlt, []);
 });

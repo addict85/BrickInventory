@@ -1,15 +1,15 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 
-export interface KatalogEintrag {
+export interface CatalogEntry {
   is_gear?: boolean | null;
   bl_type?: string | null;
   fetched_at?: string | Date | null;
 }
 
 /** Mit Versionsanhang, wie er abgelegt wird. */
-export async function katalogEintragZu(db: DbSchnittstelle, nummer: string): Promise<KatalogEintrag | null> {
+export async function catalogEntryTo(db: DbInterface, nummer: string): Promise<CatalogEntry | null> {
   return (
-    (await db.get<KatalogEintrag>('SELECT is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = $1', [
+    (await db.get<CatalogEntry>('SELECT is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = $1', [
       nummer,
     ])) ?? null
   );
@@ -17,7 +17,7 @@ export async function katalogEintragZu(db: DbSchnittstelle, nummer: string): Pro
 
 /** Ein Set, das einer unserer Kataloge wirklich kennt. Eine „kein Preis"-Markierung
  * zählt nicht: Sie entsteht erst durch den Abruf, den diese Prüfung verhindern soll. */
-export async function setImKatalog(db: DbSchnittstelle, nummer: string): Promise<boolean> {
+export async function setInCatalog(db: DbInterface, nummer: string): Promise<boolean> {
   const r = await db.get<{ x: number }>(
     `SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM set_catalog WHERE set_number = $1)
                       OR EXISTS (SELECT 1 FROM rb_sets WHERE set_num = $1)
@@ -31,7 +31,7 @@ export async function setImKatalog(db: DbSchnittstelle, nummer: string): Promise
 export type BricklinkArt = 'GEAR' | 'BOOK' | 'NONE';
 
 /** NONE heisst „kein Preis", mit Zeitstempel. */
-export async function merkeBricklinkArt(db: DbSchnittstelle, nummer: string, art: BricklinkArt): Promise<void> {
+export async function rememberBricklinkKind(db: DbInterface, nummer: string, art: BricklinkArt): Promise<void> {
   if (art === 'NONE') {
     await db.run(
       `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,$2,true)
@@ -47,32 +47,32 @@ export async function merkeBricklinkArt(db: DbSchnittstelle, nummer: string, art
   }
 }
 
-export async function leereSubsetsCache(db: DbSchnittstelle, nummer: string | null): Promise<void> {
+export async function emptySubsetsCache(db: DbInterface, nummer: string | null): Promise<void> {
   if (nummer) await db.run('DELETE FROM subsets_cache WHERE set_number = $1', [nummer]);
   else await db.run('DELETE FROM subsets_cache');
 }
 
-export async function leereKatalogCache(db: DbSchnittstelle, nummer: string | null): Promise<void> {
+export async function emptyCatalogCache(db: DbInterface, nummer: string | null): Promise<void> {
   if (nummer) await db.run('DELETE FROM catalog_cache WHERE set_number = $1', [nummer]);
   else await db.run('DELETE FROM catalog_cache');
 }
 
 /** Nur die eigenen Zwischenspeicher; die Preise zählt die Finanz (price_cache gehört ihr). */
-export async function cacheZahlen(db: DbSchnittstelle): Promise<{ subsets: number; catalog: number }> {
+export async function cacheNumbers(db: DbInterface): Promise<{ subsets: number; catalog: number }> {
   const zaehle = async (tabelle: 'subsets_cache' | 'catalog_cache') =>
     parseInt(String((await db.get<{ c: string }>(`SELECT COUNT(*) AS c FROM ${tabelle}`))?.c ?? 0), 10);
   const [subsets, catalog] = await Promise.all([zaehle('subsets_cache'), zaehle('catalog_cache')]);
   return { subsets, catalog };
 }
 
-export function blTypenDerSets(db: DbSchnittstelle, setNummern: string[]) {
+export function blTypesTheSets(db: DbInterface, setNumbers: string[]) {
   return db.all<{ set_number: string; bl_type: string | null }>(
     'SELECT set_number, bl_type FROM catalog_cache WHERE set_number = ANY($1::text[])',
-    [setNummern],
+    [setNumbers],
   );
 }
 
-export function merkeBlTyp(db: DbSchnittstelle, n: string, found: string, isGear: boolean) {
+export function rememberBlType(db: DbInterface, n: string, found: string, isGear: boolean) {
   return db.run(
     `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,$2,$3)
      ON CONFLICT (set_number) DO UPDATE SET bl_type = $2, fetched_at = NOW()`,

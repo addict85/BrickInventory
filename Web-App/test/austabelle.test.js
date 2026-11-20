@@ -9,16 +9,16 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 // Über buildAndRequire: Ein veraltetes dist/ prüfte sonst den Stand vor der letzten Änderung.
 const _req = require('./helpers/sources').buildAndRequire();
-const { ausTabelle } = _req('src/infra/validate.js');
+const { fromTable } = _req('src/infra/validate.js');
 
 const TABELLE = { year_desc: 'rb.year DESC', name_asc: 'rb.name ASC' };
 
 test('bekannter Schlüssel liefert den Wert', () => {
-  assert.strictEqual(ausTabelle(TABELLE, 'name_asc', 'VORGABE'), 'rb.name ASC');
+  assert.strictEqual(fromTable(TABELLE, 'name_asc', 'VORGABE'), 'rb.name ASC');
 });
 
 test('unbekannter Schlüssel liefert die Vorgabe', () => {
-  assert.strictEqual(ausTabelle(TABELLE, 'gibtsnicht', 'VORGABE'), 'VORGABE');
+  assert.strictEqual(fromTable(TABELLE, 'gibtsnicht', 'VORGABE'), 'VORGABE');
 });
 
 test('geerbte Eigenschaften zählen NICHT als Treffer', () => {
@@ -26,21 +26,21 @@ test('geerbte Eigenschaften zählen NICHT als Treffer', () => {
   // Object-Funktion bzw. Object.prototype zurück — beides wahrheitswertig,
   // beides landete ungeprüft im SQL.
   for (const k of ['constructor', '__proto__', 'toString', 'valueOf', 'hasOwnProperty']) {
-    assert.strictEqual(ausTabelle(TABELLE, k, 'VORGABE'), 'VORGABE', `Schlüssel ${k}`);
+    assert.strictEqual(fromTable(TABELLE, k, 'VORGABE'), 'VORGABE', `Schlüssel ${k}`);
   }
 });
 
 test('Gegenprobe: der naive Zugriff FÄLLT bei denselben Schlüsseln durch', () => {
   // Belegt, dass der Test oben etwas prüft und nicht ohnehin grün wäre.
-  const naiv = k => TABELLE[k] || 'VORGABE';
-  assert.strictEqual(naiv('gibtsnicht'), 'VORGABE'); // hier gleich
-  assert.notStrictEqual(naiv('constructor'), 'VORGABE'); // hier NICHT
-  assert.notStrictEqual(naiv('__proto__'), 'VORGABE');
+  const naive = k => TABELLE[k] || 'VORGABE';
+  assert.strictEqual(naive('gibtsnicht'), 'VORGABE'); // hier gleich
+  assert.notStrictEqual(naive('constructor'), 'VORGABE'); // hier NICHT
+  assert.notStrictEqual(naive('__proto__'), 'VORGABE');
 });
 
 test('nicht-string Schlüssel werden gefahrlos behandelt', () => {
   for (const k of [undefined, null, 42, {}, ['name_asc'], true]) {
-    const r = ausTabelle(TABELLE, k, 'VORGABE');
+    const r = fromTable(TABELLE, k, 'VORGABE');
     // Ein Array mit einem gültigen Wert darf über einzelwert() greifen —
     // alles andere fällt auf die Vorgabe.
     assert.ok(r === 'VORGABE' || r === 'rb.name ASC', `Schlüssel ${JSON.stringify(k)} ergab ${r}`);
@@ -48,21 +48,21 @@ test('nicht-string Schlüssel werden gefahrlos behandelt', () => {
 });
 
 test('ohne Vorgabe kommt undefined statt eines geerbten Werts', () => {
-  assert.strictEqual(ausTabelle(TABELLE, 'constructor'), undefined);
-  assert.strictEqual(ausTabelle(TABELLE, 'name_asc'), 'rb.name ASC');
+  assert.strictEqual(fromTable(TABELLE, 'constructor'), undefined);
+  assert.strictEqual(fromTable(TABELLE, 'name_asc'), 'rb.name ASC');
 });
 
 // ── Die drei Fundstellen: kein direkter Tabellenzugriff mehr ────────────────
 
 /** @type {[string, string, RegExp][]} */
-const STELLEN = [
-  ['src/katalog/repository/katalogSuche.ts', 'ORDNUNGEN', /ORDNUNGEN\s*\[/],
+const PLACES = [
+  ['src/katalog/repository/katalogSuche.ts', 'ORDERS', /ORDERS\s*\[/],
   ['src/sets/repository/sets.ts', 'SET_SORTS', /SET_SORTS\s*\[/],
   // Die Endungen je MIME-Typ der Uploads stehen seit 05.11.2026 im Empfang.
   ['src/http/dateiEmpfang.ts', 'o.typen', /o\.typen\s*\[/],
 ];
 
-for (const [datei, name, muster] of STELLEN) {
+for (const [datei, name, muster] of PLACES) {
   test(`${datei}: ${name} wird nicht mehr direkt indiziert`, () => {
     // Kommentarzeilen heraus: Die Begründung ÜBER dem Code nennt das alte
     // Muster absichtlich, und darauf soll dieser Test nicht anspringen.
@@ -71,7 +71,7 @@ for (const [datei, name, muster] of STELLEN) {
       .split('\n')
       .filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*') && !z.trim().startsWith('/*'))
       .join('\n');
-    assert.ok(!muster.test(code), `${datei} greift noch direkt auf ${name}[…] zu — ausTabelle() verwenden.`);
-    assert.match(code, new RegExp(`ausTabelle\\(\\s*${name}`), `${datei} sollte ausTabelle(${name}, …) benutzen.`);
+    assert.ok(!muster.test(code), `${datei} greift noch direkt auf ${name}[…] zu — fromTable() verwenden.`);
+    assert.match(code, new RegExp(`fromTable\\(\\s*${name}`), `${datei} sollte fromTable(${name}, …) benutzen.`);
   });
 }

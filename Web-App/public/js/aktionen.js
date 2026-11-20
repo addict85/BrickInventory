@@ -1,15 +1,15 @@
-import { istVertraut, registerActions, resolveAction } from './registry.js';
-import { bildPlatzhalter, bildVorlaeufig, bildGeladen, fullUrl, zoomStand, PLATZHALTER_SET } from './bilder.js';
-import { G, beiTelefonWechsel } from './dom.js';
+import { isTrusted, registerActions, resolveAction } from './registry.js';
+import { bildPlatzhalter, imageProvisional, imageLoaded, fullUrl, zoomStand, PLACEHOLDER_SET } from './bilder.js';
+import { G, atPhoneSwitch } from './dom.js';
 import { setLang } from './konto.js';
 import { toast } from './meldungen.js';
 import { tRaw } from '../i18n.js';
 import { saveJobSchedule } from './monitor.js';
 import { openPdfViewer } from './pdfviewer.js';
-import { alleFiguren, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig } from './minifigs.js';
+import { allMinifigs, deleteManualFig, renderFigs, renderManualFigsTable, updateManualFig } from './minifigs.js';
 import { merkpostenLoeschen } from './wanted.js';
 import { autosaveSet, closeImageLightbox, openImageLightbox } from './set-detail.js';
-import { setzeMengenfeld } from './detailfelder.js';
+import { setQuantitiesField } from './detailfelder.js';
 import { hideProgress } from './fortschritt.js';
 import { deleteManualPart } from './teile.js';
 
@@ -82,7 +82,7 @@ import { deleteManualPart } from './teile.js';
     keydown: new Set(['blurOnEnter', 'lagerortTaste']),
   };
 
-  // Delete, account, access, admin: only from elements our own code created (istVertraut), never from
+  // Delete, account, access, admin: only from elements our own code created (isTrusted), never from
   // injected markup.
   const DANGEROUS = new Set([
     'delSet',
@@ -154,7 +154,7 @@ import { deleteManualPart } from './teile.js';
     );
     if (!el) return;
     const name = el.getAttribute(attrFor(type));
-    if (name === null || (ONLY[type] && !ONLY[type].has(name)) || (DANGEROUS.has(name) && !istVertraut(el))) {
+    if (name === null || (ONLY[type] && !ONLY[type].has(name)) || (DANGEROUS.has(name) && !isTrusted(el))) {
       console.warn('[actions] rejected:', type, name);
       return;
     }
@@ -256,7 +256,7 @@ import { deleteManualPart } from './teile.js';
       // tile permanently empty even though the image was fine.
       if (!el.dataset.retried && el.src) {
         el.dataset.retried = '1';
-        if (/** @type {HTMLImageElement} */ (el).dataset.ph) bildVorlaeufig(el);
+        if (/** @type {HTMLImageElement} */ (el).dataset.ph) imageProvisional(el);
         const src = el.src;
         // removeAttribute instead of src='': an empty src points at the PAGE, and the browser would try to
         // load it as an image.
@@ -286,7 +286,7 @@ import { deleteManualPart } from './teile.js';
       // set's, otherwise a broken-image icon would show up.
       if (el.dataset.ph) bildPlatzhalter(el);
       else if (el.classList.contains('zoombar')) {
-        el.src = PLATZHALTER_SET;
+        el.src = PLACEHOLDER_SET;
         zoomStand(el);
       } else {
         el.removeAttribute('src');
@@ -304,7 +304,7 @@ import { deleteManualPart } from './teile.js';
       el.classList.add('loaded');
     }
     const img = /** @type {HTMLImageElement} */ (el);
-    if (img?.tagName === 'IMG' && img.hidden && img.dataset.ph) bildGeladen(img);
+    if (img?.tagName === 'IMG' && img.hidden && img.dataset.ph) imageLoaded(img);
   }
 
   document.addEventListener('load', ev => markLoaded(ev.target), true);
@@ -391,10 +391,10 @@ function setzeDunkel() {
  * manually recorded figures.
  */
 function renderFigsAll() {
-  renderFigs(alleFiguren());
+  renderFigs(allMinifigs());
   renderManualFigsTable();
 }
-beiTelefonWechsel(() => {
+atPhoneSwitch(() => {
   if (G('figs-view')?.value === 'table') renderFigsAll();
 });
 
@@ -505,12 +505,12 @@ export function openPdfViewerLink(href, desc, ev) {
 export function mQtyDec() {
   const n = parseInt(G('m-qty').value || '1', 10);
   if (n <= 1) return;
-  setzeMengenfeld(n - 1);
+  setQuantitiesField(n - 1);
   autosaveSet();
 }
 
 export function mQtyInc() {
-  setzeMengenfeld(parseInt(G('m-qty').value || '1', 10) + 1);
+  setQuantitiesField(parseInt(G('m-qty').value || '1', 10) + 1);
   autosaveSet();
 }
 

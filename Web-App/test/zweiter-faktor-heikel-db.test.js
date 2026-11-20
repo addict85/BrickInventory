@@ -1,6 +1,6 @@
 /**
  * Bei aktivem zweitem Faktor verlangen Passwortwechsel, Passkey löschen und
- * E-Mail ändern zusätzlich einen Code (bestaetigeMitFaktor in
+ * E-Mail ändern zusätzlich einen Code (confirmWithFactor in
  * src/konto/http/anmeldung.ts). Ein fehlender Code wird abgewiesen, bevor
  * etwas geprüft wird; ein falscher zählt in der Bremse. Ohne zweiten Faktor …
  *
@@ -9,7 +9,7 @@
  *      „Passwortwechsel ohne Code" (die Folgeteile mit, das Passwort ist neu)
  *   B  DELETE /passkeys/:id ohne Code → rot: „Passkey löschen ohne Code"
  *   C  PUT /profile (E-Mail) ohne Code → rot: „E-Mail ändern"
- *   D  in bestaetigeMitFaktor die Absage für fehlenden Code entfernt (der
+ *   D  in confirmWithFactor die Absage für fehlenden Code entfernt (der
  *      Code geht leer in die Prüfung) → rot: die drei „ohne Code" und
  *      „fehlender Code zählt nicht in der Bremse" (429 statt 200)
  *   E  `felder.email_verified = user.is_admin` zurück → rot: „Verwalter-
@@ -29,18 +29,18 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
 
 // Keine echten Mails: vor dem Laden von routes/auth ersetzen.
-require('./helpers/sources').ersetzeDienste('mail', {
+require('./helpers/sources').replaceServices('mail', {
   mailEmailChanged: async () => ({ success: true }),
   mailVerification: async () => ({ success: true }),
 });
 
-const db = S.testDaten();
+const db = S.testData();
 const zf = _req('src/factors/secondFactor.js');
-const { entschluessele } = _req('src/infra/geheimnis.js');
+const { decrypt } = _req('src/infra/geheimnis.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Faktor-Passwort-1';
 
@@ -56,17 +56,17 @@ async function konto(name, { admin = false } = {}) {
 }
 
 /** Zweiten Faktor einschalten; liefert die Wiederherstellungscodes. */
-async function mitFaktor(uid) {
+async function withFactor(uid) {
   await zf.beginSetup(uid);
   const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
-  const code = zf.hotp(zf.fromBase32(entschluessele(z.secret, zf.secondFactorContext(uid))), zf.timeStep());
+  const code = zf.hotp(zf.fromBase32(decrypt(z.secret, zf.secondFactorContext(uid))), zf.timeStep());
   const codes = await zf.confirmSetup(uid, code);
   assert.ok(Array.isArray(codes) && codes.length >= 3, 'Vorbedingung: Faktor active');
   return codes;
 }
 
 test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `zfh_${process.pid}`,
     OHNE = `zfh_ohne_${process.pid}`,
@@ -79,7 +79,7 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'bestaetigung|%'`).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const codes = await mitFaktor(uid);
+  const codes = await withFactor(uid);
 
   const server = (id, name, admin = false) =>
     routerServer(_req, {
@@ -98,9 +98,12 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
   };
 
   await t.test('Passwortwechsel', async () => {
-    const ohneCode = await ruf(basis, 'POST', '/change-password', { current: PASS, newPassword: 'Neues-Passwort-22' });
-    assert.equal(ohneCode.body.code, 'zweiter_faktor_noetig', 'Passwortwechsel ohne Code');
-    assert.equal(ohneCode.status, 400);
+    const withoutCode = await ruf(basis, 'POST', '/change-password', {
+      current: PASS,
+      newPassword: 'Neues-Passwort-22',
+    });
+    assert.equal(withoutCode.body.code, 'zweiter_faktor_noetig', 'Passwortwechsel ohne Code');
+    assert.equal(withoutCode.status, 400);
     const falsch = await ruf(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-22',
@@ -125,20 +128,20 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
         [uid, `zfh-${process.pid}`],
       )
     ).id;
-    const ohneCode = await ruf(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS });
-    assert.equal(ohneCode.body.code, 'zweiter_faktor_noetig', 'Passkey löschen ohne Code');
+    const withoutCode = await ruf(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS });
+    assert.equal(withoutCode.body.code, 'zweiter_faktor_noetig', 'Passkey löschen ohne Code');
     assert.ok(await db.get('SELECT 1 FROM passkeys WHERE id = $1', [pk]), 'der Passkey steht noch');
     const gut = await ruf(basis, 'DELETE', `/passkeys/${pk}`, { password: PASS, code: codes[1] });
     assert.equal(gut.body.deleted, 1, JSON.stringify(gut.body));
   });
 
   await t.test('E-Mail ändern', async () => {
-    const ohneCode = await ruf(basis, 'PUT', '/profile', {
+    const withoutCode = await ruf(basis, 'PUT', '/profile', {
       username: NAME,
       email: `${NAME}@neu.example`,
       password_current: PASS,
     });
-    assert.equal(ohneCode.body.code, 'zweiter_faktor_noetig', 'E-Mail ändern ohne Code');
+    assert.equal(withoutCode.body.code, 'zweiter_faktor_noetig', 'E-Mail ändern ohne Code');
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, `${NAME}@alt.example`);
     const gut = await ruf(basis, 'PUT', '/profile', {
       username: NAME,

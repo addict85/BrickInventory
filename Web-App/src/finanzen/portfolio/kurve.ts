@@ -1,15 +1,15 @@
-import type { FinanzenKontext } from '../kontext';
+import type { FinancesContext } from '../kontext';
 
 /** Ein Punkt der Wertkurve; fullDay ist der genaue Tag eines Monatspunkts. */
-export interface KurvenPunkt {
+export interface CurvesPoint {
   day: string;
   fullDay: string;
   month?: string;
   total: number;
 }
 // Aus dem globalen Preisverlauf, darum stimmt die Kurve auch rückwirkend.
-export async function rekonstruiereKurve(
-  kx: FinanzenKontext,
+export async function reconstructCurve(
+  kx: FinancesContext,
   opts: {
     db?: unknown;
     setNumbers: string[];
@@ -19,20 +19,20 @@ export async function rekonstruiereKurve(
     bucketExpr: string;
     condition: string;
     currency: string;
-    monatsAufloesung: boolean;
+    monthResolution: boolean;
   },
-): Promise<{ rawPoints: KurvenPunkt[]; monatsAufloesung: boolean }> {
+): Promise<{ rawPoints: CurvesPoint[]; monthResolution: boolean }> {
   const { setNumbers, setQty, placeholders, dateFilter, condition, currency } = opts;
   // `let`: Bei Verdichtung auf Monate wird bucketExpr unterwegs umgestellt.
   let bucketExpr = opts.bucketExpr;
-  let monatsAufloesung = opts.monatsAufloesung;
-  let rawPoints: KurvenPunkt[] = [];
+  let monthResolution = opts.monthResolution;
+  let rawPoints: CurvesPoint[] = [];
 
   // Postgres rechnet, mit DERSELBEN Regel wie die Bewertung, nicht einer ähnlichen.
   {
     const mengen = setNumbers.map(sn => setQty[sn] || 1);
-    const hauptAbfrage = (bExpr: string) =>
-      kx.portfolioKurve.tageswerteAusVerlauf(
+    const mainQuery = (bExpr: string) =>
+      kx.portfolioKurve.dailyValuesFromHistory(
         currency,
         condition,
         setNumbers,
@@ -41,20 +41,20 @@ export async function rekonstruiereKurve(
         bExpr,
       );
 
-    let rows = await hauptAbfrage(bucketExpr);
+    let rows = await mainQuery(bucketExpr);
     // Ein einziger Punkt bei Monatsauflösung → Tage, damit alle vier Zeiträume
     // dieselbe Veränderung zeigen.
-    if (monatsAufloesung && rows.length < 2) {
-      const tagesRows = await hauptAbfrage("'YYYY-MM-DD'");
-      if (tagesRows.length > rows.length) {
-        rows = tagesRows;
-        monatsAufloesung = false;
+    if (monthResolution && rows.length < 2) {
+      const dailyRows = await mainQuery("'YYYY-MM-DD'");
+      if (dailyRows.length > rows.length) {
+        rows = dailyRows;
+        monthResolution = false;
         bucketExpr = "'YYYY-MM-DD'";
       }
     }
     // Letzte Zuflucht price_cache; eine Zeile je Set, der Umweg über SQL lohnt nicht.
     if (!rows.length) {
-      const roh = await kx.portfolioKurve.cachePreiseDerSets(currency, condition, setNumbers, placeholders);
+      const roh = await kx.portfolioKurve.cachePricesTheSets(currency, condition, setNumbers, placeholders);
       const buckets: Record<string, { day: string; month: string; sets: Record<string, number> }> = {};
       for (const r of roh) {
         const k = r.day;
@@ -77,7 +77,7 @@ export async function rekonstruiereKurve(
     }
     rawPoints = rows
       .map(
-        (r): KurvenPunkt => ({
+        (r): CurvesPoint => ({
           day: r.day,
           fullDay: ('full_day' in r && r.full_day) || r.day,
           month: r.month,
@@ -89,15 +89,15 @@ export async function rekonstruiereKurve(
     // Im ersten Monatsbucket steht der Wert am Monatsende; ohne Korrektur begänne
     // die Jahreskurve höher als die Monatskurve.
     const erster = rawPoints[0];
-    if (monatsAufloesung && erster) {
-      const ersterTag = (rows[0] && 'first_day' in rows[0] && rows[0].first_day) || erster.fullDay;
-      erster.fullDay = ersterTag;
-      const start = await kx.portfolioKurve.letzteWerteVorBeginn(
+    if (monthResolution && erster) {
+      const firstTag = (rows[0] && 'first_day' in rows[0] && rows[0].first_day) || erster.fullDay;
+      erster.fullDay = firstTag;
+      const start = await kx.portfolioKurve.lastValuesBeforeStart(
         currency,
         condition,
         setNumbers,
         mengen,
-        ersterTag,
+        firstTag,
         dateFilter.replace(/recorded_at/g, 'ph.recorded_at'),
       );
       const wert = Number(start?.[0]?.total);
@@ -105,5 +105,5 @@ export async function rekonstruiereKurve(
     }
   }
 
-  return { rawPoints, monatsAufloesung };
+  return { rawPoints, monthResolution };
 }

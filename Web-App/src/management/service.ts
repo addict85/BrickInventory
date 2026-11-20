@@ -3,17 +3,17 @@ import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
 import { DAILY_JOBS } from './timesOfDay';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, meldeFehler, ohneFehlendeDatei } from '../infra/fehler';
-import { Abstriche, versuche } from '../infra/ergebnis';
-import { anfragenJeMinute } from '../bilder';
-import { alsAbrufFehler } from '../fremdquellen';
-import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
+import { fehlertext, reportError, withoutMissingFile } from '../infra/fehler';
+import { Degradations, versuche } from '../infra/ergebnis';
+import { requestsJeMinute } from '../bilder';
+import { asFetchError } from '../fremdquellen';
+import { fachfehler, type ErrorCode } from '../infra/fehlerTexte';
 import type { ManagementContext } from './context';
 
 const SOURCES: Record<string, (q: ManagementContext['fremdquellen']['quellen']) => Promise<void>> = {
-  rebrickable: q => q.pruefeRebrickableZugang(),
-  brickset: q => q.pruefeBricksetZugang(),
-  bricklink: q => q.pruefeBricklinkZugang(),
+  rebrickable: q => q.checkRebrickableAccess(),
+  brickset: q => q.checkBricksetAccess(),
+  bricklink: q => q.checkBricklinkAccess(),
 };
 
 const SOURCE_NAME: Record<string, string> = {
@@ -23,8 +23,8 @@ const SOURCE_NAME: Record<string, string> = {
 };
 
 /** Der Assistent zeigt dem Verwalter, was zu tun ist; der rohe Text bleibt als `grund` für „Details“. */
-function sourceRejection(e: unknown): FehlerCode {
-  const f = alsAbrufFehler(e),
+function sourceRejection(e: unknown): ErrorCode {
+  const f = asFetchError(e),
     text = f.message;
   if (/nicht konfiguriert|nicht vollständig|not configured/i.test(text)) return 'quelle_ohne_schluessel';
   if (
@@ -41,7 +41,7 @@ function sourceRejection(e: unknown): FehlerCode {
 export async function checkSource(
   k: ManagementContext,
   quelle: string,
-): Promise<{ code: FehlerCode; quelle: string; grund: string } | null> {
+): Promise<{ code: ErrorCode; quelle: string; grund: string } | null> {
   const pruefe = Object.hasOwn(SOURCES, quelle) ? SOURCES[quelle] : undefined;
   if (!pruefe) fachfehler('ungueltig', 'quelle_unbekannt');
   try {
@@ -54,7 +54,7 @@ export async function checkSource(
 
 export async function cacheStats(k: ManagementContext) {
   const leer = { count: 0, limit: 0, remaining: 0 };
-  const ab = new Abstriche();
+  const ab = new Degradations();
   const [stats, stale, rlBL, rlRB, rlBS] = await Promise.all([
     ab.oder(
       'cache',
@@ -62,9 +62,9 @@ export async function cacheStats(k: ManagementContext) {
       { prices: 0, subsets: 0, catalog: 0 },
     ),
     ab.oder('veraltete_preise', k.management.stalePrices(), 0),
-    ab.oder('kontingent_bricklink', k.fremdquellen.kontingentStand('bricklink'), leer),
-    ab.oder('kontingent_rebrickable', k.fremdquellen.kontingentStand('rebrickable'), leer),
-    ab.oder('kontingent_brickset', k.fremdquellen.kontingentStand('brickset'), leer),
+    ab.oder('kontingent_bricklink', k.fremdquellen.quotaStatus('bricklink'), leer),
+    ab.oder('kontingent_rebrickable', k.fremdquellen.quotaStatus('rebrickable'), leer),
+    ab.oder('kontingent_brickset', k.fremdquellen.quotaStatus('brickset'), leer),
   ]);
   return {
     ...stats,
@@ -76,10 +76,10 @@ export async function cacheStats(k: ManagementContext) {
 }
 
 export async function clearCaches(k: ManagementContext, alle: boolean) {
-  await k.finanzen.leerePreisCache();
+  await k.finanzen.emptyPriceCache();
   if (alle) {
-    await k.katalog.leereTeilmengenCache();
-    await k.katalog.leereKatalogCache();
+    await k.katalog.emptySubsetsCache();
+    await k.katalog.emptyCatalogCache();
   }
 }
 
@@ -87,7 +87,7 @@ export async function clearCaches(k: ManagementContext, alle: boolean) {
 export async function bricksetLimitSet(k: ManagementContext, alt: number, neu: number) {
   if (!(neu > alt)) return;
   // Das neue Limit ist gespeichert; ohne Zählerstand wartet die Schlange auf den nächsten Lauf.
-  const rl = await versuche('management:kontingentUebersicht', k.fremdquellen.kontingentStand('brickset'));
+  const rl = await versuche('management:kontingentUebersicht', k.fremdquellen.quotaStatus('brickset'));
   if (!rl.ok) return;
   const rest = Math.max(0, neu - (rl.wert.count || 0));
   if (rest <= 0) return;
@@ -98,7 +98,7 @@ export async function bricksetLimitSet(k: ManagementContext, alt: number, neu: n
 export async function requeueInstructions(k: ManagementContext) {
   const fehlend = await k.management.setsWithoutInstructions();
   for (const { set_number } of fehlend) {
-    await k.katalog.loescheAnleitungen(set_number);
+    await k.katalog.deleteInstructions(set_number);
     await k.katalog.anleitungEinreihen(set_number);
   }
   return fehlend.length;
@@ -117,7 +117,7 @@ export async function priceJobStatus(k: ManagementContext) {
   try {
     letzter = JSON.parse((await k.auftraege.liesZustand('preis_job_stand')) ?? '{}');
   } catch (e) {
-    meldeFehler('management:preis-stand', e);
+    reportError('management:preis-stand', e);
   }
   const laeuft = plan?.status === 'laeuft';
   const job = {
@@ -137,26 +137,26 @@ export async function priceJobStatus(k: ManagementContext) {
         : null,
     log: Array.isArray(letzter.log) ? letzter.log : [],
   };
-  return { job, rate_limit: await k.fremdquellen.kontingentStand('bricklink') };
+  return { job, rate_limit: await k.fremdquellen.quotaStatus('bricklink') };
 }
 
 /** false, wenn er schon läuft. */
-export const runPriceJobNow = (k: ManagementContext) => k.auftraege.ziehePlanVor('preise');
+export const runPriceJobNow = (k: ManagementContext) => k.auftraege.pullPlanBefore('preise');
 /** Stellt nur den Auftrag ein; scheitert das, erfährt es der Verwalter statt des Protokolls. */
 export async function reloadMissingImages(k: ManagementContext): Promise<void> {
-  await k.auftraege.stelleAuftragEin('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxVersuche: 2 });
+  await k.auftraege.placeJobOne('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxAttempts: 2 });
 }
 
-export const runCatalogSyncNow = (k: ManagementContext) => k.auftraege.ziehePlanVor('csv_sync');
+export const runCatalogSyncNow = (k: ManagementContext) => k.auftraege.pullPlanBefore('csv_sync');
 
 /** Auch über das Tageskontingent hinweg. */
 export async function retryBrickset(k: ManagementContext, sn: string) {
-  await k.fremdquellen.setzeKontingentZurueck('brickset');
+  await k.fremdquellen.setQuotaBack('brickset');
   await k.fremdquellen.brickset.jetzt(sn);
 }
 
 export async function removeBrickset(k: ManagementContext, sn: string) {
-  await k.fremdquellen.quellen.ausRetryWarteschlange(sn);
+  await k.fremdquellen.quellen.fromRetryQueue(sn);
   await k.katalog.anleitungEinreihen(sn, { nurAusweichquelle: true });
 }
 
@@ -187,16 +187,16 @@ export async function setJobSchedule(
 }
 
 export async function rescheduleJobs(k: ManagementContext) {
-  await k.auftraege.zeitplanGeaendert('csv_sync');
-  await k.auftraege.zeitplanGeaendert('preise');
-  await k.fremdquellen.brickset.vorziehen(await k.fremdquellen.brickset.faelligAb(false));
+  await k.auftraege.scheduleChanged('csv_sync');
+  await k.auftraege.scheduleChanged('preise');
+  await k.fremdquellen.brickset.prefer(await k.fremdquellen.brickset.dueAb(false));
 }
 
 /** Fertig ist ein Set mit Original UND Vorschau; zurückgenommene Fehlanzeigen
  * werden mitgezählt. */
-export async function queueCatalogImages(kx: ManagementContext, alleErneut: boolean) {
-  const zuVergessen = await (alleErneut ? kx.management.setImageMisses() : kx.management.setImageMissesWithout404());
-  const verworfen = zuVergessen.length ? await kx.bilder.vergissFehlend(zuVergessen.map(r => r.cache_key)) : 0;
+export async function queueCatalogImages(kx: ManagementContext, allAgain: boolean) {
+  const toForgotten = await (allAgain ? kx.management.setImageMisses() : kx.management.setImageMissesWithout404());
+  const verworfen = toForgotten.length ? await kx.bilder.forgetMissing(toForgotten.map(r => r.cache_key)) : 0;
   // Was schon fertig ist, wird nicht wieder eingereiht.
   const vorhanden: Set<string> = new Set();
   try {
@@ -210,33 +210,33 @@ export async function queueCatalogImages(kx: ManagementContext, alleErneut: bool
     }
   } catch (e) {
     // Ohne Ordner ist noch nichts fertig; jeder andere Lesefehler kommt ins Protokoll.
-    ohneFehlendeDatei('management:vorschauen lesen')(e);
+    withoutMissingFile('management:vorschauen lesen')(e);
   }
 
   const kandidaten = await kx.management.catalogImageCandidates();
 
   // Dieselbe Namensregel wie setBildHerunterladen(), sonst fände der Vergleich nichts.
-  const dateiname = (sn: string) => String(sn).replace(/[^a-z0-9-]/gi, '_');
-  const offenSets: string[] = [];
-  const offenUrls: string[] = [];
+  const fileName = (sn: string) => String(sn).replace(/[^a-z0-9-]/gi, '_');
+  const openSets: string[] = [];
+  const openUrls: string[] = [];
   for (const k of kandidaten) {
-    if (vorhanden.has(dateiname(k.set_num))) continue;
-    offenSets.push(k.set_num);
-    offenUrls.push(k.set_img_url);
+    if (vorhanden.has(fileName(k.set_num))) continue;
+    openSets.push(k.set_num);
+    openUrls.push(k.set_img_url);
   }
 
-  let neuEingereiht = 0;
-  if (offenUrls.length) {
-    neuEingereiht = await kx.bilder.katalogBilderVormerken(offenUrls, offenSets);
-    await kx.bilder.bildbedarfAnstossen();
+  let newEnqueued = 0;
+  if (openUrls.length) {
+    newEnqueued = await kx.bilder.catalogImagesReserve(openUrls, openSets);
+    await kx.bilder.imageDemandKick();
   }
   const offen = await kx.management.openImageJobs();
   // „Stunden oder Tage?" ist die erste Frage; die Rate kommt aus dem Job selbst.
-  const proMinute = anfragenJeMinute();
+  const proMinute = requestsJeMinute();
   return {
-    queued: neuEingereiht,
+    queued: newEnqueued,
     pending: offen?.n ?? 0,
-    skipped: kandidaten.length - offenUrls.length,
+    skipped: kandidaten.length - openUrls.length,
     // Ohne die Zahl bliebe unklar, warum als fehlend geltende Bilder wieder anstehen.
     verworfen,
     dauer_minuten: Math.ceil((offen?.n ?? 0) / proMinute),
@@ -252,7 +252,7 @@ export async function forgetImageMisses(
   const v = k.management;
   const schluessel = sets?.length ? sets.map(sn => `set:${sn}`) : (await v.setImageMisses()).map(r => r.cache_key);
   if (vorschauen) schluessel.push(...(await v.thumbnailImageMisses()).map(r => r.cache_key));
-  return schluessel.length ? k.bilder.vergissFehlend(schluessel) : 0;
+  return schluessel.length ? k.bilder.forgetMissing(schluessel) : 0;
 }
 
 export function serverLogSince(k: ManagementContext, minuten: number) {

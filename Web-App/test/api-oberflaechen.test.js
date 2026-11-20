@@ -14,10 +14,10 @@ const ROOT = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
 
 /** Alle `router.<verb>('<pfad>'` einer Datei, mit vorangestelltem Mountpunkt. */
-function routenAus(datei, mount) {
+function routesFrom(datei, mount) {
   const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
   const out = [];
-  for (const m of require('./helpers/sources').routenAusQuelle(src, mount)) {
+  for (const m of require('./helpers/sources').routesFromSource(src, mount)) {
     const pfad = (mount + '/' + m[2].replace(/^\//, '')).replace(/\/+$/, '') || '/';
     out.push(`${m[1].toUpperCase()} ${pfad}`);
   }
@@ -42,22 +42,22 @@ function webRouter() {
 /**
  * Adressen, die es ZWEIMAL geben darf — mit dem Grund.
  */
-const ERLAUBT = new Map([]);
+const ALLOWED = new Map([]);
 
 /** Präfix weg: /api/v1/sets/x und /api/sets/x werden beide zu /sets/x. */
-function ohnePraefix(eintrag) {
+function withoutPrefix(eintrag) {
   return eintrag.replace(/ \/api(\/v1)?/, ' ');
 }
 
 test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   const web = new Set();
-  for (const r of webRouter()) for (const x of routenAus(r.datei, r.mount)) web.add(x);
+  for (const r of webRouter()) for (const x of routesFrom(r.datei, r.mount)) web.add(x);
 
   const v1 = new Set();
   const v1Dir = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1Dir)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
-    for (const x of routenAus(path.join(v1Dir, f), '/api')) v1.add(x);
+    for (const x of routesFrom(path.join(v1Dir, f), '/api')) v1.add(x);
   }
 
   // Selbstbeweis: Greift das Muster nicht mehr (umbenanntes `router`, andere
@@ -70,34 +70,34 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   // Webapp-Router selbst unter /api/v1/<bereich>, und ein Vergleich der rohen
   // Adressen faende gar keine Ueberschneidung mehr — der Test waere gruen,
   // ohne etwas zu pruefen.
-  const webN = new Set([...web].map(ohnePraefix));
-  const v1N = new Set([...v1].map(ohnePraefix));
+  const webN = new Set([...web].map(withoutPrefix));
+  const v1N = new Set([...v1].map(withoutPrefix));
   const doppelt = [...webN].filter(r => v1N.has(r)).sort();
-  const unbegruendet = doppelt.filter(r => !ERLAUBT.has(r));
+  const unjustified = doppelt.filter(r => !ALLOWED.has(r));
   assert.deepEqual(
-    unbegruendet,
+    unjustified,
     [],
     'Diese Adressen stehen auf BEIDEN Oberflaechen, ohne dass ein Grund ' +
       'eingetragen waere:\n  ' +
-      unbegruendet.join('\n  ') +
+      unjustified.join('\n  ') +
       '\nZwei Umsetzungen derselben Antwort driften — gemessen bei ' +
       'GET /settings: Webapp 48, App 24. Entweder die Logik in einem Dienst ' +
-      'zusammenlegen und beide Routen daraus bedienen, oder in ERLAUBT ' +
+      'zusammenlegen und beide Routen daraus bedienen, oder in ALLOWED ' +
       'eintragen, WARUM es zwei sein muessen.',
   );
 
   // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
   // prueft — dieselbe Regel wie in scripts/check-global-settings.js.
-  const veraltet = [...ERLAUBT.keys()].filter(r => !doppelt.includes(r));
+  const veraltet = [...ALLOWED.keys()].filter(r => !doppelt.includes(r));
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Eintraege in ERLAUBT beschreiben keine Ueberschneidung mehr — ' + 'streichen:\n  ' + veraltet.join('\n  '),
+    'Diese Eintraege in ALLOWED beschreiben keine Ueberschneidung mehr — ' + 'streichen:\n  ' + veraltet.join('\n  '),
   );
 });
 
 test('jeder Router haengt unter /api/v1', () => {
-  const NOCH_NICHT = new Map([]);
+  const STILL_NOT = new Map([]);
 
   const einhaengungen = webRouter();
   // Selbstbeweis: Findet das Muster keine Einhaengepunkte, prueft alles
@@ -110,7 +110,7 @@ test('jeder Router haengt unter /api/v1', () => {
 
   const daneben = einhaengungen
     .map(r => r.mount)
-    .filter(m => !m.startsWith('/api/v1') && !NOCH_NICHT.has(m))
+    .filter(m => !m.startsWith('/api/v1') && !STILL_NOT.has(m))
     .sort();
   assert.deepEqual(
     daneben,
@@ -118,12 +118,12 @@ test('jeder Router haengt unter /api/v1', () => {
     'Diese Router haengen NICHT unter /api/v1 und stehen auch nicht als ' +
       'begruendete Ausnahme da:\n  ' +
       daneben.join('\n  ') +
-      '\nEntweder umhaengen oder in NOCH_NICHT eintragen, WARUM noch nicht.',
+      '\nEntweder umhaengen oder in STILL_NOT eintragen, WARUM noch nicht.',
   );
 
   // Und die Ausnahme darf nicht liegenbleiben: Steht sie da, obwohl der Router
   // laengst umgezogen ist, sieht die Umstellung unfertiger aus als sie ist.
-  const erledigt = [...NOCH_NICHT.keys()].filter(m => !einhaengungen.some(r => r.mount === m));
+  const erledigt = [...STILL_NOT.keys()].filter(m => !einhaengungen.some(r => r.mount === m));
   assert.deepEqual(
     erledigt,
     [],
@@ -138,7 +138,7 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
   // Die EINE Ausnahme, und sie ist keine Nachlaessigkeit:
   // Die EINE Ausnahme — und sie ist eine Auslauf-Adresse, keine zweite
   // gleichrangige.
-  const OHNE_VERSION = new Map([
+  const WITHOUT_VERSION = new Map([
     [
       'GET /api/img-proxy',
       'Auslauf-Adresse. Die kanonische ist /api/v1/img-proxy; alles, was der ' +
@@ -167,17 +167,17 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
 
   // Auch Anmeldungen ueber eine KONSTANTE
   const quellen = dateien.map(d => ohneKommentare(fs.readFileSync(d, 'utf8')));
-  const konstanten = new Map();
+  const constants = new Map();
   for (const src of quellen)
     for (const m of src.matchAll(/\b(?:const|let|var)\s+([A-Z][A-Z0-9_]*)\s*=\s*'(\/api\/[^']*)'/g))
-      konstanten.set(m[1], m[2]);
+      constants.set(m[1], m[2]);
 
   const gefunden = [];
   for (const src of quellen) {
     for (const m of src.matchAll(/\bapp\.(get|post|put|patch|delete)\(\s*'(\/api\/[^']*)'/g))
       gefunden.push(`${m[1].toUpperCase()} ${m[2]}`);
     for (const m of src.matchAll(/\bapp\.(get|post|put|patch|delete)\(\s*([A-Z][A-Z0-9_]*)\s*,/g)) {
-      const pfad = konstanten.get(m[2]);
+      const pfad = constants.get(m[2]);
       assert.ok(
         pfad,
         `app.${m[1]}(${m[2]}, …) meldet eine Route unter einem Bezeichner an, ` +
@@ -192,20 +192,20 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
   // und startup-status hängen im Router routes/gesundheit.ts.
   assert.ok(gefunden.length >= 2, `Nur ${gefunden.length} direkt angemeldete API-Routen gefunden — Muster veraltet?`);
 
-  const daneben = gefunden.filter(r => !r.split(' ')[1].startsWith('/api/v1') && !OHNE_VERSION.has(r)).sort();
+  const daneben = gefunden.filter(r => !r.split(' ')[1].startsWith('/api/v1') && !WITHOUT_VERSION.has(r)).sort();
   assert.deepEqual(
     daneben,
     [],
     'Diese Adressen sind direkt an der App angemeldet, stehen nicht unter ' +
       '/api/v1 und haben keinen eingetragenen Grund:\n  ' +
       daneben.join('\n  ') +
-      '\nEntweder umziehen oder in OHNE_VERSION eintragen, WARUM sie ' +
+      '\nEntweder umziehen oder in WITHOUT_VERSION eintragen, WARUM sie ' +
       'versionslos bleiben muss.',
   );
 
   // Dieselbe Gegenrichtung wie oben: eine Ausnahme fuer eine Route, die es
   // nicht mehr gibt, laesst die Umstellung unfertiger aussehen als sie ist.
-  const veraltet = [...OHNE_VERSION.keys()].filter(r => !gefunden.includes(r));
+  const veraltet = [...WITHOUT_VERSION.keys()].filter(r => !gefunden.includes(r));
   assert.deepEqual(
     veraltet,
     [],
@@ -226,7 +226,7 @@ test('der Gesundheitscheck aus compose.yaml zeigt auf eine echte Adresse', () =>
   const direkt = [...src.matchAll(/app\.get\(\s*'(\/api\/[^']*)'/g)].map(m => m[1]);
   // Und die GET-Routen der in server.ts eingehängten Router (routes/gesundheit.ts).
   for (const r of webRouter())
-    for (const m of require('./helpers/sources').routenAusQuelle(
+    for (const m of require('./helpers/sources').routesFromSource(
       ohneKommentare(fs.readFileSync(r.datei, 'utf8')),
       r.mount,
     ))

@@ -12,7 +12,7 @@
  *      Anlegen …“ (die Nummer steht in der Zeile)
  *   C  numberColumns() ohne das Konto im HMAC → rot: „Doppelte …“ (zwei
  *      Konten, derselbe Suchwert)
- *   D  in bereiteDatenbankVor() reencryptNumbers() weggelassen →
+ *   D  in prepareDatabaseBefore() reencryptNumbers() weggelassen →
  *      rot: „ein Altbestand …“
  *   E  reencryptCopies() weggelassen → rot: „ein Altbestand …“ (die
  *      Kopie vor_migration_* trägt die Nummer im Klartext)
@@ -32,19 +32,19 @@ const PDFKit = require('pdfkit');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATA_KEY = crypto.randomBytes(32).toString('base64');
 // Vor dem Laden: appPaths rechnet DATA_DIR beim Einlesen aus APP_ROOT.
-const SANDKASTEN = fs.mkdtempSync(path.join(os.tmpdir(), 'gutscheinnummer-'));
-fs.mkdirSync(path.join(SANDKASTEN, 'data'), { recursive: true });
-fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}');
-process.env.APP_ROOT = SANDKASTEN;
+const SANDBOX = fs.mkdtempSync(path.join(os.tmpdir(), 'gutscheinnummer-'));
+fs.mkdirSync(path.join(SANDBOX, 'data'), { recursive: true });
+fs.writeFileSync(path.join(SANDBOX, 'package.json'), '{"name":"sandkasten"}');
+process.env.APP_ROOT = SANDBOX;
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const gr = {
   ..._req('src/vouchers/repository/vouchers.js'),
-  ...require('./helpers/sources').testBereich('vouchers').vouchers,
+  ...require('./helpers/sources').testArea('vouchers').vouchers,
 };
 /** Das Format vor dem Kontext: v1, AES-GCM mit dem Rohschlüssel, ohne AAD. */
 function alsV1(klar) {
@@ -60,7 +60,7 @@ const NR1 = '5045076374451234567',
   NR2 = '5045076374459876543',
   NR3 = '5045076374450246802';
 
-function baueGutschein(nummer, pin, betrag) {
+function buildVoucher(nummer, pin, betrag) {
   return new Promise(fertig => {
     const d = new PDFKit({ size: 'A4' });
     const s = [];
@@ -72,7 +72,7 @@ function baueGutschein(nummer, pin, betrag) {
   });
 }
 
-const zeileAlsText = async id => (await db.get('SELECT v::text AS t FROM vouchers v WHERE id = $1', [id])).t;
+const rowAsText = async id => (await db.get('SELECT v::text AS t FROM vouchers v WHERE id = $1', [id])).t;
 
 test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
   try {
@@ -92,14 +92,14 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
   }
   const hash = require('bcryptjs').hashSync(PASS, 4);
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('haupt', $1), ('fremd', $1)`, [hash]);
-  const HAUPT = (await db.get(`SELECT id FROM users WHERE username = 'haupt'`)).id;
+  const MAIN = (await db.get(`SELECT id FROM users WHERE username = 'haupt'`)).id;
   const FREMD = (await db.get(`SELECT id FROM users WHERE username = 'fremd'`)).id;
   t.after(async () => {
     await db.pool.end().catch(() => {});
-    fs.rmSync(SANDKASTEN, { recursive: true, force: true });
+    fs.rmSync(SANDBOX, { recursive: true, force: true });
   });
 
-  const haupt = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const haupt = testServer(_req, { sitzung: { userId: MAIN }, t });
   const fremd = testServer(_req, { sitzung: { userId: FREMD }, t });
   const ruf = async (srv, methode, weg, body) => {
     const r = await fetch(`${srv.base}/api/v1${weg}`, {
@@ -122,7 +122,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     assert.equal(r.body.voucher.number, '…' + NR1.slice(-4), 'nach aussen nur das Ende');
     id1 = r.body.voucher.id;
     assert.deepEqual(await klartext(haupt, id1), [NR1, '2468'], 'der Eigentümer liest die Nummer bestätigt');
-    const zeile = await zeileAlsText(id1);
+    const zeile = await rowAsText(id1);
     assert.ok(!zeile.includes(NR1) && !zeile.includes(NR1.slice(-6)), zeile);
     const roh = await db.get('SELECT number, number_search FROM vouchers WHERE id = $1', [id1]);
     assert.ok(roh.number.startsWith('v2:'), roh.number);
@@ -139,13 +139,13 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     const r = await ruf(haupt, 'PUT', `/vouchers/${id1}`, { number: NR2 });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal((await klartext(haupt, id1))[0], NR2);
-    const zeile = await zeileAlsText(id1);
+    const zeile = await rowAsText(id1);
     assert.ok(!zeile.includes(NR2) && !zeile.includes(NR1), zeile);
     assert.notEqual((await db.get('SELECT number_search FROM vouchers WHERE id = $1', [id1])).number_search, suche);
     // Nur der Betrag: Die Nummer kommt entschlüsselt aus der Zeile und geht verschlüsselt zurück.
     const b = await ruf(haupt, 'PUT', `/vouchers/${id1}`, { amount: 40 });
     assert.deepEqual([b.status, (await klartext(haupt, id1))[0], b.body.voucher.amount], [200, NR2, 40]);
-    assert.ok(!(await zeileAlsText(id1)).includes(NR2));
+    assert.ok(!(await rowAsText(id1)).includes(NR2));
   });
 
   await t.test('Doppelte werden erkannt, je Konto', async () => {
@@ -155,22 +155,22 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     assert.equal(zweiter.status, 200);
     const umbenannt = await ruf(haupt, 'PUT', `/vouchers/${zweiter.body.voucher.id}`, { number: NR2 });
     assert.deepEqual([umbenannt.status, umbenannt.body.code], [409, 'gutschein_existiert']);
-    const anderesKonto = await ruf(fremd, 'POST', '/vouchers', { number: NR2, amount: 10 });
-    assert.equal(anderesKonto.status, 200, 'dieselbe Karte in einem anderen Konto ist erlaubt');
-    const suchwerte = await db.all('SELECT DISTINCT number_search FROM vouchers WHERE id = ANY($1)', [
-      [id1, anderesKonto.body.voucher.id],
+    const otherAccount = await ruf(fremd, 'POST', '/vouchers', { number: NR2, amount: 10 });
+    assert.equal(otherAccount.status, 200, 'dieselbe Karte in einem anderen Konto ist erlaubt');
+    const searchValues = await db.all('SELECT DISTINCT number_search FROM vouchers WHERE id = ANY($1)', [
+      [id1, otherAccount.body.voucher.id],
     ]);
-    assert.equal(suchwerte.length, 2, 'derselbe Suchwert in zwei Konten verriete, dass sie dieselbe Karte halten');
+    assert.equal(searchValues.length, 2, 'derselbe Suchwert in zwei Konten verriete, dass sie dieselbe Karte halten');
   });
 
   await t.test('PDF, Export und Import tragen die Nummer', async () => {
     const fd = new FormData();
-    fd.append('file', new Blob([await baueGutschein(NR1, '1357', '25')], { type: 'application/pdf' }), 'g.pdf');
+    fd.append('file', new Blob([await buildVoucher(NR1, '1357', '25')], { type: 'application/pdf' }), 'g.pdf');
     const r = await fetch(`${haupt.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, JSON.stringify(b));
     assert.deepEqual([(await klartext(haupt, b.voucher.id))[0], b.voucher.hat_pdf], [NR1, true]);
-    assert.ok(!(await zeileAlsText(b.voucher.id)).includes(NR1));
+    assert.ok(!(await rowAsText(b.voucher.id)).includes(NR1));
     const ticket = async weg => (await ruf(haupt, 'POST', weg, { password: PASS })).body.ticket;
     const datei = await fetch(
       `${haupt.base}/api/v1/vouchers/${b.voucher.id}/pdf?download=1&ticket=${await ticket(`/vouchers/${b.voucher.id}/pdf-freigabe`)}`,
@@ -190,7 +190,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     const { readPageByPage } = _req('src/vouchers/pdfExport.js');
     assert.deepEqual((await readPageByPage(pdf)).map(w => w.number).sort(), [NR1, NR2, NR3].sort());
 
-    await db.run('DELETE FROM vouchers WHERE user_id = $1', [HAUPT]);
+    await db.run('DELETE FROM vouchers WHERE user_id = $1', [MAIN]);
     const im = new FormData();
     im.append('file', new Blob([pdf], { type: 'application/pdf' }), 'alle.pdf');
     const imp = await (await fetch(`${haupt.base}/api/v1/vouchers/pdf`, { method: 'POST', body: im })).json();
@@ -199,8 +199,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     const nummern = [];
     for (const v of liste.body.vouchers) nummern.push((await klartext(haupt, v.id))[0]);
     assert.deepEqual(nummern.sort(), [NR1, NR2, NR3].sort());
-    for (const v of liste.body.vouchers)
-      assert.ok(!(await zeileAlsText(v.id)).includes((await klartext(haupt, v.id))[0]));
+    for (const v of liste.body.vouchers) assert.ok(!(await rowAsText(v.id)).includes((await klartext(haupt, v.id))[0]));
     const nochmal = new FormData();
     nochmal.append('file', new Blob([pdf], { type: 'application/pdf' }), 'alle.pdf');
     const zweit = await (await fetch(`${haupt.base}/api/v1/vouchers/pdf`, { method: 'POST', body: nochmal })).json();
@@ -221,9 +220,9 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
       `DELETE FROM schema_migrations WHERE name IN ('0087-gutscheinnummer-verschluesselt.sql', '0088-geheimnisse-mit-kontext.sql')`,
     );
     const alt = [
-      [HAUPT, NR1, '1357'],
+      [MAIN, NR1, '1357'],
       [FREMD, NR1, null],
-      [HAUPT, NR3, alsV1('8642')],
+      [MAIN, NR3, alsV1('8642')],
     ];
     const ids = [];
     for (const [uid, nr, pin] of alt)
@@ -240,9 +239,9 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     // 0087 legt die Spalte noch unter ihrem alten Namen an; 0124 (längst
     // angewandt) hätte sie sonst gleich danach umbenannt, wie bei einer
     // echten Reihenfolge der Migrationen.
-    await testZugang().initSchemaOnce();
+    await testAccess().initSchemaOnce();
     await db.run('ALTER TABLE vouchers RENAME COLUMN nummer_suche TO number_search');
-    await _req('startup/datenbank.js').altbestandAufruesten(require('./helpers/sources').testDienste());
+    await _req('startup/datenbank.js').legacyStockUpgrade(require('./helpers/sources').testServices());
 
     assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name = '0087-gutscheinnummer-verschluesselt.sql'`));
     const zeilen = await db.all(
@@ -250,14 +249,12 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
       [ids],
     );
     assert.deepEqual(
-      zeilen.map(z => g.entschluessele(z.number, gr.numberContext(z.user_id, z.id))),
+      zeilen.map(z => g.decrypt(z.number, gr.numberContext(z.user_id, z.id))),
       [NR1, NR1, NR3],
     );
     for (const z of zeilen) {
       assert.ok(z.number.startsWith('v2:') && z.number_search, JSON.stringify(z));
-      assert.ok(
-        !(await zeileAlsText(z.id)).includes(NR1.slice(-6)) && !(await zeileAlsText(z.id)).includes(NR3.slice(-6)),
-      );
+      assert.ok(!(await rowAsText(z.id)).includes(NR1.slice(-6)) && !(await rowAsText(z.id)).includes(NR3.slice(-6)));
     }
     assert.notEqual(zeilen[0].number_search, zeilen[1].number_search);
     const liste = await ruf(haupt, 'GET', '/vouchers');
@@ -276,7 +273,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
       'eine umgeschlüsselte Nummer zählt für die Doppelprüfung',
     );
     const klar = await db
-      .run(`INSERT INTO vouchers (user_id, number, amount, currency) VALUES ($1, '123456789', 1, 'CHF')`, [HAUPT])
+      .run(`INSERT INTO vouchers (user_id, number, amount, currency) VALUES ($1, '123456789', 1, 'CHF')`, [MAIN])
       .then(
         () => null,
         e => e.code,
@@ -287,20 +284,20 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
       await db.get(`SELECT nspname FROM pg_namespace WHERE nspname ~ '^vor_migration_[0-9]+$'
       ORDER BY nspname DESC LIMIT 1`)
     ).nspname;
-    const gesichert = await db.all(
+    const secured = await db.all(
       `SELECT id, user_id, number, pin FROM ${kopie}.vouchers WHERE id = ANY($1) ORDER BY id`,
       [ids],
     );
-    assert.equal(gesichert.length, 3, `die Kopie ${kopie} hat die Gutscheine nicht`);
-    for (const z of gesichert)
+    assert.equal(secured.length, 3, `die Kopie ${kopie} hat die Gutscheine nicht`);
+    for (const z of secured)
       assert.ok(z.number.startsWith('v2:') && (z.pin === null || z.pin.startsWith('v2:')), JSON.stringify(z));
     assert.deepEqual(
-      gesichert.map(z => g.entschluessele(z.number, gr.numberContext(z.user_id, z.id))),
+      secured.map(z => g.decrypt(z.number, gr.numberContext(z.user_id, z.id))),
       [NR1, NR1, NR3],
       'mit dem Schlüssel bleibt die Kopie lesbar',
     );
 
-    const gs = require('./helpers/sources').testBereich('vouchers').vouchers;
+    const gs = require('./helpers/sources').testArea('vouchers').vouchers;
     assert.equal((await gs.reencryptNumbers()) + (await gs.reencryptCopies()), 0, 'ein zweiter Start ändert nichts');
   });
 });

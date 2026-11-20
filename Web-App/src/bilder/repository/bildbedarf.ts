@@ -1,6 +1,6 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 
-export function merkeBildwuensche(db: DbSchnittstelle, urls: string[], sets: (string | null)[]) {
+export function rememberImageRequests(db: DbInterface, urls: string[], sets: (string | null)[]) {
   return db.run(
     `INSERT INTO image_wanted (url, set_number)
        SELECT * FROM unnest($1::text[], $2::text[])
@@ -9,7 +9,7 @@ export function merkeBildwuensche(db: DbSchnittstelle, urls: string[], sets: (st
   );
 }
 
-export function loescheAlteBildwuensche(db: DbSchnittstelle, alterMs: string) {
+export function deleteOldImageRequests(db: DbInterface, alterMs: string) {
   return db.run(
     `DELETE FROM image_wanted
       WHERE requested_at <= NOW() - ($1 || ' milliseconds')::interval`,
@@ -17,28 +17,28 @@ export function loescheAlteBildwuensche(db: DbSchnittstelle, alterMs: string) {
   );
 }
 
-export function zaehleBildwuensche(db: DbSchnittstelle) {
+export function countImageRequests(db: DbInterface) {
   return db.get<{ n: number }>('SELECT COUNT(*)::int AS n FROM image_wanted');
 }
 
-export function loescheAlleBildwuensche(db: DbSchnittstelle) {
+export function deleteAllImageRequests(db: DbInterface) {
   return db.run('DELETE FROM image_wanted');
 }
 
-export function entnimmBildwuensche(db: DbSchnittstelle, gueltigMs: string, anzahl: number) {
+export function entnimmBildwuensche(db: DbInterface, validMs: string, anzahl: number) {
   return db.all<{ url: string; set_number: string | null }>(
     `DELETE FROM image_wanted
       WHERE url IN (SELECT url FROM image_wanted
                      WHERE requested_at > NOW() - ($1 || ' milliseconds')::interval
                      ORDER BY requested_at ASC LIMIT $2)
       RETURNING url, set_number`,
-    [gueltigMs, anzahl],
+    [validMs, anzahl],
   );
 }
 
 /** Zählt nur, was nicht schon wartete. */
-export function reiheKatalogBilderEin(
-  db: DbSchnittstelle,
+export function seriesCatalogImagesOne(
+  db: DbInterface,
   urls: string[],
   sets: string[],
 ): Promise<{ n: number } | undefined> {

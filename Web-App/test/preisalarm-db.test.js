@@ -7,10 +7,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 const U = {};
 const SN = '10179-1';
@@ -35,7 +35,7 @@ async function seed() {
 }
 
 /** Den Marktpreis setzen — das, was der Preislauf sonst aus BrickLink holt. */
-async function setzePreis(preis, condition = 'N', waehrung = 'EUR') {
+async function setPrice(preis, condition = 'N', waehrung = 'EUR') {
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
      VALUES ($1,$2,$3,$4,NOW())
@@ -70,15 +70,15 @@ test('Preisalarm gegen echte Datenbank', async t => {
   // echten Versand, zählte null Meldungen — und die Ursache stand nirgends.
   const A = {
     ..._req('src/finanzen/preisalarm.js'),
-    ...require('./helpers/sources').testBereich('finanzen').preisalarm,
+    ...require('./helpers/sources').testArea('finanzen').preisalarm,
   };
-  let versandt = [];
-  let versandFehler = null;
-  const versende = async m => {
-    if (versandFehler) throw new Error(versandFehler);
-    versandt.push(m);
+  let sent = [];
+  let sendingError = null;
+  const send = async m => {
+    if (sendingError) throw new Error(sendingError);
+    sent.push(m);
   };
-  const pruefe = sn => A.pruefeSet(sn, { ...require('./helpers/sources').testDienste().mail, sendMail: versende });
+  const pruefe = sn => A.checkSet(sn, { ...require('./helpers/sources').testServices().mail, sendMail: send });
 
   await t.test('die Richtung bedeutet, was sie sagt', () => {
     // Die einzige Stelle im Modul, an der ein Vorzeichenfehler entsteht.
@@ -116,38 +116,38 @@ test('Preisalarm gegen echte Datenbank', async t => {
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
 
     // 1. Über der Schwelle — nichts zu melden.
-    await setzePreis(250);
+    await setPrice(250);
     assert.equal(await pruefe(SN), 0, 'über der Schwelle darf nichts kommen');
 
     // 2. Unterschreitung — eine Meldung.
-    await setzePreis(180);
+    await setPrice(180);
     assert.equal(await pruefe(SN), 1, 'die Unterschreitung wurde nicht gemeldet');
-    assert.match(versandt.at(-1).subject, /10179-1/);
+    assert.match(sent.at(-1).subject, /10179-1/);
 
     // 3. Bleibt darunter — KEINE zweite Meldung. Ohne diesen Merker käme bei
     //    stündlichem Preislauf stündlich eine Mail.
-    await setzePreis(170);
+    await setPrice(170);
     assert.equal(await pruefe(SN), 0, 'zweite Meldung ohne neuen Übergang');
 
     // 4. Zurück darüber — der Merker fällt.
-    await setzePreis(260);
+    await setPrice(260);
     assert.equal(await pruefe(SN), 0);
-    const nach = (await A.alarmeFuer(U.ich, SN))[0];
+    const nach = (await A.alertsFor(U.ich, SN))[0];
     assert.equal(nach.triggered, false, 'der Merker wurde nicht zurückgesetzt');
 
     // 5. Wieder darunter — wieder eine Meldung. Genau das verschluckt eine
     //    Sperrfrist („höchstens einmal pro Woche"), und genau das ist der
     //    Fall, der wieder interessant ist.
-    await setzePreis(150);
+    await setPrice(150);
     assert.equal(await pruefe(SN), 1, 'das zweite Unterschreiten wurde verschluckt');
   });
 
   await t.test('eine neue Schwelle ist eine neue Frage', async () => {
     // Nach Prüfung 5 steht der Merker. Wer die Schwelle ändert, will eine
     // Antwort — auch wenn die alte schon einmal gemeldet hat.
-    await setzePreis(150);
+    await setPrice(150);
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 160, condition: 'N' });
-    assert.equal((await A.alarmeFuer(U.ich, SN))[0].triggered, false);
+    assert.equal((await A.alertsFor(U.ich, SN))[0].triggered, false);
     assert.equal(await pruefe(SN), 1, 'nach dem Ändern wurde nicht neu gemeldet');
   });
 
@@ -156,9 +156,9 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // Alarms, ist er nicht falsch — nur (noch) nicht beantwortbar.
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
     await A.setzeAlarm(U.ich, SN, 'CHF', { direction: 'unter', threshold: 200, condition: 'N' });
-    await setzePreis(10, 'N', 'EUR'); // billig, aber in der falschen Währung
+    await setPrice(10, 'N', 'EUR'); // billig, aber in der falschen Währung
     assert.equal(await pruefe(SN), 0, 'ein Preis in fremder Währung hat ausgelöst');
-    await setzePreis(10, 'N', 'CHF');
+    await setPrice(10, 'N', 'CHF');
     assert.equal(await pruefe(SN), 1);
   });
 
@@ -168,9 +168,9 @@ test('Preisalarm gegen echte Datenbank', async t => {
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
-    await setzePreis(50, 'U');
+    await setPrice(50, 'U');
     assert.equal(await pruefe(SN), 0, 'der gebrauchte Preis hat den Neu-Alarm ausgelöst');
-    await setzePreis(150, 'N');
+    await setPrice(150, 'N');
     assert.equal(await pruefe(SN), 1);
   });
 
@@ -179,9 +179,9 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // Lauf erneut durch alle Alarme dieses Kontos.
     await db.run('DELETE FROM price_alerts', []);
     await A.setzeAlarm(U.ohnemail, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
-    await setzePreis(100, 'N');
+    await setPrice(100, 'N');
     assert.equal(await pruefe(SN), 0, 'ohne Adresse darf nichts verschickt werden');
-    assert.equal((await A.alarmeFuer(U.ohnemail, SN))[0].triggered, true, 'der Merker muss trotzdem stehen');
+    assert.equal((await A.alertsFor(U.ohnemail, SN))[0].triggered, true, 'der Merker muss trotzdem stehen');
   });
 
   await t.test('ein gescheiterter Versand lässt den Merker ungesetzt', async () => {
@@ -190,15 +190,15 @@ test('Preisalarm gegen echte Datenbank', async t => {
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
-    versandFehler = 'SMTP weg';
-    await setzePreis(100, 'N');
+    sendingError = 'SMTP weg';
+    await setPrice(100, 'N');
     assert.equal(await pruefe(SN), 0);
     assert.equal(
-      (await A.alarmeFuer(U.ich, SN))[0].triggered,
+      (await A.alertsFor(U.ich, SN))[0].triggered,
       false,
       'nach einem gescheiterten Versand darf der Merker nicht stehen',
     );
-    versandFehler = null;
+    sendingError = null;
     // Und beim nächsten Lauf wird es erneut versucht.
     assert.equal(await pruefe(SN), 1, 'der zweite Versuch blieb aus');
   });
@@ -210,11 +210,11 @@ test('Preisalarm gegen echte Datenbank', async t => {
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
-    await setzePreis(100, 'N');
+    await setPrice(100, 'N');
     assert.equal(await pruefe(SN), 1);
 
     for (const ohne of [undefined, null, '', '   ', 'kein Datum']) {
-      const r = await A.ausgeloesteSeit(U.ich, ohne);
+      const r = await A.triggeredSince(U.ich, ohne);
       assert.deepEqual(r.alerts, [], `since=${JSON.stringify(ohne)} lieferte Meldungen`);
       assert.ok(r.now instanceof Date, 'der Zeitpunkt des Servers fehlt');
     }
@@ -226,13 +226,13 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // dieselbe Meldung bei jedem stündlichen Lauf erneut.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    const vorher = (await A.ausgeloesteSeit(U.ich, null)).now;
+    const vorher = (await A.triggeredSince(U.ich, null)).now;
 
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
-    await setzePreis(100, 'N');
+    await setPrice(100, 'N');
     assert.equal(await pruefe(SN), 1);
 
-    const erste = await A.ausgeloesteSeit(U.ich, vorher);
+    const erste = await A.triggeredSince(U.ich, vorher);
     // Auch hier die Zeitstempel: Ein voller CI-Lauf ist an diesem Subtest
     // einmal gescheitert, und aus dem Bericht war nicht zu erkennen, WELCHE
     // der beiden Zusicherungen gerissen ist. Beide nennen deshalb ihre Werte.
@@ -253,7 +253,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     assert.equal(typeof erste.alerts[0].last_price, 'number');
     assert.equal(erste.alerts[0].last_price, 100);
 
-    const zweite = await A.ausgeloesteSeit(U.ich, erste.now);
+    const zweite = await A.triggeredSince(U.ich, erste.now);
     // Die Zeitstempel stehen in der Meldung, und das hat einen Grund: Genau
     // diese Zusicherung ist mir EINMAL in einem vollen Lauf rot geworden und
     // in vier Wiederholungen nicht mehr. Ohne die drei Werte bliebe im
@@ -274,60 +274,60 @@ test('Preisalarm gegen echte Datenbank', async t => {
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
 
-    const MIT_MIKRO = '2026-09-19 20:29:58.527431+00';
+    const WITH_MICRO = '2026-09-19 20:29:58.527431+00';
     const NUR_MILLI = new Date('2026-09-19T20:29:58.527Z');
     await db.run(
       `UPDATE price_alerts SET triggered = TRUE, last_triggered_at = $1::timestamptz,
               last_price = 100 WHERE user_id = $2`,
-      [MIT_MIKRO, U.ich],
+      [WITH_MICRO, U.ich],
     );
 
-    const r = await A.ausgeloesteSeit(U.ich, NUR_MILLI);
+    const r = await A.triggeredSince(U.ich, NUR_MILLI);
     assert.deepEqual(
       r.alerts,
       [],
       'Die Meldung kam ein zweites Mal: in der Datenbank steht ' +
-        `${MIT_MIKRO}, die Marke trägt ${NUR_MILLI.toISOString()}. ` +
+        `${WITH_MICRO}, die Marke trägt ${NUR_MILLI.toISOString()}. ` +
         'Die Mikrosekunden entscheiden — sie dürfen es nicht.',
     );
 
     // Und die Gegenrichtung muss weiter funktionieren: Eine Meldung aus der
     // NÄCHSTEN Millisekunde ist wirklich neu und gehört geliefert.
-    const r2 = await A.ausgeloesteSeit(U.ich, new Date('2026-09-19T20:29:58.526Z'));
+    const r2 = await A.triggeredSince(U.ich, new Date('2026-09-19T20:29:58.526Z'));
     assert.equal(r2.alerts.length, 1, 'Eine Meldung nach der Marke wurde verschluckt — die Kürzung geht zu weit');
   });
 
   await t.test('Abholen: jedes Konto sieht nur seine eigenen Alarme', async () => {
-    // Die Abfrage steht auf user_id, nicht auf blickfeldIds() — und das ist
+    // Die Abfrage steht auf user_id, nicht auf scopeIds() — und das ist
     // Absicht: Eine Meldung gehört dem, der die Schwelle gesetzt hat. Ein
     // Hauptkonto bekäme sonst die Meldungen aller Unterkonten, ohne je einen
     // Alarm gesetzt zu haben.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    const vorher = (await A.ausgeloesteSeit(U.ich, null)).now;
+    const vorher = (await A.triggeredSince(U.ich, null)).now;
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
-    await setzePreis(100, 'N');
+    await setPrice(100, 'N');
     assert.equal(await pruefe(SN), 1);
 
-    assert.equal((await A.ausgeloesteSeit(U.ich, vorher)).alerts.length, 1);
-    assert.deepEqual((await A.ausgeloesteSeit(U.ohnemail, vorher)).alerts, [], 'ein fremdes Konto sah die Meldung');
+    assert.equal((await A.triggeredSince(U.ich, vorher)).alerts.length, 1);
+    assert.deepEqual((await A.triggeredSince(U.ohnemail, vorher)).alerts, [], 'ein fremdes Konto sah die Meldung');
   });
 
   await t.test('Marcos vier Schritte — auch die APP bekommt je Übergang genau eine', async () => {
     // Marcos Vorgabe vom 25.09.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
-    versandt = [];
+    sent = [];
 
-    let marke = (await A.ausgeloesteSeit(U.ich, null)).now;
+    let marke = (await A.triggeredSince(U.ich, null)).now;
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
 
     /** Ein Preislauf: Preis setzen, prüfen, abholen. Gibt [Mails, Meldungen] zurück. */
     const lauf = async preis => {
-      versandt = [];
-      await setzePreis(preis);
+      sent = [];
+      await setPrice(preis);
       const mails = await pruefe(SN);
-      const r = await A.ausgeloesteSeit(U.ich, marke);
+      const r = await A.triggeredSince(U.ich, marke);
       marke = r.now;
       return [mails, r.alerts.length];
     };
@@ -351,7 +351,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     // Der Vollständigkeit halber: Wer NICHT abholt, verpasst nichts. Die
     // Meldung steht weiter bereit, solange die Marke älter ist — das Telefon
     // darf aus sein.
-    const spaeter = await A.ausgeloesteSeit(U.ich, new Date(Date.now() - 60_000));
+    const spaeter = await A.triggeredSince(U.ich, new Date(Date.now() - 60_000));
     assert.equal(spaeter.alerts.length, 1, 'eine Meldung verfällt, wenn die App gerade nicht abholt');
   });
 

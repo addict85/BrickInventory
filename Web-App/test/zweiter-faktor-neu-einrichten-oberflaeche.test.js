@@ -5,7 +5,7 @@
  * Telefon. Ein gewöhnliches Konto schaltet ab, wie der Text sagt, ohne Einrichtung danach.
  *
  * Gegenproben (16.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in zfAbschalten() `mitCode: true` gestrichen → rot: beide Tests (Codefeld verborgen)
+ *   A  in zfAbschalten() `withCode: true` gestrichen → rot: beide Tests (Codefeld verborgen)
  *   B  in zfAbschalten() `begonnen = null` statt der Einrichtung → rot: „Verwalter“ (kein Schlüssel im
  *      Pflichtfeld)
  *   C  den otpauth-Link nie sichtbar geschaltet → rot: „Verwalter“ (Link verborgen)
@@ -13,12 +13,12 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, sicht, warte, ANMELDUNG } = require('./helpers/oberflaeche');
+const { openUi, sicht, warte, ANMELDUNG } = require('./helpers/oberflaeche');
 
 const OTPAUTH = 'otpauth://totp/BrickInventory:anna?secret=JBSWY3DPEHPK3PXP&issuer=BrickInventory';
 
 function oeffne(verwalter, kopiert) {
-  return oeffneOberflaeche(
+  return openUi(
     {
       '/v1/auth/me': {
         ...ANMELDUNG['/v1/auth/me'],

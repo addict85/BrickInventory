@@ -1,7 +1,7 @@
 // Sending mail is a tool, not a route.
 
 import type { MailContext } from './context';
-import { basisUrl, hinweisOhneBasisUrl } from '../infra/basisUrl';
+import { basisUrl, hintWithoutBaseUrl } from '../infra/basisUrl';
 import { esc, emailTemplate, emailBtn, infoBox, DIVIDER, mailTheme } from './template';
 import { sendMail, testSmtp } from './transport';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -308,7 +308,7 @@ export type ResetSideEffects = { haushalt: string[]; einladungen: number; adress
 
 /** The one sentence about what happened to the account. */
 type NoticeDetails = {
-  geloest?: ResetSideEffects | undefined;
+  resolved?: ResetSideEffects | undefined;
   passkey?: string;
   konto?: string | undefined;
   durch?: string | undefined;
@@ -394,7 +394,7 @@ function noticeSentence(kind: AccountNotice, o: NoticeDetails, en: boolean): str
       (en
         ? 'the password of your account was reset by email. All sign-ins, app tokens and passkeys were ended.'
         : 'das Passwort deines Kontos wurde per E-Mail zurückgesetzt. Alle Anmeldungen, App-Zugänge und Passkeys wurden beendet.') +
-      sideEffectsSentence(o.geloest, en),
+      sideEffectsSentence(o.resolved, en),
     token_neu: en
       ? `a new app token (“${o.passkey ?? ''}”) was created for your account.`
       : `für dein Konto wurde ein neuer App-Zugang („${o.passkey ?? ''}“) erzeugt.`,
@@ -596,7 +596,7 @@ export async function buildAlertMail(
   // the mail goes out without a button instead of pointing at a guessed host.
   const base = basisUrl();
   if (!base)
-    hinweisOhneBasisUrl(
+    hintWithoutBaseUrl(
       'mailer',
       'die Preisalarm-Mail geht OHNE den Knopf „Set ansehen" hinaus. Der Preislauf hat keine Anfrage, aus der sich der Host ableiten liesse; ohne die Variable gaebe es nur einen geratenen Link.',
     );

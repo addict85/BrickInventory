@@ -4,37 +4,37 @@ import { loadGuard } from './load-guard.js';
 import { subscribe, emit } from './events.js';
 import { echt, registerActions } from './registry.js';
 import {
-  listeLadefehler,
+  listLoadError,
   condBadges,
   ownerBadges,
   schliesseErfassen,
-  csvHochladen,
-  zeilenKnopf,
-  skelettKacheln,
+  uploadCsv,
+  rowsButton,
+  skeletonTiles,
   kachelName,
 } from './bausteine.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { escHex, esc, html, rawHtml, joinHtml } from './escaping.js';
 import { api } from './api.js';
-import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl } from './bilder.js';
+import { bildTag, placeholderContent, fullUrl, imgUrl, thumbUrl } from './bilder.js';
 import {
-  leerZustand,
-  meldeTreffer,
+  emptyState,
+  reportHits,
   G,
   TRASH_ICON_SVG,
-  zuruecksetzenKnopf,
-  aktiverReiter,
+  resetButton,
+  activeTab,
   ico,
   setzeHtml,
   telefonBreite,
 } from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
-import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
+import { amountFromField, quantityFromField, purchaseDateValid } from './formular.js';
 import { toast } from './meldungen.js';
 import { addLagerParam, addScopeParam, scopeQuery } from './kontofilter.js';
-import { geloeschtMitRueckgaengig } from './papierkorb.js';
+import { deletedWithUndo } from './papierkorb.js';
 import { accountCurrency } from './state.js';
-import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
+import { emptyLocationField, selectedOwner, selectedStorage } from './konten-orte.js';
 import { confirmDelete } from './rueckfrage.js';
 
 // ── MINIFIGUREN ──────────────────────────────────────────────────────────────
@@ -44,7 +44,7 @@ import { confirmDelete } from './rueckfrage.js';
 /** @type {Figur[]} */
 let allFigsCache = [];
 /** Die zuletzt geladenen Figuren aus Sets (nur lesen). */
-export function alleFiguren() {
+export function allMinifigs() {
   return allFigsCache;
 }
 
@@ -129,10 +129,10 @@ export async function loadMinifigs() {
   _figLoadingMore = false;
   // Ein alter Fehlerzustand weicht dem Gerüst, solange neu geladen wird (wie in der Merkliste).
   const liste = G('figs-list');
-  if (liste?.querySelector('.fehler-zustand')) setzeHtml(liste, skelettKacheln(8, tRaw('common.loading')));
+  if (liste?.querySelector('.fehler-zustand')) setzeHtml(liste, skeletonTiles(8, tRaw('common.loading')));
   const d = await figurenLaden.whenCurrent(api('GET', `/v1/minifigs?${figParams(1)}`));
   if (d === undefined) return;
-  if (listeLadefehler(G('figs-list'), d, { erneut: 'loadMinifigs', behalten: allFigsCache.length > 0 })) return;
+  if (listLoadError(G('figs-list'), d, { erneut: 'loadMinifigs', behalten: allFigsCache.length > 0 })) return;
   allFigsCache = d.figs || [];
   _figTotal = d.total ?? allFigsCache.length;
   if (allFigsCache.length >= _figTotal) _figDone = true;
@@ -204,17 +204,17 @@ function appendFigs(batch) {
  */
 export function renderFigs(list, target) {
   const el = target || G('figs-list');
-  if (!target) _setFigurenLeer = !list.length;
+  if (!target) _setMinifigsEmpty = !list.length;
   if (!target && list.length && G('fig-search')?.value.trim())
-    meldeTreffer(tRaw('treffer.eintraege', { n: list.length }));
+    reportHits(tRaw('treffer.eintraege', { n: list.length }));
   if (!list.length) {
     if (target) el.replaceChildren();
-    else figurenLeerAbgleichen();
+    else reconcileMinifigsEmpty();
     return;
   }
-  if (!target) figurenLeerAbgleichen();
+  if (!target) reconcileMinifigsEmpty();
 
-  if (tabellenAnsicht('figs-view')) {
+  if (tablesView('figs-view')) {
     // Ohne „Quelle“ und Papierkorb: Diese Liste lädt nur source=set, beide Spalten wären in jeder Zeile
     // gleich bzw. leer. Manuelle Figuren haben ihren eigenen Bereich mit editierbaren Karten.
     setzeHtml(
@@ -230,8 +230,8 @@ export function renderFigs(list, target) {
         // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden Ansichten (Marcos Detail-Dialog
         // fuer automatisch erfasste Figuren).
         return html`<tr data-stil="cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
-          <td>${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: 'figur' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}</td>
-          <td>${zeilenKnopf(
+          <td>${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: 'figur' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${placeholderContent('figur')}</span>`}</td>
+          <td>${rowsButton(
             {
               click: f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail',
               arg: 'fig',
@@ -296,7 +296,7 @@ export function renderFigs(list, target) {
           const k = kachelName();
           return html`<div class="part-card" tabindex="0" role="button"${k.attr}${f.source === 'manual' ? html` aria-keyshortcuts="Delete"` : ''} data-stil="position:relative;cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
             ${rawHtml(delBtn)}
-            ${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' }) : html`<span class="bild-ph part-img" aria-hidden="true">${platzhalterInhalt('figur')}</span>`}
+            ${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'part-img', fade: true, orig: fullUrl(imgSrc), ph: 'figur' }) : html`<span class="bild-ph part-img" aria-hidden="true">${placeholderContent('figur')}</span>`}
             <div class="part-num">${f.fig_number}</div>
             <div class="part-name">${f.fig_name || '—'}</div>
             <div class="kachel-mehr"${k.teil(0)}>
@@ -322,7 +322,7 @@ export async function deleteManualFig(figNumber, owner) {
     `/v1/minifigs/${encodeURIComponent(figNumber)}${owner ? `?owner=${encodeURIComponent(owner)}` : ''}`,
   );
   if (d.success) {
-    geloeschtMitRueckgaengig(
+    deletedWithUndo(
       tRaw('figs.deleted'),
       d,
       undefined,
@@ -340,49 +340,49 @@ export async function deleteManualFig(figNumber, owner) {
 /** @type {ManuelleFigur[]} */
 let manualFigsCache = [];
 /** Die zuletzt geladenen manuell erfassten Figuren (nur lesen). */
-export function manuelleFiguren() {
+export function manualMinifigs() {
   return manualFigsCache;
 }
 export async function loadManualFigsTable() {
-  const d = await api('GET', `/v1/minifigs/manual${manuellQuery('minifigs', 'fig-search')}`);
+  const d = await api('GET', `/v1/minifigs/manual${manualQuery('minifigs', 'fig-search')}`);
   if (!d.success) return;
   manualFigsCache = d.figs || [];
   renderManualFigsTable();
 }
 
 /** @type {boolean | null} */
-let _setFigurenLeer = null; // null: noch nicht geladen
+let _setMinifigsEmpty = null; // null: noch nicht geladen
 /** @type {boolean | null} */
-let _manuelleFigurenLeer = null;
+let _manualMinifigsEmpty = null;
 
 /**
- * Wie bei den Teilen (teileLeerAbgleichen in teile.js): ein Leerzustand für den Reiter, und nur wenn beide
+ * Wie bei den Teilen (reconcilePartsEmpty in teile.js): ein Leerzustand für den Reiter, und nur wenn beide
  * Listen leer sind.
  */
-function figurenLeerAbgleichen() {
+function reconcileMinifigsEmpty() {
   const box = G('manual-figs-box');
   G('tab-minifigs')?.classList.remove('sammlung-leer');
-  if (box) box.style.display = _manuelleFigurenLeer === false ? '' : 'none';
+  if (box) box.style.display = _manualMinifigsEmpty === false ? '' : 'none';
   const n = manualFigsCache.length;
   if (G('manual-figs-n')) G('manual-figs-n').textContent = n ? tRaw('parts.group_types', { n }) : '';
-  if (_setFigurenLeer !== true) return;
+  if (_setMinifigsEmpty !== true) return;
   const el = G('figs-list');
-  if (_manuelleFigurenLeer === false) {
+  if (_manualMinifigsEmpty === false) {
     el.replaceChildren();
     return;
   }
   const q = G('fig-search')?.value.trim() || '';
   G('tab-minifigs')?.classList.toggle('sammlung-leer', !q);
-  if (q) meldeTreffer(tRaw('common.no_hits', { query: q }));
+  if (q) reportHits(tRaw('common.no_hits', { query: q }));
   setzeHtml(
     el,
     q
-      ? leerZustand({
+      ? emptyState({
           ico: 'suche',
           titel: tRaw('common.no_hits', { query: q }),
-          knopf: zuruecksetzenKnopf('minifigs'),
+          knopf: resetButton('minifigs'),
         })
-      : leerZustand({
+      : emptyState({
           ico: 'figur',
           titel: tRaw('figs.empty'),
           text: tRaw('figs.auto_hint'),
@@ -392,7 +392,7 @@ function figurenLeerAbgleichen() {
 }
 
 /** Die Suche leeren (Knopf im Leerzustand). */
-export function figurenFilterZuruecksetzen() {
+export function resetMinifigsFilter() {
   const el = G('fig-search');
   if (el) el.value = '';
   filterFigs();
@@ -401,14 +401,14 @@ export function figurenFilterZuruecksetzen() {
 export function renderManualFigsTable() {
   const el = G('manual-figs-list');
   if (!el) return;
-  _manuelleFigurenLeer = !manualFigsCache.length;
-  figurenLeerAbgleichen();
+  _manualMinifigsEmpty = !manualFigsCache.length;
+  reconcileMinifigsEmpty();
   if (!manualFigsCache.length) {
     el.replaceChildren();
     return;
   }
-  if (tabellenAnsicht('figs-view')) {
-    setzeHtml(el, manuelleTabelle(manualFigsCache, 'fig'));
+  if (tablesView('figs-view')) {
+    setzeHtml(el, manualTable(manualFigsCache, 'fig'));
     if (typeof window.__bimLabelTables === 'function') window.__bimLabelTables(el.querySelector('table'));
     return;
   }
@@ -419,7 +419,7 @@ export function renderManualFigsTable() {
       const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
       const img = imgSrc
         ? bildTag({ src: imgSrc, alt: '', klasse: 'man-tile-img', ph: 'figur' })
-        : `<span class="bild-ph man-tile-img" aria-hidden="true">${platzhalterInhalt('figur')}</span>`;
+        : `<span class="bild-ph man-tile-img" aria-hidden="true">${placeholderContent('figur')}</span>`;
       // Mengengewichteter Kaufpreis über die Erfassungen (Server rechnet ihn). unit_price ist der zuletzt
       // geschriebene Einzelwert der Stammzeile — bei zwei Erfassungen zu verschiedenen Preisen stimmte er
       // nicht.
@@ -455,7 +455,7 @@ export async function updateManualFig(figNumber, body, owner) {
     toast(tRaw('settings.saved'), 'success');
     loadManualFigsTable();
     loadMinifigs();
-    if (aktiverReiter() === 'finance') emit('finanzenLaden');
+    if (activeTab() === 'finance') emit('finanzenLaden');
   } else toast(d.error || t('settings.error'), 'error');
 }
 
@@ -465,7 +465,7 @@ export async function updateManualFig(figNumber, body, owner) {
  * Figuren.
  * @param {string | null | undefined} zustand 'N' | 'U' | null — null heisst „nichts zu sagen".
  */
-export function preisHerkunftHinweis(zustand) {
+export function priceOriginHint(zustand) {
   if (zustand !== 'N' && zustand !== 'U') return '';
   return t(zustand === 'N' ? 'price.from_other_condition_new' : 'price.from_other_condition_used');
 }
@@ -478,9 +478,9 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     res.textContent = tRaw('figs.number_required');
     return;
   }
-  const preis = betragAusFeld('af-price-inline');
-  const datumOk = kaufdatumGueltig('af-date');
-  const menge = mengeAusFeld('af-qty-inline');
+  const preis = amountFromField('af-price-inline');
+  const datumOk = purchaseDateValid('af-date');
+  const menge = quantityFromField('af-qty-inline');
   if (!preis.ok || !menge.ok || !datumOk) return;
   const btn = G('btn-add-fig');
   btn.disabled = true;
@@ -500,11 +500,11 @@ G('btn-add-fig')?.addEventListener('click', async () => {
   btn.disabled = false;
   btn.textContent = tRaw('gallery.add.submit');
   if (d.success) {
-    const hinweisF = preisHerkunftHinweis(d.price_from_condition);
+    const hintF = priceOriginHint(d.price_from_condition);
     res.style.color = 'var(--g700)';
     res.textContent =
       `${d.fig_number} ${d.action === 'added' ? t('common.added') : t('common.updated')}` +
-      (hinweisF ? ` — ${hinweisF}` : '');
+      (hintF ? ` — ${hintF}` : '');
     // Der Dialog schliesst; das Ergebnis samt Preishinweis kommt als Meldung.
     schliesseErfassen('fig');
     toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
@@ -513,7 +513,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     G('af-qty-inline').value = '1';
     G('af-price-inline').value = '';
     G('af-date').value = '';
-    leereLagerortFeld('af-storage');
+    emptyLocationField('af-storage');
     loadMinifigs();
     // Mit Hinweis laenger stehen lassen: Drei Sekunden reichen fuer ein Haekchen, nicht fuer einen Satz, den
     // man lesen soll.
@@ -521,7 +521,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
       () => {
         res.textContent = '';
       },
-      hinweisF ? 9000 : 3000,
+      hintF ? 9000 : 3000,
     );
   } else {
     res.style.color = 'var(--r500)';
@@ -555,7 +555,7 @@ export function csvImportStatus(elId, state, msg) {
 }
 
 async function importFigsCsv() {
-  const d = await csvHochladen({
+  const d = await uploadCsv({
     feld: 'fig-csv-file',
     pfad: '/v1/minifigs/import/csv',
     zeige: l => csvImportStatus('fig-csv-status', l ? 'running' : 'hide', tRaw('import.running')),
@@ -577,16 +577,16 @@ G('btn-fig-csv-template').onclick = e => {
  * Abfrageteil der manuellen Listen: Kontofilter UND Suchtext. scopeQuery() allein liess die Suche an den
  * manuellen Kacheln vorbeilaufen, obwohl die Filterleiste über beiden Listen steht. Gefiltert wird am Server.
  * @param {string} view     Name des Blickfelds ('parts' | 'minifigs')
- * @param {string} sucheId  ID des Suchfelds der Filterleiste
+ * @param {string} searchId  ID des Suchfelds der Filterleiste
  */
-export function manuellQuery(view, sucheId) {
+export function manualQuery(view, searchId) {
   const p = new URLSearchParams();
   addScopeParam(p, view);
   // Der Lagerortfilter steht in derselben Leiste und gehoert damit zum gleichen Versprechen. Es gibt ihn nur
   // fuer Galerie und Teile (LAGER_VIEWS in kontofilter.js); fuer 'minifigs' haengt addLagerParam nichts an, und
   // deshalb kennt getManualMinifigs ihn auch nicht.
   addLagerParam(p, view);
-  const q = G(sucheId)?.value?.trim();
+  const q = G(searchId)?.value?.trim();
   if (q) p.set('search', q);
   const s = p.toString();
   return s ? '?' + s : '';
@@ -598,13 +598,13 @@ export function manuellQuery(view, sucheId) {
  * @param {(ManuellesTeil | ManuelleFigur)[]} posten  Die Einträge aus dem jeweiligen Cache.
  * @param {'part'|'fig'} art
  */
-export function manuelleTabelle(posten, art) {
-  const istTeil = art === 'part';
+export function manualTable(posten, art) {
+  const isPart = art === 'part';
   const kopf = [
     t('col.image_th'),
-    istTeil ? t('col.part_nr') : t('col.number'),
+    isPart ? t('col.part_nr') : t('col.number'),
     t('col.name'),
-    ...(istTeil ? [t('col.color')] : []),
+    ...(isPart ? [t('col.color')] : []),
     t('detail.qty'),
     t('common.condition'),
     t('detail.purchase_price'),
@@ -612,42 +612,42 @@ export function manuelleTabelle(posten, art) {
     '',
   ];
   const zeile = (/** @type {ManuellesTeil | ManuelleFigur} */ p) => {
-    const nummer = istTeil ? p.part_number : p.fig_number;
-    const blNummer = (istTeil ? p.bl_part_number : p.bl_fig_number) || nummer;
-    const name = istTeil ? p.part_name : p.fig_name;
+    const nummer = isPart ? p.part_number : p.fig_number;
+    const blNumber = (isPart ? p.bl_part_number : p.bl_fig_number) || nummer;
+    const name = isPart ? p.part_name : p.fig_name;
     const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
     const preis = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
-    const loeschKlick = istTeil ? 'deleteManualPartStop' : 'deleteManualFigStop';
-    const loeschTitel = tRaw(istTeil ? 'parts.delete.title' : 'figs.delete');
+    const loeschKlick = isPart ? 'deleteManualPartStop' : 'deleteManualFigStop';
+    const loeschTitle = tRaw(isPart ? 'parts.delete.title' : 'figs.delete');
     // Beim Teil traegt der Papierkorb (Nummer, Farbe, Besitzer), bei der Figur (Nummer, Besitzer) — dieselbe
     // Reihenfolge wie auf den Kacheln.
-    const loeschArgs = istTeil
+    const loeschArgs = isPart
       ? `data-arg="${esc(nummer)}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}"`
       : `data-arg="${esc(nummer)}" data-arg2="${p.user_id || ''}"`;
-    return html`<tr data-stil="cursor:pointer" data-click="openManDetail" data-arg="${art}" data-arg2="${nummer}" data-arg3="${istTeil ? p.color_id || 0 : 0}">
-      <td>${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: istTeil ? 'teil' : 'figur' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${platzhalterInhalt(istTeil ? 'teil' : 'figur')}</span>`}</td>
-      <td>${zeilenKnopf(
-        { click: 'openManDetail', arg: art, arg2: String(nummer), arg3: istTeil ? Number(p.color_id) || 0 : 0 },
-        html`<span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${nummer}">${blNummer}</span>`,
-        tRaw('zeile.oeffnen', { name: name || nummer, nr: blNummer }),
+    return html`<tr data-stil="cursor:pointer" data-click="openManDetail" data-arg="${art}" data-arg2="${nummer}" data-arg3="${isPart ? p.color_id || 0 : 0}">
+      <td>${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: isPart ? 'teil' : 'figur' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${placeholderContent(isPart ? 'teil' : 'figur')}</span>`}</td>
+      <td>${rowsButton(
+        { click: 'openManDetail', arg: art, arg2: String(nummer), arg3: isPart ? Number(p.color_id) || 0 : 0 },
+        html`<span data-stil="font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)" title="${nummer}">${blNumber}</span>`,
+        tRaw('zeile.oeffnen', { name: name || nummer, nr: blNumber }),
       )}</td>
       <td data-stil="max-width:200px">${name || '—'}</td>
-      ${istTeil ? html`<td><div data-stil="display:flex;align-items:center;gap:5px">${p.color_hex ? html`<div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''}${colorName(/** @type {string | null | undefined} */ (p.color_name))}</div></td>` : ''}
+      ${isPart ? html`<td><div data-stil="display:flex;align-items:center;gap:5px">${p.color_hex ? html`<div class="color-dot" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></div>` : ''}${colorName(/** @type {string | null | undefined} */ (p.color_name))}</div></td>` : ''}
       <td><span data-stil="font-family:var(--mono);font-weight:600;color:var(--b700)">${p.quantity || 0}</span></td>
       <td>${condBadges(p)}</td>
       <td class="preis">${preis != null ? fmtN(preis, accountCurrency) : '—'}</td>
       <td data-stil="font-size:var(--fs-1);color:var(--mut)">${p.storage || ''}</td>
-      <td><button class="delbtn" data-click="${loeschKlick}"${echt()} ${rawHtml(loeschArgs)} title="${loeschTitel}" aria-label="${loeschTitel}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
+      <td><button class="delbtn" data-click="${loeschKlick}"${echt()} ${rawHtml(loeschArgs)} title="${loeschTitle}" aria-label="${loeschTitle}">${TRASH_ICON_SVG}</button>${ownerBadges(p)}</td>
     </tr>`;
   };
-  return html`<div class="tw"><table class="dt" aria-label="${tRaw(istTeil ? 'parts.manual_section' : 'finance.figs_section')}" data-stil="font-size:var(--fs-2)"><thead><tr>${kopf.map(h => html`<th>${rawHtml(h)}</th>`)}</tr></thead><tbody>${joinHtml(posten.map(zeile))}</tbody></table></div>`;
+  return html`<div class="tw"><table class="dt" aria-label="${tRaw(isPart ? 'parts.manual_section' : 'finance.figs_section')}" data-stil="font-size:var(--fs-2)"><thead><tr>${kopf.map(h => html`<th>${rawHtml(h)}</th>`)}</tr></thead><tbody>${joinHtml(posten.map(zeile))}</tbody></table></div>`;
 }
 
 /**
  * Steht der Umschalter des Reiters auf „Tabelle"?
  * @param {string} id
  */
-export function tabellenAnsicht(id) {
+export function tablesView(id) {
   return G(id)?.value === 'table' && !telefonBreite();
 }
 

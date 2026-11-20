@@ -3,11 +3,11 @@ import { t, tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
-import { feldFehler, passwortRegelText } from './formular.js';
+import { feldFehler, passwordRuleText } from './formular.js';
 import { toast } from './meldungen.js';
 import { loggedInAccount } from './state.js';
 import { html, rawHtml } from './escaping.js';
-import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
+import { bestaetigeMitPasswort, withSecondFactor } from './rueckfrage.js';
 // Settings, Administration section: create, lock, unlock accounts, manage rights. Only
 // administrators see it — the server checks every action itself.
 /** @typedef {import('../../frontend-typen/vertrag').KontoInListe} Konto */
@@ -186,7 +186,7 @@ G('btn-cu').onclick = async () => {
   // name gets focus last, since it's reported last.
   const nameError =
     n && /^[A-Za-z0-9_.-]{3,32}$/.test(n) ? '' : tRaw(n ? 'users.name_regel_fehler' : 'users.name_fehlt');
-  const pwError = p ? passwortRegelText(p) : tRaw('users.pw_fehlt');
+  const pwError = p ? passwordRuleText(p) : tRaw('users.pw_fehlt');
   ruleError('nu-p', pwError);
   ruleError('nu-n', nameError);
   if (nameError || pwError) return;
@@ -197,7 +197,7 @@ G('btn-cu').onclick = async () => {
     { knopf: 'confirm.btn.konto_anlegen', art: 'bp' },
   );
   if (admin_password === null) return;
-  const d = await mitZweitemFaktor(z =>
+  const d = await withSecondFactor(z =>
     api('POST', '/v1/auth/users', { username: n, password: p, is_admin: a, admin_password, ...z }),
   );
   if (d === null) return;
@@ -221,7 +221,7 @@ function openRpw(uid, name) {
 }
 G('btn-rpw').onclick = async () => {
   const newPw = G('rpw-v').value;
-  const rule = passwortRegelText(newPw);
+  const rule = passwordRuleText(newPw);
   if (rule) {
     toast(rule, 'error');
     return;
@@ -234,7 +234,7 @@ G('btn-rpw').onclick = async () => {
     { knopf: 'confirm.btn.passwort_setzen', art: 'bp' },
   );
   if (admin_password === null) return;
-  const d = await mitZweitemFaktor(z =>
+  const d = await withSecondFactor(z =>
     api('PUT', `/v1/auth/users/${G('rpw-uid').value}/password`, { password: newPw, admin_password, ...z }),
   );
   if (d === null) return;
@@ -264,7 +264,7 @@ async function toggleAdmin(uid, isAdmin, name) {
     art: 'bp',
   });
   if (admin_password === null) return;
-  const d = await mitZweitemFaktor(z =>
+  const d = await withSecondFactor(z =>
     api('PUT', `/v1/auth/users/${uid}/admin`, { is_admin: !cur, admin_password, ...z }),
   );
   if (d === null) return;
@@ -288,7 +288,7 @@ async function toggleAktiv(uid, active, name) {
     { knopf: isActive ? 'confirm.btn.deaktivieren' : 'confirm.btn.aktivieren', art: 'bp' },
   );
   if (admin_password === null) return;
-  const d = await mitZweitemFaktor(z =>
+  const d = await withSecondFactor(z =>
     api('PUT', `/v1/auth/users/${uid}/aktiv`, { is_active: !isActive, admin_password, ...z }),
   );
   if (d === null) return;
@@ -309,7 +309,7 @@ async function kontoFreischalten(uid, name) {
     { knopf: 'confirm.btn.freischalten', art: 'bp' },
   );
   if (admin_password === null) return;
-  const d = await mitZweitemFaktor(z => api('PUT', `/v1/auth/users/${uid}/freischalten`, { admin_password, ...z }));
+  const d = await withSecondFactor(z => api('PUT', `/v1/auth/users/${uid}/freischalten`, { admin_password, ...z }));
   if (d === null) return;
   if (d.success) {
     toast(tRaw('users.freigeschaltet', { name }), 'success');
@@ -328,7 +328,7 @@ async function delUser(uid, name) {
     { knopf: 'confirm.btn.konto_name_loeschen', werte: { name }, art: 'bd' },
   );
   if (admin_password === null) return;
-  const d = await mitZweitemFaktor(z => api('DELETE', `/v1/auth/users/${uid}`, { admin_password, ...z }));
+  const d = await withSecondFactor(z => api('DELETE', `/v1/auth/users/${uid}`, { admin_password, ...z }));
   if (d === null) return;
   if (d.success) {
     reportResult(d, tRaw('users.deleted', { name }));

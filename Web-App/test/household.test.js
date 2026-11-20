@@ -5,16 +5,16 @@
  * Datenbank hier oder in household-db.test.js.
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  einladungAnlegen speichert den Code statt seines Hashes → rot „der
+ *   A  createInvitation speichert den Code statt seines Hashes → rot „der
  *      Einladungscode steht nur als Hash …“
- *   B  darfSchreibenFuer fragt haushaltVon() statt der Verknüpfung → rot
+ *   B  darfSchreibenFuer fragt householdOf() statt der Verknüpfung → rot
  *      „Schreibrechte kommen nie aus dem Gedächtnis“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { pruefeParameter } = require('./helpers/sources');
+const { checkParameter } = require('./helpers/sources');
 const kompakt = require('./helpers/sources').kompakt;
 
 const ROOT = path.join(__dirname, '..');
@@ -23,12 +23,12 @@ const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
-  const db = await require('./helpers/db').datenOderSkip(t, _req);
+  const db = await require('./helpers/db').dataOrSkip(t, _req);
   if (!db) return;
   const hh = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ...require('./helpers/sources').testArea('haushalt'),
   };
   const namen = [`hh_haupt_${process.pid}`, `hh_unter_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -37,7 +37,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     ids.push((await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [n])).id);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
-    hh.meldeHaushaltsaenderung();
+    hh.reportHouseholdChange();
     await db.pool.end().catch(() => {});
   });
 
@@ -53,7 +53,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
   await t.test('der Einladungscode steht nur als Hash in der Datenbank', async () => {
     // Wie bei API-Tokens: Wer die Datenbank liest, soll keine Einladung einlösen können.
     // Wie eine Anfrage des Kontos: Einladungen stehen unter seinem Zeilenschutz.
-    const { code } = await require('./helpers/sources').alsKonto(ids[0], () => hh.einladungAnlegen(ids[0]));
+    const { code } = await require('./helpers/sources').asAccount(ids[0], () => hh.createInvitation(ids[0]));
     assert.ok(code, 'kein Code erzeugt');
     const zeilen = await db.all('SELECT token_hash FROM account_link_invites WHERE main_user_id = $1', [ids[0]]);
     assert.equal(zeilen.length, 1);
@@ -67,11 +67,11 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     // Das Blickfeld ist gemerkt (haushalt-gedaechtnis-db.test.js); über einen
     // Schreibzugriff darf nur der Stand der Datenbank entscheiden.
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ids[0], ids[1]]);
-    hh.meldeHaushaltsaenderung();
+    hh.reportHouseholdChange();
     // Unter dem Zeilenschutz des Hauptkontos: Fremde Verknüpfungen sieht die Laufzeitrolle nicht (0121).
-    const als = (uid, f) => require('./helpers/sources').alsKonto(uid, f);
+    const als = (uid, f) => require('./helpers/sources').asAccount(uid, f);
     assert.deepEqual(
-      (await als(ids[0], () => hh.haushaltVon(ids[0]))).memberIds,
+      (await als(ids[0], () => hh.householdOf(ids[0]))).memberIds,
       ids,
       'Vorbedingung: das Unterkonto ist gemerkt',
     );
@@ -79,7 +79,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     // Von aussen gelöst, ohne dass dieser Prozess davon hört.
     await db.run('DELETE FROM account_links WHERE main_user_id = $1', [ids[0]]);
     assert.deepEqual(
-      (await als(ids[0], () => hh.haushaltVon(ids[0]))).memberIds,
+      (await als(ids[0], () => hh.householdOf(ids[0]))).memberIds,
       ids,
       'Vorbedingung: das Gedächtnis ist noch alt',
     );
@@ -103,7 +103,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
   // Ausweise). Vorher stand diese Prüfung über ZWEI Dateien und verlangte,
   // dass beide alles anbieten — die schwächere Fassung derselben Aussage.
   const src = read('routes/api_v1/settings.ts');
-  for (const fn of ['haushaltsStand', 'einladungAnlegen', 'haushaltBeitreten', 'kontenTrennen']) {
+  for (const fn of ['householdStatus', 'createInvitation', 'joinHousehold', 'unlinkAccounts']) {
     assert.ok(src.includes(fn), `routes/api_v1/settings.ts: ${fn} fehlt`);
   }
   // Und die Zweitfassung darf nicht zurückkehren: jede Haushalts-Route genau einmal.
@@ -135,7 +135,7 @@ test('die Portfoliokurve des Haushalts ist rückwirkend', () => {
   // Portfolio-Schnappschüsse ('__portfolio__<id>') gibt es nicht mehr. Sie
   // lagen je Konto zu unterschiedlichen Zeitpunkten — addiert ergäben sie
   // Einbrüche, die nie stattgefunden haben — und sie hielten fest, was AN …
-  const p = require('./helpers/sources').portfolioQuelle();
+  const p = require('./helpers/sources').portfolioSource();
   assert.doesNotMatch(
     p,
     /__portfolio__/,
@@ -152,10 +152,10 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // ohneKommentare(): Die BEGRÜNDUNGEN dieser Regeln stehen in setMove.ts als
   // Kommentar, und sie ZITIEREN die Anweisungen, die es nicht mehr geben darf …
   const mv = kompakt(
-    require('./helpers/sources').ohneKommentare(require('./helpers/sources').dienstQuelle('src/sets/setMove.ts')),
+    require('./helpers/sources').ohneKommentare(require('./helpers/sources').serviceSource('src/sets/setMove.ts')),
   );
   assert.ok(
-    mv.includes("bucheTageserfassung('set', toId, [sn]"),
+    mv.includes("bookDailyEntry('set', toId, [sn]"),
     'Erfassungen müssen einzeln über den gemeinsamen Helfer wandern',
   );
   assert.doesNotMatch(mv, /UPDATE set_acquisitions SET user_id/, 'Kein direktes Umhängen der Erfassungen');
@@ -178,21 +178,20 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   // Zielkonto oder einem festen Schluessel — laeuft in
   // test/sperre-beim-verschieben-db.test.js ueber die echte Adresse; beides
   // zusammen, nicht eines statt des anderen.
-  assert.ok(src.includes('sets.setVerschieben('), 'Die Route ruft den Dienst');
+  assert.ok(src.includes('sets.moveSet('), 'Die Route ruft den Dienst');
   assert.ok(
-    kompakt(read('src/sets/setMove.ts')).includes('setErfassungenUmhaengen(t, sn, fromId'),
-    'Das Verschieben läuft über setErfassungenUmhaengen',
+    kompakt(read('src/sets/setMove.ts')).includes('setEntriesReassign(t, sn, fromId'),
+    'Das Verschieben läuft über setEntriesReassign',
   );
   assert.ok(kompakt(mv).includes('sperren: [{ konto: fromId, schluessel: sn }]'), 'Serialisiert über das Quellkonto');
   // Ganzes Set und einzelne Kaufpreise laufen durch DIESELBE Umsetzung — der
   // Teilfall ist kein Sonderweg, sondern der allgemeine Fall mit Auswahl.
   const acq = read('routes/api_v1/acquisitions.ts');
   const calls =
-    (mv.match(/setErfassungenUmhaengen\(t, sn/g) || []).length +
-    (acq.match(/setErfassungenUmhaengen\(t, sn/g) || []).length;
+    (mv.match(/setEntriesReassign\(t, sn/g) || []).length + (acq.match(/setEntriesReassign\(t, sn/g) || []).length;
   assert.ok(
     calls >= 1,
-    'Der Eigentümerwechsel muss über setErfassungenUmhaengen laufen — in routes/sets.ts ' +
+    'Der Eigentümerwechsel muss über setEntriesReassign laufen — in routes/sets.ts ' +
       '(ganzes Set) oder in der gemeinsamen Fabrik (einzelne Kaufpreise)',
   );
 });
@@ -205,8 +204,8 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   const h = kompakt(require('./helpers/sources').handlerQuelle());
   // Auf die Parameter geprüft, nicht auf den Wortlaut: `rows: any[]` eines Tages
   // zu `rows: Row[]` zu schärfen ist eine Verbesserung und darf hier nicht als
-  // Fehler erscheinen (siehe pruefeParameter() im Helfer).
-  pruefeParameter(h, 'besitzerAnhaengen', ['uids', 'rows']);
+  // Fehler erscheinen (siehe checkParameter() im Helfer).
+  checkParameter(h, 'besitzerAnhaengen', ['uids', 'rows']);
   assert.match(
     h,
     /if \(uids\.length < 2 \|\| !rows\?\.length\) return rows;/,
@@ -288,7 +287,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   // den KAUFPREIS, Zeile für Zeile. Geprüft wird jetzt, dass die
   // Eigentümer-Spalte im Kaufpreis-Dialog nur im Haushalt erscheint — und
   // zwar in BEIDEN Dialogen (Sets und manuelle Einträge).
-  const adm = kompakt(require('./helpers/sources').adminQuelle());
+  const adm = kompakt(require('./helpers/sources').adminSource());
   assert.doesNotMatch(
     adm,
     /renderMoveBox|moveSetToAccount/,
@@ -305,7 +304,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
 test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
   // Wer in der Galerie den ganzen Haushalt sieht, will in den Finanzen
   // womöglich nur die eigenen Zahlen — deshalb je Ansicht ein eigener Wert.
-  const core = require('./helpers/sources').coreQuelle();
+  const core = require('./helpers/sources').coreSource();
   // 'merkliste' ist am 24.09. dazugekommen (Marcos Vorgabe: „In der Merkliste
   // noch einen Filter analog den Sets einbauen inkl. Inhaber"). Der Server
   // verstand `accounts=` auf /v1/wanted schon immer — es fehlte allein die
@@ -370,15 +369,15 @@ test('Verschieben geht NUR über den Kaufpreis', async () => {
   // tatsächlich wandert: Drei Erfassungen sind drei Käufe, die im Haushalt
   // verschiedenen Kindern gehören können. Wer alles verschieben will, ändert
   // jede Zeile — und sieht dabei, wie viele es sind. …
-  const { setVerschieben } = require('./helpers/sources').bereichsSeite('sets');
+  const { moveSet } = require('./helpers/sources').areaPage('sets');
   await assert.rejects(
-    setVerschieben(1, '10294-1', 1, 2, []),
+    moveSet(1, '10294-1', 1, 2, []),
     (/** @type {any} */ e) => e.art === 'ungueltig' && e.code === 'kaufpreise_angeben',
     'move ohne acquisition_ids muss abgelehnt werden',
   );
 
   // Und die Oberfläche bietet es gar nicht erst an.
-  assert.doesNotMatch(require('./helpers/sources').adminQuelle(), /renderMoveBox|moveSetToAccount/);
+  assert.doesNotMatch(require('./helpers/sources').adminSource(), /renderMoveBox|moveSetToAccount/);
   assert.doesNotMatch(read('public/index.html'), /m-move-box/);
 });
 
@@ -389,8 +388,8 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen
   // Inhalt — es wandern nur Menge und Erfassung.
   const mv = kompakt(read('src/bestand/umhaengen.ts'));
-  assert.match(mv, /export async function manuelleErfassungUmhaengen/);
-  assert.match(mv, /kaufAmTagErfassen\(t, kind, toId, keyValues/, 'Auch hier gilt: eine Tageszeile je Konto');
+  assert.match(mv, /export async function manualEntryReassign/);
+  assert.match(mv, /addPurchaseAtTag\(t, kind, toId, keyValues/, 'Auch hier gilt: eine Tageszeile je Konto');
 
   // Die Erfassungs-Routen stehen nur noch in der v1-Fabrik, die
   // jetzt Webapp UND App bedient. Die Regel gilt unverändert — sie wird nur an
@@ -399,7 +398,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
   const f = 'src/collection/acquisitions.ts';
   const src = kompakt(read(f));
-  assert.ok(src.includes('t.bestand.manuelleErfassungUmhaengen(art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
+  assert.ok(src.includes('t.bestand.manualEntryReassign(art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
   assert.match(
     src,
     /if \(to === null\) fachfehler\('verboten', 'kein_schreibrecht'\)/,
@@ -417,8 +416,8 @@ test('die App-Routen kennen den Eigentümerwechsel', () => {
   assert.match(v1, /body\.owner_user_id/, 'Der Erfassungsdienst muss owner_user_id auswerten');
   assert.match(
     v1,
-    /t\.sets\.setErfassungenUmhaengen\(String\(keys\[0\]\), from, to, \[id\]\)/,
+    /t\.sets\.setEntriesReassign\(String\(keys\[0\]\), from, to, \[id\]\)/,
     'Sets wandern über dieselbe Umsetzung wie beim Verschieben',
   );
-  assert.match(v1, /t\.bestand\.manuelleErfassungUmhaengen\(art, keys, id, from, to\)/);
+  assert.match(v1, /t\.bestand\.manualEntryReassign\(art, keys, id, from, to\)/);
 });

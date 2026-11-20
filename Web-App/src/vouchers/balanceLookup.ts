@@ -1,7 +1,7 @@
 // Balance of a LEGO gift card; if the bot protection kicks in, no further call follows.
-import { meldeUndLiefere } from '../infra/fehler';
-import { hostErlaubt } from '../infra/fremdeAdressen';
-import { ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../fremdquellen';
+import { reportAndDeliver } from '../infra/fehler';
+import { hostAllowed } from '../infra/fremdeAdressen';
+import { ALLOWED_BALANCE_HOSTS, type LegoFetch } from '../fremdquellen';
 
 /** Taken from the prototype, not guessed — the part nobody could derive. */
 const ENDPOINT = 'https://www.lego.com/api/graphql/giftCardBalanceQuery';
@@ -43,7 +43,7 @@ const QUERY = `query giftCardBalanceQuery($cardNumber: String!, $pin: String!) {
   }
 }`;
 
-export type Abruf = LegoAbruf;
+export type Abruf = LegoFetch;
 
 /** The token has expired, or the card/PIN is wrong. */
 export class NotLoggedIn extends Error {}
@@ -119,7 +119,7 @@ function captureCookies(res: { headers: { getSetCookie?: () => string[] } }, jar
 
 /** Every call in this file goes through the host check. */
 async function fetchChecked(abruf: Abruf, url: string, init?: Record<string, unknown>) {
-  if (!hostErlaubt(url, ERLAUBTE_GUTHABEN_HOSTS)) {
+  if (!hostAllowed(url, ALLOWED_BALANCE_HOSTS)) {
     throw new Error(`Address not allowed: ${url}`);
   }
   return abruf(url, init);
@@ -232,7 +232,7 @@ async function queryBalance(abruf: Abruf, number: string, pin: string, locale: s
   if (res.status === 401) throw new NotLoggedIn('Not logged in');
   if (!res.ok) {
     // Exception: the text only serves the message; it throws below regardless.
-    const text = await res.text().catch(meldeUndLiefere('guthaben:antworttext', ''));
+    const text = await res.text().catch(reportAndDeliver('guthaben:antworttext', ''));
     // redact() on the FOREIGN text too: an error message that echoes the input
     // would otherwise bring the PIN into the log.
     const safe = redact(text.slice(0, 300), number, pin);

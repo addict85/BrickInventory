@@ -10,12 +10,12 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const { ownedQuantitiesQuery } = _req('src/parts/queries.js');
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/bestand');
 
 let UID = 0;
 
@@ -34,8 +34,8 @@ async function seed() {
   UID = (await db.get(`SELECT id FROM users WHERE username='bauer'`)).id;
 
   // Zwei Sets: eines zweimal besessen, eines einmal.
-  await haeltSet(db, UID, '60052-1', 2);
-  await haeltSet(db, UID, '10276-1', 1);
+  await holdsSet(db, UID, '60052-1', 2);
+  await holdsSet(db, UID, '10276-1', 1);
 
   // Teile AUS den Sets (source bleibt leer — genau wie partsImport.ts sie legt).
   const setTeil = async (setNr, num, farbe, menge) => {
@@ -45,23 +45,23 @@ async function seed() {
                   ON CONFLICT (part_number) DO NOTHING`,
       [num],
     );
-    await haeltTeil(db, UID, num, { setNumber: setNr, menge: menge, colorId: farbe });
+    await holdsPart(db, UID, num, { setNumber: setNr, menge: menge, colorId: farbe });
   };
   await setTeil('60052-1', '3001', 0, 3); // 3 je Bausatz, zweimal besessen → 6
   await setTeil('10276-1', '3002', 0, 5); // 5 je Bausatz, einmal besessen  → 5
 
   // Manuell erfasst: haengt an keinem Set.
-  await haeltTeil(db, UID, '3003', { menge: 7, colorId: 0 });
+  await holdsPart(db, UID, '3003', { menge: 7, colorId: 0 });
 
   // Teilezeile, deren Set nicht (mehr) in `sets` steht — der LEFT-JOIN-Fall.
   await setTeil('99999-1', '3004', 0, 4);
 
   // Minifiguren: eine aus dem zweimal besessenen Set, eine manuell erfasste.
-  await haeltFigur(db, UID, 'trn241', { setNumber: '60052-1', menge: 1 });
-  await haeltFigur(db, UID, 'cty0500', { menge: 2 });
+  await holdsMinifig(db, UID, 'trn241', { setNumber: '60052-1', menge: 1 });
+  await holdsMinifig(db, UID, 'cty0500', { menge: 2 });
 }
 
-async function dbErreichbar() {
+async function dbReachable() {
   try {
     await db.get('SELECT 1 AS ok');
     return true;
@@ -71,7 +71,7 @@ async function dbErreichbar() {
 }
 
 test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async t => {
-  if (!(await dbErreichbar())) {
+  if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
     return;

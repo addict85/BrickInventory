@@ -6,27 +6,27 @@ import { registerActions, echt } from './registry.js';
 import { accountCurrency, loggedInAccount, gallerySets, openSet, setOpenSet } from './state.js';
 import { escJs, esc, html, safeUrl, rawHtml } from './escaping.js';
 import { api } from './api.js';
-import { fullUrl, setzeDialogbild, PLATZHALTER_SET } from './bilder.js';
-import { G, ico, aktiverReiter, setzeHtml } from './dom.js';
+import { fullUrl, setDialogbild, PLACEHOLDER_SET } from './bilder.js';
+import { G, ico, activeTab, setzeHtml } from './dom.js';
 import { fmtDatum, fmtGeld } from './format.js';
-import { meldeAmFeld, toast, verwirfToasts } from './meldungen.js';
-import { geloeschtMitRueckgaengig } from './papierkorb.js';
+import { meldeAmFeld, toast, discardToasts } from './meldungen.js';
+import { deletedWithUndo } from './papierkorb.js';
 import {
   alarmBlock,
   closeModal,
   ladeAlarm,
-  ladeOrtAuswahl,
-  lagerortBlock,
-  setzeAlarmFeld,
-  setzeMengenfeld,
+  loadLocationSelection,
+  locationBlock,
+  setAlarmField,
+  setQuantitiesField,
 } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
 import { delSet, reimportParts } from './collection.js';
-import { detailZeile, kontoAnzeige, oderStrich, skelettZeilen, oeffneErfassen } from './bausteine.js';
-import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
+import { detailRow, accountDisplay, orStroke, skeletonRows, oeffneErfassen } from './bausteine.js';
+import { chartWidth, priceChartSVG, renderMarketRows } from './diagramme.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { openAcqModal, renderAcqModalBody } from './kauf-dialoge.js';
-import { kurzfassung, renderAcquisitionSummary } from './kaufpreis-anzeige.js';
+import { summary, renderAcquisitionSummary } from './kaufpreis-anzeige.js';
 
 // Moving happens only per acquisition (the acquisition dialog, row by row), never for a whole set:
 // several acquisitions of one set in a household can belong to different accounts. The server needs
@@ -41,7 +41,7 @@ let _writableAccounts = null;
 const inHousehold = set => (set?.owners || []).some(o => !loggedInAccount || o.id !== loggedInAccount.id);
 
 /** A name for the UI: the logged-in account is called "me". @param {{ id: number, username: string }} o */
-const accountName = kontoAnzeige;
+const accountName = accountDisplay;
 
 /**
  * Quantity per account from the acquisitions; the own account first. In a household each account
@@ -123,23 +123,23 @@ function setDetailHtml(sn, acqs) {
   // the placeholder. A single value for the whole set mixed new and used.
   const priceRow = html`<div class="m-wertkopf" id="m-market-rows" data-kopf="1" role="group" aria-label="${tRaw('detail.wert')}"><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
   const pnlRow = '';
-  const qtyRow = detailZeile(t('detail.qty'), quantityBlock(set, acqs), {
-    zeilenStil: 'align-items:flex-start',
+  const qtyRow = detailRow(t('detail.qty'), quantityBlock(set, acqs), {
+    rowsStyle: 'align-items:flex-start',
     wertId: 'm-menge',
     paar: true,
   });
 
   // Acquisition summary: compact read-only rows + button to open full editor
-  const acqRows = detailZeile(
+  const acqRows = detailRow(
     t('detail.purchase_price'),
     html`
       ${renderAcquisitionSummary(acqs, sn)}
       <button class="btn bs btn-sm detail-knopf" data-click="openAcqModal" data-arg="${sn}">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>
     `,
     {
-      zeilenStil: 'align-items:flex-start',
+      rowsStyle: 'align-items:flex-start',
       wertId: 'm-acq-summary',
-      wertStil: 'flex-direction:column;align-items:flex-end;gap:3px',
+      valueStyle: 'flex-direction:column;align-items:flex-end;gap:3px',
       paar: true,
     },
   );
@@ -153,27 +153,27 @@ function setDetailHtml(sn, acqs) {
   // what a parts import has taken over, and showed a different number for the same set.
   const right = html`<dl>
     ${acqRows}
-    ${detailZeile(t('detail.year'), oderStrich(set.year), PAIR)}
-    ${detailZeile(t('detail.theme'), esc(oderStrich(set.theme)), PAIR)}
+    ${detailRow(t('detail.year'), orStroke(set.year), PAIR)}
+    ${detailRow(t('detail.theme'), esc(orStroke(set.theme)), PAIR)}
     ${qtyRow}
-    ${detailZeile(t('detail.pieces'), set.pieces ? set.pieces.toLocaleString(locale()) : '—', PAIR)}
-    ${detailZeile(t('detail.minifigs'), oderStrich(set.minifigs), { wertId: 'm-minifigs-val', paar: true })}
-    ${detailZeile(
+    ${detailRow(t('detail.pieces'), set.pieces ? set.pieces.toLocaleString(locale()) : '—', PAIR)}
+    ${detailRow(t('detail.minifigs'), orStroke(set.minifigs), { wertId: 'm-minifigs-val', paar: true })}
+    ${detailRow(
       t('detail.alert'),
       alarmBlock(sn, 'm', (openSet?.conditions || []).includes('N') || !(openSet?.conditions || []).length ? 'N' : 'U'),
       {
         klasse: 'alarm-zeile',
         paar: true,
-        zeilenStil: 'align-items:flex-start',
-        wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end',
+        rowsStyle: 'align-items:flex-start',
+        valueStyle: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end',
       },
     )}
-    ${detailZeile(
+    ${detailRow(
       t('detail.storage'),
-      html`${lagerortBlock('m-storage', set.storage, `data-change="speichereSetLagerort" data-arg="${escJs(sn)}"`)}<button type="button" class="zu-sicht" data-click="sichtAusDialog" data-arg="lagerorte">${tRaw('detail.lagerorte_verwalten')}</button>`,
-      { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end', paar: true },
+      html`${locationBlock('m-storage', set.storage, `data-change="speichereSetLagerort" data-arg="${escJs(sn)}"`)}<button type="button" class="zu-sicht" data-click="sichtAusDialog" data-arg="lagerorte">${tRaw('detail.lagerorte_verwalten')}</button>`,
+      { valueStyle: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end', paar: true },
     )}
-    ${detailZeile(
+    ${detailRow(
       t('detail.created'),
       html`${ico('kalender')} ${addedFmt} <span class="text-klein">(${tRaw('detail.created_hint')})</span>`,
       { klasse: 'dr-leise', paar: true },
@@ -197,7 +197,7 @@ function loadSetFollowups(sn, acqs) {
     setzeHtml(
       el,
       ph.success
-        ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), diagrammBreite(el), multi)
+        ? priceChartSVG(ph, sn.replace(/[^a-zA-Z0-9]/g, ''), chartWidth(el), multi)
         : html`<span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw(ph.networkError ? 'chart.offline' : 'detail.no_history')}</span>`,
     );
   });
@@ -212,8 +212,8 @@ export async function openModal(sn) {
   // the answer arrived, and a second tap opened it twice.
   G('m-tit').textContent = sn;
   G('m-untertit').textContent = '';
-  setzeDialogbild(G('m-img'), PLATZHALTER_SET, PLATZHALTER_SET);
-  setzeHtml(G('m-det'), skelettZeilen(4, tRaw('common.loading')));
+  setDialogbild(G('m-img'), PLACEHOLDER_SET, PLACEHOLDER_SET);
+  setzeHtml(G('m-det'), skeletonRows(4, tRaw('common.loading')));
   G('m-det-links')?.replaceChildren();
   G('m-instr').replaceChildren();
   G('set-modal').dataset.nummer = sn;
@@ -233,7 +233,7 @@ export async function openModal(sn) {
     G('set-modal').classList.remove('open');
     // Usually a link to a set that is (not yet) in this account: say so and offer to add it.
     if (d?.status === 404) {
-      verwirfToasts();
+      discardToasts();
       toast(tRaw('detail.nicht_in_sammlung', { nr: sn }), 'info', {
         text: tRaw('detail.jetzt_hinzufuegen'),
         fn: () => {
@@ -256,22 +256,22 @@ export async function openModal(sn) {
   setzeHtml(G('m-untertit'), subtitle(set));
   // fullUrl(): full resolution, even when image_local points at the _thumb file
   const img = G('m-img');
-  setzeDialogbild(img, fullUrl(set.image_local || set.image_url) || PLATZHALTER_SET, PLATZHALTER_SET);
+  setDialogbild(img, fullUrl(set.image_local || set.image_url) || PLACEHOLDER_SET, PLACEHOLDER_SET);
   img.style.display = 'block';
 
   const content = setDetailHtml(sn, ad?.acquisitions || []);
   setzeHtml(G('m-det-links'), content ? content.links : '');
   setzeHtml(G('m-det'), content ? content.rechts : '');
 
-  setzeMengenfeld(set.quantity);
+  setQuantitiesField(set.quantity);
 
   renderInstructions(set.instructions || [], sn);
   // From here on, the alert handlers mean THIS dialog.
-  setzeAlarmFeld('m');
+  setAlarmField('m');
   G('set-modal').classList.add('open');
   ladeAlarm(sn).catch(() => {});
-  // The storage-location list belongs to the set's OWNER, not the viewer — see ladeOrtAuswahl() for why.
-  ladeOrtAuswahl(set.owners).catch(() => {});
+  // The storage-location list belongs to the set's OWNER, not the viewer — see loadLocationSelection() for why.
+  loadLocationSelection(set.owners).catch(() => {});
 
   loadSetFollowups(sn, ad?.acquisitions || []);
 }
@@ -288,7 +288,7 @@ export function renderInstructions(instr, sn) {
       const href = i.local_path || i.url;
       const isLocal = !!i.local_path;
       // Uploaded by hand or imported automatically? The server says so (is_manual, see
-      // anleitungenZusammenlegen in src/katalog/instructions.ts). Previously the rule lived here as a
+      // mergeInstructions in src/katalog/instructions.ts). Previously the rule lived here as a
       // path comparison — a second version of the same question that the Android app could not rebuild at all.
       const isUpload = !!i.is_manual;
       const label = esc(i.description) || t('instr.label');
@@ -409,7 +409,7 @@ if (typeof MutationObserver === 'function')
 
 export function autosaveSet() {
   if (!openSet) return;
-  setzeMengenfeld();
+  setQuantitiesField();
   if (_autosaveTimer !== null) clearTimeout(_autosaveTimer);
   const set = openSet;
   _pendingQuantitySave = () => {
@@ -451,7 +451,7 @@ async function changeQuantity(body, step, field, set = openSet) {
   const ad = await refreshDetail(sn, field);
   if (step > 0 && ad) reportNewCopies(sn, ad.acquisitions, step);
   emit('sammlungLaden');
-  if (aktiverReiter() === 'finance') emit('finanzenLaden');
+  if (activeTab() === 'finance') emit('finanzenLaden');
 }
 
 /** "Purchase from 09/13/2026 (€250.00) removed" with Undo; the acquisition sits in the trash.
@@ -466,7 +466,7 @@ function reportRemovedPurchase(sn, d, accountId) {
       ? tRaw('detail.kauf_entfernt', { datum: fmtDatum(k.date || ''), preis })
       : tRaw('detail.kaeufe_entfernt', { n: removed.length });
   const ids = typeof d.papierkorb === 'number' ? [d.papierkorb] : d.papierkorb || [];
-  geloeschtMitRueckgaengig(owner ? `${text} · ${accountName(owner)}` : text, { papierkorb: ids }, () => {
+  deletedWithUndo(owner ? `${text} · ${accountName(owner)}` : text, { papierkorb: ids }, () => {
     if (openSet?.set_number === sn) refreshDetail(sn, null);
   });
 }
@@ -489,9 +489,9 @@ async function refreshDetail(sn, field) {
   const quantityEl = G('m-menge');
   if (quantityEl) setzeHtml(quantityEl, quantityBlock(d.set, acqs));
   const newField = G('m-qty');
-  setzeMengenfeld(d.set.quantity);
+  setQuantitiesField(d.set.quantity);
   const sumEl = G('m-acq-summary');
-  if (sumEl) setzeHtml(sumEl, kurzfassung(acqs, sn));
+  if (sumEl) setzeHtml(sumEl, summary(acqs, sn));
   if (G('acq-modal').classList.contains('open')) renderAcqModalBody(sn, acqs, ad?.totals);
   setzeHtml(G('m-untertit'), subtitle(d.set));
   // The pressed button has been replaced; focus goes to its successor, or, if that is disabled (last

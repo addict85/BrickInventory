@@ -11,13 +11,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 /** @param {string} endStand  was der Server nach dem Knopf meldet */
 async function kopplung(knopf, endStand) {
   let stand = 'offen';
   const gesendet = [];
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/auth/qr-token': {
       success: true,
       url: 'https://lego.example.org',

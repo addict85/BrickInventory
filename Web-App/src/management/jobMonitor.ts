@@ -4,12 +4,12 @@ import path from 'node:path';
 import { DAILY_JOBS } from './timesOfDay';
 import { imgDlPending, imgDlReset, tile, tiles } from './tiles';
 import { PDF_JOB_DIR } from '../infra/appPaths';
-import { meldeFehler } from '../infra/fehler';
-import { Abstriche } from '../infra/ergebnis';
+import { reportError } from '../infra/fehler';
+import { Degradations } from '../infra/ergebnis';
 import type { ManagementContext } from './context';
 
 // Eine Frist für beide Kacheln; drei Minuten bei einem Takt von zwanzig Sekunden.
-const JOB_FRISCH_MS = 3 * 60_000;
+const JOB_FRESH_MS = 3 * 60_000;
 
 type Tile = Record<string, unknown>;
 
@@ -20,10 +20,10 @@ const part = (code: string, werte?: Record<string, number | string>): SubPart =>
 
 type Tiles = Record<string, Tile>;
 
-const count = (ab: Abstriche, p: Promise<number>, ort: string) => ab.oder(ort, p, 0);
+const count = (ab: Degradations, p: Promise<number>, ort: string) => ab.oder(ort, p, 0);
 
 /** Ein JSON-Stand aus laufzustand; ein beschädigter zählt wie keiner. */
-async function readState<T>(k: ManagementContext, ab: Abstriche, schluessel: string): Promise<T | null> {
+async function readState<T>(k: ManagementContext, ab: Degradations, schluessel: string): Promise<T | null> {
   const roh = await ab.oder(schluessel, k.auftraege.liesZustand(schluessel), null);
   try {
     return roh ? (JSON.parse(roh) as T) : null;
@@ -45,8 +45,8 @@ function blIdsTile(alt: Tile, gemappt: number, gesamt: number): Tile | null {
 }
 
 /** Einmal gezählt: offen, erledigt und gescheitert aus derselben Abfrage. */
-async function instructionJobs(k: ManagementContext, ab: Abstriche) {
-  const z = await ab.oder('anleitungen', k.auftraege.zaehleArt('anleitung'), null);
+async function instructionJobs(k: ManagementContext, ab: Degradations) {
+  const z = await ab.oder('anleitungen', k.auftraege.countKind('anleitung'), null);
   return { offen: z ? z.offen + z.laeuft : 0, erledigt: z?.erledigt ?? 0, fehler: z?.fehler ?? 0 };
 }
 
@@ -63,7 +63,7 @@ function instructionsTile(alt: Tile, a: { offen: number; erledigt: number; fehle
   };
 }
 
-async function bricksetTile(k: ManagementContext, ab: Abstriche): Promise<Tile> {
+async function bricksetTile(k: ManagementContext, ab: Degradations): Promise<Tile> {
   const { wartend, faellig } = await ab.oder('brickset', k.fremdquellen.brickset.zahlen(), { wartend: 0, faellig: 0 });
   return {
     label: 'Brickset Retry Queue',
@@ -89,12 +89,12 @@ async function bricksetTile(k: ManagementContext, ab: Abstriche): Promise<Tile> 
 
 /** „läuft" heisst: hat KÜRZLICH etwas getan (Zeitstempel des Standes). */
 const isFresh = (k: ManagementContext, zeit: unknown) =>
-  typeof zeit === 'number' && k.uhr.jetzt() - zeit < JOB_FRISCH_MS;
+  typeof zeit === 'number' && k.uhr.jetzt() - zeit < JOB_FRESH_MS;
 
 /** Bestand, Neuladen und Katalog in EINER Kachel, sonst meldete sie „alle gecacht",
  * während der Hintergrund-Job nachlädt. */
 /** Gedeckelt auf die wirklich offenen Bilder: Das heilt einen verwaisten Zähler nach einem Absturz. */
-async function imagesInProgress(k: ManagementContext, ab: Abstriche, offen: number): Promise<number> {
+async function imagesInProgress(k: ManagementContext, ab: Degradations, offen: number): Promise<number> {
   const aktiv = await ab.oder('bilder', imgDlPending(k), 0);
   if (offen === 0 && aktiv > 0) {
     await imgDlReset(k);
@@ -103,7 +103,7 @@ async function imagesInProgress(k: ManagementContext, ab: Abstriche, offen: numb
   return Math.min(aktiv, offen);
 }
 
-async function redownloadState(k: ManagementContext, ab: Abstriche) {
+async function redownloadState(k: ManagementContext, ab: Degradations) {
   const reDl = await readState<{ running?: boolean; at?: number; phase?: string; done?: number; total?: number }>(
     k,
     ab,
@@ -118,8 +118,8 @@ async function redownloadState(k: ManagementContext, ab: Abstriche) {
   return { reDl, laeuft, sub };
 }
 
-async function imageTile(k: ManagementContext, ab: Abstriche): Promise<Tile> {
-  const [teileOffen, fertig, setFiguren, bestandsFiguren, katalogOffen] = await Promise.all([
+async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> {
+  const [openParts, fertig, setMinifigs, inventoryMinifigs, openCatalog] = await Promise.all([
     count(ab, k.management.partImagesOpen(), 'bilder'),
     count(ab, k.management.partImagesDone(), 'bilder'),
     count(ab, k.management.setMinifigImagesOpen(), 'bilder'),
@@ -127,30 +127,30 @@ async function imageTile(k: ManagementContext, ab: Abstriche): Promise<Tile> {
     count(ab, k.management.holdingMinifigImagesOpen(), 'bilder'),
     count(ab, k.management.catalogImagesOpen(), 'bilder'),
   ]);
-  const offen = teileOffen + setFiguren + bestandsFiguren;
+  const offen = openParts + setMinifigs + inventoryMinifigs;
   const job = await ab.oder('bilder', tile(k, 'imgDl'), null);
   const aktiv = await imagesInProgress(k, ab, offen);
-  const { reDl, laeuft: reDlLaeuft, sub: reDlSub } = await redownloadState(k, ab);
+  const { reDl, laeuft: reDlRunning, sub: reDlSub } = await redownloadState(k, ab);
   // „läuft“ heisst: hat kürzlich etwas getan, laut Datenbank.
   const letzterLauf = await readState<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
-  const seitLauf = letzterLauf?.zeit ? k.uhr.jetzt() - letzterLauf.zeit : null;
-  const jobLaeuft = isFresh(k, letzterLauf?.zeit);
-  const katalogSub =
-    katalogOffen > 0
-      ? `${katalogOffen} Katalog-Bilder in Warteschlange` +
-        (jobLaeuft
+  const sinceRun = letzterLauf?.zeit ? k.uhr.jetzt() - letzterLauf.zeit : null;
+  const jobRunning = isFresh(k, letzterLauf?.zeit);
+  const catalogSub =
+    openCatalog > 0
+      ? `${openCatalog} Katalog-Bilder in Warteschlange` +
+        (jobRunning
           ? ''
-          : seitLauf === null
+          : sinceRun === null
             ? ' · Job noch nicht gelaufen'
-            : ` · seit ${Math.round(seitLauf / 60_000)} min kein Durchgang`)
+            : ` · seit ${Math.round(sinceRun / 60_000)} min kein Durchgang`)
       : null;
-  const bestandSub =
+  const inventorySub =
     aktiv > 0
       ? `${aktiv} Bilder werden geladen`
       : offen > 0
         ? `${offen} Bilder noch nicht gecacht`
         : `Alle ${fertig} Bilder gecacht`;
-  const basisSub = katalogSub ? `Bestand: ${bestandSub} · ${katalogSub}` : bestandSub;
+  const basisSub = catalogSub ? `Bestand: ${inventorySub} · ${catalogSub}` : inventorySub;
   const teile: SubPart[] = [
     {
       ...(aktiv > 0
@@ -158,15 +158,15 @@ async function imageTile(k: ManagementContext, ab: Abstriche): Promise<Tile> {
         : offen > 0
           ? part('bilder_offen', { n: offen })
           : part('imgs_cached', { n: fertig })),
-      ...(katalogOffen > 0 ? { vor: 'bestand' as const } : {}),
+      ...(openCatalog > 0 ? { vor: 'bestand' as const } : {}),
     },
   ];
-  if (katalogOffen > 0) {
-    teile.push(part('katalog_warteschlange', { n: katalogOffen }));
-    if (!jobLaeuft)
-      teile.push(seitLauf === null ? part('job_nie') : part('kein_durchgang', { min: Math.round(seitLauf / 60_000) }));
+  if (openCatalog > 0) {
+    teile.push(part('katalog_warteschlange', { n: openCatalog }));
+    if (!jobRunning)
+      teile.push(sinceRun === null ? part('job_nie') : part('kein_durchgang', { min: Math.round(sinceRun / 60_000) }));
   }
-  if (reDlLaeuft)
+  if (reDlRunning)
     teile.push(
       reDl?.phase === 'scanning'
         ? part('neu_suche')
@@ -175,17 +175,17 @@ async function imageTile(k: ManagementContext, ab: Abstriche): Promise<Tile> {
   return {
     label: '📥 Bild-Download (CDN)',
     status:
-      aktiv > 0 || reDlLaeuft || (katalogOffen > 0 && jobLaeuft)
+      aktiv > 0 || reDlRunning || (openCatalog > 0 && jobRunning)
         ? 'running'
-        : offen > 0 || katalogOffen > 0
+        : offen > 0 || openCatalog > 0
           ? 'idle'
           : 'done',
     sub: reDlSub ? `${basisSub} · ${reDlSub}` : basisSub,
     sub_teile: teile,
     // Mit Warteschlange, sonst stünde der Balken auf 100 %, während Bilder ausstehen.
     progress: fertig,
-    total: fertig + offen + katalogOffen,
-    queue: katalogOffen,
+    total: fertig + offen + openCatalog,
+    queue: openCatalog,
     queueLastRun: letzterLauf?.zeit || null,
     lastRun: job?.lastRun || null,
     canRedownload: true,
@@ -202,11 +202,11 @@ function pdfTile(): Tile {
         if (j.status === 'running') laufend++;
         else if (j.status === 'done') fertig++;
       } catch (e) {
-        meldeFehler('admin:pdf-auftrag-lesen', e);
+        reportError('admin:pdf-auftrag-lesen', e);
       }
     }
   } catch (e) {
-    meldeFehler('admin:auftragsordner-lesen', e);
+    reportError('admin:auftragsordner-lesen', e);
   }
   return {
     label: '📄 PDF-Jobs',
@@ -249,8 +249,8 @@ async function zeitplaene(
 /** Ergänzt um Zahlen, die nur die Datenbank kennt; je Kachel eine Funktion. */
 export async function jobMonitor(k: ManagementContext) {
   const jobs: Tiles = await tiles(k); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
-  const ab = new Abstriche();
-  const [anleitungen, gemappt, blGesamt, rbParts, rbInventory, lastSync] = await Promise.all([
+  const ab = new Degradations();
+  const [anleitungen, gemappt, blTotal, rbParts, rbInventory, lastSync] = await Promise.all([
     instructionJobs(k, ab),
     count(ab, k.management.mappedParts(), 'bl_mapping'),
     count(ab, k.management.bricklinkParts(), 'bl_mapping'),
@@ -258,7 +258,7 @@ export async function jobMonitor(k: ManagementContext) {
     count(ab, k.management.rbInventoryParts(), 'katalog'),
     k.auftraege.liesZustand('rb_csv_last_sync'),
   ]);
-  const blIds = blIdsTile(jobs.blIds ?? {}, gemappt, blGesamt);
+  const blIds = blIdsTile(jobs.blIds ?? {}, gemappt, blTotal);
   if (blIds) jobs.blIds = blIds;
   const anleitung = instructionsTile(jobs.instrQueue ?? {}, anleitungen);
   if (anleitung) jobs.instrQueue = anleitung;
@@ -269,7 +269,7 @@ export async function jobMonitor(k: ManagementContext) {
     schedules: await zeitplaene(k),
     db: {
       instrQueue: { pending: anleitungen.offen, done: anleitungen.erledigt, failed: anleitungen.fehler },
-      blMapping: { mapped: gemappt, total: blGesamt },
+      blMapping: { mapped: gemappt, total: blTotal },
       csvCache: { parts: rbParts, inventoryParts: rbInventory, lastSync: lastSync || null },
     },
     ...ab.angabe(),

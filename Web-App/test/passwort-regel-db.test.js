@@ -6,7 +6,7 @@
  * Datenlecks bekannte Passwörter (mitgelieferte Liste, keine Netzabfrage).
  *
  * Gegenproben (01.11.2026 gemessen):
- *   A  Listenprüfung in passwortMangel() gestrichen → rot: alle Fälle,
+ *   A  Listenprüfung in passwordLack() gestrichen → rot: alle Fälle,
  *      zuerst „häufige Passwörter …" (alle fünf Routen nehmen das häufige an)
  *   B  Byte-Grenze gestrichen → rot: „die Regel selbst" und „mehr als 72
  *      Byte …" (danach „ein gutes Passwort …": das Konto gibt es schon)
@@ -23,42 +23,42 @@
  * Schema neu an).
  */
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-umgebung({ APP_BASE_URL: 'http://localhost' });
-umgebung({ ADMIN_PASSWORD: undefined });
+environment({ APP_BASE_URL: 'http://localhost' });
+environment({ ADMIN_PASSWORD: undefined });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
-const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
 mailAttrappe();
-const db = testDaten();
-const { passwortMangel } = _req('src/infra/passwortRegel.js');
-const { passwortPasst, ARGON2_PRAEFIX } = _req('src/konto/passwortHash.js');
+const db = testData();
+const { passwordLack } = _req('src/infra/passwortRegel.js');
+const { passwordFits, ARGON2_PREFIX } = _req('src/konto/passwortHash.js');
 
 test('die Regel selbst', () => {
-  assert.equal(passwortMangel('Brick-Sammlung-2026'), null);
-  assert.equal(passwortMangel('1234567'), 'passwort_zu_kurz');
+  assert.equal(passwordLack('Brick-Sammlung-2026'), null);
+  assert.equal(passwordLack('1234567'), 'passwort_zu_kurz');
   // Seit dem 04.11.2026 mindestens 12 Zeichen: Die häufigen darunter fallen schon an der Länge.
-  assert.equal(passwortMangel('password1'), 'passwort_zu_kurz');
+  assert.equal(passwordLack('password1'), 'passwort_zu_kurz');
   for (const p of ['ichliebedich', 'Sonnenschein', 'SONNENSCHEIN'])
-    assert.equal(passwortMangel(p), 'passwort_zu_haeufig', p);
+    assert.equal(passwordLack(p), 'passwort_zu_haeufig', p);
   assert.equal(
-    passwortMangel('Mein-Name-Ist-Lego', 'mein-name-ist-lego'),
+    passwordLack('Mein-Name-Ist-Lego', 'mein-name-ist-lego'),
     'passwort_zu_haeufig',
     'der Benutzername als Passwort',
   );
   // argon2id liest das ganze Passwort: lange Sätze und Umlaute gehen, nur Übergrösse nicht.
-  assert.equal(passwortMangel('ä'.repeat(1024)), null, '1024 Zeichen gehen noch');
-  assert.equal(passwortMangel('a'.repeat(1025)), 'passwort_zu_lang');
+  assert.equal(passwordLack('ä'.repeat(1024)), null, '1024 Zeichen gehen noch');
+  assert.equal(passwordLack('a'.repeat(1025)), 'passwort_zu_lang');
 });
 
 test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const CHEF = `regel_chef_${process.pid}`,
     ZIEL = `regel_ziel_${process.pid}`,
     PASS = 'Regel-Pruefung-7';
@@ -78,16 +78,16 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
       [ZIEL, hash],
     )
   ).id;
-  const regVorher = await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'");
+  const regBefore = await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'");
   await db.run(
     "INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1') ON CONFLICT (key) DO UPDATE SET value = '1'",
   );
-  const mailZurueck = await mailserverEintragen(db);
+  const mailBack = await enterMailServer(db);
   t.after(async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
-    if (regVorher)
-      await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regVorher.value]);
-    await mailZurueck();
+    if (regBefore)
+      await db.run("INSERT INTO global_settings (key, value) VALUES ('registration_enabled', $1)", [regBefore.value]);
+    await mailBack();
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, ziel]]);
   });
   const { base } = routerServer(_req, {
@@ -193,7 +193,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
       '400 passwort_zu_haeufig',
     );
     assert.ok(
-      await passwortPasst(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash),
+      await passwordFits(PASS, (await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])).password_hash),
     );
   });
 
@@ -221,7 +221,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
       '/reset-password 400 passwort_zu_haeufig',
     );
     assert.ok(
-      !(await passwortPasst(
+      !(await passwordFits(
         ZIEL.toUpperCase(),
         (
           await db.get('SELECT password_hash FROM users WHERE id = $1', [ziel])
@@ -241,7 +241,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     );
   });
 
-  // Gegenprobe (11.11.2026 gemessen, damals bcrypt): in setzeFremdesPasswort (src/konto/konten.ts)
+  // Gegenprobe (11.11.2026 gemessen, damals bcrypt): in setForeignPassword (src/konto/konten.ts)
   // mit 4 statt BCRYPT_ROUNDS gehasht → rot (PUT /users/:id/password: 4); seit argon2id siehe E im Kopf.
   await t.test('jeder Weg hasht mit denselben Kosten', async () => {
     const NEU = `regel_neu_${process.pid}`,
@@ -254,7 +254,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     ]);
     const runden = async name =>
       (await db.get('SELECT password_hash FROM users WHERE username = $1', [name])).password_hash.startsWith(
-        ARGON2_PRAEFIX,
+        ARGON2_PREFIX,
       )
         ? 'argon2id'
         : 'anders';
@@ -285,23 +285,23 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
   await t.test('ein schwaches ADMIN_PASSWORD wird nicht übernommen', async () => {
     await db.run('DROP SCHEMA public CASCADE');
     await db.run('CREATE SCHEMA public');
-    umgebung({ ADMIN_PASSWORD: 'passwort123' });
+    environment({ ADMIN_PASSWORD: 'passwort123' });
     const echt = { log: console.log, warn: console.warn },
-      warnungen = [];
+      warnings = [];
     console.log = () => {};
-    console.warn = (...a) => warnungen.push(a.join(' '));
+    console.warn = (...a) => warnings.push(a.join(' '));
     try {
       await db.initSchema();
     } finally {
       Object.assign(console, echt);
-      umgebung({ ADMIN_PASSWORD: undefined });
+      environment({ ADMIN_PASSWORD: undefined });
     }
     const admin = await db.get("SELECT password_hash, must_change_password FROM users WHERE username = 'admin'");
-    assert.equal(await passwortPasst('passwort123', admin.password_hash), false, 'das schwache Passwort gilt');
+    assert.equal(await passwordFits('passwort123', admin.password_hash), false, 'das schwache Passwort gilt');
     assert.equal(admin.must_change_password, true);
     assert.ok(
-      warnungen.some(w => /ADMIN_PASSWORD wird nicht verwendet/.test(w)),
-      warnungen.join('\n'),
+      warnings.some(w => /ADMIN_PASSWORD wird nicht verwendet/.test(w)),
+      warnings.join('\n'),
     );
   });
   t.after(() => db.pool.end().catch(() => {}));

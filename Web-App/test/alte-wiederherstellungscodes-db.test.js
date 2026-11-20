@@ -23,24 +23,24 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.APP_BASE_URL = 'http://localhost';
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { bis } = require('./helpers/zeit');
 
 const gesendet = [];
-S.ersetzeDienste('mail', {
+S.replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (_an, _name, type, o) => {
     gesendet.push({ type, bis: o.bis });
     return { success: true };
   },
 });
-const db = S.testDaten();
-const { hashePasswort } = _req('src/konto/passwortHash.js');
-const { suchwert } = _req('src/infra/geheimnis.js');
+const db = S.testData();
+const { hashePassword } = _req('src/konto/passwortHash.js');
+const { searchValue } = _req('src/infra/geheimnis.js');
 
 test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `altcode_${process.pid}`,
     PASS = 'Alte-Codes-Pruefung-1';
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -48,7 +48,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
     await db.get(
       `INSERT INTO users (username, email, password_hash, is_active, email_verified)
        VALUES ($1, $1 || '@beispiel.de', $2, true, true) RETURNING id`,
-      [NAME, await hashePasswort(PASS)],
+      [NAME, await hashePassword(PASS)],
     )
   ).id;
   await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [uid]);
@@ -74,7 +74,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
     });
     return r.status;
   };
-  const wartenAufMail = () => bis(() => gesendet.length > 0, 1000);
+  const waitOnMail = () => bis(() => gesendet.length > 0, 1000);
 
   await t.test('ein Code alter Art gilt bis zur Frist, mit Mail und Hinweis im Profil', async () => {
     const bis = new Date(Date.now() + 3 * 86_400_000);
@@ -82,12 +82,12 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
     await code(alt('fghij67890'), bis);
     gesendet.length = 0;
     assert.equal(await anmelden('abcde-12345'), 200);
-    await wartenAufMail();
+    await waitOnMail();
     assert.deepEqual(
       gesendet.map(g => [g.type, Date.parse(g.bis)]),
       [['alte_codes_ablauf', bis.getTime()]],
     );
-    const stand = await S.alsKonto(uid, () => _req('src/factors/secondFactor.js').status(uid));
+    const stand = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
     assert.equal(Date.parse(stand.alte_codes_bis), bis.getTime());
   });
 
@@ -100,10 +100,10 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
     await db.run('DELETE FROM second_factor_codes WHERE user_id = $1', [uid]);
     const neu = 'abcd-efgh-ijkl-mnop';
     const frist = new Date(Date.now() + 86_400_000);
-    await code(suchwert('zweiter-faktor-code', `${uid}:${neu.replace(/-/g, '')}`), frist);
+    await code(searchValue('zweiter-faktor-code', `${uid}:${neu.replace(/-/g, '')}`), frist);
     await code('anderer-code-desselben-satzes', frist);
     assert.equal(await anmelden(neu), 200);
-    const stand = await S.alsKonto(uid, () => _req('src/factors/secondFactor.js').status(uid));
+    const stand = await S.asAccount(uid, () => _req('src/factors/secondFactor.js').status(uid));
     assert.deepEqual([stand.codes_uebrig, stand.alte_codes_bis], [1, null]);
   });
 

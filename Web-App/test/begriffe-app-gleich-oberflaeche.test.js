@@ -14,14 +14,14 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 for (const [sprache, bauliste, neu] of [
   ['de', 'Bauliste', 'Neuware'],
   ['en', 'Build list', 'New'],
 ]) {
   test(`${sprache}: ${bauliste} in Leiste und Überschrift, Zustand „${neu}“`, async () => {
-    const { w, d } = await oeffneOberflaeche({}, { sprache });
+    const { w, d } = await openUi({}, { sprache });
     try {
       assert.equal(d.querySelector('.ntab[data-tab="partslist"] .tab-label').textContent.trim(), bauliste);
       assert.equal(d.querySelector('#tab-partslist .ptitle').textContent.trim(), bauliste);
@@ -33,7 +33,7 @@ for (const [sprache, bauliste, neu] of [
 }
 
 test('Teilekachel zeigt ×N', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/parts': {
       success: true,
       total: 1,
@@ -50,7 +50,7 @@ test('Teilekachel zeigt ×N', async () => {
 });
 
 test('de: Setnummer ohne Bindestrich, wie in der Android-App', async () => {
-  const { w, d } = await oeffneOberflaeche({});
+  const { w, d } = await openUi({});
   try {
     const texte = [
       d.body.textContent,
@@ -67,7 +67,7 @@ test('de: Setnummer ohne Bindestrich, wie in der Android-App', async () => {
 });
 
 test('en: Platzhalter des Lagerort-Felds', async () => {
-  const { w, d } = await oeffneOberflaeche({}, { sprache: 'en' });
+  const { w, d } = await openUi({}, { sprache: 'en' });
   try {
     await warte(() => d.documentElement.lang === 'en');
     assert.equal(d.getElementById('storage-new').getAttribute('placeholder'), 'New storage location');

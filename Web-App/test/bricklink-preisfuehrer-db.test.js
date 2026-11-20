@@ -1,13 +1,13 @@
 /**
  * Der BrickLink-Preisführer, wie ihn Sets, Teile und Figuren abfragen: an
  * einer Attrappe von bricklinkRequest (an der Verdrahtung gestellt,
- * testQuellen) und der Test-DB.
+ * testSources) und der Test-DB.
  * Erst Verkäufe der letzten sechs Monate, ohne Preis dort die Angebote.
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  preisfuehrerAbfrage mit Vorgabe `condition = 'U'` → rot: „ohne Angabe der
+ *   A  priceGuideQuery mit Vorgabe `condition = 'U'` → rot: „ohne Angabe der
  *      Neupreis aus den Verkäufen“
- *   B  preisfuehrerAbfrage ohne den Rückfall (`return { ...first, guide_used }`
+ *   B  priceGuideQuery ohne den Rückfall (`return { ...first, guide_used }`
  *      sofort) → rot: „ohne Verkauf … die Angebote“ (Set)
  *   C  in fetchPartPrice bzw. fetchMinifigPrice den Abruf mit guide_type
  *      'stock' gestrichen → rot: „ohne Verkauf … die Angebote“ (Teil bzw. Figur)
@@ -18,21 +18,21 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testQuellen } = require('./helpers/sources');
+const { buildAndRequire, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
-const abrufe = [];
+const fetches = [];
 /** Preis je guide_type; fehlt einer, liefert BrickLink 0. */
 let preise = {};
-testQuellen(null, {
-  bricklinkRequest: async (_methode, pfad, params) => {
-    abrufe.push({ pfad, ...params });
+testSources(null, {
+  bricklinkRequest: async (_method, pfad, params) => {
+    fetches.push({ pfad, ...params });
     const p = String(preise[params.guide_type] ?? 0);
     return { avg_price: p, qty_avg_price: p, min_price: p, max_price: p, total_quantity: p === '0' ? '0' : '3' };
   },
 });
-const { preisfuehrerAbfrage } = _req('src/katalog/bricklinkPreise.js');
+const { priceGuideQuery } = _req('src/katalog/bricklinkPreise.js');
 const { fetchPartPrice, fetchMinifigPrice } = _req('src/finanzen/rechnung/preise.js');
 
 const N = `${process.pid}`;
@@ -41,7 +41,7 @@ const SET = `91${N}-1`,
   FIGUR = `pf-fig-${N}`;
 
 test('BrickLink-Preisführer', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(async () => {
     await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [TEIL]).catch(() => {});
@@ -52,11 +52,11 @@ test('BrickLink-Preisführer', { concurrency: 1 }, async t => {
   });
 
   await t.test('ohne Angabe der Neupreis aus den Verkäufen', async () => {
-    abrufe.length = 0;
+    fetches.length = 0;
     preise = { sold: 120 };
-    const g = await preisfuehrerAbfrage(SET);
+    const g = await priceGuideQuery(SET);
     assert.deepEqual(
-      abrufe.map(a => [a.new_or_used, a.guide_type]),
+      fetches.map(a => [a.new_or_used, a.guide_type]),
       [['N', 'sold']],
     );
     assert.deepEqual([g.avg_price, g.guide_used], ['120', 'sold']);
@@ -64,10 +64,10 @@ test('BrickLink-Preisführer', { concurrency: 1 }, async t => {
 
   await t.test('ohne Verkauf in sechs Monaten die Angebote — für Sets, Teile und Figuren', async () => {
     preise = { sold: 0, stock: 80 };
-    abrufe.length = 0;
-    const g = await preisfuehrerAbfrage(SET, 'U');
+    fetches.length = 0;
+    const g = await priceGuideQuery(SET, 'U');
     assert.deepEqual(
-      abrufe.map(a => [a.new_or_used, a.guide_type]),
+      fetches.map(a => [a.new_or_used, a.guide_type]),
       [
         ['U', 'sold'],
         ['U', 'stock'],
@@ -75,20 +75,20 @@ test('BrickLink-Preisführer', { concurrency: 1 }, async t => {
     );
     assert.deepEqual([g.avg_price, g.guide_used, g.guide_fallback], ['80', 'stock', true]);
 
-    abrufe.length = 0;
+    fetches.length = 0;
     const teil = await fetchPartPrice(TEIL, 4, 'N', 'EUR', 24);
     assert.equal(teil.avg_price, 80, JSON.stringify(teil));
     assert.deepEqual(
-      abrufe.slice(0, 2).map(a => a.guide_type),
+      fetches.slice(0, 2).map(a => a.guide_type),
       ['sold', 'stock'],
     );
-    assert.match(abrufe[0].pfad, new RegExp(`/items/part/${TEIL}/price`));
+    assert.match(fetches[0].pfad, new RegExp(`/items/part/${TEIL}/price`));
 
-    abrufe.length = 0;
+    fetches.length = 0;
     const figur = await fetchMinifigPrice(FIGUR, 'N', 'EUR', 24);
     assert.equal(figur.avg_price, 80, JSON.stringify(figur));
     assert.deepEqual(
-      abrufe.slice(0, 2).map(a => a.guide_type),
+      fetches.slice(0, 2).map(a => a.guide_type),
       ['sold', 'stock'],
     );
   });

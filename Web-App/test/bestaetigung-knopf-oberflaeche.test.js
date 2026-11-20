@@ -4,7 +4,7 @@
  * wird der Dialog geöffnet und Knopftext und -klasse gelesen.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  dialogOeffnen() wieder mit `!knopf` als Gefahrenregel (rot, sobald kein
+ *   A  openDialog() wieder mit `!knopf` als Gefahrenregel (rot, sobald kein
  *      Knopf übergeben wird) und bestaetigeMitPasswort() ohne Weitergabe →
  *      beide Tests rot: „Konto anlegen“ mit Knopf „Löschen“, englisch „Delete“
  *   B  in unlinkHousehold() die Knopfangabe entfernt → rot: „Haushalt“
@@ -15,7 +15,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt, sicht } = require('./helpers/oberflaeche');
+const { openUi, warte, takt, sicht } = require('./helpers/oberflaeche');
 
 /** Liest den offenen Dialog, bricht ihn ab und wartet, bis er zu ist. */
 async function liesDialog(d) {
@@ -36,7 +36,7 @@ async function liesDialog(d) {
 }
 
 test('Bestätigungsdialoge: Knopftext und Farbe je Aufrufer', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/vouchers': {
       success: true,
       vouchers: [{ id: 3, number: '…9012', pin: '•••', amount: 50, currency: 'CHF', hat_pdf: false }],
@@ -87,7 +87,7 @@ test('Bestätigungsdialoge: Knopftext und Farbe je Aufrufer', async () => {
 });
 
 test('Bestätigungsdialoge auf Englisch: dasselbe Verb übersetzt', async () => {
-  const { w, d } = await oeffneOberflaeche(
+  const { w, d } = await openUi(
     {
       '/v1/vouchers': {
         success: true,

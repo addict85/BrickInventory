@@ -4,9 +4,9 @@
  * Fremdschlüssel), antwortet der Fehlerweg mit 400/409 und Code, nicht mit 500.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  DB_REGELN in src/http/httpAntwort.ts ohne '23514' → rot: „CHECK-Verletzung …“
+ *   A  DB_RULES in src/http/httpAntwort.ts ohne '23514' → rot: „CHECK-Verletzung …“
  *      (500 interner_fehler)
- *   B  alsUploadFehler() ohne den Block für DB_REGELN → alle vier Fälle rot
+ *   B  asUploadError() ohne den Block für DB_RULES → alle vier Fälle rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,20 +16,20 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('Regelverletzungen der Datenbank werden zu 4xx mit Code', async t => {
-  const db = await datenOderSkip(t, _req, { migrieren: false });
+  const db = await dataOrSkip(t, _req, { migrieren: false });
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const { fehlerAntwort } = _req('src/http/httpAntwort.js');
+  const { errorResponse } = _req('src/http/httpAntwort.js');
   const app = express();
   // Echte Fehler aus PostgreSQL, nicht nachgebaute Objekte.
   app.get('/:regel', async req => {
     await db.run(`DO $$ BEGIN RAISE ${req.params.regel}; END $$`);
   });
-  app.use(fehlerAntwort);
+  app.use(errorResponse);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const hole = async regel => {

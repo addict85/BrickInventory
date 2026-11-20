@@ -17,17 +17,17 @@
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { holdsSet, holdsPart } = require('./helpers/bestand');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
-const H = require('./helpers/sources').handlerModul(_req);
+const db = testData();
+const H = require('./helpers/sources').handlerModule(_req);
 const PS = _req('src/parts/summary.js');
 
 const U = 990611,
@@ -64,46 +64,46 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async t => {
                 ON CONFLICT (part_number) DO UPDATE SET part_name = EXCLUDED.part_name`);
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ('ORD1',5,'Rot'),('ORD2',1,'Blau'),('ORD3',3,'Gelb')
                 ON CONFLICT (part_number, color_id) DO UPDATE SET color_name = EXCLUDED.color_name`);
-  await haeltSet(db, U, 'ORD-1', 1);
-  await haeltTeil(db, U, 'ORD1', { setNumber: 'ORD-1', menge: 9, colorId: 5 });
-  await haeltTeil(db, U, 'ORD2', { setNumber: 'ORD-1', menge: 1, colorId: 1 });
-  await haeltTeil(db, U, 'ORD3', { setNumber: 'ORD-1', menge: 7, colorId: 3 });
+  await holdsSet(db, U, 'ORD-1', 1);
+  await holdsPart(db, U, 'ORD1', { setNumber: 'ORD-1', menge: 9, colorId: 5 });
+  await holdsPart(db, U, 'ORD2', { setNumber: 'ORD-1', menge: 1, colorId: 1 });
+  await holdsPart(db, U, 'ORD3', { setNumber: 'ORD-1', menge: 7, colorId: 3 });
   // Im Haushalt hat das zweite Konto dasselbe Teil: Die Menge muss summiert sortieren.
-  await haeltSet(db, U2, 'ORD-2', 1);
-  await haeltTeil(db, U2, 'ORD3', { setNumber: 'ORD-2', menge: 1, colorId: 3 });
+  await holdsSet(db, U2, 'ORD-2', 1);
+  await holdsPart(db, U2, 'ORD3', { setNumber: 'ORD-2', menge: 1, colorId: 3 });
 
-  const ERWARTET = { farbe: ['ORD2', 'ORD3', 'ORD1'], name: ['ORD3', 'ORD1', 'ORD2'], menge: ['ORD1', 'ORD3', 'ORD2'] };
+  const EXPECTED = { farbe: ['ORD2', 'ORD3', 'ORD1'], name: ['ORD3', 'ORD1', 'ORD2'], menge: ['ORD1', 'ORD3', 'ORD2'] };
   const abfrage = ordnung => ({ exclude_manual: '1', page: 1, page_size: 50, ordnung });
   const reihe = r => r.parts.map(p => p.part_number);
 
   await t.test('der Server sortiert in jedem Weg wie gewählt', async () => {
-    const ergebnisse = [];
-    for (const ordnung of Object.keys(ERWARTET)) {
+    const results = [];
+    for (const ordnung of Object.keys(EXPECTED)) {
       await db.run('DELETE FROM parts_summary_state WHERE user_id = ANY($1)', [[U, U2]]);
       await db.run('DELETE FROM parts_summary WHERE user_id = ANY($1)', [[U, U2]]);
       const live = await H.partsQuery(U, abfrage(ordnung));
-      const liveHaushalt = await H.partsQuery([U, U2], abfrage(ordnung));
+      const liveHousehold = await H.partsQuery([U, U2], abfrage(ordnung));
       await PS.rebuildNow(U);
       await PS.rebuildNow(U2);
       const zsf = await H.partsQuery(U, abfrage(ordnung));
-      const zsfHaushalt = await H.partsQuery([U, U2], abfrage(ordnung));
+      const zsfHousehold = await H.partsQuery([U, U2], abfrage(ordnung));
       for (const [weg, r, quelle] of [
         ['Live', live, 'db'],
-        ['Live Haushalt', liveHaushalt, 'db'],
+        ['Live Haushalt', liveHousehold, 'db'],
         ['Zusammenfassung', zsf, 'summary'],
-        ['Zusammenfassung Haushalt', zsfHaushalt, 'summary'],
+        ['Zusammenfassung Haushalt', zsfHousehold, 'summary'],
       ])
-        ergebnisse.push({
+        results.push({
           ordnung,
           weg,
           quelle: r.source,
           reihe: reihe(r),
-          erwartet: { quelle, reihe: ERWARTET[ordnung] },
+          erwartet: { quelle, reihe: EXPECTED[ordnung] },
         });
     }
     assert.deepEqual(
-      ergebnisse.map(e => `${e.ordnung}/${e.weg}: ${e.quelle} ${e.reihe}`),
-      ergebnisse.map(e => `${e.ordnung}/${e.weg}: ${e.erwartet.quelle} ${e.erwartet.reihe}`),
+      results.map(e => `${e.ordnung}/${e.weg}: ${e.quelle} ${e.reihe}`),
+      results.map(e => `${e.ordnung}/${e.weg}: ${e.erwartet.quelle} ${e.erwartet.reihe}`),
     );
   });
 
@@ -116,7 +116,7 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async t => {
       { part_number: '3003', part_name: 'Axle', color_id: 3, color_name: 'Yellow', total_quantity: 7 },
       { part_number: '3001', part_name: 'Brick', color_id: 5, color_name: 'Red', total_quantity: 3 },
     ];
-    const { w, d, aufrufe } = await oeffneOberflaeche({ '/v1/parts': { success: true, parts: teile, total: 2 } });
+    const { w, d, aufrufe } = await openUi({ '/v1/parts': { success: true, parts: teile, total: 2 } });
     await reiter(w, 'parts');
     await warte(() => d.querySelectorAll('#parts-main .part-card').length === 2);
     assert.equal(d.querySelectorAll('#parts-main .group-hd').length, 2, 'nach Farbe: je Farbe eine Kachel');

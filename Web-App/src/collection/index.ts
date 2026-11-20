@@ -2,5 +2,5 @@
 export type { ErfassungsArt } from './acquisitions';
 export { createCollection } from './area';
 export type { CollectionServices, CollectionContext } from './area';
-export { WantedKorrekturen } from './importJobs';
-export type { ImportEingabe, ImportQuelle } from './importJobs';
+export { WantedCorrections } from './importJobs';
+export type { ImportInput, ImportSource } from './importJobs';

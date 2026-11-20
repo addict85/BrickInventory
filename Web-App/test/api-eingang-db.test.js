@@ -6,7 +6,7 @@
  * aufgerufen.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  anmeldungAmEingang in server.ts nicht eingehängt und requireToken aus
+ *   A  loginAtInbox in server.ts nicht eingehängt und requireToken aus
  *      GET /stats (routes/api_v1/misc.ts) entfernt → rot: „nur die
  *      öffentlichen Pfade antworten ohne Anmeldung“ (GET /api/v1/stats offen)
  *      und „ein falsches Token kommt nicht hinein“. Mit dem Eingang, aber
@@ -23,15 +23,15 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, v1Routen, testDaten } = require('./helpers/sources');
+const { buildAndRequire, v1Routes, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { warte } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
+const { portOf } = require('./helpers/server');
 
 /** Absichtlich ohne Anmeldung erreichbar — mit Grund. Wächst die Liste, muss jemand sie begründen. */
-const ERWARTET_OFFEN = new Map([
+const EXPECTED_OPEN = new Map([
   ['POST /api/v1/auth/login', 'Die Anmeldung selbst'],
   ['POST /api/v1/auth/logout', 'Muss auch ohne gültige Sitzung gehen'],
   ['GET /api/v1/auth/me', 'Antwortet „nicht angemeldet" — der Startpunkt der Oberfläche'],
@@ -54,19 +54,19 @@ const ERWARTET_OFFEN = new Map([
   ['GET /api/v1/health/ready', 'Gesundheitsprüfung von compose.yaml (Datenbank)'],
 ]);
 
-const freierPort = () =>
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
 
 test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
-  const port = await freierPort();
+  const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -94,7 +94,7 @@ test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/health`).catch(() => null)) === null; i++)
     await warte(250);
 
-  const alle = v1Routen();
+  const alle = v1Routes();
   assert.ok(alle.length > 150, `nur ${alle.length} Routen gefunden — greift die Suche noch?`);
   const offen = new Set();
   for (const [m, p] of alle) {
@@ -113,7 +113,7 @@ test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
   }
 
   await t.test('nur die öffentlichen Pfade antworten ohne Anmeldung', () =>
-    assert.deepEqual([...offen].sort(), [...ERWARTET_OFFEN.keys()].sort()),
+    assert.deepEqual([...offen].sort(), [...EXPECTED_OPEN.keys()].sort()),
   );
 
   await t.test('ein falsches Token kommt nicht hinein', async () => {

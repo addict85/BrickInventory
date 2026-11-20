@@ -3,15 +3,15 @@
  * weiter zu. Geprüft wird im Takt und bei jeder Zugangsänderung im Prozess,
  * ohne Zwischenspeicher und ohne Nebenwirkungen (kein last_used, kein Fehlversuch). */
 import type { Request } from 'express';
-import { meldeFehler } from '../../infra/fehler';
-import type { KontoDienste } from '../bereich';
-import { beiZugangsAenderung } from '../zugangsAenderung';
+import { reportError } from '../../infra/fehler';
+import type { AccountServices } from '../bereich';
+import { atAccessChange } from '../zugangsAenderung';
 
-export { meldeZugangsAenderung } from '../zugangsAenderung';
+export { reportAccessChange } from '../zugangsAenderung';
 
-export const WACHE_TAKT_MS = 15_000;
+export const WATCH_TICK_MS = 15_000;
 
-function sitzungLebt(req: Request): Promise<boolean> {
+function sessionAlive(req: Request): Promise<boolean> {
   const speicher = req.sessionStore;
   if (!speicher || !req.sessionID) return Promise.resolve(true);
   return new Promise((fertig, scheitern) =>
@@ -22,12 +22,12 @@ function sitzungLebt(req: Request): Promise<boolean> {
 }
 
 /** Gilt der Zugang, mit dem die Anfrage kam, jetzt noch? */
-export async function zugangGiltNoch(konto: KontoDienste, req: Request): Promise<boolean> {
+export async function accessAppliesStill(konto: AccountServices, req: Request): Promise<boolean> {
   const s = req.session;
   if (s?.userId) {
-    if ((await konto.sitzungen.versionAusDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
+    if ((await konto.sitzungen.versionFromDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
     // Abmelden löscht nur diese eine Sitzung, die Version bleibt.
-    return sitzungLebt(req);
+    return sessionAlive(req);
   }
   const kopf = String(req.headers.authorization || '');
   if (!kopf.startsWith('Bearer ')) return false;
@@ -37,11 +37,11 @@ export async function zugangGiltNoch(konto: KontoDienste, req: Request): Promise
 /** `beenden` läuft höchstens einmal, sobald der Zugang nicht mehr gilt. Ein
  * Lesefehler beendet nichts: Der nächste Takt fragt wieder.
  * @returns Abmelden — im Aufräumpfad des Stroms rufen. */
-export function wacheUeberZugang(
-  konto: KontoDienste,
+export function watchViaAccess(
+  konto: AccountServices,
   req: Request,
   beenden: () => void,
-  taktMs = WACHE_TAKT_MS,
+  taktMs = WATCH_TICK_MS,
 ): () => void {
   let aus = false,
     laeuft = false;
@@ -49,19 +49,19 @@ export function wacheUeberZugang(
     if (aus || laeuft) return;
     laeuft = true;
     try {
-      if (!(await zugangGiltNoch(konto, req)) && !aus) {
+      if (!(await accessAppliesStill(konto, req)) && !aus) {
         abmelden();
         beenden();
       }
     } catch (e) {
-      meldeFehler('strom:zugang', e);
+      reportError('strom:zugang', e);
     } finally {
       laeuft = false;
     }
   };
   const uhr = setInterval(pruefe, taktMs);
   uhr.unref?.();
-  const weg = beiZugangsAenderung(() => void pruefe());
+  const weg = atAccessChange(() => void pruefe());
   function abmelden() {
     aus = true;
     clearInterval(uhr);
@@ -71,4 +71,4 @@ export function wacheUeberZugang(
 }
 
 /** Das letzte Ereignis eines SSE-Stroms, dessen Zugang endete. */
-export const SSE_ZUGANG_BEENDET = 'event: zugang_beendet\ndata: {"reason":"zugang_beendet"}\n\n';
+export const SSE_ACCESS_ENDED = 'event: zugang_beendet\ndata: {"reason":"zugang_beendet"}\n\n';

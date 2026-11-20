@@ -38,11 +38,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { haeltFigur, haeltTeil } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsMinifig, holdsPart } = require('./helpers/bestand');
+const db = testData();
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
@@ -81,22 +81,22 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
   await db.run(`INSERT INTO bl_mapping (type,rb_id,bl_id) VALUES ('part','3002','9999')`);
   await db.run(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3')`, [UID]);
   const ORT = (await db.get(`SELECT id FROM storage_locations WHERE name='Kiste 3'`)).id;
-  await haeltTeil(db, UID, '3001', { colorId: 4, menge: 10, storageId: ORT });
-  await haeltTeil(db, UID, '3002', { colorId: 4, menge: 5 });
-  await haeltTeil(db, UID, '3003', { colorId: 4, menge: 1 });
+  await holdsPart(db, UID, '3001', { colorId: 4, menge: 10, storageId: ORT });
+  await holdsPart(db, UID, '3002', { colorId: 4, menge: 5 });
+  await holdsPart(db, UID, '3003', { colorId: 4, menge: 1 });
   // Ein Set-Teil derselben Nummer: Es darf in dieser Liste NIE auftauchen,
   // auch nicht als Suchtreffer.
-  await haeltTeil(db, UID, '3001', { setNumber: '10497-1', colorId: 7, menge: 2 });
+  await holdsPart(db, UID, '3001', { setNumber: '10497-1', colorId: 7, menge: 2 });
 
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES
                   ('fig-000123','Chewbacca'), ('fig-000456','Luke Skywalker')`);
-  await haeltFigur(db, UID, 'fig-000123', { menge: 1 });
-  await haeltFigur(db, UID, 'fig-000456', { menge: 2 });
+  await holdsMinifig(db, UID, 'fig-000123', { menge: 1 });
+  await holdsMinifig(db, UID, 'fig-000456', { menge: 2 });
 
   const teile = _req('src/parts/queries.js');
   const figuren = _req('src/minifigs/queries.js');
   const nummern = async opt => (await teile.manualPartsList([UID], UID, opt)).map(p => String(p.part_number)).sort();
-  const figNummern = async opt =>
+  const figNumbers = async opt =>
     (await figuren.readManualMinifigs([UID], UID, opt)).map(f => String(f.fig_number)).sort();
 
   await t.test('ohne Suchtext steht alles da', async () => {
@@ -105,7 +105,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
       ['3001', '3002', '3003'],
       'Die Liste ohne Filter ist der Vergleichspunkt für alles Folgende',
     );
-    assert.deepEqual(await figNummern({}), ['fig-000123', 'fig-000456']);
+    assert.deepEqual(await figNumbers({}), ['fig-000123', 'fig-000456']);
   });
 
   await t.test('die Suche nach der Teilenummer lässt nur diese stehen', async () => {
@@ -183,11 +183,11 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
 
   await t.test('die Figurenliste sucht über Nummer und Name', async () => {
     assert.deepEqual(
-      await figNummern({ search: 'chewb' }),
+      await figNumbers({ search: 'chewb' }),
       ['fig-000123'],
       'Der Figurenname steht in minifigs_catalog',
     );
-    assert.deepEqual(await figNummern({ search: '000456' }), ['fig-000456'], 'Die Figurennummer muss genauso treffen');
+    assert.deepEqual(await figNumbers({ search: '000456' }), ['fig-000456'], 'Die Figurennummer muss genauso treffen');
   });
 
   await t.test('die Wand der Set-Teile sucht über dieselbe Formulierung', async () => {

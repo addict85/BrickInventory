@@ -1,7 +1,7 @@
 /** Nicht strikt: Die Nutzlast überlebt Deploys, ein Altfeld soll keinen offenen Auftrag scheitern lassen. */
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../auftraege';
-import { bricksetAuftragsart } from '../fremdquellen';
+import { bricksetJobType } from '../fremdquellen';
 import * as anleitungLaden from './anleitungLaden';
 import * as bildNachlauf from './bildNachlauf';
 import * as bilderNachladen from './bilderNachladen';
@@ -9,7 +9,7 @@ import * as bricksetNachlauf from './bricksetNachlauf';
 import * as csvAbgleich from './csvAbgleich';
 import * as pdfErzeugung from './pdf/pdfErzeugung';
 import * as widerrufsliste from './widerrufsliste';
-import type { KatalogKontext } from './kontext';
+import type { CatalogContext } from './kontext';
 
 const SETNR = z.string().min(1).max(64);
 const LEER = z.object({});
@@ -27,48 +27,48 @@ const PdfTeil = z.object({
   image_local: z.string().nullish(),
 });
 
-export const PdfNutzlast = z.object({
+export const PdfPayload = z.object({
   job_id: z.string().min(1),
   user_id: z.number().int().positive(),
   sets: z.array(z.object({ set_number: z.string(), name: z.string().nullish() })),
   parts: z.array(PdfTeil),
 });
 /** Eingereiht vom Katalog und von den Sets; ausgeführt von den Sets (src/sets/auftragsarten.ts). */
-export const BilderNutzlast = z.object({ set_number: SETNR, nur_bilder: z.boolean().optional() });
-const AnleitungNutzlast = z.object({ set_number: SETNR, nur_ausweichquelle: z.boolean().optional() });
-const KatalogAbgleichNutzlast = z.object({ beimStart: z.boolean().optional() });
+export const ImagesPayload = z.object({ set_number: SETNR, only_images: z.boolean().optional() });
+const InstructionPayload = z.object({ set_number: SETNR, nur_ausweichquelle: z.boolean().optional() });
+const CatalogSyncPayload = z.object({ onStart: z.boolean().optional() });
 
 declare module '../auftraege/auftraege' {
-  interface AuftragsNutzlasten {
-    pdf: typeof PdfNutzlast;
-    bilder: typeof BilderNutzlast;
-    anleitung: typeof AnleitungNutzlast;
+  interface JobPayloads {
+    pdf: typeof PdfPayload;
+    bilder: typeof ImagesPayload;
+    anleitung: typeof InstructionPayload;
     bilder_neu_laden: typeof LEER;
-    csv_sync: typeof KatalogAbgleichNutzlast;
+    csv_sync: typeof CatalogSyncPayload;
     bild_nachlauf: typeof LEER;
     widerrufsliste: typeof LEER;
   }
 }
 
-export const KATALOG_ABGLEICH_UHRZEIT = { einstellung: 'job_time_csv_sync', vorgabe: '03:00' } as const;
+export const CATALOG_SYNC_TIME_OF_DAY = { setting: 'job_time_csv_sync', vorgabe: '03:00' } as const;
 
 /** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
-export function katalogAuftragsarten(k: KatalogKontext, importProzess: string): Anmeldung[] {
+export function catalogJobTypes(k: CatalogContext, importProcess: string): Anmeldung[] {
   return [
     auftragsart({
       art: 'pdf',
-      nutzlast: PdfNutzlast,
-      ausfuehren: (n, l) => pdfErzeugung.erzeugePdf(k, n, l),
-      aufgegeben: (n, fehler) => pdfErzeugung.pdfAufgegeben(n, fehler),
-      nutzlastVerwerfen: true,
+      nutzlast: PdfPayload,
+      ausfuehren: (n, l) => pdfErzeugung.createPdf(k, n, l),
+      aufgegeben: (n, fehler) => pdfErzeugung.pdfGivenUp(n, fehler),
+      discardPayload: true,
     }),
     auftragsart({
       art: 'anleitung',
-      nutzlast: AnleitungNutzlast,
+      nutzlast: InstructionPayload,
       ausfuehren: (n, l) => anleitungLaden.anleitungLaden(k, n, l),
       exklusiv: true,
     }),
-    bricksetAuftragsart((n, l) => bricksetNachlauf.bricksetNachlauf(k, n, l)),
+    bricksetJobType((n, l) => bricksetNachlauf.bricksetNachlauf(k, n, l)),
     auftragsart({
       art: 'bilder_neu_laden',
       nutzlast: LEER,
@@ -80,11 +80,11 @@ export function katalogAuftragsarten(k: KatalogKontext, importProzess: string): 
     }),
     auftragsart({
       art: 'csv_sync',
-      nutzlast: KatalogAbgleichNutzlast,
-      ausfuehren: (n, l) => csvAbgleich.csvAbgleich(k, n, l, importProzess),
+      nutzlast: CatalogSyncPayload,
+      ausfuehren: (n, l) => csvAbgleich.csvAbgleich(k, n, l, importProcess),
       exklusiv: true,
       kontouebergreifend: 'BrickLink-Nummern der Teile aller Konten',
-      zeitplan: { taeglich: KATALOG_ABGLEICH_UHRZEIT },
+      zeitplan: { taeglich: CATALOG_SYNC_TIME_OF_DAY },
     }),
     auftragsart({
       art: 'bild_nachlauf',
@@ -97,7 +97,7 @@ export function katalogAuftragsarten(k: KatalogKontext, importProzess: string): 
     auftragsart({
       art: 'widerrufsliste',
       nutzlast: LEER,
-      ausfuehren: (_n, l) => widerrufsliste.ladeWiderrufsliste(k, l),
+      ausfuehren: (_n, l) => widerrufsliste.loadRevocationList(k, l),
       zeitplan: { minuten: { vorgabe: 6 * 60 } },
     }),
   ];

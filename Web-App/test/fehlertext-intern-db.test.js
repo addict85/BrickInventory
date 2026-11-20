@@ -23,47 +23,47 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
 const { testServer } = require('./helpers/server');
 
 const GEHEIM = 'relation "geheime_tabelle" does not exist';
-const ersetze = (rel, zusatz) => {
+const replace = (rel, zusatz) => {
   const pfad = require.resolve(path.join(quellen.DIST, rel));
   _req(rel);
   require.cache[pfad].exports = Object.assign({}, require.cache[pfad].exports, zusatz);
 };
-const { dateiFehler, fehlerText } = _req('src/infra/fehlerTexte.js');
+const { fileError, errorText } = _req('src/infra/fehlerTexte.js');
 // Vor dem Laden der Routen: Die Dienste werfen, was im Betrieb aus der Datenbank käme.
 // Die Merkliste eine Ebene tiefer: Der Import läuft als Auftrag und ruft den Dienst intern.
-ersetze('src/wanted/repository/wanted.js', {
+replace('src/wanted/repository/wanted.js', {
   markSetWanted: async () => {
     throw new Error(GEHEIM);
   },
 });
 // Angelegt wird ohne Netz; scheitern kann danach nur das Ergänzen im offenen Strom.
-// Die Sets-Dienste des Prozesses mit zwei ersetzten; die Routen bekommen dieselben (routerAus).
-Object.assign(require('./helpers/sources').testBereich('sets'), {
+// Die Sets-Dienste des Prozesses mit zwei ersetzten; die Routen bekommen dieselben (routerFrom).
+Object.assign(require('./helpers/sources').testArea('sets'), {
   setErfassen: async e => {
-    if (e.setNumber === 'FACH-1') throw dateiFehler('ungueltig', 'setnummer_ungueltig');
+    if (e.setNumber === 'FACH-1') throw fileError('ungueltig', 'setnummer_ungueltig');
     return {
       action: 'added',
       set_number: e.setNumber,
       name: e.setNumber,
       katalog_offen: true,
       ergaenzung: 'ausstehend',
-      besitzer: e.anfragender,
+      besitzer: e.requester,
     };
   },
-  setErgaenzen: async () => {
+  setSupplement: async () => {
     throw new Error(GEHEIM);
   },
 });
 
-const db = quellen.testDaten();
+const db = quellen.testData();
 
 test('kein interner Fehlertext an den Client', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `fehlertext_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -105,7 +105,7 @@ test('kein interner Fehlertext an den Client', { concurrency: 1 }, async t => {
     const letztes = await strom('FACH-1');
     assert.equal(letztes.status, 400);
     assert.equal(letztes.code, 'setnummer_ungueltig');
-    assert.equal(letztes.error, fehlerText('setnummer_ungueltig', 'de'));
+    assert.equal(letztes.error, errorText('setnummer_ungueltig', 'de'));
   });
 
   await t.test('der CSV-Bericht nennt keinen internen Text', async () => {
@@ -115,7 +115,7 @@ test('kein interner Fehlertext an den Client', { concurrency: 1 }, async t => {
     const j = await r.json();
     assert.equal(r.status, 200, JSON.stringify(j));
     assert.equal(j.errors, 1);
-    assert.equal(j.results[0].error, fehlerText('interner_fehler', 'de'));
+    assert.equal(j.results[0].error, errorText('interner_fehler', 'de'));
     assert.ok(!JSON.stringify(j).includes('geheime_tabelle'));
   });
 });

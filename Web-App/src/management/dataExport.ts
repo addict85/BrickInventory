@@ -4,7 +4,7 @@ import type { Writable } from 'node:stream';
 import { SECRET_KEYS, isMasked, isValidGlobalValue } from '../settings';
 import { DAILY_JOBS } from './timesOfDay';
 import { rescheduleJobs } from './service';
-import { jsonOderNull } from '../infra/validate';
+import { jsonOrNull } from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { KonfigExport } from '../vertrag/einstellungen';
 import type { ManagementContext } from './context';
@@ -30,20 +30,20 @@ export async function dataZip(
   k: ManagementContext,
   uid: number,
   ziel: Writable,
-  beiFehler: (e: Error) => void,
+  atError: (e: Error) => void,
 ): Promise<void> {
   // archiver 8 ist ein ES-Modul; aus CommonJS geht nur require(), kein Import.
   const { ZipArchive } = require('archiver') as { ZipArchive: new (o: object) => ZipArchiveHandle };
   const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
     k.sets.setsAlsCsv(uid),
-    k.bestand.teileAlsCsv(uid),
-    k.bestand.figurenAlsCsv(uid),
+    k.bestand.partsAsCsv(uid),
+    k.bestand.minifigsAsCsv(uid),
     k.wanted.wantedListCsv(uid),
     k.finanzen.preisalarm.preisalarmeAlsCsv(uid),
   ]);
-  const archiv = new ZipArchive({ zlib: { level: 9 } });
-  archiv.on('error', beiFehler);
-  archiv.pipe(ziel);
+  const archive = new ZipArchive({ zlib: { level: 9 } });
+  archive.on('error', atError);
+  archive.pipe(ziel);
   for (const [name, inhalt] of [
     ['sets.csv', setsCsv],
     ['teile.csv', partsCsv],
@@ -51,8 +51,8 @@ export async function dataZip(
     ['merkliste.csv', merkCsv],
     ['preisalarme.csv', alarmCsv],
   ] as const)
-    archiv.append('﻿' + inhalt, { name });
-  await archiv.finalize();
+    archive.append('﻿' + inhalt, { name });
+  await archive.finalize();
 }
 interface ZipArchiveHandle {
   on(e: 'error', f: (e: Error) => void): void;
@@ -81,14 +81,14 @@ const GLOBAL_IMPORT = [
 const ACCOUNT_IMPORT = ['currency', 'user_default_condition'];
 
 /** Eine Importdatei kommt von irgendwoher: Schema (KonfigExport), Regeln je Schlüssel
- * (GLOBALE_REGELN) und ohne die heiklen Schlüssel, die eine Bestätigung bräuchten. */
+ * (GLOBAL_RULES) und ohne die heiklen Schlüssel, die eine Bestätigung bräuchten. */
 export async function importConfig(kx: ManagementContext, uid: number, verwalter: boolean, datei: Buffer) {
-  const gelesen = jsonOderNull(datei.toString('utf-8'));
+  const gelesen = jsonOrNull(datei.toString('utf-8'));
   const geprueft = gelesen ? KonfigExport.safeParse(gelesen.wert) : null;
   if (!geprueft?.success) fachfehler('ungueltig', 'json_ungueltig');
   const { global, user_settings: konto } = geprueft.data;
   let imported = 0;
-  const smtpUebergangen = global ? Object.keys(global).filter(isSensitive) : [];
+  const smtpSkipped = global ? Object.keys(global).filter(isSensitive) : [];
   if (global && verwalter) {
     if (GLOBAL_IMPORT.some(k => global[k] !== undefined && !isValidGlobalValue(k, global[k])))
       fachfehler('ungueltig', 'wert_ungueltig');
@@ -101,7 +101,7 @@ export async function importConfig(kx: ManagementContext, uid: number, verwalter
       imported++;
     }
     if (geaendert.length)
-      await kx.konto.verwalter.verwalterAktionMerken(
+      await kx.konto.verwalter.rememberAdminAction(
         uid,
         uid,
         'einstellungen_geaendert',
@@ -117,8 +117,8 @@ export async function importConfig(kx: ManagementContext, uid: number, verwalter
   if (verwalter) await rescheduleJobs(kx);
   const note =
     (verwalter ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert') +
-    (verwalter && smtpUebergangen.length
+    (verwalter && smtpSkipped.length
       ? '; Mailserver, Registrierung und API-Schlüssel nicht übernommen — bitte im Formular setzen'
       : '');
-  return { imported, note, smtp_uebergangen: verwalter ? smtpUebergangen : [] };
+  return { imported, note, smtp_uebergangen: verwalter ? smtpSkipped : [] };
 }

@@ -24,7 +24,7 @@ export function kaufpreisSpalten(spalte: string, w: string): string {
 export const mittelUeber = (k: string) =>
   `SUM(${k} * quantity) FILTER (WHERE ${k} IS NOT NULL)::numeric / NULLIF(SUM(quantity) FILTER (WHERE ${k} IS NOT NULL), 0)`;
 
-/** Der Marktpreis einer Preiszeile (Alias `t`), dieselbe Regel wie marktpreisAus()
+/** Der Marktpreis einer Preiszeile (Alias `t`), dieselbe Regel wie marketPriceFrom()
  * in src/katalog/bricklinkPreise.ts: avg_price, sonst qty_avg_price, 0 ist kein
  * Preis. NULL heisst „kein Preis“, als Filter also `… IS NOT NULL`. */
 export function marktpreisSql(t = ''): string {

@@ -4,36 +4,36 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { leereWarteschlange } = require('./helpers/bildwarteschlange');
+const { emptyQueue } = require('./helpers/bildwarteschlange');
 const fs = require('node:fs');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Zeitpunkte und Gleichzeitigkeit der Downloads mitschreiben.
-const zeiten = [];
-const thumbZeiten = [];
+const times = [];
+const thumbTimes = [];
 let gleichzeitig = 0,
-  maxGleichzeitig = 0;
+  maxConcurrent = 0;
 
-const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
-testBildwerk(null, {
+testImageWorker(null, {
   setBildLaden: async (_u, sn) => {
-    zeiten.push(Date.now());
+    times.push(Date.now());
     gleichzeitig++;
-    maxGleichzeitig = Math.max(maxGleichzeitig, gleichzeitig);
+    maxConcurrent = Math.max(maxConcurrent, gleichzeitig);
     await new Promise(r => setTimeout(r, 30)); // „Netzwerk"
     gleichzeitig--;
     return `/images/sets/${sn}.jpg`;
   },
-  vorschauErzeugen: async () => {
-    thumbZeiten.push(Date.now());
+  createPreview: async () => {
+    thumbTimes.push(Date.now());
     return true;
   },
 });
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
   try {
@@ -45,7 +45,7 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
-  await leereWarteschlange(db);
+  await emptyQueue(db);
 
   const P = `TK${process.pid}`;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
@@ -57,29 +57,29 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
   );
 
   try {
-    const n = (await _req('src/bilder/bildbedarfLauf.js')._arbeiteStapel()).gesamt;
-    const abstaende = zeiten.slice(1).map((z, i) => z - zeiten[i]);
+    const n = (await _req('src/bilder/bildbedarfLauf.js')._workStack()).gesamt;
+    const spacing = times.slice(1).map((z, i) => z - times[i]);
 
     await t.test('nacheinander, nie gleichzeitig', () => {
       assert.equal(
-        maxGleichzeitig,
+        maxConcurrent,
         1,
-        `${maxGleichzeitig} Downloads liefen gleichzeitig — gefordert ist ` +
+        `${maxConcurrent} Downloads liefen gleichzeitig — gefordert ist ` +
           'sequenziell, gerade weil Parallelität einer Heuristik auffällt',
       );
     });
 
     await t.test('mindestens eine halbe Sekunde Abstand', () => {
-      assert.ok(abstaende.length >= 5, `nur ${abstaende.length} Abstände gemessen`);
-      const kleinster = Math.min(...abstaende);
-      assert.ok(kleinster >= 500, `kleinster Abstand ${kleinster} ms — gefordert sind mindestens 500`);
+      assert.ok(spacing.length >= 5, `nur ${spacing.length} Abstände gemessen`);
+      const smallest = Math.min(...spacing);
+      assert.ok(smallest >= 500, `kleinster Abstand ${smallest} ms — gefordert sind mindestens 500`);
     });
 
     await t.test('die Abstände sind nicht alle gleich', () => {
       // Ein exakt gleicher Abstand ist selbst ein Muster: Eine Heuristik, die
       // nach Maschinen sucht, erkennt Gleichmass leichter als Unregelmässigkeit.
-      const einzig = new Set(abstaende.map(a => Math.round(a / 50)));
-      assert.ok(einzig.size > 1, 'Alle Abstände sind gleich — die Verzögerung muss zufällig streuen');
+      const only = new Set(spacing.map(a => Math.round(a / 50)));
+      assert.ok(only.size > 1, 'Alle Abstände sind gleich — die Verzögerung muss zufällig streuen');
     });
 
     await t.test('höchstens 30 Anfragen je Minute', () => {
@@ -109,7 +109,7 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async t => 
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
-  await leereWarteschlange(db);
+  await emptyQueue(db);
   const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `NT${process.pid}`;
@@ -127,16 +127,16 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async t => 
                   FROM generate_series(1,10) g`,
     [P],
   );
-  thumbZeiten.length = 0;
+  thumbTimes.length = 0;
   try {
-    const n = (await _req('src/bilder/bildbedarfLauf.js')._arbeiteStapel()).gesamt;
+    const n = (await _req('src/bilder/bildbedarfLauf.js')._workStack()).gesamt;
     assert.equal(n, 10, `${n} Vorschauen statt 10 — Vorbedingung stimmt nicht`);
-    const abst = thumbZeiten.slice(1).map((z, i) => z - thumbZeiten[i]);
+    const abst = thumbTimes.slice(1).map((z, i) => z - thumbTimes[i]);
     assert.ok(abst.length >= 5, `nur ${abst.length} Abstände`);
-    const kleinster = Math.min(...abst);
+    const smallest = Math.min(...abst);
     assert.ok(
-      kleinster >= 500,
-      `kleinster Abstand zwischen zwei Verkleinerungen: ${kleinster} ms. Ohne ` +
+      smallest >= 500,
+      `kleinster Abstand zwischen zwei Verkleinerungen: ${smallest} ms. Ohne ` +
         'Pause rechnet der Job zehn davon am Stück — auf schwacher Hardware ist ' +
         'die CPU dann belegt, und Datenbankabfragen laufen in den Zeitfehler.',
     );
@@ -153,8 +153,8 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async t => 
 test('der Bild-Auftrag holt mit der Browser-Kennung des Proxys', () => {
   const dist = path.join(ROOT, 'dist', 'src/bilder/setImages.js');
   assert.ok(fs.existsSync(dist), 'dist/src/bilder/setImages.js fehlt — erst bauen');
-  const { BILD_KOPFZEILEN } = require(path.join(ROOT, 'dist', 'clients/bildCdn.js'));
+  const { IMAGE_HEADERS } = require(path.join(ROOT, 'dist', 'clients/bildCdn.js'));
   const ua = require(dist).bildUserAgent({ bildUserAgent: null });
-  assert.equal(ua, BILD_KOPFZEILEN['User-Agent'], 'der Bild-Auftrag holt mit der Browser-Kennung des Proxys');
+  assert.equal(ua, IMAGE_HEADERS['User-Agent'], 'der Bild-Auftrag holt mit der Browser-Kennung des Proxys');
   assert.match(ua, /^Mozilla\/5\.0 /);
 });

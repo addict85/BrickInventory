@@ -1,16 +1,16 @@
 /**
  * Eine CSV-Kopfzeile darf die Prototypenkette nicht treffen — geprüft am Einleser des Imports
- * (csvEinlesen in src/infra/csvExport.ts), nicht an einer Kopie seiner Einstellungen.
+ * (csvReadIn in src/infra/csvExport.ts), nicht an einer Kopie seiner Einstellungen.
  *
  * Gegenproben (09.11.2026):
- *   A  in csvEinlesen() wieder `columns: true` → rot: „eine Spalte __proto__ …“ und „auch constructor …“
+ *   A  in csvReadIn() wieder `columns: true` → rot: „eine Spalte __proto__ …“ und „auch constructor …“
  *   B  der Filter verwirft jede Spalte → rot, alle drei; „gewoehnliche Spalten bleiben unberuehrt“ nennt den Grund
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { csvEinlesen } = require('./helpers/sources').buildAndRequire()('src/infra/csvExport.js');
-const einlesen = (/** @type {string} */ csv) => csvEinlesen(csv).records;
+const { csvReadIn } = require('./helpers/sources').buildAndRequire()('src/infra/csvExport.js');
+const einlesen = (/** @type {string} */ csv) => csvReadIn(csv).records;
 
 test('eine Spalte __proto__ landet nicht in der Prototypenkette', () => {
   const vorher = /** @type {any} */ (Object.prototype).polluted;

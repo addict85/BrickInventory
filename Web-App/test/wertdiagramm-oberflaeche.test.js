@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const punkte = werte => werte.map((value, i) => ({ x_label: `0${i + 1}.10`, value, y_frac: 0.5 }));
 const PNL = {
@@ -19,7 +19,7 @@ const PNL = {
 };
 
 test('ein Messpunkt: Leerzustand statt Linie', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     ...PNL,
     '/v1/finance/portfolio-history': {
       success: true,
@@ -42,7 +42,7 @@ test('ein Messpunkt: Leerzustand statt Linie', async () => {
 });
 
 test('Vorwahl Max, Veränderung mit Zeitraum', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     ...PNL,
     '/v1/finance/portfolio-history': {
       success: true,
@@ -67,7 +67,7 @@ test('Vorwahl Max, Veränderung mit Zeitraum', async () => {
 });
 
 test('en: Leerzustand übersetzt', async () => {
-  const { w, d } = await oeffneOberflaeche(
+  const { w, d } = await openUi(
     {
       ...PNL,
       '/v1/finance/portfolio-history': {

@@ -8,10 +8,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 // Nachlauf: aufgeraeumte Datenbank zuruecklassen
 test.after(async () => {
@@ -34,7 +34,7 @@ test.after(async () => {
 });
 
 /** Spaltennamen einer Tabelle, aus dem Katalog. */
-const spaltenVon = async tabelle =>
+const columnsOf = async tabelle =>
   (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
     .map(r => r.column_name)
     .sort();
@@ -63,10 +63,10 @@ test('nach dem vollständigen Schemaaufbau hat sets keinen Kaufpreis und keinen 
     client.release();
   }
 
-  const nachher = await spaltenVon('sets');
+  const nachher = await columnsOf('sets');
   // `quantity` stand hier mit — bis Migration 0036 sie geloescht hat. Geprueft
   // wird jetzt `user_id` und `set_number`: Welches Konto haelt welches Set,
-  // das ist, was von der Zeile bleibt. (Dass quantity WEG ist, prueft
+  // das ist, was von der Zeile bleibt. (Dass quantity ROUTE ist, prueft
   // test/setmenge-aus-erfassungen-db.test.js.)
   assert.ok(
     nachher.includes('user_id') && nachher.includes('set_number'),
@@ -81,7 +81,7 @@ test('nach dem vollständigen Schemaaufbau hat sets keinen Kaufpreis und keinen 
   }
 
   // Und sie sind nicht verschwunden, sondern umgezogen.
-  const erfassung = await spaltenVon('set_acquisitions');
+  const erfassung = await columnsOf('set_acquisitions');
   for (const sp of ['purchase_price', 'condition', 'quantity', 'created_at']) {
     assert.ok(erfassung.includes(sp), `set_acquisitions.${sp} fehlt — dann gibt es den Kaufpreis nirgends mehr`);
   }

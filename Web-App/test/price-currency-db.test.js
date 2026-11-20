@@ -12,15 +12,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const USERNAME = 'currency-param-test';
   const SET = '10307-1';
@@ -33,7 +33,7 @@ test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT', 
     [uid],
   );
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
-  await haeltSet(db, uid, SET, 1);
+  await holdsSet(db, uid, SET, 1);
   // Preis liegt NUR in der eingestellten Währung vor — wie im Betrieb, wo der
   // Preis-Job genau diese füllt.
   await db.run(

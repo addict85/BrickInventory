@@ -3,11 +3,11 @@
  * rate_limit_attempts ab, und der Vorrang bekannter Anmeldungen wirkt weiter.
  *
  * Gegenproben (am 08.11.2026 gemessen):
- *   A  _bekanntKey und _erfolgKey nehmen wieder drosselAdresse(ip) statt des
+ *   A  _knownKey und _successKey nehmen wieder drosselAdresse(ip) statt des
  *      Abdrucks → rot: „keine Klartext-Adresse“
- *   B  adressAbdruck liefert je Aufruf einen anderen Wert → rot: „bekannt
+ *   B  adressDigest liefert je Aufruf einen anderen Wert → rot: „bekannt
  *      bleibt bekannt“
- *   C  adressAbdruck liefert für jede Adresse denselben Wert → rot: „andere
+ *   C  adressDigest liefert für jede Adresse denselben Wert → rot: „andere
  *      Adresse ist unbekannt“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -17,10 +17,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const limiter = _req('src/konto/loginLimiter.js');
 
 test('bekannte Anmeldung: Adresse nur als Abdruck gespeichert', { concurrency: 1 }, async t => {
@@ -42,8 +42,8 @@ test('bekannte Anmeldung: Adresse nur als Abdruck gespeichert', { concurrency: 1
     await db.pool.end().catch(() => {});
   });
 
-  await limiter.anmeldungGelungen(IP, name);
-  await limiter.anmeldungGelungen(IP6, name);
+  await limiter.loginSucceeded(IP, name);
+  await limiter.loginSucceeded(IP6, name);
 
   await t.test('keine Klartext-Adresse', async () => {
     const zeilen = await db.all(
@@ -57,13 +57,13 @@ test('bekannte Anmeldung: Adresse nur als Abdruck gespeichert', { concurrency: 1
   });
 
   await t.test('bekannt bleibt bekannt', async () => {
-    assert.equal(await limiter.bekannteAnmeldung(IP, name), true);
-    assert.equal(await limiter.bekannteAnmeldung(IP6, name), true);
+    assert.equal(await limiter.knownLogin(IP, name), true);
+    assert.equal(await limiter.knownLogin(IP6, name), true);
     // Dasselbe /64 zählt als dieselbe Adresse.
-    assert.equal(await limiter.bekannteAnmeldung('2001:db8:1:2:ffff::1', name), true);
+    assert.equal(await limiter.knownLogin('2001:db8:1:2:ffff::1', name), true);
   });
 
   await t.test('andere Adresse ist unbekannt', async () => {
-    assert.equal(await limiter.bekannteAnmeldung('203.0.113.78', name), false);
+    assert.equal(await limiter.knownLogin('203.0.113.78', name), false);
   });
 });

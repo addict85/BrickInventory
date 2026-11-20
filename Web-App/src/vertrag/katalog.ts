@@ -83,9 +83,9 @@ export const routen = {
     antwort: CatalogSetsResponse,
     abfrage: abfrage({
       q: Q.text(),
-      theme_id: Q.zahlOderLeer,
-      year_from: Q.zahlOderLeer,
-      year_to: Q.zahlOderLeer,
+      theme_id: Q.numberOrEmpty,
+      year_from: Q.numberOrEmpty,
+      year_to: Q.numberOrEmpty,
       sort: Q.text(40),
       ...SEITE,
       limit: veraltet(Q.zahl(), 'page_size'),
@@ -95,7 +95,7 @@ export const routen = {
   'GET /api/v1/catalog/year-verteilung': {
     klein: true,
     antwort: CatalogYearVerteilungResponse,
-    abfrage: abfrage({ q: Q.text(), theme_id: Q.zahlOderLeer, sort: Q.text(40) }),
+    abfrage: abfrage({ q: Q.text(), theme_id: Q.numberOrEmpty, sort: Q.text(40) }),
   },
   'GET /api/v1/catalog/bricklink': { antwort: BricklinkVerweise, abfrage: abfrage({ sets: Q.text(4000) }) },
 } satisfies Record<string, Route>;

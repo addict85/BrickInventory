@@ -2,19 +2,19 @@
  * Ein offener Strom endet, sobald sein Zugang endet: Abmelden des Tokens oder
  * der Sitzung, neue Sitzungsversion (alle Sitzungen beendet). Geprüft am
  * CSV-Fortschrittsstrom der echten App (baueApp); der Takt ohne Ereignis (Widerruf
- * in einem anderen Prozess) an wacheUeberZugang() mit kurzem Takt.
+ * in einem anderen Prozess) an watchViaAccess() mit kurzem Takt.
  *
  * Gegenproben (12.11.2026 gemessen, je einzeln):
- *   A  in routes/api_v1/sets.ts den Aufruf wacheUeberZugang() gestrichen → rot:
+ *   A  in routes/api_v1/sets.ts den Aufruf watchViaAccess() gestrichen → rot:
  *      „Token abgemeldet: der Strom endet“, „Sitzung abgemeldet …“, „alle Sitzungen …“
- *   B  in wacheUeberZugang() nicht auf beiZugangsAenderung() hören → rot: die
+ *   B  in watchViaAccess() nicht auf atAccessChange() hören → rot: die
  *      ersten drei Fälle (erst der Takt nach 15 s hätte die Ströme beendet)
- *   E  in erhoeheSitzungsVersion() ohne meldeZugangsAenderung() → rot: „alle
+ *   E  in increaseSessionVersion() ohne reportAccessChange() → rot: „alle
  *      Sitzungen beendet …“ (beim Token-Widerruf melden Abmelderoute und NOTIFY
  *      doppelt; dort einzeln gestrichen blieb es grün)
- *   C  in zugangGiltNoch() die Prüfung sitzungLebt() gestrichen → rot: „Sitzung
+ *   C  in accessAppliesStill() die Prüfung sessionAlive() gestrichen → rot: „Sitzung
  *      abgemeldet: der Strom endet“
- *   D  setInterval in wacheUeberZugang() gestrichen → rot: „ohne Ereignis endet
+ *   D  setInterval in watchViaAccess() gestrichen → rot: „ohne Ereignis endet
  *      der Strom im Takt“
  */
 require('./helpers/systemrahmen');
@@ -24,7 +24,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { zugangOderSkip } = require('./helpers/db');
+const { accessOrSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const bcrypt = require('bcryptjs');
 
@@ -32,7 +32,7 @@ const NAME = `stromzugang_${process.pid}`,
   PASS = 'Strom-Zugang-Probe-1';
 
 test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
-  const db = await zugangOderSkip(t, _req);
+  const db = await accessOrSkip(t, _req);
   if (!db) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -44,7 +44,7 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     // Der Strom hat LISTEN geöffnet; die Verbindung hielte den Prozess offen.
-    await db.benachrichtigung.close();
+    await db.notification.close();
     await db.pool.end().catch(() => {});
   });
 
@@ -52,7 +52,7 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
     pool: db.systemPool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 's'.repeat(48),
-    dienste: require('./helpers/sources').testDienste(),
+    dienste: require('./helpers/sources').testServices(),
   });
   const srv = app.listen(0);
   t.after(() => {
@@ -86,9 +86,9 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
     if (r.status !== 200) assert.fail(`Strom: ${r.status} ${await r.text()}`);
     const s = { text: '', zu: false };
     (async () => {
-      const leser = r.body.getReader();
+      const reader = r.body.getReader();
       for (;;) {
-        const { done, value } = await leser.read().catch(() => ({ done: true, value: undefined }));
+        const { done, value } = await reader.read().catch(() => ({ done: true, value: undefined }));
         if (done) break;
         s.text += Buffer.from(value).toString('utf8');
       }
@@ -121,16 +121,16 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
 
   await t.test('alle Sitzungen beendet (neue Sitzungsversion): der Strom endet', async () => {
     const s = await oeffne(await sitzung());
-    await _req('src/konto/zugangsende.js').alleSitzungenBeenden(uid);
+    await _req('src/konto/zugangsende.js').endAllSessions(uid);
     await endet(s, 'alle Sitzungen beendet');
   });
 
   await t.test('ohne Ereignis endet der Strom im Takt', async () => {
     const kopf = await token();
-    const wacheUeberZugang = (...a) =>
-      _req('src/konto/http/zugangsWache.js').wacheUeberZugang(require('./helpers/sources').testDienste().konto, ...a);
+    const watchViaAccess = (...a) =>
+      _req('src/konto/http/zugangsWache.js').watchViaAccess(require('./helpers/sources').testServices().konto, ...a);
     let beendet = 0;
-    const abmelden = wacheUeberZugang({ session: {}, headers: kopf }, () => beendet++, 50);
+    const abmelden = watchViaAccess({ session: {}, headers: kopf }, () => beendet++, 50);
     t.after(abmelden);
     assert.equal(await bis(() => beendet > 0, 200), false, 'ein gültiger Token beendet nichts');
     // Widerruf wie aus einem anderen Prozess: nur die Zeile, kein Ereignis hier.

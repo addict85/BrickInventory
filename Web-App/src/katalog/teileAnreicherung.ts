@@ -1,26 +1,26 @@
 /** Füllt set_parts_catalog aus der Rebrickable-API, damit die Teileliste eines
  * Sets Namen und Bilder hat. Bilder lädt setBilderLaden.ts im Hintergrund; bis
  * dahin gilt die CDN-Adresse. */
-import { neuestesInventar } from './rbInventar';
-import { mitVersion } from '../infra/setNummer';
-import { merkeBlNummer } from './blZuordnung';
-import { merkeTeil, merkeTeilFarbe, merkeSetTeil, merkeFiguren, merkeSetFiguren } from './katalogPflege';
+import { newestInventory } from './rbInventar';
+import { withVersion } from '../infra/setNummer';
+import { rememberBlNumber } from './blZuordnung';
+import { rememberPart, rememberPartColor, rememberSetPart, rememberMinifigs, merkeSetFiguren } from './katalogPflege';
 import { parseThrottleWait as ptw } from '../fremdquellen';
 
 /** Ohne Typparameter leitet TypeScript bei `new Promise` `unknown` ab. */
 type JobHttpResult = { status: number; body: string };
 
-import { pfadSegment, nummernListe } from '../infra/fremdeAdressen';
+import { pathSegment, numbersList } from '../infra/fremdeAdressen';
 import type * as repo from './repository/teileAnreicherung';
 import { KEINE_FARBE } from '../infra/validate';
-import type { KatalogKontext } from './kontext';
+import type { CatalogContext } from './kontext';
 
-async function apiGet(k: KatalogKontext, url: string, rbKey: string) {
+async function apiGet(k: CatalogContext, url: string, rbKey: string) {
   let serverErrors = 0;
   while (true) {
     if (!(await k.fremdquellen.consumeRebrickableDaily())) return null;
     await k.fremdquellen.drossel.hintergrund.waitForSlot();
-    const result: JobHttpResult = await k.fremdquellen.quellen.rebrickableRoh(url, rbKey);
+    const result: JobHttpResult = await k.fremdquellen.quellen.rebrickableRaw(url, rbKey);
     if (result.status === 429) {
       const wait = ptw(result.body);
       k.fremdquellen.drossel.hintergrund.throttle(wait);
@@ -43,16 +43,16 @@ async function apiGet(k: KatalogKontext, url: string, rbKey: string) {
   }
 }
 
-async function enrichSetParts(k: KatalogKontext, setNumber: string) {
-  const n = mitVersion(setNumber);
+async function enrichSetParts(k: CatalogContext, setNumber: string) {
+  const n = withVersion(setNumber);
 
-  const invId = await neuestesInventar(k, setNumber);
+  const invId = await newestInventory(k, setNumber);
   if (!invId) return;
 
-  const csvParts = await k.teileAnreicherung.teileDesInventars(invId);
+  const csvParts = await k.teileAnreicherung.partsOfInventory(invId);
   if (!csvParts.length) return;
 
-  const catalogRows = await k.teileAnreicherung.setTeileKatalog(n);
+  const catalogRows = await k.teileAnreicherung.setPartsCatalog(n);
   const catalogMap: Record<
     string,
     { image_url: string | null; image_local: string | null; bl_part_number?: string | null }
@@ -61,7 +61,7 @@ async function enrichSetParts(k: KatalogKontext, setNumber: string) {
 
   // Die ZEILE in bl_mapping zählt, nicht ihr Wert: leer heisst „nachgesehen,
   // keine abweichende Nummer".
-  const lookedUp = await k.teileAnreicherung.blZuordnungen(csvParts.map(p => p.part_num));
+  const lookedUp = await k.teileAnreicherung.blMappings(csvParts.map(p => p.part_num));
   const lookedUpSet = new Set(lookedUp.map((r: { rb_id: string }) => r.rb_id));
 
   // Nur Teile, die noch nie nachgesehen wurden — jeder Abruf kostet Kontingent.
@@ -81,10 +81,10 @@ async function enrichSetParts(k: KatalogKontext, setNumber: string) {
     return;
   }
 
-  const apiParts = await holeApiTeile(k, n, rbKey);
-  await ergaenzeBlNummern(k, apiParts, [...new Set(csvParts.map(p => p.part_num))], rbKey);
-  await merkeTeileDesSets(k, n, csvParts, apiParts);
-  await ergaenzeSetFiguren(k, n, rbKey);
+  const apiParts = await fetchApiParts(k, n, rbKey);
+  await supplementBlNumbers(k, apiParts, [...new Set(csvParts.map(p => p.part_num))], rbKey);
+  await rememberPartsOfSets(k, n, csvParts, apiParts);
+  await supplementSetMinifigs(k, n, rbKey);
 }
 
 type ApiTeil = {
@@ -97,9 +97,9 @@ type ApiTeil = {
 };
 
 /** Die Teile des Sets laut Rebrickable, je "part_num|color_id". */
-async function holeApiTeile(k: KatalogKontext, n: string, rbKey: string): Promise<Record<string, ApiTeil>> {
+async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promise<Record<string, ApiTeil>> {
   const apiParts: Record<string, ApiTeil> = {};
-  let url = `https://rebrickable.com/api/v3/lego/sets/${pfadSegment(n)}/parts/?page_size=500&inc_part_details=1`;
+  let url = `https://rebrickable.com/api/v3/lego/sets/${pathSegment(n)}/parts/?page_size=500&inc_part_details=1`;
   while (url) {
     const data = await apiGet(k, url, rbKey);
     if (!data) break;
@@ -123,8 +123,8 @@ async function holeApiTeile(k: KatalogKontext, n: string, rbKey: string): Promis
 
 /** Alle Nummern aus der CSV, nicht nur aus der API-Antwort: Die kann
  * unvollständig sein. */
-async function ergaenzeBlNummern(
-  kx: KatalogKontext,
+async function supplementBlNumbers(
+  kx: CatalogContext,
   apiParts: Record<string, ApiTeil>,
   missingBl: string[],
   rbKey: string,
@@ -132,7 +132,7 @@ async function ergaenzeBlNummern(
   const BATCH = 500;
   for (let i = 0; i < missingBl.length; i += BATCH) {
     const batch = missingBl.slice(i, i + BATCH);
-    const blUrl = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`;
+    const blUrl = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${numbersList(batch)}&page_size=500`;
     const blData = await apiGet(kx, blUrl, rbKey);
     if (!blData) continue;
     for (const part of blData.results || []) {
@@ -145,19 +145,19 @@ async function ergaenzeBlNummern(
           const key = `${part.part_num}|${colorId}`;
           if (apiParts[key]) apiParts[key].bl_part_num = blId;
         }
-        await merkeBlNummer(kx, 'part', part.part_num, blId);
+        await rememberBlNumber(kx, 'part', part.part_num, blId);
       }
     }
   }
 }
 
-async function merkeTeileDesSets(
-  k: KatalogKontext,
+async function rememberPartsOfSets(
+  k: CatalogContext,
   n: string,
-  csvParts: Awaited<ReturnType<typeof repo.teileDesInventars>>,
+  csvParts: Awaited<ReturnType<typeof repo.partsOfInventory>>,
   apiParts: Record<string, ApiTeil>,
 ): Promise<void> {
-  const blMapRows = await k.teileAnreicherung.blZuordnungen(csvParts.map(p => p.part_num));
+  const blMapRows = await k.teileAnreicherung.blMappings(csvParts.map(p => p.part_num));
   const blMap: Record<string, string | null> = {};
   for (const r of blMapRows) blMap[r.rb_id] = r.bl_id;
 
@@ -165,28 +165,28 @@ async function merkeTeileDesSets(
     const key = `${p.part_num}|${p.color_id}`;
     const info: Partial<ApiTeil> = apiParts[key] ?? {};
     const blPartNum = info.bl_part_num || blMap[p.part_num] || null;
-    // In die ZUORDNUNG: Die Nummer hängt am Teil, nicht an Set, Teil und Farbe.
-    if (blPartNum) await merkeBlNummer(k, 'part', p.part_num, blPartNum);
+    // In die MAPPING: Die Nummer hängt am Teil, nicht an Set, Teil und Farbe.
+    if (blPartNum) await rememberBlNumber(k, 'part', p.part_num, blPartNum);
     // Ohne Rebrickable-Antwort kein Name — die Teilenummer gehört nicht als geprüfter Name in den Katalog.
-    await merkeTeil(k, p.part_num, info.part_name);
-    await merkeTeilFarbe(k, p.part_num, p.color_id ?? KEINE_FARBE, info.color_name, info.color_hex, info.image_url);
-    await merkeSetTeil(k, n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
+    await rememberPart(k, p.part_num, info.part_name);
+    await rememberPartColor(k, p.part_num, p.color_id ?? KEINE_FARBE, info.color_name, info.color_hex, info.image_url);
+    await rememberSetPart(k, n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
   }
 }
 
-async function ergaenzeSetFiguren(k: KatalogKontext, n: string, rbKey: string): Promise<void> {
-  const existingFigs = await k.teileAnreicherung.figurenImSetkatalog(n);
+async function supplementSetMinifigs(k: CatalogContext, n: string, rbKey: string): Promise<void> {
+  const existingFigs = await k.teileAnreicherung.minifigsInSetkatalog(n);
 
   if (!existingFigs) {
     const figsData = await apiGet(
       k,
-      `https://rebrickable.com/api/v3/lego/sets/${pfadSegment(n)}/minifigs/?page_size=100`,
+      `https://rebrickable.com/api/v3/lego/sets/${pathSegment(n)}/minifigs/?page_size=100`,
       rbKey,
     );
     if (figsData?.results?.length) {
-      type RbFigur = { set_num: string; set_name?: string; quantity?: number; set_img_url?: string };
-      const figs: RbFigur[] = figsData.results;
-      await merkeFiguren(
+      type RbMinifig = { set_num: string; set_name?: string; quantity?: number; set_img_url?: string };
+      const figs: RbMinifig[] = figsData.results;
+      await rememberMinifigs(
         k,
         figs.map(f => ({ figNumber: f.set_num, figName: f.set_name || null, imageUrl: f.set_img_url || null })),
       );
@@ -199,16 +199,16 @@ async function ergaenzeSetFiguren(k: KatalogKontext, n: string, rbKey: string): 
   }
 }
 
-async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
-  const n = mitVersion(setNumber);
+async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
+  const n = withVersion(setNumber);
   const rbKey = await k.fremdquellen.quellen.getRbKey();
   if (!rbKey) return;
 
-  const figs = await k.teileAnreicherung.figurenDesSets(n);
+  const figs = await k.teileAnreicherung.minifigsOfSets(n);
   if (!figs.length) return;
 
   const figNums = figs.map((f: { fig_number: string }) => f.fig_number);
-  const invRows = await k.teileAnreicherung.inventareDerFiguren(figNums);
+  const invRows = await k.teileAnreicherung.inventoriesTheMinifigs(figNums);
 
   // Je set_num die höchste Version (erste wegen ORDER BY DESC).
   const invMap: Record<string, number> = {};
@@ -217,13 +217,13 @@ async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
   }
 
   const allPartNums = new Set<string>();
-  const figPartsMap: Record<string, { parts: repo.InventarTeil[]; figQty: number }> = {};
+  const figPartsMap: Record<string, { parts: repo.InventoryPart[]; figQty: number }> = {};
 
   for (const fig of figs) {
     const invId = invMap[fig.fig_number];
     if (!invId) continue;
 
-    const parts = await k.teileAnreicherung.teileDesInventars(invId);
+    const parts = await k.teileAnreicherung.partsOfInventory(invId);
 
     figPartsMap[fig.fig_number] = { parts, figQty: fig.quantity };
     for (const p of parts) allPartNums.add(p.part_num);
@@ -232,7 +232,7 @@ async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
   if (!allPartNums.size) return;
 
   // bl_mapping: die Nummer, einmal je Teil.
-  const rbBlRows = await k.teileAnreicherung.blZuordnungen([...allPartNums]);
+  const rbBlRows = await k.teileAnreicherung.blMappings([...allPartNums]);
   const rbBlMap: Record<string, string> = {};
   for (const r of rbBlRows) rbBlMap[r.rb_id] = r.bl_id ?? '';
 
@@ -244,7 +244,7 @@ async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
     const BATCH = 500;
     for (let i = 0; i < needsBl.length; i += BATCH) {
       const batch = needsBl.slice(i, i + BATCH);
-      const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`;
+      const url = `https://rebrickable.com/api/v3/lego/parts/?part_nums=${numbersList(batch)}&page_size=500`;
       const data = await apiGet(k, url, rbKey);
       if (!data) continue;
       for (const p of data.results || []) {
@@ -252,7 +252,7 @@ async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
         const finalId = blId || p.part_num;
         apiBlMap[p.part_num] = finalId;
 
-        await merkeBlNummer(k, 'part', p.part_num, finalId);
+        await rememberBlNumber(k, 'part', p.part_num, finalId);
       }
     }
   }
@@ -266,7 +266,7 @@ async function enrichSetMinifigs(k: KatalogKontext, setNumber: string) {
   for (const [figNum, { parts }] of Object.entries(figPartsMap)) {
     for (const p of parts) {
       // Ohne BrickLink-Nummer: Sie steht einmal je Teil in bl_mapping.
-      await merkeSetTeil(k, figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
+      await rememberSetPart(k, figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
     }
   }
 }

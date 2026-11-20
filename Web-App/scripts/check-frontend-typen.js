@@ -14,7 +14,7 @@ const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
 const TSC = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
-const LAEUFE = ['tsconfig.frontend.json', 'tsconfig.frontend-skripte.json'];
+const RUNS = ['tsconfig.frontend.json', 'tsconfig.frontend-skripte.json'];
 
 /** @param {string} config @param {string[]} [extra] @returns {string[]} die Meldungen */
 function pruefe(config, extra = []) {
@@ -29,7 +29,7 @@ if (require.main === module) {
   let summe = 0;
   /** @type {Record<string, string[]>} */
   const ergebnis = {};
-  for (const c of LAEUFE) {
+  for (const c of RUNS) {
     const m = pruefe(c);
     ergebnis[c] = m;
     summe += m.length;
@@ -42,4 +42,4 @@ if (require.main === module) {
   process.exit(summe ? 1 : 0);
 }
 
-module.exports = { pruefe, LAEUFE };
+module.exports = { pruefe, RUNS };

@@ -1,5 +1,5 @@
 /** Unterscheidet „fehlgeschlagen“ von „leer“: Ein Ersatzwert nach einem Fehler sah aus wie eine leere Antwort. */
-import { fehlertext, meldeFehler, pruefeErsatzInTransaktion } from './fehler';
+import { fehlertext, reportError, checkFallbackInTransaction } from './fehler';
 
 export interface Fehlschlag {
   kontext: string;
@@ -8,26 +8,26 @@ export interface Fehlschlag {
 
 export type Ergebnis<T, F = Fehlschlag> = { ok: true; wert: T } | { ok: false; fehler: F };
 
-export const gelungen = <T>(wert: T): Ergebnis<T, never> => ({ ok: true, wert });
+export const succeeded = <T>(wert: T): Ergebnis<T, never> => ({ ok: true, wert });
 export const gescheitert = <F>(fehler: F): Ergebnis<never, F> => ({ ok: false, fehler });
 
 /** Meldet den Fehler ins Protokoll und gibt ihn als Ergebnis weiter; entscheiden muss der Aufrufer. */
-export async function versuche<T>(kontext: string, arbeit: Promise<T> | (() => Promise<T>)): Promise<Ergebnis<T>> {
+export async function versuche<T>(kontext: string, work: Promise<T> | (() => Promise<T>)): Promise<Ergebnis<T>> {
   try {
-    return gelungen(await (typeof arbeit === 'function' ? arbeit() : arbeit));
+    return succeeded(await (typeof work === 'function' ? work() : work));
   } catch (e) {
-    pruefeErsatzInTransaktion(kontext, e);
-    meldeFehler(kontext, e);
+    checkFallbackInTransaction(kontext, e);
+    reportError(kontext, e);
     return gescheitert({ kontext, grund: fehlertext(e) || 'Unbekannter Fehler' });
   }
 }
 
 /** Sammelt, welche Teile einer Antwort nur Ersatzwerte tragen. Die Antwort nennt
  * sie in `degradiert`, sonst sähe eine 0 nach einem Fehler aus wie eine echte 0. */
-export class Abstriche {
+export class Degradations {
   readonly teile: string[] = [];
-  async oder<T, E>(teil: string, arbeit: Promise<T> | (() => Promise<T>), ersatz: E): Promise<T | E> {
-    const r = await versuche(teil, arbeit);
+  async oder<T, E>(teil: string, work: Promise<T> | (() => Promise<T>), ersatz: E): Promise<T | E> {
+    const r = await versuche(teil, work);
     if (!r.ok && !this.teile.includes(teil)) this.teile.push(teil);
     return r.ok ? r.wert : ersatz;
   }
@@ -37,6 +37,6 @@ export class Abstriche {
 }
 
 /** Der Wert oder, nach einem Fehlschlag, der ausdrücklich genannte Ersatz. */
-export function wertOder<T, E>(e: Ergebnis<T, unknown>, ersatz: E): T | E {
+export function valueOr<T, E>(e: Ergebnis<T, unknown>, ersatz: E): T | E {
   return e.ok ? e.wert : ersatz;
 }

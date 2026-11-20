@@ -5,9 +5,9 @@
  * jedem Versuch weg, damit allein die Tagesschranke wirkt.
  *
  * Gegenproben (13.11.2026 gemessen, je einzeln):
- *   A  faktorCodeGesperrt() liefert immer false → rot: „über der Schranke
+ *   A  factorCodeLocked() liefert immer false → rot: „über der Schranke
  *      gilt auch ein richtiger Einmalcode nicht“
- *   B  in pruefeAnmeldedaten() den Aufruf hinweisNebenher(…,
+ *   B  in checkCredentials() den Aufruf hintInBackground(…,
  *      'zweiter_faktor_gesperrt') gestrichen → rot: „der Inhaber erfährt es
  *      sofort, einmal“
  *   C  pruefeCode() prüft bei mitEinmalcode=false gar nichts mehr (return
@@ -26,24 +26,24 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const mails = [];
-require('./helpers/sources').ersetzeDienste('mail', {
+require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (an, _name, art) => {
     mails.push({ an, art });
     return { success: true };
   },
 });
-const { zugangOderSkip } = require('./helpers/db');
+const { accessOrSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const zf = _req('src/factors/secondFactor.js');
 const lim = _req('src/konto/loginLimiter.js');
-const { pruefeAnmeldedaten } = _req('src/konto/anmeldepruefung.js');
+const { checkCredentials } = _req('src/konto/anmeldepruefung.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const PASS = 'Tagesschranke-Passwort-1';
 const IP = '198.51.100.44';
 
 test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurrency: 1, timeout: 120_000 }, async t => {
-  const db = await zugangOderSkip(t, _req);
+  const db = await accessOrSkip(t, _req);
   if (!db) return;
   const NAME = `zfschranke_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -54,13 +54,13 @@ test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurr
       [NAME, `${NAME}@example.org`, bcrypt.hashSync(PASS, 4)],
     )
   ).id;
-  const leereSperren = () =>
+  const lockEmpty = () =>
     db.run(`DELETE FROM rate_limit_attempts WHERE (key LIKE 'login%' AND key LIKE $1) OR key LIKE $2`, [
       `%konto:${uid}`,
       `%${IP}%`,
     ]);
   t.after(async () => {
-    await leereSperren();
+    await lockEmpty();
     await db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`faktor-anmeldung-konto|${uid}`]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
@@ -75,12 +75,12 @@ test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurr
   const FALSCH = ['000000', '111111', '222222', '333333'].find(c => !gueltig.includes(c));
 
   const anmelden = async code => {
-    await leereSperren();
-    return pruefeAnmeldedaten({ ip: IP }, NAME, PASS, code);
+    await lockEmpty();
+    return checkCredentials({ ip: IP }, NAME, PASS, code);
   };
 
   await t.test('bis zur Schranke: falscher Code', async () => {
-    for (let i = 1; i < lim.MAX_FAKTOR_ANMELDUNG_JE_KONTO; i++) {
+    for (let i = 1; i < lim.MAX_FACTOR_LOGIN_JE_ACCOUNT; i++) {
       const r = await anmelden(FALSCH);
       assert.equal(r.absage?.code, 'zweiter_faktor_falsch', `Versuch ${i}`);
     }
@@ -90,11 +90,11 @@ test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurr
     const zeile = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [
       `faktor-anmeldung-konto|${uid}`,
     ]);
-    assert.equal(Number(zeile?.count), lim.MAX_FAKTOR_ANMELDUNG_JE_KONTO, 'gezählt in der Datenbank');
+    assert.equal(Number(zeile?.count), lim.MAX_FACTOR_LOGIN_JE_ACCOUNT, 'gezählt in der Datenbank');
   });
 
   await t.test('der Inhaber erfährt es sofort, einmal', async () => {
-    // hinweisNebenher schickt ohne await; erst ein zweiter Blick zeigt, dass es bei einer Mail bleibt.
+    // hintInBackground schickt ohne await; erst ein zweiter Blick zeigt, dass es bei einer Mail bleibt.
     await bis(() => mails.some(m => m.art === 'zweiter_faktor_gesperrt'));
     await anmelden(FALSCH);
     assert.deepEqual(

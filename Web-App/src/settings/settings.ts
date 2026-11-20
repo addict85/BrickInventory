@@ -1,10 +1,10 @@
-import { verschluessele, entschluessele, umschluesseln, kontext } from '../infra/geheimnis';
-import { fachfehler, dateiFehler } from '../infra/fehlerTexte';
-import { GLOBALE_REGELN, DESIGNS, type GlobalerSchluessel } from '../vertrag/globaleRegeln';
+import { encrypt, decrypt, umschluesseln, kontext } from '../infra/geheimnis';
+import { fachfehler, fileError } from '../infra/fehlerTexte';
+import { GLOBAL_RULES, DESIGNS, type GlobalKey } from '../vertrag/globaleRegeln';
 import * as repo from './repository/values';
-import type { DbSchnittstelle } from '../../db/database';
+import type { DbInterface } from '../../db/database';
 import type { SettingsContext } from './context';
-import { prozessEreignis } from '../infra/ereignis';
+import { processEvent } from '../infra/ereignis';
 
 /** Stored as text; with a fallback the result is text or the fallback, never `any`. */
 export async function getSetting(k: SettingsContext, userId: number, key: string): Promise<string | null | undefined>;
@@ -20,7 +20,7 @@ export async function getSetting(
 
 /** getSetting over a passed-in access, for areas with their own context (src/sets). */
 export async function settingWithAccess(
-  db: DbSchnittstelle,
+  db: DbInterface,
   userId: number,
   key: string,
   fallback?: string,
@@ -32,7 +32,7 @@ export async function settingWithAccess(
 
 /** Secret values sit encrypted (src/infra/geheimnis.ts). */
 function reveal(key: string, value: string | null | undefined): string | null | undefined {
-  return SECRET_KEYS.has(key) ? entschluessele(value, globalContext(key)) : value;
+  return SECRET_KEYS.has(key) ? decrypt(value, globalContext(key)) : value;
 }
 
 /** The name in the context: an SMTP password copied into an API key's row stays unreadable. */
@@ -97,8 +97,7 @@ export async function globalDefaultCondition(k: SettingsContext): Promise<'N' | 
   return g === 'U' ? 'U' : 'N';
 }
 
-const ruleFor = (key: string) =>
-  Object.hasOwn(GLOBALE_REGELN, key) ? GLOBALE_REGELN[key as GlobalerSchluessel] : undefined;
+const ruleFor = (key: string) => (Object.hasOwn(GLOBAL_RULES, key) ? GLOBAL_RULES[key as GlobalKey] : undefined);
 
 export function isValidGlobalValue(key: string, value: unknown): boolean {
   return ruleFor(key)?.safeParse(value).success ?? false;
@@ -106,7 +105,7 @@ export function isValidGlobalValue(key: string, value: unknown): boolean {
 
 /** Over NOTIFY: the job process and every other web process also write global values. */
 const globalChange = (k: SettingsContext) =>
-  k.faecher.fach('globalChange', () => prozessEreignis('globalChange', 'globale_einstellung'));
+  k.faecher.fach('globalChange', () => processEvent('globalChange', 'globale_einstellung'));
 /** For caches computed from global values: they clear themselves instead of every
  * write site having to know about them. */
 export function onGlobalChange(k: SettingsContext, fn: () => void): () => void {
@@ -115,24 +114,24 @@ export function onGlobalChange(k: SettingsContext, fn: () => void): () => void {
 
 /** From now on, a change in another process also clears the caches here. */
 export function listenForGlobalChanges(k: SettingsContext): () => void {
-  return globalChange(k).verbinde(k.db.benachrichtigung);
+  return globalChange(k).connect(k.db.notification);
 }
 
-/** THE ONE write site; every key needs a rule in GLOBALE_REGELN. */
+/** THE ONE write site; every key needs a rule in GLOBAL_RULES. */
 export async function setGlobalSetting(k: SettingsContext, key: string, value: unknown) {
   const r = ruleFor(key)?.safeParse(value);
   if (!r?.success)
     throw (
       (r?.error.issues[0] as { params?: { fehler?: unknown } } | undefined)?.params?.fehler ??
-      dateiFehler('ungueltig', 'wert_ungueltig')
+      fileError('ungueltig', 'wert_ungueltig')
     );
-  await k.repository.writeGlobalValue(key, SECRET_KEYS.has(key) ? verschluessele(r.data, globalContext(key)) : r.data);
+  await k.repository.writeGlobalValue(key, SECRET_KEYS.has(key) ? encrypt(r.data, globalContext(key)) : r.data);
   await notifyGlobalChange(k);
 }
 
 /** Also after a transaction COMMITs: a cache that read in between would keep the old value. */
 export async function notifyGlobalChange(k: SettingsContext): Promise<void> {
-  await globalChange(k).melde(k.db.benachrichtigung);
+  await globalChange(k).melde(k.db.notification);
 }
 
 /** Open only at exactly '1'; a missing row stays closed. */

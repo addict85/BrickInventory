@@ -12,7 +12,7 @@
  *   „mit zweitem Faktor braucht es auch den Code“
  * Gegenprobe (01.11.2026 gemessen): maskAddress() im Konsolenweg des Mailers
  *   umgangen → rot: „mit Passwort verknüpft, und der Inhaber erfährt es“
- * Gegenprobe (04.11.2026 gemessen): kontoGedrosselt() aus redeem/pruefen
+ * Gegenprobe (04.11.2026 gemessen): accountThrottled() aus redeem/pruefen
  *   entfernt → rot: „die Prüfung eines Codes ist je Konto gebremst“ (200 statt 429)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -25,21 +25,21 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const PASS = 'eigenes-Passwort-1';
-const HAUPT = `beitritt_haupt_${process.pid}`,
+const MAIN = `beitritt_haupt_${process.pid}`,
   KIND = `beitritt_kind_${process.pid}`,
   HAUPT2 = `beitritt_haupt2_${process.pid}`;
 
 test('Haushalt beitreten', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, KIND, HAUPT2]]);
+  if (!(await dataOrSkip(t, _req))) return;
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, KIND, HAUPT2]]);
   const hash = await bcrypt.hash(PASS, 4);
   const anlegen = async n =>
     (
@@ -49,23 +49,23 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
         [n, `${n}@example.org`, hash],
       )
     ).id;
-  const haupt = await anlegen(HAUPT),
+  const haupt = await anlegen(MAIN),
     kind = await anlegen(KIND),
     haupt2 = await anlegen(HAUPT2);
   await db.run("DELETE FROM global_settings WHERE key LIKE 'smtp_%'");
-  const pruefZaehler = () =>
+  const pruefCounter = () =>
     db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [`haushalt-pruefen|konto:${kind}`]);
-  await pruefZaehler();
+  await pruefCounter();
   t.after(async () => {
-    await pruefZaehler();
+    await pruefCounter();
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${kind}|%`]);
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[haupt, kind, haupt2]]);
     await db.pool.end().catch(() => {});
   });
-  const { einladungAnlegen } = {
+  const { createInvitation } = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ...require('./helpers/sources').testArea('haushalt'),
   };
   const { base } = testServer(_req, { sitzung: { userId: kind }, t });
   const einloesen = body =>
@@ -78,7 +78,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
     !!(await db.get('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [haupt, kind]));
 
   await t.test('die Prüfung eines Codes ist je Konto gebremst', async () => {
-    const { code } = await einladungAnlegen(haupt);
+    const { code } = await createInvitation(haupt);
     const pruefe = () =>
       fetch(`${base}/api/v1/settings/household/redeem/pruefen`, {
         method: 'POST',
@@ -86,16 +86,16 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
         body: JSON.stringify({ code }),
       }).then(async r => ({ status: r.status, body: await r.json() }));
     const erste = await pruefe();
-    assert.deepEqual([erste.status, erste.body.inviter?.username], [200, HAUPT], JSON.stringify(erste.body));
+    assert.deepEqual([erste.status, erste.body.inviter?.username], [200, MAIN], JSON.stringify(erste.body));
     for (let i = 1; i < 30; i++) assert.equal((await pruefe()).status, 200, `Prüfung ${i + 1}`);
     const r = await pruefe();
     assert.deepEqual([r.status, r.body.code], [429, 'zu_viele_anfragen'], JSON.stringify(r.body));
     assert.equal(r.body.inviter, undefined, 'gebremst nennt die Antwort niemanden');
-    await pruefZaehler();
+    await pruefCounter();
   });
 
   await t.test('ohne Passwort keine Verknüpfung', async () => {
-    const { code } = await einladungAnlegen(haupt);
+    const { code } = await createInvitation(haupt);
     for (const body of [{ code }, { code, password: 'falsch' }]) {
       const r = await einloesen(body);
       assert.equal(r.status, 400, JSON.stringify(r.body));
@@ -105,7 +105,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
   });
 
   await t.test('mit Passwort verknüpft, und der Inhaber erfährt es', async () => {
-    const { code } = await einladungAnlegen(haupt);
+    const { code } = await createInvitation(haupt);
     const zeilen = [];
     const echt = console.log;
     console.log = (...a) => {
@@ -136,7 +136,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
     const zf = _req('src/factors/secondFactor.js');
     const geheim = await zf.beginSetup(kind);
     const codes = await zf.confirmSetup(kind, zf.hotp(zf.fromBase32(geheim), zf.timeStep()));
-    const { code } = await einladungAnlegen(haupt2);
+    const { code } = await createInvitation(haupt2);
     const ohne = await einloesen({ code, password: PASS });
     assert.equal(ohne.status, 400, JSON.stringify(ohne.body));
     assert.equal(ohne.body.code, 'zweiter_faktor_noetig');

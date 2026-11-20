@@ -6,9 +6,9 @@
  * noch der gesperrte Knopf den Inhalt.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  bewerteSets sammelt die Käufe wieder nur nach Setnummer →
+ *   A  valueSets sammelt die Käufe wieder nur nach Setnummer →
  *      rot: „Finanzen: ein Kauf je Zeile, mit Konto“ (4 Zeilen Tree House)
- *   B  setsMitErfassungen ohne GROUP BY → rot: „Finanzen: Summen ohne
+ *   B  setsWithEntries ohne GROUP BY → rot: „Finanzen: Summen ohne
  *      Doppelzählung“ (Kaufpreise 2149.97 statt 1739.98)
  *   C  delUser wieder mit tRaw('users.delete.title') und dem Knopf
  *      confirm.btn.konto_loeschen → rot: „Löschdialog nennt das Konto“
@@ -23,12 +23,12 @@
  *   I  in api() die frühe Meldung bei 401 entfernt → rot: „401 ohne success“
  *   K  .user-tbl-Regeln in mobile.css entfernt → rot: „Benutzerkarte beginnt
  *      mit dem Namen“
- *   L  achsenBetrag ohne die Kurzform → rot: „200 %: Achse kurz, Kopf weicht“
+ *   L  axesAmount ohne die Kurzform → rot: „200 %: Achse kurz, Kopf weicht“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { musterHaushalt } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { patternHousehold } = require('./helpers/bestand');
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
@@ -37,7 +37,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
   const NAME = `r12_${process.pid}`,
     KIND = `${NAME}_kind`,
     ANDERE = `r12x_${process.pid}`;
-  const app = await starteApp(t, { name: NAME, bestand: musterHaushalt });
+  const app = await startApp(t, { name: NAME, bestand: patternHousehold });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -170,8 +170,8 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     await ruhig();
     const z = await b.auswerten(`(() => { const r = e => e.getBoundingClientRect();
       const toast = r(document.querySelector('#toasts .toast')), titel = r(document.querySelector('#tab-gallery h1')), leiste = r(document.querySelector('nav.tabs, nav:not(.einst-nav)'));
-      return { ueberTitel: toast.top < titel.bottom && toast.bottom > titel.top, ueberLeiste: toast.bottom <= leiste.top + 1, unten: toast.top > innerHeight / 2 }; })()`);
-    assert.deepEqual(z, { ueberTitel: false, ueberLeiste: true, unten: true });
+      return { viaTitle: toast.top < titel.bottom && toast.bottom > titel.top, viaBar: toast.bottom <= leiste.top + 1, unten: toast.top > innerHeight / 2 }; })()`);
+    assert.deepEqual(z, { viaTitle: false, viaBar: true, unten: true });
     await b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
   });
 
@@ -215,11 +215,11 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
   await t.test('Gutschein: eine Knopfgrösse', async () => {
     await b.auswerten(klick('.umenu-item[data-arg="gutscheine"]'));
     await bis(`!!document.querySelector('.voucher-row')`, 'Gutscheine');
-    const groessen = await b.auswerten(
+    const sizes = await b.auswerten(
       `[...document.querySelectorAll('.voucher-row :is(.v-btn, .btn)')].filter(k => k.checkVisibility()).map(k => getComputedStyle(k).fontSize)`,
     );
-    assert.ok(groessen.length >= 4, `nur ${groessen.length} Knöpfe`);
-    assert.equal(new Set(groessen).size, 1, `Schriftgrössen ${groessen}`);
+    assert.ok(sizes.length >= 4, `nur ${sizes.length} Knöpfe`);
+    assert.equal(new Set(sizes).size, 1, `Schriftgrössen ${sizes}`);
   });
 
   await t.test('200 %: Achse kurz, Kopf weicht', async () => {

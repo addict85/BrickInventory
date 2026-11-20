@@ -13,7 +13,7 @@ const { valuesFromPdf, valuesFromText, parseNumber, pdfText } = _req('src/vouche
 const PDFDocument = require('pdfkit');
 
 /** Ein PDF mit den uebergebenen Zeilen bauen — je Zeile ein Textoperator. */
-function pdfMit(zeilen) {
+function pdfWith(zeilen) {
   return new Promise(fertig => {
     const doc = new PDFDocument({ compress: true });
     const stuecke = [];
@@ -27,7 +27,7 @@ function pdfMit(zeilen) {
 
 test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async t => {
   await t.test('ein Gutschein in der Form von Marcos Beispiel', async () => {
-    const buf = await pdfMit([
+    const buf = await pdfWith([
       'Bauen und spielen!',
       'Ihre LEGO-Geschenkkarte im Wert von 250 CHF:',
       '5045076374450019999',
@@ -48,7 +48,7 @@ test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async t => 
     // Die Gegenprobe zeigte, dass er das nicht tat: Die Grenze von 13 auf 3
     // herunterzusetzen liess ihn gruen — er bestand allein wegen des
     // PIN-Ausschlusses, also aus einem anderen Grund als behauptet.
-    const buf = await pdfMit([
+    const buf = await pdfWith([
       'LEGO Store, Postfach 8005 Zuerich',
       'Ausgestellt 2025, Filiale 4711',
       'Ihre LEGO-Geschenkkarte im Wert von 50 EUR:',
@@ -62,7 +62,7 @@ test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async t => 
     // Gutschein ist schlimmer als ein nicht ausgelesener, weil niemand ihn
     // nachprueft — die Oberflaeche faellt dann auf die manuelle Eingabe
     // zurueck.
-    const buf = await pdfMit(['Rechnung Nr. 12', 'Vielen Dank fuer Ihren Einkauf.']);
+    const buf = await pdfWith(['Rechnung Nr. 12', 'Vielen Dank fuer Ihren Einkauf.']);
     const w = valuesFromPdf(buf);
     assert.deepEqual(w, { number: null, pin: null, amount: null, currency: null });
   });
@@ -144,7 +144,7 @@ test('Gutschein-PDF: der Textauszug trennt die Operatoren', async () => {
   // Die Kartennummer steht im Beispiel ALLEIN in einem Textoperator. Wuerde
   // alles zu einem Fliesstext verklebt, grenzte sie an den Doppelpunkt davor
   // und an „PIN" dahinter.
-  const buf = await pdfMit(['Erste Zeile', 'Zweite Zeile']);
+  const buf = await pdfWith(['Erste Zeile', 'Zweite Zeile']);
   const text = pdfText(buf);
   assert.match(text, /Erste Zeile/);
   assert.match(text, /Zweite Zeile/);

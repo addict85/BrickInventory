@@ -4,10 +4,10 @@
  * dem ersten eigenen Passwortwechsel verschwindet die Datei.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in legeStartVerwalterAn() (src/konto/startVerwalter.ts) zusätzlich das Passwort per
+ *   A  in putStartAdminAn() (src/konto/startVerwalter.ts) zusätzlich das Passwort per
  *      console.log ausgegeben → rot: „das Log nennt den Pfad, nicht das Passwort“
- *   B  in schreibeStartpasswort() `mode: 0o644` → rot: „nur der Dienst kann sie lesen“
- *   C  in aendereEigenesPasswort() (src/konto/konten.ts) startpasswortErledigt()
+ *   B  in writeStartpasswort() `mode: 0o644` → rot: „nur der Dienst kann sie lesen“
+ *   C  in aendereEigenesPasswort() (src/konto/konten.ts) startpasswortDone()
  *      gestrichen → rot: „der erste Passwortwechsel löscht die Datei“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (das Schema wird neu angelegt).
@@ -23,9 +23,9 @@ delete process.env.ADMIN_PASSWORD;
 const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'startpasswort-'));
 process.env.APP_ROOT = wurzel;
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = testDaten();
+const db = testData();
 const { keineDb } = require('./helpers/db');
 
 test('Startpasswort in einer Datei statt im Log', async t => {
@@ -41,13 +41,13 @@ test('Startpasswort in einer Datei statt im Log', async t => {
   });
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
-  const ausgabe = [];
+  const output = [];
   const echt = { log: console.log, warn: console.warn, schreib: process.stdout.write };
   console.log = console.warn = (...a) => {
-    ausgabe.push(a.join(' '));
+    output.push(a.join(' '));
   };
   process.stdout.write = s => {
-    ausgabe.push(String(s));
+    output.push(String(s));
     return true;
   };
   try {
@@ -64,14 +64,14 @@ test('Startpasswort in einer Datei statt im Log', async t => {
 
   await t.test('die Datei trägt das Passwort des Kontos', async () => {
     assert.equal(name, 'admin');
-    assert.ok(await _req('src/konto/passwortHash.js').passwortPasst(passwort, admin.password_hash));
+    assert.ok(await _req('src/konto/passwortHash.js').passwordFits(passwort, admin.password_hash));
     assert.equal(admin.must_change_password, true);
   });
   await t.test('nur der Dienst kann sie lesen', () => {
     assert.equal(fs.statSync(datei).mode & 0o777, 0o600);
   });
   await t.test('das Log nennt den Pfad, nicht das Passwort', () => {
-    const log = ausgabe.join('\n');
+    const log = output.join('\n');
     assert.ok(log.includes(datei), log);
     assert.ok(!log.includes(passwort), 'Passwort im Log');
   });

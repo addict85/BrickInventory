@@ -22,7 +22,7 @@ function mailAttrappe() {
 }
 
 /** Trägt den Mailserver ein; zurück kommt das Aufräumen auf den Stand davor. */
-async function mailserverEintragen(db) {
+async function enterMailServer(db) {
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
   for (const [k, v] of [
     ['smtp_host', '192.0.2.25' /* eine Adresse: Ein Name müsste auflösen */],
@@ -38,4 +38,4 @@ async function mailserverEintragen(db) {
   };
 }
 
-module.exports = { mailAttrappe, mailserverEintragen };
+module.exports = { mailAttrappe, enterMailServer };

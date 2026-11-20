@@ -9,14 +9,14 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 const SN = '10326-1';
 const FEHLER = { $status: 500, success: false, code: 'interner_fehler', error: 'Datenbank gestört' };
 const meldungen = d => [...d.querySelectorAll('#toasts .toast')].map(t => t.textContent);
 
 test('Kaufpreis-Dialog: ein Lesefehler ist eine Meldung, keine leere Liste', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     [`/v1/sets/${SN}`]: {
       success: true,
       set: { set_number: SN, name: 'Museum', quantity: 5, conditions: ['N'], instructions: [] },
@@ -38,8 +38,8 @@ test('Kaufpreis-Dialog: ein Lesefehler ist eine Meldung, keine leere Liste', asy
   }
 });
 
-async function merkeAusKatalog(antworten, schwelle) {
-  const o = await oeffneOberflaeche(antworten);
+async function rememberFromCatalog(antworten, schwelle) {
+  const o = await openUi(antworten);
   const modal = o.d.getElementById('cat-modal');
   modal.dataset.setNumber = SN;
   if (schwelle) o.d.getElementById('cat-m-alert-val').value = schwelle;
@@ -48,7 +48,7 @@ async function merkeAusKatalog(antworten, schwelle) {
 }
 
 test('Merken aus dem Katalog: ein abgelehntes Merken wird gemeldet', async () => {
-  const o = await merkeAusKatalog({ '/v1/wanted': FEHLER });
+  const o = await rememberFromCatalog({ '/v1/wanted': FEHLER });
   try {
     assert.ok(await warte(() => meldungen(o.d).some(m => /Datenbank gestört/.test(m)), 2000), 'keine Meldung');
   } finally {
@@ -57,7 +57,7 @@ test('Merken aus dem Katalog: ein abgelehntes Merken wird gemeldet', async () =>
 });
 
 test('Merken aus dem Katalog: … auch der Alarm', async () => {
-  const o = await merkeAusKatalog(
+  const o = await rememberFromCatalog(
     {
       '/v1/wanted': { success: true, war_neu: false },
       [`/v1/sets/${encodeURIComponent(SN)}/alert`]: { ...FEHLER, error: 'Alarm abgelehnt' },

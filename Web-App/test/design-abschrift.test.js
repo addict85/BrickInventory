@@ -5,18 +5,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { baueCss, QUELLE, ZIEL_CSS } = require('../scripts/generate-design-tokens.js');
+const { buildCss, QUELLE, TARGET_CSS } = require('../scripts/generate-design-tokens.js');
 
-// BAUM, nicht ROOT: In jeder anderen Testdatei dieses Ordners heisst `ROOT`
+// TREE, nicht ROOT: In jeder anderen Testdatei dieses Ordners heisst `ROOT`
 // die Wurzel der WEB-APP. eigenbruecken.test.js prueft darauf gestuetzt jeden
-// `path.join(BAUM, ...)` gegen den Web-Baum — und meldete diese Datei prompt
+// `path.join(TREE, ...)` gegen den Web-Baum — und meldete diese Datei prompt
 // als kaputt, weil hier die Wurzel des REPOSITORYS gemeint ist. Derselbe Name
 // fuer zwei verschiedene Dinge; der Name wechselt, nicht die Regel.
-const BAUM = path.join(__dirname, '..', '..');
-const CSS_BASIS = path.join(BAUM, 'Web-App', 'public', 'styles.css');
-const CSS_BRICK = path.join(BAUM, 'Web-App', 'public', 'themes', 'brick.css');
-const CSS_MOBIL = path.join(BAUM, 'Web-App', 'public', 'mobile.css');
-const INDEX = path.join(BAUM, 'Web-App', 'public', 'index.html');
+const TREE = path.join(__dirname, '..', '..');
+const CSS_BASIS = path.join(TREE, 'Web-App', 'public', 'styles.css');
+const CSS_BRICK = path.join(TREE, 'Web-App', 'public', 'themes', 'brick.css');
+const CSS_MOBILE = path.join(TREE, 'Web-App', 'public', 'mobile.css');
+const INDEX = path.join(TREE, 'Web-App', 'public', 'index.html');
 const DATEN = JSON.parse(fs.readFileSync(QUELLE, 'utf8'));
 
 // Die Kotlin-Erzeugnisse (DesignTokens.kt, DunkelTokens.kt) prüft der Android-Lauf mit
@@ -24,8 +24,8 @@ const DATEN = JSON.parse(fs.readFileSync(QUELLE, 'utf8'));
 test('das erzeugte Stylesheet stimmt mit shared/design-tokens.json ueberein', () => {
   // Gegenprobe (30.10., gemessen): dort "txt" von Hand auf #e6e9ee → rot.
   assert.equal(
-    fs.readFileSync(ZIEL_CSS, 'utf8'),
-    baueCss(DATEN),
+    fs.readFileSync(TARGET_CSS, 'utf8'),
+    buildCss(DATEN),
     'public/tokens.css weicht von shared/design-tokens.json ab. Entweder wurde die Datei von Hand ' +
       'geaendert — dann gehoert der Wert in die JSON —, oder es fehlt ein Lauf von "npm run design:tokens".',
   );
@@ -37,7 +37,7 @@ test('kein handgeschriebenes Stylesheet definiert einen erzeugten Token neu', ()
   assert.ok(erzeugt.size >= 10, `Nur ${erzeugt.size} erzeugte Tokens — greift die Suche noch?`);
 
   const doppelt = [];
-  for (const datei of [CSS_BASIS, CSS_BRICK, CSS_MOBIL]) {
+  for (const datei of [CSS_BASIS, CSS_BRICK, CSS_MOBILE]) {
     // Die dunklen Varianten (seit 29.10.) sind eine zweite Belegung derselben
     // Namen; gelesen wird hier die helle.
     const src = fs
@@ -62,9 +62,9 @@ test('index.html laedt die erzeugten Tokens', () => {
   // Ohne diese Zeile liefert jedes var(--b600) im Web nichts — und zwar still:
   // Die Seite baut sich auf, nur farblos.
   const html = fs.readFileSync(INDEX, 'utf8');
-  const stelle = html.indexOf('/tokens.css');
+  const place = html.indexOf('/tokens.css');
   assert.ok(
-    stelle > 0,
+    place > 0,
     'index.html laedt /tokens.css nicht — im Web fehlt dann ' +
       'jede gemeinsame Farbe, ohne dass irgendwo ein Fehler erscheint.',
   );
@@ -72,7 +72,7 @@ test('index.html laedt die erzeugten Tokens', () => {
   // darauf auf. (Fuer die Aufloesung von var() waere die Reihenfolge egal —
   // fuer den Menschen, der die Datei liest, nicht.)
   assert.ok(
-    stelle < html.indexOf('/styles.css'),
+    place < html.indexOf('/styles.css'),
     'tokens.css wird nach styles.css geladen — die Grundlage gehoert nach oben.',
   );
 });
@@ -90,11 +90,11 @@ test('ohne Android-App schreibt der Erzeuger nur das Web-CSS', () => {
     fs.mkdirSync(path.join(tmp, 'Web-App', 'scripts'), { recursive: true });
     fs.mkdirSync(path.join(tmp, 'Web-App', 'public'));
     fs.copyFileSync(QUELLE, path.join(tmp, 'shared', 'design-tokens.json'));
-    const skript = path.join(tmp, 'Web-App', 'scripts', 'generate-design-tokens.js');
-    fs.copyFileSync(path.join(__dirname, '..', 'scripts', 'generate-design-tokens.js'), skript);
-    const r = spawnSync(process.execPath, [skript], { encoding: 'utf8' });
+    const script = path.join(tmp, 'Web-App', 'scripts', 'generate-design-tokens.js');
+    fs.copyFileSync(path.join(__dirname, '..', 'scripts', 'generate-design-tokens.js'), script);
+    const r = spawnSync(process.execPath, [script], { encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
-    assert.equal(fs.readFileSync(path.join(tmp, 'Web-App', 'public', 'tokens.css'), 'utf8'), baueCss(DATEN));
+    assert.equal(fs.readFileSync(path.join(tmp, 'Web-App', 'public', 'tokens.css'), 'utf8'), buildCss(DATEN));
     assert.deepEqual(fs.readdirSync(tmp).sort(), ['Web-App', 'shared'], 'der Erzeuger legt den Android-Ordner an');
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });

@@ -7,7 +7,7 @@
  *   A  drosselAdresse() gibt die Adresse unverändert zurück → rot: „ipThrottle:
  *      der sechste Versuch aus demselben /64 wird abgewiesen", „Anmeldung:
  *      Spraying aus einem /64 trifft die Grenze je Adresse" und „Schlüssel …"
- *   B  in zaehleAnfrage drosselAdresse() weggelassen → rot nur „ipThrottle: …"
+ *   B  in countRequest drosselAdresse() weggelassen → rot nur „ipThrottle: …"
  *   C  die ::ffff:-Erkennung entfernt → rot: „IPv4 in IPv6 zählt wie IPv4"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -17,12 +17,12 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const ipThrottle = (...a) =>
-  _req('src/konto/http/anmeldung.js').ipThrottle(require('./helpers/sources').testDienste().konto, ...a);
+  _req('src/konto/http/anmeldung.js').ipThrottle(require('./helpers/sources').testServices().konto, ...a);
 const L = _req('src/konto/loginLimiter.js');
 const { drosselAdresse } = _req('src/infra/drosselAdresse.js');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
@@ -41,9 +41,9 @@ async function dbDa(t) {
 
 test('ipThrottle: der sechste Versuch aus demselben /64 wird abgewiesen', async t => {
   if (!(await dbDa(t))) return;
-  const raeumen = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'v6-probe|%'`);
-  await raeumen();
-  t.after(raeumen);
+  const clean = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'v6-probe|%'`);
+  await clean();
+  t.after(clean);
   const app = express();
   app.set('trust proxy', true); // X-Forwarded-For setzt req.ip
   app.post('/probe', ipThrottle('v6-probe', 5, 60 * 60 * 1000), (_req, res) => res.json({ ok: true }));
@@ -64,17 +64,17 @@ test('ipThrottle: der sechste Versuch aus demselben /64 wird abgewiesen', async 
 
 test('Anmeldung: Spraying aus einem /64 trifft die Grenze je Adresse', async t => {
   if (!(await dbDa(t))) return;
-  const raeumen = () =>
+  const clean = () =>
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE '%2001:db8:5:%' OR key LIKE '%v6\\_spray\\_%'`);
-  await raeumen();
-  t.after(raeumen);
-  for (let i = 0; i < L.MAX_JE_ADRESSE; i++) {
+  await clean();
+  t.after(clean);
+  for (let i = 0; i < L.MAX_JE_ADDRESS; i++) {
     const ip = `2001:db8:5:0:${(i + 1).toString(16)}::1`;
     const name = `v6_spray_${i}`;
-    assert.equal(await L.anmeldungErlaubt(ip, name), null, `Versuch ${i + 1} darf noch`);
-    await L.anmeldungGescheitert(ip, name);
+    assert.equal(await L.loginAllowed(ip, name), null, `Versuch ${i + 1} darf noch`);
+    await L.loginFailed(ip, name);
   }
-  const sperre = await L.anmeldungErlaubt('2001:db8:5:0:ffff::9', 'v6_spray_neu');
+  const sperre = await L.loginAllowed('2001:db8:5:0:ffff::9', 'v6_spray_neu');
   assert.ok(sperre, 'Anmeldung: Spraying aus einem /64 trifft die Grenze je Adresse');
   assert.equal(sperre.code, 'zu_viele_fehlversuche');
 });

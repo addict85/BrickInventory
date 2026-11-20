@@ -6,11 +6,11 @@
  * daraus macht.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  `if (letzterAbrufWarExtern())` vor der Takt-Pause entfernt → rot: „nach
+ *   A  `if (lastFetchWarExtern())` vor der Takt-Pause entfernt → rot: „nach
  *      einem versorgten Set waiting niemand“
  *   B  in der Cloudflare-Leiter `level + 1` durch `level` ersetzt → rot: „die
  *      Cloudflare-Leiter steigt und endet am nächsten Tag“
- *   C  in mitSperre() die Prüfung `!rows[0]?.ok` durch `false` ersetzt → rot:
+ *   C  in withLock() die Prüfung `!rows[0]?.ok` durch `false` ersetzt → rot:
  *      „hält ein anderer Prozess die Sperre, wird nichts abgerufen“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -22,14 +22,14 @@ const Module = require('node:module');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const abruf = { extern: false, error_message: null, aufrufe: 0 };
-const echtesRequire = Module.prototype.require;
+const realRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
-  const m = echtesRequire.call(this, name, ...rest);
+  const m = realRequire.call(this, name, ...rest);
   if (!/[/\\]instructions(\.js)?$/.test(name)) return m;
   return {
     ...m,
     anzahlAnleitungen: async () => 0,
-    letzterAbrufWarExtern: () => abruf.extern,
+    lastFetchWarExtern: () => abruf.extern,
     setAnleitungenLaden: async () => {
       abruf.aufrufe++;
       if (abruf.error_message) throw abruf.error_message;
@@ -38,10 +38,10 @@ Module.prototype.require = function (name, ...rest) {
   };
 };
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
   try {
@@ -53,17 +53,17 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
   const Q = _req('src/katalog/anleitungLaden.js');
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testBereich('auftraege').auftraege,
+    ...require('./helpers/sources').testArea('auftraege').auftraege,
   });
-  const { AuftragVerschieben } = _req('jobs/auftragsWorker.js');
+  const { JobMove } = _req('jobs/auftragsWorker.js');
   const pause = () => A.liesPause('anleitung');
-  const inSek = async () => {
+  const inSec = async () => {
     const p = await pause();
     return p ? Math.round((new Date(p.until_at).getTime() - Date.now()) / 1000) : null;
   };
   const zuruecksetzen = () => db.run(`DELETE FROM job_pauses WHERE type = 'anleitung'`);
   t.after(async () => {
-    Module.prototype.require = echtesRequire;
+    Module.prototype.require = realRequire;
     await zuruecksetzen();
     await db.run(`DELETE FROM jobs WHERE type = 'anleitung'`);
     await db.pool.end().catch(() => {});
@@ -77,7 +77,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     assert.equal(await pause(), null, 'ohne fremden Abruf keine Pause');
     abruf.extern = true;
     await Q.anleitungLaden({ set_number: '10002-1' });
-    const s = await inSek();
+    const s = await inSec();
     assert.ok(s >= 13 && s <= 15, `nach einem echten Abruf ${s} s Abstand statt 15`);
   });
 
@@ -86,15 +86,15 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     abruf.error_message = new Error('Cloudflare error 1015: rate limited');
     const gesehen = [];
     for (let i = 0; i < 5; i++) {
-      await assert.rejects(Q.anleitungLaden({ set_number: '10003-1' }), e => e instanceof AuftragVerschieben);
-      gesehen.push(await inSek());
+      await assert.rejects(Q.anleitungLaden({ set_number: '10003-1' }), e => e instanceof JobMove);
+      gesehen.push(await inSec());
       await db.run(`UPDATE job_pauses SET until_at = NOW() WHERE type = 'anleitung'`);
     }
     assert.deepEqual(
       gesehen.slice(0, 4).map(s => Math.round(s / 60)),
       [5, 10, 15, 20],
     );
-    const morgen = Q.naechsterTag(new Date());
+    const morgen = Q.nextTag(new Date());
     assert.ok(Math.abs(gesehen[4] - (morgen - Date.now()) / 1000) < 5, 'nach der vierten Sperre until_at morgen');
     abruf.error_message = null;
     abruf.extern = false;
@@ -109,7 +109,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     await fremd.query('SELECT pg_advisory_lock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);
     const vorher = abruf.aufrufe;
     try {
-      await assert.rejects(Q.anleitungLaden({ set_number: '10004-1' }), e => e instanceof AuftragVerschieben);
+      await assert.rejects(Q.anleitungLaden({ set_number: '10004-1' }), e => e instanceof JobMove);
       assert.equal(abruf.aufrufe, vorher, 'trotz fremder Sperre abgerufen');
     } finally {
       await fremd.query('SELECT pg_advisory_unlock($1, 0)', [LOCKS.ANLEITUNGS_QUEUE]);
@@ -124,7 +124,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     const E = _req('src/katalog/anleitungsAuftrag.js');
     await E.anleitungEinreihen('10005');
     await E.anleitungEinreihen('10005-1');
-    const z = await require('./helpers/sources').testDienste().auftraege.zaehleArt('anleitung');
+    const z = await require('./helpers/sources').testServices().auftraege.countKind('anleitung');
     assert.equal(z.offen + z.laeuft, 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
   });
 });

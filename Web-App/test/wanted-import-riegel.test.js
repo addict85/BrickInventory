@@ -22,13 +22,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 const BERICHT = { success: true, vorschau: true, gelesen: 1, posten: [], angelegt: 0, aufgestockt: 0, fehler: 0 };
 
 /** Öffnet die Oberfläche; Anfragen an den XML-Import beantwortet `antwort(nr)` (Promise einer Response). */
-async function mitImport(antwort) {
-  const o = await oeffneOberflaeche();
+async function withImport(antwort) {
+  const o = await openUi();
   const importe = [];
   const davor = o.w.fetch;
   o.w.fetch = (url, opt) => {
@@ -36,27 +36,27 @@ async function mitImport(antwort) {
     importe.push(String(url));
     return antwort(importe.length);
   };
-  const waehle = name => {
+  const choose = name => {
     const feld = o.d.getElementById('wanted-xml-part');
     Object.defineProperty(feld, 'files', { configurable: true, value: [new o.w.File(['<INVENTORY/>'], name)] });
     feld.dispatchEvent(new o.w.Event('change', { bubbles: true }));
   };
   const knopf = id => o.d.getElementById(id);
-  return { ...o, importe, waehle, knopf };
+  return { ...o, importe, choose, knopf };
 }
 
 const alsJson = d => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => d });
 
 test('ein zweiter Klick startet keinen zweiten Lauf, eine neue Datei wird abgewiesen', async () => {
   let freigeben;
-  const { w, d, importe, waehle, knopf } = await mitImport(
+  const { w, d, importe, choose, knopf } = await withImport(
     () =>
       new Promise(r => {
         freigeben = () => r(alsJson(BERICHT));
       }),
   );
   try {
-    waehle('liste.xml');
+    choose('liste.xml');
     assert.ok(await warte(() => importe.length === 1), 'Die Datei startet keinen Lauf');
     assert.deepEqual(
       [knopf('wanted-xml-neu').disabled, knopf('wanted-xml-schreiben').disabled],
@@ -68,7 +68,7 @@ test('ein zweiter Klick startet keinen zweiten Lauf, eine neue Datei wird abgewi
     knopf('wanted-xml-neu').click();
     knopf('wanted-xml-schreiben').disabled = false;
     knopf('wanted-xml-schreiben').click();
-    waehle('andere.xml');
+    choose('andere.xml');
     assert.ok(await warte(() => d.querySelector('#toasts .toast')), 'Keine Meldung zur abgewiesenen Datei');
     assert.equal(importe.length, 1, 'Ein zweiter Import addierte die Mengen auf');
     // Zurück auf gesperrt, wie es updateButtons() hielte: Die Freigabe muss die Vorschau bringen.
@@ -94,12 +94,12 @@ test('ein zweiter Klick startet keinen zweiten Lauf, eine neue Datei wird abgewi
 });
 
 test('der Riegel geht auch nach einem Fehler wieder auf', async () => {
-  const { w, importe, waehle, knopf } = await mitImport(async nr => {
+  const { w, importe, choose, knopf } = await withImport(async nr => {
     if (nr === 1) throw new Error('Netz weg');
     return alsJson(BERICHT);
   });
   try {
-    waehle('liste.xml');
+    choose('liste.xml');
     assert.ok(await warte(() => importe.length === 1));
     assert.ok(await warte(() => !knopf('wanted-xml-neu').disabled), 'Nach dem Fehler bleibt der Dialog gesperrt');
     knopf('wanted-xml-neu').click();
@@ -115,7 +115,7 @@ test('der Fortschritt kommt stückweise an und füllt den Balken', async () => {
     `ue,"gelesen":7,"posten":[]}\n`,
   ];
   let weiter;
-  const { w, d, importe, waehle } = await mitImport(async () => ({
+  const { w, d, importe, choose } = await withImport(async () => ({
     ok: true,
     status: 200,
     headers: { get: () => 'application/x-ndjson' },
@@ -142,7 +142,7 @@ test('der Fortschritt kommt stückweise an und füllt den Balken', async () => {
       [wrap.getAttribute('role'), wrap.getAttribute('aria-valuemin'), wrap.getAttribute('aria-valuemax')],
       ['progressbar', '0', '100'],
     );
-    waehle('liste.xml');
+    choose('liste.xml');
     assert.ok(await warte(() => typeof weiter === 'function'));
     assert.match(importe[0], /[?&]strom=1\b/, 'Ohne strom=1 antwortet der Server in einem Stück');
     assert.equal(box.style.display, '');

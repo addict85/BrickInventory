@@ -13,16 +13,16 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet, erfasse } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { holdsSet, record } = require('./helpers/bestand');
 
 test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const HAUPT = `bh-${process.pid}`,
+  const MAIN = `bh-${process.pid}`,
     SUB = `bs-${process.pid}`;
   const SN = `83${(process.pid % 900) + 100}-1`;
 
@@ -31,12 +31,12 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
       await db.run(`DELETE FROM ${tab} WHERE set_number=$1`, [SN]).catch(() => {});
   };
 
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
-  const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [MAIN, SUB]);
+  const mainId = (await db.get(`SELECT id FROM users WHERE username=$1`, [MAIN])).id;
   const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
-    hauptId,
+    mainId,
     subId,
   ]);
   await aufraeumen();
@@ -61,21 +61,21 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
   }
 
   // Hauptkonto: Kaufpreis gelöscht → Menge 0, keine Erfassung mehr.
-  await haeltSet(db, hauptId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, mainId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
   // Unterkonto: ein GEBRAUCHTES Exemplar mit Kaufpreis.
-  await haeltSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,3.94,'U',1)`,
     [subId, SN],
   );
 
-  const { preisverlaufSet } = _req('src/finanzen/priceHistory.js');
-  const { setsLesen } = require('./helpers/sources').handlerModul(_req);
+  const { priceHistorySet } = _req('src/finanzen/priceHistory.js');
+  const { setsLesen } = require('./helpers/sources').handlerModule(_req);
 
   try {
     await t.test('das Diagramm zeigt nur die Zustände im Bestand', async () => {
-      const ph = await preisverlaufSet([hauptId, subId], SN, 'CHF');
+      const ph = await priceHistorySet([mainId, subId], SN, 'CHF');
       assert.deepEqual(Object.keys(ph.by_condition), ['U'], 'Vorbedingung: nur „gebraucht" ist erfasst');
       assert.deepEqual(
         ph.chart.values.map(v => v.name),
@@ -90,7 +90,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
       // überzähligen Reihe standen dort die Neupreise (3.94 / 7.99 / 7.99),
       // während die Zeile darüber CHF 3.94 auswies — zwei Antworten auf
       // dieselbe Frage, untereinander.
-      const ph = await preisverlaufSet([hauptId, subId], SN, 'CHF');
+      const ph = await priceHistorySet([mainId, subId], SN, 'CHF');
       const werte = ph.chart.values.flatMap(v => v.values.map(p => p.y)).filter(y => y > 0);
       assert.ok(werte.length, 'keine Diagrammwerte');
       assert.equal(Math.max(...werte), 3.94, `Der Höchstwert stammt aus dem falschen Zustand: ${Math.max(...werte)}`);
@@ -102,7 +102,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
       // Marktwert. Würde die Regel stur auf `by_condition` abstellen, wäre das
       // Diagramm hier leer — schlimmer als eine Reihe zu viel.
       await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
-      const ph = await preisverlaufSet([hauptId, subId], SN, 'CHF');
+      const ph = await priceHistorySet([mainId, subId], SN, 'CHF');
       assert.deepEqual(Object.keys(ph.by_condition), []);
       assert.equal(
         ph.chart.values.length,
@@ -117,7 +117,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
     });
 
     await t.test('ein Konto mit Menge 0 steht nicht mehr als Besitzer da', async () => {
-      const r = await setsLesen([hauptId, subId], {});
+      const r = await setsLesen([mainId, subId], {});
       const zeile = r.sets.find(s => s.set_number === SN);
       assert.ok(zeile, 'das Set fehlt in der Galerie');
       assert.equal(zeile.quantity, 1, 'die Menge des Haushalts ist die Summe');
@@ -134,15 +134,15 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
       // Ohne diese Gegenrichtung wäre der Test auch grün, wenn das Label ganz
       // verschwände.
       // „Wieder ein Exemplar halten" heisst: eine Erfassung anlegen.
-      await erfasse(db, hauptId, SN, 2);
-      const r = await setsLesen([hauptId, subId], {});
+      await record(db, mainId, SN, 2);
+      const r = await setsLesen([mainId, subId], {});
       const namen = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();
-      assert.deepEqual(namen, [HAUPT, SUB].sort(), 'beide Konten halten jetzt Exemplare');
+      assert.deepEqual(namen, [MAIN, SUB].sort(), 'beide Konten halten jetzt Exemplare');
     });
   } finally {
     await aufraeumen();
-    await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [hauptId]).catch(() => {});
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [mainId]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await db.pool.end().catch(() => {});
   }
 });

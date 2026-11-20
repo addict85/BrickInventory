@@ -5,7 +5,7 @@
  * angewandt) wird nachgetragen.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in pruefeAngewandte() den Vergleich `r.pruefsumme !== ist` entfernt →
+ *   A  in checkApplied() den Vergleich `r.pruefsumme !== ist` entfernt →
  *      rot: „eine geänderte Migration hält den Start an“ (kein Fehler)
  *   B  das Nachtragen fehlender Summen entfernt → rot: „eine fehlende Summe
  *      wird nachgetragen“
@@ -17,10 +17,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const { runMigrations } = _req('db/migrate.js');
 
 const PROBE = '0077-wechselkurse.sql';

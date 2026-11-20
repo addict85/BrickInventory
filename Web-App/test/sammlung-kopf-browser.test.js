@@ -21,24 +21,24 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterHaushalt } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternHousehold } = require('./helpers/bestand');
 
 /** Zeichnet jedes Bild die Lage der Kopfteile auf, sobald das Startgerüst weg ist. */
-const AUFZEICHNEN = `(() => {
+const RECORD = `(() => {
   window.__kopf = [];
   const teile = ['.brotkrume', 'h1', '.ptitle-unter', '.sammlung-wahl', '.brick-stats', '.erfassen-leiste', '.suchfeld'];
   const bild = () => {
     const tab = document.querySelector('.tab.active');
     const app = document.getElementById('app');
     if (tab && app && app.style.display === 'block' && !document.getElementById('startgeruest')) {
-      const lage = teile.map(s => {
+      const situation = teile.map(s => {
         const e = tab.querySelector(s);
         if (!e || !e.getClientRects().length) return s + ': –';
         const b = e.getBoundingClientRect();
         return s + ': ' + [b.x, b.y, b.width, b.height].map(Math.round).join('/');
       });
-      const z = lage.join(' | ');
+      const z = situation.join(' | ');
       if (window.__kopf.at(-1) !== z) window.__kopf.push(z);
     }
     requestAnimationFrame(bild);
@@ -47,19 +47,19 @@ const AUFZEICHNEN = `(() => {
 })()`;
 
 test('Kopf der Sammlung: gleich und ohne Sprung', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `kopf_${process.pid}`,
     bestand: async (db, uid) => {
-      await musterHaushalt(db, uid);
+      await patternHousehold(db, uid);
       await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal')`, [uid]);
     },
-    abfangen: [
-      { muster: '*household-members*', enthaelt: '/household-members', verzoegerung: 600 },
-      { muster: '*settings/raw*', enthaelt: '/settings/raw', verzoegerung: 300 },
-      { muster: '*/v1/stats*', enthaelt: '/v1/stats', verzoegerung: 900 },
+    intercept: [
+      { muster: '*household-members*', contains: '/household-members', delay: 600 },
+      { muster: '*settings/raw*', contains: '/settings/raw', delay: 300 },
+      { muster: '*/v1/stats*', contains: '/v1/stats', delay: 900 },
       // Liste und Teilefilter kommen erst nach dem Gerüst: Dann füllen sich die Auswahlfelder sichtbar.
-      { muster: '*/v1/sets?*', enthaelt: '/v1/sets?', verzoegerung: 1200 },
-      { muster: '*/v1/parts/colors*', enthaelt: '/v1/parts/colors', verzoegerung: 1200 },
+      { muster: '*/v1/sets?*', contains: '/v1/sets?', delay: 1200 },
+      { muster: '*/v1/parts/colors*', contains: '/v1/parts/colors', delay: 1200 },
     ],
   });
   if (app.grund) {
@@ -68,10 +68,10 @@ test('Kopf der Sammlung: gleich und ohne Sprung', { concurrency: 1, timeout: 300
   }
   const { b, bis, ruhig } = app;
   await ruhig(15_000);
-  await b.tab('Page.addScriptToEvaluateOnNewDocument', { source: AUFZEICHNEN });
+  await b.tab('Page.addScriptToEvaluateOnNewDocument', { source: RECORD });
 
   /** @type {Record<string, string>} */
-  const endlage = {};
+  const endState = {};
   for (const [name, hash, fertig] of [
     [
       'Sets',
@@ -90,7 +90,7 @@ test('Kopf der Sammlung: gleich und ohne Sprung', { concurrency: 1, timeout: 300
       assert.ok(bilder.length >= 1, 'kein Bild aufgezeichnet');
       assert.deepEqual(bilder, [bilder.at(-1)], 'der Kopf veränderte sich nach dem ersten Bild');
       assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').hidden`), false, 'Band fehlt');
-      endlage[name] = bilder.at(-1);
+      endState[name] = bilder.at(-1);
     });
   }
 
@@ -101,7 +101,7 @@ test('Kopf der Sammlung: gleich und ohne Sprung', { concurrency: 1, timeout: 300
         .split(' | ')
         .slice(0, 6)
         .map(s => s.replace(/^(\.brotkrume|\.ptitle-unter|h1): (\d+)\/(\d+)\/\d+/, '$1: $2/$3'));
-    assert.deepEqual(kopf(endlage.Teile), kopf(endlage.Sets));
-    assert.deepEqual(kopf(endlage.Minifiguren), kopf(endlage.Sets));
+    assert.deepEqual(kopf(endState.Teile), kopf(endState.Sets));
+    assert.deepEqual(kopf(endState.Minifiguren), kopf(endState.Sets));
   });
 });

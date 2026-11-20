@@ -29,7 +29,7 @@ const net = require('node:net');
 const https = require('node:https');
 const tls = require('node:tls');
 const { spawn, spawnSync } = require('node:child_process');
-const { portVon } = require('./helpers/server');
+const { portOf } = require('./helpers/server');
 
 const ROOT = path.join(__dirname, '..');
 const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status === 0 ? 'caddy' : null);
@@ -44,11 +44,11 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
   let jetzt = 0,
     hoechst = 0,
     halten = 300;
-  const laengen = [];
+  const lengths = [];
   const app = http.createServer((req, res) => {
     jetzt++;
     hoechst = Math.max(hoechst, jetzt);
-    laengen.push(req.headers['content-length']);
+    lengths.push(req.headers['content-length']);
     req.resume();
     req.on('end', () =>
       setTimeout(() => {
@@ -68,7 +68,7 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
   });
   // Ports vom System statt aus der pid: Die lagen im Bereich, aus dem auch listen(0) der
   // parallelen Testdateien schöpft. Ein belegter Port bleibt möglich; dann ein neuer Versuch.
-  const freierPort = () =>
+  const freePort = () =>
     new Promise(r => {
       const s = net.createServer().listen(0, '127.0.0.1', () => {
         const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
@@ -102,13 +102,13 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
     });
   let bereit = null;
   for (let versuch = 1; bereit !== 200; versuch++) {
-    port = await freierPort();
-    const umleitung = await freierPort();
+    port = await freePort();
+    const umleitung = await freePort();
     const datei = fs
       .readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
       .replace('https://{$BRICK_HOST} {', `https://{$BRICK_HOST}:${port} {`)
       .replace('http:// {', `http://:${umleitung} {`)
-      .replaceAll('app:3000', `127.0.0.1:${portVon(app)}`);
+      .replaceAll('app:3000', `127.0.0.1:${portOf(app)}`);
     assert.ok(datei.includes('import anmeldung'), 'der Block (anmeldung) ist nicht eingebunden');
     fs.writeFileSync(path.join(tmp, 'Caddyfile'), datei);
     fehler = '';
@@ -142,9 +142,9 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
   jetzt = 0;
   hoechst = 0;
   halten = 1500;
-  const anmeldungen = await Promise.all(Array.from({ length: 16 }, () => anfrage('POST', '/api/v1/auth/login')));
+  const logins = await Promise.all(Array.from({ length: 16 }, () => anfrage('POST', '/api/v1/auth/login')));
   halten = 300;
-  assert.deepEqual(anmeldungen, Array(16).fill(200), 'Anmeldungen gehen verloren');
+  assert.deepEqual(logins, Array(16).fill(200), 'Anmeldungen gehen verloren');
   assert.ok(hoechst > 8, `Caddy lässt die Anmeldungen ungebremst zur App (${hoechst} zugleich)`);
 
   assert.equal(
@@ -155,14 +155,14 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
 
   // Kopf sofort, vom Rumpf nur ein Teil, dann Stille: vier knapp angefangene
   // und vier, die genau bis zur Grenze von max_size gehen.
-  const langsam = (laenge, vorab) =>
+  const langsam = (laenge, upfront) =>
     new Promise(bereit => {
       const s = tls.connect(
         { host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false },
         () => {
           s.write(
             `POST /api/v1/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\nContent-Type: application/json\r\n` +
-              `Content-Length: ${laenge}\r\n\r\n${'x'.repeat(vorab)}`,
+              `Content-Length: ${laenge}\r\n\r\n${'x'.repeat(upfront)}`,
             bereit,
           );
         },
@@ -173,21 +173,21 @@ test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter'
   await Promise.all([...Array(4)].map(() => langsam(200, 1)).concat([...Array(4)].map(() => langsam(17_000, 16_000))));
   await new Promise(r => setTimeout(r, 500));
   assert.equal(await anfrage('POST', '/api/v1/auth/login'), 200, 'Vorbedingung: Caddy nimmt Anmeldungen an');
-  const langsame = laengen.filter(l => l === '200' || l === '17000');
-  assert.deepEqual(langsame, [], 'kein angefangener Rumpf erreicht die App');
+  const slow = lengths.filter(l => l === '200' || l === '17000');
+  assert.deepEqual(slow, [], 'kein angefangener Rumpf erreicht die App');
 
-  const kopfBeginn = Date.now();
-  const kopfZu = await new Promise(fertig => {
+  const headerStart = Date.now();
+  const headerTo = await new Promise(fertig => {
     const s = tls.connect({ host: '127.0.0.1', port, servername: 'nas.example.lan', rejectUnauthorized: false }, () =>
       s.write('POST /api/v1/auth/login HTTP/1.1\r\nHost: nas.example.lan\r\n'),
     );
     s.on('error', () => {});
-    s.once('close', () => fertig(Date.now() - kopfBeginn));
+    s.once('close', () => fertig(Date.now() - headerStart));
     offen.push(s);
     setTimeout(() => fertig(null), 15_000);
   });
   assert.ok(
-    kopfZu !== null && kopfZu < 13_000,
-    `Caddy schliesst eine Verbindung, deren Kopf stockt (nach ${kopfZu} ms)`,
+    headerTo !== null && headerTo < 13_000,
+    `Caddy schliesst eine Verbindung, deren Kopf stockt (nach ${headerTo} ms)`,
   );
 });

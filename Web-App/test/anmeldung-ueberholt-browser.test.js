@@ -10,19 +10,19 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
+const { startApp } = require('./helpers/app-browser');
 
 test('eine späte Startantwort „nicht angemeldet“ beendet die frische Anmeldung nicht', {
   timeout: 120_000,
 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `ueberholt_${process.pid}`,
-    abfangen: [
+    intercept: [
       {
         muster: '*/api/v1/auth/me*',
-        enthaelt: '/api/v1/auth/me',
+        contains: '/api/v1/auth/me',
         antwort: { success: true, loggedIn: false, user: null },
-        verzoegerung: 4000,
+        delay: 4000,
       },
     ],
   });
@@ -30,12 +30,12 @@ test('eine späte Startantwort „nicht angemeldet“ beendet die frische Anmeld
     t.skip(app.grund);
     return;
   }
-  // starteApp kehrt kurz nach der Anmeldung zurück; die Startantwort kommt
+  // startApp kehrt kurz nach der Anmeldung zurück; die Startantwort kommt
   // 4 s nach dem Laden der Seite. ruhig() wartet, bis sie da ist.
   await app.ruhig(15_000);
   const stand = await app.b.auswerten(`({
     app: getComputedStyle(document.getElementById('app')).display,
-    maske: getComputedStyle(document.getElementById('login-screen')).display })`);
+    mask: getComputedStyle(document.getElementById('login-screen')).display })`);
   assert.notEqual(stand.app, 'none', 'die App bleibt sichtbar');
-  assert.equal(stand.maske, 'none', 'die Anmeldemaske bleibt verborgen');
+  assert.equal(stand.mask, 'none', 'die Anmeldemaske bleibt verborgen');
 });

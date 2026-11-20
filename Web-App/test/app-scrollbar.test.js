@@ -15,32 +15,32 @@ const ROOT = path.join(__dirname, '..');
 /**
  * Den Scrollbalken-Code auswerten.
  */
-function scrollbalkenCode() {
+function scrollbarCode() {
   const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'rollbalken.js'), 'utf8');
   return roh.replace(/^import .*$/gm, '').replace(/^export\s+/gm, '');
 }
 
 /** Kleine Bühne mit vorgetäuschtem Layout — jsdom rechnet keines. */
-function buehne({ scrollHeight = 5000, innerHeight = 800 } = {}) {
+function stage({ scrollHeight = 5000, innerHeight = 800 } = {}) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     runScripts: 'outside-only',
     pretendToBeVisual: true,
   });
   const w = dom.window;
   w.eval('window.G = id => document.getElementById(id);');
-  Object.assign(w, require('./helpers/markup').markupHelfer());
+  Object.assign(w, require('./helpers/markup').markupHelper());
   w.eval(`
     Object.defineProperty(document.documentElement,'scrollHeight',{value:${scrollHeight},configurable:true});
     Object.defineProperty(window,'innerHeight',{value:${innerHeight},configurable:true});
     window.ResizeObserver = class { constructor(cb){this.cb=cb;} observe(){} disconnect(){} };
   `);
-  w.eval(scrollbalkenCode());
+  w.eval(scrollbarCode());
   return w;
 }
 
 test('der Balken wird erzeugt und erscheint bei rollbarer Seite', () => {
-  const w = buehne();
-  w.eval('initScrollbalken();');
+  const w = stage();
+  w.eval('initScrollbar();');
   const bar = w.document.getElementById('app-scrollbar');
   assert.ok(
     bar,
@@ -56,16 +56,16 @@ test('ohne Rollbereich verschwindet er wieder', () => {
   // Gegenrichtung: Ein Balken über einer Seite, die ganz ins Fenster passt,
   // wäre nur Zierrat — und ohne diese Prüfung wäre der Test auch grün, wenn
   // die Sichtbarkeit fest verdrahtet wäre.
-  const w = buehne({ scrollHeight: 700, innerHeight: 800 });
-  w.eval('initScrollbalken();');
+  const w = stage({ scrollHeight: 700, innerHeight: 800 });
+  w.eval('initScrollbar();');
   assert.equal(w.document.getElementById('app-scrollbar').style.display, 'none');
 });
 
 test('das Neuzeichnen ist gedrosselt', () => {
-  // zeichneScrollbalken() LIEST Layout (scrollHeight). Ungedrosselt erzwingt
+  // drawScrollbar() LIEST Layout (scrollHeight). Ungedrosselt erzwingt
   // jedes Scroll-Ereignis eine Neuberechnung — dutzende Male je Sekunde. Die
   // Seite fühlt sich dann zäh an, obwohl der Server längst geantwortet hat.
-  const code = scrollbalkenCode();
+  const code = scrollbarCode();
   assert.match(code, /requestAnimationFrame\(/, 'Das Neuzeichnen hängt ungedrosselt am Scroll-Ereignis');
   const i = code.indexOf("addEventListener('scroll'");
   assert.ok(i > 0, 'Kein Scroll-Zuhörer');
@@ -74,7 +74,7 @@ test('das Neuzeichnen ist gedrosselt', () => {
 
 test('das Etikett verschwindet nach dem Ziehen wieder', () => {
   // Marcos Bild
-  const code = scrollbalkenCode();
+  const code = scrollbarCode();
   const i = code.indexOf('const ende =');
   assert.ok(i > 0, 'Kein Ende-Handler');
   // Bis zum ENDE des Handlers schneiden, nicht nach fester Länge: Die
@@ -102,7 +102,7 @@ test('das Etikett bleibt leer, solange es niemand anmeldet', () => {
   // Der Balken gehört der ganzen Anwendung; das Jahr ist eine Zutat des
   // Katalogs. Ohne Anmeldung darf dort nichts stehen — sonst zeigte jeder
   // Reiter eine Zahl, die für ihn nichts bedeutet.
-  const code = scrollbalkenCode();
+  const code = scrollbarCode();
   assert.match(
     code,
     /export let scrollLabelFn = null|let scrollLabelFn = null/,

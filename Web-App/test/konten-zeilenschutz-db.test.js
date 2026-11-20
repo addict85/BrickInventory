@@ -10,7 +10,7 @@
  *   B  in 0121 die Policy `lesen` auf account_links unverändert (USING true) → rot: dieselbe
  *      Prüfung (die fremde Verknüpfung ist sichtbar)
  *   C  in 0121 das REVOKE der Adressspalten gestrichen → rot: „… Adressen nicht“
- *   D  in src/haushalt/haushalt.ts pruefeEinladung wieder mit repo.kontoName (Laufzeitrolle)
+ *   D  in src/haushalt/haushalt.ts checkInvitation wieder mit repo.accountName (Laufzeitrolle)
  *      → rot: „wer eingeladen wird, erfährt den Namen …“ (die Kennung statt des Namens)
  *   E  in 0121 household_former_links aus der Policy gestrichen → rot: „die Haushaltsansicht
  *      nennt Unterkonten und getrennte …“ (former_links leer)
@@ -21,13 +21,13 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = S.testDaten();
-const { alsAnfrage } = _req('src/infra/kontoKontext.js');
+const db = S.testData();
+const { asRequest } = _req('src/infra/kontoKontext.js');
 
 test('Konten nur im eigenen Haushalt', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid;
   const namen = ['haupt', 'unter', 'fremd', 'frueher', 'fremdunter'].map(n => `kz_${n}_${P}`);
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -54,8 +54,8 @@ test('Konten nur im eigenen Haushalt', { concurrency: 1, timeout: 120_000 }, asy
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const zugang = S.testZugang();
-  const als = (uid, f) => alsAnfrage({ session: { userId: uid } }, f);
+  const zugang = S.testAccess();
+  const als = (uid, f) => asRequest({ session: { userId: uid } }, f);
 
   await t.test('eingeschleustes SQL sieht nur eigenes Konto und Haushalt', async () => {
     const sicht = async uid => ({
@@ -79,16 +79,18 @@ test('Konten nur im eigenen Haushalt', { concurrency: 1, timeout: 120_000 }, asy
       /permission denied/,
     );
     await als(haupt, () => zugang.run('UPDATE users SET first_name = $2 WHERE id = ANY($1)', [[haupt, unter], 'Neu']));
-    const vornamen = await db.all('SELECT id, first_name FROM users WHERE id = ANY($1) ORDER BY id', [[haupt, unter]]);
+    const firstNames = await db.all('SELECT id, first_name FROM users WHERE id = ANY($1) ORDER BY id', [
+      [haupt, unter],
+    ]);
     assert.deepEqual(
-      vornamen.map(z => z.first_name),
+      firstNames.map(z => z.first_name),
       ['Neu', null],
     );
   });
 
   await t.test('wer eingeladen wird, erfährt den Namen des Einladenden', async () => {
-    const haushalt = { ..._req('src/haushalt/haushalt.js'), ...S.testBereich('haushalt') };
-    const { code } = await S.alsKonto(fremd, () => haushalt.einladungAnlegen(fremd));
+    const haushalt = { ..._req('src/haushalt/haushalt.js'), ...S.testArea('haushalt') };
+    const { code } = await S.asAccount(fremd, () => haushalt.createInvitation(fremd));
     const { base } = testServer(_req, { sitzung: { userId: haupt, username: namen[0] }, t });
     const r = await fetch(`${base}/api/v1/settings/household/redeem/pruefen`, {
       method: 'POST',

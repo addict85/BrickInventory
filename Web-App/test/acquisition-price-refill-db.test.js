@@ -12,25 +12,25 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND App', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const HAUPT = `cp-h-${process.pid}`,
+  const MAIN = `cp-h-${process.pid}`,
     SUB = `cp-s-${process.pid}`;
   const SN = `31146-${process.pid}`;
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
-  const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [MAIN, SUB]);
+  const mainId = (await db.get(`SELECT id FROM users WHERE username=$1`, [MAIN])).id;
   const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
-    hauptId,
+    mainId,
     subId,
   ]);
 
@@ -45,13 +45,13 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','CHF')
                 ON CONFLICT (key) DO UPDATE SET value='CHF'`);
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: hauptId }, t });
+  const { base, srv } = testServer(_req, { sitzung: { userId: mainId }, t });
 
   // Ausgangslage: Set des UNTERKONTOS mit zwei Erfassungen (gebraucht + neu).
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    await haeltSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                   VALUES ($1,$2,7.30,'U',1, NOW() - INTERVAL '1 day')`,
@@ -78,7 +78,7 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
                 VALUES ($1,'EUR','N',18.90,NOW()),($1,'EUR','U',9.90,NOW())`,
     [SN],
   );
-  for (const u of [hauptId, subId]) {
+  for (const u of [mainId, subId]) {
     await db.run(
       `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
                   ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`,
@@ -87,7 +87,7 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
   }
 
   try {
-    const ergebnisse = {};
+    const results = {};
     for (const [name, pfad] of /** @type {[string, (id: number) => string][]} */ ([
       ['Webapp', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
       ['Android', id => `/api/v1/sets/${SN}/acquisitions/${id}`],
@@ -115,7 +115,7 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
       // Migration 0032 aus den Erfassungen; der Bestand hat hier zwei (7.30
       // gebraucht, 12.55 neu, je ein Exemplar), der Mittelwert ist 9.925.
       const kachel = await _req('src/sets/lesen.js').zustandsAggregat(
-        require('./helpers/sources').testKontext('sets'),
+        require('./helpers/sources').testContext('sets'),
         [subId],
         SN,
       );
@@ -124,18 +124,18 @@ test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND Ap
         9.925,
         `${name}: die Kachel muss den gefüllten Preis mitrechnen, keinen Strich zeigen`,
       );
-      ergebnisse[name] = Number(acq.purchase_price);
+      results[name] = Number(acq.purchase_price);
     }
 
     // Die eigentliche Zusage: BEIDE Wege kommen zum selben Ergebnis.
     assert.equal(
-      ergebnisse.Webapp,
-      ergebnisse.Android,
-      `Die beiden Clients füllen verschiedene Preise ein (Webapp ${ergebnisse.Webapp}, ` +
-        `Android ${ergebnisse.Android}) — die Regel existiert dann wieder zweimal`,
+      results.Webapp,
+      results.Android,
+      `Die beiden Clients füllen verschiedene Preise ein (Webapp ${results.Webapp}, ` +
+        `Android ${results.Android}) — die Regel existiert dann wieder zweimal`,
     );
   } finally {
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]).catch(() => {});
     await db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SN]).catch(() => {});

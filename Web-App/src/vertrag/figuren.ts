@@ -1,14 +1,14 @@
-import { OHNE_RUMPF, TEXT, ZUSTAND, KENNUNG, abfrage, Q, SEITE, SEITEN_ANGABE, type Route } from './grund';
+import { WITHOUT_BODY, TEXT, ZUSTAND, KENNUNG, abfrage, Q, SEITE, PAGES_DETAIL, type Route } from './grund';
 import { z } from 'zod';
 import { eingabe } from '../infra/validate';
 import {
   CsvImportErgebnis,
-  DEGRADIERT,
+  DEGRADED,
   ManuelleFigur,
   StueckGeaendert,
   MinifigsResponse,
   VerwendendeSetsResponse,
-  InDenPapierkorb,
+  InDenTrash,
 } from './gemeinsam';
 
 export { ManuelleFigur, StueckGeaendert };
@@ -23,10 +23,10 @@ export const AddMinifigResponse = z.looseObject({
 
 export const ManualFigsResponse = z.looseObject({
   success: z.boolean(),
-  ...SEITEN_ANGABE,
+  ...PAGES_DETAIL,
   /** Die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions. */
   figs: z.array(ManuelleFigur),
-  degradiert: DEGRADIERT,
+  degradiert: DEGRADED,
 });
 
 export const MinifigStats = z.looseObject({
@@ -73,12 +73,12 @@ export const routen = {
   'POST /api/v1/minifigs': {
     antwort: AddMinifigResponse,
     eingabe: z.strictObject({
-      fig_number: eingabe.artikelnummer('fig_number'),
+      fig_number: eingabe.itemNumber('fig_number'),
       quantity: eingabe.stueckzahl(),
       condition: eingabe.zustand(),
       unit_price: eingabe.geld('Stückpreis'),
       fig_name: eingabe.text(200),
-      image_url: eingabe.bildUrl(),
+      image_url: eingabe.imageUrl(),
       bl_fig_number: TEXT(64).nullable().optional(),
       owner_user_id: KENNUNG.nullable().optional(),
       storage: TEXT().nullable().optional(),
@@ -88,8 +88,8 @@ export const routen = {
   'PUT /api/v1/minifigs/:figNumber': {
     abfrage: abfrage({ owner: Q.konto }),
     eingabe: z.strictObject({
-      quantity: eingabe.mengeOderNichts(0, 100_000).optional(),
-      quantity_delta: eingabe.mengenDelta(),
+      quantity: eingabe.quantityOrNothing(0, 100_000).optional(),
+      quantity_delta: eingabe.quantitiesDelta(),
       unit_price: eingabe.geld('Stückpreis'),
       condition: ZUSTAND.nullable().optional(),
       bl_fig_number: TEXT(40).nullable().optional(),
@@ -97,8 +97,8 @@ export const routen = {
     antwort: StueckGeaendert,
   },
   'DELETE /api/v1/minifigs/:figNumber': {
-    eingabe: OHNE_RUMPF,
-    antwort: InDenPapierkorb,
+    eingabe: WITHOUT_BODY,
+    antwort: InDenTrash,
     abfrage: abfrage({ owner: Q.konto }),
   },
   'POST /api/v1/minifigs/import/csv': { formular: true, antwort: CsvImportErgebnis },

@@ -3,9 +3,9 @@
  * Wechsel zu — für Sitzung und App-Token, nicht nur in der Oberfläche.
  *
  * Gegenproben (01.11.2026 gemessen):
- *   A  die Prüfung in anmeldungAmEingang entfernt → rot: „Sitzung kommt am
+ *   A  die Prüfung in loginAtInbox entfernt → rot: „Sitzung kommt am
  *      Wechsel vorbei“ und „Token kommt am Wechsel vorbei“
- *   B  mussWechseln() liest nur das Sitzungsfeld (ohne Rückfall auf die
+ *   B  switchMust() liest nur das Sitzungsfeld (ohne Rückfall auf die
  *      Datenbank) → rot: „eine Sitzung von vor dem Feld …“
  *   C  change-password nicht mehr in VOR_DEM_WECHSEL → rot: „der Wechsel selbst geht“
  *
@@ -20,10 +20,10 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -34,7 +34,7 @@ const NAME = `pflicht_${process.pid}`,
   NEU = 'eigenes-Passwort-2';
 
 test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(
@@ -56,13 +56,12 @@ test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, asyn
   );
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').waechterFuer(require('./helpers/sources').testDienste().konto)
-      .anmeldungAmEingang,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
   );
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
-  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   // Wie startup/app.ts: ein Fehlerweg hinter allem, auch hinter dem Eingang.
-  app.use(_req('src/http/httpAntwort.js').fehlerAntwort);
+  app.use(_req('src/http/httpAntwort.js').errorResponse);
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}/api/v1`;
   t.after(async () => {
@@ -120,7 +119,7 @@ test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, asyn
     const neu = w.cookie ?? cookie;
     // Seit dem 04.11.2026 verlangen Verwalterrechte danach einen Code-Generator.
     assert.equal((await ruf('/settings/tokens', { cookie: neu })).body.code, 'zweiter_faktor_pflicht');
-    await require('./helpers/verwalter').verwalterMitFaktor(_req, uid);
+    await require('./helpers/verwalter').adminWithFactor(_req, uid);
     assert.equal((await ruf('/settings/tokens', { cookie: neu })).status, 200);
     assert.equal((await ruf('/auth/me', { cookie: neu })).body.user.mustChangePassword, false);
   });

@@ -8,7 +8,7 @@ import { Zwischenspeicher } from '../infra/zwischenspeicher';
 
 // Positive Treffer bleiben gültig (Vorschauen werden nie gelöscht); negative
 // nach 10 Min neu prüfen, damit frisch erzeugte erscheinen.
-const NEGATIV_MS = 10 * 60 * 1000;
+const NEGATIVE_MS = 10 * 60 * 1000;
 const _thumbCache = new Zwischenspeicher<string, boolean>(20000);
 
 export function resolveImageLocal(localPath: string | null | undefined) {
@@ -24,21 +24,21 @@ export function resolveImageLocal(localPath: string | null | undefined) {
   if (hit !== undefined) return hit ? thumbPath : localPath;
 
   const exists = fs.existsSync(thumbFs);
-  _thumbCache.setze(thumbFs, exists, exists ? undefined : NEGATIV_MS);
+  _thumbCache.setze(thumbFs, exists, exists ? undefined : NEGATIVE_MS);
   return exists ? thumbPath : localPath;
 }
 
 // Die Adresse steht so in gespeicherten image_url; die alte Form lebt darum weiter.
-export const IMG_PROXY_PFAD = '/api/v1/img-proxy';
+export const IMG_PROXY_PATH = '/api/v1/img-proxy';
 /** Nur noch für Altbestand und ältere App-Fassungen. */
-export const IMG_PROXY_PFAD_ALT = '/api/img-proxy';
+export const IMG_PROXY_PATH_LEGACY = '/api/img-proxy';
 
-export function istProxyPfad(src: string): boolean {
-  return src.startsWith(IMG_PROXY_PFAD) || src.startsWith(IMG_PROXY_PFAD_ALT);
+export function isProxyPath(src: string): boolean {
+  return src.startsWith(IMG_PROXY_PATH) || src.startsWith(IMG_PROXY_PATH_LEGACY);
 }
 
 /** Nur Bilder von Rebrickable gehen über den Proxy; ein Teilstring passte auch auf fremde Hosts. */
-function istRebrickableBild(url: string): boolean {
+function isRebrickableImage(url: string): boolean {
   try {
     const h = new URL(url).hostname;
     return h === 'rebrickable.com' || h.endsWith('.rebrickable.com');
@@ -50,7 +50,7 @@ function istRebrickableBild(url: string): boolean {
 export function proxyImageUrl(url: string | null | undefined) {
   if (!url) return null;
   if (url.startsWith('/')) return url;
-  if (istRebrickableBild(url)) return `${IMG_PROXY_PFAD}?url=${encodeURIComponent(url)}`;
+  if (isRebrickableImage(url)) return `${IMG_PROXY_PATH}?url=${encodeURIComponent(url)}`;
   return url;
 }
 
@@ -60,7 +60,7 @@ const _existsCache = new Zwischenspeicher<string, boolean>(20000);
 
 /** Liefert bei Treffer den Vorschau-bevorzugten Pfad, sonst null.
  * @param publicRelPath z. B. "/images/sets/10283-1.jpg" */
-export function bildFallsVorhanden(publicRelPath: string) {
+export function imageIfPresent(publicRelPath: string) {
   const hit = _existsCache.hole(publicRelPath);
   if (hit !== undefined) return hit ? resolveImageLocal(publicRelPath) : null;
 
@@ -68,17 +68,17 @@ export function bildFallsVorhanden(publicRelPath: string) {
     ? path.join(IMAGES_DIR, publicRelPath.slice('/images/'.length))
     : path.join(APP_ROOT, publicRelPath.replace(/^\//, ''));
   const exists = fs.existsSync(fsPath);
-  _existsCache.setze(publicRelPath, exists, exists ? undefined : NEGATIV_MS);
+  _existsCache.setze(publicRelPath, exists, exists ? undefined : NEGATIVE_MS);
   return exists ? resolveImageLocal(publicRelPath) : null;
 }
 
 /** Diese CDNs liefern dasselbe Bild ohne Anfrageteil; dort steht nur ein
  * Zeitstempel. Mit ihm im Schlüssel legte jede Variante eine neue Datei an.
  * www.bricklink.com braucht ihn (getPic.asp?…), dort wird er nur sortiert. */
-const OHNE_ANFRAGETEIL = ['cdn.rebrickable.com', 'images.brickset.com', 'img.bricklink.com'];
+const WITHOUT_REQUEST_PART = ['cdn.rebrickable.com', 'images.brickset.com', 'img.bricklink.com'];
 
 /** Die Adresse, die der Proxy holt und nach der er ablegt; null, wenn unlesbar. */
-export function proxyAdresse(url: string): string | null {
+export function proxyAddress(url: string): string | null {
   let u: URL;
   try {
     u = new URL(url);
@@ -86,20 +86,20 @@ export function proxyAdresse(url: string): string | null {
     return null;
   }
   u.hash = '';
-  if (OHNE_ANFRAGETEIL.some(h => u.hostname === h || u.hostname.endsWith('.' + h))) u.search = '';
+  if (WITHOUT_REQUEST_PART.some(h => u.hostname === h || u.hostname.endsWith('.' + h))) u.search = '';
   else u.searchParams.sort();
   return u.href;
 }
 
-export function proxyCacheSchluessel(url: string): string {
+export function proxyCacheKey(url: string): string {
   return crypto
     .createHash('sha1')
-    .update(proxyAdresse(url) ?? url)
+    .update(proxyAddress(url) ?? url)
     .digest('hex');
 }
 
 // Die Ablageregel des Proxy-Caches an einer Stelle, auch für die Bild-Diagnose.
 export function proxyCachePathFor(url: string): string | null {
   if (!url) return null;
-  return path.join(APP_ROOT, 'data', 'img_proxy_cache', proxyCacheSchluessel(url));
+  return path.join(APP_ROOT, 'data', 'img_proxy_cache', proxyCacheKey(url));
 }

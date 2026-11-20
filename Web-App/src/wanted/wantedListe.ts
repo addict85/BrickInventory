@@ -1,22 +1,22 @@
 /** Eine BrickLink-Wanted-Liste importieren: lesen (wantedParser), auflösen
  * (wantedAufloesung), schreiben (wantedSchreiber). Die Datei trägt BL-Nummern,
  * der Bestand führt RB-Nummern. */
-import { leseWantedListe, type WantedArt, type WantedPosten } from './wantedParser';
+import { readWantedList, type WantedArt, type WantedItem } from './wantedParser';
 import {
-  loeseLokalAuf,
-  loeseUeberRebrickableAuf,
-  wendeKorrekturenAn,
-  farbenNachtragen,
-  beschreibePosten,
+  resolveLocalOn,
+  resolveViaRebrickableOn,
+  applyCorrectionsAn,
+  backfillColors,
+  describeItem,
   type Aufloesung,
   type Korrektur,
-  type WantedFortschritt,
+  type WantedProgress,
 } from './wantedAufloesung';
-import type { RebrickableAbbruch } from './wantedAufloesung';
-import { berichtsZeile, schreibePosten, type PostenErgebnis, type SchreibOptionen } from './wantedSchreiber';
+import type { RebrickableAbort } from './wantedAufloesung';
+import { reportRow, writeItem, type ItemResult, type WriteOptions } from './wantedSchreiber';
 import type { WantedContext } from './context';
 
-export interface WantedBericht {
+export interface WantedReport {
   gelesen: number;
   fremdeArten: Record<string, number>;
   ohneNummer: number;
@@ -24,7 +24,7 @@ export interface WantedBericht {
   farbeOffen: number;
   /** Mit BL-Nummern, damit man sie nachsehen kann. */
   offen: { blId: string; art: WantedArt; blFarbe: number | null }[];
-  rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean; abgebrochen?: RebrickableAbbruch };
+  rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean; abgebrochen?: RebrickableAbort };
   /** `abgewiesen`: Korrekturen, deren Posten nicht passte — dann wurde eine andere
    * Datei gewählt. Sie werden GENANNT, nicht übergangen. */
   korrekturen?: { angewandt: number; abgewiesen: Korrektur[] };
@@ -38,10 +38,10 @@ export interface WantedBericht {
   /** Damit die Vorschau zeigt, was angelegt WÜRDE, auch wenn die Datei keinen
    * Zustand nennt. */
   standardZustand: 'N' | 'U';
-  posten: PostenErgebnis[];
+  posten: ItemResult[];
 }
 
-function zaehleStufen(auf: Aufloesung[]): Record<string, number> {
+function countLevels(auf: Aufloesung[]): Record<string, number> {
   const z: Record<string, number> = {};
   for (const a of auf) if (a.sicherheit) z[a.sicherheit] = (z[a.sicherheit] ?? 0) + 1;
   return z;
@@ -49,11 +49,11 @@ function zaehleStufen(auf: Aufloesung[]): Record<string, number> {
 
 /** Nach dem Auflösen die Korrekturen, weil sie es überstimmen; vor dem Zählen,
  * weil der Bericht sonst Zahlen von vor der Korrektur nennt. */
-async function loeseVollstaendigAuf(kx: WantedContext, posten: WantedPosten[], uid: number, opt: WantedOptionen) {
-  let auf = await loeseLokalAuf(kx, posten, uid);
-  let rebrickable: WantedBericht['rebrickable'];
-  if (opt.ueberRebrickable) {
-    const r = await loeseUeberRebrickableAuf(kx, auf, 250, opt.fortschritt);
+async function resolveCompleteOn(kx: WantedContext, posten: WantedItem[], uid: number, opt: WantedOptions) {
+  let auf = await resolveLocalOn(kx, posten, uid);
+  let rebrickable: WantedReport['rebrickable'];
+  if (opt.viaRebrickable) {
+    const r = await resolveViaRebrickableOn(kx, auf, 250, opt.fortschritt);
     auf = r.auf;
     rebrickable = {
       gefragt: r.gefragt,
@@ -62,21 +62,21 @@ async function loeseVollstaendigAuf(kx: WantedContext, posten: WantedPosten[], u
       ...(r.abgebrochen ? { abgebrochen: r.abgebrochen } : {}),
     };
   }
-  let korrekturen: WantedBericht['korrekturen'];
+  let korrekturen: WantedReport['korrekturen'];
   if (opt.korrekturen?.length) {
-    const k = wendeKorrekturenAn(auf, opt.korrekturen);
-    auf = await farbenNachtragen(kx, k.auf);
+    const k = applyCorrectionsAn(auf, opt.korrekturen);
+    auf = await backfillColors(kx, k.auf);
     korrekturen = { angewandt: k.angewandt, abgewiesen: k.abgewiesen };
   }
   return { auf, rebrickable, korrekturen };
 }
 
-export interface WantedOptionen extends SchreibOptionen {
+export interface WantedOptions extends WriteOptions {
   vorschau?: boolean;
-  ueberRebrickable?: boolean;
+  viaRebrickable?: boolean;
   korrekturen?: Korrektur[];
   /** Wird SYNCHRON gerufen und darf nichts werfen. */
-  fortschritt?: (stand: WantedFortschritt) => void;
+  fortschritt?: (stand: WantedProgress) => void;
   /** Der Balken in der Oberfläche trägt ein Kreuz; ohne diese Frage hätte er einen
    * Abbrechen-Knopf, der lügt. */
   abbruch?: () => Promise<boolean>;
@@ -88,16 +88,16 @@ export async function importiereWantedListe(
   k: WantedContext,
   uid: number,
   xml: string,
-  opt: WantedOptionen = {},
-): Promise<WantedBericht> {
-  const gelesen = leseWantedListe(xml);
-  const { auf, rebrickable, korrekturen } = await loeseVollstaendigAuf(k, gelesen.posten, uid, opt);
+  opt: WantedOptions = {},
+): Promise<WantedReport> {
+  const gelesen = readWantedList(xml);
+  const { auf, rebrickable, korrekturen } = await resolveCompleteOn(k, gelesen.posten, uid, opt);
 
-  const bericht: WantedBericht = {
+  const bericht: WantedReport = {
     gelesen: gelesen.posten.length,
     fremdeArten: gelesen.fremdeArten,
     ohneNummer: gelesen.ohneNummer,
-    stufen: zaehleStufen(auf),
+    stufen: countLevels(auf),
     farbeOffen: auf.filter(a => a.farbeOffen).length,
     offen: auf
       .filter(a => a.rbId === null)
@@ -112,12 +112,12 @@ export async function importiereWantedListe(
     posten: [],
   };
 
-  let lfd = -1;
-  const melde = () => opt.fortschritt?.({ phase: 'schreiben', fertig: lfd + 1, gesamt: auf.length });
+  let seq = -1;
+  const melde = () => opt.fortschritt?.({ phase: 'schreiben', fertig: seq + 1, gesamt: auf.length });
 
   for (const a of auf) {
     // Der Takt zählt über ALLE Posten, sonst hinge er daran, wie viele auflösbar waren.
-    if (opt.abbruch && !opt.vorschau && lfd >= 0 && (lfd + 1) % 10 === 0) {
+    if (opt.abbruch && !opt.vorschau && seq >= 0 && (seq + 1) % 10 === 0) {
       if (await opt.abbruch()) {
         bericht.abgebrochen = true;
         break;
@@ -126,8 +126,8 @@ export async function importiereWantedListe(
     // Eigene Bindung: TypeScript verengt `a.rbId` über eine Hilfsvariable nicht.
     const rbId = a.rbId;
     const offen = rbId === null || a.farbeOffen;
-    lfd++;
-    const zeile = berichtsZeile(a);
+    seq++;
+    const zeile = reportRow(a);
     if (rbId === null || a.farbeOffen || opt.vorschau) {
       // In der Vorschau heisst „angelegt" „würde angelegt".
       if (offen) zeile.ausgang = 'offen';
@@ -138,7 +138,7 @@ export async function importiereWantedListe(
     }
 
     try {
-      const wie = await schreibePosten(uid, a, rbId, opt);
+      const wie = await writeItem(uid, a, rbId, opt);
       if (wie === 'angelegt') bericht.angelegt++;
       else bericht.aufgestockt++;
       zeile.ausgang = wie;
@@ -152,14 +152,14 @@ export async function importiereWantedListe(
     melde();
   }
 
-  await beschreibeZeilen(k, bericht.posten, auf);
+  await describeRows(k, bericht.posten, auf);
   return bericht;
 }
 
 /** Auch nach dem Schreiben: Der Dialog zeichnet dieselbe Tabelle mit der
  * Antwort neu und zeigte sonst leere Zellen. */
-async function beschreibeZeilen(k: WantedContext, zeilen: PostenErgebnis[], auf: Aufloesung[]): Promise<void> {
-  const beschreibung = await beschreibePosten(k, auf);
+async function describeRows(k: WantedContext, zeilen: ItemResult[], auf: Aufloesung[]): Promise<void> {
+  const beschreibung = await describeItem(k, auf);
   zeilen.forEach((zeile, i) => {
     const b = beschreibung.get(i);
     if (!b) return;

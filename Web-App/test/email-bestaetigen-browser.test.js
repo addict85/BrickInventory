@@ -13,11 +13,11 @@
  *
  * Vor dem Knopf nennt die Seite das Konto des Links (Sicherheitsprüfung 14, H1).
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   D  zeigeBestaetigungsziel() ohne Vorschau (Text wie zuvor aus dem Profil)
+ *   D  showConfirmationTarget() ohne Vorschau (Text wie zuvor aus dem Profil)
  *      → rot: beide Teilfälle („Zeitüberschreitung: eigenes Konto genannt“ bzw.
  *      „… Konto des Links genannt“)
  *   E  der Zweig `verify.fremdes_konto` gestrichen → rot: „ein fremder Link …“
- *   F  die Vorschau-Route löst den Link ein (verifiziereEmailToken) → rot: „das
+ *   F  die Vorschau-Route löst den Link ein (verifyEmailToken) → rot: „das
  *      Öffnen des Links bestätigt nichts“
  *
  * Der Token steht im Fragment (#token=), das kein Browser an den Server schickt.
@@ -31,22 +31,22 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
-const { starteApp } = require('./helpers/app-browser');
+const { startApp } = require('./helpers/app-browser');
 
 const sichtbar = id => `getComputedStyle(document.getElementById('${id}')).display !== 'none'`;
 const text = id => `(document.getElementById('${id}')?.textContent || '')`;
 /** Der Knopf ist frei, sobald die Seite das Konto des Links nennt. */
-const kontoGenannt =
+const accountNamed =
   name => `!document.getElementById('btn-verify').disabled && ${text('verify-ziel')}.includes('„${name}“')
   && ${text('btn-verify')}.includes('„${name}“')`;
 
 test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
-  const app = await starteApp(t, { name: `bestaetigen_${process.pid}` });
+  const app = await startApp(t, { name: `bestaetigen_${process.pid}` });
   if (app.grund) {
     t.skip(app.grund);
     return;
   }
-  const neuerLink = async uid => {
+  const newLink = async uid => {
     const roh = crypto.randomBytes(32).toString('hex');
     await app.db.run(
       `UPDATE users SET new_email = $3, new_email_token = $2, new_email_until = NOW() + INTERVAL '1 day' WHERE id = $1`,
@@ -63,9 +63,9 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
     ).ok;
 
   await t.test('angemeldet (neue Adresse im Profil): erst der Knopf, dann die Anwendung', async () => {
-    await app.b.tab('Page.navigate', { url: await neuerLink(app.uid) });
+    await app.b.tab('Page.navigate', { url: await newLink(app.uid) });
     await app.bis(`${sichtbar('login-screen')} && ${sichtbar('panel-verify')}`, 'Bestätigungsseite');
-    await app.bis(kontoGenannt(`bestaetigen_${process.pid}`), 'eigenes Konto genannt');
+    await app.bis(accountNamed(`bestaetigen_${process.pid}`), 'eigenes Konto genannt');
     assert.equal(await bestaetigt(app.uid), false, 'das Öffnen des Links bestätigt nichts');
     assert.equal(
       await app.b.auswerten(`location.search + location.hash`),
@@ -86,9 +86,9 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
       )
     ).id;
     st.after(() => app.db.run('DELETE FROM users WHERE id = $1', [zweiter]));
-    const link = await neuerLink(zweiter);
+    const link = await newLink(zweiter);
     await app.b.tab('Page.navigate', { url: link });
-    await app.bis(kontoGenannt(`bestaetigen2_${process.pid}`), 'Konto des Links genannt');
+    await app.bis(accountNamed(`bestaetigen2_${process.pid}`), 'Konto des Links genannt');
     assert.match(
       await app.b.auswerten(text('verify-ziel')),
       new RegExp(`als „bestaetigen_${process.pid}“`),
@@ -104,7 +104,7 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
       'ein falscher Link lässt sich nicht bestätigen',
     );
     await app.b.tab('Page.navigate', { url: link });
-    await app.bis(kontoGenannt(`bestaetigen2_${process.pid}`), 'Konto des Links genannt');
+    await app.bis(accountNamed(`bestaetigen2_${process.pid}`), 'Konto des Links genannt');
     assert.equal(await bestaetigt(zweiter), false);
     await app.b.auswerten(`document.getElementById('btn-verify').click(); true`);
     await app.bis(`${sichtbar('panel-login')} && ${sichtbar('verified-msg')}`, 'Erfolgsmeldung über der Anmeldung');

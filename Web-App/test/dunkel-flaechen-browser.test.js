@@ -22,13 +22,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { holdsSet, holdsPart } = require('./helpers/bestand');
 
 const DESIGNS = ['classic', 'brick', 'farbfaecher', 'noppe', 'hochglanz'];
 
 /** Läuft im Browser: sammelt helle Flächen und zu schwachen Text im sichtbaren Teil. */
-const MESSUNG = `(() => {
+const MEASUREMENT = `(() => {
   const rgba = (s) => { const m = s.match(/rgba?\\(([^)]+)\\)/); if (!m) return null;
     const [r, g, b, a = 1] = m[1].split(/[ ,\\/]+/).filter(Boolean).map(Number); return { r, g, b, a }; };
   const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
@@ -51,14 +51,14 @@ const MESSUNG = `(() => {
     const probe = document.createElement('i'); probe.style.background = 'var(' + v + ')'; document.body.append(probe);
     const f = rgba(getComputedStyle(probe).backgroundColor); probe.remove(); return f && f.r + ',' + f.g + ',' + f.b; }));
   const name = (e) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + [...e.classList].slice(0, 2).map(c => '.' + c).join('');
-  const flaechen = new Set(), texte = new Set();
+  const surfaces = new Set(), texte = new Set();
   for (const e of document.querySelectorAll('body *')) {
     if (ausgenommen(e) || !sichtbar(e)) continue;
     const s = getComputedStyle(e);
     const f = rgba(s.backgroundColor);
     if (f && f.a >= 0.5 && s.backgroundImage === 'none') {
       const g = grund(e);
-      if (g && hell(g) > 0.4 && !akzent.has(f.r + ',' + f.g + ',' + f.b)) flaechen.add(name(e) + ' ' + s.backgroundColor);
+      if (g && hell(g) > 0.4 && !akzent.has(f.r + ',' + f.g + ',' + f.b)) surfaces.add(name(e) + ' ' + s.backgroundColor);
     }
     const text = [...e.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
     if (!text) continue;
@@ -69,16 +69,16 @@ const MESSUNG = `(() => {
     const gross = parseFloat(s.fontSize) >= 24 || (parseFloat(s.fontSize) >= 18.66 && +s.fontWeight >= 700);
     if (k < (gross ? 3 : 4.5)) texte.add(name(e) + ' „' + e.textContent.trim().slice(0, 20) + '“ ' + k.toFixed(2) + ':1');
   }
-  return { flaechen: [...flaechen], texte: [...texte] };
+  return { surfaces: [...surfaces], texte: [...texte] };
 })()`;
 
 test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, timeout: 600_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `dunkel_${process.pid}`,
-    alleDesigns: true,
+    allDesigns: true,
     bestand: async (db, uid) => {
-      await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
-      await haeltSet(db, uid, '75192-1', 1, { preis: 650, zustand: 'U' });
+      await holdsSet(db, uid, '10300-1', 1, { preis: 199 });
+      await holdsSet(db, uid, '75192-1', 1, { preis: 650, zustand: 'U' });
       // Eine Anleitung, damit die Plakette mit der Anleitungszahl auf der Karte steht.
       await db.run(
         `INSERT INTO instructions (user_id, set_number, url) VALUES ($1, '10300-1', 'https://example.org/10300.pdf')`,
@@ -86,7 +86,7 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
       );
       await db.run(`INSERT INTO set_parts (set_number, part_number, color_id, quantity) VALUES ('10300-1', '3001', 5, 4)
                     ON CONFLICT DO NOTHING`);
-      await haeltTeil(db, uid, '3001', { setNumber: '10300-1', menge: 4, colorId: 5 });
+      await holdsPart(db, uid, '3001', { setNumber: '10300-1', menge: 4, colorId: 5 });
     },
   });
   if (app.grund) {
@@ -100,13 +100,13 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
   for (const design of DESIGNS) {
     await b.auswerten(`document.documentElement.setAttribute('data-theme', '${design}');
       document.documentElement.setAttribute('data-dunkel', ''); true`);
-    const funde = { flaechen: new Set(), texte: new Set() };
-    const sammle = async wo => {
+    const funde = { surfaces: new Set(), texte: new Set() };
+    const collect = async wo => {
       // Steht die Anmeldemaske da, mässe der Rest nur sie; dann die Ursache nennen.
       if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
         assert.fail(`Sitzung vor „${design}: ${wo}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'keine'}`);
-      const r = await b.auswerten(MESSUNG);
-      for (const x of r.flaechen) funde.flaechen.add(`${wo}: ${x}`);
+      const r = await b.auswerten(MEASUREMENT);
+      for (const x of r.surfaces) funde.surfaces.add(`${wo}: ${x}`);
       for (const x of r.texte) funde.texte.add(`${wo}: ${x}`);
     };
     for (const r of reiter) {
@@ -122,7 +122,7 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
           await b.auswerten(`document.querySelector('.einst-nav a[data-arg="${seite}"]').click(); true`);
           await warte(100);
         }
-        await sammle(seite ? `${r}/${seite}` : r);
+        await collect(seite ? `${r}/${seite}` : r);
       }
     }
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
@@ -130,12 +130,12 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
     await b.auswerten(`document.querySelector('[data-click="openModal"]').click(); true`);
     await bis(`document.getElementById('m-tit').textContent.length > 0`, 'Set-Detail offen');
     await ruhig();
-    await sammle('Set-Detail');
+    await collect('Set-Detail');
     await b.auswerten(`document.querySelector('.ovl.open .mx, .ovl.open [data-click="closeModal"]')?.click(); true`);
     await b.auswerten(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); true`);
     await ruhig();
 
-    await t.test(`${design}: keine helle Fläche`, () => assert.deepEqual([...funde.flaechen], []));
+    await t.test(`${design}: keine helle Fläche`, () => assert.deepEqual([...funde.surfaces], []));
     await t.test(`${design}: Text lesbar`, () => assert.deepEqual([...funde.texte], []));
   }
 });

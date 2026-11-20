@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { eingabe } from '../infra/validate';
-import { type Route, zeit, ganz, OHNE_RUMPF, KENNUNG, TEXT, ZUSTAND, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
-import { CsvImportErgebnis, DEGRADIERT, GenericResponse } from './gemeinsam';
+import { type Route, zeit, ganz, WITHOUT_BODY, KENNUNG, TEXT, ZUSTAND, abfrage, Q, SEITE, PAGES_DETAIL } from './grund';
+import { CsvImportErgebnis, DEGRADED, GenericResponse } from './gemeinsam';
 
 export const CurrentPrice = z.looseObject({
   condition: z.string(),
@@ -42,7 +42,7 @@ export const Merkposten = z.looseObject({
 
 export const MerklisteResponse = z.looseObject({
   success: z.boolean(),
-  ...SEITEN_ANGABE,
+  ...PAGES_DETAIL,
   merkposten: z.array(Merkposten),
 });
 
@@ -64,7 +64,7 @@ export const MerkpostenPreiseResponse = z.looseObject({
   set_number: z.string(),
   currency: z.string(),
   current: CurrentByCondition,
-  degradiert: DEGRADIERT,
+  degradiert: DEGRADED,
 });
 
 export const MerkpostenUebernahmeResponse = z.looseObject({
@@ -149,7 +149,7 @@ export const routen = {
     antwort: MerkpostenInhaberAntwort,
   },
   'DELETE /api/v1/wanted/:setNumber/:condition': {
-    eingabe: OHNE_RUMPF,
+    eingabe: WITHOUT_BODY,
     antwort: MerkpostenGeloescht,
     abfrage: abfrage({ owner_user_id: Q.konto }),
   },

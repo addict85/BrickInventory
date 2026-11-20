@@ -1,15 +1,15 @@
 /** Rebrickable-CSVs täglich laden: Der lokale Katalog spart je Anzeige einen
  * API-Abruf und das Tageskontingent. */
-import type { Nutzlast, AuftragsLauf as CsvLauf } from '../auftraege';
-import { blNummernNachladen } from './partsImport';
-import { fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
-import { merkeBlFarbnummer, blFarbnummerAus } from './blZuordnung';
+import type { Nutzlast, JobRun as CsvLauf } from '../auftraege';
+import { reloadBlNumbers } from './partsImport';
+import { fehlertext, logAndContinue, withoutMissingFile } from '../infra/fehler';
+import { merkeBlFarbnummer, blColorNumberFrom } from './blZuordnung';
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
 import { fork as _fork } from 'node:child_process';
 import { versuche } from '../infra/ergebnis';
-import type { KatalogKontext } from './kontext';
+import type { CatalogContext } from './kontext';
 
 const SYNC_KEY = 'rb_csv_last_sync';
 const PART_CAT_KEY = 'rb_part_categories_last_sync';
@@ -21,7 +21,7 @@ function log(msg: string) {
 
 /** Der Import läuft in einem eigenen Prozess; dessen Einstieg ist Ausführung und liegt in jobs/,
  * die Bearbeitertabelle reicht seinen Pfad herein (jobs/auftraegeStarten.ts). */
-type ImportProzess = string | null;
+type ImportProcess = string | null;
 
 // Jede Datei belegt einen Abschnitt von TOTAL_STEPS, damit der Balken
 // durchgehend wächst statt je Datei zu springen.
@@ -33,10 +33,10 @@ function fileOverall(stepNum: number, phase: 'download' | 'import', pct: number)
   return stepNum - 1 + frac;
 }
 
-function melder(kx: KatalogKontext, lauf: CsvLauf) {
+function melder(kx: CatalogContext, lauf: CsvLauf) {
   return (step: string, progress: number, sub: string | null = null) => {
     void kx.auftraege
-      .meldeStartZustand({ ready: false, step, progress, total: TOTAL_STEPS, sub })
+      .reportStartState({ ready: false, step, progress, total: TOTAL_STEPS, sub })
       .catch(logAndContinue('rb-csv:start'));
     void lauf
       .fortschritt?.({ erledigt: progress, gesamt: TOTAL_STEPS, text: sub, schritt: `CSV-Import: ${step}` })
@@ -46,9 +46,9 @@ function melder(kx: KatalogKontext, lauf: CsvLauf) {
 }
 
 async function runWorker(
-  k: KatalogKontext,
+  k: CatalogContext,
   lauf: CsvLauf,
-  prozess: ImportProzess,
+  prozess: ImportProcess,
   task: string,
   stepNum: number,
   stepLabel: string,
@@ -59,9 +59,9 @@ async function runWorker(
   const tmpFile = path.join(DATA_DIR, filename.replace('.gz', '.tmp'));
   let letzter = 0;
   try {
-    await k.fremdquellen.quellen.ladeKatalogCsv(filename, tmpFile, {
+    await k.fremdquellen.quellen.loadCatalogCsv(filename, tmpFile, {
       ...(lauf.signal ? { signal: lauf.signal } : {}),
-      beiFortschritt: (bytes, gesamt) => {
+      atProgress: (bytes, gesamt) => {
         if (k.uhr.jetzt() - letzter < 700) return;
         letzter = k.uhr.jetzt();
         const pct = gesamt > 0 ? Math.round((bytes / gesamt) * 100) : 0;
@@ -76,14 +76,14 @@ async function runWorker(
     return await importInWorker(k, lauf, prozess, task, stepNum, stepLabel);
   } finally {
     // Aufräumen — auch bei Abbruch: inventory_parts.csv.tmp ist rund ein Gigabyte.
-    await fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('rb-csv:unlink'));
+    await fs.promises.unlink(tmpFile).catch(withoutMissingFile('rb-csv:unlink'));
   }
 }
 
 function importInWorker(
-  kx: KatalogKontext,
+  kx: CatalogContext,
   lauf: CsvLauf,
-  _workerPath: ImportProzess,
+  _workerPath: ImportProcess,
   task: string,
   stepNum: number,
   stepLabel: string,
@@ -121,7 +121,7 @@ function importInWorker(
 }
 
 // Nachziehen, wenn der Haupt-Sync heute schon lief, diese Dateien aber fehlen.
-async function syncCatalogExtrasDaily(k: KatalogKontext, lauf: CsvLauf, prozess: ImportProzess, today: string) {
+async function syncCatalogExtrasDaily(k: CatalogContext, lauf: CsvLauf, prozess: ImportProcess, today: string) {
   if ((await k.auftraege.liesZustand(CATALOG_EXTRAS_KEY)) === today) return;
   try {
     await runWorker(k, lauf, prozess, 'themes', TOTAL_STEPS, 'Themen laden...', 'themes.csv.gz');
@@ -143,7 +143,7 @@ async function syncCatalogExtrasDaily(k: KatalogKontext, lauf: CsvLauf, prozess:
 }
 
 // Auch ohne Haupt-Sync täglich, falls die Datei nachträglich dazukam.
-async function syncPartCategoriesDaily(k: KatalogKontext, lauf: CsvLauf, prozess: ImportProzess, today: string) {
+async function syncPartCategoriesDaily(k: CatalogContext, lauf: CsvLauf, prozess: ImportProcess, today: string) {
   if ((await k.auftraege.liesZustand(PART_CAT_KEY)) === today) return;
   try {
     await runWorker(k, lauf, prozess, 'part_categories', TOTAL_STEPS, 'Kategorien laden...', 'part_categories.csv.gz');
@@ -166,7 +166,7 @@ const DATEIEN: [string, string, string][] = [
   ['inventory_minifigs', 'Inventar-Figuren laden...', 'inventory_minifigs.csv.gz'],
 ];
 
-async function ladeAlles(kx: KatalogKontext, lauf: CsvLauf, prozess: ImportProzess, today: string): Promise<void> {
+async function loadEverything(kx: CatalogContext, lauf: CsvLauf, prozess: ImportProcess, today: string): Promise<void> {
   log(`Starting CSV sync for ${today}...`);
   try {
     for (const [i, [task, label, datei]] of DATEIEN.entries())
@@ -178,7 +178,7 @@ async function ladeAlles(kx: KatalogKontext, lauf: CsvLauf, prozess: ImportProze
     log(`CSV sync failed: ${fehlertext(e)}`);
     // Ohne Katalog ist die App benutzbar; ohne diese Meldung bliebe der
     // Startbildschirm stehen. Den nächsten Versuch plant der Auftrag mit Backoff.
-    await kx.auftraege.meldeStartZustand({
+    await kx.auftraege.reportStartState({
       ready: true,
       step: 'Katalog nicht geladen',
       progress: TOTAL_STEPS,
@@ -188,7 +188,7 @@ async function ladeAlles(kx: KatalogKontext, lauf: CsvLauf, prozess: ImportProze
   }
 }
 
-async function ladeBlFarben(k: KatalogKontext): Promise<void> {
+async function loadBlColors(k: CatalogContext): Promise<void> {
   const key = await k.fremdquellen.quellen.getRbKey();
   if (!key) return;
   log('[colors] Fetching BrickLink color mapping from Rebrickable API…');
@@ -209,7 +209,7 @@ async function ladeBlFarben(k: KatalogKontext): Promise<void> {
     const { body } = abruf.wert;
     const data = JSON.parse(body) as { results?: Record<string, unknown>[]; next?: string | null };
     for (const c of data.results || []) {
-      const blId = blFarbnummerAus(c);
+      const blId = blColorNumberFrom(c);
       if (blId != null) {
         await merkeBlFarbnummer(k, Number(c.id), blId);
         count++;
@@ -221,36 +221,36 @@ async function ladeBlFarben(k: KatalogKontext): Promise<void> {
   log(`[colors] BrickLink color mapping: ${count} colors cached`);
 }
 
-async function run(k: KatalogKontext, lauf: CsvLauf = {}, prozess: ImportProzess = null) {
+async function run(k: CatalogContext, lauf: CsvLauf = {}, prozess: ImportProcess = null) {
   await fs.promises.mkdir(DATA_DIR, { recursive: true });
   const today = k.uhr.datum().toISOString().slice(0, 10);
   if ((await k.auftraege.liesZustand(SYNC_KEY)) === today) {
     log(`Already synced today (${today}) — skipping CSV download`);
     await syncPartCategoriesDaily(k, lauf, prozess, today);
     await syncCatalogExtrasDaily(k, lauf, prozess, today);
-    await k.auftraege.meldeStartZustand({
+    await k.auftraege.reportStartState({
       ready: true,
       step: 'Bereit (Cache)',
       progress: TOTAL_STEPS,
       total: TOTAL_STEPS,
     });
   } else {
-    await ladeAlles(k, lauf, prozess, today);
+    await loadEverything(k, lauf, prozess, today);
   }
-  await blNummernNachladen(k, lauf).catch(logAndContinue('rb-csv:bl-nummern'));
-  await k.auftraege.meldeStartZustand({ ready: true, step: 'Bereit', progress: TOTAL_STEPS, total: TOTAL_STEPS });
+  await reloadBlNumbers(k, lauf).catch(logAndContinue('rb-csv:bl-nummern'));
+  await k.auftraege.reportStartState({ ready: true, step: 'Bereit', progress: TOTAL_STEPS, total: TOTAL_STEPS });
   log('Startup complete — server ready');
-  await ladeBlFarben(k).catch(logAndContinue('rb-csv:bl-farben'));
+  await loadBlColors(k).catch(logAndContinue('rb-csv:bl-farben'));
 }
 
 /** Beim Start nur, wenn heute noch nicht geladen; der tägliche und der von Hand angestossene Lauf laden immer. */
 async function csvAbgleich(
-  k: KatalogKontext,
+  k: CatalogContext,
   n: Nutzlast<'csv_sync'>,
   lauf: CsvLauf,
-  prozess: ImportProzess = null,
+  prozess: ImportProcess = null,
 ): Promise<void> {
-  if (!n.beimStart) await k.auftraege.loescheZustand(SYNC_KEY);
+  if (!n.onStart) await k.auftraege.deleteState(SYNC_KEY);
   await run(k, lauf, prozess);
 }
 

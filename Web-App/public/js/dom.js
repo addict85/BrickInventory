@@ -38,16 +38,16 @@ export function rollArt() {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 }
 
-export function aktiverReiter() {
+export function activeTab() {
   return eins('.ntab.active')?.dataset.tab;
 }
 
-const TELEFON = '(max-width: 640px)';
+const PHONE = '(max-width: 640px)';
 /** Telefonbreite wie in mobile.css: Dort gibt es keine Tabellenansicht, die Zeilen wären eine Bildschirmhöhe hoch. */
-export const telefonBreite = () => !!globalThis.matchMedia?.(TELEFON).matches;
+export const telefonBreite = () => !!globalThis.matchMedia?.(PHONE).matches;
 /** @param {() => void} fn läuft, wenn das Fenster die Telefonbreite erreicht oder verlässt */
-export function beiTelefonWechsel(fn) {
-  globalThis.matchMedia?.(TELEFON).addEventListener?.('change', fn);
+export function atPhoneSwitch(fn) {
+  globalThis.matchMedia?.(PHONE).addEventListener?.('change', fn);
 }
 
 /**
@@ -63,7 +63,7 @@ export function ico(name) {
  * auch wenn niemand hinsieht. `fn` läuft sofort oder beim nächsten Sichtbarwerden.
  * @param {() => unknown} fn
  */
-export function wennSichtbar(fn) {
+export function ifVisible(fn) {
   if (!document.hidden) {
     fn();
     return;
@@ -76,16 +76,16 @@ export function wennSichtbar(fn) {
 }
 
 /** @type {ReturnType<typeof setTimeout> | undefined} */
-let _trefferUhr;
+let _hitsClock;
 
 /**
  * Das Ergebnis einer Suche oder eines Filters für Vorleser (WCAG 4.1.3). Entprellt, damit nicht jeder
  * Tastendruck spricht; ein Zeichen wechselt, damit derselbe Text erneut angesagt wird.
  * @param {string} text
  */
-export function meldeTreffer(text) {
-  clearTimeout(_trefferUhr);
-  _trefferUhr = setTimeout(() => {
+export function reportHits(text) {
+  clearTimeout(_hitsClock);
+  _hitsClock = setTimeout(() => {
     const el = G('treffer-live');
     if (el) el.textContent = el.textContent === text ? text + '\u00a0' : text;
   }, 700);
@@ -94,25 +94,25 @@ export function meldeTreffer(text) {
 /**
  * Ein leerer Zustand: Symbol, ein Satz, und wenn es einen gibt, der nächste Schritt als Knopf. Texte kommen
  * fertig übersetzt oder als Schlüssel; maskiert wird hier.
- * @param {{ ico: string, titel?: string, text?: string, titelKey?: string, textKey?: string, knopf?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, art?: string } }} o
+ * @param {{ ico: string, titel?: string, text?: string, titleKey?: string, textKey?: string, knopf?: { text?: string, textKey?: string, click: string, arg?: string, ico?: string, art?: string } }} o
  */
-export function leerZustand(o) {
-  const knopfText = o.knopf?.textKey
+export function emptyState(o) {
+  const buttonText = o.knopf?.textKey
     ? html`<span data-i18n="${o.knopf.textKey}">${tRaw(o.knopf.textKey)}</span>`
     : html`<span>${o.knopf?.text}</span>`;
   const knopf = o.knopf
-    ? html`<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${o.knopf.click}"${o.knopf.arg ? html` data-arg="${o.knopf.arg}"` : ''}>${ico(o.knopf.ico || 'plus')}${knopfText}</button>`
+    ? html`<button type="button" class="btn ${o.knopf.art || 'bp'}" data-click="${o.knopf.click}"${o.knopf.arg ? html` data-arg="${o.knopf.arg}"` : ''}>${ico(o.knopf.ico || 'plus')}${buttonText}</button>`
     : '';
   // Mit Schlüssel übersetzt applyLang den Text nach, wenn die Kontosprache erst später feststeht.
   const k = (/** @type {string | undefined} */ key) => (key ? ` data-i18n="${esc(key)}"` : '');
-  return html`<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${rawHtml(k(o.titelKey))}>${o.titelKey ? tRaw(o.titelKey) : o.titel}</h2>${o.text || o.textKey ? html`<p${rawHtml(k(o.textKey))}>${o.textKey ? tRaw(o.textKey) : o.text}</p>` : ''}${knopf}</div>`;
+  return html`<div class="empty leer"><div class="leer-ico">${ico(o.ico)}</div><h2${rawHtml(k(o.titleKey))}>${o.titleKey ? tRaw(o.titleKey) : o.titel}</h2>${o.text || o.textKey ? html`<p${rawHtml(k(o.textKey))}>${o.textKey ? tRaw(o.textKey) : o.text}</p>` : ''}${knopf}</div>`;
 }
 
 /**
  * Der Knopf „Filter zurücksetzen“ für einen Leerzustand ohne Treffer.
  * @param {string} ansicht
  */
-export function zuruecksetzenKnopf(ansicht) {
+export function resetButton(ansicht) {
   return {
     text: tRaw('common.reset_filter'),
     click: 'filterZuruecksetzen',
@@ -140,7 +140,7 @@ export function knopfBesetzt(btn, laeuft) {
   // Die Breite einfrieren, bevor sich etwas ändert: Ein kürzerer Wartetext liesse sonst die ganze flex-Zeile
   // daneben nachrutschen.
   const breite = btn.offsetWidth;
-  const minVorher = btn.style.minWidth;
+  const minBefore = btn.style.minWidth;
   if (breite) btn.style.minWidth = breite + 'px';
   btn.disabled = true;
   btn.classList.add('besetzt');
@@ -154,7 +154,7 @@ export function knopfBesetzt(btn, laeuft) {
     else if (laeuft !== undefined) btn.textContent = vorher;
     // Die eigene Vorgabe zurueckgeben, nicht blind leeren: Ein Knopf, der von sich aus eine min-width traegt,
     // behaelt sie.
-    btn.style.minWidth = minVorher;
+    btn.style.minWidth = minBefore;
   };
 }
 

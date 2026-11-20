@@ -17,7 +17,7 @@ const PUB = path.join(ROOT, 'public');
  * ihn dann als undefiniert. Genau das ist beim ersten Anlauf passiert und hat
  * zwölf Fehlalarme erzeugt.
  */
-const KLASSE = /\.(-?[A-Za-z_][\w-]*)(?=[\s,{:.[)>~+]|$)/g;
+const CLASS = /\.(-?[A-Za-z_][\w-]*)(?=[\s,{:.[)>~+]|$)/g;
 
 /** Alle Quelldateien der Oberfläche — ohne Kommentare, ohne das Bündel. */
 function quellen() {
@@ -49,11 +49,11 @@ test('jeder Klassenname gestaltet etwas oder ist ein Griff', () => {
   // ihr eigenes <style> als Zeichenkette; ohne diesen Schritt gälten ihre
   // sechs Klassen als undefiniert.
   const definiert = new Set();
-  for (const [rel, s] of dateien) if (/\.(css|js)$/.test(rel)) for (const m of s.matchAll(KLASSE)) definiert.add(m[1]);
+  for (const [rel, s] of dateien) if (/\.(css|js)$/.test(rel)) for (const m of s.matchAll(CLASS)) definiert.add(m[1]);
   // Dazu der eine Inline-Stil in index.html (Startgerüst, per Hash in der CSP).
   for (const [rel, s] of dateien)
     if (rel.endsWith('index.html'))
-      for (const m of (/<style id="startstil">([\s\S]*?)<\/style>/.exec(s)?.[1] ?? '').matchAll(KLASSE))
+      for (const m of (/<style id="startstil">([\s\S]*?)<\/style>/.exec(s)?.[1] ?? '').matchAll(CLASS))
         definiert.add(m[1]);
   // GEMESSEN sind es 600.
   assert.ok(definiert.size >= 300, `Nur ${definiert.size} Klassennamen in den Stylesheets — Muster veraltet?`);
@@ -64,7 +64,7 @@ test('jeder Klassenname gestaltet etwas oder ist ein Griff', () => {
     if (!rel.endsWith('.js')) continue;
     for (const m of s.matchAll(/classList\.\w+\(\s*['"]([\w-]+)['"]/g)) griffe.add(m[1]);
     for (const m of s.matchAll(/(?:querySelector|querySelectorAll|closest|matches|alle|eins)\(\s*['"`]([^'"`]*)['"`]/g))
-      for (const t of m[1].matchAll(KLASSE)) griffe.add(t[1]);
+      for (const t of m[1].matchAll(CLASS)) griffe.add(t[1]);
     for (const m of s.matchAll(/getElementsByClassName\(\s*['"]([\w-]+)['"]/g)) griffe.add(m[1]);
   }
   assert.ok(griffe.size >= 20, `Nur ${griffe.size} Griffe gefunden — Muster veraltet?`);

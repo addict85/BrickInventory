@@ -3,7 +3,7 @@ import express from 'express';
 import { assetlinks } from '../src/factors';
 import type { Konfig } from '../src/infra/konfig';
 
-export function baueWellKnownRouter(konfig: Pick<Konfig, 'androidZertifikate' | 'androidPaket'>) {
+export function buildWellKnownRouter(konfig: Pick<Konfig, 'androidZertifikate' | 'androidPaket'>) {
   const router = express.Router();
 
   router.get('/.well-known/assetlinks.json', (_req, res) => {

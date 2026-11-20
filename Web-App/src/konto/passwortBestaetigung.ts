@@ -1,21 +1,21 @@
-import { BcryptUeberlast } from './bcryptSchranke';
-import { passwortPasst } from './passwortHash';
+import { BcryptOverload } from './bcryptSchranke';
+import { passwordFits } from './passwortHash';
 import {
-  bestaetigungGesperrt,
-  bestaetigungFehlgeschlagen,
-  bestaetigungGelungen,
-  meldeAnmeldeereignis,
-  type Bremse,
+  confirmationLocked,
+  confirmationFailed,
+  confirmationSucceeded,
+  reportLoginEvent,
+  type Brake,
 } from './loginLimiter';
-import type { FehlerArt, FehlerCode } from '../infra/fehlerTexte';
-import { kontoGedrosselt } from './zielDrossel';
-import { hinweisNebenher } from './kontoHinweis';
-import type { KontoKontext } from './kontext';
+import type { ErrorKind, ErrorCode } from '../infra/fehlerTexte';
+import { accountThrottled } from './zielDrossel';
+import { hintInBackground } from './kontoHinweis';
+import type { AccountContext } from './kontext';
 
 /** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/fehlerArt.ts). */
-export type BestaetigungsAbsage = {
-  art: FehlerArt;
-  code: FehlerCode;
+export type ConfirmationRejection = {
+  art: ErrorKind;
+  code: ErrorCode;
   vars?: Record<string, string | number>;
   passkey?: boolean;
 };
@@ -24,29 +24,29 @@ export type Faktor = { code?: string | number | null | undefined; passkey?: unkn
 const leer = (w: unknown) => w === undefined || w === null || String(w).trim() === '';
 
 async function gebremst(
-  k: KontoKontext,
-  art: Bremse,
+  k: AccountContext,
+  art: Brake,
   uid: number,
   zugang: string,
-  pruefung: () => Promise<boolean>,
-  absage: FehlerCode,
-): Promise<BestaetigungsAbsage | null> {
-  const gesperrt = await bestaetigungGesperrt(k, art, uid, zugang);
+  check: () => Promise<boolean>,
+  absage: ErrorCode,
+): Promise<ConfirmationRejection | null> {
+  const gesperrt = await confirmationLocked(k, art, uid, zugang);
   if (gesperrt) {
-    meldeAnmeldeereignis('bestaetigung_gesperrt', { konto: uid, art, zugang });
+    reportLoginEvent('bestaetigung_gesperrt', { konto: uid, art, zugang });
     return { art: 'zu_viele', ...gesperrt };
   }
-  if (!(await pruefung())) {
-    meldeAnmeldeereignis('bestaetigung_fehlgeschlagen', { konto: uid, art, zugang });
+  if (!(await check())) {
+    reportLoginEvent('bestaetigung_fehlgeschlagen', { konto: uid, art, zugang });
     // Wer in einer laufenden Sitzung rät, hat einen Zugang erbeutet: Der Inhaber erfährt es (1×/Tag).
-    if (await bestaetigungFehlgeschlagen(k, art, uid, zugang)) {
-      meldeAnmeldeereignis('bestaetigung_gebremst', { konto: uid, art, zugang });
-      if (!(await kontoGedrosselt(k, 'bestaetigung-hinweis', uid, 1, 86_400_000)))
-        hinweisNebenher(k, uid, 'bestaetigung_gebremst');
+    if (await confirmationFailed(k, art, uid, zugang)) {
+      reportLoginEvent('bestaetigung_gebremst', { konto: uid, art, zugang });
+      if (!(await accountThrottled(k, 'bestaetigung-hinweis', uid, 1, 86_400_000)))
+        hintInBackground(k, uid, 'bestaetigung_gebremst');
     }
     return { art: 'ungueltig', code: absage };
   }
-  await bestaetigungGelungen(k, art, uid, zugang);
+  await confirmationSucceeded(k, art, uid, zugang);
   return null;
 }
 
@@ -54,15 +54,15 @@ async function gebremst(
  * aktivem zweitem Faktor immer mit Code oder Passkey. Fehlt beides, kommt die
  * Absage vor jeder Prüfung, damit kein Erfolg eine Bremse zurücksetzt.
  * @returns null, wenn alles stimmt */
-export async function pruefeBestaetigung(
-  k: KontoKontext,
+export async function checkConfirmation(
+  k: AccountContext,
   uid: number,
   zugang: string,
   passwort: string | null | undefined,
   faktor: Faktor,
-): Promise<BestaetigungsAbsage | null> {
-  const mitFaktor = await k.factors.isActive(uid);
-  if (mitFaktor && leer(faktor.code) && leer(faktor.passkey))
+): Promise<ConfirmationRejection | null> {
+  const withFactor = await k.factors.isActive(uid);
+  if (withFactor && leer(faktor.code) && leer(faktor.passkey))
     return {
       art: 'ungueltig',
       code: 'zweiter_faktor_noetig',
@@ -75,15 +75,15 @@ export async function pruefeBestaetigung(
     zugang,
     async () => {
       const u = await k.zugaenge.passwortHash(uid);
-      return !!u && typeof passwort === 'string' && passwort !== '' && passwortPasst(passwort, u.password_hash);
+      return !!u && typeof passwort === 'string' && passwort !== '' && passwordFits(passwort, u.password_hash);
     },
     'aktuelles_passwort_falsch',
   ).catch((e: unknown) => {
-    if (e instanceof BcryptUeberlast)
-      return { art: 'nicht_verfuegbar', code: 'server_ausgelastet' } as BestaetigungsAbsage;
+    if (e instanceof BcryptOverload)
+      return { art: 'nicht_verfuegbar', code: 'server_ausgelastet' } as ConfirmationRejection;
     throw e;
   });
-  if (pw || !mitFaktor) return pw;
+  if (pw || !withFactor) return pw;
   return leer(faktor.passkey)
     ? gebremst(
         k,
@@ -104,12 +104,12 @@ export async function pruefeBestaetigung(
 }
 
 /** Nur der Code, mit der Bremse für Codes. */
-export function pruefeCodeBestaetigung(
-  k: KontoKontext,
+export function checkCodeConfirmation(
+  k: AccountContext,
   uid: number,
   zugang: string,
   code: string | number | null | undefined,
-): Promise<BestaetigungsAbsage | null> {
+): Promise<ConfirmationRejection | null> {
   return gebremst(
     k,
     'faktor',
@@ -123,12 +123,12 @@ export function pruefeCodeBestaetigung(
 /** Das Bestätigen der Einrichtung prüft ebenfalls einen Code; ohne Bremse
  * liesse er sich in einer übernommenen Sitzung beliebig oft raten.
  * @returns die Wiederherstellungscodes oder die Absage */
-export async function bestaetigeEinrichtungGebremst(
-  k: KontoKontext,
+export async function confirmSetupThrottled(
+  k: AccountContext,
   uid: number,
   zugang: string,
   code: string | number | null | undefined,
-): Promise<string[] | BestaetigungsAbsage> {
+): Promise<string[] | ConfirmationRejection> {
   let codes: string[] | null = null;
   const absage = await gebremst(
     k,

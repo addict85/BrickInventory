@@ -11,16 +11,16 @@ import { api } from './api.js';
 // ── Hinweis „Rebrickable-Schlüssel fehlt“ ───────────────────────────────────
 /** Weggeklickt bleibt das Band weg, je Konto und Gerät: Am Telefon kostete es den ersten Bildschirm ein
  * Sechzehntel, und der fehlende Schlüssel steht ohnehin in den Einstellungen und im Einrichtungsassistenten. */
-const rbHinweisSchluessel = () => `bim_rb_hinweis_weg:${loggedInAccount?.id ?? ''}`;
+const rbHintKey = () => `bim_rb_hinweis_weg:${loggedInAccount?.id ?? ''}`;
 
 /** Über dem Einrichtungsassistenten nicht: Der fragt genau diesen Schlüssel ab.
  * Schliesst man ihn mit „Später“, kommt das Band (einrichtung.js). */
-export function rbHinweisZeigen() {
+export function showRbHint() {
   const band = G('rb-hinweis');
   if (!band || !loggedInAccount?.isAdmin || G('einrichtung-modal')?.classList.contains('open')) return;
   let zeigen = !String(settingsSnapshot?.rebrickable_api_key || '').trim();
   try {
-    zeigen &&= !localStorage.getItem(rbHinweisSchluessel());
+    zeigen &&= !localStorage.getItem(rbHintKey());
     if (zeigen) localStorage.setItem('bim_rb_band', '1');
     else localStorage.removeItem('bim_rb_band');
   } catch (_) {
@@ -29,13 +29,13 @@ export function rbHinweisZeigen() {
   if (zeigen) band.hidden = false;
 }
 
-export function rbHinweisVerbergen() {
+export function hideRbHint() {
   const b = G('rb-hinweis');
   if (b) b.hidden = true;
 }
 
 function rbHinweisOeffnen() {
-  rbHinweisVerbergen();
+  hideRbHint();
   eins('.ntab[data-tab="settings"]')?.click();
   /** @type {HTMLElement|null} */ (document.querySelector('.einst-nav a[data-arg="einst-rb"]'))?.click();
   G('rb-key')?.focus();
@@ -43,9 +43,9 @@ function rbHinweisOeffnen() {
 
 /** Wegklicken gilt dauerhaft für dieses Konto; der Fokus geht an den Seiteninhalt statt ins Leere. */
 function rbHinweisWeg() {
-  rbHinweisVerbergen();
+  hideRbHint();
   try {
-    localStorage.setItem(rbHinweisSchluessel(), '1');
+    localStorage.setItem(rbHintKey(), '1');
     localStorage.removeItem('bim_rb_band');
   } catch (_) {
     /* dann eben bis zum Neuladen */
@@ -95,7 +95,7 @@ export async function initDefaultCondition() {
  * Der Name in der Kopfleiste, für Verwalter mit „(Verwalter)“ statt eigener Plakette. Eine Funktion, weil
  * Anmeldung und Profil ihn schreiben und eine zweite Fassung schon einmal ins Leere lief.
  */
-export function zeigeBenutzernamen() {
+export function showUsernames() {
   const el = G('ubadge');
   if (!el || !loggedInAccount) return;
   // „admin (Administrator)“ sagt dasselbe zweimal: „admin“ ist die gängige Kurzform der Rolle
@@ -130,6 +130,6 @@ registerActions({
 // Die gewählte Sprache am Konto speichern (i18n.js meldet den Wechsel). Was der Code zur Laufzeit schreibt
 // (Kontoschild „Name (Verwalter)“), zieht nach.
 subscribe('spracheGewechselt', ({ sprache, speichern }) => {
-  if (loggedInAccount) zeigeBenutzernamen();
+  if (loggedInAccount) showUsernames();
   if (speichern) api('POST', '/v1/settings', { language: sprache });
 });

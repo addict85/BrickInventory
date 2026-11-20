@@ -5,7 +5,7 @@ const path = require('node:path');
 
 // Was root an ./data tut, steht in daten-rechte.sh (eigener Dienst vor app und jobs).
 const ep = fs.readFileSync(path.join(__dirname, '..', 'daten-rechte.sh'), 'utf8');
-const einstieg = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh'), 'utf8');
+const entry = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh'), 'utf8');
 
 /**
  * Der Start des Containers schweigt nicht, und er arbeitet nicht umsonst.
@@ -19,10 +19,10 @@ test('der Start sagt, was er tut', () => {
     zeilen >= 2,
     `Nur ${zeilen} Ausgabe(n) im Entrypoint. Ohne sie beginnt jeder Start mit ` + 'einer unbestimmten Zeit Schweigen.',
   );
-  const ersteAusgabe = ep.indexOf('echo "[daten-rechte]');
-  const ersteArbeit = ep.indexOf('mkdir -p');
+  const firstOutput = ep.indexOf('echo "[daten-rechte]');
+  const firstWork = ep.indexOf('mkdir -p');
   assert.ok(
-    ersteAusgabe > 0 && ersteAusgabe < ersteArbeit,
+    firstOutput > 0 && firstOutput < firstWork,
     'Die erste Ausgabe steht hinter der ersten Arbeit — dann schweigt der Start ' +
       'wieder genau so lange, wie die Arbeit dauert.',
   );
@@ -105,10 +105,10 @@ test('ein normaler Start geht gar nicht erst durch die Dateien', () => {
       'Datenbestand, auch wenn nichts zu tun ist',
   );
   // Sie muss VOR der Suche gelesen werden, sonst spart sie nichts.
-  const markeGelesen = ep.indexOf('cat "$MARKE"');
+  const readBrand = ep.indexOf('cat "$MARKE"');
   const gesucht = ep.indexOf('find /app/data -xdev ! -uid "$ZIEL_UID" -print');
   assert.ok(
-    markeGelesen > 0 && markeGelesen < gesucht,
+    readBrand > 0 && readBrand < gesucht,
     'Die Marke wird erst nach der Suche gelesen. Dann ist die Suche schon ' + 'gelaufen, und die Marke spart nichts.',
   );
   // Und sie muss die UID tragen, nicht bloss existieren: Ein Wechsel der UID
@@ -137,7 +137,7 @@ test('die Marke bricht keinen Start ab', () => {
 test('chown als root folgt keinem Symlink', () => {
   // /app/data gehört dem Dienst. Ohne -h schriebe root das ZIEL eines dort
   // abgelegten Symlinks um — eine Datei ausserhalb, etwa /etc/passwd.
-  const code = `${ep}\n${einstieg}`
+  const code = `${ep}\n${entry}`
     .split('\n')
     .filter(z => !z.trimStart().startsWith('#'))
     .join('\n');

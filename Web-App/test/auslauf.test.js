@@ -15,7 +15,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const AUSLAUF = path.join(__dirname, 'helpers', 'auslauf.js');
+const EXPIRY = path.join(__dirname, 'helpers', 'auslauf.js');
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'auslauf-'));
 test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
 
@@ -27,7 +27,7 @@ function lauf(name, inhalt, env) {
   // Ohne diese Marken hielte sich das innere node --test selbst für ein Kind.
   const { NODE_TEST_CONTEXT: _k, TEST_AUSLAUF_AKTIV: _a, TEST_DATEI_FRIST_MS: _f, ...rest } = process.env;
   const start = Date.now();
-  const r = spawnSync(process.execPath, ['--require', AUSLAUF, '--test', '--test-reporter=tap', datei], {
+  const r = spawnSync(process.execPath, ['--require', EXPIRY, '--test', '--test-reporter=tap', datei], {
     cwd: ordner,
     encoding: 'utf8',
     timeout: 60_000,

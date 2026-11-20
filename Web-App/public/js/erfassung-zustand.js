@@ -1,8 +1,8 @@
-import { heuteIso } from './bausteine.js';
+import { todayIso } from './bausteine.js';
 import { tRaw } from '../i18n.js';
 import { html, rawHtml } from './escaping.js';
 import { ico, G, setzeHtml } from './dom.js';
-import { fmtDatum, browserSchreibtDatumWieApp } from './format.js';
+import { fmtDatum, browserWritesDateHowApp } from './format.js';
 
 // Was der Kaufpreis-Dialog des Sets und der Dialog manueller Einträge teilen: dasselbe Fenster (#acq-modal),
 // dieselbe Haushaltsliste und dieselben Tabellenbausteine.
@@ -24,11 +24,11 @@ export const erfassung = {
  * @param {HTMLElement} ziel
  * @param {import('./escaping.js').Markup} markup
  */
-export function setzeMitFokus(ziel, markup) {
+export function setWithFocus(ziel, markup) {
   const felder = () => /** @type {HTMLElement[]} */ ([...ziel.querySelectorAll('input, select, button')]);
-  const stelle = felder().indexOf(/** @type {HTMLElement} */ (document.activeElement));
+  const place = felder().indexOf(/** @type {HTMLElement} */ (document.activeElement));
   setzeHtml(ziel, markup);
-  if (stelle >= 0) felder()[stelle]?.focus({ preventScroll: true });
+  if (place >= 0) felder()[place]?.focus({ preventScroll: true });
 }
 
 /**
@@ -49,20 +49,20 @@ export function isoTag(v) {
  * @param {string} iso
  * @param {string} textId
  */
-export function datumFeld(attrs, iso, textId) {
-  const text = browserSchreibtDatumWieApp(iso) ? '' : fmtDatum(iso, 'lang');
-  return html`<span class="acq-datum"><input class="acq-feld" type="date" max="${heuteIso()}" value="${iso}" aria-label="${tRaw('detail.added')}"
+export function dateField(attrs, iso, textId) {
+  const text = browserWritesDateHowApp(iso) ? '' : fmtDatum(iso, 'lang');
+  return html`<span class="acq-datum"><input class="acq-feld" type="date" max="${todayIso()}" value="${iso}" aria-label="${tRaw('detail.added')}"
       ${text ? html`aria-describedby="${textId}"` : ''} ${rawHtml(attrs)} />${text ? html`<span class="acq-datum-text" id="${textId}">${text}</span>` : ''}</span>`;
 }
 
 /** Zeilen, deren letzte Änderung gespeichert ist; die Marke übersteht das Neuzeichnen. */
 export const gespeichert = new Set();
 /** @param {number | string} id */
-export function gespeichertMarke(id) {
+export function savedBrand(id) {
   return html`<span class="acq-ok" id="acq-ok-${id}" role="status"${gespeichert.has(String(id)) ? '' : ' hidden'}>${ico('ok')}<span>${tRaw('settings.saved')}</span></span>`;
 }
 /** @param {number | string} id */
-export function zeigeGespeichert(id) {
+export function showSaved(id) {
   gespeichert.add(String(id));
   const el = G(`acq-ok-${id}`);
   if (el) el.hidden = false;

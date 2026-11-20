@@ -15,10 +15,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, sicht, warte } = require('./helpers/oberflaeche');
+const { openUi, sicht, warte } = require('./helpers/oberflaeche');
 
-async function hinweisFuer(url) {
-  const o = await oeffneOberflaeche({
+async function hintFor(url) {
+  const o = await openUi({
     '/v1/auth/qr-token': { success: true, url, token: 'abc', expires_in: 300, token_days: null },
   });
   try {
@@ -32,19 +32,19 @@ async function hinweisFuer(url) {
 }
 
 test('http:// bekommt den Hinweis, dass die App nur HTTPS annimmt', async () => {
-  const h = await hinweisFuer('http://192.168.1.5:3000');
+  const h = await hintFor('http://192.168.1.5:3000');
   assert.equal(h.versteckt, false);
   assert.match(h.text, /Android-App nimmt nur noch HTTPS an/);
 });
 
 test('https:// bekommt keinen', async () => {
-  const h = await hinweisFuer('https://lego.example.org');
+  const h = await hintFor('https://lego.example.org');
   assert.equal(h.versteckt, true);
   assert.equal(h.text, '');
 });
 
 test('ohne HTTPS nennt die TLS-Fläche, dass die App sich nur über HTTPS verbindet', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/settings/tls': { success: true, https: false, fp: null },
     '/v1/settings/tokens': { success: true, tokens: [] },
   });
@@ -62,7 +62,7 @@ test('der Countdown zählt von der Dauer des Servers, der Hinweis nennt dieselbe
     ['de', /5 Minuten gültig/],
     ['en', /valid for 5 minutes/],
   ])) {
-    const { w, d } = await oeffneOberflaeche(
+    const { w, d } = await openUi(
       {
         '/v1/auth/qr-token': {
           success: true,

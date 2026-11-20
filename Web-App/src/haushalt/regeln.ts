@@ -4,45 +4,45 @@ import crypto from 'node:crypto';
 /** Lang genug für „später am Abend", kurz genug, dass ein liegen gebliebener
  * Code nicht dauerhaft öffnet. */
 export const INVITE_TTL_MS = 24 * 60 * 60 * 1000;
-export const OFFENE_EINLADUNGEN_MAX = 5;
+export const OPEN_INVITATIONS_MAX = 5;
 
 export interface Household {
   /** Eigene zuerst, dann die direkten Unterkonten. */
   memberIds: number[];
   isMain: boolean;
   /** Ein Konto kann mehreren Haushalten angehören. */
-  elternIds: number[];
+  parentIds: number[];
 }
 
-export const HAUSHALT_KANAL = 'haushalt_geaendert';
-export const HAUSHALT_TTL_MS = 5 * 60 * 1000;
-export const HAUSHALT_MAX = 500;
+export const HOUSEHOLD_CHANNEL = 'haushalt_geaendert';
+export const HOUSEHOLD_TTL_MS = 5 * 60 * 1000;
+export const HOUSEHOLD_MAX = 500;
 
 /** Ohne 0/O, 1/I/L: Der Code wird oft abgetippt. 16 Zeichen tragen rund 79 Bit. */
-const CODE_ZEICHEN = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+const CODE_CHARS = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
-export function neuerCode(): string {
-  const z = Array.from({ length: 16 }, () => CODE_ZEICHEN[crypto.randomInt(CODE_ZEICHEN.length)]).join('');
+export function newCode(): string {
+  const z = Array.from({ length: 16 }, () => CODE_CHARS[crypto.randomInt(CODE_CHARS.length)]).join('');
   return z.match(/.{4}/g)!.join('-');
 }
 
 /** Neue Codes ohne Striche und Gross/Klein; ältere (base64url) bleiben wörtlich gültig. */
-function einladungsSchluessel(code: string): string {
+function invitationKey(code: string): string {
   const kurz = code.trim().replace(/[\s-]/g, '').toUpperCase();
-  return new RegExp(`^[${CODE_ZEICHEN}]{16}$`).test(kurz) ? kurz : code.trim();
+  return new RegExp(`^[${CODE_CHARS}]{16}$`).test(kurz) ? kurz : code.trim();
 }
 
 /** Im Klartext steht der Code nirgends. */
 export function einladungsHash(token: string) {
-  return crypto.createHash('sha256').update(einladungsSchluessel(token)).digest('hex');
+  return crypto.createHash('sha256').update(invitationKey(token)).digest('hex');
 }
 
 // Der Kontofilter wird hier zu IDs, damit Liste und Summen dieselben Konten zählen.
 export type ScopeMode = 'all' | 'own' | 'subs' | number;
 
 /** Unbekanntes ergibt 'all'. Eine Zahl wird NICHT hier geprüft: Ob sie zum
- * Haushalt gehört, weiss erst blickfeldIds(). */
-export function blickfeldArt(v: unknown): ScopeMode {
+ * Haushalt gehört, weiss erst scopeIds(). */
+export function scopeKind(v: unknown): ScopeMode {
   if (v === 'own' || v === 'subs') return v;
   const n = parseInt(String(v), 10);
   return Number.isFinite(n) && n > 0 ? n : 'all';
@@ -50,11 +50,11 @@ export function blickfeldArt(v: unknown): ScopeMode {
 
 /** Vor `asIds()` ID oder Liste, danach `Blickfeld` (immer Liste): zwei Namen,
  * damit eine Signatur sagt, in welchem Moment sie steht. */
-export type BlickfeldEingabe = number | number[];
+export type ScopeInput = number | number[];
 
 export type Blickfeld = number[];
 
-export function asIds(v: BlickfeldEingabe): Blickfeld {
+export function asIds(v: ScopeInput): Blickfeld {
   return Array.isArray(v) ? v.map(x => parseInt(String(x), 10)) : [parseInt(String(v), 10)];
 }
 

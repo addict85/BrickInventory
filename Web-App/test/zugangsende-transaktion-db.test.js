@@ -4,9 +4,9 @@
  * ein Anweisungs-Trigger auf der zuletzt geleerten Tabelle.
  *
  * Gegenproben (am 11.11.2026 gemessen):
- *   A  mitZugangsende() ohne db.transaction (fn direkt aufgerufen) → rot:
+ *   A  withAccessEnd() ohne db.transaction (fn direkt aufgerufen) → rot:
  *      „Rücksetzen: Passwort und Token bleiben“ und „andere Zugänge …“
- *   B  beendeAndereZugaenge() ruft den Rumpf direkt statt über mitZugangsende()
+ *   B  beendeAndereZugaenge() ruft den Rumpf direkt statt über withAccessEnd()
  *      → rot: „andere Zugänge: der Token bleibt“
  */
 const test = require('node:test');
@@ -14,10 +14,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 async function seed() {
   await db.run('DROP SCHEMA public CASCADE');
@@ -43,7 +43,7 @@ async function seed() {
 
 const schalte = an =>
   db.exec(`CREATE OR REPLACE FUNCTION bremse_an() RETURNS boolean LANGUAGE sql AS $$ SELECT ${an} $$`);
-async function mitBremse(fn) {
+async function withBrake(fn) {
   await schalte(true);
   try {
     return await fn();
@@ -53,7 +53,7 @@ async function mitBremse(fn) {
 }
 
 test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const uid = await seed();
   const K = _req('src/konto/konten.js');
@@ -63,7 +63,7 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
     (await db.all('SELECT token FROM api_tokens WHERE user_id=$1 ORDER BY token', [uid])).map(z => z.token);
   const stand = () => db.get('SELECT password_hash, session_version FROM users WHERE id=$1', [uid]);
   await db.run(`INSERT INTO api_tokens (token, user_id) VALUES ('t1', $1), ('t2', $1)`, [uid]);
-  const link = A.tokenAbdruck('ruecksetz-link');
+  const link = A.tokenDigest('ruecksetz-link');
   await db.run(`UPDATE users SET reset_token = $1, reset_token_expires = NOW() + interval '1 hour' WHERE id = $2`, [
     link,
     uid,
@@ -71,7 +71,7 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
 
   await t.test('Rücksetzen: Passwort und Token bleiben', async () => {
     const vorher = await stand();
-    await mitBremse(() => assert.rejects(K.setzePasswortZurueck(link, 'ein-neues-langes-Passwort'), /erzwungen/));
+    await withBrake(() => assert.rejects(K.setPasswordBack(link, 'ein-neues-langes-Passwort'), /erzwungen/));
     assert.deepEqual(
       await stand(),
       vorher,
@@ -83,15 +83,15 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
   });
 
   await t.test('andere Zugänge: der Token bleibt', async () => {
-    await mitBremse(() =>
-      assert.rejects(zugangsende.beendeAndere(uid, { sitzung: null, token: null, zugaenge: true }), /erzwungen/),
+    await withBrake(() =>
+      assert.rejects(zugangsende.endOther(uid, { sitzung: null, token: null, zugaenge: true }), /erzwungen/),
     );
     assert.deepEqual(await tokens(), ['t1', 't2']);
   });
 
   await t.test('ohne Fehler: alles gilt', async () => {
     const vorher = await stand();
-    assert.equal(await K.setzePasswortZurueck(link, 'ein-neues-langes-Passwort'), uid);
+    assert.equal(await K.setPasswordBack(link, 'ein-neues-langes-Passwort'), uid);
     const nachher = await stand();
     assert.notEqual(nachher.password_hash, 'alt');
     assert.ok(nachher.session_version > vorher.session_version);

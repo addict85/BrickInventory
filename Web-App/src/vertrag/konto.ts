@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { eingabe } from '../infra/validate';
-import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, TEXT } from './grund';
+import { type Route, zeit, Erfolg, ganz, bestaetigt, WITHOUT_BODY, TEXT } from './grund';
 import { GenericResponse } from './gemeinsam';
 
 export const AppToken = z.looseObject({
@@ -30,7 +30,7 @@ export const User = z.looseObject({
   is_admin: z.boolean(),
 });
 
-/** Was Anmeldung und Tausch über den neuen Token sagen (tokenAngaben). */
+/** Was Anmeldung und Tausch über den neuen Token sagen (tokenDetails). */
 export const TokenAngaben = z.looseObject({
   scope: z.string(),
   expires_at: zeit.nullable().optional(),
@@ -265,7 +265,7 @@ const code = z
   .optional();
 /** Wie ein Token heissen und gelten soll. `label` nimmt jeden Wert: tokenLabel() kürzt oder ersetzt ihn. */
 const tokenWunsch = { label: z.unknown().optional(), never_expires: z.boolean().optional(), scope: txt(20) };
-const Anmeldedaten = z.strictObject({
+const Credentials = z.strictObject({
   username: txt(254),
   password: txt(PASSWORT),
   code,
@@ -291,7 +291,7 @@ const ProfilAenderung = {
 };
 /** `password: null` schickt die App mit (ZweiterFaktorAnfrage); einen Wert nimmt die Route nicht. */
 const NurCode = z.strictObject({ code, password: z.null().optional() });
-const verwalterBestaetigt = <F extends z.ZodRawShape = Record<never, z.ZodType>>(felder: F = {} as F) =>
+const adminConfirmed = <F extends z.ZodRawShape = Record<never, z.ZodType>>(felder: F = {} as F) =>
   bestaetigt(felder, 'admin_password');
 
 export const routen = {
@@ -300,7 +300,7 @@ export const routen = {
   'GET /api/v1/auth/zweiter-faktor': { antwort: ZweiterFaktorStand },
   'GET /api/v1/auth/me': { antwort: MeResponse },
   'GET /api/v1/settings/tokens': { klein: true, antwort: TokensResponse },
-  'POST /api/v1/auth/login': { antwort: LoginResponse, eingabe: Anmeldedaten, geheim: true },
+  'POST /api/v1/auth/login': { antwort: LoginResponse, eingabe: Credentials, geheim: true },
   'POST /api/v1/auth/qr-login': {
     antwort: QrMeldung,
     eingabe: z.strictObject({ token: txt(200), label: z.unknown().optional() }),
@@ -318,8 +318,8 @@ export const routen = {
   },
   'GET /api/v1/auth/qr-kopplung/:id': { antwort: QrKopplungStand },
   'POST /api/v1/auth/qr-kopplung/:id/bestaetigen': { antwort: Erfolg, eingabe: z.strictObject({ code: txt(20) }) },
-  'POST /api/v1/auth/qr-kopplung/:id/ablehnen': { antwort: Erfolg, eingabe: OHNE_RUMPF },
-  'POST /api/v1/auth/logout': { eingabe: OHNE_RUMPF, antwort: GenericResponse },
+  'POST /api/v1/auth/qr-kopplung/:id/ablehnen': { antwort: Erfolg, eingabe: WITHOUT_BODY },
+  'POST /api/v1/auth/logout': { eingabe: WITHOUT_BODY, antwort: GenericResponse },
   'POST /api/v1/auth/register': { antwort: RegisterResponse, eingabe: Registrierung },
   'POST /api/v1/auth/forgot-password': {
     antwort: ForgotPasswordResponse,
@@ -358,35 +358,33 @@ export const routen = {
   },
   // Bestätigt wird nur der Widerruf eines FREMDEN Zugangs; den eigenen beendet jedes Gerät selbst.
   'DELETE /api/v1/settings/tokens/:tokenId': { antwort: TokenWiderruf, ...bestaetigt() },
-  'POST /api/v1/auth/token-rotieren': { eingabe: OHNE_RUMPF, antwort: TokenRotation, geheim: true },
+  'POST /api/v1/auth/token-rotieren': { eingabe: WITHOUT_BODY, antwort: TokenRotation, geheim: true },
   'GET /api/v1/auth/users': { klein: true, antwort: KontenListe },
   'POST /api/v1/auth/users': {
     antwort: Erfolg,
-    ...verwalterBestaetigt({
-      is_admin: eingabe.schalterOderNein('is_admin'),
-      isAdmin: eingabe
-        .schalterOderNein('isAdmin')
-        .meta({ deprecated: true, description: 'früherer Name von is_admin' }),
+    ...adminConfirmed({
+      is_admin: eingabe.toggleOrNo('is_admin'),
+      isAdmin: eingabe.toggleOrNo('isAdmin').meta({ deprecated: true, description: 'früherer Name von is_admin' }),
       username: z.string().max(64).optional(),
       password: z.string().max(PASSWORT).optional(),
     }),
   },
   'PUT /api/v1/auth/users/:id/admin': {
     antwort: VerwalterWeg,
-    ...verwalterBestaetigt({ is_admin: eingabe.schalter('is_admin') }),
+    ...adminConfirmed({ is_admin: eingabe.schalter('is_admin') }),
   },
   'PUT /api/v1/auth/users/:id/aktiv': {
     antwort: KontoAktiv,
-    ...verwalterBestaetigt({ is_active: eingabe.schalter('is_active') }),
+    ...adminConfirmed({ is_active: eingabe.schalter('is_active') }),
   },
-  'PUT /api/v1/auth/users/:id/freischalten': { antwort: Erfolg, ...verwalterBestaetigt() },
+  'PUT /api/v1/auth/users/:id/freischalten': { antwort: Erfolg, ...adminConfirmed() },
   'PUT /api/v1/auth/users/:id/password': {
     antwort: VerwalterWeg,
-    ...verwalterBestaetigt({ password: z.string().max(PASSWORT).optional() }),
+    ...adminConfirmed({ password: z.string().max(PASSWORT).optional() }),
   },
-  'DELETE /api/v1/auth/users/:id': { antwort: VerwalterWeg, ...verwalterBestaetigt() },
+  'DELETE /api/v1/auth/users/:id': { antwort: VerwalterWeg, ...adminConfirmed() },
   'DELETE /api/v1/auth/konto': { antwort: Erfolg, ...bestaetigt() },
-  'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: VerwalterWeg, ...verwalterBestaetigt() },
+  'DELETE /api/v1/auth/users/:id/zweiter-faktor': { antwort: VerwalterWeg, ...adminConfirmed() },
   'POST /api/v1/auth/token-create': { antwort: TokenErstellt, ...bestaetigt(tokenWunsch), geheim: true },
   'POST /api/v1/auth/qr-token': {
     antwort: QrToken,

@@ -17,11 +17,11 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { pruefeAntwort } = require('./helpers/oberflaeche');
+const { checkResponse } = require('./helpers/oberflaeche');
 const { warte: takt } = require('./helpers/zeit');
 
 const ROOT = path.join(__dirname, '..');
-const SKRIPT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'logviewer.js'), 'utf8');
+const SCRIPT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'logviewer.js'), 'utf8');
 
 function oeffne() {
   const { JSDOM } = require(path.join(ROOT, 'node_modules', 'jsdom'));
@@ -41,7 +41,7 @@ function oeffne() {
   const aufrufe = [];
   w.fetch = async (url, o = {}) => {
     aufrufe.push({ url: String(url), headers: o.headers || {}, credentials: o.credentials });
-    const daten = pruefeAntwort(o.method || 'GET', url, {
+    const daten = checkResponse(o.method || 'GET', url, {
       success: true,
       logs: [
         { level: 'info', message: 'Start fertig', logged_at: '2026-11-05T10:00:00Z' },
@@ -59,7 +59,7 @@ function oeffne() {
   w.alert = () => {
     alarm++;
   };
-  w.eval(SKRIPT);
+  w.eval(SCRIPT);
   return { w, d: w.document, aufrufe, alarm: () => alarm };
 }
 

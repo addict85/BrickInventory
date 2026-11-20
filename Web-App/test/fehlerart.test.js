@@ -4,16 +4,16 @@
  * die der Fehlerweg der Routen (handleRouteError) daraus macht.
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in STATUS_DER_ART `konflikt: 400` → rot: „jede Art ergibt ihren Status“
+ *   A  in STATUS_THE_KIND `konflikt: 400` → rot: „jede Art ergibt ihren Status“
  *      (konflikt 400 statt 409)
  *   B  in handleRouteError wieder `typeof e.status === 'number' ? e.status : 500`
- *      statt statusVon(e) → rot: „jede Art ergibt ihren Status“ (alle 500)
- *   C  `import { statusVon } from '../http/fehlerArt'` in src/sets/dienst.ts →
+ *      statt statusOf(e) → rot: „jede Art ergibt ihren Status“ (alle 500)
+ *   C  `import { statusOf } from '../http/fehlerArt'` in src/sets/dienst.ts →
  *      rot: „nur src/http bildet Arten auf Status ab …“
  *   D  in src/infra/geld.ts dem fachfehler() eine Statuszahl 400 angehängt → rot:
  *      dieselbe Prüfung, Liste `status`
- *   E  (15.11.2026) in sendeFehler `res.status(500)` statt STATUS_DER_ART[art] → rot:
- *      „jede Art ergibt ihren Status“ (sendeFehler ungueltig: 500 statt 400)
+ *   E  (15.11.2026) in sendError `res.status(500)` statt STATUS_THE_KIND[art] → rot:
+ *      „jede Art ergibt ihren Status“ (sendError ungueltig: 500 statt 400)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,9 +23,9 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const ohneKommentare = require('./helpers/sources').ohneKommentare;
-const { handleRouteError, sendeFehler } = _req('src/http/httpAntwort.js');
-const { STATUS_DER_ART } = _req('src/http/fehlerArt.js');
-const { fachfehler, alsDoppelt } = _req('src/infra/fehlerTexte.js');
+const { handleRouteError, sendError } = _req('src/http/httpAntwort.js');
+const { STATUS_THE_KIND } = _req('src/http/fehlerArt.js');
+const { fachfehler, asDuplicate } = _req('src/infra/fehlerTexte.js');
 
 /** Was handleRouteError an eine Antwort schreibt. */
 function antwort(e) {
@@ -84,7 +84,7 @@ test('jede Art ergibt ihren Status', () => {
     falscher_host: 421,
     zu_alt: 426,
   };
-  assert.deepEqual(Object.keys(STATUS_DER_ART).sort(), Object.keys(erwartet).sort());
+  assert.deepEqual(Object.keys(STATUS_THE_KIND).sort(), Object.keys(erwartet).sort());
   for (const [art, status] of Object.entries(erwartet)) {
     assert.deepEqual(
       antwort(geworfen(() => fachfehler(art, 'set_nicht_gefunden'))),
@@ -99,13 +99,13 @@ test('jede Art ergibt ihren Status', () => {
         return { json: () => {} };
       },
     };
-    sendeFehler({ headers: {} }, res, art, 'set_nicht_gefunden');
-    assert.equal(gesendet, status, `sendeFehler ${art}`);
+    sendError({ headers: {} }, res, art, 'set_nicht_gefunden');
+    assert.equal(gesendet, status, `sendError ${art}`);
   }
 });
 
 test('ein Doppel aus der Datenbank wird zum Konflikt', () => {
-  const e = geworfen(() => alsDoppelt('benutzername_vergeben')({ code: '23505' }));
+  const e = geworfen(() => asDuplicate('benutzername_vergeben')({ code: '23505' }));
   assert.equal(e.art, 'konflikt');
   assert.deepEqual(antwort(e), { status: 409, code: 'benutzername_vergeben' });
   // Ein fremder Fehler mit eigenem Status (Body-Parser) behält ihn.
@@ -137,11 +137,11 @@ test('nur src/http bildet Arten auf Status ab, kein Dienst nennt einen Status', 
   const status = [];
   for (const d of liste) {
     const s = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
-    for (const m of s.matchAll(/\b(?:fehlerWerfen|fachfehler|dateiFehler)\([^)]*?,\s*\d{3}\b/g))
+    for (const m of s.matchAll(/\b(?:fehlerWerfen|fachfehler|fileError)\([^)]*?,\s*\d{3}\b/g))
       status.push(`${d}: ${m[0]}`);
     for (const m of s.matchAll(/new Fachfehler\(\s*'[a-z_]+',\s*\d{3}/g)) status.push(`${d}: ${m[0]}`);
   }
   assert.deepEqual(status, []);
   // Selbstbeweis der Suche an einer Probe.
-  assert.ok(/\b(?:fehlerWerfen|fachfehler|dateiFehler)\([^)]*?,\s*\d{3}\b/.test("fehlerWerfen('x', 400)"));
+  assert.ok(/\b(?:fehlerWerfen|fachfehler|fileError)\([^)]*?,\s*\d{3}\b/.test("fehlerWerfen('x', 400)"));
 });

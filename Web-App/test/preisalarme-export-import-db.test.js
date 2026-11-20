@@ -21,7 +21,7 @@
  *
  * (e) deckte beim DURCHDENKEN eine Lücke auf, bevor er lief: Der Aufbau hatte
  * nur ein Konto, und ohne ein zweites sieht ein Export über ALLE Konten
- * genauso aus wie der richtige. Seitdem gibt es `FREMDER_ALARM` — und das ist
+ * genauso aus wie der richtige. Seitdem gibt es `FOREIGN_ALARM` — und das ist
  * kein Schönheitsfehler gewesen, sondern ein Leck: Ein Alarm löst eine MAIL an
  * die Adresse seines Kontos aus.
  *
@@ -38,19 +38,19 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { katalogSet } = require('./helpers/bestand');
+const { catalogSet } = require('./helpers/bestand');
 const { importWorker } = require('./helpers/auftraege');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-let HAUPT = 0,
+let MAIN = 0,
   FREMD = 0;
 
 /**
@@ -59,20 +59,20 @@ let HAUPT = 0,
  * eine Abfrage über ALLE Konten genauso aus wie die richtige. Das ist beim
  * Durchdenken der Gegenproben aufgefallen — Fall „user_id weggelassen" hätte …
  */
-const FREMDER_ALARM = { sn: '31203-1', c: 'N', r: 'unter', s: 77, w: 'CHF' };
+const FOREIGN_ALARM = { sn: '31203-1', c: 'N', r: 'unter', s: 77, w: 'CHF' };
 
 /**
  * Vier Alarme. Der dritte sitzt auf einem Set, das das Konto NICHT besitzt —
  * genau der Fall, der als Spalte an sets.csv herausgefallen wäre.
  */
-const ALARME = [
+const ALERTS = [
   { sn: '75192-1', c: 'N', r: 'unter', s: 600, w: 'CHF', besitzt: true },
   { sn: '75192-1', c: 'U', r: 'ueber', s: 420.5, w: 'CHF', besitzt: true },
   { sn: '10179-1', c: 'N', r: 'unter', s: 1200, w: 'CHF', besitzt: false },
   { sn: '21309-1', c: 'U', r: 'ueber', s: 24.9, w: 'CHF', besitzt: false },
 ];
 
-async function aufbau(kontoWaehrung = 'CHF') {
+async function setup(accountCurrency = 'CHF') {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -83,51 +83,51 @@ async function aufbau(kontoWaehrung = 'CHF') {
     c.release();
   }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('fremd','x')`);
-  HAUPT = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
+  MAIN = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   FREMD = (await db.get(`SELECT id FROM users WHERE username='fremd'`)).id;
   // KEINE Kontoverknuepfung: 'fremd' ist kein Unterkonto. Selbst mit einer
   // waere es falsch — ein Alarm kennt kein Blickfeld.
-  await katalogSet(db, FREMDER_ALARM.sn, { name: FREMDER_ALARM.sn });
+  await catalogSet(db, FOREIGN_ALARM.sn, { name: FOREIGN_ALARM.sn });
   await db.run(
     `INSERT INTO price_alerts (user_id,set_number,condition,direction,threshold,currency_code)
                 VALUES ($1,$2,$3,$4,$5,$6)`,
-    [FREMD, FREMDER_ALARM.sn, FREMDER_ALARM.c, FREMDER_ALARM.r, FREMDER_ALARM.s, FREMDER_ALARM.w],
+    [FREMD, FOREIGN_ALARM.sn, FOREIGN_ALARM.c, FOREIGN_ALARM.r, FOREIGN_ALARM.s, FOREIGN_ALARM.w],
   );
   await db.run(
     `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)
                 ON CONFLICT (user_id,key) DO UPDATE SET value=$2`,
-    [HAUPT, kontoWaehrung],
+    [MAIN, accountCurrency],
   );
   // Der Bestand gehoert je SET, der Alarm je (Set, Zustand): 75192-1 traegt
   // beide Zustaende. Zwei Erfassungen fuer dasselbe Set am selben TAG verletzt
   // idx_set_acq_tag_zustand (Migration 0008) — genau daran ist der erste Lauf dieses
   // Tests gescheitert. Deshalb die Bestandszeile nur einmal je Nummer.
   const gelegt = new Set();
-  for (const a of ALARME) {
-    await katalogSet(db, a.sn, { name: a.sn });
+  for (const a of ALERTS) {
+    await catalogSet(db, a.sn, { name: a.sn });
     if (a.besitzt && !gelegt.has(a.sn)) {
       gelegt.add(a.sn);
       await db.run(
         `INSERT INTO sets (user_id,set_number) VALUES ($1,$2)
                     ON CONFLICT (user_id,set_number) DO NOTHING`,
-        [HAUPT, a.sn],
+        [MAIN, a.sn],
       );
       await db.run(
         `INSERT INTO set_acquisitions (user_id,set_number,quantity,condition)
                     VALUES ($1,$2,1,'N')`,
-        [HAUPT, a.sn],
+        [MAIN, a.sn],
       );
     }
     await db.run(
       `INSERT INTO price_alerts (user_id,set_number,condition,direction,threshold,currency_code)
                   VALUES ($1,$2,$3,$4,$5,$6)`,
-      [HAUPT, a.sn, a.c, a.r, a.s, a.w],
+      [MAIN, a.sn, a.c, a.r, a.s, a.w],
     );
   }
 }
 
 /** Eine Datei aus dem ZIP holen — wie in merkliste-export-import-db.test.js. */
-function ausZip(buf, name) {
+function fromZip(buf, name) {
   const zlib = require('node:zlib');
   for (let i = 0; i + 30 <= buf.length; i++) {
     if (buf.readUInt32LE(i) !== 0x04034b50) continue;
@@ -142,7 +142,7 @@ function ausZip(buf, name) {
   return null;
 }
 
-function csvZeilen(text) {
+function csvRows(text) {
   const [kopf, ...rest] = text.replace(/^﻿/, '').trim().split(/\r?\n/);
   const spalten = kopf.split(',').map(s => s.replace(/^"|"$/g, ''));
   return rest
@@ -153,11 +153,11 @@ function csvZeilen(text) {
     });
 }
 
-/** Dieselbe CSV aus ALARME gebaut — unabhängig vom Export (Lehre aus Stück 1). */
-function csvAusAlarmen(waehrung) {
+/** Dieselbe CSV aus ALERTS gebaut — unabhängig vom Export (Lehre aus Stück 1). */
+function csvFromAlerts(waehrung) {
   return (
     'set_number,condition,richtung,schwelle,currency_code\n' +
-    ALARME.map(a => `${a.sn},${a.c},${a.r},${a.s},${waehrung ?? a.w}`).join('\n') +
+    ALERTS.map(a => `${a.sn},${a.c},${a.r},${a.s},${waehrung ?? a.w}`).join('\n') +
     '\n'
   );
 }
@@ -176,10 +176,10 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     keineDb(t, e);
     return;
   }
-  await aufbau('CHF');
+  await setup('CHF');
 
   importWorker(t, _req);
-  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
 
   let csvText = '';
 
@@ -187,21 +187,21 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     const r = await fetch(`${srv.base}/api/v1/settings/export/data`);
     assert.equal(r.status, 200, `Der Export antwortete mit ${r.status}`);
     const buf = Buffer.from(await r.arrayBuffer());
-    csvText = ausZip(buf, 'preisalarme.csv');
+    csvText = fromZip(buf, 'preisalarme.csv');
     assert.ok(
       csvText !== null,
       'preisalarme.csv liegt NICHT im Archiv. Marcos Vorgabe war „in allen bestehenden ' +
         'Exporten" — und das ZIP ist der Export der Bestandsdaten.',
     );
     for (const n of ['sets.csv', 'teile.csv', 'minifiguren.csv', 'merkliste.csv']) {
-      assert.ok(ausZip(buf, n) !== null, `${n} ist aus dem Archiv verschwunden`);
+      assert.ok(fromZip(buf, n) !== null, `${n} ist aus dem Archiv verschwunden`);
     }
   });
 
   await t.test('2. auch der Alarm auf einem NICHT besessenen Set steht drin', () => {
-    const zeilen = csvZeilen(csvText);
-    assert.equal(zeilen.length, ALARME.length, `${zeilen.length} Zeilen statt ${ALARME.length}`);
-    for (const a of ALARME) {
+    const zeilen = csvRows(csvText);
+    assert.equal(zeilen.length, ALERTS.length, `${zeilen.length} Zeilen statt ${ALERTS.length}`);
+    for (const a of ALERTS) {
       const z = zeilen.find(x => x.set_number === a.sn && x.condition === a.c);
       assert.ok(z, `(${a.sn}, ${a.c}) fehlt im Export`);
       assert.equal(z.direction, a.r, `Richtung von (${a.sn}, ${a.c}) ist „${z.direction}"`);
@@ -218,15 +218,15 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     // Und NICHTS vom fremden Konto. Ohne diesen Fall waere ein Export ohne
     // `WHERE user_id` nicht zu bemerken.
     assert.ok(
-      !zeilen.some(x => x.set_number === FREMDER_ALARM.sn),
-      `Der Alarm des fremden Kontos (${FREMDER_ALARM.sn}) steht im eigenen Export. ` +
+      !zeilen.some(x => x.set_number === FOREIGN_ALARM.sn),
+      `Der Alarm des fremden Kontos (${FOREIGN_ALARM.sn}) steht im eigenen Export. ` +
         'Ein Alarm gehoert genau EINEM Konto, weil er eine Mail an dessen Adresse ' +
         'ausloest — beim Wiedereinlesen landete er im eigenen Konto.',
     );
 
-    const ohneBestand = ALARME.filter(a => !a.besitzt);
-    assert.equal(ohneBestand.length, 2, 'Vorbedingung: zwei Alarme ohne Bestandszeile');
-    for (const a of ohneBestand) {
+    const withoutInventory = ALERTS.filter(a => !a.besitzt);
+    assert.equal(withoutInventory.length, 2, 'Vorbedingung: zwei Alarme ohne Bestandszeile');
+    for (const a of withoutInventory) {
       assert.ok(
         zeilen.some(x => x.set_number === a.sn),
         `Der Alarm auf ${a.sn} fehlt — das Konto besitzt das Set nicht, und genau ` +
@@ -249,16 +249,16 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
   });
 
   await t.test('4. dieselbe Datei stellt die geleerte Tabelle wieder her', async () => {
-    await db.run('DELETE FROM price_alerts WHERE user_id=$1', [HAUPT]);
+    await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
     assert.equal(
-      (await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1', [HAUPT])).c,
+      (await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1', [MAIN])).c,
       0,
       'Vorbedingung: keine eigenen Alarme',
     );
 
     const { status, body } = await hochladen(srv.base, csvText);
     assert.equal(status, 200, `Der Import antwortete mit ${status}: ${JSON.stringify(body)}`);
-    assert.equal(body.added, ALARME.length, `${body.added} angelegt statt ${ALARME.length}`);
+    assert.equal(body.added, ALERTS.length, `${body.added} angelegt statt ${ALERTS.length}`);
     assert.equal(body.errors, 0, `${body.errors} Fehler: ${JSON.stringify(body.results)}`);
     assert.equal(
       body.waehrung_hinweis,
@@ -266,11 +266,11 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
       'Es kam ein Währungshinweis, obwohl Datei und Konto beide CHF tragen',
     );
 
-    for (const a of ALARME) {
+    for (const a of ALERTS) {
       const z = await db.get(
         `SELECT direction, threshold, currency_code, triggered FROM price_alerts
           WHERE user_id=$1 AND set_number=$2 AND condition=$3`,
-        [HAUPT, a.sn, a.c],
+        [MAIN, a.sn, a.c],
       );
       assert.ok(z, `(${a.sn}, ${a.c}) kam nicht zurück`);
       assert.equal(z.direction, a.r);
@@ -287,14 +287,14 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
   await t.test('5. eine Datei in fremder Währung: das KONTO gewinnt, und es wird gesagt', async () => {
     // Die Regel des Baums (PUT /sets/:setNumber/alert): Die Währung kommt aus
     // den Einstellungen, nicht aus der Anfrage. Eine Datei ist eine Anfrage.
-    await db.run('DELETE FROM price_alerts WHERE user_id=$1', [HAUPT]);
-    const { body } = await hochladen(srv.base, csvAusAlarmen('EUR'));
+    await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
+    const { body } = await hochladen(srv.base, csvFromAlerts('EUR'));
 
-    assert.equal(body.added, ALARME.length, `${body.added} angelegt statt ${ALARME.length}`);
+    assert.equal(body.added, ALERTS.length, `${body.added} angelegt statt ${ALERTS.length}`);
     const z = await db.get(
       `SELECT currency_code, threshold FROM price_alerts
         WHERE user_id=$1 AND set_number=$2 AND condition='N'`,
-      [HAUPT, '75192-1'],
+      [MAIN, '75192-1'],
     );
     assert.equal(
       z.currency_code,
@@ -324,14 +324,14 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     const markiert = (body.results || []).filter(x => x.waehrung_angepasst);
     assert.equal(
       markiert.length,
-      ALARME.length,
-      `${markiert.length} von ${ALARME.length} Zeilen sind als angepasst markiert`,
+      ALERTS.length,
+      `${markiert.length} von ${ALERTS.length} Zeilen sind als angepasst markiert`,
     );
   });
 
   await t.test('6. eine unbrauchbare Zeile wird gezählt, nicht verschluckt', async () => {
     // Was dieser Fall WIRKLICH unterscheidet (beim Gegenprobieren gelernt)
-    await db.run('DELETE FROM price_alerts WHERE user_id=$1', [HAUPT]);
+    await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
     const kaputt =
       'set_number,condition,richtung,schwelle,currency_code\n' +
       '75192-1,N,seitwaerts,600,CHF\n' + // Richtung gibt es nicht
@@ -342,20 +342,17 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     assert.equal(body.errors, 3, `${body.errors} Fehler gemeldet statt 3: ${JSON.stringify(body.results)}`);
     assert.equal(body.added, 1, `${body.added} angelegt statt 1`);
     // Der Zustand „X" darf NICHT in der Tabelle stehen. Die Datenbank hätte
-    // ihn genommen; nur pruefeEingabe() in src/finanzen/preisalarm.ts weist ihn ab.
+    // ihn genommen; nur checkInput() in src/finanzen/preisalarm.ts weist ihn ab.
     assert.equal(
-      (
-        await db.get(`SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1 AND condition NOT IN ('N','U')`, [
-          HAUPT,
-        ])
-      ).c,
+      (await db.get(`SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1 AND condition NOT IN ('N','U')`, [MAIN]))
+        .c,
       0,
       'Ein Alarm mit einem anderen Zustand als N oder U ist in der Tabelle gelandet. ' +
         'Die Tabelle hat darauf KEINE CHECK — das fängt allein die Prüfung in ' +
         'src/finanzen/preisalarm.ts, und die bekommt man nur über setzeAlarm().',
     );
     assert.equal(
-      (await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1', [HAUPT])).c,
+      (await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1', [MAIN])).c,
       1,
       'Eine unbrauchbare Zeile ist trotzdem in der Tabelle gelandet',
     );
@@ -378,26 +375,26 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     // setzeAlarm() sagt zu: „Der Merker triggered wird beim Ändern
     // ZURÜCKGESETZT: Eine neue Schwelle ist eine neue Frage, und die soll
     // beantwortet werden, auch wenn die alte schon einmal gemeldet hat."
-    await db.run('DELETE FROM price_alerts WHERE user_id=$1', [HAUPT]);
+    await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
     await db.run(
       `INSERT INTO price_alerts
                     (user_id,set_number,condition,direction,threshold,currency_code,triggered)
                   VALUES ($1,'75192-1','N','unter',600,'CHF',TRUE)`,
-      [HAUPT],
+      [MAIN],
     );
     assert.equal(
-      (await db.get(`SELECT triggered FROM price_alerts WHERE user_id=$1 AND set_number='75192-1'`, [HAUPT])).triggered,
+      (await db.get(`SELECT triggered FROM price_alerts WHERE user_id=$1 AND set_number='75192-1'`, [MAIN])).triggered,
       true,
       'Vorbedingung: der Merker steht',
     );
 
-    await hochladen(srv.base, csvAusAlarmen());
+    await hochladen(srv.base, csvFromAlerts());
     assert.equal(
       (
         await db.get(
           `SELECT triggered FROM price_alerts WHERE user_id=$1 AND set_number='75192-1'
         AND condition='N'`,
-          [HAUPT],
+          [MAIN],
         )
       ).triggered,
       false,

@@ -16,19 +16,19 @@ const PDFKit = require('pdfkit');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 // APP_ROOT, nicht DATA_DIR
-const SANDKASTEN = fs.mkdtempSync(path.join(os.tmpdir(), 'gutschein-wurzel-'));
-fs.mkdirSync(path.join(SANDKASTEN, 'data'), { recursive: true });
+const SANDBOX = fs.mkdtempSync(path.join(os.tmpdir(), 'gutschein-wurzel-'));
+fs.mkdirSync(path.join(SANDBOX, 'data'), { recursive: true });
 // package.json, damit findRoot() hier stehenbleibt und nicht weiter nach oben
 // laeuft (es sucht die naechste package.json). APP_ROOT hat Vorrang, also ist
 // das nur ein Gurt neben dem Hosentraeger.
-fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}');
-process.env.APP_ROOT = SANDKASTEN;
-const DATEN_DIR = path.join(SANDKASTEN, 'data');
+fs.writeFileSync(path.join(SANDBOX, 'package.json'), '{"name":"sandkasten"}');
+process.env.APP_ROOT = SANDBOX;
+const DATA_DIR = path.join(SANDBOX, 'data');
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
 const PL = require('@cantoo/pdf-lib');
 const suche = (uid, nr) => _req('src/vouchers/repository/vouchers.js').numberSearch(uid, nr);
@@ -37,21 +37,21 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-let HAUPT = 0,
+let MAIN = 0,
   FREMD = 0;
 
-const KARTEN = [
+const CARDS = [
   { nr: '5045076374450011166', pin: '5225', gedruckt: '400', app: 250 },
   { nr: '5045076374450022277', pin: '1234', gedruckt: '150', app: 150 },
 ];
 
-function baueGutschein(betragText, nummer, pin) {
+function buildVoucher(amountText, nummer, pin) {
   return new Promise(fertig => {
     const d = new PDFKit({ size: 'A4' });
     const s = [];
     d.on('data', c => s.push(c));
     d.on('end', () => fertig(Buffer.concat(s)));
-    d.fontSize(14).text(`Ihre LEGO-Geschenkkarte im Wert von ${betragText} CHF:`, 60, 100);
+    d.fontSize(14).text(`Ihre LEGO-Geschenkkarte im Wert von ${amountText} CHF:`, 60, 100);
     d.fontSize(12).text(nummer, 60, 140).text(`PIN: ${pin}`, 60, 170);
     d.end();
   });
@@ -59,7 +59,7 @@ function baueGutschein(betragText, nummer, pin) {
 
 const PASS = 'Export-Passwort-1';
 
-async function aufbau() {
+async function setup() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -71,22 +71,22 @@ async function aufbau() {
   }
   const hash = require('bcryptjs').hashSync(PASS, 4);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt',$1),('fremd',$1)`, [hash]);
-  HAUPT = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
+  MAIN = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   FREMD = (await db.get(`SELECT id FROM users WHERE username='fremd'`)).id;
 
-  const dir = path.join(DATEN_DIR, 'vouchers', String(HAUPT));
+  const dir = path.join(DATA_DIR, 'vouchers', String(MAIN));
   await fs.promises.mkdir(dir, { recursive: true });
-  const { createVoucher } = require('./helpers/sources').testBereich('vouchers').vouchers;
-  for (const k of KARTEN) {
-    const z = await createVoucher(HAUPT, { number: k.nr, pin: k.pin, amount: k.app, currency: 'CHF' });
+  const { createVoucher } = require('./helpers/sources').testArea('vouchers').vouchers;
+  for (const k of CARDS) {
+    const z = await createVoucher(MAIN, { number: k.nr, pin: k.pin, amount: k.app, currency: 'CHF' });
     await _req('src/vouchers/voucherFiles.js').writeVoucherPdf(
       path.join(dir, `${z.id}.pdf`),
-      await baueGutschein(k.gedruckt, k.nr, k.pin),
+      await buildVoucher(k.gedruckt, k.nr, k.pin),
     );
-    await db.run('UPDATE vouchers SET pdf_path=$1 WHERE id=$2', [`${HAUPT}/${z.id}.pdf`, z.id]);
+    await db.run('UPDATE vouchers SET pdf_path=$1 WHERE id=$2', [`${MAIN}/${z.id}.pdf`, z.id]);
   }
   // Ein Gutschein OHNE Original — von Hand erfasst.
-  await createVoucher(HAUPT, { number: '5045076374450033388', pin: null, amount: 42.5, currency: 'CHF' });
+  await createVoucher(MAIN, { number: '5045076374450033388', pin: null, amount: 42.5, currency: 'CHF' });
   // Und einer in einem FREMDEN Konto, der im eigenen Export nichts zu suchen hat.
   await createVoucher(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' });
 }
@@ -98,9 +98,9 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     keineDb(t, e);
     return;
   }
-  await aufbau();
+  await setup();
 
-  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
 
   let pdf = null,
     befunde = null;
@@ -168,7 +168,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   await t.test('3. das exportierte PDF trägt den APP-Betrag, nicht den gedruckten', async () => {
     const { readPageByPage } = _req('src/vouchers/pdfExport.js');
     const gelesen = await readPageByPage(pdf);
-    for (const k of KARTEN) {
+    for (const k of CARDS) {
       const w = gelesen.find(x => x.number === k.nr);
       assert.ok(w, `${k.nr} fehlt im Export`);
       assert.equal(
@@ -181,7 +181,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   });
 
   await t.test('4. dasselbe PDF stellt die geleerte Tabelle wieder her', async () => {
-    await db.run('DELETE FROM vouchers WHERE user_id=$1', [HAUPT]);
+    await db.run('DELETE FROM vouchers WHERE user_id=$1', [MAIN]);
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutscheine.pdf');
     // DIESELBE Adresse wie fuer einen einzelnen Gutschein (Marcos Durchsicht
@@ -200,17 +200,17 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     assert.equal(b.mehrere.added, 3, `${b.mehrere.added} angelegt statt 3: ${JSON.stringify(b.mehrere.results)}`);
     assert.equal(b.mehrere.errors, 0, `${b.mehrere.errors} Fehler: ${JSON.stringify(b.mehrere.results)}`);
 
-    for (const k of KARTEN) {
+    for (const k of CARDS) {
       const z = await db.get('SELECT id, amount, pin, currency FROM vouchers WHERE user_id=$1 AND number_search=$2', [
-        HAUPT,
-        suche(HAUPT, k.nr),
+        MAIN,
+        suche(MAIN, k.nr),
       ]);
       assert.ok(z, `${k.nr} kam nicht zurück`);
       assert.equal(Number(z.amount), k.app, `${k.nr}: ${z.amount} statt ${k.app}`);
       assert.equal(
-        _req('src/infra/geheimnis.js').entschluessele(
+        _req('src/infra/geheimnis.js').decrypt(
           z.pin,
-          _req('src/vouchers/repository/vouchers.js').pinContext(HAUPT, z.id),
+          _req('src/vouchers/repository/vouchers.js').pinContext(MAIN, z.id),
         ),
         k.pin,
         `${k.nr}: PIN ${z.pin} statt ${k.pin}`,
@@ -218,8 +218,8 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     }
     // Und der von Hand erfasste, der nie ein PDF hatte.
     const ohne = await db.get('SELECT amount, pin FROM vouchers WHERE user_id=$1 AND number_search=$2', [
-      HAUPT,
-      suche(HAUPT, '5045076374450033388'),
+      MAIN,
+      suche(MAIN, '5045076374450033388'),
     ]);
     assert.ok(ohne, 'Der von Hand erfasste Gutschein kam nicht zurück');
     assert.equal(Number(ohne.amount), 42.5);
@@ -230,7 +230,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     // Der Fall, für den es den Import gibt: Das Konto kennt die Karten schon,
     // und der Betrag hat sich geändert. Mit ON CONFLICT DO NOTHING wäre der
     // Import hier wirkungslos — und genau dann braucht man ihn.
-    await db.run('UPDATE vouchers SET amount = 1 WHERE user_id=$1', [HAUPT]);
+    await db.run('UPDATE vouchers SET amount = 1 WHERE user_id=$1', [MAIN]);
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutscheine.pdf');
     const b = (await (await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd })).json()).mehrere;
@@ -240,23 +240,23 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
       Number(
         (
           await db.get('SELECT amount FROM vouchers WHERE user_id=$1 AND number_search=$2', [
-            HAUPT,
-            suche(HAUPT, KARTEN[0].nr),
+            MAIN,
+            suche(MAIN, CARDS[0].nr),
           ])
         ).amount,
       ),
-      KARTEN[0].app,
+      CARDS[0].app,
       'Der Betrag wurde nicht aufgefrischt',
     );
     assert.equal(
-      (await db.get('SELECT COUNT(*)::int c FROM vouchers WHERE user_id=$1', [HAUPT])).c,
+      (await db.get('SELECT COUNT(*)::int c FROM vouchers WHERE user_id=$1', [MAIN])).c,
       3,
       'Der zweite Import hat die Tabelle verdoppelt',
     );
   });
 
   await t.test('6. ohne Gutschein kommt eine Auskunft, kein leeres PDF', async () => {
-    await db.run('DELETE FROM vouchers WHERE user_id=$1', [HAUPT]);
+    await db.run('DELETE FROM vouchers WHERE user_id=$1', [MAIN]);
     const r = await freigabe();
     assert.equal(r.status, 404, `Erwartet 404, bekam ${r.status}`);
     const b = await r.json().catch(() => ({}));
@@ -284,7 +284,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
         'Auskunft über ein Feld, das es in dieser Datei gar nicht gibt.',
     );
     assert.equal(
-      (await db.get('SELECT COUNT(*)::int c FROM vouchers WHERE user_id=$1', [HAUPT])).c,
+      (await db.get('SELECT COUNT(*)::int c FROM vouchers WHERE user_id=$1', [MAIN])).c,
       0,
       'Es wurde trotzdem etwas angelegt',
     );
@@ -296,8 +296,8 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     // Vertrag unverändert: `voucher` statt `mehrere`, und die Datei wird als
     // Original des Gutscheins GESPEICHERT (beim Stapel nicht — dort ist sie
     // die Sicherung, nicht die Karte).
-    await db.run('DELETE FROM vouchers WHERE user_id=$1', [HAUPT]);
-    const eine = await baueGutschein('250', KARTEN[0].nr, KARTEN[0].pin);
+    await db.run('DELETE FROM vouchers WHERE user_id=$1', [MAIN]);
+    const eine = await buildVoucher('250', CARDS[0].nr, CARDS[0].pin);
     const fd = new FormData();
     fd.append('file', new Blob([eine], { type: 'application/pdf' }), 'einer.pdf');
     const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
@@ -305,8 +305,8 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     assert.equal(r.status, 200, `Antwort ${r.status}: ${JSON.stringify(b)}`);
     assert.equal(b.mehrere, undefined, `Ein einzelner Gutschein darf nicht als Stapel gelten: ${JSON.stringify(b)}`);
     assert.ok(b.voucher, 'Der Einzelfall antwortet mit `voucher`');
-    assert.equal(b.gelesen.number, KARTEN[0].nr);
-    assert.equal(b.voucher.number, '…' + KARTEN[0].nr.slice(-4), 'nach aussen nur das Ende');
+    assert.equal(b.gelesen.number, CARDS[0].nr);
+    assert.equal(b.voucher.number, '…' + CARDS[0].nr.slice(-4), 'nach aussen nur das Ende');
     assert.equal(b.voucher.hat_pdf, true, 'Beim Einzelgutschein wird die Datei als sein Original gespeichert');
   });
 });

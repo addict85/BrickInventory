@@ -17,18 +17,18 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
+const { startApp } = require('./helpers/app-browser');
 
-const FAELLE = [
+const CASES = [
   { name: 'System hell, immer dunkel: Gerüst dunkel', system: 'light', wahl: 'immer', dunkel: true },
   { name: 'System dunkel, nie dunkel: Gerüst hell', system: 'dark', wahl: 'server', dunkel: false },
   { name: 'System dunkel, Vorgabe: Gerüst dunkel', system: 'dark', wahl: null, dunkel: true },
   { name: 'System hell, Vorgabe: Gerüst hell', system: 'light', wahl: null, dunkel: false },
 ];
-const KOPF = { hell: 'rgb(61, 90, 128)', dunkel: 'rgb(39, 56, 73)' };
+const HEADER = { hell: 'rgb(61, 90, 128)', dunkel: 'rgb(39, 56, 73)' };
 
 test('Startgerüst folgt der Geräte-Einstellung und dem Design', async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     bestand: db =>
       db.run(`INSERT INTO global_settings (key, value) VALUES ('app_theme', 'brick')
                              ON CONFLICT (key) DO UPDATE SET value = 'brick'`),
@@ -37,7 +37,7 @@ test('Startgerüst folgt der Geräte-Einstellung und dem Design', async t => {
   const { b } = app;
   // Nur das Boot-Skript und das Dokument laufen; alles andere bleibt hängen, das Gerüst bleibt stehen.
   await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*', requestStage: 'Request' }] });
-  b.hoerer.push(d => {
+  b.listener.push(d => {
     if (d.method !== 'Fetch.requestPaused') return;
     const u = d.params.request.url;
     if (d.params.resourceType === 'Document' || u.includes('theme-boot.js'))
@@ -51,7 +51,7 @@ test('Startgerüst folgt der Geräte-Einstellung und dem Design', async t => {
       dunkel: document.documentElement.hasAttribute('data-dunkel'),
       leiste: [...document.querySelectorAll('meta[name=theme-color]')].map(m => m.content) }; })()`;
 
-  for (const fall of FAELLE) {
+  for (const fall of CASES) {
     await t.test(fall.name, async () => {
       await b.tab('Emulation.setEmulatedMedia', {
         features: [
@@ -80,7 +80,7 @@ test('Startgerüst folgt der Geräte-Einstellung und dem Design', async t => {
       );
       assert.equal(
         m.kopf,
-        fall.dunkel ? KOPF.dunkel : KOPF.hell,
+        fall.dunkel ? HEADER.dunkel : HEADER.hell,
         fall.dunkel ? 'Stein dunkel: Kopf im dunklen Blau' : 'Stein hell: Kopf im Stein-Blau',
       );
     });

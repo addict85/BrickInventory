@@ -6,13 +6,13 @@
  * Gegenproben (01.11.2026 gemessen):
  *   A  routes/auth.ts und src/mail/mailer.ts auf Stand 2b73e33 → alle sechs
  *      Teile rot, darunter „die Bestätigungsmail nennt …“ („Hallo Anna,“)
- *   B  nameGueltig() in POST /register entfernt → rot: „Namen mit Adresse oder
+ *   B  nameValid() in POST /register entfernt → rot: „Namen mit Adresse oder
  *      Steuerzeichen werden abgewiesen“ (200 statt 400)
- *   C  zielGedrosselt() in POST /register entfernt → rot: „je Zieladresse
+ *   C  targetThrottled() in POST /register entfernt → rot: „je Zieladresse
  *      höchstens drei Registrierungen“ (200 statt 429)
  *   D  sendMail() gibt wieder den Text an die alte URL-Suche in
  *      linkForConsole() → rot: „die Konsole zeigt den echten Link“
- *   E  zielGedrosselt() in /forgot-password entfernt → rot: „der vierte
+ *   E  targetThrottled() in /forgot-password entfernt → rot: „der vierte
  *      Rücksetzlink an dieselbe Adresse bleibt aus“
  *   F  sendVerificationMail() übergeht `mehrere` → rot: „die zweite Mail
  *      verweist auf die Bestätigungsseite“ (04.11.2026 gemessen)
@@ -36,18 +36,18 @@ nodemailer.createTransport = () => ({
   },
 });
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const mailer = _req('src/mail/mailer.js');
 
 const P = process.pid;
 const BOESE = 'Gewinn-abholen.example';
 
 test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const SCHLUESSEL = ['registration_enabled', 'smtp_host', 'smtp_user'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
@@ -60,13 +60,13 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
   await setze('registration_enabled', '1');
   await setze('smtp_host', '192.0.2.25'); // eine Adresse: Ein Name müsste auflösen (src/infra/zielAdresse.ts)
   await setze('smtp_user', 'versand');
-  const leereZaehler = () => db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot)'");
-  await leereZaehler();
+  const emptyCounter = () => db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot)'");
+  await emptyCounter();
   t.after(async () => {
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     await db.run('DELETE FROM users WHERE username LIKE $1', [`%_${P}`]);
-    await leereZaehler();
+    await emptyCounter();
     await db.pool.end().catch(() => {});
   });
 
@@ -78,9 +78,9 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     }).then(async r => ({ status: r.status, body: await r.json() }));
-  const registriere = (u, email, extra = {}) =>
+  const register = (u, email, extra = {}) =>
     rufe('POST', '/register', { username: u, email, password: 'Langes-Passwort-42', ...extra });
-  const warteAufMail = async an => {
+  const waitOnMail = async an => {
     for (let i = 0; i < 50; i++) {
       const m = gesendet.find(x => x.to === an);
       if (m) return m;
@@ -95,11 +95,11 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
       { last_name: 'Meier\nKlick hier' },
       { first_name: 'www.boese.example' },
     ].entries()) {
-      const r = await registriere(`name${i}_${P}`, `name${i}_${P}@example.org`, extra);
+      const r = await register(`name${i}_${P}`, `name${i}_${P}@example.org`, extra);
       assert.equal(r.status, 400, JSON.stringify(r.body));
       assert.equal(r.body.code, 'name_ungueltig');
     }
-    const lang = await registriere(`lang_${P}`, `lang_${P}@example.org`, { first_name: 'x'.repeat(101) });
+    const lang = await register(`lang_${P}`, `lang_${P}@example.org`, { first_name: 'x'.repeat(101) });
     assert.equal(lang.status, 400, 'über 100 Zeichen weist der Eingabevertrag ab');
     const hash = await require(require('node:path').join(__dirname, '..', 'node_modules', 'bcryptjs')).hash(
       'Profil-Passwort-1',
@@ -125,14 +125,14 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
       ).status,
       200,
     );
-    await leereZaehler();
+    await emptyCounter();
   });
 
   await t.test('die Bestätigungsmail nennt keinen gewählten Namen', async () => {
     const an = `anna_${P}@example.org`;
-    const r = await registriere(`${BOESE.slice(0, 14)}_${P}`, an, { first_name: 'Anna', last_name: 'Beispiel' });
+    const r = await register(`${BOESE.slice(0, 14)}_${P}`, an, { first_name: 'Anna', last_name: 'Beispiel' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const m = await warteAufMail(an);
+    const m = await waitOnMail(an);
     assert.ok(m, 'keine Bestätigungsmail');
     for (const teil of [m.text, m.html]) {
       assert.ok(!teil.includes('Anna') && !teil.includes(BOESE.slice(0, 14)), teil.slice(0, 300));
@@ -142,17 +142,17 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
 
   await t.test('die Mail zum vergebenen Benutzernamen nennt ihn nicht', async () => {
     const an = `zweiter_${P}@example.org`;
-    const r = await registriere(`${BOESE.slice(0, 14)}_${P}`, an);
+    const r = await register(`${BOESE.slice(0, 14)}_${P}`, an);
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    const m = await warteAufMail(an);
+    const m = await waitOnMail(an);
     assert.ok(m, 'keine Mail an die zweite Adresse');
     assert.ok(!m.text.includes(BOESE.slice(0, 14)) && !m.html.includes(BOESE.slice(0, 14)), m.text);
   });
 
   await t.test('mehrere Registrierungen: die Mail verweist ohne Namen auf die Bestätigungsseite', async () => {
-    await leereZaehler();
+    await emptyCounter();
     const an = `doppelt_${P}@example.org`;
-    for (const n of [`${BOESE.slice(0, 14)}x_${P}`, `echt_${P}`]) assert.equal((await registriere(n, an)).status, 200);
+    for (const n of [`${BOESE.slice(0, 14)}x_${P}`, `echt_${P}`]) assert.equal((await register(n, an)).status, 200);
     for (let i = 0; i < 50 && gesendet.filter(m => m.to === an).length < 2; i++)
       await new Promise(r => setTimeout(r, 20));
     const [erste, zweite] = gesendet.filter(m => m.to === an);
@@ -166,22 +166,22 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
       );
       assert.ok(!teil.includes(BOESE.slice(0, 14)) && !teil.includes(`echt_${P}`), 'die Mail nennt keinen Namen');
     }
-    await leereZaehler();
+    await emptyCounter();
   });
 
   await t.test('je Zieladresse höchstens drei Registrierungen', async () => {
-    await leereZaehler();
+    await emptyCounter();
     const an = `ziel_${P}@example.org`;
     const status = [];
     // Verschiedene Namen, damit nur die Adresse gemeinsam ist.
-    for (let i = 0; i < 4; i++) status.push((await registriere(`ziel${i}_${P}`, an)).status);
+    for (let i = 0; i < 4; i++) status.push((await register(`ziel${i}_${P}`, an)).status);
     assert.deepEqual(status, [200, 200, 200, 429]);
     assert.equal(
-      (await registriere(`andere_${P}`, `andere_${P}@example.org`)).status,
+      (await register(`andere_${P}`, `andere_${P}@example.org`)).status,
       200,
       'eine andere Adresse von derselben IP bleibt offen',
     );
-    await leereZaehler();
+    await emptyCounter();
   });
 
   await t.test('der vierte Rücksetzlink an dieselbe Adresse bleibt aus', async () => {
@@ -200,7 +200,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
       await db.run('UPDATE users SET reset_token = NULL, reset_token_expires = NULL WHERE email = $1', [an]);
     }
     assert.deepEqual(gesetzt, [true, true, true, false]);
-    const m = await warteAufMail(an);
+    const m = await waitOnMail(an);
     assert.ok(m && !m.text.includes(`vergessen_${P}`), 'die Rücksetzmail grüsst ohne Benutzernamen');
   });
 

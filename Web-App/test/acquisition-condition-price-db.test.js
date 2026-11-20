@@ -17,13 +17,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
 test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurrency: 1 }, async t => {
-  const db = testDaten();
-  if (!(await datenOderSkip(t, _req))) return;
+  const db = testData();
+  if (!(await dataOrSkip(t, _req))) return;
   const { changeAcquisition } = _req('src/collection/acquisitions.js');
   const P = process.pid;
   const NAME = `zustandpreis-${P}`,
@@ -120,18 +120,18 @@ test('jeder Marktpreis-Abruf bekommt einen Zustand mit', () => {
   const ROOT = path.join(__dirname, '..');
 
   const dateien = [];
-  (function sammle(dir) {
+  (function collect(dir) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
-      if (e.isDirectory()) sammle(p);
+      if (e.isDirectory()) collect(p);
       else if (e.name.endsWith('.ts')) dateien.push(p);
     }
   })(path.join(ROOT, 'routes'));
   for (const d of ['src']) {
-    (function sammle(dir) {
+    (function collect(dir) {
       for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, e.name);
-        if (e.isDirectory()) sammle(p);
+        if (e.isDirectory()) collect(p);
         else if (e.name.endsWith('.ts')) dateien.push(p);
       }
     })(path.join(ROOT, d));
@@ -140,7 +140,7 @@ test('jeder Marktpreis-Abruf bekommt einen Zustand mit', () => {
   const treffer = [];
   for (const datei of dateien) {
     const code = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const fn of ['aktuellerFigurMarktpreis', 'aktuellerTeilMarktpreis']) {
+    for (const fn of ['currentMinifigMarketPrice', 'currentPartMarketPrice']) {
       const re = new RegExp(String.raw`(?<!function )${fn}\(((?:[^()]|\([^()]*\))*)\)`, 'g');
       for (const m of code.matchAll(re)) {
         const args = m[1]

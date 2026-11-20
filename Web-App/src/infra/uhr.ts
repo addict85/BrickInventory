@@ -7,15 +7,15 @@ export interface Uhr {
   datum(): Date;
 }
 
-export const systemUhr: Uhr = { jetzt: () => Date.now(), datum: () => new Date() };
+export const systemClock: Uhr = { jetzt: () => Date.now(), datum: () => new Date() };
 
 /** Läuft mit der Systemzeit, lässt sich aber vorstellen: Ein Test springt über eine Frist, statt sie abzuwarten. */
-export interface StellbareUhr extends Uhr {
+export interface StellbareClock extends Uhr {
   vor(ms: number): void;
   zurueck(): void;
 }
 
-export function stellbareUhr(): StellbareUhr {
+export function stellbareClock(): StellbareClock {
   let versatz = 0;
   const jetzt = () => Date.now() + versatz;
   return {

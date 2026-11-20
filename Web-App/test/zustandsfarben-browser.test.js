@@ -21,16 +21,16 @@ const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochgl
 
 const { chrome } = require('./helpers/app-browser');
 
-function testseite() {
+function testPage() {
   const css = ['tokens.css', 'styles.css', ...DESIGNS.filter(d => d !== 'classic').map(d => `themes/${d}.css`)]
     .map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`)
     .join('\n');
-  const abschnitte = DESIGNS.map(
+  const sections = DESIGNS.map(
     d => `<section data-theme="${d}" data-design="${d}">
     <span class="cond-badge cond-new">Neu</span><span class="cond-badge cond-used">Gebraucht</span>
     <i class="linie-neu" style="background:var(--chart-new)"></i><i class="linie-gebr" style="background:var(--chart-used)"></i></section>`,
   ).join('\n');
-  return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}</head><body>${abschnitte}
+  return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}</head><body>${sections}
 <pre id="ergebnis"></pre>
 <script>
 function farbton(c){ const [r,g,b]=(c.match(/[\\d.]+/g)||[]).slice(0,3).map(v=>v/255);
@@ -62,7 +62,7 @@ test('Zustandsfarben in allen Designs', t => {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'zustand-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testseite());
+  fs.writeFileSync(datei, testPage());
   const dom = execFileSync(
     bin,
     [

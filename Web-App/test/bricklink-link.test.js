@@ -9,17 +9,17 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { mitVariante, bareNumber, blAdresse, blSuchadresse } = _req('src/katalog/bricklinkLink.js');
+const { withVariant, bareNumber, blAddress, blSuchadresse } = _req('src/katalog/bricklinkLink.js');
 
-test('mitVariante ergänzt den Rebrickable-Suffix', () => {
-  assert.equal(mitVariante('75192'), '75192-1');
-  assert.equal(mitVariante('75192-1'), '75192-1');
-  assert.equal(mitVariante('10179-2'), '10179-2');
-  assert.equal(mitVariante('  75192  '), '75192-1');
+test('withVariant ergänzt den Rebrickable-Suffix', () => {
+  assert.equal(withVariant('75192'), '75192-1');
+  assert.equal(withVariant('75192-1'), '75192-1');
+  assert.equal(withVariant('10179-2'), '10179-2');
+  assert.equal(withVariant('  75192  '), '75192-1');
 });
 
 test('bareNumber entfernt ihn wieder — BrickLink führt Gear/Book ohne Suffix', () => {
@@ -28,28 +28,28 @@ test('bareNumber entfernt ihn wieder — BrickLink führt Gear/Book ohne Suffix'
   assert.equal(bareNumber('10179-2'), '10179');
 });
 
-test('blAdresse verwendet je Item-Typ den richtigen Parameter', () => {
-  const set = blAdresse('SET', '75192-1');
+test('blAddress verwendet je Item-Typ den richtigen Parameter', () => {
+  const set = blAddress('SET', '75192-1');
   assert.match(set, /\?S=75192-1/);
   assert.match(set, /#T=S/);
 
-  const gear = blAdresse('GEAR', '5005358');
+  const gear = blAddress('GEAR', '5005358');
   assert.match(gear, /\?G=5005358/);
   assert.match(gear, /#T=G/, 'Der For-Sale-Tab muss zum Item-Typ passen, sonst öffnet BrickLink den falschen Reiter');
 
-  const book = blAdresse('BOOK', 'b12ab');
+  const book = blAddress('BOOK', 'b12ab');
   assert.match(book, /\?B=b12ab/);
   assert.match(book, /#T=B/);
 });
 
-test('blAdresse kennt auch MINIFIG', () => {
-  const m = blAdresse('MINIFIG', 'col325');
+test('blAddress kennt auch MINIFIG', () => {
+  const m = blAddress('MINIFIG', 'col325');
   assert.match(m, /\?M=col325/);
   assert.match(m, /#T=M/);
 });
 
-test('blAdresse liefert null für NONE — der Aufrufer weicht auf die Suche aus', () => {
-  assert.equal(blAdresse('NONE', 'x-1'), null);
+test('blAddress liefert null für NONE — der Aufrufer weicht auf die Suche aus', () => {
+  assert.equal(blAddress('NONE', 'x-1'), null);
 });
 
 test('blSuchadresse greift, wo kein Deep-Link konstruierbar ist', () => {
@@ -61,8 +61,8 @@ test('blSuchadresse greift, wo kein Deep-Link konstruierbar ist', () => {
   assert.ok(!u.includes('-1'), 'Der Variantensuffix engt die Suche unnötig ein');
 });
 
-test('blAdresse kodiert Sonderzeichen in der Nummer', () => {
-  const url = blAdresse('SET', '10 30-1');
+test('blAddress kodiert Sonderzeichen in der Nummer', () => {
+  const url = blAddress('SET', '10 30-1');
   assert.ok(!/\?S=10 30/.test(url), 'Leerzeichen muss kodiert werden');
   assert.match(url, /\?S=10%2030-1/);
 });
@@ -70,19 +70,19 @@ test('blAdresse kodiert Sonderzeichen in der Nummer', () => {
 test('Set-Links behalten den Suffix, Gear-Links nicht', () => {
   // Das ist der eigentliche Fehler, der behoben wurde: dieselbe
   // Rebrickable-Nummer ergibt je nach BrickLink-Typ zwei verschiedene URLs.
-  assert.match(blAdresse('SET', mitVariante('5005358')), /\?S=5005358-1/);
-  assert.match(blAdresse('GEAR', bareNumber('5005358-1')), /\?G=5005358(?!-)/);
+  assert.match(blAddress('SET', withVariant('5005358')), /\?S=5005358-1/);
+  assert.match(blAddress('GEAR', bareNumber('5005358-1')), /\?G=5005358(?!-)/);
 });
 
 test('der Kauf-Knopf nimmt die Adresse des Servers und wird nie ausgeblendet', async () => {
-  const SUCHE = 'https://www.bricklink.com/v2/search.page?q=col001';
+  const SEARCH = 'https://www.bricklink.com/v2/search.page?q=col001';
   const GEAR = 'https://www.bricklink.com/v2/catalog/catalogitem.page?G=5005358';
   const set = (nr, bricklink) => ({ set_number: nr, name: `Artikel ${nr}`, year: 2020, num_parts: 1, bricklink });
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/catalog/sets': { success: true, total: 3, sets: [set('col001-1'), set('5005358-1'), set('99999-1')] },
     '/v1/catalog/sets/col001-1': {
       success: true,
-      set: set('col001-1', { url: SUCHE, exact: false, type: 'MINIFIG', number: 'col001' }),
+      set: set('col001-1', { url: SEARCH, exact: false, type: 'MINIFIG', number: 'col001' }),
     },
     '/v1/catalog/sets/5005358-1': {
       success: true,
@@ -94,7 +94,7 @@ test('der Kauf-Knopf nimmt die Adresse des Servers und wird nie ausgeblendet', a
     await reiter(w, 'catalog');
     const knopf = () => d.getElementById('cat-m-bricklink');
     for (const [nr, href, text] of [
-      ['col001-1', SUCHE, 'Auf BrickLink suchen'],
+      ['col001-1', SEARCH, 'Auf BrickLink suchen'],
       ['5005358-1', GEAR, 'Auf BrickLink kaufen'],
       // Ohne Auflösung die Suche nach der Nummer — nicht ein ausgeblendeter Knopf.
       ['99999-1', 'https://www.bricklink.com/v2/search.page?q=99999-1', 'Auf BrickLink kaufen'],

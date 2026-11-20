@@ -3,13 +3,13 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// BAUM und nicht ROOT: eigenbruecken.test.js loest jedes `path.join(ROOT, …)`
+// TREE und nicht ROOT: eigenbruecken.test.js loest jedes `path.join(ROOT, …)`
 // gegen die WEB-Wurzel auf. Ein zweiter Sinn fuer denselben Namen hat in
 // dieser Sitzung schon einmal eine Stunde gekostet.
-const BAUM = path.join(__dirname, '..', '..');
-const css = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'themes', 'noppe.css'), 'utf8');
-const glanz = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'themes', 'hochglanz.css'), 'utf8');
-const quelle = JSON.parse(fs.readFileSync(path.join(BAUM, 'shared', 'design-tokens.json'), 'utf8'));
+const TREE = path.join(__dirname, '..', '..');
+const css = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'noppe.css'), 'utf8');
+const glanz = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'hochglanz.css'), 'utf8');
+const quelle = JSON.parse(fs.readFileSync(path.join(TREE, 'shared', 'design-tokens.json'), 'utf8'));
 
 /**
  * Das Design "noppe" — der Klemmbaustein als Bauteil der Oberflaeche. Geprüft
@@ -41,11 +41,11 @@ test('die Steinfarbe laeuft im Takt der Steinliste', () => {
   // die App durch vier, zeigt dasselbe Set auf Telefon und Rechner einen
   // anderen Deckel — und niemand kaeme auf die Idee, das fuer einen Fehler zu
   // halten, weil die Farbe ja nichts bedeutet. …
-  const webTakt = new Set([...css.matchAll(/nth-child\(6n\+?(\d*)\)/g)].map(m => m[1])).size;
+  const webTick = new Set([...css.matchAll(/nth-child\(6n\+?(\d*)\)/g)].map(m => m[1])).size;
   assert.equal(
-    webTakt,
+    webTick,
     5,
-    `themes/noppe.css zaehlt an ${webTakt} verschiedenen Positionen durch, erwartet fuenf ` +
+    `themes/noppe.css zaehlt an ${webTick} verschiedenen Positionen durch, erwartet fuenf ` +
       '(--stein-0 steht als Vorgabe schon in der Grundregel)',
   );
 });
@@ -86,7 +86,7 @@ test('das Design fuehrt seine Schrift', () => {
     /--font:'Nunito'/,
     'themes/noppe.css stellt die Schrift nicht um — dann ist das Design im Web ' + 'nur eine Farbvariante',
   );
-  const fonts = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'vendor', 'fonts', 'fonts.css'), 'utf8');
+  const fonts = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'vendor', 'fonts', 'fonts.css'), 'utf8');
   assert.match(
     fonts,
     /font-family: 'Nunito'/,
@@ -105,7 +105,7 @@ test('hochglanz erbt die Palette, statt sie abzuschreiben', () => {
   );
   // Und der Generator muss daraus wirklich Werte machen, sonst faellt das
   // Design auf das Grunddesign zurueck und ist blau statt rot.
-  const tokens = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'tokens.css'), 'utf8');
+  const tokens = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'tokens.css'), 'utf8');
   const block = tokens.slice(tokens.indexOf('[data-theme="hochglanz"]'));
   assert.match(
     block.slice(0, 400),
@@ -118,8 +118,8 @@ test('hochglanz erbt die Palette, statt sie abzuschreiben', () => {
 test('hochglanz traegt nur die Schichten, nicht die Anatomie', () => {
   // Jede Regel in noppe.css gilt fuer BEIDE Designs — das ist die gemeinsame
   // Grundlage. hochglanz.css darf sie nicht ein zweites Mal aufstellen.
-  const noppeRegeln = [...css.matchAll(/\[data-theme="noppe"\][^{]*\{/g)].length;
-  assert.ok(noppeRegeln >= 10, `Nur ${noppeRegeln} Regeln in noppe.css — greift die Suche noch?`);
+  const studRules = [...css.matchAll(/\[data-theme="noppe"\][^{]*\{/g)].length;
+  assert.ok(studRules >= 10, `Nur ${studRules} Regeln in noppe.css — greift die Suche noch?`);
   assert.ok(
     !/\[data-theme="noppe"\]/.test(glanz),
     'hochglanz.css nennt noppe — die gemeinsamen Regeln gehoeren in noppe.css, einmal',
@@ -128,11 +128,8 @@ test('hochglanz traegt nur die Schichten, nicht die Anatomie', () => {
   // Die Anatomie darf hier nicht noch einmal stehen. Diese vier Eigenschaften
   // bestimmen sie; taucht eine davon hier auf, ist die Datei kein Aufsatz mehr,
   // sondern ein zweites Design.
-  for (const eigenschaft of ['--rad:', '--font:', 'border-radius:14px', 'padding-top:26px']) {
-    assert.ok(
-      !glanz.includes(eigenschaft),
-      `hochglanz.css setzt ${eigenschaft} — das ist Anatomie und steht in noppe.css`,
-    );
+  for (const property of ['--rad:', '--font:', 'border-radius:14px', 'padding-top:26px']) {
+    assert.ok(!glanz.includes(property), `hochglanz.css setzt ${property} — das ist Anatomie und steht in noppe.css`);
   }
 });
 
@@ -150,11 +147,11 @@ test('der harte Versatzschatten ueberlebt den Lack', () => {
 
 test('der Lichtstreifen liegt nicht ueber der ganzen Kachel', () => {
   // Ein weisser Schleier über weissem Text ist kein Glanz, sondern Grau.
-  const streifen = '118deg';
-  assert.ok(glanz.includes(streifen), 'Der Lichtstreifen fehlt ganz');
+  const strip = '118deg';
+  assert.ok(glanz.includes(strip), 'Der Lichtstreifen fehlt ganz');
   // Er darf auf dem Bildfeld (.sci) liegen, nicht auf der Kachel (.sc) selbst.
   for (const regel of glanz.split('}')) {
-    if (!regel.includes(streifen)) continue;
+    if (!regel.includes(strip)) continue;
     const kopf = regel.slice(0, regel.indexOf('{'));
     assert.ok(
       /\.sci\b/.test(kopf) && !/\.sc\s*[,{]/.test(kopf),
@@ -169,18 +166,17 @@ test('der Glanz steht auf festen Haltepunkten', () => {
   // Brush.verticalGradient. Verschiedene Sprachen, dieselben vier Haltepunkte —
   // laufen sie auseinander, sieht dasselbe Design auf Telefon und Rechner
   // anders aus, und niemand sucht den Grund in einer Zahl.
-  const ausCss = [...glanz.matchAll(/rgba\((?:255,255,255|0,0,0),\.(\d+)\) (\d+)%/g)].map(m => `${m[2]}/${m[1]}`);
-  assert.ok(ausCss.length >= 4, `Nur ${ausCss.length} Haltepunkte im CSS — greift die Suche noch?`);
+  const fromCss = [...glanz.matchAll(/rgba\((?:255,255,255|0,0,0),\.(\d+)\) (\d+)%/g)].map(m => `${m[2]}/${m[1]}`);
+  assert.ok(fromCss.length >= 4, `Nur ${fromCss.length} Haltepunkte im CSS — greift die Suche noch?`);
 });
 
 test('der Deckel ist EIN Baustein, nicht zwei', () => {});
 
 /** Die beiden Regeln, die eine Noppenreihe zeichnen. */
-const noppenReihen = () =>
-  css.split('}').filter(r => /header::before|\.sc::after/.test(r.slice(0, r.indexOf('{') + 1)));
+const studsRows = () => css.split('}').filter(r => /header::before|\.sc::after/.test(r.slice(0, r.indexOf('{') + 1)));
 
 test('die Noppen haben eine runde Oberkante, keine Verlaufskante', () => {
-  const reihen = noppenReihen();
+  const reihen = studsRows();
   // Selbstbeweis: GEMESSEN sind es zwei — die Kopfleiste und der Kacheldeckel.
   assert.equal(reihen.length, 2, `${reihen.length} Noppenreihen gefunden statt zwei — greift die Suche noch?`);
 
@@ -204,12 +200,12 @@ test('Leiste und Deckel teilen sich EINE Noppenform', () => {
   // Zwei Formen liefen beim naechsten Nachbessern auseinander: Die eine Reihe
   // bekaeme runde Noppen, die andere behielte ihre alten — und beides steht
   // auf demselben Bildschirm untereinander.
-  const grund = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'styles.css'), 'utf8');
-  const erklaerungen = [...(css + grund).matchAll(/--noppen-form:/g)].length;
+  const grund = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'styles.css'), 'utf8');
+  const explanations = [...(css + grund).matchAll(/--noppen-form:/g)].length;
   assert.equal(
-    erklaerungen,
+    explanations,
     1,
-    `Die Noppenform steht ${erklaerungen}-mal im Baum. Einmal reicht; jede ` +
+    `Die Noppenform steht ${explanations}-mal im Baum. Einmal reicht; jede ` +
       'weitere Reihe nimmt dieselbe Form in einem anderen Takt (mask-size).',
   );
   assert.match(grund, /--noppen-form:url\("data:image\/svg\+xml,/, 'Die Noppenform ist keine Maske mehr');
@@ -217,42 +213,42 @@ test('Leiste und Deckel teilen sich EINE Noppenform', () => {
 
 test('der Glanz liegt im Takt der Maske', () => {
   // Die Stelle, an der es still falsch wird
-  const maskenTakte = [...css.matchAll(/\bmask-size:(\d+)px \d+px/g)].map(m => m[1]);
-  const glanzTakte = [...glanz.matchAll(/\bbackground-size:(\d+)px \d+px/g)].map(m => m[1]);
+  const masksTicks = [...css.matchAll(/\bmask-size:(\d+)px \d+px/g)].map(m => m[1]);
+  const glossTicks = [...glanz.matchAll(/\bbackground-size:(\d+)px \d+px/g)].map(m => m[1]);
   // Selbstbeweis: GEMESSEN sind es vier Masken-Takte (je Reihe einmal mit und
   // einmal ohne -webkit-) und zwei Glanz-Takte.
   assert.deepEqual(
-    [...new Set(maskenTakte)].sort(),
+    [...new Set(masksTicks)].sort(),
     ['22', '24'],
-    `Die Masken-Takte sind ${maskenTakte.join(', ')} — greift die Suche noch?`,
+    `Die Masken-Takte sind ${masksTicks.join(', ')} — greift die Suche noch?`,
   );
   assert.deepEqual(
-    [...new Set(glanzTakte)].sort(),
+    [...new Set(glossTicks)].sort(),
     ['22', '24'],
-    `Der Glanz wiederholt sich im Takt ${glanzTakte.join(', ')}, die Maske aber ` +
-      `im Takt ${[...new Set(maskenTakte)].join(', ')}. Dann sitzt der Lichtpunkt ` +
+    `Der Glanz wiederholt sich im Takt ${glossTicks.join(', ')}, die Maske aber ` +
+      `im Takt ${[...new Set(masksTicks)].join(', ')}. Dann sitzt der Lichtpunkt ` +
       'nicht mehr auf der Noppe.',
   );
 });
 
 test('die Deckelfarbe loescht den Lack nicht', () => {
   // Der Fehler, den diese Zusicherung verhindert
-  const farbregeln = css
+  const colorRules = css
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('}')
     .filter(r => /--stein-\d/.test(r));
   // Selbstbeweis: GEMESSEN sind es sechs — die Grundregel und fuenf Positionen.
   assert.equal(
-    farbregeln.length,
+    colorRules.length,
     6,
-    `${farbregeln.length} Regeln mit einer Deckelfarbe statt sechs — greift die Suche noch?`,
+    `${colorRules.length} Regeln mit einer Deckelfarbe statt sechs — greift die Suche noch?`,
   );
 
-  const kurzform = farbregeln
+  const shortForm = colorRules
     .filter(r => /(?:^|[;{\s])background:\s*var\(--stein-/.test(r))
     .map(r => r.slice(0, r.indexOf('{')).trim().split(',')[0]);
   assert.deepEqual(
-    kurzform,
+    shortForm,
     [],
     'Diese Regeln setzen die Deckelfarbe mit der Kurzform `background:`. Sie ' +
       'loescht damit den `background-image` des Lacks — und weil :nth-child wie ' +
@@ -261,8 +257,8 @@ test('die Deckelfarbe loescht den Lack nicht', () => {
   );
 });
 
-const stein = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'themes', 'brick.css'), 'utf8');
-const grundCss = fs.readFileSync(path.join(BAUM, 'Web-App', 'public', 'styles.css'), 'utf8');
+const stein = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'brick.css'), 'utf8');
+const grundCss = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'styles.css'), 'utf8');
 
 test('die Noppenform gehoert allen Designs, nicht einem', () => {
   // Sie stand in themes/noppe.css. Solange nur ein Design Noppen zeichnete,

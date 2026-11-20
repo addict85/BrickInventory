@@ -1,9 +1,9 @@
 import { z } from 'zod';
-import { type Route, zeit, ganz, OHNE_RUMPF, TEXT, JA_NEIN, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
+import { type Route, zeit, ganz, WITHOUT_BODY, TEXT, JA_NO, abfrage, Q, SEITE, PAGES_DETAIL } from './grund';
 import { GenericAdminResponse, ImportZeile } from './gemeinsam';
 
 export { ImportZeile };
-import { GLOBALE_REGELN } from './globaleRegeln';
+import { GLOBAL_RULES } from './globaleRegeln';
 
 export const ApiLimits = z.looseObject({
   rebrickable: z.number().int(),
@@ -97,7 +97,7 @@ export const BricksetQueueEntry = z.looseObject({
 
 export const BricksetQueueResponse = z.looseObject({
   success: z.boolean(),
-  ...SEITEN_ANGABE,
+  ...PAGES_DETAIL,
   count: z.number().int(),
   entries: z.array(BricksetQueueEntry),
 });
@@ -286,54 +286,54 @@ export const routen = {
     antwort: AuftraegeResponse,
     abfrage: abfrage({ status: Q.text(20), art: Q.text(40) }),
   },
-  'POST /api/v1/sets/import/csv/cancel': { eingabe: OHNE_RUMPF, antwort: GenericAdminResponse },
+  'POST /api/v1/sets/import/csv/cancel': { eingabe: WITHOUT_BODY, antwort: GenericAdminResponse },
   'POST /api/v1/admin/job-schedule': {
     eingabe: z.strictObject({
       name: TEXT(40),
       time: TEXT(5).nullable().optional(),
-      minutes: GLOBALE_REGELN.price_job_interval_minutes.nullable().optional(),
+      minutes: GLOBAL_RULES.price_job_interval_minutes.nullable().optional(),
     }),
     antwort: GenericAdminResponse,
   },
   'POST /api/v1/admin/catalog-images': {
-    eingabe: z.strictObject({ alle_erneut: JA_NEIN.optional() }),
+    eingabe: z.strictObject({ alle_erneut: JA_NO.optional() }),
     antwort: KatalogBilderEingereiht,
   },
-  'POST /api/v1/admin/brickset-queue/:setNumber/retry': { eingabe: OHNE_RUMPF, antwort: VerwaltungSet },
-  'DELETE /api/v1/admin/brickset-queue/:setNumber': { eingabe: OHNE_RUMPF, antwort: VerwaltungSet },
+  'POST /api/v1/admin/brickset-queue/:setNumber/retry': { eingabe: WITHOUT_BODY, antwort: VerwaltungSet },
+  'DELETE /api/v1/admin/brickset-queue/:setNumber': { eingabe: WITHOUT_BODY, antwort: VerwaltungSet },
   'POST /api/v1/admin/cache-ttl': {
-    eingabe: z.strictObject({ ttl: GLOBALE_REGELN.price_cache_ttl }),
+    eingabe: z.strictObject({ ttl: GLOBAL_RULES.price_cache_ttl }),
     antwort: VerwaltungTtl,
   },
   'POST /api/v1/admin/cache-clear': {
-    eingabe: z.strictObject({ all: JA_NEIN.optional() }),
+    eingabe: z.strictObject({ all: JA_NO.optional() }),
     antwort: VerwaltungMeldung,
   },
   'PUT /api/v1/admin/api-limits': {
     eingabe: z.strictObject({
-      rebrickable: GLOBALE_REGELN.api_limit_rebrickable.optional(),
-      bricklink: GLOBALE_REGELN.api_limit_bricklink.optional(),
-      brickset: GLOBALE_REGELN.api_limit_brickset.optional(),
+      rebrickable: GLOBAL_RULES.api_limit_rebrickable.optional(),
+      bricklink: GLOBAL_RULES.api_limit_bricklink.optional(),
+      brickset: GLOBAL_RULES.api_limit_brickset.optional(),
     }),
     antwort: GenericAdminResponse,
   },
-  'POST /api/v1/admin/redownload-missing-images': { eingabe: OHNE_RUMPF, antwort: VerwaltungGestartet },
-  'POST /api/v1/admin/auftraege/:id/abbrechen': { eingabe: OHNE_RUMPF, antwort: AuftragAenderung },
-  'POST /api/v1/admin/auftraege/:id/wiederholen': { eingabe: OHNE_RUMPF, antwort: AuftragAenderung },
-  'POST /api/v1/admin/auftraege/art/:art/jetzt': { eingabe: OHNE_RUMPF, antwort: AuftragsArtStart },
-  'DELETE /api/v1/admin/auftraege/art/:art': { eingabe: OHNE_RUMPF, antwort: AuftragsArtLeerung },
-  'POST /api/v1/admin/trigger-csv-sync': { eingabe: OHNE_RUMPF, antwort: VerwaltungMeldung },
-  'POST /api/v1/admin/reimport-instructions': { eingabe: OHNE_RUMPF, antwort: AnleitungenEingereiht },
-  'POST /api/v1/admin/trigger-price-job': { eingabe: OHNE_RUMPF, antwort: VerwaltungGestartet },
+  'POST /api/v1/admin/redownload-missing-images': { eingabe: WITHOUT_BODY, antwort: VerwaltungGestartet },
+  'POST /api/v1/admin/auftraege/:id/abbrechen': { eingabe: WITHOUT_BODY, antwort: AuftragAenderung },
+  'POST /api/v1/admin/auftraege/:id/wiederholen': { eingabe: WITHOUT_BODY, antwort: AuftragAenderung },
+  'POST /api/v1/admin/auftraege/art/:art/jetzt': { eingabe: WITHOUT_BODY, antwort: AuftragsArtStart },
+  'DELETE /api/v1/admin/auftraege/art/:art': { eingabe: WITHOUT_BODY, antwort: AuftragsArtLeerung },
+  'POST /api/v1/admin/trigger-csv-sync': { eingabe: WITHOUT_BODY, antwort: VerwaltungMeldung },
+  'POST /api/v1/admin/reimport-instructions': { eingabe: WITHOUT_BODY, antwort: AnleitungenEingereiht },
+  'POST /api/v1/admin/trigger-price-job': { eingabe: WITHOUT_BODY, antwort: VerwaltungGestartet },
   'POST /api/v1/admin/default-condition': {
-    eingabe: z.strictObject({ condition: GLOBALE_REGELN.default_price_condition }),
+    eingabe: z.strictObject({ condition: GLOBAL_RULES.default_price_condition }),
     antwort: VerwaltungZustand,
   },
   'GET /api/v1/admin/job-status': { antwort: PreisJobStand },
   'GET /api/v1/admin/protokoll': { klein: true, antwort: ProtokollEintraege },
   'GET /api/v1/admin/image-diag/:setNumber': { klein: true, antwort: BildDiagnose },
   'POST /api/v1/admin/forget-image-misses': {
-    eingabe: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NEIN.optional() }),
+    eingabe: z.strictObject({ set_numbers: z.array(TEXT(40)).max(10_000).optional(), thumbs: JA_NO.optional() }),
     antwort: BildMerkerVergessen,
   },
   'POST /api/v1/admin/img-probe': { antwort: Diagnose, eingabe: z.strictObject({ url: TEXT(2048).optional() }) },

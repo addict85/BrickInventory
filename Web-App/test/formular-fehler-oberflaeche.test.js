@@ -4,17 +4,17 @@
  * Markierung weg. Am echten Bündel in jsdom, Anmeldung und Registrierung.
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  doLogin ruft formularFehler ohne Felder auf → rot: „falsches Passwort“
+ *   A  doLogin ruft formError ohne Felder auf → rot: „falsches Passwort“
  *   B  input-Hörer in formular.js entfernt → rot: „Tippen nimmt die Markierung“
  *   C  Registrierung: Feldliste bei fehlenden Pflichtfeldern leer → rot:
  *      „Registrierung: leere Pflichtfelder“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/oberflaeche');
 
 test('Anmeldung: Fehler am Feld', async t => {
-  const { w, d } = await oeffneOberflaeche(
+  const { w, d } = await openUi(
     {
       '/v1/auth/login': {
         $status: 401,
@@ -51,7 +51,7 @@ test('Anmeldung: Fehler am Feld', async t => {
 });
 
 test('Registrierung: leere Pflichtfelder', async () => {
-  const { w, d } = await oeffneOberflaeche({}, { angemeldet: false });
+  const { w, d } = await openUi({}, { angemeldet: false });
   try {
     d.getElementById('link-register').click();
     d.getElementById('reg-user').value = 'bert';

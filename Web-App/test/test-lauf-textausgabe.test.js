@@ -25,12 +25,12 @@ test('test-lauf.js übersteht Rahmen mit Nicht-ASCII-Text dahinter', () => {
     [path.join(ROOT, 'scripts', 'test-lauf.js'), 'test/fixtures/rahmen-und-text.js'],
     { cwd: ROOT, env, encoding: 'utf8', timeout: 120_000 },
   );
-  const ausgabe = r.stdout + r.stderr;
-  assert.equal(r.status, 0, ausgabe.slice(-2000));
-  assert.match(ausgabe, /^(# |ℹ )pass 1$/m);
+  const output = r.stdout + r.stderr;
+  assert.equal(r.status, 0, output.slice(-2000));
+  assert.match(output, /^(# |ℹ )pass 1$/m);
   // Die Rahmen der Attrappe folgen dem Format von Node 22; neuere Läufer (CI:
   // Node 26) lesen sie nicht als Rahmen. Dort zählt nur, dass der Lauf heil bleibt.
   if (Number(process.versions.node.split('.')[0]) <= 22) {
-    assert.equal((ausgabe.match(/^(# |ℹ )rahmen$/gm) || []).length, 300, 'nicht alle Rahmen kamen an');
+    assert.equal((output.match(/^(# |ℹ )rahmen$/gm) || []).length, 300, 'nicht alle Rahmen kamen an');
   }
 });

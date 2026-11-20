@@ -15,11 +15,11 @@ buildAndRequire();
 // Das gebaute Modul selbst: Die Funktionen nehmen den Kontext ausdrücklich.
 const { issueTicket, redeemTicket } = require(path.join(ROOT, 'dist/src/vouchers/pdfTicket.js'));
 const { Faecher } = require(path.join(ROOT, 'dist/src/infra/zwischenspeicher.js'));
-const { stellbareUhr } = require(path.join(ROOT, 'dist/src/infra/uhr.js'));
+const { stellbareClock } = require(path.join(ROOT, 'dist/src/infra/uhr.js'));
 
 test('PDF-Ticket: einmal, je Konto und Ziel, je Satz Dienste', async t => {
-  const a = { faecher: new Faecher(), uhr: stellbareUhr() },
-    b = { faecher: new Faecher(), uhr: stellbareUhr() };
+  const a = { faecher: new Faecher(), uhr: stellbareClock() },
+    b = { faecher: new Faecher(), uhr: stellbareClock() };
   await t.test('ein anderer Satz Dienste kennt das Ticket nicht', () => {
     assert.equal(redeemTicket(b, issueTicket(a, 7, 'export'), 7, 'export'), false);
   });

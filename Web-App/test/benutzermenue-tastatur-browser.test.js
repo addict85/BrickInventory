@@ -6,23 +6,23 @@
  * Tastendrücke über das DevTools-Protokoll in Chrome.
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  menueOeffnen() ohne Fokus auf den Eintrag → rot: „Enter öffnet und
+ *   A  openMenu() ohne Fokus auf den Eintrag → rot: „Enter öffnet und
  *      fokussiert den ersten Eintrag“
  *   B  Pfeil-Behandlung im keydown-Hörer entfernt → rot: „Pfeil ab wandert“
- *   C  menueSchliessen(true) bei Escape wieder ohne Argument → rot: „Escape
+ *   C  closeMenu(true) bei Escape wieder ohne Argument → rot: „Escape
  *      schliesst, Fokus zurück auf den Knopf“
- *   D  fokusAufTitel() in oeffneSicht entfernt → rot: „Wahl fokussiert die
+ *   D  focusOnTitle() in oeffneSicht entfernt → rot: „Wahl fokussiert die
  *      Überschrift der Sicht“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { musterSammlung } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { patternCollection } = require('./helpers/bestand');
 
-const TASTEN = { Enter: 13, Escape: 27, ArrowDown: 40, ArrowUp: 38, Home: 36, End: 35, Tab: 9 };
+const KEYS = { Enter: 13, Escape: 27, ArrowDown: 40, ArrowUp: 38, Home: 36, End: 35, Tab: 9 };
 
 test('Benutzermenü: Tastatur nach dem Menü-Muster', { timeout: 120_000 }, async t => {
-  const app = await starteApp(t, { name: `umenu_${process.pid}`, bestand: musterSammlung });
+  const app = await startApp(t, { name: `umenu_${process.pid}`, bestand: patternCollection });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -32,7 +32,7 @@ test('Benutzermenü: Tastatur nach dem Menü-Muster', { timeout: 120_000 }, asyn
   await ruhig();
   // Der Einrichtungsassistent ist ein Dialog und finge Escape ab.
   const taste = async key => {
-    const k = { key, code: key, windowsVirtualKeyCode: TASTEN[key] };
+    const k = { key, code: key, windowsVirtualKeyCode: KEYS[key] };
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...k });
     if (key === 'Enter') await b.tab('Input.dispatchKeyEvent', { type: 'char', text: '\r', ...k });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', ...k });

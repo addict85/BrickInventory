@@ -5,7 +5,7 @@
  * die beiden „stösst an"-Schritte hier werden rot. Am 30.10.2026 mit dem
  * geplanten Auftrag wiederholt: preisJobAnstossen in startup/verdrahtung.ts leer
  * → rot: „EUR → CHF muss den Preis-Job anstossen“. Am 15.11.2026 (Ereignis statt
- * Nacharbeit): onCurrencyChange() in erzeugeAuftraege gestrichen → rot, derselbe Fall.
+ * Nacharbeit): onCurrencyChange() in createJobs gestrichen → rot, derselbe Fall.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
  */
@@ -14,25 +14,25 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
 test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speichern nicht', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   // Beobachtet wird der Termin des geplanten Auftrags 'preise'.
   const Z = _req('src/auftraege/zeitplan.js');
   await db.run(`DELETE FROM jobs WHERE type = 'preise'`);
-  await Z.planeNaechsten('preise');
+  await Z.planeNext('preise');
   const spaeter = () =>
     db.run(`UPDATE jobs SET due_at = NOW() + INTERVAL '1 hour' WHERE type = 'preise' AND status = 'offen'`);
   const faellig = async () =>
     (await db.get(`SELECT due_at <= NOW() AS jetzt FROM jobs WHERE type = 'preise' AND status = 'offen'`))?.jetzt ===
     true;
-  const warteAufLauf = async () => {
+  const waitOnRun = async () => {
     for (let i = 0; i < 40; i++) {
       if (await faellig()) return true;
       await new Promise(r => setTimeout(r, 50));
@@ -66,7 +66,7 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
     assert.equal(await faellig(), false, 'Vorbedingung: der Lauf liegt in der Zukunft');
     let r = await postWeb({ currency: 'CHF' });
     assert.equal(r.status, 200);
-    assert.ok(await warteAufLauf(), 'EUR → CHF muss den Preis-Job anstossen');
+    assert.ok(await waitOnRun(), 'EUR → CHF muss den Preis-Job anstossen');
     assert.equal(
       (await db.get(`SELECT value FROM user_settings WHERE user_id=$1 AND key='currency'`, [uid])).value,
       'CHF',
@@ -86,7 +86,7 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
       body: JSON.stringify({ currency: 'EUR' }),
     });
     assert.equal(r.status, 200, `v1-Settings-Route antwortete ${r.status}`);
-    assert.ok(await warteAufLauf(), 'CHF → EUR über /api/v1 muss den Preis-Job ebenfalls anstossen');
+    assert.ok(await waitOnRun(), 'CHF → EUR über /api/v1 muss den Preis-Job ebenfalls anstossen');
   } finally {
     await db.run(`DELETE FROM jobs WHERE type = 'preise'`);
     await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);

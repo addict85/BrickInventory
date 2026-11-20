@@ -8,10 +8,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter } = require('./helpers/oberflaeche');
+const { openUi, reiter } = require('./helpers/oberflaeche');
 
 test('dieselben Ansichtsknöpfe in allen drei Reitern', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
     for (const tab of ['tab-gallery', 'tab-parts', 'tab-minifigs']) {
       const gruppe = d.querySelector(`#${tab} .vtgl[role="group"]`);
@@ -29,7 +29,7 @@ test('dieselben Ansichtsknöpfe in allen drei Reitern', async () => {
 });
 
 test('Teile: die Tabelle lädt die Set-Zuordnung', async () => {
-  const { w, d, aufrufe, ruhig } = await oeffneOberflaeche();
+  const { w, d, aufrufe, ruhig } = await openUi();
   try {
     await reiter(w, 'parts');
     assert.ok(await ruhig(), 'der Reiter lädt nicht fertig');

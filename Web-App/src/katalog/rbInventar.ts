@@ -1,14 +1,14 @@
 // Sucht mit und ohne Versionsanhang.
-import { mitVersion } from '../infra/setNummer';
-import type { KatalogKontext } from './kontext';
+import { withVersion } from '../infra/setNummer';
+import type { CatalogContext } from './kontext';
 
 /** Fehler werden NICHT geschluckt: Die Aufrufer gehen verschieden damit um,
  * hier stünde sonst die Entscheidung für alle. */
-export function inventarFuerKandidaten(k: KatalogKontext, kandidaten: string[]): Promise<number | null> {
-  return k.katalogStamm.inventarNachKandidaten(kandidaten);
+export function inventoryForCandidates(k: CatalogContext, kandidaten: string[]): Promise<number | null> {
+  return k.katalogStamm.inventoryAfterCandidates(kandidaten);
 }
 
 /** rb_inventories führt Set-Nummern nur mit Versionsanhang. */
-export async function neuestesInventar(k: KatalogKontext, setNumber: string): Promise<number | null> {
-  return k.katalogStamm.inventarNachKandidaten([mitVersion(setNumber)]);
+export async function newestInventory(k: CatalogContext, setNumber: string): Promise<number | null> {
+  return k.katalogStamm.inventoryAfterCandidates([withVersion(setNumber)]);
 }

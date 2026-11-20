@@ -1,11 +1,11 @@
 /**
- * Die Versionsregel der Setnummer steht zweimal: mitVersion() in src/infra/setNummer.ts und
+ * Die Versionsregel der Setnummer steht zweimal: withVersion() in src/infra/setNummer.ts und
  * set_nummer_mit_version() in der Datenbank (Migration 0074, Trigger auf set_number/set_num).
  * Beide laufen hier über dieselben Eingaben: die Kandidaten des gemeinsamen Korpus
  * (shared/setnummer-korpus.json), dieselben mit Versionsanhang, und Randfälle.
  *
  * Gegenproben (15.11.2026 gemessen, je einzeln):
- *   A  mitVersion prüft `/-\d+/` ohne `$` → rot: „beide Fassungen hängen gleich an“ ('10179-1b: SQL 10179-1b-1')
+ *   A  withVersion prüft `/-\d+/` ohne `$` → rot: „beide Fassungen hängen gleich an“ ('10179-1b: SQL 10179-1b-1')
  *   B  in der Testdatenbank set_nummer_mit_version auf `n ~ '-'` umgestellt (CREATE OR REPLACE
  *      vor dem Vergleich) → rot: dieselbe Prüfung ('10179-', '10179-1b', 'a-b')
  *
@@ -20,31 +20,31 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { mitVersion } = _req('src/infra/setNummer.js');
-const { setnummerKandidaten } = _req('src/katalog/produkttitel.js');
+const { dataOrSkip } = require('./helpers/db');
+const { withVersion } = _req('src/infra/setNummer.js');
+const { setnummerCandidates } = _req('src/katalog/produkttitel.js');
 
-const KORPUS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'setnummer-korpus.json'), 'utf8'));
+const CORPUS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'setnummer-korpus.json'), 'utf8'));
 const RAND = ['10179-1', '10179-12', '10179-', '10179-1b', 'a-b', 'comcon001', 'sw0001a', '6', '-1', '--2', ''];
 
-function eingaben() {
-  const kandidaten = KORPUS.faelle.flatMap(f => setnummerKandidaten(f.text, 2026));
+function inputs() {
+  const kandidaten = CORPUS.faelle.flatMap(f => setnummerCandidates(f.text, 2026));
   return [...new Set([...kandidaten, ...kandidaten.map(k => `${k}-2`), ...RAND])];
 }
 
 test('beide Fassungen hängen gleich an', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const alle = eingaben();
+  const alle = inputs();
   // Selbstbeweis: Der Korpus liefert Kandidaten, und beide Zweige der Regel kommen vor.
   assert.ok(alle.length >= 40, `nur ${alle.length} Eingaben — liest der Test den Korpus noch?`);
-  assert.ok(alle.some(x => mitVersion(x) === x) && alle.some(x => mitVersion(x) !== x), 'beide Zweige');
+  assert.ok(alle.some(x => withVersion(x) === x) && alle.some(x => withVersion(x) !== x), 'beide Zweige');
   const zeilen = await db.all(
     'SELECT e AS ein, set_nummer_mit_version(e) AS aus FROM unnest($1::text[]) WITH ORDINALITY AS u(e, i) ORDER BY i',
     [alle],
   );
   assert.equal(zeilen.length, alle.length);
-  const abweichend = zeilen.filter(z => z.aus !== mitVersion(z.ein)).map(z => `${z.ein}: SQL ${z.aus}`);
+  const abweichend = zeilen.filter(z => z.aus !== withVersion(z.ein)).map(z => `${z.ein}: SQL ${z.aus}`);
   assert.deepEqual(abweichend, []);
 });

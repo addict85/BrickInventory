@@ -7,11 +7,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
-const { haeltTeil } = require('./helpers/bestand');
+const db = testData();
+const { holdsPart } = require('./helpers/bestand');
 
 const U = {};
 
@@ -34,7 +34,7 @@ async function seed() {
 
   // Dieselbe Teilenummer in ZWEI Farben, und dieselbe Farbe bei ZWEI
   // Teilenummern: Nur so fällt eine verrutschte Paarung auf.
-  // Die Spalte `quelle` ist WEG: haeltTeil() leitet sie aus der Setnummer
+  // Die Spalte `quelle` ist ROUTE: holdsPart() leitet sie aus der Setnummer
   // ab — eine Zeile mit Set ist ein Set-Teil, eine ohne ein manuelles. …
   const teile = [
     // user, nummer, farbe, menge, set
@@ -53,7 +53,7 @@ async function seed() {
        ON CONFLICT (part_number) DO NOTHING`,
       [num, 'Teil ' + num],
     );
-    await haeltTeil(db, uid, num, { setNumber: set, menge, colorId: farbe });
+    await holdsPart(db, uid, num, { setNumber: set, menge, colorId: farbe });
   }
 }
 
@@ -77,7 +77,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
   const household = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ...require('./helpers/sources').testArea('haushalt'),
   };
 
   await t.test('zählt je Teil UND Farbe, nicht je Teilenummer', async () => {
@@ -117,13 +117,13 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
   await t.test('das Blickfeld entscheidet, nicht die Anfrage', async () => {
     // Ohne diese Grenze wäre der Abgleich ein Weg, fremde Bestände zu zählen.
     const nurIch = await ownedQuantitiesQuery([U.ich], [{ part_number: '3001', color_id: 4 }]);
-    const mitKind = await ownedQuantitiesQuery(await household.blickfeldIds(U.ich, 'all'), [
+    const withKind = await ownedQuantitiesQuery(await household.scopeIds(U.ich, 'all'), [
       { part_number: '3001', color_id: 4 },
     ]);
     assert.equal(nurIch['3001|4'].gesamt, 8);
-    assert.equal(mitKind['3001|4'].gesamt, 9, 'Das Unterkonto muss mitzählen');
+    assert.equal(withKind['3001|4'].gesamt, 9, 'Das Unterkonto muss mitzählen');
     // 99 Stück liegen bei 'fremd' — die dürfen nirgends auftauchen.
-    assert.ok(mitKind['3001|4'].gesamt < 99, 'Ein fremder Bestand ist durchgeschlagen');
+    assert.ok(withKind['3001|4'].gesamt < 99, 'Ein fremder Bestand ist durchgeschlagen');
   });
 
   await t.test('doppelte Anfragen und leere Eingaben laufen nicht ins Leere', async () => {

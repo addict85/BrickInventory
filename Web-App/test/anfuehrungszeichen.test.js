@@ -12,10 +12,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/oberflaeche');
 
 async function suche(sprache) {
-  const o = await oeffneOberflaeche({}, { sprache });
+  const o = await openUi({}, { sprache });
   const feld = o.d.getElementById('gs');
   feld.value = 'xyzxyz';
   feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
@@ -44,22 +44,22 @@ test('Suche ohne Treffer: en', async () => {
 });
 
 test('jedes „ hat sein “, und englisch keine geraden Anführungszeichen um Wörter', async () => {
-  const { w } = await oeffneOberflaeche({}, { angemeldet: false });
+  const { w } = await openUi({}, { angemeldet: false });
   try {
     const de = Object.entries(w.I18N_DE),
       en = Object.entries(w.I18N_EN);
     assert.ok(de.length > 500 && en.length > 500, 'Wörterbücher nicht geladen');
-    const deFalsch = de.filter(
+    const deWrong = de.filter(
       ([, v]) => (v.match(/„/g) || []).length !== (v.match(/“/g) || []).length || /„[^“]*"/.test(v),
     );
     assert.deepEqual(
-      deFalsch.map(([k]) => k),
+      deWrong.map(([k]) => k),
       [],
       'de: „ ohne passendes “',
     );
-    const enFalsch = en.filter(([, v]) => (/"[^"<>=]*"/.test(v) && !/<|=/.test(v)) || /„/.test(v));
+    const enWrong = en.filter(([, v]) => (/"[^"<>=]*"/.test(v) && !/<|=/.test(v)) || /„/.test(v));
     assert.deepEqual(
-      enFalsch.map(([k]) => k),
+      enWrong.map(([k]) => k),
       [],
       'en: gerade oder deutsche Anführungszeichen',
     );

@@ -1,7 +1,7 @@
 // The startup box in front of the app: server startup progress and whether the session is still valid. Both
 // show their reason in the same box above the startup scaffold.
 import { t, tRaw } from '../i18n.js';
-import { apiRoh } from './api.js';
+import { apiRaw } from './api.js';
 import { G } from './dom.js';
 
 /** The static startup scaffold from index.html gives way once login, app or startup progress show up. */
@@ -26,7 +26,7 @@ export async function waitForStartup() {
   if (button) button.onclick = () => retryNow();
   while (true) {
     try {
-      const r = await apiRoh('GET', '/v1/startup-status?_=' + Date.now(), {
+      const r = await apiRaw('GET', '/v1/startup-status?_=' + Date.now(), {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' },
       });
@@ -117,7 +117,7 @@ export function showOffline(on, o = {}) {
  * @returns {Promise<{ d: import('../../frontend-typen/api').ApiAntwort<'GET', '/v1/auth/me'>, waitSec: number }>} */
 export async function checkSession() {
   try {
-    const r = await apiRoh('GET', '/v1/auth/me', { cache: 'no-store' });
+    const r = await apiRaw('GET', '/v1/auth/me', { cache: 'no-store' });
     let d = null;
     try {
       d = await r.json();

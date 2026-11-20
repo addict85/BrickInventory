@@ -9,27 +9,27 @@
  *   C  in teile.js den Papierkorb der manuellen Kachel entfernt → rot: „manuelle
  *      Einträge …“
  *   D  in manuell-detail.js die Lagerortzeile entfernt → rot: ebenda
- *   E  in teileListe.ts manuelleTeile `NULL::text AS storage` → rot: „die Abfrage
+ *   E  in partsList.ts manualParts `NULL::text AS storage` → rot: „die Abfrage
  *      der manuellen Teile …“
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltTeil } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const { holdsPart } = require('./helpers/bestand');
 test.after(() =>
-  testDaten()
+  testData()
     .pool.end()
     .catch(() => {}),
 );
 
 test('die Webapp-Zeile zeigt Marktpreis und Papierkorb, keinen Übernahme-Knopf', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/wanted': {
       success: true,
       merkposten: [
@@ -51,7 +51,7 @@ test('die Webapp-Zeile zeigt Marktpreis und Papierkorb, keinen Übernahme-Knopf'
 });
 
 test('manuelle Einträge: Papierkorb auf der Kachel, Lagerort und Löschen im Detail', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/parts/manual': {
       success: true,
       parts: [{ part_number: '3001', color_id: 4, quantity: 3, user_id: 1, part_name: 'Stein', storage: 'Kiste 3' }],
@@ -76,7 +76,7 @@ test('manuelle Einträge: Papierkorb auf der Kachel, Lagerort und Löschen im De
 });
 
 test('die Abfrage der manuellen Teile liefert den Lagerort', async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const U = 990900 + (process.pid % 90);
   const weg = async () => {
@@ -88,8 +88,8 @@ test('die Abfrage der manuellen Teile liefert den Lagerort', async t => {
   t.after(weg);
   await db.run("INSERT INTO users (id,username,password_hash) VALUES ($1,$2,'x')", [U, `mz${U}`]);
   const ort = (await db.get("INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3') RETURNING id", [U])).id;
-  await haeltTeil(db, U, `mz-${U}`, { colorId: 4, menge: 2, storageId: ort });
-  const teile = await require('./helpers/sources').handlerModul(_req).manualPartsList([U], U);
+  await holdsPart(db, U, `mz-${U}`, { colorId: 4, menge: 2, storageId: ort });
+  const teile = await require('./helpers/sources').handlerModule(_req).manualPartsList([U], U);
   assert.deepEqual(
     teile.map(p => [p.part_number, p.storage]),
     [[`mz-${U}`, 'Kiste 3']],

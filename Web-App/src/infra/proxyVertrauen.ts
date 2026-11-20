@@ -1,30 +1,30 @@
 import net from 'node:net';
 
 /** Nur ausdrücklich genannte Adressen: Jeder vertraute Absender kann seine Client-Adresse frei
- * angeben und so die Anmeldesperre umgehen. Ein Netz über acht Adressen nur mit `netzBestaetigt`
+ * angeben und so die Anmeldesperre umgehen. Ein Netz über acht Adressen nur mit `networkConfirmed`
  * (PROXY_NETZ_BESTAETIGT=1): Darin stehen meist auch Clients. */
 export function proxyVertrauen(
   wert?: string,
-  netzBestaetigt = false,
+  networkConfirmed = false,
 ): false | string[] | ((adresse: string) => boolean) {
   const v = (wert ?? '').trim();
   if (!v) return nurLoopback;
   if (/^(false|nein|no|off)$/i.test(v)) return false;
   const eintraege = v.split(/[\s,]+/).filter(Boolean);
-  const falsch = eintraege.filter(e => !proxyEintragGueltig(e, netzBestaetigt));
+  const falsch = eintraege.filter(e => !proxyEntryValid(e, networkConfirmed));
   if (falsch.length)
     throw new Error(
-      proxyFehlertext(
+      proxyErrorText(
         falsch,
-        falsch.every(e => proxyEintragGueltig(e, true)),
+        falsch.every(e => proxyEntryValid(e, true)),
       ),
     );
   return eintraege;
 }
 
-function proxyFehlertext(falsch: string[], nurZuWeit: boolean): string {
+function proxyErrorText(falsch: string[], onlyToWide: boolean): string {
   const liste = falsch.map(f => `„${f}"`).join(', ');
-  if (nurZuWeit)
+  if (onlyToWide)
     return (
       `TRUST_PROXY enthält ${liste}: ein Netz mit mehr als 8 Adressen (IPv4 weiter als /29, IPv6 weiter als /120). ` +
       'Besser nur die feste Adresse des Proxys; wer das Netz wirklich braucht, setzt PROXY_NETZ_BESTAETIGT=1 ' +
@@ -39,7 +39,7 @@ function proxyFehlertext(falsch: string[], nurZuWeit: boolean): string {
 }
 
 /** Ohne Bestätigung höchstens acht Adressen, mit ihr höchstens /16 bzw. /64. */
-export function proxyEintragGueltig(eintrag: string, netzBestaetigt = false): boolean {
+export function proxyEntryValid(eintrag: string, networkConfirmed = false): boolean {
   const [adresse, praefix, rest] = eintrag.split('/');
   if (rest !== undefined || !adresse) return false;
   const art = net.isIP(adresse);
@@ -48,27 +48,27 @@ export function proxyEintragGueltig(eintrag: string, netzBestaetigt = false): bo
   if (!/^\d{1,3}$/.test(praefix)) return false;
   const p = Number(praefix);
   const [eng, weit, max] = art === 4 ? [29, 16, 32] : [120, 64, 128];
-  return p <= max && p >= (netzBestaetigt ? weit : eng);
+  return p <= max && p >= (networkConfirmed ? weit : eng);
 }
 
-export const ohneV4Huelle = (adresse: string) => adresse.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, '');
+export const withoutV4Shell = (adresse: string) => adresse.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, '');
 
 function nurLoopback(adresse: string): boolean {
-  const a = ohneV4Huelle(adresse);
+  const a = withoutV4Shell(adresse);
   return a === '::1' || /^127\.\d+\.\d+\.\d+$/.test(a);
 }
 
-export function imDockerNetz(adresse: string): boolean {
-  const a = ohneV4Huelle(adresse);
+export function inDockerNetwork(adresse: string): boolean {
+  const a = withoutV4Shell(adresse);
   const v4 = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(a);
   if (v4) return Number(v4[1]) === 172 && Number(v4[2]) >= 16 && Number(v4[2]) <= 31;
   const erste = parseInt(a.toLowerCase().split(':')[0] || '0', 16);
   return a.includes(':') && erste >= 0xfc00 && erste <= 0xfdff;
 }
 
-export function istDockerGateway(adresse: string): boolean {
-  const a = ohneV4Huelle(adresse);
-  if (!imDockerNetz(a)) return false;
+export function isDockerGateway(adresse: string): boolean {
+  const a = withoutV4Shell(adresse);
+  if (!inDockerNetwork(a)) return false;
   if (a.includes(':')) return a.toLowerCase().split(':').pop() === '1';
   const [, , o3, o4] = a.split('.');
   return o3 === '0' && o4 === '1';

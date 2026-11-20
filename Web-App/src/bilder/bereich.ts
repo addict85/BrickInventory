@@ -1,13 +1,13 @@
 /** Die Fabrik der Bilder. Ihr Zustand (Puffer, Warteschlangen, Zähler) liegt in den Fächern
  * dieses Satzes Dienste, nicht im Modul: Zwei Sätze in einem Prozess teilen nichts. */
 import type { Db } from '../../db/database';
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
-import * as bildbedarfDienst from './bildbedarf';
+import * as imageDemandService from './bildbedarf';
 import * as bildbedarfLauf from './bildbedarfLauf';
-import { bilderAuftragsarten } from './auftragsarten';
+import { imagesJobTypes } from './auftragsarten';
 import * as imageMisses from './imageMisses';
-import * as bildBlickfeldDienst from './bildBlickfeld';
+import * as imageScopeService from './bildBlickfeld';
 import * as bildNachschlagen from './bildNachschlagen';
 import * as proxyThumbs from './proxyThumbs';
 import * as imgCacheServe from './imgCacheServe';
@@ -15,62 +15,62 @@ import * as bildDatei from './bildDatei';
 import * as vorschauenEinpassen from './vorschauenEinpassen';
 import { setBildHerunterladen } from './setImages';
 import { vorschauErzeugenAus } from './thumbs';
-import { zugang, type Bildwerk, type BilderAbhaengigkeiten, type BilderKontext } from './kontext';
+import { zugang, type ImageWorker, type ImagesDependencies, type ImagesContext } from './kontext';
 
-export type { Bildwerk, BilderAbhaengigkeiten, BilderKontext } from './kontext';
+export type { ImageWorker, ImagesDependencies, ImagesContext } from './kontext';
 
-/** Ohne `bildwerk` das echte; ein Test gibt seines mit (startup/verdrahtung.ts baueDienste). */
-export function erzeugeBilder(
-  a: Omit<BilderAbhaengigkeiten, 'faecher' | 'bildwerk'> & { bildwerk?: Bildwerk | undefined },
-  einblick?: Einblick<BilderKontext>,
+/** Ohne `bildwerk` das echte; ein Test gibt seines mit (startup/verdrahtung.ts buildServices). */
+export function createImages(
+  a: Omit<ImagesDependencies, 'faecher' | 'bildwerk'> & { bildwerk?: ImageWorker | undefined },
+  inspect?: Inspect<ImagesContext>,
 ) {
   const bildwerk = a.bildwerk ?? {
     setBildLaden: (url: string, sn: string, info?: { status?: number }) => setBildHerunterladen(a, url, sn, info),
-    vorschauErzeugen: vorschauErzeugenAus,
+    createPreview: vorschauErzeugenAus,
   };
-  return baueBereich(
+  return buildArea(
     { ...a, bildwerk, faecher: new Faecher() },
     (db: Db) => zugang(db, a.lesevertrag),
-    (k: BilderKontext) => ({
+    (k: ImagesContext) => ({
       /** Grenzen des Bild-Proxys und des Caches aus der gereichten Konfiguration. */
-      bildGrenzen: () => ({
-        cacheMaxBytes: k.konfig.bildCacheMaxMb * 1024 * 1024,
-        abrufeJeMinute: k.konfig.bildAbrufeJeMinute,
+      imageLimits: () => ({
+        cacheMaxBytes: k.konfig.imageCacheMaxMb * 1024 * 1024,
+        fetchesJeMinute: k.konfig.imageFetchesJeMinute,
       }),
-      loescheVerfallene: mit(k)(bildbedarfDienst.loescheVerfallene),
-      katalogBilderVormerken: mit(k)(bildbedarfDienst.katalogBilderVormerken),
-      offenerBildbedarf: mit(k)(bildbedarfDienst.offenerBildbedarf),
-      leereBildbedarf: mit(k)(bildbedarfDienst.leereBildbedarf),
-      bildbedarfAnstossen: mit(k)(bildbedarfDienst.bildbedarfAnstossen),
-      merkeGebraucht: mit(k)(bildbedarfDienst.merkeGebraucht),
-      bildEinmalVormerken: mit(k)(bildbedarfDienst.bildEinmalVormerken),
-      auftragsarten: () => bilderAuftragsarten(k),
-      starteBildbedarf: mit(k)(bildbedarfLauf.bildbedarfEinrichten),
-      stoppeBildbedarf: mit(k)(bildbedarfLauf.stoppeBildbedarf),
-      beiSetBildGeladen: mit(k)(bildbedarfDienst.beiSetBildGeladen),
-      meldeSetBildGeladen: mit(k)(bildbedarfDienst.meldeSetBildGeladen),
+      deleteExpired: mit(k)(imageDemandService.deleteExpired),
+      catalogImagesReserve: mit(k)(imageDemandService.catalogImagesReserve),
+      openImageDemand: mit(k)(imageDemandService.openImageDemand),
+      emptyImageDemand: mit(k)(imageDemandService.emptyImageDemand),
+      imageDemandKick: mit(k)(imageDemandService.imageDemandKick),
+      rememberUsed: mit(k)(imageDemandService.rememberUsed),
+      imageOnceReserve: mit(k)(imageDemandService.imageOnceReserve),
+      auftragsarten: () => imagesJobTypes(k),
+      startImageDemand: mit(k)(bildbedarfLauf.setUpImageDemand),
+      stopImageDemand: mit(k)(bildbedarfLauf.stopImageDemand),
+      atSetImageLoaded: mit(k)(imageDemandService.atSetImageLoaded),
+      reportSetImageLoaded: mit(k)(imageDemandService.reportSetImageLoaded),
       // Beim Aufruf nachgeschlagen: Ein Test ersetzt Teile des Bildwerks nach dem Bau.
-      setBildLaden: (...a: Parameters<Bildwerk['setBildLaden']>) => k.bildwerk.setBildLaden(...a),
-      vorschauErzeugen: (relPfad: string) => k.bildwerk.vorschauErzeugen(relPfad),
-      vergissFehlend: mit(k)(imageMisses.vergissFehlend),
-      starteFehlanzeige: mit(k)(imageMisses.bildFehlstellenEinrichten),
-      stoppeFehlanzeige: mit(k)(imageMisses.stoppeFehlanzeige),
-      istBekanntFehlend: mit(k)(imageMisses.istBekanntFehlend),
-      merkeFehlend: mit(k)(imageMisses.merkeFehlend),
-      anleitungFreigegeben: mit(k)(bildBlickfeldDienst.anleitungFreigegeben),
-      setNummerImBlickfeld: mit(k)(bildBlickfeldDienst.setNummerImBlickfeld),
-      cdnFuerFehlendesBild: mit(k)(bildNachschlagen.cdnFuerFehlendesBild),
+      setBildLaden: (...a: Parameters<ImageWorker['setBildLaden']>) => k.bildwerk.setBildLaden(...a),
+      createPreview: (relPath: string) => k.bildwerk.createPreview(relPath),
+      forgetMissing: mit(k)(imageMisses.forgetMissing),
+      startNone: mit(k)(imageMisses.setUpImageGaps),
+      stopNone: mit(k)(imageMisses.stopNone),
+      isKnownMissing: mit(k)(imageMisses.isKnownMissing),
+      rememberMissing: mit(k)(imageMisses.rememberMissing),
+      instructionReleased: mit(k)(imageScopeService.instructionReleased),
+      setNumberInScope: mit(k)(imageScopeService.setNumberInScope),
+      cdnForMissingImage: mit(k)(bildNachschlagen.cdnForMissingImage),
       queueThumb: mit(k)(proxyThumbs.queueThumb),
       cacheTreffer: mit(k)(imgCacheServe.cacheTreffer),
-      raeumeBildCacheAuf: imgCacheServe.raeumeBildCacheAuf,
-      ladeBild: mit(k)(bildDatei.ladeBild),
-      zugeschnitteneVorschauenEinpassen: (lokale: { web: string; datei: string }[]) =>
-        vorschauenEinpassen.zugeschnitteneVorschauenEinpassen(k, lokale),
-      bildOeffnen: (...x: Parameters<BilderKontext['fremdquellen']['quellen']['oeffneBild']>) =>
+      cleanImageCacheOn: imgCacheServe.cleanImageCacheOn,
+      loadImage: mit(k)(bildDatei.loadImage),
+      fitTailoredPreviews: (lokale: { web: string; datei: string }[]) =>
+        vorschauenEinpassen.fitTailoredPreviews(k, lokale),
+      openImage: (...x: Parameters<ImagesContext['fremdquellen']['quellen']['oeffneBild']>) =>
         k.fremdquellen.quellen.oeffneBild(...x),
     }),
-    einblick,
+    inspect,
   );
 }
 
-export type BilderDienste = ReturnType<typeof erzeugeBilder>;
+export type ImagesServices = ReturnType<typeof createImages>;

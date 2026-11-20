@@ -4,21 +4,21 @@
  * dazu ein Hinweis, warum. Ein Sprungverweis (#inhalt) bleibt still.
  *
  * Gegenproben (am 03.11.2026 gemessen):
- *   A  im popstate-Zweig die Rückgabe von wendeAn() übergangen (kein
+ *   A  im popstate-Zweig die Rückgabe von applyAn() übergangen (kein
  *      replaceState auf adresse()) → rot: „Verwalterseite: Adresse und Hinweis“
  *      (Adresse blieb #/einstellungen, kein Hinweis)
- *   B  istAppPfad() liefert immer false → rot: „unbekannter Pfad: Hinweis“
- *   C  istAppPfad() liefert immer true → rot: „Sprungverweis bleibt still“
+ *   B  isAppPath() liefert immer false → rot: „unbekannter Pfad: Hinweis“
+ *   C  isAppPath() liefert immer true → rot: „Sprungverweis bleibt still“
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
+const { startApp } = require('./helpers/app-browser');
 
 test('Verwalterseiten und unbekannte Pfade für normale Konten', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `nutzer_${process.pid}`,
     bestand: async (db, uid) => {
       await db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]);

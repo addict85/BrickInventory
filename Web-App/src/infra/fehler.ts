@@ -1,7 +1,7 @@
 // Fachfrei und ohne Express: db/, clients/ und jeder Dienst melden hierüber.
 // Wie ein Fehler zur HTTP-Antwort wird, steht in httpAntwort.ts.
-import { FEHLER, fehlerText, antwortSprache, type FehlerCode } from './fehlerTexte';
-import { transaktionDesPfads } from './kontoKontext';
+import { FEHLER, errorText, responseLanguage, type ErrorCode } from './fehlerTexte';
+import { transactionOfPath } from './kontoKontext';
 
 /** Ersatz für `.catch(() => {})`: Der Schritt soll die Anfrage nicht scheitern
  * lassen, aber eine Spur hinterlassen.
@@ -11,17 +11,17 @@ export function logAndContinue(kontext: string) {
 }
 
 function weiterTrotzFehler(kontext: string, e: unknown) {
-  pruefeErsatzInTransaktion(kontext, e);
-  protokolliereWarnung(kontext, e);
+  checkFallbackInTransaction(kontext, e);
+  logWarning(kontext, e);
 }
 
-function protokolliereWarnung(kontext: string, e: unknown) {
+function logWarning(kontext: string, e: unknown) {
   const roh = e instanceof Error && e.stack ? e.stack : (e as { message?: unknown } | null)?.message || e;
   console.warn(`[weiter-trotz-fehler] ${kontext}: ${String(roh)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
 }
 
 /** Mit Ersatzwert, wo der Aufrufer weiterrechnet. */
-export function meldeUndLiefere<T>(kontext: string, ersatz: T) {
+export function reportAndDeliver<T>(kontext: string, ersatz: T) {
   return (e: unknown): T => {
     weiterTrotzFehler(kontext, e);
     return ersatz;
@@ -32,24 +32,24 @@ export function meldeUndLiefere<T>(kontext: string, ersatz: T) {
  * (25P02); ein Ersatzwert verdeckte die Ursache hinter diesem Folgefehler. Ein
  * Datenbankfehler geht deshalb immer weiter, ein anderer nur in Tests; im
  * Betrieb wird er laut gemeldet, weil der Rumpf mit dem Ersatz weiterrechnet. */
-export function pruefeErsatzInTransaktion(kontext: string, e: unknown): void {
-  const tx = transaktionDesPfads();
+export function checkFallbackInTransaction(kontext: string, e: unknown): void {
+  const tx = transactionOfPath();
   if (!tx?.verdirbt(e)) return;
-  if (istDatenbankFehler(e)) throw e;
+  if (isDatabaseError(e)) throw e;
   if (tx.streng) throw new Error(`Ersatzwert in einer Transaktion (${kontext}): ${fehlertext(e)}`, { cause: e });
   console.error(`[ersatz-in-transaktion] ${kontext}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
 }
 
 /** Ein Fehler des Servers (pg.DatabaseError) trägt SQLSTATE und Schwere. */
-export function istDatenbankFehler(e: unknown): boolean {
+export function isDatabaseError(e: unknown): boolean {
   const c = fehlerCode(e);
   return !!c && /^[0-9A-Z]{5}$/.test(c) && typeof (e as { severity?: unknown }).severity === 'string';
 }
 
 /** Eine schon fehlende Datei ist das Ziel, kein Fehler. */
-export function ohneFehlendeDatei(kontext: string): (e: unknown) => void;
-export function ohneFehlendeDatei<T>(kontext: string, ersatz: T): (e: unknown) => T;
-export function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
+export function withoutMissingFile(kontext: string): (e: unknown) => void;
+export function withoutMissingFile<T>(kontext: string, ersatz: T): (e: unknown) => T;
+export function withoutMissingFile<T>(kontext: string, ersatz?: T) {
   return (e: unknown): T | undefined => {
     if (fehlerCode(e) !== 'ENOENT') weiterTrotzFehler(kontext, e);
     return ersatz;
@@ -57,8 +57,8 @@ export function ohneFehlendeDatei<T>(kontext: string, ersatz?: T) {
 }
 
 /** Nur das Protokoll: Wer meldet und dann selbst entscheidet, liefert keinen Ersatz. */
-export function meldeFehler(kontext: string, e: unknown) {
-  protokolliereWarnung(kontext, e);
+export function reportError(kontext: string, e: unknown) {
+  logWarning(kontext, e);
 }
 
 // Nicht nur Error fliegt; sonst „Fehler: undefined“.
@@ -78,28 +78,28 @@ export function fehlerCode(e: unknown): string | undefined {
 }
 
 /** split() liefert immer ein erstes Element; TypeScript weiss es nicht. */
-export function vorDem(s: string, trenner: string): string {
+export function beforeThe(s: string, trenner: string): string {
   return s.split(trenner)[0] ?? '';
 }
 
 /** Für Ströme und Sammelberichte ohne Statuscode: Ein Fachfehler nennt Code und
  * Satz, alles andere (SQL, Dateipfade, Fremd-APIs) nur das Protokoll. */
-export function oeffentlicherFehler(
+export function publicError(
   e: unknown,
   kontext: string,
   req?: { headers?: Record<string, unknown> },
-): { error: string; code: FehlerCode } {
+): { error: string; code: ErrorCode } {
   const code = fehlerCode(e);
   if (code && code in FEHLER) {
     return {
-      code: code as FehlerCode,
-      error: fehlerText(
-        code as FehlerCode,
-        antwortSprache(req),
+      code: code as ErrorCode,
+      error: errorText(
+        code as ErrorCode,
+        responseLanguage(req),
         (e as { vars?: Record<string, string | number> }).vars,
       ),
     };
   }
-  meldeFehler(kontext, e);
-  return { code: 'interner_fehler', error: fehlerText('interner_fehler', antwortSprache(req)) };
+  reportError(kontext, e);
+  return { code: 'interner_fehler', error: errorText('interner_fehler', responseLanguage(req)) };
 }

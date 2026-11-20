@@ -2,6 +2,6 @@
  * beobachtet (db/bestandSicht.ts). Ohne Import, damit Repositories ihn lesen dürfen. */
 type Konten = `= $${number}` | `= ANY($${number})`;
 
-export interface BilderLesevertrag {
-  gezaehlteSets(konten?: Konten): string;
+export interface ImagesReadContract {
+  countedSets(konten?: Konten): string;
 }

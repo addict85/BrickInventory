@@ -6,7 +6,7 @@
  * den Vertrag (VERTRAG_PRUEFEN=1 aus buildAndRequire).
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in auftragsListe() wieder `user_id` mitgelesen → rot: „die
+ *   A  in jobList() wieder `user_id` mitgelesen → rot: „die
  *      Auftragsliste …“ (die Antwort trägt user_id)
  *   B  accountImageRows() liest zusätzlich `MAX(s.user_id) AS user_id` →
  *      rot: „die Bild-Diagnose …“
@@ -21,17 +21,17 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
+const { adminWithFactor } = require('./helpers/verwalter');
 const { routeZu } = _req('src/vertrag/index.js');
 const { z } = require('zod');
 
 /** Kommt ein Schlüssel irgendwo im JSON vor? */
-const enthaeltSchluessel = (wert, name) =>
+const containsKey = (wert, name) =>
   wert &&
   typeof wert === 'object' &&
-  (Object.hasOwn(wert, name) || Object.values(wert).some(v => enthaeltSchluessel(v, name)));
+  (Object.hasOwn(wert, name) || Object.values(wert).some(v => containsKey(v, name)));
 
 test('kein Antwortschema der Verwaltung nennt user_id', () => {
   for (const r of ['GET /api/v1/admin/auftraege', 'GET /api/v1/admin/image-diag/:setNumber']) {
@@ -41,7 +41,7 @@ test('kein Antwortschema der Verwaltung nennt user_id', () => {
 });
 
 test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const P = process.pid,
     SN = `9${P % 100000}-1`;
@@ -70,7 +70,7 @@ test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t =
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  await verwalterMitFaktor(_req, ids[0]);
+  await adminWithFactor(_req, ids[0]);
   const { base } = testServer(_req, { sitzung: { userId: ids[0], username: namen[0], isAdmin: true }, t });
 
   await t.test('die Bild-Diagnose zählt Konten, nennt sie aber nicht', async () => {
@@ -78,7 +78,7 @@ test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t =
     const body = await r.json();
     assert.equal(r.status, 200, JSON.stringify(body));
     assert.equal(body.datenbank.anzahl_konten, 1);
-    assert.equal(enthaeltSchluessel(body, 'user_id'), false, JSON.stringify(body.datenbank));
+    assert.equal(containsKey(body, 'user_id'), false, JSON.stringify(body.datenbank));
     assert.ok(!JSON.stringify(body).includes(`"${ids[1]}"`) && !body.hinweise.includes('Kein Konto führt dieses Set.'));
   });
 
@@ -89,6 +89,6 @@ test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t =
     const eintrag = body.auftraege.find(a => a.id === String(auftrag));
     assert.ok(eintrag, 'Vorbedingung: der Auftrag steht in der Liste');
     assert.equal(eintrag.set_number, SN);
-    assert.equal(enthaeltSchluessel(body, 'user_id'), false, JSON.stringify(eintrag));
+    assert.equal(containsKey(body, 'user_id'), false, JSON.stringify(eintrag));
   });
 });

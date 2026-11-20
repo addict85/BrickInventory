@@ -6,7 +6,7 @@
  *   A  die ausstehende Speicherung wieder mit `if (!offenesSet) return` (Stand vor dem Nachtrag) → rot: „Menge
  *      beim sofortigen Schliessen gespeichert“ (mQtyInc verloren). Ohne den Beobachter allein bleibt es grün:
  *      Die Speicherung kommt dann 400 ms später, er macht sie nur sofort.
- *   B  liefereBild() ohne den Typ aus vorschauTyp() → rot: „Vorschau eines durchsichtigen PNG …“ (image/jpeg)
+ *   B  deliverImage() ohne den Typ aus previewType() → rot: „Vorschau eines durchsichtigen PNG …“ (image/jpeg)
  *   C  verkleinern() ohne die Prüfung isOpaque → rot: ebenda (innen deckend, 255)
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
@@ -17,14 +17,14 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
-const { starteApp } = require('./helpers/app-browser');
-const { musterSammlung, katalogSet, haeltSet, mengeVon } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternCollection, catalogSet, holdsSet, quantityOf } = require('./helpers/bestand');
 
 const ROOT = path.join(__dirname, '..');
-const SCHLIESSEN = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
+const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
 
 /** 32 × 32 PNG: roter Rand, innen Schachbrett aus Rot und ganz durchsichtig. */
-function schachbrett() {
+function checkerboard() {
   const w = 32,
     h = 32;
   const block = (typ, daten) => {
@@ -55,13 +55,13 @@ function schachbrett() {
 }
 
 async function geh(a, hash, bereit, was) {
-  await a.b.auswerten(SCHLIESSEN);
+  await a.b.auswerten(CLOSE);
   await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
   await a.bis(bereit, was, 200);
   await a.ruhig(5000);
 }
 
-async function mengeBeimSchliessen(_t, a) {
+async function closeQuantityOn(_t, a) {
   const { b, bis } = a;
   for (const [knopf, soll] of [
     ['mQtyInc', 2],
@@ -76,11 +76,11 @@ async function mengeBeimSchliessen(_t, a) {
     await bis(`!document.getElementById('set-modal').classList.contains('open')`, 'geschlossen');
     await a.warte(800);
     await a.ruhig();
-    assert.equal(await mengeVon(a.db, [a.uid], '10300-1'), soll, `${knopf} und sofort geschlossen: verloren`);
+    assert.equal(await quantityOf(a.db, [a.uid], '10300-1'), soll, `${knopf} und sofort geschlossen: verloren`);
   }
 }
 
-async function durchsichtigeVorschau(_t, a, nr) {
+async function transparentPreview(_t, a, nr) {
   const { b, bis } = a;
   await b.auswerten(`document.documentElement.setAttribute('data-dunkel', ''); true`);
   try {
@@ -111,20 +111,20 @@ test('Menge beim Schliessen, PNG-Vorschau', { concurrency: 1, timeout: 600_000 }
   t.after(() => {
     for (const d of [`${nr}.jpg`, `${nr}_thumb.jpg`]) fs.rmSync(path.join(ordner, d), { force: true });
   });
-  const a = await starteApp(t, {
+  const a = await startApp(t, {
     name: `r25b_${process.pid}`,
     bestand: async (db, uid) => {
-      await musterSammlung(db, uid);
+      await patternCollection(db, uid);
       // Wie die App Set-Bilder ablegt: <nr>.jpg, daneben die Vorschau aus vorschauErzeugenAus.
       fs.mkdirSync(ordner, { recursive: true });
-      fs.writeFileSync(path.join(ordner, `${nr}.jpg`), schachbrett());
+      fs.writeFileSync(path.join(ordner, `${nr}.jpg`), checkerboard());
       assert.ok(await req('src/bilder/thumbs.js').vorschauErzeugenAus(`/images/sets/${nr}.jpg`), 'Vorschau');
-      await katalogSet(db, nr, { name: 'Durchsichtig', year: 2020, theme: 'Bildprobe', pieces: 10 });
+      await catalogSet(db, nr, { name: 'Durchsichtig', year: 2020, theme: 'Bildprobe', pieces: 10 });
       await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_nummer_mit_version($1)', [
         nr,
         `/images/sets/${nr}.jpg`,
       ]);
-      await haeltSet(db, uid, nr, 1, { preis: 5 });
+      await holdsSet(db, uid, nr, 1, { preis: 5 });
     },
   });
   if (a.grund) {
@@ -132,6 +132,6 @@ test('Menge beim Schliessen, PNG-Vorschau', { concurrency: 1, timeout: 600_000 }
     return;
   }
   await a.ruhig();
-  await t.test('Menge beim sofortigen Schliessen gespeichert', () => mengeBeimSchliessen(t, a));
-  await t.test('Vorschau eines durchsichtigen PNG bleibt durchsichtig', () => durchsichtigeVorschau(t, a, nr));
+  await t.test('Menge beim sofortigen Schliessen gespeichert', () => closeQuantityOn(t, a));
+  await t.test('Vorschau eines durchsichtigen PNG bleibt durchsichtig', () => transparentPreview(t, a, nr));
 });

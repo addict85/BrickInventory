@@ -1,17 +1,17 @@
 // Ein API-Client, kein Router: Schlüssel, Kontingent und Wiedervorlage kommen über ./zugang.
 
 import type { z } from 'zod';
-import { BsAntwort, BsAnleitungen, BsSets, pruefeAntwort } from './antworten';
-import { holeHttps, auszug } from '../src/infra/abruf';
-import type { KlientenZugang } from './zugang';
-import { fehlertext, meldeFehler } from '../src/infra/fehler';
-import { alsAbrufFehler } from './abrufFehler';
-import { mitVersion } from '../src/infra/setNummer';
+import { BsResponse, BsInstructions, BsSets, checkResponse } from './antworten';
+import { holeHttps, excerpt } from '../src/infra/abruf';
+import type { ClientsAccess } from './zugang';
+import { fehlertext, reportError } from '../src/infra/fehler';
+import { asFetchError } from './abrufFehler';
+import { withVersion } from '../src/infra/setNummer';
 import { versuche } from '../src/infra/ergebnis';
 
 const BASE = 'https://brickset.com/api/v3.asmx';
 
-async function getApiKey(kl: KlientenZugang) {
+async function getApiKey(kl: ClientsAccess) {
   return (await kl.schluessel('brickset_api_key')) || '';
 }
 
@@ -57,16 +57,16 @@ function parseResponse<T extends z.ZodType>(body: string, schema: T): z.output<T
   try {
     roh = JSON.parse(body);
   } catch (_) {
-    throw new Error(`Brickset: invalid JSON response: ${auszug(body)}`);
+    throw new Error(`Brickset: invalid JSON response: ${excerpt(body)}`);
   }
   // Erst die Hülle: Eine Fehlerantwort trägt nur status und message.
-  const data = pruefeAntwort('Brickset', BsAntwort, roh);
+  const data = checkResponse('Brickset', BsResponse, roh);
   if (data.status === 'error') {
     if (data.message?.toLowerCase().includes('daily api key usage limit')) throw new BricksetQuotaError();
     const err = Object.assign(new Error(`Brickset API error: ${data.message}`), { detail: data });
     throw err;
   }
-  return pruefeAntwort('Brickset', schema, roh);
+  return checkResponse('Brickset', schema, roh);
 }
 
 // Check HTTP status — throws BricksetQuotaError on 429 daily limit,
@@ -94,8 +94,8 @@ function checkStatus(status: number, body: string, label: string) {
 
 /** Zur Wiedervorlage vormerken; false, wenn das Set schon zu oft vorgemerkt war (dann gilt
  * die Ausweichquelle). `soon` für 5xx der Gegenseite: Sie hängen nicht am Tageskontingent. */
-async function enqueueRetry(kl: KlientenZugang, setNumber: string, errorMsg: string | null = null, soon = false) {
-  const r = await versuche('brickset:vormerken', kl.bricksetVormerken(setNumber, errorMsg || 'Quota exceeded', soon));
+async function enqueueRetry(kl: ClientsAccess, setNumber: string, errorMsg: string | null = null, soon = false) {
+  const r = await versuche('brickset:vormerken', kl.bricksetReserve(setNumber, errorMsg || 'Quota exceeded', soon));
   if (!r.ok) return false;
   const { versuch, vorgemerkt, hoechstens } = r.wert;
   if (!vorgemerkt) {
@@ -114,7 +114,7 @@ async function enqueueRetry(kl: KlientenZugang, setNumber: string, errorMsg: str
   return true;
 }
 
-async function checkRateLimit(kl: KlientenZugang, setNumber: string) {
+async function checkRateLimit(kl: ClientsAccess, setNumber: string) {
   try {
     const rl = await kl.zaehle('brickset');
     if (!rl.allowed) {
@@ -124,19 +124,19 @@ async function checkRateLimit(kl: KlientenZugang, setNumber: string) {
     return true;
   } catch (e) {
     // Lässt sich das Kontingent nicht lesen, wird gefragt: lieber ein Abruf zu viel als ein falsches „voll“.
-    meldeFehler('brickset:kontingent', e);
+    reportError('brickset:kontingent', e);
     return true;
   }
 }
 
 /** Dieses Set aus der Brickset-Wiederholungsliste nehmen. */
-async function ausRetryWarteschlange(kl: KlientenZugang, setNumber: string) {
-  return kl.bricksetVergessen(setNumber);
+async function fromRetryQueue(kl: ClientsAccess, setNumber: string) {
+  return kl.bricksetForgotten(setNumber);
 }
 
 // Remove from queue when a non-quota error occurs — no point retrying
-async function removeFromQueue(kl: KlientenZugang, setNumber: string) {
-  await versuche('brickset:wiedervorlage', ausRetryWarteschlange(kl, setNumber));
+async function removeFromQueue(kl: ClientsAccess, setNumber: string) {
+  await versuche('brickset:wiedervorlage', fromRetryQueue(kl, setNumber));
   console.log(
     `[brickset] ${setNumber}: non-quota error — removed from retry queue, using fallback`
       .replace(/\r?\n/g, ' ⏎ ')
@@ -144,10 +144,10 @@ async function removeFromQueue(kl: KlientenZugang, setNumber: string) {
   );
 }
 
-async function setAngaben(kl: KlientenZugang, setNumber: string) {
+async function setAngaben(kl: ClientsAccess, setNumber: string) {
   const key = await getApiKey(kl);
   if (!key) return null;
-  const n = mitVersion(setNumber);
+  const n = withVersion(setNumber);
   if (!(await checkRateLimit(kl, n))) return null; // limit reached — enqueued for retry
   try {
     const params = encodeURIComponent(JSON.stringify({ setNumber: n, pageSize: 1 }));
@@ -157,7 +157,7 @@ async function setAngaben(kl: KlientenZugang, setNumber: string) {
     if (!checkStatus(status, body, n)) return null;
     const s = parseResponse(body, BsSets).sets?.[0];
     if (!s) return null;
-    await versuche('brickset:wiedervorlage', ausRetryWarteschlange(kl, n));
+    await versuche('brickset:wiedervorlage', fromRetryQueue(kl, n));
     return {
       name: s.name || null,
       year: s.year || null,
@@ -167,10 +167,10 @@ async function setAngaben(kl: KlientenZugang, setNumber: string) {
       image_url: s.image?.imageURL || s.image?.thumbnailURL || null,
     };
   } catch (e) {
-    const f = alsAbrufFehler(e);
+    const f = asFetchError(e);
     if (f.isQuota) {
       const errMsg = f.detail
-        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${auszug(JSON.stringify(f.detail), 300)}`
+        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${excerpt(JSON.stringify(f.detail), 300)}`
         : fehlertext(e);
       await enqueueRetry(kl, n, errMsg);
       return null;
@@ -194,10 +194,10 @@ async function setAngaben(kl: KlientenZugang, setNumber: string) {
   }
 }
 
-async function getInstructions(kl: KlientenZugang, setNumber: string) {
+async function getInstructions(kl: ClientsAccess, setNumber: string) {
   const key = await getApiKey(kl);
   if (!key) return { instructions: [], usesFallback: true };
-  const n = mitVersion(setNumber);
+  const n = withVersion(setNumber);
   if (!(await checkRateLimit(kl, n))) return { instructions: [], usesFallback: false }; // limit reached — enqueued, wait for retry
   try {
     const { status, body } = await httpsGet(
@@ -205,9 +205,9 @@ async function getInstructions(kl: KlientenZugang, setNumber: string) {
     );
     if (status !== 200) {
       // 5xx ist ein Fehler der Gegenseite, kein Kontingentproblem.
-      const errMsg = `HTTP ${status}: ${auszug(body, 300)}`;
+      const errMsg = `HTTP ${status}: ${excerpt(body, 300)}`;
       console.log(
-        `  Brickset getInstructions HTTP ${status} for ${n}: ${auszug(body)}`
+        `  Brickset getInstructions HTTP ${status} for ${n}: ${excerpt(body)}`
           .replace(/\r?\n/g, ' ⏎ ')
           .replace(/\n|\r/g, ''),
       );
@@ -218,18 +218,18 @@ async function getInstructions(kl: KlientenZugang, setNumber: string) {
       await removeFromQueue(kl, n);
       return { instructions: [], usesFallback: true };
     }
-    const data = parseResponse(body, BsAnleitungen);
+    const data = parseResponse(body, BsInstructions);
     const instructions = (data.instructions || []).map(i => ({ url: i.URL, description: i.description }));
     return { instructions, usesFallback: instructions.length === 0 };
   } catch (e) {
-    const f = alsAbrufFehler(e);
+    const f = asFetchError(e);
     if (f.isCloudflare) {
       // Cloudflare temporary block — rethrow so instructionQueue can retry in 5 min
       throw e;
     }
     if (f.isQuota) {
       const errMsg = f.detail
-        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${auszug(JSON.stringify(f.detail), 300)}`
+        ? `HTTP ${f.detail.meta?.code ?? '429'}: ${excerpt(JSON.stringify(f.detail), 300)}`
         : `Quota exceeded: ${fehlertext(e)}`;
       const requeued = await enqueueRetry(kl, n, errMsg);
       return { instructions: [], usesFallback: !requeued };
@@ -247,7 +247,7 @@ async function getInstructions(kl: KlientenZugang, setNumber: string) {
       return { instructions: [], usesFallback: !requeued };
     }
     await removeFromQueue(kl, n);
-    const detail = f.detail ? ` | response: ${auszug(JSON.stringify(f.detail), 300)}` : '';
+    const detail = f.detail ? ` | response: ${excerpt(JSON.stringify(f.detail), 300)}` : '';
     console.log(
       `  Brickset getInstructions failed for ${n}: ${fehlertext(e)}${detail}`
         .replace(/\r?\n/g, ' ⏎ ')
@@ -260,7 +260,7 @@ async function getInstructions(kl: KlientenZugang, setNumber: string) {
 /**
  * Set über eine freie Suchanfrage finden — EAN, Barcode oder Bestellnummer.
  */
-async function findSetByQuery(kl: KlientenZugang, query: string, herkunft: string) {
+async function findSetByQuery(kl: ClientsAccess, query: string, herkunft: string) {
   const key = await getApiKey(kl);
   if (!key) return null;
   try {
@@ -280,7 +280,7 @@ async function findSetByQuery(kl: KlientenZugang, query: string, herkunft: strin
       image_url: s.image?.imageURL || null,
     };
   } catch (e) {
-    const f = alsAbrufFehler(e);
+    const f = asFetchError(e);
     if (f.isQuota) {
       console.log(`[brickset] Quota exceeded for ${herkunft} ${query}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
       return null;
@@ -295,24 +295,24 @@ async function findSetByQuery(kl: KlientenZugang, query: string, herkunft: strin
 }
 
 /** Den gespeicherten Schlüssel bei Brickset prüfen (checkKey zählt nicht gegen das Kontingent). */
-async function pruefeBricksetZugang(kl: KlientenZugang): Promise<void> {
+async function checkBricksetAccess(kl: ClientsAccess): Promise<void> {
   const key = await getApiKey(kl);
   if (!key) throw new Error('Brickset API Key nicht konfiguriert.');
   const { status, body } = await httpsGet(`${BASE}/checkKey?apiKey=${encodeURIComponent(key)}`);
   if (status !== 200) throw new Error(`Brickset HTTP ${status}`);
-  parseResponse(body, BsAntwort);
+  parseResponse(body, BsResponse);
 }
 
 /** Ein Klient je Zugang: Schlüssel, Kontingent und Wiedervorlage kommen von dort. */
-export function erzeugeBrickset(kl: KlientenZugang) {
+export function createBrickset(kl: ClientsAccess) {
   return {
-    pruefeBricksetZugang: () => pruefeBricksetZugang(kl),
+    checkBricksetAccess: () => checkBricksetAccess(kl),
     setAngaben: (setNumber: string) => setAngaben(kl, setNumber),
     getInstructions: (setNumber: string) => getInstructions(kl, setNumber),
     getSetByEan: (ean: string) => findSetByQuery(kl, ean, 'EAN'),
     getSetByBarcode: (barcode: string) => findSetByQuery(kl, barcode, 'barcode'),
-    ausRetryWarteschlange: (setNumber: string) => ausRetryWarteschlange(kl, setNumber),
+    fromRetryQueue: (setNumber: string) => fromRetryQueue(kl, setNumber),
   };
 }
 
-export type Brickset = ReturnType<typeof erzeugeBrickset>;
+export type Brickset = ReturnType<typeof createBrickset>;

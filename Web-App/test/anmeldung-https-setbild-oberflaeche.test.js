@@ -4,25 +4,25 @@
  *
  * Gegenproben (15.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  doLogin() ohne den Zweig d.keks_fehlt → rot: „M1 … Server meldet …“ (App geht auf und lädt ohne Sitzung)
- *   B  ohneHttps() nur mit isSecureContext (ohne location.protocol) → rot: „M1 … älterer Server …“
+ *   B  withoutHttps() nur mit isSecureContext (ohne location.protocol) → rot: „M1 … älterer Server …“
  *      („Sitzung abgelaufen“) und „N1 … http://localhost“ (Hinweis verborgen)
  *   C  Hinweis login-ohne-https nie eingeblendet → rot: „N1“ in beiden Fällen ohne HTTPS
  *   D  filterBedienbar() ohne die Klasse finanzen-fehler → rot: „N3 …“ (im Fehlerfall)
  *   E  zoomStand() ohne den Zweig für den Knopf → rot: „N7 …“ (Knopf bleibt mit Bild gesperrt)
- *   F  sitzungBeendet ohne !_keksGesetzt → rot: „M1 … Server bestätigt …“ (Cookie-Hinweis statt „abgelaufen“)
+ *   F  sitzungBeendet ohne !_cookieSet → rot: „M1 … Server bestätigt …“ (Cookie-Hinweis statt „abgelaufen“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
-const COOKIE_FEHLT = /^Anmeldung erfolgreich, aber der Browser hat das Sitzungs-Cookie nicht gespeichert\./;
-const OHNE_SITZUNG = { $status: 401, success: false, error: 'Nicht angemeldet', code: 'nicht_angemeldet' };
+const COOKIE_MISSING = /^Anmeldung erfolgreich, aber der Browser hat das Sitzungs-Cookie nicht gespeichert\./;
+const WITHOUT_SESSION = { $status: 401, success: false, error: 'Nicht angemeldet', code: 'nicht_angemeldet' };
 
 /** @param {{ sicher: boolean, url?: string, login: object, danach?: object }} f */
 async function anmelden(f) {
   let angemeldet = false;
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/auth/login': () => {
         angemeldet = true;
@@ -57,7 +57,7 @@ test('M1 Anmeldung ohne gesetztes Sitzungs-Cookie', async t => {
       login: { success: true, user: { id: 1, username: 'anna', is_admin: false }, keks_fehlt: true },
     });
     try {
-      assert.match(text(d.getElementById('login-hinweis')), COOKIE_FEHLT);
+      assert.match(text(d.getElementById('login-hinweis')), COOKIE_MISSING);
       assert.equal(d.getElementById('app').style.display, 'none', 'App geöffnet');
       assert.equal(d.getElementById('login-screen').style.display, 'flex');
       assert.equal(d.getElementById('lu').value, 'anna', 'Name bleibt stehen');
@@ -72,7 +72,7 @@ test('M1 Anmeldung ohne gesetztes Sitzungs-Cookie', async t => {
     const { w, d } = await anmelden({
       sicher: true,
       login: { success: true, user: { id: 1, username: 'anna', is_admin: false }, keks_fehlt: false },
-      danach: OHNE_SITZUNG,
+      danach: WITHOUT_SESSION,
     });
     try {
       assert.match(text(d.getElementById('login-hinweis')), /Sitzung abgelaufen/);
@@ -84,14 +84,14 @@ test('M1 Anmeldung ohne gesetztes Sitzungs-Cookie', async t => {
     const { w, d } = await anmelden({
       sicher: true,
       login: {
-        $vertragswidrig: 'älterer Server ohne keks_fehlt',
+        $contractViolating: 'älterer Server ohne keks_fehlt',
         success: true,
         user: { id: 1, username: 'anna', is_admin: false },
       },
-      danach: OHNE_SITZUNG,
+      danach: WITHOUT_SESSION,
     });
     try {
-      assert.match(text(d.getElementById('login-hinweis')), COOKIE_FEHLT);
+      assert.match(text(d.getElementById('login-hinweis')), COOKIE_MISSING);
     } finally {
       w.close();
     }
@@ -105,7 +105,7 @@ test('N1 Hinweis ohne HTTPS schon auf der Anmeldeseite', async t => {
     ['https', 'https://brick.example.org/', true, false],
   ])) {
     await t.test(fall, async () => {
-      const { w, d } = await oeffneOberflaeche(
+      const { w, d } = await openUi(
         {},
         { angemeldet: false, url, vorher: w => Object.defineProperty(w, 'isSecureContext', { value: sicher }) },
       );
@@ -123,7 +123,7 @@ test('N1 Hinweis ohne HTTPS schon auf der Anmeldeseite', async t => {
 
 test('N3 Finanzen-Fehler: Zeitraum, Chips und Suche weg, nach Erfolg zurück', async () => {
   let kaputt = true;
-  const { w, d, ruhig } = await oeffneOberflaeche({
+  const { w, d, ruhig } = await openUi({
     '/v1/finance/valuation': () =>
       kaputt
         ? { $status: 500, success: false, error: 'interner Fehler', code: 'interner_fehler' }
@@ -151,17 +151,17 @@ test('N3 Finanzen-Fehler: Zeitraum, Chips und Suche weg, nach Erfolg zurück', a
 });
 
 test('N7 Set-Bild im Detail: ein echter Knopf, mit Bild bedienbar', async () => {
-  const BILD = '/images/sets/10300-1.jpg';
-  const { w, d } = await oeffneOberflaeche({
+  const IMAGE = '/images/sets/10300-1.jpg';
+  const { w, d } = await openUi({
     '/v1/sets': {
       success: true,
       total: 1,
       themes: [],
-      sets: [{ set_number: '10300-1', name: 'Back to the Future', year: 2022, quantity: 1, image_local: BILD }],
+      sets: [{ set_number: '10300-1', name: 'Back to the Future', year: 2022, quantity: 1, image_local: IMAGE }],
     },
     '/v1/sets/10300-1': {
       success: true,
-      set: { set_number: '10300-1', name: 'Back to the Future', year: 2022, quantity: 1, image_local: BILD },
+      set: { set_number: '10300-1', name: 'Back to the Future', year: 2022, quantity: 1, image_local: IMAGE },
     },
     '/v1/sets/10300-1/acquisitions': { success: true, acquisitions: [] },
   });
@@ -180,7 +180,7 @@ test('N7 Set-Bild im Detail: ein echter Knopf, mit Bild bedienbar', async () => 
     assert.equal(knopf.hasAttribute('aria-hidden'), false);
     knopf.click();
     await warte(() => d.getElementById('lightbox-img').getAttribute('src'));
-    assert.equal(d.getElementById('lightbox-img').getAttribute('src'), BILD);
+    assert.equal(d.getElementById('lightbox-img').getAttribute('src'), IMAGE);
   } finally {
     w.close();
   }

@@ -26,7 +26,7 @@ function rendern(bauen) {
   });
 }
 
-function istGueltigesPdf(b, wo) {
+function isValidPdf(b, wo) {
   assert.equal(b.slice(0, 5).toString(), '%PDF-', `${wo}: kein PDF-Kopf`);
   assert.ok(b.slice(-1024).toString().includes('%%EOF'), `${wo}: keine EOF-Marke`);
   assert.ok(b.length > 500, `${wo}: nur ${b.length} Bytes — das kann kein Dokument sein`);
@@ -38,15 +38,15 @@ test('der Teilelisten-Export zeichnet ein gültiges PDF', async () => {
     doc.font('Helvetica-Bold').fontSize(16).text('Teileliste');
     doc.moveDown(0.5);
     doc.font('Helvetica').fontSize(10);
-    const zeilenhoehe = doc.currentLineHeight();
-    assert.ok(zeilenhoehe > 0, 'currentLineHeight() liefert keine Höhe mehr');
+    const lineHeight = doc.currentLineHeight();
+    assert.ok(lineHeight > 0, 'currentLineHeight() liefert keine Höhe mehr');
     doc.text('3001 · Brick 2x4 · Rot · 12×');
     doc.circle(120, 200, 6);
     doc.moveTo(50, 220);
     doc.addPage();
     doc.text('Seite 2');
   });
-  istGueltigesPdf(b, 'Teileliste');
+  isValidPdf(b, 'Teileliste');
 });
 
 test('Bilder werden eingebettet — JPEG und PNG', async () => {
@@ -81,7 +81,7 @@ test('Bilder werden eingebettet — JPEG und PNG', async () => {
       doc.addPage({ size: [600, 800] });
       doc.image(png, 0, 0, { width: 600 });
     });
-    istGueltigesPdf(b, 'Bildseiten');
+    isValidPdf(b, 'Bildseiten');
     // Beide Bildformate müssen als XObject im Dokument landen.
     const text = b.toString('latin1');
     assert.ok(text.includes('/DCTDecode'), 'Das JPEG wurde nicht eingebettet');

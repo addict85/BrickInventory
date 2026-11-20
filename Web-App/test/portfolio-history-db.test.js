@@ -4,17 +4,17 @@
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 /** Dieselbe Regel geradeheraus: Tageswerte laden, in JS gruppieren, fortschreiben. */
-async function vergleichsFassung(setNumbers, setQty, currency, condition, dateFilter) {
+async function comparisonVersion(setNumbers, setQty, currency, condition, dateFilter) {
   const platzhalter = setNumbers.map((_, i) => `$${i + 3}`).join(',');
   const rows = await db.all(
     `SELECT set_number, qty_avg_price, avg_price,
@@ -56,12 +56,12 @@ async function vergleichsFassung(setNumbers, setQty, currency, condition, dateFi
   if (punkte.length > 120) {
     const byMonth = new Map();
     for (const p of punkte) byMonth.set(p.month || p.day.slice(0, 7), p);
-    const monatlich = [...byMonth.values()].map(p => ({ ...p, day: p.month || p.day.slice(0, 7) }));
+    const monthly = [...byMonth.values()].map(p => ({ ...p, day: p.month || p.day.slice(0, 7) }));
     const erster = punkte[0];
-    if (monatlich.length && monatlich[0].fullDay !== erster.fullDay) {
-      monatlich[0] = { ...erster, day: erster.month || erster.day.slice(0, 7) };
+    if (monthly.length && monthly[0].fullDay !== erster.fullDay) {
+      monthly[0] = { ...erster, day: erster.month || erster.day.slice(0, 7) };
     }
-    punkte = monatlich;
+    punkte = monthly;
   }
   return punkte;
 }
@@ -167,7 +167,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
 
   for (const period of ['week', 'month', 'year', 'max']) {
     await t.test(`Zeitraum ${period}: gleiche Punkte wie die Vergleichsfassung`, async () => {
-      const alt = await vergleichsFassung(setNumbers, setQty, 'CHF', 'N', filter[period]);
+      const alt = await comparisonVersion(setNumbers, setQty, 'CHF', 'N', filter[period]);
       const neu = await portfolioVerlauf(u1, [u1, u2], period, db, getSetting);
 
       assert.equal(neu.points.length, alt.length, `andere Anzahl Punkte: ${neu.points.length} statt ${alt.length}`);
@@ -196,7 +196,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
 });
 
 test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, async t => {
-  const db2 = testDaten();
+  const db2 = testData();
   try {
     await db2.get('SELECT 1');
   } catch (e) {
@@ -227,12 +227,12 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     // gibt die Schnappschüsse nicht mehr, und Zeilen aus der Zeit davor sollen
     // von der Aufbewahrungsfrist wegkommen wie alles andere. Eine Ausnahme, die
     // nichts mehr schützt, hält nur noch Daten fest.
-    const { loescheAltePreise } = _req('src/finanzen/priceHistory.js');
+    const { deleteOldPrices } = _req('src/finanzen/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('88888-1','N','CHF',5,5, NOW() - INTERVAL '4000 days'),
                           ('__portfolio__1','N','CHF',7,7, NOW() - INTERVAL '4000 days')`);
-    umgebung({ PRICE_HISTORY_KEEP_DAYS: '1095' });
-    const weg = await loescheAltePreise();
+    environment({ PRICE_HISTORY_KEEP_DAYS: '1095' });
+    const weg = await deleteOldPrices();
     assert.ok(weg >= 2, `nicht alles entfernt: ${weg}`);
     for (const sn of ['88888-1', '__portfolio__1'])
       assert.equal(
@@ -243,13 +243,13 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
   });
 
   await t.test('PRICE_HISTORY_KEEP_DAYS=0 schaltet das Aufräumen ab', async () => {
-    const { loescheAltePreise } = _req('src/finanzen/priceHistory.js');
+    const { deleteOldPrices } = _req('src/finanzen/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('77777-1','N','CHF',5,5, NOW() - INTERVAL '4000 days')`);
-    umgebung({ PRICE_HISTORY_KEEP_DAYS: '0' });
-    assert.equal(await loescheAltePreise(), 0);
+    environment({ PRICE_HISTORY_KEEP_DAYS: '0' });
+    assert.equal(await deleteOldPrices(), 0);
     assert.equal((await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='77777-1'`)).c, 1);
-    umgebung({ PRICE_HISTORY_KEEP_DAYS: undefined });
+    environment({ PRICE_HISTORY_KEEP_DAYS: undefined });
   });
 
   await db2.pool.end().catch(() => {});

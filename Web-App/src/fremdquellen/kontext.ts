@@ -2,32 +2,32 @@
  * bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
 import { mit, type Kontext } from '../infra/bereich';
 import type { Db } from '../../db/database';
-import type { AuftraegeDienste } from '../auftraege';
+import type { JobsServices } from '../auftraege';
 import type { SettingsServices } from '../settings';
 import * as apiKontingent from './repository/apiKontingent';
 import * as apiTakt from './repository/apiTakt';
 import type { Quellen } from './quellen';
 import type { Uhr } from '../infra/uhr';
 
-export interface FremdquellenAbhaengigkeiten {
+export interface ForeignSourcesDependencies {
   uhr: Uhr;
   db: Db;
   einstellungen: SettingsServices;
-  auftraege: AuftraegeDienste;
+  auftraege: JobsServices;
   /** Was ein Test statt der echten Klienten gibt; gelesen beim Aufruf (bereich.ts). */
   ersatz?: Partial<Quellen> | undefined;
 }
 
 export const zugang = (db: Db) => ({
   apiKontingent: {
-    zaehleApiAufruf: mit(db)(apiKontingent.zaehleApiAufruf),
-    aufrufeHeute: mit(db)(apiKontingent.aufrufeHeute),
-    aufrufeJeKonto: mit(db)(apiKontingent.aufrufeJeKonto),
-    setzeApiZaehlerZurueck: mit(db)(apiKontingent.setzeApiZaehlerZurueck),
+    countApiCall: mit(db)(apiKontingent.countApiCall),
+    callsToday: mit(db)(apiKontingent.callsToday),
+    callsJeAccount: mit(db)(apiKontingent.callsJeAccount),
+    setApiCounterBack: mit(db)(apiKontingent.setApiCounterBack),
   },
   apiTakt: {
-    belegeTakt: mit(db)(apiTakt.belegeTakt),
-    schiebeTakt: mit(db)(apiTakt.schiebeTakt),
+    receiptsTick: mit(db)(apiTakt.receiptsTick),
+    pushTick: mit(db)(apiTakt.pushTick),
   },
 });
-export type FremdquellenKontext = Kontext<FremdquellenAbhaengigkeiten, ReturnType<typeof zugang>>;
+export type ForeignSourcesContext = Kontext<ForeignSourcesDependencies, ReturnType<typeof zugang>>;

@@ -39,12 +39,12 @@ const path = require('node:path');
 const { spawnSync, execFileSync } = require('node:child_process');
 
 /** Ein hängendes Skript blockiert sonst die Datei und mit ihr den ganzen Lauf. */
-const AUFRUF_FRIST = 120_000;
+const CALL_DEADLINE = 120_000;
 
 const ROOT = path.join(__dirname, '..');
 const hatAge = spawnSync('age', ['--version']).status === 0;
 
-function aufbau(t, basis = os.tmpdir()) {
+function setup(t, basis = os.tmpdir()) {
   const tmp = fs.mkdtempSync(path.join(basis, 'sicherung-age-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const bin = path.join(tmp, 'bin');
@@ -60,28 +60,28 @@ exit 0
 `,
     { mode: 0o755 },
   );
-  const arbeit = path.join(tmp, 'installation');
-  fs.mkdirSync(path.join(arbeit, 'data', 'uploads'), { recursive: true });
-  fs.mkdirSync(path.join(arbeit, 'schluessel'));
-  fs.writeFileSync(path.join(arbeit, 'schluessel', 'datenschluessel'), 'k');
-  fs.writeFileSync(path.join(arbeit, 'data', 'uploads', 'anleitung.pdf'), '%PDF-1.4 geheim');
-  const identitaet = path.join(tmp, 'privat.txt');
-  if (hatAge) execFileSync('age-keygen', ['-o', identitaet], { stdio: 'pipe' });
-  const empfaenger = hatAge ? fs.readFileSync(identitaet, 'utf8').match(/public key: (age1\w+)/)[1] : 'age1probe';
+  const work = path.join(tmp, 'installation');
+  fs.mkdirSync(path.join(work, 'data', 'uploads'), { recursive: true });
+  fs.mkdirSync(path.join(work, 'schluessel'));
+  fs.writeFileSync(path.join(work, 'schluessel', 'datenschluessel'), 'k');
+  fs.writeFileSync(path.join(work, 'data', 'uploads', 'anleitung.pdf'), '%PDF-1.4 geheim');
+  const identity = path.join(tmp, 'privat.txt');
+  if (hatAge) execFileSync('age-keygen', ['-o', identity], { stdio: 'pipe' });
+  const recipient = hatAge ? fs.readFileSync(identity, 'utf8').match(/public key: (age1\w+)/)[1] : 'age1probe';
   const env = { ...process.env, PATH: `${bin}:${process.env.PATH}` };
   const skripte = {
     'backup.sh': path.join(ROOT, 'scripts', 'backup.sh'),
     'restore.sh': path.join(ROOT, 'scripts', 'restore.sh'),
   };
-  const lauf = (skript, args, mehr = {}, input = '') =>
-    spawnSync('sh', [skripte[skript], ...args], {
-      cwd: arbeit,
+  const lauf = (script, args, mehr = {}, input = '') =>
+    spawnSync('sh', [skripte[script], ...args], {
+      cwd: work,
       encoding: 'utf8',
       input,
       env: { ...env, ...mehr },
-      timeout: AUFRUF_FRIST,
+      timeout: CALL_DEADLINE,
     });
-  return { tmp, arbeit, ziel: path.join(tmp, 'ziel'), identitaet, empfaenger, lauf };
+  return { tmp, work, ziel: path.join(tmp, 'ziel'), identity, recipient, lauf };
 }
 
 test('kein Klartext neben der verschlüsselten Sicherung', t => {
@@ -90,8 +90,8 @@ test('kein Klartext neben der verschlüsselten Sicherung', t => {
     t.skip('age nicht installiert');
     return;
   }
-  const a = aufbau(t);
-  const r = a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: a.empfaenger });
+  const a = setup(t);
+  const r = a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: a.recipient });
   assert.equal(r.status, 0, r.stderr);
   const dateien = fs.readdirSync(a.ziel).sort();
   assert.deepEqual(
@@ -113,24 +113,24 @@ test('restore.sh spielt die verschlüsselte Sicherung ein', t => {
     t.skip('age nicht installiert');
     return;
   }
-  const a = aufbau(t);
-  assert.equal(a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: a.empfaenger }).status, 0);
+  const a = setup(t);
+  assert.equal(a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: a.recipient }).status, 0);
   const [daten, dump] = fs
     .readdirSync(a.ziel)
     .sort()
     .map(n => path.join(a.ziel, n));
-  fs.rmSync(path.join(a.arbeit, 'data'), { recursive: true });
+  fs.rmSync(path.join(a.work, 'data'), { recursive: true });
   const ohne = a.lauf('restore.sh', [dump, daten], {}, 'ja\n');
   assert.notEqual(ohne.status, 0, 'ohne privaten Schlüssel eingespielt');
   assert.match(ohne.stderr, /BACKUP_AGE_IDENTITAET/);
-  const r = a.lauf('restore.sh', [dump, daten], { BACKUP_AGE_IDENTITAET: a.identitaet }, 'ja\n');
+  const r = a.lauf('restore.sh', [dump, daten], { BACKUP_AGE_IDENTITAET: a.identity }, 'ja\n');
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(fs.readFileSync(path.join(a.tmp, 'eingespielt.sql'), 'utf8'), /CREATE TABLE probe\(\);/);
-  assert.equal(fs.readFileSync(path.join(a.arbeit, 'data', 'uploads', 'anleitung.pdf'), 'utf8'), '%PDF-1.4 geheim');
+  assert.equal(fs.readFileSync(path.join(a.work, 'data', 'uploads', 'anleitung.pdf'), 'utf8'), '%PDF-1.4 geheim');
 });
 
 test('ohne age kein Klartext', t => {
-  const a = aufbau(t);
+  const a = setup(t);
   const r = a.lauf('backup.sh', [a.ziel], {
     BACKUP_AGE_EMPFAENGER: 'age1probe',
     AGE: path.join(a.tmp, 'gibt-es-nicht'),
@@ -140,7 +140,7 @@ test('ohne age kein Klartext', t => {
 });
 
 test('ohne Empfänger keine Sicherung', t => {
-  const a = aufbau(t);
+  const a = setup(t);
   const r = a.lauf('backup.sh', [a.ziel]);
   assert.notEqual(r.status, 0, 'ohne Empfänger gesichert');
   assert.match(r.stderr, /kein Empfänger.*nichts gesichert/s);
@@ -155,8 +155,8 @@ test('die Empfänger aus backup-empfaenger.txt gelten ohne weitere Angabe', t =>
     t.skip('age nicht installiert');
     return;
   }
-  const a = aufbau(t);
-  fs.writeFileSync(path.join(a.arbeit, 'backup-empfaenger.txt'), `# Sicherung\n${a.empfaenger}\n`);
+  const a = setup(t);
+  fs.writeFileSync(path.join(a.work, 'backup-empfaenger.txt'), `# Sicherung\n${a.recipient}\n`);
   const r = a.lauf('backup.sh', [a.ziel]);
   assert.equal(r.status, 0, r.stderr);
   const dateien = fs.readdirSync(a.ziel).sort();
@@ -166,15 +166,15 @@ test('die Empfänger aus backup-empfaenger.txt gelten ohne weitere Angabe', t =>
   );
   // Rundlauf: restore.sh entschlüsselt mit dem privaten Schlüssel und spielt ein.
   const [daten, dump] = dateien.map(n => path.join(a.ziel, n));
-  fs.rmSync(path.join(a.arbeit, 'data'), { recursive: true });
-  const z = a.lauf('restore.sh', [dump, daten], { BACKUP_AGE_IDENTITAET: a.identitaet }, 'ja\n');
+  fs.rmSync(path.join(a.work, 'data'), { recursive: true });
+  const z = a.lauf('restore.sh', [dump, daten], { BACKUP_AGE_IDENTITAET: a.identity }, 'ja\n');
   assert.equal(z.status, 0, z.stdout + z.stderr);
   assert.match(fs.readFileSync(path.join(a.tmp, 'eingespielt.sql'), 'utf8'), /CREATE TABLE probe\(\);/);
-  assert.equal(fs.readFileSync(path.join(a.arbeit, 'data', 'uploads', 'anleitung.pdf'), 'utf8'), '%PDF-1.4 geheim');
+  assert.equal(fs.readFileSync(path.join(a.work, 'data', 'uploads', 'anleitung.pdf'), 'utf8'), '%PDF-1.4 geheim');
 });
 
 test('unverschlüsselt nur mit BACKUP_KLARTEXT=ja', t => {
-  const a = aufbau(t);
+  const a = setup(t);
   const nein = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: '1' });
   assert.notEqual(nein.status, 0, 'BACKUP_KLARTEXT=1 genügt nicht, nur „ja"');
   const r = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: 'ja' });
@@ -195,7 +195,7 @@ test('am Ziel liegt nie Klartext, auch nicht während der Sicherung', t => {
     t.skip('age nicht installiert');
     return;
   }
-  const a = aufbau(t);
+  const a = setup(t);
   const bin = path.join(a.tmp, 'bin'),
     probe = path.join(a.tmp, 'probe');
   // Mitten im Dump und nach tar sehen, was am Ziel liegt.
@@ -208,13 +208,13 @@ printf -- '-- PostgreSQL database dump complete\\n'
 `,
     { mode: 0o755 },
   );
-  const echtesTar = spawnSync('sh', ['-c', 'command -v tar'], { encoding: 'utf8' }).stdout.trim();
+  const realTar = spawnSync('sh', ['-c', 'command -v tar'], { encoding: 'utf8' }).stdout.trim();
   fs.writeFileSync(
     path.join(bin, 'tar'),
-    `#!/bin/sh\n'${echtesTar}' "$@"; s=$?; ls '${a.ziel}' >> '${probe}'; exit $s\n`,
+    `#!/bin/sh\n'${realTar}' "$@"; s=$?; ls '${a.ziel}' >> '${probe}'; exit $s\n`,
     { mode: 0o755 },
   );
-  const r = a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: a.empfaenger });
+  const r = a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: a.recipient });
   assert.equal(r.status, 0, r.stderr);
   const gesehen = fs.readFileSync(probe, 'utf8').split('\n').filter(Boolean);
   assert.ok(
@@ -234,18 +234,18 @@ test('ein Dump ohne Endmarke hinterlässt nichts am Ziel', t => {
     t.skip('age nicht installiert');
     return;
   }
-  const a = aufbau(t);
+  const a = setup(t);
   fs.writeFileSync(path.join(a.tmp, 'bin', 'docker'), "#!/bin/sh\nprintf -- '-- Dump, abgebrochen\\n'\nexit 1\n", {
     mode: 0o755,
   });
-  const r = a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: a.empfaenger });
+  const r = a.lauf('backup.sh', [a.ziel], { BACKUP_AGE_EMPFAENGER: a.recipient });
   assert.notEqual(r.status, 0, 'ein Torso gilt als Sicherung');
   assert.match(r.stderr, /Endmarke fehlt/);
   assert.deepEqual(fs.readdirSync(a.ziel), [], 'eine halbe Datei bleibt am Ziel');
 });
 
 test('restore.sh weist psql-Befehle im Dump ab', t => {
-  const a = aufbau(t);
+  const a = setup(t);
   const geknackt = path.join(a.tmp, 'geknackt');
   for (const zeile of [`\\! touch '${geknackt}'`, `  \\copy x to program 'touch ${geknackt}'`]) {
     const dump = path.join(a.tmp, 'fremd.sql');
@@ -263,7 +263,7 @@ test('restore.sh weist psql-Befehle im Dump ab', t => {
 });
 
 test('ein tar-Fehler bricht ab und hinterlässt kein Archiv', t => {
-  const a = aufbau(t);
+  const a = setup(t);
   fs.writeFileSync(
     path.join(a.tmp, 'bin', 'tar'),
     "#!/bin/sh\nprintf 'halb'\necho 'tar: data/x: Cannot open' >&2\nexit 2\n",
@@ -282,8 +282,8 @@ test('ein tar-Fehler bricht ab und hinterlässt kein Archiv', t => {
 test('eine unlesbare Datei unter data/ bricht vor dem Dump ab', t => {
   // Als root läuft das Skript unten als „nobody“; dessen Weg muss durch alle Ordner
   // führen. TMPDIR und Arbeitsbaum können privat sein (0700), /tmp ist es nie.
-  const a = aufbau(t, process.getuid() === 0 ? '/tmp' : os.tmpdir());
-  const geheim = path.join(a.arbeit, 'data', 'uploads', 'fremd.pdf');
+  const a = setup(t, process.getuid() === 0 ? '/tmp' : os.tmpdir());
+  const geheim = path.join(a.work, 'data', 'uploads', 'fremd.pdf');
   fs.writeFileSync(geheim, 'nur für den Dienst', { mode: 0o600 });
   let r;
   if (process.getuid() === 0) {
@@ -295,11 +295,11 @@ test('eine unlesbare Datei unter data/ bricht vor dem Dump ab', t => {
     fs.chmodSync(a.tmp, 0o755);
     execFileSync('chown', ['-R', '65534:65534', a.tmp]);
     fs.chownSync(geheim, 0, 0);
-    const skript = path.join(a.tmp, 'backup.sh');
-    fs.copyFileSync(path.join(ROOT, 'scripts', 'backup.sh'), skript);
-    fs.chmodSync(skript, 0o755);
-    r = spawnSync('setpriv', ['--reuid=65534', '--regid=65534', '--clear-groups', 'sh', skript, a.ziel], {
-      cwd: a.arbeit,
+    const script = path.join(a.tmp, 'backup.sh');
+    fs.copyFileSync(path.join(ROOT, 'scripts', 'backup.sh'), script);
+    fs.chmodSync(script, 0o755);
+    r = spawnSync('setpriv', ['--reuid=65534', '--regid=65534', '--clear-groups', 'sh', script, a.ziel], {
+      cwd: a.work,
       encoding: 'utf8',
       env: {
         ...process.env,
@@ -307,7 +307,7 @@ test('eine unlesbare Datei unter data/ bricht vor dem Dump ab', t => {
         BACKUP_KLARTEXT: 'ja',
         TMPDIR: a.tmp,
       },
-      timeout: AUFRUF_FRIST,
+      timeout: CALL_DEADLINE,
     });
   } else {
     fs.chmodSync(geheim, 0o000);

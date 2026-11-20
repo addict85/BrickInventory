@@ -18,21 +18,21 @@
  * Ohne DB: skip.
  */
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 // Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
-umgebung({ APP_BASE_URL: 'http://localhost' });
-umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
+environment({ APP_BASE_URL: 'http://localhost' });
+environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 // Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
@@ -41,7 +41,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 test.after(() => db.pool.end().catch(() => {}));
 
 test('forgot-password findet die E-Mail unabhängig von der Schreibweise', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const USERNAME = 'forgotcasetest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
@@ -64,7 +64,7 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise', { con
     req.session = {};
     next();
   });
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const port = srv.address().port;
 
@@ -110,7 +110,7 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise', { con
 test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserhalb des Betriebs', {
   concurrency: 1,
 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const USERNAME = 'forgothosttest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-%'`).catch(() => {});
@@ -125,16 +125,16 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
     APP_BASE_URL: process.env.APP_BASE_URL,
     SMTP_HOST: process.env.SMTP_HOST,
   };
-  umgebung({ NODE_ENV: 'development' });
+  environment({ NODE_ENV: 'development' });
   delete process.env.SMTP_HOST;
-  const ausgabe = [];
+  const output = [];
   const altLog = console.log,
     altWarn = console.warn;
   console.log = (...a) => {
-    ausgabe.push(a.join(' '));
+    output.push(a.join(' '));
   };
   console.warn = (...a) => {
-    ausgabe.push(a.join(' '));
+    output.push(a.join(' '));
   };
 
   const app = express();
@@ -143,7 +143,7 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
     req.session = {};
     next();
   });
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const port = srv.address().port;
   const forgot = async email => {
@@ -156,13 +156,13 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
     await db.run(`UPDATE users SET reset_token = NULL WHERE username = $1`, [USERNAME]);
     return { status: r.status, body: await r.json(), token: !!row.reset_token };
   };
-  const warteAufLink = async () => {
-    for (let i = 0; i < 50 && !ausgabe.some(z => z.includes('Link:')); i++) await new Promise(r => setTimeout(r, 50));
-    return ausgabe.find(z => z.includes('Link:')) || '';
+  const waitOnLink = async () => {
+    for (let i = 0; i < 50 && !output.some(z => z.includes('Link:')); i++) await new Promise(r => setTimeout(r, 50));
+    return output.find(z => z.includes('Link:')) || '';
   };
 
   try {
-    umgebung({ APP_BASE_URL: undefined });
+    environment({ APP_BASE_URL: undefined });
     const bekannt = await forgot('forgot.host@example.ch');
     const unbekannt = await forgot('gibt.es.nicht@example.ch');
     assert.equal(
@@ -174,20 +174,20 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
     assert.equal(bekannt.body.code, 'passwort_reset_nicht_eingerichtet');
     assert.deepEqual(unbekannt, bekannt, 'Die Antwort verrät die E-Mail: bekannt und unbekannt unterscheiden sich');
 
-    umgebung({ APP_BASE_URL: 'https://lego.example.org/' });
-    ausgabe.length = 0;
+    environment({ APP_BASE_URL: 'https://lego.example.org/' });
+    output.length = 0;
     const mit = await forgot('forgot.host@example.ch');
     assert.equal(mit.status, 200);
     assert.equal(mit.token, true);
-    const link = await warteAufLink();
+    const link = await waitOnLink();
     assert.match(link, /https:\/\/lego\.example\.org\/reset-password#token=…$/, 'der Token steht im Fragment');
     assert.doesNotMatch(link, /boese/);
   } finally {
     console.log = altLog;
     console.warn = altWarn;
     for (const [k, v] of Object.entries(alt)) {
-      if (v === undefined) umgebung({ [k]: undefined });
-      else umgebung({ [k]: v });
+      if (v === undefined) environment({ [k]: undefined });
+      else environment({ [k]: v });
     }
     await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
     await new Promise(r => srv.close(r));
@@ -211,22 +211,22 @@ test('höchstens ein Link je Konto in 15 Minuten, und jede Antwort braucht gleic
     req.session = {};
     next();
   });
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(async () => {
     await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
     await new Promise(r => srv.close(r));
   });
   const forgot = async email => {
-    const beginn = Date.now();
+    const start = Date.now();
     const r = await fetch(`http://localhost:${srv.address().port}${AUTH}/forgot-password`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ email }),
     });
-    const dauer = Date.now() - beginn;
+    const duration = Date.now() - start;
     const z = await db.get(`SELECT reset_token FROM users WHERE username = $1`, [USERNAME]);
-    return { status: r.status, body: await r.json(), dauer, token: z.reset_token };
+    return { status: r.status, body: await r.json(), duration, token: z.reset_token };
   };
   const erste = await forgot(`${USERNAME}@example.ch`);
   assert.ok(erste.token);
@@ -238,5 +238,5 @@ test('höchstens ein Link je Konto in 15 Minuten, und jede Antwort braucht gleic
   assert.notEqual((await forgot(`${USERNAME}@example.ch`)).token, erste.token, 'nach der Pause kein neuer Link');
   const unbekannt = await forgot(`gibt.es.nicht.${process.pid}@example.ch`);
   for (const r of [erste, zweite, unbekannt])
-    assert.ok(r.dauer >= 390, `Antwort nach ${r.dauer} ms — die Dauer verrät die Adresse`);
+    assert.ok(r.duration >= 390, `Antwort nach ${r.duration} ms — die Dauer verrät die Adresse`);
 });

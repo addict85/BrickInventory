@@ -5,12 +5,12 @@
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in server.ts `const jobs = k.rolle !== 'web'` durch `true` ersetzt →
  *      rot: „der Web-Prozess arbeitet keine Aufträge ab“
- *   B  in aktuellerStartZustand (src/auftraege/startZustand.ts) das Nachlesen aus
+ *   B  in currentStartState (src/auftraege/startZustand.ts) das Nachlesen aus
  *      run_state entfernt → rot: „der Web-Prozess sieht den Startzustand des
  *      Job-Prozesses“
- *   C  in server.ts app.use(nurEigeneHerkunft) entfernt → rot: „weist
+ *   C  in server.ts app.use(onlyOwnOrigin) entfernt → rot: „weist
  *      schreibende Anfragen fremder Seiten ab“ (200)
- *   D  in server.ts den Aufruf stoppeJobs() aus herunterfahren() entfernt →
+ *   D  in server.ts den Aufruf stopJobs() aus herunterfahren() entfernt →
  *      rot: „SIGTERM: der Job-Prozess gibt seinen laufenden Auftrag zurück“
  *   E  (31.10.2026) API_MIN_APP wieder auf 1 → rot: „eine App mit Zahlen statt
  *      Wahrheitswerten (Fassung 1) bekommt …“ (401 statt 426)
@@ -28,15 +28,15 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const { warte } = require('./helpers/zeit');
 
-function freierPort() {
+function freePort() {
   return new Promise((auf, ab) => {
     const s = net
       .createServer()
@@ -101,15 +101,15 @@ function starte(rolle, port) {
       APP_BASE_URL_FEHLT_OK: '1',
     },
   });
-  const mitLog = /** @type {typeof p & { log: string }} */ (p);
-  mitLog.log = '';
+  const withLog = /** @type {typeof p & { log: string }} */ (p);
+  withLog.log = '';
   p.stdout.on('data', d => {
-    mitLog.log += d;
+    withLog.log += d;
   });
   p.stderr.on('data', d => {
-    mitLog.log += d;
+    withLog.log += d;
   });
-  return mitLog;
+  return withLog;
 }
 
 async function beende(p) {
@@ -119,7 +119,7 @@ async function beende(p) {
 }
 
 test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   // Ohne heutige Stempel lädt der Job-Prozess den Rebrickable-Katalog herunter.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
@@ -140,8 +140,8 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
     [NAME, await bcrypt.hash(PASS, 4)],
   );
 
-  const port = await freierPort(),
-    jobsPort = await freierPort();
+  const port = await freePort(),
+    jobsPort = await freePort();
   const web = starte('web', port);
   let jobs = null;
   /** Der Auftrag, den der Web-Prozess liegen liess; der Job-Prozess soll ihn erledigen. */

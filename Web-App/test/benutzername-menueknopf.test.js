@@ -38,7 +38,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
-const { oeffneOberflaeche, ANMELDUNG, sicht, warte } = require('./helpers/oberflaeche');
+const { openUi, ANMELDUNG, sicht, warte } = require('./helpers/oberflaeche');
 
 const ROOT = path.join(__dirname, '..');
 /** Die Striche sind seit dem 27.10. ein Symbol der Symbolfamilie statt „☰“. */
@@ -55,7 +55,7 @@ function kopfleiste() {
 /**
  * Den Menüknopf über seinen HANDLER finden, nicht über die ID.
  */
-function menueKnopf(document) {
+function menuButton(document) {
   const knopf = document.querySelector('[data-click="benutzerMenue"]');
   assert.ok(knopf, 'Kein Element mit data-click="benutzerMenue" in der Kopfleiste');
   assert.equal(knopf.tagName, 'BUTTON');
@@ -64,7 +64,7 @@ function menueKnopf(document) {
 
 test('die Striche stecken im Knopf, nicht daneben', () => {
   const { document } = kopfleiste().window;
-  const knopf = menueKnopf(document);
+  const knopf = menuButton(document);
 
   assert.ok(
     striche(knopf),
@@ -80,7 +80,7 @@ test('die Striche stecken im Knopf, nicht daneben', () => {
 
 test('die Striche überleben den Benutzernamen', () => {
   const { document } = kopfleiste().window;
-  const knopf = menueKnopf(document);
+  const knopf = menuButton(document);
   const name = document.getElementById('ubadge');
   assert.ok(name, 'Kein #ubadge — konto.js schreibt den Namen genau dorthin');
 
@@ -97,9 +97,9 @@ test('die Striche überleben den Benutzernamen', () => {
 
 test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
   const { document } = kopfleiste().window;
-  const knopf = menueKnopf(document);
+  const knopf = menuButton(document);
 
-  // Die ID bleibt gefordert: menueSchliessen() und benutzerMenue() in
+  // Die ID bleibt gefordert: closeMenu() und benutzerMenue() in
   // js/sammlung.js führen `aria-expanded` über G('btn-umenu') mit.
   assert.equal(
     knopf.id,
@@ -131,20 +131,20 @@ test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
   );
 
   // Die Striche selbst sind für einen Bildschirmleser nichts wert.
-  const glyphe = knopf.querySelector('.ubadge-striche');
-  assert.ok(glyphe, 'Kein .ubadge-striche im Knopf');
+  const glyph = knopf.querySelector('.ubadge-striche');
+  assert.ok(glyph, 'Kein .ubadge-striche im Knopf');
   assert.equal(
-    glyphe.getAttribute('aria-hidden'),
+    glyph.getAttribute('aria-hidden'),
     'true',
     '„☰" vorgelesen ergibt nichts — die Glyphe gehört versteckt',
   );
 });
 
 /**
- * Der Verwalter-Hinweis steht IM Namen. Gegenproben (08.11.2026, am Bündel): zeigeBenutzernamen() ohne
+ * Der Verwalter-Hinweis steht IM Namen. Gegenproben (08.11.2026, am Bündel): showUsernames() ohne
  * `angemeldetesKonto.isAdmin &&` bzw. mit fest „Admin“ statt tRaw('users.admin_badge') →
  * rot (englisch stünde „Verwalter“); die Profilseite wieder mit eigenem `G('ubadge').textContent =
- * username` statt zeigeBenutzernamen() → rot (nach dem Speichern).
+ * username` statt showUsernames() → rot (nach dem Speichern).
  */
 test('der Namenszug trägt den Verwalter-Hinweis, die Kachel ist weg', () => {
   const { document } = kopfleiste().window;
@@ -171,7 +171,7 @@ test('mit Administratorrecht steht (Administrator) dahinter, ohne nur der Name',
     '/v1/auth/me': { ...ANMELDUNG['/v1/auth/me'], user: { ...ANMELDUNG['/v1/auth/me'].user, ...u } },
   });
   const name = async (antworten, opt) => {
-    const o = await oeffneOberflaeche(antworten, opt);
+    const o = await openUi(antworten, opt);
     await warte(() => o.d.getElementById('ubadge').textContent.trim());
     return o;
   };

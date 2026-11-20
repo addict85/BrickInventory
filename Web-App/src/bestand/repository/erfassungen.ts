@@ -1,7 +1,7 @@
-import type { DbSchnittstelle } from '../../../db/database';
-import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
+import type { DbInterface } from '../../../db/database';
+import { erfassungsTagSql, ENTRY_TABLES as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
 
-export type ErfassungImFeld = {
+export type EntryInField = {
   id: number;
   user_id: number;
   condition: string | null;
@@ -14,8 +14,8 @@ export type ErfassungImFeld = {
 /** Nur im Schreib-Blickfeld und nur unter dem Schlüssel aus dem Pfad: Sonst änderte
  * `/parts/A/1/acquisitions/{Erfassung von B}` die Zeile von B, während Sperre und
  * Mengenprüfung auf A liefen. */
-export function erfassungImSchreibfeld(
-  tx: DbSchnittstelle,
+export function entryInWriteField(
+  tx: DbInterface,
   art: ErfassungsArt,
   id: number,
   wids: number[],
@@ -23,7 +23,7 @@ export function erfassungImSchreibfeld(
 ) {
   const s = SHAPES[art];
   const spalten = s.keys.map((k, i) => ` AND ${k}=$${i + 3}`).join('');
-  return tx.get<ErfassungImFeld>(
+  return tx.get<EntryInField>(
     `SELECT id, user_id, condition, ${s.price} AS preis, price_estimated, currency, (${erfassungsTagSql()})::text AS tag
        FROM ${s.table} WHERE id=$1 AND user_id = ANY($2)${spalten}`,
     [id, wids, ...schluessel.slice(0, s.keys.length)],
@@ -31,8 +31,8 @@ export function erfassungImSchreibfeld(
 }
 
 /** Schreibend nur in den übergebenen Konten: zweite Linie hinter der Prüfung des Aufrufers. */
-export async function setzeErfassungsMenge(
-  tx: DbSchnittstelle,
+export async function setEntryQuantity(
+  tx: DbInterface,
   art: ErfassungsArt,
   id: number,
   menge: number,
@@ -41,8 +41,8 @@ export async function setzeErfassungsMenge(
   await tx.run(`UPDATE ${SHAPES[art].table} SET quantity=$1 WHERE id=$2 AND user_id = ANY($3)`, [menge, id, konten]);
 }
 
-export async function setzeErfassungsPreis(
-  tx: DbSchnittstelle,
+export async function setEntryPrice(
+  tx: DbInterface,
   art: ErfassungsArt,
   id: number,
   preis: number | null,
@@ -55,8 +55,8 @@ export async function setzeErfassungsPreis(
   );
 }
 
-export async function setzeErfassungsZustand(
-  tx: DbSchnittstelle,
+export async function setEntryState(
+  tx: DbInterface,
   art: ErfassungsArt,
   id: number,
   zustand: string,
@@ -66,8 +66,8 @@ export async function setzeErfassungsZustand(
 }
 
 /** Mittag statt Mitternacht: Der Tag bleibt derselbe, in welcher Zeitzone man auch liest. */
-export async function setzeErfassungsDatum(
-  tx: DbSchnittstelle,
+export async function setEntryDate(
+  tx: DbInterface,
   art: ErfassungsArt,
   id: number,
   datum: string,
@@ -80,11 +80,6 @@ export async function setzeErfassungsDatum(
   );
 }
 
-export async function loescheErfassung(
-  tx: DbSchnittstelle,
-  art: ErfassungsArt,
-  id: number,
-  besitzer: number,
-): Promise<void> {
+export async function deleteEntry(tx: DbInterface, art: ErfassungsArt, id: number, besitzer: number): Promise<void> {
   await tx.run(`DELETE FROM ${SHAPES[art].table} WHERE id=$1 AND user_id=$2`, [id, besitzer]);
 }

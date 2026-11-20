@@ -3,11 +3,11 @@
  *
  * ── Gegenproben (04.11.2026 gemessen, je einzeln) ───────────────────────────
  * Seit Runde 13 trägt eine Registrierung Adresse und Link in new_email*.
- *   A  in uebernimmEmailNeu() `AND new_email_until > NOW()` gestrichen → rot:
+ *   A  in adoptEmailNew() `AND new_email_until > NOW()` gestrichen → rot:
  *      „abgelaufener Token wird abgelehnt …“
- *   B  uebernimmEmailNeu() ohne `registration_pending = false` → rot: „gültiger
+ *   B  adoptEmailNew() ohne `registration_pending = false` → rot: „gültiger
  *      Token …“ (die Registrierung bliebe offen und gesperrt)
- *   C  uebernimmEmailNeu() ohne erneute Vergabeprüfung UND ohne den Fang von
+ *   C  adoptEmailNew() ohne erneute Vergabeprüfung UND ohne den Fang von
  *      23505 → rot: „die erste Bestätigung gewinnt …“ (Fehler aus dem Index;
  *      jede der beiden allein hält)
  *
@@ -20,13 +20,13 @@ const crypto = require('node:crypto');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
-const { verifiziereEmailToken } = _req('src/konto/anmeldepruefung.js');
-const UNGUELTIG = { code: 'bestaetigungslink_ungueltig' };
-const { tokenAbdruck } = _req('src/konto/geraeteToken.js');
+const db = testData();
+const { verifyEmailToken } = _req('src/konto/anmeldepruefung.js');
+const INVALID = { code: 'bestaetigungslink_ungueltig' };
+const { tokenDigest } = _req('src/konto/geraeteToken.js');
 
 async function dbReachable() {
   try {
@@ -52,14 +52,14 @@ async function seed() {
   }
 }
 
-/** Eine offene Registrierung wie POST /register sie anlegt. `minutenGueltig` negativ =
+/** Eine offene Registrierung wie POST /register sie anlegt. `minutesValid` negativ =
  * abgelaufen. Gibt den ROHEN Token zurück — in der DB steht nur sein SHA-256. */
-async function neuerNutzer(name, { minutenGueltig = 60, email = `${name}@example.ch` } = {}) {
+async function newUser(name, { minutesValid = 60, email = `${name}@example.ch` } = {}) {
   const token = crypto.randomBytes(16).toString('hex');
   const { id } = await db.get(
     `INSERT INTO users (username, password_hash, new_email, new_email_token, new_email_until, registration_pending)
      VALUES ($1, 'x', $2, $3, NOW() + ($4 || ' minutes')::interval, true) RETURNING id`,
-    [name, email, tokenAbdruck(token), String(minutenGueltig)],
+    [name, email, tokenDigest(token), String(minutesValid)],
   );
   return { id, token };
 }
@@ -79,9 +79,9 @@ test('E-Mail-Verifikation gegen echte Datenbank', async t => {
   await seed();
 
   await t.test('gültiger Token: setzt email_verified und räumt die Felder ab', async () => {
-    const u = await neuerNutzer('gueltig');
+    const u = await newUser('gueltig');
     assert.deepEqual(
-      await verifiziereEmailToken(u.token),
+      await verifyEmailToken(u.token),
       { userId: u.id },
       'Ein frischer Token muss eingelöst werden können',
     );
@@ -96,8 +96,8 @@ test('E-Mail-Verifikation gegen echte Datenbank', async t => {
   });
 
   await t.test('abgelaufener Token wird abgelehnt und ändert nichts', async () => {
-    const u = await neuerNutzer('abgelaufen', { minutenGueltig: -5 });
-    await assert.rejects(verifiziereEmailToken(u.token), UNGUELTIG);
+    const u = await newUser('abgelaufen', { minutesValid: -5 });
+    await assert.rejects(verifyEmailToken(u.token), INVALID);
     const z = await zustand(u.id);
     assert.deepEqual(
       [z.email, z.email_verified, z.registration_pending],
@@ -108,29 +108,25 @@ test('E-Mail-Verifikation gegen echte Datenbank', async t => {
   });
 
   await t.test('unbekannter Token wird abgelehnt', async () => {
-    await assert.rejects(verifiziereEmailToken('gibtesnicht'), UNGUELTIG);
+    await assert.rejects(verifyEmailToken('gibtesnicht'), INVALID);
   });
 
   await t.test('fehlender Token wird abgelehnt', async () => {
     for (const leer of [undefined, null, '', '   '])
-      await assert.rejects(verifiziereEmailToken(leer), UNGUELTIG, `${JSON.stringify(leer)} wurde angenommen`);
+      await assert.rejects(verifyEmailToken(leer), INVALID, `${JSON.stringify(leer)} wurde angenommen`);
   });
 
   await t.test('zweites Einlösen desselben Tokens schlägt fehl', async () => {
-    const u = await neuerNutzer('zweimal');
-    await verifiziereEmailToken(u.token);
-    await assert.rejects(
-      verifiziereEmailToken(u.token),
-      UNGUELTIG,
-      'Derselbe Link liess sich ein zweites Mal einlösen',
-    );
+    const u = await newUser('zweimal');
+    await verifyEmailToken(u.token);
+    await assert.rejects(verifyEmailToken(u.token), INVALID, 'Derselbe Link liess sich ein zweites Mal einlösen');
   });
 
   await t.test('die erste Bestätigung gewinnt, die zweite Registrierung bleibt offen', async () => {
-    const erste = await neuerNutzer('erste', { email: 'geteilt@example.ch' });
-    const zweite = await neuerNutzer('zweite', { email: 'GETEILT@example.ch' });
-    await verifiziereEmailToken(erste.token);
-    await assert.rejects(verifiziereEmailToken(zweite.token), { code: 'email_vergeben' });
+    const erste = await newUser('erste', { email: 'geteilt@example.ch' });
+    const zweite = await newUser('zweite', { email: 'GETEILT@example.ch' });
+    await verifyEmailToken(erste.token);
+    await assert.rejects(verifyEmailToken(zweite.token), { code: 'email_vergeben' });
     const z = await zustand(zweite.id);
     assert.deepEqual([z.email, z.registration_pending, z.new_email_token], [null, true, null]);
   });

@@ -105,7 +105,7 @@ const NAMEN = {
 
 /** `<Klasse>.<json>` → Fachtyp; der Typ ersetzt den Text, Liste und Nullbarkeit bleiben. */
 /** @type {Record<string, string>} */
-const FELDTYPEN = {
+const FIELD_TYPES = {
   'JobStatus.status': 'Laufstatus',
   'UserSettings.currency': 'Waehrung',
   'UserSettings.price_condition': 'Zustand',
@@ -204,7 +204,7 @@ const FELDTYPEN = {
 
 /** `<Klasse>.<json>` → Kotlin-Ausdruck als Vorgabe statt des Leerwerts. */
 /** @type {Record<string, string>} */
-const VORGABEN = {
+const DEFAULTS = {
   'CacheTtlResponse.ttl': '"24"',
   'JobStatus.status': 'Laufstatus.RUHT',
   'JobSchedule.type': '"daily"',
@@ -270,7 +270,7 @@ const VORGABEN = {
  * still eine Null zu zeigen. Alle übrigen Felder lesen sich bei Fehlen als Leerwert
  * (älterer Server, abgelegte ältere Antwort).
  */
-const STRENG = new Set([
+const STRICT = new Set([
   'Acquisition.id',
   'Acquisition.quantity',
   'AcquisitionsResponse.success',
@@ -402,7 +402,7 @@ const STRENG = new Set([
 
 /** `<Klasse>.<json>` → Name der Eigenschaft, wo der JSON-Name nichts sagt. */
 /** @type {Record<string, string>} */
-const EIGENSCHAFTEN = {
+const PROPERTIES = {
   'ConditionValuation.pnl_prozent': 'pnlPct',
   'ConditionValuation.pnl_pct': 'pnlPctText',
   'PriceByCondition.N': 'new',
@@ -413,7 +413,7 @@ const EIGENSCHAFTEN = {
 
 /** Konstanten aus core-model, die eine Vorgabe nennen darf. */
 /** @type {Record<string, string>} */
-const KONSTANTEN = {
+const CONSTANTS = {
   KEINE_FARBE: 'ch.brickinventoryapp.model.fach.KEINE_FARBE',
   TOKEN_SCOPE_APP: 'ch.brickinventoryapp.model.fach.TOKEN_SCOPE_APP',
 };
@@ -499,7 +499,7 @@ const PFLICHT = new Set([
  * Freiwillige Rumpffelder, die als null hinausgehen statt wegzufallen: Dort heisst
  * null beim Server „leeren“, Weglassen „unverändert“.
  */
-const NULL_SENDEN = new Set([
+const NULL_SEND = new Set([
   'AndereBeendenAnfrage.password',
   'AndereBeendenAnfrage.code',
   'RegisterRequest.first_name',
@@ -557,7 +557,7 @@ const NULL_SENDEN = new Set([
 ]);
 
 /** Schemas, die die App selbst führt: Fehlercode trägt Kennung und Rückfall für Unbekanntes. */
-const AUSLASSEN = new Set(['Fehlercode']);
+const OMIT = new Set(['Fehlercode']);
 
 /** `<METHODE> <pfad>` → Name des Rumpfs, den die App schickt. */
 /** @type {Record<string, string>} */
@@ -613,16 +613,16 @@ const ANFRAGEN = {
 };
 
 module.exports = {
-  STRENG,
-  AUSLASSEN,
+  STRICT,
+  OMIT,
   FACHTYPEN,
   NAMEN,
-  FELDTYPEN,
-  VORGABEN,
-  EIGENSCHAFTEN,
-  KONSTANTEN,
+  FIELD_TYPES,
+  DEFAULTS,
+  PROPERTIES,
+  CONSTANTS,
   NULLBAR,
   PFLICHT,
-  NULL_SENDEN,
+  NULL_SEND,
   ANFRAGEN,
 };

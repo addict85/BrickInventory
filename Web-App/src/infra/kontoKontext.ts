@@ -4,7 +4,7 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 /** Was von einer Anfrage das Konto verrät: Sitzung, Token oder Auftrag im Namen
  * eines Kontos. Bewusst ohne Express, damit Zähler tief unten es lesen können. */
-export interface KontoQuelle {
+export interface AccountSource {
   apiUser?: { user_id?: number; is_admin?: boolean } | undefined;
   session?: { userId?: number; isAdmin?: unknown } | undefined;
   tokenUserId?: number | undefined;
@@ -12,7 +12,7 @@ export interface KontoQuelle {
 
 /** Was die Wachen über die offene Transaktion wissen (db/transaktion.ts füllt es): Der Wächter
  * gegen Ersatzwerte reist mit ihr im Rahmen, nicht als Zustand des Prozesses. */
-export interface PfadTransaktion {
+export interface PathTransaction {
   /** Lässt dieser Fehler sie verdorben zurück? Ein Sicherungspunkt, der ihn auffing, nicht. */
   verdirbt(e: unknown): boolean;
   /** In Tests wirft auch ein Fehler ausserhalb der Datenbank, damit die Regel greift. */
@@ -21,20 +21,20 @@ export interface PfadTransaktion {
 
 interface Rahmen {
   /** Gelesen erst beim Fragen: Die Anmeldung setzt das Konto später auf demselben Objekt. */
-  quelle: KontoQuelle | null;
+  quelle: AccountSource | null;
   system: string | null;
   web: boolean;
   /** Die offene Transaktion dieses Aufrufpfads: nur für Wachen, nie ein Weg zu ihr. */
-  transaktion: PfadTransaktion | null;
-  begleiter: unknown;
+  transaktion: PathTransaction | null;
+  companion: unknown;
   rid: string | null;
 }
-const LEER: Rahmen = { quelle: null, system: null, web: false, transaktion: null, begleiter: null, rid: null };
+const LEER: Rahmen = { quelle: null, system: null, web: false, transaktion: null, companion: null, rid: null };
 const rahmen = new AsyncLocalStorage<Rahmen>();
 const jetzt = (): Rahmen => rahmen.getStore() ?? LEER;
-const mitRahmen = <T>(teil: Partial<Rahmen>, f: () => T): T => rahmen.run({ ...jetzt(), ...teil }, f);
+const withFrame = <T>(teil: Partial<Rahmen>, f: () => T): T => rahmen.run({ ...jetzt(), ...teil }, f);
 
-export function aktuellesKonto(): { id: number; verwalter: boolean } | null {
+export function currentAccount(): { id: number; verwalter: boolean } | null {
   const q = jetzt().quelle;
   if (!q) return null;
   const id = Number(q.apiUser?.user_id ?? q.session?.userId ?? q.tokenUserId);
@@ -44,57 +44,57 @@ export function aktuellesKonto(): { id: number; verwalter: boolean } | null {
 }
 
 /** Arbeit über Kontogrenzen: Abfragen gehen dann über die Systemrolle (BYPASSRLS, Migration 0112).
- * Der Grund steht am Aufruf, auffindbar per `imSystemkontext(`. */
-export function imSystemkontext<T>(grund: string, f: () => T): T {
-  return mitRahmen({ system: grund }, f);
+ * Der Grund steht am Aufruf, auffindbar per `inSystemContext(`. */
+export function inSystemContext<T>(grund: string, f: () => T): T {
+  return withFrame({ system: grund }, f);
 }
 
 /** Im Namen eines Kontos (Auftrag): ohne geerbten Systemrahmen und nicht als HTTP-Anfrage. */
-export function alsAnfrage<T>(quelle: KontoQuelle, f: () => T): T {
-  return mitRahmen({ system: null, web: false, quelle }, f);
+export function asRequest<T>(quelle: AccountSource, f: () => T): T {
+  return withFrame({ system: null, web: false, quelle }, f);
 }
 
 /** Eine HTTP-Anfrage erbt keinen Systemrahmen; ihren eigenen trägt die Web-Systemrolle (db/database.ts). */
-export function alsWebAnfrage<T>(quelle: KontoQuelle, f: () => T): T {
-  return mitRahmen({ system: null, web: true, quelle }, f);
+export function asWebRequest<T>(quelle: AccountSource, f: () => T): T {
+  return withFrame({ system: null, web: true, quelle }, f);
 }
 
-export function zeilenKontext(): { system: boolean; web: boolean; konto: number | null } {
+export function rowsContext(): { system: boolean; web: boolean; konto: number | null } {
   const r = jetzt();
-  return { system: !!r.system, web: r.web, konto: aktuellesKonto()?.id ?? null };
+  return { system: !!r.system, web: r.web, konto: currentAccount()?.id ?? null };
 }
 
-/** Ein Dienst für ein anderes Konto als das des Zeilenschutzes sähe still weniger; fremde über alsAnfrage. */
-export class FremdesKonto extends Error {
+/** Ein Dienst für ein anderes Konto als das des Zeilenschutzes sähe still weniger; fremde über asRequest. */
+export class ForeignAccount extends Error {
   constructor(uid: number, konto: number) {
     super(`Dienst für Konto ${uid} unter dem Zeilenschutz von Konto ${konto}`);
   }
 }
 
-export function pruefeAnfragender(uid: number): void {
+export function checkRequester(uid: number): void {
   if (jetzt().system) return;
   // Ohne Konto im Rahmen (Start, Anmeldung davor) filtert kein Zeilenschutz still mit.
-  const konto = aktuellesKonto()?.id;
-  if (konto !== undefined && konto !== uid) throw new FremdesKonto(uid, konto);
+  const konto = currentAccount()?.id;
+  if (konto !== undefined && konto !== uid) throw new ForeignAccount(uid, konto);
 }
 
 /** Für die Wachen der Datenbank (db/transaktion.ts), den Commit-Begleiter der Idempotenz und das Protokoll. */
-export function inTransaktionsPfad<T>(transaktion: PfadTransaktion, f: () => T): T {
-  return mitRahmen({ transaktion }, f);
+export function inTransactionPath<T>(transaktion: PathTransaction, f: () => T): T {
+  return withFrame({ transaktion }, f);
 }
-export function transaktionDesPfads(): PfadTransaktion | null {
+export function transactionOfPath(): PathTransaction | null {
   return jetzt().transaktion;
 }
 
-export function mitBegleiter<T>(begleiter: unknown, f: () => T): T {
-  return mitRahmen({ begleiter }, f);
+export function withCompanion<T>(companion: unknown, f: () => T): T {
+  return withFrame({ companion }, f);
 }
-export function begleiterDesPfads(): unknown {
-  return jetzt().begleiter;
+export function companionOfPath(): unknown {
+  return jetzt().companion;
 }
 
-export const anfrageKontext = {
-  run: <T>(w: { rid: string }, f: () => T): T => mitRahmen({ rid: w.rid }, f),
+export const requestContext = {
+  run: <T>(w: { rid: string }, f: () => T): T => withFrame({ rid: w.rid }, f),
   getStore: (): { rid: string } | undefined => {
     const rid = jetzt().rid;
     return rid === null ? undefined : { rid };

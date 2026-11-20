@@ -14,41 +14,41 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/bestand');
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementarten', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const HAUPT = `acq6-h-${process.pid}`,
+  const MAIN = `acq6-h-${process.pid}`,
     SUB = `acq6-s-${process.pid}`;
   const SN = `77001-${process.pid}`,
     PN = `3001x${process.pid}`,
     FN = `sw${process.pid}`;
 
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
-  const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [MAIN, SUB]);
+  const mainId = (await db.get(`SELECT id FROM users WHERE username=$1`, [MAIN])).id;
   const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
-    hauptId,
+    mainId,
     subId,
   ]);
 
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    req.session = { userId: hauptId };
-    req.apiUser = { user_id: hauptId, is_admin: 0 };
+    req.session = { userId: mainId };
+    req.apiUser = { user_id: mainId, is_admin: 0 };
     next();
   });
   // Die Erfassungs-Routen liegen seit einer früheren Runde nur noch hier — eine
   // Adresse für Webapp UND App.
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
 
@@ -60,19 +60,19 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
     await db.run(`DELETE FROM parts WHERE part_number=$1`, [PN]);
     await db.run(`DELETE FROM minifig_acquisitions WHERE fig_number=$1`, [FN]);
     await db.run(`DELETE FROM minifigs WHERE fig_number=$1`, [FN]);
-    await haeltSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`,
       [subId, SN],
     );
-    await haeltTeil(db, subId, PN, { menge: 0, colorId: 4 }); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsPart(db, subId, PN, { menge: 0, colorId: 4 }); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
                   VALUES ($1,$2,4,5,'N',1)`,
       [subId, PN],
     );
-    await haeltFigur(db, subId, FN, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsMinifig(db, subId, FN, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
                   VALUES ($1,$2,7,'N',1)`,
@@ -123,9 +123,9 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
   ];
 
   try {
-    for (const [name, methode, pfadFn, body] of faelle) {
+    for (const [name, methode, pathFn, body] of faelle) {
       await aufbauen();
-      const pfad = await pfadFn();
+      const pfad = await pathFn();
       const r = await fetch(`${base}${pfad}`, {
         method: methode,
         headers: { 'content-type': 'application/json' },
@@ -147,7 +147,7 @@ test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementar
     const rest = await db.get(`SELECT COUNT(*)::int AS c FROM minifig_acquisitions WHERE id=$1`, [figId]);
     assert.equal(rest.c, 0, 'die Erfassung muss nach dem Löschen wirklich weg sein');
   } finally {
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     for (const [tab, sp, wert] of [
       ['set_acquisitions', 'set_number', SN],
       ['sets', 'set_number', SN],

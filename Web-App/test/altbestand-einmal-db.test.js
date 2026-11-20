@@ -4,9 +4,9 @@
  * Datenbank, zurückgespielte ältere Sicherung), läuft sie wieder.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  die Abfrage der Marke in altbestandAufruesten(require('./helpers/sources').testDienste()) gestrichen → rot:
+ *   A  die Abfrage der Marke in legacyStockUpgrade(require('./helpers/sources').testServices()) gestrichen → rot:
  *      „der zweite Start lässt den Altbestand in Ruhe“
- *   B  setzeZustand(ALTBESTAND_MARKE, …) gestrichen → rot: „der erste Start
+ *   B  setzeZustand(LEGACY_STOCK_BRAND, …) gestrichen → rot: „der erste Start
  *      rüstet auf und setzt die Marke“ und „der zweite Start …“
  *
  * Dass die Umschlüsselung selbst wirkt, zeigen geheimnis-kontext-db und
@@ -19,28 +19,28 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
 test('Altbestand einmal je Datenbank', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const { altbestandAufruesten, ALTBESTAND_MARKE } = _req('startup/datenbank.js');
-  const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
-  await loescheZustand(ALTBESTAND_MARKE);
+  const { legacyStockUpgrade, LEGACY_STOCK_BRAND } = _req('startup/datenbank.js');
+  const { liesZustand, deleteState } = require('./helpers/sources').testArea('auftraege').laufzustand;
+  await deleteState(LEGACY_STOCK_BRAND);
 
   await t.test('der erste Start rüstet auf und setzt die Marke', async () => {
-    const r = await altbestandAufruesten(require('./helpers/sources').testDienste());
+    const r = await legacyStockUpgrade(require('./helpers/sources').testServices());
     assert.ok(r && typeof r.umgeschluesselt === 'number', JSON.stringify(r));
-    assert.ok(await liesZustand(ALTBESTAND_MARKE));
+    assert.ok(await liesZustand(LEGACY_STOCK_BRAND));
   });
 
   await t.test('der zweite Start lässt den Altbestand in Ruhe', async () => {
-    assert.equal(await altbestandAufruesten(require('./helpers/sources').testDienste()), null);
+    assert.equal(await legacyStockUpgrade(require('./helpers/sources').testServices()), null);
   });
 
   await t.test('ohne Marke (ältere Sicherung zurückgespielt) läuft es wieder', async () => {
-    await loescheZustand(ALTBESTAND_MARKE);
-    assert.notEqual(await altbestandAufruesten(require('./helpers/sources').testDienste()), null);
+    await deleteState(LEGACY_STOCK_BRAND);
+    assert.notEqual(await legacyStockUpgrade(require('./helpers/sources').testServices()), null);
   });
 });

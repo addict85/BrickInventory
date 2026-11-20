@@ -1,12 +1,12 @@
 /** Precomputed, because the live query over all of a household's set parts takes seconds. */
-import { meldeFehler } from '../infra/fehler';
-import { imSystemkontext, zeilenKontext } from '../infra/kontoKontext';
+import { reportError } from '../infra/fehler';
+import { inSystemContext, rowsContext } from '../infra/kontoKontext';
 import * as repo from './repository/summary';
 import type { PartsContext } from './context';
 
 const currentVersion = (k: PartsContext, userId: number) => k.summary.rawState(userId);
 
-export async function rebuild(k: PartsContext, userId: number, version?: { v: number }): Promise<void> {
+export async function rebuildSummary(k: PartsContext, userId: number, version?: { v: number }): Promise<void> {
   const stand = version ?? (await currentVersion(k, userId));
   // Whether THIS call built it: if another call holds the lock, there is nothing to catch up on.
   let gebaut = false;
@@ -22,25 +22,25 @@ export async function rebuild(k: PartsContext, userId: number, version?: { v: nu
   // Without fresh statistics the planner picks the wrong index after the bulk insert.
   // At most every ten minutes, because ANALYZE scans the table across all accounts.
   const z = state(k);
-  if (gebaut && k.uhr.jetzt() - z.letzteAnalyse > 10 * 60_000) {
-    z.letzteAnalyse = k.uhr.jetzt();
-    await k.summary.analyze().catch((e: unknown) => meldeFehler('parts-summary:analyze', e));
+  if (gebaut && k.uhr.jetzt() - z.lastAnalyse > 10 * 60_000) {
+    z.lastAnalyse = k.uhr.jetzt();
+    await k.summary.analyze().catch((e: unknown) => reportError('parts-summary:analyze', e));
   }
 }
 
 /** Per access: account IDs, rebuilds and the follow-up belong to the database they run in. */
 const state = (k: PartsContext) =>
   k.faecher.fach('partsSummary', () => ({
-    letzteAnalyse: 0,
+    lastAnalyse: 0,
     neuaufbau: new Map<number, Promise<void>>(),
-    nachzug: null as ReturnType<typeof runCatalogFollowUp> | null,
+    followUp: null as ReturnType<typeof runCatalogFollowUp> | null,
   }));
 
 function rebuildInBackground(k: PartsContext, userId: number, v: { v: number }) {
   const _rebuilding = state(k).neuaufbau;
   if (_rebuilding.has(userId)) return;
-  const p = rebuild(k, userId, v)
-    .catch((e: unknown) => meldeFehler('parts-summary:background', e))
+  const p = rebuildSummary(k, userId, v)
+    .catch((e: unknown) => reportError('parts-summary:background', e))
     .finally(() => {
       _rebuilding.delete(userId);
     });
@@ -63,7 +63,7 @@ export async function summaryFresh(
   try {
     const [v, state] = await Promise.all([currentVersion(k, userId as number), k.summary.builtState(userId)]);
     // If another process holds the lock, the state isn't guaranteed.
-    const catalogCaughtUp = !v.katalogOffen || (await catalogFollowUpOnce(k)) !== null;
+    const catalogCaughtUp = !v.openCatalog || (await catalogFollowUpOnce(k)) !== null;
     if (state === v.v && catalogCaughtUp) return true;
 
     rebuildInBackground(k, userId, v);
@@ -76,7 +76,7 @@ export async function summaryFresh(
     return state !== null;
   } catch (e) {
     // Exception: false means "not fresh"; the caller queries live, slower but never wrong.
-    meldeFehler('parts-summary:fresh', e);
+    reportError('parts-summary:fresh', e);
     return false;
   }
 }
@@ -84,15 +84,15 @@ export async function summaryFresh(
 /** One follow-up per access: a household's accounts ask at the same time. A request files it
  * as a job, because the web system role can't reach other accounts' stock; until then, stale BL numbers. */
 async function catalogFollowUpOnce(k: PartsContext) {
-  if (zeilenKontext().web) {
-    await k.auftraege.stelleAuftragEin('katalog_nachzug', {}, { schluessel: 'katalog_nachzug' });
+  if (rowsContext().web) {
+    await k.auftraege.placeJobOne('katalog_nachzug', {}, { schluessel: 'katalog_nachzug' });
     return { konten: 0, gruppen: 0 };
   }
   const z = state(k);
-  z.nachzug ??= runCatalogFollowUp(k).finally(() => {
-    z.nachzug = null;
+  z.followUp ??= runCatalogFollowUp(k).finally(() => {
+    z.followUp = null;
   });
-  return z.nachzug;
+  return z.followUp;
 }
 
 const CATALOG_INDIVIDUAL_UP_TO = 5000;
@@ -100,7 +100,7 @@ const CATALOG_INDIVIDUAL_UP_TO = 5000;
 /** Groups with a changed BL number, before and after. Runs in system scope: the queue
  * is global, whoever drains it follows up for all accounts. @returns null if another run is already catching up */
 export function runCatalogFollowUp(k: PartsContext): Promise<{ konten: number; gruppen: number } | null> {
-  return imSystemkontext('catalog-follow-up', () => runCatalogFollowUpInScope(k));
+  return inSystemContext('catalog-follow-up', () => runCatalogFollowUpInScope(k));
 }
 
 async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ konten: number; gruppen: number } | null> {
@@ -110,14 +110,14 @@ async function runCatalogFollowUpInScope(k: PartsContext): Promise<{ konten: num
     if (!nummern.length) return { konten: 0, gruppen: 0 };
     if (nummern.length > CATALOG_INDIVIDUAL_UP_TO) return { konten: await repo.discardAllStates(t.db), gruppen: -1 };
     const betroffen = await repo.affectedGroups(t.db, nummern);
-    const jeKonto = new Map<number, string[]>();
-    for (const b of betroffen) jeKonto.set(b.user_id, [...(jeKonto.get(b.user_id) ?? []), b.part_key]);
-    for (const [uid, gruppen] of jeKonto) {
+    const jeAccount = new Map<number, string[]>();
+    for (const b of betroffen) jeAccount.set(b.user_id, [...(jeAccount.get(b.user_id) ?? []), b.part_key]);
+    for (const [uid, gruppen] of jeAccount) {
       // An in-progress rebuild is waited out so it doesn't overwrite with a stale catalog.
       await repo.waitForAccount(t.db, uid);
       await repo.rebuildGroups(t.db, uid, gruppen);
     }
-    return { konten: jeKonto.size, gruppen: betroffen.length };
+    return { konten: jeAccount.size, gruppen: betroffen.length };
   });
 }
 
@@ -127,7 +127,7 @@ export async function rebuildNow(k: PartsContext, userId: number): Promise<void>
   const running = _rebuilding.get(userId);
   if (running) return running;
   const v = await currentVersion(k, userId);
-  const p = rebuild(k, userId, v).finally(() => {
+  const p = rebuildSummary(k, userId, v).finally(() => {
     _rebuilding.delete(userId);
   });
   _rebuilding.set(userId, p);

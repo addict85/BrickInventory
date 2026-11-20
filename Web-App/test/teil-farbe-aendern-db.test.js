@@ -18,7 +18,7 @@
  *        `duplicate key value violates unique constraint
  *        "idx_parts_eindeutig"` — jeder Fall, in dem die Zielfarbe schon
  *        dasteht. Marcos Normalfall.
- *   C  merkeTeilFarbe() nicht gerufen
+ *   C  rememberPartColor() nicht gerufen
  *      → `pass 6 / fail 2`. Rot ist Fall 1: „Der Farbkatalog nennt die Farbe
  *        „undefined" — erwartet „Red" aus rb_colors". Das ist der Farbpunkt
  *        ohne Beschriftung.
@@ -68,10 +68,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
@@ -109,8 +109,8 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
                 VALUES (4,'Red','C91A09',5), (7,'Blue','0055BF',7)`);
 
   const { base } = testServer(_req, { sitzung: { userId: UID }, t });
-  const aendere = async (nummer, alteFarbe, koerper) => {
-    const r = await fetch(`${base}/api/v1/parts/${nummer}/${alteFarbe}/color`, {
+  const aendere = async (nummer, oldColor, koerper) => {
+    const r = await fetch(`${base}/api/v1/parts/${nummer}/${oldColor}/color`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(koerper),
@@ -140,7 +140,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
     // Farbänderung — ohne Leeren trüge der nächste Fall das Bild des vorigen.
     await db.run(`DELETE FROM set_parts`);
   };
-  const farbBild = async farbe =>
+  const farbImage = async farbe =>
     db.get(
       `SELECT image_url, image_local FROM part_color_catalog
       WHERE part_number='3001' AND color_id=$1`,
@@ -405,7 +405,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(a.body.bild, 'vorhanden', `Die Antwort sagt „${a.body.bild}" — erwartet „vorhanden"`);
     assert.equal(
-      (await farbBild(7))?.image_url,
+      (await farbImage(7))?.image_url,
       'https://cdn.example/schon-da.jpg',
       'Das dastehende Bild gilt. Es bei jeder Farbänderung zu ersetzen hiesse, ' +
         'ein genau für diese Farbe geholtes Bild gegen das erste beliebige aus ' +

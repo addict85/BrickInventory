@@ -19,38 +19,38 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 test('Einstellungen: Prüfung der Werte und Export je Rolle', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const NAME = `einst-pruef-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   // Schon CHF, damit das Speichern keinen Preis-Job anstösst (sein Zeitgeber
   // hielte den Testprozess offen).
   await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')`, [uid]);
-  const smtpVorher = (await db.get(`SELECT value FROM global_settings WHERE key='smtp_host'`))?.value ?? null;
+  const smtpBefore = (await db.get(`SELECT value FROM global_settings WHERE key='smtp_host'`))?.value ?? null;
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('smtp_host','mail.intern.example')
                 ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value`);
 
-  const appFuer = isAdmin => {
+  const appFor = isAdmin => {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
       req.session = { userId: uid, isAdmin };
       next();
     });
-    app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/settings.js'));
+    app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
     return app.listen(0);
   };
-  const nutzer = appFuer(false),
-    verwalter = appFuer(true);
+  const nutzer = appFor(false),
+    verwalter = appFor(true);
   const url = (srv, p) => `http://localhost:${srv.address().port}/api/v1/settings${p}`;
-  const schicke = body =>
+  const send = body =>
     fetch(url(nutzer, '/'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -61,23 +61,23 @@ test('Einstellungen: Prüfung der Werte und Export je Rolle', { concurrency: 1 }
 
   try {
     await t.test('bekannte Werte werden gespeichert', async () => {
-      const r = await schicke({ currency: 'CHF', language: 'de', user_default_condition: 'U' });
+      const r = await send({ currency: 'CHF', language: 'de', user_default_condition: 'U' });
       assert.equal(r.status, 200);
       assert.equal(await wert('language'), 'de');
       assert.equal(await wert('user_default_condition'), 'U');
     });
 
     await t.test('eine fremde Währung wird abgewiesen', async () => {
-      const r = await schicke({ currency: '<img src=x>' });
+      const r = await send({ currency: '<img src=x>' });
       assert.equal(r.status, 400);
       assert.equal((await r.json()).code, 'wert_ungueltig');
       assert.equal(await wert('currency'), 'CHF', 'der alte Wert bleibt');
-      assert.equal((await schicke({ language: 'xx' })).status, 400);
-      assert.equal((await schicke({ user_default_condition: 'Z' })).status, 400);
+      assert.equal((await send({ language: 'xx' })).status, 400);
+      assert.equal((await send({ user_default_condition: 'Z' })).status, 400);
     });
 
     await t.test('ein Objekt als Wert wird abgewiesen', async () => {
-      const r = await schicke({ language: { a: 1 } });
+      const r = await send({ language: { a: 1 } });
       assert.equal(r.status, 400);
       assert.equal(await wert('language'), 'de');
     });
@@ -90,8 +90,8 @@ test('Einstellungen: Prüfung der Werte und Export je Rolle', { concurrency: 1 }
       assert.equal(v.global.smtp_host, 'mail.intern.example', 'der Verwalter bekommt sie');
     });
   } finally {
-    if (smtpVorher === null) await db.run(`DELETE FROM global_settings WHERE key='smtp_host'`);
-    else await db.run(`UPDATE global_settings SET value=$1 WHERE key='smtp_host'`, [smtpVorher]);
+    if (smtpBefore === null) await db.run(`DELETE FROM global_settings WHERE key='smtp_host'`);
+    else await db.run(`UPDATE global_settings SET value=$1 WHERE key='smtp_host'`, [smtpBefore]);
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
     await new Promise(r => nutzer.close(r));
     await new Promise(r => verwalter.close(r));

@@ -4,24 +4,16 @@ import { t, tRaw } from '../i18n.js';
 import { esc, html } from './escaping.js';
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
-import { betragFuerFeld } from './format.js';
-import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
+import { amountForField } from './format.js';
+import { amountFromField, quantityFromField, purchaseDateValid } from './formular.js';
 import { toast } from './meldungen.js';
 import { accountCurrency, loggedInAccount, openSet } from './state.js';
-import { closeModal, setzeMengenfeld } from './detailfelder.js';
+import { closeModal, setQuantitiesField } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
-import { acqSummary, summenText, umgerechnetText, kurzfassung } from './kaufpreis-anzeige.js';
+import { acqSummary, sumsText, convertedText, summary } from './kaufpreis-anzeige.js';
 export { erfassungsPreis, renderAcquisitionSummary } from './kaufpreis-anzeige.js';
 import { renderMarketRows } from './diagramme.js';
-import {
-  erfassung,
-  gespeichert,
-  setzeMitFokus,
-  isoTag,
-  datumFeld,
-  gespeichertMarke,
-  zeigeGespeichert,
-} from './erfassung-zustand.js';
+import { erfassung, gespeichert, setWithFocus, isoTag, dateField, savedBrand, showSaved } from './erfassung-zustand.js';
 // Kaufpreis-Modal und Detailfenster für manuelle Einträge: Beides ist Erfassung, keine Administration, und
 // gehört deshalb nicht nach admin.js.
 /** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} Konto */
@@ -55,12 +47,12 @@ G('acq-modal').addEventListener('click', e => e.target === e.currentTarget && cl
  * Summe nach jedem Speichern nachziehen: Sie stand bis zum erneuten Öffnen auf dem alten Wert.
  * @param {string} sn
  */
-async function aktualisiereSumme(sn) {
+async function refreshSum(sn) {
   const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
   if (!ad?.success || erfassung.sn !== sn) return;
   const preis = G('acq-total-price'),
     menge = G('acq-total-qty');
-  if (preis) preis.textContent = summenText(ad.totals);
+  if (preis) preis.textContent = sumsText(ad.totals);
   if (menge) menge.textContent = String(ad.totals?.quantity ?? 0);
   const hinweis = G('acq-summe-hinweis');
   if (hinweis) {
@@ -69,7 +61,7 @@ async function aktualisiereSumme(sn) {
   }
   for (const a of ad.acquisitions || []) {
     const um = G(`acq-um-${a.id}`);
-    if (um) um.textContent = umgerechnetText(a, ad.totals);
+    if (um) um.textContent = convertedText(a, ad.totals);
   }
 }
 
@@ -126,7 +118,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
           data-blur="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="qty" data-val="1"
           data-keydown="blurOnEnter" />
       </td>
-      <td>${datumFeld(`id="acq-datum-feld-${a.id}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="date" data-val="1"`, dateIso, `acq-datum-${a.id}`)}</td>
+      <td>${dateField(`id="acq-datum-feld-${a.id}" data-change="acqSave" data-arg="${esc(sn)}" data-arg2="${a.id}" data-arg3="date" data-val="1"`, dateIso, `acq-datum-${a.id}`)}</td>
       <td>
         <select class="acq-feld" aria-label="${tRaw('common.condition')}" data-change="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="cond" data-val="1">
           <option value="N" ${a.condition !== 'U' ? 'selected' : ''}>${tRaw('common.condition_new')}</option>
@@ -134,10 +126,10 @@ export function renderAcqModalBody(sn, acqs, totals) {
         </select>
       </td>
       <td class="zahl">
-        <span class="acq-preisfeld"><input class="acq-feld acq-preis" id="acq-preis-${a.id}" type="text" inputmode="decimal" autocomplete="off" value="${betragFuerFeld(a.purchase_price)}" aria-label="${tRaw('detail.purchase_price')} (${a.currency || totals?.currency || accountCurrency})"
+        <span class="acq-preisfeld"><input class="acq-feld acq-preis" id="acq-preis-${a.id}" type="text" inputmode="decimal" autocomplete="off" value="${amountForField(a.purchase_price)}" aria-label="${tRaw('detail.purchase_price')} (${a.currency || totals?.currency || accountCurrency})"
           data-blur="acqSave" data-arg="${sn}" data-arg2="${a.id}" data-arg3="price" data-val="1"
           data-keydown="blurOnEnter" /><span class="acq-waehrung" aria-hidden="true">${a.currency || totals?.currency || accountCurrency}</span></span>
-        <span class="acq-umgerechnet" id="acq-um-${a.id}">${umgerechnetText(a, totals)}</span>
+        <span class="acq-umgerechnet" id="acq-um-${a.id}">${convertedText(a, totals)}</span>
       </td>
       ${
         erfassung.mitglieder.length > 1
@@ -149,7 +141,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
           : ''
       }
       <td class="acq-aktion">
-        ${gespeichertMarke(a.id)}
+        ${savedBrand(a.id)}
         <button class="acq-loeschen" data-click="acqDelete"${echt()} data-arg="${sn}" data-arg2="${a.id}"
           title="${tRaw('gallery.delete.title')}" aria-label="${tRaw('gallery.delete.title')}">${ico('loeschen')}</button>
       </td>
@@ -163,7 +155,7 @@ export function renderAcqModalBody(sn, acqs, totals) {
   // zweimal in der App, und mit verschiedenen Preisfeldern.
   markup = html`${markup}${acqSummary(totals)}`;
 
-  setzeMitFokus(G('acq-modal-body'), markup);
+  setWithFocus(G('acq-modal-body'), markup);
 }
 
 /**
@@ -176,15 +168,15 @@ async function acqSave(sn, id, field, value) {
   /** @type {{ purchase_price?: number | null, quantity?: number, date?: string, condition?: string, owner_user_id?: number }} */
   const body = {};
   if (field === 'price') {
-    const preis = betragAusFeld(`acq-preis-${id}`);
+    const preis = amountFromField(`acq-preis-${id}`);
     if (!preis.ok) return;
     body.purchase_price = preis.wert;
   } else if (field === 'qty') {
-    const menge = mengeAusFeld(`acq-menge-${id}`);
+    const menge = quantityFromField(`acq-menge-${id}`);
     if (!menge.ok) return;
     body.quantity = menge.wert;
   } else if (field === 'date') {
-    if (!kaufdatumGueltig(`acq-datum-feld-${id}`)) return;
+    if (!purchaseDateValid(`acq-datum-feld-${id}`)) return;
     body.date = value;
   } else if (field === 'owner') {
     // Eigentümerwechsel verschiebt genau diese Kaufpreis-Zeile, ohne from_user_id: Den Absender kennt der
@@ -224,12 +216,12 @@ async function acqSave(sn, id, field, value) {
     if (field === 'date') loadAcqModal(sn); // abgelehnte Eingabe auf gespeicherten Wert zurücksetzen
     return;
   }
-  zeigeGespeichert(id);
+  showSaved(id);
   if (field === 'price') {
     const f = G(`acq-preis-${id}`);
-    if (f && f !== document.activeElement) f.value = betragFuerFeld(body.purchase_price);
+    if (f && f !== document.activeElement) f.value = amountForField(body.purchase_price);
   }
-  aktualisiereSumme(sn);
+  refreshSum(sn);
   // Marktpreis-Zeilen neu holen.
   //
   // Wird erstmals ein Kaufpreis in einem Zustand erfasst, entsteht dafür eine NEUE Zeile (der Server liefert
@@ -251,7 +243,7 @@ async function acqSave(sn, id, field, value) {
       .then(ad => {
         if (ad?.success && openSet?.set_number === sn) {
           const summaryEl = G('m-acq-summary');
-          if (summaryEl) setzeHtml(summaryEl, kurzfassung(ad.acquisitions, sn));
+          if (summaryEl) setzeHtml(summaryEl, summary(ad.acquisitions, sn));
         }
       })
       .catch(() => {});
@@ -269,7 +261,7 @@ async function acqSave(sn, id, field, value) {
       .then(ad => {
         if (!ad?.success) return;
         const sumEl = G('m-acq-summary');
-        if (sumEl) setzeHtml(sumEl, kurzfassung(ad.acquisitions, sn));
+        if (sumEl) setzeHtml(sumEl, summary(ad.acquisitions, sn));
       })
       .catch(() => {});
   }
@@ -281,7 +273,7 @@ async function acqSave(sn, id, field, value) {
       .then(ad => {
         if (ad.success && openSet?.set_number === sn) {
           const summaryEl = G('m-acq-summary');
-          if (summaryEl) setzeHtml(summaryEl, kurzfassung(ad.acquisitions, sn));
+          if (summaryEl) setzeHtml(summaryEl, summary(ad.acquisitions, sn));
         }
       })
       .catch(() => {});
@@ -303,7 +295,7 @@ async function acqDelete(sn, id) {
   // openSet und das Mengenfeld im Set-Detail nachführen
   if (openSet?.set_number === sn) {
     openSet.quantity = /** @type {number} */ (d.new_quantity);
-    setzeMengenfeld(openSet.quantity);
+    setQuantitiesField(openSet.quantity);
   }
   // Erfassungsdialog neu laden
   const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
@@ -319,7 +311,7 @@ async function acqDelete(sn, id) {
   renderAcqModalBody(sn, ad.acquisitions, ad.totals);
   // Kurzübersicht im Set-Detail auffrischen
   const dvEl = G('m-acq-summary');
-  if (dvEl) setzeHtml(dvEl, kurzfassung(ad.acquisitions, sn));
+  if (dvEl) setzeHtml(dvEl, summary(ad.acquisitions, sn));
   // Wie in acqSave(): Eine gelöschte Erfassung verändert Bestand und Wert — und lässt eine Zustands-Zeile
   // verschwinden, wenn es die letzte war.
   api('GET', `/v1/sets/${sn}/price-history`)
@@ -345,16 +337,16 @@ export function closeAcqModal() {
         // Der Neuaufbau ersetzt den Knopf, auf den die Dialogverwaltung den Fokus zurückgab; ohne das stünde
         // er danach auf der Dialogfläche.
         const aktiv = document.activeElement;
-        const hatteFokus =
+        const hadFocus =
           !aktiv || aktiv === document.body || !!sumEl?.contains(aktiv) || aktiv.matches('#set-modal > .modal');
-        if (sumEl) setzeHtml(sumEl, kurzfassung(ad.acquisitions, sn));
-        if (hatteFokus)
+        if (sumEl) setzeHtml(sumEl, summary(ad.acquisitions, sn));
+        if (hadFocus)
           /** @type {HTMLElement | null} */ (sumEl?.querySelector('[data-click="openAcqModal"]'))?.focus({
             preventScroll: true,
           });
         const total = ad.totals?.quantity ?? 0;
         if (total > 0) {
-          setzeMengenfeld(total);
+          setQuantitiesField(total);
           if (openSet) openSet.quantity = total;
         }
       })

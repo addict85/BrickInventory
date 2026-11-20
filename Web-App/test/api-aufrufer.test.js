@@ -15,47 +15,47 @@ function ohneKommentare(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 }
 
-function routenAus(datei, mount) {
+function routesFrom(datei, mount) {
   const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
   const out = [];
-  for (const m of require('./helpers/sources').routenAusQuelle(src, mount))
+  for (const m of require('./helpers/sources').routesFromSource(src, mount))
     out.push([m[1].toUpperCase(), (mount + '/' + m[2].replace(/^\//, '')).replace(/\/+$/, '')]);
   return out;
 }
 
-function alleRouten() {
+function allRoutes() {
   const out = [];
   // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
   // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
-  for (const r of routerEinhaengungen()) out.push(...routenAus(r.datei, r.mount));
+  for (const r of routerEinhaengungen()) out.push(...routesFrom(r.datei, r.mount));
   const v1 = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
-    out.push(...routenAus(path.join(v1, f), '/api/v1'));
+    out.push(...routesFrom(path.join(v1, f), '/api/v1'));
   }
   return out;
 }
 
 /** Browser-Code und Vorlagen; die Aufrufe der App stehen in shared/app-schnittstelle.json. */
-function clientQuellen() {
+function clientSources() {
   const dateien = [];
-  const sammle = (dir, endungen) => {
+  const collect = (dir, extensions) => {
     if (!fs.existsSync(dir)) return;
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name);
       if (e.isDirectory()) {
-        if (e.name !== 'build') sammle(p, endungen);
+        if (e.name !== 'build') collect(p, extensions);
         continue;
       }
       // app.bundle.js ist das Erzeugnis aus public/js/*.js — mitzuzaehlen
       // hiesse, jeden Aufruf doppelt zu sehen, und ein Aufruf, den es nur im
       // Erzeugnis gaebe, waere ein Fehler und kein Beleg.
       if (e.name === 'app.bundle.js') continue;
-      if (endungen.some(x => e.name.endsWith(x))) dateien.push(p);
+      if (extensions.some(x => e.name.endsWith(x))) dateien.push(p);
     }
   };
-  sammle(path.join(ROOT, 'public'), ['.js', '.html']);
-  sammle(path.join(ROOT, 'views'), ['.js', '.html', '.ejs']);
+  collect(path.join(ROOT, 'public'), ['.js', '.html']);
+  collect(path.join(ROOT, 'views'), ['.js', '.html', '.ejs']);
   return dateien;
 }
 
@@ -65,7 +65,7 @@ function clientQuellen() {
  * Route gefunden, die niemand mehr braucht.
  */
 // Fuenf Eintraege sind hier verschwunden, weil die Routen es sind
-const OHNE_AUFRUFER = new Map([
+const WITHOUT_CALLER = new Map([
   ['GET /api/v1/health', 'Für Überwachung von aussen (Status, Details nur für Verwalter).'],
   ['GET /api/v1/health/live', 'Lebenszeichen des Prozesses für eine Überwachung von aussen.'],
   ['GET /api/v1/health/ready', 'Gesundheitsprüfung von compose.yaml (node -e im Container).'],
@@ -108,8 +108,8 @@ const OHNE_AUFRUFER = new Map([
 ]);
 
 test('jede Route hat einen Aufrufer oder einen eingetragenen Grund', () => {
-  const routen = alleRouten();
-  const quellen = clientQuellen();
+  const routen = allRoutes();
+  const quellen = clientSources();
   assert.ok(quellen.length >= 20, `Nur ${quellen.length} Client-Dateien gefunden — Pfade veraltet?`);
   const text = [
     ...quellen.map(p => fs.readFileSync(p, 'utf8')),
@@ -120,14 +120,14 @@ test('jede Route hat einen Aufrufer oder einen eingetragenen Grund', () => {
   assert.ok(routen.length >= 120, `Nur ${routen.length} Routen gefunden — Muster veraltet?`);
 
   const ohne = [];
-  let mitAufrufer = 0;
+  let withCaller = 0;
   for (const [verb, pfad] of routen) {
     // Bis zum ersten Platzhalter suchen: Den Rest baut der Client zusammen.
     const stamm = pfad.split('/:')[0].replace(/\/+$/, '');
     if (!stamm) continue;
-    const formen = [stamm, stamm.slice(1), stamm.slice('/api'.length)].filter(Boolean);
-    if (formen.some(f => text.includes(f))) {
-      mitAufrufer++;
+    const shapes = [stamm, stamm.slice(1), stamm.slice('/api'.length)].filter(Boolean);
+    if (shapes.some(f => text.includes(f))) {
+      withCaller++;
       continue;
     }
     ohne.push(`${verb} ${pfad}`);
@@ -137,27 +137,27 @@ test('jede Route hat einen Aufrufer oder einen eingetragenen Grund', () => {
   // und der Test rot — der umgekehrte Fall ist gefaehrlicher: Passte jeder
   // Pfad auf irgendetwas, waere `ohne` leer und der Test gruen, ohne etwas
   // geprueft zu haben. Deshalb beide Seiten festnageln.
-  assert.ok(mitAufrufer >= 100, `Nur ${mitAufrufer} Routen mit Aufrufer — findet die Suche noch, was sie soll?`);
+  assert.ok(withCaller >= 100, `Nur ${withCaller} Routen mit Aufrufer — findet die Suche noch, was sie soll?`);
   assert.ok(
     ohne.length > 0,
     'Keine einzige Route ohne Aufrufer — das waere schoen, ist aber ' +
       'verdaechtig: Die Suche trifft dann vermutlich auf alles.',
   );
 
-  const unerklaert = ohne.filter(r => !OHNE_AUFRUFER.has(r)).sort();
+  const unexplained = ohne.filter(r => !WITHOUT_CALLER.has(r)).sort();
   assert.deepEqual(
-    unerklaert,
+    unexplained,
     [],
     'Diese Routen ruft kein Client, und es steht kein Grund dabei:\n  ' +
-      unerklaert.join('\n  ') +
+      unexplained.join('\n  ') +
       '\nEntweder sie wird nicht mehr gebraucht (dann entfernen), oder es gibt ' +
       'einen Grund (E-Mail-Link, Diagnosewerkzeug, geplante Oberflaeche) — dann ' +
-      'in OHNE_AUFRUFER eintragen, damit der Naechste ihn nicht neu herleiten muss.',
+      'in WITHOUT_CALLER eintragen, damit der Naechste ihn nicht neu herleiten muss.',
   );
 
   // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
   // prueft — dieselbe Regel wie in scripts/check-global-settings.js.
-  const veraltet = [...OHNE_AUFRUFER.keys()].filter(r => !ohne.includes(r)).sort();
+  const veraltet = [...WITHOUT_CALLER.keys()].filter(r => !ohne.includes(r)).sort();
   assert.deepEqual(
     veraltet,
     [],

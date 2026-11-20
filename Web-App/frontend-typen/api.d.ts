@@ -63,7 +63,7 @@ export type ApiAntwort<M extends string, P extends string> = [Treffer<M, P>] ext
     any
   : ApiErfolg<M, P> | FehlerZu<Treffer<M, P>['a']>;
 
-/** apiDaten(): die Antwort unverändert bei Erfolg, sonst null. */
+/** apiData(): die Antwort unverändert bei Erfolg, sonst null. */
 export type ApiDaten<M extends string, P extends string> = [Treffer<M, P>] extends [never]
   ? // biome-ignore lint/suspicious/noExplicitAny: wie bei ApiAntwort — ein Pfad ausserhalb des Vertrags hat keinen Antworttyp.
     any

@@ -14,7 +14,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 
 /** @param {Record<string, string | undefined>} env @returns {string} */
-function bauVersion(env = process.env, cwd = ROOT) {
+function buildVersion(env = process.env, cwd = ROOT) {
   const gesetzt = (env.APP_VERSION || '').trim();
   if (gesetzt) return gesetzt;
   // Die Android-Etiketten (android-v…, apk-neuste) gehören zur App; die Web-App nannte sonst deren Nummer.
@@ -48,9 +48,9 @@ function schreibe(outdir, version) {
 if (require.main === module) {
   const i = process.argv.indexOf('--outdir');
   const ziel = i !== -1 ? process.argv[i + 1] : undefined;
-  const version = bauVersion();
+  const version = buildVersion();
   if (ziel) schreibe(path.resolve(ziel), version);
   console.log(`[version] ${version}`);
 }
 
-module.exports = { bauVersion, schreibe };
+module.exports = { buildVersion, schreibe };

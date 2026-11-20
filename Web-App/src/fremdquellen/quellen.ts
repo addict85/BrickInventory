@@ -1,54 +1,54 @@
 /** Der eine Weg zu clients/. Was Schlüssel, Kontingent oder Drossel braucht, entsteht in
- * baueQuellen() je Zugang; der Rest steht hier als Export. */
-import type { KlientenZugang } from '../../clients/zugang';
-import { erzeugeBricklink } from '../../clients/bricklink';
-import { erzeugeBrickset } from '../../clients/brickset';
-import { downloadFile, erzeugeRebrickable, rebrickableRoh } from '../../clients/rebrickable';
-import { produktTitel } from '../../clients/upcitemdb';
-import { widerrufslisteAbruf } from '../../clients/googleAttestation';
+ * buildSources() je Zugang; der Rest steht hier als Export. */
+import type { ClientsAccess } from '../../clients/zugang';
+import { createBricklink } from '../../clients/bricklink';
+import { createBrickset } from '../../clients/brickset';
+import { downloadFile, createRebrickable, rebrickableRaw } from '../../clients/rebrickable';
+import { productTitle } from '../../clients/upcitemdb';
+import { revocationListFetch } from '../../clients/googleAttestation';
 
-export { alsAbrufFehler } from '../../clients/abrufFehler';
-export { BricklinkNichtErreichbar } from '../../clients/bricklink';
-export { EZB_HISTORIE, EZB_TAGESKURSE, ersteZipDatei, historieLesen, tageskurseLesen } from '../../clients/ezb';
-export { RebrickableGesperrt, ersteBlNummer, parseThrottleWait } from '../../clients/rebrickable';
-export { RbSet, RbSetFigur, rbSeite } from '../../clients/antworten';
-import { ladeKatalogCsv } from '../../clients/rebrickableCsv';
-import { oeffneBild, holeBild } from '../../clients/bildCdn';
-import { ezbAbruf } from '../../clients/ezb';
-export { BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../../clients/bildCdn';
-import { legoAbruf } from '../../clients/legoGuthaben';
-export { legoAbruf };
-export { ERLAUBTE_GUTHABEN_HOSTS, type LegoAbruf } from '../../clients/legoGuthaben';
+export { asFetchError } from '../../clients/abrufFehler';
+export { BricklinkNotReachable } from '../../clients/bricklink';
+export { ECB_HISTORY, ECB_DAILY_RATES, firstZipFile, readHistory, readDailyRates } from '../../clients/ezb';
+export { RebrickableLocked, firstBlNumber, parseThrottleWait } from '../../clients/rebrickable';
+export { RbSet, RbSetMinifig, rbPage } from '../../clients/antworten';
+import { loadCatalogCsv } from '../../clients/rebrickableCsv';
+import { oeffneBild, fetchImage } from '../../clients/bildCdn';
+import { ecbFetch } from '../../clients/ezb';
+export { IMAGE_HEADERS, IMAGE_HEADERS_WITHOUT_REFERER } from '../../clients/bildCdn';
+import { legoFetch } from '../../clients/legoGuthaben';
+export { legoFetch };
+export { ALLOWED_BALANCE_HOSTS, type LegoFetch } from '../../clients/legoGuthaben';
 export type { Abruf, Kurs } from '../../clients/ezb';
 export type { RbSetTeil } from '../../clients/rebrickable';
-export type { KlientenZugang } from '../../clients/zugang';
+export type { ClientsAccess } from '../../clients/zugang';
 
 /** Die Klienten eines Zugangs, flach wie früher die Exporte; `setAngaben` ist der von
  * Brickset, `brickset` die ganze Gruppe für die Anleitungen (getInstructions). */
-export function baueQuellen(z: KlientenZugang) {
-  const rb = erzeugeRebrickable(z);
-  const bs = erzeugeBrickset(z);
-  const bl = erzeugeBricklink(z);
+export function buildSources(z: ClientsAccess) {
+  const rb = createRebrickable(z);
+  const bs = createBrickset(z);
+  const bl = createBricklink(z);
   return {
     ...rb,
     ...bl,
-    ausRetryWarteschlange: bs.ausRetryWarteschlange,
+    fromRetryQueue: bs.fromRetryQueue,
     getSetByBarcode: bs.getSetByBarcode,
     getSetByEan: bs.getSetByEan,
     setAngaben: bs.setAngaben,
-    pruefeBricksetZugang: bs.pruefeBricksetZugang,
+    checkBricksetAccess: bs.checkBricksetAccess,
     brickset: bs,
-    produktTitel: (ean13: string) => produktTitel(rb.httpsGetRobust, ean13),
-    ladeKatalogCsv,
-    /** Ohne Schlüssel; hier, damit ein Test ihn je Satz Dienste ersetzt (testQuellen). */
-    legoAbruf,
-    widerrufslisteAbruf,
+    productTitle: (ean13: string) => productTitle(rb.httpsGetRobust, ean13),
+    loadCatalogCsv,
+    /** Ohne Schlüssel; hier, damit ein Test ihn je Satz Dienste ersetzt (testSources). */
+    legoFetch,
+    revocationListFetch,
     downloadFile,
-    rebrickableRoh,
+    rebrickableRaw,
     oeffneBild,
-    holeBild,
-    ezbAbruf,
+    fetchImage,
+    ecbFetch,
   };
 }
 
-export type Quellen = ReturnType<typeof baueQuellen>;
+export type Quellen = ReturnType<typeof buildSources>;

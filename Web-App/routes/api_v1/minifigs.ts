@@ -1,25 +1,25 @@
-import { kontoSchranke, sichtVon, waechterFuer } from './middleware';
-import { normalisiereLagerort } from '../../src/bestand';
-import { csvEmpfang } from '../../src/http/dateiEmpfang';
-import type { CsvImportBericht } from '../../src/infra/csvExport';
-import { seiteAus } from '../../src/infra/seite';
-import { Abstriche } from '../../src/infra/ergebnis';
+import { kontoSchranke, viewOf, guardFor } from './middleware';
+import { normalizeLocation } from '../../src/bestand';
+import { csvReceive } from '../../src/http/dateiEmpfang';
+import type { CsvImportReport } from '../../src/infra/csvExport';
+import { pageFrom } from '../../src/infra/seite';
+import { Degradations } from '../../src/infra/ergebnis';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
-import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
+import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 
-export function baueMinifigsRouter(
+export function buildMinifigsRouter(
   d: Pick<
     Dienste,
     'settings' | 'auftraege' | 'haushalt' | 'konto' | 'finanzen' | 'bestand' | 'minifigs' | 'collection'
   >,
 ) {
-  const { requireToken } = waechterFuer(d.konto);
+  const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/minifigs', requireToken, async req => {
     // Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
-    const r = await d.minifigs.readMinifigs(sichtVon(req), req.abfrage);
+    const r = await d.minifigs.readMinifigs(viewOf(req), req.abfrage);
     return { figs: r.figs, total: r.total };
   });
 
@@ -38,8 +38,8 @@ export function baueMinifigsRouter(
 
   // Trifft alle Zeilen der Figur im Schreibbereich: Gemeint ist die Figur, nicht eine Zeile.
   router.endpunkt('PUT /api/v1/minifigs/:figNumber/storage', requireToken, async req => {
-    const ort = normalisiereLagerort(req.eingabe.storage);
-    const n = await d.bestand.lagerortDienst.setzeLagerort(
+    const ort = normalizeLocation(req.eingabe.storage);
+    const n = await d.bestand.locationService.setLocation(
       'fig',
       { schreiber: req.apiUser.user_id },
       [req.pfad.figNumber],
@@ -51,34 +51,34 @@ export function baueMinifigsRouter(
   router.endpunkt('DELETE /api/v1/minifigs/:figNumber', requireToken, async req => {
     // Ohne den Parameter das eigene Konto.
     const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-    const geloescht = await d.collection.loescheFigur(besitzer, req.pfad.figNumber);
-    if (geloescht === null) nichtGefunden('minifig_nicht_manuell');
+    const geloescht = await d.collection.deleteMinifig(besitzer, req.pfad.figNumber);
+    if (geloescht === null) notFound('minifig_nicht_manuell');
     return { papierkorb: [geloescht] };
   });
 
   router.endpunkt('GET /api/v1/minifigs/manual', requireToken, async req => {
-    const ab = new Abstriche();
+    const ab = new Degradations();
     const alle = await d.minifigs.readManualMinifigs(
-      sichtVon(req),
+      viewOf(req),
       req.apiUser.user_id,
       { search: req.abfrage.search ?? '' },
       ab,
     );
-    const { eintraege: figs, ...seite } = seiteAus(alle, req.abfrage);
+    const { eintraege: figs, ...seite } = pageFrom(alle, req.abfrage);
     return { figs, ...seite, ...ab.angabe() };
   });
 
   /** Dieselbe Gruppierung wie die Liste, damit Kennzahl und Liste übereinstimmen. */
   router.endpunkt('GET /api/v1/minifigs/stats', requireToken, async req => {
-    const stats = await d.minifigs.minifigStats(sichtVon(req));
+    const stats = await d.minifigs.minifigStats(viewOf(req));
     return { stats };
   });
 
   router.endpunkt('GET /api/v1/minifigs/:figNumber/price-history', requireToken, async req => {
     const uid = req.apiUser.user_id;
     const currency = await d.settings.userValue(uid, 'currency', 'EUR');
-    // Blickfeld: Ohne blickfeldIds() fände sich für eine Figur des Unterkontos keine Erfassung.
-    const data = await d.finanzen.preisverlaufFigur(sichtVon(req), req.pfad.figNumber, currency);
+    // Blickfeld: Ohne scopeIds() fände sich für eine Figur des Unterkontos keine Erfassung.
+    const data = await d.finanzen.priceHistoryMinifig(viewOf(req), req.pfad.figNumber, currency);
     return { ...data };
   });
 
@@ -90,11 +90,11 @@ export function baueMinifigsRouter(
     'POST /api/v1/minifigs/import/csv',
     requireToken,
     kontoSchranke('upload'),
-    csvEmpfang.single('file'),
+    csvReceive.single('file'),
     async req => {
       if (!req.file) fachfehler('ungueltig', 'keine_datei');
       return {
-        ...(await d.collection.runImport<CsvImportBericht>(req.apiUser.user_id, 'figuren_csv', {
+        ...(await d.collection.runImport<CsvImportReport>(req.apiUser.user_id, 'figuren_csv', {
           text: req.file.buffer.toString('utf-8'),
         })),
       };
@@ -103,8 +103,8 @@ export function baueMinifigsRouter(
 
   // Dieselbe Abfrage wie bei Teilen (src/bestand/gemeinsam.ts), im Blickfeld des Haushalts.
   router.endpunkt('GET /api/v1/minifigs/:figNumber/sets', requireToken, async req => {
-    const uids = sichtVon(req);
-    const { item, sets } = await d.bestand.verwendendeSets(uids, 'minifigs', {
+    const uids = viewOf(req);
+    const { item, sets } = await d.bestand.usingSets(uids, 'minifigs', {
       fig_number: req.pfad.figNumber,
     });
     return { item, sets };

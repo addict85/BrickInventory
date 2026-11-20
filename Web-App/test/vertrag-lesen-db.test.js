@@ -10,8 +10,8 @@
  *   A  in src/sets/repository/sets.ts das ::int an used_count entfernt → rot:
  *      „jede Route antwortet“ (/api/v1/sets: 500 vertrag_verletzt, Text statt
  *      Zahl) und „so viele Routen geprüft“
- *   B  MIN_GEPRUEFT auf 59 gesetzt → rot: „so viele Routen geprüft“
- *   C  in src/sets/inhalt.ts `...eineSeite(…)` aus der Teileliste entfernt →
+ *   B  MIN_CHECKED auf 59 gesetzt → rot: „so viele Routen geprüft“
+ *   C  in src/sets/inhalt.ts `...einePage(…)` aus der Teileliste entfernt →
  *      rot: „jede Route antwortet“ (parts-list: 500 vertrag_verletzt)
  *   D  in src/infra/seite.ts slice() durch die ganze Liste ersetzt → rot:
  *      „lange Listen blättern“ (05.11.2026)
@@ -28,11 +28,11 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { routerEinhaengungen, testDaten } = require('./helpers/sources');
-const { haeltSet, haeltTeil, haeltFigur, katalogSet } = require('./helpers/bestand');
-const { vertragZu, appSchnittstelle } = require('./helpers/vertrag');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { routerEinhaengungen, testData } = require('./helpers/sources');
+const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/bestand');
+const { contractTo, appSchnittstelle } = require('./helpers/vertrag');
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 const NAME = `kvertrag_${process.pid}`;
@@ -42,7 +42,7 @@ const SET = '99074-1',
   FIGUR = 'kv0001';
 
 /** Routen, die hier nicht laufen können — mit Grund. */
-const AUSGELASSEN = new Map([
+const OMITTED = new Map([
   ['/api/v1/sets/info/{setNumber}', 'fragt Rebrickable/Brickset im Netz'],
   ['/api/v1/sets/barcode/{barcode}', 'fragt die Barcode-Dienste im Netz'],
   ['/api/v1/wanted/{setNumber}/preise', 'fragt BrickLink im Netz'],
@@ -51,14 +51,16 @@ const AUSGELASSEN = new Map([
   ['/api/v1/admin/logs', 'liest app_logs; der Inhalt hängt an fremden Läufen'],
 ]);
 /** Listen, die hier leer bleiben dürfen — mit Grund. */
-const LEER_ERLAUBT = new Map([['/api/v1/admin/brickset-queue .entries', 'füllt nur ein gescheiterter Brickset-Abruf']]);
+const EMPTY_ALLOWED = new Map([
+  ['/api/v1/admin/brickset-queue .entries', 'füllt nur ein gescheiterter Brickset-Abruf'],
+]);
 /** Zusätzliche Abfrageparameter, ohne die eine Route nur Leeres liefert. */
-const ZUSATZ = new Map([['/api/v1/alerts/pending', 'since=2000-01-01T00:00:00Z']]);
+const EXTRA = new Map([['/api/v1/alerts/pending', 'since=2000-01-01T00:00:00Z']]);
 /** Mindestens so viele Routen werden wirklich geprüft — damit die Zahl nicht still sinkt. */
-const MIN_GEPRUEFT = 58;
+const MIN_CHECKED = 58;
 
 test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -92,8 +94,8 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     getrennt = await nebenkonto('getrennt');
   // Globale Kataloge: nur entfernen, was dieser Test selbst angelegt hat.
   const aufraeumen = [];
-  const katalog = async (sql, werte, weg, wegWerte) => {
-    if ((await db.run(sql + ' ON CONFLICT DO NOTHING', werte)).changes) aufraeumen.push([weg, wegWerte]);
+  const katalog = async (sql, werte, weg, routeValues) => {
+    if ((await db.run(sql + ' ON CONFLICT DO NOTHING', werte)).changes) aufraeumen.push([weg, routeValues]);
   };
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[uid, sub, oben, getrennt]]).catch(() => {});
@@ -115,7 +117,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
       [uid],
     )
     .catch(() => {});
-  await katalogSet(db, SET, { name: 'Vertragsprobe', year: 2024, theme: 'Test', pieces: 100, minifigs: 1 });
+  await catalogSet(db, SET, { name: 'Vertragsprobe', year: 2024, theme: 'Test', pieces: 100, minifigs: 1 });
   await db.run(
     `INSERT INTO set_parts (set_number, part_number, color_id, quantity)
                 VALUES ($1, $2, $3, 4) ON CONFLICT DO NOTHING`,
@@ -219,13 +221,13 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     getrennt,
     sub,
   ]);
-  await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Vertragsprobe');
+  await _req('src/konto/geraeteToken.js').createToken(uid, 'Vertragsprobe');
   // Hintergrundarbeiten: ein Auftrag mit Fortschritt und eine Pause, damit
   // /admin/jobs keine leeren Listen liefert.
   const auftrag = await {
     ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testBereich('auftraege').auftraege,
-  }.stelleAuftragEin('anleitung', { set_number: SET }, { schluessel: `vertrag-get:${process.pid}` });
+    ...require('./helpers/sources').testArea('auftraege').auftraege,
+  }.placeJobOne('anleitung', { set_number: SET }, { schluessel: `vertrag-get:${process.pid}` });
   await db.run(`UPDATE jobs SET progress = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [
     auftrag,
   ]);
@@ -235,17 +237,17 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     [`DELETE FROM jobs WHERE id = $1`, [auftrag]],
     [`DELETE FROM job_pauses WHERE reason = 'Vertrag'`, []],
   );
-  await haeltSet(db, uid, SET, 2, { preis: 49.9 });
-  await haeltTeil(db, uid, TEIL, { setNumber: SET, colorId: FARBE, menge: 4 });
-  await haeltTeil(db, uid, TEIL, { colorId: FARBE, menge: 3 });
-  await haeltFigur(db, uid, FIGUR, { setNumber: SET, menge: 1 });
-  await haeltFigur(db, uid, FIGUR, { menge: 1 });
+  await holdsSet(db, uid, SET, 2, { preis: 49.9 });
+  await holdsPart(db, uid, TEIL, { setNumber: SET, colorId: FARBE, menge: 4 });
+  await holdsPart(db, uid, TEIL, { colorId: FARBE, menge: 3 });
+  await holdsMinifig(db, uid, FIGUR, { setNumber: SET, menge: 1 });
+  await holdsMinifig(db, uid, FIGUR, { menge: 1 });
   await db.run(`INSERT INTO wanted (user_id, set_number) VALUES ($1, $2)`, [uid, SET]);
   const ort = (await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal A') RETURNING id`, [uid]))
     .id;
   await db.run('UPDATE sets SET storage_id = $2 WHERE user_id = $1 AND set_number = $3', [uid, ort, SET]);
   await require('./helpers/sources')
-    .testBereich('vouchers')
+    .testArea('vouchers')
     .vouchers.createVoucher(uid, { number: '50451230', pin: null, amount: 25, currency: 'CHF' });
   await db.run(
     `INSERT INTO price_alerts (user_id, set_number, condition, direction, threshold, currency_code, triggered, last_triggered_at, last_price)
@@ -261,9 +263,9 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     req.apiUser = { user_id: uid, username: NAME, is_admin: 1 };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   for (const r of routerEinhaengungen())
-    app.use(r.mount, require('./helpers/sources').routerAus(_req, `routes/${r.name}.js`));
+    app.use(r.mount, require('./helpers/sources').routerFrom(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
@@ -271,19 +273,19 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   const routen = appSchnittstelle().routen.filter(r => r.methode === 'GET');
   const werte = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
 
-  const abweichungen = [],
+  const deviations = [],
     leer = [],
     status = [];
   let geprueft = 0;
   for (const r of routen) {
-    const vertrag = vertragZu(_req, 'GET', r.pfad);
-    if (!vertrag?.antwort || AUSGELASSEN.has(r.pfad)) continue;
+    const vertrag = contractTo(_req, 'GET', r.pfad);
+    if (!vertrag?.antwort || OMITTED.has(r.pfad)) continue;
     const pfad = r.pfad.replace(/\{(\w+)\}/g, (_, n) => encodeURIComponent(werte[n] ?? `<${n}>`));
     if (pfad.includes('%3C')) {
       status.push(`${r.pfad}: kein Wert für einen Platzhalter`);
       continue;
     }
-    const anfrage = [...r.abfrage.filter(q => q.pflicht).map(q => `${q.name}=60`), ZUSATZ.get(r.pfad)]
+    const anfrage = [...r.abfrage.filter(q => q.pflicht).map(q => `${q.name}=60`), EXTRA.get(r.pfad)]
       .filter(Boolean)
       .join('&');
     const antwort = await fetch(basis + pfad + (anfrage ? '?' + anfrage : ''));
@@ -300,20 +302,20 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
       continue;
     }
     geprueft++;
-    const geprueft_ = vertrag.antwort.safeParse(json);
-    if (!geprueft_.success)
-      abweichungen.push(...geprueft_.error.issues.map(i => `${r.pfad} $.${i.path.join('.')}: ${i.message}`));
+    const checked_ = vertrag.antwort.safeParse(json);
+    if (!checked_.success)
+      deviations.push(...checked_.error.issues.map(i => `${r.pfad} $.${i.path.join('.')}: ${i.message}`));
     for (const [k, v] of Object.entries(json)) if (Array.isArray(v) && v.length === 0) leer.push(`${r.pfad} .${k}`);
   }
 
   await t.test('jede Route antwortet', () => assert.deepEqual(status, []));
   await t.test('so viele Routen geprüft', () =>
-    assert.ok(geprueft >= MIN_GEPRUEFT, `nur ${geprueft} Routen geprüft, erwartet mindestens ${MIN_GEPRUEFT}`),
+    assert.ok(geprueft >= MIN_CHECKED, `nur ${geprueft} Routen geprüft, erwartet mindestens ${MIN_CHECKED}`),
   );
-  await t.test('passt zum Vertrag', () => assert.deepEqual(abweichungen, []));
+  await t.test('passt zum Vertrag', () => assert.deepEqual(deviations, []));
   await t.test('keine Liste ist unbemerkt leer', () =>
     assert.deepEqual(
-      leer.filter(l => !LEER_ERLAUBT.has(l)),
+      leer.filter(l => !EMPTY_ALLOWED.has(l)),
       [],
       'Eine leere Liste prüft kein einziges Feld',
     ),
@@ -323,28 +325,28 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   // Jede Route mit page_size: Seite 2 der Grösse 1 ist leer, total zählt trotzdem
   // die ganze Liste, und ohne page_size kommt alles.
   const { openapi } = _req('src/vertrag/openapi.js');
-  const geblaettert = Object.entries(openapi().paths)
+  const paged = Object.entries(openapi().paths)
     .filter(([p, ops]) => !p.includes('{') && ops.get?.parameters?.some(x => x.name === 'page_size'))
     .map(([p]) => p);
-  const seitenFehler = [];
-  for (const p of geblaettert) {
+  const pagesError = [];
+  for (const p of paged) {
     const hol = async q => (await fetch(`${basis}${p}${q}`)).json();
     const ganz = await hol(''),
       zweite = await hol('?page_size=1&page=2');
     const feld = Object.keys(ganz).find(k => Array.isArray(ganz[k]) && ganz[k].length > 0);
     if (!feld) {
-      if (![...LEER_ERLAUBT.keys()].some(k => k.startsWith(p + ' '))) seitenFehler.push(`${p}: keine gefüllte Liste`);
+      if (![...EMPTY_ALLOWED.keys()].some(k => k.startsWith(p + ' '))) pagesError.push(`${p}: keine gefüllte Liste`);
       continue;
     }
     // Der Katalog hat zehntausende Sets: Er blättert immer, ohne page_size zu 60.
     if (p !== '/api/v1/catalog/sets' && ganz.total !== ganz[feld].length)
-      seitenFehler.push(`${p}: ohne page_size nicht alles (${ganz[feld].length}/${ganz.total})`);
+      pagesError.push(`${p}: ohne page_size nicht alles (${ganz[feld].length}/${ganz.total})`);
     if (zweite[feld]?.length !== Math.max(0, Math.min(1, ganz.total - 1)))
-      seitenFehler.push(`${p}: Seite 2 hat ${zweite[feld]?.length} Einträge`);
-    if (zweite.total !== ganz.total) seitenFehler.push(`${p}: total ${zweite.total} statt ${ganz.total}`);
+      pagesError.push(`${p}: Seite 2 hat ${zweite[feld]?.length} Einträge`);
+    if (zweite.total !== ganz.total) pagesError.push(`${p}: total ${zweite.total} statt ${ganz.total}`);
   }
   await t.test('lange Listen blättern', () => {
-    assert.ok(geblaettert.length >= 10, `nur ${geblaettert.length} geblätterte Routen gefunden`);
-    assert.deepEqual(seitenFehler, []);
+    assert.ok(paged.length >= 10, `nur ${paged.length} geblätterte Routen gefunden`);
+    assert.deepEqual(pagesError, []);
   });
 });

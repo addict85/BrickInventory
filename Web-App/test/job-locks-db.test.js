@@ -6,10 +6,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 async function dbReachable() {
   try {
@@ -21,7 +21,7 @@ async function dbReachable() {
 }
 
 /** Sperre auf einer eigenen Verbindung halten — spielt den zweiten Worker. */
-async function haltenAls(fremder, ns) {
+async function holdAs(fremder, ns) {
   const client = await db.pool.connect();
   const { rows } = await client.query('SELECT pg_try_advisory_lock($1, 0) AS ok', [ns]);
   assert.equal(rows[0].ok, true, `${fremder}: Sperre ${ns} war schon belegt`);
@@ -59,7 +59,7 @@ test('Job-Sperren wirken über Prozessgrenzen', async t => {
     const frei = await enrich.redownloadMissingImages();
     assert.equal(frei.alreadyRunning, undefined, 'Lauf wurde ohne fremde Sperre abgewiesen');
 
-    const freigeben = await haltenAls('zweiter Worker', REDL_LOCK);
+    const freigeben = await holdAs('zweiter Worker', REDL_LOCK);
     try {
       const gesperrt = await enrich.redownloadMissingImages();
       assert.equal(

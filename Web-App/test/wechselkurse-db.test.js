@@ -12,7 +12,7 @@
  *   B  in kurs_je_eur() `k.tag <= t` durch `k.tag = t` ersetzt (kein
  *      Rückfall auf den Vortag) → rot: „Set“ (purchase_price 38 statt 65.25),
  *      „Preisverlauf“ (null statt 92.5)
- *   C  ezbAbruf ohne Prüfung des Schemas → rot: „nur HTTPS auf den Host der EZB“
+ *   C  ecbFetch ohne Prüfung des Schemas → rot: „nur HTTPS auf den Host der EZB“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -24,13 +24,13 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet, erfasse, haeltTeil, katalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { holdsSet, record, holdsPart, catalogSet } = require('./helpers/bestand');
 const { ZipArchive } = require(path.join(__dirname, '..', 'node_modules', 'archiver'));
-const { portVon } = require('./helpers/server');
+const { portOf } = require('./helpers/server');
 
 const NAME = `kurse_${process.pid}`;
 const SET = `7${process.pid}1-1`,
@@ -38,7 +38,7 @@ const SET = `7${process.pid}1-1`,
   FARBE = 4;
 
 /** Eine ZIP-Datei mit einer CSV, wie die EZB sie ausliefert. */
-function zipMit(name, inhalt) {
+function zipWith(name, inhalt) {
   return new Promise((ok, fehler) => {
     const a = new ZipArchive(),
       teile = [];
@@ -50,14 +50,14 @@ function zipMit(name, inhalt) {
   });
 }
 
-const HISTORIE = ['Date,USD,JPY,CHF,', '2026-01-06,1.2500,N/A,0.9500,', '2026-01-02,1.2000,160.5,0.9250,'].join('\n');
+const HISTORY = ['Date,USD,JPY,CHF,', '2026-01-06,1.2500,N/A,0.9500,', '2026-01-02,1.2000,160.5,0.9250,'].join('\n');
 const TAG = `<?xml version="1.0" encoding="UTF-8"?>
 <gesmes:Envelope><Cube><Cube time='2026-01-07'>
   <Cube currency='USD' rate='1.2600'/><Cube currency='CHF' rate='0.9600'/>
 </Cube></Cube></gesmes:Envelope>`;
 
 test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const abgerufen = [];
   const srv = http
@@ -70,9 +70,9 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
     })
     .listen(0);
   t.after(() => srv.close());
-  const zip = await zipMit('eurofxref-hist.csv', HISTORIE);
+  const zip = await zipWith('eurofxref-hist.csv', HISTORY);
   const lokal = url =>
-    fetch(`http://127.0.0.1:${portVon(srv)}${new URL(url).pathname}`).then(async r =>
+    fetch(`http://127.0.0.1:${portOf(srv)}${new URL(url).pathname}`).then(async r =>
       Buffer.from(await r.arrayBuffer()),
     );
 
@@ -86,42 +86,38 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
     await db.pool.end().catch(() => {});
   });
   await db.run('DELETE FROM exchange_rates');
-  const { kurseNachladen } = _req('src/finanzen/wechselkurse.js');
+  const { reloadRates } = _req('src/finanzen/wechselkurse.js');
 
   await t.test('erst die Historie, dann die Tageskurse', async () => {
-    assert.deepEqual(
-      await kurseNachladen(lokal),
-      { quelle: 'historie', kurse: 5 },
-      'N/A und leere Spalten zählen nicht',
-    );
-    assert.deepEqual(await kurseNachladen(lokal), { quelle: 'tag', kurse: 2 });
+    assert.deepEqual(await reloadRates(lokal), { quelle: 'historie', rates: 5 }, 'N/A und leere Spalten zählen nicht');
+    assert.deepEqual(await reloadRates(lokal), { quelle: 'tag', rates: 2 });
     assert.deepEqual(abgerufen, ['/stats/eurofxref/eurofxref-hist.zip', '/stats/eurofxref/eurofxref-daily.xml']);
     const r = await db.get(`SELECT per_eur FROM exchange_rates WHERE currency = 'CHF' AND day = '2026-01-07'`);
     assert.equal(r.per_eur, 0.96);
   });
 
   await t.test('nur HTTPS auf den Host der EZB', async () => {
-    const { ezbAbruf } = _req('clients/ezb.js');
-    await assert.rejects(ezbAbruf('http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'), /nur von https/);
-    await assert.rejects(ezbAbruf('https://ecb.example.org/stats/eurofxref/eurofxref-daily.xml'), /nur von https/);
+    const { ecbFetch } = _req('clients/ezb.js');
+    await assert.rejects(ecbFetch('http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'), /nur von https/);
+    await assert.rejects(ecbFetch('https://ecb.example.org/stats/eurofxref/eurofxref-daily.xml'), /nur von https/);
   });
 
   // Anzeigewährung CHF; gekauft in EUR, USD und JPY.
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
-  await katalogSet(db, SET, { name: SET });
+  await catalogSet(db, SET, { name: SET });
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
                 VALUES ($1, 'N', 'CHF', 120, NOW()) ON CONFLICT DO NOTHING`,
     [SET],
   );
   const kauf = async (menge, preis, waehrung, am) => {
-    await erfasse(db, uid, SET, menge, { preis, am });
+    await record(db, uid, SET, menge, { preis, am });
     await db.run(
       `UPDATE set_acquisitions SET currency = $1 WHERE id = (SELECT max(id) FROM set_acquisitions WHERE user_id = $2)`,
       [waehrung, uid],
     );
   };
-  await haeltSet(db, uid, SET, 0);
+  await holdsSet(db, uid, SET, 0);
   // Sonntag 4.1.: kein Kurs, es gilt der Freitag (2.1.): 100 / 1 × 0,925 = 92,5.
   await kauf(1, 100, 'EUR', '2026-01-04T10:00:00Z');
   // 6.1.: 50 USD / 1,25 × 0,95 = 38.
@@ -130,30 +126,30 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
   await kauf(1, 900, 'XAU', '2026-01-06T11:00:00Z');
 
   await t.test('Set', async () => {
-    const { gewinnUndVerlust } = _req('src/finanzen/financeCalc.js');
-    const pnl = await gewinnUndVerlust(uid, [uid]);
+    const { gainAndLoss } = _req('src/finanzen/financeCalc.js');
+    const pnl = await gainAndLoss(uid, [uid]);
     const z = pnl.sets.find(s => s.set_number === SET);
     assert.equal(z.purchase_price, (92.5 + 38) / 2, 'mengengewichtet über die umgerechneten Preise');
     assert.equal(pnl.totals.kaufpreise_umgerechnet, 2);
     assert.equal(pnl.totals.kaufpreise_fremde_waehrung, 1, 'XAU ohne Kurs bleibt draussen');
-    const { bewerteSets } = _req('src/finanzen/financeCalc.js');
-    const b = await bewerteSets(uid, [uid]);
+    const { valueSets } = _req('src/finanzen/financeCalc.js');
+    const b = await valueSets(uid, [uid]);
     assert.equal(b.kaufpreise_umgerechnet, 2);
     assert.equal(b.kaufpreise_fremde_waehrung, 1);
   });
 
   await t.test('Preisverlauf', async () => {
-    const { preisverlaufSet } = _req('src/finanzen/priceHistory.js');
-    const v = await preisverlaufSet([uid], SET, 'CHF');
+    const { priceHistorySet } = _req('src/finanzen/priceHistory.js');
+    const v = await priceHistorySet([uid], SET, 'CHF');
     assert.equal(v.purchase_price, 92.5, 'die erste Erfassung, umgerechnet');
     assert.equal(v.by_condition.N.purchase_price, (92.5 + 38) / 2);
   });
 
   await t.test('Teil', async () => {
-    await haeltTeil(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 2, am: '2026-01-07T09:00:00Z' });
+    await holdsPart(db, uid, TEIL, { colorId: FARBE, menge: 10, preis: 2, am: '2026-01-07T09:00:00Z' });
     await db.run(`UPDATE part_acquisitions SET currency = 'USD' WHERE user_id = $1`, [uid]);
-    const { preisverlaufTeil } = _req('src/finanzen/priceHistory.js');
-    const v = await preisverlaufTeil([uid], TEIL, FARBE, 'CHF');
+    const { priceHistoryPart } = _req('src/finanzen/priceHistory.js');
+    const v = await priceHistoryPart([uid], TEIL, FARBE, 'CHF');
     // 2 USD / 1,26 × 0,96 = 1,5238
     assert.equal(v.by_condition.N.purchase_price, 1.5238);
   });

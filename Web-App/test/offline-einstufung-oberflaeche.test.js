@@ -1,18 +1,18 @@
 /**
  * Offline sperrt die Oberfläche genau die Knöpfe, deren Aktion Serverzustand
- * ändert (SCHREIBENDE_AKTIONEN in verbindung.js); Lesendes bleibt frei.
+ * ändert (WRITING_ACTIONS in verbindung.js); Lesendes bleibt frei.
  * Jede angemeldete Aktion ist genau einmal eingestuft, sonst rot. In jsdom am
  * Bündel aus main.js, das zusätzlich Registry und Einstufung zeigt.
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgesetzt):
- *   A  'revokeToken' aus SCHREIBENDE_AKTIONEN gestrichen → rot: „jede
+ *   A  'revokeToken' aus WRITING_ACTIONS gestrichen → rot: „jede
  *      angemeldete Aktion ist genau einmal eingestuft“ und „je Aktion ein Knopf“
- *   B  'legeLagerortAn' nach LESENDE_AKTIONEN verschoben → rot: „je Aktion
+ *   B  'legeLagerortAn' nach READING_ACTIONS verschoben → rot: „je Aktion
  *      ein Knopf“
  *   C  schreibt() wieder nach alter Regel (button.bp/.bd, sonst Namens-Regex
  *      SCHREIB_VERBEN) → rot: „je Aktion ein Knopf“, „index.html und Vorlagen“
  *      und „per id verdrahtete Knöpfe“
- *   D  'oeffneReiter' zusätzlich in SCHREIBENDE_AKTIONEN → rot: „genau
+ *   D  'oeffneReiter' zusätzlich in WRITING_ACTIONS → rot: „genau
  *      einmal eingestuft“ (doppelt) und „je Aktion ein Knopf“ (Lesen gesperrt)
  *   E  data-schreibend an #btn-clr entfernt → rot: „per id verdrahtete
  *      Knöpfe“
@@ -28,17 +28,17 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 
-/** Das Bündel aus main.js, dazu Registry und Einstufung auf window.__einstufung. */
-function baueBuendel() {
+/** Das Bündel aus main.js, dazu Registry und Einstufung auf window.__rating. */
+function buildBundle() {
   const esbuild = require(path.join(ROOT, 'node_modules', 'esbuild'));
-  const { erlaubteStile } = require(path.join(ROOT, 'scripts', 'build-frontend.js'));
+  const { allowedStyles } = require(path.join(ROOT, 'scripts', 'build-frontend.js'));
   const ziel = path.join(os.tmpdir(), `offline-einstufung-${process.pid}.js`);
   esbuild.buildSync({
     stdin: {
       contents:
         "import './main.js';\nimport { actionNames } from './registry.js';\n" +
-        "import { SCHREIBENDE_AKTIONEN, LESENDE_AKTIONEN } from './verbindung.js';\n" +
-        'window.__einstufung = { actionNames, SCHREIBENDE_AKTIONEN, LESENDE_AKTIONEN };\n',
+        "import { WRITING_ACTIONS, READING_ACTIONS } from './verbindung.js';\n" +
+        'window.__rating = { actionNames, WRITING_ACTIONS, READING_ACTIONS };\n',
       resolveDir: JS,
       loader: 'js',
       sourcefile: 'einstufung-einstieg.js',
@@ -48,17 +48,17 @@ function baueBuendel() {
     charset: 'utf8',
     outfile: ziel,
     logLevel: 'error',
-    define: { __ERLAUBTE_STILE__: JSON.stringify(erlaubteStile()) },
+    define: { __ERLAUBTE_STILE__: JSON.stringify(allowedStyles()) },
   });
   return ziel;
 }
 
-const BUENDEL = baueBuendel();
+const BUENDEL = buildBundle();
 process.env.TEST_BUENDEL = BUENDEL;
-const { oeffneOberflaeche, reiter, sicht, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, sicht, warte } = require('./helpers/oberflaeche');
 test.after(() => fs.rmSync(BUENDEL, { force: true }));
 
-const BEDIENT = 'button, input[type=file], .import-menue > summary';
+const SERVED = 'button, input[type=file], .import-menue > summary';
 const gesperrt = k => k.dataset.offlineGesperrt === '1';
 
 async function offline(w) {
@@ -130,9 +130,9 @@ const DATEN = {
 };
 
 test('jede angemeldete Aktion ist genau einmal eingestuft', async () => {
-  const { w } = await oeffneOberflaeche();
+  const { w } = await openUi();
   try {
-    const { actionNames, SCHREIBENDE_AKTIONEN: s, LESENDE_AKTIONEN: l } = w.__einstufung;
+    const { actionNames, WRITING_ACTIONS: s, READING_ACTIONS: l } = w.__rating;
     const namen = Array.from(actionNames());
     assert.ok(namen.length > 150, `nur ${namen.length} Handler angemeldet — greift die Registry noch?`);
     assert.deepEqual(
@@ -156,9 +156,9 @@ test('jede angemeldete Aktion ist genau einmal eingestuft', async () => {
 });
 
 test('je Aktion ein Knopf: offline gesperrt sind genau die schreibenden', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
-    const { actionNames, SCHREIBENDE_AKTIONEN: s } = w.__einstufung;
+    const { actionNames, WRITING_ACTIONS: s } = w.__rating;
     const kasten = d.createElement('div');
     for (const n of actionNames()) {
       const k = d.createElement('button');
@@ -207,9 +207,9 @@ test('je Aktion ein Knopf: offline gesperrt sind genau die schreibenden', async 
 });
 
 test('index.html und Vorlagen: offline genau die schreibenden gesperrt', async () => {
-  const { w, d, aufrufe, ruhig } = await oeffneOberflaeche(DATEN);
+  const { w, d, aufrufe, ruhig } = await openUi(DATEN);
   try {
-    const { SCHREIBENDE_AKTIONEN: s } = w.__einstufung;
+    const { WRITING_ACTIONS: s } = w.__rating;
     await warte(() => d.querySelector('#gallery .sc'));
     await reiter(w, 'wanted');
     await warte(() => d.querySelector('.mk-zeile'));
@@ -223,7 +223,7 @@ test('index.html und Vorlagen: offline genau die schreibenden gesperrt', async (
       await sicht(w, name);
       assert.ok(await warte(() => d.querySelector(zeichen)), `${name}: ${zeichen} nicht gezeichnet`);
     }
-    const vorher = new Set([...d.querySelectorAll(BEDIENT)].filter(k => k.disabled));
+    const vorher = new Set([...d.querySelectorAll(SERVED)].filter(k => k.disabled));
     await offline(w);
     // Danach Gezeichnetes sperrt der Beobachter.
     await sicht(w, 'alarme');
@@ -259,13 +259,13 @@ test('index.html und Vorlagen: offline genau die schreibenden gesperrt', async (
       .map(k => `${k.getAttribute('data-click')}${k.id ? '#' + k.id : ''}: ${gesperrt(k) ? 'gesperrt' : 'frei'}`);
     assert.deepEqual(falsch, []);
     // Das Löschkreuz der Kachel ist ein <span> ohne disabled: Der Klick darf nichts auslösen.
-    const vorAufrufe = aufrufe.length;
+    const beforeCalls = aufrufe.length;
     await reiter(w, 'gallery');
     d.querySelector('#gallery .delbtn[data-click="delSetStop"]').click();
     await ruhig();
     assert.equal(d.getElementById('confirm-modal').style.display === 'flex', false, 'Löschabfrage geöffnet');
     assert.deepEqual(
-      aufrufe.slice(vorAufrufe).filter(a => a.method !== 'GET'),
+      aufrufe.slice(beforeCalls).filter(a => a.method !== 'GET'),
       [],
       'offline geschrieben',
     );
@@ -275,7 +275,7 @@ test('index.html und Vorlagen: offline genau die schreibenden gesperrt', async (
 });
 
 test('per id verdrahtete Knöpfe: data-schreibend sperrt, sonst frei', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
     await offline(w);
     for (const id of [

@@ -3,33 +3,33 @@
  * unserer App gehört. Ohne sie könnte ein erbeuteter Token einen Software-Schlüssel
  * hinterlegen und den Schrittschutz ohne Sperre lösen. */
 import { X509Certificate, type KeyObject } from 'node:crypto';
-import { DerFehler, erwarte, kinder, liesGanz, type Tlv, UNIVERSAL, derZahl } from './der';
+import { TheError, expect, kinder, readWhole, type Tlv, UNIVERSAL, theNumber } from './der';
 
 /** 1.3.6.1.4.1.11129.2.1.17 als DER-Inhalt. */
 const OID_ATTESTATION = Buffer.from('2b06010401d679020111', 'hex');
-const HOECHSTENS_GLIEDER = 8;
+const AT_MOST_LINKS = 8;
 
 /** Tags der AuthorizationList (KeyMint, hardware/interfaces/security/keymint). */
 const TAG = {
   zweck: 1,
-  algorithmus: 2,
+  algorithm: 2,
   kurve: 10,
-  ohneAnmeldung: 503,
-  anmeldeArt: 504,
-  anmeldeFrist: 505,
-  nurEntsperrt: 509,
+  withoutLogin: 503,
+  loginKind: 504,
+  loginDeadline: 505,
+  onlyUnlocked: 509,
   herkunft: 702,
   rootOfTrust: 704,
   patchstand: 706,
-  appKennung: 709,
+  appId: 709,
 } as const;
-const ZWECK_SIGNIEREN = 2;
-const ALGORITHMUS_EC = 3;
-const KURVE_P256 = 1;
-const HERKUNFT_ERZEUGT = 0;
+const PURPOSE_SIGN = 2;
+const ALGORITHM_EC = 3;
+const CURVE_P256 = 1;
+const ORIGIN_CREATED = 0;
 /** PASSWORD | FINGERPRINT: die Gerätesperre oder starke Biometrie. */
-const ANMELDE_ARTEN = 0b11;
-const BOOT_VERIFIZIERT = 0;
+const LOGIN_KINDS = 0b11;
+const BOOT_VERIFIED = 0;
 
 export type Sicherheit = 'software' | 'tee' | 'strongbox';
 const SICHERHEIT: readonly Sicherheit[] = ['software', 'tee', 'strongbox'];
@@ -37,7 +37,7 @@ const SICHERHEIT: readonly Sicherheit[] = ['software', 'tee', 'strongbox'];
 export interface Beschreibung {
   version: number;
   sicherheit: Sicherheit;
-  keymintSicherheit: Sicherheit;
+  keymintSecurity: Sicherheit;
   challenge: Buffer;
   software: Map<number, Tlv>;
   hardware: Map<number, Tlv>;
@@ -45,72 +45,72 @@ export interface Beschreibung {
 
 function liste(t: Tlv): Map<number, Tlv> {
   const m = new Map<number, Tlv>();
-  for (const k of kinder(erwarte(t, UNIVERSAL.SEQUENCE))) {
-    if (k.klasse !== 2 || !k.zusammengesetzt) throw new DerFehler('AuthorizationList: Eintrag ohne Kontext-Tag');
-    if (m.has(k.nummer)) throw new DerFehler(`AuthorizationList: Tag ${k.nummer} doppelt`);
+  for (const k of kinder(expect(t, UNIVERSAL.SEQUENCE))) {
+    if (k.klasse !== 2 || !k.zusammengesetzt) throw new TheError('AuthorizationList: Eintrag ohne Kontext-Tag');
+    if (m.has(k.nummer)) throw new TheError(`AuthorizationList: Tag ${k.nummer} doppelt`);
     const innen = kinder(k);
-    if (innen.length !== 1) throw new DerFehler('AuthorizationList: Eintrag ohne genau einen Wert');
+    if (innen.length !== 1) throw new TheError('AuthorizationList: Eintrag ohne genau einen Wert');
     m.set(k.nummer, innen[0] as Tlv);
   }
   return m;
 }
 
 function sicherheit(t: Tlv | undefined): Sicherheit {
-  const s = SICHERHEIT[derZahl(erwarte(t, UNIVERSAL.ENUMERATED))];
-  if (!s) throw new DerFehler('KeyDescription: unbekannte Sicherheitsstufe');
+  const s = SICHERHEIT[theNumber(expect(t, UNIVERSAL.ENUMERATED))];
+  if (!s) throw new TheError('KeyDescription: unbekannte Sicherheitsstufe');
   return s;
 }
 
 /** Die KeyDescription aus dem Inhalt der Erweiterung (ohne das umhüllende OCTET STRING). */
-export function leseBeschreibung(der: Buffer): Beschreibung {
-  const f = kinder(erwarte(liesGanz(der), UNIVERSAL.SEQUENCE));
-  if (f.length < 8) throw new DerFehler('KeyDescription: zu wenige Felder');
+export function readDescription(der: Buffer): Beschreibung {
+  const f = kinder(expect(readWhole(der), UNIVERSAL.SEQUENCE));
+  if (f.length < 8) throw new TheError('KeyDescription: zu wenige Felder');
   return {
-    version: derZahl(erwarte(f[0], UNIVERSAL.INTEGER)),
+    version: theNumber(expect(f[0], UNIVERSAL.INTEGER)),
     sicherheit: sicherheit(f[1]),
-    keymintSicherheit: sicherheit(f[3]),
-    challenge: erwarte(f[4], UNIVERSAL.OCTET_STRING).inhalt,
+    keymintSecurity: sicherheit(f[3]),
+    challenge: expect(f[4], UNIVERSAL.OCTET_STRING).inhalt,
     software: liste(f[6] as Tlv),
     hardware: liste(f[7] as Tlv),
   };
 }
 
 /** Der Inhalt der Attestation-Erweiterung, null ohne sie. */
-export function attestationErweiterung(zertifikatDer: Buffer): Buffer | null {
-  const [tbs] = kinder(erwarte(liesGanz(zertifikatDer), UNIVERSAL.SEQUENCE));
-  const ext = kinder(erwarte(tbs, UNIVERSAL.SEQUENCE)).find(k => k.klasse === 2 && k.nummer === 3);
+export function attestationExtension(certificateThe: Buffer): Buffer | null {
+  const [tbs] = kinder(expect(readWhole(certificateThe), UNIVERSAL.SEQUENCE));
+  const ext = kinder(expect(tbs, UNIVERSAL.SEQUENCE)).find(k => k.klasse === 2 && k.nummer === 3);
   if (!ext) return null;
   let treffer: Buffer | null = null;
-  for (const e of kinder(erwarte(kinder(ext)[0], UNIVERSAL.SEQUENCE))) {
-    const teile = kinder(erwarte(e, UNIVERSAL.SEQUENCE));
-    if (!erwarte(teile[0], UNIVERSAL.OID).inhalt.equals(OID_ATTESTATION)) continue;
-    if (treffer) throw new DerFehler('Attestation-Erweiterung doppelt');
-    treffer = erwarte(teile[teile.length - 1], UNIVERSAL.OCTET_STRING).inhalt;
+  for (const e of kinder(expect(kinder(ext)[0], UNIVERSAL.SEQUENCE))) {
+    const teile = kinder(expect(e, UNIVERSAL.SEQUENCE));
+    if (!expect(teile[0], UNIVERSAL.OID).inhalt.equals(OID_ATTESTATION)) continue;
+    if (treffer) throw new TheError('Attestation-Erweiterung doppelt');
+    treffer = expect(teile[teile.length - 1], UNIVERSAL.OCTET_STRING).inhalt;
   }
   return treffer;
 }
 
 /** Paketnamen und SHA-256 der Signaturzertifikate (Hex, gross) aus attestationApplicationId. */
-export function leseAppKennung(t: Tlv): { pakete: string[]; digests: string[] } {
-  const [pakete, digests] = kinder(erwarte(liesGanz(erwarte(t, UNIVERSAL.OCTET_STRING).inhalt), UNIVERSAL.SEQUENCE));
+export function readAppId(t: Tlv): { packages: string[]; digests: string[] } {
+  const [packages, digests] = kinder(expect(readWhole(expect(t, UNIVERSAL.OCTET_STRING).inhalt), UNIVERSAL.SEQUENCE));
   return {
-    pakete: kinder(erwarte(pakete, UNIVERSAL.SET)).map(p =>
-      erwarte(kinder(erwarte(p, UNIVERSAL.SEQUENCE))[0], UNIVERSAL.OCTET_STRING).inhalt.toString('utf8'),
+    packages: kinder(expect(packages, UNIVERSAL.SET)).map(p =>
+      expect(kinder(expect(p, UNIVERSAL.SEQUENCE))[0], UNIVERSAL.OCTET_STRING).inhalt.toString('utf8'),
     ),
-    digests: kinder(erwarte(digests, UNIVERSAL.SET)).map(d =>
-      erwarte(d, UNIVERSAL.OCTET_STRING).inhalt.toString('hex').toUpperCase(),
+    digests: kinder(expect(digests, UNIVERSAL.SET)).map(d =>
+      expect(d, UNIVERSAL.OCTET_STRING).inhalt.toString('hex').toUpperCase(),
     ),
   };
 }
 
 export interface Erwartung {
-  wurzeln: readonly X509Certificate[];
+  roots: readonly X509Certificate[];
   paket: string;
   /** SHA-256 der Signaturzertifikate, Hex gross; leer nimmt keine App an. */
   digests: readonly string[];
   /** Seriennummern aus Googles Widerrufsliste (seriennummer()); Pflicht, damit kein Aufrufer sie vergisst. */
   widerrufen: ReadonlySet<string>;
-  patchMindestens?: number | null;
+  patchAtLeast?: number | null;
   jetzt: Date;
 }
 
@@ -121,13 +121,13 @@ export function seriennummer(c: X509Certificate): string {
 
 /** Gesperrter Bootloader mit Googles oder des Herstellers Schlüssel: Sonst
  * liesse sich ein KeyMint unterschieben, das jede Sperre bestätigt. */
-function pruefeBoot(t: Tlv | undefined): string | null {
+function checkBoot(t: Tlv | undefined): string | null {
   if (!t) return 'ohne_root_of_trust';
-  const f = kinder(erwarte(t, UNIVERSAL.SEQUENCE));
-  const gesperrt = erwarte(f[1], UNIVERSAL.BOOLEAN).inhalt;
-  if (gesperrt.length !== 1) throw new DerFehler('RootOfTrust: deviceLocked kein BOOLEAN');
+  const f = kinder(expect(t, UNIVERSAL.SEQUENCE));
+  const gesperrt = expect(f[1], UNIVERSAL.BOOLEAN).inhalt;
+  if (gesperrt.length !== 1) throw new TheError('RootOfTrust: deviceLocked kein BOOLEAN');
   if (!gesperrt[0]) return 'bootloader_offen';
-  if (derZahl(erwarte(f[2], UNIVERSAL.ENUMERATED)) !== BOOT_VERIFIZIERT) return 'boot_unverifiziert';
+  if (theNumber(expect(f[2], UNIVERSAL.ENUMERATED)) !== BOOT_VERIFIED) return 'boot_unverifiziert';
   return null;
 }
 
@@ -137,13 +137,13 @@ export type Pruefung =
 
 const spki = (c: X509Certificate) => c.publicKey.export({ format: 'der', type: 'spki' }) as Buffer;
 
-function pruefeGlieder(z: X509Certificate[], roh: Buffer[], e: Erwartung): string | null {
+function checkLinks(z: X509Certificate[], roh: Buffer[], e: Erwartung): string | null {
   const { jetzt } = e;
   for (let i = 0; i < z.length; i++) {
     const c = z[i] as X509Certificate;
     // Aussteller nur mit CA-Bit (ca prüft auch keyCertSign) und ohne KeyDescription: Sonst
     // signiert ein gewöhnlicher Keystore-Schlüssel ein Blatt mit erfundener Beschreibung.
-    if (i > 0 && (!c.ca || attestationErweiterung(roh[i] as Buffer))) return `glied_${i}_kein_aussteller`;
+    if (i > 0 && (!c.ca || attestationExtension(roh[i] as Buffer))) return `glied_${i}_kein_aussteller`;
     // Das Blatt trägt die Gültigkeit, die der Keystore einsetzt (oft 1970–2048), keine echte.
     if (i > 0 && (new Date(c.validFrom) > jetzt || new Date(c.validTo) < jetzt)) return `glied_${i}_abgelaufen`;
     const aussteller = z[i + 1];
@@ -152,52 +152,52 @@ function pruefeGlieder(z: X509Certificate[], roh: Buffer[], e: Erwartung): strin
   }
   const letztes = z[z.length - 1] as X509Certificate;
   const anker =
-    e.wurzeln.find(w => spki(w).equals(spki(letztes))) ??
-    e.wurzeln.find(w => letztes.issuer === w.subject && letztes.verify(w.publicKey));
+    e.roots.find(w => spki(w).equals(spki(letztes))) ??
+    e.roots.find(w => letztes.issuer === w.subject && letztes.verify(w.publicKey));
   if (!anker) return 'fremde_wurzel';
   if (new Date(anker.validFrom) > jetzt || new Date(anker.validTo) < jetzt) return 'wurzel_abgelaufen';
   return null;
 }
 
-function pruefeBeschreibung(b: Beschreibung, e: Erwartung): string | null {
-  if (b.sicherheit === 'software' || b.keymintSicherheit === 'software') return 'nur_software';
+function checkDescription(b: Beschreibung, e: Erwartung): string | null {
+  if (b.sicherheit === 'software' || b.keymintSecurity === 'software') return 'nur_software';
   const hw = b.hardware;
   const z = (tag: number) => {
     const t = hw.get(tag);
-    return t ? derZahl(t) : null;
+    return t ? theNumber(t) : null;
   };
-  if (z(TAG.algorithmus) !== ALGORITHMUS_EC || z(TAG.kurve) !== KURVE_P256) return 'kein_ec_p256';
-  const zwecke = hw.get(TAG.zweck);
-  if (!zwecke || !kinder(erwarte(zwecke, UNIVERSAL.SET)).some(t => derZahl(t) === ZWECK_SIGNIEREN))
+  if (z(TAG.algorithm) !== ALGORITHM_EC || z(TAG.kurve) !== CURVE_P256) return 'kein_ec_p256';
+  const purposes = hw.get(TAG.zweck);
+  if (!purposes || !kinder(expect(purposes, UNIVERSAL.SET)).some(t => theNumber(t) === PURPOSE_SIGN))
     return 'kein_signieren';
-  if (z(TAG.herkunft) !== HERKUNFT_ERZEUGT) return 'importiert';
-  const boot = pruefeBoot(hw.get(TAG.rootOfTrust));
+  if (z(TAG.herkunft) !== ORIGIN_CREATED) return 'importiert';
+  const boot = checkBoot(hw.get(TAG.rootOfTrust));
   if (boot) return boot;
-  if (e.patchMindestens && (z(TAG.patchstand) ?? 0) < e.patchMindestens) return 'patchstand_alt';
+  if (e.patchAtLeast && (z(TAG.patchstand) ?? 0) < e.patchAtLeast) return 'patchstand_alt';
   // Die App verlangt die Sperre bei jeder Benutzung (Frist 0, siehe GeraeteSchluessel.kt).
-  if (hw.has(TAG.ohneAnmeldung) || !((z(TAG.anmeldeArt) ?? 0) & ANMELDE_ARTEN)) return 'ohne_sperre';
-  if ((z(TAG.anmeldeFrist) ?? 0) !== 0) return 'sperre_mit_frist';
-  const app = b.software.get(TAG.appKennung) ?? hw.get(TAG.appKennung);
+  if (hw.has(TAG.withoutLogin) || !((z(TAG.loginKind) ?? 0) & LOGIN_KINDS)) return 'ohne_sperre';
+  if ((z(TAG.loginDeadline) ?? 0) !== 0) return 'sperre_mit_frist';
+  const app = b.software.get(TAG.appId) ?? hw.get(TAG.appId);
   if (!app) return 'ohne_app';
-  const { pakete, digests } = leseAppKennung(app);
-  if (pakete.length !== 1 || pakete[0] !== e.paket) return 'fremdes_paket';
+  const { packages, digests } = readAppId(app);
+  if (packages.length !== 1 || packages[0] !== e.paket) return 'fremdes_paket';
   if (!digests.length || !digests.some(d => e.digests.includes(d))) return 'fremde_signatur';
   return null;
 }
 
 /** Die ganze Prüfung ohne die Nonce: Die vergleicht der Aufrufer mit seiner Datenbank. */
-export function pruefeKette(ketteB64: readonly string[], e: Erwartung): Pruefung {
-  if (!ketteB64.length || ketteB64.length > HOECHSTENS_GLIEDER) return { ok: false, grund: 'kette_laenge' };
+export function checkChain(chainB64: readonly string[], e: Erwartung): Pruefung {
+  if (!chainB64.length || chainB64.length > AT_MOST_LINKS) return { ok: false, grund: 'kette_laenge' };
   try {
-    const roh = ketteB64.map(s => Buffer.from(s, 'base64'));
+    const roh = chainB64.map(s => Buffer.from(s, 'base64'));
     const z = roh.map(d => new X509Certificate(d));
-    const fehler = pruefeGlieder(z, roh, e);
+    const fehler = checkLinks(z, roh, e);
     if (fehler) return { ok: false, grund: fehler };
     if (z.some(c => e.widerrufen.has(seriennummer(c)))) return { ok: false, grund: 'widerrufen' };
-    const ext = attestationErweiterung(roh[0] as Buffer);
+    const ext = attestationExtension(roh[0] as Buffer);
     if (!ext) return { ok: false, grund: 'ohne_attestation' };
-    const b = leseBeschreibung(ext);
-    const grund = pruefeBeschreibung(b, e);
+    const b = readDescription(ext);
+    const grund = checkDescription(b, e);
     if (grund) return { ok: false, grund };
     return {
       ok: true,
@@ -206,6 +206,6 @@ export function pruefeKette(ketteB64: readonly string[], e: Erwartung): Pruefung
       sicherheit: b.sicherheit,
     };
   } catch (err) {
-    return { ok: false, grund: err instanceof DerFehler ? 'der_fehler' : 'kette_unlesbar' };
+    return { ok: false, grund: err instanceof TheError ? 'der_fehler' : 'kette_unlesbar' };
   }
 }

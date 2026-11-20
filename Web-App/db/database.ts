@@ -4,36 +4,36 @@
 import { Pool, types as pgTypes, Client } from 'pg';
 import type { PoolClient, PoolConfig, QueryResult } from 'pg';
 import { Benachrichtigung, type Signale } from './pgNotify';
-import type { DbSchnittstelle } from './typen';
-import { fehlerCode, meldeFehler } from '../src/infra/fehler';
-import { konfig, datenbankVerbindung, systemVerbindung, systemWebVerbindung } from '../src/infra/konfig';
-import { queryWithRetry, istLesend } from './wiederholung';
-import { inTransaktionsPfad, zeilenKontext } from '../src/infra/kontoKontext';
+import type { DbInterface } from './typen';
+import { fehlerCode, reportError } from '../src/infra/fehler';
+import { konfig, databaseConnection, systemConnection, systemWebConnection } from '../src/infra/konfig';
+import { queryWithRetry, isReading } from './wiederholung';
+import { inTransactionPath, rowsContext } from '../src/infra/kontoKontext';
 import {
-  laufendeTx,
-  kontextSql,
-  txAbfragen,
-  commitBegleiter,
-  mitCommitBegleiter,
-  innereTransaktion,
-  NebenDerTransaktion,
-  neuerTxStand,
-  TransaktionBeendet,
-  UngebundeneAbfrage,
-  type TxGriffVon,
+  runningTx,
+  contextSql,
+  txQueries,
+  commitCompanion,
+  withCommitCompanion,
+  innerTransaction,
+  BesideTheTransaction,
+  newTxStatus,
+  TransactionEnded,
+  UnboundQuery,
+  type TxHandleOf,
   type TxStand,
 } from './transaktion';
-import { initSchema, initSchemaOnce, DARF_SCHEMA_AENDERN, type Erststart } from './schemaStart';
-import { sperreBestaende } from './txLock';
-import type { Bestandssperre, TxOptionen, Zugang } from '../src/infra/zugang';
+import { initSchema, initSchemaOnce, MAY_SCHEMA_CHANGE, type Erststart } from './schemaStart';
+import { lockInventories } from './txLock';
+import type { Bestandssperre, TxOptions, Zugang } from '../src/infra/zugang';
 
-export { queryWithRetry, istLesend } from './wiederholung';
+export { queryWithRetry, isReading } from './wiederholung';
 export {
-  mitCommitBegleiter,
-  TransaktionBeendet,
-  NebenDerTransaktion,
-  UngebundeneAbfrage,
-  GleichzeitigerSicherungspunkt,
+  withCommitCompanion,
+  TransactionEnded,
+  BesideTheTransaction,
+  UnboundQuery,
+  ConcurrentSavepoint,
 } from './transaktion';
 export type { Erststart } from './schemaStart';
 
@@ -42,18 +42,18 @@ export type { Erststart } from './schemaStart';
 
 /** NUMERIC als Zahl: Gerechnet wird in Zehntausendsteln (src/infra/geld.ts). Bis 2^53/10^4 trifft
  * Math.round(n × 10^4) den Wert genau (NUMERIC(12,4) reicht bis 10^8); darüber wirft er, statt still zu runden. */
-export function numericAlsZahl(v: string | null): number | null {
+export function numericAsNumber(v: string | null): number | null {
   if (v === null) return null;
   const n = Number(v);
-  if (Math.abs(n) >= GENAU_BIS) throw new RangeError(`NUMERIC ${v} ist in Zehntausendsteln nicht mehr genau`);
+  if (Math.abs(n) >= EXACT_UNTIL) throw new RangeError(`NUMERIC ${v} ist in Zehntausendsteln nicht mehr genau`);
   return n;
 }
-const GENAU_BIS = Number.MAX_SAFE_INTEGER / 10_000;
-pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, numericAlsZahl);
+const EXACT_UNTIL = Number.MAX_SAFE_INTEGER / 10_000;
+pgTypes.setTypeParser(pgTypes.builtins.NUMERIC, numericAsNumber);
 
 // Höchstens zwei Prozesse (web und jobs) mit je 15 Verbindungen: weit unter
 // max_connections, mit Luft für Werkzeuge und den CSV-Importprozess.
-const VORGABE_POOL = 15;
+const DEFAULT_POOL = 15;
 
 /** Was eine Verbindung braucht; der Prozess liest es einmal und reicht es weiter. */
 export interface DbKonfig {
@@ -66,29 +66,29 @@ export interface DbKonfig {
   /** In Tests wirft ein Ersatzwert in einer Transaktion auch ausserhalb der Datenbank (src/infra/fehler.ts). */
   streng?: boolean;
   /** Die Zeitzone des Erfassungstags, beim Start in die Datenbank geschrieben (schemaStart.ts). */
-  erfassungZeitzone?: string;
+  entryTimeZone?: string;
 }
 
 /** Was der Rumpf einer Transaktion bekommt: ihre Abfragen und einen Zugang `db` über ihrer
  * Verbindung, aus dem der Kontext `t` entsteht. */
-export interface TxGriff extends TxGriffVon<Db> {}
+export interface TxGriff extends TxHandleOf<Db> {}
 
-export function dbKonfigAusUmgebung(): DbKonfig {
+export function dbKonfigFromEnvironment(): DbKonfig {
   const K = konfig();
   return {
-    verbindung: datenbankVerbindung(),
-    system: systemVerbindung(),
-    systemWeb: systemWebVerbindung(),
+    verbindung: databaseConnection(),
+    system: systemConnection(),
+    systemWeb: systemWebConnection(),
     streng: K.nodeEnv === 'test',
-    erfassungZeitzone: K.erfassungZeitzone,
+    entryTimeZone: K.entryTimeZone,
     pool: {
-      max: K.pgPoolMax ?? VORGABE_POOL,
+      max: K.pgPoolMax ?? DEFAULT_POOL,
       min: K.pgPoolMin,
       idleTimeoutMillis: K.pgIdleMs,
       connectionTimeoutMillis: K.pgConnMs,
       // Über die Verbindungsoptionen statt je Anfrage. Die Zeitzone des
-      // Erfassungstags steht in der Datenbank (schreibeErfassungsZeitzone).
-      options: `-c statement_timeout=${K.pgStmtMs} -c idle_in_transaction_session_timeout=${K.pgLeerlaufTxMs} -c lock_timeout=${K.pgSperreMs}`,
+      // Erfassungstags steht in der Datenbank (writeEntryTimeZone).
+      options: `-c statement_timeout=${K.pgStmtMs} -c idle_in_transaction_session_timeout=${K.pgIdleTxMs} -c lock_timeout=${K.pgSperreMs}`,
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
     },
@@ -99,44 +99,44 @@ export function dbKonfigAusUmgebung(): DbKonfig {
 export type Zeile<T extends object = object> = T & Record<string, unknown>;
 
 // Benannt, damit tx-Rückrufe geprüft werden.
-export type { DbSchnittstelle };
+export type { DbInterface };
 export type { Treffer } from './typen';
 
-// In einer äusseren Transaktion ist wiederholeBeiKonflikt ohne Wirkung; dort entscheidet deren Option.
-export type { TxOptionen };
-const TX_KONFLIKT = new Set(['40P01', '40001']);
-const TX_NEUVERSUCHE = 2;
+// In einer äusseren Transaktion ist repeatAtConflict ohne Wirkung; dort entscheidet deren Option.
+export type { TxOptions };
+const TX_CONFLICT = new Set(['40P01', '40001']);
+const TX_RETRIES = 2;
 
-export interface Db extends DbSchnittstelle, Zugang<Db> {
+export interface Db extends DbInterface, Zugang<Db> {
   readonly pool: Pool;
   /** Der Pool der Systemrolle, ohne eigene Rolle derselbe wie `pool`. */
   readonly systemPool: Pool;
   /** Der Pool für den Systemrahmen von HTTP-Anfragen, ohne eigene Rolle derselbe wie `systemPool`. */
   readonly systemWebPool: Pool;
   /** Ob der Systemrahmen den Zeilenschutz wirklich aufhebt (BYPASSRLS, Eigentum oder Superuser). */
-  systemrahmenWirkt(): Promise<boolean>;
+  systemrahmenActs(): Promise<boolean>;
   /** LISTEN/NOTIFY dieses Zugangs (db/pgNotify.ts); horcht erst beim ersten listen(). In einer
    * Transaktion sendet sie über deren Verbindung: Das Signal gilt mit dem COMMIT. */
-  readonly benachrichtigung: Signale;
-  transaction<T>(fn: (tx: TxGriff) => Promise<T>, o?: TxOptionen): Promise<T>;
+  readonly notification: Signale;
+  transaction<T>(fn: (tx: TxGriff) => Promise<T>, o?: TxOptions): Promise<T>;
   /** Ob dieser Zugang an einer Transaktion hängt oder dieser Aufrufpfad eine offen hält. */
-  inTransaktion(): boolean;
+  inTransaction(): boolean;
   getPoolStats(): { total: number; idle: number; waiting: number; active: number };
-  datenbankAntwortet(): Promise<boolean>;
-  alsSuperuserVerbunden(): Promise<boolean>;
-  eigeneVerbindung(): Promise<Client>;
-  /** Siehe mitCommitBegleiter (transaktion.ts): gilt für die Transaktionen dieses Aufrufpfads. */
-  mitCommitBegleiter<T>(begleiter: (tx: DbSchnittstelle) => Promise<void>, arbeit: () => T): T;
+  databaseResponds(): Promise<boolean>;
+  asSuperuserConnected(): Promise<boolean>;
+  ownConnection(): Promise<Client>;
+  /** Siehe withCommitCompanion (transaktion.ts): gilt für die Transaktionen dieses Aufrufpfads. */
+  withCommitCompanion<T>(companion: (tx: DbInterface) => Promise<void>, work: () => T): T;
   initSchema(): Promise<boolean>;
   initSchemaOnce(): Promise<void>;
   /** Ob die Verbindung Schema-Objekte anlegen darf: Eigentümerin oder Superuser, nicht die Laufzeitrolle. */
-  darfSchemaAendern(): Promise<boolean>;
+  changeMaySchema(): Promise<boolean>;
 }
 
 // SQL geht unverändert an PostgreSQL.
 
 /** Pool der Laufzeitrolle und, wenn konfiguriert, der Systemrollen. */
-function erzeugePools(k: DbKonfig): { pool: Pool; systemPool: Pool; systemWebPool: Pool } {
+function createPools(k: DbKonfig): { pool: Pool; systemPool: Pool; systemWebPool: Pool } {
   // Pipeline: abfrage() schickt BEGIN mit Kontext, Abfrage und COMMIT zugleich, ein Roundtrip statt drei.
   const pool = new Pool({ ...k.verbindung, ...k.pool, pipeline: true });
   // Ohne Lauscher brächte der Abriss einer ruhenden Verbindung den Prozess zu Fall.
@@ -161,38 +161,38 @@ function erzeugePools(k: DbKonfig): { pool: Pool; systemPool: Pool; systemWebPoo
   return { pool, systemPool, systemWebPool };
 }
 
-/** Was abfrage() und einmaligeTransaktion() über ihren Zugang wissen müssen. */
+/** Was abfrage() und oneTimeTransaction() über ihren Zugang wissen müssen. */
 interface Rahmen {
   ich: object;
   pool: Pool;
   systemPool: Pool;
   systemWebPool: Pool;
   streng: boolean;
-  /** Der beständige Zugang je Verbindung (verbindungsZugang). */
-  jeVerbindung: WeakMap<PoolClient, Verbindungsplatz>;
+  /** Der beständige Zugang je Verbindung (connectionAccess). */
+  jeConnection: WeakMap<PoolClient, Verbindungsplatz>;
 }
 
-function poolDesRahmens(r: Rahmen): Pool {
-  const { system, web } = zeilenKontext();
+function poolOfFrame(r: Rahmen): Pool {
+  const { system, web } = rowsContext();
   return system ? (web ? r.systemWebPool : r.systemPool) : r.pool;
 }
 
 /** Eine Transaktion auf der Verbindung der anderen Rolle gilt nicht; wer mitten in
  * ihr den Rahmen wechselt, fragte über eine zweite Verbindung neben ihr (ohne ihren
  * Stand, womöglich gegen ihre Sperren). Das ist ein Fehler: Rahmen vor der Transaktion wählen. */
-function offeneTx(r: Rahmen): TxStand | null {
-  const t = laufendeTx();
+function openTx(r: Rahmen): TxStand | null {
+  const t = runningTx();
   return t?.offen && t.db === r.ich ? t : null;
 }
-function pruefeRahmen(r: Rahmen, t: TxStand): void {
-  if (t.pool !== poolDesRahmens(r)) throw new NebenDerTransaktion(t.pool !== r.pool);
+function checkFrame(r: Rahmen, t: TxStand): void {
+  if (t.pool !== poolOfFrame(r)) throw new BesideTheTransaction(t.pool !== r.pool);
 }
 /** Der ungebundene Zugang fragt nie in eine offene Transaktion dieses Pfads hinein. */
 function wache(r: Rahmen): void {
-  const t = offeneTx(r);
+  const t = openTx(r);
   if (!t) return;
-  pruefeRahmen(r, t);
-  throw new UngebundeneAbfrage();
+  checkFrame(r, t);
+  throw new UnboundQuery();
 }
 
 /** Ausserhalb einer Transaktion: ohne Konto und Systemrahmen direkt über den
@@ -202,15 +202,15 @@ function wache(r: Rahmen): void {
  * Verbindung nur im Leerlauf, also ohne Kontext. */
 async function abfrage(r: Rahmen, sql: string, params?: unknown[]): Promise<QueryResult> {
   wache(r);
-  const kontext = kontextSql();
-  const p = poolDesRahmens(r);
+  const kontext = contextSql();
+  const p = poolOfFrame(r);
   if (!kontext) return p.query(sql, params);
   const client = await p.connect();
   let kaputt: Error | undefined;
-  const abriss = (e: Error) => {
+  const teardown = (e: Error) => {
     kaputt = e;
   };
-  client.on('error', abriss);
+  client.on('error', teardown);
   try {
     const [anfang, ergebnis, ende] = await Promise.allSettled([
       client.query(`BEGIN; ${kontext}`),
@@ -221,32 +221,32 @@ async function abfrage(r: Rahmen, sql: string, params?: unknown[]): Promise<Quer
     for (const x of [anfang, ergebnis, ende]) if (x.status === 'rejected') throw x.reason;
     return (ergebnis as PromiseFulfilledResult<QueryResult>).value;
   } finally {
-    client.off('error', abriss);
+    client.off('error', teardown);
     client.release(kaputt);
   }
 }
 
-async function einmaligeTransaktion<T>(
+async function oneTimeTransaction<T>(
   r: Rahmen,
   griff: (stand: TxStand) => TxGriff,
   fn: (tx: TxGriff) => Promise<T>,
 ): Promise<T> {
-  const p = poolDesRahmens(r);
+  const p = poolOfFrame(r);
   const client = await p.connect();
-  const stand = neuerTxStand({ client, db: r.ich, pool: p, streng: r.streng });
+  const stand = newTxStatus({ client, db: r.ich, pool: p, streng: r.streng });
   let kaputt: Error | undefined;
   // Reisst die Verbindung mitten in der Transaktion ab, meldet der Client das
   // als 'error'-Ereignis; ohne Zuhörer beendete es den ganzen Prozess.
-  const abriss = (e: Error) => {
+  const teardown = (e: Error) => {
     kaputt = e;
   };
-  client.on('error', abriss);
+  client.on('error', teardown);
   try {
-    // Der Kontext im selben Roundtrip wie BEGIN; kontextAbgleich() folgt danach Wechseln.
-    stand.kontext = kontextSql();
+    // Der Kontext im selben Roundtrip wie BEGIN; contextSync() folgt danach Wechseln.
+    stand.kontext = contextSql();
     await client.query(stand.kontext ? `BEGIN; ${stand.kontext}` : 'BEGIN');
-    const result = await inTransaktionsPfad(stand, () => fn(griff(stand)));
-    await commitBegleiter()?.(griff(stand));
+    const result = await inTransactionPath(stand, () => fn(griff(stand)));
+    await commitCompanion()?.(griff(stand));
     stand.offen = false;
     await client.query('COMMIT');
     return result;
@@ -261,26 +261,26 @@ async function einmaligeTransaktion<T>(
     }
     throw e;
   } finally {
-    client.off('error', abriss);
+    client.off('error', teardown);
     client.release(kaputt);
   }
 }
 
 /** Die Sperren vor dem Rumpf, in derselben Transaktion. */
-function mitSperren<T>(rumpf: (tx: TxGriff) => Promise<T>, sperren?: readonly Bestandssperre[]) {
+function lockWith<T>(rumpf: (tx: TxGriff) => Promise<T>, sperren?: readonly Bestandssperre[]) {
   if (!sperren?.length) return rumpf;
   return async (tx: TxGriff) => {
-    await sperreBestaende(tx, sperren);
+    await lockInventories(tx, sperren);
     return rumpf(tx);
   };
 }
 
-async function mitWiederholung<T>(einmal: () => Promise<T>, o: TxOptionen): Promise<T> {
+async function withRetry<T>(einmal: () => Promise<T>, o: TxOptions): Promise<T> {
   for (let versuch = 0; ; versuch++) {
     try {
       return await einmal();
     } catch (e) {
-      if (!o.wiederholeBeiKonflikt || versuch >= TX_NEUVERSUCHE || !TX_KONFLIKT.has(fehlerCode(e) ?? '')) throw e;
+      if (!o.repeatAtConflict || versuch >= TX_RETRIES || !TX_CONFLICT.has(fehlerCode(e) ?? '')) throw e;
       // Versetzt, damit die Gegenspieler nicht im Gleichschritt wieder aufeinandertreffen.
       await new Promise(res => setTimeout(res, 25 * (versuch + 1) + Math.random() * 50));
     }
@@ -289,24 +289,18 @@ async function mitWiederholung<T>(einmal: () => Promise<T>, o: TxOptionen): Prom
 
 /** Der Griff einer Transaktion oder eines ihrer Sicherungspunkte (`punkt`): Abfragen über
  * ihre Verbindung und ein Zugang darüber; eine Transaktion in ihm wird ein Sicherungspunkt. */
-function griff(
-  r: Rahmen,
-  zugang: Db,
-  zaehler: { sicherungspunkte: number },
-  stand: TxStand,
-  punkt: string | null,
-): TxGriff {
-  const q = txAbfragen(stand, () => pruefeRahmen(r, stand));
-  if (punkt === null) return { ...q, db: verbindungsZugang(r, zugang, zaehler, stand) };
+function griff(r: Rahmen, zugang: Db, zaehler: { savepoints: number }, stand: TxStand, punkt: string | null): TxGriff {
+  const q = txQueries(stand, () => checkFrame(r, stand));
+  if (punkt === null) return { ...q, db: connectionAccess(r, zugang, zaehler, stand) };
   const tdb: Db = {
     ...zugang,
     ...q,
     transaction: (fn, o = {}) =>
-      innereTransaktion(stand, punkt, ++zaehler.sicherungspunkte, name =>
-        mitSperren(fn, o.sperren)(griff(r, zugang, zaehler, stand, name)),
+      innerTransaction(stand, punkt, ++zaehler.savepoints, name =>
+        lockWith(fn, o.sperren)(griff(r, zugang, zaehler, stand, name)),
       ),
-    benachrichtigung: zugang.benachrichtigung.ueber(q.run),
-    inTransaktion: () => true,
+    notification: zugang.notification.ueber(q.run),
+    inTransaction: () => true,
   };
   return { ...q, db: tdb };
 }
@@ -314,28 +308,28 @@ function griff(
 /** Je Verbindung ein beständiger Zugang für die äusserste Ebene ihrer Transaktion: Die Bereiche
  * über ihm (Bereich.ueber) entstehen einmal je Verbindung statt je Transaktion (gemessen gut 1 ms
  * je Transaktion). Er fragt über die Transaktion, die gerade auf der Verbindung läuft, und nur aus
- * deren Aufrufpfad; ein Nachzügler einer früheren bekommt TransaktionBeendet. */
+ * deren Aufrufpfad; ein Nachzügler einer früheren bekommt TransactionEnded. */
 interface Verbindungsplatz {
   stand: TxStand | null;
-  q: DbSchnittstelle | null;
+  q: DbInterface | null;
   db: Db;
 }
-function verbindungsZugang(r: Rahmen, zugang: Db, zaehler: { sicherungspunkte: number }, stand: TxStand): Db {
-  const da = r.jeVerbindung.get(stand.client);
-  const platz = da ?? neuerPlatz(r, zugang, zaehler);
-  if (!da) r.jeVerbindung.set(stand.client, platz);
+function connectionAccess(r: Rahmen, zugang: Db, zaehler: { savepoints: number }, stand: TxStand): Db {
+  const da = r.jeConnection.get(stand.client);
+  const platz = da ?? newSpace(r, zugang, zaehler);
+  if (!da) r.jeConnection.set(stand.client, platz);
   platz.stand = stand;
-  platz.q = txAbfragen(stand, () => pruefeRahmen(r, stand));
+  platz.q = txQueries(stand, () => checkFrame(r, stand));
   return platz.db;
 }
 
-function neuerPlatz(r: Rahmen, zugang: Db, zaehler: { sicherungspunkte: number }): Verbindungsplatz {
-  const aktiv = (): { stand: TxStand; q: DbSchnittstelle } => {
+function newSpace(r: Rahmen, zugang: Db, zaehler: { savepoints: number }): Verbindungsplatz {
+  const aktiv = (): { stand: TxStand; q: DbInterface } => {
     const { stand, q } = platz;
-    if (!stand || !q || laufendeTx() !== stand) throw new TransaktionBeendet();
+    if (!stand || !q || runningTx() !== stand) throw new TransactionEnded();
     return { stand, q };
   };
-  const q: DbSchnittstelle = {
+  const q: DbInterface = {
     all: (sql, p) => aktiv().q.all(sql, p),
     get: (sql, p) => aktiv().q.get(sql, p),
     run: (sql, p) => aktiv().q.run(sql, p),
@@ -349,12 +343,12 @@ function neuerPlatz(r: Rahmen, zugang: Db, zaehler: { sicherungspunkte: number }
       ...q,
       transaction: (fn, o = {}) => {
         const { stand } = aktiv();
-        return innereTransaktion(stand, null, ++zaehler.sicherungspunkte, name =>
-          mitSperren(fn, o.sperren)(griff(r, zugang, zaehler, stand, name)),
+        return innerTransaction(stand, null, ++zaehler.savepoints, name =>
+          lockWith(fn, o.sperren)(griff(r, zugang, zaehler, stand, name)),
         );
       },
-      benachrichtigung: zugang.benachrichtigung.ueber(q.run),
-      inTransaktion: () => true,
+      notification: zugang.notification.ueber(q.run),
+      inTransaction: () => true,
     },
   };
   return platz;
@@ -362,23 +356,23 @@ function neuerPlatz(r: Rahmen, zugang: Db, zaehler: { sicherungspunkte: number }
 
 /** Ein Zugang zur Datenbank mit eigenem Pool. Der Pool entsteht hier, nicht
  * beim Import: Wer die Adresse kennt, ruft die Fabrik. */
-export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
-  const { pool, systemPool, systemWebPool } = erzeugePools(k);
+export function createDb(k: DbKonfig, o: { firstStart?: Erststart } = {}): Db {
+  const { pool, systemPool, systemWebPool } = createPools(k);
   const r: Rahmen = {
     ich: {},
     pool,
     systemPool,
     systemWebPool,
     streng: k.streng === true,
-    jeVerbindung: new WeakMap(),
+    jeConnection: new WeakMap(),
   };
-  const zaehler = { sicherungspunkte: 0 };
+  const zaehler = { savepoints: 0 };
 
   /** Alle Zeilen einer Abfrage. T ist ungeprüft: Der Aufrufer sagt, welche
    * Spalten sein SQL liefert; ohne Angabe bleibt es `unknown`. */
   async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
     wache(r);
-    return queryWithRetry(async () => (await abfrage(r, sql, params)).rows, istLesend(sql));
+    return queryWithRetry(async () => (await abfrage(r, sql, params)).rows, isReading(sql));
   }
   async function get<T = unknown>(sql: string, params: unknown[] = []): Promise<T | undefined> {
     return (await all<T>(sql, params))[0];
@@ -388,27 +382,27 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
     wache(r);
     return queryWithRetry(async () => ({ changes: (await abfrage(r, sql, params)).rowCount || 0 }), false);
   }
-  async function transaction<T>(rumpf: (tx: TxGriff) => Promise<T>, opt: TxOptionen = {}): Promise<T> {
+  async function transaction<T>(rumpf: (tx: TxGriff) => Promise<T>, opt: TxOptions = {}): Promise<T> {
     wache(r);
-    return mitWiederholung(
-      () => einmaligeTransaktion(r, stand => griff(r, zugang, zaehler, stand, null), mitSperren(rumpf, opt.sperren)),
+    return withRetry(
+      () => oneTimeTransaction(r, stand => griff(r, zugang, zaehler, stand, null), lockWith(rumpf, opt.sperren)),
       opt,
     );
   }
 
   /** Eine EIGENE Verbindung, die NICHT aus dem Pool kommt. */
-  async function eigeneVerbindung() {
+  async function ownConnection() {
     const c = new Client({ ...k.verbindung });
     await c.connect();
     return c;
   }
-  const dieBasis = () => initSchema(eigeneVerbindung, o.erststart);
+  const dieBasis = () => initSchema(ownConnection, o.firstStart);
 
   const zugang: Db = {
     pool,
     systemPool,
     systemWebPool,
-    systemrahmenWirkt: async () =>
+    systemrahmenActs: async () =>
       (
         await systemPool.query<{ frei: boolean }>(
           `SELECT r.rolsuper OR r.rolbypassrls OR pg_has_role(current_user, c.relowner, 'USAGE') AS frei
@@ -427,30 +421,30 @@ export function erzeugeDb(k: DbKonfig, o: { erststart?: Erststart } = {}): Db {
       initSchemaOnce(
         pool,
         dieBasis,
-        k.erfassungZeitzone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
+        k.entryTimeZone ?? (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'),
         systemPool,
       ),
-    eigeneVerbindung,
-    mitCommitBegleiter,
-    benachrichtigung: new Benachrichtigung(k.verbindung, (sql, p) => run(sql, p)),
-    darfSchemaAendern: async () => (await get<{ d: boolean }>(DARF_SCHEMA_AENDERN))?.d === true,
-    inTransaktion: () => offeneTx(r) !== null,
+    ownConnection,
+    withCommitCompanion,
+    notification: new Benachrichtigung(k.verbindung, (sql, p) => run(sql, p)),
+    changeMaySchema: async () => (await get<{ d: boolean }>(MAY_SCHEMA_CHANGE))?.d === true,
+    inTransaction: () => openTx(r) !== null,
     getPoolStats: () => ({
       total: pool.totalCount,
       idle: pool.idleCount,
       waiting: pool.waitingCount,
       active: pool.totalCount - pool.idleCount,
     }),
-    datenbankAntwortet: () =>
+    databaseResponds: () =>
       pool.query('SELECT 1').then(
         () => true,
         (e: unknown) => {
-          meldeFehler('health:ready', e);
+          reportError('health:ready', e);
           return false;
         },
       ),
     // Gefragt ist die Rolle der Anfragen, auch wenn der Start im Systemrahmen fragt.
-    alsSuperuserVerbunden: async () =>
+    asSuperuserConnected: async () =>
       !!(await pool.query<{ s: boolean }>('SELECT rolsuper AS s FROM pg_roles WHERE rolname = current_user')).rows[0]
         ?.s,
   };

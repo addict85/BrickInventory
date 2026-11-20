@@ -1,10 +1,21 @@
 import { z } from 'zod';
 import { VerwaltungZustand, VerwaltungDesign } from './verwaltung';
-import { type Route, Erfolg, ganz, zeit, bestaetigt, OHNE_RUMPF, TEXT, ZUSTAND, EINSTELLUNGEN, EINFACH } from './grund';
-import { GLOBALE_REGELN } from './globaleRegeln';
+import {
+  type Route,
+  Erfolg,
+  ganz,
+  zeit,
+  bestaetigt,
+  WITHOUT_BODY,
+  TEXT,
+  ZUSTAND,
+  EINSTELLUNGEN,
+  SIMPLE,
+} from './grund';
+import { GLOBAL_RULES } from './globaleRegeln';
 
 /** Was POST /settings annimmt: global nur vom Verwalter, je Konto von jedem. */
-export const GLOBALE_EINSTELLUNGEN = [
+export const GLOBAL_SETTINGS = [
   'bricklink_consumer_key',
   'bricklink_consumer_secret',
   'bricklink_token',
@@ -28,12 +39,12 @@ export const GLOBALE_EINSTELLUNGEN = [
   'default_price_condition',
   'gutschein_land',
 ] as const;
-export const KONTO_EINSTELLUNGEN = ['currency', 'language', 'user_default_condition'] as const;
-type Einstellung = (typeof GLOBALE_EINSTELLUNGEN)[number] | (typeof KONTO_EINSTELLUNGEN)[number];
-const einstellungsFelder = Object.fromEntries(
-  [...GLOBALE_EINSTELLUNGEN, ...KONTO_EINSTELLUNGEN].map(k => [k, EINFACH.optional()]),
-) as Record<Einstellung, z.ZodOptional<typeof EINFACH>>;
-import { DEGRADIERT, GenericResponse } from './gemeinsam';
+export const ACCOUNT_SETTINGS = ['currency', 'language', 'user_default_condition'] as const;
+type Einstellung = (typeof GLOBAL_SETTINGS)[number] | (typeof ACCOUNT_SETTINGS)[number];
+const settingFields = Object.fromEntries(
+  [...GLOBAL_SETTINGS, ...ACCOUNT_SETTINGS].map(k => [k, SIMPLE.optional()]),
+) as Record<Einstellung, z.ZodOptional<typeof SIMPLE>>;
+import { DEGRADED, GenericResponse } from './gemeinsam';
 
 export const AppThemeResponse = z.looseObject({
   success: z.boolean(),
@@ -95,7 +106,7 @@ export const EinrichtungStand = z.looseObject({
   }),
   basis_url: z.string().nullable(),
   https: z.boolean(),
-  degradiert: DEGRADIERT,
+  degradiert: DEGRADED,
 });
 /** Die Einstellungen als Text, wie sie gespeichert sind; Geheimnisse maskiert. */
 export const RoheEinstellungen = z.looseObject({
@@ -119,13 +130,13 @@ export const Sicherung = z.looseObject({
   global: z.record(z.string(), z.string()),
   user_settings: z.record(z.string(), z.string()),
 });
-/** Die Importdatei: was der Export schreibt, ältere Fassungen eingeschlossen. Werte prüft GLOBALE_REGELN. */
+/** Die Importdatei: was der Export schreibt, ältere Fassungen eingeschlossen. Werte prüft GLOBAL_RULES. */
 export const KonfigExport = z.looseObject({
   version: z.string().max(20).optional(),
   exported_at: z.string().max(40).optional(),
   exported_by: z.string().max(200).nullable().optional(),
-  global: z.record(z.string().max(64), EINFACH).optional(),
-  user_settings: z.record(z.string().max(64), EINFACH).optional(),
+  global: z.record(z.string().max(64), SIMPLE).optional(),
+  user_settings: z.record(z.string().max(64), SIMPLE).optional(),
 });
 export const SicherungEingespielt = z.looseObject({
   success: z.literal(true),
@@ -166,17 +177,17 @@ export const routen = {
     antwort: VerwaltungZustand,
   },
   'POST /api/v1/settings/admin/theme': {
-    eingabe: z.strictObject({ theme: GLOBALE_REGELN.app_theme }),
+    eingabe: z.strictObject({ theme: GLOBAL_RULES.app_theme }),
     antwort: VerwaltungDesign,
   },
   // `klein`: sechs feste Prüfschritte, die nicht mit dem Bestand wachsen.
   'GET /api/v1/einrichtung/stand': { antwort: EinrichtungStand, klein: true },
   'GET /api/v1/settings/einrichtung': { antwort: Einrichtung },
-  'POST /api/v1/settings/einrichtung/fertig': { eingabe: OHNE_RUMPF, antwort: Erfolg },
+  'POST /api/v1/settings/einrichtung/fertig': { eingabe: WITHOUT_BODY, antwort: Erfolg },
   'GET /api/v1/settings/raw': { antwort: RoheEinstellungen },
   'GET /api/v1/settings/tls': { antwort: TlsStand },
   'GET /api/v1/settings/user/default-condition': { antwort: DefaultConditionResponse },
-  'POST /api/v1/settings': { antwort: Erfolg, ...bestaetigt(einstellungsFelder, 'admin_password') },
+  'POST /api/v1/settings': { antwort: Erfolg, ...bestaetigt(settingFields, 'admin_password') },
   'GET /api/v1/settings/export': { antwort: Sicherung },
   'POST /api/v1/settings/import': { formular: true, antwort: SicherungEingespielt },
   'GET /api/v1/health': { antwort: Gesundheit },

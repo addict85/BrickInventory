@@ -10,24 +10,24 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Der Nachzug nach dem Erfassen haengt an einem setTimeout und laeuft NACH
 // diesem Test, gegen einen dann geschlossenen Pool. Gleiche Vorsichtsmassnahme
 // wie in set-add-exists-db.test.js.
-let gestellteAddSet = null;
-let stellungGerufen = 0;
+let posedAddSet = null;
+let positionCalled = 0;
 const Module = require('node:module');
-const _echtesRequire = Module.prototype.require;
+const _realRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
-  const m = _echtesRequire.call(this, name, ...rest);
+  const m = _realRequire.call(this, name, ...rest);
   // Gestellt wird das Anlegen; das Ergänzen im Strom ohne Netz.
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
       // Die Fabrik bindet beim Bau (mit()): Der Ersatz prüft die Stellung erst beim Aufruf.
       get: (t, k) => {
-        if (k === 'setErgaenzen')
-          return (sk, ...a) => (gestellteAddSet !== null ? Promise.resolve({ name: 'Testset' }) : t[k](sk, ...a));
+        if (k === 'setSupplement')
+          return (sk, ...a) => (posedAddSet !== null ? Promise.resolve({ name: 'Testset' }) : t[k](sk, ...a));
         if (k !== 'setErfassen') return t[k];
         return async (sk, ...args) => {
-          if (gestellteAddSet === null) return t[k](sk, ...args);
-          stellungGerufen++;
-          return gestellteAddSet(...args);
+          if (posedAddSet === null) return t[k](sk, ...args);
+          positionCalled++;
+          return posedAddSet(...args);
         };
       },
     });
@@ -35,23 +35,23 @@ Module.prototype.require = function (name, ...rest) {
 };
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { testDaten } = require('./helpers/sources');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { testData } = require('./helpers/sources');
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NUTZER = `neu-form-${process.pid}`;
   const basis = 96000 + (process.pid % 900);
   const DA = `${basis}-1`; // existiert, fuer Schritt 1
-  const NEU_A = `${basis + 100}-1`; // existiert nicht, fuer den Strom
-  const NEU_B = `${basis + 200}-1`; // existiert nicht, fuer die Token-Route
+  const NEW_A = `${basis + 100}-1`; // existiert nicht, fuer den Strom
+  const NEW_B = `${basis + 200}-1`; // existiert nicht, fuer die Token-Route
 
   const aufraeumen = async () => {
-    for (const sn of [DA, NEU_A, NEU_B]) {
+    for (const sn of [DA, NEW_A, NEW_B]) {
       await db.run(`DELETE FROM sets WHERE set_number=$1`, [sn]).catch(() => {});
       await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [sn]).catch(() => {});
     }
@@ -61,7 +61,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
   await aufraeumen();
-  await haeltSet(db, uid, DA, 0); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, uid, DA, 0); // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,10,'N',1)`,
@@ -76,8 +76,8 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
     // Stuende `success` schon im Ergebnis von setErfassen(), pruefte alles Weitere
     // nichts: Die Routen muessten es dann gar nicht erst hinzufuegen. Der
     // „exists"-Zweig laeuft rein auf der Datenbank und braucht kein Netz.
-    const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
-    const echt = await setErfassen({ anfragender: uid, setNumber: DA });
+    const { setErfassen } = require('./helpers/sources').areaPage('sets');
+    const echt = await setErfassen({ requester: uid, setNumber: DA });
     assert.equal(echt.action, 'exists', 'der Aufbau des Tests stimmt nicht mehr');
     assert.equal(
       'success' in echt,
@@ -89,20 +89,20 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
     //
     // Gestellt wird GENAU die Form, die setErfassen() fuer ein neues Set
     // zurueckgibt.
-    gestellteAddSet = async e => ({
+    posedAddSet = async e => ({
       action: 'added',
       set_number: e.setNumber,
       name: 'Testset',
       katalog_offen: true,
       ergaenzung: 'ausstehend',
-      besitzer: e.anfragender,
+      besitzer: e.requester,
     });
-    const vorher = stellungGerufen;
+    const vorher = positionCalled;
 
     const strom = await fetch(`${base}/api/v1/sets/add-stream`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ set_number: NEU_A, quantity: 1 }),
+      body: JSON.stringify({ set_number: NEW_A, quantity: 1 }),
     });
     assert.equal(strom.status, 200);
     assert.match(
@@ -112,7 +112,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
     );
     const roh = await strom.text();
     assert.ok(
-      stellungGerufen > vorher,
+      positionCalled > vorher,
       'setErfassen() wurde nicht gerufen — die Stellung greift nicht, der Test prueft nichts',
     );
 
@@ -140,18 +140,18 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
         'beim Anlegen JEDES neuen Sets ab, obwohl das Set angelegt ist',
     );
     assert.equal(fertig.action, 'added');
-    assert.equal(fertig.set_number, NEU_A);
+    assert.equal(fertig.set_number, NEW_A);
 
     // ── 3. Die Token-Route mit demselben Ergebnis ───────────────────────────
-    const vorher2 = stellungGerufen;
+    const vorher2 = positionCalled;
     const token = await fetch(`${base}/api/v1/sets`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ set_number: NEU_B, quantity: 1 }),
+      body: JSON.stringify({ set_number: NEW_B, quantity: 1 }),
     });
     assert.equal(token.status, 200);
     const tb = await token.json();
-    assert.ok(stellungGerufen > vorher2, 'setErfassen() wurde auf der Token-Route nicht gerufen');
+    assert.ok(positionCalled > vorher2, 'setErfassen() wurde auf der Token-Route nicht gerufen');
     assert.equal(tb.success, true);
 
     // ── 4. Eine Antwort, eine Form ──────────────────────────────────────────
@@ -172,24 +172,24 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
 
     // 5. Die App verlangt nichts, was der Server nicht schickt: die Pflichtfelder ihres
     // Modells (shared/app-schnittstelle.json, aus ihrem Quelltext erzeugt).
-    const modell = require('./helpers/vertrag').appSchnittstelle().modelle.AddSetResponse;
-    assert.ok(modell && modell.felder.length >= 5, 'Modell AddSetResponse nicht gefunden — umbenannt?');
-    const zeilen = modell.felder.map(name => ({ name, pflicht: modell.pflicht.includes(name) }));
+    const model = require('./helpers/vertrag').appSchnittstelle().modelle.AddSetResponse;
+    assert.ok(model && model.felder.length >= 5, 'Modell AddSetResponse nicht gefunden — umbenannt?');
+    const zeilen = model.felder.map(name => ({ name, pflicht: model.pflicht.includes(name) }));
 
     const geliefert = new Set([...Object.keys(fertig), ...Object.keys(tb)]);
-    const verlangtUndFehlt = zeilen.filter(f => f.pflicht && !geliefert.has(f.name)).map(f => f.name);
+    const requiredAndMissing = zeilen.filter(f => f.pflicht && !geliefert.has(f.name)).map(f => f.name);
     assert.deepEqual(
-      verlangtUndFehlt,
+      requiredAndMissing,
       [],
       'AddSetResponse verlangt Felder, die beim Anlegen eines neuen Sets nicht ' +
         'ankommen:\n  ' +
-        verlangtUndFehlt.join('\n  ') +
+        requiredAndMissing.join('\n  ') +
         '\nkotlinx.serialization bricht dann ab, und die App meldet einen Fehler ' +
         'fuer ein Set, das angelegt ist. Entweder schickt der Server das Feld, ' +
         'oder es bekommt einen Vorgabewert — „Feld fehlt" ist keine Aussage.',
     );
   } finally {
-    gestellteAddSet = null;
+    posedAddSet = null;
     await aufraeumen();
     await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
     await new Promise(r => srv.close(r));

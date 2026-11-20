@@ -59,14 +59,14 @@ test('Geheimnisse nur als Dateien unter /run/secrets', t => {
   let dateien = 0;
   for (const [name, d] of Object.entries(j.services)) {
     const env = d.environment || {};
-    const verdaechtig = Object.keys(env).filter(k => /(PASSWORD|SECRET|_PASS|DATABASE_URL|DATA_KEY)$/.test(k));
-    assert.deepEqual(verdaechtig, [], `${name}: Geheimnis als Umgebungsvariable (${verdaechtig})`);
-    const eingehaengt = (d.secrets || []).map(s => s.target || `/run/secrets/${s.source}`);
+    const suspicious = Object.keys(env).filter(k => /(PASSWORD|SECRET|_PASS|DATABASE_URL|DATA_KEY)$/.test(k));
+    assert.deepEqual(suspicious, [], `${name}: Geheimnis als Umgebungsvariable (${suspicious})`);
+    const mounted = (d.secrets || []).map(s => s.target || `/run/secrets/${s.source}`);
     for (const [k, v] of Object.entries(env).filter(
       ([k]) => k.endsWith('_FILE') && !['DATA_KEY_FILE', 'DATA_KEY_ALT_FILE'].includes(k),
     )) {
       dateien++;
-      assert.ok(eingehaengt.includes(v), `${name}: ${k} zeigt auf ein nicht eingehängtes Secret (${v})`);
+      assert.ok(mounted.includes(v), `${name}: ${k} zeigt auf ein nicht eingehängtes Secret (${v})`);
     }
   }
   assert.ok(dateien >= 8, `nur ${dateien} *_FILE-Angaben — liest der Test noch die richtige Datei?`);

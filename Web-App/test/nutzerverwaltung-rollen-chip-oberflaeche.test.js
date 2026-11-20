@@ -18,7 +18,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const ANNA = { id: 1, username: 'anna', is_admin: true, is_active: true, created_at: '2026-10-01T00:00:00Z' };
 const BEN = { id: 2, username: 'ben', is_admin: false, is_active: true, created_at: '2026-10-02T00:00:00Z' };
@@ -28,7 +28,7 @@ const AB = '2026-11-17T10:00:00Z';
 const zeile = (d, name) =>
   [...d.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === name);
 
-async function bestaetige(d) {
+async function confirm(d) {
   assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
   assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'Die Passwortabfrage fehlt');
   const titel = d.getElementById('cd-title').textContent;
@@ -39,7 +39,7 @@ async function bestaetige(d) {
 
 test('X am Administrator-Chip entzieht nach der Rückfrage', async () => {
   let angekuendigt = false;
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     '/v1/auth/users': () => ({
       success: true,
       users: [
@@ -69,7 +69,7 @@ test('X am Administrator-Chip entzieht nach der Rückfrage', async () => {
     );
 
     x.click();
-    assert.equal(await bestaetige(d), '„carla“ die Administratorrolle entziehen?');
+    assert.equal(await confirm(d), '„carla“ die Administratorrolle entziehen?');
     assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/3/admin'))));
     const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/3/admin'));
     assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
@@ -85,7 +85,7 @@ test('X am Administrator-Chip entzieht nach der Rückfrage', async () => {
 });
 
 test('Standard-Chip ohne X, + Administrator ernennt', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     '/v1/auth/users': { success: true, users: [ANNA, BEN, CARLA] },
     '/v1/auth/users/2/admin': { success: true },
   });
@@ -102,7 +102,7 @@ test('Standard-Chip ohne X, + Administrator ernennt', async () => {
     assert.equal(k.getAttribute('aria-label'), 'ben zum Administrator ernennen');
 
     k.click();
-    assert.equal(await bestaetige(d), '„ben“ zum Administrator machen?');
+    assert.equal(await confirm(d), '„ben“ zum Administrator machen?');
     assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/2/admin'))));
     const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/2/admin'));
     assert.deepEqual(JSON.parse(put.body), { is_admin: true, admin_password: 'mein-passwort' });
@@ -113,7 +113,7 @@ test('Standard-Chip ohne X, + Administrator ernennt', async () => {
 });
 
 test('eigenes Konto: Chip ohne X', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/auth/users': { success: true, users: [ANNA, BEN, CARLA] } });
+  const { w, d } = await openUi({ '/v1/auth/users': { success: true, users: [ANNA, BEN, CARLA] } });
   try {
     await reiter(w, 'settings');
     await warte(() => zeile(d, 'anna'));
@@ -127,7 +127,7 @@ test('eigenes Konto: Chip ohne X', async () => {
 });
 
 test('ein einziger Administrator: kein X', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/auth/users': { success: true, users: [ANNA, BEN] } });
+  const { w, d } = await openUi({ '/v1/auth/users': { success: true, users: [ANNA, BEN] } });
   try {
     await reiter(w, 'settings');
     await warte(() => zeile(d, 'ben'));

@@ -2,7 +2,7 @@
  * Die E-Mail-Verifikation steht nur noch an EINER Stelle.
  *
  * ── Gegenprobe (04.11.2026 gemessen) ────────────────────────────────────────
- * Die Abfrage aus uebernimmEmailNeu() zusätzlich als eigene Funktion in
+ * Die Abfrage aus adoptEmailNew() zusätzlich als eigene Funktion in
  * src/konto/repository/zugaenge.ts → rot: „die Verifikationsabfrage steht genau
  * einmal im Baum" (nennt beide Fundstellen).
  */
@@ -10,15 +10,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ROOT, ohneKommentare, pruefeParameter } = require('./helpers/sources');
+const { ROOT, ohneKommentare, checkParameter } = require('./helpers/sources');
 
 const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
 // Die Abfrage, die den Token EINLÖST: Registrierung und neue Adresse tragen
 // ihn seit Runde 13 beide in new_email_token (verification_token ist leer).
-const ABFRAGE = /new_email_token\s*=\s*\$1\s+AND\s+new_email_until\s*>\s*NOW\(\)/;
-const EINLOESEN = /email_verified\s*=\s*true/i;
-const KANDIDATEN = [
+const QUERY = /new_email_token\s*=\s*\$1\s+AND\s+new_email_until\s*>\s*NOW\(\)/;
+const REDEEM = /email_verified\s*=\s*true/i;
+const CANDIDATES = [
   'src/konto/anmeldepruefung.ts',
   'src/konto/repository/zugaenge.ts',
   'src/konto/repository/konten.ts',
@@ -28,32 +28,32 @@ const KANDIDATEN = [
 ];
 
 test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
-  await t.test('verifiziereEmailToken nimmt den rohen Token entgegen', () => {
-    // pruefeParameter statt eines Musters über den ganzen Kopf: Eine
+  await t.test('verifyEmailToken nimmt den rohen Token entgegen', () => {
+    // checkParameter statt eines Musters über den ganzen Kopf: Eine
     // Typannotation zu ergänzen ist eine Verbesserung und darf keinen Test
     // umwerfen.
-    pruefeParameter(
+    checkParameter(
       lies('src/konto/anmeldepruefung.ts'),
-      'verifiziereEmailToken',
+      'verifyEmailToken',
       ['token'],
       'die gemeinsame Verifikationslogik',
     );
   });
 
   await t.test('die Verifikationsabfrage steht genau einmal im Baum', () => {
-    const treffer = KANDIDATEN.filter(rel => ABFRAGE.test(lies(rel)));
+    const treffer = CANDIDATES.filter(rel => QUERY.test(lies(rel)));
     assert.deepEqual(
       treffer,
       ['src/konto/repository/konten.ts'],
       'Die Abfrage nach email_neu_token gehört ausschliesslich in ' +
-        'uebernimmEmailNeu(). Gefunden in: ' +
+        'adoptEmailNew(). Gefunden in: ' +
         treffer.join(', ') +
         ' — damit ist die Doppelung aus einer früheren Runde zurück.',
     );
   });
 
   await t.test('das Einlösen (email_verified=true) steht genau einmal im Baum', () => {
-    const treffer = KANDIDATEN.filter(rel => EINLOESEN.test(lies(rel)));
+    const treffer = CANDIDATES.filter(rel => REDEEM.test(lies(rel)));
     assert.deepEqual(
       treffer,
       ['src/konto/repository/konten.ts'],
@@ -68,12 +68,12 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
     // Das Verhalten prüft sicherheit-server-grenzen-db am echten Server.
     assert.match(
       lies('routes/auth/registrierung.ts'),
-      /verifiziereEmailToken\s*\(/,
+      /verifyEmailToken\s*\(/,
       'routes/auth/registrierung.ts löst den Token nicht über die gemeinsame Funktion ein',
     );
     assert.doesNotMatch(
       lies('server.ts'),
-      /verifiziereEmailToken\s*\(/,
+      /verifyEmailToken\s*\(/,
       'server.ts löst wieder selbst Token ein — der Link allein bestätigte dann',
     );
   });

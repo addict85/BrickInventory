@@ -1,26 +1,26 @@
 // Die Setnummer aus einem Händlertitel, nicht die erste Zahl darin (Jahr, Teilezahl).
 
 /** Die deutschen Formen mit Dativ-Plural: „1250 Steinen" rutschte sonst durch. */
-const MENGENWORT =
+const QUANTITY_WORD =
   /^\s*(?:x\s*)?(?:pcs?|pieces?|piece|teil(?:e|en)?|stück(?:e|en)?|stueck(?:e|en)?|stein(?:e|en)?|bricks?|parts?|element(?:e|en|s)?)\b/i;
 
-/** Muss mit `GUETE` in setNumberCandidates() (Kotlin) übereinstimmen. */
-export const GUETE = [5, 4, 6, 7, 3];
+/** Muss mit `QUALITY` in setNumberCandidates() (Kotlin) übereinstimmen. */
+export const QUALITY = [5, 4, 6, 7, 3];
 
-function gueteIndex(stellen: number): number {
-  const i = GUETE.indexOf(stellen);
+function qualityIndex(stellen: number): number {
+  const i = QUALITY.indexOf(stellen);
   // indexOf liefert sonst -1, und die unbekannte Länge gewänne alles.
-  return i < 0 ? GUETE.length : i;
+  return i < 0 ? QUALITY.length : i;
 }
 
 /** `jahr`: das laufende; eine Zahl darüber hinaus ist kein Erscheinungsjahr.
  * @returns Kandidaten in absteigender Güte; leer, wenn nichts übrig bleibt */
-export function setnummerKandidaten(titel: string, jahr: number): string[] {
+export function setnummerCandidates(titel: string, jahr: number): string[] {
   if (!titel) return [];
-  const jahrGrenze = jahr + 1;
+  const yearLimit = jahr + 1;
 
-  type Kandidat = { wert: string; mitSuffix: boolean; mitRaute: boolean; jahr: boolean; guete: number };
-  const gefunden: Kandidat[] = [];
+  type Candidate = { wert: string; withSuffix: boolean; withHash: boolean; jahr: boolean; quality: number };
+  const gefunden: Candidate[] = [];
 
   // Drei bis sieben Stellen: dreistellige Altsets und siebenstellige
   // Bestellnummern grosser Sets.
@@ -28,20 +28,20 @@ export function setnummerKandidaten(titel: string, jahr: number): string[] {
   for (let treffer = muster.exec(titel); treffer !== null; treffer = muster.exec(titel)) {
     // Unter noUncheckedIndexedAccess weiss TypeScript nicht, dass das Muster
     // treffer[2] garantiert.
-    const ziffern = treffer[2];
-    if (!ziffern) continue;
+    const digits = treffer[2];
+    if (!digits) continue;
     const suffix = treffer[3] ?? '';
     const danach = titel.slice(treffer.index + treffer[0].length);
-    if (MENGENWORT.test(danach)) continue; // Regel 1: Teilezahl
-    const zahl = parseInt(ziffern, 10);
+    if (QUANTITY_WORD.test(danach)) continue; // Regel 1: Teilezahl
+    const zahl = parseInt(digits, 10);
     // Mit Variantenzusatz ist es keine Jahreszahl mehr, sondern eine Setnummer.
-    const jahr = !suffix && ziffern.length === 4 && zahl >= 1949 && zahl <= jahrGrenze;
+    const jahr = !suffix && digits.length === 4 && zahl >= 1949 && zahl <= yearLimit;
     gefunden.push({
-      wert: ziffern + suffix,
-      mitSuffix: !!suffix,
-      mitRaute: !!treffer[1],
+      wert: digits + suffix,
+      withSuffix: !!suffix,
+      withHash: !!treffer[1],
       jahr,
-      guete: gueteIndex(ziffern.length),
+      quality: qualityIndex(digits.length),
     });
   }
 
@@ -52,10 +52,10 @@ export function setnummerKandidaten(titel: string, jahr: number): string[] {
     .slice()
     .sort(
       (a, b) =>
-        Number(b.mitSuffix) - Number(a.mitSuffix) ||
-        Number(b.mitRaute) - Number(a.mitRaute) ||
+        Number(b.withSuffix) - Number(a.withSuffix) ||
+        Number(b.withHash) - Number(a.withHash) ||
         Number(a.jahr) - Number(b.jahr) ||
-        a.guete - b.guete,
+        a.quality - b.quality,
     )
     .map(k => k.wert);
 }

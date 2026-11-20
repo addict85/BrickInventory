@@ -2,7 +2,7 @@
 // gleich aussehen soll, stand vorher fünfzehnmal als eigene HTML-Zeichenkette in vier Modulen.
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
-import { fmtBig, fmtPct, istGeschenk } from './format.js';
+import { fmtBig, fmtPct, isGift } from './format.js';
 import { toast } from './meldungen.js';
 import { tRaw } from '../i18n.js';
 import { registerActions, resolveAction } from './registry.js';
@@ -21,23 +21,23 @@ import { loggedInAccount, accountCurrency } from './state.js';
  *                           felder, Farbpunkte, Knöpfe). Wer Nutzertext
  *                           einsetzt, escaped ihn selbst mit esc().
  * @param {object} [o]
- * @param {string} [o.wertStil]  zusätzlicher Stil (data-stil) am Wert-Element
- * @param {string} [o.zeilenStil] zusätzlicher Stil (data-stil) an der Zeile
+ * @param {string} [o.valueStyle]  zusätzlicher Stil (data-stil) am Wert-Element
+ * @param {string} [o.rowsStyle] zusätzlicher Stil (data-stil) an der Zeile
  * @param {string} [o.wertId]    id am Wert-Element, für späteres Nachfüllen
  * @param {string} [o.klasse]    zusätzliche Klasse an der Zeile
  * @param {boolean} [o.paar]     als dt/dd, für Zeilen in einem <dl>: Vorleser nennen Name und Wert als Paar
  */
-export function detailZeile(label, wert, o = {}) {
-  const zStil = o.zeilenStil ? ` data-stil="${o.zeilenStil}"` : '';
-  const zKlasse = o.klasse ? ` ${o.klasse}` : '';
-  const wStil = o.wertStil ? ` data-stil="${o.wertStil}"` : '';
+export function detailRow(label, wert, o = {}) {
+  const zStyle = o.rowsStyle ? ` data-stil="${o.rowsStyle}"` : '';
+  const zClass = o.klasse ? ` ${o.klasse}` : '';
+  const wStyle = o.valueStyle ? ` data-stil="${o.valueStyle}"` : '';
   const wId = o.wertId ? ` id="${o.wertId}"` : '';
-  const [l, i, s] = [rawHtml(label), rawHtml(wId), rawHtml(wStil)];
+  const [l, i, s] = [rawHtml(label), rawHtml(wId), rawHtml(wStyle)];
   const v = typeof wert === 'string' ? rawHtml(wert) : wert;
   const paar = o.paar
     ? html`<dt class="dl">${l}</dt><dd class="dv"${i}${s}>${v}</dd>`
     : html`<span class="dl">${l}</span><span class="dv"${i}${s}>${v}</span>`;
-  return html`<div class="dr${zKlasse}"${rawHtml(zStil)}>${paar}</div>`;
+  return html`<div class="dr${zClass}"${rawHtml(zStyle)}>${paar}</div>`;
 }
 
 /**
@@ -46,7 +46,7 @@ export function detailZeile(label, wert, o = {}) {
  * @param {string} text bereits übersetzter Text
  * @param {{ stil?: string, klein?: boolean }} [o]  klein: eine Fläche, etwa für das Diagramm
  */
-export function ladeAnzeige(text, o = {}) {
+export function loadDisplay(text, o = {}) {
   const stil = o.stil ? ` data-stil="${o.stil}"` : '';
   // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo daneben schon steht, worauf
   // gewartet wird.
@@ -63,18 +63,18 @@ export function ladeAnzeige(text, o = {}) {
  * @param {string} text bereits übersetzt
  * @param {'set'|'teil'} [art]
  */
-export function skelettKacheln(anzahl, text, art = 'set') {
+export function skeletonTiles(anzahl, text, art = 'set') {
   const raster = art === 'teil' ? 'parts-grid' : 'sgrid';
   const kachel = html`<div class="${art === 'teil' ? 'part-card' : 'sc'} skelett" aria-hidden="true"><div class="skelett-bild"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div>`;
   return html`<div class="${raster} skelett-raster" role="status" aria-busy="true"><span class="vh">${rawHtml(text)}</span>${Array.from({ length: anzahl }, () => kachel)}</div>`;
 }
 
 /**
- * Platzhalterzeilen für Listen und Detailansichten (Merkliste, Set-Detail), wie skelettKacheln für Raster.
+ * Platzhalterzeilen für Listen und Detailansichten (Merkliste, Set-Detail), wie skeletonTiles für Raster.
  * @param {number} anzahl
  * @param {string} text bereits übersetzt
  */
-export function skelettZeilen(anzahl, text) {
+export function skeletonRows(anzahl, text) {
   const zeile =
     '<div class="skelett-listenzeile" aria-hidden="true"><div class="skelett-bild"></div><div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div></div></div>';
   return html`<div class="skelett-liste" role="status" aria-busy="true"><span class="vh">${rawHtml(text)}</span>${rawHtml(zeile.repeat(anzahl))}</div>`;
@@ -87,15 +87,15 @@ export function skelettZeilen(anzahl, text) {
  * einer.
  * @param {unknown} wert
  */
-export function oderStrich(wert) {
+export function orStroke(wert) {
   return wert === null || wert === undefined || wert === '' ? '—' : String(wert);
 }
 
 /**
- * Wie [oderStrich], aber der Wert kommt vom Nutzer und wird escaped.
+ * Wie [orStroke], aber der Wert kommt vom Nutzer und wird escaped.
  * @param {string} wert
  */
-export function textOderStrich(wert) {
+export function textOrStroke(wert) {
   return wert === null || wert === undefined || wert === '' ? '—' : esc(String(wert));
 }
 
@@ -121,15 +121,15 @@ export function fehlerZustand(o) {
  * @param {{ erneut: string, arg?: string, behalten?: boolean, titel?: string }} o
  * @returns {d is Extract<D, { success: false }>} true, wenn es ein Fehler war und der Aufrufer aufhören soll
  */
-export function listeLadefehler(ziel, d, o) {
+export function listLoadError(ziel, d, o) {
   const a =
-    /** @type {{ success?: unknown, status?: number, error?: unknown, networkError?: boolean, warteSek?: unknown } | null | undefined} */ (
+    /** @type {{ success?: unknown, status?: number, error?: unknown, networkError?: boolean, waitSec?: unknown } | null | undefined} */ (
       d
     );
   if (a && a.success !== false) return false;
   // Die abgelaufene Sitzung meldet die Anmeldekarte; „Erneut versuchen“ hülfe dort nicht.
   if (a?.status === 401) return true;
-  const { grund, details } = verstaendlicherGrund(a);
+  const { grund, details } = clearerReason(a);
   const nochmal = () => {
     const f = resolveAction(o.erneut);
     if (f) o.arg !== undefined ? f(o.arg) : f();
@@ -152,13 +152,13 @@ export function listeLadefehler(ziel, d, o) {
  * Ein Serverfehler (5xx) sagt dem Laien nichts. Gezeigt wird, was er tun kann; der Rohtext steht unter
  * „Details“ für die Meldung an den Verwalter. Der Verwalter selbst bekommt den Weg zum Protokoll. 4xx-Texte
  * schreibt der Server selbst verständlich.
- * @param {{ networkError?: boolean, status?: number, error?: unknown, warteSek?: unknown } | null | undefined} d Antwort von api()
+ * @param {{ networkError?: boolean, status?: number, error?: unknown, waitSec?: unknown } | null | undefined} d Antwort von api()
  * @returns {{ grund: string, details?: string }}
  */
-export function verstaendlicherGrund(d) {
+export function clearerReason(d) {
   if (d?.networkError) return { grund: tRaw('net.liste_offline') };
   if (d?.status === 429)
-    return { grund: tRaw('liste.gedrosselt', { minuten: Math.max(1, Math.ceil((Number(d.warteSek) || 60) / 60)) }) };
+    return { grund: tRaw('liste.gedrosselt', { minuten: Math.max(1, Math.ceil((Number(d.waitSec) || 60) / 60)) }) };
   if (!d || (d.status ?? 0) >= 500 || !d.error)
     return {
       grund: tRaw(loggedInAccount?.isAdmin ? 'liste.server_fehler_verwalter' : 'liste.server_fehler'),
@@ -169,12 +169,12 @@ export function verstaendlicherGrund(d) {
 
 /**
  * „144 aus Sets · 250 einzeln“ — leer, solange nur eine der beiden Quellen etwas hat.
- * @param {number} ausSets
+ * @param {number} fromSets
  * @param {number} einzeln
  */
-export function teileAufschluesselung(ausSets, einzeln) {
-  if (!ausSets || !einzeln) return '';
-  return tRaw('parts.stat.breakdown', { sets: fmtBig(ausSets), einzeln: fmtBig(einzeln) });
+export function partsBreakdown(fromSets, einzeln) {
+  if (!fromSets || !einzeln) return '';
+  return tRaw('parts.stat.breakdown', { sets: fmtBig(fromSets), einzeln: fmtBig(einzeln) });
 }
 
 /**
@@ -186,15 +186,15 @@ export function teileAufschluesselung(ausSets, einzeln) {
  * @param {string} name  Name des Knopfs; enthält den sichtbaren Text
  * Inhalt in einem <span>: Im Flex-Knopf fiele sonst der Abstand in „Brick 2 x 4 (Schwarz)“ weg.
  */
-export function zeilenKnopf(ziel, sichtbar, name) {
+export function rowsButton(ziel, sichtbar, name) {
   return html`<button type="button" class="zeile-oeffnen" data-click="${ziel.click}"${ziel.arg !== undefined ? html` data-arg="${ziel.arg}"` : ''}${ziel.arg2 !== undefined ? html` data-arg2="${ziel.arg2}"` : ''}${ziel.arg3 !== undefined ? html` data-arg3="${ziel.arg3}"` : ''} aria-label="${name}"><span>${sichtbar}</span></button>`;
 }
 
-let _kachelNr = 0;
+let _tileNr = 0;
 /** Name einer Kachel nur aus Nummer und Name, der Rest als Beschreibung: ein aria-label verfehlte „Label in
  * Name“. @param {number} [teile] beschreibende Elemente; `k.teil(i)` gibt id und aria-hidden */
 export function kachelName(teile = 1) {
-  const id = `kachel-${++_kachelNr}`;
+  const id = `kachel-${++_tileNr}`;
   const ids = Array.from({ length: teile }, (_, i) => `${id}-${i + 1}`);
   return {
     attr: html` aria-describedby="${ids.join(' ')}"`,
@@ -204,7 +204,7 @@ export function kachelName(teile = 1) {
 
 /** „≈“ vor einem Kaufpreis, der ein eingesetzter Marktpreis ist; sonst läse er sich wie bezahlt.
  * @param {string | import('./escaping.js').SafeHtml} markup schon maskiertes Markup */
-export function geschaetztKauf(markup) {
+export function estimatedPurchase(markup) {
   const hinweis = tRaw('acq.geschaetzt');
   return html`<span class="kauf-geschaetzt" title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${rawHtml(String(markup))}</span>`;
 }
@@ -216,7 +216,7 @@ export function geschaetztKauf(markup) {
  * @param {unknown} [kauf]
  */
 export function pnlBadge(pct, kauf) {
-  if (istGeschenk(kauf)) return html`<span class="pnl-geschenk">${tRaw('finance.gift')}</span>`;
+  if (isGift(kauf)) return html`<span class="pnl-geschenk">${tRaw('finance.gift')}</span>`;
   if (pct === null || pct === undefined) return '';
   const v = parseFloat(String(pct));
   const cls = v > 0 ? 'pnl-pos' : v < 0 ? 'pnl-neg' : 'pnl-neu';
@@ -228,7 +228,7 @@ export function pnlBadge(pct, kauf) {
  * Merkliste nannten dasselbe Konto sonst „ich“, „ux22“ und „ux22 (ich)“.
  * @param {{ id: number, username: string }} o
  */
-export function kontoAnzeige(o) {
+export function accountDisplay(o) {
   return loggedInAccount && o.id === loggedInAccount.id ? `${o.username} ${tRaw('household.ich')}` : o.username;
 }
 
@@ -240,7 +240,7 @@ export function kontoAnzeige(o) {
 export function ownerBadges(item) {
   if (!item?.owners?.length) return '';
   if (item.owners.every(o => loggedInAccount && o.id === loggedInAccount.id)) return '';
-  return html`${item.owners.map(o => html`<span class="cond-badge besitzer-badge" title="${kontoAnzeige(o)}">${kontoAnzeige(o)}</span>`)}`;
+  return html`${item.owners.map(o => html`<span class="cond-badge besitzer-badge" title="${accountDisplay(o)}">${accountDisplay(o)}</span>`)}`;
 }
 
 /**
@@ -260,18 +260,18 @@ export function condBadges(item) {
 
 /** Erfassen-Dialoge der Sammlung: set, part, fig — gleich aufgebaut (Erstfokus: data-erstfokus). */
 // Ohne data-arg reicht der Dispatcher das Ereignis als erstes Argument.
-const erfassenDialog = (/** @type {unknown} */ art) => G(`add-${typeof art === 'string' ? art : 'set'}-modal`);
+const addDialog = (/** @type {unknown} */ art) => G(`add-${typeof art === 'string' ? art : 'set'}-modal`);
 
 /**
  * @param {string} [art]
  */
 export function oeffneErfassen(art) {
-  const dialog = erfassenDialog(art);
+  const dialog = addDialog(art);
   // Das Kaufdatum steht auf heute und die Währung auf der des Kontos, solange niemand etwas anderes wählt.
   dialog?.querySelectorAll('input[data-heute]').forEach(f => {
     if (f instanceof HTMLInputElement) {
-      f.max = heuteIso();
-      if (!f.value) f.value = heuteIso();
+      f.max = todayIso();
+      if (!f.value) f.value = todayIso();
     }
   });
   const w = /** @type {HTMLSelectElement | null} */ (dialog?.querySelector('#add-currency') ?? null);
@@ -281,7 +281,7 @@ export function oeffneErfassen(art) {
 }
 
 /** Heute als JJJJ-MM-TT im Kalender des Geräts. */
-export function heuteIso() {
+export function todayIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -290,7 +290,7 @@ export function heuteIso() {
  * @param {string} [art]
  */
 export function schliesseErfassen(art) {
-  const dialog = erfassenDialog(art);
+  const dialog = addDialog(art);
   dialog?.classList.remove('open');
   // Geschlossen ist verworfen: Ein Preis von vorhin hinge sonst still am nächsten Set, das jemand eintippt.
   dialog?.querySelector('form')?.reset();
@@ -301,19 +301,19 @@ export function schliesseErfassen(art) {
  * Alarme. Übersprungene Zeilen und Zusatz-hinweise stehen überall in der Meldung, sonst sähe ein lückenhafter
  * Import aus wie ein vollständiger.
  * @typedef {{ success: boolean, error?: string, added?: number, updated?: number, errors?: number,
- *   skipped?: number, skipped_hint?: string, [feld: string]: unknown }} CsvErgebnis
+ *   skipped?: number, skipped_hint?: string, [feld: string]: unknown }} CsvResult
  * @param {{ feld: string, pfad: string, felder?: Record<string, string>,
- *           zeige?: (laeuft: boolean) => void, hinweise?: (d: CsvErgebnis) => unknown[] }} o
- * @returns {Promise<CsvErgebnis | null>} die Antwort bei Erfolg, sonst null
+ *           zeige?: (laeuft: boolean) => void, hinweise?: (d: CsvResult) => unknown[] }} o
+ * @returns {Promise<CsvResult | null>} die Antwort bei Erfolg, sonst null
  */
-export async function csvHochladen(o) {
+export async function uploadCsv(o) {
   const fi = G(o.feld);
   if (!fi?.files?.[0]) return null;
   const fd = new FormData();
   fd.append('file', fi.files[0]);
   for (const [k, v] of Object.entries(o.felder ?? {})) fd.append(k, v);
   o.zeige?.(true);
-  /** @type {CsvErgebnis} */
+  /** @type {CsvResult} */
   const d = await api('POST', o.pfad, fd);
   fi.value = '';
   o.zeige?.(false);

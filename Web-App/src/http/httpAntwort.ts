@@ -8,20 +8,20 @@ import { konfig } from '../infra/konfig';
 import {
   FEHLER,
   Fachfehler,
-  fehlerText,
-  antwortSprache,
-  dateiFehler,
-  type FehlerArt,
-  type FehlerCode,
+  errorText,
+  responseLanguage,
+  fileError,
+  type ErrorKind,
+  type ErrorCode,
 } from '../infra/fehlerTexte';
 import { fehlertext } from '../infra/fehler';
-import { STATUS_DER_ART, statusVon } from './fehlerArt';
+import { STATUS_THE_KIND, statusOf } from './fehlerArt';
 
-export interface FehlerZiel {
+export interface ErrorTarget {
   headersSent: boolean;
   status(code: number): { json(body: unknown): unknown };
 }
-export interface FehlerQuelle {
+export interface ErrorSource {
   method?: string;
   originalUrl?: string;
   url?: string;
@@ -29,22 +29,22 @@ export interface FehlerQuelle {
 }
 
 /** `code` steht neben dem Satz, damit ein Client reagieren kann, ohne Text zu
- * vergleichen. Den Status wählt die Art (STATUS_DER_ART), nicht der Aufrufer. */
-export function sendeFehler(
+ * vergleichen. Den Status wählt die Art (STATUS_THE_KIND), nicht der Aufrufer. */
+export function sendError(
   req: { headers?: Record<string, unknown> } | undefined,
   res: { status(c: number): { json(b: unknown): unknown } },
-  art: FehlerArt,
-  code: FehlerCode,
+  art: ErrorKind,
+  code: ErrorCode,
   vars?: Record<string, string | number>,
 ): void {
-  res.status(STATUS_DER_ART[art]).json({
+  res.status(STATUS_THE_KIND[art]).json({
     success: false,
-    error: fehlerText(code, antwortSprache(req), vars),
+    error: errorText(code, responseLanguage(req), vars),
     code,
   });
 }
 
-interface Geworfen {
+interface Thrown {
   status?: unknown;
   code?: unknown;
   vars?: Record<string, string | number>;
@@ -53,9 +53,9 @@ interface Geworfen {
 }
 
 // Interna ins Protokoll, nicht zum Client.
-export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: number, req?: FehlerQuelle): void {
-  const e = alsUploadFehler(fehler) as Geworfen | null | undefined;
-  const code = status || statusVon(e);
+export function handleRouteError(res: ErrorTarget, fehler: unknown, status?: number, req?: ErrorSource): void {
+  const e = asUploadError(fehler) as Thrown | null | undefined;
+  const code = status || statusOf(e);
   // Erst der Pfad sagt, welche Route es war: Eine Stelle bedient oft mehrere.
   const wo = req?.originalUrl || req?.url;
   // Ohne Zeilenumbrüche: Ein Pfad oder Text mit Umbruch täuschte sonst eine zweite Protokollzeile vor.
@@ -73,27 +73,26 @@ export function handleRouteError(res: FehlerZiel, fehler: unknown, status?: numb
       ...(e instanceof Fachfehler ? e.zusatz : undefined),
       success: false,
       code: e.code,
-      error: fehlerText(e.code as FehlerCode, antwortSprache(req), e.vars),
+      error: errorText(e.code as ErrorCode, responseLanguage(req), e.vars),
     });
     return;
   }
   // Der Text einer Bibliothek nennt Parser, Pfade oder Bytes; er bleibt im Protokoll.
   if (!isServerError) {
-    const ersatz: FehlerCode =
-      code === 404 ? 'nicht_gefunden' : code === 413 ? 'anfrage_zu_gross' : 'anfrage_ungueltig';
-    res.status(code).json({ success: false, code: ersatz, error: fehlerText(ersatz, antwortSprache(req)) });
+    const ersatz: ErrorCode = code === 404 ? 'nicht_gefunden' : code === 413 ? 'anfrage_zu_gross' : 'anfrage_ungueltig';
+    res.status(code).json({ success: false, code: ersatz, error: errorText(ersatz, responseLanguage(req)) });
     return;
   }
   // Jede Fehlerantwort trägt einen Code, damit die Apps nicht am Satz raten.
   // Den Text der Ausnahme sieht nur die Entwicklung; im Betrieb nennt er Interna.
-  const kennung: FehlerCode = isServerError ? 'interner_fehler' : 'anfrage_ungueltig';
+  const kennung: ErrorCode = isServerError ? 'interner_fehler' : 'anfrage_ungueltig';
   const message =
-    isServerError && konfig().betrieb ? fehlerText('interner_fehler', antwortSprache(req)) : fehlertext(e);
+    isServerError && konfig().operation ? errorText('interner_fehler', responseLanguage(req)) : fehlertext(e);
   res.status(code).json({ success: false, code: kennung, error: message });
 }
 
 /** SQLSTATE der Integritätsregeln → Antwort. Das Protokoll nennt weiter die verletzte Regel. */
-const DB_REGELN: Record<string, [FehlerCode, FehlerArt]> = {
+const DB_RULES: Record<string, [ErrorCode, ErrorKind]> = {
   '22003': ['wert_ungueltig', 'ungueltig'], // numeric_value_out_of_range
   '22P02': ['wert_ungueltig', 'ungueltig'], // invalid_text_representation
   '23502': ['wert_ungueltig', 'ungueltig'], // not_null_violation
@@ -104,49 +103,49 @@ const DB_REGELN: Record<string, [FehlerCode, FehlerArt]> = {
 
 /** Ohne Status sähe eine zu grosse Datei wie ein Serverfehler aus; hier wird
  * daraus 413 bzw. 400 mit Code. */
-function alsUploadFehler<T>(e: T): T | Error {
+function asUploadError<T>(e: T): T | Error {
   const m = e as { name?: unknown; code?: unknown; type?: unknown } | null;
   // Fehler des Body-Parsers: Sein Text nennt Parser und Zeichenposition.
-  if (m?.type === 'entity.parse.failed') return dateiFehler('ungueltig', 'anfrage_json_ungueltig');
+  if (m?.type === 'entity.parse.failed') return fileError('ungueltig', 'anfrage_json_ungueltig');
   // Zweite Linie hinter dem Vertrag: Was erst an einer Regel der Datenbank
   // scheitert, ist eine falsche Eingabe oder ein Wettlauf, kein Serverfehler.
-  if (typeof m?.code === 'string' && m.code in DB_REGELN) {
-    const [code, art] = DB_REGELN[m.code]!;
-    return dateiFehler(art, code);
+  if (typeof m?.code === 'string' && m.code in DB_RULES) {
+    const [code, art] = DB_RULES[m.code]!;
+    return fileError(art, code);
   }
-  if (m?.type === 'entity.too.large') return dateiFehler('zu_gross', 'anfrage_zu_gross');
+  if (m?.type === 'entity.too.large') return fileError('zu_gross', 'anfrage_zu_gross');
   if (
     typeof m?.type === 'string' &&
     /^(charset|encoding)\.unsupported$|^request\.aborted$|^entity\.verify\.failed$/.test(m.type)
   )
-    return dateiFehler('ungueltig', 'anfrage_unlesbar');
+    return fileError('ungueltig', 'anfrage_unlesbar');
   if (m?.name !== 'MulterError') return e;
   const zuGross = m.code === 'LIMIT_FILE_SIZE';
-  return dateiFehler(zuGross ? 'zu_gross' : 'ungueltig', zuGross ? 'datei_zu_gross' : 'upload_ungueltig');
+  return fileError(zuGross ? 'zu_gross' : 'ungueltig', zuGross ? 'datei_zu_gross' : 'upload_ungueltig');
 }
 
 // Express 5 liefert Platzhalter auch als Array; verbunden wird mit / statt Komma.
-export function pfadParam(req: { params: Record<string, string | string[] | undefined> }, name: string): string {
+export function pathParam(req: { params: Record<string, string | string[] | undefined> }, name: string): string {
   const wert = req.params[name];
   return Array.isArray(wert) ? wert.join('/') : (wert ?? '');
 }
 
 /** Die Abschnitte eines Platzhalters `*name` ohne leere. */
-export function pfadSegmente(req: { params: Record<string, string | string[] | undefined> }, name: string): string[] {
+export function pathSegments(req: { params: Record<string, string | string[] | undefined> }, name: string): string[] {
   const wert = req.params[name];
   return (Array.isArray(wert) ? wert : wert ? [wert] : []).filter(Boolean);
 }
 
 /** Express 5 reicht auch abgelehnte Promises hierher; ein try/catch je Route
  * braucht es nicht. */
-export function fehlerAntwort(e: unknown, req: Request, res: Response, _next: NextFunction): void {
+export function errorResponse(e: unknown, req: Request, res: Response, _next: NextFunction): void {
   handleRouteError(res, e, undefined, req);
 }
 
 /** Hinter allen Routen unter /api: Ein Tippfehler im Pfad bekommt dieselbe
  * Fehlerform wie jede andere Antwort, nicht die index.html. */
-export function unbekannterApiPfad(req: Request, res: Response): void {
-  sendeFehler(req, res, 'nicht_gefunden', 'nicht_gefunden');
+export function unknownApiPath(req: Request, res: Response): void {
+  sendError(req, res, 'nicht_gefunden', 'nicht_gefunden');
 }
 
 /** @param req nur für die Sprache der Meldung; ohne ihn Deutsch. */
@@ -163,7 +162,7 @@ export function streamFileToResponse(
       // Nicht auf Express-Methoden verlassen: Der Helfer läuft auch an einer nackten
       // http-Antwort.
       if ('status' in res && typeof res.status === 'function')
-        sendeFehler(req, res as Response, 'nicht_gefunden', 'datei_nicht_verfuegbar');
+        sendError(req, res as Response, 'nicht_gefunden', 'datei_nicht_verfuegbar');
       else {
         res.statusCode = 404;
         res.end();

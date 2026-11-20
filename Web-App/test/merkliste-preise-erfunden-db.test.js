@@ -5,9 +5,9 @@
  * Gegenproben (am 08.11.2026 gemessen):
  *   A  die Katalogprüfung in pricesForBothConditions() entfernt
  *      → rot: „erfundene Nummer …“ und „eine kein-Preis-Markierung …“
- *   B  setImKatalog() verneint immer (auch bekannte Sets)
+ *   B  setInCatalog() verneint immer (auch bekannte Sets)
  *      → rot: „bekanntes Set wird abgerufen“
- *   C  setImKatalog() zählt die NONE-Markierung als Treffer
+ *   C  setInCatalog() zählt die NONE-Markierung als Treffer
  *      → rot: „eine kein-Preis-Markierung ist kein Katalogeintrag“
  *
  * BrickLink selbst wird nicht gefragt: https.get ist eine Attrappe, die jeden
@@ -21,10 +21,10 @@ const { Readable } = require('node:stream');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 /** @type {string[]} */
 const aufrufe = [];
@@ -44,18 +44,18 @@ https.get = (url, _opts, cb) => {
 };
 
 test('Merkposten-Preise rufen BrickLink nur für Sets des Katalogs', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const ERFUNDEN = '98765-1';
-  const BEKANNT = '98766-1';
-  const MARKIERT = '98767-1';
+  const INVENTED = '98765-1';
+  const KNOWN = '98766-1';
+  const MARKED = '98767-1';
   const zugang = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
   const setze = async (k, v) =>
     db.run(`INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2`, [
       k,
       v,
     ]);
-  const alterZugang = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
+  const alterAccess = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
   for (const k of zugang) await setze(k, 'test');
   await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
   await db.run('DELETE FROM users WHERE username = $1', ['preise_erfunden']);
@@ -64,41 +64,41 @@ test('Merkposten-Preise rufen BrickLink nur für Sets des Katalogs', { concurren
   await db.run(
     `INSERT INTO rb_sets (set_num, name, year, num_parts) VALUES ($1,'Bekannt',2020,100)
                 ON CONFLICT (set_num) DO NOTHING`,
-    [BEKANNT],
+    [KNOWN],
   );
   await db.run(
     `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,'NONE',true)
                 ON CONFLICT (set_number) DO UPDATE SET bl_type='NONE', is_gear=true`,
-    [MARKIERT],
+    [MARKED],
   );
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
-    await db.run('DELETE FROM rb_sets WHERE set_num = $1', [BEKANNT]);
-    await db.run('DELETE FROM catalog_cache WHERE set_number = ANY($1)', [[MARKIERT, BEKANNT, ERFUNDEN]]);
-    await db.run('DELETE FROM price_cache WHERE set_number = ANY($1)', [[BEKANNT, ERFUNDEN]]);
+    await db.run('DELETE FROM rb_sets WHERE set_num = $1', [KNOWN]);
+    await db.run('DELETE FROM catalog_cache WHERE set_number = ANY($1)', [[MARKED, KNOWN, INVENTED]]);
+    await db.run('DELETE FROM price_cache WHERE set_number = ANY($1)', [[KNOWN, INVENTED]]);
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [zugang]);
-    for (const z of alterZugang) await setze(z.key, z.value);
+    for (const z of alterAccess) await setze(z.key, z.value);
     await db.pool.end().catch(() => {});
   });
   const { pricesForBothConditions } = _req('src/wanted/wanted.js');
 
   await t.test('erfundene Nummer: kein BrickLink-Aufruf', async () => {
     aufrufe.length = 0;
-    const r = await pricesForBothConditions(uid, ERFUNDEN);
+    const r = await pricesForBothConditions(uid, INVENTED);
     assert.deepEqual(r.current, {});
     assert.equal(aufrufe.length, 0, `unnötig abgerufen: ${aufrufe.join(' | ')}`);
   });
 
   await t.test('eine kein-Preis-Markierung ist kein Katalogeintrag', async () => {
     aufrufe.length = 0;
-    const r = await pricesForBothConditions(uid, MARKIERT);
+    const r = await pricesForBothConditions(uid, MARKED);
     assert.deepEqual(r.current, {});
     assert.equal(aufrufe.length, 0, `unnötig abgerufen: ${aufrufe.join(' | ')}`);
   });
 
   await t.test('bekanntes Set wird abgerufen', async () => {
     aufrufe.length = 0;
-    const r = await pricesForBothConditions(uid, BEKANNT);
+    const r = await pricesForBothConditions(uid, KNOWN);
     assert.ok(aufrufe.length > 0, 'die Attrappe sah keinen Aufruf — die Gegenprobe oben bewiese nichts');
     assert.equal(parseFloat(String(r.current.N.avg_price)), 12.5);
   });

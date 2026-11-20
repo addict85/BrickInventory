@@ -11,14 +11,14 @@ const { ROOT, ohneKommentare } = require('./helpers/sources');
 const JS_DIR = path.join(ROOT, 'public', 'js');
 
 /**
- * Namen, die eine Datei auf OBERSTER Ebene deklariert (Spalte 0).
+ * Namen, die eine Datei auf TOPMOST Ebene deklariert (Spalte 0).
  *
  * Bewusst nur ohne Einrückung: Sonst landeten Funktionsparameter wie das
  * `resolve` aus `new Promise(resolve => …)` in der Liste der projektbekannten
  * Namen, und jede andere Datei mit einem eigenen Promise wäre fälschlich
  * angeschlagen.
  */
-function deklarierteOben(src) {
+function declaredTop(src) {
   const namen = new Set();
   for (const m of src.matchAll(/^(?:export\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/gm)) namen.add(m[1]);
   for (const m of src.matchAll(/^(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)/gm)) namen.add(m[1]);
@@ -27,7 +27,7 @@ function deklarierteOben(src) {
 }
 
 /** Alle Deklarationen einer Datei, auch verschachtelte — für „ist lokal da?". */
-function deklarierte(src) {
+function declared(src) {
   const namen = new Set();
   for (const m of src.matchAll(/(?:^|[;{}\s])(?:export\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/g))
     namen.add(m[1]);
@@ -37,7 +37,7 @@ function deklarierte(src) {
 }
 
 /** Namen, die eine Datei importiert (inklusive Umbenennung via `as`). */
-function importierte(src) {
+function imported(src) {
   const namen = new Set();
   for (const m of src.matchAll(/import\s*\{([^}]+)\}\s*from/g)) {
     for (const roh of m[1].split(',')) {
@@ -54,7 +54,7 @@ function importierte(src) {
  * (ohneKommentare() schneidet nur Kommentare ab Spaltenanfang weg, kein
  * `code(); // … bar (…)`).
  */
-const BEKANNTE_FALSCHTREFFER = new Map([
+const KNOWN_WRONG_HITS = new Map([
   ['set-csv-import.js:bar', 'Kommentar „show the global bar (…)“ nennt das Wort, kein Aufruf von monitor.js'],
 ]);
 
@@ -76,18 +76,18 @@ test('jedes Frontend-Modul importiert, was es aufruft', () => {
   // Alle Namen, die IRGENDWO im Frontend deklariert werden. Nur diese werden
   // geprüft — dadurch schlägt der Test nicht bei Browser-Globalen an.
   const bekannt = new Map();
-  for (const [f, src] of quellen) for (const n of deklarierteOben(src)) bekannt.set(n, f);
+  for (const [f, src] of quellen) for (const n of declaredTop(src)) bekannt.set(n, f);
 
   const fehlend = [];
   for (const [f, src] of quellen) {
-    const lokal = deklarierte(src);
-    const imp = importierte(src);
+    const lokal = declared(src);
+    const imp = imported(src);
     for (const [name, herkunft] of bekannt) {
-      if (herkunft === f || lokal.has(name) || imp.has(name) || BEKANNTE_FALSCHTREFFER.has(`${f}:${name}`)) continue;
+      if (herkunft === f || lokal.has(name) || imp.has(name) || KNOWN_WRONG_HITS.has(`${f}:${name}`)) continue;
       // Aufruf des Namens, nicht als Eigenschaft (obj.name) und nicht als
       // Zeichenkette in einer Aktionsliste.
-      const aufruf = new RegExp(`(?<![.\\w$'"\`])${name}\\s*\\(`);
-      if (aufruf.test(src)) fehlend.push(`public/js/${f}: ruft ${name}() aus ${herkunft} ohne Import`);
+      const call = new RegExp(`(?<![.\\w$'"\`])${name}\\s*\\(`);
+      if (call.test(src)) fehlend.push(`public/js/${f}: ruft ${name}() aus ${herkunft} ohne Import`);
     }
   }
 

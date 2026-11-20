@@ -3,9 +3,9 @@
  * Papierkorb.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  bestandsMenge() in setAendern durch `parseInt(body.quantity) || 0`
+ *   A  inventoryQuantity() in changeSet durch `parseInt(body.quantity) || 0`
  *      ersetzt → rot: „eine kaputte Menge wird abgewiesen" (200, Set weg)
- *   B  legeInPapierkorb() im Zweig für Menge 0 entfernt → rot: „Menge 0
+ *   B  putInTrash() im Zweig für Menge 0 entfernt → rot: „Menge 0
  *      legt das Set in den Papierkorb"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -15,21 +15,21 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
-const { haeltSet, mengeVon } = require('./helpers/bestand');
+const db = testData();
+const { holdsSet, quantityOf } = require('./helpers/bestand');
 
 test('Mengenänderung am Set: Prüfung und Papierkorb', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `menge-pruef-${process.pid}`,
     SN = `31150-${process.pid % 1000}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  await haeltSet(db, uid, SN, 2, { preis: 40 });
+  await holdsSet(db, uid, SN, 2, { preis: 40 });
 
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const setze = menge =>
@@ -45,13 +45,13 @@ test('Mengenänderung am Set: Prüfung und Papierkorb', { concurrency: 1 }, asyn
         const r = await setze(kaputt);
         assert.equal(r.status, 400, JSON.stringify(kaputt));
       }
-      assert.equal(await mengeVon(db, uid, SN), 2, 'der Bestand ist unverändert');
+      assert.equal(await quantityOf(db, uid, SN), 2, 'der Bestand ist unverändert');
     });
 
     await t.test('eine gültige Menge als Text wird angenommen', async () => {
       const r = await setze('3');
       assert.equal(r.status, 200);
-      assert.equal(await mengeVon(db, uid, SN), 3);
+      assert.equal(await quantityOf(db, uid, SN), 3);
     });
 
     await t.test('Menge 0 legt das Set in den Papierkorb', async () => {

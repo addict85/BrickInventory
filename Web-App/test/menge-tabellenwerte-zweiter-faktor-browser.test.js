@@ -3,7 +3,7 @@
  * Finanzbegriffe (B2) und die Sprache des Datumsfelds auf Englisch (B3).
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  mQtyDec() ohne `if (n <= 1) return` → rot: „„−“ bei einem Exemplar“ (Feld zeigt 0); setzeMengenfeld()
+ *   A  mQtyDec() ohne `if (n <= 1) return` → rot: „„−“ bei einem Exemplar“ (Feld zeigt 0); setQuantitiesField()
  *      ohne aria-disabled → rot: ebenda (nicht gesperrt)
  *   B  .ladepunkt wieder height:1px → rot: „Schwebender Knopf verdeckt nichts“ (Teile 390 px: Abschlusszeile
  *      751 > Knopf 716)
@@ -12,17 +12,17 @@
  *      leerer Stand-Zelle → rot: ebenda
  *   E  finance.stat.purchase_basis wieder „Kaufpreis der Positionen mit Marktpreis“ → rot: „Finanzbegriffe“;
  *      finance.basis.gerechnet wieder mit dem zweiten Satz → rot: ebenda (390 px: 5 statt 3 Zeilen)
- *   F  verstaendlicherGrund() ohne den Zweig für Verwalter → rot: „Serverfehler für Verwalter“
+ *   F  clearerReason() ohne den Zweig für Verwalter → rot: „Serverfehler für Verwalter“
  *   G  Balken wieder bei jedem Dienst mit total > 0 → rot: „Aufträge und Fortschritt“ (auch „idle“, „done“);
  *      .mon-zusatz ohne display:block → rot: ebenda (Zahl 123 px links vom Rand, Zusatz daneben)
  *   H  zfNeueCodes() liest wieder #zf-code → rot: „Zweiter Faktor: Code im Dialog“ (kein Dialog)
- *   I  seitennameAktualisieren() ohne beobachteSetDetail() → rot: „Seitentitel im Set-Detail“
+ *   I  refreshPageName() ohne observeSetDetail() → rot: „Seitentitel im Set-Detail“
  *   K  .pl-leiste ohne align-self:stretch → rot: „Bauliste: breites Feld“ (1280 px: 205 px);
  *      mobile.css ohne .pl-setnr { flex-basis: 100% } → rot: ebenda (390 px: 209 von 358 px)
  *   L  .merk-kasten-kopf ohne display:flex/align-items:center → rot: „Merkliste zugeklappt“ (oben 9, unten 32 px)
  *   M  thumbs.ts wieder fit: 'cover' (dist neu) → rot: „Bilder verschiedener Form“ (r25breit-1: Vorschau 1:1
  *      statt 8:1)
- *   N  (16.11.2026) in zfAbschalten() `mitCode: true` gestrichen → rot: „Zweiter Faktor: Code im Dialog“
+ *   N  (16.11.2026) in zfAbschalten() `withCode: true` gestrichen → rot: „Zweiter Faktor: Code im Dialog“
  *      (Neu einrichten ohne Codefeld)
  *
  * B3: Das native Datumsfeld formatiert nach der Sprache des Browsers, nicht nach `lang` (Runde 24, N16);
@@ -36,11 +36,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
-const { starteApp } = require('./helpers/app-browser');
-const { musterHaushalt, katalogSet, haeltSet } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternHousehold, catalogSet, holdsSet } = require('./helpers/bestand');
 
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
-const SCHLIESSEN = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
+const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
 const ROOT = path.join(__dirname, '..');
 
 async function groesse(b, breite, telefon) {
@@ -53,7 +53,7 @@ async function groesse(b, breite, telefon) {
 }
 
 async function geh(a, hash, bereit, was) {
-  await a.b.auswerten(SCHLIESSEN);
+  await a.b.auswerten(CLOSE);
   await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
   await a.bis(bereit, was, 200);
   await a.ruhig(5000);
@@ -93,40 +93,40 @@ function png(w, h, farbe) {
   ]);
 }
 const voll = (_x, _y, rand) => (rand ? [255, 0, 0, 255] : [40, 120, 200, 255]);
-const durchsichtig = (x, y, rand) => (rand ? [255, 0, 0, 255] : (x + y) % 2 ? [0, 0, 0, 0] : [200, 40, 40, 255]);
+const transparent = (x, y, rand) => (rand ? [255, 0, 0, 255] : (x + y) % 2 ? [0, 0, 0, 0] : [200, 40, 40, 255]);
 /** Nummer, Breite, Höhe, Muster: quer, hoch, quadratisch, sehr breit, klein mit Transparenz. */
-const BILDER = [
+const IMAGES = [
   ['r25quer-1', 400, 200, voll],
   ['r25hoch-1', 200, 400, voll],
   ['r25quadrat-1', 300, 300, voll],
   ['r25breit-1', 800, 100, voll],
-  ['r25klein-1', 32, 32, durchsichtig],
+  ['r25klein-1', 32, 32, transparent],
 ];
 
 /** Wie die App ihre Set-Bilder ablegt: <nr>.jpg unter data/images/sets, die Vorschau daneben (vorschauErzeugenAus). */
-async function legeBilder(t, db, uid, req) {
+async function putImages(t, db, uid, req) {
   const ordner = path.join(ROOT, 'data', 'images', 'sets');
   fs.mkdirSync(ordner, { recursive: true });
   const weg = () => {
-    for (const [nr] of BILDER)
+    for (const [nr] of IMAGES)
       for (const datei of [`${nr}.jpg`, `${nr}_thumb.jpg`]) fs.rmSync(path.join(ordner, datei), { force: true });
   };
   weg();
   t.after(weg);
-  for (const [nr, w, h, f] of BILDER) {
+  for (const [nr, w, h, f] of IMAGES) {
     fs.writeFileSync(path.join(ordner, `${nr}.jpg`), png(w, h, f));
     assert.ok(await req('src/bilder/thumbs.js').vorschauErzeugenAus(`/images/sets/${nr}.jpg`), `Vorschau ${nr}`);
-    await katalogSet(db, nr, { name: `Bildprobe ${nr}`, year: 2020, theme: 'Bildprobe', pieces: 100 });
+    await catalogSet(db, nr, { name: `Bildprobe ${nr}`, year: 2020, theme: 'Bildprobe', pieces: 100 });
     await db.run('UPDATE set_catalog SET image_local = $2 WHERE set_number = set_nummer_mit_version($1)', [
       nr,
       `/images/sets/${nr}.jpg`,
     ]);
-    await haeltSet(db, uid, nr, 1, { preis: 10, am: '2026-06-03T10:00:00Z' });
+    await holdsSet(db, uid, nr, 1, { preis: 10, am: '2026-06-03T10:00:00Z' });
   }
 }
 
 /** Je sichtbarem Bild: Seitenverhältnis der Datei und des gemalten Bilds (object-fit), Lage im Rahmen. */
-const BILDMASS = sel => `(() => [...document.querySelectorAll(${JSON.stringify(sel)})]
+const IMAGE_SIZE = sel => `(() => [...document.querySelectorAll(${JSON.stringify(sel)})]
   .filter(i => i.checkVisibility() && /r25/.test(i.currentSrc || i.src)).map(i => {
     const r = i.getBoundingClientRect(), s = getComputedStyle(i);
     const bw = r.width - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight) - parseFloat(s.borderLeftWidth) - parseFloat(s.borderRightWidth);
@@ -136,19 +136,22 @@ const BILDMASS = sel => `(() => [...document.querySelectorAll(${JSON.stringify(s
     if (s.objectFit === 'contain' || s.objectFit === 'scale-down') { if (bw / bh > datei) gw = bh * datei; else gh = bw / datei; }
     const rahmen = i.closest('.sci, td, .m-kopfteil, .modal').getBoundingClientRect();
     return { nr: (i.currentSrc || i.src).replace(/.*sets\\/|(_thumb)?\\.jpg.*/g, ''), geladen: i.complete && i.naturalWidth > 0,
-      datei: +datei.toFixed(3), gemalt: +(gw / gh).toFixed(3), fit: s.objectFit,
+      datei: +datei.toFixed(3), painted: +(gw / gh).toFixed(3), fit: s.objectFit,
       raus: r.left < rahmen.left - 0.5 || r.right > rahmen.right + 0.5 || r.top < rahmen.top - 0.5 || r.bottom > rahmen.bottom + 0.5 };
   }))()`;
 
-function pruefeBilder(m, wo, anzahl) {
+function checkImages(m, wo, anzahl) {
   assert.equal(m.length, anzahl, `${wo}: ${m.length} Bilder statt ${anzahl}`);
   for (const x of m) {
-    const soll = BILDER.find(([nr]) => nr === x.nr);
+    const soll = IMAGES.find(([nr]) => nr === x.nr);
     assert.ok(soll && x.geladen, `${wo}: ${x.nr} nicht geladen`);
     const quelle = Number(soll[1]) / Number(soll[2]);
     // Eine Vorschau darf kleiner sein, aber nicht anders geformt: eine quadratische hiesse „zugeschnitten“.
     assert.ok(Math.abs(x.datei / quelle - 1) < 0.05, `${wo}: ${x.nr} Datei ${x.datei} statt ${quelle} (zugeschnitten)`);
-    assert.ok(Math.abs(x.gemalt / quelle - 1) < 0.05, `${wo}: ${x.nr} gemalt ${x.gemalt} statt ${quelle} (gestreckt)`);
+    assert.ok(
+      Math.abs(x.painted / quelle - 1) < 0.05,
+      `${wo}: ${x.nr} gemalt ${x.painted} statt ${quelle} (gestreckt)`,
+    );
     assert.ok(!x.raus, `${wo}: ${x.nr} ragt aus seinem Rahmen`);
   }
 }
@@ -173,7 +176,7 @@ async function bilder(_t, a) {
           `[...document.querySelectorAll('#gallery .sci img')].filter(i => /r25/.test(i.src)).every(i => i.complete && i.naturalWidth)`,
           `${wo}: Kachelbilder`,
         );
-        pruefeBilder(await b.auswerten(BILDMASS('#gallery .sci img')), `Kacheln ${wo}`, BILDER.length);
+        checkImages(await b.auswerten(IMAGE_SIZE('#gallery .sci img')), `Kacheln ${wo}`, IMAGES.length);
         // Ruhiges Raster: In einer Reihe sind alle Bildflächen gleich gross.
         const reihen = await b.auswerten(`(() => { const m = {};
           for (const k of document.querySelectorAll('#gallery .sc')) { const r = k.getBoundingClientRect(), s = k.querySelector('.sci').getBoundingClientRect();
@@ -191,10 +194,10 @@ async function bilder(_t, a) {
             `[...document.querySelectorAll('#gallery table img')].filter(i => /r25/.test(i.src)).every(i => i.complete && i.naturalWidth)`,
             `${wo}: Tabellenbilder`,
           );
-          pruefeBilder(await b.auswerten(BILDMASS('#gallery table img')), `Tabelle ${wo}`, BILDER.length);
+          checkImages(await b.auswerten(IMAGE_SIZE('#gallery table img')), `Tabelle ${wo}`, IMAGES.length);
           await b.auswerten(`document.getElementById('vg').click(); true`);
         }
-        for (const [nr] of BILDER) {
+        for (const [nr] of IMAGES) {
           await b.auswerten(
             `document.querySelector('#gallery [data-click="openModal"][data-arg="${nr}"]').click(); true`,
           );
@@ -202,8 +205,8 @@ async function bilder(_t, a) {
             `(i => document.getElementById('set-modal').classList.contains('open') && /${nr}\\.jpg/.test(i.src) && i.complete && i.naturalWidth)(document.getElementById('m-img'))`,
             `${wo}: Detail ${nr}`,
           );
-          pruefeBilder(await b.auswerten(BILDMASS('#m-img')), `Detail ${wo}`, 1);
-          await b.auswerten(SCHLIESSEN);
+          checkImages(await b.auswerten(IMAGE_SIZE('#m-img')), `Detail ${wo}`, 1);
+          await b.auswerten(CLOSE);
         }
       }
     }
@@ -213,7 +216,7 @@ async function bilder(_t, a) {
   }
 }
 
-async function minusBeiEinem(_t, a) {
+async function minusAtOne(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="10300-1"]')`, 'Sammlung');
   await b.auswerten(`document.querySelector('#gallery .sc[data-arg="10300-1"]').click(); true`);
@@ -247,10 +250,10 @@ async function minusBeiEinem(_t, a) {
   // Gespeichert wird 400 ms später; vorher geschlossen, bliebe die 2 stehen.
   await a.warte(700);
   await a.ruhig();
-  await b.auswerten(SCHLIESSEN);
+  await b.auswerten(CLOSE);
 }
 
-async function schwebenderKnopf(_t, a) {
+async function floatingButton(_t, a) {
   const { b } = a;
   await sprache(a, 'en');
   try {
@@ -280,12 +283,12 @@ async function schwebenderKnopf(_t, a) {
             .sort((x, y) => y.r.bottom - x.r.bottom)[0];
           const ueber = blaetter.filter(e => { const r = e.getBoundingClientRect();
             return r.height > 0 && r.bottom > f.top && r.top < f.bottom && r.right > f.left && r.left < f.right; });
-          return { knopfOben: Math.round(f.top), letzte: unten && { text: unten.e.textContent.trim().slice(0, 40), unten: Math.round(unten.r.bottom) },
+          return { buttonTop: Math.round(f.top), letzte: unten && { text: unten.e.textContent.trim().slice(0, 40), unten: Math.round(unten.r.bottom) },
             ueber: ueber.map(e => e.textContent.trim().slice(0, 30) || e.tagName) }; })()`);
         assert.ok(m.letzte, `${tab} ${breite} px: keine letzte Zeile gefunden`);
         assert.deepEqual(m.ueber, [], `${tab} ${breite} px: vom Knopf verdeckt: ${JSON.stringify(m)}`);
         assert.ok(
-          m.letzte.unten <= m.knopfOben,
+          m.letzte.unten <= m.buttonTop,
           `${tab} ${breite} px: letzte Zeile unter dem Knopf: ${JSON.stringify(m)}`,
         );
       }
@@ -318,16 +321,16 @@ async function tabellenansicht(_t, a) {
     const zelle = (nr, k) => { const z = document.querySelector('#gallery tr[data-arg="' + nr + '"]').children[kopf.indexOf(k)].cloneNode(true);
       z.querySelectorAll('.vh').forEach(v => v.remove()); return z.textContent.replace(/\\s+/g, ' ').trim(); };
     return { kopf, untertitel: ${text('#tab-gallery .ptitle-unter')},
-      falke: [zelle('75192-1', 'Kaufpreis'), zelle('75192-1', 'Marktwert')], geschenk: zelle('10300-1', 'Kaufpreis') }; })()`);
+      falcon: [zelle('75192-1', 'Kaufpreis'), zelle('75192-1', 'Marktwert')], geschenk: zelle('10300-1', 'Kaufpreis') }; })()`);
   await b.auswerten(`document.getElementById('vg').click(); true`);
   assert.match(m.untertitel, /Kaufpreis und Marktwert|Kaufpreis, Marktwert/, 'Testdaten: Untertitel verspricht beides');
   assert.ok(m.kopf.includes('Kaufpreis') && m.kopf.includes('Marktwert'), `Spalten fehlen: ${m.kopf.join(' | ')}`);
-  assert.match(m.falke[0], /^650,00\s€$/);
-  assert.match(m.falke[1], /^801,50\s€\s*\+23,3\s%$/, `Marktwert mit Entwicklung: ${m.falke[1]}`);
+  assert.match(m.falcon[0], /^650,00\s€$/);
+  assert.match(m.falcon[1], /^801,50\s€\s*\+23,3\s%$/, `Marktwert mit Entwicklung: ${m.falcon[1]}`);
   assert.equal(m.geschenk, 'Geschenk');
 }
 
-async function finanzSpalten(_t, a) {
+async function financeColumns(_t, a) {
   const { b } = a;
   await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="parts"] tbody tr')`, 'Finanzen');
   const m =
@@ -339,16 +342,16 @@ async function finanzSpalten(_t, a) {
       return kopf.filter((k, i) => zeilen.length && zeilen.every(z => !sichtbar(z.children[i] || z))).map(k => t.getAttribute('aria-label') + ': ' + (k || '(ohne Kopf)'));
     });
     const teil = [...document.querySelectorAll('[data-fin-type="parts"] tbody tr')].find(z => /250/.test(z.textContent) && /0,12/.test(z.textContent));
-    return { leer, koepfe: [...document.querySelectorAll('[data-fin-type="sets"] thead th')].map(k => k.textContent.trim()),
+    return { leer, headers: [...document.querySelectorAll('[data-fin-type="sets"] thead th')].map(k => k.textContent.trim()),
       teil: teil && [...teil.children].map(sichtbar).filter(x => /0,12/.test(x)) }; })()`);
-  assert.ok(!m.koepfe.includes('Stückpreis'), `Spalte „Stückpreis“ steht noch da: ${m.koepfe.join(' | ')}`);
+  assert.ok(!m.headers.includes('Stückpreis'), `Spalte „Stückpreis“ steht noch da: ${m.headers.join(' | ')}`);
   assert.deepEqual(m.leer, [], 'Spalte ohne einen Wert');
   assert.ok(m.teil, 'Testdaten: Teil zu 0,12 € je Stück');
   assert.equal(m.teil.length, 1, `Stückpreis doppelt: ${JSON.stringify(m.teil)}`);
   assert.match(m.teil[0], /^30,00\s€\s*je 0,12\s€$/);
 }
 
-async function finanzBegriffe(_t, a) {
+async function financeTerms(_t, a) {
   const { b } = a;
   const zeilen = `(z => Math.round(z.getBoundingClientRect().height / parseFloat(getComputedStyle(z).lineHeight)))(document.querySelector('#fin-basis > span'))`;
   await groesse(b, 390, true);
@@ -361,17 +364,17 @@ async function finanzBegriffe(_t, a) {
   }
   await geh(a, '#/finanzen', `!document.getElementById('fin-basis').hidden`, 'Finanzen');
   const m =
-    await b.auswerten(`({ titel: ${text('#fin-einstand-titel')}, hilfe: document.getElementById('fin-einstand-titel').title,
+    await b.auswerten(`({ titel: ${text('#fin-einstand-titel')}, help: document.getElementById('fin-einstand-titel').title,
     unter: ${text('#fin-einstand-sub')}, zeilen: ${zeilen}, basis: ${text('#fin-basis')} })`);
   assert.equal(m.titel, 'Kaufpreis (bewertete Positionen)');
-  assert.match(m.hilfe, /Kauf- und Marktpreis/, 'Erklärung im Tooltip fehlt');
+  assert.match(m.help, /Kauf- und Marktpreis/, 'Erklärung im Tooltip fehlt');
   assert.match(m.unter, /^Insgesamt bezahlt: [\d.]+,\d\d €$/);
   assert.ok(m.zeilen <= 1, `Erklärzeile über ${m.zeilen} Zeilen: ${m.basis}`);
   assert.match(m.basis, /je Kauf und Konto/, 'Testdaten: mehrere Zeilen je Position, die Erklärung steht im Tooltip');
 }
 
 /** Lädt die Seite neu (wie Runde 24): Der Fehler soll beim ersten Laden kommen, nicht über einem alten Stand. */
-async function serverfehlerVerwalter(_t, a) {
+async function serverfehlerAdmin(_t, a) {
   const { b, bis } = a;
   const { identifier } = await b.tab('Page.addScriptToEvaluateOnNewDocument', {
     source: `window.__echt = window.fetch;
@@ -411,15 +414,15 @@ async function jobs(_t, a) {
     );
     const m = await b.auswerten(`(() => { const zeilen = [...document.querySelectorAll('.mon-dienste tbody tr')];
       const balken = zeilen.filter(z => z.querySelector('.mon-balken')).map(z => z.querySelector('.mon-zustand').className);
-      const leerlauf = zeilen.some(z => z.querySelector('.mon-balken') && z.querySelector('.mon-idle'));
+      const idle = zeilen.some(z => z.querySelector('.mon-balken') && z.querySelector('.mon-idle'));
       const z = [...document.querySelectorAll('.mon-arten tbody tr')].find(r => r.querySelector('.mon-zusatz'));
       const td = z.querySelector('.mon-zusatz').closest('td'), zahl = td.querySelector('.mon-ziffer').getBoundingClientRect();
       const zusatz = td.querySelector('.mon-zusatz').getBoundingClientRect(), zelle = td.getBoundingClientRect();
-      return { balken, leerlauf, rechts: Math.round(zelle.right - parseFloat(getComputedStyle(td).paddingRight) - zahl.right),
+      return { balken, idle, rechts: Math.round(zelle.right - parseFloat(getComputedStyle(td).paddingRight) - zahl.right),
         darunter: zusatz.top >= zahl.bottom - 1, text: td.textContent.replace(/\\s+/g, ' ').trim() }; })()`);
     assert.ok(m.balken.length > 0, 'Testdaten: ein laufender Dienst mit Balken');
     assert.ok(
-      m.balken.every(k => /mon-running/.test(k)) && !m.leerlauf,
+      m.balken.every(k => /mon-running/.test(k)) && !m.idle,
       `Balken nicht nur beim laufenden Dienst: ${JSON.stringify(m)}`,
     );
     assert.ok(Math.abs(m.rechts) <= 1, `Zahl „Offen“ nicht rechtsbündig: ${JSON.stringify(m)}`);
@@ -442,7 +445,7 @@ async function zweiterFaktor(_t, a) {
   const neu = await b.auswerten(dialog);
   assert.deepEqual([neu.code, neu.pw], [true, false], JSON.stringify(neu));
   assert.match(neu.titel.replace(/­/g, ''), /Neue Wiederherstellungscodes/);
-  await b.auswerten(`document.getElementById('cd-code').value = ${JSON.stringify(a.weitereCodes[0])};
+  await b.auswerten(`document.getElementById('cd-code').value = ${JSON.stringify(a.furtherCodes[0])};
     document.getElementById('cd-confirm').click(); true`);
   await bis(`!!document.getElementById('zf-codes')`, 'neue Codes');
   await b.auswerten(`document.getElementById('zf-gespeichert').click(); true`);
@@ -457,7 +460,7 @@ async function zweiterFaktor(_t, a) {
   await bis(`document.getElementById('confirm-modal').style.display !== 'flex'`, 'abgebrochen');
 }
 
-async function seitentitel(_t, a) {
+async function pageTitle(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="10300-1"]')`, 'Sammlung');
   const vorher = await b.auswerten('document.title');
@@ -487,7 +490,7 @@ async function bauliste(_t, a) {
   }
 }
 
-async function merklisteZu(_t, a) {
+async function wantedTo(_t, a) {
   const { b } = a;
   await groesse(b, 390, true);
   try {
@@ -506,12 +509,12 @@ async function merklisteZu(_t, a) {
 test('Menge, Tabellenwerte, zweiter Faktor, Bauliste', { concurrency: 1, timeout: 900_000 }, async t => {
   const name = `r25_${process.pid}`;
   const req = require('./helpers/sources').buildAndRequire();
-  const a = await starteApp(t, {
+  const a = await startApp(t, {
     name,
-    alleDesigns: true,
+    allDesigns: true,
     bestand: async (db, uid) => {
-      await musterHaushalt(db, uid);
-      await legeBilder(t, db, uid, req);
+      await patternHousehold(db, uid);
+      await putImages(t, db, uid, req);
       await db.run(`INSERT INTO jobs (type, due_at, attempts, max_attempts, error_message)
         VALUES ('wechselkurse', NOW() + interval '5 hours', 4, 6, 'Zeitüberschreitung')`);
     },
@@ -524,18 +527,18 @@ test('Menge, Tabellenwerte, zweiter Faktor, Bauliste', { concurrency: 1, timeout
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object) => Promise<void>][]} */
   const pruefungen = [
-    ['„−“ bei einem Exemplar', minusBeiEinem],
-    ['Schwebender Knopf verdeckt nichts', schwebenderKnopf],
+    ['„−“ bei einem Exemplar', minusAtOne],
+    ['Schwebender Knopf verdeckt nichts', floatingButton],
     ['Tabellenansicht mit Kaufpreis und Marktwert', tabellenansicht],
-    ['Finanzen ohne leere Spalte', finanzSpalten],
-    ['Finanzbegriffe', finanzBegriffe],
+    ['Finanzen ohne leere Spalte', financeColumns],
+    ['Finanzbegriffe', financeTerms],
     ['Aufträge und Fortschritt', jobs],
-    ['Seitentitel im Set-Detail', seitentitel],
+    ['Seitentitel im Set-Detail', pageTitle],
     ['Bauliste: breites Feld', bauliste],
-    ['Merkliste zugeklappt', merklisteZu],
+    ['Merkliste zugeklappt', wantedTo],
     ['Bilder verschiedener Form', bilder],
     // Lädt die Seite neu.
-    ['Serverfehler für Verwalter', serverfehlerVerwalter],
+    ['Serverfehler für Verwalter', serverfehlerAdmin],
     // Ersetzt die Wiederherstellungscodes: zuletzt.
     ['Zweiter Faktor: Code im Dialog', zweiterFaktor],
   ];

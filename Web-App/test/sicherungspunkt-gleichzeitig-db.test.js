@@ -2,16 +2,16 @@
  * Innere Transaktionen sind Sicherungspunkte auf der Verbindung der äusseren.
  * Zwei gleichzeitige (Promise.all): Das ROLLBACK TO des einen nähme die schon
  * gemeldete Arbeit des anderen still mit; der zweite wird deshalb abgewiesen.
- * Nacheinander und verschachtelt bleibt erlaubt. Eigener Zugang aus erzeugeDb().
+ * Nacheinander und verschachtelt bleibt erlaubt. Eigener Zugang aus createDb().
  *
  * Gegenproben (12.11.2026 gemessen, je einzeln):
- *   A  in innereTransaktion() die Prüfung `stand.innerster !== rahmen`
+ *   A  in innerTransaction() die Prüfung `stand.innerster !== rahmen`
  *      gestrichen → rot: „zwei gleichzeitige innere Transaktionen: die zweite
  *      wird abgewiesen“ (die zweite meldete Erfolg, ihre Zeile fehlte nach COMMIT)
  *      und „… auch in einem Sicherungspunkt“
  *   B  `stand.innerster = rahmen` im finally gestrichen → rot: „nacheinander und
  *      verschachtelt bleibt erlaubt“ (die zweite der Reihe wurde abgewiesen)
- *   C  (13.11.2026) die Prüfungen nochOffen() in database.ts gestrichen → rot: „ein
+ *   C  (13.11.2026) die Prüfungen openStill() in database.ts gestrichen → rot: „ein
  *      Nachzügler verdirbt nicht …“ (25P02 in der fremden Transaktion); vorher war
  *      die Datei im Volllauf und einzeln etwa jedes fünfte Mal rot
  *   Seit die Transaktion ausdrücklich gereicht wird (14.11.2026, w5-vertrag), öffnet der
@@ -36,7 +36,7 @@ const modul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
 const TABELLE = `sp_gleichzeitig_${process.pid}`;
 
 test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
-  const db = modul.erzeugeDb(modul.dbKonfigAusUmgebung());
+  const db = modul.createDb(modul.dbKonfigFromEnvironment());
   try {
     await db.run(`CREATE TABLE ${TABELLE} (wert TEXT NOT NULL)`);
   } catch (e) {
@@ -55,10 +55,10 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
   t.beforeEach(() => db.run(`DELETE FROM ${TABELLE}`));
 
   await t.test('zwei gleichzeitige innere Transaktionen: die zweite wird abgewiesen', async () => {
-    let ergebnisse;
+    let results;
     await db.transaction(async tx => {
       await schreibe(tx, 'aussen');
-      ergebnisse = await Promise.allSettled([
+      results = await Promise.allSettled([
         innen(tx, async inner => {
           await schreibe(inner, 'a');
           await warte(50);
@@ -69,10 +69,10 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
         }),
       ]);
     });
-    assert.equal(ergebnisse[0].status, 'rejected');
-    assert.equal(ergebnisse[1].status, 'rejected', 'die zweite wird abgewiesen, statt Erfolg zu melden');
-    assert.ok(ergebnisse[1].reason instanceof modul.GleichzeitigerSicherungspunkt, String(ergebnisse[1].reason));
-    assert.match(ergebnisse[1].reason.message, /sp_\d+ derselben Transaktion noch läuft.*nacheinander ausführen/);
+    assert.equal(results[0].status, 'rejected');
+    assert.equal(results[1].status, 'rejected', 'die zweite wird abgewiesen, statt Erfolg zu melden');
+    assert.ok(results[1].reason instanceof modul.ConcurrentSavepoint, String(results[1].reason));
+    assert.match(results[1].reason.message, /sp_\d+ derselben Transaktion noch läuft.*nacheinander ausführen/);
     assert.deepEqual(await werte(), ['aussen'], 'was gemeldet wurde, gilt');
   });
 
@@ -84,34 +84,34 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
           await Promise.all([innen(inner, async () => warte(20)), innen(inner, async () => warte(20))]);
         }),
       ),
-      modul.GleichzeitigerSicherungspunkt,
+      modul.ConcurrentSavepoint,
     );
     assert.deepEqual(await werte(), []);
   });
 
   await t.test('ein Nachzügler verdirbt nicht die nächste Transaktion seiner Verbindung', async () => {
     // Ein Pool mit einer Verbindung: Die nächste Transaktion bekommt sicher dieselbe.
-    const k = modul.dbKonfigAusUmgebung();
-    const eng = modul.erzeugeDb({ ...k, pool: { ...k.pool, max: 1 } });
+    const k = modul.dbKonfigFromEnvironment();
+    const eng = modul.createDb({ ...k, pool: { ...k.pool, max: 1 } });
     try {
-      let nachzuegler;
+      let stragglers;
       await assert.rejects(
         eng.transaction(async tx => {
-          nachzuegler = tx.db.transaction(async inner => {
+          stragglers = tx.db.transaction(async inner => {
             await warte(80);
             await schreibe(inner, 'nachzuegler');
           });
-          nachzuegler.catch(() => {});
+          stragglers.catch(() => {});
           throw new Error('aussen scheitert sofort');
         }),
         /aussen scheitert sofort/,
       );
       // Die fremde Transaktion hält die Verbindung, bis der Nachzügler fertig ist.
       await eng.transaction(async tx => {
-        await Promise.allSettled([nachzuegler]);
+        await Promise.allSettled([stragglers]);
         await schreibe(tx, 'fremd');
       });
-      await assert.rejects(nachzuegler, modul.TransaktionBeendet);
+      await assert.rejects(stragglers, modul.TransactionEnded);
       assert.deepEqual(await werte(), ['fremd']);
     } finally {
       await eng.pool.end();

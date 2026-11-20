@@ -5,15 +5,15 @@
  * lokaler Server (helpers/cdn-umleitung.js), der wie das echte Abrufe ohne
  * Browser-Kennung mit 403 abweist.
  *
- * Gegenprobe (09.11.2026 gemessen): in bildDurchreichen()
- * (src/bilder/http/bildProxy.ts) `originalFehlt` fest auf false gesetzt →
+ * Gegenprobe (09.11.2026 gemessen): in passThroughImage()
+ * (src/bilder/http/bildProxy.ts) `originalMissing` fest auf false gesetzt →
  * rot: „nur die Vorschau im Cache: der Proxy holt das Original und legt es ab“
  * (keine Datei 71888-1.jpg) und „der Job-Prozess erzeugt …“; der Fall „frisch
  * vom CDN“ blieb grün.
- * Gegenprobe (09.11.2026 gemessen): vomCdn() ohne `ersatz` aufgerufen → rot:
+ * Gegenprobe (09.11.2026 gemessen): fromCdn() ohne `ersatz` aufgerufen → rot:
  * „weist das CDN den neuen Abruf ab, kommt die Vorschau aus dem Cache“ (403).
  *
- * Gegenprobe (15.11.2026 gemessen): in bildDurchreichen() `ablegen` ohne die Frage nach
+ * Gegenprobe (15.11.2026 gemessen): in passThroughImage() `ablegen` ohne die Frage nach
  * dem Blickfeld (nur `!!setNummer`) → rot: „frisch vom CDN …“ (60000-1.jpg liegt in
  * images/sets, obwohl das Konto das Set nicht führt).
  *
@@ -33,23 +33,23 @@ const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 process.env.DATABASE_URL = URL_DB;
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { katalogSet } = require('./helpers/bestand');
-const { datenOderSkip } = require('./helpers/db');
+const { catalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
 const { warte } = require('./helpers/zeit');
-const db = testDaten();
+const db = testData();
 const sharp = require(path.join(ROOT, 'node_modules', 'sharp'));
 
-const FRISCH = '11516-1';
-const NUR_VORSCHAU = '71888-1';
+const FRESH = '11516-1';
+const ONLY_PREVIEW = '71888-1';
 /** Das CDN weist dieses Set für jede Kennung ab. */
-const GESPERRT = '10294-1';
+const LOCKED = '10294-1';
 /** Im Katalog, aber nicht im Blickfeld des Kontos. */
 const FREMD = '60000-1';
-const bildAdresse = (/** @type {string} */ sn) => `https://cdn.rebrickable.com/media/sets/${sn}.jpg`;
+const imageAddress = (/** @type {string} */ sn) => `https://cdn.rebrickable.com/media/sets/${sn}.jpg`;
 
-function freierPort() {
+function freePort() {
   return new Promise((auf, ab) => {
     const s = net
       .createServer()
@@ -84,7 +84,7 @@ async function bis(bedingung, ms) {
 }
 
 test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'setbild-prozesse-'));
   fs.symlinkSync(path.join(ROOT, 'public'), path.join(wurzel, 'public'));
@@ -95,12 +95,12 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
     .jpeg()
     .toBuffer();
   /** @type {string[]} */
-  const kennungen = [];
+  const ids = [];
   const cdn = http
     .createServer((q, r) => {
       const ua = String(q.headers['user-agent'] || '');
-      kennungen.push(ua);
-      if (!ua.startsWith('Mozilla/') || q.url?.includes(GESPERRT)) {
+      ids.push(ua);
+      if (!ua.startsWith('Mozilla/') || q.url?.includes(LOCKED)) {
         r.writeHead(403);
         r.end();
         return;
@@ -114,7 +114,7 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
   const cdnPort = typeof adr === 'object' && adr ? adr.port : 0;
 
   /** @type {(import('node:child_process').ChildProcess & { log: string })[]} */
-  const prozesse = [];
+  const processes = [];
   const starte = (/** @type {string} */ rolle, /** @type {number} */ port) => {
     const p = /** @type {import('node:child_process').ChildProcess & { log: string }} */ (
       spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
@@ -142,20 +142,20 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
     p.stderr?.on('data', d => {
       p.log += d;
     });
-    prozesse.push(p);
+    processes.push(p);
     return p;
   };
 
   const NAME = `setbild_${process.pid}`;
   const TOKEN = `setbild-token-${process.pid}-${Date.now()}`;
   t.after(async () => {
-    for (const p of prozesse) if (p.exitCode === null && p.signalCode === null) p.kill('SIGTERM');
-    for (let i = 0; i < 100 && prozesse.some(p => p.exitCode === null && p.signalCode === null); i++) await warte(100);
-    for (const p of prozesse) if (p.exitCode === null && p.signalCode === null) p.kill('SIGKILL');
+    for (const p of processes) if (p.exitCode === null && p.signalCode === null) p.kill('SIGTERM');
+    for (let i = 0; i < 100 && processes.some(p => p.exitCode === null && p.signalCode === null); i++) await warte(100);
+    for (const p of processes) if (p.exitCode === null && p.signalCode === null) p.kill('SIGKILL');
     cdn.close();
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
     await db
-      .run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [[FRISCH, NUR_VORSCHAU, GESPERRT, FREMD]])
+      .run('DELETE FROM set_catalog WHERE set_number = ANY($1)', [[FRESH, ONLY_PREVIEW, LOCKED, FREMD]])
       .catch(() => {});
     await db.pool.end().catch(() => {});
     fs.rmSync(wurzel, { recursive: true, force: true });
@@ -168,11 +168,11 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
                   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
       [k],
     );
-  for (const sn of [FRISCH, NUR_VORSCHAU, FREMD]) {
-    await katalogSet(db, sn, { name: 'Probe' });
+  for (const sn of [FRESH, ONLY_PREVIEW, FREMD]) {
+    await catalogSet(db, sn, { name: 'Probe' });
     await db.run(`UPDATE set_catalog SET image_url = $2, image_local = NULL WHERE set_number = $1`, [
       sn,
-      bildAdresse(sn),
+      imageAddress(sn),
     ]);
   }
   const nutzer = await db.get(
@@ -180,7 +180,7 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
                                VALUES ($1, 'x', true, true) RETURNING id`,
     [NAME],
   );
-  for (const sn of [FRISCH, NUR_VORSCHAU, GESPERRT])
+  for (const sn of [FRESH, ONLY_PREVIEW, LOCKED])
     await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [nutzer.id, sn]);
   await db.run(`INSERT INTO api_tokens (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`, [
     nutzer.id,
@@ -189,74 +189,71 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
 
   // Nur die Vorschau im Proxy-Cache: So steht es nach der 30-Tage-Pflege, die das
   // unbenutzte Original löscht und die gelesene Vorschau stehen lässt.
-  const { proxyCacheSchluessel } = _req('src/bilder/images.js');
+  const { proxyCacheKey } = _req('src/bilder/images.js');
   fs.mkdirSync(cache, { recursive: true });
-  const vorschauImCache = await sharp(bild).resize(200, 200).jpeg().toBuffer();
-  for (const sn of [NUR_VORSCHAU, GESPERRT])
-    fs.writeFileSync(path.join(cache, `${proxyCacheSchluessel(bildAdresse(sn))}_thumb.jpg`), vorschauImCache);
+  const previewInCache = await sharp(bild).resize(200, 200).jpeg().toBuffer();
+  for (const sn of [ONLY_PREVIEW, LOCKED])
+    fs.writeFileSync(path.join(cache, `${proxyCacheKey(imageAddress(sn))}_thumb.jpg`), previewInCache);
 
-  const webPort = await freierPort();
+  const webPort = await freePort();
   const web = starte('web', webPort);
   assert.ok(await bis(() => /localhost:\d+/.test(web.log), 60_000), web.log.slice(-1500));
   const proxy = (/** @type {string} */ sn) =>
-    hole(webPort, `/api/v1/img-proxy?url=${encodeURIComponent(bildAdresse(sn))}&thumb=1&gen=0`, TOKEN);
+    hole(webPort, `/api/v1/img-proxy?url=${encodeURIComponent(imageAddress(sn))}&thumb=1&gen=0`, TOKEN);
   const liegt = (/** @type {string} */ datei) => fs.existsSync(path.join(sets, datei));
-  const notiert = async (/** @type {string} */ sn) =>
-    !!(await db.get('SELECT 1 AS ja FROM image_wanted WHERE url = $1 AND set_number = $2', [bildAdresse(sn), sn]));
+  const noted = async (/** @type {string} */ sn) =>
+    !!(await db.get('SELECT 1 AS ja FROM image_wanted WHERE url = $1 AND set_number = $2', [imageAddress(sn), sn]));
 
   await t.test('frisch vom CDN: der Web-Prozess legt das Bild ab und notiert es', async () => {
     // Ein Set ausserhalb des Blickfelds kommt durch, landet aber weder in images/sets noch im Bildbedarf.
     const fremd = await proxy(FREMD);
     assert.deepEqual([fremd.status, fremd.bytes], [200, bild.length]);
-    const r = await proxy(FRISCH);
+    const r = await proxy(FRESH);
     assert.deepEqual([r.status, r.typ, r.bytes], [200, 'image/jpeg', bild.length]);
-    assert.ok(await bis(() => liegt(`${FRISCH}.jpg`), 5_000), `${FRISCH}.jpg fehlt\n${web.log.slice(-1500)}`);
+    assert.ok(await bis(() => liegt(`${FRESH}.jpg`), 5_000), `${FRESH}.jpg fehlt\n${web.log.slice(-1500)}`);
     // Der Puffer geht alle 10 s in die Datenbank.
-    assert.ok(await bis(() => notiert(FRISCH), 15_000), `keine Notiz für ${FRISCH}\n${web.log.slice(-1500)}`);
-    assert.deepEqual([liegt(`${FREMD}.jpg`), await notiert(FREMD)], [false, false]);
+    assert.ok(await bis(() => noted(FRESH), 15_000), `keine Notiz für ${FRESH}\n${web.log.slice(-1500)}`);
+    assert.deepEqual([liegt(`${FREMD}.jpg`), await noted(FREMD)], [false, false]);
   });
 
   await t.test('nur die Vorschau im Cache: der Proxy holt das Original und legt es ab', async () => {
-    const r = await proxy(NUR_VORSCHAU);
+    const r = await proxy(ONLY_PREVIEW);
     assert.equal(r.status, 200);
     assert.ok(
-      await bis(() => liegt(`${NUR_VORSCHAU}.jpg`), 5_000),
-      `${NUR_VORSCHAU}.jpg fehlt\n${web.log.slice(-1500)}`,
+      await bis(() => liegt(`${ONLY_PREVIEW}.jpg`), 5_000),
+      `${ONLY_PREVIEW}.jpg fehlt\n${web.log.slice(-1500)}`,
     );
+    assert.ok(await bis(() => noted(ONLY_PREVIEW), 15_000), `keine Notiz für ${ONLY_PREVIEW}\n${web.log.slice(-1500)}`);
     assert.ok(
-      await bis(() => notiert(NUR_VORSCHAU), 15_000),
-      `keine Notiz für ${NUR_VORSCHAU}\n${web.log.slice(-1500)}`,
-    );
-    assert.ok(
-      kennungen.every(k => k.startsWith('Mozilla/')),
+      ids.every(k => k.startsWith('Mozilla/')),
       'Der Web-Prozess fragt das CDN mit Browser-Kennung',
     );
   });
 
   await t.test('weist das CDN den neuen Abruf ab, kommt die Vorschau aus dem Cache', async () => {
-    const r = await proxy(GESPERRT);
-    assert.deepEqual([r.status, r.typ, r.bytes], [200, 'image/jpeg', vorschauImCache.length], web.log.slice(-1500));
-    assert.equal(liegt(`${GESPERRT}.jpg`), false);
+    const r = await proxy(LOCKED);
+    assert.deepEqual([r.status, r.typ, r.bytes], [200, 'image/jpeg', previewInCache.length], web.log.slice(-1500));
+    assert.equal(liegt(`${LOCKED}.jpg`), false);
   });
 
   await t.test('der Job-Prozess erzeugt die Vorschau und trägt image_local ein', async () => {
-    const jobs = starte('jobs', await freierPort());
+    const jobs = starte('jobs', await freePort());
     const fertig = async () => {
       const zeilen = await db.all('SELECT set_number, image_local FROM set_catalog WHERE set_number = ANY($1)', [
-        [FRISCH, NUR_VORSCHAU],
+        [FRESH, ONLY_PREVIEW],
       ]);
       return (
         zeilen.length === 2 &&
         zeilen.every(z => z.image_local === `/images/sets/${z.set_number}.jpg`) &&
-        liegt(`${FRISCH}_thumb.jpg`) &&
-        liegt(`${NUR_VORSCHAU}_thumb.jpg`)
+        liegt(`${FRESH}_thumb.jpg`) &&
+        liegt(`${ONLY_PREVIEW}_thumb.jpg`)
       );
     };
     assert.ok(
       await bis(fertig, 60_000),
       `Dateien: ${fs.existsSync(sets) ? fs.readdirSync(sets).join(', ') : '(kein Ordner)'}\n${jobs.log.slice(-2000)}`,
     );
-    const vorschau = await sharp(path.join(sets, `${NUR_VORSCHAU}_thumb.jpg`)).metadata();
+    const vorschau = await sharp(path.join(sets, `${ONLY_PREVIEW}_thumb.jpg`)).metadata();
     // 400 × 300 eingepasst, nicht zugeschnitten (UX-Prüfung 25, B1).
     assert.deepEqual([vorschau.format, vorschau.width, vorschau.height], ['jpeg', 200, 150]);
   });

@@ -27,8 +27,8 @@ const ESBUILD_VERSION = '0.28.2';
 const outdirArg = process.argv.indexOf('--outdir');
 // `--outdir` ohne Wert dahinter ist ein Bedienfehler und ergibt jetzt null
 // statt eines Absturzes in path.resolve().
-const zielArg = outdirArg !== -1 ? process.argv[outdirArg + 1] : undefined;
-const OUTDIR = zielArg ? path.resolve(zielArg) : null;
+const targetArg = outdirArg !== -1 ? process.argv[outdirArg + 1] : undefined;
+const OUTDIR = targetArg ? path.resolve(targetArg) : null;
 
 /** @param {string} dir @param {string[]} out */
 function walkTs(dir, out) {
@@ -124,16 +124,16 @@ function copyAssets(dir, out) {
  * @param {string} out Wurzel des Bauziels
  * @returns {string[]} die entfernten Pfade, relativ zu ROOT
  */
-function entferneVerwaiste(out) {
+function removeOrphaned(out) {
   /** @type {string[]} */
   const weg = [];
   /** @param {string} dir */
-  function geheDurch(dir) {
+  function goBy(dir) {
     if (!fs.existsSync(dir)) return;
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
       const abs = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        geheDurch(abs);
+        goBy(abs);
         continue;
       }
       if (!ASSET_EXT.includes(path.extname(entry.name))) continue;
@@ -145,7 +145,7 @@ function entferneVerwaiste(out) {
       }
     }
   }
-  for (const dir of SRC_DIRS) geheDurch(path.join(out, dir));
+  for (const dir of SRC_DIRS) goBy(path.join(out, dir));
   return weg;
 }
 
@@ -154,13 +154,13 @@ if (OUTDIR) {
   for (const dir of SRC_DIRS) assets += copyAssets(path.join(ROOT, dir), OUTDIR);
   // tsconfig prüft auch die Skripte (noImplicitAny).
   /** @type {string[]} */
-  const weg = entferneVerwaiste(OUTDIR);
+  const weg = removeOrphaned(OUTDIR);
   console.log(`[build-ts] ${assets} Nicht-TS-Datei(en) mitkopiert (${ASSET_EXT.join(', ')})`);
   // Namentlich ins Bauprotokoll, damit nichts still verschwindet.
   if (weg.length) console.log(`[build-ts] ${weg.length} verwaiste Datei(en) entfernt: ${weg.join(', ')}`);
   // Die Version gehört zum Bau, nicht in den Arbeitsbaum (scripts/version.js).
-  const { bauVersion, schreibe } = require('./version');
-  const version = bauVersion();
+  const { buildVersion, schreibe } = require('./version');
+  const version = buildVersion();
   schreibe(OUTDIR, version);
   console.log(`[build-ts] Version ${version}`);
 }

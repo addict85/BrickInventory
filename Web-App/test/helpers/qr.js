@@ -10,7 +10,7 @@
  * @param {Record<string, string>} [sitzung]  Köpfe der Browser-Sitzung (etwa das Cookie)
  * @returns {Promise<Antwort>}
  */
-async function qrKoppeln(post, qr, sitzung = {}) {
+async function pairQr(post, qr, sitzung = {}) {
   const meldung = await post('/qr-login', { token: qr.token }, {});
   if (meldung.status !== 200) return meldung;
   const ja = await post(`/qr-kopplung/${qr.kopplung}/bestaetigen`, { code: meldung.body.code }, sitzung);
@@ -18,4 +18,4 @@ async function qrKoppeln(post, qr, sitzung = {}) {
   return post('/qr-login/abholen', { abholung: meldung.body.abholung }, {});
 }
 
-module.exports = { qrKoppeln };
+module.exports = { pairQr };

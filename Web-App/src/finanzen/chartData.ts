@@ -1,13 +1,13 @@
 /** Eine Form für alle Verlaufs-Endpunkte, damit beide Oberflächen einen
  * Diagrammbauer brauchen. */
-import { marktpreisAus } from '../katalog';
+import { marketPriceFrom } from '../katalog';
 
 export interface ChartPoint {
   x: string;
   y: number;
 }
 
-/** Eine Messung: Tag und Preis (Regel: marktpreisAus). */
+/** Eine Messung: Tag und Preis (Regel: marketPriceFrom). */
 export interface Messung {
   recorded_at: unknown;
   avg_price?: number | string | null;
@@ -23,7 +23,7 @@ export interface ChartSeries {
 
 /** @param inputs Je Reihe ein Name und die rohen Zeilen (recorded_at, avg_price). */
 export function buildChart(inputs: Array<{ name: string; rows: Messung[] }>) {
-  const wertVon = (r: Messung) => marktpreisAus(r) ?? 0;
+  const valueFor = (r: Messung) => marketPriceFrom(r) ?? 0;
 
   // Nur Tage, an denen eine Reihe einen Wert hat: Die Achse zeigt Messpunkte,
   // nicht jeden Kalendertag.
@@ -31,7 +31,7 @@ export function buildChart(inputs: Array<{ name: string; rows: Messung[] }>) {
 
   const values: ChartSeries[] = inputs.map(s => {
     const byDay = new Map<string, number>();
-    for (const r of s.rows || []) byDay.set(String(r.recorded_at), wertVon(r));
+    for (const r of s.rows || []) byDay.set(String(r.recorded_at), valueFor(r));
     const pts = x.map(day => ({ x: day, y: byDay.has(day) ? byDay.get(day)! : 0 }));
     const firstRealIndex = pts.findIndex(p => byDay.has(p.x));
     return { name: s.name, values: pts, firstRealIndex: firstRealIndex < 0 ? pts.length : firstRealIndex };

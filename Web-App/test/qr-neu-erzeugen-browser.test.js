@@ -10,13 +10,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
+const { startApp } = require('./helpers/app-browser');
 
 // Ohne APP_BASE_URL verweigert der Server den Code; http, damit das Sitzungs-Cookie ohne TLS gilt.
 process.env.APP_BASE_URL = 'http://lego.example.org';
 
 test('QR-Code: der zweite Code bleibt nach Ablauf des ersten stehen', { timeout: 180_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     // Ohne Verwalterrechte kein zweiter Faktor, also keine Rückfrage vor dem Code.
     bestand: (db, uid) => db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]),
   });
@@ -25,7 +25,7 @@ test('QR-Code: der zweite Code bleibt nach Ablauf des ersten stehen', { timeout:
 
   let erzeugt = 0;
   await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*/v1/auth/qr-token*', requestStage: 'Response' }] });
-  b.hoerer.push(async d => {
+  b.listener.push(async d => {
     if (d.method !== 'Fetch.requestPaused') return;
     const { requestId } = d.params;
     const { body, base64Encoded } = await b.tab('Fetch.getResponseBody', { requestId });
@@ -42,14 +42,14 @@ test('QR-Code: der zweite Code bleibt nach Ablauf des ersten stehen', { timeout:
   await b.auswerten(`document.querySelector('.ntab[data-tab="settings"]').click(); true`);
   await bis(`typeof document.getElementById('btn-gen-qr')?.onclick === 'function'`, 'QR-Knopf verdrahtet');
   const bild = `document.querySelector('#qr-code img')?.getAttribute('src') || ''`;
-  const erzeuge = () =>
+  const create = () =>
     b.auswerten(`document.getElementById('qr-password').value = 'app-Passwort-1';
       document.getElementById('btn-gen-qr').click(); true`);
 
-  await erzeuge();
+  await create();
   await bis(`(${bild}).startsWith('data:image/png') && !document.getElementById('btn-gen-qr').disabled`, 'erster Code');
   const erstes = await b.auswerten(bild);
-  await erzeuge();
+  await create();
   await bis(`(${bild}).startsWith('data:image/png') && (${bild}) !== ${JSON.stringify(erstes)}`, 'zweiter Code');
   assert.equal(erzeugt, 2);
   // Fünf Takte des neuen Zählers: Bis dahin ist der des ersten (4 s) abgelaufen und die Kopplung zweimal gefragt.

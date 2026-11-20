@@ -6,30 +6,30 @@
  * APP_ROOT ein eigener Ordner — der Deckel löscht sonst fremde Testdateien.
  *
  * Gegenproben (am 01.11.2026 gemessen):
- *   A  in imgProxy.ts `url = proxyAdresse(url) ?? url` entfernt → rot:
+ *   A  in imgProxy.ts `url = proxyAddress(url) ?? url` entfernt → rot:
  *      „ein Zeitstempel im Anfrageteil holt das Bild nicht neu"
- *   B  die Drossel in bildDurchreichen auskommentiert → rot: „das vierte
+ *   B  die Drossel in passThroughImage auskommentiert → rot: „das vierte
  *      fremde Bild wird gedrosselt"
- *   C  in raeumeBildCacheAuf die Sortierung umgedreht (neueste zuerst) → rot:
+ *   C  in cleanImageCacheOn die Sortierung umgedreht (neueste zuerst) → rot:
  *      „der Deckel löscht das am längsten unbenutzte Bild"
  *   D  Cache-Control des gestreamten Wegs wieder `public` → rot: „ein
  *      Zeitstempel …“ (private fehlt)
- *   E  in bildDurchreichen wieder den rohen Content-Type des CDN gesetzt →
+ *   E  in passThroughImage wieder den rohen Content-Type des CDN gesetzt →
  *      rot: „eine Komma-Liste im Content-Type …“ (04.11.2026)
  * Gegenproben (am 08.11.2026 gemessen):
- *   F  die Typprüfung in bildDurchreichen lässt SVG durch → rot: „nur Bilder
+ *   F  die Typprüfung in passThroughImage lässt SVG durch → rot: „nur Bilder
  *      verlassen den Bild-Proxy“
- *   G  vomCdn antwortet auf 404 mit `res.status(404)` statt sendePlatzhalter
- *      → rot: „ein fehlendes Bild kommt als Platzhalter …“; merkeFehlend()
+ *   G  fromCdn antwortet auf 404 mit `res.status(404)` statt sendPlaceholder
+ *      → rot: „ein fehlendes Bild kommt als Platzhalter …“; rememberMissing()
  *      entfernt → ebenda rot (zweiter Abruf beim CDN)
  *   H  auch 403 wird gemerkt (`r.status === 404 || r.status === 403`) → rot:
  *      „nur 404 wird gemerkt, kein 403“
- *   I  in vomCdn `imgProxyFailures.notFound++` bzw. `.error++` gestrichen → rot:
+ *   I  in fromCdn `imgProxyFailures.notFound++` bzw. `.error++` gestrichen → rot:
  *      „Fehler werden gezählt und protokolliert“; ebenso die Meldung
  *      „CDN antwortete …“ auf console.info statt console.error bei 403
  *   J  in bildProbe() `looks_like` ohne den JPEG-Zweig bzw. die Probe ohne
  *      'Accept-Encoding': 'identity' → rot: „die Probe zeigt, WAS …“
- *   K  (15.11.2026) in raeumeBildCacheAuf() die Schleife über images/sets gestrichen →
+ *   K  (15.11.2026) in cleanImageCacheOn() die Schleife über images/sets gestrichen →
  *      rot: „images/sets zählt im Deckel mit …“ (0 statt 1 gelöscht)
  */
 const test = require('node:test');
@@ -51,31 +51,31 @@ fs.copyFileSync(
 );
 process.env.BILD_ABRUFE_JE_MINUTE = '3';
 const express = require('express');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { warte: pause, bis } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
+const { portOf } = require('./helpers/server');
 // Ohne Datenbank: Kein Set liegt im Blickfeld, abgelegt wird nichts.
-require('./helpers/sources').ersetzeDienste('bilder', { setNummerImBlickfeld: async () => false });
-const bildDurchreichen = (...a) =>
-  _req('routes/imgProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
-const { raeumeBildCacheAuf } = _req('src/bilder/imgCacheServe.js');
+require('./helpers/sources').replaceServices('bilder', { setNumberInScope: async () => false });
+const passThroughImage = (...a) =>
+  _req('routes/imgProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
+const { cleanImageCacheOn } = _req('src/bilder/imgCacheServe.js');
 const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
 
 const geholt = [];
 const kopfzeilen = [];
-let cdnTyp = 'image/png';
+let cdnType = 'image/png';
 let cdnStatus = 200;
-let cdnRumpf = Buffer.alloc(300, 7);
-let cdnKopf = {};
-let cdnNetzfehler = false;
+let cdnBody = Buffer.alloc(300, 7);
+let cdnHeader = {};
+let cdnNetworkError = false;
 const echt = https.get;
 /** @type {any} */ (https).get = (url, o, cb) => {
   geholt.push(String(url));
   kopfzeilen.push(o?.headers ?? {});
   const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
-  const bild = cdnRumpf;
-  if (cdnNetzfehler) {
+  const bild = cdnBody;
+  if (cdnNetworkError) {
     setImmediate(() => req.emit('error', Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' })));
     return req;
   }
@@ -83,7 +83,7 @@ const echt = https.get;
     cb(
       Object.assign(Readable.from([bild]), {
         statusCode: cdnStatus,
-        headers: { 'content-type': cdnTyp, 'content-length': String(bild.length), ...cdnKopf },
+        headers: { 'content-type': cdnType, 'content-length': String(bild.length), ...cdnHeader },
       }),
     ),
   );
@@ -96,9 +96,9 @@ app.use((req, _res, next) => {
   /** @type {any} */ (req).session = { userId: konto };
   next();
 });
-app.get('/p', bildDurchreichen);
+app.get('/p', passThroughImage);
 const srv = app.listen(0);
-const basis = `http://127.0.0.1:${portVon(srv)}/p?url=`;
+const basis = `http://127.0.0.1:${portOf(srv)}/p?url=`;
 const hole = adresse =>
   fetch(basis + encodeURIComponent(adresse)).then(async r => ({
     status: r.status,
@@ -106,13 +106,13 @@ const hole = adresse =>
     cache: r.headers.get('cache-control'),
   }));
 // Der Cache schreibt nach der Antwort; gewartet wird auf die Dateien, nicht auf eine feste Zeit.
-const bilderImCache = () =>
+const imagesInCache = () =>
   fs.existsSync(cacheDir) ? fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length : 0;
 
 test.after(async () => {
   https.get = echt;
   srv.close();
-  await testDaten()
+  await testData()
     .pool?.end?.()
     .catch(() => {});
   fs.rmSync(wurzel, { recursive: true, force: true });
@@ -123,7 +123,7 @@ test('ein Zeitstempel im Anfrageteil holt das Bild nicht neu', async () => {
   geholt.length = 0;
   const a = await hole('https://cdn.rebrickable.com/media/sets/10294-1.jpg?1700000000');
   assert.equal(a.status, 200);
-  assert.ok(await bis(() => bilderImCache() >= 1), 'das erste Bild landet nicht im Cache');
+  assert.ok(await bis(() => imagesInCache() >= 1), 'das erste Bild landet nicht im Cache');
   const b = await hole('https://cdn.rebrickable.com/media/sets/10294-1.jpg?1800000000#x');
   assert.equal(b.status, 200);
   // Nur für Angemeldete: Ein geteilter Zwischenspeicher darf die Antwort nicht halten.
@@ -132,8 +132,8 @@ test('ein Zeitstempel im Anfrageteil holt das Bild nicht neu', async () => {
   // Wo der Anfrageteil das Bild bestimmt, bleibt er — sortiert.
   await hole('https://www.bricklink.com/getPic.asp?itemNo=3001&colorID=5');
   assert.equal(geholt.at(-1), 'https://www.bricklink.com/getPic.asp?colorID=5&itemNo=3001');
-  await bis(() => bilderImCache() >= 2);
-  assert.equal(bilderImCache(), 2);
+  await bis(() => imagesInCache() >= 2);
+  assert.equal(imagesInCache(), 2);
 });
 
 test('das vierte fremde Bild wird gedrosselt, Treffer und andere Konten nicht', async () => {
@@ -143,7 +143,7 @@ test('das vierte fremde Bild wird gedrosselt, Treffer und andere Konten nicht', 
   const vierte = await fetch(basis + encodeURIComponent('https://cdn.rebrickable.com/media/parts/d4.png'));
   assert.equal(vierte.status, 429);
   assert.ok(Number(vierte.headers.get('retry-after')) > 0);
-  assert.ok(await bis(() => bilderImCache() >= 5), 'd1 bis d3 landen nicht im Cache');
+  assert.ok(await bis(() => imagesInCache() >= 5), 'd1 bis d3 landen nicht im Cache');
   assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d1.png')).status, 200, 'Cache-Treffer gedrosselt');
   konto += 1;
   assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d4.png')).status, 200, 'anderes Konto gedrosselt');
@@ -157,7 +157,7 @@ test('das vierte fremde Bild wird gedrosselt, Treffer und andere Konten nicht', 
 test('eine Komma-Liste im Content-Type des CDN geht nicht hinaus', async () => {
   konto = 500000 + (process.pid % 100000);
   const typ = async (cdn, adresse) => {
-    cdnTyp = cdn;
+    cdnType = cdn;
     const r = await fetch(basis + encodeURIComponent(adresse));
     await r.arrayBuffer();
     return [r.status, r.headers.get('content-type')];
@@ -172,7 +172,7 @@ test('eine Komma-Liste im Content-Type des CDN geht nicht hinaus', async () => {
       'image/webp',
     ]);
   } finally {
-    cdnTyp = 'image/png';
+    cdnType = 'image/png';
   }
   // Der Cache schreibt nach der Antwort weiter; der Deckel unten zählt sonst mit.
   for (
@@ -192,13 +192,13 @@ test('nur Bilder verlassen den Bild-Proxy', async () => {
       ['image/svg+xml', 's1.svg'],
       ['application/octet-stream', 'o1.png'],
     ]) {
-      cdnTyp = typ;
+      cdnType = typ;
       const r = await fetch(basis + encodeURIComponent(`https://cdn.rebrickable.com/media/parts/${adresse}`));
       await r.arrayBuffer();
       assert.equal(r.status, 415, `${typ} ging als Bild hinaus`);
     }
   } finally {
-    cdnTyp = 'image/png';
+    cdnType = 'image/png';
   }
 });
 
@@ -209,16 +209,16 @@ test('ein fehlendes Bild kommt als Platzhalter, und der Server merkt es sich', a
   cdnStatus = 404;
   try {
     geholt.length = 0;
-    const holeRoh = async () => {
+    const fetchRaw = async () => {
       const r = await fetch(basis + encodeURIComponent(adresse));
       return { status: r.status, typ: r.headers.get('content-type'), rumpf: Buffer.from(await r.arrayBuffer()) };
     };
-    const erst = await holeRoh();
+    const erst = await fetchRaw();
     assert.equal(erst.status, 200, 'Ein 404 des CDN geht als Fehler an den Browser');
     assert.equal(erst.typ, 'image/svg+xml');
     assert.ok(erst.rumpf.equals(platzhalter), 'Ausgeliefert wird nicht der Platzhalter');
     assert.equal(geholt.length, 2, 'Vor dem Aufgeben fragt der Proxy einmal ohne Referer nach');
-    const zweit = await holeRoh();
+    const zweit = await fetchRaw();
     assert.ok(zweit.status === 200 && zweit.rumpf.equals(platzhalter));
     assert.equal(geholt.length, 2, 'Das fehlende Bild wird nicht gemerkt — jede Kachel fragt das CDN erneut');
   } finally {
@@ -248,7 +248,7 @@ test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
   fs.rmSync(cacheDir, { recursive: true, force: true });
   fs.mkdirSync(cacheDir, { recursive: true });
   const jetzt = Date.now() / 1000;
-  const lege = (schluessel, alterTage) => {
+  const put = (schluessel, alterDays) => {
     for (const [name, n] of [
       [schluessel, 1000],
       [`${schluessel}.ct`, 9],
@@ -256,14 +256,14 @@ test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
     ]) {
       const p = path.join(cacheDir, name);
       fs.writeFileSync(p, Buffer.alloc(n));
-      fs.utimesSync(p, jetzt - alterTage * 86400, jetzt - alterTage * 86400);
+      fs.utimesSync(p, jetzt - alterDays * 86400, jetzt - alterDays * 86400);
     }
   };
-  lege('a'.repeat(40), 20);
-  lege('b'.repeat(40), 10);
-  lege('c'.repeat(40), 1);
-  assert.equal(await raeumeBildCacheAuf(4000, jetzt * 1000), 0, 'unter der Grenze wird nichts gelöscht');
-  assert.equal(await raeumeBildCacheAuf(3000, jetzt * 1000), 3);
+  put('a'.repeat(40), 20);
+  put('b'.repeat(40), 10);
+  put('c'.repeat(40), 1);
+  assert.equal(await cleanImageCacheOn(4000, jetzt * 1000), 0, 'unter der Grenze wird nichts gelöscht');
+  assert.equal(await cleanImageCacheOn(3000, jetzt * 1000), 3);
   assert.deepEqual(
     fs
       .readdirSync(cacheDir)
@@ -281,16 +281,16 @@ test('images/sets zählt im Deckel mit und bleibt stehen', async () => {
   fs.mkdirSync(sets, { recursive: true });
   fs.writeFileSync(path.join(sets, '10294-1.jpg'), Buffer.alloc(2000));
   const jetzt = Date.now() / 1000;
-  for (const [schluessel, alterTage] of /** @type {[string, number][]} */ ([
+  for (const [schluessel, alterDays] of /** @type {[string, number][]} */ ([
     ['a'.repeat(40), 5],
     ['b'.repeat(40), 1],
   ])) {
     const p = path.join(cacheDir, schluessel);
     fs.writeFileSync(p, Buffer.alloc(1000));
-    fs.utimesSync(p, jetzt - alterTage * 86400, jetzt - alterTage * 86400);
+    fs.utimesSync(p, jetzt - alterDays * 86400, jetzt - alterDays * 86400);
   }
   // 2000 Bytes im Cache lägen unter 3500, mit images/sets sind es 4000.
-  assert.equal(await raeumeBildCacheAuf(3500, jetzt * 1000), 1);
+  assert.equal(await cleanImageCacheOn(3500, jetzt * 1000), 1);
   assert.deepEqual(fs.readdirSync(cacheDir), ['b'.repeat(40)]);
   assert.deepEqual(fs.readdirSync(sets), ['10294-1.jpg']);
   fs.rmSync(sets, { recursive: true, force: true });
@@ -311,7 +311,7 @@ test('Fehler werden gezählt und protokolliert', async () => {
       // Je Abruf ein eigenes Konto: Die Drossel (drei je Minute) soll hier nicht greifen.
       konto = 400000 + status * 1000 + (process.pid % 1000);
       cdnStatus = status;
-      cdnNetzfehler = netz;
+      cdnNetworkError = netz;
       const r = await fetch(basis + encodeURIComponent(adresse));
       await r.arrayBuffer();
       if (netz) assert.equal(r.status, 502);
@@ -319,7 +319,7 @@ test('Fehler werden gezählt und protokolliert', async () => {
   } finally {
     console.error = echtError;
     cdnStatus = 200;
-    cdnNetzfehler = false;
+    cdnNetworkError = false;
   }
   assert.deepEqual([f.notFound - vorher.notFound, f.other - vorher.other, f.error - vorher.error], [1, 1, 1]);
   assert.match(f.lastError, /ECONNRESET/);
@@ -337,7 +337,7 @@ test('die Probe zeigt, WAS ausgeliefert wird', async () => {
   const { imageProbe: bildProbe } = _req('src/management/diagnostics.js');
   const adresse = 'https://cdn.rebrickable.com/media/sets/probe-1.jpg';
   try {
-    cdnRumpf = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+    cdnBody = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
     kopfzeilen.length = 0;
     const jpeg = await bildProbe(adresse);
     assert.equal(jpeg.body_check.looks_like, 'JPEG');
@@ -354,12 +354,12 @@ test('die Probe zeigt, WAS ausgeliefert wird', async () => {
     assert.equal(kopfzeilen.at(-1)['Accept-Encoding'], 'identity');
     assert.equal(typeof jpeg.proxy_failures.notFound, 'number');
     // Ein CDN, das trotzdem komprimiert, fällt in der Antwort auf.
-    cdnRumpf = Buffer.from([0x1f, 0x8b, 8, 0, 0, 0, 0, 0]);
-    cdnKopf = { 'content-encoding': 'gzip' };
+    cdnBody = Buffer.from([0x1f, 0x8b, 8, 0, 0, 0, 0, 0]);
+    cdnHeader = { 'content-encoding': 'gzip' };
     const gz = await bildProbe(adresse);
     assert.deepEqual([gz.body_check.looks_like, gz.probes[0].content_encoding], ['gzip (komprimiert!)', 'gzip']);
   } finally {
-    cdnRumpf = Buffer.alloc(300, 7);
-    cdnKopf = {};
+    cdnBody = Buffer.alloc(300, 7);
+    cdnHeader = {};
   }
 });

@@ -6,9 +6,9 @@
  * zählen die Zeilen, die der Scan auf set_acquisitions laut EXPLAIN liefert.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  in bewerteTeile den Vorrat nicht weitergereicht → rot:
+ *   A  in valueParts den Vorrat nicht weitergereicht → rot:
  *      „zwölf Teile, eine Abfrage auf den Teile-Cache“
- *   B  dasselbe in bewerteFiguren → rot: „sechs Figuren, …“
+ *   B  dasselbe in valueMinifigs → rot: „sechs Figuren, …“
  *   C  in mengeJoin den Kontofilter ignoriert → rot: „die Setmenge liest nur
  *      die Erfassungen der gefragten Konten“
  *   D  inKontowaehrung liefert immer TRUE → rot: „der Durchschnittskaufpreis
@@ -22,36 +22,36 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { haeltTeil, haeltFigur, haeltSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { holdsPart, holdsMinifig, holdsSet } = require('./helpers/bestand');
 
 const gesehen = [];
-let zaehlen = false;
+let count = false;
 // Gezählt in den Pools der App (Laufzeit-, System- und Web-Systemrolle), nicht im Zugang der Testdaten.
-const zugang = require('./helpers/sources').testZugang();
+const zugang = require('./helpers/sources').testAccess();
 const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
 const altQuery = pools.map(p => p.query);
 for (const [i, p] of pools.entries())
   p.query = (text, ...rest) => {
-    if (zaehlen) gesehen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
+    if (count) gesehen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
     return altQuery[i].call(p, text, ...rest);
   };
 /** Die Abfragen während fn, gefiltert auf ein Muster. */
 async function abfragen(muster, fn) {
   gesehen.length = 0;
-  zaehlen = true;
+  count = true;
   try {
     return { ergebnis: await fn(), treffer: () => gesehen.filter(q => muster.test(q)).length };
   } finally {
-    zaehlen = false;
+    count = false;
   }
 }
 
 test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const ID = process.pid;
   const NAME = `bewertung-${ID}`,
@@ -71,7 +71,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
   });
 
   for (const nr of teile) {
-    await haeltTeil(db, uid, nr, { menge: 2, preis: 1 });
+    await holdsPart(db, uid, nr, { menge: 2, preis: 1 });
     await db.run(
       `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
                   VALUES ($1, 0, 'N', 'EUR', 1.5, 1.4)`,
@@ -79,7 +79,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
     );
   }
   for (const nr of figuren) {
-    await haeltFigur(db, uid, nr, { menge: 1, preis: 3 });
+    await holdsMinifig(db, uid, nr, { menge: 1, preis: 3 });
     await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('fig', $1, $2)`, [nr, nr + 'bl']);
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price)
@@ -87,10 +87,10 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
       [nr + 'bl'],
     );
   }
-  const { bewerteTeile, bewerteFiguren } = _req('src/finanzen/financeCalc.js');
+  const { valueParts, valueMinifigs } = _req('src/finanzen/financeCalc.js');
 
   await t.test('zwölf Teile, eine Abfrage auf den Teile-Cache', async () => {
-    const m = await abfragen(/FROM part_price_cache/, () => bewerteTeile(uid, [uid]));
+    const m = await abfragen(/FROM part_price_cache/, () => valueParts(uid, [uid]));
     assert.equal(m.ergebnis.parts.length, 12);
     assert.ok(
       m.ergebnis.parts.every(p => Number(p.avg_price) === 1.5),
@@ -100,7 +100,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
   });
 
   await t.test('sechs Figuren, eine Abfrage auf den Figuren-Cache', async () => {
-    const m = await abfragen(/FROM minifig_price_cache/, () => bewerteFiguren(uid, [uid]));
+    const m = await abfragen(/FROM minifig_price_cache/, () => valueMinifigs(uid, [uid]));
     assert.equal(m.ergebnis.figs.length, 6);
     assert.ok(
       m.ergebnis.figs.every(f => Number(f.avg_price) === 4),
@@ -110,8 +110,8 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
   });
 
   await t.test('die Setmenge liest nur die Erfassungen der gefragten Konten', async () => {
-    await haeltSet(db, uid, `bw${ID}-1`, 2);
-    for (let i = 0; i < 40; i++) await haeltSet(db, fremd, `bw${ID}x${i}-1`, 1);
+    await holdsSet(db, uid, `bw${ID}-1`, 2);
+    for (let i = 0; i < 40; i++) await holdsSet(db, fremd, `bw${ID}x${i}-1`, 1);
     const { mengeJoin, mengeAus } = _req('db/bestandsmenge.js');
     const plan = await db.get(
       `EXPLAIN (ANALYZE, FORMAT JSON)
@@ -150,7 +150,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
                     VALUES ($1, $2, 1, $3, 'N', $4)`,
         [uid, SN, preis, waehrung],
       );
-    const { setsLesen } = require('./helpers/sources').bereichsSeite('sets');
+    const { setsLesen } = require('./helpers/sources').areaPage('sets');
     const r = await setsLesen([uid], {});
     const zeile = (r.sets || r).find(z => z.set_number === SN);
     assert.ok(zeile, 'das Set fehlt in der Liste');

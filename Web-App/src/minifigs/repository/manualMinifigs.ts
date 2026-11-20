@@ -1,22 +1,18 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
-import type { ErfassungsZeile } from '../../../db/bestandsmenge';
+import type { EntryRow } from '../../../db/bestandsmenge';
 import type { Spalten } from '../../../db/zeilen';
 
 /** The BrickLink number sits on the minifig (bl_mapping), not on the instance. */
 
-export function manualMinifigRow(
-  db: DbSchnittstelle,
-  uid: number,
-  figNumber: string,
-): Promise<{ id: number } | undefined> {
+export function manualMinifigRow(db: DbInterface, uid: number, figNumber: string): Promise<{ id: number } | undefined> {
   return db.get<Spalten<'minifigs', 'id'>>(
     "SELECT id FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'",
     [uid, figNumber],
   );
 }
 
-export function minifigRowWithCondition(db: DbSchnittstelle, uid: number, figNumber: string) {
+export function minifigRowWithCondition(db: DbInterface, uid: number, figNumber: string) {
   return db.get<{ id: number; bl_fig_number: string | null; condition: string | null }>(
     `SELECT m.id, ${blNummerSql('m.fig_number', 'z')} AS bl_fig_number,
             (SELECT a.condition FROM minifig_acquisitions a
@@ -29,8 +25,8 @@ export function minifigRowWithCondition(db: DbSchnittstelle, uid: number, figNum
   );
 }
 
-export function minifigAcquisitions(db: DbSchnittstelle, uids: number[], figNumber: string) {
-  return db.all<ErfassungsZeile>(
+export function minifigAcquisitions(db: DbInterface, uids: number[], figNumber: string) {
+  return db.all<EntryRow>(
     `SELECT a.id, a.quantity, a.unit_price,
             COALESCE(a.condition, 'N') AS condition, a.price_estimated, a.currency,
             a.created_at, a.user_id AS owner_user_id

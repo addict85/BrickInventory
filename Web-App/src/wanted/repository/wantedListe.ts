@@ -1,10 +1,10 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 
 export type Art = 'part' | 'fig' | 'set';
 
 /** Zuordnungen zu BrickLink-Nummern; `bl_id IS NULL` heisst „gleich vermerkt“.
  * Die eigenen des Kontos stehen vorn (`eigen`), damit sie Vorrang haben. */
-export function zuordnungen(db: DbSchnittstelle, blNummern: string[], uid: number | null = null) {
+export function mappings(db: DbInterface, blNummern: string[], uid: number | null = null) {
   return db.all<{ type: Art; rb_id: string; bl_id: string | null; eigen: boolean }>(
     `SELECT type, rb_id, NULLIF(bl_id, rb_id) AS bl_id, true AS eigen FROM bl_mapping_custom
       WHERE user_id = $2 AND bl_id = ANY($1)
@@ -23,24 +23,24 @@ const KATALOG: Record<Art, string> = {
 };
 
 /** Welche der Nummern der eigene Katalog dieser Art führt. */
-export async function nummernImKatalog(db: DbSchnittstelle, art: Art, nummern: string[]): Promise<string[]> {
+export async function numbersInCatalog(db: DbInterface, art: Art, nummern: string[]): Promise<string[]> {
   return (await db.all<{ n: string }>(KATALOG[art], [nummern])).map(z => z.n);
 }
 
 export type Farbe = { id: number; name: string | null; rgb: string | null };
 
-export function farbenZuBlFarben(db: DbSchnittstelle, blFarben: number[]) {
+export function colorsToBlColors(db: DbInterface, blFarben: number[]) {
   return db.all<Farbe & { bl_color_id: number }>(
     'SELECT id, name, rgb, bl_color_id FROM rb_colors WHERE bl_color_id = ANY($1)',
     [blFarben],
   );
 }
 
-export function farbenZuIds(db: DbSchnittstelle, ids: number[]) {
+export function colorsToIds(db: DbInterface, ids: number[]) {
   return db.all<Farbe>('SELECT id, name, rgb FROM rb_colors WHERE id = ANY($1)', [ids]);
 }
 
-export function teileBeschreibung(db: DbSchnittstelle, nummern: string[]) {
+export function partsDescription(db: DbInterface, nummern: string[]) {
   return db.all<{ part_number: string; name: string | null; bild_allgemein: string }>(
     `
       SELECT p.part_number,
@@ -53,7 +53,7 @@ export function teileBeschreibung(db: DbSchnittstelle, nummern: string[]) {
   );
 }
 
-export function teilFarbbilder(db: DbSchnittstelle, nummern: string[], farbIds: number[]) {
+export function partColorImages(db: DbInterface, nummern: string[], farbIds: number[]) {
   return db.all<{ part_number: string; color_id: number; bild: string | null }>(
     `
         SELECT part_number, color_id, COALESCE(image_local, image_url) AS bild
@@ -64,7 +64,7 @@ export function teilFarbbilder(db: DbSchnittstelle, nummern: string[], farbIds: 
   );
 }
 
-export function figurenBeschreibung(db: DbSchnittstelle, nummern: string[]) {
+export function minifigsDescription(db: DbInterface, nummern: string[]) {
   return db.all<{ fig_number: string; fig_name: string | null; bild: string | null }>(
     `SELECT fig_number, fig_name, COALESCE(image_local, image_url) AS bild
          FROM minifigs_catalog WHERE fig_number = ANY($1)`,
@@ -72,7 +72,7 @@ export function figurenBeschreibung(db: DbSchnittstelle, nummern: string[]) {
   );
 }
 
-export function setsBeschreibung(db: DbSchnittstelle, nummern: string[]) {
+export function setsDescription(db: DbInterface, nummern: string[]) {
   return db.all<{ set_number: string; name: string | null; bild: string | null }>(
     `
       SELECT s.set_number,

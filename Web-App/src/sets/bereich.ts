@@ -1,6 +1,6 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
-import type { SetsAbhaengigkeiten, SetsKontext } from './kontext';
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/bereich.ts). */
+import type { SetsDependencies, SetsContext } from './kontext';
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import * as erfassen from './erfassen';
 import * as lesen from './lesen';
 import * as loeschen from './loeschen';
@@ -11,59 +11,59 @@ import * as barcode from './barcode';
 import * as preise from './preise';
 import * as anleitungen from './anleitungen';
 import * as csvImport from './csvImport';
-import { setsAuftragsarten } from './auftragsarten';
+import { setsJobTypes } from './auftragsarten';
 import * as setsRepo from './repository/sets';
 import * as csvImportLauf from './csvImportLauf';
 
-export function erzeugeSets(a: SetsAbhaengigkeiten, einblick?: Einblick<SetsKontext>) {
-  return baueBereich(
+export function createSets(a: SetsDependencies, inspect?: Inspect<SetsContext>) {
+  return buildArea(
     a,
     () => ({}),
-    (sk: SetsKontext) => ({
-      setVorhanden: mit(sk)(erfassen.setVorhanden),
-      setsDesKontos: mit(sk.db, setsRepo.setsDesKontos),
+    (sk: SetsContext) => ({
+      setPresent: mit(sk)(erfassen.setPresent),
+      setsOfAccount: mit(sk.db, setsRepo.setsOfAccount),
       setErfassen: mit(sk)(erfassen.setErfassen),
-      setErgaenzen: mit(sk)(erfassen.setErgaenzen),
-      setAendern: mit(sk)(dienst.setAendern),
+      setSupplement: mit(sk)(erfassen.setSupplement),
+      changeSet: mit(sk)(dienst.changeSet),
       setsAlsCsv: mit(sk)(dienst.setsAlsCsv),
       setsLesen: mit(sk)(lesen.setsLesen),
-      setLesen: mit(sk)(lesen.setLesen),
-      mitSetAggregat: mit(sk)(lesen.mitSetAggregat),
-      loescheSet: mit(sk)(loeschen.loescheSet),
-      loescheSetFuer: mit(sk)(loeschen.loescheSetFuer),
-      setZeilenLoeschen: mit(sk)(loeschen.setZeilenLoeschen),
-      setVerschieben: mit(sk)(setMove.setVerschieben),
-      setErfassungenUmhaengen: mit(sk)(setMove.setErfassungenUmhaengen),
+      readSet: mit(sk)(lesen.readSet),
+      withSetAggregate: mit(sk)(lesen.withSetAggregate),
+      deleteSet: mit(sk)(loeschen.deleteSet),
+      deleteSetFor: mit(sk)(loeschen.deleteSetFor),
+      deleteSetRows: mit(sk)(loeschen.deleteSetRows),
+      moveSet: mit(sk)(setMove.moveSet),
+      setEntriesReassign: mit(sk)(setMove.setEntriesReassign),
       setInfo: mit(sk)(inhalt.setInfo),
-      setInfoFuerKonto: mit(sk)(inhalt.setInfoFuerKonto),
-      figurenlisteDesSets: mit(sk)(inhalt.figurenlisteDesSets),
-      teileDesSetsImportieren: mit(sk)(inhalt.teileDesSetsImportieren),
-      teilelisteMitNacharbeit: mit(sk)(inhalt.teilelisteMitNacharbeit),
-      setZumBarcode: mit(sk)(barcode.setZumBarcode),
-      setPreis: mit(sk)(preise.setPreis),
-      setAlarmeLesen: mit(sk)(preise.setAlarmeLesen),
-      alarmDesSetsSetzen: mit(sk)(preise.alarmDesSetsSetzen),
-      alarmDesSetsLoeschen: mit(sk)(preise.alarmDesSetsLoeschen),
-      alarmCsvImportStarten: mit(sk)(preise.alarmCsvImportStarten),
-      setPreisVerlauf: mit(sk)(preise.setPreisVerlauf),
-      anleitungMerken: mit(sk)(anleitungen.anleitungMerken),
+      setInfoForAccount: mit(sk)(inhalt.setInfoForAccount),
+      minifigsListOfSets: mit(sk)(inhalt.minifigsListOfSets),
+      importPartsOfSets: mit(sk)(inhalt.importPartsOfSets),
+      partListWithRework: mit(sk)(inhalt.partListWithRework),
+      setToBarcode: mit(sk)(barcode.setToBarcode),
+      setPrice: mit(sk)(preise.setPrice),
+      readSetAlerts: mit(sk)(preise.readSetAlerts),
+      setAlarmOfSets: mit(sk)(preise.setAlarmOfSets),
+      deleteAlarmOfSets: mit(sk)(preise.deleteAlarmOfSets),
+      startAlarmCsvImport: mit(sk)(preise.startAlarmCsvImport),
+      setPriceHistory: mit(sk)(preise.setPriceHistory),
+      rememberInstruction: mit(sk)(anleitungen.rememberInstruction),
       anleitungLoeschen: mit(sk)(anleitungen.anleitungLoeschen),
-      anleitungenNeuLaden: mit(sk)(anleitungen.anleitungenNeuLaden),
-      setCsvImportStarten: mit(sk)(csvImport.setCsvImportStarten),
-      setCsvImportAbbrechen: mit(sk)(csvImport.setCsvImportAbbrechen),
+      loadInstructionsNew: mit(sk)(anleitungen.loadInstructionsNew),
+      startSetCsvImport: mit(sk)(csvImport.startSetCsvImport),
+      cancelSetCsvImport: mit(sk)(csvImport.cancelSetCsvImport),
       csvImportStand: mit(sk)(csvImport.csvImportStand),
-      csvImportStandFuerStrom: mit(sk)(csvImport.csvImportStandFuerStrom),
-      csvImportStandAbonnieren: mit(sk)(csvImport.csvImportStandAbonnieren),
-      rebrickableListe: mit(sk)(dienst.rebrickableListe),
-      setGehoertKonto: mit(sk)(dienst.setGehoertKonto),
-      lagerortDesSetsSetzen: mit(sk)(dienst.lagerortDesSetsSetzen),
-      lagerorteMitVorgabe: mit(sk)(dienst.lagerorteMitVorgabe),
-      auftragsarten: () => setsAuftragsarten(sk),
-      fuehreCsvImportAus: mit(sk)(csvImportLauf.fuehreCsvImportAus),
-      csvImportAufgegeben: mit(sk)(csvImportLauf.csvImportAufgegeben),
+      csvImportStatusForStream: mit(sk)(csvImport.csvImportStatusForStream),
+      subscribeCsvImportStatus: mit(sk)(csvImport.subscribeCsvImportStatus),
+      rebrickableList: mit(sk)(dienst.rebrickableList),
+      setBelongsAccount: mit(sk)(dienst.setBelongsAccount),
+      setLocationOfSets: mit(sk)(dienst.setLocationOfSets),
+      locationsWithDefault: mit(sk)(dienst.locationsWithDefault),
+      auftragsarten: () => setsJobTypes(sk),
+      runCsvImportFrom: mit(sk)(csvImportLauf.runCsvImportFrom),
+      csvImportGivenUp: mit(sk)(csvImportLauf.csvImportGivenUp),
     }),
-    einblick,
+    inspect,
   );
 }
 
-export type SetsDienste = ReturnType<typeof erzeugeSets>;
+export type SetsServices = ReturnType<typeof createSets>;

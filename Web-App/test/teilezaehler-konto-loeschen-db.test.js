@@ -17,11 +17,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { haeltTeil } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { holdsPart } = require('./helpers/bestand');
 
 const ALT = (name, quelle) => `
   CREATE OR REPLACE FUNCTION ${name}() RETURNS trigger AS $$
@@ -33,7 +33,7 @@ const ALT = (name, quelle) => `
   END $$ LANGUAGE plpgsql`;
 
 test('Teilezähler und Kontolöschung', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const migriere = async () => {
     const c = await db.pool.connect();
     try {
@@ -53,7 +53,7 @@ test('Teilezähler und Kontolöschung', { concurrency: 1 }, async t => {
   const NAME = `zaehler-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  await haeltTeil(db, uid, '3001', { menge: 2, colorId: 4 });
+  await holdsPart(db, uid, '3001', { menge: 2, colorId: 4 });
 
   try {
     await t.test('das Löschen eines Kontos mit Teilen gelingt', async () => {

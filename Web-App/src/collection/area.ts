@@ -1,5 +1,5 @@
-/** The area's factory: services as a closure over k (baueBereich, src/infra/bereich.ts). */
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import * as acquisitions from './acquisitions';
 import * as deletion from './deletion';
 import * as importJobs from './importJobs';
@@ -8,21 +8,21 @@ import { access, type CollectionDependencies, type CollectionContext } from './c
 
 export type { CollectionDependencies, CollectionContext } from './context';
 
-export function createCollection(a: CollectionDependencies, einblick?: Einblick<CollectionContext>) {
-  return baueBereich(
+export function createCollection(a: CollectionDependencies, inspect?: Inspect<CollectionContext>) {
+  return buildArea(
     a,
     access,
     (k: CollectionContext) => ({
       changeAcquisition: mit(k)(acquisitions.changeAcquisition),
       deleteAcquisition: mit(k)(acquisitions.deleteAcquisition),
       setAcquisitionsForSet: mit(k)(acquisitions.setAcquisitionsForSet),
-      loescheTeil: mit(k)(deletion.loescheTeil),
-      loescheFigur: mit(k)(deletion.loescheFigur),
-      loescheAllesEigene: mit(k)(deletion.loescheAllesEigene),
+      deletePart: mit(k)(deletion.deletePart),
+      deleteMinifig: mit(k)(deletion.deleteMinifig),
+      deleteEverythingOwn: mit(k)(deletion.deleteEverythingOwn),
       jobKinds: () => collectionJobKinds(k),
       runImport: mit(k)(importJobs.runImport),
     }),
-    einblick,
+    inspect,
   );
 }
 

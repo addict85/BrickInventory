@@ -15,14 +15,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 test('Preislauf am Tageslimit', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { setGlobalSetting } = _req('src/settings/settings.js');
   const { kontingentPruefenUndZaehlen } = _req('src/fremdquellen/apiKontingent.js');
@@ -31,7 +31,7 @@ test('Preislauf am Tageslimit', { concurrency: 1 }, async t => {
   const uid = (
     await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [`ptl_${process.pid}`])
   ).id;
-  for (const sn of ['10305-1', '21318-1', '75192-1']) await haeltSet(db, uid, sn);
+  for (const sn of ['10305-1', '21318-1', '75192-1']) await holdsSet(db, uid, sn);
   await setGlobalSetting('bricklink_consumer_key', 'schluessel');
   await setGlobalSetting('api_limit_bricklink', '1');
   await kontingentPruefenUndZaehlen('bricklink');

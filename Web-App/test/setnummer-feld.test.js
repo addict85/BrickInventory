@@ -7,16 +7,16 @@
  * Gegenproben (am 28.10. gemessen):
  *   A  in doAddSet() (sammlung.js) die Prüfung entfernt → rot: „abc wird abgewiesen“
  *      und „falsche Formen werden abgewiesen“
- *   B  istSetnummer() ohne Buchstaben-Präfix (/^\d…/) → rot: „gültige Nummern gehen durch“ (llca30-1)
+ *   B  isSetnummer() ohne Buchstaben-Präfix (/^\d…/) → rot: „gültige Nummern gehen durch“ (llca30-1)
  *   C  feldFehler() ohne aria-invalid → rot: „abc wird abgewiesen“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { oeffneOberflaeche, takt } = require('./helpers/oberflaeche');
+const { openUi, takt } = require('./helpers/oberflaeche');
 
-const KORPUS = JSON.parse(
+const CORPUS = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'setnummer-korpus.json'), 'utf8'),
 ).faelle;
 
@@ -36,7 +36,7 @@ async function versuche(o, nummer) {
 }
 
 test('abc wird abgewiesen, mit Meldung am Feld', async () => {
-  const o = await oeffneOberflaeche({});
+  const o = await openUi({});
   try {
     const r = await versuche(o, 'abc');
     assert.equal(r.gesendet, false, '„abc“ ging an den Server');
@@ -58,7 +58,7 @@ test('abc wird abgewiesen, mit Meldung am Feld', async () => {
 });
 
 test('falsche Formen werden abgewiesen', async () => {
-  const o = await oeffneOberflaeche({});
+  const o = await openUi({});
   try {
     for (const n of ['abc', 'fig-000123', '10294-', '10294-1-2', '-1', '10 294', '<b>1</b>']) {
       const r = await versuche(o, n);
@@ -70,9 +70,9 @@ test('falsche Formen werden abgewiesen', async () => {
 });
 
 test('gültige Nummern gehen durch', async () => {
-  const o = await oeffneOberflaeche({});
+  const o = await openUi({});
   try {
-    const korpus = KORPUS.map(f => f.erwartet).filter(Boolean);
+    const korpus = CORPUS.map(f => f.erwartet).filter(Boolean);
     assert.ok(korpus.length >= 10, 'Korpus nicht gelesen');
     for (const n of [...korpus, '10294', '10294-1', ' 42143-1 ', 'llca30-1', 'comcon001', '6284070-1', '71000-12']) {
       const r = await versuche(o, n);

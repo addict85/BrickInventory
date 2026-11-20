@@ -1,21 +1,21 @@
 // For both apps: cookie and token. The work lives in src/vouchers/service.ts.
 import type express from 'express';
 import multer from 'multer';
-import { FORMULAR_GRENZEN, gesamtReichtFuer, uploadGesamtMb } from '../../src/http/dateiEmpfang';
-import { FREMDE_DATEI_CSP } from '../../src/http/dateiAusliefern';
-import { Fachfehler, dateiFehler, type FehlerCode, fachfehler } from '../../src/infra/fehlerTexte';
-import { ABSTAND_SEK, TICKET_SEK, alsGelesen, maskiert, type VoucherRow } from '../../src/vouchers';
-import { kontoSchranke, waechterFuer } from './middleware';
-import { bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
-import { seiteAus } from '../../src/infra/seite';
+import { FORM_LIMITS, totalSufficesFor, uploadTotalMb } from '../../src/http/dateiEmpfang';
+import { FOREIGN_FILE_CSP } from '../../src/http/dateiAusliefern';
+import { Fachfehler, fileError, type ErrorCode, fachfehler } from '../../src/infra/fehlerTexte';
+import { GAP_SEC, TICKET_SEC, readAs, masked, type VoucherRow } from '../../src/vouchers';
+import { kontoSchranke, guardFor } from './middleware';
+import { confirmWithFactor } from '../../src/konto/http/anmeldung';
+import { pageFrom } from '../../src/infra/seite';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
 // Amount once as a number; `hat_pdf` instead of the path, which is nobody's business.
-function fuerAussen(z: VoucherRow) {
+function forOuter(z: VoucherRow) {
   return {
     id: z.id,
-    ...maskiert(z),
+    ...masked(z),
     amount: Number(z.amount),
     currency: z.currency,
     hat_pdf: !!z.pdf_path,
@@ -29,38 +29,38 @@ function fuerAussen(z: VoucherRow) {
 /** `wartenSek` goes along, after that the frontend paces itself. */
 function gesperrt(grund: string, wartenSek: number): never {
   const min = Math.ceil(wartenSek / 60);
-  const [code, vars]: [FehlerCode, Record<string, number>] =
+  const [code, vars]: [ErrorCode, Record<string, number>] =
     grund === 'konto'
       ? ['zu_viele_anfragen', { minuten: min }]
       : grund === 'botschutz'
         ? ['guthaben_botschutz', { min }]
-        : ['guthaben_abstand', { sek: ABSTAND_SEK, warten: wartenSek }];
+        : ['guthaben_abstand', { sek: GAP_SEC, warten: wartenSek }];
   throw new Fachfehler('zu_viele', code, vars, { grund, wartenSek });
 }
 
-export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'vouchers'>) {
-  const { requireToken } = waechterFuer(d.konto);
+export function buildVouchersRouter(d: Pick<Dienste, 'konto' | 'vouchers'>) {
+  const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
   /** PDF only: only text is read out, a photo the server could not read anyway. */
   const upload = multer({
     storage: multer.memoryStorage(),
     // 2 MB leaves room for a bundle PDF; more would only keep pdf-lib longer in memory.
-    limits: { ...FORMULAR_GRENZEN, fileSize: 2 * 1024 * 1024 },
+    limits: { ...FORM_LIMITS, fileSize: 2 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
       // Literal comparison: no inherited table value to be fooled by.
       if (file.mimetype === 'application/pdf') cb(null, true);
-      else cb(dateiFehler('falscher_typ', 'nur_pdf'));
+      else cb(fileError('falscher_typ', 'nur_pdf'));
     },
   });
 
   router.endpunkt('GET /api/v1/vouchers', requireToken, async req => {
-    const { eintraege, ...seite } = seiteAus(await d.vouchers.voucherList(req.apiUser.user_id), req.abfrage);
-    return { vouchers: eintraege.map(fuerAussen), ...seite };
+    const { eintraege, ...seite } = pageFrom(await d.vouchers.voucherList(req.apiUser.user_id), req.abfrage);
+    return { vouchers: eintraege.map(forOuter), ...seite };
   });
 
   router.endpunkt('POST /api/v1/vouchers', requireToken, async req => {
-    return { voucher: fuerAussen(await d.vouchers.createVoucher(req.apiUser.user_id, req.eingabe)) };
+    return { voucher: forOuter(await d.vouchers.createVoucher(req.apiUser.user_id, req.eingabe)) };
   });
 
   router.endpunkt(
@@ -68,8 +68,8 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'vouchers'>) {
     requireToken,
     kontoSchranke('voucherPdf'),
     async (req: express.Request, _res: express.Response, next: express.NextFunction) => {
-      if (!(await gesamtReichtFuer(Number(req.headers['content-length']) || 0)))
-        fachfehler('speicher_voll', 'upload_gesamt_voll', { mb: uploadGesamtMb() });
+      if (!(await totalSufficesFor(Number(req.headers['content-length']) || 0)))
+        fachfehler('speicher_voll', 'upload_gesamt_voll', { mb: uploadTotalMb() });
       next();
     },
     upload.single('file'),
@@ -78,15 +78,15 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'vouchers'>) {
       const r = await d.vouchers.voucherFromPdf(req.apiUser.user_id, req.file.buffer, req.eingabe);
       // Its own block so the frontend can tell from one field which case happened.
       if (r.art === 'stapel') return { mehrere: r.bericht };
-      return { voucher: fuerAussen(r.zeile), gelesen: alsGelesen(r.gelesen) };
+      return { voucher: forOuter(r.zeile), gelesen: readAs(r.gelesen) };
     },
   );
 
   // The batch paths BEFORE the :id paths: otherwise `:id` would catch the word "export".
 
   router.endpunkt('POST /api/v1/vouchers/export/pdf-freigabe', requireToken, async (req, res) => {
-    if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
-    return { ticket: await d.vouchers.releaseExport(req.apiUser.user_id), gueltig_sek: TICKET_SEK };
+    if (!(await confirmWithFactor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
+    return { ticket: await d.vouchers.releaseExport(req.apiUser.user_id), gueltig_sek: TICKET_SEC };
   });
 
   router.endpunkt('GET /api/v1/vouchers/export/pdf', requireToken, async (req, res) => {
@@ -104,28 +104,28 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'vouchers'>) {
 
   router.endpunkt('PUT /api/v1/vouchers/:id', requireToken, async req => {
     const id = req.pfad.id;
-    return { voucher: fuerAussen(await d.vouchers.changeVoucher(req.apiUser.user_id, id, req.eingabe)) };
+    return { voucher: forOuter(await d.vouchers.changeVoucher(req.apiUser.user_id, id, req.eingabe)) };
   });
 
   // Final and cash: with confirmation, like emptying the trash.
   router.endpunkt('DELETE /api/v1/vouchers/:id', requireToken, async (req, res) => {
     const id = req.pfad.id;
-    if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
+    if (!(await confirmWithFactor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     await d.vouchers.deleteVoucher(req.apiUser.user_id, id);
     return {};
   });
 
   router.endpunkt('POST /api/v1/vouchers/:id/klartext', requireToken, async (req, res) => {
     const id = req.pfad.id;
-    if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
+    if (!(await confirmWithFactor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     const z = await d.vouchers.voucherPlaintext(req.apiUser.user_id, id);
     return { id: z.id, number: z.number, pin: z.pin };
   });
 
   router.endpunkt('POST /api/v1/vouchers/:id/pdf-freigabe', requireToken, async (req, res) => {
     const id = req.pfad.id;
-    if (!(await bestaetigeMitFaktor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
-    return { ticket: await d.vouchers.releasePdf(req.apiUser.user_id, id), gueltig_sek: TICKET_SEK };
+    if (!(await confirmWithFactor(d.konto, req, res, req.apiUser.user_id, req.eingabe.password))) return;
+    return { ticket: await d.vouchers.releasePdf(req.apiUser.user_id, id), gueltig_sek: TICKET_SEC };
   });
 
   router.endpunkt('GET /api/v1/vouchers/:id/pdf', requireToken, async (req, res) => {
@@ -139,7 +139,7 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'vouchers'>) {
     res.setHeader('Content-Disposition', `${art}; filename="gutschein-${id}.pdf"`);
     // A voucher belongs in no shared cache.
     res.setHeader('Cache-Control', 'private, no-store');
-    res.setHeader('Content-Security-Policy', FREMDE_DATEI_CSP);
+    res.setHeader('Content-Security-Policy', FOREIGN_FILE_CSP);
     res.end(pdf);
   });
 
@@ -149,10 +149,10 @@ export function baueVouchersRouter(d: Pick<Dienste, 'konto' | 'vouchers'>) {
     const r = await d.vouchers.checkBalance(req.apiUser.user_id, id);
     if (r.art === 'gesperrt') gesperrt(r.grund, r.wartenSek);
     return {
-      voucher: fuerAussen(r.zeile),
+      voucher: forOuter(r.zeile),
       angezeigt: r.angezeigt,
       // A silently changed currency would be a changed total without a hint.
-      waehrung_geaendert: r.waehrungGeaendert,
+      waehrung_geaendert: r.currencyChanged,
     };
   });
   return router;

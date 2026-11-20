@@ -5,15 +5,15 @@
  * Konten mit nur noch nicht bestätigter neuer Adresse nicht.
  *
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  bestaetigeMitFaktor() in der Route gestrichen → rot: „ohne Passwort
+ *   A  confirmWithFactor() in der Route gestrichen → rot: „ohne Passwort
  *      bleibt das Konto …“ und „mit zweitem Faktor …“
- *   B  loescheEigenesKonto() ohne die Verwalterbedingung → rot: „der letzte
+ *   B  deleteOwnAccount() ohne die Verwalterbedingung → rot: „der letzte
  *      Verwalter bleibt“
- *   C  loescheOffeneRegistrierungen() ohne `registration_pending` → rot:
+ *   C  deleteOpenRegistrations() ohne `registration_pending` → rot:
  *      „unbestätigte Registrierungen …“ (das Konto mit neuer Adresse ist weg)
  *   D  der Schritt fehlt in cleanupDaily() → rot: dieselbe Prüfung
  *      (die alte Registrierung bleibt)
- * Gemessen grün blieb (04.11.2026): uebernimmEmailNeu() ohne `registration_pending = false` —
+ * Gemessen grün blieb (04.11.2026): adoptEmailNew() ohne `registration_pending = false` —
  * das Löschen verlangt zusätzlich NOT email_verified.
  *
  * REQUIRE_DB=1.
@@ -27,11 +27,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Loeschen-Passwort-1';
 
@@ -108,27 +108,27 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     assert.ok(await da(id));
   });
 
-  const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testBereich('konto').konten };
-  const { verifiziereEmailToken } = _req('src/konto/anmeldepruefung.js');
-  const { tokenAbdruck } = _req('src/konto/geraeteToken.js');
-  const registriert = async (name, tageAlt) => {
+  const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testArea('konto').konten };
+  const { verifyEmailToken } = _req('src/konto/anmeldepruefung.js');
+  const { tokenDigest } = _req('src/konto/geraeteToken.js');
+  const registered = async (name, daysAlt) => {
     const roh = crypto.randomBytes(16).toString('hex');
-    const id = await K.registriere({
+    const id = await K.register({
       username: name,
       email: `${name}@example.org`,
       passwort: PASS,
-      tokenHash: tokenAbdruck(roh),
+      tokenHash: tokenDigest(roh),
       bis: new Date(Date.now() + 86_400_000),
     });
-    await db.run(`UPDATE users SET created_at = NOW() - make_interval(days => $2) WHERE id = $1`, [id, tageAlt]);
+    await db.run(`UPDATE users SET created_at = NOW() - make_interval(days => $2) WHERE id = $1`, [id, daysAlt]);
     return { id, roh };
   };
 
   await t.test('unbestätigte Registrierungen nach sieben Tagen', async () => {
-    const alt = await registriert(NAMEN[3], 8),
-      neu = await registriert(NAMEN[4], 6);
-    const bestaetigt = await registriert(NAMEN[6], 8);
-    assert.ok((await verifiziereEmailToken(bestaetigt.roh)).userId);
+    const alt = await registered(NAMEN[3], 8),
+      neu = await registered(NAMEN[4], 6);
+    const bestaetigt = await registered(NAMEN[6], 8);
+    assert.ok((await verifyEmailToken(bestaetigt.roh)).userId);
     // Ein altes Konto, dessen neue Adresse noch nicht bestätigt ist.
     const adresse = await konto(NAMEN[5]);
     await db.run(

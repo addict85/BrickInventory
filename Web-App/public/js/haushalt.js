@@ -4,7 +4,7 @@ import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
 import { toast } from './meldungen.js';
 import { esc, html, rawHtml, joinHtml } from './escaping.js';
-import { confirmDelete, bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
+import { confirmDelete, bestaetigeMitPasswort, withSecondFactor } from './rueckfrage.js';
 // Einstellungen, Abschnitt Haushalt: Einladen, Beitreten, Trennen. Ein Konto sieht danach die Bestände der
 // verknüpften Konten; die Regeln dazu stehen im Server (src/haushalt).
 
@@ -138,7 +138,7 @@ export async function redeemHouseholdInvite() {
   );
   if (password === null) return;
   const faktor_code = (G('household-redeem-faktor-code')?.value || '').trim();
-  const d = await mitZweitemFaktor(z =>
+  const d = await withSecondFactor(z =>
     api('POST', '/v1/settings/household/redeem', {
       code,
       password,

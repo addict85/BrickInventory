@@ -2,11 +2,11 @@
  * Ein zweiter Speicher konnte dem ersten widersprechen. */
 
 import { logAndContinue } from '../infra/fehler';
-import { BILDLADE_ZAEHLER } from '../katalog';
-import type { AuftragsArt } from '../auftraege';
+import { IMAGE_LOAD_COUNTER } from '../katalog';
+import type { JobKind } from '../auftraege';
 import type { ManagementContext } from './context';
 
-type LetzterStand = Awaited<ReturnType<ManagementContext['auftraege']['letzteJeArt']>>[number];
+type LastStatus = Awaited<ReturnType<ManagementContext['auftraege']['letzteJeArt']>>[number];
 
 export interface Tile {
   label: string;
@@ -18,7 +18,7 @@ export interface Tile {
   [k: string]: unknown;
 }
 
-const TILES: Record<string, { art: AuftragsArt; label: string; total: number }> = {
+const TILES: Record<string, { art: JobKind; label: string; total: number }> = {
   csvImport: { art: 'csv_sync', label: 'CSV-Import (Rebrickable)', total: 8 },
   instrQueue: { art: 'anleitung', label: 'Anleitungen herunterladen', total: 0 },
   priceJob: { art: 'preise', label: 'Preise aktualisieren', total: 0 },
@@ -39,7 +39,7 @@ const STATUS: Record<string, Tile['status']> = {
 };
 const toInt = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? Math.round(x) : 0);
 
-function asTile(k: { label: string; total: number }, z: LetzterStand | undefined): Tile {
+function asTile(k: { label: string; total: number }, z: LastStatus | undefined): Tile {
   if (!z) return { label: k.label, status: 'idle', progress: 0, total: k.total, sub: null, lastRun: null };
   const f = z.progress ?? {};
   return {
@@ -68,10 +68,10 @@ export async function tile(k: ManagementContext, name: string): Promise<Tile | n
 }
 
 export async function imgDlPending(k: ManagementContext) {
-  const n = parseInt((await k.auftraege.liesZustand(BILDLADE_ZAEHLER)) || '0', 10);
+  const n = parseInt((await k.auftraege.liesZustand(IMAGE_LOAD_COUNTER)) || '0', 10);
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
 export async function imgDlReset(k: ManagementContext) {
-  await k.auftraege.setzeZustand(BILDLADE_ZAEHLER, 0).catch(logAndContinue('job-monitor:setzeZustand'));
+  await k.auftraege.setzeZustand(IMAGE_LOAD_COUNTER, 0).catch(logAndContinue('job-monitor:setzeZustand'));
 }

@@ -1,21 +1,21 @@
 /**
  * Eine Adresse, die ständig unbekannte Bearer-Token vorlegt, wird gebremst,
  * ohne dass gültige Zugänge oder die Wiederverwendungserkennung leiden.
- * Gemessen an Eingang (anmeldungAmEingang) und Repository-Aufrufen.
+ * Gemessen an Eingang (loginAtInbox) und Repository-Aufrufen.
  *
  * Gegenproben (am 08.11.2026 gemessen, je einzeln):
- *   A  in pruefeToken() die Zeile mit zuVieleFehlversuche() entfernt → rot:
+ *   A  in pruefeToken() die Zeile mit toManyFailedAttempts() entfernt → rot:
  *      „nach dem Limit kostet ein unbekannter Token keine Datenbankabfrage“
  *      und „die Drossel antwortet 429, nicht 401“
- *   B  in pruefeToken() zaehleFehlversuch() auch für Token aus einer Familie
- *      (Rückgabewert von meldeWiederverwendung ignoriert) → rot: „ein
+ *   B  in pruefeToken() countFailedAttempt() auch für Token aus einer Familie
+ *      (Rückgabewert von reportReuse ignoriert) → rot: „ein
  *      wiederverwendeter Token zählt nicht als Fehlversuch“
- *   C  in sendeTokenAbsage() immer 401 → rot: „die Drossel antwortet 429,
+ *   C  in sendTokenRejection() immer 401 → rot: „die Drossel antwortet 429,
  *      nicht 401“
  *   D  die Cache-Prüfung hinter die Drossel gestellt → rot: „ein gültiger
  *      Token im Cache wird auch gebremster Adresse bedient“
- *   E  (08.11.) in zaehleFehlversuch() wieder im Prozess gezählt (eine Map,
- *      die vergissSperrenImProzess() mit leert) statt über zaehleAnfrage() →
+ *   E  (08.11.) in countFailedAttempt() wieder im Prozess gezählt (eine Map,
+ *      die forgetLockInProcess() mit leert) statt über countRequest() →
  *      rot: „ein zweiter Web-Prozess zählt die Fehlversuche des ersten mit“
  *      (401 statt 429)
  *
@@ -27,30 +27,30 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
-const db = require('./helpers/sources').testDaten();
+const db = require('./helpers/sources').testData();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const bremse = _req('src/konto/tokenFehlversuche.js');
-const anmeldungAmEingang = (...a) =>
+const loginAtInbox = (...a) =>
   _req('routes/api_v1/middleware.js')
-    .waechterFuer(require('./helpers/sources').testDienste().konto)
-    .anmeldungAmEingang(...a);
-const pgNotify = require('./helpers/sources').testZugang().benachrichtigung;
+    .guardFor(require('./helpers/sources').testServices().konto)
+    .loginAtInbox(...a);
+const pgNotify = require('./helpers/sources').testAccess().notification;
 const { bis } = require('./helpers/zeit');
 
 const NAME = `fehlversuch_${process.pid}`;
 
 test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const server = routerServer(_req, { t, sitzung: {}, routen: {} });
-  server.app.use('/api/v1', anmeldungAmEingang);
+  server.app.use('/api/v1', loginAtInbox);
   server.app.get('/api/v1/probe', (_req2, res) => res.json({ ok: true }));
   // Den Cache gibt es nur mit stehender Horch-Verbindung für Widerrufe (fail closed).
-  tokenCache.horcheAufTokenWiderruf();
-  assert.ok(await bis(() => pgNotify.hoertZu('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
+  tokenCache.listenOnTokenRevocation();
+  assert.ok(await bis(() => pgNotify.listensTo('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
   t.after(async () => {
     await pgNotify.close();
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]).catch(() => {});
@@ -60,7 +60,7 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
 
   // Gezählt wird die Token-Abfrage an der Verbindung, nicht ein Aufruf im Quelltext.
   // In den Pools der App (Laufzeit-, System- und Web-Systemrolle), nicht im Zugang der Testdaten.
-  const zugang = require('./helpers/sources').testZugang();
+  const zugang = require('./helpers/sources').testAccess();
   const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
   const echt = pools.map(p => p.query);
   let abfragen = 0;
@@ -80,17 +80,17 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   const zufall = i => `unbekannt-${process.pid}-${i}-${Math.random()}`;
 
   await t.test('bis zum Limit prüft jeder unbekannte Token die Datenbank', async () => {
-    await bremse.vergissFehlversuche();
+    await bremse.forgetFailedAttempts();
     abfragen = 0;
-    for (let i = 0; i < bremse.FEHLVERSUCH_MAX; i++) assert.equal((await ruf(zufall(i))).status, 401);
-    assert.equal(abfragen, bremse.FEHLVERSUCH_MAX);
+    for (let i = 0; i < bremse.FAILED_ATTEMPT_MAX; i++) assert.equal((await ruf(zufall(i))).status, 401);
+    assert.equal(abfragen, bremse.FAILED_ATTEMPT_MAX);
   });
 
   await t.test('ein gültiger Token im Cache wird auch gebremster Adresse bedient', async () => {
-    await bremse.vergissFehlversuche();
-    const token = await auth.tokenAnlegen(uid, 'Cache');
+    await bremse.forgetFailedAttempts();
+    const token = await auth.createToken(uid, 'Cache');
     assert.equal((await ruf(token)).status, 200, 'Vorbedingung: der Token gilt und steht im Cache');
-    for (let i = 0; i < bremse.FEHLVERSUCH_MAX + 1; i++) await ruf(zufall(i));
+    for (let i = 0; i < bremse.FAILED_ATTEMPT_MAX + 1; i++) await ruf(zufall(i));
     assert.equal((await ruf(token)).status, 200);
   });
 
@@ -106,20 +106,20 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   });
 
   await t.test('nach dem Fenster gilt die Adresse wieder als unbescholten', async () => {
-    const jetzt = Date.now() + bremse.FEHLVERSUCH_FENSTER_MS + 1000;
-    assert.equal(bremse.zuVieleFehlversuche('::1', jetzt), false);
-    assert.equal(bremse.zuVieleFehlversuche('127.0.0.1', jetzt), false);
+    const jetzt = Date.now() + bremse.FAILED_ATTEMPT_WINDOW_MS + 1000;
+    assert.equal(bremse.toManyFailedAttempts('::1', jetzt), false);
+    assert.equal(bremse.toManyFailedAttempts('127.0.0.1', jetzt), false);
   });
 
   await t.test('ein wiederverwendeter Token zählt nicht als Fehlversuch', async () => {
-    await bremse.vergissFehlversuche();
-    const alt = await auth.tokenAnlegen(uid, 'Alt', true);
-    const neu = await auth.rotiereToken(alt, null);
+    await bremse.forgetFailedAttempts();
+    const alt = await auth.createToken(uid, 'Alt', true);
+    const neu = await auth.rotateToken(alt, null);
     assert.ok(neu && neu !== 'laeuft', 'Vorbedingung: der Tausch hat geklappt');
     assert.equal((await ruf(neu.token)).status, 200, 'der Nachfolger wird benutzt, der Vorgänger ist damit verbraucht');
     await db.run(`UPDATE api_tokens_consumed SET consumed_at = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [uid]);
-    tokenCache.leereTokenCache();
-    for (let i = 0; i < bremse.FEHLVERSUCH_MAX; i++) await ruf(zufall(i));
+    tokenCache.emptyTokenCache();
+    for (let i = 0; i < bremse.FAILED_ATTEMPT_MAX; i++) await ruf(zufall(i));
     assert.equal((await ruf(alt)).status, 401);
     // Wäre der Familien-Treffer mitgezählt, läge die Adresse jetzt über dem Limit.
     assert.equal((await ruf(zufall('letzter'))).status, 401);
@@ -132,13 +132,13 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
 
   // Ein zweiter Prozess hat eigenen Speicher, aber dieselbe Datenbank.
   await t.test('ein zweiter Web-Prozess zählt die Fehlversuche des ersten mit', async () => {
-    await bremse.vergissFehlversuche();
-    for (let i = 0; i < bremse.FEHLVERSUCH_MAX; i++) assert.equal((await ruf(zufall(`a${i}`))).status, 401);
-    bremse.vergissSperrenImProzess();
+    await bremse.forgetFailedAttempts();
+    for (let i = 0; i < bremse.FAILED_ATTEMPT_MAX; i++) assert.equal((await ruf(zufall(`a${i}`))).status, 401);
+    bremse.forgetLockInProcess();
     abfragen = 0;
     assert.equal((await ruf(zufall('b1'))).status, 401, 'der erste Versuch im zweiten Prozess prüft noch');
     assert.equal((await ruf(zufall('b2'))).status, 429, 'danach gilt die gemeinsame Grenze');
     assert.equal(abfragen, 1);
-    await bremse.vergissFehlversuche();
+    await bremse.forgetFailedAttempts();
   });
 });

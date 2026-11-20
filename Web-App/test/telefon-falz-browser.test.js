@@ -11,8 +11,8 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterSammlung } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternCollection } = require('./helpers/bestand');
 
 const messen = `(() => {
   const k = document.querySelector('#gallery .sc')?.getBoundingClientRect();
@@ -21,9 +21,9 @@ const messen = `(() => {
     // Die Textfläche, nicht die Box: Überlaufender Text ragt über seine Box hinaus.
     const flaeche = (e) => { if (!e) return null; const r = document.createRange(); r.selectNodeContents(e); return r.getBoundingClientRect(); };
     const preis = flaeche(b.querySelector('.preis'));
-    const nachbar = flaeche(b.querySelector('.preis-pnl, .pnl-geschenk, .pnl-pos, .pnl-neg'));
-    if (!preis || !nachbar) return [];
-    const quer = preis.right > nachbar.left + 0.5 && preis.left < nachbar.right && preis.bottom > nachbar.top + 0.5 && preis.top < nachbar.bottom;
+    const neighbor = flaeche(b.querySelector('.preis-pnl, .pnl-geschenk, .pnl-pos, .pnl-neg'));
+    if (!preis || !neighbor) return [];
+    const quer = preis.right > neighbor.left + 0.5 && preis.left < neighbor.right && preis.bottom > neighbor.top + 0.5 && preis.top < neighbor.bottom;
     return quer ? [b.textContent.trim()] : [];
   });
   return { oben: k ? Math.round(k.top) : null, leiste: Math.round(leiste.top),
@@ -32,7 +32,7 @@ const messen = `(() => {
 })()`;
 
 test('Sammlung am Telefon: Karte über der Falz, Preise ohne Überlappung', { timeout: 120_000 }, async t => {
-  const app = await starteApp(t, { name: `falz_${process.pid}`, bestand: musterSammlung, telefon: true });
+  const app = await startApp(t, { name: `falz_${process.pid}`, bestand: patternCollection, telefon: true });
   if (app.grund) {
     t.skip(app.grund);
     return;

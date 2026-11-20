@@ -4,7 +4,7 @@
  * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
  *   A  navigation.js: bei Sprachwechsel loadGallery() statt renderGallery()
  *      → „ein echter Sprachwechsel …“ rot
- *   B  navigation.js ohne `if (!echterWechsel) return;` → „der Start lädt …“ rot
+ *   B  navigation.js ohne `if (!realSwitch) return;` → „der Start lädt …“ rot
  *   C  loadGallery zeigt die Ladeanzeige immer (`if (true)`) → „Auffrischen …“ rot
  */
 const test = require('node:test');
@@ -28,32 +28,32 @@ function stripModuleSyntax(src) {
   );
 }
 
-const { oeffneOberflaeche } = require('./helpers/oberflaeche');
+const { openUi } = require('./helpers/oberflaeche');
 
 const SETS = { success: true, sets: [{ set_number: '10294-1', name: 'Titanic', quantity: 1 }], count: 1, total: 1 };
-const setsAufrufe = aufrufe => aufrufe.filter(a => a.method === 'GET' && /\/api\/v1\/sets\?/.test(a.url)).length;
+const setsCalls = aufrufe => aufrufe.filter(a => a.method === 'GET' && /\/api\/v1\/sets\?/.test(a.url)).length;
 const kachel = d => d.querySelector('#gallery [data-price-for="10294-1"]')?.closest('[data-click="openModal"], .sc');
 
 test('der Start lädt die Galerie einmal, und gleiche Sprache baut nichts neu', async () => {
-  const { w, d, warte, ruhig, aufrufe } = await oeffneOberflaeche({ '/v1/sets': SETS });
+  const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v1/sets': SETS });
   try {
     assert.ok(await warte(() => kachel(d)));
     await ruhig();
-    assert.equal(setsAufrufe(aufrufe), 1, 'die Galerie wurde beim Start mehrfach geladen');
+    assert.equal(setsCalls(aufrufe), 1, 'die Galerie wurde beim Start mehrfach geladen');
     const vorher = kachel(d);
     const wahl = d.getElementById('lang-select');
     wahl.value = 'de';
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
     await ruhig();
     assert.equal(kachel(d), vorher, 'gleiche Sprache hat die Kacheln neu gezeichnet');
-    assert.equal(setsAufrufe(aufrufe), 1);
+    assert.equal(setsCalls(aufrufe), 1);
   } finally {
     w.close();
   }
 });
 
 test('ein echter Sprachwechsel zeichnet die Galerie neu, ohne sie neu zu laden', async () => {
-  const { w, d, warte, ruhig, aufrufe } = await oeffneOberflaeche({ '/v1/sets': SETS });
+  const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v1/sets': SETS });
   try {
     assert.ok(await warte(() => kachel(d)));
     await ruhig();
@@ -63,7 +63,7 @@ test('ein echter Sprachwechsel zeichnet die Galerie neu, ohne sie neu zu laden',
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
     assert.ok(await warte(() => kachel(d) && kachel(d) !== vorher), 'Kacheln nicht neu gezeichnet');
     await ruhig();
-    assert.equal(setsAufrufe(aufrufe), 1, 'ein Sprachwechsel hat die Galerie neu geladen');
+    assert.equal(setsCalls(aufrufe), 1, 'ein Sprachwechsel hat die Galerie neu geladen');
   } finally {
     w.close();
   }
@@ -75,7 +75,7 @@ test('Auffrischen lässt die Kacheln stehen, bis die neue Antwort da ist', async
   const spaeter = new Promise(r => {
     los = r;
   });
-  const { w, d, warte } = await oeffneOberflaeche({ '/v1/sets': () => (++n === 1 ? SETS : spaeter.then(() => SETS)) });
+  const { w, d, warte } = await openUi({ '/v1/sets': () => (++n === 1 ? SETS : spaeter.then(() => SETS)) });
   try {
     assert.ok(await warte(() => kachel(d)));
     d.getElementById('gsort').value = 'name_asc';
@@ -95,7 +95,7 @@ test('die Import-Abfrage läuft nicht ungebremst und nicht vor dem Login', () =>
   // die Antwort gar kein JSON war. Steht ein Reverse-Proxy davor, liefert der
   // bei einem Neustart eine HTML-Fehlerseite; r.json() warf dann bei jedem
   // Versuch "Unexpected token '<'".
-  const core = stripModuleSyntax(require('./helpers/sources').coreQuelle());
+  const core = stripModuleSyntax(require('./helpers/sources').coreSource());
   const fn = core.slice(core.indexOf('async function gibCheckOnLoad'), core.indexOf('let _gibCheckTimer = null;'));
   assert.match(
     fn,

@@ -5,9 +5,9 @@
  * die Bestätigung von Passwort und Code in einer laufenden Sitzung.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  anmeldungErlaubt wieder mit _read statt _reserviere (Adresse und
+ *   A  loginAllowed wieder mit _read statt _reserviere (Adresse und
  *      Konto) → rot: „20 gleichzeitige Fehlversuche, höchstens 5 Prüfungen“
- *   B  bestaetigungGesperrt wieder mit _read → rot: „Bestätigung: …“
+ *   B  confirmationLocked wieder mit _read → rot: „Bestätigung: …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -18,14 +18,14 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `parallel_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -48,12 +48,12 @@ test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async t
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { pruefeAnmeldedaten } = _req('src/konto/anmeldepruefung.js');
+  const { checkCredentials } = _req('src/konto/anmeldepruefung.js');
   const lim = _req('src/konto/loginLimiter.js');
 
   await t.test('20 gleichzeitige Fehlversuche, höchstens 5 Prüfungen', async () => {
     const anfrage = { ip: '203.0.113.7', socket: {}, headers: {} };
-    const r = await Promise.all(Array.from({ length: 20 }, () => pruefeAnmeldedaten(anfrage, NAME, 'falsch')));
+    const r = await Promise.all(Array.from({ length: 20 }, () => checkCredentials(anfrage, NAME, 'falsch')));
     const geprueft = r.filter(x => x.absage?.art === 'nicht_angemeldet').length;
     const gesperrt = r.filter(x => x.absage?.art === 'zu_viele').length;
     assert.ok(geprueft <= lim.MAX_ATTEMPTS, `${geprueft} Passwortprüfungen, ${gesperrt} gesperrt`);
@@ -61,7 +61,7 @@ test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async t
   });
 
   await t.test('Bestätigung: 20 gleichzeitige Versuche, höchstens 5 frei', async () => {
-    const r = await Promise.all(Array.from({ length: 20 }, () => lim.bestaetigungGesperrt(uid)));
+    const r = await Promise.all(Array.from({ length: 20 }, () => lim.confirmationLocked(uid)));
     const frei = r.filter(x => x === null).length;
     assert.ok(frei <= lim.MAX_ATTEMPTS, `${frei} Versuche durchgelassen`);
   });

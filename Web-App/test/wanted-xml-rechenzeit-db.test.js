@@ -7,11 +7,11 @@
  *
  * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
  *
- *   a) leseWantedListe wieder mit dem faulen Muster für ITEM
+ *   a) readWantedList wieder mit dem faulen Muster für ITEM
  *      → 1 rot („ITEM ohne Ende: 8376 ms")
  *   b) feld() wieder mit dem faulen Muster → 1 rot („ITEMID ohne Ende: 6285 ms")
  *   c) Tag-Suche ohne Flag i → 2 rot (der klein geschriebene Posten fehlte)
- *   d) Route wieder mit csvEmpfang (15 MB) → 3 rot (Status 200, 29 138 Posten)
+ *   d) Route wieder mit csvReceive (15 MB) → 3 rot (Status 200, 29 138 Posten)
  *
  * Voraussetzung für Fall 3: Test-DB via TEST_DATABASE_URL. Ohne DB: skip,
  * ausser REQUIRE_DB=1.
@@ -21,12 +21,12 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
-const db = testDaten();
-const { leseWantedListe } = _req('src/wanted/wantedParser.js');
+const db = testData();
+const { readWantedList } = _req('src/wanted/wantedParser.js');
 const { XML_MAX_BYTES } = _req('src/http/dateiEmpfang.js');
 const { testServer } = require('./helpers/server');
 
@@ -41,7 +41,7 @@ function item(id, farbe, menge) {
   );
 }
 
-function dauer(f) {
+function duration(f) {
   const t = process.hrtime.bigint();
   const r = f();
   return { r, ms: Number(process.hrtime.bigint() - t) / 1e6 };
@@ -54,7 +54,7 @@ test('1. offene Tags ohne Ende kosten keine quadratische Rechenzeit', () => {
     'ITEMID ohne Ende': '<INVENTORY><ITEM>' + '<ITEMID>'.repeat(60000) + '</ITEM>',
   };
   for (const [name, xml] of Object.entries(faelle)) {
-    const { r, ms } = dauer(() => leseWantedListe(xml));
+    const { r, ms } = duration(() => readWantedList(xml));
     assert.ok(ms < 500, `${name}: ${ms.toFixed(0)} ms — das Zerlegen ist nicht linear`);
     assert.equal(r.posten.length, 0, `${name}: ${r.posten.length} Posten aus Müll gelesen`);
   }
@@ -67,7 +67,7 @@ test('2. gültige Posten bleiben richtig, auch neben einem offenen Block', () =>
     item('x126', 95, 14) +
     '<item><itemtype>P</itemtype><itemid>3002</itemid><minqty>2</minqty></item>\n' +
     '<ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>offen</ITEMID>\n</INVENTORY>';
-  const r = leseWantedListe(xml);
+  const r = readWantedList(xml);
   assert.deepEqual(
     r.posten.map(p => [p.blId, p.blFarbe, p.menge]),
     [

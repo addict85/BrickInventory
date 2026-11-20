@@ -12,7 +12,7 @@
  *   D  loeschWahl() ohne Haushaltsfall → rot: „Löschen im Haushalt“ (Konten fehlen)
  *   E  fokusVerloren() kehrt sofort zurück → rot: ebenda (Fokus nicht auf dem Set)
  *   F  .offline-band wieder top:0;z-index:120 → rot: „Offline-Band“ (Menü verdeckt)
- *   G  ohne den 429-Zweig in verstaendlicherGrund() → rot: „Drossel“ (Text);
+ *   G  ohne den 429-Zweig in clearerReason() → rot: „Drossel“ (Text);
  *      .toast-zu ohne position:absolute → rot: ebenda (✕ 65 px unter der Oberkante)
  *   H  wieder loadGallery() und loadStats() beim Reiterwechsel → rot: „Drossel“
  *      (zweimal /v1/stats)
@@ -27,7 +27,7 @@
  *   P  „davon N nach Fehler“ nie gezeigt → rot: „Hintergrundarbeiten“
  *   Q  pl.erst_set wieder ohne Grund → rot: „Bauliste“ (Sperre ohne Begründung); seit Runde 24 ohne
  *      Knopf: btn-pl-gen nicht verborgen → rot: „Bauliste“ (sichtbar ohne Set)
- *   R  beiTelefonWechsel() zeichnet die Sammlung nicht neu → rot: „Telefon nur
+ *   R  atPhoneSwitch() zeichnet die Sammlung nicht neu → rot: „Telefon nur
  *      Karten …“ (Zeitüberschreitung), in Folge „Drossel“, „Kontrastmodus“, „Abmelden …“
  *   S  (16.11.2026) in loeschWahl() „aus allen Konten“ wieder als erste (vorgewählte) Möglichkeit →
  *      rot: „Löschen im Haushalt“
@@ -38,11 +38,11 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { starteApp } = require('./helpers/app-browser');
-const { musterHaushalt } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternHousehold } = require('./helpers/bestand');
 
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
-const SCHLIESSEN = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
+const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
 const EN_PASS = 'en-Passwort-1';
 
 async function groesse(b, breite, telefon) {
@@ -55,7 +55,7 @@ async function groesse(b, breite, telefon) {
 }
 
 async function geh(a, hash, bereit, was) {
-  await a.b.auswerten(SCHLIESSEN);
+  await a.b.auswerten(CLOSE);
   await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
   await a.bis(bereit, was, 200);
   await a.ruhig(5000);
@@ -70,11 +70,14 @@ async function setDetail(_t, a) {
   await b.auswerten(`(() => { const f = document.getElementById('m-alert-val'); f.value = '150';
     f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await bis(`/aktiv/.test(${text('#m-alert-state')})`, 'Alarm gespeichert');
-  const lage =
+  const situation =
     await b.auswerten(`(() => { const s = document.getElementById('m-alert-state'), l = s.parentElement.querySelector('.zu-sicht');
     return { marke: s.classList.contains('alarm-marke'), unten: s.getBoundingClientRect().bottom, link: l.getBoundingClientRect().top }; })()`);
-  assert.ok(lage.marke, 'Zustand als Marke');
-  assert.ok(lage.link >= lage.unten - 1, `„Alle Preisalarme“ nicht in eigener Zeile: ${JSON.stringify(lage)}`);
+  assert.ok(situation.marke, 'Zustand als Marke');
+  assert.ok(
+    situation.link >= situation.unten - 1,
+    `„Alle Preisalarme“ nicht in eigener Zeile: ${JSON.stringify(situation)}`,
+  );
   const feld = await b.auswerten(`(() => { const f = document.getElementById('instr-desc');
     return { stil: f.getAttribute('style'), hoehe: f.getBoundingClientRect().height, balken: getComputedStyle(document.querySelector('#set-modal .modal')).scrollbarWidth }; })()`);
   assert.equal(feld.stil, null, 'Inline-Stil am Beschreibungsfeld');
@@ -83,13 +86,13 @@ async function setDetail(_t, a) {
   await b.auswerten(`(() => { const f = document.getElementById('m-alert-val'); f.value = '';
     f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);
   await a.ruhig(3000);
-  await b.auswerten(SCHLIESSEN);
+  await b.auswerten(CLOSE);
 }
 
 /** Jede Ansicht bei 390 px, alle Klappen offen: Die Seite ist nie breiter als das Fenster. Die allgemeine
  * Prüfung (helpers/oberflaeche-pruefung.js) misst mit geschlossenen „Einzelnen Aufträgen“ und ohne
  * gescheiterten Auftrag; so rutschte der Überlauf der Hintergrundarbeiten durch. */
-async function alleAnsichten(_t, a) {
+async function allViews(_t, a) {
   const { b } = a;
   const funde = [];
   await groesse(b, 390, true);
@@ -112,7 +115,7 @@ async function alleAnsichten(_t, a) {
       'daten',
       'app',
     ]) {
-      await b.auswerten(SCHLIESSEN);
+      await b.auswerten(CLOSE);
       await b.auswerten(`location.hash = '#/${pfad}'; true`);
       await a.ruhig(5000);
       await b.auswerten(`(() => { const t = document.querySelector('.tab.active');
@@ -189,7 +192,7 @@ async function bauliste(_t, a) {
   assert.match(k.leer, /entsteht sofort/, 'Leerzustand ohne Anleitung');
 }
 
-async function leisten(_t, a) {
+async function bars(_t, a) {
   const { b, bis } = a;
   // Am Rechner Tabelle gewählt, dann schmal: Die Sammlung zeigt Karten, ohne neu zu laden.
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
@@ -400,7 +403,7 @@ async function abmelden(_t, a, name) {
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="21318-1"]')`, 'Sammlung');
   await b.auswerten(`document.querySelector('#gallery .sc[data-arg="21318-1"]').click(); true`);
   await bis(`/199,99/.test(document.getElementById('m-det').textContent)`, 'Set-Dialog');
-  await b.auswerten(SCHLIESSEN);
+  await b.auswerten(CLOSE);
   await geh(a, '#/finanzen', `document.getElementById('tab-finance').classList.contains('active')`, 'Finanzen');
 
   await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
@@ -410,7 +413,7 @@ async function abmelden(_t, a, name) {
     300,
   );
   // Der Browser spricht Englisch (Chrome ohne Sprachwahl: en-US), das Konto davor Deutsch.
-  const maske = { titel: await b.auswerten(`document.title`), knopf: await b.auswerten(text('#btn-login')) };
+  const mask = { titel: await b.auswerten(`document.title`), knopf: await b.auswerten(text('#btn-login')) };
 
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(`${name}_en`)};
     document.getElementById('lp').value = ${JSON.stringify(EN_PASS)}; document.getElementById('btn-login').click(); true`);
@@ -425,7 +428,7 @@ async function abmelden(_t, a, name) {
   );
   assert.deepEqual(fremd, [], 'Stand des vorigen Kontos im Dokument');
   assert.deepEqual(
-    maske,
+    mask,
     { titel: 'Sign in – BrickInventory', knopf: 'Sign in' },
     'Anmeldemaske nicht in der Browsersprache',
   );
@@ -448,10 +451,10 @@ async function abmelden(_t, a, name) {
 
 test('Abmelden, Löschen im Haushalt, Offline-Band, Kontrastmodus', { concurrency: 1, timeout: 600_000 }, async t => {
   const name = `r23_${process.pid}`;
-  const a = await starteApp(t, {
+  const a = await startApp(t, {
     name,
     bestand: async (db, uid) => {
-      await musterHaushalt(db, uid);
+      await patternHousehold(db, uid);
       // Zwei offene Läufe einer Art, einer nach Fehlern: Etikett und langer Hinweis am Telefon.
       await db.run(`INSERT INTO jobs (type, due_at, attempts, max_attempts, error_message)
         VALUES ('wechselkurse', NOW() + interval '5 hours', 4, 6, 'getaddrinfo ENOTFOUND www.ecb.europa.eu https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip')`);
@@ -474,11 +477,11 @@ test('Abmelden, Löschen im Haushalt, Offline-Band, Kontrastmodus', { concurrenc
   /** @type {[string, (t: import('node:test').TestContext, a: object, name: string) => Promise<void>][]} */
   const pruefungen = [
     ['Set-Detail', setDetail],
-    ['Alle Ansichten bei 390 px', alleAnsichten],
+    ['Alle Ansichten bei 390 px', allViews],
     ['Hintergrundarbeiten', hintergrund],
     ['Finanzen', finanzen],
     ['Bauliste', bauliste],
-    ['Telefon nur Karten, gleiche Werkzeugleisten', leisten],
+    ['Telefon nur Karten, gleiche Werkzeugleisten', bars],
     ['Drossel', drossel],
     ['Offline-Band', offlineBand],
     ['Kontrastmodus', kontrast],

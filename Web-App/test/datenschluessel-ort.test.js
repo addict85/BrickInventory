@@ -6,7 +6,7 @@
  * in einem eigenen Prozess mit eigenem APP_ROOT.
  *
  * Gegenproben (01.11.2026 gemessen):
- *   A  schluesselDatei() ohne konfig().datenSchluesselDatei → rot: „der
+ *   A  keyFile() ohne konfig().dataKeyFile → rot: „der
  *      Schlüssel aus DATA_KEY_FILE …"
  *   B  Rückfall auf data/.datenschluessel entfernt → rot: „eine alte
  *      Installation …" (neuer Schlüssel, die alten Geheimnisse wären verloren)
@@ -24,9 +24,9 @@ require('./helpers/sources').buildAndRequire();
 
 /** Lädt den Schlüssel in einem frischen Prozess; liefert ihn base64 samt stderr. */
 function lade(wurzel, env = {}) {
-  const skript = `const g = require(${JSON.stringify(path.join(DIST, 'src/infra/geheimnis.js'))});
+  const script = `const g = require(${JSON.stringify(path.join(DIST, 'src/infra/geheimnis.js'))});
     process.stdout.write(g.datenSchluessel().toString('base64'));`;
-  const r = spawnSync(process.execPath, ['-e', skript], {
+  const r = spawnSync(process.execPath, ['-e', script], {
     encoding: 'utf8',
     env: { ...process.env, DATA_KEY: '', DATA_KEY_FILE: '', APP_ROOT: wurzel, ...env },
   });

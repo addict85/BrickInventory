@@ -38,7 +38,7 @@ function oberflaeche() {
   return out;
 }
 
-const RUF = /\bt(?:Raw)?\(\s*'([a-z0-9_.]+)'|\bt(?:Raw)?\(\s*"([a-z0-9_.]+)"|data-i18n(?:-tab)?="([a-z0-9_.]+)"/g;
+const CALL = /\bt(?:Raw)?\(\s*'([a-z0-9_.]+)'|\bt(?:Raw)?\(\s*"([a-z0-9_.]+)"|data-i18n(?:-tab)?="([a-z0-9_.]+)"/g;
 
 test('jeder gerufene i18n-Schlüssel steht im Wörterbuch', () => {
   const { de, en } = loadTranslations();
@@ -50,7 +50,7 @@ test('jeder gerufene i18n-Schlüssel steht im Wörterbuch', () => {
 
   const gerufen = new Map();
   for (const [rel, src] of dateien)
-    for (const m of src.matchAll(RUF)) {
+    for (const m of src.matchAll(CALL)) {
       const k = m[1] || m[2] || m[3];
       if (!gerufen.has(k)) gerufen.set(k, rel);
     }
@@ -59,11 +59,11 @@ test('jeder gerufene i18n-Schlüssel steht im Wörterbuch', () => {
   assert.ok(gerufen.size >= 300, `Nur ${gerufen.size} Aufrufstellen gefunden — Muster veraltet?`);
 
   // Zusammengesetzte Schlüssel (`t('monitor.job.' + k)`) enden auf einen Punkt.
-  const praefixe = [...gerufen.keys()].filter(k => k.endsWith('.'));
+  const prefixes = [...gerufen.keys()].filter(k => k.endsWith('.'));
   assert.equal(
-    praefixe.length,
+    prefixes.length,
     1,
-    `${praefixe.length} zusammengesetzte Schlüssel (${praefixe.join(', ')}) — erwartet ` +
+    `${prefixes.length} zusammengesetzte Schlüssel (${prefixes.join(', ')}) — erwartet ` +
       'wird genau einer (monitor.job.). Ein zweiter braucht dieselbe eigene ' +
       'Absicherung wie er: Das Ergebnis gegen den Schlüssel prüfen und auf etwas ' +
       'anderes zurückfallen.',

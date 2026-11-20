@@ -1,8 +1,8 @@
 /** docs/openapi.json aus dem Vertrag. Jedes benannte Schema eines Bereichs wird
  * eine Komponente; so steht ein Set einmal in der Datei, nicht in jeder Route. */
 import { z } from 'zod';
-import { type Route, Fehler, Fehlercode, PFAD } from './grund';
-import { BEREICHE } from './index';
+import { type Route, Fehler, Fehlercode, PATH } from './grund';
+import { AREAS } from './index';
 import { API_VERSION } from './version';
 
 const MIME: Record<NonNullable<Route['art']>, string> = {
@@ -15,12 +15,12 @@ const MIME: Record<NonNullable<Route['art']>, string> = {
 const URI = (id: string) => `#/components/schemas/${id}`;
 
 /** Alle benannten Schemas: Name des Exports → Schema. Ein Name doppelt ist ein Fehler. */
-export function benannteSchemas(): Map<string, z.ZodType> {
+export function namedSchemas(): Map<string, z.ZodType> {
   const aus = new Map<string, z.ZodType>([
     ['Fehler', Fehler],
     ['Fehlercode', Fehlercode],
   ]);
-  for (const [bereich, modul] of Object.entries(BEREICHE)) {
+  for (const [bereich, modul] of Object.entries(AREAS)) {
     for (const [name, wert] of Object.entries(modul)) {
       if (!(wert instanceof z.ZodType) || aus.get(name) === wert) continue;
       if (aus.has(name)) throw new Error(`Schema ${name} gibt es zweimal (zuletzt in ${bereich})`);
@@ -38,8 +38,8 @@ function komponenten() {
     register.add(schema, { id });
     benannt.set(schema, id);
   };
-  for (const [name, schema] of benannteSchemas()) nimm(schema, name);
-  for (const modul of Object.values(BEREICHE))
+  for (const [name, schema] of namedSchemas()) nimm(schema, name);
+  for (const modul of Object.values(AREAS))
     for (const [schluessel, r] of Object.entries(modul.routen as Record<string, Route>)) {
       const id = schluessel.replace(/[^A-Za-z0-9]+/g, '_').replace(/_+$/, '');
       nimm(r.antwort, id);
@@ -63,11 +63,11 @@ export function openapi(): Record<string, unknown> {
   }
 
   const paths: Record<string, Record<string, unknown>> = {};
-  for (const [bereich, modul] of Object.entries(BEREICHE)) {
+  for (const [bereich, modul] of Object.entries(AREAS)) {
     for (const [schluessel, r] of Object.entries(modul.routen as Record<string, Route>)) {
       const [methode = '', pfad = ''] = schluessel.split(' ');
       const parameters: Record<string, unknown>[] = [...pfad.matchAll(/:(\w+)/g)].map(m => {
-        const p = z.toJSONSchema((PFAD as Record<string, z.ZodType>)[m[1] ?? ''] ?? z.never(), {
+        const p = z.toJSONSchema((PATH as Record<string, z.ZodType>)[m[1] ?? ''] ?? z.never(), {
           io: 'input',
           unrepresentable: 'any',
         });
@@ -113,9 +113,9 @@ export function openapi(): Record<string, unknown> {
       if (r.bestaetigung) op['x-bestaetigung'] = r.bestaetigung;
       if (r.geheim) op['x-geheim'] = true;
       if (r.klein) op['x-klein'] = true;
-      const oaPfad = pfad.replace(/:(\w+)/g, '{$1}');
-      paths[oaPfad] ??= {};
-      paths[oaPfad][methode.toLowerCase()] = op;
+      const oaPath = pfad.replace(/:(\w+)/g, '{$1}');
+      paths[oaPath] ??= {};
+      paths[oaPath][methode.toLowerCase()] = op;
     }
   }
   const sortiert = <T>(o: Record<string, T>) =>

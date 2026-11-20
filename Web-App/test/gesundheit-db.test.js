@@ -5,9 +5,9 @@
  *
  * Gegenproben (01.11.2026 gemessen):
  *   A  in /api/v1/health `startup` wieder für alle → rot: „anonym nur der Status"
- *   B  /api/v1/health/ready ohne datenbankAntwortet() (immer 200) → rot: „ohne Datenbank
+ *   B  /api/v1/health/ready ohne databaseResponds() (immer 200) → rot: „ohne Datenbank
  *      meldet ready 503"
- *   C  startup-status ohne oeffentlicherStartZustand() → rot: „der
+ *   C  startup-status ohne publicStartState() → rot: „der
  *      Startzustand nennt nur seine Felder" (pfad und fehler gingen hinaus)
  *   D  progress im Vertrag wieder z.number().int() → rot: dieselbe Prüfung
  *      (vertrag_verletzt; der Server meldet Schritte mit Anteil, z. B. 2.37)
@@ -27,23 +27,23 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 const { warte } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
-const freierPort = () =>
+const { portOf } = require('./helpers/server');
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
 
 test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `gesund_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -53,8 +53,8 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
       [NAME],
     )
   ).id;
-  const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Gesundheit', false, null, { scope: 'voll' });
-  const { setzeZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
+  const token = await _req('src/konto/geraeteToken.js').createToken(uid, 'Gesundheit', false, null, { scope: 'voll' });
+  const { setzeZustand, deleteState } = require('./helpers/sources').testArea('auftraege').laufzustand;
   await setzeZustand(
     'startup_status',
     JSON.stringify({
@@ -68,12 +68,12 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
     }),
   );
   t.after(async () => {
-    await loescheZustand('startup_status');
+    await deleteState('startup_status');
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
 
-  const port = await freierPort();
+  const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -133,9 +133,9 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
 
   await t.test('ohne Datenbank meldet ready 503, live weiter 200', async () => {
     const name = new URL(URL_DB).pathname.slice(1);
-    const wartung = new URL(URL_DB);
-    wartung.pathname = '/postgres';
-    const admin = new Client({ connectionString: wartung.toString() });
+    const maintenance = new URL(URL_DB);
+    maintenance.pathname = '/postgres';
+    const admin = new Client({ connectionString: maintenance.toString() });
     await admin.connect();
     try {
       await admin.query(`ALTER DATABASE "${name}" ALLOW_CONNECTIONS false`);

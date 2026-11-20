@@ -1,7 +1,7 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
-import { mit, mitVertrag, type Kontext } from '../infra/bereich';
-import type { BestandLesevertrag } from './lesevertrag';
+import { mit, withContract, type Kontext } from '../infra/bereich';
+import type { InventoryReadContract } from './lesevertrag';
 import * as bestandExport from './repository/bestandExport';
 import * as gemeinsam from './repository/gemeinsam';
 import * as kaufErfassungen from './repository/kaufErfassungen';
@@ -11,67 +11,67 @@ import * as manuelleMengen from './repository/manuelleMengen';
 import * as nachtrag from './repository/nachtrag';
 import * as papierkorb from './repository/papierkorb';
 import type { SettingsServices } from '../settings';
-import type { HaushaltDienste } from '../haushalt';
-import type { KontoDienste } from '../konto';
-import type { KatalogDienste } from '../katalog';
-import type { FinanzenDienste } from '../finanzen';
+import type { HouseholdServices } from '../haushalt';
+import type { AccountServices } from '../konto';
+import type { CatalogServices } from '../katalog';
+import type { FinancesServices } from '../finanzen';
 import type { Uhr } from '../infra/uhr';
 
-export interface BestandAbhaengigkeiten {
+export interface InventoryDependencies {
   uhr: Uhr;
   db: Db;
   einstellungen: SettingsServices;
-  haushalt: HaushaltDienste;
-  konto: KontoDienste;
-  katalog: KatalogDienste;
-  finanzen: FinanzenDienste;
-  lesevertrag: BestandLesevertrag;
+  haushalt: HouseholdServices;
+  konto: AccountServices;
+  katalog: CatalogServices;
+  finanzen: FinancesServices;
+  lesevertrag: InventoryReadContract;
 }
 
-export const zugang = (db: Db, l: BestandLesevertrag) => ({
+export const zugang = (db: Db, l: InventoryReadContract) => ({
   bestandExport: {
-    teileFuerCsv: mitVertrag(db, l)(bestandExport.teileFuerCsv),
-    figurenFuerCsv: mitVertrag(db, l)(bestandExport.figurenFuerCsv),
+    partsForCsv: withContract(db, l)(bestandExport.partsForCsv),
+    minifigsForCsv: withContract(db, l)(bestandExport.minifigsForCsv),
   },
   gemeinsam: {
-    erfassungsKennzahlen: mitVertrag(db, l)(gemeinsam.erfassungsKennzahlen),
-    setsMitBestandteil: mitVertrag(db, l)(gemeinsam.setsMitBestandteil),
+    entryMetrics: withContract(db, l)(gemeinsam.entryMetrics),
+    setsWithComponent: withContract(db, l)(gemeinsam.setsWithComponent),
   },
   kaufErfassungen: {
-    inWaehrungDesKontos: mit(db)(kaufErfassungen.inWaehrungDesKontos),
+    inCurrencyOfAccount: mit(db)(kaufErfassungen.inCurrencyOfAccount),
   },
   kennzahlen: {
-    setZahlen: mitVertrag(db, l)(kennzahlen.setZahlen),
-    anleitungsZahlen: mitVertrag(db, l)(kennzahlen.anleitungsZahlen),
-    teileImBestand: mitVertrag(db, l)(kennzahlen.teileImBestand),
-    teileEinzeln: mitVertrag(db, l)(kennzahlen.teileEinzeln),
-    figurenImBestand: mitVertrag(db, l)(kennzahlen.figurenImBestand),
+    setNumbers: withContract(db, l)(kennzahlen.setNumbers),
+    instructionNumbers: withContract(db, l)(kennzahlen.instructionNumbers),
+    partsInInventory: withContract(db, l)(kennzahlen.partsInInventory),
+    partsSingle: withContract(db, l)(kennzahlen.partsSingle),
+    minifigsInInventory: withContract(db, l)(kennzahlen.minifigsInInventory),
   },
   lagerort: {
-    andererOrtGleichenNamens: mit(db)(lagerort.andererOrtGleichenNamens),
-    entferneOrt: mit(db)(lagerort.entferneOrt),
-    fuegeOrtEin: mit(db)(lagerort.fuegeOrtEin),
-    ortBelegung: mitVertrag(db, l)(lagerort.ortBelegung),
-    ortDesKontos: mit(db)(lagerort.ortDesKontos),
+    otherLocationSameNamed: mit(db)(lagerort.otherLocationSameNamed),
+    removeLocation: mit(db)(lagerort.removeLocation),
+    addLocationOne: mit(db)(lagerort.addLocationOne),
+    locationOccupancy: withContract(db, l)(lagerort.locationOccupancy),
+    locationOfAccount: mit(db)(lagerort.locationOfAccount),
     ortNachName: mit(db)(lagerort.ortNachName),
     ortName: mit(db)(lagerort.ortName),
-    orteDerKonten: mit(db)(lagerort.orteDerKonten),
-    orteMitBestand: mitVertrag(db, l)(lagerort.orteMitBestand),
-    schreibeOrtNamen: mit(db)(lagerort.schreibeOrtNamen),
+    locationsTheAccounts: mit(db)(lagerort.locationsTheAccounts),
+    locationsWithInventory: withContract(db, l)(lagerort.locationsWithInventory),
+    writeLocationNames: mit(db)(lagerort.writeLocationNames),
   },
   manuelleMengen: {
-    summeDerErfassungen: mit(db)(manuelleMengen.summeDerErfassungen),
+    sumTheEntries: mit(db)(manuelleMengen.sumTheEntries),
   },
   nachtrag: {
-    setErfassungenOhnePreis: mitVertrag(db, l)(nachtrag.setErfassungenOhnePreis),
-    teilErfassungenOhnePreis: mitVertrag(db, l)(nachtrag.teilErfassungenOhnePreis),
-    figurErfassungenOhnePreis: mitVertrag(db, l)(nachtrag.figurErfassungenOhnePreis),
+    setEntriesWithoutPrice: withContract(db, l)(nachtrag.setEntriesWithoutPrice),
+    partEntriesWithoutPrice: withContract(db, l)(nachtrag.partEntriesWithoutPrice),
+    minifigEntriesWithoutPrice: withContract(db, l)(nachtrag.minifigEntriesWithoutPrice),
   },
   papierkorb: {
     eintraege: mit(db)(papierkorb.eintraege),
-    entferneAeltere: mit(db)(papierkorb.entferneAeltere),
-    entferneAlle: mit(db)(papierkorb.entferneAlle),
-    entferneEintragDesKontos: mit(db)(papierkorb.entferneEintragDesKontos),
+    removeOlder: mit(db)(papierkorb.removeOlder),
+    removeAll: mit(db)(papierkorb.removeAll),
+    removeEntryOfAccount: mit(db)(papierkorb.removeEntryOfAccount),
   },
 });
-export type BestandKontext = Kontext<BestandAbhaengigkeiten, ReturnType<typeof zugang>>;
+export type InventoryContext = Kontext<InventoryDependencies, ReturnType<typeof zugang>>;

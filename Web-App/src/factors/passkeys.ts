@@ -14,7 +14,7 @@ import { decodeClientDataJSON } from '@simplewebauthn/server/helpers';
 import { basisUrl } from '../infra/basisUrl';
 import { fehlertext } from '../infra/fehler';
 import { fachfehler } from '../infra/fehlerTexte';
-import { suchwert } from '../infra/geheimnis';
+import { searchValue } from '../infra/geheimnis';
 import type { FactorsContext } from './context';
 import { androidOrigins } from './androidApp';
 
@@ -54,7 +54,8 @@ const hash = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
 export const MAX_OPEN_CHALLENGES = 5000;
 
 const PURPOSES: readonly PasskeyPurpose[] = ['registrieren', 'anmelden', 'zweiter_faktor'];
-const signature = (content: Buffer) => Buffer.from(suchwert('passkey-challenge', content.toString('base64url')), 'hex');
+const signature = (content: Buffer) =>
+  Buffer.from(searchValue('passkey-challenge', content.toString('base64url')), 'hex');
 
 /** The public login options store nothing: deadline, purpose and randomness carry their own
  * signature. Otherwise many addresses would fill one shared table and lock everyone out. */

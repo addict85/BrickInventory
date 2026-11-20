@@ -2,7 +2,7 @@
 import { echt, registerActions } from './registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { api } from './api.js';
-import { ico, G, setzeHtml, wennSichtbar } from './dom.js';
+import { ico, G, setzeHtml, ifVisible } from './dom.js';
 import { fmtDatum } from './format.js';
 import { toast } from './meldungen.js';
 import { html } from './escaping.js';
@@ -12,7 +12,7 @@ import { html } from './escaping.js';
 let jobPollTimer = null;
 
 /** Duration in the UI's own style ("1.5 s", "2 min 5 s"), not as "1.5s". @param {number | null | undefined} ms */
-function formatDur(ms) {
+function formatDuration(ms) {
   if (!ms) return '';
   const num = (/** @type {number} */ n, digits = 0) =>
     n.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits });
@@ -58,7 +58,7 @@ export async function pollJobStatus() {
       const parts = [];
       if (j.lastUpdated) parts.push(`${j.lastUpdated} ${tRaw('common.updated')}`);
       if (j.lastErrors) parts.push(tRaw('monitor.errors_n', { n: j.lastErrors }));
-      if (j.lastDuration) parts.push(formatDur(Number(j.lastDuration)));
+      if (j.lastDuration) parts.push(formatDuration(Number(j.lastDuration)));
       sdet.textContent =
         parts.join(' · ') + (j.nextRun ? ` · ${tRaw('monitor.next_run')} ${fmtDatum(j.nextRun, 'wann')}` : '');
     } else {
@@ -69,10 +69,10 @@ export async function pollJobStatus() {
     nextJobPoll(30000);
   }
 }
-/** Fast while the price run is active; polling rests in a hidden tab (wennSichtbar). @param {number} ms */
+/** Fast while the price run is active; polling rests in a hidden tab (ifVisible). @param {number} ms */
 function nextJobPoll(ms) {
   if (jobPollTimer) clearTimeout(jobPollTimer);
-  const timer = setTimeout(() => wennSichtbar(() => jobPollTimer === timer && pollJobStatus()), ms);
+  const timer = setTimeout(() => ifVisible(() => jobPollTimer === timer && pollJobStatus()), ms);
   jobPollTimer = timer;
 }
 

@@ -6,13 +6,13 @@ import { registerActions } from './registry.js';
 import { I18N, LANG, applyLang, locale, t, tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { ico, G, knopfBesetzt, setzeHtml } from './dom.js';
-import { antwortFehler, feldFehler, passwortRegelText } from './formular.js';
-import { _updateLangSelect, applyTheme, initDefaultCondition, zeigeBenutzernamen } from './konto.js';
+import { responseError, feldFehler, passwordRuleText } from './formular.js';
+import { _updateLangSelect, applyTheme, initDefaultCondition, showUsernames } from './konto.js';
 import { meldeAmFeld, toast } from './meldungen.js';
 import { loadParts } from './teile.js';
 import { loadMinifigs } from './minifigs.js';
-import { meldeAbschnitt } from './router.js';
-import { verstaendlicherGrund } from './bausteine.js';
+import { reportSection } from './router.js';
+import { clearerReason } from './bausteine.js';
 import {
   accountCurrency,
   loggedInAccount,
@@ -24,11 +24,11 @@ import { html } from './escaping.js';
 import {
   confirmDelete,
   bestaetigeMitPasswort,
-  mitZweitemFaktor,
-  mitPasswortBestaetigen,
-  speichereEinstellungen,
+  withSecondFactor,
+  confirmWithPassword,
+  saveSettings,
 } from './rueckfrage.js';
-import { LAND_ZUR_WAEHRUNG } from './gutscheine.js';
+import { LAND_TO_CURRENCY } from './gutscheine.js';
 // Settings: profile, theme, source credentials, mail, cache, QR login and config
 // import/export. Household, user management, alerts and storage locations have their own files.
 
@@ -91,7 +91,7 @@ async function saveSmtp() {
     art: 'bp',
   });
   if (admin_password === null) return null;
-  const d = await mitZweitemFaktor(z => api('POST', '/v1/settings', { ...values, admin_password, ...z }));
+  const d = await withSecondFactor(z => api('POST', '/v1/settings', { ...values, admin_password, ...z }));
   if (d === null) return null;
   if (d.success) {
     loadedSmtp = JSON.stringify(values);
@@ -117,12 +117,12 @@ G('btn-test-smtp')?.addEventListener('click', async () => {
   // A foreign address needs the admin's password confirmation; their own does not.
   const foreign = to.toLowerCase() !== own.toLowerCase();
   const d = foreign
-    ? await mitPasswortBestaetigen(
+    ? await confirmWithPassword(
         tRaw('smtp.test_confirm_title'),
         (password, z) => api('POST', '/v1/settings/smtp-test', { to, password, ...z }),
         tRaw('smtp.test_confirm_text'),
       )
-    : await mitZweitemFaktor(z => api('POST', '/v1/settings/smtp-test', { to, ...z }));
+    : await withSecondFactor(z => api('POST', '/v1/settings/smtp-test', { to, ...z }));
   release();
   if (!d) return;
   res.style.display = 'block';
@@ -155,7 +155,7 @@ async function saveRegEnabled() {
   const box = G('reg-enabled'),
     want = box.checked;
   box.checked = !want;
-  const d = await speichereEinstellungen(tRaw('settings.reg_title'), { registration_enabled: want ? '1' : '0' });
+  const d = await saveSettings(tRaw('settings.reg_title'), { registration_enabled: want ? '1' : '0' });
   if (!d) return;
   if (d.success) box.checked = want;
   toast(d.success ? t('settings.reg_saved') : d.error || t('settings.error'), d.success ? 'success' : 'error');
@@ -372,7 +372,7 @@ G('btn-sav-prof').onclick = async () => {
     // The server confirms every profile change with the password; otherwise it would reveal whether a
     // name is taken. A new address is named in the dialog so one sees what one is confirming.
     const newAddress = email && email !== (G('prof-email').dataset.bisher || '');
-    const d = await mitPasswortBestaetigen(
+    const d = await confirmWithPassword(
       tRaw(newAddress ? 'profile.email_aendern_titel' : 'profile.speichern_titel'),
       (pwC, z) =>
         api('PUT', '/v1/auth/profile', { username, email, first_name, last_name, password_current: pwC, ...z }),
@@ -387,7 +387,7 @@ G('btn-sav-prof').onclick = async () => {
     // The name shown in the header is otherwise only set at startup.
     if (loggedInAccount) {
       loggedInAccount.username = username;
-      zeigeBenutzernamen();
+      showUsernames();
     }
     if (d.emailChanged && !d.emailSent) toast(tRaw('profile.mail_not_sent'), 'error');
     else if (d.emailChanged) toast(tRaw('profile.saved_mail'), 'success');
@@ -401,7 +401,7 @@ G('btn-sav-pw').onclick = async () => {
   const pwN = G('pw-n').value,
     pwR = G('pw-r').value;
   // All field errors at once: shown one at a time, fixing the length only then revealed the mismatch.
-  const errorN = pwN ? (passwortRegelText(pwN) ?? '') : tRaw('settings.password.fill_all');
+  const errorN = pwN ? (passwordRuleText(pwN) ?? '') : tRaw('settings.password.fill_all');
   const errorR = pwN && pwN !== pwR ? tRaw('settings.password.mismatch') : '';
   feldFehler('pw-n', errorN);
   feldFehler('pw-r', errorR);
@@ -412,7 +412,7 @@ G('btn-sav-pw').onclick = async () => {
   const btn = G('btn-sav-pw');
   btn.disabled = true;
   try {
-    const dPw = await mitPasswortBestaetigen(tRaw('settings.password.change'), (pwC, z) =>
+    const dPw = await confirmWithPassword(tRaw('settings.password.change'), (pwC, z) =>
       api('POST', '/v1/auth/change-password', {
         current: pwC,
         newPassword: pwN,
@@ -422,7 +422,7 @@ G('btn-sav-pw').onclick = async () => {
     );
     if (!dPw) return;
     if (!dPw.success) {
-      antwortFehler(
+      responseError(
         dPw,
         {
           alle_felder_erforderlich: 'pw-n',
@@ -462,7 +462,7 @@ function applySettings(s) {
   // entry, regardless of what is saved.
   _set(
     'gutschein-land',
-    s.gutschein_land || /** @type {Record<string, string>} */ (LAND_ZUR_WAEHRUNG)[accountCurrency] || 'de-CH',
+    s.gutschein_land || /** @type {Record<string, string>} */ (LAND_TO_CURRENCY)[accountCurrency] || 'de-CH',
   );
   if (loggedInAccount?.isAdmin) {
     _set('bl-ck', s.bricklink_consumer_key || '');
@@ -497,7 +497,7 @@ export async function loadSettings() {
  * @param {Record<string, string>} values @param {'bricklink'|'rebrickable'|'brickset'} service @param {string} limitId @param {string} button
  */
 async function saveApiCredential(values, service, limitId, button) {
-  const d = await speichereEinstellungen(tRaw('settings.api_key_title'), values);
+  const d = await saveSettings(tRaw('settings.api_key_title'), values);
   if (!d) return;
   if (!d.success) {
     toast(tRaw('settings.error'), 'error');
@@ -580,7 +580,7 @@ G('btn-dall').onclick = async () => {
     { knopf: 'confirm.btn.alles_loeschen', art: 'bd' },
   );
   if (password === null) return;
-  const d = await mitZweitemFaktor(z => api('DELETE', '/v1/bestand', { password, ...z }));
+  const d = await withSecondFactor(z => api('DELETE', '/v1/bestand', { password, ...z }));
   if (d === null) return;
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
@@ -601,7 +601,7 @@ G('btn-konto-loeschen').onclick = async () => {
     { knopf: 'confirm.btn.konto_loeschen', art: 'bd' },
   );
   if (password === null) return;
-  const d = await mitZweitemFaktor(z => api('DELETE', '/v1/auth/konto', { password, ...z }));
+  const d = await withSecondFactor(z => api('DELETE', '/v1/auth/konto', { password, ...z }));
   if (d === null) return;
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
@@ -675,7 +675,7 @@ function geheimUmschalten(id) {
   btn.querySelector('use')?.setAttribute('href', reveal ? '#i-auge-zu' : '#i-auge');
 }
 
-const EINST_KEY = 'bim_einst_abschnitt';
+const ONCE_KEY = 'bim_einst_abschnitt';
 /**
  * Global settings as sub-pages: exactly one section shows at a time, and the nav shows which.
  * Remembered per browser so a reload doesn't jump back to the first section.
@@ -695,16 +695,16 @@ export function einstAbschnitt(id, ev) {
     else l.removeAttribute('aria-current');
   }
   try {
-    localStorage.setItem(EINST_KEY, target.id);
+    localStorage.setItem(ONCE_KEY, target.id);
   } catch (_) {
     /* convenience only */
   }
-  if (ev) meldeAbschnitt();
+  if (ev) reportSection();
 }
 einstAbschnitt(
   (() => {
     try {
-      return localStorage.getItem(EINST_KEY);
+      return localStorage.getItem(ONCE_KEY);
     } catch (_) {
       return null;
     }
@@ -721,7 +721,7 @@ async function einstellungenQuellePruefen(quelle) {
   status.textContent = tRaw('settings.zugang_laeuft');
   const d = await api('POST', '/v1/settings/quelle-testen', { quelle });
   release();
-  const { grund } = d?.success ? { grund: '' } : d?.code ? { grund: d.error } : verstaendlicherGrund(d);
+  const { grund } = d?.success ? { grund: '' } : d?.code ? { grund: d.error } : clearerReason(d);
   status.classList.add(d?.success ? 'quelle-ok' : 'quelle-fehler');
   setzeHtml(
     status,

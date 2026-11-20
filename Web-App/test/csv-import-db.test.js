@@ -11,12 +11,12 @@
  * zwei echten Verbindungen prüfen — am Quelltext wäre es bloss die Frage, ob
  * irgendwo „BEGIN" steht.
  *
- * Gegenprobe (06.11.2026): legeSchattenAn wieder mit INCLUDING ALL ohne
+ * Gegenprobe (06.11.2026): putShadowAn wieder mit INCLUDING ALL ohne
  * EXCLUDING CONSTRAINTS → rot: „Set-Nummern ohne Versionsendung bekommen sie
  * beim Tausch“ (rb_inventories_setnummer_mit_version in der Schattentabelle).
  *
  * Gegenproben zu „rb_sets bildet den Dump nach“ (10.11.2026, in
- * gleicheSetsAb(), src/katalog/repository/csvTausch.ts, je einzeln):
+ * sameSetsAb(), src/katalog/repository/csvTausch.ts, je einzeln):
  *   E  im Upsert `source='csv'` weggelassen → rot: „geändert“ (B bleibt 'api')
  *   F  das UPDATE auf source='api' entfernt → rot: „mit Bezug“ (C bleibt 'csv')
  *   G  das DELETE entfernt → rot: „ohne Bezug“ (D und F bleiben)
@@ -33,10 +33,10 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { ROOT, buildAndRequire, ohneKommentare, testDaten } = require('./helpers/sources');
+const { ROOT, buildAndRequire, ohneKommentare, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 async function dbReachable() {
   try {
@@ -75,7 +75,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 
   /** CSV-Datei erzeugen, wie sie der Download entpackt hinterlässt. */
-  function csvSchreiben(name, zeilen) {
+  function writeCsv(name, zeilen) {
     fs.writeFileSync(path.join(DATA_DIR, name), zeilen.join('\n') + '\n', 'utf8');
   }
 
@@ -84,18 +84,18 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     await db.run(`INSERT INTO rb_colors (id, name, rgb, is_trans)
                   SELECT g, 'alt-' || g, 'FFFFFF', 'f' FROM generate_series(1, 300) g`);
 
-    csvSchreiben(
+    writeCsv(
       'colors.csv.tmp',
       ['id,name,rgb,is_trans'].concat(Array.from({ length: 300 }, (_, i) => `${i + 1},neu-${i + 1},C91A09,f`)),
     );
 
     // Zweite Verbindung: zählt fortlaufend mit, während der Import läuft.
-    const leser = await db.pool.connect();
+    const reader = await db.pool.connect();
     let minimum = Infinity;
     let laeuft = true;
     const beobachten = (async () => {
       while (laeuft) {
-        const { rows } = await leser.query('SELECT count(*)::int AS c FROM rb_colors');
+        const { rows } = await reader.query('SELECT count(*)::int AS c FROM rb_colors');
         minimum = Math.min(minimum, rows[0].c);
         await new Promise(r => setTimeout(r, 5));
       }
@@ -106,7 +106,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
 
     laeuft = false;
     await beobachten;
-    leser.release();
+    reader.release();
 
     assert.equal(total, 300);
     assert.notEqual(
@@ -121,7 +121,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
   await t.test('eine leere Datei ersetzt den Bestand nicht', async () => {
     await db.run('DELETE FROM rb_colors');
     await db.run(`INSERT INTO rb_colors (id, name, rgb, is_trans) VALUES (1,'bestand','FFFFFF','f')`);
-    csvSchreiben('colors.csv.tmp', ['id,name,rgb,is_trans']);
+    writeCsv('colors.csv.tmp', ['id,name,rgb,is_trans']);
 
     const worker = _req('jobs/csvImportWorker.js');
     await assert.rejects(
@@ -129,8 +129,8 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
       /0 Zeilen/,
       'ein abgebrochener Download hätte den Katalog gelöscht',
     );
-    const übrig = await db.get('SELECT count(*)::int AS c FROM rb_colors');
-    assert.equal(übrig.c, 1, 'der alte Bestand ist trotz Abbruch verschwunden');
+    const remaining = await db.get('SELECT count(*)::int AS c FROM rb_colors');
+    assert.equal(remaining.c, 1, 'der alte Bestand ist trotz Abbruch verschwunden');
   });
 
   await t.test('ein fehlerhafter Block bricht den Import ab, statt Zeilen zu verlieren', async () => {
@@ -139,20 +139,20 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     // Einen Fehler erzwingen, ohne den Worker zu verbiegen: eine Bedingung,
     // die der Bestand erfüllt und die neue Zeile nicht. Sie greift beim Tausch.
     await db.run(`ALTER TABLE rb_colors ADD CONSTRAINT rb_colors_name_kurz CHECK (length(name) < 10)`);
-    csvSchreiben('colors.csv.tmp', ['id,name,rgb,is_trans', '1,viel-zu-langer-name,C91A09,f']);
+    writeCsv('colors.csv.tmp', ['id,name,rgb,is_trans', '1,viel-zu-langer-name,C91A09,f']);
 
     const worker = _req('jobs/csvImportWorker.js');
     await assert.rejects(
       () => worker.TASKS.colors(),
       'ein abgewiesener Block wurde verschluckt — der Import meldet Erfolg mit fehlenden Zeilen',
     );
-    const übrig = await db.get('SELECT count(*)::int AS c FROM rb_colors');
-    assert.equal(übrig.c, 1, 'der alte Bestand ist trotz Abbruch verschwunden');
+    const remaining = await db.get('SELECT count(*)::int AS c FROM rb_colors');
+    assert.equal(remaining.c, 1, 'der alte Bestand ist trotz Abbruch verschwunden');
     await db.run(`ALTER TABLE rb_colors DROP CONSTRAINT rb_colors_name_kurz`);
   });
 
   await t.test('Set-Nummern ohne Versionsendung bekommen sie beim Tausch', async () => {
-    csvSchreiben('inventories.csv.tmp', ['id,version,set_num', '1,1,75192-1', '2,1,llca8', '3,2,fig-000001']);
+    writeCsv('inventories.csv.tmp', ['id,version,set_num', '1,1,75192-1', '2,1,llca8', '3,2,fig-000001']);
     const worker = _req('jobs/csvImportWorker.js');
     assert.equal(await worker.TASKS.inventories(), 3);
     const zeilen = await db.all('SELECT id, set_num FROM rb_inventories ORDER BY id');
@@ -164,7 +164,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
 
   await t.test('verdoppelte Anführungszeichen bleiben ein Anführungszeichen', async () => {
     await db.run('DELETE FROM rb_colors');
-    csvSchreiben('colors.csv.tmp', ['id,name,rgb,is_trans', '7,"Trans ""Neon"" Grün",C91A09,f']);
+    writeCsv('colors.csv.tmp', ['id,name,rgb,is_trans', '7,"Trans ""Neon"" Grün",C91A09,f']);
     const worker = _req('jobs/csvImportWorker.js');
     await worker.TASKS.colors();
     const zeile = await db.get('SELECT name FROM rb_colors WHERE id=7');
@@ -183,7 +183,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     );
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '3-1')`, [uid]);
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '5-1', 'N')`, [uid]);
-    csvSchreiben('sets.csv.tmp', [
+    writeCsv('sets.csv.tmp', [
       'set_num,name,year,theme_id,num_parts,img_url',
       '1-1,A neu,2000,2,11,https://cdn/1.jpg',
       '2-1,B echt,2020,3,99,',
@@ -247,10 +247,10 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
   await db.pool.end().catch(() => {});
 });
 
-// Gegenprobe (15.11.2026): in erzeugeImportZugang() `pool: { max: 2 }` gestrichen → rot:
+// Gegenprobe (15.11.2026): in createImportAccess() `pool: { max: 2 }` gestrichen → rot:
 // statement_timeout '30s' statt '0' (die Fristen der Anfragen träfen den Tausch).
-test('der Importprozess baut seinen Zugang über erzeugeDb, ohne Fristen der Anfragen', async t => {
-  const zugang = _req('src/katalog/index.js').erzeugeImportZugang();
+test('der Importprozess baut seinen Zugang über createDb, ohne Fristen der Anfragen', async t => {
+  const zugang = _req('src/katalog/index.js').createImportAccess();
   t.after(() => zugang.pool.end());
   let zeile;
   try {
@@ -267,9 +267,9 @@ test('der CSV-Download geht über abruf.ts, mit Frist, Deckel und Host-Liste', (
   // Quelltext statt Verhalten: Frist und Deckel selbst prüft test/abruf-helfer.test.js
   // an abruf.ts; hier nur, dass der Download diesen Weg nimmt.
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients/rebrickableCsv.ts'), 'utf8'));
-  const aufruf = src.slice(src.indexOf('await oeffneHttps('), src.indexOf('});', src.indexOf('await oeffneHttps(')));
+  const call = src.slice(src.indexOf('await openHttps('), src.indexOf('});', src.indexOf('await openHttps(')));
   for (const feld of ['hosts:', 'maxBytes:', 'zeitlimitMs:', 'signal'])
-    assert.ok(aufruf.includes(feld), `der Download ruft oeffneHttps ohne ${feld}`);
+    assert.ok(call.includes(feld), `der Download ruft openHttps ohne ${feld}`);
   assert.doesNotMatch(
     ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/katalog/csvAbgleich.ts'), 'utf8')),
     /from 'https'/,

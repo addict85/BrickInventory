@@ -4,8 +4,8 @@
  * die Katalogsuche (Sets ausserhalb des Blickfelds, ohne set_catalog-Zeile)
  * die lokal abgelegten Bilder, obwohl sie die Proxy-Adresse anfragt.
  *
- * Gegenprobe (09.11.2026 gemessen): in bildDurchreichen()
- * (src/bilder/http/bildProxy.ts) die Zeile mit ausSetBildern() gestrichen →
+ * Gegenprobe (09.11.2026 gemessen): in passThroughImage()
+ * (src/bilder/http/bildProxy.ts) die Zeile mit fromSetImages() gestrichen →
  * rot: „das Original kommt aus images/sets, nicht aus dem Proxy-Cache“ und
  * „mit thumb=1 kommt die lokale Vorschau …“ (je der Inhalt des Caches) sowie
  * „ohne Proxy-Cache und über der Drossel …“ (429 statt 200).
@@ -19,23 +19,23 @@ const path = require('node:path');
 process.env.BILD_ABRUFE_JE_MINUTE = '1';
 const _req = require('./helpers/sources').buildAndRequire();
 // Ohne Datenbank: Die Sets dieser Datei liegen im Blickfeld des Kontos, sonst legt der Proxy nichts ab.
-require('./helpers/sources').ersetzeDienste('bilder', { setNummerImBlickfeld: async () => true });
+require('./helpers/sources').replaceServices('bilder', { setNumberInScope: async () => true });
 
 test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
   const express = require('express');
-  const bildDurchreichen = (...a) =>
-    _req('src/bilder/http/bildProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
-  const { proxyAdresse, proxyCacheSchluessel } = _req('src/bilder/images.js');
+  const passThroughImage = (...a) =>
+    _req('src/bilder/http/bildProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
+  const { proxyAddress, proxyCacheKey } = _req('src/bilder/images.js');
   const { DATA_DIR, SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
-  const { notizen, ende } = require('./helpers/sources').bildNotizen();
+  const { notes, ende } = require('./helpers/sources').imageNotes();
 
   const cacheDir = path.join(DATA_DIR, 'img_proxy_cache');
   fs.mkdirSync(cacheDir, { recursive: true });
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   /** @type {string[]} */
   const angelegt = [];
-  const lege = (/** @type {string} */ datei, /** @type {Buffer} */ inhalt) => {
+  const put = (/** @type {string} */ datei, /** @type {Buffer} */ inhalt) => {
     fs.writeFileSync(datei, inhalt);
     angelegt.push(datei);
   };
@@ -43,7 +43,7 @@ test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
   const app = express();
   app.get('/p', (req, res) => {
     Object.assign(req, { session: { userId: 1 } });
-    return bildDurchreichen(req, res);
+    return passThroughImage(req, res);
   });
   const server = app.listen(0);
   t.after(() => {
@@ -52,7 +52,7 @@ test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
     for (const f of angelegt) fs.rmSync(f, { force: true });
   });
   const hole = async (/** @type {string} */ anfrage) => {
-    notizen.length = 0;
+    notes.length = 0;
     const port = /** @type {import('node:net').AddressInfo} */ (server.address()).port;
     const r = await fetch(`http://127.0.0.1:${port}/p?${anfrage}`);
     return { status: r.status, inhalt: Buffer.from(await r.arrayBuffer()) };
@@ -64,35 +64,35 @@ test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
 
   // Wie beim Nutzer: Datei und Vorschau liegen in images/sets, der Proxy-Cache
   // hält nur das Original, ohne eigene Vorschau.
-  const mitCache = `5${process.pid}-1`;
-  const mitCacheUrl = `https://cdn.rebrickable.com/media/sets/${mitCache}.jpg`;
-  lege(path.join(SET_IMAGES_DIR, `${mitCache}.jpg`), ORIGINAL);
-  lege(path.join(SET_IMAGES_DIR, `${mitCache}_thumb.jpg`), VORSCHAU);
-  const cacheDatei = path.join(cacheDir, proxyCacheSchluessel(proxyAdresse(mitCacheUrl) ?? mitCacheUrl));
-  lege(cacheDatei, CACHE);
-  lege(`${cacheDatei}.ct`, Buffer.from('image/jpeg'));
+  const withCache = `5${process.pid}-1`;
+  const withCacheUrl = `https://cdn.rebrickable.com/media/sets/${withCache}.jpg`;
+  put(path.join(SET_IMAGES_DIR, `${withCache}.jpg`), ORIGINAL);
+  put(path.join(SET_IMAGES_DIR, `${withCache}_thumb.jpg`), VORSCHAU);
+  const cacheFile = path.join(cacheDir, proxyCacheKey(proxyAddress(withCacheUrl) ?? withCacheUrl));
+  put(cacheFile, CACHE);
+  put(`${cacheFile}.ct`, Buffer.from('image/jpeg'));
 
   await t.test('das Original kommt aus images/sets, nicht aus dem Proxy-Cache', async () => {
-    const r = await hole(`url=${encodeURIComponent(mitCacheUrl)}`);
+    const r = await hole(`url=${encodeURIComponent(withCacheUrl)}`);
     assert.equal(r.status, 200);
     assert.deepEqual(r.inhalt, ORIGINAL);
   });
 
   await t.test('mit thumb=1 kommt die lokale Vorschau, ohne Notiz für den Bild-Job', async () => {
-    const r = await hole(`url=${encodeURIComponent(mitCacheUrl)}&thumb=1&gen=0`);
+    const r = await hole(`url=${encodeURIComponent(withCacheUrl)}&thumb=1&gen=0`);
     assert.equal(r.status, 200);
     assert.deepEqual(r.inhalt, VORSCHAU);
-    assert.deepEqual(notizen, []);
+    assert.deepEqual(notes, []);
   });
 
   await t.test('ohne Proxy-Cache und über der Drossel kommt das lokale Bild statt 429', async () => {
-    const ohneCache = `4${process.pid}-1`;
-    const url = `https://cdn.rebrickable.com/media/sets/${ohneCache}.jpg`;
-    lege(path.join(SET_IMAGES_DIR, `${ohneCache}.jpg`), ORIGINAL);
-    lege(path.join(SET_IMAGES_DIR, `${ohneCache}_thumb.jpg`), VORSCHAU);
-    const { zaehleAnfrage } = _req('src/konto/loginLimiter.js');
-    await zaehleAnfrage('bild-abruf', 'konto:1', 60_000);
-    await zaehleAnfrage('bild-abruf', 'konto:1', 60_000);
+    const withoutCache = `4${process.pid}-1`;
+    const url = `https://cdn.rebrickable.com/media/sets/${withoutCache}.jpg`;
+    put(path.join(SET_IMAGES_DIR, `${withoutCache}.jpg`), ORIGINAL);
+    put(path.join(SET_IMAGES_DIR, `${withoutCache}_thumb.jpg`), VORSCHAU);
+    const { countRequest } = _req('src/konto/loginLimiter.js');
+    await countRequest('bild-abruf', 'konto:1', 60_000);
+    await countRequest('bild-abruf', 'konto:1', 60_000);
     const r = await hole(`url=${encodeURIComponent(url)}&thumb=1`);
     assert.equal(r.status, 200);
     assert.deepEqual(r.inhalt, VORSCHAU);
@@ -101,10 +101,10 @@ test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
   await t.test('fehlt die Vorschau in images/sets, bleibt es beim bisherigen Weg', async () => {
     const halb = `3${process.pid}-1`;
     const url = `https://cdn.rebrickable.com/media/sets/${halb}.jpg`;
-    lege(path.join(SET_IMAGES_DIR, `${halb}.jpg`), ORIGINAL);
-    const f = path.join(cacheDir, proxyCacheSchluessel(proxyAdresse(url) ?? url));
-    lege(f, CACHE);
-    lege(`${f}.ct`, Buffer.from('image/jpeg'));
+    put(path.join(SET_IMAGES_DIR, `${halb}.jpg`), ORIGINAL);
+    const f = path.join(cacheDir, proxyCacheKey(proxyAddress(url) ?? url));
+    put(f, CACHE);
+    put(`${f}.ct`, Buffer.from('image/jpeg'));
     const r = await hole(`url=${encodeURIComponent(url)}`);
     assert.equal(r.status, 200);
     assert.deepEqual(r.inhalt, CACHE);

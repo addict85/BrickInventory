@@ -2,11 +2,11 @@
  * Anfragebudget je Konto unter /api/v1 (src/http/apiDrossel.ts).
  *
  * Gegenproben:
- *   A  KOSTEN.auftrag = 1                      → rot: „der Auftragstopf greift vor dem Budget“
+ *   A  COST.auftrag = 1                      → rot: „der Auftragstopf greift vor dem Budget“
  *   B  Abweisung erhöht den Zähler mit        → rot: „abgewiesene Anfragen zählen nicht mit“
  *   C  Schlüssel im Zähler ist die feste 0    → rot: „ein Konto verbraucht nicht das Budget des anderen“
  *   D  apiDrossel nicht in der Kette          → rot: „ohne Budget antwortet die Route 200“
- *   E  KOSTEN.preis = 1                       → rot: „Routen mit BrickLink- oder Fremdabruf …“
+ *   E  COST.preis = 1                       → rot: „Routen mit BrickLink- oder Fremdabruf …“
  *   F  (15.11.2026) einordnung() wieder über Regexe `^…$` auf den Pfad → rot:
  *      „ein Schrägstrich am Ende kostet …“ (partslist-pdf/ kostet 1 statt 25)
  *
@@ -18,78 +18,77 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { pruefeBudget, drosselLeeren, einordnung, apiDrossel, BUDGET, AUFTRAG_BUDGET, FENSTER_MS, KOSTEN } =
+const { checkBudget, clearThrottle, classification, apiDrossel, BUDGET, JOB_BUDGET, WINDOW_MS, COST } =
   _req('src/http/apiDrossel.js');
 
 test('ein Konto hat BUDGET Einheiten je Fenster', () => {
-  drosselLeeren();
+  clearThrottle();
   const t0 = 1_000_000;
   let letzte;
-  for (let i = 1; i <= BUDGET; i++) letzte = pruefeBudget(7, 'GET', '/sets', t0);
+  for (let i = 1; i <= BUDGET; i++) letzte = checkBudget(7, 'GET', '/sets', t0);
   assert.equal(letzte.erlaubt, true);
-  const ab = pruefeBudget(7, 'GET', '/sets', t0);
+  const ab = checkBudget(7, 'GET', '/sets', t0);
   assert.equal(ab.erlaubt, false, 'die Anfrage über dem Budget muss abgewiesen werden');
-  assert.equal(ab.restSek, FENSTER_MS / 1000, 'Retry-After nennt das Ende des Fensters');
+  assert.equal(ab.restSec, WINDOW_MS / 1000, 'Retry-After nennt das Ende des Fensters');
 });
 
 test('ein Konto verbraucht nicht das Budget des anderen', () => {
-  drosselLeeren();
+  clearThrottle();
   const t0 = 2_000_000;
-  for (let i = 0; i < BUDGET; i++) pruefeBudget(11, 'GET', '/sets', t0);
-  assert.equal(pruefeBudget(11, 'GET', '/sets', t0).erlaubt, false);
-  assert.equal(pruefeBudget(12, 'GET', '/sets', t0).erlaubt, true);
+  for (let i = 0; i < BUDGET; i++) checkBudget(11, 'GET', '/sets', t0);
+  assert.equal(checkBudget(11, 'GET', '/sets', t0).erlaubt, false);
+  assert.equal(checkBudget(12, 'GET', '/sets', t0).erlaubt, true);
 });
 
 test('nach dem Fenster beginnt das Budget neu', () => {
-  drosselLeeren();
+  clearThrottle();
   const t0 = 3_000_000;
-  for (let i = 0; i < BUDGET; i++) pruefeBudget(13, 'GET', '/sets', t0);
-  const neu = pruefeBudget(13, 'GET', '/sets', t0 + FENSTER_MS);
+  for (let i = 0; i < BUDGET; i++) checkBudget(13, 'GET', '/sets', t0);
+  const neu = checkBudget(13, 'GET', '/sets', t0 + WINDOW_MS);
   assert.equal(neu.erlaubt, true);
-  assert.equal(neu.einheiten, 1);
-  assert.equal(neu.restSek, FENSTER_MS / 1000);
+  assert.equal(neu.units, 1);
+  assert.equal(neu.restSec, WINDOW_MS / 1000);
 });
 
 test('abgewiesene Anfragen zählen nicht mit', () => {
-  drosselLeeren();
+  clearThrottle();
   const t0 = 4_000_000;
-  for (let i = 0; i < BUDGET; i++) pruefeBudget(14, 'GET', '/sets', t0);
+  for (let i = 0; i < BUDGET; i++) checkBudget(14, 'GET', '/sets', t0);
   let ab;
-  for (let i = 0; i < 20; i++) ab = pruefeBudget(14, 'GET', '/sets', t0 + 1000);
+  for (let i = 0; i < 20; i++) ab = checkBudget(14, 'GET', '/sets', t0 + 1000);
   assert.equal(ab.erlaubt, false);
-  assert.equal(ab.einheiten, BUDGET, 'die Abweisung darf den Zähler nicht weiter hochziehen');
+  assert.equal(ab.units, BUDGET, 'die Abweisung darf den Zähler nicht weiter hochziehen');
 });
 
 test('der Auftragstopf greift vor dem allgemeinen Budget', () => {
-  drosselLeeren();
+  clearThrottle();
   const t0 = 5_000_000;
-  for (let i = 0; i < AUFTRAG_BUDGET; i++)
-    assert.equal(pruefeBudget(15, 'POST', '/sets/partslist-pdf', t0).erlaubt, true);
-  const ab = pruefeBudget(15, 'POST', '/sets/partslist-pdf', t0);
+  for (let i = 0; i < JOB_BUDGET; i++) assert.equal(checkBudget(15, 'POST', '/sets/partslist-pdf', t0).erlaubt, true);
+  const ab = checkBudget(15, 'POST', '/sets/partslist-pdf', t0);
   assert.equal(ab.erlaubt, false);
   assert.equal(ab.auftrag, true);
-  assert.ok(ab.einheiten < BUDGET, 'sonst hätte das allgemeine Budget zugemacht, nicht der Topf');
+  assert.ok(ab.units < BUDGET, 'sonst hätte das allgemeine Budget zugemacht, nicht der Topf');
   // Lesen und Schreiben ohne Auftrag gehen weiter.
-  assert.equal(pruefeBudget(15, 'GET', '/sets', t0).erlaubt, true);
+  assert.equal(checkBudget(15, 'GET', '/sets', t0).erlaubt, true);
 });
 
 test('Katalogabrufe kosten mehr als Lesen', () => {
-  assert.equal(einordnung('GET', '/catalog/sets').kosten, KOSTEN.abruf);
-  assert.equal(einordnung('GET', '/sets').kosten, KOSTEN.normal);
-  assert.equal(einordnung('POST', '/minifigs/import/csv').auftrag, true);
-  assert.equal(einordnung('GET', '/settings/export/data').auftrag, true);
+  assert.equal(classification('GET', '/catalog/sets').kosten, COST.abruf);
+  assert.equal(classification('GET', '/sets').kosten, COST.normal);
+  assert.equal(classification('POST', '/minifigs/import/csv').auftrag, true);
+  assert.equal(classification('GET', '/settings/export/data').auftrag, true);
 });
 
 test('ein Schrägstrich am Ende kostet so viel wie die Route, die Express findet', () => {
   for (const [m, p, k] of [
-    ['POST', '/sets/partslist-pdf/', KOSTEN.auftrag],
-    ['POST', '/sets/import/csv//', KOSTEN.auftrag],
-    ['GET', '/wanted/10294-1/preise/', KOSTEN.preis],
-    ['POST', '/vouchers/3/guthaben/', KOSTEN.abruf],
-    ['GET', '/catalog/sets/', KOSTEN.abruf],
-    ['HEAD', '/settings/export/data/', KOSTEN.auftrag],
+    ['POST', '/sets/partslist-pdf/', COST.auftrag],
+    ['POST', '/sets/import/csv//', COST.auftrag],
+    ['GET', '/wanted/10294-1/preise/', COST.preis],
+    ['POST', '/vouchers/3/guthaben/', COST.abruf],
+    ['GET', '/catalog/sets/', COST.abruf],
+    ['HEAD', '/settings/export/data/', COST.auftrag],
   ])
-    assert.equal(einordnung(m, p).kosten, k, `${m} ${p}`);
+    assert.equal(classification(m, p).kosten, k, `${m} ${p}`);
 });
 
 test('Routen mit BrickLink- oder Fremdabruf kosten mehr als Lesen', () => {
@@ -97,7 +96,7 @@ test('Routen mit BrickLink- oder Fremdabruf kosten mehr als Lesen', () => {
     ['GET', '/wanted/10294-1/preise'],
     ['GET', '/sets/10294-1/price'],
   ])
-    assert.equal(einordnung(m, p).kosten, KOSTEN.preis, `${m} ${p}`);
+    assert.equal(classification(m, p).kosten, COST.preis, `${m} ${p}`);
   for (const [m, p] of [
     ['POST', '/sets'],
     ['GET', '/sets/barcode/123'],
@@ -106,17 +105,17 @@ test('Routen mit BrickLink- oder Fremdabruf kosten mehr als Lesen', () => {
     ['POST', '/minifigs'],
     ['POST', '/vouchers/3/guthaben'],
   ])
-    assert.equal(einordnung(m, p).kosten, KOSTEN.abruf, `${m} ${p}`);
-  assert.ok(KOSTEN.preis > KOSTEN.abruf);
+    assert.equal(classification(m, p).kosten, COST.abruf, `${m} ${p}`);
+  assert.ok(COST.preis > COST.abruf);
   // Die Preisroute darf das gemeinsame Kontingent nicht mit dem ganzen Budget leeren.
-  drosselLeeren();
+  clearThrottle();
   let n = 0;
-  while (pruefeBudget(31, 'GET', '/wanted/1-1/preise', 9_000_000).erlaubt) n++;
+  while (checkBudget(31, 'GET', '/wanted/1-1/preise', 9_000_000).erlaubt) n++;
   assert.ok(n * 4 <= 150, `${n} Anfragen je Fenster = bis zu ${n * 4} BrickLink-Aufrufe`);
 });
 
 test('die Route antwortet 429 mit Retry-After und Fehlercode', async t => {
-  drosselLeeren();
+  clearThrottle();
   const app = express();
   app.use((req, _res, next) => {
     // Object.assign statt Zuweisung: `session` steht nicht im Typ von express.Request.

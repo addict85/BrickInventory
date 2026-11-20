@@ -30,18 +30,18 @@ function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
     url: 'http://localhost/',
   });
   const w = dom.window;
-  const hoerer = [];
-  const mq = { matches: dunkel, addEventListener: (_e, f) => hoerer.push(f) };
+  const listener = [];
+  const mq = { matches: dunkel, addEventListener: (_e, f) => listener.push(f) };
   w.matchMedia = () => mq;
   w.fetch = async () => ({ ok: false });
   if (wahl) w.localStorage.setItem('bim_dunkel', wahl);
   w.eval(BOOT);
-  const systemWechsel = d => {
+  const systemSwitch = d => {
     mq.matches = d;
-    for (const f of hoerer) f();
+    for (const f of listener) f();
   };
-  const hatDunkel = () => w.document.documentElement.hasAttribute('data-dunkel');
-  return { w, thema: () => w.document.documentElement.getAttribute('data-theme'), dunkel: hatDunkel, systemWechsel };
+  const hatDark = () => w.document.documentElement.hasAttribute('data-dunkel');
+  return { w, thema: () => w.document.documentElement.getAttribute('data-theme'), dunkel: hatDark, systemSwitch };
 }
 
 test('ohne Wahl folgt das Gerät dem System', () => {
@@ -58,13 +58,13 @@ test('mit Wahl „server" bleibt das Design hell — auch bei dunklem System', (
 });
 
 test('mit Wahl „system": dunkel bei dunklem System, und es folgt dem Wechsel', () => {
-  const { w, thema, dunkel, systemWechsel } = fenster({ wahl: 'system', dunkel: true });
+  const { w, thema, dunkel, systemSwitch } = fenster({ wahl: 'system', dunkel: true });
   assert.equal(dunkel(), true, 'bleibt hell, obwohl das System dunkel ist');
   assert.equal(thema(), 'classic', 'das Design bleibt — dunkel ist eine Variante, kein anderes Design');
   assert.equal(w.localStorage.getItem('bim_theme'), 'classic', 'Cache: gemerkt wird das Design des Servers');
-  systemWechsel(false);
+  systemSwitch(false);
   assert.equal(dunkel(), false);
-  systemWechsel(true);
+  systemSwitch(true);
   assert.equal(dunkel(), true);
   assert.equal(thema(), 'classic');
 });

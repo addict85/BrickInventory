@@ -13,7 +13,7 @@
  *      ihrem Ergebnis“ (Zeile 7 fehlt, 7 statt 8 Ergebnisse)
  *   C  buildJobStatus zählt katalog_offen wieder als ok → rot: „Summen“
  *      (ok 4, warn 0)
- *   D  in setCsvImportStarten schonVorhanden() durch [] ersetzt → rot: „die
+ *   D  in startSetCsvImport alreadyPresent() durch [] ersetzt → rot: „die
  *      Prüfung nennt vorhandene Sets und startet nichts“
  */
 const test = require('node:test');
@@ -21,18 +21,18 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const gebucht = [];
+const booked = [];
 const Module = require('node:module');
-const _echtesRequire = Module.prototype.require;
+const _realRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
-  const m = _echtesRequire.call(this, name, ...rest);
+  const m = _realRequire.call(this, name, ...rest);
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) => {
         if (k !== 'setErfassen') return t[k];
         return async (_sk, { setNumber: sn, menge: qty }) => {
           if (sn === 'abc') throw new Error('Das ist keine Setnummer');
-          gebucht.push(`${sn}×${qty}`);
+          booked.push(`${sn}×${qty}`);
           return { action: 'added', set_number: sn, ...(sn === '99999-1' ? { katalog_offen: true } : {}) };
         };
       },
@@ -40,29 +40,29 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const { bis } = require('./helpers/zeit');
 
 const DATEI = 'Set Number,Quantity\n10200-1,1\n10305-1,2\nabc,1\n10312-1,x\n99999-1,1\n,3\n10319-1,-2\n10326-1,1\n';
 
 test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `csvpruef-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, '10305-1']);
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const worker = _req('jobs/auftraegeStarten.js').starteAuftragsWorker(require('./helpers/sources').testDienste(), {
+  const worker = _req('jobs/auftraegeStarten.js').startJobWorker(require('./helpers/sources').testServices(), {
     arten: ['csv_import'],
     taktMs: 50,
   });
   t.after(async () => {
-    await worker.stoppe(0);
-    await testZugang().benachrichtigung.close();
+    await worker.stop(0);
+    await testAccess().notification.close();
     await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -108,7 +108,7 @@ test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async t => {
     ]);
     assert.match(s.results[3].error, /Menge „x“ ungültig/);
     assert.match(s.results[6].error, /Menge „-2“ ungültig/);
-    assert.deepEqual(gebucht, ['10200-1×1', '10305-1×2', '99999-1×1', '10326-1×1'], 'nur gültige Zeilen gebucht');
+    assert.deepEqual(booked, ['10200-1×1', '10305-1×2', '99999-1×1', '10326-1×1'], 'nur gültige Zeilen gebucht');
   });
 
   await t.test('Summen', () => {

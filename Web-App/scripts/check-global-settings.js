@@ -8,7 +8,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 /** Dauerhaft erlaubt, mit Grund. */
-const ERLAUBT = new Map([
+const ALLOWED = new Map([
   ['db/schemaStart.ts', 'legt die Tabelle an und migriert sie'],
   ['db/zeilen.ts', 'erzeugte Zeilentypen aller Tabellen, kein Zugriff'],
   ['jobs/csvImportWorker.ts', 'eigener Prozess mit eigenem Pool, ohne den Datenbankzugang des Servers'],
@@ -44,7 +44,7 @@ function dateien() {
 
 const gefunden = new Map();
 for (const rel of dateien()) {
-  if (ERLAUBT.has(rel)) continue;
+  if (ALLOWED.has(rel)) continue;
   const s = fs.readFileSync(path.join(ROOT, rel), 'utf8');
   const n = (s.match(/global_settings/g) || []).length;
   if (n) gefunden.set(rel, n);

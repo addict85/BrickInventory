@@ -1,13 +1,13 @@
 /** Here, not in a route, because the session route and the v1 factory both
  * reach it — a route should not import another route. */
 import type { Sicht } from '../haushalt';
-import { oeffentlicherFehler } from '../infra/fehler';
-import { Abstriche, versuche } from '../infra/ergebnis';
-import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
+import { publicError } from '../infra/fehler';
+import { Degradations, versuche } from '../infra/ergebnis';
+import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
 import { mengenwunsch } from '../bestand';
 import type { Quellen } from '../fremdquellen';
 import * as V from '../infra/validate';
-import { geldEingabe } from '../infra/geld';
+import { moneyInput } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
 import type { MinifigsContext } from './context';
 
@@ -28,14 +28,14 @@ export async function manualMinifigPurchase(
   // Same rule as for parts (src/finanzen/preisRegel.ts), so a minifig without a
   // market price doesn't count differently than a part.
   const r = await k.finanzen.manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
-    k.finanzen.figMarktpreisMitHerkunft(figNumber, uid, blFigNumber || null, zustand),
+    k.finanzen.figMarketPriceWithOrigin(figNumber, uid, blFigNumber || null, zustand),
   );
   return {
     effectiveUnitPrice: r.unitPrice,
     effectivePurchasePrice: r.kaufpreis,
     acquisitionPrice: r.erfassungsPreis,
     effectiveCondition: r.zustand,
-    priceFromCondition: r.preisAusZustand,
+    priceFromCondition: r.priceFromState,
     estimated: r.geschaetzt,
   };
 }
@@ -43,21 +43,21 @@ export async function manualMinifigPurchase(
 /** Twin of manuellesTeilAnlegen — one implementation for webapp and app. */
 export async function addManualMinifig(k: MinifigsContext, uid: number, body: Record<string, unknown>) {
   // Without a given location, the account's default location applies.
-  const ort = await k.bestand.lagerortDienst.ortFuerNeuerfassung(uid, body?.storage);
+  const ort = await k.bestand.locationService.locationForNewEntry(uid, body?.storage);
   const ergebnis = await addManualMinifigInternal(k, uid, body);
   if (ort && ergebnis?.fig_number) {
-    await k.bestand.lagerortDienst.setzeLagerort('fig', [uid], [String(ergebnis.fig_number)], ort);
+    await k.bestand.locationService.setLocation('fig', [uid], [String(ergebnis.fig_number)], ort);
   }
   return ergebnis;
 }
 
 async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: Record<string, unknown>) {
   // Same input validation as manual parts: the fields get rendered.
-  const num = V.nummerPflicht(body?.fig_number, 'fig_number');
-  const blNum = body?.bl_fig_number ? V.nummerPflicht(body.bl_fig_number, 'bl_fig_number') : null;
+  const num = V.numberRequired(body?.fig_number, 'fig_number');
+  const blNum = body?.bl_fig_number ? V.numberRequired(body.bl_fig_number, 'bl_fig_number') : null;
   const quantity = V.acquisitionQuantity(body?.quantity, 1);
   const condition = V.optionalCondition(body?.condition);
-  const unit_price = geldEingabe(body?.unit_price, 'Stückpreis');
+  const unit_price = moneyInput(body?.unit_price, 'Stückpreis');
   // Allows several acquisitions of the same minifig at different times.
   const acquiredAt = String(body?.acquired_at || '').trim() || null;
   // Only looked-up data goes into the catalog as verified.
@@ -76,7 +76,7 @@ async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: R
       condition,
     });
     // One acquisition per day and condition (src/bestand/acquisitions.ts).
-    await k.bestand.bucheTageserfassung('fig', uid, [num], {
+    await k.bestand.bookDailyEntry('fig', uid, [num], {
       quantity,
       // In the base row, 0 is a display value; in the acquisition it would
       // mean "bought for free".
@@ -97,14 +97,14 @@ async function addManualMinifigInternal(k: MinifigsContext, uid: number, body: R
   });
   // The catalog first: if the request fails in between, a description without
   // a holding is invisible, a holding without a name is not.
-  await k.katalog.merkeFigur(num, found?.fig_name, found?.image_url);
-  await k.katalog.merkeFigur(num, eingabe.name, eingabe.bild, null, k.db, uid);
+  await k.katalog.rememberMinifig(num, found?.fig_name, found?.image_url);
+  await k.katalog.rememberMinifig(num, eingabe.name, eingabe.bild, null, k.db, uid);
   // Without quantity, price and condition: they sit in the acquisition below.
-  await k.bestand.manuell.legeZeileAn('fig', uid, [num]);
-  if (blNum) await k.katalog.merkeEigeneBlNummer(uid, 'fig', num, blNum);
+  await k.bestand.manuell.putRowAn('fig', uid, [num]);
+  if (blNum) await k.katalog.rememberOwnBlNumber(uid, 'fig', num, blNum);
   // With the price actually used (market price or estimate), so acquisition
   // history and P&L agree.
-  await k.bestand.bucheTageserfassung('fig', uid, [num], {
+  await k.bestand.bookDailyEntry('fig', uid, [num], {
     quantity,
     price: acquisitionPrice,
     geschaetzt: estimated,
@@ -128,14 +128,14 @@ async function minifigDescription(
   let found: Awaited<ReturnType<Quellen['getMinifigInfo']>> | null = null;
   if (fig_name) return { fig_name, found };
 
-  const lokal = await k.katalog.katalogFigur(num, uid);
+  const lokal = await k.katalog.catalogMinifig(num, uid);
   if (lokal) {
     fig_name = lokal.name;
     image_url = image_url || lokal.bild;
   }
-  // `hatBild`, not `image_url`: a local path would fail the URL check but
+  // `hatImage`, not `image_url`: a local path would fail the URL check but
   // still proves there's nothing left to fetch.
-  if (!fig_name || !(image_url || lokal?.hatBild)) {
+  if (!fig_name || !(image_url || lokal?.hatImage)) {
     // Without Rebrickable, the minifig is entered with whatever the catalog already knows.
     const abruf = await versuche('figuren:getMinifigInfo', k.fremdquellen.quellen.getMinifigInfo(num));
     found = abruf.ok ? abruf.wert : null;
@@ -158,17 +158,17 @@ export async function updateManualMinifig(
 
   const raus: { quantity?: number } = {};
   // If the market price for the new acquisition didn't arrive, `degradiert` says so.
-  const ab = new Abstriche();
-  const wunsch = mengenwunsch(body);
-  if (wunsch) {
+  const ab = new Degradations();
+  const wish = mengenwunsch(body);
+  if (wish) {
     const cond = await k.einstellungen.conditionForPrice(undefined, existing.condition, uid);
-    raus.quantity = await k.bestand.passeManuelleMengeAn(
+    raus.quantity = await k.bestand.passeManualQuantityAn(
       'fig',
       uid,
       [figNumber],
-      wunsch,
+      wish,
       cond,
-      () => k.finanzen.aktuellerFigurMarktpreis(figNumber, uid, existing.bl_fig_number, cond),
+      () => k.finanzen.currentMinifigMarketPrice(figNumber, uid, existing.bl_fig_number, cond),
       ab,
     );
   }
@@ -176,30 +176,30 @@ export async function updateManualMinifig(
   if (body.bl_fig_number !== undefined) {
     newBlNum = body.bl_fig_number ? String(body.bl_fig_number).trim() : null;
     // Cleared means "no different number", not "never looked up".
-    await k.katalog.merkeEigeneBlNummer(uid, 'fig', figNumber, newBlNum || figNumber);
+    await k.katalog.rememberOwnBlNumber(uid, 'fig', figNumber, newBlNum || figNumber);
   }
   if (body.unit_price !== undefined) {
     // Same rule as for parts (src/finanzen/preisRegel.ts).
-    const { unitPrice } = await k.finanzen.kaufpreisAusEingabe(
+    const { unitPrice } = await k.finanzen.purchasePriceFromInput(
       body.unit_price,
       body.condition,
       existing.condition,
       uid,
-      zustand => k.finanzen.aktuellerFigurMarktpreis(figNumber, uid, newBlNum, zustand),
+      zustand => k.finanzen.currentMinifigMarketPrice(figNumber, uid, newBlNum, zustand),
     );
     // Into the NEWEST acquisition, as with parts.
-    await k.bestand.neuesteSetzen('fig', 'preis', unitPrice, uid, [figNumber]);
+    await k.bestand.setNewest('fig', 'preis', unitPrice, uid, [figNumber]);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = V.zustand(body.condition);
-    await k.bestand.neuesteSetzen('fig', 'zustand', cond, uid, [figNumber]);
+    await k.bestand.setNewest('fig', 'zustand', cond, uid, [figNumber]);
   }
   return { ...raus, ...ab.angabe() };
 }
 
 /** `uid` is the viewing scope (list). */
-export async function minifigAcquisitionsInScope(k: MinifigsContext, uidWahl: Sicht | number[], figNumber: string) {
-  const uid = await k.haushalt.blickfeldAus(uidWahl);
+export async function minifigAcquisitionsInScope(k: MinifigsContext, uidChoice: Sicht | number[], figNumber: string) {
+  const uid = await k.haushalt.scopeFrom(uidChoice);
   return k.manualMinifigs.minifigAcquisitions(uid, figNumber);
 }
 
@@ -213,17 +213,17 @@ export function findManualMinifig(
 
 /** Same pricing rule as adding by hand, estimate from parts included. */
 export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: string) {
-  const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
+  const { records, cleaned, uebersprungen } = csvRowsFromRequest(text);
   let added = 0,
     updated = 0,
     errors = 0;
   const results: Array<{ fig_number: string; action: string; fig_name?: string | null; error?: string }> = [];
 
-  for (const row of bereinigt) {
+  for (const row of cleaned) {
     const figNumber = String(row.fig_number || row.Nummer || row.fig_num || Object.values(row)[0] || '').trim();
     if (!figNumber) continue;
     const blFigNumber = String(row.bl_fig_number || row['BrickLink-Nr'] || '').trim() || null;
-    const { menge: qty, preis: unitPrice, erfasstAm: acquiredAt, zustand: rawCondition } = csvGemeinsameFelder(row);
+    const { menge: qty, preis: unitPrice, recordedAt: acquiredAt, zustand: rawCondition } = csvSharedFields(row);
 
     try {
       let figName = row.fig_name || row.Name || null;
@@ -253,16 +253,16 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
       };
 
       if (await findManualMinifig(k, uid, figNumber)) {
-        await k.bestand.bucheTageserfassung('fig', uid, [figNumber], erfassung);
+        await k.bestand.bookDailyEntry('fig', uid, [figNumber], erfassung);
         updated++;
         results.push({ fig_number: figNumber, action: 'updated' });
         continue;
       }
       // A name from the file is an input of this account (katalogPflege.ts).
-      await k.katalog.merkeFigur(figNumber, figName, imageUrl, null, k.db, typed ? uid : null);
-      await k.bestand.manuell.legeZeileAn('fig', uid, [figNumber]);
-      if (blFigNumber) await k.katalog.merkeEigeneBlNummer(uid, 'fig', figNumber, blFigNumber);
-      await k.bestand.bucheTageserfassung('fig', uid, [figNumber], erfassung);
+      await k.katalog.rememberMinifig(figNumber, figName, imageUrl, null, k.db, typed ? uid : null);
+      await k.bestand.manuell.putRowAn('fig', uid, [figNumber]);
+      if (blFigNumber) await k.katalog.rememberOwnBlNumber(uid, 'fig', figNumber, blFigNumber);
+      await k.bestand.bookDailyEntry('fig', uid, [figNumber], erfassung);
       added++;
       results.push({ fig_number: figNumber, action: 'added', fig_name: figName });
     } catch (e) {
@@ -270,7 +270,7 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
       results.push({
         fig_number: figNumber,
         action: 'error',
-        error: oeffentlicherFehler(e, 'figuren-csv:zeile').error,
+        error: publicError(e, 'figuren-csv:zeile').error,
       });
     }
   }

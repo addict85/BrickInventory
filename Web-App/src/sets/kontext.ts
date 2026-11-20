@@ -1,31 +1,31 @@
 import type { Konfig } from '../infra/konfig';
 import type { Db } from '../../db/database';
-import type { AuftraegeDienste } from '../auftraege';
-import type { FremdquellenDienste } from '../fremdquellen';
-import type { BilderDienste } from '../bilder';
-import type { BestandDienste } from '../bestand';
-import type { FinanzenDienste } from '../finanzen';
-import type { HaushaltDienste } from '../haushalt';
-import type { KatalogDienste } from '../katalog';
+import type { JobsServices } from '../auftraege';
+import type { ForeignSourcesServices } from '../fremdquellen';
+import type { ImagesServices } from '../bilder';
+import type { InventoryServices } from '../bestand';
+import type { FinancesServices } from '../finanzen';
+import type { HouseholdServices } from '../haushalt';
+import type { CatalogServices } from '../katalog';
 import type { SettingsServices } from '../settings';
-import type { KontoDienste } from '../konto';
+import type { AccountServices } from '../konto';
 import type { Kontext } from '../infra/bereich';
 import type { Uhr } from '../infra/uhr';
 
 /** Was der Bereich von aussen bekommt, damit ein Test ihm einen eigenen Zugang geben kann; dass
- * alle Bereiche denselben nutzen, sichert baueDienste (startup/verdrahtung.ts). */
-export interface SetsAbhaengigkeiten {
+ * alle Bereiche denselben nutzen, sichert buildServices (startup/verdrahtung.ts). */
+export interface SetsDependencies {
   uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
-  fremdquellen: FremdquellenDienste;
-  bilder: BilderDienste;
-  katalog: KatalogDienste;
-  finanzen: FinanzenDienste;
-  haushalt: HaushaltDienste;
-  auftraege: AuftraegeDienste;
-  bestand: BestandDienste;
+  fremdquellen: ForeignSourcesServices;
+  bilder: ImagesServices;
+  katalog: CatalogServices;
+  finanzen: FinancesServices;
+  haushalt: HouseholdServices;
+  auftraege: JobsServices;
+  bestand: InventoryServices;
   einstellungen: SettingsServices;
-  konto: KontoDienste;
+  konto: AccountServices;
 }
-export type SetsKontext = Kontext<SetsAbhaengigkeiten, object>;
+export type SetsContext = Kontext<SetsDependencies, object>;

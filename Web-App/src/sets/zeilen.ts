@@ -1,5 +1,5 @@
 /** Zeilen der Set-Repositories; im Dienst hinge das Repository über seine Typen am Dienst. */
-export interface SetStamm {
+export interface SetMaster {
   name: string | null;
   year: number | null;
   theme: string | null;
@@ -22,7 +22,7 @@ export interface ListenTeil {
   color_hex?: string | null;
   bl_color_id?: number | null;
 }
-export interface KatalogTeil {
+export interface CatalogPart {
   part_number: string;
   color_id: number;
   bl_part_number: string | null;

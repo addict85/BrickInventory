@@ -1,11 +1,11 @@
 import type { Sicht } from '../haushalt';
-import { baueDiagrammdaten } from './portfolio/diagrammdaten';
-import { rekonstruiereKurve, type KurvenPunkt } from './portfolio/kurve';
+import { buildChartData } from './portfolio/diagrammdaten';
+import { reconstructCurve, type CurvesPoint } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
-import type { FinanzenKontext } from './kontext';
+import type { FinancesContext } from './kontext';
 /** Je Monat der letzte Punkt; der erste bleibt exakt, damit alle Zeiträume beim selben Start beginnen. */
-function aufMonate(rawPoints: KurvenPunkt[]): KurvenPunkt[] {
-  const byMonth = new Map<string, KurvenPunkt>();
+function onMonths(rawPoints: CurvesPoint[]): CurvesPoint[] {
+  const byMonth = new Map<string, CurvesPoint>();
   for (const p of rawPoints) byMonth.set(p.month || p.day.slice(0, 7), p);
   const monthly = [...byMonth.values()].map(p => ({ ...p, day: p.month || p.day.slice(0, 7) }));
   const first = rawPoints[0];
@@ -16,7 +16,7 @@ function aufMonate(rawPoints: KurvenPunkt[]): KurvenPunkt[] {
 }
 
 /** Ein künstlicher Startwert, damit die App eine Linie hat; `messpunkte` sagt der Weboberfläche, dass das kein Verlauf ist. */
-function mitStartpunkt(rawPoints: KurvenPunkt[], period: string, purchaseTotal: number, now: Date): KurvenPunkt[] {
+function withStartPoint(rawPoints: CurvesPoint[], period: string, purchaseTotal: number, now: Date): CurvesPoint[] {
   const pad = (n: number) => String(n).padStart(2, '0');
   const startDate = new Date(now);
   if (period === 'week') startDate.setDate(now.getDate() - 7);
@@ -32,14 +32,14 @@ function mitStartpunkt(rawPoints: KurvenPunkt[], period: string, purchaseTotal: 
 /** `db` und `getSetting` lassen sich hereingeben, damit die Rechnung ohne
  * Datenbank prüfbar bleibt. */
 export async function portfolioVerlauf(
-  k: FinanzenKontext,
+  k: FinancesContext,
   viewerId: number,
-  idsWahl: Sicht | number[],
+  idsChoice: Sicht | number[],
   period: string,
   db: unknown = k.db,
   getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.einstellungen.userValue,
 ) {
-  const ids = await k.haushalt.blickfeldAus(idsWahl);
+  const ids = await k.haushalt.scopeFrom(idsChoice);
   // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die
   // Währung darf dann nicht aus ids[0] kommen.
   const uids = Array.isArray(ids) ? ids.map(n => parseInt(String(n), 10)) : [parseInt(String(ids), 10)];
@@ -47,7 +47,7 @@ export async function portfolioVerlauf(
   const condition = DEFAULT_PRICE_CONDITION;
 
   // Ein Set, EINE Zeile, auch bei zwei Besitzern — sonst käme es zweimal in die Summe.
-  const sets = await k.portfolioKurve.setsMitKaufsumme(uids);
+  const sets = await k.portfolioKurve.setsWithPurchaseTotal(uids);
   if (!sets.length) {
     return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
   }
@@ -63,13 +63,13 @@ export async function portfolioVerlauf(
   else if (period === 'year') dateFilter = "AND recorded_at >= NOW() - INTERVAL '365 days'";
 
   // Für Woche und Monat je Tag, für Jahr und Max je MONAT.
-  let monatsAufloesung = period === 'year' || period === 'max';
-  const bucketExpr = monatsAufloesung ? "'YYYY-MM'" : "'YYYY-MM-DD'";
+  let monthResolution = period === 'year' || period === 'max';
+  const bucketExpr = monthResolution ? "'YYYY-MM'" : "'YYYY-MM-DD'";
 
   // Die Kurve zeigt den HEUTIGEN Bestand über die Zeit: Sonst erschiene jedes
   // Erfassen als Kurssprung.
 
-  const kurve = await rekonstruiereKurve(k, {
+  const kurve = await reconstructCurve(k, {
     db,
     setNumbers,
     setQty,
@@ -78,26 +78,26 @@ export async function portfolioVerlauf(
     bucketExpr,
     condition,
     currency,
-    monatsAufloesung,
+    monthResolution,
   });
   let rawPoints = kurve.rawPoints;
-  monatsAufloesung = kurve.monatsAufloesung;
+  monthResolution = kurve.monthResolution;
   const messpunkte = rawPoints.length;
 
   // Die Beschriftung muss die Verdichtung kennen, sonst bekäme der erste Punkt
   // ein Monatskürzel und der letzte nicht mehr „heute".
   const verdichtet = rawPoints.length > 120;
-  if (verdichtet) rawPoints = aufMonate(rawPoints);
-  const downsampled = monatsAufloesung || verdichtet;
+  if (verdichtet) rawPoints = onMonths(rawPoints);
+  const downsampled = monthResolution || verdichtet;
 
   const jetzt = k.uhr.datum();
-  if (rawPoints.length <= 1) rawPoints = mitStartpunkt(rawPoints, period, purchaseTotal, jetzt);
+  if (rawPoints.length <= 1) rawPoints = withStartPoint(rawPoints, period, purchaseTotal, jetzt);
 
   if (!rawPoints.length) {
     return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
   }
 
-  const { points, y_axis, period_change_pct, chart } = baueDiagrammdaten(rawPoints, currency, downsampled, jetzt);
+  const { points, y_axis, period_change_pct, chart } = buildChartData(rawPoints, currency, downsampled, jetzt);
 
   return {
     currency,

@@ -13,7 +13,7 @@
  *      Eintrag gibt es kein Dokument“ und „das Dokument nennt …“
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { environment } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const { buildAndRequire } = require('./helpers/sources');
@@ -21,26 +21,26 @@ const { testServer } = require('./helpers/server');
 
 const _req = buildAndRequire();
 const { ladeKonfig, KonfigFehler } = _req('src/infra/konfig.js');
-const { androidOrigins: herkuenfte } = _req('src/factors/androidApp.js');
-const androidOrigins = () => herkuenfte(_req('src/infra/konfig.js').konfig());
+const { androidOrigins: origins } = _req('src/factors/androidApp.js');
+const androidOrigins = () => origins(_req('src/infra/konfig.js').konfig());
 
 /** Ein Hash, dessen base64 ein „+“ und ein „/“ enthält: base64url muss sie ersetzen. */
 const HASH = Buffer.from('fbff' + '00'.repeat(28) + 'fbff', 'hex');
-const MIT_DOPPELPUNKT = HASH.toString('hex').toUpperCase().match(/../g).join(':');
+const WITH_COLON = HASH.toString('hex').toUpperCase().match(/../g).join(':');
 
-function mitUmgebung(t, werte) {
+function withEnvironment(t, werte) {
   const vorher = Object.fromEntries(Object.keys(werte).map(k => [k, process.env[k]]));
-  umgebung(werte);
+  environment(werte);
   t.after(() => {
     for (const [k, v] of Object.entries(vorher)) {
-      if (v === undefined) umgebung({ [k]: undefined });
-      else umgebung({ [k]: v });
+      if (v === undefined) environment({ [k]: undefined });
+      else environment({ [k]: v });
     }
   });
 }
 
 test('ohne Eintrag gibt es kein Dokument und keine App-Herkunft', async t => {
-  mitUmgebung(t, { PASSKEY_ANDROID_ZERTIFIKATE: '' });
+  withEnvironment(t, { PASSKEY_ANDROID_ZERTIFIKATE: '' });
   const { base } = testServer(_req, { t });
   const r = await fetch(`${base}/.well-known/assetlinks.json`);
   assert.equal(r.status, 404);
@@ -49,7 +49,7 @@ test('ohne Eintrag gibt es kein Dokument und keine App-Herkunft', async t => {
 });
 
 test('das Dokument nennt Paket und Fingerabdruck, nur für die Anmeldedaten', async t => {
-  mitUmgebung(t, {
+  withEnvironment(t, {
     PASSKEY_ANDROID_ZERTIFIKATE: HASH.toString('hex'),
     PASSKEY_ANDROID_PAKET: 'ch.brickinventoryapp.debug',
   });
@@ -63,14 +63,14 @@ test('das Dokument nennt Paket und Fingerabdruck, nur für die Anmeldedaten', as
       target: {
         namespace: 'android_app',
         package_name: 'ch.brickinventoryapp.debug',
-        sha256_cert_fingerprints: [MIT_DOPPELPUNKT],
+        sha256_cert_fingerprints: [WITH_COLON],
       },
     },
   ]);
 });
 
 test('die Herkunft ist base64url des Hashes, gleich in welcher Schreibweise er eingetragen ist', t => {
-  mitUmgebung(t, { PASSKEY_ANDROID_ZERTIFIKATE: `${MIT_DOPPELPUNKT.toLowerCase()}, ${HASH.toString('hex')}` });
+  withEnvironment(t, { PASSKEY_ANDROID_ZERTIFIKATE: `${WITH_COLON.toLowerCase()}, ${HASH.toString('hex')}` });
   const erwartet =
     'android:apk-key-hash:' + HASH.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   assert.match(HASH.toString('base64'), /[+/]/, 'Die Probe deckt die Ersetzung nicht ab');

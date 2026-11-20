@@ -7,9 +7,9 @@
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in importPartsCsv() die Farbe nicht mehr lesen (immer KEINE_FARBE)
  *      → rot: „Teile kommen unverändert an“ (color_id 4 → 9999)
- *   B  in csvGemeinsameFelder() acquired_at nicht mehr lesen → rot: „Teile …“
+ *   B  in csvSharedFields() acquired_at nicht mehr lesen → rot: „Teile …“
  *      und „Figuren …“ (Datum des Imports statt des Kaufs)
- *   C  in setCsvZeilen() den Zustand nicht mehr lesen → rot: „Sets …“
+ *   C  in setCsvRows() den Zustand nicht mehr lesen → rot: „Sets …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -19,13 +19,13 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const konto = async n => {
     await db.run('DELETE FROM users WHERE username=$1', [`${n}-${process.pid}`]);
@@ -64,11 +64,11 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
     [A],
   );
 
-  const { teileCsv, figurenCsv } = _req('src/bestand/bestandExport.js');
-  const { setsAlsCsv } = require('./helpers/sources').bereichsSeite('sets');
+  const { partsCsv, figurenCsv } = _req('src/bestand/bestandExport.js');
+  const { setsAlsCsv } = require('./helpers/sources').areaPage('sets');
   const { importPartsCsv } = _req('src/parts/manualParts.js');
   const { importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
-  const { setCsvZeilen } = require('./helpers/sources').bereichsSeite('sets');
+  const { setCsvRows } = require('./helpers/sources').areaPage('sets');
 
   const erfassungen = (tabelle, nummer, farbe, u) =>
     db.all(
@@ -79,7 +79,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
     );
 
   await t.test('Teile kommen unverändert an', async () => {
-    const r = await importPartsCsv(B, await teileCsv(A));
+    const r = await importPartsCsv(B, await partsCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
       await erfassungen('part_acquisitions', 'part_number', true, B),
@@ -97,7 +97,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
   });
 
   await t.test('Sets: der Zeilenleser des Imports liest jede Spalte des Exports', async () => {
-    const { rows } = setCsvZeilen(await setsAlsCsv(A));
+    const { rows } = setCsvRows(await setsAlsCsv(A));
     assert.deepEqual(rows, [
       { sn: 'RL10001-1', qty: 2, zeile: 2, purchasePrice: 99.9, condition: 'U', acquiredAt: '2025-12-24' },
     ]);

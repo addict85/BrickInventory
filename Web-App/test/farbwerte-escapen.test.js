@@ -11,13 +11,13 @@ const JS = path.join(__dirname, '..', 'public', 'js');
 
 test('Farbwerte kommen nur über escHex ins Markup', () => {
   const treffer = [];
-  let gepruefte = 0;
+  let checked = 0;
   for (const f of fs.readdirSync(JS).filter(n => n.endsWith('.js') && n !== 'app.bundle.js')) {
     const src = fs.readFileSync(path.join(JS, f), 'utf8');
     src.split('\n').forEach((zeile, i) => {
       // Interpolierte Farbfelder: color_hex, colour_hex, .hex
       for (const m of zeile.matchAll(/\$\{([^{}]*(?:color_hex|colour_hex|\.hex)\b[^{}]*)\}/g)) {
-        gepruefte++;
+        checked++;
         // Zwei erlaubte Fassungen derselben Prüfung: escHex() liefert
         // `#RRGGBB` für style, rawHex() die nackten sechs Ziffern für
         // Attribute, deren Leser das Doppelkreuz selbst ergänzen.
@@ -27,7 +27,7 @@ test('Farbwerte kommen nur über escHex ins Markup', () => {
   }
   // Selbstbeweis: Ohne Fundstellen sagt eine leere Liste nichts — die Regel
   // wäre auch dann grün, wenn niemand mehr Farben anzeigte.
-  assert.ok(gepruefte >= 5, `nur ${gepruefte} interpolierte Farbwerte gefunden — Feldname geändert?`);
+  assert.ok(checked >= 5, `nur ${checked} interpolierte Farbwerte gefunden — Feldname geändert?`);
   assert.deepEqual(
     treffer,
     [],

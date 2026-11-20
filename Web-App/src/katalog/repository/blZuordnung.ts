@@ -1,4 +1,4 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 import type { BlArt } from '../../../db/blZuordnungSql';
 
 /** NULLIF(bl, rb) ist die EINE Schreibweise für „keine abweichende Nummer";
@@ -9,7 +9,7 @@ import type { BlArt } from '../../../db/blZuordnungSql';
 const NUR_LEERE_FUELLEN = `ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id, fetched_at = NOW()
      WHERE bl_mapping.bl_id IS NULL AND EXCLUDED.bl_id IS NOT NULL`;
 
-export async function schreibeBlNummer(db: DbSchnittstelle, art: BlArt, rbId: string, blId: string): Promise<void> {
+export async function writeBlNumber(db: DbInterface, art: BlArt, rbId: string, blId: string): Promise<void> {
   await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULLIF($3,$2)) ${NUR_LEERE_FUELLEN}`, [
     art,
     rbId,
@@ -18,8 +18,8 @@ export async function schreibeBlNummer(db: DbSchnittstelle, art: BlArt, rbId: st
 }
 
 /** Die Eingabe eines Kontos; die neueste gilt. */
-export async function schreibeBlNummerEigen(
-  db: DbSchnittstelle,
+export async function writeBlNumberOwn(
+  db: DbInterface,
   uid: number,
   art: BlArt,
   rbId: string,
@@ -32,7 +32,7 @@ export async function schreibeBlNummerEigen(
   );
 }
 
-export async function schreibeBlNummern(
+export async function writeBlNumbers(
   db: { run: (sql: string, p?: unknown[]) => Promise<unknown> },
   art: BlArt,
   rbIds: string[],
@@ -47,7 +47,7 @@ export async function schreibeBlNummern(
 }
 
 /** DO NOTHING: Die Notiz „nachgesehen" überschreibt keine gefundene Zuordnung. */
-export async function notiereNachgesehen(db: DbSchnittstelle, art: BlArt, rbId: string): Promise<void> {
+export async function noteLookedUp(db: DbInterface, art: BlArt, rbId: string): Promise<void> {
   await db.run('INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULL) ON CONFLICT DO NOTHING', [art, rbId]);
 }
 
@@ -56,8 +56,8 @@ const EIGENE_ZUERST = `(SELECT e.bl_id FROM bl_mapping_custom e
       WHERE e.user_id = ANY($3::int[]) AND e.type = $1 AND e.rb_id = q.rb_id
       ORDER BY array_position($3::int[], e.user_id) LIMIT 1)`;
 
-export async function abweichendeNummer(
-  db: DbSchnittstelle,
+export async function differingNumber(
+  db: DbInterface,
   art: BlArt,
   rbId: string,
   konten: number[] = [],
@@ -73,13 +73,13 @@ export async function abweichendeNummer(
 }
 
 /** null nur, wenn es keine Zeile gibt (nie nachgesehen). */
-export async function wirksameNummer(
-  db: DbSchnittstelle,
+export async function effectiveNumber(
+  db: DbInterface,
   art: BlArt,
   rbId: string,
   konten: number[] = [],
 ): Promise<string | null> {
-  if (konten.length) return (await wirksameNummern(db, art, [rbId], konten))[0]?.nr ?? null;
+  if (konten.length) return (await effectiveNumbers(db, art, [rbId], konten))[0]?.nr ?? null;
   const z = await db.get<{ nr: string }>(
     'SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_mapping WHERE type=$1 AND rb_id=$2',
     [art, rbId],
@@ -87,7 +87,7 @@ export async function wirksameNummer(
   return z?.nr || null;
 }
 
-export function wirksameNummern(db: DbSchnittstelle, art: BlArt, rbIds: string[], konten: number[] = []) {
+export function effectiveNumbers(db: DbInterface, art: BlArt, rbIds: string[], konten: number[] = []) {
   if (!konten.length)
     return db.all<{ rb_id: string; nr: string }>(
       `SELECT rb_id, COALESCE(bl_id, rb_id) AS nr FROM bl_mapping
@@ -103,6 +103,6 @@ export function wirksameNummern(db: DbSchnittstelle, art: BlArt, rbIds: string[]
   );
 }
 
-export async function schreibeBlFarbnummer(db: DbSchnittstelle, colorId: number, blColorId: number): Promise<void> {
+export async function writeBlColorNumber(db: DbInterface, colorId: number, blColorId: number): Promise<void> {
   await db.run('UPDATE rb_colors SET bl_color_id = $1 WHERE id = $2', [blColorId, colorId]);
 }

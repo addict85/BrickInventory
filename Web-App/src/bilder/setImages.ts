@@ -2,13 +2,13 @@ import type { Konfig } from '../infra/konfig';
 import path from 'node:path';
 import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
-import { BILD_KOPFZEILEN } from '../fremdquellen';
-import type { BilderKontext } from './kontext';
+import { IMAGE_HEADERS } from '../fremdquellen';
+import type { ImagesContext } from './kontext';
 
 /** Was das Bildwerk braucht; es entsteht vor dem Kontext des Bereichs (bereich.ts). */
-export type BildwerkKontext = Pick<BilderKontext, 'konfig' | 'fremdquellen'>;
+export type ImageWorkerContext = Pick<ImagesContext, 'konfig' | 'fremdquellen'>;
 import { SET_IMAGES_DIR } from '../infra/appPaths';
-import { mitVersion } from '../infra/setNummer';
+import { withVersion } from '../infra/setNummer';
 
 // Set-Bilder vom CDN holen; hier statt im Router, damit die Aufrufer echt importieren.
 
@@ -18,16 +18,16 @@ export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 /** Dieselbe Browser-Kennung wie der Bild-Proxy: Eine eigene weist das CDN mit 403 ab,
  * und der Bild-Auftrag pausierte dann endlos. IMG_USER_AGENT bleibt als Ausweg. */
 export function bildUserAgent(k: Pick<Konfig, 'bildUserAgent'>): string {
-  return k.bildUserAgent || String(BILD_KOPFZEILEN['User-Agent']);
+  return k.bildUserAgent || String(IMAGE_HEADERS['User-Agent']);
 }
 
 /** Nur Rebrickable-Bilder legt der Proxy samt Vorschau unter images/sets ab. */
-export function rebrickableSetBild(setNumber: string): string {
-  return `https://cdn.rebrickable.com/media/sets/${encodeURIComponent(mitVersion(setNumber))}.jpg`;
+export function rebrickableSetImage(setNumber: string): string {
+  return `https://cdn.rebrickable.com/media/sets/${encodeURIComponent(withVersion(setNumber))}.jpg`;
 }
 
 /** Liegen Bild und Vorschau schon in images/sets, braucht der Bild-Job nichts mehr. */
-export async function setBildVollstaendig(setNumber: string): Promise<boolean> {
+export async function setImageComplete(setNumber: string): Promise<boolean> {
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
   const da = (datei: string) =>
     fs.promises.access(path.join(SET_IMAGES_DIR, datei)).then(
@@ -38,7 +38,7 @@ export async function setBildVollstaendig(setNumber: string): Promise<boolean> {
 }
 
 export async function setBildHerunterladen(
-  k: BildwerkKontext,
+  k: ImageWorkerContext,
   url: string,
   setNumber: string,
   info?: { status?: number },
@@ -56,20 +56,18 @@ export async function setBildHerunterladen(
   )
     return relPath;
   const buf = await k.fremdquellen.quellen
-    .holeBild(url, {
+    .fetchImage(url, {
       maxBytes: SET_IMG_MAX_BYTES,
       zeitlimitMs: 30_000,
-      kopfzeilen: { ...BILD_KOPFZEILEN, 'User-Agent': userAgent },
+      kopfzeilen: { ...IMAGE_HEADERS, 'User-Agent': userAgent },
     })
     .then(
       r => {
         if (r.status === 200) return r.koerper;
         // „404" und „403 Bot-Erkennung" verlangen verschiedene Massnahmen; ohne
         // echten Code gilt es in src/bilder/bildbedarfLauf.ts als vorübergehend.
-        const nichtVorhanden = r.status === 404 || r.status === 410;
-        (nichtVorhanden ? console.warn : console.error)(
-          `[set-img] ${setNumber}: HTTP ${r.status} vom Bildserver: ${url}`,
-        );
+        const notPresent = r.status === 404 || r.status === 410;
+        (notPresent ? console.warn : console.error)(`[set-img] ${setNumber}: HTTP ${r.status} vom Bildserver: ${url}`);
         if (info && r.status) info.status = r.status;
         return null;
       },

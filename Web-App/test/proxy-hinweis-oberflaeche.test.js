@@ -9,7 +9,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const jobs = proxy_hinweis => ({
@@ -32,9 +32,7 @@ const jobs = proxy_hinweis => ({
 });
 
 test('der Hinweis steht unter Hintergrundarbeiten', async () => {
-  const { w, d } = await oeffneOberflaeche(
-    jobs({ art: 'eine_adresse', vars: { ip: '172.28.73.20', minuten: 61, anzahl: 301 } }),
-  );
+  const { w, d } = await openUi(jobs({ art: 'eine_adresse', vars: { ip: '172.28.73.20', minuten: 61, anzahl: 301 } }));
   try {
     await reiter(w, 'monitor');
     await warte(() => d.getElementById('mon-proxy-hinweis'));
@@ -47,7 +45,7 @@ test('der Hinweis steht unter Hintergrundarbeiten', async () => {
 });
 
 test('ohne Hinweis steht nichts da', async () => {
-  const { w, d } = await oeffneOberflaeche(jobs(null));
+  const { w, d } = await openUi(jobs(null));
   try {
     await reiter(w, 'monitor');
     await warte(() => d.querySelector('#monitor-content table'));

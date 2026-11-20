@@ -1,18 +1,18 @@
 /** Aus einem Zugang entstehen Kontingent, Drosseln und die Klienten, die genau diese bekommen:
  * Zwei Sätze Dienste in einem Prozess teilen weder Schlüssel noch Zwischenstände. */
-import { mit, baueKontext, type Einblick } from '../infra/bereich';
+import { mit, buildContext, type Inspect } from '../infra/bereich';
 import type { Db } from '../../db/database';
 import * as brickset from './bricksetWiedervorlage';
-import * as apiKontingentDienst from './apiKontingent';
+import * as apiQuotaService from './apiKontingent';
 import * as rateLimiter from './rateLimiter';
-import { baueQuellen, type KlientenZugang, type Quellen } from './quellen';
-import { zugang, type FremdquellenAbhaengigkeiten, type FremdquellenKontext } from './kontext';
+import { buildSources, type ClientsAccess, type Quellen } from './quellen';
+import { zugang, type ForeignSourcesDependencies, type ForeignSourcesContext } from './kontext';
 
-export type { FremdquellenAbhaengigkeiten, FremdquellenKontext } from './kontext';
+export type { ForeignSourcesDependencies, ForeignSourcesContext } from './kontext';
 
 /** Gelesen beim Aufruf, nicht beim Bau: Ein Test ersetzt einen Klienten auch, nachdem
- * die Dienste schon stehen (test/helpers/sources.js testQuellen). */
-function mitErsatz(echt: Quellen, ersatz: Partial<Quellen> | undefined): Quellen {
+ * die Dienste schon stehen (test/helpers/sources.js testSources). */
+function withFallback(echt: Quellen, ersatz: Partial<Quellen> | undefined): Quellen {
   if (!ersatz) return echt;
   const aus = {} as Quellen;
   for (const n of Object.keys(echt) as (keyof Quellen)[])
@@ -20,40 +20,40 @@ function mitErsatz(echt: Quellen, ersatz: Partial<Quellen> | undefined): Quellen
   return aus;
 }
 
-export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: Einblick<FremdquellenKontext>) {
-  const k: FremdquellenKontext = baueKontext(a, zugang);
-  einblick?.(k);
-  const drossel = rateLimiter.rebrickableDrosseln(k.apiTakt, k.uhr);
+export function createForeignSources(a: ForeignSourcesDependencies, inspect?: Inspect<ForeignSourcesContext>) {
+  const k: ForeignSourcesContext = buildContext(a, zugang);
+  inspect?.(k);
+  const drossel = rateLimiter.throttleRebrickable(k.apiTakt, k.uhr);
   const kontingent = {
-    kontingentStand: mit(k)(apiKontingentDienst.kontingentUebersicht),
-    kontingentFrei: mit(k)(apiKontingentDienst.kontingentFrei),
-    setzeKontingentZurueck: mit(k)(apiKontingentDienst.setzeKontingentZurueck),
-    kontingentGrenze: mit(k)(apiKontingentDienst.grenzeDerQuelle),
+    quotaStatus: mit(k)(apiQuotaService.kontingentUebersicht),
+    quotaFree: mit(k)(apiQuotaService.quotaFree),
+    setQuotaBack: mit(k)(apiQuotaService.setQuotaBack),
+    quotaLimit: mit(k)(apiQuotaService.limitTheSource),
   };
-  const klienten: KlientenZugang = {
+  const clients: ClientsAccess = {
     schluessel: async name => (await k.einstellungen.globalValue(name)) || '',
-    zaehle: api => apiKontingentDienst.kontingentPruefenUndZaehlen(k, api),
-    kontingentStand: api => kontingent.kontingentStand(api),
+    zaehle: api => apiQuotaService.kontingentPruefenUndZaehlen(k, api),
+    quotaStatus: api => kontingent.quotaStatus(api),
     drossel,
-    bricksetVormerken: mit(k)(brickset.bricksetVormerken),
-    bricksetVergessen: mit(k)(brickset.bricksetVergessen),
+    bricksetReserve: mit(k)(brickset.bricksetReserve),
+    bricksetForgotten: mit(k)(brickset.bricksetForgotten),
   };
   const dienste = {
     /** Die Klienten dieses Zugangs; ein Test ersetzt einzelne über `ersatz`. */
-    quellen: mitErsatz(baueQuellen(klienten), a.ersatz),
+    quellen: withFallback(buildSources(clients), a.ersatz),
     drossel,
-    kontingentStand: kontingent.kontingentStand,
-    kontingentFrei: kontingent.kontingentFrei,
-    setzeKontingentZurueck: kontingent.setzeKontingentZurueck,
-    kontingentGrenze: kontingent.kontingentGrenze,
+    quotaStatus: kontingent.quotaStatus,
+    quotaFree: kontingent.quotaFree,
+    setQuotaBack: kontingent.setQuotaBack,
+    quotaLimit: kontingent.quotaLimit,
     consumeRebrickableDaily: mit(k)(rateLimiter.consumeRebrickableDaily),
     /** Die Wiedervorlage der Sets, für die Brickset kein Kontingent mehr hatte. */
     brickset: {
-      faelligAb: mit(k)(brickset.bricksetFaelligAb),
-      jetzt: mit(k)(brickset.bricksetJetzt),
-      vorziehen: mit(k)(brickset.bricksetVorziehen),
-      zahlen: mit(k)(brickset.bricksetZahlen),
-      wartende: mit(k)(brickset.bricksetWartende),
+      dueAb: mit(k)(brickset.bricksetDueAb),
+      jetzt: mit(k)(brickset.bricksetNow),
+      prefer: mit(k)(brickset.bricksetPrefer),
+      zahlen: mit(k)(brickset.bricksetNumbers),
+      wartende: mit(k)(brickset.bricksetWaiting),
     },
   };
   // Klienten rufen nach draussen und gehören nie in eine Transaktion: Ihr Satz bleibt
@@ -61,4 +61,4 @@ export function erzeugeFremdquellen(a: FremdquellenAbhaengigkeiten, einblick?: E
   return Object.assign(dienste, { ueber: (_db: Db) => dienste });
 }
 
-export type FremdquellenDienste = ReturnType<typeof erzeugeFremdquellen>;
+export type ForeignSourcesServices = ReturnType<typeof createForeignSources>;

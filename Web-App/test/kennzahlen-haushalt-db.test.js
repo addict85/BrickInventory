@@ -8,11 +8,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 async function erreichbar() {
   try {
@@ -51,20 +51,20 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async t => {
 
   // 75192-1 besitzen BEIDE — ohne diese Überschneidung stimmen Zeilenzahl und
   // Kachelzahl zufällig überein, und der Test prüfte nichts.
-  await haeltSet(db, haupt, '75192-1', 1);
-  await haeltSet(db, kind, '75192-1', 1);
-  await haeltSet(db, kind, '21318-1', 1);
+  await holdsSet(db, haupt, '75192-1', 1);
+  await holdsSet(db, kind, '75192-1', 1);
+  await holdsSet(db, kind, '21318-1', 1);
 
-  const { blickfeldIds } = {
+  const { scopeIds } = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ...require('./helpers/sources').testArea('haushalt'),
   };
   const { getStats } = _req('src/bestand/kennzahlen.js');
-  const { setsLesen } = require('./helpers/sources').bereichsSeite('sets');
+  const { setsLesen } = require('./helpers/sources').areaPage('sets');
 
   for (const modus of ['all', 'own']) {
-    const uids = await blickfeldIds(haupt, modus);
+    const uids = await scopeIds(haupt, modus);
     const kopf = await getStats(uids);
     const liste = await setsLesen(uids, { page_size: 60 });
     assert.equal(
@@ -85,7 +85,7 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async t => {
   // Die andere Lesart bleibt erhalten und steht in der App als eigene Kachel
   // daneben („Einheiten"). Ohne diese Zusicherung wäre die naheliegende
   // „Korrektur" — beide auf DISTINCT — unbemerkt geblieben.
-  const alle = await getStats(await blickfeldIds(haupt, 'all'));
+  const alle = await getStats(await scopeIds(haupt, 'all'));
   assert.equal(alle.total_quantity, 3, 'Exemplare zählen weiterhin einzeln: zwei Konten mit demselben Set plus eines');
   assert.equal(alle.total_sets, 2, 'verschiedene Sets im Haushalt');
 });

@@ -5,16 +5,16 @@
  * Anmeldung wieder. Die Token-Abfrage selbst prüft is_active.
  *
  * Gegenproben (01.11.2026 gemessen):
- *   A  in setzeAktiv() zugaengeBeenden() weggelassen → rot: „Token und Sitzung
+ *   A  in setzeAktiv() endAccesses() weggelassen → rot: „Token und Sitzung
  *      gelten sofort nicht mehr" („Token gilt weiter": 200 aus dem Cache)
- *   B  `AND u.is_active` in gueltigerToken() entfernt → rot: „die Token-Abfrage
+ *   B  `AND u.is_active` in validToken() entfernt → rot: „die Token-Abfrage
  *      prüft is_active"
  *   C  die Prüfung auf das eigene Konto entfernt → rot: „nicht das eigene
  *      Konto" (200; der Verwalter sperrte sich aus, die Fälle danach folgen)
- *   D  (02.11.2026) in pruefeAnmeldedaten() die Sperrprüfung wieder als eigene
+ *   D  (02.11.2026) in checkCredentials() die Sperrprüfung wieder als eigene
  *      Absage nach dem Passwort → rot: „gesperrt antwortet wie ein falsches
  *      Passwort“ und „unbestätigt antwortet wie ein falsches Passwort“ (403)
- *   E  (02.11.2026) in erneuereEmailTokenWennFrei() die Pause entfernt → rot:
+ *   E  (02.11.2026) in renewEmailTokenIfFree() die Pause entfernt → rot:
  *      „ein zweiter Link sofort danach“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -28,23 +28,23 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.APP_BASE_URL = 'http://brick.example';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const CHEF = `deakt_chef_${process.pid}`,
     NUTZER = `deakt_nutzer_${process.pid}`,
     PASS = 'Deakt-Passwort-1';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, NUTZER]]);
-  const lege = async (name, admin) =>
+  const put = async (name, admin) =>
     (
       await db.get(
         `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
@@ -52,10 +52,10 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
         [name, bcrypt.hashSync(PASS, 4), admin],
       )
     ).id;
-  const chef = await lege(CHEF, true),
-    nutzer = await lege(NUTZER, false);
+  const chef = await put(CHEF, true),
+    nutzer = await put(NUTZER, false);
   // Verwalterrechte verlangen einen Code-Generator; jede Bestätigung nimmt einen Wiederherstellungscode.
-  const codes = await require('./helpers/verwalter').verwalterMitFaktor(_req, chef);
+  const codes = await require('./helpers/verwalter').adminWithFactor(_req, chef);
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");
   t.after(async () => {
     await db.run('DELETE FROM admin_log WHERE target_id = ANY($1)', [[chef, nutzer]]);
@@ -76,10 +76,9 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
   );
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').waechterFuer(require('./helpers/sources').testDienste().konto)
-      .anmeldungAmEingang,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
   );
-  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   /** @param {string} methode @param {string} pfad @param {{ body?: unknown, cookie?: string, token?: string }} [o] */
@@ -197,10 +196,10 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
   await t.test('die Token-Abfrage prüft is_active', async () => {
     const auth = _req('src/konto/geraeteToken.js');
     const tokenCache = _req('src/konto/tokenCache.js');
-    const token = await auth.tokenAnlegen(nutzer, 'Probe');
+    const token = await auth.createToken(nutzer, 'Probe');
     assert.ok(await auth.nutzerZumToken(token));
     await db.run('UPDATE users SET is_active = false WHERE id = $1', [nutzer]);
-    tokenCache.leereTokenCache();
+    tokenCache.emptyTokenCache();
     assert.equal(await auth.nutzerZumToken(token), null);
   });
 });

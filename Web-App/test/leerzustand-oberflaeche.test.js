@@ -13,13 +13,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
-const STIL = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
-const mitStil = w =>
+const STYLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
+const withStyle = w =>
   w.document.addEventListener('DOMContentLoaded', () => {
     const s = w.document.createElement('style');
-    s.textContent = STIL;
+    s.textContent = STYLE;
     w.document.head.append(s);
   });
 const sichtbar = (w, sel) =>
@@ -30,7 +30,7 @@ const sichtbar = (w, sel) =>
   });
 
 test('Set hinzufügen genau einmal', async () => {
-  const { w, d } = await oeffneOberflaeche({}, { vorher: mitStil });
+  const { w, d } = await openUi({}, { vorher: withStyle });
   try {
     await warte(() => !!d.querySelector('#gallery .empty.leer'));
     const knoepfe = sichtbar(w, '#tab-gallery [data-click="oeffneErfassen"][data-arg="set"]');
@@ -43,7 +43,7 @@ test('Set hinzufügen genau einmal', async () => {
 });
 
 test('Teile und Minifiguren ebenso', async () => {
-  const { w } = await oeffneOberflaeche({}, { vorher: mitStil });
+  const { w } = await openUi({}, { vorher: withStyle });
   try {
     for (const [tab, art] of [
       ['parts', 'part'],

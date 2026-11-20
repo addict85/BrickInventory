@@ -11,7 +11,7 @@ const express = require('express');
 const fs = require('node:fs');
 const path = require('node:path');
 const { serverAll, ohneKommentare } = require('./helpers/sources');
-const { portVon } = require('./helpers/server');
+const { portOf } = require('./helpers/server');
 
 test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   const src = serverAll();
@@ -38,7 +38,7 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   app.get(muster, (_req, res) => res.status(200).send('ok'));
   const srv = app.listen(0);
   await new Promise(r => srv.once('listening', r));
-  const basis = `http://localhost:${portVon(srv)}`;
+  const basis = `http://localhost:${portOf(srv)}`;
   try {
     const wurzel = await fetch(`${basis}/`);
     assert.equal(
@@ -69,14 +69,14 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
   blank.post('/a', (req, res) => res.json({ fehlt: req.body === undefined }));
   const s1 = blank.listen(0);
   await new Promise(r => s1.once('listening', r));
-  let ohneZusicherung;
+  let withoutAssertion;
   try {
-    ohneZusicherung = (await (await fetch(`http://localhost:${portVon(s1)}/a`, { method: 'POST' })).json()).fehlt;
+    withoutAssertion = (await (await fetch(`http://localhost:${portOf(s1)}/a`, { method: 'POST' })).json()).fehlt;
   } finally {
     await new Promise(r => s1.close(r));
   }
   assert.equal(
-    ohneZusicherung,
+    withoutAssertion,
     true,
     'Express liefert ohne Zusicherung wieder ein Objekt — dann ist die Zeile ' +
       'in server.ts ueberfluessig geworden und darf weg (mitsamt dieser Regel).',
@@ -85,12 +85,12 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
   // Und jetzt die Zusicherung selbst. Gelesen wird ohne Kommentare: Der
   // Erklaerblock darueber nennt `req.body` reichlich, ein blosses indexOf
   // waere damit fuer immer zufrieden.
-  // Seit dem 04.11.2026 in rumpfLesen: Die Rümpfe werden erst nach der Anmeldung gelesen.
+  // Seit dem 04.11.2026 in readBody: Die Rümpfe werden erst nach der Anmeldung gelesen.
   const code = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'routes', 'api_v1', 'middleware.ts'), 'utf8'));
   assert.match(
     code,
     /req\.body === undefined.*req\.body = \{\}/,
-    'In rumpfLesen fehlt die Zusicherung, dass req.body ein Objekt ist. ' +
+    'In readBody fehlt die Zusicherung, dass req.body ein Objekt ist. ' +
       'Ohne sie antworten vierzehn Handler mit 500 statt mit ihrem eigenen 400, ' +
       'sobald ein Client den Content-Type vergisst.',
   );
@@ -98,8 +98,8 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
   // Sie muss NACH den Parsern stehen — davor brächte sie nichts, weil der
   // Parser danach überschreibt.
   const nachParser = code.indexOf('req.body === undefined');
-  const beiJson = code.indexOf('express.json(');
-  assert.ok(beiJson >= 0 && nachParser > beiJson, 'Die Zusicherung steht vor den Parsern — dort ist sie wirkungslos.');
+  const atJson = code.indexOf('express.json(');
+  assert.ok(atJson >= 0 && nachParser > atJson, 'Die Zusicherung steht vor den Parsern — dort ist sie wirkungslos.');
 });
 
 /**

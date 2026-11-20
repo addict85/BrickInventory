@@ -1,19 +1,19 @@
 import path from 'node:path';
-import type { AuftragsLauf } from '../auftraege';
+import type { JobRun } from '../auftraege';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
-import { type RbSetTeil, ersteBlNummer, parseThrottleWait } from '../fremdquellen';
+import { type RbSetTeil, firstBlNumber, parseThrottleWait } from '../fremdquellen';
 import { alleTeileDesSets } from './rebrickableKatalog';
-import { logAndContinue, meldeFehler } from '../infra/fehler';
-import { mitVersion } from '../infra/setNummer';
-import { nummernListe } from '../infra/fremdeAdressen';
-import { merkeBlNummer, merkeBlNummern, merkeBlNummerUnveraendert } from './blZuordnung';
-import { merkeSetTeile, type SetTeilZeile } from './katalogPflege';
-import type { KatalogKontext } from './kontext';
+import { logAndContinue, reportError } from '../infra/fehler';
+import { withVersion } from '../infra/setNummer';
+import { numbersList } from '../infra/fremdeAdressen';
+import { rememberBlNumber, rememberBlNumbers, merkeBlNummerUnveraendert } from './blZuordnung';
+import { merkeSetTeile, type SetPartRow } from './katalogPflege';
+import type { CatalogContext } from './kontext';
 
 /** Nach Teil und Farbe sortiert: eine feste Sperrreihenfolge gegen Verklemmungen. */
-function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
-  const zeilen: SetTeilZeile[] = [];
+function setPartRows(roh: RbSetTeil[]): SetPartRow[] {
+  const zeilen: SetPartRow[] = [];
   for (const t of roh) {
     const p = t.part || ({} as RbSetTeil['part']),
       color = t.color || ({} as RbSetTeil['color']);
@@ -26,7 +26,7 @@ function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
         const datei = `${p.part_num}_${colorId}${path.extname(new URL(imageUrl).pathname) || '.png'}`;
         if (fs.existsSync(path.join(PART_IMAGES_DIR, datei))) imageLocal = `/images/parts/${datei}`;
       } catch (e) {
-        meldeFehler('teile-import:bildpfad', e);
+        reportError('teile-import:bildpfad', e);
       }
     }
     zeilen.push({
@@ -40,7 +40,7 @@ function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
       imageLocal,
       quantity: t.quantity || 1,
       isSpare: !!t.is_spare,
-      blNummer: ersteBlNummer(p.external_ids),
+      blNumber: firstBlNumber(p.external_ids),
     });
   }
   return zeilen.sort((a, b) =>
@@ -49,43 +49,43 @@ function setTeilZeilen(roh: RbSetTeil[]): SetTeilZeile[] {
 }
 
 /** Die Teile eines Sets von Rebrickable, nach Teil und Farbe sortiert; null ohne Teile. */
-export async function setTeileLaden(
-  k: KatalogKontext,
+export async function loadSetParts(
+  k: CatalogContext,
   setNumber: string,
-): Promise<{ n: string; zeilen: SetTeilZeile[] } | null> {
-  const n = mitVersion(setNumber);
+): Promise<{ n: string; zeilen: SetPartRow[] } | null> {
+  const n = withVersion(setNumber);
   const roh: RbSetTeil[] | null = await alleTeileDesSets(k, n);
   if (!roh?.length) return null;
-  const zeilen = setTeilZeilen(roh);
+  const zeilen = setPartRows(roh);
   return zeilen.length ? { n, zeilen } : null;
 }
 
 /** In der Transaktion des Aufrufers (t.katalog), neben dem Eintrag in den Bestand. */
-export async function setTeileMerken(k: KatalogKontext, n: string, zeilen: SetTeilZeile[]) {
+export async function setTeileMerken(k: CatalogContext, n: string, zeilen: SetPartRow[]) {
   await merkeSetTeile(k, n, zeilen, k.db);
-  await merkeBlNummern(
+  await rememberBlNumbers(
     k,
     'part',
-    zeilen.map(z => ({ rbId: z.partNumber, blId: z.blNummer ?? '' })),
+    zeilen.map(z => ({ rbId: z.partNumber, blId: z.blNumber ?? '' })),
     k.db,
   );
 }
 
 /** Fehlt ein Bild, lädt der Bildauftrag es nach. */
-export async function setTeilBilderEinreihen(k: KatalogKontext, n: string, zeilen: SetTeilZeile[]) {
+export async function enqueueSetPartImages(k: CatalogContext, n: string, zeilen: SetPartRow[]) {
   if (zeilen.some(z => z.imageUrl && !z.imageLocal))
-    await k.auftraege.stelleAuftragEin('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxVersuche: 3 });
+    await k.auftraege.placeJobOne('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxAttempts: 3 });
 }
 
-function holeSeite(k: KatalogKontext, url: string, rbKey: string): Promise<{ status: number; body: string }> {
-  return k.fremdquellen.quellen.rebrickableRoh(url, rbKey);
+function fetchPage(k: CatalogContext, url: string, rbKey: string): Promise<{ status: number; body: string }> {
+  return k.fremdquellen.quellen.rebrickableRaw(url, rbKey);
 }
 
 /** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */
-export async function blNummernNachladen(k: KatalogKontext, lauf: AuftragsLauf = {}) {
+export async function reloadBlNumbers(k: CatalogContext, lauf: JobRun = {}) {
   const rbKey = await k.einstellungen.globalValue('rebrickable_api_key');
   if (!rbKey) return;
-  const missing = await k.setInhalt.teileOhneBlZuordnung();
+  const missing = await k.setInhalt.partsWithoutBlMapping();
   if (!missing.length) return;
 
   const stand = (n: number) =>
@@ -102,9 +102,9 @@ export async function blNummernNachladen(k: KatalogKontext, lauf: AuftragsLauf =
     if (lauf.signal?.aborted || !(await k.fremdquellen.consumeRebrickableDaily())) break;
     await k.fremdquellen.drossel.hintergrund.waitForSlot();
     const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
-    const result = await holeSeite(
+    const result = await fetchPage(
       k,
-      `https://rebrickable.com/api/v3/lego/parts/?part_nums=${nummernListe(batch)}&page_size=500`,
+      `https://rebrickable.com/api/v3/lego/parts/?part_nums=${numbersList(batch)}&page_size=500`,
       rbKey,
     );
     if (result.status === 429) {
@@ -124,7 +124,7 @@ export async function blNummernNachladen(k: KatalogKontext, lauf: AuftragsLauf =
     try {
       data = JSON.parse(result.body);
     } catch (e) {
-      meldeFehler('bl-nummern:antwort', e);
+      reportError('bl-nummern:antwort', e);
       continue;
     }
     const batchDone = i + BATCH;
@@ -132,7 +132,7 @@ export async function blNummernNachladen(k: KatalogKontext, lauf: AuftragsLauf =
     for (const part of data?.results || []) {
       const blIds = part.external_ids?.BrickLink;
       const blNum = Array.isArray(blIds) && blIds.length > 0 ? blIds[0]! : part.part_num;
-      await merkeBlNummer(k, 'part', part.part_num, blNum).catch(logAndContinue('bl-nummern:merken'));
+      await rememberBlNumber(k, 'part', part.part_num, blNum).catch(logAndContinue('bl-nummern:merken'));
     }
     const returned = new Set((data?.results || []).map(p => p.part_num));
     for (const pn of batch) {

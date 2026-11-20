@@ -18,16 +18,16 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('Kontoschalter und eindeutige Adresse', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const K = `schalter${process.pid}`;
   const leeren = () => db.run('DELETE FROM users WHERE username LIKE $1', [`${K}%`]);
-  const lege = (n, extra = '', werte = []) =>
+  const put = (n, extra = '', werte = []) =>
     db.get(
       `INSERT INTO users (username, password_hash${extra ? ', ' + extra : ''})
             VALUES ($1, 'x'${werte.map((_, i) => `, $${i + 2}`).join('')}) RETURNING *`,
@@ -37,25 +37,25 @@ test('Kontoschalter und eindeutige Adresse', { concurrency: 1 }, async t => {
 
   try {
     await t.test('ohne Angabe gelten die Vorgaben', async () => {
-      const u = await lege('a');
+      const u = await put('a');
       assert.deepEqual([u.is_admin, u.is_active, u.email_verified], [false, true, false]);
     });
     await t.test('ein Schalter ist nie leer', async () => {
-      await assert.rejects(lege('b', 'is_admin', [null]), (/** @type {any} */ e) => e.code === '23502');
-      await assert.rejects(lege('c', 'is_active', [null]), (/** @type {any} */ e) => e.code === '23502');
+      await assert.rejects(put('b', 'is_admin', [null]), (/** @type {any} */ e) => e.code === '23502');
+      await assert.rejects(put('c', 'is_active', [null]), (/** @type {any} */ e) => e.code === '23502');
     });
     await t.test('ein Schalter ist ein Wahrheitswert', async () => {
-      await assert.rejects(lege('d', 'is_admin', [2]), (/** @type {any} */ e) => e.code === '22P02');
-      await assert.rejects(lege('e', 'email_verified', [-1]), (/** @type {any} */ e) => e.code === '22P02');
+      await assert.rejects(put('d', 'is_admin', [2]), (/** @type {any} */ e) => e.code === '22P02');
+      await assert.rejects(put('e', 'email_verified', [-1]), (/** @type {any} */ e) => e.code === '22P02');
     });
     await t.test('eine Adresse gibt es nur einmal, gleich in welcher Schreibweise', async () => {
-      await lege('f', 'email', [`${K}@Beispiel.ch`]);
+      await put('f', 'email', [`${K}@Beispiel.ch`]);
       await assert.rejects(
-        lege('g', 'email', [`${K.toUpperCase()}@beispiel.CH`]),
+        put('g', 'email', [`${K.toUpperCase()}@beispiel.CH`]),
         (/** @type {any} */ e) => e.code === '23505',
       );
-      assert.ok(await lege('h', 'email', [null]));
-      assert.ok(await lege('i', 'email', [null]), 'ohne Adresse dürfen es mehrere sein');
+      assert.ok(await put('h', 'email', [null]));
+      assert.ok(await put('i', 'email', [null]), 'ohne Adresse dürfen es mehrere sein');
     });
   } finally {
     await leeren();

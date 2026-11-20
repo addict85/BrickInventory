@@ -26,9 +26,9 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 test('kein Antwortfeld ohne Verbraucher', () => {
-  const skript = path.join(__dirname, '..', 'scripts', 'check-antwortfelder.js');
+  const script = path.join(__dirname, '..', 'scripts', 'check-antwortfelder.js');
   try {
-    execFileSync(process.execPath, [skript], { encoding: 'utf8', stdio: 'pipe' });
+    execFileSync(process.execPath, [script], { encoding: 'utf8', stdio: 'pipe' });
   } catch (e) {
     assert.fail(
       `${e.stdout || ''}${e.stderr || ''}`.trim() || 'check-antwortfelder.js ist fehlgeschlagen, ohne etwas zu melden',

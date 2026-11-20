@@ -13,20 +13,17 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 // jsdom kennt keine Passkeys; so sieht die Maske einen Browser, der sie kann.
-const mitPasskeys = w => {
+const withPasskeys = w => {
   w.PublicKeyCredential = () => {};
   Object.defineProperty(w, 'isSecureContext', { value: true });
   Object.defineProperty(w.navigator, 'credentials', { value: {} });
 };
 
-async function maske(status) {
-  const o = await oeffneOberflaeche(
-    { '/v1/auth/registration-status': status },
-    { angemeldet: false, vorher: mitPasskeys },
-  );
+async function mask(status) {
+  const o = await openUi({ '/v1/auth/registration-status': status }, { angemeldet: false, vorher: withPasskeys });
   await warte(() => o.aufrufe.some(a => a.url.includes('registration-status')));
   await warte(() => false, 100);
   const d = o.d;
@@ -41,7 +38,7 @@ async function maske(status) {
 }
 
 test('der Server kann beides nicht', async () => {
-  assert.deepEqual(await maske({ enabled: true, passkey: false, passwort_vergessen: false }), {
+  assert.deepEqual(await mask({ enabled: true, passkey: false, passwort_vergessen: false }), {
     passkey: false,
     vergessen: false,
     registrieren: true,
@@ -50,7 +47,7 @@ test('der Server kann beides nicht', async () => {
 });
 
 test('der Server kann beides', async () => {
-  assert.deepEqual(await maske({ enabled: false, passkey: true, passwort_vergessen: true }), {
+  assert.deepEqual(await mask({ enabled: false, passkey: true, passwort_vergessen: true }), {
     passkey: true,
     vergessen: true,
     registrieren: false,
@@ -59,7 +56,7 @@ test('der Server kann beides', async () => {
 });
 
 test('älterer Server ohne Angabe', async () => {
-  assert.deepEqual(await maske({ enabled: false }), {
+  assert.deepEqual(await mask({ enabled: false }), {
     passkey: true,
     vergessen: true,
     registrieren: false,

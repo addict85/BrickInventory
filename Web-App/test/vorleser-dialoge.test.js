@@ -10,10 +10,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 test('jeder Dialog hat einen Namen', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
     const dialoge = [...d.querySelectorAll('[role="dialog"]')];
     assert.ok(dialoge.length >= 15, `nur ${dialoge.length} Dialoge gefunden`);
@@ -36,14 +36,14 @@ test('jeder Dialog hat einen Namen', async () => {
 });
 
 test('Meldungen werden angesagt', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
-    const behaelter = d.getElementById('toasts');
-    assert.equal(behaelter.getAttribute('aria-live'), 'polite');
+    const container = d.getElementById('toasts');
+    assert.equal(container.getAttribute('aria-live'), 'polite');
     // Ein Import ohne Datei meldet einen Fehler.
     d.getElementById('csv-file').dispatchEvent(new w.Event('change', { bubbles: true }));
-    await warte(() => behaelter.querySelector('.toast.error'));
-    assert.equal(behaelter.querySelector('.toast.error').getAttribute('role'), 'alert');
+    await warte(() => container.querySelector('.toast.error'));
+    assert.equal(container.querySelector('.toast.error').getAttribute('role'), 'alert');
   } finally {
     w.close();
   }

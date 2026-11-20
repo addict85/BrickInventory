@@ -1,13 +1,8 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 
 /** Ein Lauf ohne Schreiben seit `minuten` gehört einem verschwundenen Prozess;
  * „running" sperrte sonst jeden weiteren Import. */
-export async function markiereVerwaist(
-  db: DbSchnittstelle,
-  userId: number,
-  fehler: string,
-  minuten: number,
-): Promise<void> {
+export async function markOrphaned(db: DbInterface, userId: number, fehler: string, minuten: number): Promise<void> {
   await db.run(
     `UPDATE import_status SET status = 'error', current = NULL, error = $2, updated_at = NOW()
       WHERE user_id = $1 AND status IN ('running', 'pending')
@@ -17,7 +12,7 @@ export async function markiereVerwaist(
 }
 
 /** Eine Zeile von import_status; results ist jsonb. */
-export interface ImportStandZeile {
+export interface ImportStatusRow {
   user_id: number;
   status: string | null;
   total: number | null;
@@ -30,8 +25,8 @@ export interface ImportStandZeile {
   updated_at: Date | null;
 }
 
-export function importStand(db: DbSchnittstelle, userId: number) {
-  return db.get<ImportStandZeile>('SELECT * FROM import_status WHERE user_id = $1', [userId]);
+export function importStand(db: DbInterface, userId: number) {
+  return db.get<ImportStatusRow>('SELECT * FROM import_status WHERE user_id = $1', [userId]);
 }
 
 /** Die Schlüssel landen als SPALTENNAMEN im Abfragetext, wo keine Bindung
@@ -44,8 +39,8 @@ function spalten(fields: Record<string, unknown>): string[] {
   return keys;
 }
 
-export async function schreibeImportStand(
-  db: DbSchnittstelle,
+export async function writeImportStatus(
+  db: DbInterface,
   userId: number,
   fields: Record<string, unknown>,
 ): Promise<void> {
@@ -59,8 +54,8 @@ export async function schreibeImportStand(
 }
 
 /** Nur, solange dieser Lauf eingetragen ist und läuft. */
-export async function aendereImportStand(
-  db: DbSchnittstelle,
+export async function changeImportStatus(
+  db: DbInterface,
   userId: number,
   fields: Record<string, unknown>,
   lauf?: string,
@@ -75,8 +70,8 @@ export async function aendereImportStand(
   return r?.changes ?? 0;
 }
 
-export function setzeLaufFort(db: DbSchnittstelle, userId: number, lauf: string) {
-  return db.get<Pick<ImportStandZeile, 'results' | 'current'>>(
+export function setRunFort(db: DbInterface, userId: number, lauf: string) {
+  return db.get<Pick<ImportStatusRow, 'results' | 'current'>>(
     `UPDATE import_status SET status = 'running', error = NULL, updated_at = NOW()
       WHERE user_id = $1 AND run_id = $2 AND status IN ('running', 'error')
       RETURNING results, current`,

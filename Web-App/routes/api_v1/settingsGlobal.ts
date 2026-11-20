@@ -1,29 +1,29 @@
 /** Globale Einstellungen, Ein- und Ausfuhr, Einrichtung, Quellen- und SMTP-Test; in settings.ts hinter requireLogin. */
 import multer from 'multer';
-import { FORMULAR_GRENZEN } from '../../src/http/dateiEmpfang';
-import { kontoSchranke, waechterFuer } from './middleware';
+import { FORM_LIMITS } from '../../src/http/dateiEmpfang';
+import { kontoSchranke, guardFor } from './middleware';
 import { hasGlobalValues } from '../../src/management';
-import { istVerwalter, nutzerName, bestaetigeMitFaktor } from '../../src/konto/http/anmeldung';
-import { freigegeben, alsVerwalter } from '../../src/konto/http/schrittschutz';
+import { istVerwalter, nutzerName, confirmWithFactor } from '../../src/konto/http/anmeldung';
+import { released, asAdmin } from '../../src/konto/http/schrittschutz';
 import { fachfehler, Fachfehler } from '../../src/infra/fehlerTexte';
-import { emailGueltig } from '../../src/infra/validate';
+import { emailValid } from '../../src/infra/validate';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 'profile' | 'management'>) {
-  const { requireApiAdmin: requireAdmin, requireToken } = waechterFuer(d.konto);
+export function buildSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 'profile' | 'management'>) {
+  const { requireApiAdmin: requireAdmin, requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('POST /api/v1/settings', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     // Globale Werte eines Verwalters gehen wie jede Verwalter-Route über den Schrittschutz.
     const verwalter = istVerwalter(req) && hasGlobalValues(req.eingabe);
-    if (verwalter && !(await freigegeben(d.konto, req, res, 'verwaltung'))) return;
+    if (verwalter && !(await released(d.konto, req, res, 'verwaltung'))) return;
     const fertig = await d.management.saveSettings(req.eingabe, {
       uid,
       verwalter,
       name: nutzerName(req) ?? '',
-      bestaetige: passwort => bestaetigeMitFaktor(d.konto, req, res, uid, passwort),
+      confirm: passwort => confirmWithFactor(d.konto, req, res, uid, passwort),
     });
     if (fertig) return {};
   });
@@ -31,12 +31,12 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 
   // Über readSettings(), damit die Maskierung nicht an der Verpackung vorbeigeht.
   router.endpunkt('GET /api/v1/settings/raw', requireToken, async req => {
     return {
-      settings: await d.settings.readSettings(req.apiUser.user_id, await alsVerwalter(d.konto, req)),
+      settings: await d.settings.readSettings(req.apiUser.user_id, await asAdmin(d.konto, req)),
     };
   });
 
   router.endpunkt('GET /api/v1/settings/export', requireToken, async (req, res) => {
-    const verwalter = await alsVerwalter(d.konto, req);
+    const verwalter = await asAdmin(d.konto, req);
     res.setHeader('Content-Type', 'application/json');
     res.setHeader(
       'Content-Disposition',
@@ -59,7 +59,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 
 
   const importUpload = multer({
     storage: multer.memoryStorage(),
-    limits: { ...FORMULAR_GRENZEN, fileSize: 1024 * 1024 },
+    limits: { ...FORM_LIMITS, fileSize: 1024 * 1024 },
   });
   router.endpunkt(
     'POST /api/v1/settings/import',
@@ -70,7 +70,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 
       if (!req.file) fachfehler('ungueltig', 'keine_datei');
       // Als Verwalter schreibt der Import globale Werte und plant die Aufträge neu.
       const verwalter = istVerwalter(req);
-      if (verwalter && !(await freigegeben(d.konto, req, res, 'verwaltung'))) return;
+      if (verwalter && !(await released(d.konto, req, res, 'verwaltung'))) return;
       return { ...(await d.management.importConfig(req.apiUser.user_id, verwalter, req.file.buffer)) };
     },
   );
@@ -78,18 +78,18 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 
   router.endpunkt('POST /api/v1/settings/smtp-test', requireAdmin, async (req, res) => {
     const uid = req.apiUser.user_id;
     // Sonst wäre der Mailserver für eine erbeutete Verwaltersitzung ein Relais an jede Adresse.
-    const zuOft = await d.konto.kontoGedrosselt('smtp-test', uid, 10, 60 * 60 * 1000);
+    const zuOft = await d.konto.accountThrottled('smtp-test', uid, 10, 60 * 60 * 1000);
     if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
 
     const eigene = (await d.konto.profil(uid))?.email || '';
     const to = (req.eingabe.to || '').trim() || eigene;
-    if (!emailGueltig(to)) {
+    if (!emailValid(to)) {
       fachfehler('ungueltig', 'keine_ziel_email');
     }
     // Wie das Ändern der Mail-Einstellungen: an eine fremde Adresse nur mit Passwort.
     if (
       to.toLowerCase() !== eigene.toLowerCase() &&
-      !(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))
+      !(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password))
     )
       return;
 
@@ -100,7 +100,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 
   // fehlt — eine eingerichtete Installation sieht den Assistenten nie.
   router.endpunkt('GET /api/v1/settings/einrichtung', requireAdmin, async req => {
     const wert = async (k: string) => !!(await d.settings.globalValue(k));
-    const passwort = await d.konto.passwortWechselFaellig(req.apiUser.user_id);
+    const passwort = await d.konto.passwordSwitchDue(req.apiUser.user_id);
     const quellen = {
       rebrickable: await wert('rebrickable_api_key'),
       brickset: await wert('brickset_api_key'),

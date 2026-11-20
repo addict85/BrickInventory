@@ -27,7 +27,7 @@ const styles = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
 const BOOT = fs.readFileSync(path.join(PUB, 'js', 'theme-boot.js'), 'utf8');
 
 /** theme-boot.js in einem leeren Fenster: Serverwert im <html>, Cache, Antwort des Servers. */
-function bootFenster({ server = '', gecacht = '', antwort = {} } = {}) {
+function bootWindow({ server = '', gecacht = '', antwort = {} } = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
   const attr = server ? ` data-theme="${server}"` : '';
   const dom = new jsdom.JSDOM(`<!doctype html><html${attr}><head></head><body></body></html>`, {
@@ -36,21 +36,21 @@ function bootFenster({ server = '', gecacht = '', antwort = {} } = {}) {
   });
   const w = dom.window;
   /** @type {string[]} */
-  const abrufe = [];
+  const fetches = [];
   /** @type {Promise<unknown>} */
   let letzte = Promise.resolve();
   w.fetch = (/** @type {string} */ url) => {
-    abrufe.push(String(url));
+    fetches.push(String(url));
     letzte = Promise.resolve({ ok: true, json: async () => antwort });
     return letzte;
   };
   if (gecacht) w.localStorage.setItem('bim_theme', gecacht);
   w.eval(BOOT);
-  const antwortDa = async () => {
+  const responseDa = async () => {
     await letzte;
     for (let i = 0; i < 5; i++) await new Promise(r => setImmediate(r));
   };
-  return { w, abrufe, antwortDa, thema: () => w.document.documentElement.getAttribute('data-theme') };
+  return { w, fetches, responseDa, thema: () => w.document.documentElement.getAttribute('data-theme') };
 }
 
 // „GET /api/v1/settings/theme ist ohne Login erreichbar" stand hier als Reihenfolge im
@@ -68,27 +68,27 @@ test('das Boot-Skript steht vor Start- und Anmeldemarkup', () => {
 });
 
 test('ohne Serverwert gilt sofort der Cache, danach der Abgleich mit dem Server', async () => {
-  const b = bootFenster({ gecacht: 'brick', antwort: { success: true, theme: 'hochglanz' } });
+  const b = bootWindow({ gecacht: 'brick', antwort: { success: true, theme: 'hochglanz' } });
   assert.equal(b.thema(), 'brick', 'Der zuletzt bekannte Wert muss vor jeder Antwort gelten');
-  assert.deepEqual(b.abrufe, ['/api/v1/settings/theme'], 'Das Boot-Skript gleicht nicht gegen den Server ab');
-  await b.antwortDa();
+  assert.deepEqual(b.fetches, ['/api/v1/settings/theme'], 'Das Boot-Skript gleicht nicht gegen den Server ab');
+  await b.responseDa();
   assert.equal(b.thema(), 'hochglanz', 'Der Serverwert wird nicht angewendet');
   assert.equal(b.w.localStorage.getItem('bim_theme'), 'hochglanz', 'Der Serverwert landet nicht im Cache');
 });
 
 test('ein servergesetzter Wert gilt, ohne Abgleich und ohne Sprung', async () => {
-  const b = bootFenster({ server: 'noppe', gecacht: 'brick', antwort: { success: true, theme: 'hochglanz' } });
-  await b.antwortDa();
+  const b = bootWindow({ server: 'noppe', gecacht: 'brick', antwort: { success: true, theme: 'hochglanz' } });
+  await b.responseDa();
   assert.equal(b.thema(), 'noppe');
-  assert.deepEqual(b.abrufe, [], 'Steht der Wert schon im HTML, ist jede Anfrage überflüssig');
+  assert.deepEqual(b.fetches, [], 'Steht der Wert schon im HTML, ist jede Anfrage überflüssig');
   assert.equal(b.w.localStorage.getItem('bim_theme'), 'noppe', 'Der Cache folgt dem Serverwert nicht');
 });
 
 test('applyTheme läuft über den Boot-Helfer (Cache bleibt aktuell)', async t => {
   // Nach der Anmeldung setzt showApp() das Design aus den Einstellungen; ohne
   // den Boot-Helfer bliebe der Cache beim alten Design.
-  const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche');
-  const { w } = await oeffneOberflaeche(
+  const { openUi, ANMELDUNG, warte } = require('./helpers/oberflaeche');
+  const { w } = await openUi(
     {
       '/v1/settings/raw': {
         success: true,
@@ -139,14 +139,14 @@ test('Startup-Screen setzt keine Farben mehr per Inline-Style', () => {
 
 test('fuenf Listen nennen dieselben Designs', () => {
   // Warum das eine eigene Pruefung ist
-  const alsDatei = fs
+  const asFile = fs
     .readdirSync(path.join(PUB, 'themes'))
     .filter(f => f.endsWith('.css'))
     .map(f => path.basename(f, '.css'))
     .sort();
   // "classic" hat keine eigene Datei: Es IST das Grunddesign in styles.css.
-  const erwartet = ['classic', ...alsDatei].sort();
-  assert.ok(alsDatei.length >= 2, `Nur ${alsDatei.length} Design-Datei(en) — greift die Suche noch?`);
+  const erwartet = ['classic', ...asFile].sort();
+  assert.ok(asFile.length >= 2, `Nur ${asFile.length} Design-Datei(en) — greift die Suche noch?`);
 
   const liste = (src, re, wo) => {
     const m = src.match(re);
@@ -155,10 +155,10 @@ test('fuenf Listen nennen dieselben Designs', () => {
   };
   // Die <link>-Zeilen in index.html. Nicht ueber `liste()`: Dort steht der
   // Dateiname, nicht der Designname in Anfuehrungszeichen.
-  const verlinkt = [...html.matchAll(/<link[^>]+href="\/themes\/([a-z]+)\.css/g)].map(m => m[1]).sort();
+  const linked = [...html.matchAll(/<link[^>]+href="\/themes\/([a-z]+)\.css/g)].map(m => m[1]).sort();
   assert.deepEqual(
-    verlinkt,
-    alsDatei,
+    linked,
+    asFile,
     'index.html laedt nicht genau die Stylesheets, die unter public/themes/ liegen. ' +
       'Fehlt eines, kommen im Browser nur die Farben aus tokens.css an und keine ' +
       'einzige Struktur — das Design sieht dann aus wie das Grunddesign mit anderer ' +
@@ -203,12 +203,12 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   process.env.SESSION_SECRET ??= 'test-secret-lang-genug-fuer-die-pruefung';
   const _req = require('./helpers/sources').buildAndRequire();
-  const db = await require('./helpers/db').datenOderSkip(t, _req);
+  const db = await require('./helpers/db').dataOrSkip(t, _req);
   if (!db) return;
   const { setGlobalSetting } = _req('src/settings/settings.js');
   const { forgetTheme } = _req('src/profile/indexHtml.js');
   const sendStartPage = (...a) =>
-    _req('src/profile/http/startPage.js').sendStartPage(require('./helpers/sources').testDienste().profile, ...a);
+    _req('src/profile/http/startPage.js').sendStartPage(require('./helpers/sources').testServices().profile, ...a);
   const name = `theme_admin_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   const admin = (
@@ -217,7 +217,7 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
       [name],
     )
   ).id;
-  await require('./helpers/verwalter').verwalterMitFaktor(_req, admin);
+  await require('./helpers/verwalter').adminWithFactor(_req, admin);
   const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [admin]).catch(() => {});

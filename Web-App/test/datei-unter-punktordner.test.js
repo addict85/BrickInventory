@@ -12,7 +12,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
-const { liefereDatei } = require('./helpers/sources').buildAndRequire()('src/http/dateiAusliefern.js');
+const { deliverFile } = require('./helpers/sources').buildAndRequire()('src/http/dateiAusliefern.js');
 
 const ORDNER = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'punkt-')), '.versteckt', 'daten');
 fs.mkdirSync(ORDNER, { recursive: true });
@@ -22,8 +22,8 @@ fs.writeFileSync(path.join(ORDNER, '.geheim'), 'nicht ausliefern');
 
 test('Auslieferung unter einem Punkt-Ordner', async t => {
   const app = express();
-  app.get('/datei', (_req, res) => liefereDatei(res, DATEI));
-  app.get('/punktdatei', (_req, res) => liefereDatei(res, path.join(ORDNER, '.geheim')));
+  app.get('/datei', (_req, res) => deliverFile(res, DATEI));
+  app.get('/punktdatei', (_req, res) => deliverFile(res, path.join(ORDNER, '.geheim')));
   const srv = app.listen(0);
   t.after(() => srv.close());
   const basis = `http://127.0.0.1:${srv.address().port}`;

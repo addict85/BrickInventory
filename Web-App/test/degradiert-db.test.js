@@ -3,10 +3,10 @@
  * nach einem Fehler nur eine 0 oder null tragen (src/infra/ergebnis.ts, Abstriche).
  *
  * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in cacheStatistik() `...ab.angabe()` gestrichen → rot: „die Cache-Zahlen
+ *   A  in cacheStatistics() `...ab.angabe()` gestrichen → rot: „die Cache-Zahlen
  *      sagen, welcher Teil fehlt“ (degradiert undefined)
  *   B  in Abstriche.oder() den Eintrag in `teile` weggelassen → rot: beide Teiltests
- *   C  in setAendern() wieder `wertOder(versuche(…))` für den Kaufpreis → rot:
+ *   C  in changeSet() wieder `valueOr(versuche(…))` für den Kaufpreis → rot:
  *      „eine Mengenerhöhung ohne Marktpreis sagt es“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -18,7 +18,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 let cacheKaputt = false,
-  preisKaputt = false;
+  priceBroken = false;
 const Module = require('node:module');
 const _echt = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
@@ -37,9 +37,9 @@ Module.prototype.require = function (name, ...rest) {
   if (/(?:finanzen[/\\]|^\.\/)financeCalc(\.js)?$/.test(name))
     return new Proxy(m, {
       get: (t, k) =>
-        k === 'setZustand'
+        k === 'setState'
           ? async (...a) => {
-              if (preisKaputt) throw new Error('Zustand nicht lesbar');
+              if (priceBroken) throw new Error('Zustand nicht lesbar');
               return t[k](...a);
             }
           : t[k],
@@ -49,11 +49,11 @@ Module.prototype.require = function (name, ...rest) {
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet } = require('./helpers/bestand');
 
 test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `degr-${process.pid}`,
     SN = `${60000 + (process.pid % 9000)}-1`;
@@ -66,12 +66,12 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Cache-Zahlen sagen, welcher Teil fehlt', async () => {
-    const { cacheStats: cacheStatistik } = _req('src/management/service.js');
-    const heil = await cacheStatistik();
+    const { cacheStats: cacheStatistics } = _req('src/management/service.js');
+    const heil = await cacheStatistics();
     assert.equal(heil.degradiert, undefined, 'ohne Fehler keine Angabe');
     cacheKaputt = true;
     try {
-      const r = await cacheStatistik();
+      const r = await cacheStatistics();
       assert.deepEqual(r.degradiert, ['cache']);
       assert.equal(r.prices, 0, 'der Ersatzwert bleibt — aber jetzt erkennbar');
       assert.equal(typeof r.price_stale, 'number');
@@ -81,37 +81,37 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
   });
 
   await t.test('eine Mengenerhöhung ohne Marktpreis sagt es', async () => {
-    await haeltSet(db, uid, SN, 0);
+    await holdsSet(db, uid, SN, 0);
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, purchase_price, condition, quantity)
                   VALUES ($1, $2, 10, 'N', 1)`,
       [uid, SN],
     );
-    const { setAendern } = require('./helpers/sources').bereichsSeite('sets');
+    const { changeSet } = require('./helpers/sources').areaPage('sets');
     // Sets fragt den Zustand über die Finanzdienste seines Kontexts (sk.finanzen).
-    const finanzen = require('./helpers/sources').testBereich('finanzen');
-    const zustandEcht = finanzen.setZustand;
-    finanzen.setZustand = async (...a) => {
-      if (preisKaputt) throw new Error('Zustand nicht lesbar');
-      return zustandEcht(...a);
+    const finanzen = require('./helpers/sources').testArea('finanzen');
+    const stateReal = finanzen.setState;
+    finanzen.setState = async (...a) => {
+      if (priceBroken) throw new Error('Zustand nicht lesbar');
+      return stateReal(...a);
     };
     t.after(() => {
-      finanzen.setZustand = zustandEcht;
+      finanzen.setState = stateReal;
     });
-    preisKaputt = true;
+    priceBroken = true;
     let r;
     try {
-      r = await setAendern(uid, SN, { quantity: 2 });
+      r = await changeSet(uid, SN, { quantity: 2 });
     } finally {
-      preisKaputt = false;
+      priceBroken = false;
     }
     assert.equal(r.quantity, 2, 'die Menge ist trotzdem geschrieben');
     assert.deepEqual(r.degradiert, ['kaufpreis']);
-    const ohnePreis = await db.get(
+    const withoutPrice = await db.get(
       'SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id = $1 AND set_number = $2 AND purchase_price IS NULL',
       [uid, SN],
     );
-    assert.equal(ohnePreis.n, 1, 'die neue Erfassung ohne Preis — der Nachtrag holt ihn');
-    assert.equal((await setAendern(uid, SN, { quantity: 2 })).degradiert, undefined);
+    assert.equal(withoutPrice.n, 1, 'die neue Erfassung ohne Preis — der Nachtrag holt ihn');
+    assert.equal((await changeSet(uid, SN, { quantity: 2 })).degradiert, undefined);
   });
 });

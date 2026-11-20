@@ -1,8 +1,8 @@
 import { resolveImageLocal } from '../bilder';
 import { asIds, type Sicht } from '../haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
-import { mitVersion } from '../infra/setNummer';
-import { Abstriche } from '../infra/ergebnis';
+import { withVersion } from '../infra/setNummer';
+import { Degradations } from '../infra/ergebnis';
 import type { MinifigsContext } from './context';
 
 // Read queries for minifigs.
@@ -17,17 +17,17 @@ type MinifigsQuery = {
 };
 export async function readMinifigs(
   k: MinifigsContext,
-  userIdWahl: Sicht | number | number[],
+  userIdChoice: Sicht | number | number[],
   { search, source, set_number, page = 1, page_size = null }: MinifigsQuery = {},
 ) {
-  const userId = await k.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.scopeFrom(userIdChoice);
   // asIds(), so older callers with a bare ID keep working.
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const { figCount, figs } = await k.minifigsList.groupedMinifigs(uids, {
     search: search ?? null,
     source: source ?? null,
-    setNumber: set_number ? mitVersion(set_number) : null,
+    setNumber: set_number ? withVersion(set_number) : null,
     seite: size ? { groesse: size, versatz: (Math.max(1, page || 1) - 1) * size } : null,
   });
 
@@ -56,8 +56,8 @@ export async function readMinifigs(
 }
 
 // One count for the webapp and the app; the app used to count itself, differently.
-export async function computeMinifigStats(k: MinifigsContext, userIdWahl: Sicht | number | number[]) {
-  const userId = await k.haushalt.blickfeldAus(userIdWahl);
+export async function computeMinifigStats(k: MinifigsContext, userIdChoice: Sicht | number | number[]) {
+  const userId = await k.haushalt.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const row = await k.minifigsList.minifigStats(uids);
   return {
@@ -72,16 +72,16 @@ export async function computeMinifigStats(k: MinifigsContext, userIdWahl: Sicht 
 /** @param viewerId whose settings apply (currency); `userId` says whose data. */
 export async function readManualMinifigs(
   k: MinifigsContext,
-  userIdWahl: Sicht | number | number[],
+  userIdChoice: Sicht | number | number[],
   viewerId: number,
   {
     page = 1,
     page_size = null,
     search = null,
   }: { page?: number; page_size?: number | null; search?: string | null } = {},
-  ab = new Abstriche(),
+  ab = new Degradations(),
 ) {
-  const userId = await k.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const figs = await k.minifigsList.manualMinifigsList(
@@ -96,10 +96,10 @@ export async function readManualMinifigs(
   // live lookup per entry would make the list wait on BrickLink.
   const preise = await ab.oder(
     'marktpreise',
-    k.finanzen.marktpreiseAusCacheFuerFiguren(withCondition, viewerId),
+    k.finanzen.marketPricesFromCacheForMinifigs(withCondition, viewerId),
     new Map<string, number>(),
   );
-  const mitPreis = withCondition.map(f => ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
+  const withPrice = withCondition.map(f => ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
 
-  return k.haushalt.besitzerAnhaengen(uids, mitPreis);
+  return k.haushalt.besitzerAnhaengen(uids, withPrice);
 }

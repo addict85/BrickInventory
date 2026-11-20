@@ -13,7 +13,7 @@
  * erfahren es per Mail. Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  isSensitive() wieder nur smtp_* → rot: „ohne Passwort bleiben Registrierung
  *      und API-Schlüssel“ (200 statt 400)
- *   B  verwalterHinweisNebenher() in POST /settings entfernt → rot: „mit
+ *   B  adminHintInBackground() in POST /settings entfernt → rot: „mit
  *      Passwort geändert, die Verwalter erfahren es“
  *   C  die Absage ohne admin_password vor der Prüfung entfernt → rot: „ohne
  *      Passwort bleibt der Mailserver“, „ohne Passwort bleiben Registrierung …“
@@ -40,9 +40,9 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const mails = [];
-require('./helpers/sources').ersetzeDienste('mail', {
+require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (an, _n, art, o) => {
     mails.push({ an, art, konto: o.konto });
@@ -50,14 +50,14 @@ require('./helpers/sources').ersetzeDienste('mail', {
   },
 });
 const { routerServer } = require('./helpers/server');
-const db = S.testDaten();
+const db = S.testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const NAME = `smtp_chef_${process.pid}`,
   PASS = 'chef-Passwort-1';
 
 test('SMTP nur mit Passwort', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(
@@ -66,20 +66,20 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async t => {
       [NAME, bcrypt.hashSync(PASS, 4), `${NAME}@example.org`],
     )
   ).id;
-  const HEIKEL = ['registration_enabled', 'rebrickable_api_key', 'brickset_api_key', 'einrichtung_erledigt'];
-  const heikelVorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [HEIKEL]);
+  const SENSITIVE = ['registration_enabled', 'rebrickable_api_key', 'brickset_api_key', 'einrichtung_erledigt'];
+  const sensitiveBefore = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SENSITIVE]);
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.alt.example'), ('smtp_user', 'versand')
                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
-  const landVorher = (await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value;
+  const landBefore = (await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value;
   t.after(async () => {
     await db.run(
       "DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'smtp_insecure_tls', 'gutschein_land')",
     );
-    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [HEIKEL]);
-    for (const z of heikelVorher)
+    await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SENSITIVE]);
+    for (const z of sensitiveBefore)
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
-    if (landVorher !== undefined)
-      await db.run("INSERT INTO global_settings (key, value) VALUES ('gutschein_land', $1)", [landVorher]);
+    if (landBefore !== undefined)
+      await db.run("INSERT INTO global_settings (key, value) VALUES ('gutschein_land', $1)", [landBefore]);
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%-bestaetigen|${uid}|%`]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});

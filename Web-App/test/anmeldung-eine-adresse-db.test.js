@@ -12,11 +12,11 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -26,7 +26,7 @@ const NAME = 'eine_anmeldung',
   PASS = 'richtigesPasswort1';
 
 test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   // Wenige Runden: Hier wird die VERDRAHTUNG geprüft, nicht die Laufzeit —
@@ -48,7 +48,7 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
       saveUninitialized: false,
     }),
   );
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}${AUTH}`;
 
@@ -62,7 +62,7 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
   };
   const ablauf = async token =>
     db.get('SELECT expires_at FROM api_tokens WHERE token = $1', [
-      _req('src/konto/geraeteToken.js').tokenAbdruck(token),
+      _req('src/konto/geraeteToken.js').tokenDigest(token),
     ]);
 
   try {
@@ -95,37 +95,37 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
       'Bei eingeschalteter Gleitfrist ist kein Token „ohne Ablauf" — die Antwort darf das nicht behaupten',
     );
     const appToken = app1.body.token;
-    const appZeile = await db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [
-      _req('src/konto/geraeteToken.js').tokenAbdruck(appToken),
+    const appRow = await db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [
+      _req('src/konto/geraeteToken.js').tokenDigest(appToken),
     ]);
     assert.ok(
-      appZeile.expires_at,
+      appRow.expires_at,
       'Der Token der App braucht ein echtes Ablaufdatum — sonst haengt die Frist an einem Hintergrundjob',
     );
     assert.equal(
-      appZeile.sliding,
+      appRow.sliding,
       true,
       'Ohne sliding rueckt das Datum bei Benutzung nicht nach — dann muesste man alle 90 Tage neu tippen',
     );
     // Und er ist deutlich laenger gueltig als der des Browsers: Wer die App
     // oeffnet, soll nicht woechentlich sein Passwort eintippen.
     assert.ok(
-      new Date(appZeile.expires_at) > new Date((await ablauf(webToken)).expires_at),
+      new Date(appRow.expires_at) > new Date((await ablauf(webToken)).expires_at),
       'Der App-Token muss laenger laufen als die sieben festen Tage',
     );
     // Vorbedingung: Es sind zwei VERSCHIEDENE Token, sonst prüft der Rest nichts.
     assert.notEqual(webToken, appToken);
 
     // ── 3. Wer bin ich? ─────────────────────────────────────────────────────
-    const mitCookie = await ruf('/me', { headers: { cookie: webCookie } });
-    assert.equal(mitCookie.status, 200);
-    assert.equal(mitCookie.body.loggedIn, true, 'Die Sitzung des Browsers wird nicht erkannt');
-    assert.equal(mitCookie.body.user.id, uid);
+    const withCookie = await ruf('/me', { headers: { cookie: webCookie } });
+    assert.equal(withCookie.status, 200);
+    assert.equal(withCookie.body.loggedIn, true, 'Die Sitzung des Browsers wird nicht erkannt');
+    assert.equal(withCookie.body.user.id, uid);
 
-    const mitToken = await ruf('/me', { headers: { authorization: `Bearer ${appToken}` } });
-    assert.equal(mitToken.status, 200);
-    assert.equal(mitToken.body.loggedIn, true, 'Der Token der App wird nicht erkannt');
-    assert.equal(mitToken.body.user.is_admin, true);
+    const withToken = await ruf('/me', { headers: { authorization: `Bearer ${appToken}` } });
+    assert.equal(withToken.status, 200);
+    assert.equal(withToken.body.loggedIn, true, 'Der Token der App wird nicht erkannt');
+    assert.equal(withToken.body.user.is_admin, true);
 
     // Ohne alles: 200 und „nein". Der Browser fragt das VOR jeder Anmeldung —
     // ein 401 wäre dort die normale Antwort auf eine normale Frage.
@@ -144,7 +144,7 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     );
 
     // ── 3b. Scheitert das Entwerten, ist die Abmeldung nicht gelungen ───────
-    const konto = require('./helpers/sources').testDienste().konto;
+    const konto = require('./helpers/sources').testServices().konto;
     const echt = konto.tokenLoeschen;
     konto.tokenLoeschen = async () => {
       throw new Error('Datenbank weg');
@@ -167,8 +167,8 @@ test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async 
     const danach = await ruf('/me', { headers: { cookie: webCookie } });
     assert.equal(danach.body.loggedIn, false, 'Die Sitzung muss beim Abmelden enden');
     // Der Token der App ist davon NICHT betroffen — abgemeldet hat sich der Browser.
-    const appNoch = await ruf('/me', { headers: { authorization: `Bearer ${appToken}` } });
-    assert.equal(appNoch.body.loggedIn, true, 'Das Abmelden im Browser darf das Telefon nicht mit abmelden');
+    const appStill = await ruf('/me', { headers: { authorization: `Bearer ${appToken}` } });
+    assert.equal(appStill.body.loggedIn, true, 'Das Abmelden im Browser darf das Telefon nicht mit abmelden');
 
     // ── 5. Falsches Passwort bleibt falsch ──────────────────────────────────
     const daneben = await ruf('/login', { method: 'POST', body: { username: NAME, password: 'falsch' } });

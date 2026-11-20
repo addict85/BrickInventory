@@ -1,8 +1,8 @@
 import { tRaw, locale } from '../i18n.js';
 import { G } from './dom.js';
 import { toast } from './meldungen.js';
-import { leseBetrag } from './format.js';
-import { heuteIso } from './bausteine.js';
+import { readAmount } from './format.js';
+import { todayIso } from './bausteine.js';
 
 // Formulare: Meldungen am Feld, Passwortregeln, Beträge aus Eingaben. Eine Fassung für alle Dialoge, damit
 // Vorleser und Markierung überall gleich reagieren.
@@ -11,33 +11,33 @@ import { heuteIso } from './bausteine.js';
  * Mindestlänge eines Passworts. Der Server setzt sie durch, der Browser sagt sie vorher;
  * test/passwortlaenge.test.js hält Server, Web und App gleich.
  */
-export const PASSWORT_MIN_ZEICHEN = 12;
+export const PASSWORD_MIN_CHARS = 12;
 
 /**
  * Die Webapp prüfte die Länge an keiner der fünf Stellen, die ein Passwort setzen, und lief in den
  * Serverfehler, wo die App den Knopf gar nicht erst freigibt. Hier wird vorher gefragt.
  * @param {unknown} p
  */
-export function passwortZuKurz(p) {
-  return String(p ?? '').length < PASSWORT_MIN_ZEICHEN;
+export function passwordToShort(p) {
+  return String(p ?? '').length < PASSWORD_MIN_CHARS;
 }
 
 /** Die Meldung dazu — an fuenf Stellen dieselbe. */
-export function passwortZuKurzText() {
-  return tRaw('settings.password.too_short', { n: PASSWORT_MIN_ZEICHEN });
+export function passwordToShortText() {
+  return tRaw('settings.password.too_short', { n: PASSWORD_MIN_CHARS });
 }
 
-/** Dieselbe Grenze wie PASSWORT_MAX_ZEICHEN im Server (src/infra/passwortRegel.ts). */
-export const PASSWORT_MAX_ZEICHEN = 1024;
+/** Dieselbe Grenze wie PASSWORD_MAX_CHARS im Server (src/infra/passwortRegel.ts). */
+export const PASSWORD_MAX_CHARS = 1024;
 
 /**
  * Was der Browser vor dem Absenden prüfen kann, als Meldung, sonst null. Die Liste häufiger Passwörter kennt
  * nur der Server; seine Meldung kommt zurück.
  * @param {string} p
  */
-export function passwortRegelText(p) {
-  if (passwortZuKurz(p)) return passwortZuKurzText();
-  if (String(p).length > PASSWORT_MAX_ZEICHEN) return tRaw('settings.password.too_long', { n: PASSWORT_MAX_ZEICHEN });
+export function passwordRuleText(p) {
+  if (passwordToShort(p)) return passwordToShortText();
+  if (String(p).length > PASSWORD_MAX_CHARS) return tRaw('settings.password.too_long', { n: PASSWORD_MAX_CHARS });
   return null;
 }
 
@@ -47,7 +47,7 @@ export function passwortRegelText(p) {
  * „abc“ gar nicht erst als Set „abc-1“ angelegt wird.
  * @param {string} eingabe
  */
-export function istSetnummer(eingabe) {
+export function isSetnummer(eingabe) {
   return /^[A-Za-z]{0,12}\d{1,8}[A-Za-z0-9]{0,8}(-\d{1,3})?$/.test(String(eingabe ?? '').trim());
 }
 
@@ -62,7 +62,7 @@ function nebeneinander(el) {
  * brechen dieselben Zeilen untereinander um; dann steht das Feld allein.
  * @param {Element} kind
  */
-function linienNachbarn(kind) {
+function linesNeighbors(kind) {
   const a = kind.getBoundingClientRect();
   return [...(kind.parentElement?.children ?? [])].filter(x => {
     if (x === kind || x.classList.contains('feld-fehler')) return false;
@@ -77,10 +77,11 @@ function feldzelle(zelle) {
   if (!raster || !/grid$/.test(getComputedStyle(raster).display)) return false;
   const oben = (/** @type {Element} */ x) => {
     const s = getComputedStyle(x);
-    const lage = s.alignSelf === 'auto' || s.alignSelf === 'normal' ? getComputedStyle(raster).alignItems : s.alignSelf;
-    return ['normal', 'stretch', 'start', 'flex-start', 'self-start'].includes(lage);
+    const situation =
+      s.alignSelf === 'auto' || s.alignSelf === 'normal' ? getComputedStyle(raster).alignItems : s.alignSelf;
+    return ['normal', 'stretch', 'start', 'flex-start', 'self-start'].includes(situation);
   };
-  return [zelle, ...linienNachbarn(zelle)].every(x => x.classList.contains('fg') && oben(x));
+  return [zelle, ...linesNeighbors(zelle)].every(x => x.classList.contains('fg') && oben(x));
 }
 
 /**
@@ -89,7 +90,7 @@ function feldzelle(zelle) {
  * sie direkt darunter.
  * @param {HTMLElement} feld @param {HTMLElement} meldung
  */
-function fehlerPlatzieren(feld, meldung) {
+function errorPlace(feld, meldung) {
   /** @type {Element} */
   let anker = feld.closest('.preis-mit-waehrung, .geheim-feld') ?? feld;
   let gruppe = anker.parentElement?.closest('.fg') ?? null;
@@ -104,13 +105,13 @@ function fehlerPlatzieren(feld, meldung) {
   /** @type {Element} */
   let kind = gruppe ?? anker;
   while (kind.parentElement && nebeneinander(kind.parentElement)) {
-    const nachbarn = linienNachbarn(kind);
-    if (!nachbarn.length) break;
+    const neighbors = linesNeighbors(kind);
+    if (!neighbors.length) break;
     // Umbrechende Zeile oder Raster: als eigene Linie hinter die letzten Nachbarn (.feld-fehler spannt über alle
     // Spalten), die Linien darunter rücken nur nach unten.
     const s = getComputedStyle(kind.parentElement);
     if (/grid$/.test(s.display) || s.flexWrap !== 'nowrap') {
-      anker = [kind, ...nachbarn].reduce((x, y) => (x.compareDocumentPosition(y) & 4 ? y : x));
+      anker = [kind, ...neighbors].reduce((x, y) => (x.compareDocumentPosition(y) & 4 ? y : x));
       break;
     }
     kind = kind.parentElement;
@@ -149,11 +150,11 @@ export function feldFehler(id, text) {
     feld.addEventListener('input', () => feldFehler(id, ''));
   }
   // Auch eine leere Meldung kommt ins Dokument: Sonst legte jeder Aufruf eine neue an, samt Zuhörer.
-  if ((text || !el.isConnected) && !el.closest('tr.feld-fehler-zeile')) fehlerPlatzieren(feld, el);
+  if ((text || !el.isConnected) && !el.closest('tr.feld-fehler-zeile')) errorPlace(feld, el);
   el.textContent = text || '';
   el.hidden = !text;
-  const fehlerZeile = el.closest('tr.feld-fehler-zeile');
-  if (fehlerZeile instanceof HTMLElement) fehlerZeile.hidden = !text;
+  const errorRow = el.closest('tr.feld-fehler-zeile');
+  if (errorRow instanceof HTMLElement) errorRow.hidden = !text;
   // Die eigene Kennung ergänzen und wieder nehmen: Ein vorhandener Hinweis (Passwortregel) bleibt verknüpft.
   const ids = new Set((feld.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
   if (text) {
@@ -175,7 +176,7 @@ export function feldFehler(id, text) {
  * @param {Record<string, string>} felder Fehlercode → Feld-ID
  * @param {string} ersatz Text, wenn die Antwort keinen hat
  */
-export function antwortFehler(d, felder, ersatz) {
+export function responseError(d, felder, ersatz) {
   const a = /** @type {{ code?: string, error?: string | null }} */ (d ?? {});
   const id = a.code ? felder[a.code] : null;
   if (id && G(id)) feldFehler(id, a.error || ersatz);
@@ -187,13 +188,13 @@ export function antwortFehler(d, felder, ersatz) {
  * @param {string} id
  * @param {string} wert
  */
-export function setnummerFeldGueltig(id, wert) {
+export function setnummerFieldValid(id, wert) {
   const v = wert ?? (G(id)?.value || '').trim();
   if (!v) {
     feldFehler(id, tRaw('common.enter_set_number'));
     return false;
   }
-  if (!istSetnummer(v)) {
+  if (!isSetnummer(v)) {
     feldFehler(id, tRaw('gallery.add.number_invalid', { num: v }));
     return false;
   }
@@ -202,19 +203,19 @@ export function setnummerFeldGueltig(id, wert) {
 }
 
 /** Obergrenze der Stückzahl je Erfassung; dieselbe wie `eingabe.stueckzahl()` im Server (src/infra/validate.ts). */
-export const STUECKZAHL_MAX = 10_000;
+export const QUANTITY_MAX = 10_000;
 
 /**
- * Liest ein Anzahlfeld: Nur eine ganze Zahl von 1 bis STUECKZAHL_MAX geht hinaus. Alles andere (leer, 0, 1,5,
+ * Liest ein Anzahlfeld: Nur eine ganze Zahl von 1 bis QUANTITY_MAX geht hinaus. Alles andere (leer, 0, 1,5,
  * negativ, zu gross) meldet das Feld, statt stillschweigend zu 1 zu werden oder erst als Toast zurückzukommen.
  * @param {string} id
  * @returns {{ ok: boolean, wert: number }}
  */
-export function mengeAusFeld(id) {
+export function quantityFromField(id) {
   const roh = (G(id)?.value ?? '').trim();
   const wert = /^\d+$/.test(roh) ? Number(roh) : NaN;
-  if (!(wert >= 1 && wert <= STUECKZAHL_MAX)) {
-    feldFehler(id, tRaw('common.qty_invalid', { max: STUECKZAHL_MAX.toLocaleString(locale()) }));
+  if (!(wert >= 1 && wert <= QUANTITY_MAX)) {
+    feldFehler(id, tRaw('common.qty_invalid', { max: QUANTITY_MAX.toLocaleString(locale()) }));
     return { ok: false, wert: 1 };
   }
   if (G(id + '-fehler')) feldFehler(id, '');
@@ -227,10 +228,10 @@ export function mengeAusFeld(id) {
  * @param {string} id
  * @returns {boolean}
  */
-export function kaufdatumGueltig(id) {
+export function purchaseDateValid(id) {
   const feld = /** @type {HTMLInputElement | null} */ (G(id));
   if (!feld) return true;
-  const heute = heuteIso();
+  const heute = todayIso();
   feld.max = heute;
   if (feld.value && feld.value > heute) {
     feldFehler(id, tRaw('common.date_future'));
@@ -247,14 +248,14 @@ export function kaufdatumGueltig(id) {
  * @param {string} [negativ] Schlüssel der Meldung für einen negativen Betrag (Vorgabe: Kaufpreis)
  * @returns {{ ok: boolean, wert: number|null }}
  */
-export function betragAusFeld(feld, negativ = 'common.amount_negative') {
+export function amountFromField(feld, negativ = 'common.amount_negative') {
   const el = typeof feld === 'string' ? G(feld) : feld;
   if (!el) return { ok: true, wert: null };
   const roh = el.value.trim();
-  const wert = leseBetrag(roh);
+  const wert = readAmount(roh);
   if (wert !== null && !(wert >= 0)) {
     // „-5“ ist lesbar, nur nicht erlaubt: „ist kein Betrag“ führte dort in die Irre.
-    const minus = /^[-−]/.test(roh) && Number.isFinite(leseBetrag(roh.slice(1)));
+    const minus = /^[-−]/.test(roh) && Number.isFinite(readAmount(roh.slice(1)));
     const meldung = minus ? tRaw(negativ) : tRaw('common.amount_invalid', { wert: roh });
     if (el.id) feldFehler(el.id, meldung);
     else toast(meldung, 'error');
@@ -273,11 +274,11 @@ export function betragAusFeld(feld, negativ = 'common.amount_negative') {
  * @param {string} text
  * @param {string[]} [felder] IDs der betroffenen Felder
  */
-export function formularFehler(box, text, felder = []) {
+export function formError(box, text, felder = []) {
   box.textContent = text;
   box.style.display = text ? 'block' : 'none';
   box.parentElement?.querySelectorAll('[aria-invalid="true"]').forEach(f => {
-    feldGueltig(f, box.id);
+    fieldValid(f, box.id);
   });
   const ziele = /** @type {HTMLElement[]} */ (felder.map(id => G(id)).filter(Boolean));
   for (const f of ziele) {
@@ -290,7 +291,7 @@ export function formularFehler(box, text, felder = []) {
 }
 
 /** @param {Element} f @param {string} boxId */
-function feldGueltig(f, boxId) {
+function fieldValid(f, boxId) {
   f.removeAttribute('aria-invalid');
   const rest = (f.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== boxId);
   if (rest.length) f.setAttribute('aria-describedby', rest.join(' '));

@@ -20,7 +20,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
@@ -29,29 +29,29 @@ const NOTIFY = fs.readFileSync(path.join(ROOT, 'db/pgNotify.ts'), 'utf8');
 test('kein Planer fragt mehr nach Auslösern', () => {
   // Anstösse und Zeitpläne sind Aufträge (src/auftraege/zeitplan.ts); die alten
   // Auslöser-Einträge mit eigenem Kanal sind weg.
-  const { alleQuellen } = require('./helpers/sources');
-  const treffer = alleQuellen().filter(rel =>
+  const { allSources } = require('./helpers/sources');
+  const treffer = allSources().filter(rel =>
     /csv_sync_trigger|job_reschedule_trigger|instr_queue_trigger/.test(fs.readFileSync(path.join(ROOT, rel), 'utf8')),
   );
   assert.deepEqual(treffer, []);
 });
 
 test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, async t => {
-  const db = testDaten();
+  const db = testData();
   try {
     await db.get('SELECT 1');
   } catch (e) {
     keineDb(t, e);
     return;
   }
-  const pgNotify = testZugang().benachrichtigung;
+  const pgNotify = testAccess().notification;
   t.after(async () => {
     await pgNotify.close();
     await db.pool.end().catch(() => {});
   });
-  const KANAL = `ae_probe_${process.pid}`;
+  const CHANNEL = `ae_probe_${process.pid}`;
   const bekommen = [];
-  const warteAuf = n => bis(() => bekommen.length >= n, 5000);
+  const waitOn = n => bis(() => bekommen.length >= n, 5000);
 
   assert.throws(
     () => pgNotify.listen('kein kanal', () => {}),
@@ -59,14 +59,14 @@ test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, a
     'ein Kanalname mit Leerzeichen wird abgewiesen',
   );
 
-  pgNotify.listen(KANAL, nutzlast => {
+  pgNotify.listen(CHANNEL, nutzlast => {
     bekommen.push(nutzlast ?? null);
   });
-  await warteAuf(1);
+  await waitOn(1);
   assert.deepEqual(bekommen, [null], 'beim Verbinden fragt der Handler einmal von sich aus');
 
-  await pgNotify.notify(KANAL, 'hallo');
-  await warteAuf(2);
+  await pgNotify.notify(CHANNEL, 'hallo');
+  await waitOn(2);
   assert.deepEqual(bekommen, [null, 'hallo'], 'das Signal kommt an');
 
   // Die lauschende Verbindung abreissen: Ein Signal in der Lücke ginge
@@ -74,9 +74,9 @@ test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, a
   await db.run(
     `SELECT pg_terminate_backend(pid) FROM pg_stat_activity
                  WHERE datname = current_database() AND pid <> pg_backend_pid() AND query LIKE $1`,
-    [`LISTEN "${KANAL}"%`],
+    [`LISTEN "${CHANNEL}"%`],
   );
-  await warteAuf(3);
+  await waitOn(3);
   assert.deepEqual(bekommen, [null, 'hallo', null], 'nach dem Wiederverbinden holt der Handler nach');
 });
 

@@ -23,7 +23,7 @@ const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
  * Schnitt haengt an der Kommentarmarke — verschwindet sie, faellt dieser Test
  * aus, und das ist gewollt: Dann ist der Lauscher umgebaut worden.
  */
-function lauscherCode() {
+function listenerCode() {
   const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'aktionen.js'), 'utf8');
   const von = roh.indexOf("  document.addEventListener('submit'");
   assert.ok(von > 0, 'Der submit-Lauscher steht nicht mehr in js/aktionen.js');
@@ -34,9 +34,9 @@ function lauscherCode() {
 }
 
 /** Das echte index.html in jsdom, mit dem Lauscher davor. */
-function buehne() {
+function stage() {
   const dom = new JSDOM(HTML, { runScripts: 'outside-only' });
-  dom.window.eval(lauscherCode());
+  dom.window.eval(listenerCode());
   return dom;
 }
 
@@ -73,12 +73,12 @@ test('jedes Passwortfeld eines MENSCHEN liegt in einem Formular', () => {
 });
 
 test('Absenden lädt die Seite NICHT neu, sondern drückt den Knopf', () => {
-  const dom = buehne();
+  const dom = stage();
   const d = dom.window.document;
-  const formulare = [...d.querySelectorAll('form[data-submit]')];
-  assert.ok(formulare.length >= 6, `Nur ${formulare.length} Formulare mit data-submit — erwartet mindestens sechs`);
+  const forms = [...d.querySelectorAll('form[data-submit]')];
+  assert.ok(forms.length >= 6, `Nur ${forms.length} Formulare mit data-submit — erwartet mindestens sechs`);
 
-  for (const f of formulare) {
+  for (const f of forms) {
     const id = f.getAttribute('data-submit');
     const knopf = d.getElementById(id);
     assert.ok(knopf, `data-submit="${id}" zeigt auf keinen Knopf`);

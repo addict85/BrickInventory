@@ -9,7 +9,7 @@
  * Gegenproben (am 27.10. gemessen):
  *   A  `SET LOCAL statement_timeout = 0` entfernt → rot: „offene Migration:
  *      erst gesichert, dann ohne Zeitgrenze angewandt"
- *   B  in runMigrations den Aufruf von sichereNutzerdaten entfernt → rot:
+ *   B  in runMigrations den Aufruf von secureUserData entfernt → rot:
  *      dieselbe Prüfung (keine Sicherung)
  *   C  OFFSET der Aufräumabfrage entfernt (alle löschen) → rot: „die drei
  *      jüngsten Sicherungen bleiben"
@@ -17,11 +17,11 @@
  *      „offene Migration …" (account_links fehlt)
  *   E  (12.11.2026) in runMigrations wieder `SET LOCAL lock_timeout = 0` → rot:
  *      „eine gehaltene Sperre: Frist, Wiederholung, klare Meldung“ (Zeitüberschreitung)
- *   F  (12.11.2026) in mitSperrfrist() ohne Wiederholung (sofort weiterwerfen)
+ *   F  (12.11.2026) in withLockPeriod() ohne Wiederholung (sofort weiterwerfen)
  *      → rot: dieselbe Prüfung (eine Warnung erwartet, keine gesehen)
- *   G  (12.11.2026) in sichereNutzerdaten wieder `lock_timeout = 0` → rot:
+ *   G  (12.11.2026) in secureUserData wieder `lock_timeout = 0` → rot:
  *      „auch die Sicherung wartet nicht ewig“ (Zeitüberschreitung)
- *   H  (14.11.2026) in sichereNutzerdaten das `ENABLE ROW LEVEL SECURITY` gestrichen
+ *   H  (14.11.2026) in secureUserData das `ENABLE ROW LEVEL SECURITY` gestrichen
  *      → rot: „offene Migration …“ (Kopien ohne Zeilenschutz: users, api_tokens, …)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -34,27 +34,27 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { DIST, testDaten } = require('./helpers/sources');
-const db = testDaten();
-const { runMigrations, sichereNutzerdaten } = _req('db/migrate.js');
+const { dataOrSkip } = require('./helpers/db');
+const { DIST, testData } = require('./helpers/sources');
+const db = testData();
+const { runMigrations, secureUserData } = _req('db/migrate.js');
 const NAME = `migsich_${process.pid}`,
-  ZWEIT = `migsich2_${process.pid}`;
+  SECOND = `migsich2_${process.pid}`;
 const PROBE = `9999-probe-${process.pid}.sql`;
 
-const sicherungen = async () =>
+const backups = async () =>
   (await db.all(`SELECT nspname FROM pg_namespace WHERE nspname ~ '^vor_migration_[0-9]+$' ORDER BY nspname`)).map(
     r => r.nspname,
   );
 
 test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const client = await db.pool.connect();
   await runMigrations(client);
-  const vorher = new Set(await sicherungen());
+  const vorher = new Set(await backups());
   const probe = path.join(DIST, 'db/migrations', PROBE);
 
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, ZWEIT]]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SECOND]]);
   const anlegen = async n =>
     (
       await db.get(
@@ -63,21 +63,21 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
       )
     ).id;
   const haupt = await anlegen(NAME),
-    kind = await anlegen(ZWEIT);
+    kind = await anlegen(SECOND);
   // Eine Haushaltsverknüpfung: Die Tabelle hat keine Spalte user_id, nur Fremdschlüssel auf users.
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, kind]);
   t.after(async () => {
     fs.rmSync(probe, { force: true });
     await db.run('DELETE FROM schema_migrations WHERE name = $1', [PROBE]).catch(() => {});
-    for (const s of await sicherungen()) if (!vorher.has(s)) await db.run(`DROP SCHEMA ${s} CASCADE`).catch(() => {});
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, ZWEIT]]).catch(() => {});
+    for (const s of await backups()) if (!vorher.has(s)) await db.run(`DROP SCHEMA ${s} CASCADE`).catch(() => {});
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, SECOND]]).catch(() => {});
     client.release();
     await db.pool.end().catch(() => {});
   });
 
   await t.test('ohne offene Migration keine Sicherung', async () => {
     await runMigrations(client, { sichern: true });
-    assert.deepEqual(new Set(await sicherungen()), vorher);
+    assert.deepEqual(new Set(await backups()), vorher);
   });
 
   await t.test('offene Migration: erst gesichert, dann ohne Zeitgrenze angewandt', async () => {
@@ -95,7 +95,7 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
     );
     const angewandt = await runMigrations(client, { sichern: true });
     assert.deepEqual(angewandt, [PROBE]);
-    const neu = (await sicherungen()).filter(s => !vorher.has(s));
+    const neu = (await backups()).filter(s => !vorher.has(s));
     assert.equal(neu.length, 1, 'keine Sicherung vor der Migration');
     const kopie = await db.get(`SELECT username FROM ${neu[0]}.users WHERE username = $1`, [NAME]);
     assert.ok(kopie, 'Die Sicherung enthält die Konten nicht');
@@ -118,12 +118,12 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
     assert.deepEqual(offen, [], 'Kopien ohne Zeilenschutz');
   });
 
-  const KURZ = { fristMs: 200, versuche: 2 };
+  const SHORT = { fristMs: 200, versuche: 2 };
   const SPERRPROBE = `9998-sperre-${process.pid}.sql`,
     TABELLE = `migsperre_${process.pid}`;
   /** Eine zweite Verbindung hält `tabelle` exklusiv, bis `frei()` gerufen wird –
    * spätestens nach 4 s, damit eine Fassung ohne Frist rot wird statt zu hängen. */
-  const halteSperre = async tabelle => {
+  const holdLock = async tabelle => {
     const c2 = await db.pool.connect();
     await c2.query('BEGIN');
     await c2.query(`LOCK TABLE ${tabelle} IN ACCESS EXCLUSIVE MODE`);
@@ -131,15 +131,15 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
     const frei = async () => {
       if (!offen) return;
       offen = false;
-      clearTimeout(notfall);
+      clearTimeout(emergency);
       await c2.query('ROLLBACK');
       c2.release();
     };
-    const notfall = setTimeout(frei, 4000);
+    const emergency = setTimeout(frei, 4000);
     return frei;
   };
   /** console.warn mitschreiben, solange `f` läuft. */
-  const mitWarnungen = async f => {
+  const withWarnings = async f => {
     const echt = console.warn,
       gesehen = [];
     console.warn = (...a) => gesehen.push(a.join(' '));
@@ -159,8 +159,8 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
       await db.run(`DROP TABLE IF EXISTS ${TABELLE}`).catch(() => {});
     });
     fs.writeFileSync(datei, `SELECT count(*) FROM ${TABELLE};`);
-    const frei = await halteSperre(TABELLE);
-    const { ergebnis, gesehen } = await mitWarnungen(() => runMigrations(client, { sperre: KURZ }));
+    const frei = await holdLock(TABELLE);
+    const { ergebnis, gesehen } = await withWarnings(() => runMigrations(client, { sperre: SHORT }));
     await frei();
     assert.ok(ergebnis instanceof Error, `ohne Fehler zurück: ${ergebnis}`);
     assert.match(
@@ -171,12 +171,12 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
     );
     assert.equal(gesehen.filter(w => w.includes('Versuch 2/2')).length, 1, gesehen.join('\n'));
     assert.equal(await db.get('SELECT 1 FROM schema_migrations WHERE name = $1', [SPERRPROBE]), undefined);
-    assert.deepEqual(await runMigrations(client, { sperre: KURZ }), [SPERRPROBE], 'ohne Sperre läuft sie durch');
+    assert.deepEqual(await runMigrations(client, { sperre: SHORT }), [SPERRPROBE], 'ohne Sperre läuft sie durch');
   });
 
   await t.test('auch die Sicherung wartet nicht ewig', { timeout: 15_000 }, async () => {
-    const frei = await halteSperre('users');
-    const { ergebnis } = await mitWarnungen(() => sichereNutzerdaten(client, ['probe'], { fristMs: 200, versuche: 1 }));
+    const frei = await holdLock('users');
+    const { ergebnis } = await withWarnings(() => secureUserData(client, ['probe'], { fristMs: 200, versuche: 1 }));
     await frei();
     assert.ok(ergebnis instanceof Error, `ohne Fehler zurück: ${ergebnis}`);
     assert.match(ergebnis.message, /Sicherung vor den Migrationen fehlgeschlagen: .*keine Sperre erhalten/);
@@ -184,9 +184,9 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
 
   await t.test('die drei jüngsten Sicherungen bleiben', async () => {
     for (let i = 0; i < 4; i++) {
-      await sichereNutzerdaten(client, ['probe']);
+      await secureUserData(client, ['probe']);
       await new Promise(r => setTimeout(r, 5));
     }
-    assert.equal((await sicherungen()).length, 3);
+    assert.equal((await backups()).length, 3);
   });
 });

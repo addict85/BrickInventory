@@ -1,8 +1,8 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 import type { Spalten } from '../../../db/zeilen';
-import type { KatalogLesevertrag } from '../lesevertrag';
+import type { CatalogReadContract } from '../lesevertrag';
 
-export async function setsMitFehlendenKatalogbildern(db: DbSchnittstelle): Promise<string[]> {
+export async function setsWithMissingCatalogImages(db: DbInterface): Promise<string[]> {
   const rows = await db.all<{ set_number: string }>(
     `SELECT DISTINCT set_number FROM set_parts_catalog
      WHERE image_url IS NOT NULL AND image_local IS NULL
@@ -14,9 +14,9 @@ export async function setsMitFehlendenKatalogbildern(db: DbSchnittstelle): Promi
 }
 
 /** Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten. */
-export async function manuelleTeileOhneBild(
-  db: DbSchnittstelle,
-  l: KatalogLesevertrag,
+export async function manualPartsWithoutImage(
+  db: DbInterface,
+  l: CatalogReadContract,
 ): Promise<{ part_number: string; color_id: number; image_url: string }[]> {
   return db.all<{ part_number: string; color_id: number; image_url: string }>(
     `SELECT DISTINCT pcc.part_number, pcc.color_id, pcc.image_url
@@ -28,9 +28,9 @@ export async function manuelleTeileOhneBild(
   );
 }
 
-export async function figurenOhneBild(
-  db: DbSchnittstelle,
-  l: KatalogLesevertrag,
+export async function minifigsWithoutImage(
+  db: DbInterface,
+  l: CatalogReadContract,
 ): Promise<{ fig_number: string; image_url: string }[]> {
   return db.all<{ fig_number: string; image_url: string }>(
     `SELECT mc.fig_number, mc.image_url FROM minifigs_catalog mc
@@ -43,9 +43,9 @@ export async function figurenOhneBild(
 /** Seit 0105 führt set_catalog jedes Set des Rebrickable-Katalogs: Geladen wird nur,
  * was ein Konto hält, merkt oder beobachtet. Ein vermerkter 404 ruht eine Woche, sonst
  * belegten dieselben bildlosen Sets bei jedem Start die ersten Plätze. */
-export async function setBilderOhneDatei(
-  db: DbSchnittstelle,
-  l: KatalogLesevertrag,
+export async function setImagesWithoutFile(
+  db: DbInterface,
+  l: CatalogReadContract,
   grenze = 500,
 ): Promise<{ set_number: string; image_url: string }[]> {
   return db.all<{ set_number: string; image_url: string }>(
@@ -61,8 +61,8 @@ export async function setBilderOhneDatei(
 
 /** Schreibt nur, was fehlt. Über rb_sets, damit eine fehlende set_catalog-Zeile
  * entsteht, ohne den Fremdschlüssel zu verletzen; ein unbekanntes Set bleibt aussen vor. */
-export async function merkeSetBildLokal(
-  db: DbSchnittstelle,
+export async function rememberSetImageLocal(
+  db: DbInterface,
   setNumber: string,
   lokal: string,
   quelle: string | null = null,
@@ -79,7 +79,7 @@ export async function merkeSetBildLokal(
   );
 }
 
-export async function lokaleKatalogbilder(db: DbSchnittstelle): Promise<string[]> {
+export async function localCatalogImages(db: DbInterface): Promise<string[]> {
   const rows = await db.all<{ image_local: string }>(
     `SELECT image_local FROM set_catalog WHERE image_local IS NOT NULL
      UNION ALL SELECT image_local FROM part_color_catalog WHERE image_local IS NOT NULL
@@ -88,15 +88,15 @@ export async function lokaleKatalogbilder(db: DbSchnittstelle): Promise<string[]
   return rows.map(r => r.image_local).filter(Boolean);
 }
 
-export interface Bildstand {
+export interface ImageStatus {
   image_local: string | null;
   image_url: string | null;
 }
 
-export async function teilbilder(
-  db: DbSchnittstelle,
+export async function partImages(
+  db: DbInterface,
   teile: string[],
-): Promise<(Bildstand & { part_number: string; color_id: number })[]> {
+): Promise<(ImageStatus & { part_number: string; color_id: number })[]> {
   return db.all<Spalten<'part_color_catalog', 'part_number' | 'color_id' | 'image_local' | 'image_url'>>(
     `SELECT part_number, color_id, image_local, image_url
        FROM part_color_catalog WHERE part_number = ANY($1)`,
@@ -104,10 +104,10 @@ export async function teilbilder(
   );
 }
 
-export async function figurenbilder(
-  db: DbSchnittstelle,
+export async function minifigImages(
+  db: DbInterface,
   figuren: string[],
-): Promise<(Bildstand & { fig_number: string })[]> {
+): Promise<(ImageStatus & { fig_number: string })[]> {
   return db.all<Spalten<'minifigs_catalog', 'fig_number' | 'image_local' | 'image_url'>>(
     `SELECT fig_number, image_local, image_url
        FROM minifigs_catalog WHERE fig_number = ANY($1)`,
@@ -116,8 +116,8 @@ export async function figurenbilder(
 }
 
 /** Nur Lücken einer Zeile der Erfassung ('api'): Was das Rebrickable-CSV führt, bleibt. */
-export async function fuelleSetLuecken(
-  db: DbSchnittstelle,
+export async function fillSetGaps(
+  db: DbInterface,
   setNumber: string,
   i: {
     name?: string | null;
@@ -141,7 +141,7 @@ export async function fuelleSetLuecken(
   ]);
 }
 
-export async function setsOhneAnleitungsabruf(db: DbSchnittstelle, l: KatalogLesevertrag): Promise<string[]> {
+export async function setsWithoutInstructionFetch(db: DbInterface, l: CatalogReadContract): Promise<string[]> {
   const rows = await db.all<{ set_number: string }>(
     `SELECT DISTINCT s.set_number FROM ${l.setBestand()} s
      WHERE NOT EXISTS (SELECT 1 FROM shared_instructions si WHERE si.set_number = s.set_number)
@@ -152,18 +152,18 @@ export async function setsOhneAnleitungsabruf(db: DbSchnittstelle, l: KatalogLes
 }
 
 /** Teil- und Figurenbilder der Sets, die noch nicht lokal liegen. */
-export function fehlendeKatalogbilder(db: DbSchnittstelle, setNummern: string[]) {
+export function missingCatalogImages(db: DbInterface, setNumbers: string[]) {
   return db.get<{ c: string | number }>(
     `SELECT (SELECT COUNT(*) FROM (SELECT DISTINCT part_number, color_id FROM set_parts_catalog
                 WHERE set_number = ANY($1) AND image_url IS NOT NULL AND image_local IS NULL) p)
             + (SELECT COUNT(*) FROM (SELECT DISTINCT fig_number FROM set_minifigs_catalog
                 WHERE set_number = ANY($1) AND image_url IS NOT NULL AND image_local IS NULL) f) AS c`,
-    [setNummern],
+    [setNumbers],
   );
 }
 
 /** Die Namen der Sets aus dem Rebrickable-Katalog. */
-export function setNamen(db: DbSchnittstelle, nummern: string[]) {
+export function setNames(db: DbInterface, nummern: string[]) {
   return db.all<{ set_num: string; name: string | null }>('SELECT set_num, name FROM rb_sets WHERE set_num = ANY($1)', [
     nummern,
   ]);

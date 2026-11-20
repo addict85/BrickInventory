@@ -18,7 +18,7 @@ const ROOT = path.join(__dirname, '..');
  * einzige Prüfung. Gebraucht wird nur, was unter `services:` an
  * Diensten steht und welche Werte deren Schlüssel tragen.
  */
-function leseDienst(yaml, name) {
+function readService(yaml, name) {
   const zeilen = yaml.split('\n');
   const start = zeilen.findIndex(l => new RegExp(`^  ${name}:\\s*$`).test(l));
   if (start < 0) return null;
@@ -59,7 +59,7 @@ test('kein Dienst gewinnt Rechte, jeder hat nur die nötigen Capabilities', () =
     'caddy-rechte': ['CHOWN', 'DAC_OVERRIDE'],
   };
   for (const [dienst, caps] of Object.entries(erwartet)) {
-    const block = leseDienst(compose, dienst);
+    const block = readService(compose, dienst);
     assert.match(block, /^\s*-\s*no-new-privileges:true\s*$/m, `${dienst}: no-new-privileges fehlt`);
     assert.deepEqual(liste(block, 'cap_drop'), ['ALL'], `${dienst}: cap_drop: [ALL] fehlt`);
     assert.deepEqual(liste(block, 'cap_add').sort(), caps, `${dienst}: unerwartete Capabilities`);
@@ -67,7 +67,7 @@ test('kein Dienst gewinnt Rechte, jeder hat nur die nötigen Capabilities', () =
 });
 
 test('die App schreibt nur in ./data und /tmp — daten-rechte auch', () => {
-  const block = leseDienst(compose, 'app');
+  const block = readService(compose, 'app');
   assert.match(block, /^\s*read_only:\s*true\s*$/m, 'app: read_only fehlt');
   assert.match(block, /^\s*tmpfs:\s*\n\s*-\s*\/tmp:rw,noexec,nosuid,nodev,size=\d+m\s*$/m, 'app: /tmp als tmpfs fehlt');
   assert.match(block, /^\s*-\s*\.\/data:\/app\/data\s*$/m, 'app: ./data ist nicht nach /app/data eingehängt');
@@ -173,7 +173,7 @@ test('root richtet ./data nur im Dienst daten-rechte ein, app und jobs laufen al
 // „jobs: DATA_KEY_FILE fehlt“; Pfad auf /app/data/.datenschluessel → rot „… ./data“.
 test('der Datenschlüssel liegt für app und jobs ausserhalb von ./data', () => {
   for (const dienst of ['app', 'jobs']) {
-    const block = leseDienst(compose, dienst);
+    const block = readService(compose, dienst);
     const datei = block.match(/^\s*DATA_KEY_FILE:\s*(\S+)\s*$/m)?.[1];
     assert.ok(datei, `${dienst}: DATA_KEY_FILE fehlt`);
     const ordner = [...block.matchAll(/^\s*-\s*(\.\/[^:\s]+):(\/[^:\s]+)(:ro)?\s*$/gm)].find(m =>
@@ -192,8 +192,8 @@ test('der Datenschlüssel liegt für app und jobs ausserhalb von ./data', () => 
 // (11.11.2026) in UPGRADE.md Abschnitt 53 `N=172.28.0.0/16` → rot „die LAN-Sperre
 // in UPGRADE.md nennt ein anderes Netz“.
 test('TRUST_PROXY vertraut genau Caddy, das Netz hat ein festes Subnetz', () => {
-  const app = leseDienst(compose, 'app');
-  const caddy = leseDienst(compose, 'caddy');
+  const app = readService(compose, 'app');
+  const caddy = readService(compose, 'caddy');
   const adresse = caddy.match(/ipv4_address:\s*(\S+)/)?.[1];
   assert.equal(adresse, '172.28.73.10', 'Caddy hat keine feste Adresse');
   assert.match(
@@ -213,12 +213,12 @@ test('TRUST_PROXY vertraut genau Caddy, das Netz hat ein festes Subnetz', () => 
 });
 
 test('die App ist nur über Caddy erreichbar', () => {
-  const app = leseDienst(compose, 'app')
+  const app = readService(compose, 'app')
     .split('\n')
     .filter(z => !/^\s*#/.test(z))
     .join('\n');
   assert.doesNotMatch(app, /^\s*ports:/m, 'die App veröffentlicht einen Port am Proxy vorbei');
-  const caddy = leseDienst(compose, 'caddy');
+  const caddy = readService(compose, 'caddy');
   assert.match(caddy, /:443:443"/);
   assert.match(caddy, /:80:80"/);
   assert.match(caddy, /^\s*dockerfile:\s*Dockerfile\.caddy\s*$/m, 'Caddy wird nicht aus Dockerfile.caddy gebaut');
@@ -238,8 +238,8 @@ test('die App ist nur über Caddy erreichbar', () => {
 // `- ./caddy/config:/config` aus caddy-rechte gestrichen → rot „… nicht übergeben“;
 // die Abhängigkeit auf caddy-rechte gestrichen → rot „Caddy wartet nicht …“.
 test('Caddy läuft ohne root, caddy-rechte übergibt ihm seine Ordner', () => {
-  const caddy = leseDienst(compose, 'caddy');
-  const rechte = leseDienst(compose, 'caddy-rechte');
+  const caddy = readService(compose, 'caddy');
+  const rechte = readService(compose, 'caddy-rechte');
   const kennung = caddy.match(/^\s*user:\s*"?(\d+):(\d+)"?\s*$/m);
   assert.ok(kennung && kennung[1] !== '0' && kennung[2] !== '0', 'Caddy läuft als root');
   assert.match(
@@ -261,12 +261,12 @@ test('Caddy läuft ohne root, caddy-rechte übergibt ihm seine Ordner', () => {
     chown.length && chown.every(m => m[1] === ziel),
     `caddy-rechte übergibt an eine andere Kennung als ${ziel}`,
   );
-  const uebergeben = chown.flatMap(m => m[2].trim().split(/\s+/));
+  const passed = chown.flatMap(m => m[2].trim().split(/\s+/));
   // Jeder Ordner, den Caddy einhängt (ausser dem Caddyfile), ist dort eingehängt und gehört danach ihm.
   const einh = block => [...block.matchAll(/^\s*-\s*([^\s:]+):(\/[^:\s]+)(:ro)?\s*$/gm)].map(m => `${m[1]}:${m[2]}`);
   const ordner = einh(caddy).filter(e => !e.endsWith(':/etc/caddy/Caddyfile'));
   assert.ok(ordner.length >= 4, `Caddys Ordner nicht gefunden: ${ordner}`);
-  const fehlt = ordner.filter(e => !einh(rechte).includes(e) || !uebergeben.some(u => e.endsWith(':' + u)));
+  const fehlt = ordner.filter(e => !einh(rechte).includes(e) || !passed.some(u => e.endsWith(':' + u)));
   assert.deepEqual(fehlt, [], 'diese Orte hat caddy-rechte nicht übergeben');
 });
 
@@ -313,20 +313,20 @@ const geheimnisse = block =>
     .sort();
 test('nur postgres und db-rolle kennen den Superuser, nur migration die Migrationsrolle, App und Jobs die Laufzeitrolle', () => {
   const dienste = ['postgres', 'db-rolle', 'app', 'jobs'];
-  const mitSuperuser = dienste.filter(d => geheimnisse(leseDienst(compose, d)).includes('db_password'));
-  assert.deepEqual(mitSuperuser, ['postgres', 'db-rolle']);
+  const withSuperuser = dienste.filter(d => geheimnisse(readService(compose, d)).includes('db_password'));
+  assert.deepEqual(withSuperuser, ['postgres', 'db-rolle']);
   assert.deepEqual(
-    geheimnisse(leseDienst(compose, 'app')),
+    geheimnisse(readService(compose, 'app')),
     ['db_app_password', 'db_system_web_password', 'session_secret'],
     'app kennt mehr als die Web-Systemrolle',
   );
   assert.deepEqual(
-    geheimnisse(leseDienst(compose, 'jobs')),
+    geheimnisse(readService(compose, 'jobs')),
     ['db_app_password', 'db_system_password'],
     'jobs kennt das Passwort des Superusers',
   );
   for (const d of ['app', 'jobs']) {
-    const block = leseDienst(compose, d);
+    const block = readService(compose, d);
     assert.match(block, /^\s*PGUSER:\s*brickinventory_app\s*$/m, `${d} verbindet sich nicht als App-Rolle`);
     assert.match(
       block,
@@ -344,26 +344,26 @@ test('nur postgres und db-rolle kennen den Superuser, nur migration die Migratio
   for (const d of ['postgres', 'db-rolle'])
     for (const rolle of ['system', 'system_web'])
       assert.match(
-        leseDienst(compose, d),
+        readService(compose, d),
         new RegExp(`^\\s*DB_${rolle.toUpperCase()}_PASSWORD_FILE:\\s*/run/secrets/db_${rolle}_password\\s*$`, 'm'),
         `${d} legt die Rolle ${rolle} ohne Passwort an`,
       );
   assert.match(
-    leseDienst(compose, 'db-rolle'),
+    readService(compose, 'db-rolle'),
     /^\s*PGWEB_DB_PASSWORD_FILE:\s*\/run\/secrets\/pgweb_db_password\s*$/m,
     'db-rolle setzt das Passwort der Leserolle nicht',
   );
   for (const d of ['app', 'jobs'])
     assert.match(
-      leseDienst(compose, d),
+      readService(compose, d),
       /depends_on:\s*\n\s*db-rolle:\s*\n\s*condition: service_completed_successfully/,
       `${d} wartet nicht auf db-rolle`,
     );
-  const image = d => leseDienst(compose, d).match(/^\s*image:\s*(\S+)\s*$/m)?.[1];
+  const image = d => readService(compose, d).match(/^\s*image:\s*(\S+)\s*$/m)?.[1];
   assert.equal(image('db-rolle'), image('postgres'), 'db-rolle nimmt ein anderes Postgres-Image');
 
   // Die Migrationsrolle (Eigentümerin) kennt nur der Dienst migration; app und jobs starten erst nach ihm.
-  const mitMigration = Object.keys({
+  const withMigration = Object.keys({
     postgres: 1,
     'db-rolle': 1,
     migration: 1,
@@ -371,13 +371,13 @@ test('nur postgres und db-rolle kennen den Superuser, nur migration die Migratio
     jobs: 1,
     schluessel: 1,
     'daten-rechte': 1,
-  }).filter(d => geheimnisse(leseDienst(compose, d)).includes('db_migration_password'));
+  }).filter(d => geheimnisse(readService(compose, d)).includes('db_migration_password'));
   assert.deepEqual(
-    mitMigration,
+    withMigration,
     ['postgres', 'db-rolle', 'migration'],
     'ein Laufzeitdienst kennt das Passwort der Migrationsrolle',
   );
-  const mig = leseDienst(compose, 'migration');
+  const mig = readService(compose, 'migration');
   assert.deepEqual(geheimnisse(mig), ['db_migration_password']);
   assert.match(mig, /^\s*PGUSER:\s*brickinventory_migration\s*$/m);
   assert.match(mig, /^\s*PGPASSWORD_FILE:\s*\/run\/secrets\/db_migration_password\s*$/m);
@@ -391,24 +391,24 @@ test('nur postgres und db-rolle kennen den Superuser, nur migration die Migratio
   assert.deepEqual(netze, ['db-net'], 'migration braucht nur das interne Netz der Datenbank');
   for (const d of ['app', 'jobs'])
     assert.match(
-      leseDienst(compose, d),
+      readService(compose, d),
       /depends_on:[\s\S]*?\n\s+migration:\s*\n\s*condition: service_completed_successfully/,
       `${d} wartet nicht auf migration`,
     );
   assert.match(
-    leseDienst(compose, 'db-rolle'),
+    readService(compose, 'db-rolle'),
     /^\s*DB_MIGRATION_PASSWORD_FILE:\s*\/run\/secrets\/db_migration_password\s*$/m,
   );
   assert.match(
-    leseDienst(compose, 'postgres'),
+    readService(compose, 'postgres'),
     /^\s*DB_MIGRATION_PASSWORD_FILE:\s*\/run\/secrets\/db_migration_password\s*$/m,
     'eine neue Datenbank bekommt die Migrationsrolle nicht beim Anlegen',
   );
-  const rolle = leseDienst(compose, 'db-rolle');
+  const rolle = readService(compose, 'db-rolle');
   assert.match(rolle, /^\s*entrypoint: \["sh", "\/rolle\/app-rolle\.sh"\]\s*$/m);
   assert.match(rolle, /^\s*-\s*\.\/postgres\/app-rolle\.sh:\/rolle\/app-rolle\.sh:ro\s*$/m);
   assert.match(
-    leseDienst(compose, 'postgres'),
+    readService(compose, 'postgres'),
     /^\s*-\s*\.\/postgres\/app-rolle\.sh:\/docker-entrypoint-initdb\.d\/10-app-rolle\.sh:ro\s*$/m,
     'eine neue Datenbank bekommt die Rolle nicht beim Anlegen',
   );

@@ -1,16 +1,16 @@
 /**
  * Der Bereich Katalog bekommt seinen Datenbankzugang übergeben (src/katalog/bereich.ts,
- * gebaut von baueDienste in startup/verdrahtung.ts): Lesen, Schreiben und
+ * gebaut von buildServices in startup/verdrahtung.ts): Lesen, Schreiben und
  * Transaktionen der Dienste gehen über diesen Zugang. Einen Prozess-Speicher, auf
  * den sie fallen könnten, gibt es nicht mehr (Verbot in test/ratschen.test.js).
  *
  * Gegenproben (A, B am 10.11.2026 gemessen, je einzeln; C am 14.11.2026):
- *   A  in src/katalog/rbInventar.ts neuestesInventar() über das Repository mit
+ *   A  in src/katalog/rbInventar.ts newestInventory() über das Repository mit
  *      standardDb() statt über den Kontext → rot: „Lesen geht über den übergebenen
  *      Zugang“ (gezählt: nichts)
  *   B  in src/fremdquellen/apiKontingent.ts (damals src/katalog/) die Transaktion über standardDb() → rot:
  *      „die Transaktion geht über den übergebenen Zugang“
- *   C  in baueBereiche (startup/verdrahtung.ts) erzeugeKatalog mit { db: testZugang() }
+ *   C  in buildAreas (startup/verdrahtung.ts) createCatalog mit { db: testAccess() }
  *      statt db → rot: „Lesen geht …“ (gezählt: nichts); das Kontingent zählen seit
  *      15.11.2026 die Fremdquellen selbst (kein Durchreichen im Katalog).
  */
@@ -21,24 +21,24 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { baueDienste } = _req('startup/verdrahtung.js');
+const { dataOrSkip } = require('./helpers/db');
+const { buildServices } = _req('startup/verdrahtung.js');
 
 const SN = '99872-1';
-const INVENTAR = 987655;
+const INVENTORY = 987655;
 
 /** Ein Zugang, der jede Abfrage mitschreibt und an den echten weitergibt. */
-function zaehlenderZugang(echt, sql) {
-  const merke = f => (text, p) => {
+function countingAccess(echt, sql) {
+  const remember = f => (text, p) => {
     sql.push(text);
     return f(text, p);
   };
-  const huelle = z => ({ all: merke(z.all), get: merke(z.get), run: merke(z.run), exec: merke(z.exec) });
+  const huelle = z => ({ all: remember(z.all), get: remember(z.get), run: remember(z.run), exec: remember(z.exec) });
   return new Proxy(echt, {
     get(ziel, name) {
       // Der Griff trägt seinen Zugang (tx.db), über den t entsteht: Auch er zählt mit.
       if (name === 'transaction')
-        return (fn, o) => ziel.transaction(tx => fn({ ...huelle(tx), db: zaehlenderZugang(tx.db, sql) }), o);
+        return (fn, o) => ziel.transaction(tx => fn({ ...huelle(tx), db: countingAccess(tx.db, sql) }), o);
       if (['all', 'get', 'run', 'exec'].includes(String(name))) return huelle(ziel)[name];
       return Reflect.get(ziel, name);
     },
@@ -46,11 +46,11 @@ function zaehlenderZugang(echt, sql) {
 }
 
 test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const weg = async () => {
-    await db.run('DELETE FROM rb_inventories WHERE id = $1', [INVENTAR]);
-    await quellen.testDienste().fremdquellen.setzeKontingentZurueck('brickset');
+    await db.run('DELETE FROM rb_inventories WHERE id = $1', [INVENTORY]);
+    await quellen.testServices().fremdquellen.setQuotaBack('brickset');
   };
   t.after(async () => {
     quellen.buildAndRequire();
@@ -58,14 +58,14 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
     await db.pool.end();
   });
   await weg();
-  await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1, $2, 1)', [INVENTAR, SN]);
+  await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1, $2, 1)', [INVENTORY, SN]);
 
   const sql = [];
-  const kontexte = {};
-  const { katalog } = baueDienste(zaehlenderZugang(quellen.testZugang(), sql), { kontexte });
+  const contexts = {};
+  const { katalog } = buildServices(countingAccess(quellen.testAccess(), sql), { contexts });
 
   await t.test('Lesen geht über den übergebenen Zugang', async () => {
-    assert.equal(await katalog.neuestesInventar(SN), INVENTAR);
+    assert.equal(await katalog.newestInventory(SN), INVENTORY);
     assert.ok(
       sql.some(s => /FROM rb_inventories/.test(s)),
       `gezählt: ${sql.join(' | ').slice(0, 300)}`,
@@ -77,7 +77,7 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
     const { kontingentPruefenUndZaehlen } = require(
       require('node:path').join(require('./helpers/sources').ROOT, 'dist/src/fremdquellen/apiKontingent.js'),
     );
-    const r = await kontingentPruefenUndZaehlen(kontexte.fremdquellen, 'brickset');
+    const r = await kontingentPruefenUndZaehlen(contexts.fremdquellen, 'brickset');
     assert.equal(r.allowed, true);
     assert.ok(
       sql.some(s => /INSERT INTO api_calls/.test(s)),

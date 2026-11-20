@@ -48,21 +48,21 @@ test('leere und unbrauchbare Eingaben ergeben null', () => {
 /**
  * Jeder CSV-Import läuft durch csvDatum — nicht nur die, an die jemand dachte.
  *
- * Gegenprobe (29.10.2026): csvDatum in setCsvZeilen weggelassen → rot.
+ * Gegenprobe (29.10.2026): csvDatum in setCsvRows weggelassen → rot.
  */
 test('jeder CSV-Import normalisiert das Datum', () => {
   const _req = require('./helpers/sources').buildAndRequire();
-  const { setCsvZeilen } = require('./helpers/sources').bereichsSeite('sets');
-  const { csvGemeinsameFelder } = _req('src/infra/csvExport.js');
-  const { rows } = setCsvZeilen('set_number;acquired_at\n10001-1;01.02.2026\n');
+  const { setCsvRows } = require('./helpers/sources').areaPage('sets');
+  const { csvSharedFields } = _req('src/infra/csvExport.js');
+  const { rows } = setCsvRows('set_number;acquired_at\n10001-1;01.02.2026\n');
   assert.equal(rows[0].acquiredAt, '2026-02-01', 'Sets: 01.02.2026 ist der 1. Februar');
   assert.equal(
-    csvGemeinsameFelder({ acquired_at: '01.02.2026' }).erfasstAm,
+    csvSharedFields({ acquired_at: '01.02.2026' }).recordedAt,
     '2026-02-01',
     'Teile und Figuren: 01.02.2026 ist der 1. Februar',
   );
   assert.equal(
-    csvGemeinsameFelder({ erfassungsdatum: '31.02.2026' }).erfasstAm,
+    csvSharedFields({ erfassungsdatum: '31.02.2026' }).recordedAt,
     null,
     'ein unmögliches Datum wird verworfen statt an die Datenbank gereicht',
   );

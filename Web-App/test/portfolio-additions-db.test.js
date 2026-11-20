@@ -13,22 +13,22 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const NUTZER = `pfz-${process.pid}`;
-  const PRAEFIX = `86${(process.pid % 900) + 100}`;
-  const SN = i => `${PRAEFIX}${String(i).padStart(2, '0')}-1`;
+  const PREFIX = `86${(process.pid % 900) + 100}`;
+  const SN = i => `${PREFIX}${String(i).padStart(2, '0')}-1`;
 
   const aufraeumen = async () => {
-    await db.run(`DELETE FROM sets WHERE set_number LIKE $1`, [`${PRAEFIX}%`]).catch(() => {});
-    await db.run(`DELETE FROM price_history WHERE set_number LIKE $1`, [`${PRAEFIX}%`]).catch(() => {});
+    await db.run(`DELETE FROM sets WHERE set_number LIKE $1`, [`${PREFIX}%`]).catch(() => {});
+    await db.run(`DELETE FROM price_history WHERE set_number LIKE $1`, [`${PREFIX}%`]).catch(() => {});
   };
 
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
@@ -41,8 +41,8 @@ test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe', { concurrency: 1 
   const kurve = async (period = 'week') => portfolioVerlauf(uid, [uid], period, db, getSetting);
 
   /** Set anlegen und ihm ab `abTag` Tagen vor heute einen Preisverlauf geben. */
-  const setMit = async (i, abTag, preisAmAnfang, preisHeute) => {
-    await haeltSet(db, uid, SN(i), 0); // Menge 0: die Erfassung dahinter traegt sie
+  const setWith = async (i, abTag, priceAtStart, priceToday) => {
+    await holdsSet(db, uid, SN(i), 0); // Menge 0: die Erfassung dahinter traegt sie
     // Der Kaufpreis stand bis Migration 0032 in der sets-Zeile. Er steht jetzt
     // in der Erfassung — dieselbe Zahl, nur am einzigen Ort, an dem
     // portfolioHistory.ts ihn noch liest.
@@ -52,7 +52,7 @@ test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe', { concurrency: 1 
       [uid, SN(i)],
     );
     for (let d = abTag; d >= 0; d--) {
-      const preis = abTag === 0 ? preisHeute : preisAmAnfang + (preisHeute - preisAmAnfang) * ((abTag - d) / abTag);
+      const preis = abTag === 0 ? priceToday : priceAtStart + (priceToday - priceAtStart) * ((abTag - d) / abTag);
       await db.run(
         `INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
          VALUES ($1,'N','CHF',$2,$2, CURRENT_DATE - $3::int + interval '9 hours')`,
@@ -63,13 +63,13 @@ test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe', { concurrency: 1 
 
   try {
     // Ausgangslage: zwei Sets mit einer Woche Verlauf, Preis 100 → 110.
-    await setMit(1, 6, 100, 110);
-    await setMit(2, 6, 100, 110);
+    await setWith(1, 6, 100, 110);
+    await setWith(2, 6, 100, 110);
     const vorher = await kurve();
     assert.equal(vorher.period_change_pct, 10, `Grundfall stimmt nicht: ${vorher.period_change_pct} statt +10 %`);
 
     // Der Fall aus Marcos Bild: heute 24 Sets dazu
-    for (let i = 3; i <= 26; i++) await setMit(i, 1, 50, 50);
+    for (let i = 3; i <= 26; i++) await setWith(i, 1, 50, 50);
     const nachher = await kurve();
     assert.ok(
       nachher.period_change_pct <= vorher.period_change_pct + 0.01,
@@ -93,16 +93,16 @@ test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe', { concurrency: 1 
           WHERE set_number=$1 AND recorded_at >= CURRENT_DATE`,
         [SN(i)],
       );
-    const gestiegen = await kurve();
+    const risen = await kurve();
     assert.ok(
-      gestiegen.period_change_pct > nachher.period_change_pct + 50,
-      `Eine Preisverdopplung muss sich zeigen, war: ${gestiegen.period_change_pct}`,
+      risen.period_change_pct > nachher.period_change_pct + 50,
+      `Eine Preisverdopplung muss sich zeigen, war: ${risen.period_change_pct}`,
     );
 
     // Und die Kurve selbst darf keinen Sprung mehr haben: Der erste Punkt
     // enthält bereits alle 26 Sets. Ohne die Rückschreibung stünde dort nur
     // der Wert der beiden alten.
-    const p = gestiegen.points.map(x => x.value);
+    const p = risen.points.map(x => x.value);
     assert.ok(p[0] > 1000, `Der erste Punkt enthält nicht den ganzen Bestand (2×100 + 24×50 = 1400), war: ${p[0]}`);
 
     // Alle Zeiträume müssen dieselbe Aussage treffen — die Monatsauflösung
@@ -110,9 +110,9 @@ test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe', { concurrency: 1 
     // dieser Reihe schon einmal auseinandergelaufen.
     const werte = {};
     for (const per of ['week', 'month', 'year', 'max']) werte[per] = (await kurve(per)).period_change_pct;
-    const einzig = [...new Set(Object.values(werte))];
+    const only = [...new Set(Object.values(werte))];
     assert.equal(
-      einzig.length,
+      only.length,
       1,
       `Die Zeiträume sind sich uneinig: ${JSON.stringify(werte)} — bei Daten aus ` +
         'einer einzigen Woche müssen Woche, Monat, Jahr und Max dasselbe zeigen',

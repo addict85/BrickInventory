@@ -5,15 +5,15 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
-const { vervollstaendige } = require('./vertrag-fuellen');
+const { complete } = require('./vertrag-fuellen');
 
 const ROOT = path.join(__dirname, '..', '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 // TEST_BUENDEL: das Bündel mit Sourcemap aus test-lauf.js --abdeckung.
-const { BUENDEL, stelleBuendelSicher } = require('./buendel');
-stelleBuendelSicher();
-const BUNDLE_PFAD = process.env.TEST_BUENDEL || BUENDEL;
-const BUNDLE = fs.readFileSync(BUNDLE_PFAD, 'utf8');
+const { BUENDEL, placeBundleSafe } = require('./buendel');
+placeBundleSafe();
+const BUNDLE_PATH = process.env.TEST_BUENDEL || BUENDEL;
+const BUNDLE = fs.readFileSync(BUNDLE_PATH, 'utf8');
 
 const ANMELDUNG = {
   '/v1/startup-status': { ready: true, progress: 0, total: 0, step: null, sub: null },
@@ -140,7 +140,7 @@ const ANMELDUNG = {
   '/v1/admin/api-limits': { success: true, limits: { rebrickable: 25000, bricklink: 4000, brickset: 100 } },
 };
 
-const ABGEMELDET = {
+const SIGNED_OUT = {
   '/v1/startup-status': ANMELDUNG['/v1/startup-status'],
   '/v1/auth/me': { success: true, loggedIn: false },
 };
@@ -152,40 +152,40 @@ process.on('unhandledRejection', e => {
   fehler.push(e);
 });
 
-let _vertrag;
+let _contract;
 const vertrag = () => {
-  if (!_vertrag) {
-    require('./sources').baueDist();
-    _vertrag = {
+  if (!_contract) {
+    require('./sources').buildDist();
+    _contract = {
       ...require(path.join(ROOT, 'dist', 'src', 'vertrag', 'index.js')),
       Fehler: require(path.join(ROOT, 'dist', 'src', 'vertrag', 'grund.js')).Fehler,
     };
   }
-  return _vertrag;
+  return _contract;
 };
 
 /**
  * Die Antwort, wie der Server sie senden dürfte: Fehlende Pflichtfelder
  * ergänzt das Schema der Route (vertrag-fuellen.js); ein falscher Typ wirft. Eine absichtlich kaputte Antwort trägt
- * `$vertragswidrig: '<Grund>'` und geht unverändert hinaus.
+ * `$contractViolating: '<Grund>'` und geht unverändert hinaus.
  */
-function pruefeAntwort(methode, url, daten) {
-  if (!daten || typeof daten !== 'object' || daten === UNBELEGT || daten.$vertragswidrig) return daten;
+function checkResponse(methode, url, daten) {
+  if (!daten || typeof daten !== 'object' || daten === UNASSIGNED || daten.$contractViolating) return daten;
   const pfad =
     '/api' +
     String(url)
       .replace(/^https?:\/\/[^/]+/, '')
       .replace(/^\/api/, '')
       .split('?')[0];
-  const { routeFuerAnfrage, Fehler } = vertrag();
+  const { routeForRequest, Fehler } = vertrag();
   const status = daten.$status ?? 200;
-  const schema = status >= 400 ? Fehler : routeFuerAnfrage(methode.toUpperCase(), pfad)?.antwort;
+  const schema = status >= 400 ? Fehler : routeForRequest(methode.toUpperCase(), pfad)?.antwort;
   if (!schema) return daten;
   const rumpf = Array.isArray(daten)
     ? daten
     : Object.fromEntries(Object.entries(daten).filter(([k]) => !k.startsWith('$')));
   // Fehlerantworten werden nicht ergänzt: error und code sagt der Test selbst.
-  const wert = status >= 400 ? rumpf : vervollstaendige(schema, JSON.parse(JSON.stringify(rumpf)));
+  const wert = status >= 400 ? rumpf : complete(schema, JSON.parse(JSON.stringify(rumpf)));
   const r = schema.safeParse(wert);
   if (!r.success) {
     throw new Error(
@@ -200,14 +200,14 @@ function pruefeAntwort(methode, url, daten) {
 }
 
 // Nicht vorgegebene Pfade: Der Test stützt sich nicht auf sie, also keine Vertragsprüfung.
-const UNBELEGT = Object.freeze({ success: true });
+const UNASSIGNED = Object.freeze({ success: true });
 
-function antwortFuer(antworten, url, o = {}) {
+function responseFor(antworten, url, o = {}) {
   const pfad = String(url)
     .replace(/^https?:\/\/[^/]+/, '')
     .replace(/^\/api/, '')
     .split('?')[0];
-  const a = Object.hasOwn(antworten, pfad) ? antworten[pfad] : UNBELEGT;
+  const a = Object.hasOwn(antworten, pfad) ? antworten[pfad] : UNASSIGNED;
   return typeof a === 'function' ? a(url, o) : a;
 }
 
@@ -225,12 +225,12 @@ async function warte(bedingung, ms = 3000) {
 
 /**
  * @param {object} [antworten]  Pfad → Antwort (Objekt oder Funktion(url))
- * @param {{ angemeldet?: boolean, sprache?: string, browserSprache?: string, vorher?: (w: any) => void, url?: string }} [opt]
+ * @param {{ angemeldet?: boolean, sprache?: string, browserLanguage?: string, vorher?: (w: any) => void, url?: string }} [opt]
  *   url: Adresse der Seite (Vorgabe http://localhost/), etwa https:// für eine Seite mit TLS.
  */
-async function oeffneOberflaeche(antworten = {}, opt = {}) {
+async function openUi(antworten = {}, opt = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
-  const alle = { ...(opt.angemeldet === false ? ABGEMELDET : ANMELDUNG), ...antworten };
+  const alle = { ...(opt.angemeldet === false ? SIGNED_OUT : ANMELDUNG), ...antworten };
   // Die Sprache des Kontos gewinnt beim Laden über die gespeicherte — also beide setzen.
   if (opt.sprache && !antworten['/v1/settings/raw'])
     alle['/v1/settings/raw'] = {
@@ -257,13 +257,13 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
     offen++;
     let daten;
     try {
-      daten = await antwortFuer(alle, url, o);
+      daten = await responseFor(alle, url, o);
     } finally {
       setTimeout(() => offen--, 0);
     }
     // Ausserhalb des Fensters geworfen: Die Oberfläche finge den Fehler sonst als Netzfehler ab.
     try {
-      daten = pruefeAntwort(o.method || 'GET', url, daten);
+      daten = checkResponse(o.method || 'GET', url, daten);
     } catch (e) {
       setImmediate(() => {
         throw e;
@@ -278,7 +278,7 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
     };
   };
   w.console.warn = () => {};
-  if (opt.browserSprache) Object.defineProperty(w.navigator, 'language', { value: opt.browserSprache });
+  if (opt.browserLanguage) Object.defineProperty(w.navigator, 'language', { value: opt.browserLanguage });
   // jsdom kennt keinen IntersectionObserver; nachgeladen wird hier nichts.
   w.IntersectionObserver = class {
     observe() {}
@@ -289,7 +289,7 @@ async function oeffneOberflaeche(antworten = {}, opt = {}) {
   for (const l of ['de', 'en']) w.eval(fs.readFileSync(path.join(ROOT, 'public', 'locales', l + '.js'), 'utf8'));
   if (opt.vorher) opt.vorher(w);
   // Mit Dateinamen statt w.eval(): So ordnet V8 die Abdeckung dem Bündel zu.
-  new (require('node:vm').Script)(BUNDLE, { filename: BUNDLE_PFAD }).runInContext(dom.getInternalVMContext());
+  new (require('node:vm').Script)(BUNDLE, { filename: BUNDLE_PATH }).runInContext(dom.getInternalVMContext());
   if (w.document.readyState === 'loading') await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
   if (opt.angemeldet !== false)
     await warte(
@@ -319,4 +319,4 @@ async function sicht(w, name) {
   await takt(50);
 }
 
-module.exports = { oeffneOberflaeche, reiter, sicht, warte, takt, ANMELDUNG, ABGEMELDET, pruefeAntwort };
+module.exports = { openUi, reiter, sicht, warte, takt, ANMELDUNG, SIGNED_OUT, checkResponse };

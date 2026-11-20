@@ -4,9 +4,9 @@
  * weder Zeile B noch verbucht es deren Menge beim Ziel.
  *
  * Gegenproben (am 08.11.2026 gemessen):
- *   A  erfassungImSchreibfeld() ohne die Schlüsselspalten (wie vorher für Teil und Figur)
+ *   A  entryInWriteField() ohne die Schlüsselspalten (wie vorher für Teil und Figur)
  *      → rot: „Teil, anderer Schlüssel: ändern“, „… andere Farbe“, „… löschen“, „Figur …“
- *   B  manuelleErfassung() ohne die Schlüsselbedingung
+ *   B  manualEntry() ohne die Schlüsselbedingung
  *      → rot: „Verschieben unter fremdem Schlüssel: Teil“ und „Figur …“
  *   (Der Test „richtiger Schlüssel“ wird in beiden Fällen mit rot, weil die Fremdzeile vorher zerstört ist.)
  *
@@ -17,18 +17,18 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
 test('Erfassungen gelten nur unter ihrem Schlüssel', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username IN ($1,$2)', ['sk_haupt', 'sk_kind']);
   const haupt = (await db.get("INSERT INTO users (username,password_hash) VALUES ('sk_haupt','x') RETURNING id")).id;
   const kind = (await db.get("INSERT INTO users (username,password_hash) VALUES ('sk_kind','x') RETURNING id")).id;
@@ -75,8 +75,8 @@ test('Erfassungen gelten nur unter ihrem Schlüssel', { concurrency: 1 }, async 
     ).id;
   const figId = async f =>
     (await db.get('SELECT id FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [haupt, f])).id;
-  const teilZeile = id => db.get('SELECT user_id, quantity FROM part_acquisitions WHERE id=$1', [id]);
-  const figZeile = id => db.get('SELECT user_id, quantity FROM minifig_acquisitions WHERE id=$1', [id]);
+  const partRow = id => db.get('SELECT user_id, quantity FROM part_acquisitions WHERE id=$1', [id]);
+  const figRow = id => db.get('SELECT user_id, quantity FROM minifig_acquisitions WHERE id=$1', [id]);
 
   const { base } = testServer(_req, { sitzung: { userId: haupt }, t });
   const ruf = async (methode, pfad, koerper) => {
@@ -89,45 +89,45 @@ test('Erfassungen gelten nur unter ihrem Schlüssel', { concurrency: 1 }, async 
   };
 
   const b = await teilId('3002', 4);
-  const andereFarbe = await teilId('3001', 5);
+  const otherColor = await teilId('3001', 5);
 
   await t.test('Teil, anderer Schlüssel: ändern', async () => {
     assert.equal(await ruf('PUT', `/api/v1/parts/3001/4/acquisitions/${b}`, { quantity: 99 }), 404);
-    assert.equal((await teilZeile(b)).quantity, 4, 'Zeile von Teil B wurde geändert');
+    assert.equal((await partRow(b)).quantity, 4, 'Zeile von Teil B wurde geändert');
   });
 
   await t.test('Teil, gleiche Nummer, andere Farbe: ändern', async () => {
-    assert.equal(await ruf('PUT', `/api/v1/parts/3001/4/acquisitions/${andereFarbe}`, { quantity: 99 }), 404);
-    assert.equal((await teilZeile(andereFarbe)).quantity, 4);
+    assert.equal(await ruf('PUT', `/api/v1/parts/3001/4/acquisitions/${otherColor}`, { quantity: 99 }), 404);
+    assert.equal((await partRow(otherColor)).quantity, 4);
   });
 
   await t.test('Teil, anderer Schlüssel: löschen', async () => {
     assert.equal(await ruf('DELETE', `/api/v1/parts/3001/4/acquisitions/${b}`), 404);
-    assert.ok(await teilZeile(b), 'Erfassung von Teil B wurde gelöscht');
+    assert.ok(await partRow(b), 'Erfassung von Teil B wurde gelöscht');
   });
 
   await t.test('Verschieben unter fremdem Schlüssel: Teil', async () => {
     assert.equal(await ruf('PUT', `/api/v1/parts/3001/4/acquisitions/${b}`, { owner_user_id: kind }), 404);
-    assert.equal(Number((await teilZeile(b)).user_id), haupt, 'Erfassung von Teil B ist beim Ziel gelandet');
-    const beimKind = await db.all('SELECT part_number FROM parts WHERE user_id=$1', [kind]);
-    assert.deepEqual(beimKind, [], 'beim Ziel entstand eine Teilezeile unter dem Schlüssel der Anfrage');
+    assert.equal(Number((await partRow(b)).user_id), haupt, 'Erfassung von Teil B ist beim Ziel gelandet');
+    const onKind = await db.all('SELECT part_number FROM parts WHERE user_id=$1', [kind]);
+    assert.deepEqual(onKind, [], 'beim Ziel entstand eine Teilezeile unter dem Schlüssel der Anfrage');
   });
 
   await t.test('Figur: ändern, löschen, verschieben unter fremdem Schlüssel', async () => {
     const f2 = await figId('sk0002');
     assert.equal(await ruf('PUT', `/api/v1/minifigs/sk0001/acquisitions/${f2}`, { quantity: 99 }), 404);
-    assert.equal((await figZeile(f2)).quantity, 3, 'Zeile von Figur B wurde geändert');
+    assert.equal((await figRow(f2)).quantity, 3, 'Zeile von Figur B wurde geändert');
     assert.equal(await ruf('DELETE', `/api/v1/minifigs/sk0001/acquisitions/${f2}`), 404);
-    assert.ok(await figZeile(f2), 'Erfassung von Figur B wurde gelöscht');
+    assert.ok(await figRow(f2), 'Erfassung von Figur B wurde gelöscht');
     assert.equal(await ruf('PUT', `/api/v1/minifigs/sk0001/acquisitions/${f2}`, { owner_user_id: kind }), 404);
-    assert.equal(Number((await figZeile(f2)).user_id), haupt);
+    assert.equal(Number((await figRow(f2)).user_id), haupt);
     assert.deepEqual(await db.all('SELECT fig_number FROM minifigs WHERE user_id=$1', [kind]), []);
   });
 
   await t.test('richtiger Schlüssel: ändern und verschieben gehen weiter', async () => {
     const a = await teilId('3001', 4);
     assert.equal(await ruf('PUT', `/api/v1/parts/3001/4/acquisitions/${a}`, { quantity: 7 }), 200);
-    assert.equal((await teilZeile(a)).quantity, 7);
+    assert.equal((await partRow(a)).quantity, 7);
     assert.equal(await ruf('PUT', `/api/v1/parts/3001/4/acquisitions/${a}`, { owner_user_id: kind }), 200);
     assert.equal(
       (

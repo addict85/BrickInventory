@@ -3,7 +3,7 @@
 import { accountCurrency } from './state.js';
 import { G, setzeHtml } from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
-import { detailZeile, pnlBadge } from './bausteine.js';
+import { detailRow, pnlBadge } from './bausteine.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
 import { html, rawHtml, joinHtml } from './escaping.js';
 import { crosshairParts } from './fadenkreuz.js';
@@ -18,10 +18,10 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
   if (!el) return;
   const LABEL = { N: t('common.condition_new'), U: t('common.condition_used') };
   /** @type {('N' | 'U')[]} */
-  const ZUSTAENDE = ['N', 'U'];
+  const STATES = ['N', 'U'];
   // Im Set-Dialog stehen Wert und Gewinn als Kopf oben: Sie sind, was man dort sucht.
   if (el.dataset.kopf) {
-    const teile = ZUSTAENDE.flatMap(c => {
+    const teile = STATES.flatMap(c => {
       const d = ph?.by_condition?.[c];
       return d ? [{ c, d }] : [];
     }).map(({ c, d }) => {
@@ -41,7 +41,7 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
     );
     return;
   }
-  const rows = ZUSTAENDE.flatMap(c => {
+  const rows = STATES.flatMap(c => {
     const d = ph?.by_condition?.[c];
     return d ? [{ c, d }] : [];
   }).map(({ c, d }) => {
@@ -50,8 +50,8 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
         ? html`<span class="preis preis-stark">${fmtN(d.market_price, accountCurrency)}</span>`
         : html`<span data-stil="color:var(--mut)">—</span>`;
     const pnl = pnlBadge(d.pnl_pct, d.purchase_price);
-    return detailZeile(html`${tRaw('detail.market_price')} (${LABEL[c]})`, html`${price}${pnl}`, {
-      wertStil: 'display:flex;align-items:center;gap:8px',
+    return detailRow(html`${tRaw('detail.market_price')} (${LABEL[c]})`, html`${price}${pnl}`, {
+      valueStyle: 'display:flex;align-items:center;gap:8px',
     });
   });
   setzeHtml(el, joinHtml(rows));
@@ -63,7 +63,7 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
  * (jsdom) 700.
  * @param {Element|null} el
  */
-export function diagrammBreite(el, ersatz = 700) {
+export function chartWidth(el, ersatz = 700) {
   const b = Math.round(el?.clientWidth || 0);
   return b > 0 ? Math.max(220, Math.min(2400, b)) : ersatz;
 }
@@ -72,7 +72,7 @@ export function diagrammBreite(el, ersatz = 700) {
  * Die Schriftvergrösserung der Seite (200 % → 2). Schrift und Ränder der Diagramme wachsen damit; die Breite
  * bleibt die des Behälters, sonst schrumpfte das ganze Bild, statt der Schrift mehr Platz zu geben.
  */
-export function schriftFaktor() {
+export function fontFactor() {
   const wurzel =
     typeof getComputedStyle === 'function' && typeof document !== 'undefined'
       ? parseFloat(getComputedStyle(document.documentElement).fontSize)
@@ -82,28 +82,28 @@ export function schriftFaktor() {
 
 /**
  * Platz links für die Beträge der y-Achse: so breit wie der längste, nicht fest.
- * @param {Teilung} teilung
+ * @param {Split} teilung
  * @param {string} cur
  * @param {number} fs
  */
-function achsenRand(teilung, cur, fs) {
+function axesEdge(teilung, cur, fs) {
   const schritt = teilung.werte.length > 1 ? teilung.werte[1] - teilung.werte[0] : 1;
-  const laengste = Math.max(...teilung.werte.map(v => achsenBetrag(v, schritt, cur, fs >= 18).length));
-  return Math.ceil(laengste * fs * 0.62 + fs * 1.2);
+  const longest = Math.max(...teilung.werte.map(v => axesAmount(v, schritt, cur, fs >= 18).length));
+  return Math.ceil(longest * fs * 0.62 + fs * 1.2);
 }
 
 /**
  * Linker Rand und Lage der Achsenbeträge. Bliebe neben ihnen weniger als gut die Hälfte für die Kurve
  * (Telefon, grosse Schrift), stehen die Beträge innen über ihren Rasterlinien: Sonst blieben bei 320 px und
  * 200 % 15 px Kurve.
- * @param {Teilung} teilung
+ * @param {Split} teilung
  * @param {string} cur
  * @param {number} fs
  * @param {number} W
  * @param {number} rechts
  */
-function achsenLage(teilung, cur, fs, W, rechts) {
-  const rand = achsenRand(teilung, cur, fs);
+function axesSituation(teilung, cur, fs, W, rechts) {
+  const rand = axesEdge(teilung, cur, fs);
   const innen = W - rand - rechts < Math.max(160, W * 0.55);
   return { innen, links: innen ? Math.round(fs * 0.5) : rand };
 }
@@ -112,14 +112,14 @@ function achsenLage(teilung, cur, fs, W, rechts) {
 // Werte in Schritten von 1, 2 oder 5 mal einer Zehnerpotenz (4'219 / 4'441 liest niemand), die Zeit als echte
 // Achse statt nach Index — sonst stünde ein Monat so breit da wie ein Tag.
 
-/** Achsenteilung: erster und letzter Strich, dazwischen alle Werte. @typedef {{ von: number, bis: number, werte: number[] }} Teilung */
+/** Achsenteilung: erster und letzter Strich, dazwischen alle Werte. @typedef {{ von: number, bis: number, werte: number[] }} Split */
 
 /**
  * Teilung nach 1-2-5 über [min, max] mit höchstens etwa `ziel` Strichen.
  * @param {number} min @param {number} max @param {number} [ziel]
- * @returns {Teilung}
+ * @returns {Split}
  */
-export function schoeneTeilung(min, max, ziel = 5) {
+export function niceSplit(min, max, ziel = 5) {
   if (!(max > min)) {
     const d = Math.abs(max) * 0.1 || 1;
     min -= d;
@@ -153,13 +153,13 @@ export function zeitpunkt(s) {
  * Monate („Nov. 2025“). Tage auf Deutsch in Ziffern wie jedes Datum im Text („13.09.“ zu „13.09.2026“);
  * „13. Sept.“ daneben las sich wie ein zweites Format. Englisch mit Monatsnamen wie fmtDatum.
  * @param {number} von @param {number} bis  Millisekunden
- * @param {number} maxStriche
+ * @param {number} maxStrokes
  * @returns {{ t: number, text: string }[]}
  */
-export function zeitTeilung(von, bis, maxStriche) {
+export function timeSplit(von, bis, maxStrokes) {
   const TAG = 864e5,
     spanne = Math.max(1, bis - von),
-    max = Math.max(2, maxStriche);
+    max = Math.max(2, maxStrokes);
   const fmt = (/** @type {Intl.DateTimeFormatOptions} */ o) => new Intl.DateTimeFormat(locale(), o);
   const raus = [];
   if (spanne <= 2 * TAG) {
@@ -174,8 +174,8 @@ export function zeitTeilung(von, bis, maxStriche) {
     if (d.getTime() < von) d.setDate(d.getDate() + 1);
     for (; d.getTime() <= bis; d.setDate(d.getDate() + n)) raus.push({ t: d.getTime(), text: f.format(d) });
   } else {
-    const monate = spanne / (30.44 * TAG);
-    const n = [1, 2, 3, 6, 12, 24].find(x => monate / x <= max) ?? 24;
+    const months = spanne / (30.44 * TAG);
+    const n = [1, 2, 3, 6, 12, 24].find(x => months / x <= max) ?? 24;
     const f = fmt({ month: 'short', year: 'numeric' });
     const d = new Date(von);
     d.setDate(1);
@@ -209,7 +209,7 @@ function randAnker(x, rechts, f = 1) {
  * @param {number} f
  * @param {number} fs
  */
-function xBeschriftung(striche, y, rechts, f, fs) {
+function xLabel(striche, y, rechts, f, fs) {
   let frei = -Infinity;
   return striche.map(({ x, text }) => {
     const anker = randAnker(x, rechts, f),
@@ -231,7 +231,7 @@ function xBeschriftung(striche, y, rechts, f, fs) {
  * @param {number} schritt
  * @param {string} cur
  */
-export function achsenBetrag(v, schritt, cur, kurz = false) {
+export function axesAmount(v, schritt, cur, kurz = false) {
   // Bei grosser Schrift Tausender kurz: „2 600 €“ nahm am Telefon die halbe Breite.
   if (kurz && schritt >= 100 && Math.abs(v) >= 1000) {
     const zeichen =
@@ -255,7 +255,7 @@ export function achsenBetrag(v, schritt, cur, kurz = false) {
 /**
  * Gitter und Beschriftung der y-Achse. Beginnt sie nicht bei 0, trägt sie unten einen Achsenbruch: Sonst läse
  * man eine Bewegung von 5 % als Verdopplung.
- * @param {Teilung} teilung
+ * @param {Split} teilung
  * @param {number} min
  * @param {(v: number) => number} yOf
  * @param {number} links
@@ -264,13 +264,13 @@ export function achsenBetrag(v, schritt, cur, kurz = false) {
  * @param {number} unten
  * @param {string} cur
  */
-function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur, f = 1, innen = false) {
+function yAxis(teilung, min, yOf, links, rechts, oben, unten, cur, f = 1, innen = false) {
   const schritt = teilung.werte.length > 1 ? teilung.werte[1] - teilung.werte[0] : 1;
   const striche = teilung.werte
     .filter((/** @type {number} */ v) => v >= min)
     .map(v => {
       const y = yOf(v).toFixed(1);
-      return html`${html`<line x1="${links}" y1="${y}" x2="${rechts}" y2="${y}" stroke="var(--mut)" stroke-opacity=".22" stroke-width="1"/>`}${innen ? '' : html`<text x="${links - 8 * f}" y="${(yOf(v) + 4 * f).toFixed(1)}" font-size="${12 * f}" fill="var(--mut)" text-anchor="end" font-family="inherit">${achsenBetrag(v, schritt, cur, f >= 1.5)}</text>`}`;
+      return html`${html`<line x1="${links}" y1="${y}" x2="${rechts}" y2="${y}" stroke="var(--mut)" stroke-opacity=".22" stroke-width="1"/>`}${innen ? '' : html`<text x="${links - 8 * f}" y="${(yOf(v) + 4 * f).toFixed(1)}" font-size="${12 * f}" fill="var(--mut)" text-anchor="end" font-family="inherit">${axesAmount(v, schritt, cur, f >= 1.5)}</text>`}`;
     });
   const achse = html`<line x1="${links}" y1="${oben}" x2="${links}" y2="${unten}" stroke="var(--mut)" stroke-width="1"/>`;
   const bruch =
@@ -282,26 +282,26 @@ function yAchse(teilung, min, yOf, links, rechts, oben, unten, cur, f = 1, innen
 }
 
 /**
- * Die Beträge innen (achsenLage): nur unterste und oberste Linie, nach der Kurve gezeichnet und mit Rand in
- * der Kartenfarbe; keiner dort, wo die Beschriftung einer Bezugslinie steht (`meiden`, y-Werte).
- * @param {Teilung} teilung
+ * Die Beträge innen (axesSituation): nur unterste und oberste Linie, nach der Kurve gezeichnet und mit Rand in
+ * der Kartenfarbe; keiner dort, wo die Beschriftung einer Bezugslinie steht (`avoid`, y-Werte).
+ * @param {Split} teilung
  * @param {number} min
  * @param {(v: number) => number} yOf
  * @param {number} links
  * @param {string} cur
  * @param {number} f
- * @param {number[]} [meiden]
+ * @param {number[]} [avoid]
  */
-function yBetraegeInnen(teilung, min, yOf, links, cur, f, meiden = []) {
+function yAmountsInner(teilung, min, yOf, links, cur, f, avoid = []) {
   const schritt = teilung.werte.length > 1 ? teilung.werte[1] - teilung.werte[0] : 1;
   const werte = teilung.werte.filter((/** @type {number} */ v) => v >= min);
   return [werte[0], werte[werte.length - 1]]
     .filter((v, i, a) => a.indexOf(v) === i)
-    .filter(v => meiden.every(y => Math.abs(yOf(v) - y) > 30 * f))
+    .filter(v => avoid.every(y => Math.abs(yOf(v) - y) > 30 * f))
     .map(
       v =>
         html`<text x="${links + 4 * f}" y="${(yOf(v) - 5 * f).toFixed(1)}" font-size="${12 * f}" fill="var(--mut)" font-family="inherit"
-      paint-order="stroke" stroke="var(--sur)" stroke-width="${4 * f}" stroke-linejoin="round">${achsenBetrag(v, schritt, cur, f >= 1.5)}</text>`,
+      paint-order="stroke" stroke="var(--sur)" stroke-width="${4 * f}" stroke-linejoin="round">${axesAmount(v, schritt, cur, f >= 1.5)}</text>`,
     );
 }
 
@@ -327,7 +327,7 @@ function umbrechen(text, platz, f) {
  * über Kurve und Endpunkt. `hoehe` ist der Platz, den das Diagramm dafür unten anfügt.
  * @param {{ text: string, farbe: string }[]} eintraege @param {number} W @param {number} f
  */
-function bezugsLegende(eintraege, W, f) {
+function referenceLegend(eintraege, W, f) {
   let y = 0;
   const teile = eintraege.map(e => {
     const zeilen = umbrechen(e.text, W - 8 - 22 * f, f);
@@ -351,7 +351,7 @@ function bezugsLegende(eintraege, W, f) {
 const imBild = (text, links, rechts, f) => umbrechen(text, rechts - links - 8, f).length === 1;
 
 /**
- * Waagrechte, gestrichelte Bezugslinie (Einstand, Kaufpreis) mit Beschriftung am rechten Ende. `endeY` ist
+ * Waagrechte, gestrichelte Bezugslinie (Einstand, Kaufpreis) mit Beschriftung am rechten Ende. `endY` ist
  * die Höhe der Kurve dort: Läge die Schrift auf ihr, steht sie auf der anderen Seite der Linie.
  * @param {number} wert
  * @param {(v: number) => number} yOf
@@ -360,14 +360,14 @@ const imBild = (text, links, rechts, f) => umbrechen(text, rechts - links - 8, f
  * @param {string} text
  * @param {string} [farbe]
  */
-function bezugsLinie(
+function referenceLine(
   wert,
   yOf,
   links,
   rechts,
   text,
   farbe = 'var(--txt)',
-  /** @type {number | null} */ endeY = null,
+  /** @type {number | null} */ endY = null,
   /** @type {number} */ f = 1,
   /** @type {number} */ unten = Infinity,
 ) {
@@ -377,10 +377,10 @@ function bezugsLinie(
   const zeilen = umbrechen(text, rechts - links - 8, f);
   const hoehe = 14 * f * (zeilen.length - 1);
   // Über der Linie, ausser die Kurve endet dort oder oben ist kein Platz (Linie am oberen Rand).
-  const obenKeinPlatz = y - 6 * f - hoehe - 12 * f < 0; // 12 px je Faktor: die Oberlänge der Schrift
+  const topNoSpace = y - 6 * f - hoehe - 12 * f < 0; // 12 px je Faktor: die Oberlänge der Schrift
   // Darunter nur, wenn es dort Platz hat: Zwei Zeilen am unteren Rand liefen sonst aus dem Diagramm.
   const darunter =
-    (endeY != null && endeY < y && y - endeY < 26 * f + hoehe && y + 16 * f + hoehe + 4 * f <= unten) || obenKeinPlatz;
+    (endY != null && endY < y && y - endY < 26 * f + hoehe && y + 16 * f + hoehe + 4 * f <= unten) || topNoSpace;
   const erste = darunter ? y + 16 * f : y - 6 * f - hoehe;
   const tspans = zeilen.map((z, i) => (i ? html`<tspan x="${rechts - 4}" dy="${14 * f}">${z}</tspan>` : z));
   return html`<g class="einstand-linie">${linie}
@@ -395,15 +395,15 @@ function bezugsLinie(
  * Die Reihen des Preisverlaufs je Zustand, aus den Diagrammdaten des Servers (src/finanzen/chartData.ts). Vor
  * firstRealIndex stehen aufgefüllte Nullen; der Kaufpreis am Kauftag ist kein Marktpreis und steht als Punkt
  * da.
- * @param {Preisdaten} data @returns {{ key: string, name: string, color: string, pts: { x: string, y: number }[], kauf: number, kaufTag: string | null }[]}
+ * @param {Preisdaten} data @returns {{ key: string, name: string, color: string, pts: { x: string, y: number }[], kauf: number, purchaseTag: string | null }[]}
  */
-function preisReihen(data) {
+function priceRows(data) {
   /** @type {Record<string, string>} */
   const NAMES = { N: tRaw('common.condition_new'), U: tRaw('common.condition_used') };
   // Farben aus dem Design; var() greift in inline-SVG auch in stroke und stop-color.
   /** @type {Record<string, string>} */
   const COLORS = { N: 'var(--chart-new)', U: 'var(--chart-used)' };
-  const kaufTage = (/** @type {string} */ k) =>
+  const purchaseDays = (/** @type {string} */ k) =>
     new Set(
       ((k === 'U' ? data?.history_used : data?.history_new) || [])
         .filter(p => p?.is_purchase_price)
@@ -411,14 +411,14 @@ function preisReihen(data) {
     );
   return (data?.chart?.values || [])
     .map(sd => {
-      const tage = kaufTage(sd.name);
+      const tage = purchaseDays(sd.name);
       return {
         key: sd.name,
         name: NAMES[sd.name] || sd.name,
         color: COLORS[sd.name] || 'var(--mut)',
         pts: (sd.values || []).slice(sd.firstRealIndex ?? 0).filter(pt => pt.y > 0 && !tage.has(String(pt.x))),
         kauf: Number(sd.name === 'N' || sd.name === 'U' ? data?.by_condition?.[sd.name]?.purchase_price : 0) || 0,
-        kaufTag: [...tage][0] || null,
+        purchaseTag: [...tage][0] || null,
       };
     })
     .filter(sd => sd.pts.length > 0);
@@ -430,7 +430,7 @@ function preisReihen(data) {
  * @param {{ color: string, pts: { x: string, y: number }[] }} sd @param {string} gid
  * @param {(d: string) => number} xOf @param {(v: number) => number} yOf @param {number} unten @param {number} f
  */
-function preisLinie(sd, gid, xOf, yOf, unten, f) {
+function priceLine(sd, gid, xOf, yOf, unten, f) {
   const pts = sd.pts.map(p => `${xOf(p.x).toFixed(1)},${yOf(p.y).toFixed(1)}`);
   if (pts.length < 2) {
     const [cx, cy] = pts[0].split(',');
@@ -446,7 +446,7 @@ function preisLinie(sd, gid, xOf, yOf, unten, f) {
 }
 
 /** Kennungen der Verläufe im SVG; ein Zähler genügt, sie müssen nur auf der Seite eindeutig sein. */
-let _naechsteKennung = 0;
+let _nextId = 0;
 
 /**
  * Preisverlauf mit zwei Linien (neu und gebraucht) auf gemeinsamer Skala. Die x-Position kommt vom Datum,
@@ -459,9 +459,9 @@ let _naechsteKennung = 0;
  * @param {Set<string>} [mittel] Zustände, deren Kaufpreis das Mittel mehrerer Käufe ist („Ø Kaufpreis“)
  * @returns {import('./escaping.js').SafeHtml} SVG-Markup oder ein Hinweistext
  */
-export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700, mittel = new Set()) {
+export function priceChartSVG(data, uid = `p${++_nextId}`, breite = 700, mittel = new Set()) {
   const axis = data?.chart?.x || [];
-  const series = preisReihen(data);
+  const series = priceRows(data);
 
   if (!series.length || axis.length < 2) {
     return html`<span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('detail.no_history')}</span>`;
@@ -469,33 +469,38 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
 
   const toTime = zeitpunkt;
   // Die Achse beginnt beim ersten Marktpreis; ein früherer Kauf steht als Punkt am linken Rand.
-  const ersterPunkt = series.flatMap(sd => sd.pts.map(p => p.x)).sort((a, b) => toTime(a) - toTime(b))[0];
-  const first = toTime(ersterPunkt) < toTime(axis[axis.length - 1]) ? ersterPunkt : axis[0],
+  const firstPoint = series.flatMap(sd => sd.pts.map(p => p.x)).sort((a, b) => toTime(a) - toTime(b))[0];
+  const first = toTime(firstPoint) < toTime(axis[axis.length - 1]) ? firstPoint : axis[0],
     last = axis[axis.length - 1];
   const span = Math.max(1, toTime(last) - toTime(first));
 
   const kaeufe = series.filter(sd => sd.kauf > 0);
   const vals = [...series.flatMap(sd => sd.pts.map(p => p.y)), ...kaeufe.map(sd => sd.kauf)];
-  const teilung = schoeneTeilung(Math.min(...vals), Math.max(...vals), 4);
+  const teilung = niceSplit(Math.min(...vals), Math.max(...vals), 4);
   const min = Math.max(0, teilung.von),
     max = teilung.bis,
     range = max - min || 1;
-  const f = schriftFaktor(),
+  const f = fontFactor(),
     fs = 12 * f;
   const W = breite;
-  const lage = achsenLage(teilung, accountCurrency, fs, W, 14 * f);
-  const PAD = { l: lage.links, r: lage.innen ? 6 * f : 14 * f, t: lage.innen ? 22 * f : 12 * f, b: 46 * f };
-  const kaufText = (/** @type {{ key: string, name: string, kauf: number }} */ sd) =>
+  const situation = axesSituation(teilung, accountCurrency, fs, W, 14 * f);
+  const PAD = {
+    l: situation.links,
+    r: situation.innen ? 6 * f : 14 * f,
+    t: situation.innen ? 22 * f : 12 * f,
+    b: 46 * f,
+  };
+  const purchaseText = (/** @type {{ key: string, name: string, kauf: number }} */ sd) =>
     `${tRaw(mittel.has(sd.key) ? 'detail.purchase_price_avg' : 'detail.purchase_price')}${series.length > 1 ? ' ' + sd.name : ''} ${fmtN(sd.kauf, accountCurrency)}`;
-  const legende = bezugsLegende(
+  const legende = referenceLegend(
     kaeufe
-      .filter(sd => !imBild(kaufText(sd), PAD.l, W - PAD.r, f))
-      .map(sd => ({ text: kaufText(sd), farbe: sd.color })),
+      .filter(sd => !imBild(purchaseText(sd), PAD.l, W - PAD.r, f))
+      .map(sd => ({ text: purchaseText(sd), farbe: sd.color })),
     W,
     f,
   );
-  const hKurve = Math.round(200 * (1 + (f - 1) * 0.6)),
-    H = hKurve + legende.hoehe;
+  const hCurve = Math.round(200 * (1 + (f - 1) * 0.6)),
+    H = hCurve + legende.hoehe;
   PAD.b += legende.hoehe;
   const iw = W - PAD.l - PAD.r,
     ih = H - PAD.t - PAD.b,
@@ -503,36 +508,36 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
   const yOf = (/** @type {number} */ v) => PAD.t + ih - ((v - min) / range) * ih;
   const xOf = (/** @type {string} */ d) => PAD.l + ((toTime(d) - toTime(first)) / span) * iw;
 
-  const parts = series.map((sd, i) => preisLinie(sd, `pg-${uid}-${i}`, xOf, yOf, unten, f));
+  const parts = series.map((sd, i) => priceLine(sd, `pg-${uid}-${i}`, xOf, yOf, unten, f));
 
-  const kaufLinien = kaeufe.map(sd =>
-    bezugsLinie(
+  const purchaseLines = kaeufe.map(sd =>
+    referenceLine(
       sd.kauf,
       yOf,
       PAD.l,
       W - PAD.r,
-      imBild(kaufText(sd), PAD.l, W - PAD.r, f) ? kaufText(sd) : '',
+      imBild(purchaseText(sd), PAD.l, W - PAD.r, f) ? purchaseText(sd) : '',
       sd.color,
       yOf(sd.pts[sd.pts.length - 1].y),
       f,
-      hKurve,
+      hCurve,
     ),
   );
 
-  const kaufPunkte = kaeufe
-    .flatMap(sd => (sd.kaufTag ? [{ ...sd, kaufTag: sd.kaufTag }] : []))
+  const purchasePoints = kaeufe
+    .flatMap(sd => (sd.purchaseTag ? [{ ...sd, purchaseTag: sd.purchaseTag }] : []))
     .map(
       sd =>
-        html`<circle cx="${Math.max(PAD.l, xOf(sd.kaufTag)).toFixed(1)}" cy="${yOf(sd.kauf).toFixed(1)}" r="${4.5 * f}" fill="var(--sur)" stroke="${sd.color}" stroke-width="2" class="kaufpunkt"><title>${tRaw('detail.purchase_price')} ${fmtN(sd.kauf, accountCurrency)}</title></circle>`,
+        html`<circle cx="${Math.max(PAD.l, xOf(sd.purchaseTag)).toFixed(1)}" cy="${yOf(sd.kauf).toFixed(1)}" r="${4.5 * f}" fill="var(--sur)" stroke="${sd.color}" stroke-width="2" class="kaufpunkt"><title>${tRaw('detail.purchase_price')} ${fmtN(sd.kauf, accountCurrency)}</title></circle>`,
     );
 
   const fmtDay = (/** @type {string} */ d) => fmtDatum(new Date(toTime(d)));
-  const xTicks = xBeschriftung(
-    zeitTeilung(toTime(first), toTime(last), Math.floor(iw / (80 * f))).map(s => ({
+  const xTicks = xLabel(
+    timeSplit(toTime(first), toTime(last), Math.floor(iw / (80 * f))).map(s => ({
       x: PAD.l + ((s.t - toTime(first)) / span) * iw,
       text: s.text,
     })),
-    hKurve - 26 * f,
+    hCurve - 26 * f,
     W - PAD.r,
     f,
     fs,
@@ -540,7 +545,7 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
   const legend = series.map(
     (sd, i) =>
       // Ab dem linken Rand statt ab der Achse: Bei grosser Schrift ist der Achsenrand so breit, dass „Neuware“ sonst rechts abbricht.
-      html`<g transform="translate(${4 + i * Math.min(120 * f, (W - 8) / series.length)}, ${hKurve - 6 * f})">
+      html`<g transform="translate(${4 + i * Math.min(120 * f, (W - 8) / series.length)}, ${hCurve - 6 * f})">
        <line x1="0" y1="${-4 * f}" x2="${16 * f}" y2="${-4 * f}" stroke="${sd.color}" stroke-width="2.5" stroke-linecap="round"/>
        <text x="${22 * f}" y="0" font-size="${fs}" fill="var(--txt)" font-family="inherit">${sd.name}</text>
      </g>`,
@@ -588,13 +593,13 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
     .filter(Boolean)
     .join('. ');
   return html`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" class="diagramm diagramm-preis" role="img" aria-label="${zusammenfassung}" data-flaeche="${iw.toFixed(0)}"${rawHtml(fk.attr)}>
-    ${yAchse(teilung, min, yOf, PAD.l, W - PAD.r, PAD.t, unten, accountCurrency, f, lage.innen)}
+    ${yAxis(teilung, min, yOf, PAD.l, W - PAD.r, PAD.t, unten, accountCurrency, f, situation.innen)}
     ${parts}
-    ${kaufLinien}
-    ${kaufPunkte}
+    ${purchaseLines}
+    ${purchasePoints}
     ${
-      lage.innen
-        ? yBetraegeInnen(
+      situation.innen
+        ? yAmountsInner(
             teilung,
             min,
             yOf,
@@ -606,7 +611,7 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
         : ''
     }
     ${xTicks}
-    ${legend}${legende.svg(hKurve)}
+    ${legend}${legende.svg(hCurve)}
     ${fk.svg}
   </svg>`;
 }
@@ -615,7 +620,7 @@ export function priceChartSVG(data, uid = `p${++_naechsteKennung}`, breite = 700
  * @param {{ day: string, total: number, zeit?: number }[]} data
  *   `zeit` (ms) setzt die Punkte auf eine echte Zeitachse; fehlt sie, nach Index.
  * @param {number} [einstand] Summe der Kaufpreise; > 0 zeichnet die Einstand-Linie.
- * @param {string} [einstandText] Name der Einstand-Linie
+ * @param {string} [costText] Name der Einstand-Linie
  * @param {string} _period
  */
 export function portfolioChartSVG(
@@ -624,33 +629,38 @@ export function portfolioChartSVG(
   breite = 700,
   einstand = 0,
   cur = accountCurrency,
-  einstandText = tRaw('finance.stat.purchase'),
+  costText = tRaw('finance.stat.purchase'),
 ) {
   const vals = data.map(d => d.total || 0);
   if (vals.length < 2) return diagrammLeer();
 
-  const mitEinstand = einstand > 0;
-  const teilung = schoeneTeilung(
-    Math.min(...vals, ...(mitEinstand ? [einstand] : [])),
-    Math.max(...vals, ...(mitEinstand ? [einstand] : [])),
+  const withCost = einstand > 0;
+  const teilung = niceSplit(
+    Math.min(...vals, ...(withCost ? [einstand] : [])),
+    Math.max(...vals, ...(withCost ? [einstand] : [])),
     5,
   );
   const min = Math.max(0, teilung.von),
     max = teilung.bis,
     range = max - min || 1;
-  const f = schriftFaktor(),
+  const f = fontFactor(),
     fs = 12 * f;
   const W = breite,
-    lage = achsenLage(teilung, cur, fs, W, 16 * f);
-  const PAD = { l: lage.links, r: lage.innen ? 6 * f : 16 * f, t: lage.innen ? 24 * f : 14 * f, b: 32 * f };
+    situation = axesSituation(teilung, cur, fs, W, 16 * f);
+  const PAD = {
+    l: situation.links,
+    r: situation.innen ? 6 * f : 16 * f,
+    t: situation.innen ? 24 * f : 14 * f,
+    b: 32 * f,
+  };
   // Schmal nur „Kaufpreis“: Der Zusatz („nur bewertete Posten“) steht in der Kennzahl darunter.
-  const bezugText = mitEinstand
-    ? `${W < 560 ? tRaw('finance.chart.kaufpreis') : einstandText} ${fmtN(einstand, cur)}`
+  const referenceText = withCost
+    ? `${W < 560 ? tRaw('finance.chart.kaufpreis') : costText} ${fmtN(einstand, cur)}`
     : '';
-  const unterDemBild = !!bezugText && !imBild(bezugText, PAD.l, W - PAD.r, f);
-  const legende = bezugsLegende(unterDemBild ? [{ text: bezugText, farbe: 'var(--txt)' }] : [], W, f);
-  const hKurve = Math.round(180 * (1 + (f - 1) * 0.6)),
-    H = hKurve + legende.hoehe;
+  const belowTheImage = !!referenceText && !imBild(referenceText, PAD.l, W - PAD.r, f);
+  const legende = referenceLegend(belowTheImage ? [{ text: referenceText, farbe: 'var(--txt)' }] : [], W, f);
+  const hCurve = Math.round(180 * (1 + (f - 1) * 0.6)),
+    H = hCurve + legende.hoehe;
   PAD.b += legende.hoehe;
   const iw = W - PAD.l - PAD.r,
     ih = H - PAD.t - PAD.b,
@@ -658,22 +668,22 @@ export function portfolioChartSVG(
 
   const color = 'var(--chart-wert, var(--chart-new))';
   const n = vals.length;
-  const zeiten = data.map(d => d.zeit ?? NaN);
-  const mitZeit = zeiten.every(Number.isFinite) && zeiten[n - 1] > zeiten[0];
-  const t0 = mitZeit ? zeiten[0] : 0,
-    spanne = mitZeit ? zeiten[n - 1] - t0 : 1;
+  const times = data.map(d => d.zeit ?? NaN);
+  const withTime = times.every(Number.isFinite) && times[n - 1] > times[0];
+  const t0 = withTime ? times[0] : 0,
+    spanne = withTime ? times[n - 1] - t0 : 1;
 
   /**
    * @param {number} t
    */
-  function pxZeit(t) {
+  function pxTime(t) {
     return PAD.l + ((t - t0) / spanne) * iw;
   }
   /**
    * @param {number} i
    */
   function px(i) {
-    return mitZeit ? pxZeit(zeiten[i]) : PAD.l + (n === 1 ? iw / 2 : (i / (n - 1)) * iw);
+    return withTime ? pxTime(times[i]) : PAD.l + (n === 1 ? iw / 2 : (i / (n - 1)) * iw);
   }
   /**
    * @param {number} v
@@ -688,10 +698,10 @@ export function portfolioChartSVG(
   // Je Beschriftung rund 70 px, damit sie sich am Telefon nicht überlappen.
   /** @type {import('./escaping.js').Markup} */
   let xLabels = html``;
-  if (mitZeit) {
-    xLabels = xBeschriftung(
-      zeitTeilung(t0, zeiten[n - 1], Math.floor(iw / (70 * f))).map(s => ({ x: pxZeit(s.t), text: s.text })),
-      hKurve - 8 * f,
+  if (withTime) {
+    xLabels = xLabel(
+      timeSplit(t0, times[n - 1], Math.floor(iw / (70 * f))).map(s => ({ x: pxTime(s.t), text: s.text })),
+      hCurve - 8 * f,
       W - PAD.r,
       f,
       fs,
@@ -700,22 +710,22 @@ export function portfolioChartSVG(
     const step = Math.max(1, Math.ceil(n / Math.max(2, Math.min(7, Math.floor(iw / (70 * f))))));
     for (let i = 0; i < n; i += step)
       if (data[i].day)
-        xLabels = html`${xLabels}${html`<text x="${px(i).toFixed(1)}" y="${hKurve - 8 * f}" text-anchor="middle" font-size="${fs}" fill="var(--mut)" font-family="inherit">${data[i].day}</text>`}`;
+        xLabels = html`${xLabels}${html`<text x="${px(i).toFixed(1)}" y="${hCurve - 8 * f}" text-anchor="middle" font-size="${fs}" fill="var(--mut)" font-family="inherit">${data[i].day}</text>`}`;
   }
 
-  const wann = (/** @type {number} */ i) => (mitZeit ? fmtDatum(new Date(zeiten[i])) : data[i].day);
+  const wann = (/** @type {number} */ i) => (withTime ? fmtDatum(new Date(times[i])) : data[i].day);
   const letzter = html`<circle cx="${px(n - 1).toFixed(1)}" cy="${py(vals[n - 1]).toFixed(1)}" r="${4 * f}" fill="${color}" stroke="var(--sur)" stroke-width="1.5"/>`;
-  const linie = mitEinstand
-    ? bezugsLinie(
+  const linie = withCost
+    ? referenceLine(
         einstand,
         py,
         PAD.l,
         W - PAD.r,
-        unterDemBild ? '' : bezugText,
+        belowTheImage ? '' : referenceText,
         'var(--txt)',
         py(vals[n - 1]),
         f,
-        hKurve,
+        hCurve,
       )
     : '';
   const fk = crosshairParts(
@@ -734,7 +744,7 @@ export function portfolioChartSVG(
       start: fmtN(vals[0], cur),
       ende: fmtN(vals[n - 1], cur),
     }),
-    mitEinstand ? `${einstandText} ${fmtN(einstand, cur)}` : '',
+    withCost ? `${costText} ${fmtN(einstand, cur)}` : '',
     min > 0 ? tRaw('chart.axis_from', { wert: fmtN(min, cur) }) : '',
     tRaw('chart.keys'),
   ]
@@ -745,11 +755,11 @@ export function portfolioChartSVG(
     <stop offset="0%" stop-color="${color}" stop-opacity=".15"/>
     <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
   </linearGradient></defs>
-  ${yAchse(teilung, min, py, PAD.l, W - PAD.r, PAD.t, unten, cur, f, lage.innen)}${xLabels}
+  ${yAxis(teilung, min, py, PAD.l, W - PAD.r, PAD.t, unten, cur, f, situation.innen)}${xLabels}
   <polygon points="${area}" fill="url(#pcg)"/>
   <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-  ${linie}${letzter}${legende.svg(hKurve)}
-  ${lage.innen ? yBetraegeInnen(teilung, min, py, PAD.l, cur, f, mitEinstand ? [py(einstand)] : []) : ''}
+  ${linie}${letzter}${legende.svg(hCurve)}
+  ${situation.innen ? yAmountsInner(teilung, min, py, PAD.l, cur, f, withCost ? [py(einstand)] : []) : ''}
   ${fk.svg}
 </svg>`;
 }

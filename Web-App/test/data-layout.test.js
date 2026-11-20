@@ -36,7 +36,7 @@ test('keine Quelle schreibt mehr die alten Pfade', () => {
   for (const f of SOURCES) {
     const src = strip(read(f));
     // In server.ts sind die Alt-Pfade als Weiterleitung noch erlaubt — dort
-    // stehen sie in app.get(...) und in cdnFuerFehlendesBild, nicht als
+    // stehen sie in app.get(...) und in cdnForMissingImage, nicht als
     // Ziel eines Schreibvorgangs.
     const writes = [...src.matchAll(/=\s*[`'"]\/data\/(part_images|instructions\/shared)\//g)];
     assert.deepEqual(
@@ -97,17 +97,17 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
   // strip() vor dem Schneiden, sonst schiebt ein Erklärtext die Zeile hinaus.
   assert.match(
     strip(read('routes/seiten.ts')),
-    /router\.get\('\/images\/\*pfad',[^)]*\)\s*=>\s*liefereBild\(d, req, res\)\)/,
+    /router\.get\('\/images\/\*pfad',[^)]*\)\s*=>\s*deliverImage\(d, req, res\)\)/,
     'Bildroute nicht gefunden',
   );
   const src = strip(read('src/bilder/http/bildAuslieferung.ts'));
-  const start = src.indexOf('function liefereBild(');
+  const start = src.indexOf('function deliverImage(');
   assert.ok(start > 0, 'Bildroute nicht gefunden');
   const route = src.slice(start, start + 2000);
-  assert.match(route, /nutzerIdDerAnfrage\(d\.konto, req\)/, 'Ohne Anmeldeprüfung wären die Bilder öffentlich');
+  assert.match(route, /userIdTheRequest\(d\.konto, req\)/, 'Ohne Anmeldeprüfung wären die Bilder öffentlich');
   assert.match(
     route,
-    /cdnFuerFehlendesBild/,
+    /cdnForMissingImage/,
     'Fehlt die lokale Datei, muss weiterhin auf den Bild-Proxy umgeleitet werden',
   );
 });
@@ -130,7 +130,7 @@ test('es gibt keine Abwärtskompatibilität für die alten Pfade mehr', () => {
   assert.doesNotMatch(
     paths,
     /LEGACY_PART_IMAGES|LEGACY_SHARED_INSTR/,
-    'webPfadAufloesen darf keine Alt-Präfixe mehr kennen',
+    'resolveWebPath darf keine Alt-Präfixe mehr kennen',
   );
 });
 

@@ -1,7 +1,7 @@
 /**
  * Statischer XSS-Regressionstest für public/js/.
  */
-const { istAppModul } = require('../scripts/build-frontend');
+const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -10,12 +10,12 @@ const path = require('node:path');
 const JS_DIR = path.join(__dirname, '..', 'public', 'js');
 const FILES = fs
   .readdirSync(JS_DIR)
-  .filter(f => istAppModul(f))
+  .filter(f => isAppModule(f))
   .sort();
 
 // Die Helfer selbst, nicht nachgebaut: escaping.js ist DOM-frei und lädt in Node.
-const helfer = import(require('node:url').pathToFileURL(path.join(JS_DIR, 'escaping.js')).href);
-const loadHelpers = () => helfer;
+const helper = import(require('node:url').pathToFileURL(path.join(JS_DIR, 'escaping.js')).href);
+const loadHelpers = () => helper;
 
 test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
   const { esc } = await loadHelpers();
@@ -125,8 +125,8 @@ test('kein onXxx-Handler mit ungeprüftem Datenfeld', () => {
 test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
   // Alle Maskierer liegen in escaping.js (DOM-frei, auch der BrickLink-Export
   // lädt es). Zwei Fassungen desselben Maskierers liefen schon einmal auseinander.
-  const zuhause = { esc: 'escaping.js', escJs: 'escaping.js', escUrl: 'escaping.js', escHex: 'escaping.js' };
-  for (const [name, datei] of Object.entries(zuhause)) {
+  const home = { esc: 'escaping.js', escJs: 'escaping.js', escUrl: 'escaping.js', escHex: 'escaping.js' };
+  for (const [name, datei] of Object.entries(home)) {
     const defs = FILES.filter(f =>
       new RegExp(`function\\s+${name}\\s*\\(`).test(fs.readFileSync(path.join(JS_DIR, f), 'utf8')),
     );
@@ -171,23 +171,23 @@ test('Übersetzungen für reinen Text laufen über tRaw(), nicht über t()', () 
 test('serverseitige Fehlermeldungen laufen im HTML-Kontext durch esc()', () => {
   // Woher dieser Test kommt
   const bad = [];
-  const FELD = /\w+\.(?:error|message)\b/g;
+  const FIELD = /\w+\.(?:error|message)\b/g;
   for (const f of FILES) {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
     let ab = 0;
     src.split('\n').forEach((line, i) => {
-      const zeileAb = ab;
+      const rowAb = ab;
       ab += line.length + 1;
       if (/^\s*(\/\/|\*)/.test(line)) return;
       if (!/<\w/.test(line)) return; // kein HTML-Kontext
       for (const m of line.matchAll(/\$\{([^}]*)\}/g)) {
         // In html`` maskiert die Vorlage selbst — ausser der Wert geht durch rawHtml().
-        const vor = src.lastIndexOf('`', zeileAb + (m.index ?? 0));
+        const vor = src.lastIndexOf('`', rowAb + (m.index ?? 0));
         if (src.slice(vor - 4, vor) === 'html' && !/rawHtml\(/.test(m[1])) continue;
         // Zeichenkettenliterale entfernen, damit Übersetzungsschlüssel
         // ('…error') nicht als Datenfeld gelten.
         const ausdruck = m[1].replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");
-        for (const treffer of ausdruck.matchAll(FELD)) {
+        for (const treffer of ausdruck.matchAll(FIELD)) {
           const danach = ausdruck.slice(treffer.index + treffer[0].length).trimStart();
           if (danach.startsWith('?')) continue; // Bedingungsstellung
           const davor = ausdruck.slice(0, treffer.index);

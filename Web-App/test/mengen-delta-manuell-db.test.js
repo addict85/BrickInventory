@@ -5,10 +5,10 @@
  * über den Dienst (Gleichzeitigkeit).
  *
  * Gegenproben (31.10.2026 gemessen):
- *   A  in passeManuelleMengeAn die Zielmenge aus `vorab` statt aus den in der
+ *   A  in passeManualQuantityAn die Zielmenge aus `upfront` statt aus den in der
  *      Sperre gelesenen Erfassungen → rot: „zwei gleichzeitige +1" (3 statt 4)
  *   B  mengenwunsch() ohne den quantity_delta-Zweig → rot: alle Fälle
- *   C  Untergrenze MINDESTENS auf 0 → rot: „ein Schritt unter 1 bleibt bei 1"
+ *   C  Untergrenze AT_LEAST auf 0 → rot: „ein Schritt unter 1 bleibt bei 1"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -17,10 +17,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { testServer } = require('./helpers/server');
 
 const NAME = `mdelta_${process.pid}`,
@@ -28,7 +28,7 @@ const NAME = `mdelta_${process.pid}`,
   FIGUR = 'fig-md01';
 
 test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(

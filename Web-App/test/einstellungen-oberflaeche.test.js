@@ -22,7 +22,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 // anna ist das angemeldete Konto: Gegen sich selbst gibt es keine Knöpfe.
 const NUTZER = {
@@ -44,7 +44,7 @@ const NUTZER = {
 };
 
 test('Speichern-Knöpfe sehen gleich aus', async () => {
-  const { w, d } = await oeffneOberflaeche(NUTZER);
+  const { w, d } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
     const knoepfe = ['btn-sav-bl', 'btn-sav-rb', 'btn-sav-bs', 'btn-sav-smtp', 'btn-sav-prof']
@@ -63,7 +63,7 @@ test('Speichern-Knöpfe sehen gleich aus', async () => {
 });
 
 test('Aktionen der Benutzertabelle sind benannt', async () => {
-  const { w, d } = await oeffneOberflaeche(NUTZER);
+  const { w, d } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
     await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
@@ -87,7 +87,7 @@ test('Aktionen der Benutzertabelle sind benannt', async () => {
 });
 
 test('Admin-Rechte entziehen schickt is_admin:false', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche(NUTZER);
+  const { w, d, aufrufe } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
     await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
@@ -107,7 +107,7 @@ test('Admin-Rechte entziehen schickt is_admin:false', async () => {
 });
 
 test('Deaktivieren und Aktivieren schicken is_active mit dem Passwort', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche(NUTZER);
+  const { w, d, aufrufe } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
     await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
@@ -143,7 +143,7 @@ test('SMTP: Hinweis auf die alte Ausnahme, Fingerabdruck und PEM gehen mit', asy
       smtp_tls_fingerprint: 'AB:CD',
     },
   };
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     ...NUTZER,
     '/v1/settings/raw': roh,
     '/v1/settings': { success: true },
@@ -159,9 +159,9 @@ test('SMTP: Hinweis auf die alte Ausnahme, Fingerabdruck und PEM gehen mit', asy
     assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Passwortdialog');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
-    const istPost = a => a.method === 'POST' && a.url.endsWith('/v1/settings');
-    await warte(() => aufrufe.some(istPost));
-    const post = aufrufe.find(istPost);
+    const isPost = a => a.method === 'POST' && a.url.endsWith('/v1/settings');
+    await warte(() => aufrufe.some(isPost));
+    const post = aufrufe.find(isPost);
     assert.ok(post, 'Nicht gespeichert');
     const body = JSON.parse(post.body);
     assert.deepEqual(
@@ -178,7 +178,7 @@ test('SMTP: Hinweis auf die alte Ausnahme, Fingerabdruck und PEM gehen mit', asy
 });
 
 test('Schlüssel verdeckt, mit Knopf zum Anzeigen', async () => {
-  const { w, d } = await oeffneOberflaeche(NUTZER);
+  const { w, d } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
     await warte(() => d.getElementById('rb-key').value === 'probe');
@@ -198,7 +198,7 @@ test('Schlüssel verdeckt, mit Knopf zum Anzeigen', async () => {
 });
 
 test('Sprungleiste zu den Abschnitten', async () => {
-  const { w, d } = await oeffneOberflaeche(NUTZER);
+  const { w, d } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
     const ziele = [...d.querySelectorAll('#tab-settings .einst-nav a')].map(a => a.getAttribute('href'));

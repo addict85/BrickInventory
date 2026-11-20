@@ -2,63 +2,67 @@
  * (über src/fremdquellen) entstehen aus einem Datenbankzugang. Der Einstieg (server.ts, Skripte,
  * Testhilfen) hält das Ergebnis und reicht es weiter; einen Prozess-Speicher gibt es nicht. */
 import path from 'node:path';
-import { erzeugeAuftraege, type Anmeldung, type AuftragsArt } from '../src/auftraege';
-import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
-import { erzeugeSets } from '../src/sets';
-import { erzeugeHaushalt } from '../src/haushalt';
+import { createJobs, type Anmeldung, type JobKind } from '../src/auftraege';
+import { dbKonfigFromEnvironment, createDb, type Db } from '../db/database';
+import { createSets } from '../src/sets';
+import { createHousehold } from '../src/haushalt';
 import { createMail } from '../src/mail';
 import { createIdempotency } from '../src/idempotency';
-import { erzeugeBestand } from '../src/bestand';
+import { createInventory } from '../src/bestand';
 import { createParts } from '../src/parts';
 import { createMinifigs } from '../src/minifigs';
 import { createWanted } from '../src/wanted';
 import { createVouchers } from '../src/vouchers';
 import { createCollection } from '../src/collection';
 import { createManagement } from '../src/management';
-import { erzeugeKatalog } from '../src/katalog';
-import { type Bildwerk, erzeugeBilder } from '../src/bilder';
-import { erzeugeFinanzen } from '../src/finanzen';
-import { erzeugeKonto } from '../src/konto';
+import { createCatalog } from '../src/katalog';
+import { type ImageWorker, createImages } from '../src/bilder';
+import { createFinances } from '../src/finanzen';
+import { createAccount } from '../src/konto';
 import { createFactors } from '../src/factors';
 import { createProfile } from '../src/profile';
-import { erzeugeFremdquellen, type Quellen } from '../src/fremdquellen';
+import { createForeignSources, type Quellen } from '../src/fremdquellen';
 import { createSettings } from '../src/settings';
 import { createThrottle } from '../src/throttle';
-import { erzeugeGeraete } from '../src/geraete';
+import { createDevices } from '../src/geraete';
 import { konfig, type Konfig } from '../src/infra/konfig';
-import { systemUhr, type Uhr } from '../src/infra/uhr';
+import { systemClock, type Uhr } from '../src/infra/uhr';
 import { LESEVERTRAG, type Dienste } from '../src/dienste';
 
 export type { Dienste } from '../src/dienste';
 
 /** Was ein Test statt des Echten gibt: eigenes Bildwerk, eigene Fremdquellen. */
-export interface Bauteile {
-  bildwerk?: Bildwerk;
+export interface Components {
+  bildwerk?: ImageWorker;
   /** Ersetzte Klienten (src/fremdquellen/quellen.ts), gelesen beim Aufruf. */
   quellen?: Partial<Quellen>;
   /** Nur Testhilfen: Hier legt jede Fabrik ihren Kontext ab (Einblick). */
-  kontexte?: Record<string, unknown>;
+  contexts?: Record<string, unknown>;
   /** Die Konfiguration; ohne Angabe die des Prozesses (src/infra/konfig.ts). */
   konfig?: Readonly<Konfig>;
   /** Die Zeit der Dienste (k.uhr); ohne Angabe die des Systems. */
   uhr?: Uhr;
 }
-type Gesetzt = Bauteile & { konfig: Readonly<Konfig>; uhr: Uhr };
+type Gesetzt = Components & { konfig: Readonly<Konfig>; uhr: Uhr };
 
 // Der Katalog-Import läuft in einem eigenen Prozess; sein Einstieg liegt im Bau unter jobs/.
-const IMPORT_PROZESS = path.join(__dirname, '..', 'jobs', 'csvImportWorker.js');
+const IMPORT_PROCESS = path.join(__dirname, '..', 'jobs', 'csvImportWorker.js');
 
 /** Alle Bereiche über einen Zugang, von unten nach oben: Jeder bekommt die Dienste
  * der tieferen, die er braucht, als Teil seines Kontexts. Wer einen höheren braucht,
- * horcht auf ein Ereignis des tieferen (etwa beiSetBildGeladen); späte Bindung gibt es nicht. */
-export function baueDienste(db: Db, bauteile: Bauteile = {}): Dienste {
-  const d = baueBereiche(db, { ...bauteile, konfig: bauteile.konfig ?? konfig(), uhr: bauteile.uhr ?? systemUhr });
-  meldeAuftragsartenAn(d);
+ * horcht auf ein Ereignis des tieferen (etwa atSetImageLoaded); späte Bindung gibt es nicht. */
+export function buildServices(db: Db, components: Components = {}): Dienste {
+  const d = buildAreas(db, {
+    ...components,
+    konfig: components.konfig ?? konfig(),
+    uhr: components.uhr ?? systemClock,
+  });
+  reportJobTypesAn(d);
   return d;
 }
 
-/** Jede deklarierte Art (AuftragsNutzlasten): Der Übersetzer verlangt hier jede, der Start prüft ihre Anmeldung. */
-export const DEKLARIERTE_ARTEN: Record<AuftragsArt, true> = {
+/** Jede deklarierte Art (JobPayloads): Der Übersetzer verlangt hier jede, der Start prüft ihre Anmeldung. */
+export const DECLARED_KINDS: Record<JobKind, true> = {
   anleitung: true,
   aufraeumen: true,
   aufraeumen_taeglich: true,
@@ -80,67 +84,67 @@ export const DEKLARIERTE_ARTEN: Record<AuftragsArt, true> = {
   widerrufsliste: true,
 };
 
-export class ArtNichtAngemeldet extends Error {}
+export class KindNotSignedIn extends Error {}
 
 /** Jeder Bereich meldet seine Auftragsarten mit Nutzlast und Ausführer; die Warteschlange kennt keine. */
-function meldeAuftragsartenAn(d: Dienste): void {
+function reportJobTypesAn(d: Dienste): void {
   const arten: Anmeldung[] = [
     ...d.bilder.auftragsarten(),
     ...d.konto.auftragsarten(),
-    ...d.katalog.auftragsarten(IMPORT_PROZESS),
+    ...d.katalog.auftragsarten(IMPORT_PROCESS),
     ...d.finanzen.auftragsarten(),
     ...d.sets.auftragsarten(),
     ...d.collection.jobKinds(),
     ...d.parts.jobKinds(),
     ...d.management.jobTypes(),
   ];
-  for (const a of arten) d.auftraege.meldeArtAn(a);
-  const angemeldet = new Set(d.auftraege.angemeldeteArten().map(a => a.art));
-  const fehlt = Object.keys(DEKLARIERTE_ARTEN).filter(a => !angemeldet.has(a as AuftragsArt));
-  if (fehlt.length) throw new ArtNichtAngemeldet(`Auftragsart ohne Anmeldung: ${fehlt.join(', ')}`);
+  for (const a of arten) d.auftraege.reportKindAn(a);
+  const angemeldet = new Set(d.auftraege.signedInKinds().map(a => a.art));
+  const fehlt = Object.keys(DECLARED_KINDS).filter(a => !angemeldet.has(a as JobKind));
+  if (fehlt.length) throw new KindNotSignedIn(`Auftragsart ohne Anmeldung: ${fehlt.join(', ')}`);
 }
 
-type Zeige = ReturnType<typeof einblickIn>;
+type Show = ReturnType<typeof inspectIn>;
 
 /** Je Bereich ein Rückruf, der seinen Kontext ablegt; ohne Ablage keiner. */
-function einblickIn(kontexte: Record<string, unknown> | undefined) {
+function inspectIn(contexts: Record<string, unknown> | undefined) {
   return (name: string) =>
-    kontexte
+    contexts
       ? (k: unknown) => {
-          kontexte[name] = k;
+          contexts[name] = k;
         }
       : undefined;
 }
 
 /** Die Bereiche bis zum Katalog: Sie brauchen nur einander und den Zugang. */
-function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Zeige) {
+function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Show) {
   const throttle = createThrottle({ db, uhr }, zeige('throttle'));
   const einstellungen = createSettings({ db, uhr, throttle, lesevertrag: LESEVERTRAG }, zeige('settings'));
   const mail = createMail({ uhr, einstellungen, konfig }, zeige('mail'));
-  const auftraege = erzeugeAuftraege({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('auftraege'));
-  const haushalt = erzeugeHaushalt({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('haushalt'));
-  const geraete = erzeugeGeraete({ db, uhr, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('geraete'));
+  const auftraege = createJobs({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('auftraege'));
+  const haushalt = createHousehold({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('haushalt'));
+  const geraete = createDevices({ db, uhr, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('geraete'));
   const factors = createFactors({ db, uhr, konfig, einstellungen }, zeige('factors'));
-  const konto = erzeugeKonto(
+  const konto = createAccount(
     { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, throttle, geraete, factors },
     zeige('konto'),
   );
   const profile = createProfile({ db, uhr, konfig, einstellungen, konto, mail }, zeige('profile'));
   const idempotency = createIdempotency({ db, uhr }, zeige('idempotency'));
-  const fremdquellen = erzeugeFremdquellen(
+  const fremdquellen = createForeignSources(
     { db, uhr, einstellungen, auftraege, ersatz: quellen },
     zeige('fremdquellen'),
   );
-  const bilder = erzeugeBilder(
+  const bilder = createImages(
     { db, uhr, konfig, auftraege, haushalt, fremdquellen, bildwerk, lesevertrag: LESEVERTRAG },
     zeige('bilder'),
   );
-  const katalog = erzeugeKatalog(
+  const katalog = createCatalog(
     { db, uhr, einstellungen, auftraege, haushalt, fremdquellen, bilder, throttle, lesevertrag: LESEVERTRAG },
     zeige('katalog'),
   );
   // Den Eintrag beim Set macht der Katalog (höher); er horcht auf die Bilder, statt dass sie ihn rufen.
-  bilder.beiSetBildGeladen((sn, quelle) => katalog.setBildLokalEintragen(sn, quelle));
+  bilder.atSetImageLoaded((sn, quelle) => katalog.enterSetImageLocal(sn, quelle));
   return {
     throttle,
     settings: einstellungen,
@@ -158,9 +162,9 @@ function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Z
   };
 }
 
-function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
-  const zeige = einblickIn(bauteile.kontexte);
-  const grund = baueGrund(db, bauteile, zeige);
+function buildAreas(db: Db, components: Gesetzt): Dienste {
+  const zeige = inspectIn(components.contexts);
+  const grund = buildReason(db, components, zeige);
   const {
     throttle,
     settings: einstellungen,
@@ -174,16 +178,16 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
     bilder,
     katalog,
   } = grund;
-  const { konfig, uhr } = bauteile;
-  const finanzen = erzeugeFinanzen(
+  const { konfig, uhr } = components;
+  const finanzen = createFinances(
     { db, uhr, konfig, einstellungen, auftraege, haushalt, katalog, fremdquellen, mail, lesevertrag: LESEVERTRAG },
     zeige('finanzen'),
   );
-  const bestand = erzeugeBestand(
+  const bestand = createInventory(
     { db, uhr, einstellungen, haushalt, konto, katalog, finanzen, lesevertrag: LESEVERTRAG },
     zeige('bestand'),
   );
-  const sets = erzeugeSets(
+  const sets = createSets(
     { db, uhr, konfig, katalog, fremdquellen, bilder, finanzen, haushalt, auftraege, bestand, einstellungen, konto },
     zeige('sets'),
   );
@@ -230,14 +234,14 @@ function baueBereiche(db: Db, bauteile: Gesetzt): Dienste {
 
 /** Der Zugang des Prozesses samt Erststart, verdrahtet. Der Erststart legt das erste
  * Konto über die Dienste an, die erst nach dem Zugang entstehen. */
-export function verdrahteProzess(): { db: Db; dienste: Dienste } {
+export function wireProcess(): { db: Db; dienste: Dienste } {
   const fertig: { d: Dienste | null } = { d: null };
-  const db = erzeugeDb(dbKonfigAusUmgebung(), {
-    erststart: async () => {
+  const db = createDb(dbKonfigFromEnvironment(), {
+    firstStart: async () => {
       if (!fertig.d) throw new Error('Erststart vor der Verdrahtung');
-      await fertig.d.konto.legeStartVerwalterAn();
+      await fertig.d.konto.putStartAdminAn();
     },
   });
-  fertig.d = baueDienste(db);
+  fertig.d = buildServices(db);
   return { db, dienste: fertig.d };
 }

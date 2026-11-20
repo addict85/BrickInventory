@@ -1,5 +1,5 @@
-/** The area's factory: services as a closure over k (baueBereich, src/infra/bereich.ts). */
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as service from './service';
 import * as pdfTicket from './pdfTicket';
@@ -8,8 +8,8 @@ import { zugang, type VoucherDependencies, type VoucherContext } from './context
 
 export type { VoucherDependencies, VoucherContext } from './context';
 
-export function createVouchers(a: Omit<VoucherDependencies, 'faecher'>, einblick?: Einblick<VoucherContext>) {
-  return baueBereich(
+export function createVouchers(a: Omit<VoucherDependencies, 'faecher'>, inspect?: Inspect<VoucherContext>) {
+  return buildArea(
     { ...a, faecher: new Faecher() },
     zugang,
     (k: VoucherContext) => ({
@@ -31,7 +31,7 @@ export function createVouchers(a: Omit<VoucherDependencies, 'faecher'>, einblick
       reencryptCopies: k.vouchers.reencryptCopies,
       reencryptAllVouchers: k.vouchers.reencryptAllVouchers,
     }),
-    einblick,
+    inspect,
   );
 }
 

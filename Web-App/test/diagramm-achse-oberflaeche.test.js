@@ -6,11 +6,11 @@
  *
  * Gegenproben (am 03.11.2026 gemessen):
  *   A  in priceChartSVG wieder `first = axis[0]` → rot: „Achse ab erstem Marktpreis“
- *   B  in bezugsLinie `darunter` immer false → rot: „Einstand-Beschriftung weicht aus“
+ *   B  in referenceLine `darunter` immer false → rot: „Einstand-Beschriftung weicht aus“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const SET = {
   set_number: '21318-1',
@@ -30,7 +30,7 @@ test('Achse ab erstem Marktpreis, Kauf am Rand', async () => {
     { recorded_at: '2026-09-01', avg_price: 186 },
     { recorded_at: '2026-10-01', avg_price: 190 },
   ];
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
     '/v1/sets/21318-1': { success: true, set: SET },
     '/v1/sets/21318-1/price-history': {
@@ -61,7 +61,7 @@ test('Achse ab erstem Marktpreis, Kauf am Rand', async () => {
 
 test('Einstand-Beschriftung weicht aus', async () => {
   // Einstand 1530, die Kurve endet bei 1545 — knapp darüber.
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/finance/valuation': {
       success: true,
       currency: 'EUR',
@@ -111,9 +111,9 @@ test('Einstand-Beschriftung weicht aus', async () => {
     await reiter(w, 'finance');
     await warte(() => d.querySelector('#portfolio-chart .einstand-linie'));
     const g = d.querySelector('#portfolio-chart .einstand-linie');
-    const linieY = Number(g.querySelector('line').getAttribute('y1'));
+    const lineY = Number(g.querySelector('line').getAttribute('y1'));
     const textY = Number(g.querySelector('text').getAttribute('y'));
-    assert.ok(textY > linieY, `Einstand-Beschriftung weicht aus: Text ${textY}, Linie ${linieY}`);
+    assert.ok(textY > lineY, `Einstand-Beschriftung weicht aus: Text ${textY}, Linie ${lineY}`);
   } finally {
     w.close();
   }

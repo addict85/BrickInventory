@@ -7,7 +7,7 @@
  * Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  Container-Abfrage „setdialog“ in mobile.css wieder @media (max-width: 18em)
  *      → rot: „Set-Detail“ (abgeschnitten (Rahmen): .wk-label, .wk-wert …)
- *   B  bezugsLinie() ohne Umbruch (eine Zeile, rechtsbündig) → rot: „Finanzen“
+ *   B  referenceLine() ohne Umbruch (eine Zeile, rechtsbündig) → rot: „Finanzen“
  *      (abgeschnitten (Diagramm): „Kaufpreis (nur bewertete …“)
  */
-require('./helpers/oberflaeche-pruefung').pruefeGrosseSchrift('seite', 390);
+require('./helpers/oberflaeche-pruefung').checkLargeFont('seite', 390);

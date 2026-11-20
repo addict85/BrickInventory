@@ -13,7 +13,7 @@ const ROOT = path.resolve(__dirname, '..');
 const DATEIEN = ['qrcode.min.js', 'LICENSE'];
 
 /** @returns die kopierte Fassung, oder null ohne installiertes qrcodejs */
-function kopiereQrcode(ziel = ROOT, quelle = ROOT) {
+function copyQrcode(ziel = ROOT, quelle = ROOT) {
   const paket = path.join(quelle, 'node_modules', 'qrcodejs');
   if (!fs.existsSync(path.join(paket, 'package.json'))) return null;
   const fassung = JSON.parse(fs.readFileSync(path.join(paket, 'package.json'), 'utf8')).version;
@@ -23,10 +23,10 @@ function kopiereQrcode(ziel = ROOT, quelle = ROOT) {
   return fassung;
 }
 
-module.exports = { kopiereQrcode, DATEIEN };
+module.exports = { copyQrcode, DATEIEN };
 
 if (require.main === module) {
-  const fassung = kopiereQrcode(process.argv[2] ? path.resolve(process.argv[2]) : ROOT);
+  const fassung = copyQrcode(process.argv[2] ? path.resolve(process.argv[2]) : ROOT);
   console.log(
     fassung
       ? `[qrcode] qrcodejs ${fassung} → public/vendor/qrcode/`

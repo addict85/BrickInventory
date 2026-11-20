@@ -5,7 +5,7 @@
  * server.ts greift: multer meldet seine Grenzen ohne Status.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in handleRouteError() alsUploadFehler() nicht aufgerufen → rot:
+ *   A  in handleRouteError() asUploadError() nicht aufgerufen → rot:
  *      „zu gross: 413 mit Code“ (500 statt 413, Gutschein und Wanted-Liste)
  *   B  im fileFilter der Gutscheine wieder `new Error('nur_pdf')` → rot:
  *      „falscher Typ: 415 mit Code“ (500 statt 415)
@@ -18,10 +18,10 @@
  *   E  sein Limit auf alle Pfade (app.use statt app.post auf den Pfad) → rot:
  *      „… andere Routen nicht“ (200 statt 413)
  * Gegenproben (04.11.2026 gemessen):
- *   F  rumpfLesen wieder vor Sitzung und Eingang (server.ts) → rot: „ohne
+ *   F  readBody wieder vor Sitzung und Eingang (server.ts) → rot: „ohne
  *      Anmeldung wird kein Rumpf gelesen“ und „die Teileliste …“ (vor der
  *      Sitzung gilt jede Anfrage als unangemeldet)
- *   G  in rumpfLesen die 16-KB-Grenze für Unangemeldete gestrichen → rot:
+ *   G  in readBody die 16-KB-Grenze für Unangemeldete gestrichen → rot:
  *      „… und auf den Anmelderouten höchstens 16 KB“ (401 statt 413)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -35,22 +35,22 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { warte } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
-const freierPort = () =>
+const { portOf } = require('./helpers/server');
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
 
 test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `upload_${process.pid}`,
     SN = `UG${process.pid}-1`;
@@ -59,14 +59,14 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async t => 
     await db.get(`INSERT INTO users (username, password_hash, is_active) VALUES ($1,'x',true) RETURNING id`, [NAME])
   ).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
-  const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Prüfung', true);
+  const token = await _req('src/konto/geraeteToken.js').createToken(uid, 'Prüfung', true);
   t.after(async () => {
     await db.run("DELETE FROM jobs WHERE type = 'pdf' AND user_id = $1", [uid]).catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
-  const port = await freierPort();
+  const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -162,9 +162,9 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async t => 
       status: 200,
       code: null,
     });
-    const riesig = Array.from({ length: 4 }, () => teile).flat();
+    const huge = Array.from({ length: 4 }, () => teile).flat();
     assert.equal(
-      (await json('/sets/partslist-pdf', { sets: [], parts: riesig })).status,
+      (await json('/sets/partslist-pdf', { sets: [], parts: huge })).status,
       413,
       'über 4 MB bleibt zu gross',
     );

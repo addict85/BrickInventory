@@ -15,14 +15,14 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet, katalogSet } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet, catalogSet } = require('./helpers/bestand');
+const db = testData();
 
 test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
@@ -41,10 +41,10 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { conc
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [name]);
   await db.run(`DELETE FROM set_catalog WHERE set_number=$1`, [name]);
-  await haeltSet(db, uid, name, 1);
+  await holdsSet(db, uid, name, 1);
   // Der Bildpfad steht seit Migration 0033 im Katalog — und genau von dort
   // sammelt der Nachlauf (src/katalog/teileAnreicherung.ts) die Pfade ein.
-  await katalogSet(db, name, { name: 'Test', image_local: `/images/sets/${name}.jpg` });
+  await catalogSet(db, name, { name: 'Test', image_local: `/images/sets/${name}.jpg` });
 
   try {
     const { redownloadMissingImages } = _req('src/katalog/teileAnreicherung.js');

@@ -18,10 +18,10 @@
  * @property {undefined} finanzenLaden      Reload finances (purchase or inventory changed)
  * @property {undefined} teileLaden         Reload the parts list (set deleted, parts refetched)
  * @property {object | null | undefined} setAggregat  A set's state from the server (collection tile)
- * @property {string} ansichtGewechselt     Name of the tab or view
- * @property {undefined} filterZurueckgesetzt
- * @property {undefined} abschnittGewechselt
- * @property {{ sprache: string, speichern: boolean, echterWechsel: boolean }} spracheGewechselt
+ * @property {string} viewSwitched     Name of the tab or view
+ * @property {undefined} filterReset
+ * @property {undefined} sectionSwitched
+ * @property {{ sprache: string, speichern: boolean, realSwitch: boolean }} spracheGewechselt
  */
 
 /** @type {Map<string, Set<(data: unknown) => void>>} */

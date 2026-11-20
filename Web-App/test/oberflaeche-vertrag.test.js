@@ -5,7 +5,7 @@
  *
  * Gegenproben (05.11.2026, je einzeln):
  *   A  `count` aus ANMELDUNG['/v1/sets'] entfernt → „Standardantworten“ rot
- *   B  Aufruf von pruefeAntwort() im fetch der Hilfe entfernt → „fetch der
+ *   B  Aufruf von checkResponse() im fetch der Hilfe entfernt → „fetch der
  *      Oberfläche liefert die ergänzte Antwort“ und „eine falsche Testantwort …“ rot
  *   C  Fehlerantworten ohne Prüfung (status >= 400 übersprungen) → „Fehlerantwort
  *      ohne code“ rot
@@ -16,56 +16,56 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { ANMELDUNG, ABGEMELDET, pruefeAntwort, oeffneOberflaeche } = require('./helpers/oberflaeche');
-const { baueDist } = require('./helpers/sources');
+const { ANMELDUNG, SIGNED_OUT, checkResponse, openUi } = require('./helpers/oberflaeche');
+const { buildDist } = require('./helpers/sources');
 
-baueDist();
-const { routeFuerAnfrage } = require(path.join(__dirname, '..', 'dist/src/vertrag/index.js'));
+buildDist();
+const { routeForRequest } = require(path.join(__dirname, '..', 'dist/src/vertrag/index.js'));
 
 test('Standardantworten erfüllen den Vertrag ohne Ergänzung', () => {
-  const abweichungen = [];
+  const deviations = [];
   let geprueft = 0;
-  for (const [pfad, antwort] of [...Object.entries(ANMELDUNG), ...Object.entries(ABGEMELDET)]) {
-    const schema = routeFuerAnfrage('GET', '/api' + pfad)?.antwort;
+  for (const [pfad, antwort] of [...Object.entries(ANMELDUNG), ...Object.entries(SIGNED_OUT)]) {
+    const schema = routeForRequest('GET', '/api' + pfad)?.antwort;
     if (!schema) {
-      abweichungen.push(`${pfad}: keine Route mit Vertrag`);
+      deviations.push(`${pfad}: keine Route mit Vertrag`);
       continue;
     }
     geprueft++;
     const r = schema.safeParse(JSON.parse(JSON.stringify(antwort)));
     if (!r.success)
-      abweichungen.push(`${pfad}: ${r.error.issues.map(i => i.path.join('.') + ' ' + i.message).join(', ')}`);
+      deviations.push(`${pfad}: ${r.error.issues.map(i => i.path.join('.') + ' ' + i.message).join(', ')}`);
   }
   assert.ok(geprueft >= 22, `nur ${geprueft} Standardantworten geprüft`);
-  assert.deepEqual(abweichungen, []);
+  assert.deepEqual(deviations, []);
 });
 
-test('pruefeAntwort ergänzt Pflichtfelder und wirft bei falschem Typ', () => {
-  const ergaenzt = pruefeAntwort('GET', '/api/v1/sets', { success: true, sets: [{ set_number: '10294-1' }] });
-  assert.equal(ergaenzt.count, 0);
-  assert.equal(ergaenzt.sets[0].set_number, '10294-1');
-  assert.deepEqual(ergaenzt.sets[0].conditions, []);
+test('checkResponse ergänzt Pflichtfelder und wirft bei falschem Typ', () => {
+  const supplemented = checkResponse('GET', '/api/v1/sets', { success: true, sets: [{ set_number: '10294-1' }] });
+  assert.equal(supplemented.count, 0);
+  assert.equal(supplemented.sets[0].set_number, '10294-1');
+  assert.deepEqual(supplemented.sets[0].conditions, []);
   assert.throws(
-    () => pruefeAntwort('GET', '/api/v1/sets', { success: true, sets: [], count: '3' }),
+    () => checkResponse('GET', '/api/v1/sets', { success: true, sets: [], count: '3' }),
     /verletzt den Vertrag: GET \/api\/v1\/sets \(200\): count/,
   );
   // Absichtlich kaputt, mit Grund: geht unverändert hinaus.
-  const kaputt = { success: true, count: 'x', $vertragswidrig: 'Fehlerpfad der Oberfläche' };
-  assert.equal(pruefeAntwort('GET', '/api/v1/sets', kaputt), kaputt);
+  const kaputt = { success: true, count: 'x', $contractViolating: 'Fehlerpfad der Oberfläche' };
+  assert.equal(checkResponse('GET', '/api/v1/sets', kaputt), kaputt);
 });
 
 test('Fehlerantwort ohne code verletzt den Vertrag', () => {
   assert.throws(
-    () => pruefeAntwort('GET', '/api/v1/sets', { $status: 500, success: false, error: 'kaputt' }),
+    () => checkResponse('GET', '/api/v1/sets', { $status: 500, success: false, error: 'kaputt' }),
     /\(500\): code/,
   );
   assert.doesNotThrow(() =>
-    pruefeAntwort('GET', '/api/v1/sets', { $status: 500, success: false, error: 'kaputt', code: 'interner_fehler' }),
+    checkResponse('GET', '/api/v1/sets', { $status: 500, success: false, error: 'kaputt', code: 'interner_fehler' }),
   );
 });
 
 test('fetch der Oberfläche liefert die ergänzte Antwort', async () => {
-  const { w } = await oeffneOberflaeche({
+  const { w } = await openUi({
     '/v1/sets': { success: true, sets: [{ set_number: '10294-1', name: 'Titanic' }] },
   });
   try {
@@ -85,9 +85,9 @@ test('eine falsche Testantwort macht den Test rot', () => {
     datei,
     `
     const test = require('node:test');
-    const { oeffneOberflaeche } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'oberflaeche.js'))});
+    const { openUi } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'oberflaeche.js'))});
     test('probe', async () => {
-      const { w, warte } = await oeffneOberflaeche({ '/v1/sets': { success: true, sets: [], count: 'drei' } });
+      const { w, warte } = await openUi({ '/v1/sets': { success: true, sets: [], count: 'drei' } });
       await w.fetch('/api/v1/sets');
       await warte(() => false, 200);
       w.close();

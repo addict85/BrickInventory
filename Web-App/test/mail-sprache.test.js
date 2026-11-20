@@ -14,7 +14,7 @@
  *   f) buildAlertMail ohne emailTemplate (html = text) → Schritt 4 rot
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { environment } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -49,7 +49,7 @@ test('1. jede Mail-Funktion nimmt die Sprache entgegen', () => {
     // Nur auf die Zeichenkette „lang" in der Liste zu prüfen, hätte die zweite
     // Form fälschlich gemeldet — was sie beim ersten Lauf auch tat.
     const typ = (liste.match(/:\s*(\w+)\s*,?\s*\)/) || [])[1];
-    const traegtLang =
+    const carriesLang =
       /lang/.test(liste) ||
       (typ &&
         /lang\s*:/.test(
@@ -58,7 +58,7 @@ test('1. jede Mail-Funktion nimmt die Sprache entgegen', () => {
             MAILER.slice(MAILER.indexOf(`interface ${typ} {`)).indexOf('}'),
           ),
         ));
-    assert.ok(traegtLang, `${n}() kennt die Sprache des Empfängers nicht — sie ginge immer in der Vorgabe hinaus.`);
+    assert.ok(carriesLang, `${n}() kennt die Sprache des Empfängers nicht — sie ginge immer in der Vorgabe hinaus.`);
   }
 });
 
@@ -82,11 +82,11 @@ test('2. und beherrscht beide Sprachen wirklich', () => {
 
 test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kontos', { timeout: 60_000 }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-  umgebung({ APP_BASE_URL: 'http://localhost' });
-  const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+  environment({ APP_BASE_URL: 'http://localhost' });
+  const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
   const gesendet = mailAttrappe();
   const _req = require('./helpers/sources').buildAndRequire();
-  const db = await require('./helpers/db').datenOderSkip(t, _req);
+  const db = await require('./helpers/db').dataOrSkip(t, _req);
   if (!db) return;
   const { bis } = require('./helpers/zeit');
   const NAME = `mailsprache_${process.pid}`;
@@ -120,7 +120,7 @@ test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kon
     await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'language', $2)`, [id, sprache]);
     konten[n] = `${n}@example.org`;
   }
-  const zurueck = await mailserverEintragen(db);
+  const zurueck = await enterMailServer(db);
   t.after(async () => {
     await zurueck();
     await db.run('DELETE FROM users WHERE username LIKE $1', [`${NAME}%`]);
@@ -156,7 +156,7 @@ test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kon
 test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
-  const db = await require('./helpers/db').datenOderSkip(t, _req);
+  const db = await require('./helpers/db').dataOrSkip(t, _req);
   if (!db) return;
   const { buildAlertMail, emailTemplate } = _req('src/mail/mailer.js');
   const mail = await buildAlertMail({
@@ -180,7 +180,7 @@ test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', async t => {
 
 test.after(() =>
   require('./helpers/sources')
-    .testDaten()
+    .testData()
     .pool.end()
     .catch(() => {}),
 );

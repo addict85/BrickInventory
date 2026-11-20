@@ -20,8 +20,8 @@ const ROOT = path.join(__dirname, '..');
 // war mit über 1200 Zeilen wieder ein kleiner Monolith aus Proxy, Thumb-Queue,
 // Cluster-Setup und Startup-Orchestrierung). Die hier geprüften Sachverhalte
 // gelten unverändert — sie verteilen sich jetzt nur auf zwei Dateien:
-const SERVER_ONLY = require('./helpers/sources').startQuelle();
-const PROXY = require('./helpers/sources').proxyThumbQuelle();
+const SERVER_ONLY = require('./helpers/sources').startSource();
+const PROXY = require('./helpers/sources').proxyThumbSource();
 const SERVER = SERVER_ONLY + '\n' + PROXY;
 const CODE = SERVER.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
@@ -61,7 +61,7 @@ test('der Cache-Stream hängt vor dem Client-Stream', () => {
   // Cache-Stream überhaupt hing.
   // Der Cache-Zweig steht in inDenCache(); dort bis body.pipe(ws), dann im
   // Aufrufer vom Aufruf bis body.pipe(res).
-  const start = CODE.indexOf("const rohTyp = String(r.kopf['content-type']");
+  const start = CODE.indexOf("const rawType = String(r.kopf['content-type']");
   const blk = CODE.slice(start, CODE.indexOf('body.pipe(res);', start) + 20);
   const iCache = blk.indexOf('inDenCache(d, body'),
     iClient = blk.indexOf('body.pipe(res)');
@@ -137,17 +137,17 @@ test('der Verbindungs-Pool ist weit genug', async () => {
   // Der Pool steht im Klienten (clients/bildCdn.ts), der Proxy nimmt ihn mit `pool: true`.
   // Gegenprobe (05.11.2026): maxSockets 8 in clients/bildCdn.ts → rot.
   const { oeffneBild } = require('./helpers/sources').buildAndRequire()('clients/bildCdn.js');
-  const { mitschnitt } = require('./helpers/https-mitschnitt');
+  const { recording } = require('./helpers/https-mitschnitt');
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
-  const [mitPool, ohnePool] = await mitschnitt(async () => {
+  const [withPool, withoutPool] = await recording(async () => {
     await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
     await oeffneBild(url, { maxBytes: 1000 }).catch(() => {});
   });
-  const agent = mitPool?.optionen.agent;
+  const agent = withPool?.optionen.agent;
   assert.ok(agent, 'der Proxy-Abruf nimmt den Pool nicht');
   assert.ok(agent.maxSockets >= 32, `maxSockets ${agent.maxSockets} ist zu eng — Einzelabrufe warten spürbar`);
   assert.equal(agent.keepAlive, true, 'Wiederverwendung spart den TLS-Handshake');
-  assert.equal(ohnePool?.optionen.agent, undefined, 'ein Einzelabruf hält keine Verbindung offen');
+  assert.equal(withoutPool?.optionen.agent, undefined, 'ein Einzelabruf hält keine Verbindung offen');
   assert.match(SERVER, /pool: true/, 'der Proxy nimmt den Pool nicht');
 });
 
@@ -180,7 +180,7 @@ test('kaputte Antworten werden nicht für einen Tag im Browser festgenagelt', ()
 
   // Der gestreamte Pfad kennt den Inhalt noch nicht — dort kurz halten.
   const stream = SERVER.slice(
-    SERVER.indexOf("const rohTyp = String(r.kopf['content-type']"),
+    SERVER.indexOf("const rawType = String(r.kopf['content-type']"),
     SERVER.indexOf('body.pipe(res);'),
   );
   assert.match(
@@ -222,7 +222,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   // auch nur EINE Zeile, die darauf zeigt.
   assert.match(
     SERVER,
-    /setzeFigurBildLokal\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?f\.fig_number, local\)/,
+    /setMinifigImageLocal\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?f\.fig_number, local\)/,
     'Ein Download muss den Katalogeintrag der Figur setzen',
   );
 
@@ -262,13 +262,13 @@ test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
   // 'aufraeumen_taeglich' (src/management/cleanup.ts) und läuft nur im Job-Prozess.
   assert.match(
     SERVER,
-    /export async function raeumeBildCacheAuf/,
+    /export async function cleanImageCacheOn/,
     'Der Lauf muss von aussen startbar sein, statt beim Registrieren loszulaufen',
   );
   const reg = abschnitt(
     SERVER,
     'function registerImgProxy',
-    'export async function raeumeBildCacheAuf',
+    'export async function cleanImageCacheOn',
     'Registrierung ohne tagesweites Intervall',
   );
   assert.doesNotMatch(reg, /setInterval/, 'Kein eigenes Intervall im Teil, den der Web-Prozess ausführt');
@@ -277,7 +277,7 @@ test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
   );
   assert.match(
     plan.slice(plan.indexOf('function cleanupDaily')),
-    /raeumeBildCacheAuf\(/,
+    /cleanImageCacheOn\(/,
     'Der Bild-Cache gehört zum täglichen Aufräumen',
   );
 });

@@ -15,7 +15,7 @@ const ROOT = path.join(__dirname, '..');
  * Anweisungen, die bewusst mehrfach dastehen duerfen — jede mit dem Grund.
  * Leer: Es gibt zurzeit keine.
  */
-const ERLAUBT = new Map([]);
+const ALLOWED = new Map([]);
 
 test('keine SQL-Anweisung steht in mehr als einer Datei', () => {
   // Gefunden, nicht aufgezaehlt.
@@ -62,24 +62,24 @@ test('keine SQL-Anweisung steht in mehr als einer Datei', () => {
     // Verbuchen statt ueberspringen — sonst faellt nie auf, wenn ein Eintrag
     // gegenstandslos wird. Die Liste ist heute leer; die Pruefung steht
     // trotzdem hier, damit der erste Eintrag sie schon vorfindet.
-    if (ERLAUBT.has(k)) {
+    if (ALLOWED.has(k)) {
       gebraucht.add(k);
       continue;
     }
     doppelt.push(`${[...orte].sort().join(' + ')}\n      ${k.slice(0, 130)}`);
   }
-  const veraltet = [...ERLAUBT.keys()].filter(k => !gebraucht.has(k));
+  const veraltet = [...ALLOWED.keys()].filter(k => !gebraucht.has(k));
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Eintraege in ERLAUBT beschreiben keine Doppelung mehr — raus damit:\n  ' +
+    'Diese Eintraege in ALLOWED beschreiben keine Doppelung mehr — raus damit:\n  ' +
       veraltet.map(k => k.slice(0, 130)).join('\n  '),
   );
   assert.deepEqual(
     doppelt,
     [],
     'Diese Anweisungen stehen in mehreren Dateien. Entweder gehoeren sie in ' +
-      'eine gemeinsame Funktion, oder es gibt einen Grund — dann in ERLAUBT ' +
+      'eine gemeinsame Funktion, oder es gibt einen Grund — dann in ALLOWED ' +
       'eintragen, damit der Naechste ihn nicht neu herleiten muss',
   );
 });

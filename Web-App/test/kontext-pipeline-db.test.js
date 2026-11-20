@@ -6,7 +6,7 @@
  * Verbindung der vorigen erbt.
  *
  * Gegenproben (am 13.11.2026 gemessen, je einzeln):
- *   A  kontextSql(): set_config(…, false) statt true → rot: „nach einer Anfrage mit
+ *   A  contextSql(): set_config(…, false) statt true → rot: „nach einer Anfrage mit
  *      Konto …“, „nach einer gescheiterten …“, „abwechselnd …“
  *   B  abfrage() wieder nacheinander (await je Teil) → rot: „ein Roundtrip …“ (3)
  *   C  in abfrage() ohne 'COMMIT' und ohne die Leerlaufprüfung → rot: „nach einer
@@ -22,25 +22,25 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const q = require('./helpers/sources');
 const _req = q.buildAndRequire();
-const { zugangOderSkip, fehltVoraussetzung } = require('./helpers/db');
-const { erzeugeDb, dbKonfigAusUmgebung } = require(path.join(q.DIST, 'db', 'database.js'));
-const { alsAnfrage } = _req('src/infra/kontoKontext.js');
+const { accessOrSkip, missingPrecondition } = require('./helpers/db');
+const { createDb, dbKonfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
+const { asRequest } = _req('src/infra/kontoKontext.js');
 
-const als = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
+const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 
 /** Zählt Richtungswechsel: Schickt der Client nach einer Antwort wieder, beginnt ein neuer Roundtrip. */
-function zaehlenderVermittler(ziel) {
-  const stand = { roundtrips: 0, antwortKam: true };
+function countingBroker(ziel) {
+  const stand = { roundtrips: 0, responseKam: true };
   const srv = net.createServer(a => {
     const b = net.connect(Number(ziel.port || 5432), ziel.hostname);
     a.on('data', d => {
-      if (stand.antwortKam) stand.roundtrips++;
-      stand.antwortKam = false;
+      if (stand.responseKam) stand.roundtrips++;
+      stand.responseKam = false;
       b.write(d);
     });
     b.on('data', d => {
-      stand.antwortKam = true;
+      stand.responseKam = true;
       a.write(d);
     });
     for (const [x, y] of [
@@ -55,15 +55,15 @@ function zaehlenderVermittler(ziel) {
 }
 
 test('Kontext je Abfrage in der Pipeline', { concurrency: 1 }, async t => {
-  const zugang = await zugangOderSkip(t, _req);
+  const zugang = await accessOrSkip(t, _req);
   if (!zugang) return;
   t.after(() => zugang.pool.end().catch(() => {}));
-  if (!process.env.TEST_DB_EIGEN_URL || (await zugang.alsSuperuserVerbunden()))
-    return fehltVoraussetzung(t, 'die App läuft als Superuser (nur npm test trennt Rollen)');
-  const k = dbKonfigAusUmgebung();
+  if (!process.env.TEST_DB_EIGEN_URL || (await zugang.asSuperuserConnected()))
+    return missingPrecondition(t, 'die App läuft als Superuser (nur npm test trennt Rollen)');
+  const k = dbKonfigFromEnvironment();
   // Testdaten schreibt die Eigentümerin, am Zeilenschutz vorbei.
-  const eigen = erzeugeDb({ ...k, verbindung: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
-  const app = erzeugeDb({ ...k, pool: { ...k.pool, max: 1 } });
+  const eigen = createDb({ ...k, verbindung: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
+  const app = createDb({ ...k, pool: { ...k.pool, max: 1 } });
   t.after(async () => {
     await app.pool.end().catch(() => {});
     await eigen.pool.end().catch(() => {});
@@ -78,13 +78,13 @@ test('Kontext je Abfrage in der Pipeline', { concurrency: 1 }, async t => {
   const A = await konto('a'),
     B = await konto('b');
   for (const u of [A, B]) await eigen.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10001-1')`, [u]);
-  const alleSets = () => app.all('SELECT user_id FROM sets');
-  const konto_ = () => app.get(`SELECT current_setting('app.konto', true) AS k`);
+  const allSets = () => app.all('SELECT user_id FROM sets');
+  const account_ = () => app.get(`SELECT current_setting('app.konto', true) AS k`);
 
   await t.test('nach einer Anfrage mit Konto sieht die nächste ohne Konto nichts', async () => {
-    assert.deepEqual(ids(await als(A, alleSets)), [A]);
-    assert.deepEqual(await alleSets(), []);
-    assert.ok(!(await konto_())?.k, 'die Verbindung trägt kein Konto weiter');
+    assert.deepEqual(ids(await als(A, allSets)), [A]);
+    assert.deepEqual(await allSets(), []);
+    assert.ok(!(await account_())?.k, 'die Verbindung trägt kein Konto weiter');
   });
 
   await t.test('nach einer gescheiterten Abfrage mit Konto bleibt kein Kontext an der Verbindung', async () => {
@@ -96,24 +96,24 @@ test('Kontext je Abfrage in der Pipeline', { concurrency: 1 }, async t => {
       als(A, () => app.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10002-1')`, [B])),
       /row-level security/,
     );
-    assert.deepEqual(await alleSets(), []);
-    assert.deepEqual(ids(await als(B, alleSets)), [B], 'die Verbindung ist danach benutzbar');
+    assert.deepEqual(await allSets(), []);
+    assert.deepEqual(ids(await als(B, allSets)), [B], 'die Verbindung ist danach benutzbar');
     assert.equal((await eigen.get(`SELECT count(*)::int AS n FROM sets WHERE set_number = '10002-1'`)).n, 0);
   });
 
   await t.test('abwechselnd und gleichzeitig: jede Anfrage sieht nur ihr Konto', async () => {
     const wer = Array.from({ length: 30 }, (_, i) => [A, B, null][i % 3]);
-    const gesehen = await Promise.all(wer.map(u => (u ? als(u, alleSets) : alleSets())));
+    const gesehen = await Promise.all(wer.map(u => (u ? als(u, allSets) : allSets())));
     for (const [i, zeilen] of gesehen.entries()) assert.deepEqual(ids(zeilen), wer[i] ? [wer[i]] : [], `Anfrage ${i}`);
   });
 
   await t.test('ein Roundtrip für eine Abfrage mit Konto', async () => {
     const ziel = new URL(process.env.DATABASE_URL);
-    const { srv, stand } = await zaehlenderVermittler(ziel);
+    const { srv, stand } = await countingBroker(ziel);
     const ueber = new URL(ziel);
     ueber.hostname = '127.0.0.1';
     ueber.port = String(srv.address().port);
-    const nah = erzeugeDb({ ...k, verbindung: { connectionString: ueber.toString() }, pool: { ...k.pool, max: 1 } });
+    const nah = createDb({ ...k, verbindung: { connectionString: ueber.toString() }, pool: { ...k.pool, max: 1 } });
     try {
       await nah.get('SELECT 1');
       stand.roundtrips = 0;

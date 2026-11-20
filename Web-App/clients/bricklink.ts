@@ -1,12 +1,12 @@
 // Ein API-Client, kein Router: Schlüssel und Kontingent kommen über ./zugang.
 import crypto from 'node:crypto';
-import { holeHttps, auszug } from '../src/infra/abruf';
-import type { KlientenZugang, SchluesselName } from './zugang';
+import { holeHttps, excerpt } from '../src/infra/abruf';
+import type { ClientsAccess, KeyName } from './zugang';
 
 const BASE = 'https://api.bricklink.com/api/store/v1';
 
-async function getCredentials(kl: Pick<KlientenZugang, 'schluessel'>) {
-  const schluessel: SchluesselName[] = [
+async function getCredentials(kl: Pick<ClientsAccess, 'schluessel'>) {
+  const schluessel: KeyName[] = [
     'bricklink_consumer_key',
     'bricklink_consumer_secret',
     'bricklink_token',
@@ -22,7 +22,7 @@ async function getCredentials(kl: Pick<KlientenZugang, 'schluessel'>) {
 
 /** Die vier BrickLink-Zugangsdaten, ausgeschrieben: Ein Tippfehler im Namen
  * sähe sonst aus wie ein abgelaufener Schlüssel (401). */
-type BricklinkZugang = {
+type BricklinkAccess = {
   bricklink_consumer_key: string;
   bricklink_consumer_secret: string;
   bricklink_token: string;
@@ -39,7 +39,7 @@ function buildAuthHeader(
   method: string,
   baseUrl: string,
   queryParams: Record<string, string | number>,
-  creds: BricklinkZugang,
+  creds: BricklinkAccess,
 ) {
   const ts = String(Math.floor(Date.now() / 1000));
   const nonce = crypto.randomBytes(16).toString('hex');
@@ -68,7 +68,7 @@ function buildAuthHeader(
 }
 
 /** Wartung: BrickLink leitet jede Anfrage um; kein Fehler des einzelnen Sets. */
-class BricklinkNichtErreichbar extends Error {
+class BricklinkNotReachable extends Error {
   code = 'bricklink_nicht_erreichbar';
 }
 
@@ -77,13 +77,13 @@ async function httpsGet(url: string, authHeader: string): Promise<{ status: numb
     hosts: ['api.bricklink.com'],
     maxBytes: 8 * 1024 * 1024,
     zeitlimitMs: 20_000,
-    umleitungen: 0,
+    redirects: 0,
     kopfzeilen: { Authorization: authHeader, Accept: 'application/json', 'User-Agent': 'BrickManager/3.0' },
   });
   return { status: r.status, body: r.koerper.toString('utf8'), ziel: String(r.kopf.location ?? '') };
 }
 
-function zielHost(ziel: string): string {
+function targetHost(ziel: string): string {
   try {
     return new URL(ziel).hostname;
   } catch {
@@ -92,16 +92,16 @@ function zielHost(ziel: string): string {
 }
 
 /** Wartungsseiten kommen als HTML; die Meldung zeigt deshalb den Anfang des Körpers. */
-function leseJson(body: string, status: number) {
+function readJson(body: string, status: number) {
   try {
     return JSON.parse(body);
   } catch (_) {
-    throw new Error(`BrickLink non-JSON (HTTP ${status}): ${auszug(body)}`);
+    throw new Error(`BrickLink non-JSON (HTTP ${status}): ${excerpt(body)}`);
   }
 }
 
 async function bricklinkRequest(
-  kl: Pick<KlientenZugang, 'schluessel' | 'zaehle'>,
+  kl: Pick<ClientsAccess, 'schluessel' | 'zaehle'>,
   method: string,
   path: string,
   queryParams: Record<string, string | number> = {},
@@ -119,7 +119,7 @@ async function bricklinkRequest(
   // ein Record<string,string>, und aus Wahrheitspruefungen kann der Uebersetzer
   // keine feste Form ableiten. So steht jeder der vier Namen genau einmal, und
   // ein Schreibfehler ist ein Uebersetzungsfehler statt eines 401.
-  const creds: BricklinkZugang = {
+  const creds: BricklinkAccess = {
     bricklink_consumer_key: roh.bricklink_consumer_key,
     bricklink_consumer_secret: roh.bricklink_consumer_secret,
     bricklink_token: roh.bricklink_token,
@@ -139,10 +139,10 @@ async function bricklinkRequest(
   if (!rl.allowed) throw new Error(`BrickLink Tageslimit erreicht (${rl.limit} Aufrufe/Tag)`);
   const { status, body, ziel } = await httpsGet(baseUrl + qs, buildAuthHeader(method, baseUrl, queryParams, creds));
   if (status >= 300 && status < 400)
-    throw new BricklinkNichtErreichbar(
-      `BrickLink nicht erreichbar (Umleitung ${status} nach ${zielHost(ziel)}, vermutlich Wartung)`,
+    throw new BricklinkNotReachable(
+      `BrickLink nicht erreichbar (Umleitung ${status} nach ${targetHost(ziel)}, vermutlich Wartung)`,
     );
-  const data = leseJson(body, status);
+  const data = readJson(body, status);
   if (data?.meta && data.meta.code !== 200) {
     const e = Object.assign(new Error(`BrickLink API Error ${data.meta.code}: ${data.meta.message}`), { detail: data });
     throw e;
@@ -152,14 +152,14 @@ async function bricklinkRequest(
 
 /** Ein kleiner signierter Abruf — für den Testknopf der Einrichtung. */
 /** Ein Klient je Zugang: Schlüssel und Kontingent kommen von dort. */
-export function erzeugeBricklink(kl: Pick<KlientenZugang, 'schluessel' | 'zaehle'>) {
+export function createBricklink(kl: Pick<ClientsAccess, 'schluessel' | 'zaehle'>) {
   return {
     bricklinkRequest: (method: string, path: string, queryParams: Record<string, string | number> = {}) =>
       bricklinkRequest(kl, method, path, queryParams),
-    pruefeBricklinkZugang: async (): Promise<void> => {
+    checkBricklinkAccess: async (): Promise<void> => {
       await bricklinkRequest(kl, 'GET', '/colors/1');
     },
   };
 }
 
-export { BricklinkNichtErreichbar };
+export { BricklinkNotReachable };

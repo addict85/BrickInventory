@@ -33,10 +33,10 @@ function ohneKommentare(quelle) {
 }
 
 /** @param {string} verz @param {string[]} raus */
-function sammle(verz, raus) {
+function collect(verz, raus) {
   for (const eintrag of fs.readdirSync(verz, { withFileTypes: true })) {
     const p = path.join(verz, eintrag.name);
-    if (eintrag.isDirectory()) sammle(p, raus);
+    if (eintrag.isDirectory()) collect(p, raus);
     else if (/\.(ts|js)$/.test(eintrag.name)) raus.push(p);
   }
   return raus;
@@ -51,7 +51,7 @@ for (const teil of ANFRAGEPFAD) {
     console.error('prüft die Suche nichts und wäre trotzdem grün.');
     process.exit(1);
   }
-  if (fs.statSync(verz).isDirectory()) sammle(verz, dateien);
+  if (fs.statSync(verz).isDirectory()) collect(verz, dateien);
   else dateien.push(verz);
 }
 
@@ -110,21 +110,21 @@ if (treffer.length) {
  * Absichtlich doppelt, mit Grund. Die Liste darf nur KÜRZER werden.
  * @type {Map<string, string>}
  */
-const DOPPELT_ERLAUBT = new Map([]);
+const DUPLICATE_ALLOWED = new Map([]);
 
 /** @type {string[]} */
-const alleQuellen = [];
+const allSources = [];
 for (const teil of ['db', 'routes', 'src', 'jobs', 'clients', 'scripts']) {
   const verz = path.join(ROOT, teil);
-  if (fs.existsSync(verz)) sammleAlle(verz, alleQuellen);
+  if (fs.existsSync(verz)) collectAll(verz, allSources);
 }
-if (fs.existsSync(path.join(ROOT, 'server.ts'))) alleQuellen.push(path.join(ROOT, 'server.ts'));
+if (fs.existsSync(path.join(ROOT, 'server.ts'))) allSources.push(path.join(ROOT, 'server.ts'));
 
 /** @param {string} verz @param {string[]} raus */
-function sammleAlle(verz, raus) {
+function collectAll(verz, raus) {
   for (const eintrag of fs.readdirSync(verz, { withFileTypes: true })) {
     const p = path.join(verz, eintrag.name);
-    if (eintrag.isDirectory()) sammleAlle(p, raus);
+    if (eintrag.isDirectory()) collectAll(p, raus);
     // schema-stand.sql und basis.sql sind erzeugte Abbilder, keine Quellen —
     // sie nennen jede Tabelle ein zweites Mal, und zwar mit Absicht.
     else if (/\.(ts|js|sql)$/.test(eintrag.name) && !['schema-stand.sql', 'basis.sql'].includes(eintrag.name))
@@ -133,14 +133,14 @@ function sammleAlle(verz, raus) {
   return raus;
 }
 
-if (alleQuellen.length < 100) {
-  console.error(`ROT — nur ${alleQuellen.length} Quelldateien gefunden; der Pfad stimmt nicht.`);
+if (allSources.length < 100) {
+  console.error(`ROT — nur ${allSources.length} Quelldateien gefunden; der Pfad stimmt nicht.`);
   process.exit(1);
 }
 
 /** @type {Map<string, string[]>} */
 const angelegt = new Map();
-for (const datei of alleQuellen) {
+for (const datei of allSources) {
   const rel = path.relative(ROOT, datei);
   const text = ohneKommentare(fs.readFileSync(datei, 'utf8'));
   const re = /CREATE\s+(?:TABLE|(?:UNIQUE\s+)?INDEX)(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)/gi;
@@ -168,7 +168,7 @@ if (!angelegt.has('price_alerts')) {
 const mehrfach = [];
 for (const [name, orte] of angelegt) {
   if (orte.length < 2) continue;
-  if (DOPPELT_ERLAUBT.has(name)) continue;
+  if (DUPLICATE_ALLOWED.has(name)) continue;
   mehrfach.push(`${name}  —  ${orte.join(', ')}`);
 }
 
@@ -180,7 +180,7 @@ if (mehrfach.length) {
   console.error('solange sie dasselbe wollen — und CREATE TABLE IF NOT EXISTS meldet');
   console.error('einen Unterschied nicht, es tut dann einfach nichts.');
   console.error('Ist die Doppelung unvermeidlich, gehoert sie mit Grund in');
-  console.error('DOPPELT_ERLAUBT in dieser Datei.');
+  console.error('DUPLICATE_ALLOWED in dieser Datei.');
   process.exit(1);
 }
 

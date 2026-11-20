@@ -3,19 +3,19 @@
  * Verwalter; wer das Set im Haushalt hat, holt nur fehlende. Sonst war eine
  * Anleitung für alle weg, wenn die Quellen beim Neuladen nichts lieferten.
  *
- * Gegenprobe (am 27.10. gemessen): die Prüfung auf findeSetImBlickfeld entfernt →
+ * Gegenprobe (am 27.10. gemessen): die Prüfung auf findSetInScope entfernt →
  * rot: „ein fremdes Konto" (200, die Anleitung war gelöscht).
  *
  * Dazu einmal je Set und Tag für alle Konten zusammen; der Verwalter
  * ist frei. Gegenproben (am 30.10. gemessen):
- *   A  anleitungNeuLadenErlaubt() nicht gefragt → rot: „ein zweites Neuladen
+ *   A  instructionNewLoadAllowed() nicht gefragt → rot: „ein zweites Neuladen
  *      am selben Tag“
- *   B  die Prüfung moeglicheSetNummer() entfernt → rot: „eine Nummer mit
+ *   B  die Prüfung possibleSetNumber() entfernt → rot: „eine Nummer mit
  *      Pfadteilen“ (404 statt 400)
  * Gegenproben (am 02.11.2026 gemessen):
  *   C  die Prüfung auf anzahlAnleitungen() entfernt → rot: „wer das Set hat,
  *      ersetzt keine geteilte Anleitung“ (200 statt 403)
- *   D  loescheAnleitungen() wieder für alle → rot: „ein fremdes Konto“ und C
+ *   D  deleteInstructions() wieder für alle → rot: „ein fremdes Konto“ und C
  * Seit 05.11.2026 lädt ein Auftrag, die Route antwortet 202. Gegenprobe:
  *   E  anleitungEinreihen() in der Route nicht gerufen → rot: „das Neuladen
  *      steht als Auftrag an“
@@ -29,25 +29,25 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const { haeltSet, katalogSet } = require('./helpers/bestand');
+const { adminWithFactor } = require('./helpers/verwalter');
+const { holdsSet, catalogSet } = require('./helpers/bestand');
 
 // Kein Abruf bei den Quellen: Das Neuladen findet hier nichts.
-const anlPfad = require.resolve(path.join(require('./helpers/sources').DIST, 'src/katalog/instructions.js'));
-const echt = require(anlPfad);
-require.cache[anlPfad].exports = Object.assign({}, echt, { setAnleitungenLaden: async () => [] });
+const anlPath = require.resolve(path.join(require('./helpers/sources').DIST, 'src/katalog/instructions.js'));
+const echt = require(anlPath);
+require.cache[anlPath].exports = Object.assign({}, echt, { setAnleitungenLaden: async () => [] });
 
-const db = testDaten();
+const db = testData();
 const SET = '99072-1',
   URL_A = 'https://quelle.example/99072.pdf';
 const NAMEN = ['anl_halter', 'anl_fremd'].map(n => `${n}_${process.pid}`);
 
 test('Anleitungen neu laden', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];
@@ -62,9 +62,9 @@ test('Anleitungen neu laden', { concurrency: 1 }, async t => {
       ).id,
     );
   // ids[1] arbeitet unten als Verwalter.
-  await verwalterMitFaktor(_req, ids[1]);
-  await katalogSet(db, SET, { name: 'Anleitungsprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
-  await haeltSet(db, ids[0], SET, 1);
+  await adminWithFactor(_req, ids[1]);
+  await catalogSet(db, SET, { name: 'Anleitungsprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
+  await holdsSet(db, ids[0], SET, 1);
   const anleitung = () =>
     db.run(
       `INSERT INTO shared_instructions (set_number, url) VALUES ($1, $2)
@@ -86,47 +86,47 @@ test('Anleitungen neu laden', { concurrency: 1 }, async t => {
 
   const sitzung = {};
   const { base } = testServer(_req, { sitzung, t });
-  const neuLaden = async (als, nummer = SET) => {
+  const loadNew = async (als, nummer = SET) => {
     Object.assign(sitzung, als);
     return (await fetch(`${base}/api/v1/sets/${nummer}/instructions`, { method: 'POST' })).status;
   };
 
   await t.test('ein fremdes Konto', async () => {
     await anleitung();
-    assert.equal(await neuLaden({ userId: ids[1], isAdmin: false }), 404);
+    assert.equal(await loadNew({ userId: ids[1], isAdmin: false }), 404);
     assert.ok(await vorhanden(), 'Die geteilte Anleitung ist weg, obwohl das Konto das Set nicht hat');
   });
 
   await t.test('wer das Set hat, ersetzt keine geteilte Anleitung', async () => {
     await anleitung();
-    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 403);
+    assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 403);
     assert.ok(await vorhanden(), 'die geteilte Anleitung ist für alle weg');
   });
 
   await t.test('wer das Set hat, holt eine fehlende einmal am Tag', async () => {
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [SET]);
-    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 202);
-    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 429);
+    assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 202);
+    assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 429);
     await db.run(`UPDATE rate_limit_attempts SET first_at = NOW() - INTERVAL '25 hours' WHERE key = $1`, [
       `anleitung-neu|${SET}`,
     ]);
-    assert.equal(await neuLaden({ userId: ids[0], isAdmin: false }), 202, 'nach einem Tag geht es wieder');
+    assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 202, 'nach einem Tag geht es wieder');
   });
 
   await t.test('der Verwalter ersetzt', async () => {
     await anleitung();
-    assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 202);
+    assert.equal(await loadNew({ userId: ids[1], isAdmin: true }), 202);
     assert.ok(!(await vorhanden()), 'der Verwalter hat die alte Zeile nicht ersetzt');
     const auftrag = await db.get(`SELECT status FROM jobs WHERE type = 'anleitung' AND dedupe_key = $1`, [
       `anleitung:${SET}`,
     ]);
     assert.equal(auftrag?.status, 'offen', 'das Neuladen steht als Auftrag an');
     await anleitung();
-    assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }), 202, 'den Verwalter hält die Drossel nicht');
+    assert.equal(await loadNew({ userId: ids[1], isAdmin: true }), 202, 'den Verwalter hält die Drossel nicht');
   });
 
   await t.test('eine Nummer mit Pfadteilen', async () => {
     for (const roh of ['%2E%2E%2Fx', '%2E%2E%3Fx%3D', 'users'])
-      assert.equal(await neuLaden({ userId: ids[1], isAdmin: true }, roh), 400, roh);
+      assert.equal(await loadNew({ userId: ids[1], isAdmin: true }, roh), 400, roh);
   });
 });

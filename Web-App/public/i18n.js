@@ -41,15 +41,15 @@ export let LANG = localStorage.getItem('bim_lang') || _browserLang;
  * Translate a key. Supports {placeholder} substitution. Falls back to the key itself if not found.
  */
 /** Währung des Kontos; ohne passende Browserregion bestimmt sie das Zahlenformat. */
-let _waehrung = 'EUR';
+let _currency = 'EUR';
 /** @param {string | null | undefined} cur */
-export function setzeZahlenWaehrung(cur) {
+export function setNumbersCurrency(cur) {
   const neu = String(cur || 'EUR').toUpperCase();
-  if (neu === _waehrung) return;
-  _waehrung = neu;
+  if (neu === _currency) return;
+  _currency = neu;
   if (typeof document !== 'undefined')
     document.querySelectorAll('[data-i18n-betrag]').forEach(el => {
-      schreibeI18n(/** @type {HTMLElement} */ (el));
+      writeI18n(/** @type {HTMLElement} */ (el));
     });
 }
 
@@ -63,7 +63,7 @@ export function locale() {
   const passt = new RegExp(`^${LANG === 'en' ? 'en' : 'de'}-[A-Za-z]{2}$`).test(browser);
   if (passt) return browser;
   if (LANG === 'en') return 'en-GB';
-  return _waehrung === 'CHF' ? 'de-CH' : 'de-DE';
+  return _currency === 'CHF' ? 'de-CH' : 'de-DE';
 }
 
 /**
@@ -90,7 +90,7 @@ function _i18nEsc(v) {
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
  */
-function mehrzahlSchluessel(dict, key, vars) {
+function pluralKey(dict, key, vars) {
   const zahl = vars ? (vars.n ?? vars.count) : undefined;
   if (typeof zahl !== 'number' || !Number.isFinite(zahl)) return key;
   const form = key + '_' + new Intl.PluralRules(locale()).select(zahl);
@@ -112,7 +112,7 @@ export function t(key, vars) {
   // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird nur locales/en.js geladen. Der
   // Rückfall greift deshalb nur, wenn Deutsch tatsächlich da ist; sonst bleibt der Schlüssel selbst als
   // letzte Stufe.
-  const k = mehrzahlSchluessel(dict, key, vars);
+  const k = pluralKey(dict, key, vars);
   let str = dict[k] || I18N.de?.[k] || key;
   if (vars) {
     Object.keys(vars).forEach(k => {
@@ -139,7 +139,7 @@ export function tRaw(key, vars) {
   // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird nur locales/en.js geladen. Der
   // Rückfall greift deshalb nur, wenn Deutsch tatsächlich da ist; sonst bleibt der Schlüssel selbst als
   // letzte Stufe.
-  const k = mehrzahlSchluessel(dict, key, vars);
+  const k = pluralKey(dict, key, vars);
   let str = dict[k] || I18N.de?.[k] || key;
   if (vars) {
     Object.keys(vars).forEach(k => {
@@ -302,7 +302,7 @@ export function colorName(en) {
 }
 
 /** Ein Element mit data-i18n neu schreiben. @param {HTMLElement} el */
-function schreibeI18n(el) {
+function writeI18n(el) {
   const key = el.dataset.i18n;
   const attr = el.dataset.i18nAttr; // optional: 'placeholder', 'title', etc.
   // optional: data-i18n-vars='{"n":"4000"}' für parametrisierte statische Texte
@@ -361,7 +361,7 @@ export function applyLang(lang, persist) {
   document.documentElement.lang = lang;
 
   // Re-render all elements that carry a data-i18n attribute
-  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-i18n]')).forEach(schreibeI18n);
+  /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-i18n]')).forEach(writeI18n);
 
   // Ein zweites Attribut je Element, meist der Name eines Feldes neben seinem Platzhalter.
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-i18n-aria]')).forEach(el => {
@@ -380,7 +380,7 @@ export function applyLang(lang, persist) {
 
   // Speichern (konto.js) und das Neuladen des offenen Reiters (navigation.js) hören auf dieses
   // Ereignis: Die Übersetzung selbst kennt keine Ansicht.
-  emit('spracheGewechselt', { sprache: lang, speichern: !!persist, echterWechsel: !!isRealSwitch });
+  emit('spracheGewechselt', { sprache: lang, speichern: !!persist, realSwitch: !!isRealSwitch });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

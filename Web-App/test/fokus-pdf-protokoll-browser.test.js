@@ -28,8 +28,8 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { musterHaushalt } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { patternHousehold } = require('./helpers/bestand');
 const { AXE, AXE_LAUF } = require('./helpers/layout-messung');
 
 const TAB = { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 };
@@ -45,11 +45,11 @@ const PDF =
   '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 400]>>endobj\n4 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 400]>>endobj\n' +
   'trailer<</Root 1 0 R>>\n%%EOF\n';
 
-const SCHLIESSEN = `(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+const CLOSE = `(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
   const p = document.getElementById('pdf-viewer-modal'); if (p) p.style.display = 'none'; return true; })()`;
 
-async function pdfBetrachter(_t, a) {
+async function pdfViewer(_t, a) {
   const { b, bis } = a;
   await b.auswerten(
     `document.querySelector('.ntab[data-tab="gallery"]').click(); document.querySelector('#gallery [data-click="openModal"]').click(); true`,
@@ -78,7 +78,7 @@ async function pdfBetrachter(_t, a) {
   assert.deepEqual(await b.auswerten(AXE_LAUF), []);
 }
 
-async function csvFortschritt(_t, a) {
+async function csvProgress(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await b.auswerten(datei('#csv-file', 'sets.csv', 'text/csv', 'set_number,quantity\n75192-1,1\n99999-1,abc\n'));
@@ -108,7 +108,7 @@ async function csvFortschritt(_t, a) {
   assert.deepEqual(await b.auswerten(AXE_LAUF), []);
 }
 
-async function protokollfenster(_t, a) {
+async function logWindow(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="monitor"]').click(); true`);
   await bis(`!!document.querySelector('[data-click="openLogViewer"]')`, 'Hintergrundarbeiten');
@@ -183,7 +183,7 @@ async function masse(_t, a) {
     );
     const oben = await b.auswerten(`document.getElementById('m-market-rows').getBoundingClientRect().top`);
     assert.ok(oben < 450 - 40, `Wertkasten erst bei ${oben}px`);
-    await b.auswerten(SCHLIESSEN);
+    await b.auswerten(CLOSE);
 
     await groesse(360, 740, true);
     await b.auswerten(`window.scrollTo(0, 0); true`);
@@ -237,7 +237,7 @@ async function fokusring(_t, a) {
 }
 
 test('Fokus, PDF-Betrachter, Protokollfenster', { concurrency: 1, timeout: 300_000 }, async t => {
-  const a = await starteApp(t, { name: `r17_${process.pid}`, bestand: musterHaushalt, alleDesigns: true });
+  const a = await startApp(t, { name: `r17_${process.pid}`, bestand: patternHousehold, allDesigns: true });
   if (a.grund) {
     t.skip(a.grund);
     return;
@@ -258,12 +258,12 @@ test('Fokus, PDF-Betrachter, Protokollfenster', { concurrency: 1, timeout: 300_0
   const pruefungen = [
     ['Fokusring', fokusring],
     ['Masse', masse],
-    ['PDF-Betrachter', pdfBetrachter],
-    ['CSV-Fortschritt', csvFortschritt],
-    ['Protokollfenster', protokollfenster],
+    ['PDF-Betrachter', pdfViewer],
+    ['CSV-Fortschritt', csvProgress],
+    ['Protokollfenster', logWindow],
   ];
   for (const [name, fn] of pruefungen) {
-    await a.b.auswerten(SCHLIESSEN);
+    await a.b.auswerten(CLOSE);
     await t.test(name, () => fn(t, a));
   }
 });

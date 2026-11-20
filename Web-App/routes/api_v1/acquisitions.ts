@@ -1,13 +1,13 @@
 /** Kaufpreis-Erfassungen; die Regeln stehen in src/collection/acquisitions.ts. */
 import { acquisitionTotals } from '../../src/bestand';
-import { Abstriche } from '../../src/infra/ergebnis';
-import { sichtVon, waechterFuer } from './middleware';
+import { Degradations } from '../../src/infra/ergebnis';
+import { viewOf, guardFor } from './middleware';
 import type { ErfassungsArt } from '../../src/collection';
 import { vertragsRouter, type Anfrage } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
 /** Ohne bekannten Preis fehlt der Betrag, statt null zu sein: Geld hat im Vertrag einen Typ. */
-function ohneLeerenBetrag<T extends { amount: number | null }>(summe: T) {
+function withoutClearAmount<T extends { amount: number | null }>(summe: T) {
   const { amount, ...rest } = summe;
   return amount === null ? rest : { ...rest, amount };
 }
@@ -16,10 +16,10 @@ function ohneLeerenBetrag<T extends { amount: number | null }>(summe: T) {
 async function inKontowaehrung<T extends Parameters<Dienste['bestand']['erfassungenInKontowaehrung']>[0][number]>(
   d: Pick<Dienste, 'konto' | 'bestand' | 'parts' | 'minifigs' | 'collection'>,
   rows: T[],
-  betrachter: number,
+  viewer: number,
 ) {
-  const { acquisitions, totals } = await d.bestand.erfassungenInKontowaehrung(rows, betrachter);
-  return { acquisitions, totals: ohneLeerenBetrag(totals) };
+  const { acquisitions, totals } = await d.bestand.erfassungenInKontowaehrung(rows, viewer);
+  return { acquisitions, totals: withoutClearAmount(totals) };
 }
 
 type Schluessel = (pfad: Record<string, string | number>) => Array<string | number>;
@@ -47,12 +47,12 @@ const loeschen =
   ) =>
   (req: Erfassungsanfrage) =>
     d.collection.deleteAcquisition(art, req.apiUser.user_id, req.pfad.acqId, schluessel(req.pfad));
-const setSchluessel: Schluessel = p => [String(p.setNumber)];
-const teilSchluessel: Schluessel = p => [String(p.partNumber), Number(p.colorId)];
-const figurSchluessel: Schluessel = p => [String(p.figNumber)];
+const setKey: Schluessel = p => [String(p.setNumber)];
+const partKey: Schluessel = p => [String(p.partNumber), Number(p.colorId)];
+const minifigKey: Schluessel = p => [String(p.figNumber)];
 
-export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'parts' | 'minifigs' | 'collection'>) {
-  const { requireToken } = waechterFuer(d.konto);
+export function buildAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'parts' | 'minifigs' | 'collection'>) {
+  const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/sets/:setNumber/acquisitions', requireToken, async req => {
@@ -60,50 +60,42 @@ export function baueAcquisitionsRouter(d: Pick<Dienste, 'konto' | 'bestand' | 'p
     // Blickfeld: Im Haushalt gehören die Kaufpreise eines Sets oft mehreren Konten.
     // Scheitert das Lesen, zeigt die App eine leere Liste statt einer Fehlerseite;
     // `degradiert` sagt ihr, dass sie nicht wirklich leer ist.
-    const ab = new Abstriche();
+    const ab = new Degradations();
     const rows = await ab.oder(
       'erfassungen',
-      d.collection.setAcquisitionsForSet(sichtVon(req), req.pfad.setNumber),
+      d.collection.setAcquisitionsForSet(viewOf(req), req.pfad.setNumber),
       null,
     );
-    if (!rows) return { acquisitions: [], totals: ohneLeerenBetrag(acquisitionTotals([])), ...ab.angabe() };
+    if (!rows) return { acquisitions: [], totals: withoutClearAmount(acquisitionTotals([])), ...ab.angabe() };
     return { ...(await inKontowaehrung(d, rows, uid)), owner_user_id: uid };
   });
-  router.endpunkt('PUT /api/v1/sets/:setNumber/acquisitions/:acqId', requireToken, aendern(d, 'set', setSchluessel));
-  router.endpunkt(
-    'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId',
-    requireToken,
-    loeschen(d, 'set', setSchluessel),
-  );
+  router.endpunkt('PUT /api/v1/sets/:setNumber/acquisitions/:acqId', requireToken, aendern(d, 'set', setKey));
+  router.endpunkt('DELETE /api/v1/sets/:setNumber/acquisitions/:acqId', requireToken, loeschen(d, 'set', setKey));
 
   router.endpunkt('GET /api/v1/parts/:partNumber/:colorId/acquisitions', requireToken, async req => {
-    const rows = await d.parts.partAcquisitions(sichtVon(req), req.pfad.partNumber, req.pfad.colorId);
+    const rows = await d.parts.partAcquisitions(viewOf(req), req.pfad.partNumber, req.pfad.colorId);
     return { ...(await inKontowaehrung(d, rows, req.apiUser.user_id)), owner_user_id: req.apiUser.user_id };
   });
   router.endpunkt(
     'PUT /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId',
     requireToken,
-    aendern(d, 'part', teilSchluessel),
+    aendern(d, 'part', partKey),
   );
   router.endpunkt(
     'DELETE /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId',
     requireToken,
-    loeschen(d, 'part', teilSchluessel),
+    loeschen(d, 'part', partKey),
   );
 
   router.endpunkt('GET /api/v1/minifigs/:figNumber/acquisitions', requireToken, async req => {
-    const rows = await d.minifigs.minifigAcquisitions(sichtVon(req), req.pfad.figNumber);
+    const rows = await d.minifigs.minifigAcquisitions(viewOf(req), req.pfad.figNumber);
     return { ...(await inKontowaehrung(d, rows, req.apiUser.user_id)), owner_user_id: req.apiUser.user_id };
   });
-  router.endpunkt(
-    'PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId',
-    requireToken,
-    aendern(d, 'fig', figurSchluessel),
-  );
+  router.endpunkt('PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId', requireToken, aendern(d, 'fig', minifigKey));
   router.endpunkt(
     'DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId',
     requireToken,
-    loeschen(d, 'fig', figurSchluessel),
+    loeschen(d, 'fig', minifigKey),
   );
   return router;
 }

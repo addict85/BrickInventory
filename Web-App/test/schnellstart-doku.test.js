@@ -34,12 +34,12 @@ const DOKUS = [
   { datei: path.join(ROOT, 'README.md'), abschnitt: '## Docker (empfohlen)' },
 ];
 const DIGEST = 'sha256:' + '5'.repeat(64);
-const VEROEFFENTLICHT = fs
+const PUBLISHED = fs
   .readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'docker-publish.yml'), 'utf8')
   .match(/^\s*IMAGE:\s*(\S+)/m)?.[1];
 
 /** Die Zeilen des ersten ```bash-Blocks im Abschnitt, ohne Kommentare. */
-function schnellstart(datei, abschnitt) {
+function quickStart(datei, abschnitt) {
   const text = fs.readFileSync(datei, 'utf8');
   const ab = text.indexOf(`\n${abschnitt}\n`);
   assert.ok(ab >= 0, `${path.basename(datei)}: Abschnitt „${abschnitt}“ fehlt`);
@@ -51,7 +51,7 @@ function schnellstart(datei, abschnitt) {
     .filter(Boolean);
 }
 
-function sandkasten(t) {
+function sandbox(t) {
   const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'schnellstart-'));
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   fs.copyFileSync(path.join(ROOT, 'compose.yaml'), path.join(ort, 'compose.yaml'));
@@ -87,14 +87,14 @@ for (const { datei, abschnitt } of DOKUS) {
       t.skip('kein docker compose');
       return;
     }
-    assert.ok(VEROEFFENTLICHT, 'IMAGE in docker-publish.yml nicht gefunden');
-    const ort = sandkasten(t);
-    const schritte = schnellstart(datei, abschnitt);
-    const dockerZeilen = [];
+    assert.ok(PUBLISHED, 'IMAGE in docker-publish.yml nicht gefunden');
+    const ort = sandbox(t);
+    const schritte = quickStart(datei, abschnitt);
+    const dockerRows = [];
     for (const zeile of schritte) {
       if (/^(git|cd)\s/.test(zeile)) continue;
       if (/^docker\s/.test(zeile)) {
-        dockerZeilen.push(zeile);
+        dockerRows.push(zeile);
         continue;
       }
       // sudo nur für die Dateirechte; CA_ORDNER nennt denselben Ordner wie die
@@ -110,11 +110,11 @@ for (const { datei, abschnitt } of DOKUS) {
       ? fs.readFileSync(path.join(ort, 'docker.log'), 'utf8')
       : '';
     assert.ok(
-      dockerZeilen.some(z => /^docker compose pull\b/.test(z)) || /^docker compose pull\b/m.test(gezogen),
+      dockerRows.some(z => /^docker compose pull\b/.test(z)) || /^docker compose pull\b/m.test(gezogen),
       'der Schnellstart zieht das Image (docker compose pull)',
     );
     assert.ok(
-      dockerZeilen.some(z => /^docker compose up -d\b/.test(z)),
+      dockerRows.some(z => /^docker compose up -d\b/.test(z)),
       'der Schnellstart startet (docker compose up -d)',
     );
 
@@ -124,15 +124,15 @@ for (const { datei, abschnitt } of DOKUS) {
     const dienste = Object.keys(j.services);
 
     // Jeder Dienst, den ein docker-Befehl des Schnellstarts nennt, existiert.
-    for (const z of dockerZeilen) {
-      const [, befehl, rest = ''] = z.match(/^docker compose (\w+)((?:\s+[\w-]+)*)/) || [];
-      assert.ok(befehl, `unbekannte Form: ${z}`);
-      const woerter = rest
+    for (const z of dockerRows) {
+      const [, command, rest = ''] = z.match(/^docker compose (\w+)((?:\s+[\w-]+)*)/) || [];
+      assert.ok(command, `unbekannte Form: ${z}`);
+      const words = rest
         .trim()
         .split(/\s+/)
         .filter(w => w && !w.startsWith('-'));
       // Bei exec und run folgt auf den Dienst der Befehl im Container.
-      for (const d of ['exec', 'run'].includes(befehl) ? woerter.slice(0, 1) : woerter)
+      for (const d of ['exec', 'run'].includes(command) ? words.slice(0, 1) : words)
         assert.ok(dienste.includes(d), `unbekannter Dienst ${d} in „${z}“`);
     }
 
@@ -167,7 +167,7 @@ for (const { datei, abschnitt } of DOKUS) {
     for (const d of ['app', 'jobs', 'schluessel'])
       assert.equal(
         j.services[d].image,
-        `${VEROEFFENTLICHT}@${DIGEST}`,
+        `${PUBLISHED}@${DIGEST}`,
         `${d} zieht das veröffentlichte Image als geprüften Digest`,
       );
     assert.equal(
@@ -178,7 +178,7 @@ for (const { datei, abschnitt } of DOKUS) {
     for (const d of ['caddy', 'caddy-rechte'])
       assert.equal(
         j.services[d].image,
-        `${VEROEFFENTLICHT}-caddy@${DIGEST}`,
+        `${PUBLISHED}-caddy@${DIGEST}`,
         `${d} zieht das signierte Caddy-Image als geprüften Digest`,
       );
     const gebaut = dienste.filter(d => j.services[d].build?.dockerfile === 'Dockerfile');
@@ -191,24 +191,24 @@ for (const { datei, abschnitt } of DOKUS) {
 // `utils/konfig.ts` → rot „jeder genannte Pfad …“; „Dependabot“ in einen
 // Absatz → rot „kein Dependabot …“; einen Beleg `compose-pgweb` ergänzt → rot
 // „jeder genannte Test existiert“.
-const WURZEL_DOKU = path.join(__dirname, '..', '..');
-const TEXT = fs.readFileSync(path.join(WURZEL_DOKU, 'docs', 'SICHERHEIT.md'), 'utf8');
+const ROOT_DOCS = path.join(__dirname, '..', '..');
+const TEXT = fs.readFileSync(path.join(ROOT_DOCS, 'docs', 'SICHERHEIT.md'), 'utf8');
 
-function alleDateien() {
+function allFiles() {
   const raus = [];
   (function lauf(d) {
     for (const n of fs.readdirSync(d)) {
       if (['node_modules', 'dist', '.git', 'build', '.gradle'].includes(n)) continue;
       const p = path.join(d, n);
       if (fs.statSync(p).isDirectory()) lauf(p);
-      else raus.push(path.relative(WURZEL_DOKU, p).split(path.sep).join('/'));
+      else raus.push(path.relative(ROOT_DOCS, p).split(path.sep).join('/'));
     }
-  })(WURZEL_DOKU);
+  })(ROOT_DOCS);
   return raus;
 }
 
 test('jeder genannte Pfad auf .ts, .sh, .yml und .yaml existiert', () => {
-  const dateien = alleDateien();
+  const dateien = allFiles();
   const pfade = [...TEXT.matchAll(/[\w./-]+\.(?:ts|sh|ya?ml)\b/g)].map(m => m[0].replace(/^\.\//, ''));
   assert.ok(pfade.length > 40, `nur ${pfade.length} Pfade gefunden — greift die Suche noch?`);
   const fehlt = pfade.filter(p => !dateien.some(d => d === p || d.endsWith('/' + p)));
@@ -222,14 +222,14 @@ test('kein Renovate: Neue Fassungen schlägt Dependabot vor', () => {
 test('jeder genannte Test existiert', () => {
   const tests = new Set(
     fs
-      .readdirSync(path.join(WURZEL_DOKU, 'Web-App', 'test'))
+      .readdirSync(path.join(ROOT_DOCS, 'Web-App', 'test'))
       .filter(n => n.endsWith('.test.js'))
       .map(n => n.replace(/\.test\.js$/, '')),
   );
   // Belege stehen nach einem Gedankenstrich, als `name` mit Bindestrich, durch Kommas getrennt.
-  const belege = [...TEXT.matchAll(/ —\s+((?:`[a-z0-9-]+`(?:,\s*)?)+)/g)].flatMap(m =>
+  const receipts = [...TEXT.matchAll(/ —\s+((?:`[a-z0-9-]+`(?:,\s*)?)+)/g)].flatMap(m =>
     [...m[1].matchAll(/`([a-z0-9-]+)`/g)].map(x => x[1]),
   );
-  assert.ok(belege.length > 40, `nur ${belege.length} Belege gefunden — greift die Suche noch?`);
-  assert.deepEqual([...new Set(belege.filter(b => !tests.has(b)))], []);
+  assert.ok(receipts.length > 40, `nur ${receipts.length} Belege gefunden — greift die Suche noch?`);
+  assert.deepEqual([...new Set(receipts.filter(b => !tests.has(b)))], []);
 });

@@ -2,7 +2,7 @@
  * Welchen Zustand holt der Preislauf für einen Merkposten?
  *
  * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) Die wanted-Abfrage in zustaendeJeSet() entfernt → rot in Zeile 68,
+ *   a) Die wanted-Abfrage in statesJeSet() entfernt → rot in Zeile 68,
  *      „der Merkposten desselben Sets bei einem anderen Nutzer als gebraucht".
  *      NICHT in der Zeile davor: Ohne Merkliste fällt die Funktion hier auf
  *      'N' zurück, und der erste Merkposten ist zufällig auch 'N'. Deshalb steht
@@ -21,18 +21,18 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
-const { zustaendeJeSet, conditionsNeededFor } = _req('src/finanzen/preisLauf.js');
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
+const { statesJeSet, conditionsNeededFor } = _req('src/finanzen/preisLauf.js');
 
 /** Sortiert vergleichen: die Reihenfolge in der Menge ist keine Aussage. */
 const sortiert = a => [...a].sort();
 
 test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   // Eigene Nutzer je Prozess — der Test läuft neben anderen auf derselben DB.
   const anlegen = async suffix =>
@@ -55,13 +55,13 @@ test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurren
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'10305-1','U')`, [b]);
 
     assert.deepEqual(
-      (await zustaendeJeSet(a, ['10305-1'])).get('10305-1'),
+      (await statesJeSet(a, ['10305-1'])).get('10305-1'),
       ['N'],
       'ein Merkposten auf ein NEUES Set muss als neu geholt werden — vorher ergab die ' +
         'Vorgabe DEFAULT_PRICE_CONDITION hier still ein "U"',
     );
     assert.deepEqual(
-      (await zustaendeJeSet(b, ['10305-1'])).get('10305-1'),
+      (await statesJeSet(b, ['10305-1'])).get('10305-1'),
       ['U'],
       'und der Merkposten desselben Sets bei einem anderen Nutzer als gebraucht',
     );
@@ -71,19 +71,19 @@ test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurren
       a,
     ]);
     assert.deepEqual(
-      sortiert((await zustaendeJeSet(a, ['21318-1'])).get('21318-1')),
+      sortiert((await statesJeSet(a, ['21318-1'])).get('21318-1')),
       ['N', 'U'],
       'neu und gebraucht sind zwei Merkposten — für beide braucht das Detail einen Preis',
     );
 
     // Bestand ohne Merkposten: der Zustand kommt aus der Erfassung
-    await haeltSet(db, a, '75192-1', 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, a, '75192-1', 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1,'75192-1',1,'U')`,
       [a],
     );
     assert.deepEqual(
-      (await zustaendeJeSet(a, ['75192-1'])).get('75192-1'),
+      (await statesJeSet(a, ['75192-1'])).get('75192-1'),
       ['U'],
       'der Zustand der Erfassung eines eigenen Sets entscheidet',
     );
@@ -91,14 +91,14 @@ test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurren
     // ── Bestand UND Merkposten im anderen Zustand: beide ────────────────────────
     // Wer ein Set neu besitzt und ein gebrauchtes zweites sucht, wartet auf den
     // Gebraucht-Preis. Den Neu-Preis braucht die Bewertung trotzdem.
-    await haeltSet(db, a, '42100-1', 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, a, '42100-1', 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1,'42100-1',1,'N')`,
       [a],
     );
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'42100-1','U')`, [a]);
     assert.deepEqual(
-      sortiert((await zustaendeJeSet(a, ['42100-1'])).get('42100-1')),
+      sortiert((await statesJeSet(a, ['42100-1'])).get('42100-1')),
       ['N', 'U'],
       'Bestand und Merkposten in verschiedenen Zuständen ergeben beide Abrufe',
     );
@@ -109,13 +109,13 @@ test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurren
     // sets-Zeile": sets sagte 'N', die Erfassung 'U', Ergebnis 'U'. Mit
     // Migration 0032 kann es diesen Widerspruch nicht mehr geben — es gibt nur
     // die Erfassung. Die Aussage bleibt: Sie entscheidet.
-    await haeltSet(db, a, '10276-1', 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, a, '10276-1', 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1,'10276-1',1,'U')`,
       [a],
     );
     assert.deepEqual(
-      (await zustaendeJeSet(a, ['10276-1'])).get('10276-1'),
+      (await statesJeSet(a, ['10276-1'])).get('10276-1'),
       ['U'],
       'die Erfassung entscheidet ueber den zu holenden Preis',
     );
@@ -126,9 +126,9 @@ test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurren
     // nachgetragen und geprueft); hier wird er von Hand hergestellt. Wichtig
     // ist, dass dann 'N' herauskommt und nicht eine LEERE Liste — sonst wuerde
     // fuer dieses Set gar kein Preis geholt, und das faellt niemandem auf.
-    await haeltSet(db, a, '31203-1', 1);
+    await holdsSet(db, a, '31203-1', 1);
     assert.deepEqual(
-      (await zustaendeJeSet(a, ['31203-1'])).get('31203-1'),
+      (await statesJeSet(a, ['31203-1'])).get('31203-1'),
       ['N'],
       'ohne Erfassung bleibt es beim Neu-Preis — eine leere Liste hiesse, ' +
         'dass fuer dieses Set gar kein Preis geholt wird',
@@ -136,7 +136,7 @@ test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurren
 
     // ── Ein Set, das dieser Nutzer nirgends führt ───────────────────────────
     assert.deepEqual(
-      (await zustaendeJeSet(b, ['75192-1'])).get('75192-1'),
+      (await statesJeSet(b, ['75192-1'])).get('75192-1'),
       ['N'],
       'was dieser Nutzer weder besitzt noch wünscht, fällt auf "neu" zurück',
     );
@@ -147,7 +147,7 @@ test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurren
     for (const sn of ['10305-1', '21318-1', '75192-1', '42100-1', '10276-1', '31203-1']) {
       assert.deepEqual(
         sortiert(await conditionsNeededFor(sn, a)),
-        sortiert((await zustaendeJeSet(a, [sn])).get(sn)),
+        sortiert((await statesJeSet(a, [sn])).get(sn)),
         `conditionsNeededFor(${sn}) muss dasselbe sagen wie der Lauf`,
       );
     }
@@ -167,7 +167,7 @@ test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurren
 
     // ── Eine leere Liste fragt nicht nach ───────────────────────────────────
     assert.equal(
-      (await zustaendeJeSet(a, [])).size,
+      (await statesJeSet(a, [])).size,
       0,
       'ohne Sets darf keine Abfrage laufen — der Lauf ruft das für jeden Nutzer auf',
     );

@@ -40,7 +40,7 @@ export const INSTRUCTIONS_DIR = path.join(DATA_DIR, 'instructions');
 export const PDF_JOB_DIR = path.join(DATA_DIR, 'pdf-jobs');
 
 /** null für alles andere — der Aufrufer entscheidet, was das heisst. */
-export function webPfadAufloesen(webPath: string): string | null {
+export function resolveWebPath(webPath: string): string | null {
   if (!webPath) return null;
   if (webPath.startsWith('/data/')) return path.join(APP_ROOT, webPath.slice(1));
   if (webPath.startsWith('/images/')) return path.join(IMAGES_DIR, webPath.slice('/images/'.length));

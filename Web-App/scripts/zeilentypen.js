@@ -15,7 +15,7 @@ const ZIEL = path.join(ROOT, 'db', 'zeilen.ts');
 
 /** Was node-pg (mit dem NUMERIC-Leser aus db/database.ts) für einen PostgreSQL-Typ liefert. */
 /** @type {[RegExp, string][]} */
-const JS_TYP = [
+const JS_TYPE = [
   [/^(integer|smallint|real|double precision|numeric(\(\d+,\d+\))?)$/, 'number'],
   [/^(text|bigint|uuid|character( varying)?(\(\d+\))?)$/, 'string'],
   [/^boolean$/, 'boolean'],
@@ -25,10 +25,10 @@ const JS_TYP = [
 ];
 
 /** @param {string} pg */
-function jsTyp(pg) {
+function jsType(pg) {
   const liste = pg.endsWith('[]');
   const basis = liste ? pg.slice(0, -2) : pg;
-  const treffer = JS_TYP.find(([m]) => m.test(basis));
+  const treffer = JS_TYPE.find(([m]) => m.test(basis));
   if (!treffer) throw new Error(`Unbekannter Spaltentyp „${pg}“: in scripts/zeilentypen.js eintragen`);
   return liste ? `${treffer[1]}[]` : treffer[1];
 }
@@ -54,7 +54,7 @@ function tabellen(sql) {
   return aus;
 }
 
-function erzeuge() {
+function create() {
   const t = tabellen(fs.readFileSync(SCHEMA, 'utf8'));
   const zeilen = [
     '// Erzeugt von scripts/zeilentypen.js aus db/schema-stand.sql; nicht von Hand ändern.',
@@ -65,7 +65,7 @@ function erzeuge() {
   ];
   for (const [name, spalten] of [...t].sort(([a], [b]) => a.localeCompare(b))) {
     zeilen.push(`  ${name}: {`);
-    for (const s of spalten) zeilen.push(`    ${s.name}: ${jsTyp(s.typ)}${s.null ? ' | null' : ''};`);
+    for (const s of spalten) zeilen.push(`    ${s.name}: ${jsType(s.typ)}${s.null ? ' | null' : ''};`);
     zeilen.push('  };');
   }
   zeilen.push(
@@ -78,10 +78,10 @@ function erzeuge() {
   return zeilen.join('\n');
 }
 
-module.exports = { erzeuge, jsTyp, tabellen, ZIEL };
+module.exports = { create, jsType, tabellen, ZIEL };
 
 if (require.main === module) {
-  const neu = erzeuge();
+  const neu = create();
   if (process.argv.includes('--pruefen')) {
     const alt = fs.existsSync(ZIEL) ? fs.readFileSync(ZIEL, 'utf8') : '';
     if (alt !== neu) {

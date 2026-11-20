@@ -22,7 +22,7 @@
  *   I  (15.11.2026) in fortschritt.js wieder `new EventSource(url, { withCredentials: true })` statt
  *      strom() → rot: „kein fetch und kein EventSource an der API-Hülle vorbei“ mit Datei und Zeile
  */
-const { istAppModul, KERN, BAUSTEINE } = require('../scripts/build-frontend');
+const { isAppModule, KERN, BAUSTEINE } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -77,14 +77,14 @@ function graph() {
 }
 
 /** Stark zusammenhängende Komponenten mit mehr als einem Knoten (Tarjan). */
-function kreise(/** @type {Map<string, string[]>} */ g) {
+function circles(/** @type {Map<string, string[]>} */ g) {
   let n = 0;
   const index = new Map(),
     tief = new Map(),
     stapel = [],
     auf = new Set(),
     raus = [];
-  const besuche = (/** @type {string} */ v) => {
+  const visit = (/** @type {string} */ v) => {
     index.set(v, n);
     tief.set(v, n);
     n++;
@@ -92,7 +92,7 @@ function kreise(/** @type {Map<string, string[]>} */ g) {
     auf.add(v);
     for (const w of g.get(v) ?? []) {
       if (!index.has(w)) {
-        besuche(w);
+        visit(w);
         tief.set(v, Math.min(tief.get(v), tief.get(w)));
       } else if (auf.has(w)) tief.set(v, Math.min(tief.get(v), index.get(w)));
     }
@@ -107,7 +107,7 @@ function kreise(/** @type {Map<string, string[]>} */ g) {
       if (k.length > 1 || (g.get(v) ?? []).includes(v)) raus.push(k.sort());
     }
   };
-  for (const v of g.keys()) if (!index.has(v)) besuche(v);
+  for (const v of g.keys()) if (!index.has(v)) visit(v);
   return raus;
 }
 
@@ -118,7 +118,7 @@ test('das Frontend-Bündel hat keinen Importkreis', () => {
   assert.ok([...g.values()].flat().length >= 150, 'kaum Kanten im Graphen — greift die Auswertung noch?');
   assert.ok(g.has('i18n.js'), 'i18n.js fehlt im Graphen — es ist Teil des Bündels');
   assert.deepEqual(
-    kreise(g),
+    circles(g),
     [],
     'Importkreis im Frontend. Rückwege nach oben über events.js (emit/subscribe) ' +
       'oder targets.js (jumpTo), geteilter Zustand in state.js.',
@@ -127,8 +127,8 @@ test('das Frontend-Bündel hat keinen Importkreis', () => {
 
 test('Kern und Bausteine (KERN, BAUSTEINE, i18n.js) importieren keine Ansicht', () => {
   const g = graph();
-  const schicht = new Set([...KERN, ...BAUSTEINE].map(f => `js/${f}`));
-  const unten = (/** @type {string} */ k) => k === 'i18n.js' || schicht.has(k);
+  const layer = new Set([...KERN, ...BAUSTEINE].map(f => `js/${f}`));
+  const unten = (/** @type {string} */ k) => k === 'i18n.js' || layer.has(k);
   const kern = [...g.keys()].filter(unten);
   assert.equal(kern.length, KERN.length + BAUSTEINE.length, `nur ${kern.length} Kernmodule gefunden`);
   const aufwaerts = kern.flatMap(k => (g.get(k) ?? []).filter(z => !unten(z)).map(z => `${k} → ${z}`));
@@ -138,9 +138,9 @@ test('Kern und Bausteine (KERN, BAUSTEINE, i18n.js) importieren keine Ansicht', 
 test('geteilter veränderlicher Zustand nur in state.js', () => {
   // Ein `export let` ist eine Variable, die jedes Modul lesen kann, deren
   // Besitzer aber nicht feststeht. Ausserhalb des Zustandsmoduls gibt es
-  // stattdessen Lese- oder Stoppfunktionen (manuelleTeile(), stoppeMonitor()).
+  // stattdessen Lese- oder Stoppfunktionen (manualParts(), stopMonitor()).
   const treffer = [];
-  for (const f of fs.readdirSync(JS).filter(x => istAppModul(x) && x !== 'state.js')) {
+  for (const f of fs.readdirSync(JS).filter(x => isAppModule(x) && x !== 'state.js')) {
     fs.readFileSync(path.join(JS, f), 'utf8')
       .split('\n')
       .forEach((z, i) => {
@@ -154,13 +154,13 @@ test('geteilter veränderlicher Zustand nur in state.js', () => {
 test('kein fetch und kein EventSource an der API-Hülle vorbei', () => {
   // Ausnahmen: theme-boot.js läuft vor dem Bündel, logviewer.js in einem
   // eigenen Fenster mit Bearer-Token; beide können die Hülle nicht laden.
-  const AUSNAHMEN = new Set(['theme-boot.js', 'logviewer.js', 'app.bundle.js']);
+  const EXCEPTIONS = new Set(['theme-boot.js', 'logviewer.js', 'app.bundle.js']);
   const treffer = [];
   let gesehen = 0;
   for (const f of [
     ...fs
       .readdirSync(JS)
-      .filter(x => x.endsWith('.js') && !AUSNAHMEN.has(x))
+      .filter(x => x.endsWith('.js') && !EXCEPTIONS.has(x))
       .map(x => path.join(JS, x)),
     path.join(ROOT, 'public', 'i18n.js'),
   ]) {
@@ -173,15 +173,15 @@ test('kein fetch und kein EventSource an der API-Hülle vorbei', () => {
       treffer.push(`${path.relative(ROOT, f)}:${i + 1}: ${z.trim()}`);
     });
   }
-  assert.ok(gesehen >= 2, 'Nicht einmal die Aufrufe in apiRoh() und strom() gefunden — greift die Suche noch?');
-  assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api(), apiRoh() oder strom() (js/api.js)');
+  assert.ok(gesehen >= 2, 'Nicht einmal die Aufrufe in apiRaw() und strom() gefunden — greift die Suche noch?');
+  assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api(), apiRaw() oder strom() (js/api.js)');
 });
 
 test('docs/architektur.md beschreibt die Oberfläche mit Dateien, die es gibt', () => {
-  require('./helpers/buendel').stelleBuendelSicher(); // das Kapitel nennt das Bündel, ein Erzeugnis
+  require('./helpers/buendel').placeBundleSafe(); // das Kapitel nennt das Bündel, ein Erzeugnis
   const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'architektur.md'), 'utf8');
-  const kapitel = doc.split(/^## Oberfläche$/m)[1]?.split(/^## /m)[0] ?? '';
-  const pfade = [...kapitel.matchAll(/`((?:public|test|frontend-typen|scripts)\/[\w./-]+)`/g)].map(m => m[1]);
+  const chapter = doc.split(/^## Oberfläche$/m)[1]?.split(/^## /m)[0] ?? '';
+  const pfade = [...chapter.matchAll(/`((?:public|test|frontend-typen|scripts)\/[\w./-]+)`/g)].map(m => m[1]);
   assert.ok(pfade.length >= 10, `nur ${pfade.length} Pfade im Kapitel „Oberfläche“`);
   const fehlt = pfade.filter(p => !fs.existsSync(path.join(__dirname, '..', p)));
   assert.deepEqual(fehlt, []);

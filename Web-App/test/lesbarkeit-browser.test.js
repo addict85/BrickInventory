@@ -40,7 +40,7 @@ const STILE = [
 
 const { chrome } = require('./helpers/app-browser');
 
-function testseite() {
+function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
 <style>/* Gemessen wird der Endzustand, nicht der Übergang (.btn hat transition:all). */ *{transition:none!important}</style></head><body>
@@ -155,19 +155,19 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
     if (d) h = max === r ? 60 * (((g - b) / d) % 6) : max === g ? 60 * ((b - r) / d + 2) : 60 * ((r - g) / d + 4);
     return { name: el.dataset.farbton, rot: s > 0.35 && (h < 25 || h > 335) };
   });
-  const marken = [...document.querySelectorAll('[data-marke]')].map(el => getComputedStyle(el).color);
-  const dunkelGrund = [...document.querySelectorAll('section[data-dunkel] > div')]
+  const brands = [...document.querySelectorAll('[data-marke]')].map(el => getComputedStyle(el).color);
+  const darkReason = [...document.querySelectorAll('section[data-dunkel] > div')]
     .map(el => ({ name: el.parentElement.dataset.theme, hell: Math.round(lum(rgb(getComputedStyle(el).backgroundColor)) * 1000) / 1000 }));
   const datei = document.getElementById('datei'); datei.focus();
   const fokus = document.activeElement === datei;
   const px = id => parseFloat(getComputedStyle(document.getElementById(id)).fontSize);
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, farbton, marken, dunkelGrund, fokus, ring, raum: wortabstand(), snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, farbton, brands, darkReason, fokus, ring, space: wortabstand(), snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
 }));
 /** Breite eines Leerzeichens in der Schrift des Knopfs, in em. */
 function wortabstand() {
   const w = document.getElementById('wort'), b = t => { w.textContent = t; return w.getBoundingClientRect().width; };
-  const raum = b('n n') - b('nn');
-  return Math.round(raum / parseFloat(getComputedStyle(w).fontSize) * 100) / 100;
+  const space = b('n n') - b('nn');
+  return Math.round(space / parseFloat(getComputedStyle(w).fontSize) * 100) / 100;
 }
 </script></body></html>`;
 }
@@ -181,7 +181,7 @@ test('Kontrast, Datei-Felder und Kachelschrift', t => {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'lesbar-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testseite());
+  fs.writeFileSync(datei, testPage());
   const dom = execFileSync(
     bin,
     [
@@ -202,12 +202,12 @@ test('Kontrast, Datei-Felder und Kachelschrift', t => {
   assert.ok(e.kontrast.length >= 16);
   assert.ok(e.kontrast.filter(k => k.name.startsWith('dunkel ')).length === 35, 'Die dunklen Varianten fehlen');
   assert.deepEqual(
-    e.dunkelGrund.filter(g => g.hell > 0.05).map(g => `${g.name} ${g.hell}`),
+    e.darkReason.filter(g => g.hell > 0.05).map(g => `${g.name} ${g.hell}`),
     [],
     'Die Karte der dunklen Variante ist hell',
   );
   // hochglanz erbt die Farben von noppe; die übrigen vier bleiben unterscheidbar.
-  assert.equal(new Set(e.marken).size, 4, `Markenfarben dunkel: ${e.marken}`);
+  assert.equal(new Set(e.brands).size, 4, `Markenfarben dunkel: ${e.brands}`);
   assert.equal(e.farbton.length, 4);
   assert.deepEqual(
     e.farbton.filter(f => f.rot).map(f => f.name),
@@ -220,7 +220,7 @@ test('Kontrast, Datei-Felder und Kachelschrift', t => {
   );
   assert.equal(e.fokus, true, 'Datei-Feld fokussierbar: Tab übersprang CSV und BrickLink XML');
   assert.ok(e.snum >= 12 && e.smeta >= 12, `Kachelschrift ${e.snum}/${e.smeta} px`);
-  assert.ok(e.raum >= 0.22, `Wortabstand ${e.raum} em — „Set hinzufügen“ liest sich wie ein Wort`);
+  assert.ok(e.space >= 0.22, `Wortabstand ${e.space} em — „Set hinzufügen“ liest sich wie ein Wort`);
   assert.equal(e.ring.length, 2);
   for (const r of e.ring) {
     assert.ok(r.stil !== 'none' && r.breite >= 3, `Fokusring ${r.name}: ${r.breite}px ${r.stil}`);

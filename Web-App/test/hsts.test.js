@@ -5,9 +5,9 @@
  * die Regel einmal gesehen hat, sperrte ihn danach ein Jahr lang aus.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln, dist neu gebaut):
- *   A  in sicherheitsKoepfe() `if (ueberTls && …)` → `if (hstsAlter !== 0)` →
+ *   A  in securityHeaders() `if (viaTls && …)` → `if (hstsAlter !== 0)` →
  *      rot: „ohne TLS keine Kopfzeile“, „ein roher Kopf …“
- *   B  `const ueberTls = req.secure || req.headers['x-forwarded-proto'] ===
+ *   B  `const viaTls = req.secure || req.headers['x-forwarded-proto'] ===
  *      'https'` → rot: „ein roher Kopf ohne vertrauten Proxy setzt nichts“
  *   C  `&& hstsAlter !== 0` gestrichen → rot: „HSTS_MAX_AGE=0 schaltet ab“
  *   D  die Zeile mit Strict-Transport-Security gestrichen → rot: „über TLS
@@ -26,9 +26,9 @@ process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
-const freierPort = () =>
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
       const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
@@ -37,8 +37,8 @@ const freierPort = () =>
   });
 
 /** Ein Webprozess im Betriebsmodus mit eigener Umgebung; er endet im Nachlauf des Tests. */
-async function starteServer(t, env) {
-  const port = await freierPort();
+async function startServer(t, env) {
+  const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -81,7 +81,7 @@ async function starteServer(t, env) {
 const TLS = { 'x-forwarded-proto': 'https' };
 
 test('HSTS nur über TLS', { concurrency: 1, timeout: 180_000 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   // Nacheinander: Auf einer Datenbank läuft nur ein Web-Prozess (startup/einzelinstanz.ts).
@@ -90,16 +90,16 @@ test('HSTS nur über TLS', { concurrency: 1, timeout: 180_000 }, async t => {
   const k = {};
   for (const [name, env] of Object.entries({
     hinterProxy: { TRUST_PROXY: '' },
-    ohneProxy: { TRUST_PROXY: 'false' },
-    abgestellt: { TRUST_PROXY: '', HSTS_MAX_AGE: '0' },
+    withoutProxy: { TRUST_PROXY: 'false' },
+    disabled: { TRUST_PROXY: '', HSTS_MAX_AGE: '0' },
   }))
     await t.test(`Server ${name}`, async st => {
-      const hole = await starteServer(st, env);
+      const hole = await startServer(st, env);
       k[name] = { tls: await hole(TLS), ohne: await hole() };
     });
   const hinterProxy = async kopf => (kopf ? k.hinterProxy.tls : k.hinterProxy.ohne);
-  const ohneProxy = async kopf => (kopf ? k.ohneProxy.tls : k.ohneProxy.ohne);
-  const abgestellt = async kopf => (kopf ? k.abgestellt.tls : k.abgestellt.ohne);
+  const withoutProxy = async kopf => (kopf ? k.withoutProxy.tls : k.withoutProxy.ohne);
+  const disabled = async kopf => (kopf ? k.disabled.tls : k.disabled.ohne);
 
   await t.test('über TLS ein Jahr mit Subdomains', async () => {
     assert.equal((await hinterProxy(TLS)).get('strict-transport-security'), 'max-age=31536000; includeSubDomains');
@@ -110,15 +110,15 @@ test('HSTS nur über TLS', { concurrency: 1, timeout: 180_000 }, async t => {
   });
 
   await t.test('ein roher Kopf ohne vertrauten Proxy setzt nichts', async () => {
-    assert.equal((await ohneProxy(TLS)).get('strict-transport-security'), null);
+    assert.equal((await withoutProxy(TLS)).get('strict-transport-security'), null);
   });
 
   await t.test('HSTS_MAX_AGE=0 schaltet ab', async () => {
-    assert.equal((await abgestellt(TLS)).get('strict-transport-security'), null);
+    assert.equal((await disabled(TLS)).get('strict-transport-security'), null);
   });
 
   await t.test('die übrigen Sicherheitskopfzeilen bleiben, auch ohne HSTS', async () => {
-    for (const kopf of [await hinterProxy(TLS), await abgestellt(TLS)]) {
+    for (const kopf of [await hinterProxy(TLS), await disabled(TLS)]) {
       assert.deepEqual(
         ['x-frame-options', 'x-content-type-options', 'referrer-policy'].map(n => kopf.get(n)),
         ['SAMEORIGIN', 'nosniff', 'same-origin'],

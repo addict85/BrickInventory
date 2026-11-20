@@ -7,13 +7,13 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const name = `mkp_${process.pid}`;
   const TEIL = `mkpP${String(process.pid).slice(-5)}`;
@@ -38,10 +38,10 @@ test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur', { 
     // Spalten gibt es seit Migration 0035 nicht mehr (siehe den Kopf).
     const { manualPartsList } = _req('src/parts/queries.js');
     const { readManualMinifigs } = _req('src/minifigs/queries.js');
-    const teileListe = await manualPartsList([uid], uid);
-    const figListe = await readManualMinifigs([uid], uid);
-    const teil = (Array.isArray(teileListe) ? teileListe : []).find(p => p.part_number === TEIL);
-    const figur = (Array.isArray(figListe) ? figListe : []).find(f => f.fig_number === FIG);
+    const partsList = await manualPartsList([uid], uid);
+    const figList = await readManualMinifigs([uid], uid);
+    const teil = (Array.isArray(partsList) ? partsList : []).find(p => p.part_number === TEIL);
+    const figur = (Array.isArray(figList) ? figList : []).find(f => f.fig_number === FIG);
     assert.ok(teil, 'Das Teil steht nicht in der Liste');
     assert.ok(figur, 'Die Figur steht nicht in der Liste');
 

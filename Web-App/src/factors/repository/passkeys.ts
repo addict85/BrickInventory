@@ -1,10 +1,10 @@
-import type { DbSchnittstelle, Treffer } from '../../../db/database';
+import type { DbInterface, Treffer } from '../../../db/database';
 
 /** Challenges are kept only as a hash. */
 
 /** @returns false if `atMost` challenges are already open */
 export async function storeChallenge(
-  db: DbSchnittstelle,
+  db: DbInterface,
   hash: string,
   purpose: string,
   uid: number | null,
@@ -25,7 +25,7 @@ export async function storeChallenge(
 
 /** For signed challenges: only entered after a valid signature, so without an upper limit.
  * @returns false if the challenge is already consumed */
-export async function markConsumed(db: DbSchnittstelle, hash: string, purpose: string, until: Date): Promise<boolean> {
+export async function markConsumed(db: DbInterface, hash: string, purpose: string, until: Date): Promise<boolean> {
   await db.run('DELETE FROM webauthn_challenges WHERE expires_at < NOW()');
   return (
     (
@@ -40,7 +40,7 @@ export async function markConsumed(db: DbSchnittstelle, hash: string, purpose: s
 
 /** Delete and check in one step: a challenge is valid exactly once. */
 export async function consumeChallenge(
-  db: DbSchnittstelle,
+  db: DbInterface,
   hash: string,
   purpose: string,
   uid: number | null,
@@ -54,7 +54,7 @@ export async function consumeChallenge(
   ));
 }
 
-export function accountCredentialIds(db: DbSchnittstelle, uid: number) {
+export function accountCredentialIds(db: DbInterface, uid: number) {
   return db.all<{ credential_id: string; transports: string | null }>(
     'SELECT credential_id, transports FROM passkeys WHERE user_id = $1',
     [uid],
@@ -62,7 +62,7 @@ export function accountCredentialIds(db: DbSchnittstelle, uid: number) {
 }
 
 export async function createCredential(
-  db: DbSchnittstelle,
+  db: DbInterface,
   uid: number,
   credentialId: string,
   publicKey: Buffer,
@@ -79,7 +79,7 @@ export async function createCredential(
   );
 }
 
-export function byCredentialId(db: DbSchnittstelle, credentialId: string, uid: number | null) {
+export function byCredentialId(db: DbInterface, credentialId: string, uid: number | null) {
   return db.get<{ id: number; user_id: number; public_key: Buffer; sign_count: string; transports: string | null }>(
     `SELECT id, user_id, public_key, sign_count, transports FROM passkeys
       WHERE credential_id = $1 AND ($2::int IS NULL OR user_id = $2::int)`,
@@ -88,7 +88,7 @@ export function byCredentialId(db: DbSchnittstelle, credentialId: string, uid: n
 }
 
 /** Only if the counter is still the one read: two simultaneous logins do not both succeed. */
-export async function advanceCounter(db: DbSchnittstelle, id: number, neu: number, old: string): Promise<boolean> {
+export async function advanceCounter(db: DbInterface, id: number, neu: number, old: string): Promise<boolean> {
   return !!(
     await db.run('UPDATE passkeys SET sign_count = $2, last_used = NOW() WHERE id = $1 AND sign_count = $3', [
       id,
@@ -98,7 +98,7 @@ export async function advanceCounter(db: DbSchnittstelle, id: number, neu: numbe
   ).changes;
 }
 
-export function passkeysForAccount(db: DbSchnittstelle, uid: number) {
+export function passkeysForAccount(db: DbInterface, uid: number) {
   return db.all<{
     id: number;
     name: string | null;
@@ -108,14 +108,14 @@ export function passkeysForAccount(db: DbSchnittstelle, uid: number) {
   }>('SELECT id, name, created_at, last_used, transports FROM passkeys WHERE user_id = $1 ORDER BY created_at', [uid]);
 }
 
-export async function hasAny(db: DbSchnittstelle, uid: number): Promise<boolean> {
+export async function hasAny(db: DbInterface, uid: number): Promise<boolean> {
   return !!(await db.get<Treffer>('SELECT 1 FROM passkeys WHERE user_id = $1 LIMIT 1', [uid]));
 }
 
-export async function deleteAllForAccount(db: DbSchnittstelle, uid: number): Promise<number> {
+export async function deleteAllForAccount(db: DbInterface, uid: number): Promise<number> {
   return (await db.run('DELETE FROM passkeys WHERE user_id = $1', [uid])).changes ?? 0;
 }
 
-export async function deletePasskeyRow(db: DbSchnittstelle, uid: number, id: number): Promise<boolean> {
+export async function deletePasskeyRow(db: DbInterface, uid: number, id: number): Promise<boolean> {
   return !!(await db.run('DELETE FROM passkeys WHERE user_id = $1 AND id = $2', [uid, id])).changes;
 }

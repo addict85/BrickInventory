@@ -5,15 +5,15 @@
  * Andere Geräte desselben Kontos bleiben angemeldet.
  *
  * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  in beendeUeberlappung() nur noch löschen, nicht vermerken → rot:
+ *   A  in endOverlap() nur noch löschen, nicht vermerken → rot:
  *      „der Vorgänger ist als verbraucht vermerkt“
- *   B  in pruefeToken() meldeWiederverwendung() nicht aufgerufen → rot:
+ *   B  in pruefeToken() reportReuse() nicht aufgerufen → rot:
  *      „der Tausch mit dem verbrauchten sperrt die Familie“ (B gilt weiter)
- *   C  in sperreFamilie() `a.created_at = v.token_family` gestrichen → rot:
+ *   C  in lockFamily() `a.created_at = v.token_family` gestrichen → rot:
  *      „das andere Gerät bleibt angemeldet“
- *   D  hinweisNebenher() in meldeWiederverwendung() entfernt → rot:
+ *   D  hintInBackground() in reportReuse() entfernt → rot:
  *      „der Inhaber bekommt genau eine Mail“
- *   E  WIEDERVERWENDUNG_SCHONFRIST_S auf 0 → rot: „ein Nachzügler in der
+ *   E  REUSE_GRACE_PERIOD_S auf 0 → rot: „ein Nachzügler in der
  *      Schonfrist sperrt nichts“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -28,10 +28,10 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
 const gesendet = [];
-require('./helpers/sources').ersetzeDienste('mail', {
+require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (an, _name, art, o) => {
     gesendet.push({ an, art, name: o.passkey });
@@ -39,7 +39,7 @@ require('./helpers/sources').ersetzeDienste('mail', {
   },
 });
 
-const db = S.testDaten();
+const db = S.testData();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -48,7 +48,7 @@ const NAME = `familie_${process.pid}`,
   PASS = 'Familien-Passwort-1';
 
 test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(
@@ -60,7 +60,7 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
 
   const app = express();
   app.use(express.json());
-  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}/api/v1/auth`;
   t.after(async () => {
@@ -83,16 +83,16 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
     return r.body.token;
   };
   const gilt = async token => {
-    tokenCache.leereTokenCache();
+    tokenCache.emptyTokenCache();
     return (await ruf('/me', token)).status === 200;
   };
   const verbraucht = async () =>
     (await db.all('SELECT token FROM api_tokens_consumed WHERE user_id = $1', [uid])).map(z => z.token);
   // Jede Anmeldung meldet ihren neuen Zugang (token_neu); gezählt wird hier die Warnung.
-  const warnungen = () => gesendet.filter(m => m.an === `${NAME}@example.org` && m.art !== 'token_neu');
+  const warnings = () => gesendet.filter(m => m.an === `${NAME}@example.org` && m.art !== 'token_neu');
   const mails = async anzahl => {
-    for (let i = 0; i < 60 && warnungen().length < anzahl; i++) await new Promise(r => setTimeout(r, 25));
-    return warnungen();
+    for (let i = 0; i < 60 && warnings().length < anzahl; i++) await new Promise(r => setTimeout(r, 25));
+    return warnings();
   };
 
   const a = await anmelden('Pixel');
@@ -103,7 +103,7 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
 
   await t.test('der Vorgänger ist als verbraucht vermerkt', async () => {
     assert.equal(await gilt(b), true, 'die erste Nutzung des Nachfolgers');
-    assert.deepEqual(await verbraucht(), [auth.tokenAbdruck(a)]);
+    assert.deepEqual(await verbraucht(), [auth.tokenDigest(a)]);
     assert.equal(await gilt(a), false, 'der Vorgänger gilt nach der Überlappung nicht mehr');
   });
 
@@ -135,10 +135,10 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
     const c2 = await ruf('/token-rotieren', anderes, {});
     assert.equal(await gilt(c2.body.token), true);
     assert.equal((await verbraucht()).length, 1, 'Vorbedingung: ein Vermerk der lebenden Familie');
-    await auth.tokensAufraeumen();
+    await auth.tokensCleanup();
     assert.equal((await verbraucht()).length, 1, 'der Vermerk einer lebenden Familie bleibt');
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
-    await auth.tokensAufraeumen();
+    await auth.tokensCleanup();
     assert.deepEqual(await verbraucht(), []);
   });
 });

@@ -7,7 +7,7 @@
  *   A  in kontoEntfernen() Sitzungsversion und Sitzungen erst nach der Transaktion
  *      gelöscht → rot: „scheitert ein Schritt, bleibt alles, wie es war“ (Konto weg)
  *   B  protokolliere() nach der Transaktion → rot: dieselbe Prüfung (Eintrag ohne Löschung)
- *   C  in kontoDateienEntfernen() den Fang entfernt → rot: „liegen die Dateien
+ *   C  in removeAccountFiles() den Fang entfernt → rot: „liegen die Dateien
  *      fest, übernimmt ein Auftrag“ (die Löschung meldet einen Fehler)
  *
  * Die Sitzungslöschung scheitert an einem Trigger in der Datenbank (wie ein echter
@@ -23,12 +23,12 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
 test('Konto entfernen', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const { kontoEntfernen, kontoDateienEntfernen } = _req('src/konto/kontoEntfernen.js');
+  const { kontoEntfernen, removeAccountFiles } = _req('src/konto/kontoEntfernen.js');
   const P = process.pid;
   const VERW = `entf-verw-${P}`,
     ZIEL = `entf-ziel-${P}`;
@@ -102,7 +102,7 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
     };
     let r;
     try {
-      r = await kontoDateienEntfernen(987654);
+      r = await removeAccountFiles(987654);
     } finally {
       fs.promises.rm = echt;
     }
@@ -112,6 +112,6 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
     ]);
     assert.ok(a, 'kein Auftrag zum Wiederholen');
     assert.equal(a.payload.user_id, 987654);
-    assert.equal(await kontoDateienEntfernen(987654), 'entfernt', 'ohne Störung geht es gleich');
+    assert.equal(await removeAccountFiles(987654), 'entfernt', 'ohne Störung geht es gleich');
   });
 });

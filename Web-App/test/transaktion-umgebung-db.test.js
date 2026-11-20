@@ -2,7 +2,7 @@
  * Eine Transaktion wird ausdrücklich gereicht: Ein Satz Dienste über ihrem Zugang
  * (`ueber(tx.db)`, wie ihn der Kontext `t` baut) liest und schreibt über ihre
  * Verbindung; derselbe Dienst über dem ungebundenen Zugang wirft in ihr
- * (UngebundeneAbfrage). Eine innere Transaktion ist ein Sicherungspunkt, und wer
+ * (UnboundQuery). Eine innere Transaktion ist ein Sicherungspunkt, und wer
  * nach COMMIT noch fragt, bekommt den Pool.
  *
  * Gegenproben (05.11.2026 gemessen):
@@ -30,23 +30,23 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
-const { zugangOderSkip } = require('./helpers/db');
+const { accessOrSkip } = require('./helpers/db');
 
 test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
-  const db = await zugangOderSkip(t, _req);
+  const db = await accessOrSkip(t, _req);
   if (!db) return;
   const S = `tx_umgebung_${process.pid}`;
   // global_settings schreibt nur die Systemrolle (0117): Die Transaktionen laufen in ihrem Rahmen.
-  const { imSystemkontext } = _req('src/infra/kontoKontext.js');
-  const transaktion = fn => imSystemkontext('test', () => db.transaction(fn));
+  const { inSystemContext } = _req('src/infra/kontoKontext.js');
+  const transaktion = fn => inSystemContext('test', () => db.transaction(fn));
   t.after(async () => {
-    await imSystemkontext('test', () => db.run('DELETE FROM global_settings WHERE key LIKE $1', [`${S}%`])).catch(
+    await inSystemContext('test', () => db.run('DELETE FROM global_settings WHERE key LIKE $1', [`${S}%`])).catch(
       () => {},
     );
     await db.pool.end().catch(() => {});
   });
   const { getGlobalSetting } = _req('src/settings/settings.js');
-  const einstellungen = require('./helpers/sources').testDienste().settings;
+  const einstellungen = require('./helpers/sources').testServices().settings;
   /** Die Einstellungen über dem Zugang einer Transaktion, wie sie in `t` stehen. */
   const in_ = tx => einstellungen.ueber(tx.db);
   const schreibe = (tx, k, v) => tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [`${S}${k}`, v]);
@@ -89,16 +89,16 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
   });
 
   await t.test('wer nach COMMIT fragt, bekommt den Pool', async () => {
-    let spaeter, drinnen;
+    let spaeter, inside;
     await transaktion(async tx => {
       await schreibe(tx, 'e', 'fest');
-      drinnen = db.inTransaktion();
+      inside = db.inTransaction();
       spaeter = new Promise(r => setTimeout(r, 50)).then(async () => [
-        db.inTransaktion(),
+        db.inTransaction(),
         await db.get('SELECT 1 AS x'),
       ]);
     });
-    assert.equal(drinnen, true);
+    assert.equal(inside, true);
     assert.deepEqual(await spaeter, [false, { x: 1 }], 'ein Nachzügler läuft über den Pool');
   });
 });

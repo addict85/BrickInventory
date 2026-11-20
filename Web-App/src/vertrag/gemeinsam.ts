@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { KontoName, zeit, veraltet, PROZENT_TEXT } from './grund';
+import { KontoName, zeit, veraltet, PERCENT_TEXT } from './grund';
 
 export const BestandteilKopf = z.looseObject({
   nummer: z.string(),
@@ -65,7 +65,7 @@ export const ValuationAcquisition = z.looseObject({
   avg_price: z.number().nullable(),
   total_avg: z.string().nullable(),
   wert_gesamt: z.number().nullable(),
-  pnl_pct: PROZENT_TEXT,
+  pnl_pct: PERCENT_TEXT,
   pnl_prozent: z.number().nullable(),
   created_at: zeit.nullable(),
   kaufpreis_original: z.number().optional(),
@@ -73,7 +73,7 @@ export const ValuationAcquisition = z.looseObject({
   price_estimated: z.boolean().optional(),
 });
 
-const STUECK = {
+const PIECE = {
   id: z.number().int().nullable(),
   quantity: z.number().int(),
   image_url: z.string().nullable(),
@@ -86,14 +86,14 @@ const STUECK = {
   /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
   owners: z.array(KontoName).optional(),
 };
-const BEWERTET = {
+const VALUED = {
   /** Die Preisangaben fehlen ohne Erfassung (kein Zustand zu bewerten); ausstehend nur, solange einer fehlt. */
   ausstehend: z.boolean().optional(),
   from_cache: z.boolean().optional(),
   max_price: z.number().nullable().optional(),
   min_price: z.number().nullable().optional(),
   qty_avg_price: veraltet(z.number().nullable(), 'avg_price'),
-  pnl_pct: PROZENT_TEXT,
+  pnl_pct: PERCENT_TEXT,
   pnl_prozent: z.number().nullable(),
   display_value: veraltet(z.string().nullable(), 'wert_gesamt'),
   total_value: veraltet(z.string(), 'wert_gesamt'),
@@ -101,7 +101,7 @@ const BEWERTET = {
   acquisitions: z.array(ValuationAcquisition),
 };
 /** Der Bestand (manuelle Listen): Zähler, Lagerort; die Käufe lädt das Detail über /acquisitions. */
-const IM_BESTAND = {
+const IN_INVENTORY = {
   acq_count: z.number().int().nullable(),
   used_count: z.number().int().nullable(),
   avg_purchase_price: z.number().nullable(),
@@ -125,11 +125,11 @@ const TEIL = {
   unit_price: z.number().nullable(),
 };
 
-export const FigValuationItem = z.looseObject({ ...STUECK, ...FIGUR, ...BEWERTET });
+export const FigValuationItem = z.looseObject({ ...PIECE, ...FIGUR, ...VALUED });
 export const ManuelleFigur = z.looseObject({
-  ...STUECK,
+  ...PIECE,
   ...FIGUR,
-  ...IM_BESTAND,
+  ...IN_INVENTORY,
   unit_price: z.number().nullable(),
 });
 
@@ -146,7 +146,7 @@ export const SetAggregate = z.looseObject({
 });
 
 /** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen (src/infra/ergebnis.ts). */
-export const DEGRADIERT = z.array(z.string()).optional();
+export const DEGRADED = z.array(z.string()).optional();
 
 /** Die schlichte Bestätigung; wer mehr sagt, erweitert sie (sonst wurde jedes Feld jeder Route überall freiwillig). */
 export const GenericResponse = z.looseObject({ success: z.boolean() });
@@ -194,8 +194,8 @@ export const Minifig = z.looseObject({
   set_added_at: zeit.nullable(),
 });
 
-/** Eine Figur aus dem Inhalt eines Sets (figurenlisteDesSets): dieselbe Form ohne Bestand. */
-export const SetFigur = z.looseObject({
+/** Eine Figur aus dem Inhalt eines Sets (minifigsListOfSets): dieselbe Form ohne Bestand. */
+export const SetMinifig = z.looseObject({
   fig_number: z.string(),
   fig_name: z.string(),
   quantity: z.number().int(),
@@ -216,11 +216,11 @@ export const MinifigsResponse = z.looseObject({
 export const SetFigurenResponse = z.looseObject({
   success: z.boolean(),
   source: z.string(),
-  figs: z.array(SetFigur),
+  figs: z.array(SetMinifig),
   error: z.string().optional(),
 });
 
-const TEIL_IN_LISTE = {
+const PART_IN_LIST = {
   part_number: z.string(),
   bl_part_number: z.string().nullable(),
   part_name: z.string().nullable(),
@@ -233,7 +233,7 @@ const TEIL_IN_LISTE = {
 };
 
 export const Part = z.looseObject({
-  ...TEIL_IN_LISTE,
+  ...PART_IN_LIST,
   /** Fehlen nur im Rückfall auf Rebrickable (Teile eines Sets, das niemand erfasst hat). */
   condition: z.string().nullable().optional(),
   storage: z.string().nullable().optional(),
@@ -243,13 +243,13 @@ export const Part = z.looseObject({
   in_sets: z.string().nullable().optional(),
 });
 
-export const SetTeil = z.looseObject({ ...TEIL_IN_LISTE, bl_color_id: z.number().int().nullable() });
+export const SetTeil = z.looseObject({ ...PART_IN_LIST, bl_color_id: z.number().int().nullable() });
 
-export const PartValuationItem = z.looseObject({ ...STUECK, ...TEIL, ...BEWERTET });
+export const PartValuationItem = z.looseObject({ ...PIECE, ...TEIL, ...VALUED });
 export const ManuellesTeil = z.looseObject({
-  ...STUECK,
+  ...PIECE,
   ...TEIL,
-  ...IM_BESTAND,
+  ...IN_INVENTORY,
   category_name: z.string().nullable(),
   created_at: zeit.nullable(),
   source: z.string().nullable(),
@@ -262,7 +262,7 @@ export const PartsResponse = z.looseObject({
   page: z.number().int(),
   page_size: z.number().int(),
   parts: z.array(Part),
-  degradiert: DEGRADIERT,
+  degradiert: DEGRADED,
 });
 
 export const SetTeileResponse = z.looseObject({
@@ -291,4 +291,4 @@ export const VerwendendeSetsResponse = z.looseObject({
 });
 
 /** Löschen legt in den Papierkorb; die Kennungen holen es zurück. */
-export const InDenPapierkorb = GenericResponse.extend({ papierkorb: z.array(z.number().int()) });
+export const InDenTrash = GenericResponse.extend({ papierkorb: z.array(z.number().int()) });

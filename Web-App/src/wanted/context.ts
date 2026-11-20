@@ -4,24 +4,24 @@ import { mit, type Kontext } from '../infra/bereich';
 import * as wanted from './repository/wanted';
 import * as wantedListe from './repository/wantedListe';
 import type { SettingsServices } from '../settings';
-import type { HaushaltDienste } from '../haushalt';
-import type { KatalogDienste } from '../katalog';
-import type { FinanzenDienste } from '../finanzen';
-import type { SetsDienste } from '../sets';
-import type { FremdquellenDienste } from '../fremdquellen';
-import type { BilderDienste } from '../bilder';
+import type { HouseholdServices } from '../haushalt';
+import type { CatalogServices } from '../katalog';
+import type { FinancesServices } from '../finanzen';
+import type { SetsServices } from '../sets';
+import type { ForeignSourcesServices } from '../fremdquellen';
+import type { ImagesServices } from '../bilder';
 import type { Uhr } from '../infra/uhr';
 
 export interface WantedDependencies {
   uhr: Uhr;
   db: Db;
   einstellungen: SettingsServices;
-  haushalt: HaushaltDienste;
-  katalog: KatalogDienste;
-  finanzen: FinanzenDienste;
-  fremdquellen: FremdquellenDienste;
-  bilder: BilderDienste;
-  sets: SetsDienste;
+  haushalt: HouseholdServices;
+  katalog: CatalogServices;
+  finanzen: FinancesServices;
+  fremdquellen: ForeignSourcesServices;
+  bilder: ImagesServices;
+  sets: SetsServices;
 }
 
 export const access = (db: Db) => ({
@@ -37,14 +37,14 @@ export const access = (db: Db) => ({
   // number mapping); left under their established German names, same as
   // wantedAufloesung.ts/wantedListe.ts that call them — see the Phase 2a report.
   wantedListe: {
-    zuordnungen: mit(db)(wantedListe.zuordnungen),
-    nummernImKatalog: mit(db)(wantedListe.nummernImKatalog),
-    farbenZuBlFarben: mit(db)(wantedListe.farbenZuBlFarben),
-    farbenZuIds: mit(db)(wantedListe.farbenZuIds),
-    teileBeschreibung: mit(db)(wantedListe.teileBeschreibung),
-    teilFarbbilder: mit(db)(wantedListe.teilFarbbilder),
-    figurenBeschreibung: mit(db)(wantedListe.figurenBeschreibung),
-    setsBeschreibung: mit(db)(wantedListe.setsBeschreibung),
+    mappings: mit(db)(wantedListe.mappings),
+    numbersInCatalog: mit(db)(wantedListe.numbersInCatalog),
+    colorsToBlColors: mit(db)(wantedListe.colorsToBlColors),
+    colorsToIds: mit(db)(wantedListe.colorsToIds),
+    partsDescription: mit(db)(wantedListe.partsDescription),
+    partColorImages: mit(db)(wantedListe.partColorImages),
+    minifigsDescription: mit(db)(wantedListe.minifigsDescription),
+    setsDescription: mit(db)(wantedListe.setsDescription),
   },
 });
 export type WantedContext = Kontext<WantedDependencies, ReturnType<typeof access>>;

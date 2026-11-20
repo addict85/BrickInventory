@@ -34,7 +34,7 @@ function dienst(name) {
   }
   return block.join('\n');
 }
-const DIENSTE = [
+const SERVICES = [
   ...compose.slice(compose.indexOf('\nservices:'), compose.indexOf('\nvolumes:')).matchAll(/^ {2}([a-z-]+):\s*$/gm),
 ].map(m => m[1]);
 
@@ -46,9 +46,9 @@ const byte = roh => {
 };
 
 test('jeder Dienst hat Grenzen für Speicher, Prozesse und CPU', () => {
-  assert.ok(DIENSTE.length >= 6, `nur ${DIENSTE.join(', ')}`);
+  assert.ok(SERVICES.length >= 6, `nur ${SERVICES.join(', ')}`);
   const fehlt = [];
-  for (const n of DIENSTE) {
+  for (const n of SERVICES) {
     const b = dienst(n);
     const mem = b.match(/^\s+mem_limit:\s*(\S+)/m)?.[1],
       pids = b.match(/^\s+pids_limit:\s*(\d+)/m)?.[1];
@@ -78,7 +78,7 @@ test('app und jobs sehen den Datenschlüssel nur lesend', () => {
   assert.match(copy, /^COPY .*\bdaten-rechte\.sh\b.* \.\/$/m, 'daten-rechte.sh liegt nicht im Image');
 });
 
-function sandkasten() {
+function sandbox() {
   const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'schluessel-'));
   fs.mkdirSync(path.join(ort, 'schluessel'));
   fs.mkdirSync(path.join(ort, 'data'));
@@ -96,7 +96,7 @@ function sandkasten() {
 }
 
 test('der Schlüssel entsteht einmal, nur der Eigentümer liest ihn', t => {
-  const { ort, lauf, datei } = sandkasten();
+  const { ort, lauf, datei } = sandbox();
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   const r = lauf();
   assert.equal(r.status, 0, r.stderr);
@@ -110,7 +110,7 @@ test('der Schlüssel entsteht einmal, nur der Eigentümer liest ihn', t => {
 });
 
 test('ein alter Schlüssel in data/ bleibt der einzige', t => {
-  const { ort, lauf, datei } = sandkasten();
+  const { ort, lauf, datei } = sandbox();
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   fs.writeFileSync(path.join(ort, 'data', '.datenschluessel'), Buffer.alloc(32, 7).toString('base64'));
   const r = lauf();

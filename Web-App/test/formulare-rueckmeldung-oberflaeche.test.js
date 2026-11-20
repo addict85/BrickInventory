@@ -14,7 +14,7 @@
  *   - Dunkelmodus „Immer dunkel“ wirkt auch bei hellem System.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in sendeAlarm die Zeile mit feldFehler entfernt → rot: „Alarm im
+ *   A  in sendAlarm die Zeile mit feldFehler entfernt → rot: „Alarm im
  *      Set-Detail“ (DELETE statt Fehlermeldung)
  *   B  in loescheAlarm wieder confirm() → rot: „Alarm löschen mit Dialog
  *      und Rückgängig“
@@ -28,13 +28,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt, sicht } = require('./helpers/oberflaeche');
+const { openUi, warte, takt, sicht } = require('./helpers/oberflaeche');
 
 const SN = '10305-1';
 const loeschen = (o, pfad) => o.aufrufe.filter(a => a.method === 'DELETE' && a.url.includes(pfad));
 
 test('Alarm im Set-Detail', async () => {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       [`/v1/sets/${SN}`]: {
         success: true,
@@ -42,7 +42,7 @@ test('Alarm im Set-Detail', async () => {
       },
       [`/v1/sets/${SN}/alert`]: { success: true, alerts: [] },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     const knopf = o.d.createElement('button');
@@ -74,12 +74,12 @@ test('Alarm löschen mit Dialog und Rückgängig', async () => {
     threshold: 249,
     currency_code: 'EUR',
   };
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/alerts': { success: true, alerts: [alarm] },
       [`/v1/sets/${SN}/alert`]: { success: true, alerts: [alarm] },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   let browserConfirm = 0;
   o.w.confirm = () => {
@@ -112,7 +112,7 @@ test('Alarm löschen mit Dialog und Rückgängig', async () => {
 });
 
 test('Lagerorte', async () => {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/storage/locations': {
         success: true,
@@ -124,7 +124,7 @@ test('Lagerorte', async () => {
       },
       '/v1/storage': { success: true, orte: [{ ort: 'Regal A', sets: 2, teile: 0, figuren: 0 }] },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     await sicht(o.w, 'lagerorte');
@@ -158,7 +158,7 @@ test('Lagerorte', async () => {
 });
 
 test('Gutscheinsumme je Währung', async () => {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/vouchers': {
         success: true,
@@ -169,7 +169,7 @@ test('Gutscheinsumme je Währung', async () => {
         ],
       },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     await sicht(o.w, 'gutscheine');
@@ -183,7 +183,7 @@ test('Gutscheinsumme je Währung', async () => {
 });
 
 test('Konto anlegen: Regeln am Feld vor der Passwortabfrage', async () => {
-  const o = await oeffneOberflaeche({}, { browserSprache: 'de-DE' });
+  const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     o.d.getElementById('nu-n').value = 'Bert Müller';
     o.d.getElementById('nu-p').value = 'Lang-genug-Passwort-1';
@@ -214,10 +214,10 @@ test('Konto anlegen: Regeln am Feld vor der Passwortabfrage', async () => {
 });
 
 test('Immer dunkel', async () => {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {},
     {
-      browserSprache: 'de-DE',
+      browserLanguage: 'de-DE',
       // Das Boot-Skript steht in index.html im <head>, nicht im Bündel; hier läuft es wie dort vor allem anderen.
       vorher: w => {
         w.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });

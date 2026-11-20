@@ -12,26 +12,26 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const HAUPT = `vh-${process.pid}`,
+  const MAIN = `vh-${process.pid}`,
     SUB = `vs-${process.pid}`;
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
-  const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [MAIN, SUB]);
+  const mainId = (await db.get(`SELECT id FROM users WHERE username=$1`, [MAIN])).id;
   const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
-    hauptId,
+    mainId,
     subId,
   ]);
-  for (const u of [hauptId, subId])
+  for (const u of [mainId, subId])
     await db.run(
       `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
                   ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`,
@@ -42,14 +42,14 @@ test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async 
   const SN_H = `9991-${process.pid}`,
     SN_S = `9992-${process.pid}`;
   await db.run(`DELETE FROM sets WHERE set_number IN ($1,$2)`, [SN_H, SN_S]);
-  await haeltSet(db, hauptId, SN_H, 0); // Menge 0: die Erfassung dahinter traegt sie
-  await haeltSet(db, subId, SN_S, 0); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, mainId, SN_H, 0); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, subId, SN_S, 0); // Menge 0: die Erfassung dahinter traegt sie
   // Kaufpreis und Zustand in die Erfassung (Migration 0032).
   await db.run(`DELETE FROM set_acquisitions WHERE set_number IN ($1,$2)`, [SN_H, SN_S]);
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                 VALUES ($1,$2,1,100,'N')`,
-    [hauptId, SN_H],
+    [mainId, SN_H],
   );
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
@@ -76,12 +76,12 @@ test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async 
   const { getSetting } = _req('src/settings/settings.js');
   const kurve = async uids => {
     // Betrachter ist IMMER das Hauptkonto — genau darum geht es.
-    const r = await portfolioVerlauf(hauptId, uids, 'week', db, getSetting);
+    const r = await portfolioVerlauf(mainId, uids, 'week', db, getSetting);
     return (r?.points || []).map(p => p.value);
   };
 
   try {
-    const eigen = await kurve([hauptId]);
+    const eigen = await kurve([mainId]);
     const fremd = await kurve([subId]);
 
     assert.ok(eigen.length && fremd.length, 'beide Kurven müssen Punkte haben');
@@ -96,7 +96,7 @@ test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async 
     );
     assert.notDeepEqual(eigen, fremd, 'Beide Konten liefern dieselbe Kurve — der Filter wirkt dann nicht');
   } finally {
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await db.run(`DELETE FROM price_history WHERE set_number IN ($1,$2)`, [SN_H, SN_S]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number IN ($1,$2)`, [SN_H, SN_S]).catch(() => {});
     await db.pool.end().catch(() => {});

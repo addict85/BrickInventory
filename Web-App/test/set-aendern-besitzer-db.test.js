@@ -17,33 +17,33 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const fabrik = require('./helpers/fabrik');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const factory = require('./helpers/fabrik');
+const db = testData();
 
 test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const HAUPT = `besitz-haupt-${process.pid}`,
+  const MAIN = `besitz-haupt-${process.pid}`,
     SUB = `besitz-sub-${process.pid}`;
   const SET = `60445-1`;
   const aufraeumen = async () => {
     await db.run('DELETE FROM set_acquisitions WHERE set_number=$1', [SET]).catch(() => {});
     await db.run('DELETE FROM sets WHERE set_number=$1', [SET]).catch(() => {});
-    await db.run('DELETE FROM users WHERE username IN ($1,$2)', [HAUPT, SUB]).catch(() => {});
+    await db.run('DELETE FROM users WHERE username IN ($1,$2)', [MAIN, SUB]).catch(() => {});
   };
   await aufraeumen();
 
   try {
-    const hauptId = await fabrik.konto(HAUPT);
-    const subId = await fabrik.konto(SUB);
-    await fabrik.unterkonto(hauptId, subId);
+    const mainId = await factory.konto(MAIN);
+    const subId = await factory.konto(SUB);
+    await factory.subAccount(mainId, subId);
     // Set UND Erfassung gehoeren dem UNTERKONTO.
-    await fabrik.setErfasst(subId, SET, { preis: 10, zustand: 'N' });
+    await factory.setRecorded(subId, SET, { preis: 10, zustand: 'N' });
 
-    const { setAendern } = require('./helpers/sources').bereichsSeite('sets');
+    const { changeSet } = require('./helpers/sources').areaPage('sets');
     // Kaufpreis und Zustand stehen in der Erfassung, die Menge ist ihre Summe.
     const stand = async () => ({
       set: await db.get(
@@ -61,14 +61,14 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
     });
 
     // 1. Der Preis — der Zweig, der schon vorher richtig lag.
-    await setAendern(hauptId, SET, { purchase_price: 99 });
+    await changeSet(mainId, SET, { purchase_price: 99 });
     let s = await stand();
     assert.equal(s.erf.p, 99, 'Die Erfassung traegt den neuen Preis nicht');
 
     // 2. Der Zustand — genau hier verschwand die Aenderung.
-    //    Gegenprobe: in schreibeInLetzteErfassung ownerId durch den Aufrufer
+    //    Gegenprobe: in writeInLastEntry ownerId durch den Aufrufer
     //    ersetzt -> dieser Teilschritt rot (durchgefuehrt).
-    await setAendern(hauptId, SET, { condition: 'U' });
+    await changeSet(mainId, SET, { condition: 'U' });
     s = await stand();
     assert.equal(
       s.erf.condition,
@@ -81,12 +81,12 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
     // 3. Und beides steht weiterhin beim BESITZER, nicht beim Aufrufer.
     assert.equal(s.set.user_id, subId, 'Die Aenderung hat eine Zeile im falschen Konto angelegt');
     assert.equal(s.erf.user_id, subId);
-    const fremde = await db.get('SELECT COUNT(*)::int n FROM sets WHERE set_number=$1 AND user_id=$2', [SET, hauptId]);
+    const fremde = await db.get('SELECT COUNT(*)::int n FROM sets WHERE set_number=$1 AND user_id=$2', [SET, mainId]);
     assert.equal(fremde.n, 0, 'Eine Preis- oder Zustandsaenderung hat eine eigene Zeile erzeugt');
 
     // 4. Die Menge dagegen geht bewusst auf das EIGENE Konto: Wer erhöht, bekommt
     //    einen eigenen Kaufpreis-Eintrag, statt den Bestand eines anderen Kontos zu ändern.
-    await setAendern(hauptId, SET, { quantity: 2 });
+    await changeSet(mainId, SET, { quantity: 2 });
     const je = await db.all(
       'SELECT user_id, SUM(quantity)::int AS n FROM set_acquisitions WHERE set_number=$1 GROUP BY user_id ORDER BY user_id',
       [SET],
@@ -94,7 +94,7 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
     assert.deepEqual(
       je.map((/** @type {any} */ z) => [z.user_id, z.n]),
       [
-        [hauptId, 1],
+        [mainId, 1],
         [subId, 1],
       ].sort((a, b) => a[0] - b[0]),
       'ohne Angabe eines Kontos landet die neue Menge beim Aufrufer',

@@ -10,7 +10,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 const SET = {
   set_number: '10300-1',
@@ -22,7 +22,7 @@ const SET = {
   avg_purchase_price: 272.5,
   conditions: ['N'],
 };
-const ANTWORTEN = {
+const RESPONSES = {
   '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
   '/v1/finance/pnl': {
     success: true,
@@ -47,7 +47,7 @@ for (const [sprache, browser, preis, guv] of [
   ['en', 'en-GB', '€411.90', '+51.1%'],
 ]) {
   test(`${browser}: G&V auf der Kachel in der Form der Oberfläche`, async () => {
-    const { w, d } = await oeffneOberflaeche(ANTWORTEN, { sprache, browserSprache: browser });
+    const { w, d } = await openUi(RESPONSES, { sprache, browserLanguage: browser });
     try {
       await warte(() => d.querySelector('[data-price-for="10300-1"] .pnl-pos'));
       const feld = d.querySelector('[data-price-for="10300-1"]');

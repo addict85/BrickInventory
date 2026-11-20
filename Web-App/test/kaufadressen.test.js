@@ -23,7 +23,7 @@ test('leer bleibt leer — und ist damit KEIN Knopf', () => {
   // nichts zu fuehren.
   for (const roh of ['', '   ', null, undefined]) {
     assert.equal(P.suchUrl(roh), '', `${JSON.stringify(roh)} ergab eine Adresse`);
-    assert.equal(P.fuerSet(roh), '', `${JSON.stringify(roh)} ergab eine Set-Adresse`);
+    assert.equal(P.forSet(roh), '', `${JSON.stringify(roh)} ergab eine Set-Adresse`);
   }
 });
 
@@ -31,14 +31,14 @@ test('die Variante faellt weg, der Name kommt dazu', () => {
   // „-1" ist eine Rebrickable-Eigenheit und steht auf keiner Verpackung; ein
   // Preisvergleicher findet damit nichts. Der Name dagegen ist genau das,
   // wonach dort gesucht wird.
-  const mit = decodeURIComponent(P.fuerSet('75192-1', 'Millennium Falcon'));
+  const mit = decodeURIComponent(P.forSet('75192-1', 'Millennium Falcon'));
   assert.ok(mit.includes('75192 '), `Die Nummer fehlt oder traegt noch die Variante: ${mit}`);
   assert.ok(!mit.includes('75192-1'), 'Die Variante „-1" steht noch drin');
   assert.ok(mit.includes('Millennium Falcon'), 'Der Name fehlt');
   assert.ok(mit.includes('LEGO'), 'Ohne „LEGO" findet der Vergleicher zu viel Fremdes');
 
   // Ohne Namen bleibt die Nummer — besser als nichts.
-  const ohne = decodeURIComponent(P.fuerSet('10276-1', null));
+  const ohne = decodeURIComponent(P.forSet('10276-1', null));
   assert.ok(ohne.includes('10276'), ohne);
 });
 
@@ -48,8 +48,8 @@ test('die Adresse des Preisvergleichs steht genau an EINER Stelle', () => {
   const wurzel = path.join(__dirname, '..', '..');
   const treffer = [];
   /** @type {[string, (f: string) => boolean][]} */
-  const wurzeln = [[path.join(wurzel, 'Web-App'), f => /\.(ts|js)$/.test(f)]];
-  for (const [basis, filter] of wurzeln) {
+  const roots = [[path.join(wurzel, 'Web-App'), f => /\.(ts|js)$/.test(f)]];
+  for (const [basis, filter] of roots) {
     const stapel = [basis];
     while (stapel.length) {
       const d = stapel.pop();

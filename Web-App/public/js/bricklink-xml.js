@@ -32,7 +32,7 @@ function item(p) {
 
 /** A list as BrickLink XML — as ONE piece, regardless of size. */
 /** @param {Parameters<typeof item>[0][]} items */
-export function baueWantedXml(items) {
+export function buildWantedXml(items) {
   // NO XML declaration — see point 1 at the top of this file.
   return `<INVENTORY>\n${items.map(item).join('\n')}\n</INVENTORY>\n`;
 }
@@ -43,8 +43,8 @@ export function baueWantedXml(items) {
  * silently going missing.
  */
 /** @param {Parameters<typeof item>[0][]} items */
-export function baueWantedXmlStuecke(items, limit = BL_UPLOAD_MAX_BYTES) {
-  if (!items.length) return [baueWantedXml([])];
+export function buildWantedXmlPieces(items, limit = BL_UPLOAD_MAX_BYTES) {
+  if (!items.length) return [buildWantedXml([])];
   const enc = new TextEncoder();
   const bytes = (/** @type {string} */ s) => enc.encode(s).length;
   const WRAPPER_BYTES = bytes('<INVENTORY>\n\n</INVENTORY>\n');
@@ -54,13 +54,13 @@ export function baueWantedXmlStuecke(items, limit = BL_UPLOAD_MAX_BYTES) {
   for (const p of items) {
     const b = bytes(item(p)) + 1; // +1 for the separating \n
     if (current.length && size + b > limit) {
-      chunks.push(baueWantedXml(current));
+      chunks.push(buildWantedXml(current));
       current = [];
       size = WRAPPER_BYTES;
     }
     current.push(p);
     size += b;
   }
-  if (current.length) chunks.push(baueWantedXml(current));
+  if (current.length) chunks.push(buildWantedXml(current));
   return chunks;
 }

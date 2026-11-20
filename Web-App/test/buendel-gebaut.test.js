@@ -1,12 +1,12 @@
 /**
  * Das Bündel (public/js/app.bundle.js) ist ein Erzeugnis: nicht in git, aber
- * überall da, wo es gebraucht wird, frisch gebaut (stelleBuendelSicher()).
+ * überall da, wo es gebraucht wird, frisch gebaut (placeBundleSafe()).
  *
  * Gegenproben (gemessen am 08.11.2026):
  *   - `git add -f public/js/app.bundle.js` → rot: „ist eingecheckt“.
  *   - die Zeile `public/js/app.bundle.js` aus Web-App/.gitignore gestrichen →
  *     rot: „wird von git ignoriert“.
- *   - in stelleBuendelSicher() die Veraltet-Prüfung durch `true` ersetzt (nie
+ *   - in placeBundleSafe() die Veraltet-Prüfung durch `true` ersetzt (nie
  *     bauen) → rot im zweiten Test: „fehlendes Bündel wird gebaut“.
  *   - sie durch `false` ersetzt (immer bauen) → rot im zweiten Test (das
  *     frische Bündel wird angefasst).
@@ -17,7 +17,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { OUT_REL, stelleBuendelSicher } = require('../scripts/build-frontend');
+const { OUT_REL, placeBundleSafe } = require('../scripts/build-frontend');
 
 const ROOT = path.join(__dirname, '..');
 const git = (...args) => spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' });
@@ -36,20 +36,20 @@ test('fehlendes oder veraltetes Bündel wird gebaut, ein frisches nicht angefass
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const ziel = path.join(dir, 'app.bundle.js');
 
-  assert.equal(stelleBuendelSicher(ziel), true, 'fehlendes Bündel wird gebaut');
+  assert.equal(placeBundleSafe(ziel), true, 'fehlendes Bündel wird gebaut');
   const groesse = fs.statSync(ziel).size;
   assert.ok(groesse > 100_000, `nur ${groesse} Byte gebaut — greift der Bau noch?`);
   assert.equal(spawnSync(process.execPath, ['--check', ziel]).status, 0, 'das gebaute Bündel ist gültiges JavaScript');
   assert.deepEqual(fs.readdirSync(dir), ['app.bundle.js'], 'keine Zwischendatei bleibt liegen');
 
   const mtime = fs.statSync(ziel).mtimeMs;
-  assert.equal(stelleBuendelSicher(ziel), false, 'frisches Bündel bleibt unberührt');
+  assert.equal(placeBundleSafe(ziel), false, 'frisches Bündel bleibt unberührt');
   assert.equal(fs.statSync(ziel).mtimeMs, mtime);
 
   // Eine zweite, vorher nie geprüfte Datei: Schreiben nach Prüfen derselben Datei ist ein Dateisystem-Rennen.
   const alt = path.join(dir, 'alt.bundle.js');
   fs.writeFileSync(alt, 'veraltet');
   fs.utimesSync(alt, 1, 1);
-  assert.equal(stelleBuendelSicher(alt), true, 'veraltetes Bündel wird neu gebaut');
+  assert.equal(placeBundleSafe(alt), true, 'veraltetes Bündel wird neu gebaut');
   assert.equal(fs.statSync(alt).size, groesse, 'und entspricht dem frischen Bau');
 });

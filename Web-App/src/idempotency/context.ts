@@ -11,15 +11,15 @@ export interface IdempotencyDependencies {
 
 export const access = (db: Db) => ({
   repository: {
-    belege: mit(db)(repository.belege),
+    receipts: mit(db)(repository.receipts),
     eintrag: mit(db)(repository.eintrag),
-    mitWirkungsVermerk: mit(db)(repository.mitWirkungsVermerk),
-    schliesseAb: mit(db)(repository.schliesseAb),
-    loescheLaufenden: mit(db)(repository.loescheLaufenden),
-    loescheAndereAbdruecke: mit(db)(repository.loescheAndereAbdruecke),
-    loescheAelterAls: mit(db)(repository.loescheAelterAls),
-    alteAntworten: mit(db)(repository.alteAntworten),
-    ersetzeAntwort: mit(db)(repository.ersetzeAntwort),
+    withEffectNote: mit(db)(repository.withEffectNote),
+    closeAb: mit(db)(repository.closeAb),
+    deleteRunning: mit(db)(repository.deleteRunning),
+    deleteOtherPrints: mit(db)(repository.deleteOtherPrints),
+    deleteOlderAs: mit(db)(repository.deleteOlderAs),
+    oldResponses: mit(db)(repository.oldResponses),
+    replaceResponse: mit(db)(repository.replaceResponse),
   },
 });
 export type IdempotencyContext = Kontext<IdempotencyDependencies, ReturnType<typeof access>>;

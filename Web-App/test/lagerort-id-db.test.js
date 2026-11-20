@@ -7,11 +7,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 let UID = 0;
 
@@ -27,7 +27,7 @@ async function seed() {
   }
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('ich','x')`);
   UID = (await db.get("SELECT id FROM users WHERE username='ich'")).id;
-  await haeltSet(db, UID, '10179-1', 1);
+  await holdsSet(db, UID, '10179-1', 1);
 }
 
 /** Der NAME, den die Oberfläche am Set sieht — über den Vorrat aufgelöst. */
@@ -61,30 +61,30 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
   await seed();
   const L = {
     ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
+    ...require('./helpers/sources').testArea('bestand').locationService,
   };
   const household = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ...require('./helpers/sources').testArea('haushalt'),
   };
-  const schreibbar = await household.schreibbereich(UID);
+  const writable = await household.schreibbereich(UID);
 
-  const estrich = (await L.legeOrtAn(UID, 'Estrich')).ort;
+  const estrich = (await L.putLocationAn(UID, 'Estrich')).ort;
 
   await t.test('eine andere Schreibweise landet im VORHANDENEN Ort', async () => {
     // Der Kern. Getippt wird „estrich", im Vorrat steht „Estrich" — und das
     // Set zeigt danach die Schreibweise des Vorrats. Mit dem Namen am Bestand
     // stand hier „estrich", und damit war die Zuordnung von da an eine andere
     // Zeichenkette als der Eintrag, aus dem sie gewählt wurde.
-    const n = await L.setzeLagerort('set', schreibbar, ['10179-1'], 'estrich');
+    const n = await L.setLocation('set', writable, ['10179-1'], 'estrich');
     assert.equal(n, 1, `${n} Zeilen getroffen, erwartet 1`);
     assert.equal(
       await ortAmSet('10179-1'),
       'Estrich',
       'Das Set trägt eine eigene Schreibweise — dann ist es nicht derselbe Ort',
     );
-    const orte = (await L.orteVon([UID])).map(o => o.name);
+    const orte = (await L.locationsOf([UID])).map(o => o.name);
     assert.deepEqual(
       orte,
       ['Estrich'],
@@ -117,7 +117,7 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
       'Ein belegter Ort liess sich loeschen',
     );
     assert.deepEqual(
-      (await L.orteVon([UID])).map(o => o.name),
+      (await L.locationsOf([UID])).map(o => o.name),
       ['Dachboden'],
       'Die Auswahlliste ist leer, das Set zeigt aber weiter auf einen Ort',
     );
@@ -125,11 +125,11 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
 
   await t.test('leeren setzt die ID auf NULL', async () => {
     // Leer und NULL sind dasselbe: „nicht erfasst" (Begründung in 0018).
-    await L.setzeLagerort('set', schreibbar, ['10179-1'], null);
+    await L.setLocation('set', writable, ['10179-1'], null);
     assert.equal(await ortAmSet('10179-1'), null, 'Das Leeren hat nichts entfernt');
     // Und jetzt geht das Löschen, weil nichts mehr darin liegt.
     await L.loescheOrt(UID, estrich.id);
-    assert.deepEqual(await L.orteVon([UID]), []);
+    assert.deepEqual(await L.locationsOf([UID]), []);
   });
 
   await t.test('ein Fehlversuch legt keinen Ort im Vorrat an', async () => {
@@ -137,10 +137,14 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
     // legte den Ort nur bei Erfolg an. Mit der ID muss es umgekehrt laufen
     // (ohne Zeile keine ID), deshalb steht beides in einer Transaktion mit
     // Rücknahme. Ohne die stünde nach jedem Tippfehler ein Ort in der Liste.
-    const vorher = (await L.orteVon([UID])).length;
-    const n = await L.setzeLagerort('set', schreibbar, ['99999-1'], 'Geisterkiste');
+    const vorher = (await L.locationsOf([UID])).length;
+    const n = await L.setLocation('set', writable, ['99999-1'], 'Geisterkiste');
     assert.equal(n, 0, 'Ein Set, das es nicht gibt, wurde angeblich geaendert');
-    assert.equal((await L.orteVon([UID])).length, vorher, 'Der Fehlversuch hat „Geisterkiste" im Vorrat hinterlassen');
+    assert.equal(
+      (await L.locationsOf([UID])).length,
+      vorher,
+      'Der Fehlversuch hat „Geisterkiste" im Vorrat hinterlassen',
+    );
   });
 
   await db.pool.end().catch(() => {});

@@ -6,7 +6,7 @@ const path = require('node:path');
 /**
  * „Dieses Konto hält dieses Set, so viele Exemplare."
  *
- * @param db   der Zugang für Testdaten (sources testDaten())
+ * @param db   der Zugang für Testdaten (sources testData())
  * @param userId  Konto
  * @param setNumber  Setnummer
  * @param menge  Exemplare. 0 ist erlaubt und heisst „Bestandszeile ohne
@@ -23,15 +23,15 @@ const path = require('node:path');
  *                     (Der Zustand steht seit Migration 0040 im Schlüssel;
  *                     davor galt die Regel ohne ihn, und zwei Käufe eines
  *                     Tages wurden zu einer Zeile mit Mischpreis.)
- * @param [opt.egalWennDa]  true: eine schon vorhandene sets-Zeile ist in Ordnung
+ * @param [opt.anywayIfDa]  true: eine schon vorhandene sets-Zeile ist in Ordnung
  */
-async function haeltSet(db, userId, setNumber, menge = 1, opt = {}) {
+async function holdsSet(db, userId, setNumber, menge = 1, opt = {}) {
   await db.run(
     `INSERT INTO sets (user_id, set_number) VALUES ($1,$2)` +
-      (opt.egalWennDa ? ' ON CONFLICT (user_id, set_number) DO NOTHING' : ''),
+      (opt.anywayIfDa ? ' ON CONFLICT (user_id, set_number) DO NOTHING' : ''),
     [userId, setNumber],
   );
-  if (menge > 0) await erfasse(db, userId, setNumber, menge, opt);
+  if (menge > 0) await record(db, userId, setNumber, menge, opt);
 }
 
 /**
@@ -41,7 +41,7 @@ async function haeltSet(db, userId, setNumber, menge = 1, opt = {}) {
  * nicht als Parameter, und zwei Textfassungen derselben Anweisung sind genau
  * die Doppelung, die diese Datei vermeidet.
  */
-async function erfasse(db, userId, setNumber, menge, opt = {}) {
+async function record(db, userId, setNumber, menge, opt = {}) {
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, created_at)
      VALUES ($1,$2,$3,$4,$5, COALESCE($6::timestamptz, NOW()))`,
@@ -58,7 +58,7 @@ async function erfasse(db, userId, setNumber, menge, opt = {}) {
  *
  * @param konten eine Konto-ID oder eine Liste (dann über alle summiert)
  */
-async function mengeVon(db, konten, setNumber) {
+async function quantityOf(db, konten, setNumber) {
   const ids = Array.isArray(konten) ? konten : [konten];
   const z = await db.get(
     `SELECT COALESCE(SUM(a.quantity), 0)::int AS q
@@ -72,7 +72,7 @@ async function mengeVon(db, konten, setNumber) {
 
 /** Gibt es die Bestandszeile überhaupt? Getrennt von der Menge, weil „kein
  *  Bestand" und „Bestand mit 0 Exemplaren" zwei verschiedene Aussagen sind. */
-async function haltZeile(db, userId, setNumber) {
+async function haltRow(db, userId, setNumber) {
   return await db.get('SELECT id FROM sets WHERE user_id=$1 AND set_number=$2', [userId, setNumber]);
 }
 
@@ -95,9 +95,9 @@ async function haltZeile(db, userId, setNumber) {
  * @param [opt.am]         Aufnahmedatum der Erfassung; idx_part_acq_tag_zustand erlaubt je
  *                       Konto, Teil, Farbe, Tag und Zustand nur eine Erfassung.
  * @param [opt.storageId]  Lagerort
- * @param [opt.egalWennDa]  ohne Wirkung für Teile; nur der Gleichheit mit haeltSet halber
+ * @param [opt.anywayIfDa]  ohne Wirkung für Teile; nur der Gleichheit mit holdsSet halber
  */
-async function haeltTeil(db, userId, partNumber, opt = {}) {
+async function holdsPart(db, userId, partNumber, opt = {}) {
   const { setNumber = null, menge = 1, colorId = 0 } = opt;
   const quelle = setNumber ? 'set' : 'manual';
   // Ein Set-Teil gehört zu einem Set des Kontos (Fremdschlüssel, Migration 0058).
@@ -137,9 +137,9 @@ async function haeltTeil(db, userId, partNumber, opt = {}) {
 }
 
 /**
- * „Dieses Konto hält diese Minifigur." Wortgleich zu [haeltTeil], ohne Farbe.
+ * „Dieses Konto hält diese Minifigur." Wortgleich zu [holdsPart], ohne Farbe.
  */
-async function haeltFigur(db, userId, figNumber, opt = {}) {
+async function holdsMinifig(db, userId, figNumber, opt = {}) {
   const { setNumber = null, menge = 1 } = opt;
   const quelle = setNumber ? 'set' : 'manual';
   if (setNumber)
@@ -157,7 +157,7 @@ async function haeltFigur(db, userId, figNumber, opt = {}) {
       [setNumber, figNumber, menge],
     );
   } else if (menge > 0) {
-    // ON CONFLICT auf die Tagesregel — siehe haeltTeil().
+    // ON CONFLICT auf die Tagesregel — siehe holdsPart().
     await db.run(
       `DELETE FROM minifig_acquisitions
         WHERE user_id = $1 AND fig_number = $2 AND condition = $3
@@ -178,7 +178,7 @@ async function haeltFigur(db, userId, figNumber, opt = {}) {
  *
  * Ersetzt das `SELECT quantity FROM parts` der Zusicherungen.
  */
-async function teilmengeVon(db, userId, partNumber, colorId = 0) {
+async function subsetOf(db, userId, partNumber, colorId = 0) {
   const z = await db.get(
     `SELECT CASE WHEN COALESCE(p.source,'set') = 'manual'
                  THEN COALESCE((SELECT SUM(a.quantity) FROM part_acquisitions a
@@ -197,7 +197,7 @@ async function teilmengeVon(db, userId, partNumber, colorId = 0) {
 }
 
 /** Dasselbe fuer eine Minifigur. */
-async function figurmengeVon(db, userId, figNumber) {
+async function minifigQuantityOf(db, userId, figNumber) {
   const z = await db.get(
     `SELECT CASE WHEN COALESCE(m.source,'set') = 'manual'
                  THEN COALESCE((SELECT SUM(a.quantity) FROM minifig_acquisitions a
@@ -219,7 +219,7 @@ async function figurmengeVon(db, userId, figNumber) {
  * Fehlende Felder lassen vorhandene Werte stehen. `herkunft` wie in rb_sets
  * ('api' als Vorgabe: so legt die Erfassung an).
  */
-async function katalogSet(db, setNumber, f = {}) {
+async function catalogSet(db, setNumber, f = {}) {
   let themeId = null;
   if (f.theme) {
     let h = 0;
@@ -251,7 +251,7 @@ async function katalogSet(db, setNumber, f = {}) {
  * (Schwarz für den Farbpunkt im Dunkelmodus), Figuren und Merkliste. Für
  * Layout-, Kontrast- und axe-Prüfungen, die sonst leere Listen prüften.
  */
-async function musterSammlung(db, uid) {
+async function patternCollection(db, uid) {
   const sets = [
     ['10294-1', 'Titanic', 'Icons / Modular Buildings Collection', 2021, 9090, 679.99, 'N', 712.4],
     ['75192-1', 'Millennium Falcon Ultimate Collector Series', 'Star Wars', 2017, 7541, 650, 'U', 801.5],
@@ -268,8 +268,8 @@ async function musterSammlung(db, uid) {
     zustand,
     markt,
   ] of /** @type {[string, string, string, number, number, number, string, number][]} */ (sets)) {
-    await katalogSet(db, nr, { name, year: jahr, theme: thema, pieces: teile, minifigs: 4 });
-    await haeltSet(db, uid, nr, 1, { preis, zustand, am: '2026-06-01T10:00:00Z' });
+    await catalogSet(db, nr, { name, year: jahr, theme: thema, pieces: teile, minifigs: 4 });
+    await holdsSet(db, uid, nr, 1, { preis, zustand, am: '2026-06-01T10:00:00Z' });
     await db.run(
       `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                   VALUES ($1,$2,'EUR',$3,$4,$5,$4,12,NOW()) ON CONFLICT (set_number, condition, currency_code) DO UPDATE SET avg_price = $4, qty_avg_price = $4`,
@@ -312,18 +312,18 @@ async function musterSammlung(db, uid) {
         `INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
         [teil, id, fname, rgb],
       );
-      await haeltTeil(db, uid, teil, { setNumber: '10294-1', colorId: id, menge: 12 });
+      await holdsPart(db, uid, teil, { setNumber: '10294-1', colorId: id, menge: 12 });
     }
   }
-  await haeltTeil(db, uid, '3001', { colorId: 0, menge: 250, preis: 0.12 });
+  await holdsPart(db, uid, '3001', { colorId: 0, menge: 250, preis: 0.12 });
   await db.run(
     `INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('fig-000001', 'Marty McFly') ON CONFLICT DO NOTHING`,
   );
-  await haeltFigur(db, uid, 'fig-000001', { setNumber: '10300-1', menge: 1 });
+  await holdsMinifig(db, uid, 'fig-000001', { setNumber: '10300-1', menge: 1 });
   await db.run(
     `INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('fig-000002', 'Doc Brown') ON CONFLICT DO NOTHING`,
   );
-  await haeltFigur(db, uid, 'fig-000002', { menge: 2, preis: 4.5 });
+  await holdsMinifig(db, uid, 'fig-000002', { menge: 2, preis: 4.5 });
   // Über den Dienst: Nur er verschlüsselt die Nummer, wie es die Datenbank verlangt.
   await require(path.join(__dirname, '..', '..', 'dist', 'src', 'vouchers', 'repository', 'vouchers.js')).insertVoucher(
     db,
@@ -339,13 +339,13 @@ async function musterSammlung(db, uid) {
 }
 
 /**
- * musterSammlung plus ein verknüpftes Unterkonto „<Konto>_kind“, das ein Set
+ * patternCollection plus ein verknüpftes Unterkonto „<Konto>_kind“, das ein Set
  * der Sammlung zu einem anderen Preis hält: Haushaltszeilen, Besitzer und
- * „Verknüpfung lösen“ kommen so in die gemessenen Ansichten. starteApp löscht
+ * „Verknüpfung lösen“ kommen so in die gemessenen Ansichten. startApp löscht
  * Konten mit dem Präfix „<Konto>_“ mit.
  */
-async function musterHaushalt(db, uid) {
-  await musterSammlung(db, uid);
+async function patternHousehold(db, uid) {
+  await patternCollection(db, uid);
   const { username } = await db.get('SELECT username FROM users WHERE id = $1', [uid]);
   const kind = `${username}_kind`;
   await db.run('DELETE FROM users WHERE username = $1', [kind]);
@@ -357,20 +357,20 @@ async function musterHaushalt(db, uid) {
     )
   ).id;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, kid]);
-  await haeltSet(db, kid, '21318-1', 1, { preis: 210, am: '2026-06-02T10:00:00Z' });
+  await holdsSet(db, kid, '21318-1', 1, { preis: 210, am: '2026-06-02T10:00:00Z' });
   return kid;
 }
 
 module.exports = {
-  katalogSet,
-  musterSammlung,
-  musterHaushalt,
-  haeltSet,
-  erfasse,
-  mengeVon,
-  haltZeile,
-  haeltTeil,
-  haeltFigur,
-  teilmengeVon,
-  figurmengeVon,
+  catalogSet,
+  patternCollection,
+  patternHousehold,
+  holdsSet,
+  record,
+  quantityOf,
+  haltRow,
+  holdsPart,
+  holdsMinifig,
+  subsetOf,
+  minifigQuantityOf,
 };

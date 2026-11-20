@@ -3,22 +3,22 @@
  * sich nie. Der Server rechnet sie über dieselben Positionen (mit Kauf- und
  * Marktpreis, Geschenke mit 0), die Oberfläche zeigt genau diese Zahlen und
  * nennt, was nicht gerechnet ist. Geprüft wird die echte Serverrechnung
- * (basisDerKennzahlen) durch das echte Bündel in jsdom.
+ * (baseTheMetrics) durch das echte Bündel in jsdom.
  *
  * Gegenproben (am 03.11.2026 gemessen):
- *   A  in zeigeKennzahlen() wieder einstandAlle statt basis.einstand → rot:
+ *   A  in showMetrics() wieder costAll statt basis.einstand → rot:
  *      „Einstand + G/V = Marktwert“
- *   B  in vergleichbareSummen() wieder nur Kaufpreis > 0 (Geschenk raus) → rot:
+ *   B  in comparableSums() wieder nur Kaufpreis > 0 (Geschenk raus) → rot:
  *      beide Tests
- *   C  in basisDerKennzahlen() ohneKauf nicht gezählt → rot: „Server: Geschenk
+ *   C  in baseTheMetrics() withoutPurchase nicht gezählt → rot: „Server: Geschenk
  *      zählt mit …“ (Zähler [11, 5, 6, 0])
  *   D  Diagrammkopf wieder grandTotal → rot: „Diagrammkopf = Marktwert-Karte“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
-const { basisDerKennzahlen, gesamtGuvProzent } = _req('src/finanzen/rechnung/gewinnVerlust.js');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { baseTheMetrics, totalGuvPercent } = _req('src/finanzen/rechnung/gewinnVerlust.js');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 /** Zahl aus formatiertem Text, gleich welche Trennzeichen die Sprache setzt: „1’863.90“, „1.863,90 €“, „−21,8 %“. */
@@ -26,9 +26,9 @@ const betrag = s => {
   const m = String(s).match(/([−+-]?)\s*(\d[\d’'.,\u202f\u00a0]*)/);
   if (!m) return NaN;
   const roh = m[2].replace(/[’'\u202f\u00a0]/g, '').replace(/[.,]$/, '');
-  const dez = roh.match(/[.,](\d{1,2})$/);
-  const ganz = (dez ? roh.slice(0, -dez[0].length) : roh).replace(/[.,]/g, '');
-  const v = Number(ganz + (dez ? '.' + dez[1] : ''));
+  const dec = roh.match(/[.,](\d{1,2})$/);
+  const ganz = (dec ? roh.slice(0, -dec[0].length) : roh).replace(/[.,]/g, '');
+  const v = Number(ganz + (dec ? '.' + dec[1] : ''));
   return m[1] === '−' || m[1] === '-' ? -v : v;
 };
 
@@ -52,7 +52,7 @@ const zeilen = [
 ];
 
 test('Server: Geschenk zählt mit, ohne Markt- oder Kaufpreis nicht', () => {
-  const b = basisDerKennzahlen(zeilen);
+  const b = baseTheMetrics(zeilen);
   assert.equal(b.basis_marktwert, '1863.90');
   assert.equal(b.basis_einstand, '1529.98');
   assert.equal(b.basis_guv_betrag, '333.92');
@@ -62,12 +62,12 @@ test('Server: Geschenk zählt mit, ohne Markt- oder Kaufpreis nicht', () => {
   );
   assert.equal(b.ohne_marktpreis_einstand, '438.96');
   assert.equal(b.ohne_kaufpreis_marktwert, '45.00');
-  assert.equal(gesamtGuvProzent(zeilen), '21.8');
+  assert.equal(totalGuvPercent(zeilen), '21.8');
 });
 
 test('Oberfläche: Einstand + G/V = Marktwert, Prozent passt, Basis genannt', async () => {
-  const b = basisDerKennzahlen(zeilen);
-  const pct = gesamtGuvProzent(zeilen);
+  const b = baseTheMetrics(zeilen);
+  const pct = totalGuvPercent(zeilen);
   const sets = SETS.map(([nr, k, m]) => ({
     set_number: nr,
     name: nr,
@@ -78,7 +78,7 @@ test('Oberfläche: Einstand + G/V = Marktwert, Prozent passt, Basis genannt', as
     acquisitions: [],
     ...(m ? {} : { error: 'kein Preis' }),
   }));
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/finance/valuation': { success: true, currency: 'EUR', totals: { min: '0', avg: '1908.90', max: '0' }, sets },
     '/v1/finance/parts-valuation': {
       success: true,

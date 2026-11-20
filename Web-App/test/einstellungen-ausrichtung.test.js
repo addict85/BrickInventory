@@ -19,7 +19,7 @@ const QUELLE = require('./helpers/sources').ansichtQuelle('einstellungen');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 /** Wie in test/catalog-frontend.test.js: die Modulverpackung weg. */
-function ohneModul(src) {
+function withoutModule(src) {
   return src.replace(/^import[^;]*;\s*$/gm, '').replace(/^export\s+/gm, '');
 }
 
@@ -30,29 +30,29 @@ function ohneModul(src) {
  * andere Module nach sich (Galerie, Teile, Minifiguren), und die hier
  * nachzubauen hiesse, die Anwendung zu starten, um ein Raster zu prüfen.
  */
-function fuehreAus(funktionsName, umgebung) {
+function runFrom(funktionsName, environment) {
   const start = QUELLE.indexOf(`function ${funktionsName}(`);
   assert.ok(start > 0, `${funktionsName}() steht nicht mehr in den Dateien der Ansicht „einstellungen“`);
   // Bis zur Klammer auf Spalte 0 — so sind diese Dateien geschrieben.
   const ende = QUELLE.indexOf('\n}\n', start) + 3;
-  const code = ohneModul(QUELLE.slice(start, ende));
-  const sandbox = { ...umgebung };
+  const code = withoutModule(QUELLE.slice(start, ende));
+  const sandbox = { ...environment };
   vm.createContext(sandbox);
   vm.runInContext(code + `\n${funktionsName}(ARG);`, sandbox);
   return sandbox;
 }
 
 /** Minimalgerüst: nur, was die beiden Erzeuger wirklich anfassen. */
-function gestell(dom, zielId) {
+function rack(dom, targetId) {
   const d = dom.window.document;
   return {
     document: d,
     G: id => d.getElementById(id),
-    ...require('./helpers/markup').markupHelfer(),
+    ...require('./helpers/markup').markupHelper(),
     echt: () => '',
     t: (k, v) => k + (v ? ' ' + JSON.stringify(v) : ''),
     tRaw: k => k,
-    ZIEL: zielId,
+    ZIEL: targetId,
   };
 }
 
@@ -76,7 +76,7 @@ test('die verknüpften Konten stehen in zwei Spalten, nicht je Zeile neu', () =>
       '<div id="household-state"></div><div id="household-invite-box"></div>' +
       '<div id="household-redeem-box"></div></body></html>',
   );
-  const umg = gestell(dom);
+  const umg = rack(dom);
   umg.ARG = {
     is_sub: false,
     currency: 'CHF',
@@ -86,7 +86,7 @@ test('die verknüpften Konten stehen in zwei Spalten, nicht je Zeile neu', () =>
       { id: 3, username: 'eliano.bigolin' },
     ],
   };
-  fuehreAus('renderHousehold', umg);
+  runFrom('renderHousehold', umg);
 
   const liste = dom.window.document.querySelector('#household-state ul');
   assert.ok(liste, 'Die Liste der verknüpften Konten wurde nicht erzeugt');
@@ -149,12 +149,12 @@ test('die Lagerorte stehen wie in einer Tabelle', () => {
   const sandbox = {
     document: d,
     G: id => d.getElementById(id),
-    ...require('./helpers/markup').markupHelfer(),
+    ...require('./helpers/markup').markupHelper(),
     echt: () => '',
     ico: n => `<svg class="ico"><use href="#i-${n}"/></svg>`,
     t: (k, v) => k + ' ' + JSON.stringify(v || {}),
     tRaw: k => k,
-    ladeLagerorte: async () => {},
+    loadLocations: async () => {},
     // success: true, sonst kehrt die Funktion gleich am Anfang um. Und die
     // Belegung schluesselt auf `ort`, nicht auf `name` — genau Marcos Lage:
     // drei Orte mit Inhalt, einer leer, damit die Spalte „Belegung" wirklich

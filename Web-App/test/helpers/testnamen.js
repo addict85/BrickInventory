@@ -5,7 +5,7 @@
  * dieser Suite erkennbar, und scripts/test-lauf.js räumt sie beim nächsten
  * Lauf ab, auch wenn ein Test vor seinem t.after abgebrochen ist.
  * Gegenprobe (04.11.2026): Rest-DB …_schema_basis_999999 angelegt, in
- * schema-basis-db raeumeReste() gestrichen → die DB blieb; mit dem Aufruf weg.
+ * schema-basis-db cleanRemainder() gestrichen → die DB blieb; mit dem Aufruf weg.
  */
 const STANDARD = 'postgres://tester:test@localhost/cattest';
 
@@ -38,11 +38,11 @@ const lebt = pid => {
  * Reste früherer Läufe derselben Art löschen, deren Prozess nicht mehr lebt:
  * erst Datenbanken, dann Rollen (eine Rolle mit Objekten lässt sich nicht löschen).
  */
-async function raeumeReste(admin, art) {
+async function cleanRemainder(admin, art) {
   const muster = `${stamm()}_${art}_%`.replace(/_/g, '\\_');
-  const pidAus = name => Number(name.slice(`${stamm()}_${art}_`.length).match(/^\d+/)?.[0]);
+  const pidFrom = name => Number(name.slice(`${stamm()}_${art}_`.length).match(/^\d+/)?.[0]);
   const tot = name => {
-    const pid = pidAus(name);
+    const pid = pidFrom(name);
     return pid > 0 && pid !== process.pid && !lebt(pid);
   };
   const dbs = (await admin.query('SELECT datname AS n FROM pg_database WHERE datname LIKE $1', [muster])).rows;
@@ -51,4 +51,4 @@ async function raeumeReste(admin, art) {
   for (const { n } of rollen.filter(r => tot(r.n))) await admin.query(`DROP ROLE IF EXISTS ${id(n)}`).catch(() => {});
 }
 
-module.exports = { basisUrl, stamm, testName, raeumeReste, id };
+module.exports = { basisUrl, stamm, testName, cleanRemainder, id };

@@ -17,12 +17,12 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, sicht, reiter } = require('./helpers/oberflaeche');
+const { openUi, warte, sicht, reiter } = require('./helpers/oberflaeche');
 
 const NAME = 'A & B <C>';
 
 test('Löschdialog nennt den Set-Namen wörtlich', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/sets': {
       success: true,
       total: 1,
@@ -43,7 +43,7 @@ test('Löschdialog nennt den Set-Namen wörtlich', async () => {
 });
 
 test('frühere Verknüpfung nennt den Weg wörtlich', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/settings/household': {
       success: true,
       currency: 'EUR',
@@ -56,16 +56,16 @@ test('frühere Verknüpfung nennt den Weg wörtlich', async () => {
   try {
     await sicht(w, 'haushalt');
     assert.ok(await warte(() => d.body.textContent.includes('Jerry')), 'Haushalt geladen');
-    const stelle = [...d.querySelectorAll('span')].find(s => s.textContent.includes('Jerry'));
-    assert.ok(stelle.textContent.includes('Tom & Jerry'), `Text: ${stelle.textContent}`);
-    assert.ok(!stelle.innerHTML.includes('&amp;amp;'), `doppelt maskiert: ${stelle.innerHTML}`);
+    const place = [...d.querySelectorAll('span')].find(s => s.textContent.includes('Jerry'));
+    assert.ok(place.textContent.includes('Tom & Jerry'), `Text: ${place.textContent}`);
+    assert.ok(!place.innerHTML.includes('&amp;amp;'), `doppelt maskiert: ${place.innerHTML}`);
   } finally {
     w.close();
   }
 });
 
 test('Pause nennt eine unbekannte Auftragsart wörtlich', async () => {
-  const { w, d, ruhig } = await oeffneOberflaeche({
+  const { w, d, ruhig } = await openUi({
     '/v1/admin/job-status': { success: true, job: { running: false } },
     '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
     '/v1/admin/auftraege': {

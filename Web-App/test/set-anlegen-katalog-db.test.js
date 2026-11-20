@@ -7,11 +7,11 @@
  * Namen trotzdem aus dem Katalog (rb_sets) nennen.
  *
  * Gegenproben (A am 11.11.2026, B und C am 28.10.2026 gemessen):
- *   A  in katalogSetZu() `rs.name` durch `NULL::text AS name` ersetzt → rot:
+ *   A  in catalogSetTo() `rs.name` durch `NULL::text AS name` ersetzt → rot:
  *      „setAngaben nennt den Katalognamen, keinen Platzhalter“
  *   B  beim Anlegen (damals addSetIntern) wieder `name = EXCLUDED.name` → rot: „erneutes
  *      Erfassen ohne Quellen lässt den Katalognamen stehen"
- *   C  die Prüfung moeglicheSetNummer() beim Anlegen entfernt → rot:
+ *   C  die Prüfung possibleSetNumber() beim Anlegen entfernt → rot:
  *      „eine Eingabe ohne Ziffer wird nicht als Set angelegt" ("abc-1" im Bestand)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne API-Schlüssel, damit
@@ -23,14 +23,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { katalogSet } = require('./helpers/bestand');
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { catalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const SN = `9${process.pid % 10000}-1`;
   const NAME = `kat-name-${process.pid}`;
   const schluessel = ['rebrickable_api_key', 'brickset_api_key'];
@@ -38,7 +38,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [schluessel]);
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  await katalogSet(db, SN, { name: 'Titanic', year: 2021 });
+  await catalogSet(db, SN, { name: 'Titanic', year: 2021 });
   await db.run(
     `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1, 'NONE', false)
                 ON CONFLICT (set_number) DO UPDATE SET fetched_at=NOW()`,
@@ -53,8 +53,8 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
     });
 
     await t.test('erneutes Erfassen ohne Quellen lässt den Katalognamen stehen', async () => {
-      const r = await require('./helpers/sources').bereichsSeite('sets').setErfassen({
-        anfragender: uid,
+      const r = await require('./helpers/sources').areaPage('sets').setErfassen({
+        requester: uid,
         setNumber: SN,
         menge: 1,
         kaufpreis: 10,
@@ -67,17 +67,17 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
     });
 
     await t.test('eine Eingabe ohne Ziffer wird nicht als Set angelegt', async () => {
-      const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
+      const { setErfassen } = require('./helpers/sources').areaPage('sets');
       await assert.rejects(
-        setErfassen({ anfragender: uid, setNumber: 'abc', menge: 1, zustand: 'N', wennVorhanden: 'aufstocken' }),
+        setErfassen({ requester: uid, setNumber: 'abc', menge: 1, zustand: 'N', ifPresent: 'aufstocken' }),
         (/** @type {any} */ e) => e.art === 'ungueltig' && e.code === 'setnummer_ungueltig',
       );
       assert.equal(await db.get(`SELECT 1 FROM sets WHERE user_id=$1 AND set_number='abc-1'`, [uid]), undefined);
-      const { moeglicheSetNummer } = _req('src/infra/setNummer.js');
+      const { possibleSetNumber } = _req('src/infra/setNummer.js');
       for (const gut of ['10294-1', '928-1', 'comcon001-1', 'llca37-1', '5005358-2'])
-        assert.ok(moeglicheSetNummer(gut), gut);
+        assert.ok(possibleSetNumber(gut), gut);
       for (const schlecht of ['abc-1', '-1', 'x'.repeat(21) + '1-1', '10294'])
-        assert.ok(!moeglicheSetNummer(schlecht), schlecht);
+        assert.ok(!possibleSetNumber(schlecht), schlecht);
     });
   } finally {
     await db.run('DELETE FROM users WHERE id=$1', [uid]);

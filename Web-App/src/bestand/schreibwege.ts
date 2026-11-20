@@ -4,10 +4,10 @@ import { mit } from '../infra/bereich';
 import * as erfassungen from './repository/erfassungen';
 import * as gemeinsam from './repository/gemeinsam';
 import * as kaeufe from './repository/kaeufe';
-import { manuelleErfassungUmhaengen } from './umhaengen';
-import type { BestandKontext } from './kontext';
+import { manualEntryReassign } from './umhaengen';
+import type { InventoryContext } from './kontext';
 
-export interface ErfassungsAenderung {
+export interface EntryChange {
   menge?: number;
   preis?: { wert: number | null; geschaetzt: boolean };
   zustand?: string;
@@ -15,20 +15,20 @@ export interface ErfassungsAenderung {
 }
 
 /** Nur in den übergebenen Konten: zweite Linie hinter der Prüfung des Aufrufers. */
-async function aendere(k: BestandKontext, art: ErfassungsArt, id: number, konten: number[], a: ErfassungsAenderung) {
-  if (a.menge !== undefined) await erfassungen.setzeErfassungsMenge(k.db, art, id, a.menge, konten);
-  if (a.preis) await erfassungen.setzeErfassungsPreis(k.db, art, id, a.preis.wert, a.preis.geschaetzt, konten);
-  if (a.zustand !== undefined) await erfassungen.setzeErfassungsZustand(k.db, art, id, a.zustand, konten);
-  if (a.datum) await erfassungen.setzeErfassungsDatum(k.db, art, id, a.datum, konten);
+async function aendere(k: InventoryContext, art: ErfassungsArt, id: number, konten: number[], a: EntryChange) {
+  if (a.menge !== undefined) await erfassungen.setEntryQuantity(k.db, art, id, a.menge, konten);
+  if (a.preis) await erfassungen.setEntryPrice(k.db, art, id, a.preis.wert, a.preis.geschaetzt, konten);
+  if (a.zustand !== undefined) await erfassungen.setEntryState(k.db, art, id, a.zustand, konten);
+  if (a.datum) await erfassungen.setEntryDate(k.db, art, id, a.datum, konten);
 }
 
-export const schreibwege = (k: BestandKontext) => ({
-  legeSetAn: mit(k.db, gemeinsam.legeSetAn),
-  neuesteSetzen: mit(k.db, kaeufe.neuesteSetzen),
+export const schreibwege = (k: InventoryContext) => ({
+  putSetAn: mit(k.db, gemeinsam.putSetAn),
+  setNewest: mit(k.db, kaeufe.setNewest),
   erfassung: {
-    imSchreibfeld: mit(k.db, erfassungen.erfassungImSchreibfeld),
+    imSchreibfeld: mit(k.db, erfassungen.entryInWriteField),
     aendere: mit(k)(aendere),
-    loesche: mit(k.db, erfassungen.loescheErfassung),
+    loesche: mit(k.db, erfassungen.deleteEntry),
   },
-  manuelleErfassungUmhaengen: mit(k)(manuelleErfassungUmhaengen),
+  manualEntryReassign: mit(k)(manualEntryReassign),
 });

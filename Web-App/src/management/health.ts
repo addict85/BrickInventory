@@ -3,7 +3,7 @@
 import type { ManagementContext } from './context';
 
 export async function healthReport(k: ManagementContext, verwalter: boolean) {
-  const start = await k.auftraege.aktuellerStartZustand();
+  const start = await k.auftraege.currentStartState();
   return {
     status: start.ready ? ('ok' as const) : ('starting' as const),
     ...(verwalter
@@ -13,5 +13,5 @@ export async function healthReport(k: ManagementContext, verwalter: boolean) {
 }
 
 export function databaseReady(k: ManagementContext): Promise<boolean> {
-  return k.db.datenbankAntwortet();
+  return k.db.databaseResponds();
 }

@@ -4,12 +4,12 @@
  * (startup/abschluss.ts, aufgerufen von herunterfahren() in server.ts).
  *
  * Gegenproben (am 11.11.2026 gemessen):
- *   A  stoppeBildbedarf() ohne `await schreibePuffer()` → rot: „der Bildbedarf
+ *   A  stopImageDemand() ohne `await schreibePuffer()` → rot: „der Bildbedarf
  *      steht danach in image_wanted“
- *   B  stoppeFehlanzeige() ohne clearInterval → rot: „jeder Takt ist beendet“
- *   C  stoppeProtokoll() ohne `await leereProtokoll()` → rot: „die letzte
+ *   B  stopNone() ohne clearInterval → rot: „jeder Takt ist beendet“
+ *   C  stopLog() ohne `await emptyLog()` → rot: „die letzte
  *      Zeile steht in app_logs“
- *   D  stoppeProtokoll() ohne `Z.pool = null` → rot: „danach schreibt das
+ *   D  stopLog() ohne `Z.pool = null` → rot: „danach schreibt das
  *      Protokoll nicht mehr in die Datenbank“
  */
 const test = require('node:test');
@@ -17,18 +17,18 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const P = _req('src/infra/protokoll.js');
   const B = _req('src/bilder/bildbedarfLauf.js');
   const F = _req('src/bilder/imageMisses.js');
-  const { schliessePufferUndTakte } = _req('startup/abschluss.js');
+  const { closeBufferAndTicks } = _req('startup/abschluss.js');
 
   // Welche Takte entstehen, und welche wieder enden.
   const offen = new Set();
@@ -43,23 +43,23 @@ test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t
     offen.delete(h);
     echt.clear(h);
   };
-  const zurueck = P.installiereProtokoll({ out: () => {}, err: () => {}, jetzt: () => Date.now() });
+  const zurueck = P.installLog({ out: () => {}, err: () => {}, jetzt: () => Date.now() });
   t.after(() => {
     zurueck();
     Object.assign(global, { setInterval: echt.set, clearInterval: echt.clear });
   });
 
   const kennung = `abschluss-${process.pid}`;
-  P.protokollInDieDatenbank(db.pool);
-  await B.bildbedarfEinrichten();
-  await F.bildFehlstellenEinrichten();
+  P.logInDieDatabase(db.pool);
+  await B.setUpImageDemand();
+  await F.setUpImageGaps();
   assert.ok(offen.size >= 4, `Aufbau: ${offen.size} Takte, erwartet mindestens vier`);
 
-  B.merkeGebraucht(`https://cdn.rebrickable.com/media/sets/${kennung}.jpg`, `${kennung}-1`);
-  F.merkeFehlend(`fehlt:${kennung}`, '404');
+  B.rememberUsed(`https://cdn.rebrickable.com/media/sets/${kennung}.jpg`, `${kennung}-1`);
+  F.rememberMissing(`fehlt:${kennung}`, '404');
   console.log(`letzte Zeile ${kennung}`);
 
-  await schliessePufferUndTakte(testZugang(), require('./helpers/sources').testDienste());
+  await closeBufferAndTicks(testAccess(), require('./helpers/sources').testServices());
 
   await t.test('der Bildbedarf steht danach in image_wanted', async () => {
     const z = await db.get('SELECT set_number FROM image_wanted WHERE url = $1', [
@@ -84,7 +84,7 @@ test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t
 
   await t.test('danach schreibt das Protokoll nicht mehr in die Datenbank', async () => {
     console.log(`nach dem Abschluss ${kennung}`);
-    await P.leereProtokoll();
+    await P.emptyLog();
     const z = await db.get('SELECT 1 AS ja FROM app_logs WHERE message LIKE $1', [`%nach dem Abschluss ${kennung}%`]);
     assert.equal(z, undefined);
   });

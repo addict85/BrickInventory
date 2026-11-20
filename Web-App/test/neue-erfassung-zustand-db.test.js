@@ -14,14 +14,14 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // Die Tagesregel steht als Index in Migration 0047; ohne ihn greift das
   // ON CONFLICT beim Erfassen nicht.
   const mc = await db.pool.connect();
@@ -50,7 +50,7 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
     // sagt 'N'. Bis Migration 0032 stand das 'N' zusaetzlich in
     // sets.condition — die Spalte ist weg, die Verwechslungsmoeglichkeit
     // zwischen Vorgabe und Erfassung bleibt.
-    await haeltSet(db, uid, SET, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, uid, SET, 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                   VALUES ($1,$2,1,10,'U', NOW() - INTERVAL '2 days')`,
@@ -68,8 +68,8 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
         [SET, c, p],
       );
 
-    const { setAendern } = require('./helpers/sources').bereichsSeite('sets');
-    await setAendern(uid, SET, { quantity: 2 });
+    const { changeSet } = require('./helpers/sources').areaPage('sets');
+    await changeSet(uid, SET, { quantity: 2 });
 
     const erf = await db.all(
       `SELECT condition, purchase_price::float AS p FROM set_acquisitions
@@ -77,7 +77,7 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
       [uid, SET],
     );
     assert.equal(erf.length, 2, 'Die Mengenerhoehung hat keine neue Erfassung angelegt');
-    // Gegenprobe: in preisFuerNeueErfassung den Zustand auf
+    // Gegenprobe: in priceForNewEntry den Zustand auf
     // DEFAULT_PRICE_CONDITION festnageln -> hier steht 'N' und 100.
     assert.equal(erf[1].condition, 'U', 'Das neue Exemplar traegt die Vorgabe statt den Zustand der Erfassungen');
     assert.equal(

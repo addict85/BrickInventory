@@ -6,7 +6,7 @@
  * Gegenproben (08.11.2026 gemessen, je einzeln):
  *   A  in onScopeChange beim Reiter Teile `loadManualParts()` gestrichen →
  *      rot (die manuellen Teile werden nicht neu geladen)
- *   B  in manuellQuery() `addScopeParam(p, view)` gestrichen → rot (die
+ *   B  in manualQuery() `addScopeParam(p, view)` gestrichen → rot (die
  *      manuellen Teile und Figuren kommen ohne accounts)
  *   C  in onScopeChange beim Reiter Minifiguren `loadManualFigsTable()`
  *      gestrichen → grün: loadMinifigs() holt die manuellen Figuren selbst mit
@@ -14,14 +14,14 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter } = require('./helpers/oberflaeche');
+const { openUi, reiter } = require('./helpers/oberflaeche');
 
 // Der CSV-Importstatus wird im Takt abgefragt, nicht vom Filterwechsel: Fällt
 // eine Abfrage in das Fenster, ist sie kein Abruf hinter dem Kontofilter.
-const HINTERGRUND = new Set(['/api/v1/sets/import/csv/status']);
+const BACKGROUND = new Set(['/api/v1/sets/import/csv/status']);
 
 /** Was jeder Reiter nach dem Wechsel neu holen muss — mit dem Filter. */
-const NEU_GELADEN = {
+const NEW_LOADED = {
   gallery: ['/v1/sets', '/v1/stats'],
   parts: ['/v1/parts', '/v1/parts/manual', '/v1/parts/stats', '/v1/parts/colors', '/v1/parts/categories'],
   minifigs: ['/v1/minifigs', '/v1/minifigs/manual', '/v1/minifigs/stats'],
@@ -34,7 +34,7 @@ const NEU_GELADEN = {
 };
 
 test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', async () => {
-  const { w, d, aufrufe, ruhig } = await oeffneOberflaeche({
+  const { w, d, aufrufe, ruhig } = await openUi({
     '/v1/sets/household-members': {
       success: true,
       members: [
@@ -44,7 +44,7 @@ test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', async () => 
     },
   });
   try {
-    for (const [ansicht, pfade] of Object.entries(NEU_GELADEN)) {
+    for (const [ansicht, pfade] of Object.entries(NEW_LOADED)) {
       await reiter(w, ansicht);
       await ruhig();
       const filter = d.getElementById(`scope-${ansicht}`);
@@ -60,7 +60,7 @@ test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', async () => 
         .slice(ab)
         .filter(a => a.method === 'GET')
         .map(a => new URL(a.url, 'http://localhost'))
-        .filter(u => !HINTERGRUND.has(u.pathname));
+        .filter(u => !BACKGROUND.has(u.pathname));
       const geholt = new Set(neu.map(u => u.pathname.replace(/^\/api/, '')));
       assert.deepEqual(
         pfade.filter(p => !geholt.has(p)),

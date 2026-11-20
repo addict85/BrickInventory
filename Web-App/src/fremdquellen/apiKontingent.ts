@@ -1,39 +1,39 @@
-import type { DbSchnittstelle } from '../../db/database';
-import { aktuellesKonto } from '../infra/kontoKontext';
+import type { DbInterface } from '../../db/database';
+import { currentAccount } from '../infra/kontoKontext';
 import * as repo from './repository/apiKontingent';
-import type { FremdquellenKontext } from './kontext';
+import type { ForeignSourcesContext } from './kontext';
 
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
 
 export const REBRICKABLE_DEFAULT_DAILY = 25000;
-const VORGABEN: Record<ApiName, number> = { bricklink: 4000, rebrickable: REBRICKABLE_DEFAULT_DAILY, brickset: 100 };
+const DEFAULTS: Record<ApiName, number> = { bricklink: 4000, rebrickable: REBRICKABLE_DEFAULT_DAILY, brickset: 100 };
 
 /** Je Konto (ausser Verwaltern): Sonst verbrauchte ein Unterkonto das
  * Kontingent aller. */
-export const ANTEIL_JE_KONTO = 0.25;
+export const SHARE_JE_ACCOUNT = 0.25;
 
 /** Alle Nicht-Verwalter zusammen; die andere Hälfte bleibt Verwaltern und dem
  * Hintergrund. Gezählt in der Zeile `konto = -1`. */
-export const ANTEIL_ALLE_KONTEN = 0.5;
-const ALLE_KONTEN = -1;
+export const SHARE_ALL_ACCOUNTS = 0.5;
+const ALL_ACCOUNTS = -1;
 
-const heute = (k: FremdquellenKontext) => k.uhr.datum().toISOString().slice(0, 10);
+const heute = (k: ForeignSourcesContext) => k.uhr.datum().toISOString().slice(0, 10);
 
-export async function grenzeDerQuelle(k: FremdquellenKontext, apiName: ApiName): Promise<number> {
-  return parseInt(await k.einstellungen.globalValue(`api_limit_${apiName}`, ''), 10) || VORGABEN[apiName] || 4000;
+export async function limitTheSource(k: ForeignSourcesContext, apiName: ApiName): Promise<number> {
+  return parseInt(await k.einstellungen.globalValue(`api_limit_${apiName}`, ''), 10) || DEFAULTS[apiName] || 4000;
 }
 
-const grenzeJeKonto = (limit: number) => Math.max(1, Math.ceil(limit * ANTEIL_JE_KONTO));
-const grenzeAlleKonten = (limit: number) => Math.max(1, Math.ceil(limit * ANTEIL_ALLE_KONTEN));
+const limitJeAccount = (limit: number) => Math.max(1, Math.ceil(limit * SHARE_JE_ACCOUNT));
+const limitAllAccounts = (limit: number) => Math.max(1, Math.ceil(limit * SHARE_ALL_ACCOUNTS));
 
 /** Atomar: Das Upsert erhöht nur unter der Grenze, und scheitert die Grenze des
  * Kontos, fällt auch die Gesamtzählung zurück. */
-export async function kontingentPruefenUndZaehlen(k: FremdquellenKontext, apiName: ApiName, _vorgabe?: number) {
-  const limit = await grenzeDerQuelle(k, apiName);
+export async function kontingentPruefenUndZaehlen(k: ForeignSourcesContext, apiName: ApiName, _default?: number) {
+  const limit = await limitTheSource(k, apiName);
   const tag = heute(k);
-  const konto = aktuellesKonto();
-  const zaehle = async (tx: DbSchnittstelle, id: number, grenze: number): Promise<number | null> => {
-    const z = await repo.zaehleApiAufruf(tx, tag, apiName, id, grenze);
+  const konto = currentAccount();
+  const zaehle = async (tx: DbInterface, id: number, grenze: number): Promise<number | null> => {
+    const z = await repo.countApiCall(tx, tag, apiName, id, grenze);
     return z ? Number(z.count) : null;
   };
   if (limit <= 0) return { allowed: false, count: 0, limit, remaining: 0 };
@@ -42,39 +42,39 @@ export async function kontingentPruefenUndZaehlen(k: FremdquellenKontext, apiNam
       const gesamt = await zaehle(t.db, 0, limit);
       if (gesamt === null) return { allowed: false, count: limit, limit, remaining: 0 };
       if (konto && !konto.verwalter) {
-        const alle = await zaehle(t.db, ALLE_KONTEN, grenzeAlleKonten(limit));
-        const eigen = alle === null ? null : await zaehle(t.db, konto.id, grenzeJeKonto(limit));
-        if (eigen === null) throw Object.assign(new Error('kontingent_je_konto'), { kontoVoll: true });
+        const alle = await zaehle(t.db, ALL_ACCOUNTS, limitAllAccounts(limit));
+        const eigen = alle === null ? null : await zaehle(t.db, konto.id, limitJeAccount(limit));
+        if (eigen === null) throw Object.assign(new Error('kontingent_je_konto'), { accountFull: true });
       }
       return { allowed: true, count: gesamt, limit, remaining: limit - gesamt };
     })
-    .catch((e: { kontoVoll?: boolean }) => {
-      if (e?.kontoVoll) return { allowed: false, count: 0, limit, remaining: 0, jeKonto: true };
+    .catch((e: { accountFull?: boolean }) => {
+      if (e?.accountFull) return { allowed: false, count: 0, limit, remaining: 0, jeAccount: true };
       throw e;
     });
 }
 
-export async function kontingentUebersicht(k: FremdquellenKontext, apiName: ApiName) {
+export async function kontingentUebersicht(k: ForeignSourcesContext, apiName: ApiName) {
   const tag = heute(k);
-  const [z, limit] = await Promise.all([k.apiKontingent.aufrufeHeute(tag, apiName), grenzeDerQuelle(k, apiName)]);
+  const [z, limit] = await Promise.all([k.apiKontingent.callsToday(tag, apiName), limitTheSource(k, apiName)]);
   const count = Number(z?.count || 0);
   return { count, limit, remaining: Math.max(0, limit - count), date: tag };
 }
 
 /** Zählt NICHT: Die Aufrufer fragen vorher, damit ein erschöpftes Kontingent
  * als solches gemeldet wird statt als Abruffehler. */
-export async function kontingentFrei(kx: FremdquellenKontext, apiName: ApiName) {
+export async function quotaFree(kx: ForeignSourcesContext, apiName: ApiName) {
   const s = await kontingentUebersicht(kx, apiName);
-  const konto = aktuellesKonto();
+  const konto = currentAccount();
   if (!konto || konto.verwalter || s.remaining <= 0) return { allowed: s.remaining > 0, limit: s.limit };
-  const z = await kx.apiKontingent.aufrufeJeKonto(s.date, apiName, konto.id, ALLE_KONTEN);
+  const z = await kx.apiKontingent.callsJeAccount(s.date, apiName, konto.id, ALL_ACCOUNTS);
   const stand = (k: number) => Number(z.find(r => Number(r.account_id) === k)?.count || 0);
   return {
-    allowed: stand(konto.id) < grenzeJeKonto(s.limit) && stand(ALLE_KONTEN) < grenzeAlleKonten(s.limit),
+    allowed: stand(konto.id) < limitJeAccount(s.limit) && stand(ALL_ACCOUNTS) < limitAllAccounts(s.limit),
     limit: s.limit,
   };
 }
 
-export async function setzeKontingentZurueck(k: FremdquellenKontext, apiName: ApiName): Promise<void> {
-  await k.apiKontingent.setzeApiZaehlerZurueck(heute(k), apiName);
+export async function setQuotaBack(k: ForeignSourcesContext, apiName: ApiName): Promise<void> {
+  await k.apiKontingent.setApiCounterBack(heute(k), apiName);
 }

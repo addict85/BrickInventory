@@ -4,30 +4,30 @@
 import type { Sicht } from '../haushalt';
 import * as V from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
-import { geldEingabe } from '../infra/geld';
-import { oeffentlicherFehler } from '../infra/fehler';
-import { Abstriche } from '../infra/ergebnis';
-import { fuerSet } from '../katalog';
-import { bildFallsVorhanden } from '../bilder';
-import { toCsv, csvZeilenAusAnfrage, csvDatum } from '../infra/csvExport';
-import { moeglicheSetNummer, mitVersion, normalisiereSetNummer } from '../infra/setNummer';
+import { moneyInput } from '../infra/geld';
+import { publicError } from '../infra/fehler';
+import { Degradations } from '../infra/ergebnis';
+import { forSet } from '../katalog';
+import { imageIfPresent } from '../bilder';
+import { toCsv, csvRowsFromRequest, csvDatum } from '../infra/csvExport';
+import { possibleSetNumber, withVersion, normalisiereSetNummer } from '../infra/setNummer';
 import type { WantedContext } from './context';
 
 /** Each condition on its own: if BrickLink doesn't know one, the other still
  * comes through, and a missing price is a dash, not an error. */
 export async function pricesForBothConditions(k: WantedContext, uid: number, setNumber: string) {
   const currency = String(await k.einstellungen.userValue(uid, 'currency', 'EUR'));
-  if (!moeglicheSetNummer(mitVersion(setNumber)) || !(await k.katalog.setBekanntImKatalog(setNumber)))
+  if (!possibleSetNumber(withVersion(setNumber)) || !(await k.katalog.setKnownInCatalog(setNumber)))
     return { currency, current: {} };
   const guideType = String(await k.einstellungen.userValue(uid, 'price_guide_type', 'sold'));
   const ttlHours = String(await k.einstellungen.userValue(uid, 'price_cache_ttl', '24'));
   const current: Record<string, { condition: string; avg_price: unknown; min_price: unknown; max_price: unknown }> = {};
   // "none" after a fetch failure is not "BrickLink knows none".
-  const ab = new Abstriche();
+  const ab = new Degradations();
   for (const c of ['N', 'U']) {
     const pd = await ab.oder(
       `marktpreis_${c}`,
-      k.finanzen.holePreis(setNumber, c, guideType, currency, ttlHours),
+      k.finanzen.fetchPrice(setNumber, c, guideType, currency, ttlHours),
       null,
     );
     // A fallback price from the other condition would otherwise show as "market price (new)"; the list says "none".
@@ -83,11 +83,11 @@ export async function addWantedItem(
   userId: number,
   setNumber: string,
   condition: string | null | undefined,
-  aufgenommenAm?: string | null,
+  capturedAt?: string | null,
 ): Promise<{ merkposten: WantedItem | null; war_neu: boolean }> {
   const sn = normalisiereSetNummer(setNumber);
   const c = await conditionOrDefault(k, condition, userId);
-  const r = await k.wanted.markSetWanted(userId, sn, c, aufgenommenAm ?? null);
+  const r = await k.wanted.markSetWanted(userId, sn, c, capturedAt ?? null);
   const liste = await wantedItemsOf(k, [userId], sn);
   return { merkposten: liste.find(w => w.condition === c) ?? null, war_neu: !!r?.war_neu };
 }
@@ -114,31 +114,31 @@ function withWantedItemLock<T>(
 ): Promise<T> {
   return k.transaktion(fn, {
     sperren: konten.map(konto => ({ konto, schluessel: `merk:${sn}:${c}` })),
-    wiederholeBeiKonflikt: true,
+    repeatAtConflict: true,
   });
 }
 
 // UPDATE instead of delete-and-recreate: the added date and price alert stay.
 export async function moveWantedItem(
   k: WantedContext,
-  vonId: number,
+  ofId: number,
   setNumber: string,
   c: V.Zustand,
   zuId: number,
 ): Promise<{ verschoben: boolean; zusammengefuehrt: boolean }> {
   const sn = normalisiereSetNummer(setNumber);
-  if (vonId === zuId) return { verschoben: false, zusammengefuehrt: false };
+  if (ofId === zuId) return { verschoben: false, zusammengefuehrt: false };
 
-  return withWantedItemLock(k, [vonId, zuId], sn, c, async t => {
+  return withWantedItemLock(k, [ofId, zuId], sn, c, async t => {
     if (await t.wanted.isWanted(zuId, sn, c)) {
-      const weg = await removeWantedItem(t, vonId, sn, c);
-      await t.finanzen.preisalarm.loescheAlarm(vonId, sn, c);
+      const weg = await removeWantedItem(t, ofId, sn, c);
+      await t.finanzen.preisalarm.loescheAlarm(ofId, sn, c);
       return { verschoben: weg > 0, zusammengefuehrt: true };
     }
-    const r = await t.wanted.transferWantedEntry(zuId, vonId, sn, c);
+    const r = await t.wanted.transferWantedEntry(zuId, ofId, sn, c);
     const verschoben = (r.changes ?? 0) > 0;
     // Only carry the alert along if the item really moved.
-    if (verschoben) await t.finanzen.preisalarm.alarmUebertragen(zuId, vonId, sn, c);
+    if (verschoben) await t.finanzen.preisalarm.alarmTransfer(zuId, ofId, sn, c);
     return { verschoben, zusammengefuehrt: false };
   });
 }
@@ -155,12 +155,12 @@ export interface WantedFilter {
 /** `userIds`: the wanted list follows the household tree like everything else. */
 export async function wantedItemsOf(
   k: WantedContext,
-  userIdsWahl: Sicht | number[],
+  userIdsChoice: Sicht | number[],
   nurSet?: string,
   waehrung = 'EUR',
   filter?: WantedFilter,
 ): Promise<WantedItem[]> {
-  const userIds = await k.haushalt.blickfeldAus(userIdsWahl);
+  const userIds = await k.haushalt.scopeFrom(userIdsChoice);
   if (!userIds?.length) return [];
   // Unknown means "both", not "none": an emptied list would look like an empty wanted list.
   const condition = String(filter?.condition ?? '').toUpperCase();
@@ -180,13 +180,13 @@ export async function wantedItemsOf(
   return rows.map(({ alarm_direction, alarm_threshold, alarm_triggered, ...r }) => {
     // Synchronous and cached — no filesystem access per row. Same naming rule
     // as when storing it (src/bilder/setImages.ts).
-    const lokal = bildFallsVorhanden(`/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
-    if (!lokal && r.image_url) k.bilder.merkeGebraucht(String(r.image_url), String(r.set_number));
+    const lokal = imageIfPresent(`/images/sets/${String(r.set_number).replace(/[^a-z0-9-]/gi, '_')}.jpg`) ?? null;
+    if (!lokal && r.image_url) k.bilder.rememberUsed(String(r.image_url), String(r.set_number));
     return {
       ...r,
       waehrung,
       owned: !!r.owned,
-      preisvergleich_url: fuerSet(r.set_number, r.name),
+      preisvergleich_url: forSet(r.set_number, r.name),
       image_local: lokal,
       alarm:
         alarm_direction == null
@@ -204,8 +204,8 @@ export async function wantedItemsOf(
  * transaction; the job fills in the catalog and an estimated price. */
 export async function fulfillWantedItem(
   k: WantedContext,
-  leserId: number,
-  besitzerId: number,
+  readerId: number,
+  ownerId: number,
   setNumber: string,
   condition: V.Zustand,
   eingabe: {
@@ -219,21 +219,20 @@ export async function fulfillWantedItem(
 
   // Two conditions: `condition` is the wanted item's key, which disappears;
   // `eingabe.condition` is the one the set is recorded in.
-  const wantedCondition = await conditionOrDefault(k, condition, besitzerId);
-  const zustand =
-    eingabe.condition == null ? wantedCondition : await conditionOrDefault(k, eingabe.condition, besitzerId);
+  const wantedCondition = await conditionOrDefault(k, condition, ownerId);
+  const zustand = eingabe.condition == null ? wantedCondition : await conditionOrDefault(k, eingabe.condition, ownerId);
   const menge = V.acquisitionQuantity(eingabe.quantity ?? 1);
-  const kaufpreis = geldEingabe(eingabe.purchase_price, 'Kaufpreis');
+  const kaufpreis = moneyInput(eingabe.purchase_price, 'Kaufpreis');
 
   // Record and remove together: otherwise the set would sit in holdings AND
   // still on the wanted list at the same time.
-  return withWantedItemLock(k, [besitzerId], sn, wantedCondition, async t => {
+  return withWantedItemLock(k, [ownerId], sn, wantedCondition, async t => {
     // A wanted item is being fulfilled; without it, this would be a second way to record.
-    if (!(await t.wanted.isWanted(besitzerId, sn, wantedCondition))) fachfehler('nicht_gefunden', 'nicht_gefunden');
+    if (!(await t.wanted.isWanted(ownerId, sn, wantedCondition))) fachfehler('nicht_gefunden', 'nicht_gefunden');
     // Already in scope means "exists", not increase; the wanted item is still done.
     const r = await t.sets.setErfassen({
-      anfragender: leserId,
-      besitzerWunsch: besitzerId,
+      requester: readerId,
+      ownerWish: ownerId,
       setNumber: sn,
       menge,
       kaufpreis,
@@ -241,8 +240,8 @@ export async function fulfillWantedItem(
       lagerort: eingabe.storage == null ? null : String(eingabe.storage),
     });
     // After the WANTED-ITEM's condition: this is about the entry that was fulfilled.
-    await removeWantedItem(t, besitzerId, sn, wantedCondition);
-    await t.finanzen.preisalarm.loescheAlarm(besitzerId, sn, wantedCondition);
+    await removeWantedItem(t, ownerId, sn, wantedCondition);
+    await t.finanzen.preisalarm.loescheAlarm(ownerId, sn, wantedCondition);
     return r.action === 'added'
       ? { action: 'added', set_number: r.set_number, name: r.name, katalog_offen: r.katalog_offen }
       : { action: 'exists', set_number: r.set_number };
@@ -258,21 +257,21 @@ export async function wantedListCsv(k: WantedContext, uid: number): Promise<stri
 
 /** The counterpart to wantedListCsv(); runs as a job (src/collection/importJobs.ts). */
 export async function importWantedListCsv(k: WantedContext, owner: number, text: string) {
-  const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
+  const { records, cleaned, uebersprungen } = csvRowsFromRequest(text);
 
   let added = 0,
     updated = 0,
     errors = 0;
   const results: Array<{ set_number: string; action: string; error?: string }> = [];
 
-  for (const row of bereinigt) {
+  for (const row of cleaned) {
     // Last fallback: a file without a header row, first column = set number —
     // the same leniency as the minifig import.
     const setNumber = String(row.set_number || row.Setnummer || row.set_num || Object.values(row)[0] || '').trim();
     if (!setNumber) continue;
 
     const condition = String(row.condition || row.zustand || row.Zustand || '').trim();
-    const am = csvDatum(row.created_at || row.aufgenommen_am || row['Auf der Liste seit']);
+    const am = csvDatum(row.created_at || row.captured_at || row['Auf der Liste seit']);
 
     try {
       const { war_neu } = await addWantedItem(k, owner, setNumber, condition, am);
@@ -285,7 +284,7 @@ export async function importWantedListCsv(k: WantedContext, owner: number, text:
       }
     } catch (e) {
       errors++;
-      results.push({ set_number: setNumber, action: 'error', error: oeffentlicherFehler(e, 'wanted-csv:zeile').error });
+      results.push({ set_number: setNumber, action: 'error', error: publicError(e, 'wanted-csv:zeile').error });
     }
   }
   return { added, updated, errors, records, results, uebersprungen };

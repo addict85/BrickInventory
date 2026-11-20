@@ -4,14 +4,14 @@
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  fmtBig wieder mit „k“ → rot: „Kennzahlen ohne k“ („1.3k“)
  *   B  in portfolioChartSVG wieder px(i) nach Index → rot: „Zeitachse“
- *      (Abstand Tag gleich Abstand Monat); schoeneTeilung durch fünf gleiche
+ *      (Abstand Tag gleich Abstand Monat); niceSplit durch fünf gleiche
  *      Teile ersetzt → rot: „1-2-5“ (4'219 …)
- *   C  WERT_SKELETT in loadFinance nicht gesetzt → rot: „Platzhalter beim
+ *   C  VALUE_SKELETON in loadFinance nicht gesetzt → rot: „Platzhalter beim
  *      Laden“ („—“)
- *   D  teileLeerAbgleichen wieder mit `_manuelleLeer ? 'none' : ''` → rot:
+ *   D  reconcilePartsEmpty wieder mit `_manualEmpty ? 'none' : ''` → rot:
  *      „keine leere Box“
  *   E  die Prüfung `!u.email` in loadProfile entfernt → rot: „ohne E-Mail“
- *   F  die Prüfung auf den offenen Assistenten in rbHinweisZeigen entfernt
+ *   F  die Prüfung auf den offenen Assistenten in showRbHint entfernt
  *      → rot: „kein Hinweis über dem Assistenten“ (02.11.2026 erneut gemessen)
  *   G  in setOwnTheme applyTheme() entfernt → rot: „eigenes Design“
  *      (data-theme blieb classic)
@@ -20,10 +20,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
 
 test('Kennzahlen ohne k: 1300 Teile stehen als volle Zahl da', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/stats': {
       success: true,
       stats: { total_sets: 14, total_parts: 1300, total_minifigs: 19, total_instructions: 0 },
@@ -40,7 +40,7 @@ test('Kennzahlen ohne k: 1300 Teile stehen als volle Zahl da', async () => {
 });
 
 /** Zwölf Monate, dazwischen ein einzelner Tag — wie period=max sie liefert. */
-const VERLAUF = (() => {
+const HISTORY = (() => {
   const tage = [
     '2025-10-29',
     '2025-11-29',
@@ -73,8 +73,8 @@ const VERLAUF = (() => {
 })();
 
 test('Wertdiagramm: Teilung nach 1-2-5, echte Zeitachse, Monatsnamen', async () => {
-  const { w, d } = await oeffneOberflaeche({
-    '/v1/finance/portfolio-history': VERLAUF,
+  const { w, d } = await openUi({
+    '/v1/finance/portfolio-history': HISTORY,
     '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: String(4219 + 13 * 63.7) } },
   });
   try {
@@ -118,7 +118,7 @@ test('Finanzen: Platzhalter beim Laden statt „—“', async () => {
   const spaeter = new Promise(r => {
     freigeben = r;
   });
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/finance/valuation': () =>
       spaeter.then(() => ({
         success: true,
@@ -149,7 +149,7 @@ test('Teile: Solange sie laden, keine leere Box „Manuell erfasste Teile“', a
   const spaeter = new Promise(r => {
     freigeben = r;
   });
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/parts/manual': () =>
       spaeter.then(() => ({
         success: true,
@@ -170,7 +170,7 @@ test('Teile: Solange sie laden, keine leere Box „Manuell erfasste Teile“', a
 });
 
 test('Konto: ohne E-Mail steht nicht „verifiziert“', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/auth/profile': {
       success: true,
       user: { username: 'anna', email: '', email_verified: true, first_name: '', last_name: '' },
@@ -186,7 +186,7 @@ test('Konto: ohne E-Mail steht nicht „verifiziert“', async () => {
 });
 
 test('Konto: eine ausstehende Adresse steht unter dem Feld, im Feld die geltende', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/auth/profile': {
       success: true,
       user: {
@@ -210,7 +210,7 @@ test('Konto: eine ausstehende Adresse steht unter dem Feld, im Feld die geltende
 });
 
 test('kein Hinweis zum Rebrickable-Schlüssel über dem Einrichtungsassistenten', async () => {
-  const { w, d, ruhig } = await oeffneOberflaeche({
+  const { w, d, ruhig } = await openUi({
     '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
     '/v1/settings/einrichtung': {
       success: true,
@@ -236,7 +236,7 @@ test('kein Hinweis zum Rebrickable-Schlüssel über dem Einrichtungsassistenten'
 test('Konto: eigenes Design oder Vorgabe des Verwalters', async () => {
   const aufrufe = [];
   let eigenes = null;
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
     '/v1/settings/theme': () => ({ success: true, theme: eigenes || 'noppe', vorgabe: 'noppe', eigenes }),
     '/v1/settings/user/theme': (_url, o) => {

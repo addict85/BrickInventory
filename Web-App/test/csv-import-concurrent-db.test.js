@@ -36,10 +36,10 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 test('zwei gleichzeitige Importe derselben Tabelle kollidieren nicht', { concurrency: 1 }, async t => {
   try {
@@ -67,16 +67,16 @@ test('zwei gleichzeitige Importe derselben Tabelle kollidieren nicht', { concurr
   fs.writeFileSync(path.join(DATA_DIR, 'colors.csv.tmp'), csv.join('\n') + '\n', 'utf8');
 
   try {
-    const ergebnisse = await Promise.allSettled([TASKS.colors(), TASKS.colors()]);
+    const results = await Promise.allSettled([TASKS.colors(), TASKS.colors()]);
 
-    const gescheitert = ergebnisse.filter(r => r.status === 'rejected');
+    const gescheitert = results.filter(r => r.status === 'rejected');
     assert.equal(
       gescheitert.length,
       0,
       `beide Läufe müssen durchlaufen — gescheitert: ${gescheitert.map(r => r.reason.message).join(' | ')}`,
     );
 
-    for (const r of ergebnisse) {
+    for (const r of results) {
       assert.equal(r.status === 'fulfilled' && r.value, ZEILEN, 'jeder Lauf muss alle Zeilen gelesen haben');
     }
 

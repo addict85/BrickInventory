@@ -17,11 +17,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
-const { haeltFigur, haeltTeil } = require('./helpers/bestand');
+const db = testData();
+const { holdsMinifig, holdsPart } = require('./helpers/bestand');
 
 // Dieselbe Begruendung wie in test/setmenge-aus-erfassungen-db.test.js: Diese
 // Datei baut die Datenbank mehrfach von null auf.
@@ -42,12 +42,12 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-const spaltenVon = async tabelle =>
+const columnsOf = async tabelle =>
   (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
     .map(r => r.column_name)
     .sort();
 
-const tabelleDa = async name => !!(await db.get(`SELECT to_regclass($1) AS t`, [name]))?.t;
+const tableDa = async name => !!(await db.get(`SELECT to_regclass($1) AS t`, [name]))?.t;
 
 const dbDa = async t => {
   try {
@@ -77,24 +77,24 @@ test('nach der ganzen Kette stehen die Nummern nur in bl_mapping', { concurrency
 
   // ── Danach: die Abschriften sind weg ─────────────────────────────────────
   assert.ok(
-    !(await spaltenVon('parts')).includes('bl_part_number'),
+    !(await columnsOf('parts')).includes('bl_part_number'),
     'parts.bl_part_number ist nach allen Migrationen noch da',
   );
   assert.ok(
-    !(await spaltenVon('set_parts_catalog')).includes('bl_part_number'),
+    !(await columnsOf('set_parts_catalog')).includes('bl_part_number'),
     'set_parts_catalog.bl_part_number ist nach allen Migrationen noch da',
   );
   assert.ok(
-    !(await spaltenVon('minifigs')).includes('bl_fig_number'),
+    !(await columnsOf('minifigs')).includes('bl_fig_number'),
     'minifigs.bl_fig_number ist nach allen Migrationen noch da',
   );
   assert.ok(
-    !(await tabelleDa('rb_bl_mapping')),
+    !(await tableDa('rb_bl_mapping')),
     'rb_bl_mapping gibt es noch — ihr Inhalt steht als Art part in bl_mapping',
   );
 
   // ── Und die Zuordnung steht ──────────────────────────────────────────────
-  const z = await spaltenVon('bl_mapping');
+  const z = await columnsOf('bl_mapping');
   assert.deepEqual(
     z,
     ['bl_id', 'fetched_at', 'rb_id', 'type'],
@@ -149,8 +149,8 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
                 ON CONFLICT (fig_number) DO NOTHING`);
   // Bestandszeile UND Erfassung in einem — die Stückzahl steht seit
   // Migration 0038 nur noch dort.
-  await haeltTeil(db, uid, '3070b', { menge: 5, colorId: 0, preis: 1.0 });
-  await haeltFigur(db, uid, 'fig-9', { menge: 2, preis: 5.0 });
+  await holdsPart(db, uid, '3070b', { menge: 5, colorId: 0, preis: 1.0 });
+  await holdsMinifig(db, uid, 'fig-9', { menge: 2, preis: 5.0 });
   await db.run(`INSERT INTO bl_mapping (type,rb_id,bl_id) VALUES
                 ('part','3070b','3070'), ('fig','fig-9','sw9999')`);
 
@@ -234,7 +234,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
   dateien.push(path.join(ROOT, 'server.ts'));
   assert.ok(dateien.length > 100, `Nur ${dateien.length} Quelldateien gefunden`);
 
-  const codeZeilen = txt =>
+  const codeRows = txt =>
     txt.split('\n').filter(z => {
       const t = z.trim();
       return !(t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('--'));
@@ -260,7 +260,7 @@ test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => 
     const rel = path.relative(ROOT, datei);
     // Migrationen (.sql) sind nicht dabei: 0037 muss die alten Spalten und
     // die alte Tabelle weiter lesen.
-    for (const z of codeZeilen(fs.readFileSync(datei, 'utf8'))) {
+    for (const z of codeRows(fs.readFileSync(datei, 'utf8'))) {
       for (const [was, m] of muster) if (m.test(z)) stellen.push(`${rel} (${was}): ${z.trim().slice(0, 80)}`);
     }
   }

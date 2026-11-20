@@ -5,20 +5,20 @@
  * Vorschau schon da sind.
  *
  * Gegenproben (07.11.2026):
- *   A  in src/bilder/bildbedarfLauf.ts den Aufruf setBildLokalEintragen() im Zweig
+ *   A  in src/bilder/bildbedarfLauf.ts den Aufruf enterSetImageLocal() im Zweig
  *      „Datei schon da“ gestrichen → rot: „der Bild-Job trägt die Datei ein“
- *   B  in bildDurchreichen() den else-Zweig mit setBildLokalEintragen()
+ *   B  in passThroughImage() den else-Zweig mit enterSetImageLocal()
  *      gestrichen → rot: „der Proxy trägt vorhandene Dateien ein“
  * Gegenproben (10.11.2026, Katalog-Sets ausserhalb des Bestands):
- *   C  in setBildFehlt() setBildLokalEintragen(setNummer) ohne Quelle → rot:
+ *   C  in setImageMissing() enterSetImageLocal(setNummer) ohne Quelle → rot:
  *      „der Proxy trägt … ein“ (image_url null)
- *   D  merkeSetBildLokal() wieder als UPDATE ohne INSERT … SELECT FROM rb_sets → rot:
+ *   D  rememberSetImageLocal() wieder als UPDATE ohne INSERT … SELECT FROM rb_sets → rot:
  *      „der Proxy trägt … ein“ (fehlende set_catalog-Zeile bleibt fehlen)
  *   E  in katalogSuche.ts c.image_local aus SET_SPALTEN entfernt → rot: „… und die
  *      Katalogsuche nennt danach die lokale Adresse“
  *
  * Gegenprobe (15.11.2026, Ereignis statt Nacharbeit):
- *   F  in erzeugeKatalog beiSetBildGeladen() gestrichen → rot: alle drei Fälle
+ *   F  in createCatalog atSetImageLoaded() gestrichen → rot: alle drei Fälle
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -29,20 +29,20 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { katalogSet } = require('./helpers/bestand');
-const { datenOderSkip } = require('./helpers/db');
-const { leereWarteschlange } = require('./helpers/bildwarteschlange');
-const db = testDaten();
+const { catalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const { emptyQueue } = require('./helpers/bildwarteschlange');
+const db = testData();
 
 test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { SET_IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const angelegt = [];
-  const lege = (datei, inhalt = Buffer.alloc(300, 1)) => {
+  const put = (datei, inhalt = Buffer.alloc(300, 1)) => {
     fs.writeFileSync(datei, inhalt);
     angelegt.push(datei);
   };
@@ -50,7 +50,7 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
     proxy = `6${process.pid}-1`;
   const cdn = sn => `https://cdn.rebrickable.com/media/sets/${sn}.jpg`;
   for (const sn of [job, proxy]) {
-    await katalogSet(db, sn, { name: 'Probe' });
+    await catalogSet(db, sn, { name: 'Probe' });
     await db.run(`UPDATE set_catalog SET image_local = NULL, image_url = $2 WHERE set_number = $1`, [sn, cdn(sn)]);
   }
   t.after(async () => {
@@ -61,13 +61,13 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
     (await db.get('SELECT image_local FROM set_catalog WHERE set_number = $1', [sn]))?.image_local;
 
   await t.test('der Bild-Job trägt die Datei ein', async () => {
-    await leereWarteschlange(db);
-    lege(path.join(SET_IMAGES_DIR, `${job}.jpg`));
-    lege(path.join(SET_IMAGES_DIR, `${job}_thumb.jpg`));
+    await emptyQueue(db);
+    put(path.join(SET_IMAGES_DIR, `${job}.jpg`));
+    put(path.join(SET_IMAGES_DIR, `${job}_thumb.jpg`));
     const IQ = _req('src/bilder/bildbedarfLauf.js');
-    IQ.merkeGebraucht(cdn(job), job);
-    await IQ._schreibePuffer();
-    await IQ._arbeiteStapel();
+    IQ.rememberUsed(cdn(job), job);
+    await IQ._writeBuffer();
+    await IQ._workStack();
     assert.equal(await lokal(job), `/images/sets/${job}.jpg`);
   });
 
@@ -75,21 +75,21 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
     // Ein Katalog-Set ausserhalb jedes Bestands: rb_sets kennt es, set_catalog ausnahmsweise nicht.
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [proxy]);
     const express = require('express');
-    const bildDurchreichen = (...a) =>
-      _req('src/bilder/http/bildProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
-    const { proxyAdresse, proxyCacheSchluessel } = _req('src/bilder/images.js');
-    lege(path.join(SET_IMAGES_DIR, `${proxy}.jpg`));
-    lege(path.join(SET_IMAGES_DIR, `${proxy}_thumb.jpg`));
+    const passThroughImage = (...a) =>
+      _req('src/bilder/http/bildProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
+    const { proxyAddress, proxyCacheKey } = _req('src/bilder/images.js');
+    put(path.join(SET_IMAGES_DIR, `${proxy}.jpg`));
+    put(path.join(SET_IMAGES_DIR, `${proxy}_thumb.jpg`));
     // Ein Cache-Treffer: Der Proxy fragt das CDN dann nicht.
     const cacheDir = path.join(DATA_DIR, 'img_proxy_cache');
     fs.mkdirSync(cacheDir, { recursive: true });
-    const f = path.join(cacheDir, proxyCacheSchluessel(proxyAdresse(cdn(proxy)) ?? cdn(proxy)));
-    lege(f);
-    lege(`${f}.ct`, Buffer.from('image/jpeg'));
+    const f = path.join(cacheDir, proxyCacheKey(proxyAddress(cdn(proxy)) ?? cdn(proxy)));
+    put(f);
+    put(`${f}.ct`, Buffer.from('image/jpeg'));
     const app = express();
     app.get('/p', (req, res) => {
       Object.assign(req, { session: { userId: 1 } });
-      return bildDurchreichen(req, res);
+      return passThroughImage(req, res);
     });
     const server = app.listen(0);
     t.after(() => server.close());
@@ -116,8 +116,8 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
   });
 
   await t.test('… und die Katalogsuche nennt danach die lokale Adresse', async () => {
-    const { katalogSeite } = _req('src/katalog/dienst.js');
-    const seite = await katalogSeite(1, { q: proxy, themeId: null }, 'num_asc', 1, 10);
+    const { catalogPage } = _req('src/katalog/dienst.js');
+    const seite = await catalogPage(1, { q: proxy, themeId: null }, 'num_asc', 1, 10);
     assert.deepEqual(
       seite.sets.map(x => [x.set_number, x.image_local]),
       [[proxy, `/images/sets/${proxy}_thumb.jpg`]],

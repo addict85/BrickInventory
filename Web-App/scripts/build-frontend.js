@@ -84,14 +84,14 @@ const BAUSTEINE = [
 ];
 
 /** Ausserhalb der App-Module: Einstieg, Bündel und die eigenständigen Skripte ohne Bündelbezug. */
-const KEINE_APP_MODULE = new Set(['main.js', path.basename(OUT_REL), 'logviewer.js', 'pdfjs-boot.js']);
+const NO_APP_MODULE = new Set(['main.js', path.basename(OUT_REL), 'logviewer.js', 'pdfjs-boot.js']);
 
 /** Ob ein Dateiname unter public/js ein Modul der Oberfläche ist (Kern, Bausteine, Ansichten). */
-const istAppModul = (/** @type {string} */ f) => f.endsWith('.js') && !KEINE_APP_MODULE.has(f);
+const isAppModule = (/** @type {string} */ f) => f.endsWith('.js') && !NO_APP_MODULE.has(f);
 
 /** Die Module der Oberfläche unter public/js, sortiert. */
 function appModule() {
-  return fs.readdirSync(path.join(PUBLIC, 'js')).filter(istAppModul).sort();
+  return fs.readdirSync(path.join(PUBLIC, 'js')).filter(isAppModule).sort();
 }
 
 /**
@@ -122,7 +122,7 @@ function checkComplete() {
  * diese an — ein eingeschleustes data-stil mit anderem Wert bleibt wirkungslos.
  * Werte mit `${…}` zählen nicht; die setzt der Aufrufer zur Laufzeit selbst.
  */
-function erlaubteStile() {
+function allowedStyles() {
   const dateien = [
     'index.html',
     ...fs
@@ -140,7 +140,7 @@ function erlaubteStile() {
       if (!roh.includes('${'))
         werte.add(roh.replace(/\\(["'])/g, '$1').replace(/&(amp|quot|#39|lt|gt);/g, e => entity[e] ?? e));
     }
-    for (const m of s.matchAll(/\b(?:stil|zeilenStil|wertStil):\s*'([^'$]*)'/g)) werte.add(m[1] ?? '');
+    for (const m of s.matchAll(/\b(?:stil|rowsStyle|valueStyle):\s*'([^'$]*)'/g)) werte.add(m[1] ?? '');
   }
   return [...werte].sort();
 }
@@ -151,7 +151,7 @@ function erlaubteStile() {
  * @param {{ quellkarte?: boolean }} [opt]  quellkarte: Sourcemap eingebettet, nur für die
  *   Abdeckungsmessung (test-lauf.js --abdeckung); das ausgelieferte Bündel bleibt ohne.
  */
-function baueBuendel(outAbs, opt = {}) {
+function buildBundle(outAbs, opt = {}) {
   // Lokales esbuild statt npx — siehe die Begründung in scripts/build-ts.js.
   const local = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
   const [cmd, prefix] = fs.existsSync(local) ? [local, []] : ['npx', ['--yes', `esbuild@${ESBUILD_VERSION}`]];
@@ -164,7 +164,7 @@ function baueBuendel(outAbs, opt = {}) {
       '--format=iife',
       ...(opt.quellkarte ? [] : ['--minify']),
       '--charset=utf8',
-      `--define:__ERLAUBTE_STILE__=${JSON.stringify(erlaubteStile())}`,
+      `--define:__ERLAUBTE_STILE__=${JSON.stringify(allowedStyles())}`,
       `--outfile=${outAbs}`,
       ...(opt.quellkarte ? ['--sourcemap=inline', '--sources-content=true'] : []),
     ],
@@ -173,7 +173,7 @@ function baueBuendel(outAbs, opt = {}) {
 }
 
 /** Neueste Änderung an allem, woraus das Bündel entsteht (auch index.html: data-stil-Werte). */
-function neuesteQuelle() {
+function newestSource() {
   const dateien = [
     ...fs
       .readdirSync(path.join(PUBLIC, 'js'))
@@ -192,11 +192,11 @@ function neuesteQuelle() {
  * und rename, damit parallele Leser nie ein halbes sehen. true, wenn gebaut wurde.
  * @param {string} [outAbs]
  */
-function stelleBuendelSicher(outAbs = path.join(PUBLIC, OUT_REL)) {
-  if (fs.existsSync(outAbs) && fs.statSync(outAbs).mtimeMs >= neuesteQuelle()) return false;
+function placeBundleSafe(outAbs = path.join(PUBLIC, OUT_REL)) {
+  if (fs.existsSync(outAbs) && fs.statSync(outAbs).mtimeMs >= newestSource()) return false;
   const zwischen = `${outAbs}.${process.pid}.tmp`;
   try {
-    baueBuendel(zwischen);
+    buildBundle(zwischen);
     fs.renameSync(zwischen, outAbs);
   } finally {
     fs.rmSync(zwischen, { force: true });
@@ -214,18 +214,18 @@ function main() {
   // --outfile=…: nur bündeln, an einen anderen Ort (test/buendel-gebaut.test.js).
   const ziel = process.argv.find(a => a.startsWith('--outfile='))?.slice('--outfile='.length);
   if (ziel) {
-    baueBuendel(path.resolve(ziel));
+    buildBundle(path.resolve(ziel));
     return;
   }
   const outAbs = path.join(PUBLIC, OUT_REL);
-  baueBuendel(outAbs);
+  buildBundle(outAbs);
 
   const after = fs.statSync(outAbs).size;
   console.log(`[build-frontend] ${ENTRY} → ${OUT_REL}: ${(after / 1024).toFixed(0)} KB`);
 
-  const pdfjs = require('./pdfjs-kopieren').kopierePdfjs();
+  const pdfjs = require('./pdfjs-kopieren').copyPdfjs();
   if (pdfjs) console.log(`[build-frontend] PDF.js ${pdfjs} aus pdfjs-dist → public/vendor/pdfjs/`);
-  const qr = require('./qrcode-kopieren').kopiereQrcode();
+  const qr = require('./qrcode-kopieren').copyQrcode();
   if (qr) console.log(`[build-frontend] QRCode.js ${qr} aus qrcodejs → public/vendor/qrcode/`);
 }
 
@@ -237,10 +237,10 @@ module.exports = {
   STANDALONE,
   KERN,
   BAUSTEINE,
-  istAppModul,
+  isAppModule,
   appModule,
-  erlaubteStile,
-  baueBuendel,
-  stelleBuendelSicher,
-  neuesteQuelle,
+  allowedStyles,
+  buildBundle,
+  placeBundleSafe,
+  newestSource,
 };

@@ -23,13 +23,13 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('Haushaltswährung', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const namen = ['eltern', 'kind', 'enkel', 'fremd', 'carl', 'dora', 'erik', 'cleo'].map(n => `hw-${n}-${process.pid}`);
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -58,7 +58,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const { setUserSetting } = _req('src/settings/userSetting.js');
-  const waehrungen = async () =>
+  const currencies = async () =>
     (
       await db.all(
         `SELECT u.id, s.value FROM unnest($1::int[]) WITH ORDINALITY AS u(id, n)
@@ -72,7 +72,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
   await t.test('der Wechsel des Hauptkontos gilt im ganzen Haushalt', async () => {
     await setUserSetting(ids[0], 'currency', 'CHF');
     assert.deepEqual(
-      (await waehrungen()).slice(0, 4),
+      (await currencies()).slice(0, 4),
       ['CHF', 'CHF', 'CHF', 'EUR'],
       'Eltern, Kind und Enkel müssen dieselbe Währung tragen; das fremde Konto bleibt',
     );
@@ -87,7 +87,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
     }
     await setUserSetting(ids[1], 'currency', 'CHF');
     assert.deepEqual(
-      (await waehrungen()).slice(0, 4),
+      (await currencies()).slice(0, 4),
       ['CHF', 'CHF', 'CHF', 'EUR'],
       'derselbe Wert bleibt erlaubt und ändert nichts',
     );
@@ -95,7 +95,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
 
   await t.test('der Wechsel eines Kontos ohne Haushalt betrifft nur es selbst', async () => {
     await setUserSetting(ids[3], 'currency', 'USD');
-    assert.deepEqual((await waehrungen()).slice(0, 4), ['CHF', 'CHF', 'CHF', 'USD']);
+    assert.deepEqual((await currencies()).slice(0, 4), ['CHF', 'CHF', 'CHF', 'USD']);
   });
 
   await t.test('ein geteiltes Unterkonto zieht kein fremdes Hauptkonto mit', async () => {
@@ -105,13 +105,13 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
       setUserSetting(ids[4], 'currency', 'CHF'),
       (/** @type {any} */ e) => e.code === 'waehrung_geteiltes_unterkonto' && e.art === 'konflikt',
     );
-    assert.deepEqual((await waehrungen()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'ein geteiltes Unterkonto …');
+    assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'ein geteiltes Unterkonto …');
     await setUserSetting(ids[6], 'currency', 'EUR');
-    assert.deepEqual((await waehrungen()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'derselbe Wert geht durch');
+    assert.deepEqual((await currencies()).slice(4), ['EUR', 'EUR', 'EUR', 'EUR'], 'derselbe Wert geht durch');
     await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [ids[6], ids[5]]);
     await setUserSetting(ids[4], 'currency', 'CHF');
     assert.deepEqual(
-      (await waehrungen()).slice(4),
+      (await currencies()).slice(4),
       ['CHF', 'CHF', 'EUR', 'CHF'],
       'nach dem Lösen: carl, dora, cleo; erik bleibt',
     );
@@ -125,6 +125,6 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
       (/** @type {any} */ e) => e.code === 'zu_viele_anfragen' && e.art === 'zu_viele',
     );
     await setUserSetting(ids[3], 'currency', 'SEK');
-    assert.equal((await waehrungen())[3], 'SEK', 'ein unveränderter Wert zählt nicht und geht durch');
+    assert.equal((await currencies())[3], 'SEK', 'ein unveränderter Wert zählt nicht und geht durch');
   });
 });

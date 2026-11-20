@@ -3,20 +3,20 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
-import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../../db/database';
-import { datenbankVerbindung, systemVerbindung } from '../infra/konfig';
-import { istJa } from '../infra/validate';
+import { dbKonfigFromEnvironment, createDb, type Db } from '../../db/database';
+import { databaseConnection, systemConnection } from '../infra/konfig';
+import { isJa } from '../infra/validate';
 import { logAndContinue } from '../infra/fehler';
 import { DATA_DIR } from '../infra/appPaths';
 import * as repo from './repository/csvTausch';
-import type { KatalogLesevertrag } from './lesevertrag';
+import type { CatalogReadContract } from './lesevertrag';
 
 export type Meldung = { type: 'progress'; total: number; pct: number; filename: string };
 
 const sp = (c: string[], i: number): string => c[i] ?? '';
 
 // Verdoppeltes " bleibt ein Zeichen.
-export function csvZeile(line: string): string[] {
+export function csvRow(line: string): string[] {
   const result: string[] = [];
   let cur = '',
     inQuotes = false;
@@ -61,7 +61,7 @@ async function streamInsert(
   });
   for await (const line of rl) {
     if (!line.trim()) continue;
-    const cols = csvZeile(line);
+    const cols = csvRow(line);
     if (!headers) {
       headers = cols;
       continue;
@@ -83,7 +83,7 @@ async function streamInsert(
 }
 
 interface Tausch {
-  tabelle: repo.CsvTabelle;
+  tabelle: repo.CsvTable;
   filename: string;
   tmp: string;
   cols: string[];
@@ -91,7 +91,7 @@ interface Tausch {
   chunkSize?: number;
   mapRow: (c: string[]) => unknown[];
   /** Statt des Tauschs; rb_sets gleicht per Upsert ab. */
-  abgleich?: typeof repo.tausche;
+  abgleich?: typeof repo.swap;
 }
 
 // Über eine Schattentabelle: Leser sehen bis zum Tausch die alte, nie eine leere Tabelle.
@@ -99,26 +99,26 @@ async function importiereMitTausch(pool: Db['systemPool'], melde: (m: Meldung) =
   const schatten = `${t.tabelle}_import`;
   const client = await pool.connect();
   try {
-    await repo.sperreTabelle(client, t.tabelle);
+    await repo.lockTable(client, t.tabelle);
     try {
-      await repo.legeSchattenAn(client, t.tabelle, schatten);
+      await repo.putShadowAn(client, t.tabelle, schatten);
       const total = await streamInsert(
         t.tmp,
         t.chunkSize ?? 100,
         t.mapRow,
-        chunk => repo.fuegeBlockEin(client, schatten, t.cols, chunk, t.konflikt),
+        chunk => repo.addBlockOne(client, schatten, t.cols, chunk, t.konflikt),
         t.filename,
         melde,
       );
       // Eine leere Datei ist ein Fehler, kein leerer Katalog.
       if (total === 0)
         throw new Error(`${t.filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
-      await (t.abgleich ?? repo.tausche)(client, t.tabelle, schatten, t.cols);
-      await repo.entferneSchatten(client, schatten).catch(logAndContinue('csv-worker:query'));
+      await (t.abgleich ?? repo.swap)(client, t.tabelle, schatten, t.cols);
+      await repo.removeShadow(client, schatten).catch(logAndContinue('csv-worker:query'));
       await repo.pflege(client, t.tabelle);
       return total;
     } finally {
-      await repo.gibTabelleFrei(client, t.tabelle).catch(logAndContinue('csv-worker:lockKeyFor'));
+      await repo.giveTableFree(client, t.tabelle).catch(logAndContinue('csv-worker:lockKeyFor'));
     }
   } finally {
     client.release();
@@ -128,18 +128,18 @@ async function importiereMitTausch(pool: Db['systemPool'], melde: (m: Meldung) =
 /** Der Zugang des Importprozesses, ohne die Fristen des Servers: Der Tausch einer grossen
  * Katalogtabelle dauert länger als eine Anfrage. Der Systemzugang ist auch ohne Systemrolle ein
  * eigener Pool ohne Pipeline, wie zuvor der rohe Pool dieses Prozesses. */
-export function erzeugeImportZugang(): Db {
-  return erzeugeDb({
-    ...dbKonfigAusUmgebung(),
+export function createImportAccess(): Db {
+  return createDb({
+    ...dbKonfigFromEnvironment(),
     pool: { max: 2 },
-    system: systemVerbindung() ?? datenbankVerbindung(),
+    system: systemConnection() ?? databaseConnection(),
   });
 }
 
-export function erzeugeKatalogImporte(
+export function createCatalogImports(
   db: Pick<Db, 'systemPool'>,
   melde: (m: Meldung) => void,
-  l: Pick<KatalogLesevertrag, 'setZaehlt'>,
+  l: Pick<CatalogReadContract, 'setZaehlt'>,
 ) {
   // Der Abgleich von rb_sets fragt, ob irgendein Konto ein Set hält: über Kontogrenzen, also
   // als Systemrolle; die Laufzeitrolle sähe ohne Konto keine Zeile und löschte es.
@@ -154,7 +154,7 @@ export function erzeugeKatalogImporte(
       // nach jedem Tausch leer.
       cols: ['id', 'name', 'rgb', 'is_trans'],
       konflikt: ['id'],
-      mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), sp(c, 2), istJa(sp(c, 3))],
+      mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), sp(c, 2), isJa(sp(c, 3))],
     }),
     part_categories: tausch({
       tabelle: 'rb_part_categories',
@@ -178,7 +178,7 @@ export function erzeugeKatalogImporte(
       tmp: path.join(DATA_DIR, 'sets.csv.tmp'),
       cols: ['set_num', 'name', 'year', 'theme_id', 'num_parts', 'set_img_url'],
       konflikt: ['set_num'],
-      abgleich: (c, _tabelle, schatten, cols) => repo.gleicheSetsAb(c, l, schatten, cols),
+      abgleich: (c, _table, schatten, cols) => repo.sameSetsAb(c, l, schatten, cols),
       mapRow: c => [
         sp(c, 0),
         sp(c, 1),
@@ -218,13 +218,13 @@ export function erzeugeKatalogImporte(
       tmp: path.join(DATA_DIR, 'inventory_parts.csv.tmp'),
       cols: ['inventory_id', 'part_num', 'color_id', 'quantity', 'is_spare', 'img_url'],
       chunkSize: 50,
-      // istJa(): eine Lesart für 't', 'True', '1' …
+      // isJa(): eine Lesart für 't', 'True', '1' …
       mapRow: c => [
         parseInt(sp(c, 0), 10) || 0,
         sp(c, 1),
         parseInt(sp(c, 2), 10) || 0,
         parseInt(sp(c, 3), 10) || 1,
-        istJa(sp(c, 4)),
+        isJa(sp(c, 4)),
         sp(c, 5),
       ],
     }),

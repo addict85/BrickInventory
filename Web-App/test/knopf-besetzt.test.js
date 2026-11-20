@@ -126,8 +126,8 @@ test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt
   const quelle = src.slice(auf, ende + 1).replace(/^export\s+/, '');
   const knopfBesetzt = new Function(`${quelle}; return knopfBesetzt;`)();
 
-  const BESCHRIFTUNG = '📦 Bereits vorhandene Teile eintragen';
-  const dom = new JSDOM(`<button class="btn bs" id="b">${BESCHRIFTUNG}</button>`);
+  const LABEL = '📦 Bereits vorhandene Teile eintragen';
+  const dom = new JSDOM(`<button class="btn bs" id="b">${LABEL}</button>`);
   const btn = dom.window.document.getElementById('b');
   // jsdom rechnet kein Layout; offsetWidth ist dort immer 0. Die gemessene
   // Breite des echten Knopfes kommt deshalb von Hand herein.
@@ -138,7 +138,7 @@ test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt
   const frei = knopfBesetzt(btn);
   assert.equal(
     btn.textContent,
-    BESCHRIFTUNG,
+    LABEL,
     'Die Beschriftung darf nicht weichen — genau das meinte Marco mit „man ' + 'sieht ganz kurz Punkt".',
   );
   assert.ok(
@@ -149,7 +149,7 @@ test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt
 
   // 2. Freigegeben: alles zurück.
   frei();
-  assert.equal(btn.textContent, BESCHRIFTUNG);
+  assert.equal(btn.textContent, LABEL);
   assert.equal(btn.classList.contains('besetzt'), false);
   assert.equal(btn.disabled, false);
   assert.equal(btn.style.minWidth, '', 'Die Vorgabe war leer, also muss sie leer zurückkommen.');
@@ -174,15 +174,15 @@ test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt
   // 5. MIT eigenem Wartetext: Der Text wechselt — und die Breite wird
   //    festgehalten, sonst risse dieser Knopf die Zeile mit.
   breite(235);
-  const freiPdf = knopfBesetzt(btn, 'erstelle…');
+  const freePdf = knopfBesetzt(btn, 'erstelle…');
   assert.equal(btn.textContent, 'erstelle…');
   assert.equal(
     btn.style.minWidth,
     '235px',
     'Wechselt die Beschriftung doch, schrumpft der Knopf — dann muss die ' + 'Breite stehen bleiben.',
   );
-  freiPdf();
-  assert.equal(btn.textContent, BESCHRIFTUNG, 'Danach kommt die ursprüngliche Beschriftung zurück.');
+  freePdf();
+  assert.equal(btn.textContent, LABEL, 'Danach kommt die ursprüngliche Beschriftung zurück.');
 
   // 6. Die Freigabe darf eine ANDERE Beschriftung setzen (QR: „Neu generieren").
   knopfBesetzt(btn)('Neu generieren');

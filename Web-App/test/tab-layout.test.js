@@ -46,17 +46,17 @@ const EINMAL = [
   'scope-minifigs',
 ];
 
-/** Misst im gezeichneten index.html; liefert, was `messung` (Funktionsrumpf im Browser) zurückgibt. */
-let _ergebnis;
+/** Misst im gezeichneten index.html; liefert, was `measurement` (Funktionsrumpf im Browser) zurückgibt. */
+let _result;
 function gemessen(t) {
-  if (_ergebnis !== undefined) return _ergebnis;
+  if (_result !== undefined) return _result;
   const bin = chrome();
   if (!bin) {
     t.skip('kein Chrome gefunden');
-    _ergebnis = null;
+    _result = null;
     return null;
   }
-  const html = require('./helpers/sources').ohneHtmlKommentare(
+  const html = require('./helpers/sources').withoutHtmlComments(
     fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8'),
   );
   const koerper = html
@@ -106,8 +106,8 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
     );
     const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
     assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
-    _ergebnis = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
-    return _ergebnis;
+    _result = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+    return _result;
   } finally {
     fs.rmSync(ordner, { recursive: true, force: true });
   }
@@ -117,12 +117,12 @@ test('Erfassen steht über den Filtern, die Filter über den Listen (auch der ma
   const e = gemessen(t);
   if (!e) return;
   const falsch = [];
-  for (const [name, folge] of Object.entries(e.reiter)) {
-    for (const [s, y] of folge) if (y == null) falsch.push(`${name}: ${s} fehlt`);
-    for (let i = 1; i < folge.length; i++)
-      if (folge[i - 1][1] != null && folge[i][1] != null && !(folge[i - 1][1] < folge[i][1]))
+  for (const [name, sequence] of Object.entries(e.reiter)) {
+    for (const [s, y] of sequence) if (y == null) falsch.push(`${name}: ${s} fehlt`);
+    for (let i = 1; i < sequence.length; i++)
+      if (sequence[i - 1][1] != null && sequence[i][1] != null && !(sequence[i - 1][1] < sequence[i][1]))
         falsch.push(
-          `${name}: ${folge[i - 1][0]} (${folge[i - 1][1]}) steht nicht über ${folge[i][0]} (${folge[i][1]})`,
+          `${name}: ${sequence[i - 1][0]} (${sequence[i - 1][1]}) steht nicht über ${sequence[i][0]} (${sequence[i][1]})`,
         );
   }
   assert.deepEqual(falsch, []);

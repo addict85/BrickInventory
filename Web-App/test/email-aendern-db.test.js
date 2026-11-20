@@ -17,7 +17,7 @@
  * Gegenproben zur Kontenaufzählung (03.11.2026 gemessen):
  *   E  emailVergeben() wieder vor der Passwortprüfung → rot: „eine belegte
  *      Adresse verrät sich nur mit Passwort“
- *   F  kontoGedrosselt() in PUT /profile entfernt → rot: „Vergabeprüfungen
+ *   F  accountThrottled() in PUT /profile entfernt → rot: „Vergabeprüfungen
  *      sind gebremst“
  *   G  Passwortpflicht wieder nur bei neuer Adresse → rot: „auch ohne neue
  *      Adresse nur mit Passwort“ und „ein belegter Benutzername verrät sich
@@ -29,23 +29,23 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
+environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 // Versandte Hinweise mitschreiben, bevor routes/auth die Mail-Funktionen bindet.
 const gesendet = [];
 const bestaetigt = [];
 const versuche = [];
-require('./helpers/sources').ersetzeDienste('mail', {
+require('./helpers/sources').replaceServices('mail', {
   mailEmailChanged: async (an, name, neu) => {
     gesendet.push({ an, name, neu });
     return { success: true };
@@ -55,19 +55,19 @@ require('./helpers/sources').ersetzeDienste('mail', {
     versuche.push({ an, art: 'link' });
     return { success: true };
   },
-  mailRegistrationAttempt: async (an, _sprache, anlass) => {
-    versuche.push({ an, art: anlass });
+  mailRegistrationAttempt: async (an, _language, reason) => {
+    versuche.push({ an, art: reason });
     return { success: true };
   },
 });
 
-const db = testDaten();
+const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `mailneu_${process.pid}`,
   PASS = 'Passwort12345';
 
 test('E-Mail ändern', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_b`]]);
   const anderes = (
@@ -147,21 +147,21 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
 
   await t.test('in Produktion ohne APP_BASE_URL kein Link aus dem Host-Kopf', async () => {
     const vorher = { env: process.env.NODE_ENV, basis: process.env.APP_BASE_URL };
-    umgebung({ NODE_ENV: 'production' });
-    umgebung({ APP_BASE_URL: undefined });
+    environment({ NODE_ENV: 'production' });
+    environment({ APP_BASE_URL: undefined });
     try {
       bestaetigt.length = 0;
       const r = await profil({ email: `${NAME}@drei.example`, password_current: PASS });
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.equal(r.body.emailSent, false);
       assert.deepEqual(bestaetigt, [], 'ohne feste Adresse darf kein Link verschickt werden');
-      umgebung({ APP_BASE_URL: 'https://lego.example.org/' });
+      environment({ APP_BASE_URL: 'https://lego.example.org/' });
       await profil({ email: `${NAME}@vier.example`, password_current: PASS });
       assert.deepEqual(bestaetigt, ['https://lego.example.org']);
     } finally {
-      umgebung({ NODE_ENV: vorher.env });
-      if (vorher.basis === undefined) umgebung({ APP_BASE_URL: undefined });
-      else umgebung({ APP_BASE_URL: vorher.basis });
+      environment({ NODE_ENV: vorher.env });
+      if (vorher.basis === undefined) environment({ APP_BASE_URL: undefined });
+      else environment({ APP_BASE_URL: vorher.basis });
     }
   });
 
@@ -172,7 +172,7 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
       (await profil({ email: belegt, password_current: 'falsch-falsch' })).body.code,
       'aktuelles_passwort_falsch',
     );
-    umgebung({ APP_BASE_URL: 'https://lego.example.org' });
+    environment({ APP_BASE_URL: 'https://lego.example.org' });
     try {
       versuche.length = 0;
       const frei = await profil({ email: `${NAME}@frei.example`, password_current: PASS });
@@ -186,7 +186,7 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
       ]);
       assert.equal(await adresse(), `${NAME}@alt.example`);
     } finally {
-      umgebung({ APP_BASE_URL: undefined });
+      environment({ APP_BASE_URL: undefined });
     }
   });
 

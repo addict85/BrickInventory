@@ -7,19 +7,19 @@ const { after } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ohneKommentare, testDaten } = require('./helpers/sources');
+const { ohneKommentare, testData } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet, holdsPart } = require('./helpers/bestand');
+const db = testData();
 
 after(() => db.pool.end().catch(() => {}));
 
 /** Alle .ts-Dateien der Server-Ordner. */
-function serverDateien() {
+function serverFiles() {
   const out = [];
   const lauf = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -36,19 +36,19 @@ function serverDateien() {
 }
 
 test('die Schreibweisen werden nur an einer Stelle aufgezaehlt', () => {
-  const dateien = serverDateien();
+  const dateien = serverFiles();
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Server-Dateien gefunden — Pfad veraltet?`);
 
   // Zwei Formen, beide OHNE Fenster — ein Fenster von 200 Zeichen hat beim
   // ersten Versuch quer über den Zeilenumbruch hinweg den FILTER-Parameter
   // (`spare === '1'`) mitgefangen und drei von vier Treffern waren falsch.
-  const verdaechtig = [/\bis_spare\s*===?\s*'(?:t|true|True|1)'/, /===?\s*'True'/];
+  const suspicious = [/\bis_spare\s*===?\s*'(?:t|true|True|1)'/, /===?\s*'True'/];
   const gefunden = [];
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei).split(path.sep).join('/');
     if (rel === 'src/infra/validate.ts') continue; // DIE eine Stelle
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    if (verdaechtig.some(r => r.test(src))) gefunden.push(rel);
+    if (suspicious.some(r => r.test(src))) gefunden.push(rel);
   }
   assert.deepEqual(
     gefunden,
@@ -62,12 +62,12 @@ test('die Schreibweisen werden nur an einer Stelle aufgezaehlt', () => {
 
   // Selbstbeweis: Der Helfer muss die Schreibweisen wirklich kennen — sonst
   // wäre die Prüfung oben grün, weil es nirgends mehr etwas zu finden gibt.
-  const helfer = fs.readFileSync(path.join(ROOT, 'src/infra/validate.ts'), 'utf8');
-  // istErsatzteil() liest mit istJa(), der Lesart aller Ja/Nein-Werte von aussen.
-  const i = helfer.indexOf('export function istJa(');
-  assert.ok(i > 0, 'istJa() fehlt');
-  const rumpf = helfer.slice(i, helfer.indexOf('\n}', i));
-  for (const form of ["'1'", "'t'", "'true'"]) assert.ok(rumpf.includes(form), `istJa() kennt ${form} nicht`);
+  const helper = fs.readFileSync(path.join(ROOT, 'src/infra/validate.ts'), 'utf8');
+  // istErsatzteil() liest mit isJa(), der Lesart aller Ja/Nein-Werte von aussen.
+  const i = helper.indexOf('export function isJa(');
+  assert.ok(i > 0, 'isJa() fehlt');
+  const rumpf = helper.slice(i, helper.indexOf('\n}', i));
+  for (const form of ["'1'", "'t'", "'true'"]) assert.ok(rumpf.includes(form), `isJa() kennt ${form} nicht`);
 });
 
 test('die Antwort traegt einen echten Wahrheitswert', async t => {
@@ -87,7 +87,7 @@ test('die Antwort traegt einen echten Wahrheitswert', async t => {
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('spare','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='spare'`)).id;
-  await haeltSet(db, uid, '75192-1', 1);
+  await holdsSet(db, uid, '75192-1', 1);
   // ── is_spare gehoert zur TEILELISTE des Sets, nicht zum Teil ────────────
   //
   // Seit Migration 0034 steht es in set_parts_catalog, und das ist die
@@ -97,8 +97,8 @@ test('die Antwort traegt einen echten Wahrheitswert', async t => {
   await db.run(`INSERT INTO set_parts (set_number,part_number,color_id,quantity,is_spare)
                 VALUES ('75192-1','3001',4,10,true),
                        ('75192-1','3020',0,2,false)`);
-  await haeltTeil(db, uid, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
-  await haeltTeil(db, uid, '3020', { setNumber: '75192-1', menge: 2, colorId: 0 });
+  await holdsPart(db, uid, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
+  await holdsPart(db, uid, '3020', { setNumber: '75192-1', menge: 2, colorId: 0 });
 
   const { partsQuery } = _req('src/parts/queries.js');
   const parts = (await partsQuery([uid], { page_size: 60 })).parts || [];

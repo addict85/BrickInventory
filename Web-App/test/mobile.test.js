@@ -135,8 +135,8 @@ test('mobile.css deckt beide Designs ab und steht ganz in Media Queries', () => 
     .trim();
   assert.equal(outside, '', `Regeln ausserhalb von @media würden den Desktop treffen:\n${outside.slice(0, 300)}`);
 
-  const ohneMedia = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
-  assert.doesNotMatch(ohneMedia, /container\s*:/, 'Ein Container ausserhalb von @media verändert auch den Desktop');
+  const withoutMedia = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '');
+  assert.doesNotMatch(withoutMedia, /container\s*:/, 'Ein Container ausserhalb von @media verändert auch den Desktop');
   assert.match(css, /\[data-theme="brick"\]/, 'Das Stein-Design braucht eigene Regeln für Noppen und Innenabstände');
   assert.match(css, /#login-screen/, 'Die Login-Seite muss mit abgedeckt sein');
   assert.match(css, /font-size:\s*16px/, 'Unter 16px zoomt iOS beim Fokussieren in Eingabefelder hinein');

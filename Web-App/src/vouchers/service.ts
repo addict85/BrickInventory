@@ -3,8 +3,8 @@
  * the response. */
 import fs from 'node:fs';
 import path from 'node:path';
-import { Fachfehler, alsDoppelt, fachfehler, type FehlerCode } from '../infra/fehlerTexte';
-import { ohneFehlendeDatei } from '../infra/fehler';
+import { Fachfehler, asDuplicate, fachfehler, type ErrorCode } from '../infra/fehlerTexte';
+import { withoutMissingFile } from '../infra/fehler';
 import type { VoucherRow } from './repository/vouchers';
 import { VOUCHER_DIR, voucherFile, readVoucherPdf, readVoucherPdfOrNothing, writeVoucherPdf } from './voucherFiles';
 import { countryAllowed, countryForCurrency } from './balanceLookup';
@@ -14,15 +14,15 @@ import { combineVouchers } from './pdfExport';
 import { issueTicket } from './pdfTicket';
 import { MAX_PAGES, readInBackground } from './pdfReader';
 import type { VoucherContext } from './context';
-import { PIN_MASKE, gutscheinNummer, gutscheinPin, gutscheinWaehrung, nummerMaske } from '../infra/gutscheinWerte';
+import { PIN_MASK, gutscheinNummer, voucherPin, voucherCurrency, numberMask } from '../infra/gutscheinWerte';
 
 export type { VoucherRow } from './repository/vouchers';
 
-export { PIN_MASKE } from '../infra/gutscheinWerte';
+export { PIN_MASK } from '../infra/gutscheinWerte';
 
-export const maskiert = (z: { number: string; pin: string | null }) => ({
-  number: nummerMaske(z.number),
-  pin: z.pin ? PIN_MASKE : null,
+export const masked = (z: { number: string; pin: string | null }) => ({
+  number: numberMask(z.number),
+  pin: z.pin ? PIN_MASK : null,
 });
 
 type Checked = { number: string; pin: string | null; amount: number; currency: string | null };
@@ -54,15 +54,15 @@ const checked = (w: NewVoucher, zeroAllowed = false): Checked => ({
 type Raw = { number?: unknown; pin?: unknown; amount?: unknown; currency?: unknown };
 
 /** Only for values the server reads from a PDF itself: input is checked by the contract. */
-export function pruefeWerte(roh: Raw): ({ ok: true } & Checked) | { ok: false; code: FehlerCode } {
+export function checkValues(roh: Raw): ({ ok: true } & Checked) | { ok: false; code: ErrorCode } {
   try {
     return {
       ok: true,
       number: gutscheinNummer(roh.number == null ? '' : String(roh.number)),
-      pin: gutscheinPin(roh.pin == null ? null : String(roh.pin)),
+      pin: voucherPin(roh.pin == null ? null : String(roh.pin)),
       // Number('') is 0 and fails the amount check.
       amount: amountRule(Number(roh.amount)),
-      currency: gutscheinWaehrung(roh.currency == null ? null : String(roh.currency)),
+      currency: voucherCurrency(roh.currency == null ? null : String(roh.currency)),
     };
   } catch (e) {
     if (e instanceof Fachfehler) return { ok: false, code: e.code };
@@ -92,7 +92,7 @@ export async function batchCreate(k: VoucherContext, uid: number, found: ParsedV
     errors = 0;
   const results: { number: string; action: string; error?: string }[] = [];
   for (const g of found) {
-    const w = pruefeWerte({ number: g.number, pin: g.pin, amount: g.amount, currency: g.currency });
+    const w = checkValues({ number: g.number, pin: g.pin, amount: g.amount, currency: g.currency });
     if (!w.ok) {
       errors++;
       results.push({ number: String(g.number ?? ''), action: 'error', error: w.code });
@@ -128,17 +128,17 @@ export async function createVoucherWithPdf(
       return { ...z, pdf_path: relPath };
     });
   } catch (e) {
-    for (const file of written) await fs.promises.unlink(file).catch(ohneFehlendeDatei('gutschein:pdf zurücknehmen'));
+    for (const file of written) await fs.promises.unlink(file).catch(withoutMissingFile('gutschein:pdf zurücknehmen'));
     throw e;
   }
 }
 
-export type AusPdf =
+export type FromPdf =
   | { art: 'stapel'; bericht: Awaited<ReturnType<typeof batchCreate>> }
   | { art: 'angelegt'; zeile: VoucherRow; gelesen: ParsedVoucher };
 
 /** The form fields: how the frontend prefills them after a rejection. */
-export const alsGelesen = (g: ParsedVoucher) => ({
+export const readAs = (g: ParsedVoucher) => ({
   number: g.number,
   pin: g.pin,
   currency: g.currency,
@@ -154,7 +154,7 @@ export async function voucherFromPdf(
   uid: number,
   pdf: Buffer,
   typed: VoucherChange,
-): Promise<AusPdf> {
+): Promise<FromPdf> {
   const reading = await readInBackground(pdf);
   if (reading.art === 'zu_viele_seiten')
     fachfehler('nicht_verarbeitbar', 'pdf_zu_viele_seiten', { seiten: reading.seiten, max: MAX_PAGES });
@@ -172,15 +172,15 @@ export async function voucherFromPdf(
     amount: typed.amount ?? read.amount,
     currency: typed.currency ?? read.currency,
   };
-  const w = pruefeWerte(raw);
+  const w = checkValues(raw);
   if (w.ok) return { art: 'angelegt', zeile: await createVoucherWithPdf(k, uid, w, pdf), gelesen: read };
   // Three rejections, because the user has to do something different for each.
   const nothingTyped = !typed.number && !typed.pin && !typed.amount;
   const nothingRead = read.number == null && read.amount == null;
-  const code: FehlerCode =
+  const code: ErrorCode =
     reading.einzeln === 'fehler' ? 'pdf_unlesbar' : nothingRead && nothingTyped ? 'kein_gutschein_im_pdf' : w.code;
   // 422: the request was fine, only the PDF did not give up everything; `gelesen` prefills the fields.
-  throw new Fachfehler('nicht_verarbeitbar', code, undefined, { gelesen: alsGelesen(read) });
+  throw new Fachfehler('nicht_verarbeitbar', code, undefined, { gelesen: readAs(read) });
 }
 
 export interface VoucherChange {
@@ -197,11 +197,11 @@ export function changeVoucher(k: VoucherContext, uid: number, id: number, e: Vou
   return k
     .transaktion(async t => {
       const old = (await repo(t).lockedVoucher(uid, id)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
-      const mask = maskiert(old);
+      const mask = masked(old);
       const w = checked(
         {
           number: e.number === undefined || e.number === mask.number ? old.number : e.number,
-          pin: e.pin === PIN_MASKE ? old.pin : e.pin === '' ? null : (e.pin ?? old.pin),
+          pin: e.pin === PIN_MASK ? old.pin : e.pin === '' ? null : (e.pin ?? old.pin),
           amount: e.amount ?? Number(old.amount),
           currency: e.currency === '' ? null : (e.currency ?? old.currency),
         },
@@ -209,7 +209,7 @@ export function changeVoucher(k: VoucherContext, uid: number, id: number, e: Vou
       );
       return (await repo(t).changeVoucher(uid, id, w)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
     })
-    .catch(alsDoppelt('gutschein_existiert'));
+    .catch(asDuplicate('gutschein_existiert'));
 }
 
 /** Row first, then the file: better an orphaned file than a row pointing nowhere. */
@@ -217,12 +217,12 @@ export async function deleteVoucher(k: VoucherContext, uid: number, id: number):
   const pdfPath = await repo(k).deleteVoucher(uid, id);
   if (pdfPath === undefined) fachfehler('nicht_gefunden', 'nicht_gefunden');
   const file = pdfPath ? voucherFile(uid, pdfPath) : null;
-  if (file) await fs.promises.unlink(file).catch(ohneFehlendeDatei('gutschein:pdf löschen'));
+  if (file) await fs.promises.unlink(file).catch(withoutMissingFile('gutschein:pdf löschen'));
 }
 
 export async function voucherPlaintext(k: VoucherContext, uid: number, id: number): Promise<VoucherRow> {
   const z = await existing(k, uid, id);
-  await k.konto.verwalter.verwalterAktionMerken(uid, uid, 'gutschein_klartext', maskiert(z).number);
+  await k.konto.verwalter.rememberAdminAction(uid, uid, 'gutschein_klartext', masked(z).number);
   return z;
 }
 
@@ -230,21 +230,21 @@ export async function voucherPlaintext(k: VoucherContext, uid: number, id: numbe
 export async function releasePdf(k: VoucherContext, uid: number, id: number): Promise<string> {
   const z = await existing(k, uid, id);
   if (!z.pdf_path) fachfehler('nicht_gefunden', 'nicht_gefunden');
-  await k.konto.verwalter.verwalterAktionMerken(uid, uid, 'gutschein_pdf', maskiert(z).number);
+  await k.konto.verwalter.rememberAdminAction(uid, uid, 'gutschein_pdf', masked(z).number);
   return issueTicket(k, uid, String(id));
 }
 
 export async function releaseExport(k: VoucherContext, uid: number): Promise<string> {
   const n = (await voucherList(k, uid)).length;
   if (!n) fachfehler('nicht_gefunden', 'keine_gutscheine');
-  await k.konto.verwalter.verwalterAktionMerken(uid, uid, 'gutschein_export', `${n}`);
+  await k.konto.verwalter.rememberAdminAction(uid, uid, 'gutschein_export', `${n}`);
   return issueTicket(k, uid, 'export');
 }
 
 export async function voucherPdf(k: VoucherContext, uid: number, id: number): Promise<Buffer> {
   const z = await existing(k, uid, id);
   const file = z.pdf_path ? voucherFile(uid, z.pdf_path) : null;
-  const pdf = file ? await readVoucherPdf(file).catch(ohneFehlendeDatei('gutschein:pdf lesen', null)) : null;
+  const pdf = file ? await readVoucherPdf(file).catch(withoutMissingFile('gutschein:pdf lesen', null)) : null;
   return pdf ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
 }
 
@@ -267,7 +267,7 @@ export async function exportVouchers(k: VoucherContext, uid: number) {
 
 export type BalanceResult =
   | ({ art: 'gesperrt' } & Locked)
-  | { art: 'guthaben'; zeile: VoucherRow; angezeigt: string | null; waehrungGeaendert: boolean };
+  | { art: 'guthaben'; zeile: VoucherRow; angezeigt: string | null; currencyChanged: boolean };
 
 /** It checks the PIN and the country BEFORE the throttle: a call that cannot
  * succeed should not use up the one slot per 30 seconds for everyone. The
@@ -288,5 +288,5 @@ export async function checkBalance(k: VoucherContext, uid: number, id: number): 
   const currency = /^[A-Z]{3}$/.test(g.currency) ? g.currency : old.currency;
   const zeile =
     (await repo(k).rememberBalance(uid, id, g.amount, currency)) ?? fachfehler('nicht_gefunden', 'nicht_gefunden');
-  return { art: 'guthaben', zeile, angezeigt: g.formatted, waehrungGeaendert: currency !== old.currency };
+  return { art: 'guthaben', zeile, angezeigt: g.formatted, currencyChanged: currency !== old.currency };
 }

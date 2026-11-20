@@ -1,10 +1,10 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 import { inKontowaehrung, kontowaehrungJoin, teilmengeAus } from '../../../db/bestandsmenge';
-import type { BestandLesevertrag } from '../lesevertrag';
+import type { InventoryReadContract } from '../lesevertrag';
 import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
 
 /** Kaufpreis mengengewichtet in Kontowährung. */
-export function erfassungsKennzahlen(db: DbSchnittstelle, l: BestandLesevertrag, art: 'part' | 'fig', uids: number[]) {
+export function entryMetrics(db: DbInterface, l: InventoryReadContract, art: 'part' | 'fig', uids: number[]) {
   return db.all<{
     part_number?: string;
     color_id?: number | null;
@@ -32,7 +32,7 @@ export function erfassungsKennzahlen(db: DbSchnittstelle, l: BestandLesevertrag,
   );
 }
 
-/** Spalten, über die gesucht werden darf. Siehe verwendendeSets(). */
+/** Spalten, über die gesucht werden darf. Siehe usingSets(). */
 const SUCHSPALTEN = new Set(['part_number', 'color_id', 'fig_number']);
 
 /** Figuren haben weder Farbe noch Kategorie; feste NULL, damit beide Zweige
@@ -65,7 +65,7 @@ const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as
 const ART = { parts: 'part', minifigs: 'fig' } as const;
 
 /** Ein Set, das den Bestandteil enthält, mit den Kopffeldern des Bestandteils. */
-export interface VerwendungsZeile {
+export interface UsageRow {
   set_number: string;
   owner_user_id: number;
   quantity: number;
@@ -84,9 +84,9 @@ export interface VerwendungsZeile {
   storage: string | null;
 }
 
-export async function setsMitBestandteil(
-  db: DbSchnittstelle,
-  l: BestandLesevertrag,
+export async function setsWithComponent(
+  db: DbInterface,
+  l: InventoryReadContract,
   uids: number[],
   tabelle: 'parts' | 'minifigs',
   schluessel: Record<string, string | number>,
@@ -99,7 +99,7 @@ export async function setsMitBestandteil(
   }
   const params: (number[] | string | number | undefined)[] = [uids];
   const bedingungen = spalten.map(sp => `x.${sp} = $${params.push(schluessel[sp])}`);
-  return db.all<VerwendungsZeile>(
+  return db.all<UsageRow>(
     `SELECT x.set_number,
             x.user_id            AS owner_user_id,
             -- Die Stückzahl der Bestandszeile (Migration 0038): Fuer ein
@@ -138,14 +138,14 @@ export async function setsMitBestandteil(
 
 /** Mit dem Set gehen seine Teile und Figuren. */
 /** Das Set mit Inhalt und Käufen; manuelle Teile und Figuren tragen keine Setnummer und bleiben. */
-export async function entferneSetInhalt(tx: DbSchnittstelle, uids: number[], setNumber: string): Promise<void> {
+export async function removeSetContent(tx: DbInterface, uids: number[], setNumber: string): Promise<void> {
   await tx.run('DELETE FROM parts WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM minifigs WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM set_acquisitions WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM sets WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
 }
 
-export async function legeSetAn(tx: DbSchnittstelle, uid: number, sn: string, addedAt?: string): Promise<void> {
+export async function putSetAn(tx: DbInterface, uid: number, sn: string, addedAt?: string): Promise<void> {
   await tx.run(
     `INSERT INTO sets (user_id, set_number, added_at) VALUES ($1, $2, COALESCE($3::timestamptz, NOW()))
      ON CONFLICT (user_id, set_number) DO NOTHING`,
@@ -154,8 +154,8 @@ export async function legeSetAn(tx: DbSchnittstelle, uid: number, sn: string, ad
 }
 
 /** Nur Schlüssel und Herkunft: Beschreibung und Stückzahl stehen im Katalog. */
-export async function kopiereSetInhalt(
-  tx: DbSchnittstelle,
+export async function copySetContent(
+  tx: DbInterface,
   tabelle: 'parts' | 'minifigs',
   sn: string,
   von: number,
@@ -175,8 +175,8 @@ export async function kopiereSetInhalt(
 }
 
 /** Ohne Menge: Sie entsteht aus der Erfassung, die gleich mitwandert. */
-export async function legeManuellAn(
-  tx: DbSchnittstelle,
+export async function putManualAn(
+  tx: DbInterface,
   art: 'part' | 'fig',
   uid: number,
   schluessel: (string | number)[],
@@ -193,12 +193,7 @@ export async function legeManuellAn(
     ]);
 }
 
-export function loescheTeilZeile(
-  dbh: Pick<DbSchnittstelle, 'run'>,
-  ownerId: number,
-  partNumber: string,
-  colorId: number,
-) {
+export function loescheTeilZeile(dbh: Pick<DbInterface, 'run'>, ownerId: number, partNumber: string, colorId: number) {
   return dbh.run("DELETE FROM parts WHERE user_id=$1 AND part_number=$2 AND color_id=$3 AND source='manual'", [
     ownerId,
     partNumber,
@@ -206,30 +201,30 @@ export function loescheTeilZeile(
   ]);
 }
 
-export function loescheFigurZeile(dbh: Pick<DbSchnittstelle, 'run'>, ownerId: number, figNumber: string) {
+export function deleteMinifigRow(dbh: Pick<DbInterface, 'run'>, ownerId: number, figNumber: string) {
   return dbh.run("DELETE FROM minifigs WHERE user_id=$1 AND fig_number=$2 AND source='manual'", [ownerId, figNumber]);
 }
 
-export function setzeTeilLagerort(tx: DbSchnittstelle, storageId: number, id: number) {
+export function setPartLocation(tx: DbInterface, storageId: number, id: number) {
   return tx.run('UPDATE parts SET storage_id = $1 WHERE id = $2', [storageId, id]);
 }
 
-export function loescheTeilzeile(tx: DbSchnittstelle, id: number) {
+export function loescheTeilzeile(tx: DbInterface, id: number) {
   return tx.run('DELETE FROM parts WHERE id = $1', [id]);
 }
 
-export function faerbeTeilzeileUm(tx: DbSchnittstelle, colorId: number, id: number) {
+export function colorPartRowUm(tx: DbInterface, colorId: number, id: number) {
   return tx.run('UPDATE parts SET color_id = $1 WHERE id = $2', [colorId, id]);
 }
 
-export function manuelleTeileDesKontos(db: DbSchnittstelle, uid: number) {
+export function manualPartsOfAccount(db: DbInterface, uid: number) {
   return db.all<{ part_number: string; color_id: number }>(
     "SELECT part_number, color_id FROM parts WHERE user_id = $1 AND source = 'manual'",
     [uid],
   );
 }
 
-export function manuelleFigurenDesKontos(db: DbSchnittstelle, uid: number) {
+export function manualMinifigsOfAccount(db: DbInterface, uid: number) {
   return db.all<{ fig_number: string }>("SELECT fig_number FROM minifigs WHERE user_id = $1 AND source = 'manual'", [
     uid,
   ]);

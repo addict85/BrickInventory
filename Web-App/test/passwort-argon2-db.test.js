@@ -5,13 +5,13 @@
  * Laufzeitrolle (der Hash wird im Systemrahmen gelesen und geschrieben).
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in pruefeAnmeldedaten das Ersetzen nach brauchtNeuenHash gestrichen → rot:
+ *   A  in checkCredentials das Ersetzen nach needsNewHash gestrichen → rot:
  *      „ein bcrypt-Hash wird bei der Anmeldung ersetzt“ ($2b$04$ bleibt)
  *   B  das Ersetzen vor die Passwortprüfung gezogen (auch bei Fehlversuch) → rot:
  *      „… ein Fehlversuch ersetzt nichts“ (der Hash hiess danach argon2id)
- *   C  ersetzePasswortHash aus der Systemliste in src/konto/kontext.ts gestrichen →
+ *   C  replacePasswordHash aus der Systemliste in src/konto/kontext.ts gestrichen →
  *      rot: „ein bcrypt-Hash …“ (permission denied for table users, 500)
- *   D  passwortPasst prüft nur noch bcrypt → rot: „neue Hashes sind argon2id …“ und
+ *   D  passwordFits prüft nur noch bcrypt → rot: „neue Hashes sind argon2id …“ und
  *      „… danach mit argon2id“ (die zweite Anmeldung 401)
  */
 const test = require('node:test');
@@ -20,16 +20,16 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.APP_BASE_URL = 'http://localhost';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
-const { ARGON2_PRAEFIX, hashePasswort, passwortPasst } = _req('src/konto/passwortHash.js');
+const { ARGON2_PREFIX, hashePassword, passwordFits } = _req('src/konto/passwortHash.js');
 
 test('argon2id und das Ersetzen alter bcrypt-Hashes', { concurrency: 1, timeout: 60_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `argon_${process.pid}`,
     PASS = 'Argon-Pruefung-2026-ä';
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -55,13 +55,13 @@ test('argon2id und das Ersetzen alter bcrypt-Hashes', { concurrency: 1, timeout:
   const gespeichert = async () => (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash;
 
   await t.test('neue Hashes sind argon2id mit den festen Kosten', async () => {
-    const h = await hashePasswort(PASS);
-    assert.ok(h.startsWith(ARGON2_PRAEFIX), h.slice(0, 40));
-    assert.equal(await passwortPasst(PASS, h), true);
-    assert.equal(await passwortPasst(`${PASS}x`, h), false);
+    const h = await hashePassword(PASS);
+    assert.ok(h.startsWith(ARGON2_PREFIX), h.slice(0, 40));
+    assert.equal(await passwordFits(PASS, h), true);
+    assert.equal(await passwordFits(`${PASS}x`, h), false);
     // Was hinter Byte 72 steht, zählt (bcrypt schnitt es ab).
     const lang = 'L'.repeat(80);
-    assert.equal(await passwortPasst(`${lang}b`, await hashePasswort(`${lang}a`)), false);
+    assert.equal(await passwordFits(`${lang}b`, await hashePassword(`${lang}a`)), false);
   });
 
   await t.test('… ein Fehlversuch ersetzt nichts', async () => {
@@ -72,7 +72,7 @@ test('argon2id und das Ersetzen alter bcrypt-Hashes', { concurrency: 1, timeout:
   await t.test('ein bcrypt-Hash wird bei der Anmeldung ersetzt, danach mit argon2id', async () => {
     assert.equal(await anmelden(PASS), 200);
     const neu = await gespeichert();
-    assert.ok(neu.startsWith(ARGON2_PRAEFIX), neu.slice(0, 40));
+    assert.ok(neu.startsWith(ARGON2_PREFIX), neu.slice(0, 40));
     assert.equal(await anmelden(PASS), 200);
     assert.equal(await gespeichert(), neu, 'ein aktueller Hash bleibt stehen');
   });

@@ -1,7 +1,7 @@
 /**
  * Ein Funktionsname bedeutet eine Sache.
  *
- * Gegenprobe (durchgefuehrt): einen Namen aus ERLAUBT entfernt -> rot; die
+ * Gegenprobe (durchgefuehrt): einen Namen aus ALLOWED entfernt -> rot; die
  * settings-Fassung wieder effectiveCondition genannt -> rot.
  */
 const test = require('node:test');
@@ -12,7 +12,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 /** Name -> warum er mehrfach vorkommen darf. */
-const ERLAUBT = new Map([
+const ALLOWED = new Map([
   [
     'run',
     'db/database und drei Jobs: „ausfuehren". In den Jobs ist es der Einstieg, ' +
@@ -72,17 +72,17 @@ test('ein Funktionsname bedeutet eine Sache', () => {
     // faellt auf, wenn er laengst nur noch an einer Stelle steht und der
     // Eintrag nichts mehr beschreibt. Ein toter Eintrag sieht aus wie eine
     // Entscheidung und ist doch bloss eine Vermutung, sobald keiner nachsieht.
-    if (ERLAUBT.has(name)) {
+    if (ALLOWED.has(name)) {
       gebraucht.add(name);
       continue;
     }
     doppelt.push(`${name}: ${[...orte].sort().join(', ')}`);
   }
-  const veraltet = [...ERLAUBT.keys()].filter(k => !gebraucht.has(k)).sort();
+  const veraltet = [...ALLOWED.keys()].filter(k => !gebraucht.has(k)).sort();
   assert.deepEqual(
     veraltet,
     [],
-    'Diese Eintraege in ERLAUBT beschreiben keine Doppelung mehr:\n  ' +
+    'Diese Eintraege in ALLOWED beschreiben keine Doppelung mehr:\n  ' +
       veraltet.join('\n  ') +
       '\nDer Name steht nur noch an einer Stelle — raus damit.',
   );
@@ -91,7 +91,7 @@ test('ein Funktionsname bedeutet eine Sache', () => {
     [],
     'Diese Namen stehen in mehreren Dateien. Entweder meinen sie dasselbe — dann ' +
       'gehoeren sie in eine gemeinsame Funktion —, oder sie meinen VERSCHIEDENES, ' +
-      'dann braucht einer einen anderen Namen. Ist beides nicht der Fall, in ERLAUBT ' +
+      'dann braucht einer einen anderen Namen. Ist beides nicht der Fall, in ALLOWED ' +
       'eintragen, mit dem Grund',
   );
 });

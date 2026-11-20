@@ -1,10 +1,10 @@
-import type { DbSchnittstelle } from '../../../db/database';
-import type { FinanzenLesevertrag } from '../lesevertrag';
+import type { DbInterface } from '../../../db/database';
+import type { FinancesReadContract } from '../lesevertrag';
 import { marktpreisSql } from '../../../db/geldSql';
 import type { Spalten, Tabellen } from '../../../db/zeilen';
 
 /** Ein Alarm, wie Übersicht und Detail ihn lesen; `besitzt` aus BESITZT. */
-export type AlarmZeile = Spalten<
+export type AlarmRow = Spalten<
   'price_alerts',
   | 'set_number'
   | 'condition'
@@ -19,20 +19,20 @@ export type AlarmZeile = Spalten<
 /** Die App macht daran die Zeile anklickbar; $3 ist das Blickfeld. */
 /** Hat das Ziel schon einen Alarm (etwa an einem besessenen Set), gilt seiner;
  * sonst bräche der Primärschlüssel das Umhängen samt Merkposten ab. */
-export async function uebertrageAlarm(db: DbSchnittstelle, zuId: number, vonId: number, sn: string, c: string) {
+export async function transferAlarm(db: DbInterface, zuId: number, ofId: number, sn: string, c: string) {
   await db.run(
     `UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4
                    AND NOT EXISTS (SELECT 1 FROM price_alerts z WHERE z.user_id=$1 AND z.set_number=$3 AND z.condition=$4)`,
-    [zuId, vonId, sn, c],
+    [zuId, ofId, sn, c],
   );
-  return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [vonId, sn, c]);
+  return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [ofId, sn, c]);
 }
 
-const besitzt = (l: FinanzenLesevertrag) =>
+const besitzt = (l: FinancesReadContract) =>
   `EXISTS (SELECT 1 FROM ${l.setBestand('= ANY($3)')} s WHERE s.set_number = a.set_number) AS besitzt`;
 
-export function schreibeAlarm(
-  db: DbSchnittstelle,
+export function writeAlarm(
+  db: DbInterface,
   userId: number,
   setNumber: string,
   condition: string,
@@ -50,18 +50,18 @@ export function schreibeAlarm(
   );
 }
 
-export function entferneAlarm(db: DbSchnittstelle, userId: number, setNumber: string, c: string) {
+export function removeAlarm(db: DbInterface, userId: number, setNumber: string, c: string) {
   return db.run('DELETE FROM price_alerts WHERE user_id=$1 AND set_number=$2 AND condition=$3', [userId, setNumber, c]);
 }
 
-export function alarmeDesSets(
-  db: DbSchnittstelle,
-  l: FinanzenLesevertrag,
+export function alertsOfSets(
+  db: DbInterface,
+  l: FinancesReadContract,
   userId: number,
   setNumber: string,
   blickfeld: number[],
 ) {
-  return db.all<AlarmZeile>(
+  return db.all<AlarmRow>(
     `SELECT set_number, condition, direction, threshold, currency_code,
             triggered, last_triggered_at, last_price, ${besitzt(l)}
        FROM price_alerts a WHERE user_id=$1 AND set_number=$2 ORDER BY condition`,
@@ -69,9 +69,9 @@ export function alarmeDesSets(
   );
 }
 
-export function alarmeImBlickfeld(db: DbSchnittstelle, l: FinanzenLesevertrag, userId: number, blickfeld: number[]) {
+export function alertsInScope(db: DbInterface, l: FinancesReadContract, userId: number, blickfeld: number[]) {
   return db.all<
-    AlarmZeile & Spalten<'rb_sets', 'name' | 'set_img_url'> & Spalten<'set_catalog', 'image_local' | 'image_url'>
+    AlarmRow & Spalten<'rb_sets', 'name' | 'set_img_url'> & Spalten<'set_catalog', 'image_local' | 'image_url'>
   >(
     `SELECT DISTINCT ON (a.set_number, a.condition)
             a.set_number, a.condition, a.direction, a.threshold, a.currency_code,
@@ -90,18 +90,18 @@ export function alarmeImBlickfeld(db: DbSchnittstelle, l: FinanzenLesevertrag, u
   );
 }
 
-export function datenbankJetzt(db: DbSchnittstelle) {
+export function databaseNow(db: DbInterface) {
   return db.get<{ jetzt: Date }>('SELECT NOW() AS jetzt');
 }
 
-export function alarmeDesKontos(
-  db: DbSchnittstelle,
-  l: FinanzenLesevertrag,
+export function alertsOfAccount(
+  db: DbInterface,
+  l: FinancesReadContract,
   userId: number,
   marke: Date,
   blickfeld: number[],
 ) {
-  return db.all<AlarmZeile>(
+  return db.all<AlarmRow>(
     `SELECT set_number, condition, direction, threshold, currency_code,
             triggered, last_triggered_at, last_price, ${besitzt(l)}
        FROM price_alerts a
@@ -114,7 +114,7 @@ export function alarmeDesKontos(
   );
 }
 
-export function alleAktivenAlarme(db: DbSchnittstelle, setNumber: string) {
+export function allActiveAlerts(db: DbInterface, setNumber: string) {
   return db.all<
     Spalten<
       'price_alerts',
@@ -133,7 +133,7 @@ export function alleAktivenAlarme(db: DbSchnittstelle, setNumber: string) {
   );
 }
 
-export function cachePreisFuerAlarm(db: DbSchnittstelle, set_number: string, condition: string, currency_code: string) {
+export function cachePriceForAlarm(db: DbInterface, set_number: string, condition: string, currency_code: string) {
   return db.get<{ marktpreis: number | null }>(
     `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
         WHERE set_number=$1 AND condition=$2 AND currency_code=$3`,
@@ -141,7 +141,7 @@ export function cachePreisFuerAlarm(db: DbSchnittstelle, set_number: string, con
   );
 }
 
-export function setzeAlarmZurueck(db: DbSchnittstelle, user_id: number, set_number: string, condition: string) {
+export function setAlarmBack(db: DbInterface, user_id: number, set_number: string, condition: string) {
   return db.run(
     `UPDATE price_alerts SET triggered = FALSE
                        WHERE user_id=$1 AND set_number=$2 AND condition=$3`,
@@ -149,8 +149,8 @@ export function setzeAlarmZurueck(db: DbSchnittstelle, user_id: number, set_numb
   );
 }
 
-export function loeseAlarmAus(
-  db: DbSchnittstelle,
+export function resolveAlarmFrom(
+  db: DbInterface,
   user_id: number,
   set_number: string,
   condition: string,
@@ -163,11 +163,11 @@ export function loeseAlarmAus(
   );
 }
 
-export function setNameAusStamm(db: DbSchnittstelle, set_number: string) {
+export function setNameFromMaster(db: DbInterface, set_number: string) {
   return db.get<{ name: string | null }>('SELECT name FROM rb_sets WHERE set_num = $1', [set_number]);
 }
 
-export function alarmeFuerExport(db: DbSchnittstelle, uid: number) {
+export function alertsForExport(db: DbInterface, uid: number) {
   return db.all<{
     set_number: string;
     condition: string;

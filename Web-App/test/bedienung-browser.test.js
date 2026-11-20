@@ -25,14 +25,14 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { musterSammlung } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { patternCollection } = require('./helpers/bestand');
 const { LAYOUT } = require('./helpers/layout-messung');
 
 const ESC = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 };
 
 test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }, async t => {
-  const app = await starteApp(t, { name: `bedien_${process.pid}`, bestand: musterSammlung, alleDesigns: true });
+  const app = await startApp(t, { name: `bedien_${process.pid}`, bestand: patternCollection, allDesigns: true });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -42,7 +42,7 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
   await ruhig();
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
-  const druckeEscape = async () => {
+  const printEscape = async () => {
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...ESC });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', ...ESC });
     await ruhig();
@@ -78,7 +78,7 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
       false,
       'Menü klappt bei der Wahl zu',
     );
-    await druckeEscape();
+    await printEscape();
     assert.equal(await b.auswerten(`document.getElementById('confirm-modal').style.display`), 'none');
     assert.equal(
       await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.mehr-menue > summary')`),
@@ -91,14 +91,14 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
     await b.auswerten(`document.getElementById('btn-md').click(); true`);
     await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Bestätigung');
     await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open = false; true`);
-    await druckeEscape();
+    await printEscape();
     assert.equal(
       await b.auswerten(`document.activeElement === document.querySelector('#set-modal details.mehr-menue > summary')`),
       true,
       `Fokus auf ${await fokus()}`,
     );
   });
-  await druckeEscape();
+  await printEscape();
 
   await t.test('Häkchen Passkeys 24 px', async () => {
     await b.auswerten(`document.querySelector('.umenu-item[data-arg="profil"]').click(); true`);

@@ -6,21 +6,21 @@
  *
  * Gegenproben (am 03.11.2026 gemessen):
  *   A  in api() ausZwischenspeicher() nicht gefragt → rot: „Merkliste: letzter Stand“
- *   B  [data-lesend] aus NICHT_SPERREN entfernt → rot: „Erneut versuchen bleibt bedienbar“
- *   C  das automatische Neuladen in zeigeVerbindung(true) entfernt → rot: „lädt von selbst“
+ *   B  [data-lesend] aus NOT_LOCK entfernt → rot: „Erneut versuchen bleibt bedienbar“
+ *   C  das automatische Neuladen in showConnection(true) entfernt → rot: „lädt von selbst“
  *   D  die Regel label:has(> input[data-offline-gesperrt]) entfernt → rot: „CSV-Label gesperrt“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
-const STIL = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
-const mitStil = w =>
+const STYLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
+const withStyle = w =>
   w.document.addEventListener('DOMContentLoaded', () => {
     const s = w.document.createElement('style');
-    s.textContent = STIL;
+    s.textContent = STYLE;
     w.document.head.append(s);
   });
 const MERK = {
@@ -35,14 +35,14 @@ function netz(w, an) {
 
 test('Merkliste: letzter Stand statt Fehler, auch nach dem Neuladen der Seite', async () => {
   // Erster Besuch mit Netz; der zweite (wie nach F5) ohne, mit dem Speicher dieses Tabs.
-  const erst = await oeffneOberflaeche({ '/v1/wanted': MERK });
+  const erst = await openUi({ '/v1/wanted': MERK });
   await reiter(erst.w, 'wanted');
   await warte(() => erst.d.querySelector('#mk-list .mk-zeile'));
   const speicher = Object.fromEntries(
     Object.keys(erst.w.sessionStorage).map(k => [k, erst.w.sessionStorage.getItem(k)]),
   );
   erst.w.close();
-  const { w, d, ruhig } = await oeffneOberflaeche(
+  const { w, d, ruhig } = await openUi(
     {
       '/v1/wanted': () => {
         throw new TypeError('Failed to fetch');
@@ -68,14 +68,14 @@ test('Merkliste: letzter Stand statt Fehler, auch nach dem Neuladen der Seite', 
 
 test('nie geladen: „Keine Verbindung“, Erneut versuchen bleibt bedienbar und lädt von selbst', async t => {
   let offline = true;
-  const { w, d } = await oeffneOberflaeche(
+  const { w, d } = await openUi(
     {
       '/v1/wanted': () => {
         if (offline) throw new TypeError('Failed to fetch');
         return MERK;
       },
     },
-    { vorher: mitStil },
+    { vorher: withStyle },
   );
   try {
     netz(w, false);

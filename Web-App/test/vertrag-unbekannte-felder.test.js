@@ -9,7 +9,7 @@
  *      „ein fremdes Feld, auch verschachtelt in Listen“
  *   B  im Zweig 'union' die erste Option statt der passenden genommen → rot:
  *      „in einer Union zählt die Option, die passt“
- *   C  in antwortGegenVertrag() die Zeile `if (fremd.length) fehler.push(…)`
+ *   C  in responseAgainstContract() die Zeile `if (fremd.length) fehler.push(…)`
  *      entfernt → rot: „die Route antwortet 500, wenn ein Feld fehlt im Vertrag“
  */
 const test = require('node:test');
@@ -52,9 +52,9 @@ test('in einer Union zählt die Option, die passt', () => {
 });
 
 test('die Route antwortet 500, wenn ein Feld fehlt im Vertrag', async () => {
-  const { vertragPruefen } = _req('src/http/vertragsRouter.js');
-  const pruefer = vertragPruefen();
-  assert.ok(pruefer, 'VERTRAG_PRUEFEN ist in Tests gesetzt');
+  const { checkContract } = _req('src/http/vertragsRouter.js');
+  const checker = checkContract();
+  assert.ok(checker, 'VERTRAG_PRUEFEN ist in Tests gesetzt');
   // GET /api/v1/sets/info/:setNumber: SetInfoResponse nennt kein Feld `geheim`.
   const req = { method: 'GET', baseUrl: '/api/v1', route: { path: '/sets/info/:setNumber' }, body: {} };
   let status = 200;
@@ -72,10 +72,10 @@ test('die Route antwortet 500, wenn ein Feld fehlt im Vertrag', async () => {
       return this;
     },
   };
-  pruefer(req, res, () => {});
+  checker(req, res, () => {});
   res.json({ success: true, set_number: '1-1', name: 'x', im_katalog: true, geheim: 1 });
   assert.equal(status, 500);
-  assert.match(String(gesendet.abweichungen), /nicht im Vertrag: geheim/);
+  assert.match(String(gesendet.deviations), /nicht im Vertrag: geheim/);
 
   const res2 = {
     ...res,
@@ -87,7 +87,7 @@ test('die Route antwortet 500, wenn ein Feld fehlt im Vertrag', async () => {
     },
   };
   status = 200;
-  pruefer(req, res2, () => {});
+  checker(req, res2, () => {});
   res2.json({ success: true, set_number: '1-1', name: 'x', im_katalog: true });
   assert.equal(status, 200);
 });

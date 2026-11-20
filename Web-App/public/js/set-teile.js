@@ -1,13 +1,13 @@
 import { forgetManualItem } from './manuell-detail.js';
-import { detailZeile, ladeAnzeige, zeilenKnopf } from './bausteine.js';
+import { detailRow, loadDisplay, rowsButton } from './bausteine.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, escJs, esc, html, joinHtml } from './escaping.js';
 import { api } from './api.js';
-import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './bilder.js';
+import { bildTag, placeholderContent, fullUrl, imgUrl, thumbUrl, setDialogbild } from './bilder.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { toast } from './meldungen.js';
 import { scopeQuery } from './kontofilter.js';
-import { ladeLagerorte, lagerortBlock, ladeOrtAuswahl } from './detailfelder.js';
+import { loadLocations, locationBlock, loadLocationSelection } from './detailfelder.js';
 import { jumpTo } from './targets.js';
 import { registerActions } from './registry.js';
 // Detail dialog for parts and minifigs from sets: with zoom and the list of sets they occur in, without
@@ -21,14 +21,14 @@ function usedInList(sets) {
     const small = thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url || '';
     return small
       ? bildTag({ src: imgUrl(small, true), orig: imgUrl(s.image_url || ''), alt: '', klasse: 'bild-34', ph: 'set' })
-      : html`<span class="bild-ph bild-34" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
+      : html`<span class="bild-ph bild-34" aria-hidden="true">${placeholderContent('set')}</span>`;
   };
   return sets.length
     ? html`<table aria-label="${tRaw('setitem.used_in')}" data-stil="width:100%;border-collapse:collapse"><tbody>${sets.map(
         s => html`
         <tr>
           <td data-stil="width:34px;padding:4px 8px 4px 0">${setImage(s)}</td>
-          <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${zeilenKnopf({ click: 'openSetAusItem', arg: s.set_number }, s.set_number, tRaw('zeile.oeffnen', { name: s.set_name || s.set_number, nr: s.set_number }))}</td>
+          <td data-stil="width:1%;white-space:nowrap;padding:4px 10px 4px 0;font-family:var(--mono);font-size:var(--fs-1);color:var(--b600)">${rowsButton({ click: 'openSetAusItem', arg: s.set_number }, s.set_number, tRaw('zeile.oeffnen', { name: s.set_name || s.set_number, nr: s.set_number }))}</td>
           <td data-stil="padding:4px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:0">${s.set_name || ''}</td>
           <td data-stil="width:1%;white-space:nowrap;padding:4px 0 4px 10px;text-align:right;color:var(--mut);font-size:var(--fs-1)">×${(s.quantity || 0).toLocaleString(locale())}</td>
         </tr>`,
@@ -51,7 +51,7 @@ export async function openSetItemDetail(type, id, colorId) {
   G('setitem-tit').textContent = id;
   G('setitem-sub').textContent = '';
   imgEl.style.display = 'none';
-  setzeHtml(bodyEl, ladeAnzeige('', { stil: 'padding:1rem' }));
+  setzeHtml(bodyEl, loadDisplay('', { stil: 'padding:1rem' }));
   modal.classList.add('open');
 
   // Pass the account scope along as everywhere: in a household, the sibling account's set belongs too.
@@ -76,7 +76,7 @@ export async function openSetItemDetail(type, id, colorId) {
   const raw = item?.image_local || item?.image_url || '';
   const full = raw ? imgUrl(fullUrl(raw), false) : '';
   if (full) {
-    setzeDialogbild(imgEl, full, full);
+    setDialogbild(imgEl, full, full);
     imgEl.style.display = '';
   } else {
     imgEl.style.display = 'none';
@@ -86,7 +86,7 @@ export async function openSetItemDetail(type, id, colorId) {
   // Quantity for display only: it comes from the sets' inventories. toLocaleString as on the parts tile —
   // fmtN() is the money formatter and turned 6 into "EUR 6.00×".
   rows.push(
-    detailZeile(
+    detailRow(
       t('setitem.total_qty'),
       html`<span data-stil="font-family:var(--mono);font-weight:600">×${String((item?.total_quantity || 0).toLocaleString(locale()) ?? '')}</span>`,
     ),
@@ -96,27 +96,27 @@ export async function openSetItemDetail(type, id, colorId) {
     const dot = item.color_hex
       ? html`<span data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);margin-right:4px;vertical-align:middle" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`
       : '';
-    rows.push(detailZeile(t('parts.color_label'), `${dot}${esc(colorName(item.color_name))}`));
+    rows.push(detailRow(t('parts.color_label'), `${dot}${esc(colorName(item.color_name))}`));
   }
-  if (item?.category_name) rows.push(detailZeile(t('setitem.category'), esc(item.category_name)));
-  if (item?.is_spare) rows.push(detailZeile(t('parts.spare_tag'), ico('ok')));
+  if (item?.category_name) rows.push(detailRow(t('setitem.category'), esc(item.category_name)));
+  if (item?.is_spare) rows.push(detailRow(t('parts.spare_tag'), ico('ok')));
 
   // Storage location for parts only: a minifig sits in its set, whose location is in the set detail. The
   // field writes to every row of the part/color pair, because it means the part, not one of its rows.
   if (type === 'part') {
     // The location list belongs to the owner, as with a set. owner_ids instead of owners, because grouped
     // part rows carry no owner badge.
-    ladeOrtAuswahl(item?.owner_ids).catch(() => {});
+    loadLocationSelection(item?.owner_ids).catch(() => {});
     rows.push(
-      detailZeile(
+      detailRow(
         t('detail.storage'),
-        lagerortBlock(
+        locationBlock(
           'setitem-storage',
           item?.storage,
           `data-change="speichereTeilLagerort" data-typ="part" data-part="${escJs(id)}" data-color="${color}" ` +
             `data-owners="${esc((item?.owner_ids || []).join(','))}"`,
         ),
-        { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' },
+        { valueStyle: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' },
       ),
     );
   }
@@ -125,9 +125,9 @@ export async function openSetItemDetail(type, id, colorId) {
   // The table sits below the label (flex-direction:column): in the .dr row it slid next to "Used in" with
   // a single set, and the image touched the text.
   rows.push(
-    detailZeile(t('setitem.used_in'), list, {
-      zeilenStil: 'flex-direction:column;align-items:stretch;gap:4px',
-      wertStil: 'flex-direction:column;align-items:stretch;gap:0;min-width:0',
+    detailRow(t('setitem.used_in'), list, {
+      rowsStyle: 'flex-direction:column;align-items:stretch;gap:4px',
+      valueStyle: 'flex-direction:column;align-items:stretch;gap:0;min-width:0',
     }),
   );
 
@@ -153,10 +153,10 @@ async function speichereTeilLagerort() {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  await ladeLagerorte();
+  await loadLocations();
   // A freshly typed location is now in the stock list — without this it would sit on the part but be
   // missing from the list it's chosen from next time.
-  await ladeOrtAuswahl(el.dataset.owners ? el.dataset.owners.split(',').map(Number) : []);
+  await loadLocationSelection(el.dataset.owners ? el.dataset.owners.split(',').map(Number) : []);
 }
 
 function closeSetItemDetail() {

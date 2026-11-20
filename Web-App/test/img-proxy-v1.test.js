@@ -5,9 +5,9 @@
  * Tabelle erfasst, bleibt Struktur.
  *
  * Gegenproben (10.11.2026 gemessen, dist neu gebaut):
- *   A  in routes/imgProxy.ts die Zeile app.get(IMG_PROXY_PFAD_ALT, …) entfernt
+ *   A  in routes/imgProxy.ts die Zeile app.get(IMG_PROXY_PATH_LEGACY, …) entfernt
  *      → rot: „der Server bedient beide Adressen“ (404)
- *   B  proxyImageUrl baut IMG_PROXY_PFAD_ALT → rot: „gebaute Adressen …“ (die
+ *   B  proxyImageUrl baut IMG_PROXY_PATH_LEGACY → rot: „gebaute Adressen …“ (die
  *      Quelltextregel darunter sieht die Konstante nicht, nur Zeichenketten)
  */
 const test = require('node:test');
@@ -17,11 +17,11 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 test.after(() =>
-  testDaten()
+  testData()
     .pool.end()
     .catch(() => {}),
 );
@@ -33,22 +33,22 @@ const ohneKommentare = src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*
 const lies = (...p) => fs.readFileSync(path.join(...p), 'utf8');
 
 test('gebaute Adressen nehmen die neue Form, die alte wird weiter erkannt', () => {
-  const { proxyImageUrl, istProxyPfad } = _req('src/bilder/images.js');
+  const { proxyImageUrl, isProxyPath } = _req('src/bilder/images.js');
   const cdn = 'https://cdn.rebrickable.com/media/sets/10305-1.jpg';
   assert.equal(proxyImageUrl(cdn), `${NEU}?url=${encodeURIComponent(cdn)}`);
-  assert.equal(istProxyPfad(`${ALT}?url=x`), true, 'gespeicherte alte Adressen gelten nicht mehr als Proxy');
-  assert.equal(istProxyPfad(`${NEU}?url=x`), true);
+  assert.equal(isProxyPath(`${ALT}?url=x`), true, 'gespeicherte alte Adressen gelten nicht mehr als Proxy');
+  assert.equal(isProxyPath(`${NEU}?url=x`), true);
 });
 
 test('der Server bedient beide Adressen', async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // Ältere App-Fassungen bauen die alte Adresse selbst zusammen.
   const app = require('express')();
   app.use((req, _res, next) => {
     Object.assign(req, { session: { userId: 1 } });
     next();
   });
-  _req('routes/imgProxy.js').registerImgProxy(app, require('./helpers/sources').testDienste());
+  _req('routes/imgProxy.js').registerImgProxy(app, require('./helpers/sources').testServices());
   const srv = app.listen(0);
   t.after(() => srv.close());
   const status = p =>
@@ -66,14 +66,14 @@ test('gebaut wird nur noch die neue Adresse', () => {
   // Der Altpfad darf NUR als Konstantendefinition vorkommen — nirgends als
   // zusammengesetzte Adresse. Geprüft im Serverbaum UND im Browserbaum.
   const dateien = [];
-  const lauf = (d, endung) => {
+  const lauf = (d, extension) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
       if (e.isDirectory()) {
-        if (!/node_modules|locales/.test(p)) lauf(p, endung);
+        if (!/node_modules|locales/.test(p)) lauf(p, extension);
         continue;
       }
-      if (e.name.endsWith(endung) && e.name !== 'app.bundle.js')
+      if (e.name.endsWith(extension) && e.name !== 'app.bundle.js')
         dateien.push([path.relative(ROOT, p), ohneKommentare(fs.readFileSync(p, 'utf8'))]);
     }
   };
@@ -87,7 +87,7 @@ test('gebaut wird nur noch die neue Adresse', () => {
     for (const m of src.matchAll(new RegExp(`['"\`]${ALT}[^'"\`]*['"\`]`, 'g'))) {
       // Die beiden Definitionen der Auslauf-Konstante sind der eine erlaubte Ort.
       const zeile = src.slice(0, m.index).split('\n').pop();
-      if (/IMG_PROXY_(PFAD_)?ALT\s*=/.test(zeile)) continue;
+      if (/IMG_PROXY_(PATH_)?LEGACY\s*=/.test(zeile)) continue;
       gebaut.push(`${rel}: ${m[0]}`);
     }
   assert.deepEqual(
@@ -95,7 +95,7 @@ test('gebaut wird nur noch die neue Adresse', () => {
     [],
     'Diese Stellen bauen noch die alte Proxy-Adresse:\n  ' +
       gebaut.join('\n  ') +
-      `\nGebaut wird ${NEU}; die alte wird nur noch ERKANNT (istProxyPfad) und ` +
+      `\nGebaut wird ${NEU}; die alte wird nur noch ERKANNT (isProxyPath) und ` +
       'vom Server weiterhin bedient.',
   );
 });
@@ -151,16 +151,16 @@ test('die Migration erfasst JEDE Tabelle mit image_url', () => {
     .readdirSync(migVerz)
     .filter(f => f.endsWith('.sql') && f > '0014')
     .sort();
-  const nachzuegler = [];
+  const stragglers = [];
   for (const f of spaeter) {
     const txt = ohneKommentare(lies(ROOT, 'db/migrations', f));
     for (const m of txt.matchAll(/CREATE\s+TABLE(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)\s*\(([^;]*?)\)\s*;/gs)) {
-      if (/^\s*image_url\s/m.test(m[2])) nachzuegler.push([m[1], f, txt]);
+      if (/^\s*image_url\s/m.test(m[2])) stragglers.push([m[1], f, txt]);
     }
   }
   assert.ok(
-    nachzuegler.length >= 2,
-    `Nur ${nachzuegler.length} spaetere Tabellen mit image_url gefunden ` +
+    stragglers.length >= 2,
+    `Nur ${stragglers.length} spaetere Tabellen mit image_url gefunden ` +
       '(gemessen sind es zwei: part_color_catalog und minifigs_catalog) — Muster veraltet?',
   );
 
@@ -180,22 +180,22 @@ test('die Migration erfasst JEDE Tabelle mit image_url', () => {
   };
   for (let neu = true; neu; ) {
     neu = false;
-    for (const [tab, , txt] of nachzuegler)
+    for (const [tab, , txt] of stragglers)
       if (!quellen.has(tab) && liestAusQuelle(tab, txt)) {
         quellen.add(tab);
         neu = true;
       }
   }
-  const ohneHerkunft = nachzuegler
+  const withoutOrigin = stragglers
     .filter(([tab]) => !quellen.has(tab))
     .map(([tab, f]) => `${tab} (${f})`)
     .sort();
   assert.deepEqual(
-    ohneHerkunft,
+    withoutOrigin,
     [],
     'Diese Tabellen tragen image_url, entstehen NACH Migration 0014 und ' +
       'bekommen ihre Adressen nicht aus einer Tabelle, die 0014 umschreibt:\n  ' +
-      ohneHerkunft.join('\n  ') +
+      withoutOrigin.join('\n  ') +
       '\nDann koennen dort Adressen in der alten Form landen, und 0014 kommt ' +
       'nie wieder vorbei.',
   );

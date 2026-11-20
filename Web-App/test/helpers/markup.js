@@ -16,7 +16,7 @@ function funktion(src, name) {
   return src.slice(a, e + 2).replace(/^export /, '');
 }
 
-function markupHelfer() {
+function markupHelper() {
   const escaping = fs.readFileSync(path.join(JS, 'escaping.js'), 'utf8').replace(/^export /gm, '');
   const dom = fs.readFileSync(path.join(JS, 'dom.js'), 'utf8');
   const namen = [
@@ -41,4 +41,4 @@ function markupHelfer() {
   )();
 }
 
-module.exports = { markupHelfer };
+module.exports = { markupHelper };

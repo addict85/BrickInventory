@@ -5,7 +5,7 @@
  *   N1  `Cache-Control: no-store` im /api-Vorlauf von server.ts gestrichen →
  *       rot: „API und Anmeldewege …" (/api/v1/vouchers ohne Kopf); die
  *       statische Datei bleibt grün, sie hat ihren eigenen.
- *   H4  in alsUploadFehler() die Zuordnung von entity.parse.failed gestrichen →
+ *   H4  in asUploadError() die Zuordnung von entity.parse.failed gestrichen →
  *       rot: „kaputtes JSON …" (Antwort nennt „Expected double-quoted property name … at position 18")
  *   H2  router.param() in vertragsRouter() abgeschaltet → rot: „zu grosse IDs …"
  *       (Pfad-Fälle 400 wert_ungueltig aus der zweiten Linie); die Prüfung von
@@ -24,23 +24,23 @@ const { spawn, execFileSync } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { warte } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
-const freierPort = () =>
+const { portOf } = require('./helpers/server');
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
 
 test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `nach_${process.pid}`,
     PASS = 'Nach-Pruefung-7x';
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -56,7 +56,7 @@ test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, asyn
     await db.pool.end().catch(() => {});
   });
 
-  const port = await freierPort();
+  const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -119,11 +119,11 @@ test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, asyn
   });
 
   await t.test('kaputtes JSON und zu grosse Anfragen: einheitliche Antwort ohne Parsertext', async () => {
-    for (const [pfad, mitKeks] of /** @type {[string, boolean][]} */ ([
+    for (const [pfad, withCookie] of /** @type {[string, boolean][]} */ ([
       ['/api/v1/auth/login', false],
       ['/api/v1/vouchers', true],
     ])) {
-      const r = await (mitKeks ? holen : (p, o) => fetch(basis + p, o))(pfad, {
+      const r = await (withCookie ? holen : (p, o) => fetch(basis + p, o))(pfad, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: '{"username": "x", ',
@@ -179,9 +179,9 @@ test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, asyn
 });
 
 test('PostgreSQL 22003 (Wert ausserhalb des Spaltentyps) wird 400, nicht 500', () => {
-  const skript = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/http/httpAntwort.js'))});
+  const script = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/http/httpAntwort.js'))});
     console.warn = () => {};
     const res = { headersSent: false, status(s) { this.s = s; return this; }, json(b) { process.stdout.write(JSON.stringify([this.s, b.code])); } };
     handleRouteError(res, Object.assign(new Error('value "99999999999" is out of range for type integer'), { code: '22003' }), undefined, { method: 'GET', originalUrl: '/x' });`;
-  assert.deepEqual(JSON.parse(execFileSync(process.execPath, ['-e', skript]).toString()), [400, 'wert_ungueltig']);
+  assert.deepEqual(JSON.parse(execFileSync(process.execPath, ['-e', script]).toString()), [400, 'wert_ungueltig']);
 });

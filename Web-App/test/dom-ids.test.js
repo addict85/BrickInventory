@@ -34,9 +34,9 @@ const collect = src => {
   for (const m of src.matchAll(/wertId:\s*"([^"]+)"/g)) knownIds.add(m[1]);
   // Und der fuenfte Weg: Der Lagerort-Baustein erzeugt ZWEI Elemente aus
   // einer Kennung — das Textfeld `id` und die Auswahl `id-sel`
-  // (admin.js, lagerortBlock). Seit das Feld ein Auswahlfeld mit
+  // (admin.js, locationBlock). Seit das Feld ein Auswahlfeld mit
   // Neuerfassung ist, steht das id-Literal nicht mehr an der Aufrufstelle, …
-  for (const m of src.matchAll(/lagerortBlock\(\s*'([^']+)'/g)) {
+  for (const m of src.matchAll(/locationBlock\(\s*'([^']+)'/g)) {
     knownIds.add(m[1]);
     knownIds.add(m[1] + '-sel');
   }

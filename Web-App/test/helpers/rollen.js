@@ -15,7 +15,7 @@ function rollen(vorlage) {
 }
 
 /** Dieselbe Adresse mit anderer Rolle. @param {string} url @param {{ name: string, passwort: string }} rolle */
-function alsRolle(url, rolle) {
+function asRole(url, rolle) {
   const u = new URL(url);
   u.username = encodeURIComponent(rolle.name);
   u.password = encodeURIComponent(rolle.passwort);
@@ -24,8 +24,8 @@ function alsRolle(url, rolle) {
 
 /** Läuft die Datei noch als Superuser? Die Marke steht im Kopf der Testdatei
  * (Ratsche in test/rollen-trennung-db.test.js). @param {string} quelle */
-const alsSuperuser = quelle => /^\s*(\*|\/\/)\s*@superuser\b/m.test(quelle);
+const asSuperuser = quelle => /^\s*(\*|\/\/)\s*@superuser\b/m.test(quelle);
 /** Ruft die Datei Dienste im Systemrahmen auf (helpers/systemrahmen.js)? @param {string} quelle */
 const imSystemrahmen = quelle => /^require\('\.\/helpers\/systemrahmen'\);/m.test(quelle);
 
-module.exports = { rollen, alsRolle, alsSuperuser, imSystemrahmen };
+module.exports = { rollen, asRole, asSuperuser, imSystemrahmen };

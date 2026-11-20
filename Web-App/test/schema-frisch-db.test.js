@@ -31,25 +31,25 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { testName, raeumeReste, id } = require('./helpers/testnamen');
-const { katalogSet } = require('./helpers/bestand');
+const { testName, cleanRemainder, id } = require('./helpers/testnamen');
+const { catalogSet } = require('./helpers/bestand');
 const NAME = testName('schema_frisch');
 const ziel = new URL(BASIS);
 ziel.pathname = '/' + NAME;
 process.env.DATABASE_URL = ziel.toString();
 
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
 const KONTOSPALTEN = ['user_id', 'main_user_id', 'sub_user_id'];
 /** Bewusst ohne Schlüssel — mit Grund. */
-const OHNE_SCHLUESSEL = new Map([
+const WITHOUT_KEY = new Map([
   ['parts_version_user.user_id', 'Die Zähltrigger schreiben dort auch beim kaskadierten Löschen eines Kontos'],
 ]);
 
-async function schemaAbbild(db) {
+async function schemaImage(db) {
   const spalten = await db.all(`SELECT table_name, column_name, data_type, is_nullable, column_default
                                   FROM information_schema.columns WHERE table_schema = 'public'
                                  ORDER BY 1, 2`);
@@ -68,11 +68,11 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
     keineDb(t, e);
     return;
   }
-  await raeumeReste(admin, 'schema_frisch');
+  await cleanRemainder(admin, 'schema_frisch');
   await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)}`);
   await admin.query(`CREATE DATABASE ${id(NAME)}`);
 
-  const db = testDaten();
+  const db = testData();
   // Derselbe Weg wie beim Serverstart: initSchema nur beim ersten Mal, die
   // Migrationen immer.
   const starte = () => db.initSchemaOnce();
@@ -101,7 +101,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
       [KONTOSPALTEN],
     );
     assert.deepEqual(
-      offen.map(r => r.spalte).filter(s => !OHNE_SCHLUESSEL.has(s)),
+      offen.map(r => r.spalte).filter(s => !WITHOUT_KEY.has(s)),
       [],
     );
     const alle = await db.get(
@@ -130,7 +130,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
     await db.run(`INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ('frisch', $1, NOW())`, [uid]);
     // Bestand, damit die Zähltrigger auf parts und sets beim Löschen feuern.
     await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, '3001', 5, 'manual')`, [uid]);
-    await katalogSet(db, '99073-1', { name: 'Frisch' });
+    await catalogSet(db, '99073-1', { name: 'Frisch' });
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '99073-1')`, [uid]);
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     for (const tab of ['part_acquisitions', 'minifig_acquisitions', 'qr_login_tokens', 'parts', 'sets'])
@@ -165,13 +165,13 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
   });
 
   await t.test('ein zweiter Start ändert am Schema nichts', async () => {
-    const vorher = await schemaAbbild(db);
+    const vorher = await schemaImage(db);
     await starte();
-    assert.deepEqual(await schemaAbbild(db), vorher);
+    assert.deepEqual(await schemaImage(db), vorher);
   });
 
   await t.test('auch ein erzwungener Lauf holt Gelöschtes nicht zurück', async () => {
-    const vorher = await schemaAbbild(db);
+    const vorher = await schemaImage(db);
     process.env.FORCE_SCHEMA_INIT = '1';
     try {
       await starte();
@@ -179,7 +179,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
       delete process.env.FORCE_SCHEMA_INIT;
     }
     assert.deepEqual(
-      await schemaAbbild(db),
+      await schemaImage(db),
       vorher,
       'FORCE_SCHEMA_INIT legt Spalten wieder an, die Migrationen gelöscht haben',
     );

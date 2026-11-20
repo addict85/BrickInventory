@@ -6,7 +6,7 @@ import type { PartsContext } from './context';
 const LEER = z.object({});
 
 declare module '../auftraege/auftraege' {
-  interface AuftragsNutzlasten {
+  interface JobPayloads {
     katalog_nachzug: typeof LEER;
   }
 }

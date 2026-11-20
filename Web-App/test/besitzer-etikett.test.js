@@ -7,19 +7,19 @@
  *   A  in ownerBadges() die Ausnahme für eigene Einträge entfernt → rot:
  *      „eigene Sets ohne Etikett“
  *   B  ownerBadges() gibt immer '' zurück → rot: „das Set des Kindes trägt seinen Namen“
- *   C  (13.11.2026) ownerBadges() wieder mit o.username statt kontoAnzeige() → rot:
+ *   C  (13.11.2026) ownerBadges() wieder mit o.username statt accountDisplay() → rot:
  *      „das Set des Kindes trägt seinen Namen“ („anna“ statt „anna (ich)“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 const SET = (nr, name, owners) => ({ set_number: nr, name, quantity: 1, conditions: ['N'], instructions: [], owners });
 const ANNA = { id: 1, username: 'anna' },
   EMILY = { id: 3, username: 'emily' };
 
 async function galerie() {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/sets/household-members': {
       success: true,
       members: [
@@ -41,13 +41,13 @@ async function galerie() {
   await warte(() => o.d.querySelectorAll('#gallery .sc').length === 3);
   return o;
 }
-const etiketten = (d, nr) =>
+const labels = (d, nr) =>
   [...d.querySelector(`#gallery .sc[data-arg="${nr}"]`).querySelectorAll('.besitzer-badge')].map(e => e.textContent);
 
 test('eigene Sets ohne Etikett', async () => {
   const { w, d } = await galerie();
   try {
-    assert.deepEqual(etiketten(d, '10294-1'), []);
+    assert.deepEqual(labels(d, '10294-1'), []);
   } finally {
     w.close();
   }
@@ -56,15 +56,15 @@ test('eigene Sets ohne Etikett', async () => {
 test('das Set des Kindes trägt seinen Namen, ein geteiltes beide', async () => {
   const { w, d } = await galerie();
   try {
-    assert.deepEqual(etiketten(d, '42143-1'), ['emily']);
-    assert.deepEqual(etiketten(d, '75192-1'), ['anna (ich)', 'emily']);
+    assert.deepEqual(labels(d, '42143-1'), ['emily']);
+    assert.deepEqual(labels(d, '75192-1'), ['anna (ich)', 'emily']);
   } finally {
     w.close();
   }
 });
 
 test('die Kennzahl heisst Anleitungen', async () => {
-  const { w, d } = await oeffneOberflaeche({});
+  const { w, d } = await openUi({});
   try {
     const l = d.getElementById('bstat-instr').parentElement.querySelector('.bstat-l');
     assert.equal(l.textContent, 'Anleitungen');

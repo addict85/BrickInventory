@@ -3,26 +3,17 @@ import { echt, registerActions } from './registry.js';
 import { locale, t, tRaw } from '../i18n.js';
 import { esc, html, rawHtml, joinHtml } from './escaping.js';
 import { api } from './api.js';
-import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild } from './bilder.js';
-import {
-  leerZustand,
-  meldeTreffer,
-  ico,
-  G,
-  TRASH_ICON_SVG,
-  knopfBesetzt,
-  zuruecksetzenKnopf,
-  setzeHtml,
-} from './dom.js';
-import { fmtDatum, fmtN, leseBetrag } from './format.js';
-import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld } from './formular.js';
+import { bildTag, placeholderContent, fullUrl, imgUrl, thumbUrl, setDialogbild } from './bilder.js';
+import { emptyState, reportHits, ico, G, TRASH_ICON_SVG, knopfBesetzt, resetButton, setzeHtml } from './dom.js';
+import { fmtDatum, fmtN, readAmount } from './format.js';
+import { setnummerFieldValid, amountFromField, quantityFromField } from './formular.js';
 import { toast } from './meldungen.js';
-import { detailZeile, kachelName, listeLadefehler, skelettZeilen, csvHochladen } from './bausteine.js';
+import { detailRow, kachelName, listLoadError, skeletonRows, uploadCsv } from './bausteine.js';
 import { addScopeParam } from './kontofilter.js';
 import { accountCurrency } from './state.js';
-import { alarmBlock, ladeAlarm, setzeAlarmFeld } from './detailfelder.js';
-import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
-import { leereLagerortFeld, selectedOwner, selectedStorage, haushaltsKonten } from './konten-orte.js';
+import { alarmBlock, ladeAlarm, setAlarmField } from './detailfelder.js';
+import { chartWidth, priceChartSVG, renderMarketRows } from './diagramme.js';
+import { emptyLocationField, selectedOwner, selectedStorage, householdAccounts } from './konten-orte.js';
 
 // What you want, kept apart from what you own — hence its own table: in `sets` a wanted item
 // would count in the gallery, parts, portfolio and finances, and every view would need a filter.
@@ -63,7 +54,7 @@ function row(w) {
   const raw = w.image_local || w.image_url;
   const img = raw
     ? bildTag({ src: imgUrl(thumbUrl(raw) || raw, 'nur'), alt: '', klasse: 'bild-56', ph: 'set' })
-    : html`<span class="bild-ph bild-56" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
+    : html`<span class="bild-ph bild-56" aria-hidden="true">${placeholderContent('set')}</span>`;
 
   // No name means: rb_sets doesn't know the set – the price paid for not keeping a second copy of the catalog data here.
   const title = w.name ? esc(w.name) : esc(w.set_number);
@@ -143,10 +134,10 @@ export async function ladeMerkliste() {
   // The question mark lives here, not in wantedParams(): frontend-api-paths reads the path from this line.
   // An error state also carries .leer; it steps aside for the skeleton, otherwise a retry looked like the old error.
   if (!_wantedItems.length && !target.querySelector('.mk-zeile, .leer:not(.fehler-zustand)'))
-    setzeHtml(target, skelettZeilen(4, tRaw('common.loading')));
+    setzeHtml(target, skeletonRows(4, tRaw('common.loading')));
   const d = await api('GET', `/v1/wanted?${wantedParams()}`);
   const box = /** @type {HTMLDetailsElement | null} */ (document.getElementById('mk-kasten'));
-  if (listeLadefehler(target, d, { erneut: 'ladeMerkliste', behalten: _wantedItems.length > 0 })) {
+  if (listLoadError(target, d, { erneut: 'ladeMerkliste', behalten: _wantedItems.length > 0 })) {
     // The open form pushed the error message below the fold.
     if (box && !box.dataset.entschieden) box.open = false;
     return;
@@ -164,7 +155,7 @@ export async function ladeMerkliste() {
   filter.delete('sort');
   const filtered = !!filter.toString();
   if (filtered)
-    meldeTreffer(
+    reportHits(
       _wantedItems.length
         ? tRaw('treffer.merkliste', { n: _wantedItems.length })
         : G('mks')?.value.trim()
@@ -176,14 +167,14 @@ export async function ladeMerkliste() {
     _wantedItems.length
       ? joinHtml(_wantedItems.map(row))
       : filtered
-        ? leerZustand({
+        ? emptyState({
             ico: 'suche',
             titel: G('mks')?.value.trim()
               ? tRaw('common.no_hits', { query: G('mks').value.trim() })
               : tRaw('wanted.no_results'),
-            knopf: zuruecksetzenKnopf('merkliste'),
+            knopf: resetButton('merkliste'),
           })
-        : leerZustand({
+        : emptyState({
             ico: 'merkliste',
             titel: tRaw('wanted.empty'),
             text: tRaw('wanted.empty_hint'),
@@ -197,7 +188,7 @@ export async function ladeMerkliste() {
  */
 export async function merkpostenHinzufuegen() {
   const num = (G('mk-num')?.value || '').trim();
-  if (!setnummerFeldGueltig('mk-num', num)) return;
+  if (!setnummerFieldValid('mk-num', num)) return;
   const release = knopfBesetzt(G('mk-add'));
   try {
     const d = await api('POST', '/v1/wanted', {
@@ -237,7 +228,7 @@ export async function katalogAufMerkliste() {
     }
 
     // The alert is its own request: it lives in price_alerts, the same table as in the set detail – no second source of truth.
-    const threshold = leseBetrag(G('cat-m-alert-val')?.value);
+    const threshold = readAmount(G('cat-m-alert-val')?.value);
     const alarm =
       threshold != null && threshold > 0
         ? await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
@@ -317,7 +308,7 @@ export function merkpostenUebernehmen(arg) {
   G('mk-take-qty').value = '1';
   G('mk-take-price').value = '';
   G('mk-take-cond').value = condition === 'U' ? 'U' : 'N';
-  leereLagerortFeld('mk-take-storage');
+  emptyLocationField('mk-take-storage');
   G('mk-take-modal').classList.add('open');
 }
 
@@ -334,8 +325,8 @@ export function schliesseUebernahme() {
 export async function bestaetigeUebernahme() {
   if (!_takeover) return;
   const { set_number, condition, owner_user_id } = parseKey(_takeover);
-  const price = betragAusFeld('mk-take-price');
-  const qty = mengeAusFeld('mk-take-qty');
+  const price = amountFromField('mk-take-price');
+  const qty = quantityFromField('mk-take-qty');
   if (!price.ok || !qty.ok) return;
   const release = knopfBesetzt(G('mk-take-ok'));
   try {
@@ -381,7 +372,7 @@ export async function oeffneMerkpostenDetail(arg) {
   // Full resolution, but also through our own server: fullUrl() sends an absolute CDN address through the
   // image proxy (bilder.js). The local image takes priority — it's already there.
   const img = w.image_local || w.image_url ? fullUrl(w.image_local || w.image_url) : '/assets/set-placeholder.svg';
-  setzeDialogbild(G('mk-m-img'), img, img);
+  setDialogbild(G('mk-m-img'), img, img);
   setzeHtml(G('mk-m-sparkline-content'), html`<span class="text-mut schrift-1">${tRaw('common.loading')}</span>`);
   G('mk-m-market-rows').replaceChildren();
   setzeHtml(G('mk-m-det'), rawHtml(detailRows(w)));
@@ -391,7 +382,7 @@ export async function oeffneMerkpostenDetail(arg) {
   document.querySelector('#mk-detail-modal .mehr-menue')?.removeAttribute('open');
   G('mk-detail-modal').classList.add('open');
   // From here on, the alert handlers mean THIS dialog.
-  setzeAlarmFeld('mk-m');
+  setAlarmField('mk-m');
   ladeAlarm(set_number).catch(() => {});
 
   // ── The price, RIGHT AWAY ─────────────────────────────────────────────────
@@ -432,11 +423,7 @@ export async function oeffneMerkpostenDetail(arg) {
       setzeHtml(
         G('mk-m-sparkline-content'),
         ph?.success
-          ? priceChartSVG(
-              ph,
-              'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''),
-              diagrammBreite(G('mk-m-sparkline-content')),
-            )
+          ? priceChartSVG(ph, 'wl' + set_number.replace(/[^a-zA-Z0-9]/g, ''), chartWidth(G('mk-m-sparkline-content')))
           : html`<span class="text-mut schrift-1">${tRaw(ph?.networkError ? 'chart.offline' : 'detail.no_history')}</span>`,
       );
     })
@@ -489,7 +476,7 @@ function detailRows(w) {
     // same key (account, set, condition). Filled in by ladeAlarm() on open.
     ['detail.alert', alarmBlock(w.set_number, 'mk-m'), null],
   ];
-  return z.map(([k, v, id]) => detailZeile(t(k), v, id ? { wertId: id } : {})).join('');
+  return z.map(([k, v, id]) => detailRow(t(k), v, id ? { wertId: id } : {})).join('');
 }
 
 /**
@@ -498,7 +485,7 @@ function detailRows(w) {
  */
 /** @param {Merkposten} w */
 function ownerSelect(w) {
-  const accounts = haushaltsKonten();
+  const accounts = householdAccounts();
   if (accounts.length < 2) return '';
   return html`${html`<select id="mk-m-owner" class="alarm-feld" aria-label="${tRaw('household.for_account')}"
                   data-change="merkpostenInhaberGewaehlt" data-arg="${`${w.set_number}|${w.condition}|${w.user_id}`}">`}${accounts.map(k => html`${html`<option value="${k.id}"${k.id === w.user_id ? ' selected' : ''}>`}${html`${k.username}${k.is_self ? html`${' '}${tRaw('household.ich')}` : ''}</option>`}`)}${html`</select>`}`;
@@ -586,7 +573,7 @@ G('mks')?.addEventListener('input', () => {
 async function importMerklisteCsv() {
   const owner = selectedOwner('mk-owner');
   const status = G('mk-status');
-  const d = await csvHochladen({
+  const d = await uploadCsv({
     feld: 'mk-csv-file',
     pfad: '/v1/wanted/import/csv',
     felder: owner ? { owner_user_id: String(owner) } : {},

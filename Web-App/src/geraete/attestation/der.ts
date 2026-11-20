@@ -9,15 +9,15 @@ export interface Tlv {
   inhalt: Buffer;
 }
 
-export class DerFehler extends Error {}
+export class TheError extends Error {}
 
-const HOECHSTE_NUMMER = 2 ** 21;
+const HIGHEST_NUMBER = 2 ** 21;
 
 /** Ein Element ab [pos]; `ende` zeigt hinter es. */
 export function liesTlv(b: Buffer, pos = 0): { tlv: Tlv; ende: number } {
   let p = pos;
   const byte = () => {
-    if (p >= b.length) throw new DerFehler('DER: abgeschnitten');
+    if (p >= b.length) throw new TheError('DER: abgeschnitten');
     return b[p++] as number;
   };
   const erstes = byte();
@@ -26,32 +26,32 @@ export function liesTlv(b: Buffer, pos = 0): { tlv: Tlv; ende: number } {
     nummer = 0;
     for (let b7 = byte(); ; b7 = byte()) {
       nummer = nummer * 128 + (b7 & 0x7f);
-      if (nummer >= HOECHSTE_NUMMER) throw new DerFehler('DER: Tag zu gross');
+      if (nummer >= HIGHEST_NUMBER) throw new TheError('DER: Tag zu gross');
       if (!(b7 & 0x80)) break;
     }
   }
   let laenge = byte();
-  if (laenge === 0x80) throw new DerFehler('DER: unbestimmte Länge');
+  if (laenge === 0x80) throw new TheError('DER: unbestimmte Länge');
   if (laenge > 0x80) {
     const n = laenge & 0x7f;
-    if (n > 3) throw new DerFehler('DER: Länge zu gross');
+    if (n > 3) throw new TheError('DER: Länge zu gross');
     laenge = 0;
     for (let i = 0; i < n; i++) laenge = laenge * 256 + byte();
   }
-  if (p + laenge > b.length) throw new DerFehler('DER: Länge über das Ende');
+  if (p + laenge > b.length) throw new TheError('DER: Länge über das Ende');
   const tlv = { klasse: erstes >> 6, nummer, zusammengesetzt: !!(erstes & 0x20), inhalt: b.subarray(p, p + laenge) };
   return { tlv, ende: p + laenge };
 }
 
 /** Genau ein Element, nichts dahinter. */
-export function liesGanz(b: Buffer): Tlv {
+export function readWhole(b: Buffer): Tlv {
   const { tlv, ende } = liesTlv(b);
-  if (ende !== b.length) throw new DerFehler('DER: Bytes hinter dem Element');
+  if (ende !== b.length) throw new TheError('DER: Bytes hinter dem Element');
   return tlv;
 }
 
 export function kinder(t: Tlv): Tlv[] {
-  if (!t.zusammengesetzt) throw new DerFehler('DER: kein zusammengesetztes Element');
+  if (!t.zusammengesetzt) throw new TheError('DER: kein zusammengesetztes Element');
   const liste: Tlv[] = [];
   for (let p = 0; p < t.inhalt.length; ) {
     const { tlv, ende } = liesTlv(t.inhalt, p);
@@ -72,16 +72,16 @@ export const UNIVERSAL = {
   SET: 17,
 };
 
-export function erwarte(t: Tlv | undefined, nummer: number, klasse = 0): Tlv {
-  if (!t || t.nummer !== nummer || t.klasse !== klasse) throw new DerFehler(`DER: Tag ${nummer} erwartet`);
+export function expect(t: Tlv | undefined, nummer: number, klasse = 0): Tlv {
+  if (!t || t.nummer !== nummer || t.klasse !== klasse) throw new TheError(`DER: Tag ${nummer} erwartet`);
   return t;
 }
 
 /** INTEGER oder ENUMERATED, nicht negativ und klein genug für eine Zahl. */
-export function derZahl(t: Tlv): number {
+export function theNumber(t: Tlv): number {
   if (t.klasse !== 0 || (t.nummer !== UNIVERSAL.INTEGER && t.nummer !== UNIVERSAL.ENUMERATED))
-    throw new DerFehler('DER: keine Zahl');
-  if (!t.inhalt.length || (t.inhalt[0] as number) & 0x80) throw new DerFehler('DER: negative oder leere Zahl');
-  if (t.inhalt.length > 7) throw new DerFehler('DER: Zahl zu gross');
+    throw new TheError('DER: keine Zahl');
+  if (!t.inhalt.length || (t.inhalt[0] as number) & 0x80) throw new TheError('DER: negative oder leere Zahl');
+  if (t.inhalt.length > 7) throw new TheError('DER: Zahl zu gross');
   return t.inhalt.reduce((n, x) => n * 256 + x, 0);
 }

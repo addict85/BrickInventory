@@ -4,7 +4,7 @@
  * Sperre gelesen.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  in setAendern die Zielmenge aus dem Blick vorab statt in der Sperre
+ *   A  in changeSet die Zielmenge aus dem Blick vorab statt in der Sperre
  *      genommen → rot: „zwei gleichzeitige +1 ergeben +2“ (3 statt 4)
  *   B  quantity_delta ignoriert (wie vor der Änderung) → rot: alle drei Fälle
  *
@@ -16,14 +16,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet, mengeVon } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { holdsSet, quantityOf } = require('./helpers/bestand');
 
 test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `delta-${process.pid}`,
     SN = `31170-${process.pid % 1000}`;
@@ -41,20 +41,20 @@ test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     await db.pool.end().catch(() => {});
   });
-  const { setAendern } = require('./helpers/sources').bereichsSeite('sets');
+  const { changeSet } = require('./helpers/sources').areaPage('sets');
 
   await t.test('zwei gleichzeitige +1 ergeben +2', async () => {
-    await haeltSet(db, uid, SN, 2, { preis: 40 });
-    await Promise.all([setAendern(uid, SN, { quantity_delta: 1 }), setAendern(uid, SN, { quantity_delta: 1 })]);
-    assert.equal(await mengeVon(db, [uid], SN), 4);
+    await holdsSet(db, uid, SN, 2, { preis: 40 });
+    await Promise.all([changeSet(uid, SN, { quantity_delta: 1 }), changeSet(uid, SN, { quantity_delta: 1 })]);
+    assert.equal(await quantityOf(db, [uid], SN), 4);
   });
 
   await t.test('ein Schritt nach unten nimmt genau eines weg', async () => {
-    const r = await setAendern(uid, SN, { quantity_delta: -1 });
+    const r = await changeSet(uid, SN, { quantity_delta: -1 });
     assert.equal(r.quantity, 3);
   });
 
   await t.test('ein ungültiger Schritt wird abgewiesen', async () => {
-    await assert.rejects(setAendern(uid, SN, { quantity_delta: 1.5 }), (/** @type {any} */ e) => e.art === 'ungueltig');
+    await assert.rejects(changeSet(uid, SN, { quantity_delta: 1.5 }), (/** @type {any} */ e) => e.art === 'ungueltig');
   });
 });

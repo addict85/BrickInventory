@@ -16,12 +16,12 @@ const https = require('node:https');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
+const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
 test('ein bereits versorgtes Set löst keinen Abruf aus', async t => {
-  const db = testDaten();
+  const db = testData();
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -29,12 +29,12 @@ test('ein bereits versorgtes Set löst keinen Abruf aus', async t => {
     return;
   }
 
-  const abrufe = [];
+  const fetches = [];
   const nein = name => async () => {
-    abrufe.push(name);
+    fetches.push(name);
     throw new Error(`${name}: im Test kein Netz`);
   };
-  testQuellen(t, {
+  testSources(t, {
     scrapeInstructions: nein('scrapeInstructions'),
     brickset: { getInstructions: nein('brickset.getInstructions') },
   });
@@ -45,7 +45,7 @@ test('ein bereits versorgtes Set löst keinen Abruf aus', async t => {
     for (const art of ['request', 'get']) {
       const echt = modul[art];
       t.mock.method(/** @type {any} */ (modul), art, (/** @type {any[]} */ ...a) => {
-        abrufe.push(`${name}.${art}`);
+        fetches.push(`${name}.${art}`);
         return echt.apply(modul, a);
       });
     }
@@ -66,7 +66,7 @@ test('ein bereits versorgtes Set löst keinen Abruf aus', async t => {
 
   const anzahl = await ins.setAnleitungenLaden(sn, null);
 
-  assert.deepEqual(abrufe, [], 'kein fremder Server für ein versorgtes Set');
-  assert.equal(ins.letzterAbrufWarExtern(), false, 'Der Takt darf nach diesem Durchgang nicht warten');
+  assert.deepEqual(fetches, [], 'kein fremder Server für ein versorgtes Set');
+  assert.equal(ins.lastFetchWarExtern(), false, 'Der Takt darf nach diesem Durchgang nicht warten');
   assert.equal(anzahl, 1, 'Die vorhandene Anleitung wurde nicht gezählt');
 });

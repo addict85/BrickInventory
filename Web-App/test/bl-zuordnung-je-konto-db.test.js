@@ -5,17 +5,17 @@
  * die gemeinsame Zuordnung — in Preisabruf, Figurenpreis, Bewertung und …
  *
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  routes/api_v1/wanted.ts: merkeNummer schreibt immer merkeBlNummer →
+ *   A  routes/api_v1/wanted.ts: rememberNumber schreibt immer rememberBlNumber →
  *      rot: alle sieben Teiltests (Annas 3001 füllt den Vermerk für 3003)
  *   B  db/blZuordnungSql.ts: blNummerSql ohne `_e.bl_id` → rot: „Bewertung“
  *      (Anna sieht die gemeinsame Nummer)
  *   C  resolveBlPartNumber() übergeht `konto` → rot: „Preisabruf“
- *   D  schreibeBlNummer() wieder mit `DO UPDATE SET bl_id=…` ohne WHERE → rot:
+ *   D  writeBlNumber() wieder mit `DO UPDATE SET bl_id=…` ohne WHERE → rot:
  *      „die gemeinsame Zuordnung wird nur gefüllt, nie ersetzt“
- *   E  manuelleFiguren.ts schreibt die BrickLink-Nr. wieder mit merkeBlNummer →
+ *   E  manualMinifigs.ts schreibt die BrickLink-Nr. wieder mit rememberBlNumber →
  *      rot: „die BrickLink-Nr. einer eigenen Figur …“
  *
- * Wie im Betrieb fragt jeder Dienst im Namen seines Kontos (alsKonto) als Laufzeitrolle;
+ * Wie im Betrieb fragt jeder Dienst im Namen seines Kontos (asAccount) als Laufzeitrolle;
  * Testdaten schreibt die Eigentümerin.
  *
  * REQUIRE_DB=1.
@@ -25,11 +25,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, alsKonto } = require('./helpers/sources');
+const { buildAndRequire, testData, asAccount } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
@@ -95,7 +95,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   // Bruno hält dieselben Dinge, damit seine Bewertung Zeilen hat.
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig, updateManualMinifig } = _req('src/minifigs/manualMinifigs.js');
-  await alsKonto(BRUNO, async () => {
+  await asAccount(BRUNO, async () => {
     await addManualPart(BRUNO, { part_number: '3003', color_id: 4, quantity: 1, unit_price: 1 });
     await addManualMinifig(BRUNO, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
   });
@@ -118,59 +118,59 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   });
 
   const { resolveBlPartNumber, fetchPartPrice } = _req('src/finanzen/rechnung/preise.js');
-  const { blNummerVon } = _req('src/katalog/blZuordnung.js');
+  const { blNumberOf } = _req('src/katalog/blZuordnung.js');
 
   await t.test('Preisabruf: Anna fragt BrickLink nach 3001, Bruno nach 3003', async () => {
-    assert.equal(await alsKonto(ANNA, () => resolveBlPartNumber('3003', ANNA)), '3001');
-    assert.equal(await alsKonto(BRUNO, () => resolveBlPartNumber('3003', BRUNO)), '3003');
+    assert.equal(await asAccount(ANNA, () => resolveBlPartNumber('3003', ANNA)), '3001');
+    assert.equal(await asAccount(BRUNO, () => resolveBlPartNumber('3003', BRUNO)), '3003');
     assert.equal(await resolveBlPartNumber('3003'), '3003', 'ohne Konto gilt die gemeinsame Zuordnung');
     // Der Abruf selbst liest den Preis unter der übersetzten Nummer.
     await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, fetched_at)
                   VALUES ('3001',5,'N','EUR',7,NOW()), ('3003',5,'N','EUR',2,NOW())`);
-    const preis = uid => alsKonto(uid, () => fetchPartPrice('3003', 4, 'N', 'EUR', 24, null, uid));
+    const preis = uid => asAccount(uid, () => fetchPartPrice('3003', 4, 'N', 'EUR', 24, null, uid));
     assert.equal(Number((await preis(ANNA))?.avg_price), 7);
     assert.equal(Number((await preis(BRUNO))?.avg_price), 2);
   });
 
   await t.test('Figurenpreis: jedes Konto nach seiner Nummer', async () => {
-    assert.equal(await alsKonto(ANNA, () => blNummerVon('fig', 'fig-000001', ANNA)), 'sw0001a');
-    assert.equal(await alsKonto(BRUNO, () => blNummerVon('fig', 'fig-000001', BRUNO)), 'sw0001');
+    assert.equal(await asAccount(ANNA, () => blNumberOf('fig', 'fig-000001', ANNA)), 'sw0001a');
+    assert.equal(await asAccount(BRUNO, () => blNumberOf('fig', 'fig-000001', BRUNO)), 'sw0001');
   });
 
   await t.test('Bewertung: Nummern je Konto', async () => {
-    const repo = require('./helpers/sources').testBereich('finanzen').bewertung;
+    const repo = require('./helpers/sources').testArea('finanzen').bewertung;
     // Jedes Konto bewertet seinen Bestand; zwei fremde Konten stehen nie in einer Bewertung.
-    const je2 = async f => [...(await alsKonto(ANNA, () => f([ANNA]))), ...(await alsKonto(BRUNO, () => f([BRUNO])))];
-    const figuren = await je2(ids => repo.manuelleFigurenZurBewertung(ids));
-    const teile = await je2(ids => repo.manuelleTeileZurBewertung(ids));
+    const je2 = async f => [...(await asAccount(ANNA, () => f([ANNA]))), ...(await asAccount(BRUNO, () => f([BRUNO])))];
+    const figuren = await je2(ids => repo.manualMinifigsToValuation(ids));
+    const teile = await je2(ids => repo.manualPartsToValuation(ids));
     const je = (zeilen, feld) => Object.fromEntries(zeilen.map(z => [z.user_id, z[feld]]));
     assert.deepEqual(je(figuren, 'bl_fig_number'), { [ANNA]: 'sw0001a', [BRUNO]: 'sw0001' });
     assert.deepEqual(je(teile, 'bl_part_number'), { [ANNA]: '3001', [BRUNO]: '3003' });
   });
 
   await t.test('der nächste Import: Annas Korrektur löst bei Anna auf, nicht bei Bruno', async () => {
-    const { loeseLokalAuf } = _req('src/wanted/wantedAufloesung.js');
-    const { leseWantedListe } = _req('src/wanted/wantedParser.js');
-    const { posten } = leseWantedListe(liste(item('P', '3001', 5)));
-    assert.equal((await alsKonto(ANNA, () => loeseLokalAuf(posten, ANNA)))[0].rbId, '3003');
-    const bruno = (await alsKonto(BRUNO, () => loeseLokalAuf(posten, BRUNO)))[0];
+    const { resolveLocalOn } = _req('src/wanted/wantedAufloesung.js');
+    const { readWantedList } = _req('src/wanted/wantedParser.js');
+    const { posten } = readWantedList(liste(item('P', '3001', 5)));
+    assert.equal((await asAccount(ANNA, () => resolveLocalOn(posten, ANNA)))[0].rbId, '3003');
+    const bruno = (await asAccount(BRUNO, () => resolveLocalOn(posten, BRUNO)))[0];
     assert.equal(bruno.rbId, '3001');
     assert.equal(bruno.sicherheit, 'katalogtreffer');
   });
 
   await t.test('die BrickLink-Nr. einer eigenen Figur bleibt beim Konto', async () => {
-    await alsKonto(BRUNO, () => updateManualMinifig(BRUNO, 'fig-000001', { bl_fig_number: 'sw9999' }));
+    await asAccount(BRUNO, () => updateManualMinifig(BRUNO, 'fig-000001', { bl_fig_number: 'sw9999' }));
     assert.deepEqual(await gemeinsam(), vorher);
-    assert.equal(await alsKonto(BRUNO, () => blNummerVon('fig', 'fig-000001', BRUNO)), 'sw9999');
-    assert.equal(await alsKonto(ANNA, () => blNummerVon('fig', 'fig-000001', ANNA)), 'sw0001a');
+    assert.equal(await asAccount(BRUNO, () => blNumberOf('fig', 'fig-000001', BRUNO)), 'sw9999');
+    assert.equal(await asAccount(ANNA, () => blNumberOf('fig', 'fig-000001', ANNA)), 'sw0001a');
   });
 
   await t.test('die gemeinsame Zuordnung wird nur gefüllt, nie ersetzt', async () => {
-    const { merkeBlNummer, merkeBlNummern } = _req('src/katalog/blZuordnung.js');
-    await merkeBlNummer('fig', 'fig-000001', 'falsch');
-    await merkeBlNummern('fig', [{ rbId: 'fig-000001', blId: 'auch-falsch' }]);
-    await merkeBlNummer('part', '3003', '3003b');
-    await merkeBlNummer('part', '3004', '3004');
+    const { rememberBlNumber, rememberBlNumbers } = _req('src/katalog/blZuordnung.js');
+    await rememberBlNumber('fig', 'fig-000001', 'falsch');
+    await rememberBlNumbers('fig', [{ rbId: 'fig-000001', blId: 'auch-falsch' }]);
+    await rememberBlNumber('part', '3003', '3003b');
+    await rememberBlNumber('part', '3004', '3004');
     assert.deepEqual(
       await gemeinsam(),
       ['fig|fig-000001|sw0001', 'part|3003|3003b', 'part|3004|null'],

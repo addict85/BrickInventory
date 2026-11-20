@@ -10,10 +10,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, sicht, warte } = require('./helpers/oberflaeche');
+const { openUi, sicht, warte } = require('./helpers/oberflaeche');
 
 test('Gutschein: beide Lücken auf einmal, Pflicht gekennzeichnet', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche({ '/v1/vouchers': { success: true, vouchers: [] } });
+  const { w, d, aufrufe } = await openUi({ '/v1/vouchers': { success: true, vouchers: [] } });
   try {
     await sicht(w, 'gutscheine');
     for (const id of ['v-number', 'v-amount']) {

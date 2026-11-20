@@ -5,18 +5,18 @@
  * das betroffene Konto).
  *
  * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  hinweisNebenher() in /token-create entfernt → rot: „neuer Token"
- *   B  hinweisNebenher() in /qr-token entfernt → rot: „neuer QR-Zugang"
- *   C  verwalterHinweisNebenher() in PUT /users/:id/admin entfernt → rot:
+ *   A  hintInBackground() in /token-create entfernt → rot: „neuer Token"
+ *   B  hintInBackground() in /qr-token entfernt → rot: „neuer QR-Zugang"
+ *   C  adminHintInBackground() in PUT /users/:id/admin entfernt → rot:
  *      „ernannter Verwalter"
- *   D  in aktiveVerwalter() `is_admin AND` entfernt → rot: „neues
+ *   D  in activeAdmin() `is_admin AND` entfernt → rot: „neues
  *      Verwalterkonto" (die Mail ging auch an das gewöhnliche Konto)
- *   E  hinweisNebenher() in PUT /users/:id/password entfernt → rot:
+ *   E  hintInBackground() in PUT /users/:id/password entfernt → rot:
  *      „fremdes Passwort durch einen Verwalter“
  * Gegenprobe (04.11.2026 gemessen):
- *   F  hinweisNebenher() in angemeldetAntworten() (routes/auth.ts) entfernt →
+ *   F  hintInBackground() in signedInResponses() (routes/auth.ts) entfernt →
  *      rot: „Token aus der Anmeldung (neues Gerät)“
- *   G  hinweisNebenher() in /zweiter-faktor/bestaetigen bzw. /abschalten
+ *   G  hintInBackground() in /zweiter-faktor/bestaetigen bzw. /abschalten
  *      entfernt → rot: „eigener zweiter Faktor eingerichtet und abgeschaltet“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -32,11 +32,11 @@ process.env.APP_BASE_URL = 'https://lego.test';
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
 
 const gesendet = [];
-require('./helpers/sources').ersetzeDienste('mail', {
+require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (an, _name, type, o) => {
     gesendet.push({ an, type, ...o });
@@ -44,12 +44,12 @@ require('./helpers/sources').ersetzeDienste('mail', {
   },
 });
 
-const db = S.testDaten();
+const db = S.testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Hinweis-Passwort-1';
 
 test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid,
     NAMEN = [`zh_chef_${P}`, `zh_zwei_${P}`, `zh_nutzer_${P}`, `zh_neu_${P}`];
   const konto = async (name, admin) =>
@@ -137,7 +137,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
   // `zwei` ist Verwalter: Die Änderung wird angekündigt und gilt erst im Aufräumlauf nach der Frist.
   const faellig = async () => {
     await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [zwei]);
-    assert.equal(await _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus(), 1);
+    assert.equal(await _req('src/konto/verwalterAktionen.js').runDueTakeoversFrom(), 1);
   };
 
   await t.test('entfernter zweiter Faktor', async () => {

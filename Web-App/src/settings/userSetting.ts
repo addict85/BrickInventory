@@ -1,6 +1,6 @@
 import { sperreHaushaltswaehrung } from '../../db/txLock';
 import { fachfehler } from '../infra/fehlerTexte';
-import { imSystemkontext } from '../infra/kontoKontext';
+import { inSystemContext } from '../infra/kontoKontext';
 import { ereignis } from '../infra/ereignis';
 import { isValidUserValue, writeUserSetting } from './settings';
 import * as repo from './repository/currency';
@@ -26,13 +26,13 @@ export async function deleteUserSetting(k: SettingsContext, userId: number, key:
   await k.repository.deleteUserValue(userId, key);
 }
 
-/** For the whole household, otherwise two currencies would give a wrong total; einladungEinloesen() locks the same way. */
+/** For the whole household, otherwise two currencies would give a wrong total; redeemInvitation() locks the same way. */
 async function setHouseholdCurrency(k: SettingsContext, userId: number, currency: string) {
   // Over grandchildren and foreign main accounts (sharedWithForeignMain): further than the row guard reaches.
-  const before = await imSystemkontext('haushaltswaehrung', () =>
+  const before = await inSystemContext('haushaltswaehrung', () =>
     k.transaktion(async t => {
       await sperreHaushaltswaehrung(t.db);
-      const old = await repo.currencyOf(t.db, userId);
+      const old = await repo.storedCurrencyOf(t.db, userId);
       const subAccount = await repo.hasMainAccount(t.db, t.lesevertrag, userId);
       if (old !== currency) {
         if (subAccount) fachfehler('verboten', 'waehrung_nur_hauptkonto');

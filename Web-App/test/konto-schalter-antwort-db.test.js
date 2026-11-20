@@ -5,7 +5,7 @@
  * damit auch der Vertrag (src/vertrag/) mitläuft.
  *
  * Gegenproben (31.10.2026, gemessen):
- *   a) in kontenListe() wieder `is_admin: k.is_admin ? 1 : 0` → rot: „die
+ *   a) in accountsList() wieder `is_admin: k.is_admin ? 1 : 0` → rot: „die
  *      Kontenliste der Verwaltung“ (1 statt true; der Vertrag meldet 500)
  *   b) in profil() wieder `email_verified: p.email_verified ? 1 : 0` → rot:
  *      „das eigene Profil“
@@ -14,14 +14,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
+const { adminWithFactor } = require('./helpers/verwalter');
 
 test('Kontoschalter gehen als true/false hinaus', async t => {
-  const db = testDaten();
+  const db = testData();
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -42,7 +42,7 @@ test('Kontoschalter gehen als true/false hinaus', async t => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[chef, gast]]);
     await db.pool.end();
   });
-  await verwalterMitFaktor(_req, chef);
+  await adminWithFactor(_req, chef);
   let als = chef;
   const sitzung = {};
   Object.defineProperty(sitzung, 'userId', { get: () => als, enumerable: true });

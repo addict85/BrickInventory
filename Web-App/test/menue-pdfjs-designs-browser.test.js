@@ -24,8 +24,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { starteApp } = require('./helpers/app-browser');
-const { musterSammlung } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternCollection } = require('./helpers/bestand');
 const { AXE } = require('./helpers/layout-messung');
 
 const PDF =
@@ -37,13 +37,13 @@ const geladen =
   .map(n => new URL(n).pathname)`;
 
 test('Menü, PDF.js, Designs, Leerzustände, Anmeldung', { timeout: 300_000 }, async t => {
-  const a = await starteApp(t, {
+  const a = await startApp(t, {
     name: `uxr_${process.pid}`,
-    bestand: musterSammlung,
-    abfangen: [
-      { muster: '*finance/*valuation*', enthaelt: '/finance/valuation', antwort: { ...LEER, totals: {} } },
-      { muster: '*finance/*valuation*', enthaelt: '/finance/parts-valuation', antwort: LEER },
-      { muster: '*finance/*valuation*', enthaelt: '/finance/minifigs-valuation', antwort: LEER },
+    bestand: patternCollection,
+    intercept: [
+      { muster: '*finance/*valuation*', contains: '/finance/valuation', antwort: { ...LEER, totals: {} } },
+      { muster: '*finance/*valuation*', contains: '/finance/parts-valuation', antwort: LEER },
+      { muster: '*finance/*valuation*', contains: '/finance/minifigs-valuation', antwort: LEER },
     ],
   });
   if (a.grund) {
@@ -137,10 +137,10 @@ test('Menü, PDF.js, Designs, Leerzustände, Anmeldung', { timeout: 300_000 }, a
     // Im HTML frei, nicht erst vom Skript: So hält das Stylesheet das erste Bild an wie jedes andere.
     const html = await b.auswerten(`fetch('/', { credentials: 'same-origin' }).then(r => r.text())`);
     const vorlage = html.indexOf('<template id="design-stile">');
-    const stelle = d => html.indexOf(`href="/themes/${d}.css`);
+    const place = d => html.indexOf(`href="/themes/${d}.css`);
     assert.ok(vorlage > 0, 'keine Vorlage');
-    for (const d of ['noppe', 'hochglanz']) assert.ok(stelle(d) > 0 && stelle(d) < vorlage, `${d} nicht frei`);
-    for (const d of ['brick', 'werkbank', 'farbfaecher']) assert.ok(stelle(d) > vorlage, `${d} frei`);
+    for (const d of ['noppe', 'hochglanz']) assert.ok(place(d) > 0 && place(d) < vorlage, `${d} nicht frei`);
+    for (const d of ['brick', 'werkbank', 'farbfaecher']) assert.ok(place(d) > vorlage, `${d} frei`);
   });
 
   await t.test('Anmeldung: eine h1, nicht das Logo', async () => {

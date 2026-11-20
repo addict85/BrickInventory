@@ -3,12 +3,12 @@ import { echt, registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
-import { antwortFehler, feldFehler } from './formular.js';
+import { responseError, feldFehler } from './formular.js';
 import { toast } from './meldungen.js';
 import { html } from './escaping.js';
 import { confirmDelete } from './rueckfrage.js';
-import { ladeLagerortVorgabe } from './konten-orte.js';
-import { ladeLagerorte } from './detailfelder.js';
+import { loadLocationDefault } from './konten-orte.js';
+import { loadLocations } from './detailfelder.js';
 // Settings, storage locations section: the pool of locations the detail fields pick from; create, rename,
 // set as default, delete.
 
@@ -24,7 +24,7 @@ export async function ladeLagerortVerwaltung() {
   const [v, b] = await Promise.all([api('GET', '/v1/storage/locations'), api('GET', '/v1/storage?accounts=own')]);
   if (!v?.success) return;
   // A new or renamed location shows up right away in the collection form's selects.
-  ladeLagerorte().catch(() => {});
+  loadLocations().catch(() => {});
   const occupancy = new Map((b?.orte || []).map(o => [o.ort, o]));
   const locations = v.orte || [];
   if (!locations.length) {
@@ -83,7 +83,7 @@ async function legeLagerortAn() {
   }
   const d = await api('POST', '/v1/storage/locations', { name });
   if (!d?.success) {
-    antwortFehler(
+    responseError(
       d,
       { lagerort_leer: 'storage-new', lagerort_zu_lang: 'storage-new', lagerort_doppelt: 'storage-new' },
       tRaw('settings.error'),
@@ -146,7 +146,7 @@ async function schalteLagerortVorgabe(id, was) {
   // The collection forms are already showing — without this follow-up they'd show the old state until
   // someone reloads the page. Same gesture as the collection-condition default, which calls
   // initDefaultCondition() after saving.
-  ladeLagerortVorgabe();
+  loadLocationDefault();
 }
 
 /**

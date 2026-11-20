@@ -17,8 +17,8 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterHaushalt } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternHousehold } = require('./helpers/bestand');
 
 async function groesse(b, breite, hoehe, telefon) {
   await b.tab('Emulation.setDeviceMetricsOverride', {
@@ -33,7 +33,7 @@ test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
   concurrency: 1,
   timeout: 420_000,
 }, async t => {
-  const app = await starteApp(t, { name: `r28_${process.pid}`, bestand: musterHaushalt });
+  const app = await startApp(t, { name: `r28_${process.pid}`, bestand: patternHousehold });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -57,7 +57,7 @@ test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
         total_instructions: 0,
       },
     });
-    const abfang = d => {
+    const intercept = d => {
       if (d.method !== 'Fetch.requestPaused') return;
       b.tab('Fetch.fulfillRequest', {
         requestId: d.params.requestId,
@@ -68,7 +68,7 @@ test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
     };
     await groesse(b, 390, 844, true);
     await zu('#/finanzen');
-    b.hoerer.push(abfang);
+    b.listener.push(intercept);
     await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/stats*', requestStage: 'Request' }] });
     try {
       await zu('#/sammlung');
@@ -76,7 +76,7 @@ test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
       await ruhig();
     } finally {
       await b.tab('Fetch.disable');
-      b.hoerer.splice(b.hoerer.indexOf(abfang), 1);
+      b.listener.splice(b.listener.indexOf(intercept), 1);
     }
     const m = await b.auswerten(`(() => {
       const k = [...document.querySelectorAll('#tab-gallery .brick-stats .bstat')].filter(e => e.checkVisibility());
@@ -87,16 +87,16 @@ test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
         oben: [...new Set(k.map(e => Math.round(e.getBoundingClientRect().top)))],
         unten: Math.max(...k.map(e => e.getBoundingClientRect().bottom)),
         hinweis: h.checkVisibility() ? h.textContent.trim() : '',
-        hinweisOben: h.getBoundingClientRect().top,
-        sichtbareUnterzeilen: k.filter(e => e.querySelector('.bstat-s')?.checkVisibility()).length,
+        hintTop: h.getBoundingClientRect().top,
+        visibleBelowRows: k.filter(e => e.querySelector('.bstat-s')?.checkVisibility()).length,
       };
     })()`);
     assert.deepEqual(m.text, ['1 Set', '0 Teile', '0 Minifiguren']);
     assert.equal(m.punkte, 2, 'Trenner zwischen drei Kennzahlen');
     assert.equal(m.oben.length, 1, `Kennzahlen auf mehreren Zeilen: ${m.oben}`);
-    assert.equal(m.sichtbareUnterzeilen, 0);
+    assert.equal(m.visibleBelowRows, 0);
     assert.equal(m.hinweis, 'Teileliste für das Set fehlt noch');
-    assert.ok(m.hinweisOben >= m.unten, 'Erklärsatz unter der ganzen Leiste');
+    assert.ok(m.hintTop >= m.unten, 'Erklärsatz unter der ganzen Leiste');
   });
 
   await t.test('N4 Zeitraum als Segment: ein Grund, der gewählte Knopf gerahmt, aria-pressed', async () => {

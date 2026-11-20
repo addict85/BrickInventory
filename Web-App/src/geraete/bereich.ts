@@ -1,25 +1,25 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
+/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/bereich.ts). */
 import type { Db } from '../../db/database';
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import * as geraeteChallenge from './geraeteChallenge';
-import { zugang, type GeraeteAbhaengigkeiten, type GeraeteKontext } from './kontext';
+import { zugang, type DevicesDependencies, type DevicesContext } from './kontext';
 
-export type { GeraeteAbhaengigkeiten, GeraeteKontext } from './kontext';
+export type { DevicesDependencies, DevicesContext } from './kontext';
 
-export function erzeugeGeraete(a: GeraeteAbhaengigkeiten, einblick?: Einblick<GeraeteKontext>) {
-  return baueBereich(
+export function createDevices(a: DevicesDependencies, inspect?: Inspect<DevicesContext>) {
+  return buildArea(
     a,
     (db: Db) => zugang(db, a.lesevertrag),
-    (k: GeraeteKontext) => ({
-      neueNonce: mit(k)(geraeteChallenge.neueNonce),
-      hinterlegeSchluessel: mit(k)(geraeteChallenge.hinterlegeSchluessel),
-      neueChallenge: mit(k)(geraeteChallenge.neueChallenge),
-      loeseEin: mit(k)(geraeteChallenge.loeseEin),
+    (k: DevicesContext) => ({
+      newNonce: mit(k)(geraeteChallenge.newNonce),
+      depositKey: mit(k)(geraeteChallenge.depositKey),
+      newChallenge: mit(k)(geraeteChallenge.newChallenge),
+      resolveOne: mit(k)(geraeteChallenge.resolveOne),
       pruefeFreigabe: mit(k)(geraeteChallenge.pruefeFreigabe),
-      nonceFuerQrToken: mit(k)(geraeteChallenge.nonceFuerQrToken),
+      nonceForQrToken: mit(k)(geraeteChallenge.nonceForQrToken),
     }),
-    einblick,
+    inspect,
   );
 }
 
-export type GeraeteDienste = ReturnType<typeof erzeugeGeraete>;
+export type DevicesServices = ReturnType<typeof createDevices>;

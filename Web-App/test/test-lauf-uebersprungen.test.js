@@ -3,7 +3,7 @@
  * übersprungen wurden: Lokal fehlt Chrome oft, und die Dateien sind dann grün, ohne geprüft zu haben.
  *
  * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  in ohneWerkzeug() `chromeDa ? 0 : browser.length` durch `0` ersetzt → rot: „ohne Chrome und Caddy“
+ *   A  in withoutTool() `chromeDa ? 0 : browser.length` durch `0` ersetzt → rot: „ohne Chrome und Caddy“
  *   B  im catch um chrome() `chromeDa = false` gesetzt → rot: „mit REQUIRE_BROWSER=1 zählt nichts
  *      als übersprungen“
  */

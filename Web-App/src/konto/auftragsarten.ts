@@ -1,18 +1,18 @@
 /** Dateien eines gelöschten Kontos, die beim Löschen liegen blieben: Der Auftrag versucht es wieder. */
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../auftraege';
-import { loescheKontoDateien } from './kontoEntfernen';
+import { deleteAccountFiles } from './kontoEntfernen';
 
-const KontoDateien = z.object({ user_id: z.number().int().positive() });
+const AccountFiles = z.object({ user_id: z.number().int().positive() });
 
 declare module '../auftraege/auftraege' {
-  interface AuftragsNutzlasten {
-    konto_dateien: typeof KontoDateien;
+  interface JobPayloads {
+    konto_dateien: typeof AccountFiles;
   }
 }
 
-export function kontoAuftragsarten(): Anmeldung[] {
+export function accountJobTypes(): Anmeldung[] {
   return [
-    auftragsart({ art: 'konto_dateien', nutzlast: KontoDateien, ausfuehren: n => loescheKontoDateien(n.user_id) }),
+    auftragsart({ art: 'konto_dateien', nutzlast: AccountFiles, ausfuehren: n => deleteAccountFiles(n.user_id) }),
   ];
 }

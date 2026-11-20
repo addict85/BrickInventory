@@ -7,16 +7,16 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 const { setUserSetting } = _req('src/settings/userSetting.js');
-const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
+const { setErfassen } = require('./helpers/sources').areaPage('sets');
 
 test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const name = `zst_${process.pid}`;
   const SET = `90${String(process.pid).slice(-4)}-1`;
@@ -32,11 +32,11 @@ test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurre
     await setUserSetting(uid, 'user_default_condition', 'U');
 
     // Den Aufstock-Weg ISOLIEREN
-    await haeltSet(db, uid, SET, 1, { zustand: 'N' });
+    await holdsSet(db, uid, SET, 1, { zustand: 'N' });
 
     // Erfassung OHNE Zustandsangabe. Preis mitgeben, damit kein Netzaufruf
     // nötig ist; um den Preis geht es hier nicht.
-    await setErfassen({ anfragender: uid, setNumber: SET, menge: 1, kaufpreis: 20, wennVorhanden: 'aufstocken' });
+    await setErfassen({ requester: uid, setNumber: SET, menge: 1, kaufpreis: 20, ifPresent: 'aufstocken' });
 
     const zeilen = await db.all(
       `SELECT id, quantity, condition FROM set_acquisitions

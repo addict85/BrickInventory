@@ -21,9 +21,9 @@
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  fmtBig wieder ab 10000 kurz → rot: „Kennzahlen mit Trennzeichen“
- *   B  in zeigeSeitenname das replace(/­/) entfernt → rot: „Titel ohne
+ *   B  in showPageName das replace(/­/) entfernt → rot: „Titel ohne
  *      weiche Trennstriche“
- *   C  in zeigeBenutzernamen die Namensprüfung entfernt → rot: „admin ohne
+ *   C  in showUsernames die Namensprüfung entfernt → rot: „admin ohne
  *      (Administrator)“; nur `name === 'admin' ||` entfernt (16.11.2026) → rot: ebenda (en)
  *   D  im Protokoll wieder toLocaleString → rot: „Protokoll mit fmtDatum“
  *   E  speichereZugang meldet immer okText → rot: „leere Zugangsdaten“
@@ -31,7 +31,7 @@
  *      öffnen“
  *   G  merkMeldung ohne Abfrage der Sammlung → rot: „Merken nennt die
  *      Sammlung“
- *   H  sammlungUntertitel() in initScopeSelects nicht aufgerufen → rot:
+ *   H  collectionSubtitle() in initScopeSelects nicht aufgerufen → rot:
  *      „Haushalt im Untertitel“ (13.11.2026)
  *   I  insertVersion() gibt das HTML unverändert zurück → rot: „Version in
  *      der Anmeldemaske“
@@ -40,7 +40,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { oeffneOberflaeche, warte, takt, reiter } = require('./helpers/oberflaeche');
+const { openUi, warte, takt, reiter } = require('./helpers/oberflaeche');
 
 test('Kennzahlen mit Trennzeichen, auch englisch ganz', async () => {
   const stats = {
@@ -49,7 +49,7 @@ test('Kennzahlen mit Trennzeichen, auch englisch ganz', async () => {
       stats: { total_sets: 1565, total_quantity: 3095, total_parts: 10828, total_minifigs: 19, total_instructions: 0 },
     },
   };
-  const de = await oeffneOberflaeche(stats, { browserSprache: 'de-DE' });
+  const de = await openUi(stats, { browserLanguage: 'de-DE' });
   try {
     assert.ok(
       await warte(() => /1\.565 verschiedene/.test(de.d.getElementById('tab-gallery').textContent)),
@@ -58,7 +58,7 @@ test('Kennzahlen mit Trennzeichen, auch englisch ganz', async () => {
   } finally {
     de.w.close();
   }
-  const en = await oeffneOberflaeche(stats, { sprache: 'en', browserSprache: 'en-US' });
+  const en = await openUi(stats, { sprache: 'en', browserLanguage: 'en-US' });
   try {
     assert.ok(await warte(() => en.d.getElementById('bstat-parts').textContent !== '—'));
     assert.equal(en.d.getElementById('bstat-parts').textContent, '10,828');
@@ -73,7 +73,7 @@ test('Kennzahlen mit Trennzeichen, auch englisch ganz', async () => {
 });
 
 test('Titel ohne weiche Trennstriche', async () => {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/admin/job-status': { success: true, job: { running: false } },
       '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
@@ -86,7 +86,7 @@ test('Titel ohne weiche Trennstriche', async () => {
         pausen: [],
       },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     await reiter(o.w, 'monitor');
@@ -103,9 +103,9 @@ test('admin ohne (Administrator)', async () => {
     ['admin', 'de'],
     ['Administrator', 'de'],
   ]) {
-    const o = await oeffneOberflaeche(
+    const o = await openUi(
       { '/v1/auth/me': { loggedIn: true, user: { id: 1, username, is_admin: true } } },
-      sprache === 'en' ? { sprache: 'en', browserSprache: 'en-US' } : {},
+      sprache === 'en' ? { sprache: 'en', browserLanguage: 'en-US' } : {},
     );
     try {
       assert.ok(await warte(() => o.d.getElementById('ubadge').textContent.trim()));
@@ -117,7 +117,7 @@ test('admin ohne (Administrator)', async () => {
 });
 
 test('Protokoll mit fmtDatum', async () => {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/admin/protokoll': {
         success: true,
@@ -131,7 +131,7 @@ test('Protokoll mit fmtDatum', async () => {
         ],
       },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     await reiter(o.w, 'settings');
@@ -143,7 +143,7 @@ test('Protokoll mit fmtDatum', async () => {
 });
 
 test('leere Zugangsdaten melden „Zugang entfernt“', async () => {
-  const o = await oeffneOberflaeche({}, { browserSprache: 'de-DE' });
+  const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     o.d.getElementById('rb-key').value = '';
     o.d.getElementById('btn-sav-rb').click();
@@ -157,9 +157,9 @@ test('leere Zugangsdaten melden „Zugang entfernt“', async () => {
 });
 
 test('Wiederherstellungscodes: gesichert und als Datei', async () => {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     { '/v1/auth/zweiter-faktor/bestaetigen': { success: true, codes: ['aaaa-bbbb', 'cccc-dddd'] } },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     o.w.URL.createObjectURL = () => 'blob:probe';
@@ -187,7 +187,7 @@ test('Wiederherstellungscodes: gesichert und als Datei', async () => {
 });
 
 test('Minifiguren: Gekauft am und Gesamtzahl zuerst', async () => {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/minifigs': {
         success: true,
@@ -203,7 +203,7 @@ test('Minifiguren: Gekauft am und Gesamtzahl zuerst', async () => {
         ],
       },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     await reiter(o.w, 'minifigs');
@@ -216,9 +216,9 @@ test('Minifiguren: Gekauft am und Gesamtzahl zuerst', async () => {
 });
 
 test('ein Knopf „Set öffnen“ bei vorhandenem Set', async () => {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     { '/v1/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 2 } } },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     o.d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
@@ -234,13 +234,13 @@ test('ein Knopf „Set öffnen“ bei vorhandenem Set', async () => {
 });
 
 test('Merken nennt die Sammlung', async () => {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/wanted': (_u, opt) =>
         opt?.method === 'POST' ? { success: true, war_neu: true } : { success: true, items: [] },
       '/v1/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 3 } },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     o.d.getElementById('mk-num').value = '10305-1';
@@ -258,7 +258,7 @@ test('Merken nennt die Sammlung', async () => {
 });
 
 test('Haushalt im Untertitel', async () => {
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/sets/household-members': {
         success: true,
@@ -268,7 +268,7 @@ test('Haushalt im Untertitel', async () => {
         ],
       },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     assert.ok(await warte(() => o.d.getElementById('scope-gallery').style.display !== 'none'));

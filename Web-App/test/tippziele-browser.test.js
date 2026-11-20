@@ -23,7 +23,7 @@ const STILE = ['tokens.css', 'styles.css', 'mobile.css'];
 const { chrome } = require('./helpers/app-browser');
 
 /** Je Fall: Name und Markup; das gemessene Element trägt data-ziel. */
-const FAELLE = [
+const CASES = [
   ['Textfeld', '<input class="si" data-ziel placeholder="Suchen">'],
   ['Auswahl', '<select data-ziel><option>Alle</option></select>'],
   ['Knopf', '<button class="btn bp" data-ziel>Speichern</button>'],
@@ -49,9 +49,9 @@ const FAELLE = [
   ['Häkchen allein, angehakt', '<input type="checkbox" checked data-ziel aria-label="Auswahl">'],
 ];
 
-function testseite() {
+function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
-  const faelle = FAELLE.map(
+  const faelle = CASES.map(
     ([, html], i) => `<section data-fall="${i}" style="margin:24px 16px">${html}</section>`,
   ).join('\n');
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">
@@ -86,7 +86,7 @@ test('am Telefon ist jedes Bedienelement mindestens 44 px gross', t => {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'tippziele-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testseite());
+  fs.writeFileSync(datei, testPage());
   const dom = execFileSync(
     bin,
     [
@@ -104,7 +104,7 @@ test('am Telefon ist jedes Bedienelement mindestens 44 px gross', t => {
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const ergebnis = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"'));
-  assert.equal(ergebnis.length, FAELLE.length);
-  const zuKlein = ergebnis.filter(e => !e.ok).map(e => `${FAELLE[e.fall]?.[0]} (${e.w}×${e.h})`);
-  assert.deepEqual(zuKlein, []);
+  assert.equal(ergebnis.length, CASES.length);
+  const toSmall = ergebnis.filter(e => !e.ok).map(e => `${CASES[e.fall]?.[0]} (${e.w}×${e.h})`);
+  assert.deepEqual(toSmall, []);
 });

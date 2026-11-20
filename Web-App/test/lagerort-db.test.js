@@ -7,11 +7,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet, holdsPart } = require('./helpers/bestand');
+const db = testData();
 
 const U = {};
 
@@ -39,7 +39,7 @@ async function seed() {
     [U.kind, '21318-1'],
     [U.fremd, '10030-1'],
   ]) {
-    await haeltSet(db, uid, sn, 1);
+    await holdsSet(db, uid, sn, 1);
   }
   for (const [uid, sn, num, farbe] of [
     [U.ich, '10179-1', '3001', 4],
@@ -57,7 +57,7 @@ async function seed() {
        ON CONFLICT (part_number) DO NOTHING`,
       [num, 'Teil ' + num],
     );
-    await haeltTeil(db, uid, num, { setNumber: sn, menge: 1, colorId: farbe });
+    await holdsPart(db, uid, num, { setNumber: sn, menge: 1, colorId: farbe });
   }
 }
 
@@ -79,20 +79,20 @@ test('Lagerort gegen echte Datenbank', async t => {
   await seed();
   const L = {
     ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
+    ...require('./helpers/sources').testArea('bestand').locationService,
   };
   const household = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ...require('./helpers/sources').testArea('haushalt'),
   };
-  const schreibbar = await household.schreibbereich(U.ich);
+  const writable = await household.schreibbereich(U.ich);
 
   await t.test('ein Teil liegt an EINEM Ort, nicht je Set an einem', async () => {
     // Dasselbe Teil steckt in zwei Sets und damit in zwei Zeilen. Träfe das
     // Setzen nur eine davon, müsste man denselben Ort je Set nachpflegen — und
     // die Übersicht zeigte das Teil in zwei Kisten, von denen eine leer ist.
-    const n = await L.setzeLagerort('part', schreibbar, ['3001', '4'], 'Kiste 3');
+    const n = await L.setLocation('part', writable, ['3001', '4'], 'Kiste 3');
     assert.equal(n, 2, `${n} Zeilen getroffen, erwartet 2 (beide Sets)`);
     const rows = await db.all(
       `SELECT t.color_id, l.name AS storage
@@ -123,7 +123,7 @@ test('Lagerort gegen echte Datenbank', async t => {
           [U.fremd],
         )
       )?.storage ?? null;
-    await L.setzeLagerort('part', schreibbar, ['3001', '4'], 'Kiste 9');
+    await L.setLocation('part', writable, ['3001', '4'], 'Kiste 9');
     const nachher =
       (
         await db.get(
@@ -140,18 +140,18 @@ test('Lagerort gegen echte Datenbank', async t => {
     // Datei ist genau darüber gestolpert, und zwar erst zwei Prüfungen
     // später. Ein Test, der seinen Aufbau verändert, ist ein Aufbau für alle
     // folgenden.
-    await L.setzeLagerort('part', schreibbar, ['3001', '4'], 'Kiste 3');
+    await L.setLocation('part', writable, ['3001', '4'], 'Kiste 3');
   });
 
   await t.test('leer heisst NULL, nicht ein Ort namens „nichts"', async () => {
     // Ein leerer Text stünde als eigener Eintrag in jeder Auswahlliste.
     for (const eingabe of ['', '   ', null, undefined]) {
-      assert.equal(L.normalisiereLagerort(eingabe), null, `„${eingabe}" wurde nicht zu null`);
+      assert.equal(L.normalizeLocation(eingabe), null, `„${eingabe}" wurde nicht zu null`);
     }
-    assert.equal(L.normalisiereLagerort('  Kiste 3  '), 'Kiste 3', 'Nicht getrimmt');
+    assert.equal(L.normalizeLocation('  Kiste 3  '), 'Kiste 3', 'Nicht getrimmt');
 
-    await L.setzeLagerort('part', schreibbar, ['3002', '4'], 'Regal B');
-    await L.setzeLagerort('part', schreibbar, ['3002', '4'], null);
+    await L.setLocation('part', writable, ['3002', '4'], 'Regal B');
+    await L.setLocation('part', writable, ['3002', '4'], null);
     const r = await db.get(
       `SELECT l.name AS storage FROM parts t
          LEFT JOIN storage_locations l ON l.id = t.storage_id
@@ -164,19 +164,19 @@ test('Lagerort gegen echte Datenbank', async t => {
   await t.test('zu lange Namen werden abgelehnt, nicht abgeschnitten', async () => {
     // Abschneiden hiesse: In der Datenbank steht etwas anderes als eingegeben,
     // und niemand erfährt es.
-    assert.throws(() => L.normalisiereLagerort('x'.repeat(L.LAGERORT_MAX_ZEICHEN + 1)), /lagerort_zu_lang|zu lang/i);
+    assert.throws(() => L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS + 1)), /lagerort_zu_lang|zu lang/i);
     assert.equal(
-      L.normalisiereLagerort('x'.repeat(L.LAGERORT_MAX_ZEICHEN)).length,
-      L.LAGERORT_MAX_ZEICHEN,
+      L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS)).length,
+      L.LOCATION_MAX_CHARS,
       'Die Grenze selbst muss noch durchgehen',
     );
   });
 
   await t.test('die Übersicht führt Sets und Teile zu EINER Liste zusammen', async () => {
-    await L.setzeLagerort('set', schreibbar, ['10179-1'], 'Kiste 3');
-    await L.setzeLagerort('set', schreibbar, ['75192-1'], 'Regal B');
+    await L.setLocation('set', writable, ['10179-1'], 'Kiste 3');
+    await L.setLocation('set', writable, ['75192-1'], 'Regal B');
 
-    const orte = await L.lagerorte(await household.blickfeldIds(U.ich, 'all'));
+    const orte = await L.lagerorte(await household.scopeIds(U.ich, 'all'));
     const karte = Object.fromEntries(orte.map(o => [o.ort, o]));
     // „Kiste 3" hat ein Set UND zwei Teilezeilen — ein Ort, nicht zwei
     // Einträge. Zwei getrennte Listen zu liefern hiesse, dass jede Oberfläche
@@ -194,9 +194,9 @@ test('Lagerort gegen echte Datenbank', async t => {
   });
 
   await t.test('die Übersicht folgt dem Blickfeld', async () => {
-    await L.setzeLagerort('set', await household.schreibbereich(U.kind), ['21318-1'], 'Kinderzimmer');
-    const oben = (await L.lagerorte(await household.blickfeldIds(U.ich, 'all'))).map(o => o.ort);
-    const unten = (await L.lagerorte(await household.blickfeldIds(U.kind, 'all'))).map(o => o.ort);
+    await L.setLocation('set', await household.schreibbereich(U.kind), ['21318-1'], 'Kinderzimmer');
+    const oben = (await L.lagerorte(await household.scopeIds(U.ich, 'all'))).map(o => o.ort);
+    const unten = (await L.lagerorte(await household.scopeIds(U.kind, 'all'))).map(o => o.ort);
     assert.ok(oben.includes('Kinderzimmer'), 'Das Hauptkonto sieht den Ort des Kindes nicht');
     assert.ok(
       !unten.includes('Kiste 3'),

@@ -7,23 +7,23 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Der Bild-Download über das Bildwerk der Dienste: gezählt, ohne Netz.
-let angestossen = 0;
+let kicked = 0;
 
-const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
-testBildwerk(null, {
+testImageWorker(null, {
   setBildLaden: async () => {
-    angestossen++;
+    kicked++;
     await new Promise(r => setTimeout(r, 2));
     return null;
   },
 });
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
 test('die Katalogliste löst gar keine Bildarbeit aus', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NUTZER = `bq-${process.pid}`;
   await db.run(`CREATE TABLE IF NOT EXISTS rb_themes (id INT PRIMARY KEY, name TEXT, parent_id INT)`);
@@ -47,9 +47,9 @@ test('die Katalogliste löst gar keine Bildarbeit aus', { concurrency: 1 }, asyn
 
     // Aus dem Deckel wurde eine Null
     assert.equal(
-      angestossen,
+      kicked,
       0,
-      `${angestossen} Bild-Aufträge aus der LISTE. Sie darf gar keine mehr ` +
+      `${kicked} Bild-Aufträge aus der LISTE. Sie darf gar keine mehr ` +
         'auslösen — jeder Aufruf von hier läuft an allen Drosselungen vorbei.',
     );
   } finally {

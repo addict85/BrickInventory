@@ -12,19 +12,19 @@
  *        1, also der Posten mit 5." Genau der Fehler, um den es geht: In
  *        einer Liste mit zweimal 3001 in Farbe 85 traf die Korrektur den
  *        ersten statt den gemeinten.
- *   B  farbenNachtragen() weggelassen
+ *   B  backfillColors() weggelassen
  *      → `pass 7 / fail 2`. Rot ist Fall 3: „Ohne Nachtragen geht die
  *        eingetragene Farbe ohne Namen an den Anleger" — der Farbpunkt ohne
  *        Beschriftung, wieder.
  *   C  die Gegenprobe der Korrektur (Art und Nummer) weggelassen
  *      → `pass 7 / fail 2`. Rot ist Fall 4: die Korrektur auf einen fremden
  *        Posten wirkt.
- *   D  merkeNummer für JEDE Stufe gerufen, nicht nur für 'korrigiert'
+ *   D  rememberNumber für JEDE Stufe gerufen, nicht nur für 'korrigiert'
  *      → `pass 7 / fail 2`. Rot ist Fall 5: Ein Katalogtreffer — eine
  *        Vermutung — würde als Zuordnung eingetragen.
  *   E  `opt.vorschau` aus der Abbruchbedingung des Schreibwegs entfernt
  *      → `pass 7 / fail 2`. Rot ist Fall 6: Die Vorschau merkt sich etwas.
- *   F  in beschreibePosten eine Abfrage je Posten davorgesetzt
+ *   F  in describeItem eine Abfrage je Posten davorgesetzt
  *      → `pass 7 / fail 2`. Rot ist Fall 7: „64 Abfragen für 100 Posten."
  *        Diese Gegenprobe hat zuerst NICHTS gemeldet (`pass 9 / fail 0`) —
  *        der Grund und die Lehre stehen bei Fall 7 selbst.
@@ -61,7 +61,7 @@
  * Namensspalte nach dem Import). Ausgangslage damit `# pass 12 / # fail 0` —
  * elf Unterfälle plus der Rahmen.
  *
- *   J  beschreibePosten() wieder nur für die Vorschau gerufen (der Stand von
+ *   J  describeItem() wieder nur für die Vorschau gerufen (der Stand von
  *      Marcos Befund)
  *      → `pass 9 / fail 3`. Rot sind BEIDE neuen Fälle: „Name und Bild
  *        stehen AUCH nach dem Schreiben im Bericht" und „ein beim Anlegen
@@ -82,23 +82,23 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
+const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
-// Rebrickable an der Verdrahtung gestellt (testQuellen).
-testQuellen(null, {
+// Rebrickable an der Verdrahtung gestellt (testSources).
+testSources(null, {
   // 98765 heisst bei Rebrickable 12345 — eine ABWEICHENDE Nummer, wie sie nur
   // dort steht. Alles andere kennt dieses Doppel nicht.
   blTeilZuRb: async blId => (blId === '98765' ? '12345' : null),
-  blFilterWirkungslos: () => false,
+  blFilterIneffective: () => false,
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
 });
 const { importiereWantedListe } = _req('src/wanted/wantedListe.js');
-const { beschreibePosten, loeseLokalAuf } = _req('src/wanted/wantedAufloesung.js');
-const { leseWantedListe } = _req('src/wanted/wantedParser.js');
+const { describeItem, resolveLocalOn } = _req('src/wanted/wantedAufloesung.js');
+const { readWantedList } = _req('src/wanted/wantedParser.js');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
@@ -152,7 +152,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
   await t.test('1. die Vorschau trägt Name, Bild und Farbe — und erfindet nichts', async () => {
     const xml = liste(item('P', '3001', 5, 10), item('P', '3002', 5, 3), item('P', '9999', 5, 1));
     // `vorschau: true` steht AUSDRÜCKLICH da. Die Vorgabe dieser Funktion ist
-    // SCHREIBEN (`vorschau: !!opt.vorschau`), und das ist richtig so: Wer sie
+    // WRITE (`vorschau: !!opt.vorschau`), und das ist richtig so: Wer sie
     // ruft, hat einen Anleger dabei. Die Entscheidung „Vorschau oder Ernst"
     // trifft die Route aus `?schreiben=1` — nicht ein Vorgabewert hier.
     const b = await importiereWantedListe(1, xml, { vorschau: true });
@@ -231,11 +231,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     // Marcos Bitte vom 20.10.
     const ohne = await importiereWantedListe(1, liste(item('P', '3001', 5, 1, 'X')), { vorschau: true });
     assert.equal(ohne.standardZustand, 'N', 'Ohne Einstellung gilt die Vorgabe des Baums (userDefaultCondition)');
-    assert.equal(
-      ohne.posten[0].zustand,
-      null,
-      'Am POSTEN steht weiterhin, was in der Datei stand — nicht der Standard',
-    );
+    assert.equal(ohne.posten[0].zustand, null, 'Am ITEM steht weiterhin, was in der Datei stand — nicht der Standard');
 
     await db.run(`INSERT INTO user_settings (user_id, key, value)
                   VALUES (1,'user_default_condition','U')
@@ -268,7 +264,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     const b = await importiereWantedListe(1, xml, {
       vorschau: false,
       korrekturen: [{ index: 1, blId: '3001', art: 'part', rbFarbe: 7 }],
-      anleger: {
+      creator: {
         teil: async (_u, body) => {
           zaehler.push(body);
           return { action: 'created' };
@@ -318,7 +314,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     const b = await importiereWantedListe(1, xml, {
       vorschau: false,
       korrekturen: [{ index: 0, blId: '4444', art: 'part', rbFarbe: 7 }],
-      anleger: {
+      creator: {
         teil: async (_u, body) => {
           zaehler.push(body);
           return { action: 'created' };
@@ -339,7 +335,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
 
   await t.test('5. nur eine EINGETRAGENE Nummer wird gemerkt, kein Katalogtreffer', async () => {
     const gemerkt = [];
-    const anleger = {
+    const creator = {
       teil: async () => ({ action: 'created' }),
       figur: async () => ({ action: 'created' }),
       set: async () => ({ action: 'created' }),
@@ -349,9 +345,9 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     const xml = liste(item('P', '3001', 5, 1), item('P', '9999', 5, 1));
     const b = await importiereWantedListe(1, xml, {
       vorschau: false,
-      anleger,
+      creator,
       korrekturen: [{ index: 1, blId: '9999', art: 'part', rbId: '3002', rbFarbe: 4 }],
-      merkeNummer: async (art, rbId, blId) => {
+      rememberNumber: async (art, rbId, blId) => {
         gemerkt.push({ art, rbId, blId });
       },
     });
@@ -370,13 +366,13 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     const xml = liste(item('P', '98765', 5, 1));
     const b = await importiereWantedListe(1, xml, {
       vorschau: false,
-      ueberRebrickable: true,
-      anleger: {
+      viaRebrickable: true,
+      creator: {
         teil: async () => ({ action: 'created' }),
         figur: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
-      merkeNummer: async (art, rbId, blId) => {
+      rememberNumber: async (art, rbId, blId) => {
         gemerkt.push({ art, rbId, blId });
       },
     });
@@ -405,12 +401,12 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     const b = await importiereWantedListe(1, liste(item('P', '9999', 5, 1)), {
       vorschau: true,
       korrekturen: [{ index: 0, blId: '9999', art: 'part', rbId: '3002', rbFarbe: 4 }],
-      anleger: {
+      creator: {
         teil: async () => ({ action: 'created' }),
         figur: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
       },
-      merkeNummer: async (...a) => {
+      rememberNumber: async (...a) => {
         gemerkt.push(a);
       },
     });
@@ -419,7 +415,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     assert.deepEqual(gemerkt, [], 'In der Vorschau darf nichts gemerkt werden');
   });
 
-  await t.test('7. beschreibePosten macht nicht eine Abfrage je Posten', async () => {
+  await t.test('7. describeItem macht nicht eine Abfrage je Posten', async () => {
     // Marcos Datei hat 224 Zeilen. Eine Abfrage je Zeile wäre eine Vorschau,
     // auf die man wartet.
     const echt = db.pool.query.bind(db.pool);
@@ -429,16 +425,16 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
       return echt(...a);
     };
     try {
-      const gelesen = leseWantedListe(
+      const gelesen = readWantedList(
         liste(
           ...Array.from({ length: 60 }, (_, i) => item('P', `300${i % 10}`, 5, 1)),
           ...Array.from({ length: 20 }, (_, i) => item('M', `fig${i}`, null, 1)),
           ...Array.from({ length: 20 }, (_, i) => item('S', `1049${i}-1`, null, 1)),
         ),
       );
-      const auf = await loeseLokalAuf(gelesen.posten);
+      const auf = await resolveLocalOn(gelesen.posten);
       abfragen = 0;
-      await beschreibePosten(auf);
+      await describeItem(auf);
       assert.ok(
         abfragen <= 4,
         `${abfragen} Abfragen für 100 Posten. Erlaubt sind höchstens 4 (Teile, ` +
@@ -451,14 +447,14 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
 
   await t.test('8. Name und Bild stehen AUCH nach dem Schreiben im Bericht', async () => {
     // Marcos Befund vom 21.10.
-    const anleger = {
+    const creator = {
       teil: async () => ({ action: 'created' }),
       figur: async () => ({ action: 'created' }),
       set: async () => ({ action: 'created' }),
     };
     const b = await importiereWantedListe(1, liste(item('P', '3001', 5, 1)), {
       vorschau: false,
-      anleger,
+      creator,
     });
     assert.equal(
       b.posten[0].ausgang,
@@ -475,9 +471,9 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
   });
 
   await t.test('9. ein beim Anlegen geholtes Bild steht im Bericht', async () => {
-    // Der Gewinn daraus, dass beschreibePosten NACH der Schleife läuft: Ein
+    // Der Gewinn daraus, dass describeItem NACH der Schleife läuft: Ein
     // Teil, dessen Farbbild der Katalog noch nicht hatte, bekommt es beim
-    // Anlegen (addManualPart → lookupPart → merkeTeilFarbe). Ein Aufruf VOR
+    // Anlegen (addManualPart → lookupPart → rememberPartColor). Ein Aufruf VOR
     // der Schleife zeigte für genau diese Posten nichts.
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
                   VALUES ('7777','Noch ohne Bild') ON CONFLICT DO NOTHING`);
@@ -490,7 +486,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
 
     const b = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)), {
       vorschau: false,
-      anleger: {
+      creator: {
         // So, wie addManualPart es täte: erst den Katalog füllen, dann melden.
         teil: async () => {
           await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url)

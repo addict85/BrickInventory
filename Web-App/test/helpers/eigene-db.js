@@ -12,7 +12,7 @@ if (process.env.NODE_TEST_CONTEXT && vorlage && process.env.TEST_DATABASE_URL &&
   const { execFileSync } = require('node:child_process');
   const fs = require('node:fs');
   const path = require('node:path');
-  const { rollen, alsRolle, alsSuperuser } = require('./rollen');
+  const { rollen, asRole, asSuperuser } = require('./rollen');
   const werkzeug = path.join(__dirname, 'test-db.js');
   const name = `${vorlage}_${process.pid}`;
   execFileSync(process.execPath, [werkzeug, 'anlegen', name, vorlage], { stdio: 'inherit' });
@@ -22,10 +22,10 @@ if (process.env.NODE_TEST_CONTEXT && vorlage && process.env.TEST_DATABASE_URL &&
   const r = rollen(vorlage);
   const datei = process.argv[1] ?? '';
   const quelle = fs.existsSync(datei) ? fs.readFileSync(datei, 'utf8') : '';
-  const superuser = alsSuperuser(quelle);
+  const superuser = asSuperuser(quelle);
   process.env.TEST_DB_SU_URL = su;
-  process.env.TEST_DB_EIGEN_URL = superuser ? su : alsRolle(su, r.eigen);
-  process.env.TEST_DATABASE_URL = superuser ? su : alsRolle(su, r.app);
+  process.env.TEST_DB_EIGEN_URL = superuser ? su : asRole(su, r.eigen);
+  process.env.TEST_DATABASE_URL = superuser ? su : asRole(su, r.app);
   if (!superuser) {
     process.env.PGSYSTEM_USER = r.system.name;
     process.env.PGSYSTEM_PASSWORD = r.system.passwort;

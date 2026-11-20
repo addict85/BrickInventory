@@ -7,72 +7,72 @@ import compression from 'compression';
 import connectPgSimple from 'connect-pg-simple';
 import type { Pool } from 'pg';
 import type { Konfig } from '../src/infra/konfig';
-import { anfrageKontext, anfrageKennung } from '../src/infra/protokoll';
-import { fehlerAntwort, unbekannterApiPfad } from '../src/http/httpAntwort';
-import { sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
+import { requestContext, anfrageKennung } from '../src/infra/protokoll';
+import { errorResponse, unknownApiPath } from '../src/http/httpAntwort';
+import { sitzungsKeksName, sessionCookieOptions } from '../src/http/sitzungsKeks';
 import {
-  beruehrenMs,
-  drossleBeruehren,
+  touchMs,
+  touchThrottle,
   sitzungsfristen,
-  sitzungLeerlaufMs,
-  sitzungLeerlaufSek,
-  sitzungsHoechstdauer,
+  sessionIdleMs,
+  sessionIdleSec,
+  sessionMaxDuration,
 } from '../src/konto';
 import { startPageStyleHash, type ProfileServices } from '../src/profile';
-import { sitzungsVersionPruefen } from '../src/konto/http/sitzungsPruefung';
-import type { KontoDienste } from '../src/konto';
-import { merkeAnfrage } from '../src/http/kontoMerken';
+import { checkSessionVersion } from '../src/konto/http/sitzungsPruefung';
+import type { AccountServices } from '../src/konto';
+import { rememberRequest } from '../src/http/kontoMerken';
 import { proxyVertrauen } from '../src/infra/proxyVertrauen';
 import { proxyHinweis } from '../src/http/proxyHinweis';
-import { nurEigeneHerkunft, nurEigenerHost } from '../src/http/herkunft';
-import { API_VERSION, API_MIN_APP, appFassungPruefen } from '../src/http/apiVersion';
+import { onlyOwnOrigin, onlyOwnHost } from '../src/http/herkunft';
+import { API_VERSION, API_MIN_APP, checkAppVersion } from '../src/http/apiVersion';
 import { PUBLIC_DIR } from '../src/infra/appPaths';
 import { sendStartPage } from '../src/profile/http/startPage';
 import { registerImgProxy } from '../routes/imgProxy';
-import { waechterFuer, rumpfLesen } from '../routes/api_v1/middleware';
-import { schrittschutzAmEingang } from '../src/konto/http/schrittschutz';
+import { guardFor, readBody } from '../routes/api_v1/middleware';
+import { stepChutzAtInbox } from '../src/konto/http/schrittschutz';
 import { apiDrossel } from '../src/http/apiDrossel';
 import { idempotency } from '../src/idempotency/http/middleware';
-import { baueDatenDateienRouter } from '../routes/datenDateien';
-import { baueApiRouter } from '../routes/api_v1/index';
-import { baueAuthRouter } from '../routes/auth';
-import { baueZertifikatRouter } from '../routes/zertifikat';
-import { baueCspBerichtRouter } from '../src/http/cspBericht';
-import { baueWellKnownRouter } from '../routes/wellKnown';
-import { baueGesundheitRouter } from '../routes/gesundheit';
-import { baueSeitenRouter } from '../routes/seiten';
-import { vertragPruefen } from '../src/http/vertragsRouter';
+import { buildDataFilesRouter } from '../routes/datenDateien';
+import { buildApiRouter } from '../routes/api_v1/index';
+import { buildAuthRouter } from '../routes/auth';
+import { buildCertificateRouter } from '../routes/zertifikat';
+import { buildCspReportRouter } from '../src/http/cspBericht';
+import { buildWellKnownRouter } from '../routes/wellKnown';
+import { buildGesundheitRouter } from '../routes/gesundheit';
+import { buildPagesRouter } from '../routes/seiten';
+import { checkContract } from '../src/http/vertragsRouter';
 import type { Dienste } from './verdrahtung';
 
-export interface AppZutaten {
+export interface AppIngredients {
   /** Für den Sitzungsspeicher (user_sessions): der Pool der Systemrolle, die Laufzeitrolle liest sie nicht. */
   pool: Pool;
   konfig: Konfig;
   /** Geprüft in server.ts: Ein Platzhalter beendet dort den Start. */
   sitzungsGeheimnis: string;
-  /** Die Routen bekommen ihre Dienste von hier (startup/verdrahtung.ts, baueDienste). */
+  /** Die Routen bekommen ihre Dienste von hier (startup/verdrahtung.ts, buildServices). */
   dienste: Dienste;
   /** Setzt req.session; ohne Angabe express-session über user_sessions. Ein Test stellt
    * hier seine Sitzung, die Prüfungen danach (Version, Höchstdauer) bleiben die echten. */
-  sitzungsSpeicher?: RequestHandler;
+  sessionStorage?: RequestHandler;
 }
 
 /** Die Abschnitte stehen in der Reihenfolge der Middleware. */
-export function baueApp({ pool, konfig, sitzungsGeheimnis, dienste, sitzungsSpeicher }: AppZutaten): express.Express {
+export function baueApp({ pool, konfig, sitzungsGeheimnis, dienste, sessionStorage }: AppIngredients): express.Express {
   const app = express();
   // Verrät nur, womit der Server gebaut ist — wer sucht, soll es nicht geschenkt bekommen.
   app.disable('x-powered-by');
   // Vor dem ersten app.use: Ein /API/… träfe sonst dieselbe Route, aber keinen Vertragseintrag.
   app.set('case sensitive routing', true);
-  grundschutz(app, konfig);
-  sitzung(app, sitzungsSpeicher ?? sitzungInPostgres(pool, sitzungsGeheimnis, konfig), dienste.konto, konfig);
-  dateienUndBilder(app, dienste, konfig);
-  apiRouten(app, dienste);
-  rueckfaelle(app, dienste.profile);
+  baselineProtection(app, konfig);
+  sitzung(app, sessionStorage ?? sessionInPostgres(pool, sitzungsGeheimnis, konfig), dienste.konto, konfig);
+  filesAndImages(app, dienste, konfig);
+  apiRoutes(app, dienste);
+  fallbacks(app, dienste.profile);
   return app;
 }
 
-function grundschutz(app: express.Express, k: Konfig): void {
+function baselineProtection(app: express.Express, k: Konfig): void {
   // Gzip/Brotli für alles ab 1 KB; index.html schrumpft um rund 80 %.
   app.use(
     compression({
@@ -90,17 +90,17 @@ function grundschutz(app: express.Express, k: Konfig): void {
 
   // Handgerollt statt helmet: keine zusätzliche Abhängigkeit, und die CSP muss
   // ohnehin auf die App zugeschnitten sein.
-  app.use(sicherheitsKoepfe(k.hstsMaxAge, k.produktion));
+  app.use(securityHeaders(k.hstsMaxAge, k.production));
 
   // Das Konto der Anfrage für Zähler tief unten (src/fremdquellen/apiKontingent.ts).
-  app.use(merkeAnfrage);
+  app.use(rememberRequest);
 
   // Sonst glaubt Express X-Forwarded-Proto nie und setzt kein secure-Cookie (src/infra/proxyVertrauen.ts).
-  if (k.betrieb) {
-    app.set('trust proxy', proxyVertrauen(k.trustProxy, k.proxyNetzBestaetigt));
+  if (k.operation) {
+    app.set('trust proxy', proxyVertrauen(k.trustProxy, k.proxyNetworkConfirmed));
   }
   // Auch ausserhalb der Produktion: Er meldet ein verworfenes X-Forwarded-For.
-  app.locals.proxyHinweis = proxyHinweis(k.trustProxy, console.warn, Date.now, k.proxyNetzBestaetigt);
+  app.locals.proxyHinweis = proxyHinweis(k.trustProxy, console.warn, Date.now, k.proxyNetworkConfirmed);
   app.use(app.locals.proxyHinweis);
 
   // `//api/…` fiele sonst bis zum SPA-Catch-all durch und bekäme index.html mit 200.
@@ -114,10 +114,10 @@ function grundschutz(app: express.Express, k: Konfig): void {
     next();
   });
 
-  app.use(nurEigenerHost);
+  app.use(onlyOwnHost);
   // Vor der Herkunftsprüfung: Browser schicken CSP-Berichte ohne verlässliche Herkunft.
-  app.use(baueCspBerichtRouter());
-  app.use(nurEigeneHerkunft);
+  app.use(buildCspReportRouter());
+  app.use(onlyOwnOrigin);
   // no-store als Vorgabe: Antworten tragen Konten, Gutscheine und Tokens. Was bewusst
   // gecacht wird (img-proxy, Design), setzt seinen Kopf selbst und überschreibt ihn.
   app.use(
@@ -128,19 +128,19 @@ function grundschutz(app: express.Express, k: Konfig): void {
       res.setHeader('X-Api-Min-App', String(API_MIN_APP));
       next();
     },
-    appFassungPruefen,
+    checkAppVersion,
   );
 
   // Eine Kennung je Anfrage für ihre Logzeilen; die des Proxys nur, wenn sie src/infra/protokoll.ts besteht.
   app.use((req, res, next) => {
     const rid = anfrageKennung(req.headers['x-request-id']);
     res.setHeader('X-Request-Id', rid);
-    anfrageKontext.run({ rid }, () => next());
+    requestContext.run({ rid }, () => next());
   });
 }
 
-const sicherheitsKoepfe =
-  (hstsAlter: number, produktion: boolean) =>
+const securityHeaders =
+  (hstsAlter: number, production: boolean) =>
   (req: Request, res: Response, next: NextFunction): void => {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -152,9 +152,9 @@ const sicherheitsKoepfe =
 
     // HSTS nur über TLS. req.secure, weil Express X-Forwarded-Proto nur von einem
     // vertrauten Proxy übernimmt; den rohen Kopf kann jeder Client schicken.
-    const ueberTls = req.secure;
+    const viaTls = req.secure;
     // hstsAlter: Vorgabe ein Jahr, 0 schaltet ab.
-    if (ueberTls && hstsAlter !== 0) {
+    if (viaTls && hstsAlter !== 0) {
       res.setHeader('Strict-Transport-Security', `max-age=${hstsAlter}; includeSubDomains`);
     }
 
@@ -165,7 +165,7 @@ const sicherheitsKoepfe =
         // Ohne 'unsafe-inline': Alle Handler laufen über js/aktionen.js.
         "script-src 'self'",
         // Stile setzt js/styles.js per CSSOM; inline nur das Startgerüst, per Hash.
-        `style-src 'self'${startPageStyleHash(produktion) ? ' ' + startPageStyleHash(produktion) : ''}`,
+        `style-src 'self'${startPageStyleHash(production) ? ' ' + startPageStyleHash(production) : ''}`,
         "font-src 'self'",
         // Ohne https:: Fremde Bilder gehen durch den Bild-Proxy, und ein eingeschleustes
         // <img src="https://fremd/?daten"> wäre sonst ein Kanal nach draussen.
@@ -189,16 +189,16 @@ const sicherheitsKoepfe =
     next();
   };
 
-function sitzungInPostgres(pool: Pool, geheimnis: string, k: Konfig): RequestHandler {
+function sessionInPostgres(pool: Pool, geheimnis: string, k: Konfig): RequestHandler {
   // In PostgreSQL, damit Sitzungen einen Neustart überleben; die Tabelle legt das Schema an.
   const PgSession = connectPgSimple(session);
-  const sitzungsSpeicher = new PgSession({
+  const sessionStorage = new PgSession({
     pool,
     tableName: 'user_sessions',
     createTableIfMissing: false,
     pruneSessionInterval: 60 * 15,
     // Nach Stunden Leerlauf endet eine Webapp-Sitzung.
-    ttl: sitzungLeerlaufSek(k),
+    ttl: sessionIdleSec(k),
     errorLog: err => {
       if (!err.message?.includes('timeout') && !err.message?.includes('terminated')) {
         console.error('[session-store]', err.message);
@@ -207,31 +207,31 @@ function sitzungInPostgres(pool: Pool, geheimnis: string, k: Konfig): RequestHan
   });
 
   // Gedrosselt geschrieben (src/konto/sitzungsBeruehrung.ts).
-  drossleBeruehren(sitzungsSpeicher, beruehrenMs(sitzungLeerlaufMs(k)));
+  touchThrottle(sessionStorage, touchMs(sessionIdleMs(k)));
 
   return session({
-    store: sitzungsSpeicher,
+    store: sessionStorage,
     secret: geheimnis,
     resave: false,
     saveUninitialized: false,
     name: sitzungsKeksName(),
-    cookie: sitzungsKeksOptionen(),
+    cookie: sessionCookieOptions(),
   });
 }
 
-function sitzung(app: express.Express, speicher: RequestHandler, konto: KontoDienste, k: Konfig): void {
+function sitzung(app: express.Express, speicher: RequestHandler, konto: AccountServices, k: Konfig): void {
   app.use(speicher);
-  app.use(sitzungsVersionPruefen(konto));
-  app.use(sitzungsHoechstdauer(sitzungsfristen(k)));
+  app.use(checkSessionVersion(konto));
+  app.use(sessionMaxDuration(sitzungsfristen(k)));
 }
 
-function dateienUndBilder(app: express.Express, d: Dienste, konfig: Konfig): void {
-  app.use(baueDatenDateienRouter(d));
-  app.use(baueZertifikatRouter());
-  app.use(baueWellKnownRouter(konfig));
+function filesAndImages(app: express.Express, d: Dienste, konfig: Konfig): void {
+  app.use(buildDataFilesRouter(d));
+  app.use(buildCertificateRouter());
+  app.use(buildWellKnownRouter(konfig));
   registerImgProxy(app, d);
 
-  app.use(baueSeitenRouter(d));
+  app.use(buildPagesRouter(d));
   app.use(
     express.static(PUBLIC_DIR, {
       // `/` goes through the renderer (src/profile/indexHtml.ts), not as a file.
@@ -247,41 +247,41 @@ function dateienUndBilder(app: express.Express, d: Dienste, konfig: Konfig): voi
   );
 }
 
-function apiRouten(app: express.Express, d: Dienste): void {
-  const pruefung = vertragPruefen();
-  if (pruefung) app.use('/api/v1', pruefung);
+function apiRoutes(app: express.Express, d: Dienste): void {
+  const check = checkContract();
+  if (check) app.use('/api/v1', check);
   // Express fände `/vouchers/1/klartext/` unter `/vouchers/:id/klartext`, alles davor (Drossel,
   // Schrittschutz, Caddy) sieht einen anderen Pfad. Mit `/` am Ende kennt der Vertrag nur `/api/v1/`.
   app.use('/api', (req, res, next) =>
-    req.path !== '/v1/' && req.path.length > 1 && req.path.endsWith('/') ? unbekannterApiPfad(req, res) : next(),
+    req.path !== '/v1/' && req.path.length > 1 && req.path.endsWith('/') ? unknownApiPath(req, res) : next(),
   );
   // Vor dem Eingang: Gefragt wird, bevor Schema, Migrationen und /api/v1-Router stehen.
-  app.use('/api/v1', baueGesundheitRouter(d));
-  apiEingang(app, d);
-  app.use('/api/v1', baueApiRouter(d));
-  app.use('/api/v1/auth', baueAuthRouter(d));
+  app.use('/api/v1', buildGesundheitRouter(d));
+  apiInbox(app, d);
+  app.use('/api/v1', buildApiRouter(d));
+  app.use('/api/v1/auth', buildAuthRouter(d));
 }
 
 /** Der Eingang vor allen /api/v1-Routern. */
-function apiEingang(app: express.Express, d: Dienste): void {
-  // EIN Eingang: anmeldungAmEingang verlangt Sitzung oder Token für alles unter
+function apiInbox(app: express.Express, d: Dienste): void {
+  // EIN Eingang: loginAtInbox verlangt Sitzung oder Token für alles unter
   // /api/v1 ausser den ausdrücklich öffentlichen Pfaden. Der Schutz je Route
   // bleibt als zweite Linie.
-  app.use('/api/v1', waechterFuer(d.konto).anmeldungAmEingang);
+  app.use('/api/v1', guardFor(d.konto).loginAtInbox);
   // Danach das Budget je Konto, VOR dem Rumpf: Eine abgewiesene Anfrage soll
   // ihren Rumpf nicht mehr lesen (src/http/apiDrossel.ts).
   app.use('/api/v1', apiDrossel);
   // Heikle Schritte eines App-Tokens erst nach der Gerätesperre (src/konto/http/schrittschutz.ts).
-  app.use('/api/v1', schrittschutzAmEingang(d.konto));
-  // Rümpfe erst nach der Anmeldung lesen: Unangemeldet gibt es nur 16 KB (rumpfLesen).
-  app.use('/api/v1', rumpfLesen);
+  app.use('/api/v1', stepChutzAtInbox(d.konto));
+  // Rümpfe erst nach der Anmeldung lesen: Unangemeldet gibt es nur 16 KB (readBody).
+  app.use('/api/v1', readBody);
   app.use('/api/v1', idempotency(d.idempotency));
 }
 
-function rueckfaelle(app: express.Express, profile: ProfileServices): void {
+function fallbacks(app: express.Express, profile: ProfileServices): void {
   // VOR dem SPA-Catch-all: Sonst bekäme ein Tippfehler im API-Pfad die
   // index.html mit 200. Ohne Rücksicht auf die Schreibung, die Routen davor achten darauf.
-  app.use((req, res, next) => (/^\/api(\/|$)/i.test(req.path) ? unbekannterApiPfad(req, res) : next()));
+  app.use((req, res, next) => (/^\/api(\/|$)/i.test(req.path) ? unknownApiPath(req, res) : next()));
 
   // '{*splat}' statt '/*splat': Express 5 verlangt einen Namen, und die
   // naheliegende Form träfe die Startseite `/` nicht.
@@ -292,5 +292,5 @@ function rueckfaelle(app: express.Express, profile: ProfileServices): void {
 
   // Der eine Fehlerweg aller Router: Ein Fehler überspringt alles ohne Fehlerparameter
   // bis hierher; die Router selbst hängen keinen eigenen an.
-  app.use(fehlerAntwort);
+  app.use(errorResponse);
 }

@@ -16,7 +16,7 @@ const EXPECTED = 25000;
 
 test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
   assert.equal(REBRICKABLE_DEFAULT_DAILY, EXPECTED);
-  // grenzeDerQuelle() hatte eine eigene Kopie des Rückfallwerts (4000). Solange
+  // limitTheSource() hatte eine eigene Kopie des Rückfallwerts (4000). Solange
   // Rebrickable seinen eigenen Zähler hatte, sah es diese Tabelle nie — seit
   // beide über kontingentPruefenUndZaehlen laufen, wäre es eine stille Kürzung
   // auf ein Sechstel gewesen. Zwei Konstanten mit derselben Bedeutung driften …
@@ -70,10 +70,10 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   const admin = fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(admin, /setMax\(/, 'setMax() erreicht nur den eigenen Prozess');
   // Kommentare raus, bevor die Spanne gemessen wird: Der Erklärblock in
-  // grenzeDerQuelle ist länger als jedes vernünftige Zeichenfenster, und ein
+  // limitTheSource ist länger als jedes vernünftige Zeichenfenster, und ein
   // Test, der an einem wachsenden Kommentar scheitert, prüft die falsche Sache.
   const fc = fs.readFileSync(path.join(ROOT, 'src/fremdquellen/apiKontingent.ts'), 'utf8').replace(/\/\/[^\n]*/g, '');
-  const fn = fc.slice(fc.indexOf('async function grenzeDerQuelle'), fc.indexOf('const grenzeJeKonto'));
+  const fn = fc.slice(fc.indexOf('async function limitTheSource'), fc.indexOf('const limitJeAccount'));
   assert.match(
     fn,
     /await k\.einstellungen\.globalValue\(`api_limit_\$\{apiName\}`(?:, '')?\)/,
@@ -149,7 +149,7 @@ test('bei DB-Ausfall greift die Rückfallebene', () => {
 });
 
 test('die Aufrufstellen warten auf das Ergebnis', () => {
-  // anmeldungErlaubt ist seit der Umstellung asynchron — ein vergessenes
+  // loginAllowed ist seit der Umstellung asynchron — ein vergessenes
   // await liefert ein Promise, das immer truthy ist und JEDEN Login sperrt.
   const dateien = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
@@ -162,30 +162,30 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
     path.join(ROOT, 'server.ts'),
   ];
 
-  const ohneAwait = [];
+  const withoutAwait = [];
   let gefunden = 0;
   for (const datei of alle) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const m of src.matchAll(/\b(anmeldungErlaubt|anmeldungGescheitert|anmeldungGelungen)\s*\(/g)) {
+    for (const m of src.matchAll(/\b(loginAllowed|loginFailed|loginSucceeded)\s*\(/g)) {
       // Die Zeile selbst ansehen — ein `await` davor genügt. Import und
       // Definition sind keine Aufrufe und zählen nicht mit.
-      const zeilenAnfang = src.lastIndexOf('\n', m.index) + 1;
-      const zeile = src.slice(zeilenAnfang, src.indexOf('\n', m.index));
+      const rowsStart = src.lastIndexOf('\n', m.index) + 1;
+      const zeile = src.slice(rowsStart, src.indexOf('\n', m.index));
       if (/^\s*(import|export)\b/.test(zeile) || /\bfunction\s+\w+\s*\(/.test(zeile)) continue;
       gefunden++;
       if (!new RegExp(`await\\s+${m[1]}\\s*\\(`).test(zeile))
-        ohneAwait.push(`${path.relative(ROOT, datei)}: ${zeile.trim()}`);
+        withoutAwait.push(`${path.relative(ROOT, datei)}: ${zeile.trim()}`);
     }
   }
   // Selbstbeweis: Findet das Muster nichts, wäre die Liste leer und der Test
   // grün, ohne etwas geprüft zu haben.
   assert.ok(gefunden >= 3, `nur ${gefunden} Aufrufe des Anmelde-Zählers gefunden — Muster veraltet?`);
   assert.deepEqual(
-    ohneAwait,
+    withoutAwait,
     [],
     'Diese Aufrufe warten nicht auf den Anmelde-Zähler:\n  ' +
-      ohneAwait.join('\n  ') +
-      '\nEin Promise ist immer truthy — ohne await sperrt anmeldungErlaubt JEDEN Login.',
+      withoutAwait.join('\n  ') +
+      '\nEin Promise ist immer truthy — ohne await sperrt loginAllowed JEDEN Login.',
   );
 });
 
@@ -215,7 +215,7 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
     'Eine Transaktion minutenlang offen zu halten wäre der falsche Weg',
   );
   // Freigabe im finally — sonst blockiert ein abgestürzter Lauf alle folgenden.
-  const fn = job.slice(job.indexOf('async function runPriceRefresh'), job.indexOf('async function merkeStand'));
+  const fn = job.slice(job.indexOf('async function runPriceRefresh'), job.indexOf('async function rememberStatus'));
   assert.match(
     fn,
     /finally\s*\{[\s\S]{0,300}releaseLock\(\)/,
@@ -223,7 +223,7 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   );
 
   // Der manuelle Anstoss zieht nur den geplanten Auftrag vor (src/auftraege/zeitplan.ts);
-  // läuft er schon, meldet ziehePlanVor false statt eines zweiten Laufs.
+  // läuft er schon, meldet pullPlanBefore false statt eines zweiten Laufs.
 
   // Und die Aufrufer müssen das Ergebnis abwarten.
   //
@@ -238,5 +238,5 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
   );
 
   // Der Namensraum kommt aus der gemeinsamen Liste.
-  assert.match(job, /LOCKS\.PREIS_JOB/, 'Der Namensraum gehört aus src/infra/lockNamespaces.ts, nicht eingetippt');
+  assert.match(job, /LOCKS\.PRICE_JOB/, 'Der Namensraum gehört aus src/infra/lockNamespaces.ts, nicht eingetippt');
 });

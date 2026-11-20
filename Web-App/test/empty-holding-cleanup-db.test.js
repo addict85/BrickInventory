@@ -13,22 +13,22 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
-const { haeltFigur, haeltSet, haeltTeil, haltZeile, mengeVon } = require('./helpers/bestand');
+const db = testData();
+const { holdsMinifig, holdsSet, holdsPart, haltRow, quantityOf } = require('./helpers/bestand');
 
 test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NUTZER = `lk-${process.pid}`;
-  const WEG = `80${(process.pid % 900) + 100}-1`; // hier wird gelöscht
+  const ROUTE = `80${(process.pid % 900) + 100}-1`; // hier wird gelöscht
   const BLEIBT = `80${(process.pid % 900) + 101}-1`; // Kontrollgruppe
 
   const aufraeumen = async () => {
-    for (const sn of [WEG, BLEIBT])
+    for (const sn of [ROUTE, BLEIBT])
       for (const tab of ['sets', 'set_acquisitions', 'parts', 'minifigs', 'price_cache'])
         await db.run(`DELETE FROM ${tab} WHERE set_number=$1`, [sn]).catch(() => {});
   };
@@ -43,13 +43,13 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
   );
   await aufraeumen();
 
-  for (const sn of [WEG, BLEIBT]) {
+  for (const sn of [ROUTE, BLEIBT]) {
     await db.run(
       `INSERT INTO price_cache (set_number,condition,currency_code,avg_price,qty_avg_price,total_quantity)
                   VALUES ($1,'N','CHF',20,20,3)`,
       [sn],
     );
-    await haeltSet(db, uid, sn, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, uid, sn, 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,15,'N',1)`,
@@ -58,20 +58,20 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
     // Abgeleitete Teile und Minifiguren — sie hängen am Set und müssen
     // mitgehen. Bleiben sie liegen, tauchen sie in Teileliste und
     // Finanzsummen weiter auf, ohne dass es ein Set dazu gäbe.
-    await haeltTeil(db, uid, '3001', { setNumber: sn, menge: 10, colorId: 4 });
-    await haeltFigur(db, uid, 'cty0001', { setNumber: sn, menge: 1 });
+    await holdsPart(db, uid, '3001', { setNumber: sn, menge: 10, colorId: 4 });
+    await holdsMinifig(db, uid, 'cty0001', { setNumber: sn, menge: 1 });
   }
 
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
-  const H = require('./helpers/sources').handlerModul(_req);
+  const H = require('./helpers/sources').handlerModule(_req);
   const FC = _req('src/finanzen/financeCalc.js');
 
   try {
-    const liste = await (await fetch(`${base}/api/v1/sets/${WEG}/acquisitions`)).json();
+    const liste = await (await fetch(`${base}/api/v1/sets/${ROUTE}/acquisitions`)).json();
     const acqId = liste.acquisitions?.[0]?.id;
     assert.ok(acqId, 'Vorbedingung: es gibt eine Erfassung');
-    const r = await fetch(`${base}/api/v1/sets/${WEG}/acquisitions/${acqId}`, { method: 'DELETE' });
+    const r = await fetch(`${base}/api/v1/sets/${ROUTE}/acquisitions/${acqId}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
     assert.equal((await r.json()).new_quantity, 0);
 
@@ -99,7 +99,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
     await t.test('die Bewertung rechnet es nicht mehr mit', async () => {
       // Der eigentliche Schaden: `quantity || 1` machte aus 0 eine 1, das
       // gelöschte Set trug mit 20 CHF zum Portfolio bei.
-      const val = await FC.bewerteSets(uid, [uid]);
+      const val = await FC.valueSets(uid, [uid]);
       const nummern = (val.sets || []).map(s => s.set_number);
       assert.deepEqual(nummern, [BLEIBT], `Bewertung enthält noch: ${nummern.join(', ')}`);
       assert.equal(
@@ -116,7 +116,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
         ['minifigs', 'set_number'],
         ['set_acquisitions', 'set_number'],
       ]) {
-        const n = (await db.get(`SELECT COUNT(*)::int c FROM ${tab} WHERE ${spalte}=$1`, [WEG])).c;
+        const n = (await db.get(`SELECT COUNT(*)::int c FROM ${tab} WHERE ${spalte}=$1`, [ROUTE])).c;
         assert.equal(n, 0, `${tab}: ${n} Zeile(n) übrig`);
       }
     });
@@ -126,8 +126,8 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
       // einer Erfassung den ganzen Bestand mitnähme.
       // Zwei Fragen, zwei Tabellen (Migration 0036): Steht die Bestandszeile
       // noch, und wie viele Exemplare sagen die Erfassungen? Vorher …
-      assert.ok(await haltZeile(db, uid, BLEIBT), 'das andere Set wurde mitgelöscht');
-      assert.equal(await mengeVon(db, uid, BLEIBT), 1, 'das andere Set hat seine Erfassung verloren');
+      assert.ok(await haltRow(db, uid, BLEIBT), 'das andere Set wurde mitgelöscht');
+      assert.equal(await quantityOf(db, uid, BLEIBT), 1, 'das andere Set hat seine Erfassung verloren');
       assert.equal((await db.get(`SELECT COUNT(*)::int c FROM parts WHERE set_number=$1`, [BLEIBT])).c, 1);
     });
 
@@ -143,8 +143,8 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
       const l = await (await fetch(`${base}/api/v1/sets/${BLEIBT}/acquisitions`)).json();
       const erste = l.acquisitions[0].id;
       await fetch(`${base}/api/v1/sets/${BLEIBT}/acquisitions/${erste}`, { method: 'DELETE' });
-      assert.ok(await haltZeile(db, uid, BLEIBT), 'das Set wurde gelöscht, obwohl noch eine Erfassung übrig ist');
-      const menge = await mengeVon(db, uid, BLEIBT);
+      assert.ok(await haltRow(db, uid, BLEIBT), 'das Set wurde gelöscht, obwohl noch eine Erfassung übrig ist');
+      const menge = await quantityOf(db, uid, BLEIBT);
       assert.ok(menge > 0, `Menge ${menge}`);
     });
   } finally {

@@ -1,15 +1,15 @@
 /** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen. */
 
-import { setZustand, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
+import { setState, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
 import { asIds, type Sicht } from '../haushalt';
 import { buildChart } from './chartData';
-import { marktpreisAus } from '../katalog';
-import { entwicklungProzent } from './setValue';
-import type { FinanzenKontext } from './kontext';
+import { marketPriceFrom } from '../katalog';
+import { developmentPercent } from './setValue';
+import type { FinancesContext } from './kontext';
 
 /** Nur Zustände mit Erfassung: Sonst stünde eine Kurve ohne Bezugsgrösse da.
  * @param rueckfall Was gilt, wenn es GAR KEINE Erfassung gibt. */
-export function zustaendeFuerVerlauf(belegt: string[], rueckfall: string[]): string[] {
+export function statesForHistory(belegt: string[], rueckfall: string[]): string[] {
   return belegt.length ? belegt : rueckfall;
 }
 
@@ -25,16 +25,16 @@ export interface PricePoint {
 /** DISTINCT ON je Tag: Mehrere Abrufe am selben Tag ergäben sonst Punkte
  * übereinander. Genommen wird der jüngste des Tages. */
 async function seriesFor(
-  k: FinanzenKontext,
+  k: FinancesContext,
   setNumber: string,
   currency: string,
   cond: 'N' | 'U',
 ): Promise<PricePoint[]> {
-  return k.preisverlauf.tagespreiseDesSets(setNumber, currency, cond);
+  return k.preisverlauf.dailyPricesOfSets(setNumber, currency, cond);
 }
 
 /** Markt- gegen Kaufpreis in einem Zustand; pnl_pct ist die alte Textform. */
-interface ZustandsVergleich {
+interface StateComparison {
   market_price: number | null;
   purchase_price: number | null;
   pnl_pct: string | null;
@@ -43,29 +43,29 @@ interface ZustandsVergleich {
 
 /** @param uid Blickfeld: Im Haushalt gehört das Set oft einem Unterkonto, mit
  *   der nackten Betrachter-ID fände die Abfrage es nicht. */
-export async function preisverlaufSet(
-  k: FinanzenKontext,
-  uidWahl: Sicht | number | number[],
+export async function priceHistorySet(
+  k: FinancesContext,
+  uidChoice: Sicht | number | number[],
   setNumber: string,
   currency: string,
 ) {
-  const uids = asIds(await k.haushalt.blickfeldAus(uidWahl));
-  const condition = await setZustand(k, uids, setNumber);
+  const uids = asIds(await k.haushalt.scopeFrom(uidChoice));
+  const condition = await setState(k, uids, setNumber);
 
   const [historyNew, historyUsed] = await Promise.all([
     seriesFor(k, setNumber, currency, 'N'),
     seriesFor(k, setNumber, currency, 'U'),
   ]);
 
-  const currentRows = await k.preisverlauf.cachePreiseDesSets(setNumber, currency);
+  const currentRows = await k.preisverlauf.cachePricesOfSets(setNumber, currency);
   const jetzt = (c: string) => {
     const r = currentRows.find(z => z.condition === c);
-    return r ? { ...r, avg_price: marktpreisAus(r) } : null;
+    return r ? { ...r, avg_price: marketPriceFrom(r) } : null;
   };
   const current = { N: jetzt('N'), U: jetzt('U') };
 
   // Kaufpreis aus der ERSTEN Erfassung; jede Set-Zeile hat mindestens eine.
-  const set = await k.preisverlauf.ersterKaufDesSets(uids, setNumber, currency);
+  const set = await k.preisverlauf.firstPurchaseOfSets(uids, setNumber, currency);
 
   const hasCost = set?.purchase_price != null; // 0 zählt als erfasst
   const purchasePrice = Number(set?.purchase_price ?? 0);
@@ -91,23 +91,23 @@ export async function preisverlaufSet(
   // jeweils höheren; ohne Kaufpreis gegen den ältesten Marktpreis.
   const own = condition === 'U' ? historyUsed : historyNew;
   const firstMarket = own.find(p => !p.is_purchase_price);
-  const firstHistPrice = marktpreisAus(firstMarket) ?? 0;
+  const firstHistPrice = marketPriceFrom(firstMarket) ?? 0;
   const baselinePrice = hasCost ? purchasePrice : firstHistPrice;
   const baselineHas = hasCost || firstHistPrice > 0;
-  const currentPrice = marktpreisAus(condition === 'U' ? current.U : current.N) ?? 0;
-  const pnlPct = baselineHas ? (entwicklungProzent(baselinePrice, currentPrice)?.toFixed(1) ?? null) : null;
+  const currentPrice = marketPriceFrom(condition === 'U' ? current.U : current.N) ?? 0;
+  const pnlPct = baselineHas ? (developmentPercent(baselinePrice, currentPrice)?.toFixed(1) ?? null) : null;
 
   // Nur Zustände mit Erfassung, sonst stünde eine Prozentangabe gegen nichts da.
-  const acqByCond = await k.preisverlauf.kaufschnittDesSets(uids, setNumber, currency);
+  const acqByCond = await k.preisverlauf.purchaseChnittOfSets(uids, setNumber, currency);
 
-  const byCondition: Record<string, ZustandsVergleich> = {};
+  const byCondition: Record<string, StateComparison> = {};
   for (const cond of ['N', 'U'] as const) {
     const acq = acqByCond.find(r => (r.condition || 'N') === cond);
     if (!acq) continue; // kein Kaufpreis-Eintrag → keine Zeile
-    const market = marktpreisAus(cond === 'N' ? current.N : current.U);
+    const market = marketPriceFrom(cond === 'N' ? current.N : current.U);
     // null = kein Kaufpreis erfasst, 0 = Geschenk; beides ohne Prozentangabe.
     const base = acq.avg_purchase == null ? null : parseFloat(String(acq.avg_purchase));
-    const e = entwicklungProzent(base, market);
+    const e = developmentPercent(base, market);
     byCondition[cond] = {
       market_price: market,
       purchase_price: base,
@@ -116,8 +116,8 @@ export async function preisverlaufSet(
     };
   }
 
-  const zustaendeFuerChart = zustaendeFuerVerlauf(Object.keys(byCondition), [condition]);
-  const chart = buildChart(zustaendeFuerChart.map(c => ({ name: c, rows: c === 'U' ? historyUsed : historyNew })));
+  const statesForChart = statesForHistory(Object.keys(byCondition), [condition]);
+  const chart = buildChart(statesForChart.map(c => ({ name: c, rows: c === 'U' ? historyUsed : historyNew })));
 
   return {
     currency,
@@ -138,7 +138,7 @@ export async function preisverlaufSet(
 
 /** Nur für Zustände mit Erfassung, sonst fehlte der Prozentangabe die Basis. */
 export async function conditionRows(
-  k: FinanzenKontext,
+  k: FinancesContext,
   art: 'part' | 'fig',
   keySql: string,
   keyVals: unknown[],
@@ -150,16 +150,16 @@ export async function conditionRows(
   const uids = asIds(uid);
   // DESC: Seit der Figuren-Verlauf beide Nummern abfragt, kann es zwei Zeilen
   // je Zustand geben, und `.find()` soll die neueste nehmen.
-  const cacheRows = await k.preisverlauf.cachePreiseNachSchluessel(art, keySql, keyVals, currency);
-  const acqRows = await k.preisverlauf.kaufschnitteNachSchluessel(art, acqKeySql, acqKeyVals, uids, currency);
+  const cacheRows = await k.preisverlauf.cachePricesAfterKey(art, keySql, keyVals, currency);
+  const acqRows = await k.preisverlauf.purchaseChnitteAfterKey(art, acqKeySql, acqKeyVals, uids, currency);
 
-  const out: Record<string, ZustandsVergleich> = {};
+  const out: Record<string, StateComparison> = {};
   for (const cond of ['N', 'U'] as const) {
     const acq = acqRows.find(r => (r.condition || 'N') === cond);
     if (!acq) continue; // kein Kaufpreis-Eintrag → keine Zeile
-    const market = marktpreisAus(cacheRows.find(r => r.condition === cond));
+    const market = marketPriceFrom(cacheRows.find(r => r.condition === cond));
     const base = acq.avg_purchase == null ? null : parseFloat(String(acq.avg_purchase));
-    const e = entwicklungProzent(base, market);
+    const e = developmentPercent(base, market);
     out[cond] = {
       market_price: market,
       purchase_price: base,
@@ -173,7 +173,7 @@ export async function conditionRows(
 /** @param keySql/keyVals  Schlüssel für PREISE (unter der BrickLink-Nummer).
  * @param acqKeySql/acqKeyVals  Schlüssel für ERFASSUNGEN (Nummer des Benutzers). */
 async function manualPriceHistory(
-  k: FinanzenKontext,
+  k: FinancesContext,
   uid: number | number[],
   currency: string,
   art: 'part' | 'fig',
@@ -188,29 +188,29 @@ async function manualPriceHistory(
     conditionRows(k, art, keySql, keyVals, uid, currency, acqKeySql, acqKeyVals),
   ]);
   // Gezeichnet werden nur Zustände mit Erfassung; die Rohreihen bleiben vollständig.
-  const zustaende = zustaendeFuerVerlauf(Object.keys(by_condition), ['N', 'U']);
+  const states = statesForHistory(Object.keys(by_condition), ['N', 'U']);
   return {
     currency,
     by_condition,
     history_new: historyNew,
     history_used: historyUsed,
-    chart: buildChart(zustaende.map(c => ({ name: c, rows: c === 'U' ? historyUsed : historyNew }))),
+    chart: buildChart(states.map(c => ({ name: c, rows: c === 'U' ? historyUsed : historyNew }))),
   };
 }
 
-export async function preisverlaufTeil(
-  k: FinanzenKontext,
-  uidWahl: Sicht | number | number[],
+export async function priceHistoryPart(
+  k: FinancesContext,
+  uidChoice: Sicht | number | number[],
   partNumber: string,
   colorId: number,
   currency: string,
 ) {
-  const uid = await k.haushalt.blickfeldAus(uidWahl);
+  const uid = await k.haushalt.scopeFrom(uidChoice);
   // Preise liegen unter BrickLink-Nummer und -Farbe, Erfassungen unter denen
   // des Benutzers — die beiden Schlüsselräume dürfen nicht gemischt werden.
-  const blNummer = await resolveBlPartNumber(k, partNumber, Array.isArray(uid) ? (uid[0] ?? null) : uid);
+  const blNumber = await resolveBlPartNumber(k, partNumber, Array.isArray(uid) ? (uid[0] ?? null) : uid);
   const blFarbe = await resolveBlColorId(k, colorId);
-  const nummern = [...new Set([blNummer, partNumber])];
+  const nummern = [...new Set([blNumber, partNumber])];
   return manualPriceHistory(
     k,
     uid,
@@ -224,14 +224,14 @@ export async function preisverlaufTeil(
 }
 
 // Preise stehen unter der BrickLink-Nummer, Erfassungen unter der eigenen; beide Schlüssel zählen.
-export async function preisverlaufFigur(
-  k: FinanzenKontext,
-  uidWahl: Sicht | number | number[],
+export async function priceHistoryMinifig(
+  k: FinancesContext,
+  uidChoice: Sicht | number | number[],
   figNumber: string,
   currency: string,
 ) {
-  const uid = await k.haushalt.blickfeldAus(uidWahl);
-  const nummern = await preisNummernFuerFigur(k, uid, figNumber);
+  const uid = await k.haushalt.scopeFrom(uidChoice);
+  const nummern = await priceNumbersForMinifig(k, uid, figNumber);
   return manualPriceHistory(
     k,
     uid,
@@ -246,15 +246,19 @@ export async function preisverlaufFigur(
 }
 
 /** Die eigene und, falls hinterlegt, die BrickLink-Nummer; doppelte fallen weg. */
-async function preisNummernFuerFigur(k: FinanzenKontext, uid: number | number[], figNumber: string): Promise<string[]> {
-  const bl = await k.katalog.blNummerVon('fig', figNumber, uid);
+async function priceNumbersForMinifig(
+  k: FinancesContext,
+  uid: number | number[],
+  figNumber: string,
+): Promise<string[]> {
+  const bl = await k.katalog.blNumberOf('fig', figNumber, uid);
   return [...new Set([figNumber, ...(bl ? [bl] : [])])];
 }
 
 /** @returns Anzahl entfernter Zeilen */
-export async function loescheAltePreise(k: FinanzenKontext): Promise<number> {
-  const tage = k.konfig.preisverlaufTage;
+export async function deleteOldPrices(k: FinancesContext): Promise<number> {
+  const tage = k.konfig.priceHistoryDays;
   if (tage <= 0) return 0;
-  const r = await k.preisverlauf.loescheAltenVerlauf(String(tage));
+  const r = await k.preisverlauf.deleteOldHistory(String(tage));
   return r?.changes || 0;
 }

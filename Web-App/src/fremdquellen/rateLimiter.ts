@@ -1,4 +1,4 @@
-import { systemUhr, type Uhr } from '../infra/uhr';
+import { systemClock, type Uhr } from '../infra/uhr';
 
 /** Rebrickable erlaubt im Mittel einen Aufruf je Sekunde; ein 429 nennt die
  * Wartezeit, und genau so lange wird zurückgehalten. */
@@ -13,7 +13,7 @@ export class RateLimiter {
 
   /** @param takt Prozessübergreifender Takt (Tabelle api_takt); ohne ihn
    *             drosselt die Instanz nur sich selbst. */
-  constructor(maxRequests: number, windowMs: number, takt: Takt | null = null, uhr: Uhr = systemUhr) {
+  constructor(maxRequests: number, windowMs: number, takt: Takt | null = null, uhr: Uhr = systemClock) {
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
     this.lastCall = 0; // timestamp of last allowed call
@@ -28,7 +28,7 @@ export class RateLimiter {
       this.queue.push(resolve);
       this._schedule();
     });
-    if (this.takt) await warteAufTakt(this.takt);
+    if (this.takt) await waitOnTick(this.takt);
   }
 
   _schedule() {
@@ -59,52 +59,52 @@ export class RateLimiter {
   }
 }
 
-import { meldeFehler } from '../infra/fehler';
+import { reportError } from '../infra/fehler';
 import { kontingentPruefenUndZaehlen, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
 import { versuche } from '../infra/ergebnis';
-import type { FremdquellenKontext } from './kontext';
+import type { ForeignSourcesContext } from './kontext';
 
 /** Ein einziges UPDATE schiebt den Zeitpunkt weiter — zwei Prozesse bekommen
  * nie denselben Platz, ohne dass einer eine Sperre hält, während er wartet. */
-export async function warteAufTakt(takt: Takt): Promise<void> {
-  const { api, abstandMs, apiTakt, uhr = systemUhr } = takt;
-  if (uhr.jetzt() < takt.gestoertBis) return;
+export async function waitOnTick(takt: Takt): Promise<void> {
+  const { api, gapMs, apiTakt, uhr = systemClock } = takt;
+  if (uhr.jetzt() < takt.disruptedUntil) return;
   try {
-    const r = await apiTakt.belegeTakt(api, abstandMs);
+    const r = await apiTakt.receiptsTick(api, gapMs);
     const warte = Math.ceil(Number(r?.warte_ms) || 0);
     if (warte > 0) await new Promise(res => setTimeout(res, warte));
   } catch (e) {
-    takt.gestoertBis = uhr.jetzt() + 60_000;
-    meldeFehler('drossel:gemeinsamer-takt', e);
+    takt.disruptedUntil = uhr.jetzt() + 60_000;
+    reportError('drossel:gemeinsamer-takt', e);
   }
 }
 
 /** Ein 429 gilt für alle Prozesse. */
-function taktAussetzen({ api, apiTakt, gestoertBis, uhr = systemUhr }: Takt, waitMs: number) {
-  if (uhr.jetzt() < gestoertBis) return;
-  apiTakt.schiebeTakt(api, waitMs).catch(e => meldeFehler('drossel:takt-aussetzen', e));
+function taktAussetzen({ api, apiTakt, disruptedUntil, uhr = systemClock }: Takt, waitMs: number) {
+  if (uhr.jetzt() < disruptedUntil) return;
+  apiTakt.pushTick(api, waitMs).catch(e => reportError('drossel:takt-aussetzen', e));
 }
 
 /** Ein Aufruf je Sekunde für alle Prozesse zusammen: Die Drosseln ordnen nur im Prozess, den Abstand
  * hält der gemeinsame Takt (Tabelle api_takt). */
 export interface Takt {
   api: string;
-  abstandMs: number;
-  apiTakt: FremdquellenKontext['apiTakt'];
+  gapMs: number;
+  apiTakt: ForeignSourcesContext['apiTakt'];
   /** Nach einem Datenbankfehler eine Minute ohne gemeinsamen Takt: Jeder Aufruf liefe
    * sonst erst in den Verbindungs-Timeout. Die eigene Drossel bleibt. */
-  gestoertBis: number;
+  disruptedUntil: number;
   uhr?: Uhr;
 }
 
-/** Je Satz Dienste einmal (erzeugeFremdquellen): Vordergrund und Hintergrund teilen den Takt. */
-export function rebrickableDrosseln(apiTakt: Takt['apiTakt'], uhr: Uhr) {
-  const takt: Takt = { api: 'rebrickable', abstandMs: 1000, apiTakt, gestoertBis: 0, uhr };
-  return { vordergrund: new RateLimiter(1, 1500, takt, uhr), hintergrund: new RateLimiter(1, 1500, takt, uhr) };
+/** Je Satz Dienste einmal (createForeignSources): Vordergrund und Hintergrund teilen den Takt. */
+export function throttleRebrickable(apiTakt: Takt['apiTakt'], uhr: Uhr) {
+  const takt: Takt = { api: 'rebrickable', gapMs: 1000, apiTakt, disruptedUntil: 0, uhr };
+  return { foreground: new RateLimiter(1, 1500, takt, uhr), hintergrund: new RateLimiter(1, 1500, takt, uhr) };
 }
 
 // Gezählt in der Datenbank: Je Prozess gezählt vervielfachte sich das Limit.
-export async function consumeRebrickableDaily(k: FremdquellenKontext): Promise<boolean> {
+export async function consumeRebrickableDaily(k: ForeignSourcesContext): Promise<boolean> {
   const rl = await versuche('takt:kontingentPruefenUndZaehlen', kontingentPruefenUndZaehlen(k, 'rebrickable'));
   // Im Zweifel durchlassen: Ein überschrittenes Tageskontingent kostet bloss
   // Aufrufe — umgekehrt als beim Login-Zähler, wo der Rückfall sperrt.
@@ -122,7 +122,7 @@ export class ConcurrentRateLimiter {
   _timer: NodeJS.Timeout | null;
   uhr: Uhr;
 
-  constructor(maxConcurrent: number, intervalMs: number, uhr: Uhr = systemUhr) {
+  constructor(maxConcurrent: number, intervalMs: number, uhr: Uhr = systemClock) {
     this.maxConcurrent = maxConcurrent; // max parallel requests in flight
     this.intervalMs = intervalMs; // min ms between starting new requests
     this.active = 0; // currently in-flight

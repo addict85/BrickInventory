@@ -1,31 +1,31 @@
-import { fuerSet, anleitungenZusammenlegen } from '../katalog';
+import { forSet, mergeInstructions } from '../katalog';
 import { resolveImageLocal } from '../bilder';
-import { meldeFehler } from '../infra/fehler';
+import { reportError } from '../infra/fehler';
 import * as repo from './repository/sets';
-import { asIds, type Sicht, type BlickfeldEingabe as Blickfeld } from '../haushalt';
+import { asIds, type Sicht, type ScopeInput as Blickfeld } from '../haushalt';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 
 // Leseabfragen; Zustand aus den Erfassungen.
 
 import type { Abfrage } from '../vertrag';
 import { versuche } from '../infra/ergebnis';
-import type { SetsKontext } from './kontext';
+import type { SetsContext } from './kontext';
 
 /** Filtern und Sortieren auf dem Server, damit sie mit seitenweisem Laden
  * zusammengehen. Ohne page_size alles — so ruft die Android-App. */
 export async function setsLesen(
-  sk: SetsKontext,
-  userIdWahl: Sicht | Blickfeld,
+  sk: SetsContext,
+  userIdChoice: Sicht | Blickfeld,
   query: Abfrage<'GET /api/v1/sets'> = {},
 ) {
-  const userId = await sk.haushalt.blickfeldAus(userIdWahl);
+  const userId = await sk.haushalt.scopeFrom(userIdChoice);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Die Spaltenliste steht im Repository; die Antwort trägt nur, was die
   // Clients lesen.
   const { search, theme, sort, page = 1, page_size = null } = query;
   const size = page_size ? clampPageSize(page_size, 60) : null;
-  const { sets, countRow, themeRows } = await repo.setListe(sk.db, uids, {
+  const { sets, countRow, themeRows } = await repo.setList(sk.db, uids, {
     search,
     theme,
     sort,
@@ -38,8 +38,8 @@ export async function setsLesen(
   const pageSetNumbers = sets.map(r => r.set_number);
   const [sharedInstrs, userInstrs] = pageSetNumbers.length
     ? await Promise.all([
-        repo.geteilteAnleitungen(sk.db, pageSetNumbers, uids),
-        repo.eigeneAnleitungen(sk.db, uids, pageSetNumbers),
+        repo.sharedInstructions(sk.db, pageSetNumbers, uids),
+        repo.ownInstructions(sk.db, uids, pageSetNumbers),
       ])
     : [[], []];
 
@@ -63,24 +63,24 @@ export async function setsLesen(
     // Besitzer nur im Haushalt — im Einzelkonto wäre „gehört mir" nur Rauschen.
     // Dort immer, auch leer: array_agg liefert NULL, wenn der FILTER alles ausschliesst.
     ...(uids.length > 1 ? { owner_ids: (s.owner_ids || []).map(n => parseInt(String(n), 10)) } : {}),
-    instructions: anleitungenZusammenlegen(sharedBySet.get(s.set_number) || [], userBySet.get(s.set_number) || []),
+    instructions: mergeInstructions(sharedBySet.get(s.set_number) || [], userBySet.get(s.set_number) || []),
   }));
 
   // Eine Abfrage für die ganze Seite statt einer je Zeile.
-  const mitBesitzern = await sk.haushalt.besitzerAnhaengen(uids, mapped);
+  const withOwners = await sk.haushalt.besitzerAnhaengen(uids, mapped);
 
   // Mit Gesamtzahl für den Endlos-Scroll; ohne Paginierung ist total die Länge.
   return {
-    sets: mitBesitzern,
+    sets: withOwners,
     total: countRow ? countRow.c : mapped.length,
     ...(themeRows ? { themes: themeRows.map(r => r.theme) } : {}),
   };
 }
 
 // Eine gebrauchte Erfassung macht das Set gebraucht; die Regel steht nur hier.
-export async function zustandsAggregat(sk: SetsKontext, userId: Blickfeld, setNumber: string) {
+export async function zustandsAggregat(sk: SetsContext, userId: Blickfeld, setNumber: string) {
   const uids = asIds(userId);
-  const acq = await repo.setErfassungsKennzahlen(sk.db, uids, setNumber);
+  const acq = await repo.setEntryMetrics(sk.db, uids, setNumber);
   const acqCount = Number(acq?.acq_count) || 0;
   const usedCount = Number(acq?.used_count) || 0;
   return {
@@ -96,8 +96,8 @@ export async function zustandsAggregat(sk: SetsKontext, userId: Blickfeld, setNu
 }
 
 /** Damit die Schreib-Endpunkte die Kachel ohne Neuladen aktualisieren. */
-export async function mitSetAggregat<T extends object>(
-  sk: SetsKontext,
+export async function withSetAggregate<T extends object>(
+  sk: SetsContext,
   userId: Blickfeld,
   setNumber: string,
   payload: T,
@@ -107,15 +107,15 @@ export async function mitSetAggregat<T extends object>(
   return agg.ok ? { ...payload, set: { set_number: setNumber, ...agg.wert } } : payload;
 }
 
-export async function setLesen(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, setNumber: string) {
-  const userId = await sk.haushalt.blickfeldAus(userIdWahl);
+export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, setNumber: string) {
+  const userId = await sk.haushalt.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
     // über das Blickfeld.
-    repo.setDetailZeile(sk.db, uids, setNumber, uids[0]),
-    sk.katalog.anleitungenZuSet(setNumber),
-    repo.eigeneAnleitungenDesSets(sk.db, uids, setNumber),
+    repo.setDetailRow(sk.db, uids, setNumber, uids[0]),
+    sk.katalog.instructionsToSet(setNumber),
+    repo.ownInstructionsOfSets(sk.db, uids, setNumber),
   ]);
   if (!set) return null;
   // Dieselben Felder wie setsLesen(sk), damit ein Client die Kachel mit dem Detail
@@ -123,22 +123,22 @@ export async function setLesen(sk: SetsKontext, userIdWahl: Sicht | Blickfeld, s
   const agg = await zustandsAggregat(sk, uids, setNumber);
   // Die Kaufadressen vom Server: Eine Adresse an vier Stellen wären vier Wahrheiten.
   const [bricklink, preisvergleich] = await Promise.all([
-    sk.katalog.blLinkAufloesen(setNumber).catch((e: unknown) => {
-      meldeFehler('setdetail:bricklink', e);
+    sk.katalog.resolveBlLink(setNumber).catch((e: unknown) => {
+      reportError('setdetail:bricklink', e);
       return null;
     }),
-    Promise.resolve(fuerSet(setNumber, set.name)),
+    Promise.resolve(forSet(setNumber, set.name)),
   ]);
-  const { owner_ids, ...ohneIds } = set;
-  const [mitBesitzern] = await sk.haushalt.besitzerAnhaengen(uids, [
-    uids.length > 1 ? { ...ohneIds, owner_ids } : ohneIds,
+  const { owner_ids, ...withoutIds } = set;
+  const [withOwners] = await sk.haushalt.besitzerAnhaengen(uids, [
+    uids.length > 1 ? { ...withoutIds, owner_ids } : withoutIds,
   ]);
   return {
-    ...mitBesitzern,
+    ...withOwners,
     ...agg,
     bricklink,
     preisvergleich_url: preisvergleich,
     image_local: resolveImageLocal(set.image_local),
-    instructions: anleitungenZusammenlegen(shared, uploaded),
+    instructions: mergeInstructions(shared, uploaded),
   };
 }

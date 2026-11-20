@@ -3,9 +3,9 @@
  * vorher als Muster im Quelltext suchte, hier an Ergebnissen.
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  zustandsAggregat ohne max_purchase_price → rot „setLesen liefert
+ *   A  zustandsAggregat ohne max_purchase_price → rot „readSet liefert
  *      dieselben Aggregatfelder …“
- *   B  changeAcquisition gibt die nackte Antwort ohne mitSetAggregat zurück →
+ *   B  changeAcquisition gibt die nackte Antwort ohne withSetAggregate zurück →
  *      rot „beide Wege einer Erfassung …“ (und der folgende Fall, der auf
  *      dessen Teil aufbaut)
  *   C  POST /api/v1/sets reicht `null` statt des Zustands an setErfassen → rot
@@ -13,10 +13,10 @@
  *   D  aktuellerMarktpreis: `if (!condition)` → `if (true)` → rot „ein
  *      ausdrücklich angefragter Zustand …“ und „der Marktpreis als Kaufpreis …“
  *   E  conditionFromAcquisitions liefert bei Erfassungen immer 'N' → rot
- *      „setLesen …“ und „manuelle Teile und Minifiguren …“
+ *      „readSet …“ und „manuelle Teile und Minifiguren …“
  *   F  sampleAcquisitions sortiert nach `added_at` → rot „die Preis-Probe …“;
  *      ohne `price_cache: cacheRows` in der Antwort ebenso
- *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „gewinnUndVerlust
+ *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „gainAndLoss
  *      bewertet nach dem Zustand der Erfassungen“ (effectiveCondition allein
  *      auf 'N' gestellt bleibt grün: Mit Erfassungen gilt deren Zustand)
  *   H  (09.11.2026) Route und Vertrag der Preis-Probe wieder als GET → rot
@@ -33,29 +33,28 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Der Nachzug nach dem Erfassen läuft sonst nach dem Test gegen einen
 // geschlossenen Pool; setErfassen lässt sich für die Route stellen.
 /** @type {null | ((...a: unknown[]) => Promise<unknown>)} */
-let gestellteAddSet = null;
+let posedAddSet = null;
 const Module = require('node:module');
-const _echtesRequire = Module.prototype.require;
+const _realRequire = Module.prototype.require;
 Module.prototype.require = function (/** @type {string} */ name, /** @type {any[]} */ ...rest) {
-  const m = _echtesRequire.call(this, name, ...rest);
+  const m = _realRequire.call(this, name, ...rest);
   if (typeof name === 'string' && /[/\\]erfassen(\.js)?$/.test(name))
     return new Proxy(m, {
       // Die Fabrik bindet beim Bau (mit()): Der Ersatz prüft die Stellung erst beim Aufruf.
-      get: (t, k) =>
-        k === 'setErfassen' ? (sk, ...a) => (gestellteAddSet ? gestellteAddSet(...a) : t[k](sk, ...a)) : t[k],
+      get: (t, k) => (k === 'setErfassen' ? (sk, ...a) => (posedAddSet ? posedAddSet(...a) : t[k](sk, ...a)) : t[k]),
     });
   return m;
 };
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const { katalogSet } = require('./helpers/bestand');
+const { adminWithFactor } = require('./helpers/verwalter');
+const { catalogSet } = require('./helpers/bestand');
 
 test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const P = process.pid;
   const NAME = `zustand-agg-${P}`;
@@ -96,7 +95,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     )
   ).id;
 
-  await verwalterMitFaktor(_req, uid);
+  await adminWithFactor(_req, uid);
   const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const anfrage = async (
     /** @type {string} */ methode,
@@ -110,7 +109,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json() };
   };
-  const { setsLesen, setLesen } = require('./helpers/sources').bereichsSeite('sets');
+  const { setsLesen, readSet } = require('./helpers/sources').areaPage('sets');
 
   await t.test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', async () => {
     const { aktuellerMarktpreis } = _req('src/finanzen/marketPrice.js');
@@ -123,18 +122,18 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   });
 
   await t.test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', async () => {
-    const { setErfassen, setErgaenzen } = require('./helpers/sources').bereichsSeite('sets');
+    const { setErfassen, setSupplement } = require('./helpers/sources').areaPage('sets');
     const r = await setErfassen({
-      anfragender: uid,
+      requester: uid,
       setNumber: SN,
       menge: 1,
       zustand: 'U',
-      wennVorhanden: 'aufstocken',
+      ifPresent: 'aufstocken',
     });
     assert.equal(r.action, 'updated', 'Aufbau: der Aufstock-Weg ohne Katalog und Netz');
     // Den geschätzten Preis trägt die Nacharbeit nach; mit Katalog fragt sie kein Netz.
-    await katalogSet(db, SN, { name: 'Zustand', image_local: `/images/sets/${SN}.jpg` });
-    await setErgaenzen(SN, uid);
+    await catalogSet(db, SN, { name: 'Zustand', image_local: `/images/sets/${SN}.jpg` });
+    await setSupplement(SN, uid);
     const neu = await db.get(
       `SELECT condition, purchase_price::float AS preis FROM set_acquisitions
         WHERE user_id = $1 AND set_number = $2 AND id <> $3`,
@@ -143,16 +142,16 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     assert.deepEqual(neu, { condition: 'U', preis: 33 }, 'Gebraucht erfasst, aber der Neupreis eingetragen');
   });
 
-  await t.test('setLesen liefert dieselben Aggregatfelder wie setsLesen', async () => {
+  await t.test('readSet liefert dieselben Aggregatfelder wie setsLesen', async () => {
     const liste = (await setsLesen([uid], {})).sets.find((/** @type {any} */ s) => s.set_number === SN);
-    const einzeln = await setLesen([uid], SN);
+    const einzeln = await readSet([uid], SN);
     assert.ok(liste && einzeln, 'Das Set fehlt in einer der beiden Antworten');
     for (const feld of ['condition', 'acq_count', 'used_count', 'max_purchase_price']) {
-      assert.ok(einzeln[feld] !== undefined && einzeln[feld] !== null, `setLesen() ohne ${feld}`);
+      assert.ok(einzeln[feld] !== undefined && einzeln[feld] !== null, `readSet() ohne ${feld}`);
       assert.equal(
         String(einzeln[feld]),
         String(liste[feld]),
-        `${feld}: setLesen ${einzeln[feld]}, setsLesen ${liste[feld]}`,
+        `${feld}: readSet ${einzeln[feld]}, setsLesen ${liste[feld]}`,
       );
     }
     assert.equal(einzeln.condition, 'U', 'eine gebrauchte Erfassung macht das Set gebraucht');
@@ -202,9 +201,9 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     assert.equal(figur?.condition, 'U', 'Figur mit gebrauchter Erfassung steht als neu da');
   });
 
-  await t.test('gewinnUndVerlust bewertet nach dem Zustand der Erfassungen', async () => {
-    const { gewinnUndVerlust } = _req('src/finanzen/financeCalc.js');
-    const pnl = await gewinnUndVerlust(uid, [uid]);
+  await t.test('gainAndLoss bewertet nach dem Zustand der Erfassungen', async () => {
+    const { gainAndLoss } = _req('src/finanzen/financeCalc.js');
+    const pnl = await gainAndLoss(uid, [uid]);
     const zeile = pnl.sets.find((/** @type {any} */ s) => s.set_number === SN);
     assert.ok(zeile, 'Das Set fehlt in der Gewinn-und-Verlust-Rechnung');
     assert.equal(
@@ -231,7 +230,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   await t.test('der im Formular gewählte Zustand kommt beim Anlegen an', async () => {
     /** @type {any[][]} */
     const aufrufe = [];
-    gestellteAddSet = async (...a) => {
+    posedAddSet = async (...a) => {
       aufrufe.push(a);
       return {
         action: 'added',
@@ -250,7 +249,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
       });
       assert.equal(r.status, 200, JSON.stringify(r.body));
     } finally {
-      gestellteAddSet = null;
+      posedAddSet = null;
     }
     assert.equal(aufrufe.length, 1, 'setErfassen wurde nicht gerufen');
     assert.equal(aufrufe[0][0].kaufpreis, 20, 'Der Kaufpreis kommt nicht an');

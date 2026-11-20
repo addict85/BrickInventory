@@ -1,5 +1,5 @@
 /** Rows of the minifig repositories; same reasoning as src/sets/zeilen.ts. */
-export interface FigurTeil {
+export interface MinifigPart {
   part_number: string;
   bl_part_number: string;
   part_name: string | null;
@@ -9,7 +9,7 @@ export interface FigurTeil {
   is_spare: boolean;
   quantity: number;
 }
-export interface KatalogZeile {
+export interface CatalogRow {
   part_number: string;
   color_id: number;
   bl_part_number: string | null;

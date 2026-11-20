@@ -8,11 +8,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/bestand');
+const db = testData();
 
 async function erreichbar() {
   try {
@@ -52,19 +52,19 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
   // NUR das Unterkonto besitzt etwas. Damit ist die Plakette aussagekräftig:
   // Steht dort das eigene Konto, ist die Zuordnung falsch; fehlt sie, sieht
   // das Hauptkonto einen Bestand ohne Herkunft.
-  await haeltSet(db, kind, '75192-1', 1);
-  await haeltTeil(db, kind, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
-  await haeltTeil(db, kind, '3020', { menge: 3, colorId: 0 });
-  await haeltFigur(db, kind, 'sw0001', { setNumber: '75192-1', menge: 1 });
-  await haeltFigur(db, kind, 'sw0002', { menge: 2 });
+  await holdsSet(db, kind, '75192-1', 1);
+  await holdsPart(db, kind, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
+  await holdsPart(db, kind, '3020', { menge: 3, colorId: 0 });
+  await holdsMinifig(db, kind, 'sw0001', { setNumber: '75192-1', menge: 1 });
+  await holdsMinifig(db, kind, 'sw0002', { menge: 2 });
 
-  const { blickfeldIds } = {
+  const { scopeIds } = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ...require('./helpers/sources').testArea('haushalt'),
   };
-  const uids = await blickfeldIds(haupt, 'all');
-  const S = require('./helpers/sources').bereichsSeite('sets');
+  const uids = await scopeIds(haupt, 'all');
+  const S = require('./helpers/sources').areaPage('sets');
   const P = _req('src/parts/queries.js');
   const M = _req('src/minifigs/queries.js');
 
@@ -127,16 +127,16 @@ test('im Einzelkonto steht keine Plakette', async t => {
   }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('allein','x')`);
   const allein = (await db.get(`SELECT id FROM users WHERE username='allein'`)).id;
-  await haeltSet(db, allein, '21318-1', 1);
-  await haeltFigur(db, allein, 'sw0003', { setNumber: '21318-1', menge: 1 });
+  await holdsSet(db, allein, '21318-1', 1);
+  await holdsMinifig(db, allein, 'sw0003', { setNumber: '21318-1', menge: 1 });
 
-  const { blickfeldIds } = {
+  const { scopeIds } = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ...require('./helpers/sources').testArea('haushalt'),
   };
-  const uids = await blickfeldIds(allein, 'all');
-  const S = require('./helpers/sources').bereichsSeite('sets');
+  const uids = await scopeIds(allein, 'all');
+  const S = require('./helpers/sources').areaPage('sets');
   const M = _req('src/minifigs/queries.js');
 
   // „gehört mir" an jeder Kachel wäre nur Rauschen — und zusätzliche Felder in

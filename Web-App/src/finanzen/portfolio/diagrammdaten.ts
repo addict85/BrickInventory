@@ -1,8 +1,8 @@
 import { buildChart } from '../chartData';
-import type { KurvenPunkt } from './kurve';
+import type { CurvesPoint } from './kurve';
 
 /** Alle Beschriftungen entstehen auf dem Server, damit Webapp und App gleich aussehen. */
-export function baueDiagrammdaten(rawPoints: KurvenPunkt[], currency: string, downsampled: boolean, now: Date) {
+export function buildChartData(rawPoints: CurvesPoint[], currency: string, downsampled: boolean, now: Date) {
   function fmtX(point: { day?: string }) {
     const d = (point.day || '').toString();
     if (d.length === 10 && d[4] === '-' && d[7] === '-') {

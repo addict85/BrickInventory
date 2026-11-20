@@ -19,16 +19,16 @@ interface Def {
   items?: z.ZodType[];
 }
 
-const defVon = (s: z.ZodType): Def => (s as unknown as { _zod: { def: Def } })._zod.def;
-const HUELLE = new Set(['optional', 'nullable', 'default', 'prefault', 'readonly', 'catch', 'nonoptional', 'success']);
+const defOf = (s: z.ZodType): Def => (s as unknown as { _zod: { def: Def } })._zod.def;
+const SHELL = new Set(['optional', 'nullable', 'default', 'prefault', 'readonly', 'catch', 'nonoptional', 'success']);
 
 /** Pfade wie `sets.0.letzter_kauf`; höchstens `grenze`, damit eine lange Liste nicht flutet. */
 export function unbekannteFelder(schema: z.ZodType, wert: unknown, grenze = 20): string[] {
   const funde = new Set<string>();
   const lauf = (s: z.ZodType | undefined, w: unknown, pfad: string): void => {
     if (!s || w === null || w === undefined || funde.size >= grenze) return;
-    const d = defVon(s);
-    if (HUELLE.has(d.type)) {
+    const d = defOf(s);
+    if (SHELL.has(d.type)) {
       lauf(d.innerType, w, pfad);
       return;
     }
@@ -70,7 +70,7 @@ export function unbekannteFelder(schema: z.ZodType, wert: unknown, grenze = 20):
     }
     if (d.type !== 'object' || typeof w !== 'object' || Array.isArray(w)) return;
     // looseObject hat catchall unknown: offen, aber im Vertrag nicht beschrieben.
-    const offen = !d.catchall || defVon(d.catchall).type === 'unknown';
+    const offen = !d.catchall || defOf(d.catchall).type === 'unknown';
     for (const [k, x] of Object.entries(w as object)) {
       const feld = d.shape?.[k];
       if (feld) lauf(feld, x, `${pfad}${k}.`);

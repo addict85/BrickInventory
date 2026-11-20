@@ -45,7 +45,7 @@ function konfig() {
 }
 
 /** @param {import('node:test').TestContext} t */
-function mitKonfig(t) {
+function withKonfig(t) {
   const { j, fehler } = konfig();
   if (!j) {
     if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${fehler}`);
@@ -55,7 +55,7 @@ function mitKonfig(t) {
 }
 
 test('jeder Dienst hat begrenzte Protokolle', t => {
-  const j = mitKonfig(t);
+  const j = withKonfig(t);
   if (!j) return;
   const dienste = Object.entries(j.services);
   assert.ok(dienste.length >= 6, Object.keys(j.services).join(', '));
@@ -74,7 +74,7 @@ test('jeder Dienst hat begrenzte Protokolle', t => {
 });
 
 test('jedes tmpfs ist ohne Ausführen, ohne setuid und in der Grösse begrenzt', t => {
-  const j = mitKonfig(t);
+  const j = withKonfig(t);
   if (!j) return;
   const falsch = [];
   for (const [n, d] of Object.entries(j.services))
@@ -92,7 +92,7 @@ test('jedes tmpfs ist ohne Ausführen, ohne setuid und in der Grösse begrenzt',
 });
 
 test('die Datenbank hängt nur in internen Netzen und schreibt nur in Daten und Socket', t => {
-  const j = mitKonfig(t);
+  const j = withKonfig(t);
   if (!j) return;
   const pg = j.services.postgres;
   const netze = Object.keys(pg.networks ?? {});
@@ -113,7 +113,7 @@ test('die Datenbank hängt nur in internen Netzen und schreibt nur in Daten und 
 });
 
 test('pgweb gibt es nicht mehr, auch nicht im Profil tools', t => {
-  const j = mitKonfig(t);
+  const j = withKonfig(t);
   if (!j) return;
   assert.equal(j.services.pgweb, undefined);
   assert.ok(!Object.keys(j.networks ?? {}).some(n => /pgweb/.test(n)), Object.keys(j.networks ?? {}).join(', '));
@@ -122,7 +122,7 @@ test('pgweb gibt es nicht mehr, auch nicht im Profil tools', t => {
 // Gegenprobe (11.11.2026 gemessen): caddy-rechte wieder `brickinventory-caddy:2.11.8`
 // → rot „caddy-rechte nimmt dasselbe signierte Image“.
 test('Caddy kommt als signiertes Image per Digest, selbst gebaut aus Basis-Images per Digest', t => {
-  const j = mitKonfig(t);
+  const j = withKonfig(t);
   if (!j) return;
   const c = j.services.caddy;
   assert.equal(c.image, `addict85/brickinventory-caddy@sha256:${'0'.repeat(64)}`, 'caddy zieht nicht CADDY_IMAGE');

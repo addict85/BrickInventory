@@ -11,8 +11,8 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-const { BUENDEL, stelleBuendelSicher } = require('./helpers/buendel');
-stelleBuendelSicher();
+const { BUENDEL, placeBundleSafe } = require('./helpers/buendel');
+placeBundleSafe();
 const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
 const ADMIN = fs.readFileSync(path.join(ROOT, 'public', 'js', 'detailfelder.js'), 'utf8');
 
@@ -28,7 +28,7 @@ const ADMIN = fs.readFileSync(path.join(ROOT, 'public', 'js', 'detailfelder.js')
  */
 function alarmMarkup(sn) {
   // Ab dem ZUSTANDSFELD, nicht ab der Richtung: Seit der Alarm auch für
-  // „gebraucht" gilt, steht das Zustandsfeld davor, und alarmZustand() liest
+  // „gebraucht" gilt, steht das Zustandsfeld davor, und alarmState() liest
   // es. Ohne das Feld fiele der Prüfstand still auf „neu" zurück und prüfte
   // eine Oberfläche, die es so nicht gibt.
   const i = ADMIN.indexOf('<select id="${p}-alert-cond"');
@@ -48,7 +48,7 @@ function alarmMarkup(sn) {
 }
 
 /** Die Ruhezeit aus detailfelder.js — hier nur, um DARÜBER und DARUNTER zu takten. */
-const RUHE = 800;
+const REST = 800;
 
 /** Ein Fenster mit geladenem Bündel und dem Alarm-Markup des Detailfensters. */
 function fenster() {
@@ -87,18 +87,18 @@ function fenster() {
 const { warte } = require('./helpers/zeit');
 
 /** „249.90" Zeichen für Zeichen, mit [takt] ms zwischen den Anschlägen. */
-async function tippe(f, takt, text = '249.90') {
+async function tap(f, takt, text = '249.90') {
   for (let i = 1; i <= text.length; i++) {
     f.feld.value = text.slice(0, i);
     f.feld.dispatchEvent(new f.w.Event('input', { bubbles: true }));
     await warte(takt);
   }
-  await warte(RUHE * 2);
+  await warte(REST * 2);
 }
 
 test('Tippen speichert — und die Ruhezeit macht daraus EINE Anfrage', async () => {
   const schnell = fenster();
-  await tippe(schnell, 40);
+  await tap(schnell, 40);
   assert.deepEqual(schnell.meldungen, [], 'Es gab Meldungen in der Konsole');
 
   // 1. Es wird überhaupt gespeichert — das war Marcos Befund.
@@ -106,7 +106,7 @@ test('Tippen speichert — und die Ruhezeit macht daraus EINE Anfrage', async ()
 
   // 2. Und zwar einmal, nicht je Zeichen.
   const langsam = fenster();
-  await tippe(langsam, RUHE + 200);
+  await tap(langsam, REST + 200);
   assert.ok(
     langsam.rufe.length > schnell.rufe.length,
     `Die Ruhezeit ändert nichts: schnell ${schnell.rufe.length}, langsam ` +
@@ -131,11 +131,11 @@ test('Tippen speichert — und die Ruhezeit macht daraus EINE Anfrage', async ()
 });
 
 test('die Antwort schreibt NICHT ins Feld zurück', async () => {
-  // Der Grund steht an zeigeAlarmMerker(): Wer „249.90" tippt, hat nach der
+  // Der Grund steht an showAlarmMarker(): Wer „249.90" tippt, hat nach der
   // Ruhezeit hinter „249.9" vielleicht schon die letzte Null gesetzt. Ein
   // Nachladen machte daraus wieder „249.9" und frässe das Zeichen weg.
   const f = fenster();
-  await tippe(f, 40);
+  await tap(f, 40);
   assert.equal(f.feld.value, '249.90', 'Das Feld wurde überschrieben');
   assert.deepEqual(
     f.rufe.filter(r => r.startsWith('GET')),
@@ -151,7 +151,7 @@ test('ein geleertes Feld löscht', async () => {
   const f = fenster();
   f.feld.value = '';
   f.feld.dispatchEvent(new f.w.Event('input', { bubbles: true }));
-  await warte(RUHE * 2);
+  await warte(REST * 2);
   assert.equal(f.rufe.length, 1, `Anfragen: ${f.rufe.join(' | ')}`);
   assert.match(f.rufe[0], /^DELETE .*\/alert\?condition=N$/, `Ein leeres Feld löschte nicht: ${f.rufe[0]}`);
   f.schliesse();

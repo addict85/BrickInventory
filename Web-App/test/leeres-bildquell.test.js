@@ -12,12 +12,12 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche } = require('./helpers/oberflaeche');
+const { openUi } = require('./helpers/oberflaeche');
 
 /** Öffnet die Oberfläche und zeichnet jedes leere src auf, auch das aus dem Markup. */
-async function mitBeobachter(antworten = {}) {
+async function withObserver(antworten = {}) {
   const leer = [];
-  const o = await oeffneOberflaeche(antworten, {
+  const o = await openUi(antworten, {
     vorher(w) {
       new w.MutationObserver(ms => {
         for (const m of ms) {
@@ -48,7 +48,7 @@ async function mitBeobachter(antworten = {}) {
 }
 
 test('beim Start und in der Galerie hat kein Bild ein leeres src', async () => {
-  const { w, d, warte, leer } = await mitBeobachter({
+  const { w, d, warte, leer } = await withObserver({
     '/v1/sets': {
       success: true,
       sets: [
@@ -73,7 +73,7 @@ test('beim Start und in der Galerie hat kein Bild ein leeres src', async () => {
 });
 
 test('ein Ladefehler wiederholt ohne leeres src', async () => {
-  const { w, d, warte, leer } = await mitBeobachter({
+  const { w, d, warte, leer } = await withObserver({
     '/v1/sets': {
       success: true,
       sets: [
@@ -108,7 +108,7 @@ test('ein Ladefehler wiederholt ohne leeres src', async () => {
 });
 
 test('Zoom schliessen entfernt das Bild, statt src zu leeren', async () => {
-  const { w, d, leer } = await mitBeobachter();
+  const { w, d, leer } = await withObserver();
   try {
     const bild = d.getElementById('lightbox-img');
     bild.setAttribute('src', '/api/v1/img-proxy?url=x');

@@ -11,11 +11,11 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testKontext } = require('./helpers/sources');
+const { buildAndRequire, testData, testContext } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet } = require('./helpers/bestand');
+const db = testData();
+const { holdsSet } = require('./helpers/bestand');
 
 test('Erfassen unter Last', { concurrency: 1 }, async t => {
   try {
@@ -37,8 +37,8 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
   }
 
   // Ungebunden geladen: In der Transaktion bekommt der Dienst ihren Kontext `t`.
-  const { kaufAmTagErfassen } = require(path.join(__dirname, '..', 'dist', 'src', 'bestand', 'acquisitions.js'));
-  const bestand = testKontext('bestand');
+  const { addPurchaseAtTag } = require(path.join(__dirname, '..', 'dist', 'src', 'bestand', 'acquisitions.js'));
+  const bestand = testContext('bestand');
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('last','x')");
   const uid = (await db.get("SELECT id FROM users WHERE username='last'")).id;
@@ -51,11 +51,11 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
     );
 
   await t.test('zehn gleichzeitige Erfassungen ergeben EINE Tageszeile mit Menge 10', async () => {
-    await haeltSet(db, uid, '70001-1', 0);
+    await holdsSet(db, uid, '70001-1', 0);
     await Promise.all(
       Array.from({ length: 10 }, () =>
         bestand.transaktion(
-          tt => kaufAmTagErfassen(tt, 'set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }),
+          tt => addPurchaseAtTag(tt, 'set', uid, ['70001-1'], { quantity: 1, price: 10, condition: 'N' }),
           { sperren: [{ konto: uid, schluessel: '70001-1' }] },
         ),
       ),
@@ -67,7 +67,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
   });
 
   await t.test('der Index lässt eine zweite Tageszeile gar nicht erst zu', async () => {
-    await haeltSet(db, uid, '70002-1', 0);
+    await holdsSet(db, uid, '70002-1', 0);
     // Das Netz unter der Sperre: Ein Weg, der die Sperre vergisst, scheitert
     // an der Datenbank statt still eine zweite Zeile anzulegen.
     await db.run(
@@ -143,18 +143,18 @@ test('Mengen und Preise werden geprüft', () => {
   assert.equal(V.acquisitionQuantity(undefined), 1);
 
   // Preis: leer heisst „kein Preis", negativ wird abgelehnt (src/infra/geld.ts).
-  const { geldEingabe } = _req('src/infra/geld.js');
-  assert.equal(geldEingabe('', 'Preis'), null);
-  assert.equal(geldEingabe(null, 'Preis'), null);
-  assert.equal(geldEingabe('49,90', 'Preis'), 49.9, 'Komma als Dezimaltrenner');
-  assert.equal(geldEingabe(0, 'Preis'), 0, '0 ist ein gültiger Preis, kein fehlender');
+  const { moneyInput } = _req('src/infra/geld.js');
+  assert.equal(moneyInput('', 'Preis'), null);
+  assert.equal(moneyInput(null, 'Preis'), null);
+  assert.equal(moneyInput('49,90', 'Preis'), 49.9, 'Komma als Dezimaltrenner');
+  assert.equal(moneyInput(0, 'Preis'), 0, '0 ist ein gültiger Preis, kein fehlender');
   assert.throws(
-    () => geldEingabe(-20, 'Preis'),
+    () => moneyInput(-20, 'Preis'),
     /negativ/,
     'ein negativer Kaufpreis senkt stillschweigend den Gesamtwert der Sammlung',
   );
-  assert.throws(() => geldEingabe(5_000_000, 'Preis'), /unplausibel/);
-  assert.throws(() => geldEingabe('abc', 'Preis'), /Ungültiger Betrag/, 'Text ist kein Preis, auch kein fehlender');
+  assert.throws(() => moneyInput(5_000_000, 'Preis'), /unplausibel/);
+  assert.throws(() => moneyInput('abc', 'Preis'), /Ungültiger Betrag/, 'Text ist kein Preis, auch kein fehlender');
 });
 
 test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
@@ -167,49 +167,49 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   for (const rel of ['src/parts/manualParts.ts', 'src/minifigs/manualMinifigs.ts']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
-    assert.match(src, /geldEingabe\(/, `${rel}: Preis ungeprüft`);
+    assert.match(src, /moneyInput\(/, `${rel}: Preis ungeprüft`);
   }
   const vertrag = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/vertrag/sets.ts'), 'utf8'));
   assert.match(
     vertrag,
-    /const NeuesSet = [^;]*quantity: eingabe\.stueckzahl\(\)[^;]*purchase_price: eingabe\.geld\(/,
+    /const NewSet = [^;]*quantity: eingabe\.stueckzahl\(\)[^;]*purchase_price: eingabe\.geld\(/,
     'Sets: Menge oder Preis ungeprüft',
   );
 
   // Und der Erfassen-Pfad schreibt gesperrt.
-  const sets = ohneKommentare(require('./helpers/sources').setKernQuelle());
+  const sets = ohneKommentare(require('./helpers/sources').setCoreSource());
   // Nur der Rumpf von setErfassen(), des einen Wegs zum Erfassen: bis zur nächsten Funktion.
-  const beginn = sets.indexOf('async function setErfassen(');
-  const naechste = sets.slice(beginn + 10).search(/\n(?:export )?(?:async )?function [a-zA-Z_$]/);
-  const kern = sets.slice(beginn, beginn + 10 + naechste);
-  const sperre = kern.indexOf('repo.sperreSetErfassen(');
-  const stellen = [...kern.matchAll(/erfassungBuchen\(/g)].map(m => m.index);
+  const start = sets.indexOf('async function setErfassen(');
+  const naechste = sets.slice(start + 10).search(/\n(?:export )?(?:async )?function [a-zA-Z_$]/);
+  const kern = sets.slice(start, start + 10 + naechste);
+  const sperre = kern.indexOf('repo.addLockSet(');
+  const stellen = [...kern.matchAll(/bookEntry\(/g)].map(m => m.index);
   assert.ok(stellen.length >= 2, `nur ${stellen.length} Erfassungs-Schreibstellen gefunden`);
   assert.ok(sperre > 0 && stellen.every(i => i > sperre), 'nicht jede Schreibstelle läuft unter der Sperre');
 });
 
 test('ein kaputter CSV-Eintrag kippt nicht die ganze Datei', () => {
-  const { csvEinlesen, uebersprungenHinweis } = _req('src/infra/csvExport.js');
+  const { csvReadIn, skippedHint } = _req('src/infra/csvExport.js');
 
   // Genau die Datei, die am laufenden Server den Import komplett abbrach:
   // Zeile 3 hat eine Spalte statt drei.
   const kaputt = 'set_number,quantity,purchase_price\n10280,1,20\nMÜLL;;;\n75192,2,30\n';
-  const r = csvEinlesen(kaputt);
+  const r = csvReadIn(kaputt);
   assert.equal(r.records.length, 3, 'brauchbare Zeilen gingen verloren — vorher brach der ganze Import ab');
   assert.equal(r.records[0].set_number, '10280');
   assert.equal(r.records[2].set_number, '75192', 'die Zeile NACH dem Fehler fehlt');
 
   // Semikolon-Dateien werden weiterhin erkannt.
-  const semi = csvEinlesen('set_number;quantity\n10280;2\n');
+  const semi = csvReadIn('set_number;quantity\n10280;2\n');
   assert.equal(semi.delimiter, ';');
   assert.equal(semi.records[0].quantity, '2');
 
   // Wirklich leere Zeilen zählen als übersprungen und werden benannt.
-  const leer = csvEinlesen('set_number,quantity\n10280,1\n,\n');
+  const leer = csvReadIn('set_number,quantity\n10280,1\n,\n');
   assert.equal(leer.records.length, 1);
   assert.deepEqual(leer.uebersprungen, [3], 'Zeilennummer wie im Editor, 1-basiert mit Kopfzeile');
-  assert.match(uebersprungenHinweis(leer.uebersprungen), /1 Zeile\(n\) übersprungen \(Zeile 3\)/);
-  assert.equal(uebersprungenHinweis([]), null, 'ohne Übersprungene kein Hinweis');
+  assert.match(skippedHint(leer.uebersprungen), /1 Zeile\(n\) übersprungen \(Zeile 3\)/);
+  assert.equal(skippedHint([]), null, 'ohne Übersprungene kein Hinweis');
 });
 
 test('alle drei Importwege melden übersprungene Zeilen', () => {
@@ -219,7 +219,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   // ── Zwei Wege zum selben Ziel ────────────────────────────
   //
   // Der Set-Import liest selbst und antwortet selbst; Teile und Minifiguren
-  // gehen über csvZeilenAusAnfrage() und csvImportBericht() in
+  // gehen über csvRowsFromRequest() und csvImportReport() in
   // src/infra/csvExport.ts. Je Weg zählen Route, Dienst und Auftrag zusammen.
   for (const [rel, dienst] of [
     ['routes/api_v1/setsImport.ts', 'src/sets/csvImport.ts'],
@@ -233,24 +233,24 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
         '\n' +
         fs.readFileSync(path.join(ROOT, 'src/collection/importJobs.ts'), 'utf8'),
     );
-    assert.match(src, /csvEinlesen\(|csvZeilenAusAnfrage\(/, `${rel}: liest noch selbst`);
-    assert.match(src, /skipped_hint|csvImportBericht\(/, `${rel}: sagt dem Nutzer nichts über übersprungene Zeilen`);
+    assert.match(src, /csvReadIn\(|csvRowsFromRequest\(/, `${rel}: liest noch selbst`);
+    assert.match(src, /skipped_hint|csvImportReport\(/, `${rel}: sagt dem Nutzer nichts über übersprungene Zeilen`);
   }
   // Und die gemeinsame Fassung tut wirklich beides — sonst genügte oben der
   // blosse Name.
   const geteilt = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/csvExport.ts'), 'utf8'));
   assert.match(
     geteilt,
-    /function csvZeilenAusAnfrage[\s\S]*?csvEinlesen\(/,
-    'csvZeilenAusAnfrage() liest die Datei nicht mehr ein',
+    /function csvRowsFromRequest[\s\S]*?csvReadIn\(/,
+    'csvRowsFromRequest() liest die Datei nicht mehr ein',
   );
   assert.match(
     geteilt,
-    /function csvImportBericht[\s\S]*?skipped_hint/,
-    'csvImportBericht() meldet die übersprungenen Zeilen nicht mehr',
+    /function csvImportReport[\s\S]*?skipped_hint/,
+    'csvImportReport() meldet die übersprungenen Zeilen nicht mehr',
   );
   // Und die Oberfläche zeigt den Hinweis auch an.
-  // Sets in der Galerie, Teile/Figuren/Merkliste/Alarme über csvHochladen().
+  // Sets in der Galerie, Teile/Figuren/Merkliste/Alarme über uploadCsv().
   for (const rel of ['public/js/set-csv-import.js', 'public/js/bausteine.js']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /skipped_hint/, `${rel}: Hinweis kommt an, wird aber nicht gezeigt`);
@@ -261,7 +261,7 @@ test('die Teileliste liefert, was sie meldet', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
-  const H = require('./helpers/sources').handlerModul(_req);
+  const H = require('./helpers/sources').handlerModule(_req);
 
   // Die Teileliste EINES Sets darf mehr als eine normale Seite liefern
   assert.ok(
@@ -307,7 +307,7 @@ test('die Teileliste liefert, was sie meldet', () => {
   );
 
   // Und die SET-Liste bleibt unbegrenzt
-  const setsLesen = src.slice(src.indexOf('async function setListe'));
+  const setsLesen = src.slice(src.indexOf('async function setList'));
   assert.match(
     setsLesen,
     /if \(f\.seite\) \{/,

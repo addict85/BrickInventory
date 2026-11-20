@@ -22,7 +22,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const SKRIPT = path.join(ROOT, 'scripts', 'geheimnisse-einrichten.sh');
+const SCRIPT = path.join(ROOT, 'scripts', 'geheimnisse-einrichten.sh');
 const NAMEN = [
   'db_app_password',
   'db_migration_password',
@@ -33,11 +33,11 @@ const NAMEN = [
   'session_secret',
 ];
 
-function sandkasten(t) {
+function sandbox(t) {
   const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'geheimnisse-'));
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   const lauf = (mehr = {}) =>
-    spawnSync('sh', ['-c', 'umask 022; exec sh "$0"', SKRIPT], {
+    spawnSync('sh', ['-c', 'umask 022; exec sh "$0"', SCRIPT], {
       cwd: ort,
       encoding: 'utf8',
       env: { PATH: process.env.PATH, ...mehr },
@@ -47,7 +47,7 @@ function sandkasten(t) {
 }
 
 test('eine neue Installation bekommt zufällige Geheimnisse, nur für den Besitzer erreichbar', t => {
-  const s = sandkasten(t);
+  const s = sandbox(t);
   const r = s.lauf();
   assert.equal(r.status, 0, r.stderr);
   const ordner = path.join(s.ort, 'geheimnisse');
@@ -64,7 +64,7 @@ test('eine neue Installation bekommt zufällige Geheimnisse, nur für den Besitz
 });
 
 test('eine bestehende Installation übernimmt die Werte aus .env', t => {
-  const s = sandkasten(t);
+  const s = sandbox(t);
   fs.mkdirSync(path.join(s.ort, 'pgdata18'));
   fs.writeFileSync(
     path.join(s.ort, '.env'),
@@ -91,7 +91,7 @@ test('eine bestehende Installation übernimmt die Werte aus .env', t => {
 });
 
 test('eine bestehende Datenbank ohne DB_PASSWORD bekommt kein neues', t => {
-  const s = sandkasten(t);
+  const s = sandbox(t);
   fs.mkdirSync(path.join(s.ort, 'pgdata18'));
   const r = s.lauf();
   assert.notEqual(r.status, 0, 'ein neues Superuser-Passwort passte nicht zur Datenbank');
@@ -100,7 +100,7 @@ test('eine bestehende Datenbank ohne DB_PASSWORD bekommt kein neues', t => {
 });
 
 test('ein zweiter Lauf ändert nichts, PGWEB=ja füllt nur die leeren', t => {
-  const s = sandkasten(t);
+  const s = sandbox(t);
   assert.equal(s.lauf().status, 0);
   const vorher = Object.fromEntries(NAMEN.map(n => [n, s.lies(n)]));
   fs.chmodSync(path.join(s.ort, 'geheimnisse'), 0o755);

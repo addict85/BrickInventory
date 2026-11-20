@@ -8,11 +8,11 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, reiter } = require('./helpers/oberflaeche');
+const { openUi, warte, reiter } = require('./helpers/oberflaeche');
 
 test('Untertitel der Kacheln in der Sprache der Oberfläche', async () => {
   const kachel = (sub, sub_teile) => ({ label: 'x', status: 'idle', progress: 0, total: 0, sub, sub_teile });
-  const { w, d } = await oeffneOberflaeche(
+  const { w, d } = await openUi(
     {
       '/v1/admin/job-status': { success: true, job: { running: false } },
       '/v1/admin/jobs': {

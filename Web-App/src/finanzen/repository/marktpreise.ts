@@ -1,12 +1,12 @@
-import type { DbSchnittstelle } from '../../../db/database';
-import type { FinanzenLesevertrag } from '../lesevertrag';
+import type { DbInterface } from '../../../db/database';
+import type { FinancesReadContract } from '../lesevertrag';
 import { marktpreisSql } from '../../../db/geldSql';
 
 export type Zustand = 'N' | 'U';
 type Preiszeile = { avg_price: string | null; qty_avg_price: string | null; condition: Zustand };
 
 /** Nur echte Preise über null. */
-export function setPreisAusCache(db: DbSchnittstelle, setNumber: string, zustand: string, waehrung: string) {
+export function setPriceFromCache(db: DbInterface, setNumber: string, zustand: string, waehrung: string) {
   return db.get<{ marktpreis: string }>(
     `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
        WHERE set_number=$1 AND condition IN ('N','U') AND currency_code=$3 AND ${marktpreisSql()} IS NOT NULL
@@ -15,9 +15,9 @@ export function setPreisAusCache(db: DbSchnittstelle, setNumber: string, zustand
   );
 }
 
-export function teilErfassungsZustand(
-  db: DbSchnittstelle,
-  l: FinanzenLesevertrag,
+export function partEntryState(
+  db: DbInterface,
+  l: FinancesReadContract,
   userId: number,
   partNumber: string,
   colorId: number,
@@ -28,14 +28,14 @@ export function teilErfassungsZustand(
   );
 }
 
-export function figurErfassungsZustand(db: DbSchnittstelle, l: FinanzenLesevertrag, userId: number, figNumber: string) {
+export function minifigEntryState(db: DbInterface, l: FinancesReadContract, userId: number, figNumber: string) {
   return db.get<{ any_used: number | null; cnt: string }>(
     `SELECT MAX(CASE WHEN condition='U' THEN 1 ELSE 0 END) AS any_used, COUNT(*) AS cnt FROM ${l.figurErfassungen()} e WHERE user_id=$1 AND fig_number=$2`,
     [userId, figNumber],
   );
 }
 
-export function figurenpreiseAusCache(db: DbSchnittstelle, nummern: string[], waehrung: string, ttlStunden: number) {
+export function minifigsPricesFromCache(db: DbInterface, nummern: string[], waehrung: string, ttlStunden: number) {
   return db.all<Preiszeile & { fig_number: string }>(
     `SELECT fig_number, condition, avg_price, qty_avg_price FROM minifig_price_cache
       WHERE fig_number = ANY($1) AND currency_code = $2
@@ -44,7 +44,7 @@ export function figurenpreiseAusCache(db: DbSchnittstelle, nummern: string[], wa
   );
 }
 
-export function teilepreiseAusCache(db: DbSchnittstelle, nummern: string[], waehrung: string, ttlStunden: number) {
+export function partsPricesFromCache(db: DbInterface, nummern: string[], waehrung: string, ttlStunden: number) {
   return db.all<Preiszeile & { part_number: string; color_id: number }>(
     `SELECT part_number, color_id, condition, avg_price, qty_avg_price FROM part_price_cache
       WHERE part_number = ANY($1) AND currency_code = $2
@@ -53,9 +53,9 @@ export function teilepreiseAusCache(db: DbSchnittstelle, nummern: string[], waeh
   );
 }
 
-/** Wie geschaetzterFigurenpreis für viele Figuren in einer Abfrage; Schlüssel `nummer|zustand`. */
-export async function geschaetzteFigurenpreise(
-  db: DbSchnittstelle,
+/** Wie estimatedMinifigsPrice für viele Figuren in einer Abfrage; Schlüssel `nummer|zustand`. */
+export async function estimatedMinifigsPrices(
+  db: DbInterface,
   figuren: string[],
   waehrung: string,
   ttlStunden: number,
@@ -76,8 +76,8 @@ export async function geschaetzteFigurenpreise(
   return aus;
 }
 
-export function geschaetzterFigurenpreis(
-  db: DbSchnittstelle,
+export function estimatedMinifigsPrice(
+  db: DbInterface,
   figNumber: string,
   zustand: string,
   waehrung: string,
@@ -91,8 +91,8 @@ export function geschaetzterFigurenpreis(
   );
 }
 
-export function merkeGeschaetztenFigurenpreis(
-  db: DbSchnittstelle,
+export function rememberEstimatedMinifigsPrice(
+  db: DbInterface,
   figNumber: string,
   zustand: string,
   waehrung: string,
@@ -107,8 +107,8 @@ export function merkeGeschaetztenFigurenpreis(
   );
 }
 
-export function merkeGeschaetztenFigurenverlauf(
-  db: DbSchnittstelle,
+export function rememberEstimatedMinifigsHistory(
+  db: DbInterface,
   figNumber: string,
   zustand: string,
   waehrung: string,

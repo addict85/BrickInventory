@@ -7,12 +7,12 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
-const { haeltFigur, haeltTeil, teilmengeVon } = require('./helpers/bestand');
+const db = testData();
+const { holdsMinifig, holdsPart, subsetOf } = require('./helpers/bestand');
 
 async function erreichbar() {
   try {
@@ -56,10 +56,10 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async t => {
 
   // Dieselbe Nummer bei beiden — genau der Fall, den die Route nicht
   // unterscheiden konnte.
-  await haeltTeil(db, haupt, '3001', { menge: 5, colorId: 4 });
-  await haeltTeil(db, kind, '3001', { menge: 9, colorId: 4 });
-  await haeltFigur(db, haupt, 'sw0001', { menge: 1 });
-  await haeltFigur(db, kind, 'sw0001', { menge: 2 });
+  await holdsPart(db, haupt, '3001', { menge: 5, colorId: 4 });
+  await holdsPart(db, kind, '3001', { menge: 9, colorId: 4 });
+  await holdsMinifig(db, haupt, 'sw0001', { menge: 1 });
+  await holdsMinifig(db, kind, 'sw0001', { menge: 2 });
 
   const { base } = testServer(_req, { sitzung: { userId: haupt, username: 'haupt' }, t });
   const ruf = async (pfad, methode = 'GET') => {
@@ -67,12 +67,12 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async t => {
     return { status: r.status, body: await r.json() };
   };
   // Die Stückzahl kommt seit Migration 0038 aus den Erfassungen, nicht aus
-  // der Spalte. teilmengeVon() traegt dieselbe Fallunterscheidung wie der
+  // der Spalte. subsetOf() traegt dieselbe Fallunterscheidung wie der
   // Server (test/helpers/bestand.js).
   const teile = async () => {
     const zeilen = await db.all(`SELECT user_id, color_id FROM parts WHERE part_number='3001' ORDER BY user_id`);
     const raus = [];
-    for (const r of zeilen) raus.push(`${r.user_id}:${await teilmengeVon(db, r.user_id, '3001', r.color_id ?? 0)}`);
+    for (const r of zeilen) raus.push(`${r.user_id}:${await subsetOf(db, r.user_id, '3001', r.color_id ?? 0)}`);
     return raus;
   };
   const figuren = async () =>
@@ -104,15 +104,15 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async t => {
   // Ändert das Hauptkonto auf der Karte des Kindes die Menge, darf nicht die EIGENE
   // Zeile still mitgehen. Lesen und Löschen zu prüfen und das Schreiben auszulassen
   // hiesse, denselben Fehler an der dritten Stelle stehen zu lassen.
-  await haeltTeil(db, haupt, '3020', { menge: 5, colorId: 0 });
-  await haeltTeil(db, kind, '3020', { menge: 9, colorId: 0 });
+  await holdsPart(db, haupt, '3020', { menge: 5, colorId: 0 });
+  await holdsPart(db, kind, '3020', { menge: 9, colorId: 0 });
   // Wie teile() oben: Die Stueckzahl steht seit Migration 0038 in den
   // Erfassungen. Der Mengenregler schreibt genau dorthin — deshalb ist das
   // hier auch die Stelle, an der ein Griff auf die falsche Zeile auffaellt.
   const mengen = async () => {
     const zeilen = await db.all(`SELECT user_id, color_id FROM parts WHERE part_number='3020' ORDER BY user_id`);
     const raus = [];
-    for (const r of zeilen) raus.push(`${r.user_id}:${await teilmengeVon(db, r.user_id, '3020', r.color_id ?? 0)}`);
+    for (const r of zeilen) raus.push(`${r.user_id}:${await subsetOf(db, r.user_id, '3020', r.color_id ?? 0)}`);
     return raus;
   };
   const setze = async (pfad, menge) =>
@@ -174,12 +174,12 @@ test('beide Bewertungen fuehren den Besitzer mit', async t => {
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
   // Der Preis steht seit Migration 0035 in der Erfassung, nicht an der
   // Bestandszeile.
-  // Menge UND Preis in einem Aufruf: haeltTeil/haeltFigur legen die Erfassung
+  // Menge UND Preis in einem Aufruf: holdsPart/holdsMinifig legen die Erfassung
   // selbst an. Ein zweites INSERT daneben verstiesse gegen idx_part_acq_tag_zustand …
-  await haeltTeil(db, haupt, '3001', { menge: 5, colorId: 4, preis: 0.5 });
-  await haeltTeil(db, kind, '3020', { menge: 9, colorId: 0, preis: 0.3 });
-  await haeltFigur(db, haupt, 'sw0001', { menge: 1, preis: 12.0 });
-  await haeltFigur(db, kind, 'sw0002', { menge: 2, preis: 9.0 });
+  await holdsPart(db, haupt, '3001', { menge: 5, colorId: 4, preis: 0.5 });
+  await holdsPart(db, kind, '3020', { menge: 9, colorId: 0, preis: 0.3 });
+  await holdsMinifig(db, haupt, 'sw0001', { menge: 1, preis: 12.0 });
+  await holdsMinifig(db, kind, 'sw0002', { menge: 2, preis: 9.0 });
 
   const { base } = testServer(_req, { sitzung: { userId: haupt, username: 'h2' }, t });
   const hole = async p => (await fetch(base + p)).json();

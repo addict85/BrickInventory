@@ -96,11 +96,11 @@ test('kein minimatch unter 11.0.1 im Abhängigkeitsbaum', () => {
   // GHSA-g3hv-75wg-m249 über archiver → readdir-glob; gehalten vom overrides-Eintrag.
   // Gegenprobe (01.11.2026): package-lock.json von e21f747 (minimatch 10.2.6) → rot.
   const lock = require(path.join(__dirname, '..', 'package-lock.json'));
-  const fassungen = Object.entries(lock.packages || {})
+  const versions = Object.entries(lock.packages || {})
     .filter(([p]) => p.endsWith('node_modules/minimatch'))
     .map(([p, v]) => [p, v.version.split('.').map(Number)]);
-  assert.ok(fassungen.length > 0, 'minimatch nicht im Lockfile — greift die Suche noch?');
-  const alt = fassungen
+  assert.ok(versions.length > 0, 'minimatch nicht im Lockfile — greift die Suche noch?');
+  const alt = versions
     .filter(([, [a, b, c]]) => a < 11 || (a === 11 && b === 0 && c < 1))
     .map(([p, v]) => `${p}@${v.join('.')}`);
   assert.deepEqual(alt, []);

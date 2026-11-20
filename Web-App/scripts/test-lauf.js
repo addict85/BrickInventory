@@ -13,15 +13,15 @@ const os = require('node:os');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-const { rollen, alsRolle } = require(path.join(ROOT, 'test', 'helpers', 'rollen.js'));
+const { rollen, asRole } = require(path.join(ROOT, 'test', 'helpers', 'rollen.js'));
 const args = process.argv.slice(2);
 const seriell = args.includes('--seriell');
 const abdeckung = args.includes('--abdeckung');
 const auswahl = args.filter(a => a !== '--seriell' && a !== '--abdeckung');
-const ABDECKUNG = path.join(ROOT, 'coverage');
+const COVERAGE = path.join(ROOT, 'coverage');
 
 /** @param {string} url @param {string} name */
-const mitDb = (url, name) => {
+const withDb = (url, name) => {
   const u = new URL(url);
   u.pathname = '/' + name;
   return u.toString();
@@ -31,7 +31,7 @@ const id = s => `"${s.replace(/"/g, '""')}"`;
 
 /** Fremde Last auf dem Rechner verlängert jede Datei, ohne dass sie langsamer
  * geworden wäre: Die Frist wächst mit der Last je Kern, höchstens auf das Vierfache. */
-function fristBeiLast(/** @type {number} */ grund) {
+function deadlineAtLast(/** @type {number} */ grund) {
   const last = (os.loadavg()[0] ?? 0) / os.availableParallelism();
   return Math.round(grund * Math.min(4, Math.max(1, last)));
 }
@@ -46,7 +46,7 @@ function lauf(dateien, n, env, frist = 60_000) {
   if (!dateien.length) return Promise.resolve({ code: 0, frist: [], andere: 0 });
   // textausgabe.js hält Text aus dem Strom der Berichtsrahmen, auslauf.js
   // beendet ein Kind, das nicht endet (Begründungen dort).
-  const vorlader = [
+  const preloader = [
     '--require',
     path.join(ROOT, 'test', 'helpers', 'textausgabe.js'),
     '--require',
@@ -59,7 +59,7 @@ function lauf(dateien, n, env, frist = 60_000) {
     const p = spawn(
       process.execPath,
       [
-        ...vorlader,
+        ...preloader,
         '--test',
         `--test-concurrency=${n}`,
         `--test-timeout=${frist}`,
@@ -79,14 +79,14 @@ function lauf(dateien, n, env, frist = 60_000) {
     p.on('exit', code => {
       const tap = fs.existsSync(bericht) ? fs.readFileSync(bericht, 'utf8') : '';
       fs.rmSync(bericht, { force: true });
-      fertig({ code: code ?? 1, ...fristFehler(tap, dateien) });
+      fertig({ code: code ?? 1, ...deadlineError(tap, dateien) });
     });
   });
 }
 
 /** Rote Dateien auf oberster Ebene: welche nur an der Frist scheiterten, wie viele aus anderem Grund.
  * @param {string} tap @param {string[]} dateien */
-function fristFehler(tap, dateien) {
+function deadlineError(tap, dateien) {
   /** @type {string[]} */
   const frist = [];
   let andere = 0;
@@ -110,7 +110,7 @@ const nachgelaufen = [];
 /** Was nur an der Frist scheiterte, läuft einzeln nach: unter Last ein
  * Ausrutscher, einzeln rot ein Fehler. Mit TEST_NACHLAUF=aus gibt es keinen
  * Nachlauf, dann ist schon die Fristüberschreitung rot. */
-async function mitNachlauf(
+async function withFollowUp(
   /** @type {{ code: number, frist: string[], andere: number }} */ r,
   /** @type {Record<string, string>} */ env,
   /** @type {number} */ frist,
@@ -129,7 +129,7 @@ async function mitNachlauf(
 }
 
 /** Am Ende des Laufs, nicht zwischen hunderten Testzeilen. */
-function meldeNachlauf() {
+function reportFollowUp() {
   if (!nachgelaufen.length) return;
   const text = `${nachgelaufen.length} Datei(en) nur im Nachlauf grün — unter Last zu langsam: ${nachgelaufen.join(', ')}`;
   console.log(`[test-lauf] WARNUNG: ${text}`);
@@ -144,10 +144,10 @@ function meldeNachlauf() {
 }
 
 /** Bericht aus den V8-Dateien (scripts/abdeckung.js); die Rohdaten sind danach überflüssig. */
-async function berichteAbdeckung() {
-  const bereiche = await require('./abdeckung').bericht(path.join(ABDECKUNG, 'v8'));
+async function reportsCoverage() {
+  const bereiche = await require('./abdeckung').bericht(path.join(COVERAGE, 'v8'));
   console.log(`[test-lauf] Abdeckung (Zeilen %): ${JSON.stringify(bereiche)}`);
-  fs.rmSync(path.join(ABDECKUNG, 'v8'), { recursive: true, force: true });
+  fs.rmSync(path.join(COVERAGE, 'v8'), { recursive: true, force: true });
 }
 
 /**
@@ -155,7 +155,7 @@ async function berichteAbdeckung() {
  * geprüft zu haben. Mit REQUIRE_BROWSER=1 bzw. REQUIRE_CADDY=1 scheitern sie stattdessen und zählen nicht.
  * @param {string[]} browser @param {string[]} alle @param {(f: string) => string} quelle
  */
-function ohneWerkzeug(browser, alle, quelle) {
+function withoutTool(browser, alle, quelle) {
   let chromeDa = true;
   // Dieselbe Suche wie die Browser-Tests; der Pfad als Ausdruck, damit tsc die Testhilfe nicht mitprüft.
   try {
@@ -182,19 +182,19 @@ async function main() {
       stdio: 'ignore',
     });
     // Das Bündel liegt nicht in git: einmal und immer neu bauen, die parallelen Dateien lesen es nur.
-    require('./build-frontend').baueBuendel(path.join(ROOT, 'public', 'js', 'app.bundle.js'));
+    require('./build-frontend').buildBundle(path.join(ROOT, 'public', 'js', 'app.bundle.js'));
   }
   /** @type {Record<string, string>} */
-  const messung = { TEST_LAUF_GEBAUT: '1' };
+  const measurement = { TEST_LAUF_GEBAUT: '1' };
   if (abdeckung) {
     // Ein eigenes Bündel mit eingebetteter Sourcemap: Das ausgelieferte bleibt ohne.
-    const mitKarte = path.join(ROOT, 'dist', 'abdeckung', 'app.bundle.js');
-    require('./build-frontend').baueBuendel(mitKarte, { quellkarte: true });
-    fs.rmSync(ABDECKUNG, { recursive: true, force: true });
-    fs.mkdirSync(path.join(ABDECKUNG, 'v8'), { recursive: true });
-    Object.assign(messung, { NODE_V8_COVERAGE: path.join(ABDECKUNG, 'v8'), TEST_BUENDEL: mitKarte });
+    const withCard = path.join(ROOT, 'dist', 'abdeckung', 'app.bundle.js');
+    require('./build-frontend').buildBundle(withCard, { quellkarte: true });
+    fs.rmSync(COVERAGE, { recursive: true, force: true });
+    fs.mkdirSync(path.join(COVERAGE, 'v8'), { recursive: true });
+    Object.assign(measurement, { NODE_V8_COVERAGE: path.join(COVERAGE, 'v8'), TEST_BUENDEL: withCard });
     const erledigt = new Set();
-    setInterval(() => require('./abdeckung').verdichte(path.join(ABDECKUNG, 'v8'), erledigt), 5000).unref();
+    setInterval(() => require('./abdeckung').compact(path.join(COVERAGE, 'v8'), erledigt), 5000).unref();
   }
 
   const dateien = auswahl.length
@@ -208,26 +208,26 @@ async function main() {
   // getrennt, weil mehrere Chrome je Kern die Fristen reissen (TEST_PARALLEL_BROWSER).
   // Dateien mit `@einzeln` teilen etwas ausserhalb ihrer Datenbank (data/) und laufen allein.
   const quelle = (/** @type {string} */ f) => fs.readFileSync(path.resolve(ROOT, f), 'utf8');
-  const istBrowser = (/** @type {string} */ f) =>
+  const isBrowser = (/** @type {string} */ f) =>
     /-browser\.test\.js$/.test(f) || /CHROME_BIN|helpers\/app-browser|helpers\/oberflaeche-pruefung/.test(quelle(f));
-  const browser = dateien.filter(istBrowser);
+  const browser = dateien.filter(isBrowser);
   if (seriell) {
-    const { code } = await lauf(dateien, 1, messung, fristBeiLast(60_000));
-    if (abdeckung) await berichteAbdeckung();
+    const { code } = await lauf(dateien, 1, measurement, deadlineAtLast(60_000));
+    if (abdeckung) await reportsCoverage();
     console.log(
-      `[test-lauf] seriell, ${Math.round((Date.now() - start) / 1000)} s; ${ohneWerkzeug(browser, dateien, quelle)}`,
+      `[test-lauf] seriell, ${Math.round((Date.now() - start) / 1000)} s; ${withoutTool(browser, dateien, quelle)}`,
     );
     process.exit(code);
   }
-  const einzeln = dateien.filter(f => !istBrowser(f) && /@einzeln\b/.test(quelle(f)));
-  const uebrige = dateien.filter(f => !browser.includes(f) && !einzeln.includes(f));
+  const einzeln = dateien.filter(f => !isBrowser(f) && /@einzeln\b/.test(quelle(f)));
+  const remaining = dateien.filter(f => !browser.includes(f) && !einzeln.includes(f));
   // Doppelt so viele wie Kerne: Viele Dateien warten auf die Datenbank oder Zeitgeber.
   const n = Math.max(1, Number(process.env.TEST_PARALLEL) || Math.min(2 * os.availableParallelism(), 8));
   const nb = Math.max(1, Number(process.env.TEST_PARALLEL_BROWSER) || 1);
 
   const basis = process.env.TEST_DATABASE_URL;
   /** @type {Record<string, string>} */
-  let env = { ...messung };
+  let env = { ...measurement };
   /** @type {import('pg').Client | null} */
   let admin = null;
   let vorlage = '';
@@ -241,23 +241,23 @@ async function main() {
     await a.query(`CREATE DATABASE ${id(vorlage)}`);
     // Wie im Betrieb: erst die Rollen (db-rolle), dann das Schema als Eigentümerin (migration).
     const r = rollen(vorlage);
-    rollenAnlegen(basis, vorlage, r);
+    createRoles(basis, vorlage, r);
     execFileSync(
       process.execPath,
       [
         '-e',
-        "const { db } = require('./dist/startup/verdrahtung.js').verdrahteProzess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e); process.exit(1); })",
+        "const { db } = require('./dist/startup/verdrahtung.js').wireProcess(); db.initSchemaOnce().then(() => db.pool.end()).catch(e => { console.error(e); process.exit(1); })",
       ],
       {
         cwd: ROOT,
         stdio: ['ignore', 'ignore', 'inherit'],
-        env: { ...process.env, DATABASE_URL: alsRolle(mitDb(basis, vorlage), r.eigen) },
+        env: { ...process.env, DATABASE_URL: asRole(withDb(basis, vorlage), r.eigen) },
       },
     );
     // Die Leserolle bekommt ihre Spalten erst, wenn die Tabellen stehen (wie beim nächsten `compose up`).
-    rollenAnlegen(basis, vorlage, r);
+    createRoles(basis, vorlage, r);
     // Wie nach dem ersten Start des Dienstes jobs: Ein Web-Prozess wartet sonst auf die Umschlüsselung.
-    const v = new Client({ connectionString: mitDb(basis, vorlage) });
+    const v = new Client({ connectionString: withDb(basis, vorlage) });
     await v.connect();
     await v.query(`INSERT INTO run_state (key, value) VALUES ('altbestand_v2', 'Testvorlage') ON CONFLICT DO NOTHING`);
     await v.end();
@@ -265,33 +265,33 @@ async function main() {
   }
   let code = 0;
   try {
-    const frist = Number(process.env.TEST_FRIST_MS) || fristBeiLast(60_000);
+    const frist = Number(process.env.TEST_FRIST_MS) || deadlineAtLast(60_000);
     if (frist > 60_000)
       console.log(`[test-lauf] Last ${(os.loadavg()[0] ?? 0).toFixed(1)}: Frist je Datei ${frist / 1000} s`);
-    code = await mitNachlauf(await lauf(uebrige, n, env, frist), env, frist);
-    code = (await mitNachlauf(await lauf(einzeln, 1, env, frist), env, frist)) || code;
+    code = await withFollowUp(await lauf(remaining, n, env, frist), env, frist);
+    code = (await withFollowUp(await lauf(einzeln, 1, env, frist), env, frist)) || code;
     // Browser-Tests erlauben sich selbst 300 s; die Frist des Runners gilt je
     // Datei und darf sie nicht vorher abschneiden.
-    code = (await mitNachlauf(await lauf(browser, nb, env, 300_000), env, 300_000)) || code;
+    code = (await withFollowUp(await lauf(browser, nb, env, 300_000), env, 300_000)) || code;
   } finally {
     if (admin) {
       await raeumeAuf(admin, vorlage, true).catch(() => {});
       await admin.end();
     }
   }
-  meldeNachlauf();
-  if (abdeckung) await berichteAbdeckung();
+  reportFollowUp();
+  if (abdeckung) await reportsCoverage();
   console.log(
-    `[test-lauf] ${uebrige.length} Dateien zu ${n} parallel, ${einzeln.length} @einzeln, ` +
+    `[test-lauf] ${remaining.length} Dateien zu ${n} parallel, ${einzeln.length} @einzeln, ` +
       `${browser.length} Browser zu ${nb}, ` +
-      `${Math.round((Date.now() - start) / 1000)} s; ${ohneWerkzeug(browser, dateien, quelle)}`,
+      `${Math.round((Date.now() - start) / 1000)} s; ${withoutTool(browser, dateien, quelle)}`,
   );
   process.exit(code);
 }
 
 /** postgres/app-rolle.sh gegen die Vorlage, als Superuser der Basis.
  * @param {string} basis @param {string} vorlage @param {ReturnType<typeof rollen>} r */
-function rollenAnlegen(basis, vorlage, r) {
+function createRoles(basis, vorlage, r) {
   const u = new URL(basis);
   execFileSync('sh', [path.join(ROOT, 'postgres', 'app-rolle.sh')], {
     cwd: ROOT,
@@ -318,14 +318,18 @@ function rollenAnlegen(basis, vorlage, r) {
 }
 
 /**
- * Kopien eines früheren Laufs und (mit `auchVorlage`) die Vorlage löschen,
+ * Kopien eines früheren Laufs und (mit `alsoTemplate`) die Vorlage löschen,
  * dazu Datenbanken und Rollen, die Tests unter demselben Stamm angelegt haben
  * (test/helpers/testnamen.js). Rollen danach: Sie können Datenbanken besitzen.
  */
-async function raeumeAuf(/** @type {import('pg').Client} */ admin, /** @type {string} */ vorlage, auchVorlage = false) {
+async function raeumeAuf(
+  /** @type {import('pg').Client} */ admin,
+  /** @type {string} */ vorlage,
+  alsoTemplate = false,
+) {
   const { rows } = await admin.query(
     `SELECT datname FROM pg_database WHERE datname LIKE $1 || '\\_%' OR ($2 AND datname = $1)`,
-    [vorlage, auchVorlage],
+    [vorlage, alsoTemplate],
   );
   for (const r of rows) await admin.query(`DROP DATABASE IF EXISTS ${id(r.datname)} WITH (FORCE)`);
   const rollen = await admin.query(`SELECT rolname FROM pg_roles WHERE rolname LIKE $1 || '\\_%'`, [vorlage]);

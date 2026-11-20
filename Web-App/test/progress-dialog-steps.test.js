@@ -9,7 +9,7 @@ const path = require('node:path');
 const { ROOT, ohneKommentare } = require('./helpers/sources');
 
 /** Alle Server-Quellen, die Fortschritt melden könnten. */
-function serverQuellen() {
+function serverSources() {
   const dirs = ['src', 'routes', 'jobs', 'clients'];
   const out = [];
   const lauf = d => {
@@ -33,35 +33,35 @@ function serverQuellen() {
 function argumente(text) {
   const teile = [];
   let tiefe = 0,
-    akt = '',
+    act = '',
     str = null;
   for (let i = 0; i < text.length; i++) {
     const c = text[i];
     if (str) {
       if (c === str && text[i - 1] !== '\\') str = null;
-      akt += c;
+      act += c;
       continue;
     }
     if (c === '"' || c === "'" || c === '`') {
       str = c;
-      akt += c;
+      act += c;
       continue;
     }
     if ('([{'.includes(c)) tiefe++;
     if (')]}'.includes(c)) tiefe--;
     if (c === ',' && tiefe === 0) {
-      teile.push(akt.trim());
-      akt = '';
+      teile.push(act.trim());
+      act = '';
       continue;
     }
-    akt += c;
+    act += c;
   }
-  if (akt.trim()) teile.push(akt.trim());
+  if (act.trim()) teile.push(act.trim());
   return teile;
 }
 
 /** Schneidet ab `start` die Klammer-Inhalte des Aufrufs heraus. */
-function klammerInhalt(src, start) {
+function bracketContent(src, start) {
   let tiefe = 0,
     str = null;
   for (let i = start; i < src.length; i++) {
@@ -91,8 +91,8 @@ function klammerInhalt(src, start) {
  * etwas anderes als `null` übergibt. Nur dann zählen die Schritt-Namen, die im
  * Rumpf dieser Funktion gemeldet werden, als erreichbar.
  */
-function erreichbareSchritte() {
-  const quellen = serverQuellen();
+function reachableSteps() {
+  const quellen = serverSources();
   const alles = quellen.map(([, s]) => s).join('\n');
   const erreichbar = new Set();
 
@@ -109,13 +109,13 @@ function erreichbareSchritte() {
   for (const [datei, src] of quellen) {
     for (const m of src.matchAll(/(?:async\s+)?function\s+(\w+)\s*\(/g)) {
       const name = m[1];
-      const params = klammerInhalt(src, m.index + m[0].length - 1);
+      const params = bracketContent(src, m.index + m[0].length - 1);
       if (params === null || !/\bsendProgress\b/.test(params)) continue;
       const idx = argumente(params).findIndex(a => /^sendProgress\b/.test(a));
       assert.notEqual(idx, -1, `${datei}: sendProgress-Parameter von ${name} nicht gefunden`);
 
       // Meldet diese Funktion überhaupt Schritte?
-      const rumpf = klammerInhalt(src, src.indexOf('{', m.index + m[0].length)) ?? '';
+      const rumpf = bracketContent(src, src.indexOf('{', m.index + m[0].length)) ?? '';
       const gemeldet = [...src.slice(m.index).matchAll(/sendProgress\(\{\s*step\s*:\s*'([^']+)'/g)].map(x => x[1]);
       if (!gemeldet.length) continue;
 
@@ -124,7 +124,7 @@ function erreichbareSchritte() {
       for (const [, s2] of quellen) {
         for (const c of s2.matchAll(new RegExp(`\\b${name}\\s*\\(`, 'g'))) {
           if (/function\s*$/.test(s2.slice(0, c.index))) continue; // die Deklaration selbst
-          const args = klammerInhalt(s2, c.index + c[0].length - 1);
+          const args = bracketContent(s2, c.index + c[0].length - 1);
           if (args === null) continue;
           const a = argumente(args)[idx];
           if (a !== undefined && a !== 'null') {
@@ -150,7 +150,7 @@ test('jeder Schritt im Fortschrittsdialog kann den Browser auch erreichen', () =
   const faelle = [...rumpf.matchAll(/case\s+'([^']+)'/g)].map(m => m[1]);
   assert.ok(faelle.length >= 3, `handleSseEvent hat nur ${faelle.length} Fälle — Anker stimmt nicht mehr`);
 
-  const erreichbar = erreichbareSchritte();
+  const erreichbar = reachableSteps();
   assert.ok(erreichbar.size >= 4, `nur ${erreichbar.size} erreichbare Schritte gefunden — Anker stimmt nicht mehr`);
 
   const tot = faelle.filter(f => !erreichbar.has(f));
@@ -187,43 +187,43 @@ test('kein Sprachschlüssel für die entfernten Schritte bleibt zurück', () => 
  */
 test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
   // ── Sendereihenfolge, wie der Erfassungsstrom sie erzeugt ───────────────
-  // Die Route meldet vor und nach dem Ergänzen selbst; dazwischen meldet katalogHolen().
+  // Die Route meldet vor und nach dem Ergänzen selbst; dazwischen meldet fetchCatalog().
   const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
   const route = require('./helpers/sources').kompakt(lies('routes/api_v1/setsImport.ts'));
-  // Die Route und ihr Helfer ergaenzeImStrom (vor der Router-Fabrik).
+  // Die Route und ihr Helfer supplementInStream (vor der Router-Fabrik).
   const strom =
     route.slice(
       route.indexOf("router.endpunkt('POST /api/v1/sets/add-stream'"),
       route.indexOf("router.endpunkt('POST /api/v1/sets/:setNumber/parts'"),
     ) +
     route.slice(
-      route.indexOf('async function ergaenzeImStrom('),
-      route.indexOf('export function baueSetsImportRouter'),
+      route.indexOf('async function supplementInStream('),
+      route.indexOf('export function buildSetsImportRouter'),
     );
-  assert.ok(strom.includes('setErgaenzen('), 'Erfassungsstrom nicht gefunden — Anker stimmt nicht mehr');
+  assert.ok(strom.includes('setSupplement('), 'Erfassungsstrom nicht gefunden — Anker stimmt nicht mehr');
   const erfassen = lies('src/sets/erfassen.ts');
   const katalog = erfassen.slice(
-    erfassen.indexOf('async function katalogHolen('),
-    erfassen.indexOf('export async function setErgaenzen('),
+    erfassen.indexOf('async function fetchCatalog('),
+    erfassen.indexOf('export async function setSupplement('),
   );
   const schritte = t => [...t.matchAll(/step\s*:\s*'([^']+)'/g)].map(m => m[1]);
-  const [vor, nach] = strom.split('setErgaenzen(');
-  const folge = [...schritte(vor), ...schritte(katalog), ...schritte(nach)];
-  assert.ok(folge.length >= 4, `der Strom meldet nur ${folge.length} Schritte — Anker stimmt nicht mehr`);
+  const [vor, nach] = strom.split('setSupplement(');
+  const sequence = [...schritte(vor), ...schritte(katalog), ...schritte(nach)];
+  assert.ok(sequence.length >= 4, `der Strom meldet nur ${sequence.length} Schritte — Anker stimmt nicht mehr`);
 
   // ── Schaltlogik, wie handleSseEvent() sie ausführt ───────────────────────
   const schalter = galerie.slice(galerie.indexOf('export function handleSseEvent'));
   const rumpf = schalter.slice(0, schalter.indexOf('\n}\n'));
   const wirkung = {};
-  for (const zweig of rumpf.split(/(?=\bcase\s+')/)) {
-    const c = zweig.match(/^case\s+'([^']+)'\s*:/);
+  for (const branch of rumpf.split(/(?=\bcase\s+')/)) {
+    const c = branch.match(/^case\s+'([^']+)'\s*:/);
     if (!c) continue;
-    wirkung[c[1]] = [...zweig.matchAll(/setStep\('([a-z-]+)'\s*,\s*'(\w+)'\)/g)].map(m => [m[1], m[2]]);
+    wirkung[c[1]] = [...branch.matchAll(/setStep\('([a-z-]+)'\s*,\s*'(\w+)'\)/g)].map(m => [m[1], m[2]]);
   }
 
   // ── Durchspielen ─────────────────────────────────────────────────────────
   const zustand = {};
-  for (const ereignis of folge) {
+  for (const ereignis of sequence) {
     for (const [punkt, wert] of wirkung[ereignis] || []) zustand[punkt] = wert;
   }
 
@@ -242,10 +242,10 @@ test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
   // Und jeder Punkt, den es im Dialog GIBT, muss der Ablauf auch erreichen.
   const gezeigt = [...html.matchAll(/class="prog-step" id="ps-([a-z-]+)"/g)].map(m => m[1]);
   assert.ok(gezeigt.length >= 2, `nur ${gezeigt.length} Punkte im Dialog — Anker stimmt nicht mehr`);
-  const nieBeruehrt = gezeigt.filter(g => !(g in zustand));
+  const neverTouched = gezeigt.filter(g => !(g in zustand));
   assert.deepEqual(
-    nieBeruehrt,
+    neverTouched,
     [],
-    `Diese Punkte stehen im Dialog, werden aber nie geschaltet: ${nieBeruehrt.join(', ')}`,
+    `Diese Punkte stehen im Dialog, werden aber nie geschaltet: ${neverTouched.join(', ')}`,
   );
 });

@@ -1,10 +1,10 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 import { setStammJoin, SET } from '../../../db/katalogSicht';
-import type { FinanzenLesevertrag } from '../lesevertrag';
+import type { FinancesReadContract } from '../lesevertrag';
 
 /** Eine Zeile je Set über alle Konten: Die Rechnung fasst die Käufe je
  * Setnummer zusammen; zwei Konten mit demselben Set zählten sonst doppelt. */
-export function setsMitErfassungen(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[]) {
+export function setsWithEntries(db: DbInterface, l: FinancesReadContract, uids: number[]) {
   return db.all<{
     set_number: string;
     name: string | null;
@@ -40,7 +40,7 @@ export function setsMitErfassungen(db: DbSchnittstelle, l: FinanzenLesevertrag, 
   );
 }
 
-export function frischeMarktpreise(db: DbSchnittstelle, setNumbers: string[], currency: string, ttl: number) {
+export function freshMarketPrices(db: DbInterface, setNumbers: string[], currency: string, ttl: number) {
   return db.all<{ set_number: string; condition: string; avg_price: number | null; qty_avg_price: number | null }>(
     `SELECT set_number, condition, avg_price, qty_avg_price FROM price_cache
          WHERE set_number = ANY($1) AND condition IN ('U','N') AND currency_code=$2
@@ -49,7 +49,7 @@ export function frischeMarktpreise(db: DbSchnittstelle, setNumbers: string[], cu
   );
 }
 
-export function letzteMarktpreiseAusVerlauf(db: DbSchnittstelle, setNumbers: string[], currency: string) {
+export function lastMarketPricesFromHistory(db: DbInterface, setNumbers: string[], currency: string) {
   return db.all<{ set_number: string; condition: string; avg_price: number | null; qty_avg_price: number | null }>(
     `SELECT DISTINCT ON (set_number, condition) set_number, condition, avg_price, qty_avg_price
          FROM price_history

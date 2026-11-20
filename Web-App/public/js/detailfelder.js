@@ -5,7 +5,7 @@ import { registerActions } from './registry.js';
 import { html, rawHtml } from './escaping.js';
 import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
-import { betragFuerFeld, fmtN, leseBetrag } from './format.js';
+import { amountForField, fmtN, readAmount } from './format.js';
 import { meldeAmFeld, toast } from './meldungen.js';
 import { feldFehler } from './formular.js';
 import { accountCurrency, loggedInAccount, gallerySets, openSet, setOpenSet } from './state.js';
@@ -35,23 +35,23 @@ export async function speichereSetLagerort(sn) {
   if (eintrag) eintrag.storage = d.storage ?? null;
   if (openSet && openSet.set_number === sn) openSet.storage = d.storage ?? null;
   meldeAmFeld(el);
-  await ladeLagerorte();
+  await loadLocations();
 }
 
 /**
  * Welcher Alarmblock gemeint ist: 'm' (Set) oder 'mk-m' (Merkposten). Eine Modulvariable statt Parameter,
  * weil der Dispatcher nur die Setnummer reicht; offen ist ohnehin immer nur ein Dialog.
  */
-let _alarmFeld = 'm';
+let _alarmField = 'm';
 
 /**
  * @param {string} praefix
  */
-export function setzeAlarmFeld(praefix) {
-  _alarmFeld = praefix === 'mk-m' ? 'mk-m' : 'm';
+export function setAlarmField(praefix) {
+  _alarmField = praefix === 'mk-m' ? 'mk-m' : 'm';
 }
 
-const alarmId = (/** @type {string} */ teil) => `${_alarmFeld}-alert-${teil}`;
+const alarmId = (/** @type {string} */ teil) => `${_alarmField}-alert-${teil}`;
 
 /**
  * Der Alarmblock — EINMAL formuliert, von beiden Dialogen benutzt.
@@ -88,13 +88,13 @@ export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
  * „Neuer Ort“ wird an einem Attribut erkannt, nicht an einem abgemachten Wert: Jeden ausgedachten Wert kann
  * jemand als Lagerort eintippen.
  */
-const ORT_NEU_MARKE = html`data-neu="1"`;
+const LOCATION_NEW_BRAND = html`data-neu="1"`;
 
-const istNeuEintrag = (/** @type {Pick<HTMLSelectElement, 'selectedOptions'> | null | undefined} */ sel) =>
+const isNewEntry = (/** @type {Pick<HTMLSelectElement, 'selectedOptions'> | null | undefined} */ sel) =>
   sel?.selectedOptions?.[0]?.dataset?.neu === '1';
 
 /** @type {string[]} */
-let _orte = [];
+let _locations = [];
 
 /**
  * Den Vorrat merken und bereits gezeichnete Auswahlfelder nachziehen.
@@ -103,17 +103,17 @@ let _orte = [];
  * eine leere Auswahl — und genau dann schaut man hin.
  * @param {unknown[] | null | undefined} namen
  */
-export function setzeOrtVorrat(namen) {
-  _orte = [...new Set((namen || []).filter(Boolean).map(String))].sort((a, b) => a.localeCompare(b));
+export function setLocationStock(namen) {
+  _locations = [...new Set((namen || []).filter(Boolean).map(String))].sort((a, b) => a.localeCompare(b));
   for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (
     document.querySelectorAll('select[data-ortauswahl]')
   )) {
     // Steht die Auswahl gerade auf „neuer Ort", soll sie dort stehen bleiben — sonst spraenge sie jemandem
     // beim Tippen unter der Hand weg.
-    const warNeu = istNeuEintrag(sel);
+    const warNew = isNewEntry(sel);
     const vorher = sel.value;
-    setzeHtml(sel, ortOptionen(vorher));
-    if (warNeu) sel.selectedIndex = sel.options.length - 1;
+    setzeHtml(sel, locationOptions(vorher));
+    if (warNew) sel.selectedIndex = sel.options.length - 1;
     else if ([...sel.options].some(o => o.value === vorher)) sel.value = vorher;
   }
 }
@@ -121,16 +121,16 @@ export function setzeOrtVorrat(namen) {
 /**
  * @param {string} wert
  */
-function ortOptionen(wert) {
-  const bekannt = _orte.includes(wert);
+function locationOptions(wert) {
+  const bekannt = _locations.includes(wert);
   return [
     html`<option value="">${tRaw('detail.storage_none')}</option>`,
     // Ein Ort, den der Vorrat (noch) nicht kennt — etwa weil er gerade erst eingetippt wurde —, muss trotzdem
     // dastehen, sonst spraenge die Anzeige auf „—" zurueck.
     ...(wert && !bekannt ? [html`<option value="${wert}" selected>${wert}</option>`] : []),
-    ..._orte.map(o => html`<option value="${o}"${o === wert ? ' selected' : ''}>${o}</option>`),
-    // IMMER zuletzt: setzeOrtVorrat() greift ihn ueber options.length - 1 ab.
-    html`<option value="" ${ORT_NEU_MARKE}>${tRaw('detail.storage_new')}</option>`,
+    ..._locations.map(o => html`<option value="${o}"${o === wert ? ' selected' : ''}>${o}</option>`),
+    // IMMER zuletzt: setLocationStock() greift ihn ueber options.length - 1 ab.
+    html`<option value="" ${LOCATION_NEW_BRAND}>${tRaw('detail.storage_new')}</option>`,
   ];
 }
 
@@ -142,11 +142,11 @@ function ortOptionen(wert) {
  * @param {string | null | undefined} wert  Aktueller Lagerort, oder leer.
  * @param {string} [attrs]  Weitere Attribute fürs Textfeld (data-change, data-part, …).
  */
-export function lagerortBlock(id, wert, attrs = '') {
+export function locationBlock(id, wert, attrs = '') {
   const ort = String(wert || '');
   return html`
       <select id="${id}-sel" class="alarm-feld" aria-label="${tRaw('detail.storage')}" data-ortauswahl="1"
-              data-change="lagerortGewaehlt" data-arg="${id}">${ortOptionen(ort)}</select>
+              data-change="lagerortGewaehlt" data-arg="${id}">${locationOptions(ort)}</select>
       <input type="text" id="${id}" class="alarm-feld" maxlength="60" aria-label="${tRaw('detail.storage')}" data-stil="display:none"
              placeholder="${tRaw('detail.storage_ph')}" value="${ort}"
              data-blur="lagerortGetippt" ${rawHtml(attrs)} />
@@ -161,7 +161,7 @@ export function lagerortGewaehlt(id) {
   const sel = G(`${id}-sel`),
     feld = G(id);
   if (!sel || !feld) return;
-  if (istNeuEintrag(sel)) {
+  if (isNewEntry(sel)) {
     // Leeren, zeigen, Fokus: Wer „neuer Ort" waehlt, will tippen — nicht erst den alten Namen wegloeschen.
     feld.value = '';
     feld.style.display = '';
@@ -185,8 +185,8 @@ export function lagerortGetippt() {
   const sel = G(`${this?.id}-sel`);
   if (!sel) return;
   const ort = String(this.value || '').trim();
-  if (!_orte.includes(ort) && ort) _orte = [..._orte, ort].sort((a, b) => a.localeCompare(b));
-  setzeHtml(sel, ortOptionen(ort));
+  if (!_locations.includes(ort) && ort) _locations = [..._locations, ort].sort((a, b) => a.localeCompare(b));
+  setzeHtml(sel, locationOptions(ort));
   sel.value = ort;
   if (ort) this.style.display = 'none';
 }
@@ -195,7 +195,7 @@ export function lagerortGetippt() {
  * Für welchen Zustand der Alarm gilt: Neu und gebraucht liegen oft weit auseinander, und wer gebraucht sucht,
  * soll darauf warten können. Der Server hat den Zustand im Schlüssel.
  */
-function alarmZustand() {
+function alarmState() {
   return G(alarmId('cond'))?.value === 'U' ? 'U' : 'N';
 }
 
@@ -211,12 +211,12 @@ export async function ladeAlarm(sn) {
   // Gibt es nur einen Alarm für den anderen Zustand, steht die Auswahl auf ihm: Sonst sähe es aus, als fehle er.
   const alle = d?.alerts || [];
   const wahl = G(alarmId('cond'));
-  if (wahl && alle.length && !alle.some(x => x.condition === alarmZustand()))
+  if (wahl && alle.length && !alle.some(x => x.condition === alarmState()))
     wahl.value = alle[0]?.condition === 'U' ? 'U' : 'N';
-  const a = alle.find(x => x.condition === alarmZustand());
+  const a = alle.find(x => x.condition === alarmState());
   dir.value = a?.direction || 'unter';
-  val.value = a ? betragFuerFeld(a.threshold) : '';
-  zeigeAlarmMerker(a);
+  val.value = a ? amountForField(a.threshold) : '';
+  showAlarmMarker(a);
 }
 
 /**
@@ -224,7 +224,7 @@ export async function ladeAlarm(sn) {
  * eben getipptes Zeichen wieder weg.
  * @param {import('../../frontend-typen/vertrag').Preisalarm | undefined} a
  */
-function zeigeAlarmMerker(a) {
+function showAlarmMarker(a) {
   const st = G(alarmId('state'));
   if (!st) return;
   // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der Unterschied zwischen „der Alarm steht"
@@ -239,8 +239,8 @@ function zeigeAlarmMerker(a) {
  * @param {string} sn
  */
 export function wechsleAlarmZustand(sn) {
-  clearTimeout(_alarmRuhe);
-  _alarmRuhe = null;
+  clearTimeout(_alarmRest);
+  _alarmRest = null;
   return ladeAlarm(sn);
 }
 
@@ -250,12 +250,12 @@ export function wechsleAlarmZustand(sn) {
  * Dieselbe Zahl wie in der App (Alarmeingabe.RUHE_MS) — laufen die beiden auseinander, verhält sich dasselbe
  * Feld an zwei Stellen verschieden, ohne dass es jemandem auffiele.
  */
-const ALARM_RUHE = 800;
+const ALARM_REST = 800;
 
 /**
  * @type {ReturnType<typeof setTimeout> | null}
  */
-let _alarmRuhe = null;
+let _alarmRest = null;
 
 /**
  * Beim Tippen speichern, entprellt: Wer tippt und das Fenster schliesst, ohne woanders hinzuklicken, verlor
@@ -268,11 +268,11 @@ export function alarmGetippt(sn) {
   if (!dir || !val) return;
   const richtung = dir.value,
     roh = String(val.value || '').trim();
-  clearTimeout(_alarmRuhe);
-  _alarmRuhe = setTimeout(() => {
-    _alarmRuhe = null;
-    sendeAlarm(sn, richtung, roh);
-  }, ALARM_RUHE);
+  clearTimeout(_alarmRest);
+  _alarmRest = setTimeout(() => {
+    _alarmRest = null;
+    sendAlarm(sn, richtung, roh);
+  }, ALARM_REST);
 }
 
 /**
@@ -287,9 +287,9 @@ export function speichereAlarm(sn) {
   const dir = G(alarmId('dir')),
     val = G(alarmId('val'));
   if (!dir || !val) return;
-  clearTimeout(_alarmRuhe);
-  _alarmRuhe = null;
-  return sendeAlarm(sn, dir.value, String(val.value || '').trim());
+  clearTimeout(_alarmRest);
+  _alarmRest = null;
+  return sendAlarm(sn, dir.value, String(val.value || '').trim());
 }
 
 /**
@@ -299,15 +299,15 @@ export function speichereAlarm(sn) {
  * @param {string} richtung
  * @param {string} roh
  */
-async function sendeAlarm(sn, richtung, roh) {
-  const zahl = leseBetrag(roh);
+async function sendAlarm(sn, richtung, roh) {
+  const zahl = readAmount(roh);
   // „abc“ oder „0“ ist kein Wunsch zu löschen, sondern ein Tippfehler: dieselbe Meldung wie auf #/alarme.
   if (roh !== '' && !(zahl != null && zahl > 0)) {
     feldFehler(alarmId('val'), tRaw('alerts.new_preis_fehlt'));
     return;
   }
   const loeschen = zahl == null;
-  const cond = alarmZustand();
+  const cond = alarmState();
   const d = loeschen
     ? await api('DELETE', `/v1/sets/${encodeURIComponent(sn)}/alert?condition=${cond}`)
     : await api('PUT', `/v1/sets/${encodeURIComponent(sn)}/alert`, {
@@ -319,8 +319,8 @@ async function sendeAlarm(sn, richtung, roh) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  // Nur den Merker, nicht das Feld — die Begründung steht an zeigeAlarmMerker().
-  zeigeAlarmMerker(loeschen ? undefined : (d.alert ?? undefined));
+  // Nur den Merker, nicht das Feld — die Begründung steht an showAlarmMarker().
+  showAlarmMarker(loeschen ? undefined : (d.alert ?? undefined));
   meldeAmFeld(G(alarmId('state')));
 }
 
@@ -328,7 +328,7 @@ async function sendeAlarm(sn, richtung, roh) {
  * Beim Öffnen zeigen, welche Alarme seit dem letzten Besuch ausgelöst haben — das Gegenstück zur stündlichen
  * Abfrage der App. Die Marke kommt vom Server (keine eigene Uhr) und gilt je Konto.
  */
-export async function zeigeOffeneAlarme() {
+export async function showOpenAlerts() {
   if (!loggedInAccount?.id) return;
   const schluessel = 'bim_alarm_marke_' + loggedInAccount.id;
   /** @type {string | null} */
@@ -366,7 +366,7 @@ export async function zeigeOffeneAlarme() {
  * zur Wahl. Eine datalist erlaubt Auswählen und Neues tippen zugleich.
  * @param {({ id: number } | number)[] | null | undefined} besitzer
  */
-export async function ladeOrtAuswahl(besitzer) {
+export async function loadLocationSelection(besitzer) {
   const dl = G('lagerorte');
   if (!dl) return;
   const ids = (besitzer || [])
@@ -379,21 +379,21 @@ export async function ladeOrtAuswahl(besitzer) {
     dl,
     (d.orte || []).map(o => html`<option value="${o.name}"></option>`),
   );
-  // Dieselbe Liste speist das Auswahlfeld im Detail (lagerortBlock).
-  setzeOrtVorrat((d.orte || []).map(o => o.name));
+  // Dieselbe Liste speist das Auswahlfeld im Detail (locationBlock).
+  setLocationStock((d.orte || []).map(o => o.name));
 }
 
 /** Die Konten, deren Lagerorte beim Erfassen zur Wahl stehen; gesetzt vom Laden des Haushalts. @type {number[]} */
-let _vorratKonten = [];
+let _stockAccounts = [];
 
 /**
  * Zur Wahl steht der ganze Vorrat (/v1/storage/locations), auch ein neuer, leerer Ort; die Filter zeigen nur
  * belegte Orte (/v1/storage), weil ein leerer Ort dort nichts fände.
  * @param {number[]} [konten] Haushaltskonten; ohne Angabe die zuletzt genannten
  */
-export async function ladeLagerorte(konten) {
-  if (konten) _vorratKonten = konten;
-  const frage = _vorratKonten.length > 1 ? '?owner=' + encodeURIComponent(_vorratKonten.join(',')) : '';
+export async function loadLocations(konten) {
+  if (konten) _stockAccounts = konten;
+  const frage = _stockAccounts.length > 1 ? '?owner=' + encodeURIComponent(_stockAccounts.join(',')) : '';
   const [vorrat, belegt] = await Promise.all([
     api('GET', `/v1/storage/locations${frage}`),
     api('GET', `/v1/storage${scopeQuery('gallery')}`),
@@ -406,7 +406,7 @@ export async function ladeLagerorte(konten) {
         dl,
         [...new Set(namen)].map(n => html`<option value="${n}"></option>`),
       );
-    setzeOrtVorrat(namen);
+    setLocationStock(namen);
   }
   if (belegt?.success) initStorageSelects(belegt.orte || []);
 }
@@ -416,7 +416,7 @@ export async function ladeLagerorte(konten) {
  * und sagt, wo das geht. Hier, weil auch der Kaufpreis-Dialog die Menge nachführt.
  * @param {number} [menge] neuer Wert; ohne ihn nur den Knopf nach dem Feld richten
  */
-export function setzeMengenfeld(menge) {
+export function setQuantitiesField(menge) {
   const feld = G('m-qty'),
     minus = G('m-qty-dec');
   if (!feld) return;

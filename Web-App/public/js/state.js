@@ -1,7 +1,7 @@
 // State that several views read. It lives in its own module at the very bottom, so that no view
 // has to import another just to get at it. Written only through the setters: imported bindings
 // are read-only in ES modules.
-import { setzeZahlenWaehrung } from '../i18n.js';
+import { setNumbersCurrency } from '../i18n.js';
 
 /**
  * @typedef {object} Account
@@ -20,7 +20,7 @@ export let settingsSnapshot = null;
 /**
  * A set of the gallery: the row from /v1/sets, plus tile price, P&L and their source from
  * /v1/finance/pnl (set in collection.js).
- * @typedef {import('../../frontend-typen/vertrag').SetItem & { _price?: number | null, _pnl_pct?: number | null, _quelle?: string | null }} Tile
+ * @typedef {import('../../frontend-typen/vertrag').SetItem & { _price?: number | null, _pnl_pct?: number | null, _source?: string | null }} Tile
  */
 /** The loaded sets of the gallery. @type {Tile[]} */
 export let gallerySets = [];
@@ -44,7 +44,7 @@ export function setAccount(v) {
 /** @param {string} v */
 export function setAccountCurrency(v) {
   accountCurrency = v;
-  setzeZahlenWaehrung(v);
+  setNumbersCurrency(v);
 }
 /** @param {typeof settingsSnapshot} v */
 export function setSettingsSnapshot(v) {

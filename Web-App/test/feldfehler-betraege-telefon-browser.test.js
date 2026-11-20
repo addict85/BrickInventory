@@ -1,17 +1,17 @@
 /**
- * UX-Prüfung 20 im echten Chrome, im Haushalt (musterHaushalt, Unterkonto mit langem Namen): Kaufpreis-Dialog
+ * UX-Prüfung 20 im echten Chrome, im Haushalt (patternHousehold, Unterkonto mit langem Namen): Kaufpreis-Dialog
  * (M1, N8), Finanzen am Telefon (M2, N1), Setnummer-Felder (M3), Kachel (N2), Zeitpunkte der Hintergrund-
  * arbeiten (N3), Legende (N7), 200 % Schrift (N10), Finanzen ohne Verbindung (N11), Passwortwechsel (N12).
  *
  * Gegenproben (13.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  feldFehler() wieder mit insertAdjacentElement am Feld statt eigener Zeile → rot: „Kaufpreis-Dialog“
  *      (keine Meldungszeile unter der Zeile)
- *   B  betragAusFeld() ohne die Prüfung auf ein Minus → rot: ebenda („„-5“ ist kein Betrag …“)
+ *   B  amountFromField() ohne die Prüfung auf ein Minus → rot: ebenda („„-5“ ist kein Betrag …“)
  *   C  styles.css ohne die Regeln für .acq-tabelle select und die breitere .acq-wide → rot: ebenda
  *      (Auswahl gekürzt)
  *   D  unterKauf() liefert '' → rot: „Finanzen am Telefon“ (kein Kaufpreis unter dem Namen)
- *   E  ohneMarkt() wieder ohneWert() → rot: ebenda (Wert ohne „kein Marktpreis“)
- *   F  zeilenKnopf() ohne <span> um den Inhalt → rot: ebenda (0 px zwischen „4“ und „(Schwarz)“)
+ *   E  withoutMarket() wieder ohneWert() → rot: ebenda (Wert ohne „kein Marktpreis“)
+ *   F  rowsButton() ohne <span> um den Inhalt → rot: ebenda (0 px zwischen „4“ und „(Schwarz)“)
  *   G  #add-num wieder inputmode="numeric" ohne autocapitalize → rot: „Setnummer-Felder“
  *   H  Kachel wieder mit nacktem Text „2 Käufe, zuletzt“ → rot: „Kachel mit mehreren Käufen“
  *   I  monitor.js wieder fmtDatum(…, 'zeit') → rot: „Zeitpunkte mit Tag“ („10:03“ statt „morgen 10:03“)
@@ -26,13 +26,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterHaushalt } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternHousehold } = require('./helpers/bestand');
 
-const SCHLIESSEN = `(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+const CLOSE = `(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open')); return true; })()`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
-const NETZ = { latency: 0, downloadThroughput: -1, uploadThroughput: -1 };
+const NETWORK = { latency: 0, downloadThroughput: -1, uploadThroughput: -1 };
 
 async function groesse(b, breite, hoehe = 900) {
   const mobil = breite <= 640;
@@ -45,9 +45,9 @@ async function groesse(b, breite, hoehe = 900) {
 }
 
 /** Zuerst, solange die Finanzen noch nie geladen haben: So sieht es aus, wer offline den Reiter öffnet. */
-async function finanzenOffline(_t, a) {
+async function financesOffline(_t, a) {
   const { b, bis, ruhig } = a;
-  await b.tab('Network.emulateNetworkConditions', { offline: true, ...NETZ });
+  await b.tab('Network.emulateNetworkConditions', { offline: true, ...NETWORK });
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
     // Seit Runde 24 (M2) steht der Fehler oben im Diagrammkasten, die Karten fallen weg.
@@ -62,7 +62,7 @@ async function finanzenOffline(_t, a) {
     assert.equal(z.erneut, 1, 'genau ein „Erneut versuchen“');
     assert.deepEqual(z.zeitraum, [true, true, true, true], 'Zeitraumknöpfe bedienbar');
   } finally {
-    await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETZ });
+    await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETWORK });
   }
   // Zurück am Netz lädt die Liste von selbst; sonst hilft der Knopf.
   await b.auswerten(`document.querySelector('#tab-finance [data-click="loadFinance"]')?.click(); true`);
@@ -74,7 +74,7 @@ async function finanzenOffline(_t, a) {
   await ruhig();
 }
 
-async function kaufpreisDialog(_t, a) {
+async function purchasePriceDialog(_t, a) {
   const { b, bis, ruhig } = a;
   await groesse(b, 1280);
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
@@ -102,15 +102,15 @@ async function kaufpreisDialog(_t, a) {
   const m = await b.auswerten(`(() => { const t = document.querySelector('.acq-tabelle'), w = t.closest('.tw');
     const zeile = t.querySelector('tbody tr:first-child'), danach = zeile.nextElementSibling;
     const meldung = t.querySelector('.feld-error_message');
-    return { text: meldung.textContent, eigeneZeile: !!danach?.classList.contains('feld-error_message-zeile') && danach.contains(meldung),
-      spalten: danach?.cells[0]?.colSpan, zellen: zeile.cells.length, rollt: w.scrollWidth > w.clientWidth + 1,
-      koepfe: [...t.querySelectorAll('thead th')].filter(th => th.getBoundingClientRect().right > w.getBoundingClientRect().right + 1).map(th => th.textContent.trim()),
+    return { text: meldung.textContent, ownRow: !!danach?.classList.contains('feld-error_message-zeile') && danach.contains(meldung),
+      spalten: danach?.cells[0]?.colSpan, cells: zeile.cells.length, rollt: w.scrollWidth > w.clientWidth + 1,
+      headers: [...t.querySelectorAll('thead th')].filter(th => th.getBoundingClientRect().right > w.getBoundingClientRect().right + 1).map(th => th.textContent.trim()),
       zustand: t.querySelector('tbody tr:first-child select').getBoundingClientRect().width }; })()`);
   assert.equal(m.text, 'Der Kaufpreis kann nicht negativ sein.');
-  assert.equal(m.eigeneZeile, true, 'keine Meldungszeile unter der Zeile');
-  assert.equal(m.spalten, m.zellen, 'Meldung über alle Spalten');
+  assert.equal(m.ownRow, true, 'keine Meldungszeile unter der Zeile');
+  assert.equal(m.spalten, m.cells, 'Meldung über alle Spalten');
   assert.equal(m.rollt, false, 'Tabelle rollt seitlich');
-  assert.deepEqual(m.koepfe, [], 'Spalten rutschen aus dem Bild');
+  assert.deepEqual(m.headers, [], 'Spalten rutschen aus dem Bild');
   assert.ok(m.zustand >= 80, `„Zustand“ nur ${m.zustand} px breit`);
   await eingeben('12,x');
   await bis(
@@ -119,10 +119,10 @@ async function kaufpreisDialog(_t, a) {
   );
   await eingeben('199,99');
   await bis(`document.querySelector('.feld-error_message-zeile')?.hidden === true`, 'Meldungszeile verschwindet');
-  await b.auswerten(SCHLIESSEN);
+  await b.auswerten(CLOSE);
 }
 
-async function finanzenTelefon(_t, a) {
+async function financesPhone(_t, a) {
   const { b, bis, ruhig } = a;
   await groesse(b, 390, 844);
   try {
@@ -155,20 +155,20 @@ async function finanzenTelefon(_t, a) {
   }
 }
 
-async function setnummerFelder(_t, a) {
+async function setnummerFields(_t, a) {
   const { b } = a;
   const felder =
     await b.auswerten(`['add-num', 'mk-num', 'pl-setnr', 'alarm-neu-set'].map(id => { const f = document.getElementById(id);
     return [id, f.inputMode || '', f.getAttribute('autocapitalize'), f.getAttribute('autocorrect'), f.spellcheck]; })`);
-  for (const [id, modus, gross, korrektur, rechtschreibung] of felder) {
+  for (const [id, modus, gross, korrektur, spelling] of felder) {
     assert.notEqual(modus, 'numeric', `${id}: Zifferntastatur ohne Bindestrich und Buchstaben`);
     assert.equal(gross, 'off', `${id}: Grossschreibung`);
     assert.equal(korrektur, 'off', `${id}: Autokorrektur`);
-    assert.equal(rechtschreibung, false, `${id}: Rechtschreibprüfung`);
+    assert.equal(spelling, false, `${id}: Rechtschreibprüfung`);
   }
 }
 
-async function kachelKaeufe(_t, a) {
+async function tilePurchases(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await bis(`!!document.querySelector('#gallery [data-arg="21318-1"] .kachel-datum')`, 'Kachel Tree House');
@@ -180,7 +180,7 @@ async function kachelKaeufe(_t, a) {
   assert.deepEqual(k.lose, [], 'loser Text neben dem Datum');
 }
 
-async function zeitpunkteMitTag(_t, a) {
+async function momentsWithTag(_t, a) {
   const { b, bis, db } = a;
   const morgen = new Date();
   morgen.setDate(morgen.getDate() + 1);
@@ -211,7 +211,7 @@ async function zeitpunkteMitTag(_t, a) {
   );
 }
 
-async function legendeZusammen(_t, a) {
+async function legendTogether(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
   await bis(`!!document.querySelector('#fin-tbl .fin-legende')`, 'Legende');
@@ -233,7 +233,7 @@ async function legendeZusammen(_t, a) {
   }
 }
 
-async function schrift200Telefon(_t, a) {
+async function schrift200Phone(_t, a) {
   const { b, bis, ruhig } = a;
   await groesse(b, 390, 844);
   await b.auswerten(`document.documentElement.style.setProperty('font-size', '200%', 'important'); true`);
@@ -264,7 +264,7 @@ async function schrift200Telefon(_t, a) {
   }
 }
 
-async function passwortwechsel(_t, a) {
+async function passwordChange(_t, a) {
   const { b } = a;
   const p = await b.auswerten(`(() => { const k = document.getElementById('pw-pk');
     const ids = (k.getAttribute('aria-describedby') || '').split(/\\s+/).filter(Boolean);
@@ -275,7 +275,7 @@ async function passwortwechsel(_t, a) {
 }
 
 test('Feldfehler, Beträge, Finanzen am Telefon', { concurrency: 1, timeout: 300_000 }, async t => {
-  const a = await starteApp(t, { name: `r20_pruefer_${process.pid}`, bestand: musterHaushalt });
+  const a = await startApp(t, { name: `r20_pruefer_${process.pid}`, bestand: patternHousehold });
   if (a.grund) {
     t.skip(a.grund);
     return;
@@ -283,18 +283,18 @@ test('Feldfehler, Beträge, Finanzen am Telefon', { concurrency: 1, timeout: 300
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object) => Promise<void>][]} */
   const pruefungen = [
-    ['Finanzen ohne Verbindung', finanzenOffline],
-    ['Kaufpreis-Dialog', kaufpreisDialog],
-    ['Finanzen am Telefon', finanzenTelefon],
-    ['Setnummer-Felder', setnummerFelder],
-    ['Kachel mit mehreren Käufen', kachelKaeufe],
-    ['Zeitpunkte mit Tag', zeitpunkteMitTag],
-    ['Legende hält zusammen', legendeZusammen],
-    ['200 % Schrift am Telefon', schrift200Telefon],
-    ['Passwortwechsel', passwortwechsel],
+    ['Finanzen ohne Verbindung', financesOffline],
+    ['Kaufpreis-Dialog', purchasePriceDialog],
+    ['Finanzen am Telefon', financesPhone],
+    ['Setnummer-Felder', setnummerFields],
+    ['Kachel mit mehreren Käufen', tilePurchases],
+    ['Zeitpunkte mit Tag', momentsWithTag],
+    ['Legende hält zusammen', legendTogether],
+    ['200 % Schrift am Telefon', schrift200Phone],
+    ['Passwortwechsel', passwordChange],
   ];
   for (const [name, fn] of pruefungen) {
-    await a.b.auswerten(SCHLIESSEN);
+    await a.b.auswerten(CLOSE);
     await t.test(name, () => fn(t, a));
   }
 });

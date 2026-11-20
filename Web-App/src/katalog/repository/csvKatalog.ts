@@ -1,17 +1,17 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 import type { Spalten } from '../../../db/zeilen';
-import type { KatalogLesevertrag } from '../lesevertrag';
+import type { CatalogReadContract } from '../lesevertrag';
 
-export async function katalogBildstand(
-  db: DbSchnittstelle,
+export async function catalogImageStatus(
+  db: DbInterface,
   setNumber: string,
-): Promise<{ total: number; mitBild: number }> {
+): Promise<{ total: number; withImage: number }> {
   const r = await db.get<{ total: string; with_img: string }>(
     `SELECT COUNT(*) AS total, COUNT(image_local) AS with_img
      FROM set_parts_catalog WHERE set_number = $1`,
     [setNumber],
   );
-  return { total: parseInt(r?.total ?? '0', 10), mitBild: parseInt(r?.with_img ?? '0', 10) };
+  return { total: parseInt(r?.total ?? '0', 10), withImage: parseInt(r?.with_img ?? '0', 10) };
 }
 
 export interface CsvTeil {
@@ -26,7 +26,7 @@ export interface CsvTeil {
   is_spare: boolean;
 }
 
-export async function inventarTeileOhneErsatz(db: DbSchnittstelle, inventarId: number): Promise<CsvTeil[]> {
+export async function inventoryPartsWithoutFallback(db: DbInterface, inventoryId: number): Promise<CsvTeil[]> {
   return db.all<CsvTeil>(
     `SELECT ip.part_num AS part_number,
             COALESCE(m.bl_id, ip.part_num) AS bl_part_number,
@@ -40,13 +40,13 @@ export async function inventarTeileOhneErsatz(db: DbSchnittstelle, inventarId: n
      LEFT JOIN bl_mapping  m ON m.type = 'part' AND m.rb_id = ip.part_num
      WHERE ip.inventory_id = $1
        AND NOT ip.is_spare`,
-    [inventarId],
+    [inventoryId],
   );
 }
 
-export async function inventarFiguren(
-  db: DbSchnittstelle,
-  inventarId: number,
+export async function inventoryMinifigs(
+  db: DbInterface,
+  inventoryId: number,
 ): Promise<{ fig_number: string; quantity: number; fig_name: string | null; image_url: string | null }[]> {
   return db.all<{ fig_number: string; quantity: number; fig_name: string | null; image_url: string | null }>(
     `SELECT ip.part_num AS fig_number, ip.quantity,
@@ -54,11 +54,11 @@ export async function inventarFiguren(
      FROM rb_inventory_parts ip
      LEFT JOIN rb_sets s ON s.set_num = ip.part_num
      WHERE ip.inventory_id = $1 AND ip.part_num LIKE 'fig-%'`,
-    [inventarId],
+    [inventoryId],
   );
 }
 
-export async function setsOhneTeilekatalog(db: DbSchnittstelle, grenze = 50): Promise<string[]> {
+export async function setsWithoutPartCatalog(db: DbInterface, grenze = 50): Promise<string[]> {
   const rows = await db.all<{ set_num: string }>(
     `SELECT DISTINCT s.set_num FROM rb_sets s
      LEFT JOIN set_parts_catalog c ON c.set_number = s.set_num
@@ -69,9 +69,9 @@ export async function setsOhneTeilekatalog(db: DbSchnittstelle, grenze = 50): Pr
   return rows.map(r => r.set_num);
 }
 
-export async function manuelleFarbteile(
-  db: DbSchnittstelle,
-  l: KatalogLesevertrag,
+export async function manualColorParts(
+  db: DbInterface,
+  l: CatalogReadContract,
 ): Promise<{ id: number; part_number: string; color_id: number }[]> {
   return db.all<Spalten<'parts', 'id' | 'part_number' | 'color_id'>>(
     `SELECT id, part_number, color_id FROM ${l.teilBestand()} p
@@ -80,8 +80,8 @@ export async function manuelleFarbteile(
 }
 
 /** Überschreibend — das ist der Zweck. */
-export async function ersetzeTeilfarbenbild(
-  db: DbSchnittstelle,
+export async function replacePartColorsImage(
+  db: DbInterface,
   partNumber: string,
   colorId: number,
   url: string,

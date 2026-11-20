@@ -6,10 +6,10 @@
  * samt zweitem Faktor.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in setzePasswortHash() `must_change_password = true` entfernt → rot:
+ *   A  in setPasswordHash() `must_change_password = true` entfernt → rot:
  *      „ein vom Verwalter gesetztes Passwort …“ (mustChangePassword false,
  *      /stats 200)
- *   B  in fuegeKontoEin() die Spalte wieder weggelassen → rot: „ein vom
+ *   B  in addAccountOne() die Spalte wieder weggelassen → rot: „ein vom
  *      Verwalter angelegtes Konto …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -24,14 +24,14 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { adminWithFactor } = require('./helpers/verwalter');
+const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { bis } = require('./helpers/zeit');
-const freierPort = () =>
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
       const p = /** @type {import('node:net').AddressInfo} */ (s.address()).port;
@@ -43,14 +43,14 @@ test('vom Verwalter vergebene Passwörter gelten nur bis zum ersten Wechsel', {
   concurrency: 1,
   timeout: 180_000,
 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid,
     CHEF = `vpe_chef_${P}`,
     ALT = `vpe_alt_${P}`,
     NEU = `vpe_neu_${P}`;
   const CHEF_PW = 'Verwalter-Passwort-17x';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ALT, NEU]]);
-  const lege = async (name, admin) =>
+  const put = async (name, admin) =>
     (
       await db.get(
         `INSERT INTO users (username, password_hash, is_admin, is_active, email_verified)
@@ -58,15 +58,15 @@ test('vom Verwalter vergebene Passwörter gelten nur bis zum ersten Wechsel', {
         [name, bcrypt.hashSync(CHEF_PW, 4), admin],
       )
     ).id;
-  const chef = await lege(CHEF, true),
-    alt = await lege(ALT, false);
-  const codes = await verwalterMitFaktor(_req, chef);
+  const chef = await put(CHEF, true),
+    alt = await put(ALT, false);
+  const codes = await adminWithFactor(_req, chef);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ALT, NEU]]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
-  const port = await freierPort();
+  const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -114,7 +114,7 @@ test('vom Verwalter vergebene Passwörter gelten nur bis zum ersten Wechsel', {
   const chefKeks = (await anmelden(CHEF, CHEF_PW, codes[0])).keks;
 
   /** Anmelden, gesperrt bis zum Wechsel, nach dem Wechsel offen. */
-  async function nurBisZumWechsel(name, vergeben) {
+  async function onlyUntilToSwitch(name, vergeben) {
     const a = await anmelden(name, vergeben);
     assert.equal(a.user.mustChangePassword, true, 'die Anmeldung meldet den Pflichtwechsel');
     const gesperrt = await ruf(a.keks, '/api/v1/stats');
@@ -136,7 +136,7 @@ test('vom Verwalter vergebene Passwörter gelten nur bis zum ersten Wechsel', {
       body: JSON.stringify({ username: NEU, password: vergeben, admin_password: CHEF_PW, code: codes[1] }),
     });
     assert.equal(r.status, 200, await r.clone().text());
-    await nurBisZumWechsel(NEU, vergeben);
+    await onlyUntilToSwitch(NEU, vergeben);
   });
 
   await t.test('ein vom Verwalter gesetztes Passwort', async () => {
@@ -146,6 +146,6 @@ test('vom Verwalter vergebene Passwörter gelten nur bis zum ersten Wechsel', {
       body: JSON.stringify({ password: vergeben, admin_password: CHEF_PW, code: codes[2] }),
     });
     assert.equal(r.status, 200, await r.clone().text());
-    await nurBisZumWechsel(ALT, vergeben);
+    await onlyUntilToSwitch(ALT, vergeben);
   });
 });

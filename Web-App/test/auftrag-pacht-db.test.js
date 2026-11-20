@@ -5,11 +5,11 @@
  * Auftrag, der gerade auf einen Download waiting.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  in fuehreAuftragAus() `haltePacht(...)` durch `() => {}` ersetzt → rot: „ein
+ *   A  in runJobFrom() `holdLease(...)` durch `() => {}` ersetzt → rot: „ein
  *      Auftrag ohne eigenes Lebenszeichen läuft genau einmal“ (5 Starts, Status error_message)
  *   C  Trigger job_exclusive_locks gelöscht (DROP TRIGGER) → rot: „B belegt,
  *      solange A noch nicht festgeschrieben hat“
- *   D  im Worker `listen(AUFTRAG_STAND_KANAL, …)` entfernt → rot: „Abbruch
+ *   D  im Worker `listen(JOB_STATUS_CHANNEL, …)` entfernt → rot: „Abbruch
  *      eines csv_sync im Download dauerte 5000 ms“
  *   E  in abruf.ts das Signal nicht beachtet → rot: dieselbe Prüfung (der
  *      Lauf hing am Download)
@@ -23,42 +23,42 @@ const { warte, bis } = require('./helpers/zeit');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // Der CSV-Download antwortet mit 200 und liefert dann nichts mehr: ein hängender CDN.
-let downloadLaeuft = false;
+let downloadRunning = false;
 const Module = require('node:module');
-const _echtesRequire = Module.prototype.require;
+const _realRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
-  const m = _echtesRequire.call(this, name, ...rest);
+  const m = _realRequire.call(this, name, ...rest);
   if (name.replace(/^node:/, '') !== 'https') return m;
   return {
     ...m,
-    get: (_url, _opt, beiAntwort) => {
+    get: (_url, _opt, atResponse) => {
       const req = Object.assign(new EventEmitter(), { destroy: () => {} });
-      downloadLaeuft = true;
+      downloadRunning = true;
       const res = Object.assign(new PassThrough(), {
         statusCode: 200,
         headers: { 'content-length': '1000000' },
         complete: false,
       });
-      setImmediate(() => beiAntwort(res));
+      setImmediate(() => atResponse(res));
       return req;
     },
   };
 };
 
-const { buildAndRequire, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
 test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const A = Object.assign(
     {},
-    { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('auftraege').auftraege },
+    { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testArea('auftraege').auftraege },
   );
-  const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
+  const { createWorker } = _req('jobs/auftragsWorker.js');
   t.after(async () => {
-    await testZugang().benachrichtigung.close();
+    await testAccess().notification.close();
     await db.pool.end().catch(() => {});
   });
 
@@ -67,7 +67,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
     let starts = 0;
     // Zwei Worker wie zwei Prozesse: Der zweite darf die Zeile nicht übernehmen, solange der erste arbeitet.
     // Die Arbeit dauert länger als die Frist (1 s): Nur das eigene Lebenszeichen hält die Zeile.
-    const bearbeiter = {
+    const editor = {
       wechselkurse: {
         ausfuehren: async () => {
           starts++;
@@ -75,24 +75,24 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
         },
       },
     };
-    const w = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
+    const w = createWorker(require('./helpers/sources').testServices().auftraege, editor, {
       parallel: 2,
-      fristSek: 1,
+      deadlineSec: 1,
       taktMs: 300,
     });
-    const w2 = erzeugeWorker(require('./helpers/sources').testDienste().auftraege, bearbeiter, {
+    const w2 = createWorker(require('./helpers/sources').testServices().auftraege, editor, {
       parallel: 2,
-      fristSek: 1,
+      deadlineSec: 1,
       taktMs: 300,
     });
-    const id = await A.stelleAuftragEin('wechselkurse', {}, { schluessel: `pacht-${process.pid}` });
+    const id = await A.placeJobOne('wechselkurse', {}, { schluessel: `pacht-${process.pid}` });
     const status = async () => (await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status;
     w.starte();
     await bis(async () => (await status()) === 'laeuft');
     w2.starte();
     await bis(async () => (await status()) === 'erledigt', 8000);
-    await w.stoppe(100);
-    await w2.stoppe(100);
+    await w.stop(100);
+    await w2.stop(100);
     const z = await db.get('SELECT status, attempts FROM jobs WHERE id = $1', [id]);
     assert.deepEqual(
       { starts, ...z },
@@ -139,24 +139,24 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
 
   await t.test('Abbruch eines csv_sync im Download endet in höchstens 2 s', async () => {
     await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
-    const BEARBEITER = _req('jobs/auftraegeStarten.js').bearbeiter(require('./helpers/sources').testDienste());
-    const w = erzeugeWorker(
-      require('./helpers/sources').testDienste().auftraege,
-      { csv_sync: BEARBEITER.csv_sync },
-      { fristSek: 60, taktMs: 100 },
+    const EDITOR = _req('jobs/auftraegeStarten.js').editor(require('./helpers/sources').testServices());
+    const w = createWorker(
+      require('./helpers/sources').testServices().auftraege,
+      { csv_sync: EDITOR.csv_sync },
+      { deadlineSec: 60, taktMs: 100 },
     );
-    const id = await A.stelleAuftragEin('csv_sync', {});
-    downloadLaeuft = false;
+    const id = await A.placeJobOne('csv_sync', {});
+    downloadRunning = false;
     w.starte();
-    t.after(() => w.stoppe(0));
+    t.after(() => w.stop(0));
     await bis(() => w.laufend() > 0);
     assert.equal(w.laufend(), 1, 'der Abgleich läuft');
-    assert.ok(await bis(() => downloadLaeuft), 'der Download hat begonnen');
+    assert.ok(await bis(() => downloadRunning), 'der Download hat begonnen');
     const start = Date.now();
-    assert.ok(await A.brichAb(id));
+    assert.ok(await A.abortAb(id));
     await bis(() => w.laufend() === 0);
-    const dauer = Date.now() - start;
-    assert.ok(dauer <= 2000, `Abbruch eines csv_sync im Download dauerte ${dauer} ms`);
+    const duration = Date.now() - start;
+    assert.ok(duration <= 2000, `Abbruch eines csv_sync im Download dauerte ${duration} ms`);
     assert.equal((await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status, 'abgebrochen');
   });
 });

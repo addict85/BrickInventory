@@ -1,14 +1,14 @@
 /**
- * Die echte Kette vor /api/v1 (startup/app.ts, apiEingang) in einem Prozess:
+ * Die echte Kette vor /api/v1 (startup/app.ts, apiInbox) in einem Prozess:
  * Anmeldepflicht und Rumpflimit hängen voneinander ab — unangemeldet gibt es
  * nur 16 KB, angemeldet 256 KB, und eine abgewiesene Anfrage liest ihren Rumpf nicht.
  *
  * Gegenproben (am 11.11.2026 gemessen):
- *   A  in apiEingang() `rumpfLesen` vor `anmeldungAmEingang` gehängt → rot:
+ *   A  in apiInbox() `readBody` vor `loginAtInbox` gehängt → rot:
  *      „unangemeldet: 401 vor dem Rumpf“ (413 statt 401, der Rumpf wurde gelesen)
  *   B  in routes/api_v1/middleware.ts das Limit für Unangemeldete auf 256kb → rot:
  *      „unangemeldet: mehr als 16 KB sind zu viel“
- *   C  in apiEingang() `anmeldungAmEingang` nicht eingehängt → rot:
+ *   C  in apiInbox() `loginAtInbox` nicht eingehängt → rot:
  *      „unangemeldet: 401 vor dem Rumpf“ (die Route antwortete selbst)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -20,15 +20,15 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-const json = n => JSON.stringify({ username: 'x', password: 'y', fuell: 'a'.repeat(n) });
+const json = n => JSON.stringify({ username: 'x', password: 'y', fill: 'a'.repeat(n) });
 const post = (base, pfad, rumpf) =>
   fetch(base + pfad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: rumpf });
 
 test('Anmeldung und Rumpflimit in der echten Kette', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const name = `kette_${process.pid}`;

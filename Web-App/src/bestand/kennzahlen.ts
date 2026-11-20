@@ -1,26 +1,26 @@
 import { asIds, type Sicht } from '../haushalt';
-import type { BestandKontext } from './kontext';
+import type { InventoryContext } from './kontext';
 
 /** Spannen über alle drei Domänen und gehören deshalb in keine davon. */
-export async function getStats(k: BestandKontext, userIdWahl: Sicht | number | number[]) {
-  const userId = await k.haushalt.blickfeldAus(userIdWahl);
+export async function getStats(k: InventoryContext, userIdChoice: Sicht | number | number[]) {
+  const userId = await k.haushalt.scopeFrom(userIdChoice);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
-  const [setsRow, instrRow, partsRow, minifigsRow, cur, einzelnRow] = await Promise.all([
+  const [setsRow, instrRow, partsRow, minifigsRow, cur, singleRow] = await Promise.all([
     // COUNT(DISTINCT set_number): Im Haushalt besitzen mehrere Konten dasselbe Set.
-    k.kennzahlen.setZahlen(uids),
-    k.kennzahlen.anleitungsZahlen(uids, uids),
+    k.kennzahlen.setNumbers(uids),
+    k.kennzahlen.instructionNumbers(uids, uids),
     // `fehlt = 1` in einer Multiplikation: Ein manuelles Teil ohne Set zählt einfach.
-    k.kennzahlen.teileImBestand(uids),
-    k.kennzahlen.figurenImBestand(uids),
+    k.kennzahlen.partsInInventory(uids),
+    k.kennzahlen.minifigsInInventory(uids),
     k.einstellungen.valueInView(uids, 'currency').then(value => (value === null ? undefined : { value })),
-    k.kennzahlen.teileEinzeln(uids),
+    k.kennzahlen.partsSingle(uids),
   ]);
-  const eigenerZustand = await k.einstellungen.valueInView(uids, 'user_default_condition');
+  const ownState = await k.einstellungen.valueInView(uids, 'user_default_condition');
   const globalCond = await k.einstellungen.globalValue('default_price_condition');
-  const effectiveCondition = eigenerZustand && ['N', 'U'].includes(eigenerZustand) ? eigenerZustand : globalCond || 'N';
+  const effectiveCondition = ownState && ['N', 'U'].includes(ownState) ? ownState : globalCond || 'N';
   const pieces = Number(partsRow?.t ?? 0);
-  const einzeln = Number(einzelnRow?.t ?? 0);
+  const einzeln = Number(singleRow?.t ?? 0);
   return {
     total_sets: Number(setsRow?.total_sets ?? 0),
     total_quantity: Number(setsRow?.total_quantity ?? 0),
@@ -32,7 +32,7 @@ export async function getStats(k: BestandKontext, userIdWahl: Sicht | number | n
     total_minifigs: Number(minifigsRow?.t ?? 0),
     total_instructions: Number(instrRow?.total_instructions ?? 0),
     currency: cur?.value || 'EUR',
-    user_default_condition: eigenerZustand || null,
+    user_default_condition: ownState || null,
     default_condition: effectiveCondition,
   };
 }

@@ -23,14 +23,14 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const MIGRATION = path.join(__dirname, '..', 'db/migrations/0071-keine-farbe.sql');
 
 test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
   await t.test('die Migration stellt nur um, wo die Zeile es beweist', async () => {
@@ -178,18 +178,18 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Farbliste kommt aus rb_colors, die Notliste führt nur echte Rebrickable-IDs', async () => {
-    const { farbliste } = _req('src/katalog/farben.js');
+    const { colorList } = _req('src/katalog/farben.js');
     const vorher = await db.all('SELECT id, name, rgb FROM rb_colors');
     try {
       await db.run('DELETE FROM rb_colors');
-      const not = await farbliste(); // ohne Schlüssel kein Abruf
+      const not = await colorList(); // ohne Schlüssel kein Abruf
       assert.equal(not.find(f => f.id === 0)?.name, 'Black');
       assert.equal(not.find(f => f.id === 9999)?.name, '[No Color/Any Color]');
       assert.ok(!not.some(f => f.id === 13), 'die Notliste führt nur echte Rebrickable-IDs');
       await db.run(
         `INSERT INTO rb_colors (id,name,rgb) VALUES (0,'Black','05131D'),(13,'Pink','FC97AC'),(-1,'[Unknown]','0033B2')`,
       );
-      assert.deepEqual(await farbliste(), [
+      assert.deepEqual(await colorList(), [
         { id: 0, name: 'Black', hex: '05131D' },
         { id: 13, name: 'Pink', hex: 'FC97AC' },
       ]);

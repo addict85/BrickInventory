@@ -20,18 +20,18 @@ const STILE = ['tokens.css', 'styles.css', 'mobile.css'];
 const { chrome } = require('./helpers/app-browser');
 
 /** Die SMTP-Karte, wie sie in index.html steht. */
-function smtpKarte() {
+function smtpCard() {
   const d = new JSDOM(fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8')).window.document;
   const karte = d.getElementById('smtp-port')?.closest('.ssec');
   assert.ok(karte, 'Die SMTP-Karte ist nicht mehr zu finden');
   return karte.outerHTML;
 }
 
-function testseite() {
+function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">${css}</head>
-<body><main><div class="sgrid2">${smtpKarte()}</div></main><pre id="ergebnis"></pre>
+<body><main><div class="sgrid2">${smtpCard()}</div></main><pre id="ergebnis"></pre>
 <script>
 window.addEventListener('load', () => {
   const karte = document.getElementById('smtp-port').closest('.ssec');
@@ -51,7 +51,7 @@ test('das Port-Feld bleibt in der Karte', t => {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'einstellungen-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testseite());
+  fs.writeFileSync(datei, testPage());
   for (const breite of [1440, 390]) {
     const dom = execFileSync(
       bin,

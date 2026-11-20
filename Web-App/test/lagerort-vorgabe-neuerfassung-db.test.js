@@ -5,7 +5,7 @@
  *
  * Ausgangslage: `# pass 8 / # fail 0` (sieben Faelle und ihre Huelle).
  *
- *   A  die drei Anlegehuellen auf normalisiereLagerort() zurueckgestellt
+ *   A  die drei Anlegehuellen auf normalizeLocation() zurueckgestellt
  *      (also der Stand von Marcos Befund)
  *      → `pass 5 / fail 3`. Rot sind ZWEI Faelle: „ein Teil ohne Ortangabe
  *        bekommt die Vorgabe" (`null statt 'Kiste 7'` — Marcos Befund in
@@ -13,11 +13,11 @@
  *
  *        „Ein Set wuerde sie ebenfalls bekommen" bleibt dabei GRUEN, und das
  *        ist keine Nachlaessigkeit, sondern die Grenze dieses Falls: Er prueft
- *        ortFuerNeuerfassung() direkt, weil der Weg durch addSet() hier kein
+ *        locationForNewEntry() direkt, weil der Weg durch addSet() hier kein
  *        Rebrickable hat. Er sagt also etwas ueber den Wert, nicht darueber,
  *        dass addSet ihn holt. Wer die Huelle dort aendert, merkt es an dieser
  *        Pruefung NICHT — nachgewiesen eben hier.
- *   B  in ortFuerNeuerfassung() die Zeile `if (mitgegeben !== undefined …)`
+ *   B  in locationForNewEntry() die Zeile `if (given !== undefined …)`
  *      entfernt (also ein leeres Feld wieder wie Schweigen behandelt)
  *      → `pass 6 / fail 2`. Rot: „ein ausdruecklich geleertes Feld bleibt
  *        leer". Das ist die Haelfte, die den Stern erst brauchbar macht.
@@ -35,15 +35,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
+const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
-// Rebrickable vorgeben (testQuellen): Ohne Namen im Rumpf fragt addManualPart/addManualMinifig
+// Rebrickable vorgeben (testSources): Ohne Namen im Rumpf fragt addManualPart/addManualMinifig
 // den Katalog und danach notfalls Rebrickable. Hier geht es um den Lagerort,
 // nicht um den Namen — der Abruf soll nicht ueber das Netz greifen.
-testQuellen(null, {
+testSources(null, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
 });
@@ -85,18 +85,18 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
   const ortId = async name =>
     (await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, name])).id;
 
-  const bestand = require('./helpers/sources').testBereich('bestand');
-  const { setzeVorgabe, ortFuerNeuerfassung } = {
+  const bestand = require('./helpers/sources').testArea('bestand');
+  const { setDefault, locationForNewEntry } = {
     ..._req('src/bestand/lagerort.js'),
-    ...bestand.lagerortDienst,
-    setzeVorgabe: bestand.setzeVorgabe,
+    ...bestand.locationService,
+    setDefault: bestand.setDefault,
   };
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
-  await setzeVorgabe(UID, await ortId('Kiste 7'));
+  await setDefault(UID, await ortId('Kiste 7'));
 
-  const ortVonTeil = async nr =>
+  const locationOfPart = async nr =>
     (
       await db.get(
         `SELECT l.name FROM parts p LEFT JOIN storage_locations l ON l.id = p.storage_id
@@ -106,10 +106,10 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     )?.name ?? null;
 
   await t.test('ein Teil ohne Ortangabe bekommt die Vorgabe', async () => {
-    // Genau so ruft der Wanted-Import an (routes/api_v1/wanted.ts, `anleger`):
+    // Genau so ruft der Wanted-Import an (routes/api_v1/wanted.ts, `creator`):
     // Nummer, Farbe, Menge, Zustand — kein storage.
     await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });
-    assert.equal(await ortVonTeil('3001'), 'Kiste 7');
+    assert.equal(await locationOfPart('3001'), 'Kiste 7');
   });
 
   await t.test('eine Figur ohne Ortangabe bekommt sie auch', async () => {
@@ -125,9 +125,9 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
   await t.test('ein Set wuerde sie ebenfalls bekommen', async () => {
     // Nicht durch addSet hindurch — siehe den Kopf. Geprueft ist der Wert, den
     // die Huelle in src/sets/dienst.ts aus demselben Aufruf erhaelt.
-    assert.equal(await ortFuerNeuerfassung(UID, undefined), 'Kiste 7');
+    assert.equal(await locationForNewEntry(UID, undefined), 'Kiste 7');
     assert.equal(
-      await ortFuerNeuerfassung(UID, null),
+      await locationForNewEntry(UID, null),
       'Kiste 7',
       'null kommt aus einem fehlenden Vorgabewert der Signatur und heisst ' +
         'dasselbe wie undefined: niemand hat etwas gesagt',
@@ -136,13 +136,13 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
 
   await t.test('ein mitgegebener Ort gewinnt gegen die Vorgabe', async () => {
     await addManualPart(UID, { part_number: '3002', color_id: 4, quantity: 1, storage: 'Kiste 3' });
-    assert.equal(await ortVonTeil('3002'), 'Kiste 3');
+    assert.equal(await locationOfPart('3002'), 'Kiste 3');
   });
 
   await t.test('ein ausdruecklich geleertes Feld bleibt leer', async () => {
     await addManualPart(UID, { part_number: '3003', color_id: 4, quantity: 1, storage: '' });
     assert.equal(
-      await ortVonTeil('3003'),
+      await locationOfPart('3003'),
       null,
       'Das sendet ein Formular, in dem die vorbefuellte Vorgabe weggeraeumt ' +
         'wurde (selectedStorage in sammlung.js). Sie wieder einzusetzen waere ' +
@@ -153,17 +153,17 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
   await t.test('eine Vorgabe, deren Ort geloescht wurde, gilt nicht', async () => {
     await db.run('DELETE FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, 'Kiste 7']);
     assert.equal(
-      await ortFuerNeuerfassung(UID, undefined),
+      await locationForNewEntry(UID, undefined),
       null,
       'vorgabeVon() liest ueber einen JOIN auf den Vorrat — die Vorgabe heilt sich selbst',
     );
     await addManualPart(UID, { part_number: '3004', color_id: 4, quantity: 1 });
-    assert.equal(await ortVonTeil('3004'), null);
+    assert.equal(await locationOfPart('3004'), null);
   });
 
   await t.test('ohne jede Vorgabe bleibt es beim alten Verhalten', async () => {
-    await setzeVorgabe(UID, null);
-    assert.equal(await ortFuerNeuerfassung(UID, undefined), null);
-    assert.equal(await ortFuerNeuerfassung(UID, 'Kiste 3'), 'Kiste 3');
+    await setDefault(UID, null);
+    assert.equal(await locationForNewEntry(UID, undefined), null);
+    assert.equal(await locationForNewEntry(UID, 'Kiste 3'), 'Kiste 3');
   });
 });

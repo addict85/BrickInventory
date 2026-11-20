@@ -14,19 +14,19 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { katalogSet, haeltSet } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { catalogSet, holdsSet } = require('./helpers/bestand');
 
 const DESIGNS = ['classic', 'brick', 'noppe', 'werkbank', 'hochglanz', 'farbfaecher'];
 const THEMA = 'Star Wars / Ultimate Collector Series';
 
 test('Thema, Protokollfenster, untere Leiste und Registrierung', { timeout: 300_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `masse_${process.pid}`,
-    alleDesigns: true,
+    allDesigns: true,
     bestand: async (db, uid) => {
-      await katalogSet(db, '75192-1', { name: 'Millennium Falcon', year: 2017, theme: THEMA, pieces: 7541 });
-      await haeltSet(db, uid, '75192-1');
+      await catalogSet(db, '75192-1', { name: 'Millennium Falcon', year: 2017, theme: THEMA, pieces: 7541 });
+      await holdsSet(db, uid, '75192-1');
     },
   });
   if (app.grund) {
@@ -63,10 +63,10 @@ test('Thema, Protokollfenster, untere Leiste und Registrierung', { timeout: 300_
         im(`(() => { const k = [...document.querySelectorAll('button, select, input')];
         const b = document.getElementById('btn-info'); b.focus();
         const grund = getComputedStyle(document.body).backgroundColor.match(/\\d+/g).slice(0, 3).map(Number);
-        return { hoehen: k.map(x => Math.round(x.getBoundingClientRect().height)), ring: getComputedStyle(b).outlineWidth,
+        return { heights: k.map(x => Math.round(x.getBoundingClientRect().height)), ring: getComputedStyle(b).outlineWidth,
           hell: grund.reduce((s, x) => s + x, 0) / 3, stufen: [...document.querySelectorAll('.lvbtn')].map(x => x.textContent.trim()) }; })()`),
       );
-      assert.ok(Math.min(...m.hoehen) >= 24, `Knöpfe ${m.hoehen.join(', ')} px`);
+      assert.ok(Math.min(...m.heights) >= 24, `Knöpfe ${m.heights.join(', ')} px`);
       assert.equal(m.ring, '3px');
       assert.ok(dunkel ? m.hell < 80 : m.hell > 200, `Grund ${m.hell} bei dunkel=${dunkel}`);
       assert.deepEqual(
@@ -83,10 +83,10 @@ test('Thema, Protokollfenster, untere Leiste und Registrierung', { timeout: 300_
       await b.auswerten(`document.documentElement.dataset.theme = 'brick'; true`);
       await groesse(640, 450, false);
       await bis(`getComputedStyle(document.querySelector('nav')).position === 'fixed'`, 'Leiste unten');
-      const hoehen = await b.auswerten(
+      const heights = await b.auswerten(
         `[...document.querySelectorAll('.ntab')].filter(n => n.offsetParent).map(n => Math.round(n.getBoundingClientRect().height))`,
       );
-      assert.ok(hoehen.length >= 4 && Math.min(...hoehen) >= 44, `Leiste ${hoehen.join(', ')} px`);
+      assert.ok(heights.length >= 4 && Math.min(...heights) >= 44, `Leiste ${heights.join(', ')} px`);
     } finally {
       await groesse(1280, 900, false);
     }

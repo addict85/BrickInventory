@@ -8,15 +8,15 @@
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  in lagerortGewaehlt das dispatchEvent(change) entfernt → rot: „Webapp:
  *      im Set-Detail …“ und „Webapp: das Teil …“ (kein PUT)
- *   B  in set-detail.js ladeOrtAuswahl ohne die Besitzer → rot: ebenda (owner=)
+ *   B  in set-detail.js loadLocationSelection ohne die Besitzer → rot: ebenda (owner=)
  *   C  in set-teile.js `if (type === 'part')` → `if (true)` → rot: „Webapp: das
  *      Teil …“ (Feld bei der Figur)
- *   D  maxlength="60" → "80" in lagerortBlock → rot: „die Längengrenze …“
+ *   D  maxlength="60" → "80" in locationBlock → rot: „die Längengrenze …“
  *   E  in kontofilter.js addLagerParam ohne p.set → rot: „Webapp: der Filter …“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 const _req = require('./helpers/sources').buildAndRequire();
 
 const SN = '10305-1';
@@ -29,7 +29,7 @@ function klick(o, daten) {
   k.click();
 }
 const schreibt = (o, pfad) => o.aufrufe.filter(a => a.method === 'PUT' && a.url.endsWith(pfad));
-const waehle = (o, id, wert) => {
+const choose = (o, id, wert) => {
   const s = o.d.getElementById(id);
   s.value = wert;
   assert.equal(s.value, wert, `${id} bietet „${wert}“ nicht an`);
@@ -37,7 +37,7 @@ const waehle = (o, id, wert) => {
 };
 
 test('Webapp: im Set-Detail aus dem Vorrat des Besitzers wählen oder neu eintippen', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     [`/v1/sets/${SN}`]: {
       success: true,
       set: {
@@ -72,7 +72,7 @@ test('Webapp: im Set-Detail aus dem Vorrat des Besitzers wählen oder neu eintip
       'nicht nach der Liste des Besitzers gefragt',
     );
     assert.equal(o.d.getElementById('m-storage-sel').value, 'Keller');
-    waehle(o, 'm-storage-sel', 'Regal A');
+    choose(o, 'm-storage-sel', 'Regal A');
     assert.ok(await warte(() => schreibt(o, `/v1/sets/${SN}/storage`).length === 1), 'die Wahl speichert nicht');
     assert.deepEqual(JSON.parse(schreibt(o, `/v1/sets/${SN}/storage`)[0].body), { storage: 'Regal A' });
     const auswahl = o.d.getElementById('m-storage-sel');
@@ -87,7 +87,7 @@ test('Webapp: im Set-Detail aus dem Vorrat des Besitzers wählen oder neu eintip
 });
 
 test('Webapp: das Teil hat das Feld und speichert, die Figur nicht', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/parts/3001/5/sets': {
       success: true,
       item: { name: 'Stein', color_name: 'Red', total_quantity: 2, owner_ids: [1], storage: null },
@@ -103,7 +103,7 @@ test('Webapp: das Teil hat das Feld und speichert, die Figur nicht', async () =>
       await warte(() => o.d.querySelector('#setitem-storage-sel option[value="Kiste 3"]')),
       'Teil: kein Lagerortfeld',
     );
-    waehle(o, 'setitem-storage-sel', 'Kiste 3');
+    choose(o, 'setitem-storage-sel', 'Kiste 3');
     assert.ok(
       await warte(() => schreibt(o, '/v1/parts/3001/5/storage').length === 1),
       'Teil: die Wahl speichert nicht',
@@ -119,7 +119,7 @@ test('Webapp: das Teil hat das Feld und speichert, die Figur nicht', async () =>
 });
 
 test('Webapp: der Filter steht neben dem Kontofilter und geht an den Server', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/storage': { success: true, orte: [{ ort: 'Regal A', sets: 1, teile: 0, figuren: 0 }] },
   });
   try {
@@ -134,7 +134,7 @@ test('Webapp: der Filter steht neben dem Kontofilter und geht an den Server', as
       await warte(() => o.d.querySelector('#storage-gallery option[value="Regal A"]')),
       'der Filter kennt den Ort nicht',
     );
-    waehle(o, 'storage-gallery', 'Regal A');
+    choose(o, 'storage-gallery', 'Regal A');
     assert.ok(
       await warte(() => o.aufrufe.some(a => /\/v1\/sets\?.*storage=Regal(\+|%20)A/.test(a.url))),
       'der Filter geht nicht an den Server',
@@ -145,17 +145,17 @@ test('Webapp: der Filter steht neben dem Kontofilter und geht an den Server', as
 });
 
 test('die Längengrenze steht in Server, Fehlertext und Webapp gleich', async () => {
-  const { LAGERORT_MAX_ZEICHEN: max, normalisiereLagerort } = {
+  const { LOCATION_MAX_CHARS: max, normalizeLocation } = {
     ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
+    ...require('./helpers/sources').testArea('bestand').locationService,
   };
   assert.ok(max > 0);
-  assert.equal(normalisiereLagerort('x'.repeat(max)), 'x'.repeat(max));
+  assert.equal(normalizeLocation('x'.repeat(max)), 'x'.repeat(max));
   assert.throws(
-    () => normalisiereLagerort('x'.repeat(max + 1)),
+    () => normalizeLocation('x'.repeat(max + 1)),
     e => e instanceof Error && e.message.includes(`höchstens ${max} Zeichen`),
   );
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     [`/v1/sets/${SN}`]: {
       success: true,
       set: { set_number: SN, name: 'Burg', quantity: 1, conditions: ['N'], instructions: [] },

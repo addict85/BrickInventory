@@ -8,8 +8,8 @@ export {
   conditionFromAcquisitions,
   conditionsFromAcquisitions,
 } from './gemeinsam';
-export { normalisiereLagerort } from './lagerort';
+export { normalizeLocation } from './lagerort';
 export { mengenwunsch } from './manuelleMenge';
 export { acquisitionTotals } from './acquisitions';
-export { erzeugeBestand } from './bereich';
-export type { BestandDienste, BestandKontext } from './bereich';
+export { createInventory } from './bereich';
+export type { InventoryServices, InventoryContext } from './bereich';

@@ -1,5 +1,5 @@
 /**
- * Der Datenbankzugang entsteht durch erzeugeDb(konfig), nicht beim Import:
+ * Der Datenbankzugang entsteht durch createDb(konfig), nicht beim Import:
  * Wer db/database lädt, öffnet keinen Pool; jeder Zugang hat seinen eigenen
  * Pool und seine eigene Transaktion. Einen Zugang des Prozesses gibt es nicht:
  * Der Einstieg (server.ts, Skripte, Testhilfe) hält den seinen.
@@ -7,8 +7,8 @@
  * Gegenproben (09.11.2026 gemessen, je einzeln):
  *   A  in db/database.ts wieder `const pool = new Pool(...)` auf oberster Ebene →
  *      rot: „der Import öffnet keinen Pool“ (1 statt 0)
- *   B  in erzeugeDb() txClient ohne Vergleich `t.db === ich` → rot: „zwei Zugänge,
- *      zwei Transaktionen“ (b.inTransaktion() wahr in der Transaktion von a)
+ *   B  in createDb() txClient ohne Vergleich `t.db === ich` → rot: „zwei Zugänge,
+ *      zwei Transaktionen“ (b.inTransaction() wahr in der Transaktion von a)
  *   C  (11.11.2026) `export const get = …` mit einem Zugang des Prozesses zurück
  *      in db/database.ts → rot: „db/database führt keinen Zugang des Prozesses“
  *
@@ -22,23 +22,23 @@ const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const DIST = require('./helpers/sources').DIST;
 const { keineDb } = require('./helpers/db');
 
 test('der Import öffnet keinen Pool', () => {
   // In einem eigenen Prozess: Hier hat der Testlauf den Zugang schon benutzt.
-  const skript = `
+  const script = `
     const pg = require('pg'); let n = 0; const Echt = pg.Pool;
     pg.Pool = class extends Echt { constructor(...a) { n++; super(...a); } };
     const db = require(${JSON.stringify(path.join(DIST, 'db', 'database.js'))});
     const nachImport = n;
-    const eigener = db.erzeugeDb(db.dbKonfigAusUmgebung());
+    const eigener = db.createDb(db.dbKonfigFromEnvironment());
     const nachFabrik = n;
     console.log(JSON.stringify([nachImport, nachFabrik]));
     eigener.pool.end().then(() => process.exit(0));`;
-  const aus = execFileSync(process.execPath, ['-e', skript], {
+  const aus = execFileSync(process.execPath, ['-e', script], {
     cwd: path.join(__dirname, '..'),
     encoding: 'utf8',
     env: { ...process.env, DATABASE_URL: 'postgres://niemand:x@127.0.0.1:1/keine' },
@@ -47,7 +47,7 @@ test('der Import öffnet keinen Pool', () => {
 });
 
 test('zwei Zugänge, zwei Transaktionen', async t => {
-  const db = testDaten();
+  const db = testData();
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -55,8 +55,8 @@ test('zwei Zugänge, zwei Transaktionen', async t => {
     return;
   }
   const modul = require(path.join(DIST, 'db', 'database.js'));
-  const a = modul.erzeugeDb(modul.dbKonfigAusUmgebung()),
-    b = modul.erzeugeDb(modul.dbKonfigAusUmgebung());
+  const a = modul.createDb(modul.dbKonfigFromEnvironment()),
+    b = modul.createDb(modul.dbKonfigFromEnvironment());
   t.after(async () => {
     await a.pool.end();
     await b.pool.end();
@@ -66,8 +66,8 @@ test('zwei Zugänge, zwei Transaktionen', async t => {
   const SCHL = `fabrik-${process.pid}`;
   await a.run('DELETE FROM global_settings WHERE key = $1', [SCHL]);
   await a.transaction(async tx => {
-    assert.equal(a.inTransaktion(), true);
-    assert.equal(b.inTransaktion(), false, 'die Transaktion von a gilt nicht für b');
+    assert.equal(a.inTransaction(), true);
+    assert.equal(b.inTransaction(), false, 'die Transaktion von a gilt nicht für b');
     await tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [SCHL, 'x']);
     assert.ok(await tx.get('SELECT 1 FROM global_settings WHERE key = $1', [SCHL]), 'a sieht die eigene Zeile');
     assert.equal(
@@ -93,9 +93,9 @@ test('db/database führt keinen Zugang des Prozesses', () => {
     'initSchemaOnce',
     'standardDb',
     'setzeStandardDb',
-    'inTransaktion',
+    'inTransaction',
     'getPoolStats',
   ].filter(n => n in modul);
   assert.deepEqual(prozess, []);
-  assert.equal(typeof modul.erzeugeDb, 'function', 'die Fabrik bleibt');
+  assert.equal(typeof modul.createDb, 'function', 'die Fabrik bleibt');
 });

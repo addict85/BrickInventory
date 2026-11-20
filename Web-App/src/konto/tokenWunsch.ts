@@ -1,9 +1,9 @@
 /** Wie ein neuer Gerätezugang heisst, gilt und was die Antwort über ihn sagt. */
-import { tokenAbdruck, type TokenScope } from './geraeteToken';
-import type { KontoKontext } from './kontext';
+import { tokenDigest, type TokenScope } from './geraeteToken';
+import type { AccountContext } from './kontext';
 
-/** Feste Obergrenze ab Anmeldung; der Tausch erbt sie (legeNachfolgerAn), die App meldet dann ab. */
-export const APP_HOECHSTDAUER_TAGE = 180;
+/** Feste Obergrenze ab Anmeldung; der Tausch erbt sie (putSuccessorAn), die App meldet dann ab. */
+export const APP_MAX_DURATION_DAYS = 180;
 
 /** Das Label steht in der Geräteliste; ohne Grenze lägen dort beliebig lange Zeilen. */
 const LABEL_MAX = 100;
@@ -18,8 +18,8 @@ export function tokenScope(roh: unknown): TokenScope {
 }
 
 /** `expires_at` ist die frühere der beiden Fristen, `null` nur bei „unbegrenzt". */
-export async function tokenAngaben(k: KontoKontext, klartext: string) {
-  const z = await k.konten.tokenStand(tokenAbdruck(klartext));
+export async function tokenDetails(k: AccountContext, klartext: string) {
+  const z = await k.konten.tokenStand(tokenDigest(klartext));
   return z
     ? {
         scope: z.scope,

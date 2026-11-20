@@ -13,23 +13,23 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 let geladen = 0;
 const verkleinert = [];
 
-const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
-testBildwerk(null, {
+testImageWorker(null, {
   setBildLaden: async (_u, sn) => {
     geladen++;
     return `/images/sets/${sn}.jpg`;
   },
-  vorschauErzeugen: async p => {
+  createPreview: async p => {
     verkleinert.push(p);
     return true;
   },
 });
 const { keineDb } = require('./helpers/db');
-const { leereWarteschlange } = require('./helpers/bildwarteschlange');
+const { emptyQueue } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const db = testDaten();
+const { adminWithFactor } = require('./helpers/verwalter');
+const db = testData();
 
 test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
   try {
@@ -41,7 +41,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
-  await leereWarteschlange(db);
+  await emptyQueue(db);
 
   const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
@@ -71,7 +71,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
   await db.run(`INSERT INTO image_misses (cache_key, reason) VALUES ($1,$2)`, [`set:${P}_3`, 'HTTP 404 vom CDN']);
   await db.run(`INSERT INTO image_misses (cache_key) VALUES ($1)`, [`set:${P}_4`]);
 
-  await verwalterMitFaktor(_req, uid);
+  await adminWithFactor(_req, uid);
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
 
   try {
@@ -153,7 +153,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
       // übersprungen). Seit einer früheren Runde liefert der Durchgang eine
       // Aufschlüsselung statt einer nackten Zahl — der Job schwieg sonst
       // genau dann, wenn er nur überspringt.
-      for (let i = 0; i < 3; i++) n += (await IQ._arbeiteStapel()).gesamt;
+      for (let i = 0; i < 3; i++) n += (await IQ._workStack()).gesamt;
       assert.equal(
         geladen,
         7,
@@ -215,9 +215,9 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
 
 test('der Knopf ist in der Kachel verdrahtet', () => {
   // Ohne Registrierung tut ein Klick nichts — und das fällt erst am Gerät auf.
-  const core = require('./helpers/sources').coreQuelle();
+  const core = require('./helpers/sources').coreSource();
   assert.match(core, /data-click="queueCatalogImages"/, 'Der Knopf fehlt in der Kachel');
-  const admin = require('./helpers/sources').adminQuelle();
+  const admin = require('./helpers/sources').adminSource();
   assert.match(admin, /export async function queueCatalogImages/, 'Kein Klick-Handler');
   assert.match(admin, /^\s+queueCatalogImages,$/m, 'Der Handler ist nicht in der Aktions-Liste registriert');
   for (const loc of ['de', 'en']) {

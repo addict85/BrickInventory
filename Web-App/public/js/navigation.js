@@ -2,11 +2,11 @@
 // darf jede laden; der Router erreicht die Sichten über targets.js, nicht über einen Import.
 import { registerTarget } from './targets.js';
 import { registerActions } from './registry.js';
-import { G, leerZustand, alle, eins, setzeHtml, rollArt } from './dom.js';
+import { G, emptyState, alle, eins, setzeHtml, rollArt } from './dom.js';
 import { loggedInAccount, lastImportAt } from './state.js';
-import { ladeZeitplaene, loadMonitor, stoppeMonitor } from './monitor.js';
-import { figurenFilterZuruecksetzen, loadManualFigsTable, loadMinifigs } from './minifigs.js';
-import { initCatalog, katalogZuruecksetzen } from './katalog.js';
+import { loadSchedules, loadMonitor, stopMonitor } from './monitor.js';
+import { resetMinifigsFilter, loadManualFigsTable, loadMinifigs } from './minifigs.js';
+import { initCatalog, resetCatalog } from './katalog.js';
 import { pollJobStatus, stopJobPolling } from './admin.js';
 import { ladeAlarmUebersicht } from './alarme.js';
 import { ladeLagerortVerwaltung } from './lagerorte.js';
@@ -22,14 +22,14 @@ import { loadTls, loadTokens } from './zugaenge.js';
 import { loadHousehold } from './haushalt.js';
 import { ladeGutscheine } from './gutscheine.js';
 import { ladeMerkliste, resetWantedFilter } from './wanted.js';
-import { ladePapierkorb } from './papierkorb.js';
+import { loadTrash } from './papierkorb.js';
 import { ladePasskeys } from './passkeys.js';
 import { ladeZweitenFaktor } from './zweiter-faktor.js';
-import { loadParts, teileFilterZuruecksetzen, loadManualParts } from './teile.js';
+import { loadParts, resetPartsFilter, loadManualParts } from './teile.js';
 import { loadBrickColors } from './teil-erfassen.js';
-import { meldeAnsicht, meldeFilter } from './router.js';
+import { reportView, reportFilter } from './router.js';
 import { setLagerModus, setScopeMode } from './kontofilter.js';
-import { sammlungUntertitel } from './konten-orte.js';
+import { collectionSubtitle } from './konten-orte.js';
 import { setScrollLabel } from './rollbalken.js';
 import { tRaw } from '../i18n.js';
 import { subscribe, emit } from './events.js';
@@ -66,7 +66,7 @@ const SAMMLUNG = ['gallery', 'parts', 'minifigs'];
 /**
  * @param {string | null | undefined} tab
  */
-function markiereGruppe(tab) {
+function markGroup(tab) {
   // Eigene Klasse statt .active: `.ntab.active` nennt überall den offenen Reiter.
   const sammlung = document.querySelector('.ntab[data-tab="gallery"]');
   sammlung?.classList.toggle('gruppe-aktiv', !!tab && SAMMLUNG.includes(tab));
@@ -78,9 +78,9 @@ function markiereGruppe(tab) {
   // Vorleseprogramme erfahren so, welcher Reiter offen ist. „Sammlung“ gilt nur dann als aktuelle Seite, wenn
   // der eigene Reiter der Ansicht nicht zu sehen ist (am Telefon).
   const offen = document.querySelector('.ntab.active');
-  const offenSichtbar = !!offen?.getClientRects().length;
+  const openVisible = !!offen?.getClientRects().length;
   document.querySelectorAll('.ntab').forEach(x => {
-    if (x.classList.contains('active') || (x.classList.contains('gruppe-aktiv') && !offenSichtbar && x !== offen))
+    if (x.classList.contains('active') || (x.classList.contains('gruppe-aktiv') && !openVisible && x !== offen))
       x.setAttribute('aria-current', 'page');
     else x.removeAttribute('aria-current');
   });
@@ -95,7 +95,7 @@ export function filterUmschalten() {
 }
 
 /** Wer kein Verwalter ist, sieht im Reiter Einstellungen einen Satz statt einer leeren Seite. */
-function zeigeEinstellungsZugriff() {
+function showSettingAccess() {
   const f = G('einst-kein-zugriff');
   if (!f) return;
   f.hidden = !!loggedInAccount?.isAdmin;
@@ -103,7 +103,7 @@ function zeigeEinstellungsZugriff() {
     f,
     loggedInAccount?.isAdmin
       ? ''
-      : leerZustand({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') }),
+      : emptyState({ ico: 'schloss', titel: tRaw('settings.kein_zugriff'), text: tRaw('settings.kein_zugriff_text') }),
   );
 }
 
@@ -112,10 +112,10 @@ function zeigeEinstellungsZugriff() {
  * @param {string} name
  */
 export function oeffneReiter(name) {
-  const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
-  menueSchliessen();
+  const fromMenu = !!G('umenu-pop')?.contains(document.activeElement);
+  closeMenu();
   eins(`.ntab[data-tab="${name}"]`)?.click();
-  if (ausMenue) fokusAufTitel(G('tab-' + name));
+  if (fromMenu) focusOnTitle(G('tab-' + name));
 }
 
 /**
@@ -123,7 +123,7 @@ export function oeffneReiter(name) {
  * die Überschrift der neuen Seite ist der Ort, an dem Tastatur und Bildschirmleser weitermachen.
  */
 /** @param {HTMLElement | null} flaeche */
-function fokusAufTitel(flaeche) {
+function focusOnTitle(flaeche) {
   const titel = /** @type {HTMLElement|null} */ (flaeche?.querySelector('.ptitle') ?? null);
   if (!titel) {
     G('btn-umenu')?.focus();
@@ -154,9 +154,9 @@ export function bindTabs() {
       t.classList.add('active');
       G('tab-' + t.dataset.tab).classList.add('active');
       const tab = t.dataset.tab ?? '';
-      meldeAnsicht(tab);
-      markiereGruppe(tab);
-      zeigeSeitenname(G('tab-' + tab), unter);
+      reportView(tab);
+      markGroup(tab);
+      showPageName(G('tab-' + tab), unter);
       syncTabTitleIcon(tab);
       // Das Jahres-Etikett am Scrollbalken gehört NUR in den Katalog. Ohne dieses Abmelden lieferte die dort
       // angemeldete Funktion weiterhin ein Jahr — auch in der Galerie, wo die Zahl nichts bedeutet.
@@ -194,12 +194,12 @@ export function bindTabs() {
       // wurde, holt jetzt die jeweilige Sicht beim Oeffnen (siehe oeffneSicht unten). Wer die API-Schluessel
       // nachsieht, braucht keine Gutscheinliste.
       if (tab === 'settings') {
-        zeigeEinstellungsZugriff();
+        showSettingAccess();
         loadSettings();
         if (loggedInAccount?.isAdmin) {
           loadApiLimits();
           loadCacheTtl();
-          ladeZeitplaene();
+          loadSchedules();
         }
       }
       if (tab === 'monitor') {
@@ -209,7 +209,7 @@ export function bindTabs() {
         stopJobPolling();
         pollJobStatus();
       }
-      if (tab !== 'monitor' && stoppeMonitor()) stopJobPolling();
+      if (tab !== 'monitor' && stopMonitor()) stopJobPolling();
     });
   });
   // Alle Seitentitel-Icons füllen — läuft bei jedem bindTabs()-Aufruf, also auch nach dem Login (showApp ruft
@@ -227,7 +227,7 @@ export function bindTabs() {
 // Die Sichten hinter dem Benutzermenü, wie in der Android-App. Jede Sicht lädt nur, was sie zeigt: Vorher
 // holte der Einstellungs-Reiter bei jedem Öffnen fünf Bereiche, von denen man meist einen sehen wollte.
 /** @type {Record<string, () => unknown>} */
-const SICHTEN = {
+const VIEWS = {
   profil: () => {
     loadSettings();
     loadProfile();
@@ -238,7 +238,7 @@ const SICHTEN = {
   alarme: () => ladeAlarmUebersicht(),
   lagerorte: () => ladeLagerortVerwaltung(),
   haushalt: () => loadHousehold(),
-  daten: () => ladePapierkorb(),
+  daten: () => loadTrash(),
   app: () => {
     loadTokens();
     loadTls();
@@ -250,10 +250,10 @@ const SICHTEN = {
  * @param {string} name
  */
 export function oeffneSicht(name) {
-  if (!SICHTEN[name]) return;
+  if (!VIEWS[name]) return;
   const flaeche = G('tab-' + name);
   if (!flaeche) return;
-  const ausMenue = !!G('umenu-pop')?.contains(document.activeElement);
+  const fromMenu = !!G('umenu-pop')?.contains(document.activeElement);
   document.querySelectorAll('.ntab').forEach(x => {
     x.classList.remove('active');
   });
@@ -261,10 +261,10 @@ export function oeffneSicht(name) {
     x.classList.remove('active');
   });
   flaeche.classList.add('active');
-  markiereGruppe(null);
-  zeigeSeitenname(flaeche, true);
-  menueSchliessen();
-  meldeAnsicht(name);
+  markGroup(null);
+  showPageName(flaeche, true);
+  closeMenu();
+  reportView(name);
   // Die Sichten liegen im Kontomenü, nicht in der Leiste: Dann zeigt der Menüknopf, wo man ist — sonst wäre
   // kein Reiter als aktiv markiert.
   G('btn-umenu')?.classList.add('aktiv');
@@ -272,60 +272,60 @@ export function oeffneSicht(name) {
   // Nach oben: Die Sicht öffnet sich sonst an der Stelle, an der die vorige gerollt war, und man sieht die
   // Mitte einer fremden Seite.
   window.scrollTo({ top: 0, behavior: rollArt() });
-  if (ausMenue) fokusAufTitel(flaeche);
-  SICHTEN[name]();
+  if (fromMenu) focusOnTitle(flaeche);
+  VIEWS[name]();
 }
 
 /**
  * Seitenname im Fenstertitel und, für Seiten hinter dem Menü, im Kopf: Dort markiert kein Reiter die offene
  * Seite, sonst wüsste man nur am Inhalt, wo man ist.
  * @param {Element | null} flaeche
- * @param {boolean} imKopf
+ * @param {boolean} inHeader
  */
-function zeigeSeitenname(flaeche, imKopf) {
+function showPageName(flaeche, inHeader) {
   // Ohne weiche Trennstriche: Im Seitentitel und in der Tab-Leiste werden sie sichtbar oder stören die Suche.
   const titel = (flaeche?.querySelector('.ptitle')?.textContent || '').replace(/\u00AD/g, '').trim();
   const kopf = G('kopf-sicht');
   if (kopf) {
-    kopf.textContent = imKopf ? titel : '';
-    kopf.hidden = !(imKopf && titel);
+    kopf.textContent = inHeader ? titel : '';
+    kopf.hidden = !(inHeader && titel);
   }
   document.title = titel ? `${titel} – BrickInventory` : 'BrickInventory Manager';
-  beobachteTitel(flaeche);
+  observeTitle(flaeche);
 }
 
 /** @type {MutationObserver | null} */
-let _setDetailBeobachter = null;
+let _setDetailObserver = null;
 /**
  * Offenes Set-Detail: Der Fenstertitel nennt das Set, nach dem Schliessen wieder die Seite. Beobachtet
  * statt an jedem Schliessweg gesetzt: Knopf, Esc, Hintergrund und der Kaufpreis-Dialog schliessen ihn.
  */
-function beobachteSetDetail() {
+function observeSetDetail() {
   const dialog = G('set-modal'),
     titel = G('m-tit');
-  if (_setDetailBeobachter || !dialog || !titel || typeof MutationObserver !== 'function') return;
+  if (_setDetailObserver || !dialog || !titel || typeof MutationObserver !== 'function') return;
   let offen = false;
-  const richte = () => {
+  const setUp = () => {
     const name = (titel.textContent || '').trim();
     if (dialog.classList.contains('open') && name) {
       offen = true;
       document.title = `${name} – BrickInventory`;
     } else if (offen) {
       offen = false;
-      seitennameAktualisieren();
+      refreshPageName();
     }
   };
-  _setDetailBeobachter = new MutationObserver(richte);
-  _setDetailBeobachter.observe(dialog, { attributes: true, attributeFilter: ['class'] });
-  _setDetailBeobachter.observe(titel, { childList: true, characterData: true, subtree: true });
+  _setDetailObserver = new MutationObserver(setUp);
+  _setDetailObserver.observe(dialog, { attributes: true, attributeFilter: ['class'] });
+  _setDetailObserver.observe(titel, { childList: true, characterData: true, subtree: true });
 }
 
 /** Beim Start ist die Sammlung schon offen, ohne dass ein Reiter geklickt wurde: Titel trotzdem setzen. */
-export function seitennameAktualisieren() {
-  beobachteSetDetail();
+export function refreshPageName() {
+  observeSetDetail();
   const flaeche = document.querySelector('.tab.active');
   const reiter = flaeche && document.querySelector(`.ntab[data-tab="${flaeche.id.replace(/^tab-/, '')}"]`);
-  zeigeSeitenname(flaeche, !reiter || reiter.classList.contains('ntab-unter'));
+  showPageName(flaeche, !reiter || reiter.classList.contains('ntab-unter'));
 }
 
 /**
@@ -333,48 +333,48 @@ export function seitennameAktualisieren() {
  * zweimal untereinander.
  * @type {IntersectionObserver | null}
  */
-let _titelBeobachter = null;
+let _titleObserver = null;
 /**
  * @param {Element | null} flaeche
  */
-function beobachteTitel(flaeche) {
+function observeTitle(flaeche) {
   const kopf = G('kopf-sicht'),
     h1 = flaeche?.querySelector('.ptitle');
-  _titelBeobachter?.disconnect();
+  _titleObserver?.disconnect();
   if (!kopf || !h1 || typeof IntersectionObserver !== 'function') return;
   // Gemessen an der echten Kopfleiste (bei 200 % Schrift höher als 64 px) und sofort, nicht erst im ersten
   // Rückruf: Bis dahin galt der Stand der vorigen Seite, und der Titel stand kurz zweimal untereinander.
   const leiste = document.querySelector('header')?.getBoundingClientRect().bottom ?? 64;
   kopf.classList.toggle('titel-sichtbar', h1.getBoundingClientRect().bottom > leiste);
-  _titelBeobachter = new IntersectionObserver(([e]) => kopf.classList.toggle('titel-sichtbar', e.isIntersecting), {
+  _titleObserver = new IntersectionObserver(([e]) => kopf.classList.toggle('titel-sichtbar', e.isIntersecting), {
     rootMargin: `-${Math.round(leiste)}px 0px 0px 0px`,
   });
-  _titelBeobachter.observe(h1);
+  _titleObserver.observe(h1);
 }
 
-function menueSchliessen(fokusZurueck = false) {
+function closeMenu(focusBack = false) {
   const pop = G('umenu-pop');
   const drin = !!pop && pop.contains(document.activeElement);
   if (pop) pop.style.display = 'none';
   const knopf = G('btn-umenu');
   if (knopf) knopf.setAttribute('aria-expanded', 'false');
-  if (knopf && fokusZurueck && drin) knopf.focus();
+  if (knopf && focusBack && drin) knopf.focus();
 }
 
 /** Die sichtbaren Einträge; `admin-only` ist für andere Konten ausgeblendet. */
-function menueEintraege() {
+function menuEntries() {
   return /** @type {HTMLElement[]} */ ([...(G('umenu-pop')?.querySelectorAll('[role="menuitem"]') ?? [])]).filter(
     e => e.style.display !== 'none',
   );
 }
 
 /** Öffnet das Menü und setzt den Fokus auf den ersten (oder letzten) Eintrag. */
-function menueOeffnen(letzter = false) {
+function openMenu(letzter = false) {
   const pop = G('umenu-pop');
   if (!pop) return;
   pop.style.display = 'block';
   G('btn-umenu')?.setAttribute('aria-expanded', 'true');
-  const e = menueEintraege();
+  const e = menuEntries();
   (letzter ? e[e.length - 1] : e[0])?.focus();
 }
 
@@ -383,10 +383,10 @@ export function benutzerMenue() {
   const pop = G('umenu-pop');
   if (!pop) return;
   if (pop.style.display !== 'none') {
-    menueSchliessen();
+    closeMenu();
     return;
   }
-  menueOeffnen();
+  openMenu();
 }
 
 // Tastatur nach dem APG-Muster „Menu Button": Ein Bildschirmleser kündigt role=menu an, und Nutzer erwarten
@@ -395,11 +395,11 @@ document.addEventListener('keydown', ev => {
   const ziel = ev.target instanceof Element ? ev.target : null;
   if (ziel?.id === 'btn-umenu' && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')) {
     ev.preventDefault();
-    menueOeffnen(ev.key === 'ArrowUp');
+    openMenu(ev.key === 'ArrowUp');
     return;
   }
   if (!ziel?.closest('#umenu-pop')) return;
-  const e = menueEintraege(),
+  const e = menuEntries(),
     i = e.indexOf(/** @type {HTMLElement} */ (ziel));
   const nach = { ArrowDown: (i + 1) % e.length, ArrowUp: (i - 1 + e.length) % e.length, Home: 0, End: e.length - 1 }[
     ev.key
@@ -409,7 +409,7 @@ document.addEventListener('keydown', ev => {
     e[nach]?.focus();
     return;
   }
-  if (ev.key === 'Tab') menueSchliessen();
+  if (ev.key === 'Tab') closeMenu();
 });
 
 // Zuklappen, wenn jemand daneben tippt oder Escape drückt. Escape bringt den Fokus zurück auf den Menüknopf,
@@ -418,13 +418,13 @@ document.addEventListener('click', ev => {
   const pop = G('umenu-pop');
   if (!pop || pop.style.display === 'none') return;
   if (ev.target instanceof Element && ev.target.closest('.umenu-wrap')) return;
-  menueSchliessen();
+  closeMenu();
 });
 
 document.addEventListener('keydown', ev => {
   if (ev.key === 'Escape') {
-    menueSchliessen(true);
-    importMenuesSchliessen(null, true);
+    closeMenu(true);
+    closeImportMenus(null, true);
   }
 });
 
@@ -444,18 +444,18 @@ document.querySelector('.sprunglink')?.addEventListener('click', ev => {
  * Offene Import-Menüs schliessen, ausser dem, in dem `ausser` liegt.
  * @param {Node | null} ausser
  */
-function importMenuesSchliessen(ausser, fokusZurueck = false) {
+function closeImportMenus(ausser, focusBack = false) {
   /** @type {NodeListOf<HTMLDetailsElement>} */ (document.querySelectorAll('details.import-menue[open]')).forEach(d => {
     if (ausser && d.contains(ausser)) return;
     d.open = false;
-    if (fokusZurueck && d.contains(document.activeElement)) d.querySelector('summary')?.focus();
+    if (focusBack && d.contains(document.activeElement)) d.querySelector('summary')?.focus();
   });
 }
 
 // Ein Klick daneben schliesst das Menü; eine Wahl darin (Datei, Vorlage) ebenso.
 document.addEventListener('click', ev => {
   const ziel = ev.target instanceof Element ? ev.target : null;
-  importMenuesSchliessen(ziel);
+  closeImportMenus(ziel);
   const d = /** @type {HTMLDetailsElement|null} */ (ziel?.closest('.import-klappe a')?.closest('details') ?? null);
   if (d) d.open = false;
 });
@@ -480,10 +480,10 @@ function filterZuruecksetzen(ansicht) {
     if (G('storage-gallery')) G('storage-gallery').value = '';
     emit('sammlungLaden');
   } else if (ansicht === 'merkliste') resetWantedFilter();
-  else if (ansicht === 'catalog') katalogZuruecksetzen();
-  else if (ansicht === 'parts') teileFilterZuruecksetzen();
-  else if (ansicht === 'minifigs') figurenFilterZuruecksetzen();
-  meldeFilter();
+  else if (ansicht === 'catalog') resetCatalog();
+  else if (ansicht === 'parts') resetPartsFilter();
+  else if (ansicht === 'minifigs') resetMinifigsFilter();
+  reportFilter();
 }
 
 /**
@@ -516,7 +516,7 @@ export function onScopeChange(view) {
   const el = G('scope-' + view);
   if (!el) return;
   setScopeMode(view, el.value);
-  sammlungUntertitel(view);
+  collectionSubtitle(view);
   if (view === 'gallery') emit('sammlungLaden');
   // Die Reiter Teile und Minifiguren haben je ZWEI Listen: die aus Sets und die manuell erfassten. Nur
   // loadParts() neu zu laden liess den manuellen Bereich ungefiltert stehen — er lädt über einen eigenen
@@ -541,8 +541,8 @@ export function onScopeChange(view) {
 
 // Ein echter Sprachwechsel baut den offenen Reiter neu auf. Die Galerie wird nur neu gezeichnet: Ein Neuladen
 // leerte das Raster zwischendurch.
-subscribe('spracheGewechselt', ({ echterWechsel }) => {
-  if (!echterWechsel) return;
+subscribe('spracheGewechselt', ({ realSwitch }) => {
+  if (!realSwitch) return;
   const aktiv = /** @type {HTMLElement|null} */ (document.querySelector('.ntab.active'))?.dataset?.tab;
   if (aktiv === 'parts') {
     loadParts();

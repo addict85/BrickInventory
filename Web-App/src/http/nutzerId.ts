@@ -12,7 +12,7 @@ export function nutzerId(req: Request): number | null {
 
 /** Fehlt die Anmeldung hinter einem Wächter, ist die Verdrahtung falsch, nicht
  * die Anfrage — besser als `nutzerId(req)!` überall. */
-export function angemeldeteNutzerId(req: Request): number {
+export function signedInUserId(req: Request): number {
   const id = nutzerId(req);
   if (id == null) {
     throw new Error('angemeldeteNutzerId ohne Anmeldung — die Route steht vor ihrem Waechter');

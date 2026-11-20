@@ -7,19 +7,19 @@
  * Gegenprobe ist EINE Aenderung, danach zurueckgenommen (die drei Dateien
  * wurden gegen ihre Sicherung verglichen).
  *
- *   A  den katalogTeil()-Vorlauf beim Erfassen eines Teils entfernt (also der Stand
+ *   A  den catalogPart()-Vorlauf beim Erfassen eines Teils entfernt (also der Stand
  *      von Marcos Befund)
  *      → `pass 4 / fail 5`. Rot sind VIER Faelle: „Name und Farbbild im
  *        Katalog — kein Abruf", „Bild als Datei zaehlt auch", „ohne Farbe
  *        zaehlt das allgemeine Bild" und „der Name kommt aus dem Katalog".
  *        Der erste meldet `[ 'lookupPart 3001/4' ] statt []` — Marcos Befund
  *        in Zahlen.
- *   B  `hatBild` in der Bedingung durch `image_url` ersetzt (also die Datei
+ *   B  `hatImage` in der Bedingung durch `image_url` ersetzt (also die Datei
  *      nicht als Beleg zaehlen lassen)
  *      → `pass 7 / fail 2`. Rot: „Bild als Datei zaehlt auch". Genau dafuer
  *        gibt es das Feld; ohne es waere jedes heruntergeladene Bild wieder
  *        ein Abruf.
- *   C  in katalogTeil() `rb_parts.part_img_url` auch mit Farbe als Treffer
+ *   C  in catalogPart() `rb_parts.part_img_url` auch mit Farbe als Treffer
  *      gezaehlt
  *      → `pass 7 / fail 2`. Rot: „Name ja, Farbbild nein — es wird gefragt".
  *        Das ist die Schranke gegen das weisse Bild.
@@ -29,7 +29,7 @@
  *        gar keine rb_parts-Zeile da, das allgemeine Bild konnte also nicht
  *        dazwischenkommen. Die Zeile steht jetzt unten — sie ist der Grund,
  *        warum dieser Fall ueberhaupt etwas prueft.
- *   D  den katalogFigur()-Vorlauf beim Erfassen einer Figur entfernt
+ *   D  den catalogMinifig()-Vorlauf beim Erfassen einer Figur entfernt
  *      → `pass 7 / fail 2`. Rot: „Figur mit Name und Bild — kein Abruf".
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
@@ -41,20 +41,20 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
+const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
-// Rebrickable an der Verdrahtung gestellt (testQuellen); `abrufe` zählt, was gefragt wurde.
-let abrufe = [];
-testQuellen(null, {
+// Rebrickable an der Verdrahtung gestellt (testSources); `fetches` zählt, was gefragt wurde.
+let fetches = [];
+testSources(null, {
   lookupPart: async (nr, farbe) => {
-    abrufe.push(`lookupPart ${nr}/${farbe}`);
+    fetches.push(`lookupPart ${nr}/${farbe}`);
     return { part_name: 'VON REBRICKABLE', category_name: '42', image_url: 'https://cdn.example/rb.jpg' };
   },
   getMinifigInfo: async nr => {
-    abrufe.push(`getMinifigInfo ${nr}`);
+    fetches.push(`getMinifigInfo ${nr}`);
     return { fig_number: nr, fig_name: 'VON REBRICKABLE', image_url: 'https://cdn.example/rb-fig.jpg' };
   },
 });
@@ -87,7 +87,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
 
   // Der Preisabruf ist hier nicht die Frage und soll nicht dazwischenreden:
   // Ohne BrickLink-Zugang bricht fetchPartPrice von sich aus ab, und
-  // marktpreisMitHerkunft faengt es (preis: null).
+  // marketPriceWithOrigin faengt es (preis: null).
   await db.run(`INSERT INTO part_catalog (part_number,part_name,category_name) VALUES
                   ('3001','Brick 2 x 4','Bricks'),
                   ('3002','Brick 2 x 2','Bricks'),
@@ -113,15 +113,15 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
   /** Ein Teil anlegen und zaehlen, was dabei nach draussen ging. */
-  const legeTeil = async (nr, farbe) => {
-    abrufe = [];
+  const putPart = async (nr, farbe) => {
+    fetches = [];
     await addManualPart(UID, { part_number: nr, color_id: farbe, quantity: 1 });
-    return abrufe.filter(a => a.startsWith('lookupPart'));
+    return fetches.filter(a => a.startsWith('lookupPart'));
   };
 
   await t.test('Name und Farbbild im Katalog — kein Abruf', async () => {
     assert.deepEqual(
-      await legeTeil('3001', 4),
+      await putPart('3001', 4),
       [],
       'Beides steht lokal da. Jeder Abruf hier ist der, den Marco gemessen hat',
     );
@@ -129,7 +129,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
 
   await t.test('Bild als Datei zaehlt auch', async () => {
     assert.deepEqual(
-      await legeTeil('3002', 4),
+      await putPart('3002', 4),
       [],
       'image_local ist ein Pfad und darf nicht durch V.optionalImageUrl — ' +
         'er beweist aber, dass der Abruf nichts mehr zu holen hat',
@@ -138,7 +138,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
 
   await t.test('Name ja, Farbbild nein — es wird gefragt', async () => {
     assert.deepEqual(
-      await legeTeil('3003', 4),
+      await putPart('3003', 4),
       ['lookupPart 3003/4'],
       'Gespart werden soll der ueberfluessige Abruf, nicht der noetige. ' +
         'rb_parts.part_img_url liegt vor und darf den Farb-Abruf NICHT ersetzen',
@@ -155,14 +155,14 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     // Die Kehrseite des Falls darueber: Ohne angegebene Farbe gibt es keine
     // farbrichtige Erwartung, und lookupPart holt dort selbst nur das
     // allgemeine Bild. Dann ist der Abruf wirklich ueberfluessig.
-    abrufe = [];
+    fetches = [];
     await addManualPart(UID, { part_number: '3003', quantity: 1 });
-    assert.deepEqual(abrufe, [], 'rb_parts fuehrt Name und allgemeines Bild — mehr holt der Abruf hier nicht');
+    assert.deepEqual(fetches, [], 'rb_parts fuehrt Name und allgemeines Bild — mehr holt der Abruf hier nicht');
   });
 
   await t.test('gar nicht im Katalog — es wird gefragt', async () => {
     assert.deepEqual(
-      await legeTeil('99999zzz', 4),
+      await putPart('99999zzz', 4),
       ['lookupPart 99999zzz/4'],
       'Ohne lokalen Eintrag ist Rebrickable die einzige Quelle',
     );
@@ -173,26 +173,26 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     // heissen, dass der Name fehlt. Der Vorgabewert des Doppels lautet
     // „VON REBRICKABLE" — er darf hier nirgends stehen.
     await db.run("DELETE FROM parts WHERE user_id=$1 AND part_number='3001'", [UID]);
-    abrufe = [];
+    fetches = [];
     const r = await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.equal(
       r.part_name,
       'Brick 2 x 4',
       'Der Katalogname, nicht der des Doppels — sonst waere nichts gespart, sondern verloren',
     );
-    assert.deepEqual(abrufe, []);
+    assert.deepEqual(fetches, []);
   });
 
   await t.test('Figur mit Name und Bild — kein Abruf', async () => {
-    abrufe = [];
+    fetches = [];
     const r = await addManualMinifig(UID, { fig_number: 'fig-000123', quantity: 1 });
-    assert.deepEqual(abrufe, [], 'minifigs_catalog fuehrt Name und Bild');
+    assert.deepEqual(fetches, [], 'minifigs_catalog fuehrt Name und Bild');
     assert.equal(r.fig_name, 'Chewbacca');
   });
 
   await t.test('Figur ohne Bild — es wird gefragt', async () => {
-    abrufe = [];
+    fetches = [];
     await addManualMinifig(UID, { fig_number: 'fig-000456', quantity: 1 });
-    assert.deepEqual(abrufe, ['getMinifigInfo fig-000456'], 'Der Name allein genuegt nicht: das Bild fehlt wirklich');
+    assert.deepEqual(fetches, ['getMinifigInfo fig-000456'], 'Der Name allein genuegt nicht: das Bild fehlt wirklich');
   });
 });

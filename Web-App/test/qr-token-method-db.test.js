@@ -26,12 +26,12 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // test/qr-adresse.test.js.
 process.env.APP_BASE_URL = 'https://lego.example.org';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 // Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 async function dbReachable() {
@@ -74,7 +74,7 @@ test('QR-Nonce nur per POST', async t => {
     req.session = { userId: _uid };
     next();
   });
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 

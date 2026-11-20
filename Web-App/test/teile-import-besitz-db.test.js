@@ -4,13 +4,13 @@
  * Rebrickable wird kurz gemerkt, statt bei jedem Versuch erneut zu fragen.
  *
  * Gegenproben (01.11.2026 gemessen):
- *   A  findeSetImBlickfeld() aus der Route entfernt (Import für das fragende
+ *   A  findSetInScope() aus der Route entfernt (Import für das fragende
  *      Konto wie vorher) → rot: „ein fremdes Set wird nicht importiert“ und
  *      „das Set des Unterkontos … für dessen Besitzer“
  *   B  Drossel entfernt → rot: „je Konto höchstens 30 Importe je Stunde“
  *   C  der Merker `_leer` in alleTeileDesSets() nicht gelesen → rot: „eine
  *      leere Antwort wird gemerkt“ (zwei Abrufe statt einem)
- *   D  (14.11.2026) in teileDesSetsImportieren() wieder ein Fang, der meldet
+ *   D  (14.11.2026) in importPartsOfSets() wieder ein Fang, der meldet
  *      und 0 liefert (früher importPartsForSet) → rot: „ein gescheiterter
  *      Import ist ein Fehler“ (200 mit count 0)
  *
@@ -24,37 +24,37 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 // Vor dem Laden der Route: Import und Rebrickable-Abruf mitschreiben statt ausführen.
 const importe = [];
-const abrufe = [];
-const ersetze = (rel, zusatz) => {
+const fetches = [];
+const replace = (rel, zusatz) => {
   const pfad = require.resolve(path.join(quellen.DIST, rel));
   _req(rel);
   require.cache[pfad].exports = Object.assign({}, require.cache[pfad].exports, zusatz);
 };
 // Rebrickable an der Verdrahtung gestellt: Jeder Satz Dienste fragt über ihn.
-quellen.testQuellen(null, {
+quellen.testSources(null, {
   holeSetTeile: async n => {
-    abrufe.push(n);
+    fetches.push(n);
     return { teile: [], verweigert: false };
   },
 });
-ersetze('src/sets/setInhaltImport.js', {
-  importiereTeile: async (_k, sn, uid) => {
+replace('src/sets/setInhaltImport.js', {
+  importParts: async (_k, sn, uid) => {
     if (sn.startsWith('TIK')) throw new Error('Rebrickable antwortet nicht');
     importe.push([sn, uid]);
     return 3;
   },
 });
 
-const db = quellen.testDaten();
+const db = quellen.testData();
 const P = process.pid;
 
 test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const namen = [`ti_haupt_${P}`, `ti_unter_${P}`, `ti_fremd_${P}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -122,9 +122,9 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
     const status = [];
     for (let i = 0; i < 30; i++) status.push((await importiere(U, UNTER)).status);
     assert.deepEqual([...new Set(status)], [200], 'bis zur Grenze geht jeder durch');
-    const zuViel = await importiere(U, UNTER);
-    assert.equal(zuViel.status, 429);
-    assert.equal(zuViel.body.code, 'zu_viele_anfragen');
+    const toMuch = await importiere(U, UNTER);
+    assert.equal(toMuch.status, 429);
+    assert.equal(toMuch.body.code, 'zu_viele_anfragen');
     assert.equal((await importiere(F, FREMD)).status, 200, 'ein anderes Konto zählt für sich');
   });
 
@@ -133,6 +133,6 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
     const leer = `TIL${P}-1`;
     assert.deepEqual(await alleTeileDesSets(leer), []);
     assert.deepEqual(await alleTeileDesSets(leer), []);
-    assert.deepEqual(abrufe, [leer], 'die zweite Frage ging wieder an Rebrickable');
+    assert.deepEqual(fetches, [leer], 'die zweite Frage ging wieder an Rebrickable');
   });
 });

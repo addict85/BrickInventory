@@ -3,7 +3,7 @@
  * höchstens 20 Felder zu je 64 KB. Ohne sie nahm multer beliebig viele Felder
  * zu je 1 MB und beliebig viele Dateien in den Speicher.
  *
- * Gegenprobe (01.11.2026 gemessen): `...FORMULAR_GRENZEN` aus allen multer-
+ * Gegenprobe (01.11.2026 gemessen): `...FORM_LIMITS` aus allen multer-
  * Aufrufen entfernt → rot: „zu viele Felder …“ (Einstellungsimport mit 30
  * Feldern 200, Gutschein-PDF mit 100-KB-Feld 422 aus der PDF-Prüfung).
  *
@@ -14,14 +14,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
 test('Grenzen für Formulare mit Datei', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `formular_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;

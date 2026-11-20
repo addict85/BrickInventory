@@ -4,7 +4,7 @@
  * Tausch aus einem anderen /24-Netz gilt als Kopie und beendet die Familie.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in rotiereToken() die Zeile `if (offen && offen.alter_s < TAUSCH_SPERRE_S)`
+ *   A  in rotateToken() die Zeile `if (offen && offen.alter_s < SWAP_LOCK_S)`
  *      entfernt → rot: „sechs gleichzeitige Tausche …“ (6× 200, nur der
  *      letzte gilt)
  *   B  den Zweig zum anderen Netz entfernt → rot: „ein zweiter Tausch aus
@@ -22,13 +22,13 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `tausch_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -43,11 +43,10 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
   app.use(express.json());
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').waechterFuer(require('./helpers/sources').testDienste().konto)
-      .anmeldungAmEingang,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
   );
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
-  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://127.0.0.1:${srv.address().port}`;
   t.after(async () => {
@@ -61,7 +60,7 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
   };
 
   await t.test('sechs gleichzeitige Tausche: einer neu, die anderen 409', async () => {
-    const alt = await auth.tokenAnlegen(uid, 'Telefon', true, null, { scope: 'app', ip: '127.0.0.1' });
+    const alt = await auth.createToken(uid, 'Telefon', true, null, { scope: 'app', ip: '127.0.0.1' });
     const antworten = await Promise.all(Array.from({ length: 6 }, () => ruf('/auth/token-rotieren', alt, 'POST')));
     const stand = JSON.stringify(antworten.map(a => [a.status, a.body?.code]));
     const neu = antworten.filter(a => a.status === 200);
@@ -70,19 +69,19 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
       antworten.filter(a => a.status !== 200).every(a => a.status === 409 && a.body.code === 'tausch_laeuft'),
       stand,
     );
-    tokenCache.leereTokenCache();
+    tokenCache.emptyTokenCache();
     assert.equal((await ruf('/stats', neu[0].body.token)).status, 200, 'der ausgegebene Token gilt');
   });
 
   await t.test('ein zweiter Tausch aus einem anderen Netz beendet die Familie', async () => {
-    const alt = await auth.tokenAnlegen(uid, 'Tablet', true, null, { scope: 'app', ip: '10.1.2.3' });
-    const erster = await auth.rotiereToken(alt, '10.1.2.77');
+    const alt = await auth.createToken(uid, 'Tablet', true, null, { scope: 'app', ip: '10.1.2.3' });
+    const erster = await auth.rotateToken(alt, '10.1.2.77');
     assert.ok(erster && typeof erster === 'object', 'Vorbedingung: der erste Tausch gelingt');
     await db.run(`UPDATE api_tokens SET rotated_at = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
-      auth.tokenAbdruck(erster.token),
+      auth.tokenDigest(erster.token),
     ]);
-    assert.equal(await auth.rotiereToken(alt, '192.0.2.5'), null);
-    tokenCache.leereTokenCache();
+    assert.equal(await auth.rotateToken(alt, '192.0.2.5'), null);
+    tokenCache.emptyTokenCache();
     assert.equal(await auth.nutzerZumToken(erster.token), null, 'der Nachfolger ist weg');
     assert.equal(await auth.nutzerZumToken(alt), null, 'der alte ist weg');
   });

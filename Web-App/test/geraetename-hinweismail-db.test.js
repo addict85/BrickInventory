@@ -11,7 +11,7 @@
  *      (Absage erst an der Bestätigung)
  *   C  die Prüfung in POST /passkey/registrieren entfernt → rot: „POST
  *      /passkey/registrieren …“ (400 passkey_ungueltig)
- *   D  geraeteNameGueltig() ohne die Prüfung auf Anführungszeichen → rot:
+ *   D  devicesNameValid() ohne die Prüfung auf Anführungszeichen → rot:
  *      „die Regel“, „ein Satz in Anführungszeichen …“ und die drei Wege
  *      (ihre Liste enthält ein solches Beispiel)
  *
@@ -26,10 +26,10 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const { geraeteNameGueltig } = _req('src/konto/namensRegeln.js');
+const { devicesNameValid } = _req('src/konto/namensRegeln.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const BOESE = [
@@ -43,13 +43,13 @@ const BOESE = [
 const GUT = ['Pixel 8 Pro', 'Android App', 'Galaxy S10.1', 'iPad (Küche)', 'Firefox auf Linux'];
 
 test('Gerätenamen: die Regel', () => {
-  for (const n of BOESE) assert.equal(geraeteNameGueltig(n), false, JSON.stringify(n));
-  for (const n of GUT) assert.equal(geraeteNameGueltig(n), true, JSON.stringify(n));
-  assert.equal(geraeteNameGueltig(undefined), true, 'ohne Namen gilt die Vorgabe');
+  for (const n of BOESE) assert.equal(devicesNameValid(n), false, JSON.stringify(n));
+  for (const n of GUT) assert.equal(devicesNameValid(n), true, JSON.stringify(n));
+  assert.equal(devicesNameValid(undefined), true, 'ohne Namen gilt die Vorgabe');
 });
 
 test('Gerätenamen an allen drei Wegen', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `geraet_${process.pid}`,
     PASS = 'Geraete-Passwort-17';

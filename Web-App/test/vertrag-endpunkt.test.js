@@ -55,7 +55,7 @@ test('eine Route mit Schrittmarke antwortet nur, wenn der Eingang genau ihren Sc
   r.endpunkt('POST /api/v1/vouchers/:id/klartext', () => ({ id: 1, number: '1', pin: null }));
   const app = express();
   app.use(express.json());
-  // Wie schrittschutzAmEingang: Es hält fest, welchen Schritt es der Anfrage zugeordnet hat.
+  // Wie stepChutzAtInbox: Es hält fest, welchen Schritt es der Anfrage zugeordnet hat.
   app.use((req, res, next) => {
     const s = req.get('x-schritt');
     if (s !== undefined) res.locals.schritt = s === 'keiner' ? null : s;

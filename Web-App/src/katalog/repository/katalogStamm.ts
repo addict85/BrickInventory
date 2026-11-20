@@ -1,7 +1,7 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 export type Schreiber = { run: (sql: string, params?: unknown[]) => Promise<unknown> };
 
-export async function inventarNachKandidaten(db: DbSchnittstelle, kandidaten: string[]): Promise<number | null> {
+export async function inventoryAfterCandidates(db: DbInterface, kandidaten: string[]): Promise<number | null> {
   const row = await db.get<{ id: number }>(
     'SELECT id FROM rb_inventories WHERE set_num = ANY($1) ORDER BY version DESC LIMIT 1',
     [kandidaten],
@@ -9,7 +9,7 @@ export async function inventarNachKandidaten(db: DbSchnittstelle, kandidaten: st
   return row ? row.id : null;
 }
 
-export async function geladeneFarben(db: DbSchnittstelle): Promise<{ id: number; name: string; hex: string | null }[]> {
+export async function loadedColors(db: DbInterface): Promise<{ id: number; name: string; hex: string | null }[]> {
   return db.all<{ id: number; name: string; hex: string | null }>(
     `SELECT id, name, NULLIF(rgb, '') AS hex FROM rb_colors
       WHERE id >= 0 AND name IS NOT NULL ORDER BY id`,
@@ -17,7 +17,7 @@ export async function geladeneFarben(db: DbSchnittstelle): Promise<{ id: number;
 }
 
 // Im gemeinsamen Katalog bleibt der erste geprüfte Wert; COALESCE hält ihn gegen spätere Quellen.
-export function schreibeTeilKatalog(dbh: Schreiber, partNumber: string, name: string | null, kategorie: string | null) {
+export function writePartCatalog(dbh: Schreiber, partNumber: string, name: string | null, kategorie: string | null) {
   return dbh.run(
     `
     INSERT INTO part_catalog (part_number, part_name, category_name)
@@ -30,7 +30,7 @@ export function schreibeTeilKatalog(dbh: Schreiber, partNumber: string, name: st
   );
 }
 
-export function schreibeTeilFarbe(
+export function writePartColor(
   dbh: Schreiber,
   partNumber: string,
   farbe: number,
@@ -53,7 +53,7 @@ export function schreibeTeilFarbe(
   );
 }
 
-export function schreibeFigurKatalog(
+export function writeMinifigCatalog(
   dbh: Schreiber,
   figNumber: string,
   name: string | null,
@@ -74,7 +74,7 @@ export function schreibeFigurKatalog(
 }
 
 /** Eigene Angaben: Die neueste Eingabe gilt, ein leeres Feld lässt die alte stehen. */
-export function schreibeTeilEigen(
+export function writePartOwn(
   dbh: Schreiber,
   uid: number,
   partNumber: string,
@@ -93,7 +93,7 @@ export function schreibeTeilEigen(
   );
 }
 
-export function schreibeTeilFarbeEigen(
+export function writePartColorOwn(
   dbh: Schreiber,
   uid: number,
   partNumber: string,
@@ -115,7 +115,7 @@ export function schreibeTeilFarbeEigen(
   );
 }
 
-export function schreibeFigurEigen(
+export function writeMinifigOwn(
   dbh: Schreiber,
   uid: number,
   figNumber: string,
@@ -134,7 +134,7 @@ export function schreibeFigurEigen(
   );
 }
 
-export function schreibeSetTeil(
+export function writeSetPart(
   dbh: Schreiber,
   setNumber: string,
   partNumber: string,
@@ -152,7 +152,7 @@ export function schreibeSetTeil(
   );
 }
 
-export function schreibeTeileKatalog(
+export function writePartsCatalog(
   dbh: Schreiber,
   nummern: string[],
   namen: (string | null)[],
@@ -170,7 +170,7 @@ export function schreibeTeileKatalog(
   );
 }
 
-export function schreibeTeilFarben(
+export function writePartColors(
   dbh: Schreiber,
   nummern: string[],
   farben: number[],
@@ -193,7 +193,7 @@ export function schreibeTeilFarben(
   );
 }
 
-export function schreibeSetTeile(
+export function writeSetParts(
   dbh: Schreiber,
   setNumber: string,
   nummern: string[],
@@ -211,7 +211,7 @@ export function schreibeSetTeile(
   );
 }
 
-export function schreibeFigurenKatalog(
+export function writeMinifigsCatalog(
   dbh: Schreiber,
   nummern: string[],
   namen: (string | null)[],
@@ -229,7 +229,7 @@ export function schreibeFigurenKatalog(
   );
 }
 
-export function schreibeTeilbildLokal(dbh: Schreiber, partNumber: string, colorId: number, imageLocal: string) {
+export function writePartImageLocal(dbh: Schreiber, partNumber: string, colorId: number, imageLocal: string) {
   return dbh.run(
     `
     INSERT INTO part_color_catalog (part_number, color_id, image_local)
@@ -240,7 +240,7 @@ export function schreibeTeilbildLokal(dbh: Schreiber, partNumber: string, colorI
   );
 }
 
-export function schreibeSetFiguren(dbh: Schreiber, setNumber: string, nummern: string[], mengen: number[]) {
+export function writeSetMinifigs(dbh: Schreiber, setNumber: string, nummern: string[], mengen: number[]) {
   return dbh.run(
     `
     INSERT INTO set_minifigs (set_number, fig_number, quantity)
@@ -250,7 +250,7 @@ export function schreibeSetFiguren(dbh: Schreiber, setNumber: string, nummern: s
   );
 }
 
-export function schreibeFigurBildAdresse(dbh: Schreiber, figNumber: string, imageUrl: string) {
+export function writeMinifigImageAddress(dbh: Schreiber, figNumber: string, imageUrl: string) {
   return dbh.run(
     `
     INSERT INTO minifigs_catalog (fig_number, image_url) VALUES ($1, $2)
@@ -259,7 +259,7 @@ export function schreibeFigurBildAdresse(dbh: Schreiber, figNumber: string, imag
   );
 }
 
-export function schreibeFigurBildLokal(dbh: Schreiber, figNumber: string, imageLocal: string) {
+export function writeMinifigImageLocal(dbh: Schreiber, figNumber: string, imageLocal: string) {
   return dbh.run(
     `
     INSERT INTO minifigs_catalog (fig_number, image_local)
@@ -271,7 +271,7 @@ export function schreibeFigurBildLokal(dbh: Schreiber, figNumber: string, imageL
 }
 
 /** Der geprüfte Wert, sonst die eigene Angabe von `fuer`; fremde Eingaben stehen nicht im Katalog. */
-export function teilAusKatalog(db: DbSchnittstelle, partNumber: string, colorId: number | null, fuer: number | null) {
+export function partFromCatalog(db: DbInterface, partNumber: string, colorId: number | null, fuer: number | null) {
   return db.get<{
     name: string | null;
     kategorie: string | null;
@@ -295,7 +295,7 @@ export function teilAusKatalog(db: DbSchnittstelle, partNumber: string, colorId:
   );
 }
 
-export function figurAusKatalog(db: DbSchnittstelle, figNumber: string, fuer: number | null) {
+export function minifigFromCatalog(db: DbInterface, figNumber: string, fuer: number | null) {
   return db.get<{ fig_name: string | null; image_url: string | null; image_local: string | null }>(
     `
     SELECT COALESCE(mc.fig_name, fe.fig_name)   AS fig_name,

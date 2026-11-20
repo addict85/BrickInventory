@@ -12,7 +12,7 @@
  *      (direkt nacheinander) → rot: „scheitert ein Kontowert …“ (smtp_host
  *      und Protokolleintrag blieben stehen; 13.11.2026 mit `language: 'xx'`)
  *   D  (13.11.2026) die Währung wieder in der Schleife innerhalb von kx.transaktion()
- *      → rot: „eine gültige Währung …“ (500: NebenDerTransaktion, weil der
+ *      → rot: „eine gültige Währung …“ (500: BesideTheTransaction, weil der
  *      Haushaltswechsel den Systemrahmen braucht)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -24,15 +24,15 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATA_KEY = Buffer.alloc(32, 5).toString('base64');
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const CHEF = `protokoll_${process.pid}`,
     PASS = 'Protokoll-Pruefung-3';
   const SCHLUESSEL = ['smtp_host', 'rebrickable_api_key', 'registration_enabled'];

@@ -5,14 +5,14 @@
  * einer erbeuteten Sitzung die Notbremsen des Inhabers nicht sperren (N1).
  *
  * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  in pruefeBestaetigung den Code über die Bremse 'passwort' geprüft
+ *   A  in checkConfirmation den Code über die Bremse 'passwort' geprüft
  *      (gemeinsamer Zähler, den das richtige Passwort löscht) → rot:
  *      „das Passwort setzt den Codezähler nicht zurück" und „falsche Codes
  *      einer fremden Sitzung …" (der Angreifer wird nie gesperrt)
- *   B  zugangVon() liefert immer '' (Zähler je Konto, wie vorher) → rot:
+ *   B  accessOf() liefert immer '' (Zähler je Konto, wie vorher) → rot:
  *      „eine fremde Sitzung sperrt die Notbremsen nicht" und „falsche Codes
  *      einer fremden Sitzung sperren den Inhaber nicht"
- *   C  zugangVon() nimmt für Token den Kopf statt created_at → rot: „der
+ *   C  accessOf() nimmt für Token den Kopf statt created_at → rot: „der
  *      Tausch des Tokens setzt die Bremse nicht zurück"
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -26,13 +26,13 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const zf = _req('src/factors/secondFactor.js');
-const { tokenAnlegen } = _req('src/konto/geraeteToken.js');
-const { entschluessele } = _req('src/infra/geheimnis.js');
+const { createToken } = _req('src/konto/geraeteToken.js');
+const { decrypt } = _req('src/infra/geheimnis.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Bremsen-Passwort-1';
@@ -49,7 +49,7 @@ async function konto(name) {
 }
 
 test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `bb_${process.pid}`,
     KARL = `bb_karl_${process.pid}`;
   const uid = await konto(NAME),
@@ -69,7 +69,7 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
   const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
   const codes = await zf.confirmSetup(
     uid,
-    zf.hotp(zf.fromBase32(entschluessele(z.secret, zf.secondFactorContext(uid))), zf.timeStep()),
+    zf.hotp(zf.fromBase32(decrypt(z.secret, zf.secondFactorContext(uid))), zf.timeStep()),
   );
   let naechster = 0;
   const richtig = () => codes[naechster++];
@@ -83,8 +83,8 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
     if (sid) req.sessionID = String(sid);
     next();
   });
-  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const base = `http://localhost:${srv.address().port}`;
@@ -110,8 +110,8 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
       'zweiter_faktor_noetig',
     );
     assert.equal((await passkeyLoeschen('100004')).code, 'zweiter_faktor_falsch');
-    const sechster = await passkeyLoeschen(richtig());
-    assert.equal(sechster.status, 429, `das Passwort setzt den Codezähler zurück: ${JSON.stringify(sechster)}`);
+    const sixth = await passkeyLoeschen(richtig());
+    assert.equal(sixth.status, 429, `das Passwort setzt den Codezähler zurück: ${JSON.stringify(sixth)}`);
   });
 
   await t.test('ein richtiger Code setzt ihn zurück', async () => {
@@ -160,7 +160,7 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
 
   await t.test('der Tausch des Tokens setzt die Bremse nicht zurück', async () => {
     await leeren();
-    const token = await tokenAnlegen(karl, 'Probe', true);
+    const token = await createToken(karl, 'Probe', true);
     const mit = tk => ({ authorization: `Bearer ${tk}` });
     for (let i = 0; i < 5; i++) await ruf('DELETE', '/api/v1/bestand', { password: `falsch${i}` }, mit(token));
     assert.equal((await ruf('DELETE', '/api/v1/bestand', { password: PASS }, mit(token))).status, 429, 'Vorbedingung');

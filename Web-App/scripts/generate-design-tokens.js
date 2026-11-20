@@ -7,8 +7,8 @@ const path = require('node:path');
 
 const WURZEL = path.join(__dirname, '..', '..');
 const QUELLE = path.join(WURZEL, 'shared', 'design-tokens.json');
-const ZIEL_CSS = path.join(WURZEL, 'Web-App', 'public', 'tokens.css');
-const ZIEL_KT = path.join(
+const TARGET_CSS = path.join(WURZEL, 'Web-App', 'public', 'tokens.css');
+const TARGET_KT = path.join(
   __dirname,
   '..',
   '..',
@@ -23,9 +23,9 @@ const ZIEL_KT = path.join(
   'theme',
   'DesignTokens.kt',
 );
-const ZIEL_DUNKEL_KT = path.join(path.dirname(ZIEL_KT), 'DunkelTokens.kt');
+const TARGET_DARK_KT = path.join(path.dirname(TARGET_KT), 'DunkelTokens.kt');
 
-const HINWEIS = 'ERZEUGT aus shared/design-tokens.json — NICHT von Hand aendern.';
+const HINT = 'ERZEUGT aus shared/design-tokens.json — NICHT von Hand aendern.';
 
 /**
  * Text auf Zeilen umbrechen.
@@ -54,16 +54,16 @@ function umbruch(text, breite = 72) {
  * @param {any} daten Inhalt von shared/design-tokens.json
  * @returns {string}
  */
-function baueCss(daten) {
+function buildCss(daten) {
   // Die Begruendung reist MIT dem Wert. Sie stand vorher als Kommentar neben
   // der Zeile in styles.css bzw. themes/brick.css; zoege sie beim Umzug nicht
   // mit, waere nach zwei Jahren nicht mehr nachvollziehbar, warum die
   // Gebraucht-Linie Sand ist und nicht blau.
-  /** @param {string} wahl @param {Record<string,string>} tokens @param {boolean} [mitNotiz] */
-  const block = (wahl, tokens, mitNotiz = true) => {
+  /** @param {string} wahl @param {Record<string,string>} tokens @param {boolean} [withNote] */
+  const block = (wahl, tokens, withNote = true) => {
     const zeilen = Object.entries(tokens)
       .flatMap(([name, wert]) => {
-        const notiz = mitNotiz ? daten._notizen?.[name] : undefined;
+        const notiz = withNote ? daten._notizen?.[name] : undefined;
         // Nur die ERSTE Zeile oeffnet den Kommentar, nur die letzte schliesst
         // ihn. CSS-Kommentare schachteln nicht: Ein `/*` auf jeder Zeile waere
         // zwar zufaellig gueltig (alles bis zum ersten `*/` gehoert dazu), laese
@@ -120,7 +120,7 @@ function baueCss(daten) {
       [`/* ${name} — siehe listen.${name}.warum in shared/design-tokens.json. */`, ':root {', zeilen, '}'].join('\n'),
     );
   }
-  return `/* ${HINWEIS}\n\n   ${daten._warum} */\n\n${teile.join('\n\n')}\n`;
+  return `/* ${HINT}\n\n   ${daten._warum} */\n\n${teile.join('\n\n')}\n`;
 }
 
 /**
@@ -146,7 +146,7 @@ function aufgeloest(daten, name, roh) {
  * @param {any} daten Inhalt von shared/design-tokens.json
  * @returns {string}
  */
-function baueKotlin(daten) {
+function buildKotlin(daten) {
   const zeilen = Object.entries(daten.app).map(([name, { design, token }]) => {
     const wert = aufgeloest(daten, design, daten.designs[design])[token];
     if (!wert) throw new Error(`design-tokens.json: --${token} gibt es im Design "${design}" nicht`);
@@ -160,7 +160,7 @@ function baueKotlin(daten) {
     return `${kdoc}\nval ${name} = Color(0xFF${hex})`;
   });
   // Dieselbe Verallgemeinerung wie im CSS darueber.
-  const faecherBlock = Object.values(daten.listen || {})
+  const slotsBlock = Object.values(daten.listen || {})
     .map((/** @type {any} */ liste) => {
       const farben = liste.werte
         .map((/** @type {string} */ w) => `    Color(0xFF${w.replace('#', '').toUpperCase()}),`)
@@ -184,7 +184,7 @@ ${farben}
 import androidx.compose.ui.graphics.Color
 
 /**
- * ${HINWEIS}
+ * ${HINT}
  *
  * ${daten._app_warum}
  *
@@ -194,7 +194,7 @@ import androidx.compose.ui.graphics.Color
  */
 
 ${zeilen.join('\n\n')}
-${faecherBlock}`;
+${slotsBlock}`;
 }
 
 /**
@@ -204,20 +204,20 @@ ${faecherBlock}`;
  * @param {any} daten Inhalt von shared/design-tokens.json
  * @returns {string}
  */
-function baueKotlinDunkel(daten) {
+function buildKotlinDark(daten) {
   if (!daten.dunkel) throw new Error('design-tokens.json: Abschnitt "dunkel" fehlt');
-  /** @param {Record<string,string>} t @param {string} einzug */
-  const paare = (t, einzug) =>
+  /** @param {Record<string,string>} t @param {string} indent */
+  const pairs = (t, indent) =>
     Object.entries(t)
-      .map(([k, v]) => `${einzug}${JSON.stringify(k)} to ${JSON.stringify(v)},`)
+      .map(([k, v]) => `${indent}${JSON.stringify(k)} to ${JSON.stringify(v)},`)
       .join('\n');
   const designs = Object.entries(daten.dunkel.designs || {})
-    .map(([name, t]) => `        ${JSON.stringify(name)} to mapOf(\n${paare(t, '            ')}\n        ),`)
+    .map(([name, t]) => `        ${JSON.stringify(name)} to mapOf(\n${pairs(t, '            ')}\n        ),`)
     .join('\n');
   return `package ch.brickinventoryapp.ui.theme
 
 /**
- * ${HINWEIS}
+ * ${HINT}
  *
 ${umbruch(daten._dunkel_warum, 72)
   .map((/** @type {string} */ z) => ` * ${z}`)
@@ -228,7 +228,7 @@ ${umbruch(daten._dunkel_warum, 72)
  */
 object DunkelTokens {
     val basis: Map<String, String> = mapOf(
-${paare(daten.dunkel.basis, '        ')}
+${pairs(daten.dunkel.basis, '        ')}
     )
 
     val designs: Map<String, Map<String, String>> = mapOf(
@@ -239,17 +239,17 @@ ${designs}
 }
 
 // Erst beim Aufruf rechnen, nicht beim Laden: Die Pruefung importiert dieses
-// Modul nur, um baueCss()/baueKotlin() selbst anzuwenden — sie braucht das
+// Modul nur, um buildCss()/buildKotlin() selbst anzuwenden — sie braucht das
 // Ergebnis nicht schon beim require.
 if (require.main === module) {
   const daten = JSON.parse(fs.readFileSync(QUELLE, 'utf8'));
   /** @type {{datei: string, inhalt: string}[]} */
-  const ausgaben = [
-    { datei: ZIEL_CSS, inhalt: baueCss(daten) },
-    { datei: ZIEL_KT, inhalt: baueKotlin(daten) },
-    { datei: ZIEL_DUNKEL_KT, inhalt: baueKotlinDunkel(daten) },
+  const outputs = [
+    { datei: TARGET_CSS, inhalt: buildCss(daten) },
+    { datei: TARGET_KT, inhalt: buildKotlin(daten) },
+    { datei: TARGET_DARK_KT, inhalt: buildKotlinDark(daten) },
   ];
-  for (const { datei, inhalt } of ausgaben) {
+  for (const { datei, inhalt } of outputs) {
     // Ein Checkout nur der Web-App (Docker-Bau, Teil-Klon) hat keine
     // Android-App; deren Tokens pflegt dann der vollständige Checkout.
     if (!fs.existsSync(path.dirname(datei))) {
@@ -269,4 +269,4 @@ if (require.main === module) {
 }
 
 // Fuer die Pruefung: dieselbe Rechnung, ohne zu schreiben.
-module.exports = { baueCss, baueKotlin, baueKotlinDunkel, QUELLE, ZIEL_CSS, ZIEL_KT, ZIEL_DUNKEL_KT };
+module.exports = { buildCss, buildKotlin, buildKotlinDark, QUELLE, TARGET_CSS, TARGET_KT, TARGET_DARK_KT };

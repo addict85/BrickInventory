@@ -20,16 +20,16 @@ const _pdfRenderTasks = new Map();
 // (ZoomableImageDialog.kt).
 const PDF_ZOOM_MIN = 1;
 const PDF_ZOOM_MAX = 5;
-const PDF_ZOOM_SCHRITT = 1.25; // ein Druck auf + bzw. −
+const PDF_ZOOM_STEP = 1.25; // ein Druck auf + bzw. −
 
 // Obergrenze der Leinwand in Pixeln der Fläche. Der Riegel ist der Speicher, nicht die Grenze des Browsers
 // (16384 je Seite): 16 MPixel sind rund 60 MB und reichen für jede Zoomstufe, die man lesen will.
-const PDF_LEINWAND_MAX_PX = 16e6;
+const PDF_CANVAS_MAX_PX = 16e6;
 
 let _pdfZoom = 1;
 let _pdfBaseScale = 1; // Faktor „Seite füllt die Breite"
-let _pdfSeiteW = 0,
-  _pdfSeiteH = 0; // Seitengrösse bei scale 1, aus PDF.js
+let _pdfPageW = 0,
+  _pdfPageH = 0; // Seitengrösse bei scale 1, aus PDF.js
 // Zählt jede Zoom-Änderung. Ein Render, der über eine Änderung hinweg läuft, hängt seine Leinwand sonst in
 // einen Platzhalter, der inzwischen eine andere Grösse hat — die Seite wäre verzerrt. Siehe _renderPdfPage.
 let _pdfZoomGen = 0;
@@ -53,7 +53,7 @@ async function ladePdfjs() {
   return window.pdfjsLib;
 }
 
-/** @param {{ daten?: ArrayBuffer, dateiname?: string }} [opt] schon geladene Bytes (Gutschein-PDF mit
+/** @param {{ daten?: ArrayBuffer, fileName?: string }} [opt] schon geladene Bytes (Gutschein-PDF mit
  * Einmal-Ticket: ein zweiter Abruf schlüge fehl), `url` dient dann nur dem Download.
  * @param {string} url @param {string} title */
 export async function openPdfViewer(url, title, opt = {}) {
@@ -63,13 +63,13 @@ export async function openPdfViewer(url, title, opt = {}) {
     pages = G('pdf-viewer-pages'),
     dl = G('pdf-viewer-download');
   G('pdf-viewer-title').textContent = title || 'PDF';
-  const fname = opt.dateiname || decodeURIComponent(url.split('?')[0].split('/').pop() || 'anleitung.pdf');
+  const fname = opt.fileName || decodeURIComponent(url.split('?')[0].split('/').pop() || 'anleitung.pdf');
   dl.href = url;
   dl.setAttribute('download', fname);
   _pdfCurrentUrl = url;
   _pdfZoom = 1;
   _pdfZoomGen++;
-  _pdfZeigeFaktor();
+  _pdfShowFactor();
   if (pages) {
     pages.replaceChildren();
     pages.scrollLeft = 0;
@@ -124,8 +124,8 @@ export async function openPdfViewer(url, title, opt = {}) {
 /** Platzhaltergrösse beim aktuellen Zoom, in CSS-Pixeln. */
 function _pdfMasse() {
   return {
-    w: Math.round(_pdfSeiteW * _pdfBaseScale * _pdfZoom),
-    h: Math.round(_pdfSeiteH * _pdfBaseScale * _pdfZoom),
+    w: Math.round(_pdfPageW * _pdfBaseScale * _pdfZoom),
+    h: Math.round(_pdfPageH * _pdfBaseScale * _pdfZoom),
   };
 }
 
@@ -134,7 +134,7 @@ function _pdfMasse() {
  * breiter als der Behälter läge der linke Rand sonst im Negativen und wäre nicht mehr erreichbar.
  * @param {HTMLElement} ph
  */
-function _pdfMassPlatzhalter(ph) {
+function _pdfMassPlaceholder(ph) {
   const m = _pdfMasse();
   ph.style.width = m.w + 'px';
   ph.style.height = m.h + 'px';
@@ -145,8 +145,8 @@ async function _renderPdfLazy(pdf, container) {
   const first = await pdf.getPage(1);
   const vp1 = first.getViewport({ scale: 1 });
   const containerWidth = Math.min((container.clientWidth || 800) - 28, 1000);
-  _pdfSeiteW = vp1.width;
-  _pdfSeiteH = vp1.height;
+  _pdfPageW = vp1.width;
+  _pdfPageH = vp1.height;
   _pdfBaseScale = containerWidth / vp1.width;
 
   for (let n = 1; n <= pdf.numPages; n++) {
@@ -157,7 +157,7 @@ async function _renderPdfLazy(pdf, container) {
     ph.setAttribute('role', 'img');
     ph.setAttribute('aria-label', tRaw('pdf.seite_von', { n, m: pdf.numPages }));
     ph.style.cssText = 'background:var(--s200);box-shadow:0 1px 5px rgba(0,0,0,.35);flex-shrink:0;margin:0 auto';
-    _pdfMassPlatzhalter(ph);
+    _pdfMassPlaceholder(ph);
     container.appendChild(ph);
   }
 
@@ -172,16 +172,16 @@ async function _renderPdfLazy(pdf, container) {
     },
     { root: container, rootMargin: '300px 0px' },
   );
-  _pdfBeobachteAlle(container);
+  _pdfObserveAll(container);
 }
 
 /** Alle Platzhalter (neu) beobachten. */
 /** @param {HTMLElement | null} container */
-function _pdfBeobachteAlle(container) {
-  const beobachter = _pdfObserver;
-  if (!beobachter || !container) return;
+function _pdfObserveAll(container) {
+  const observer = _pdfObserver;
+  if (!observer || !container) return;
   container.querySelectorAll('.pdf-page-ph').forEach((/** @type {Element} */ ph) => {
-    beobachter.observe(ph);
+    observer.observe(ph);
   });
 }
 
@@ -196,8 +196,8 @@ async function _renderPdfPage(pdf, n, ph) {
     // Der Riegel wirkt auf die FLÄCHE, nicht auf eine Seitenlänge: eine querformatige Seite hat dieselbe
     // Pixelzahl wie eine hochformatige, nur anders verteilt.
     let scale = _pdfBaseScale * _pdfZoom * dpr;
-    const flaeche = _pdfSeiteW * scale * (_pdfSeiteH * scale);
-    if (flaeche > PDF_LEINWAND_MAX_PX) scale *= Math.sqrt(PDF_LEINWAND_MAX_PX / flaeche);
+    const flaeche = _pdfPageW * scale * (_pdfPageH * scale);
+    if (flaeche > PDF_CANVAS_MAX_PX) scale *= Math.sqrt(PDF_CANVAS_MAX_PX / flaeche);
     const vp = page.getViewport({ scale });
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(vp.width);
@@ -258,7 +258,7 @@ function _unloadPdfPage(n, ph) {
  * Seite 12 hineinzoomt, landet bei Seite 40, weil derselbe scrollTop in einem
  * viermal so hohen Dokument viermal weniger weit kommt.
  */
-function _pdfSetzeZoom(neu, ankerX, ankerY) {
+function _pdfSetZoom(neu, ankerX, ankerY) {
   const container = G('pdf-viewer-pages');
   if (!container) return;
   const alt = _pdfZoom;
@@ -278,7 +278,7 @@ function _pdfSetzeZoom(neu, ankerX, ankerY) {
   // verzerrt dastehen.
   /** @type {NodeListOf<HTMLElement>} */ (container.querySelectorAll('.pdf-page-ph')).forEach(ph => {
     _unloadPdfPage(parseInt(ph.dataset.page ?? '', 10), ph);
-    _pdfMassPlatzhalter(ph);
+    _pdfMassPlaceholder(ph);
   });
 
   container.scrollLeft = dokX * ziel - ax;
@@ -289,13 +289,13 @@ function _pdfSetzeZoom(neu, ankerX, ankerY) {
   // Rückruf, also neu anmelden. (disconnect() davor, sonst doppelte Anmeldung.)
   if (_pdfObserver) {
     _pdfObserver.disconnect();
-    _pdfBeobachteAlle(container);
+    _pdfObserveAll(container);
   }
-  _pdfZeigeFaktor();
+  _pdfShowFactor();
 }
 
 /** Den Faktor als Prozentzahl anzeigen — nicht als Farbe oder Balken. */
-function _pdfZeigeFaktor() {
+function _pdfShowFactor() {
   const el = G('pdf-viewer-zoom');
   // Der Name beginnt mit der sichtbaren Zahl (WCAG 2.5.3): Sprachsteuerung trifft den Knopf mit „100 %“.
   if (el) {
@@ -311,13 +311,13 @@ function _pdfZeigeFaktor() {
 }
 
 function pdfZoomIn() {
-  _pdfSetzeZoom(_pdfZoom * PDF_ZOOM_SCHRITT, null, null);
+  _pdfSetZoom(_pdfZoom * PDF_ZOOM_STEP, null, null);
 }
 function pdfZoomOut() {
-  _pdfSetzeZoom(_pdfZoom / PDF_ZOOM_SCHRITT, null, null);
+  _pdfSetZoom(_pdfZoom / PDF_ZOOM_STEP, null, null);
 }
 function pdfZoomReset() {
-  _pdfSetzeZoom(1, null, null);
+  _pdfSetZoom(1, null, null);
 }
 
 /**
@@ -333,8 +333,8 @@ function _pdfRad(ev) {
   const r = container.getBoundingClientRect();
   // deltaY ist je nach Gerät Pixel, Zeilen oder Seiten — nur das Vorzeichen ist überall verlässlich, der
   // Betrag nicht. Deshalb ein fester Schritt.
-  const f = ev.deltaY < 0 ? PDF_ZOOM_SCHRITT : 1 / PDF_ZOOM_SCHRITT;
-  _pdfSetzeZoom(_pdfZoom * f, ev.clientX - r.left, ev.clientY - r.top);
+  const f = ev.deltaY < 0 ? PDF_ZOOM_STEP : 1 / PDF_ZOOM_STEP;
+  _pdfSetZoom(_pdfZoom * f, ev.clientX - r.left, ev.clientY - r.top);
 }
 
 /** Tastatur: + / − / 0, solange das PDF-Fenster offen ist. */
@@ -362,11 +362,11 @@ function _pdfTaste(ev) {
 // Der Browser kann selbst zoomen (die Seite hat kein user-scalable=no), aber er zoomt das Sichtfeld:
 // Kopfzeile und Knöpfe werden mitgross, und das Bild wird weich, weil die Leinwand dieselbe bleibt. Hier wird
 // stattdessen die SEITE gezoomt und neu gerendert, deshalb fängt der Betrachter die Geste ab.
-let _pdfPinchAbstand = 0,
+let _pdfPinchGap = 0,
   _pdfPinchZoom = 1;
 
 /** @param {Touch} t1 @param {Touch} t2 */
-function _pdfAbstand(t1, t2) {
+function _pdfGap(t1, t2) {
   const dx = t1.clientX - t2.clientX,
     dy = t1.clientY - t2.clientY;
   return Math.sqrt(dx * dx + dy * dy);
@@ -375,37 +375,37 @@ function _pdfAbstand(t1, t2) {
 /** @param {TouchEvent} ev */
 function _pdfTouchStart(ev) {
   if (ev.touches.length !== 2) {
-    _pdfPinchAbstand = 0;
+    _pdfPinchGap = 0;
     return;
   }
-  _pdfPinchAbstand = _pdfAbstand(ev.touches[0], ev.touches[1]);
+  _pdfPinchGap = _pdfGap(ev.touches[0], ev.touches[1]);
   _pdfPinchZoom = _pdfZoom;
 }
 
 /** @param {TouchEvent} ev */
 function _pdfTouchMove(ev) {
-  if (ev.touches.length !== 2 || !_pdfPinchAbstand) return;
+  if (ev.touches.length !== 2 || !_pdfPinchGap) return;
   ev.preventDefault();
   const container = G('pdf-viewer-pages');
   if (!container) return;
   const r = container.getBoundingClientRect();
-  const jetzt = _pdfAbstand(ev.touches[0], ev.touches[1]);
+  const jetzt = _pdfGap(ev.touches[0], ev.touches[1]);
   // Anker ist die Mitte zwischen den Fingern — der Punkt, den beide umfassen.
   const mx = (ev.touches[0].clientX + ev.touches[1].clientX) / 2 - r.left;
   const my = (ev.touches[0].clientY + ev.touches[1].clientY) / 2 - r.top;
-  _pdfSetzeZoom(_pdfPinchZoom * (jetzt / _pdfPinchAbstand), mx, my);
+  _pdfSetZoom(_pdfPinchZoom * (jetzt / _pdfPinchGap), mx, my);
 }
 
 /** @param {TouchEvent} ev */
 function _pdfTouchEnd(ev) {
-  if (ev.touches.length < 2) _pdfPinchAbstand = 0;
+  if (ev.touches.length < 2) _pdfPinchGap = 0;
 }
 
 /**
  * Zuhörer einmal am Behälter anmelden, nicht bei jedem openPdfViewer(): Sonst zoomte nach zehn PDFs ein
  * Raddreh zehnfach. passive:false, damit preventDefault() greift und der Browser nicht mitzoomt.
  */
-function _pdfHaengeZuhoererEin() {
+function _pdfAttachListenerOne() {
   const container = G('pdf-viewer-pages');
   if (!container || container.dataset.zoomBereit === '1') return;
   container.dataset.zoomBereit = '1';
@@ -418,8 +418,8 @@ function _pdfHaengeZuhoererEin() {
 }
 
 if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _pdfHaengeZuhoererEin);
-  else _pdfHaengeZuhoererEin();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _pdfAttachListenerOne);
+  else _pdfAttachListenerOne();
 }
 
 function closePdfViewer() {

@@ -1,9 +1,9 @@
 /**
  * Der Preislauf holt je Set genau die Zustände, die das Konto führt oder sich merkt
- * (zustaendeJeSet in src/finanzen/preisLauf.ts).
+ * (statesJeSet in src/finanzen/preisLauf.ts).
  *
  * Gegenproben (09.11.2026 gemessen):
- *   A  in zustaendeJeSet() die Merkliste nicht mehr gelesen → rot: „ein gemerkter Gebrauchtzustand zählt mit“
+ *   A  in statesJeSet() die Merkliste nicht mehr gelesen → rot: „ein gemerkter Gebrauchtzustand zählt mit“
  *   B  ergebnis.set(sn, ['N', 'U']) für jedes Set → rot: „ein reines Set kostet nur einen Abruf“
  *   C  den Hinweis beim Erfassen übergangen → rot: „der Zustand einer noch nicht geschriebenen Erfassung zählt“
  */
@@ -15,11 +15,11 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { katalogSet } = require('./helpers/bestand');
-const { datenOderSkip } = require('./helpers/db');
+const { catalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
 
 test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const uid = (
     await db.get(
@@ -32,16 +32,16 @@ test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end();
   });
-  const [GEMISCHT, REIN, GEMERKT, FREMD] = ['91001-1', '91002-1', '91003-1', '91004-1'];
-  for (const sn of [GEMISCHT, REIN, GEMERKT]) await katalogSet(db, sn, { name: 'Probe' });
-  const { erfassungBuchen } = _req('src/sets/erfassen.js');
+  const [MIXED, REIN, GEMERKT, FREMD] = ['91001-1', '91002-1', '91003-1', '91004-1'];
+  for (const sn of [MIXED, REIN, GEMERKT]) await catalogSet(db, sn, { name: 'Probe' });
+  const { bookEntry } = _req('src/sets/erfassen.js');
   for (const [sn, z] of [
-    [GEMISCHT, 'N'],
-    [GEMISCHT, 'U'],
+    [MIXED, 'N'],
+    [MIXED, 'U'],
     [REIN, 'U'],
   ]) {
     await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2) ON CONFLICT DO NOTHING', [uid, sn]);
-    await erfassungBuchen(require('./helpers/sources').testKontext('sets'), {
+    await bookEntry(require('./helpers/sources').testContext('sets'), {
       konto: uid,
       setNumber: sn,
       menge: 1,
@@ -50,12 +50,12 @@ test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {
     });
   }
   await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, $2, 'U')`, [uid, GEMERKT]);
-  const { zustaendeJeSet, conditionsNeededFor } = _req('src/finanzen/preisLauf.js');
+  const { statesJeSet, conditionsNeededFor } = _req('src/finanzen/preisLauf.js');
   const sortiert = m => Object.fromEntries([...m].map(([k, v]) => [k, [...v].sort()]));
 
-  const z = sortiert(await zustaendeJeSet(uid, [GEMISCHT, REIN, GEMERKT, FREMD]));
+  const z = sortiert(await statesJeSet(uid, [MIXED, REIN, GEMERKT, FREMD]));
 
-  await t.test('ein gemischtes Set braucht beide Preise', () => assert.deepEqual(z[GEMISCHT], ['N', 'U']));
+  await t.test('ein gemischtes Set braucht beide Preise', () => assert.deepEqual(z[MIXED], ['N', 'U']));
   await t.test('ein reines Set kostet nur einen Abruf', () => assert.deepEqual(z[REIN], ['U']));
   await t.test('ein gemerkter Gebrauchtzustand zählt mit', () => assert.deepEqual(z[GEMERKT], ['U']));
   await t.test('ohne Erfassung und Merkposten gilt Neu', () => assert.deepEqual(z[FREMD], ['N']));

@@ -1,5 +1,5 @@
-/** The area's factory: services as a closure over k (baueBereich, src/infra/bereich.ts). */
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as queries from './queries';
 import * as manualPartsService from './manualParts';
@@ -9,8 +9,8 @@ import { access, type PartsDependencies, type PartsContext } from './context';
 
 export type { PartsDependencies, PartsContext } from './context';
 
-export function createParts(a: Omit<PartsDependencies, 'faecher'>, einblick?: Einblick<PartsContext>) {
-  return baueBereich(
+export function createParts(a: Omit<PartsDependencies, 'faecher'>, inspect?: Inspect<PartsContext>) {
+  return buildArea(
     { ...a, faecher: new Faecher() },
     access,
     (k: PartsContext) => ({
@@ -28,7 +28,7 @@ export function createParts(a: Omit<PartsDependencies, 'faecher'>, einblick?: Ei
       changePartColor: mit(k)(changeColorService.changePartColor),
       jobKinds: () => partsJobKinds(k),
     }),
-    einblick,
+    inspect,
   );
 }
 

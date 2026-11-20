@@ -2,10 +2,10 @@
  * Die Regel „hat einen Preis" gilt an JEDER Stelle gleich.
  *
  * Gegenproben (durchgeführt):
- *   a) (13.11.2026) in ausZeile() (src/finanzen/rechnung/preise.ts) avg_price wieder roh
- *      statt marktpreisAus() → Teilschritt 2 rot: avg_price 0 neben qty_avg_price 12.34,
+ *   a) (13.11.2026) in fromRow() (src/finanzen/rechnung/preise.ts) avg_price wieder roh
+ *      statt marketPriceFrom() → Teilschritt 2 rot: avg_price 0 neben qty_avg_price 12.34,
  *      die Clients zeigten „0.00“.
- *   b) In holePreis den Cache-Treffer wieder auf `parseFloat(avg_price) > 0`
+ *   b) In fetchPrice den Cache-Treffer wieder auf `parseFloat(avg_price) > 0`
  *      gestellt → Teilschritt 1 bleibt grün (die Regel ist dieselbe), aber
  *      Teilschritt 3 wird rot: Die Regel steht dann wieder zweimal da.
  *
@@ -16,14 +16,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { hatPreis } = _req('src/katalog/bricklinkPreise.js');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { hatPrice } = _req('src/katalog/bricklinkPreise.js');
 
 test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const SN = `preisregel-${process.pid}-1`;
   const aufraeumen = () => db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SN]).catch(() => {});
@@ -31,18 +31,18 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
 
   try {
     // 1. Die Regel selbst — vier Fälle, einer je Ecke.
-    assert.equal(hatPreis({ avg_price: 12.34, qty_avg_price: 0 }), true);
+    assert.equal(hatPrice({ avg_price: 12.34, qty_avg_price: 0 }), true);
     assert.equal(
-      hatPreis({ avg_price: 0, qty_avg_price: 12.34 }),
+      hatPrice({ avg_price: 0, qty_avg_price: 12.34 }),
       true,
       'Der Mengenschnitt ist der Rückfall: 0 ist kein Preis, 12.34 schon',
     );
-    assert.equal(hatPreis({ avg_price: null, qty_avg_price: null }), false);
-    assert.equal(hatPreis(null), false, 'kein Datensatz, kein Preis');
+    assert.equal(hatPrice({ avg_price: null, qty_avg_price: null }), false);
+    assert.equal(hatPrice(null), false, 'kein Datensatz, kein Preis');
     // numeric kommt je nach Weg als Text — die Regel muss beides vertragen.
-    assert.equal(hatPreis({ avg_price: '12.34' }), true);
+    assert.equal(hatPrice({ avg_price: '12.34' }), true);
     assert.equal(
-      hatPreis({ avg_price: '0.00' }),
+      hatPrice({ avg_price: '0.00' }),
       false,
       '"0.00" ist als Zeichenkette wahr — genau daran ist die Regel schon ' + 'einmal gescheitert',
     );
@@ -54,12 +54,12 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
        VALUES ($1,'N','EUR',10,0,20,12.34,5,NOW())`,
       [SN],
     );
-    const { holePreis } = _req('src/finanzen/financeCalc.js');
-    const pd = await holePreis(SN, 'N', 'sold', 'EUR', '24');
+    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
+    const pd = await fetchPrice(SN, 'N', 'sold', 'EUR', '24');
     assert.equal(pd.avg_price, 12.34, 'avg_price trägt den Marktpreis, hier den Mengenschnitt');
     assert.ok(
       pd.no_price === true || Number(pd.avg_price) > 0,
-      'holePreis gibt eine Zeile heraus, die keinen anzeigbaren Preis trägt: ' + JSON.stringify(pd),
+      'fetchPrice gibt eine Zeile heraus, die keinen anzeigbaren Preis trägt: ' + JSON.stringify(pd),
     );
     assert.ok(
       !(Number(pd.avg_price) === 0 && Number(pd.qty_avg_price) > 0),
@@ -68,10 +68,10 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
         JSON.stringify(pd),
     );
 
-    // 3. Ein 0-Eintrag blockiert den Neuabruf nur KURZ.
+    // 3. Ein 0-Eintrag blockiert den Neuabruf nur SHORT.
     //
     // Gegenprobe, die grün blieb.
-    for (const [alter, erwartetAusCache] of [
+    for (const [alter, expectedFromCache] of [
       [0, true],
       [12, false],
     ]) {
@@ -83,16 +83,16 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
         [S2, alter],
       );
       let erg;
-      // Faellt der Eintrag durch, versucht holePreis einen Live-Abruf. Ohne
+      // Faellt der Eintrag durch, versucht fetchPrice einen Live-Abruf. Ohne
       // BrickLink-Zugang wirft der — und genau das ist hier der Beleg, dass
       // NICHT aus dem Cache geantwortet wurde.
       try {
-        erg = await holePreis(S2, 'N', 'sold', 'EUR', '24');
+        erg = await fetchPrice(S2, 'N', 'sold', 'EUR', '24');
       } catch (e) {
-        erg = { versuchteAbruf: true, message: e.message };
+        erg = { attemptedFetch: true, message: e.message };
       }
       await db.run(`DELETE FROM price_cache WHERE set_number=$1`, [S2]).catch(() => {});
-      if (erwartetAusCache) {
+      if (expectedFromCache) {
         assert.equal(
           erg.from_cache,
           true,
@@ -150,7 +150,7 @@ test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t =
       assert.doesNotMatch(
         src,
         /(?:parseFloat\([^)]*avg_price[^)]*\)|[\w?.]*\.avg_price)\s*(?:>|<|===|==)\s*0/,
-        `${rel} prüft den Preis wieder selbst statt über hatPreis() — und dann ` +
+        `${rel} prüft den Preis wieder selbst statt über hatPrice() — und dann ` +
           'können die Fassungen erneut auseinanderlaufen',
       );
       // Und der zweite Operand einer solchen Prüfung darf nicht derselbe sein

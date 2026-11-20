@@ -15,7 +15,7 @@
  *      → rot: „Schlüssel prüfen: Fehler am Feld, in Klartext“ (kein Fehler am Feld)
  *   E  (04.11.) quellenFehler zeigt die Details nicht mehr → rot: dieselbe
  *      Prüfung („Technische Details“ fehlt)
- *   F  (04.11.) verwirfToasts in zeige() entfernt → rot: dieselbe Prüfung
+ *   F  (04.11.) discardToasts in zeige() entfernt → rot: dieselbe Prüfung
  *      (Toast „Verbindung steht“ bleibt im nächsten Schritt stehen)
  *   G  (04.11.) in POST /settings die Ausnahme für den ersten Schlüssel auch in
  *      der Einrichtung abgeschaltet → rot: dieselbe Prüfung (Passwortfrage,
@@ -26,23 +26,23 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { haeltSet } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { holdsSet } = require('./helpers/bestand');
 
 const AXE = require('axe-core').source;
 const SCHLUESSEL = ['rebrickable_api_key', 'einrichtung_erledigt'];
 
 test('Einrichtungsassistent nur über leerer Sammlung', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `einr_${process.pid}`,
     bestand: async db => {
       await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     },
     // Der Abruf bei Rebrickable läuft im Server; hier steht seine Antwort fest.
-    abfangen: [
+    intercept: [
       {
         muster: '*quelle-testen*',
-        enthaelt: 'quelle-testen',
+        contains: 'quelle-testen',
         antwort: {
           success: false,
           code: 'quelle_nicht_erreichbar',
@@ -70,13 +70,13 @@ test('Einrichtungsassistent nur über leerer Sammlung', { concurrency: 1, timeou
     // Ob axe heading-order meldet, hängt davon ab, welche Überschrift davor auf
     // der Seite steht (über 12 Sets: h1, im Leerzustand: h2). Der Titel des
     // Dialogs ist keine Überschrift; seine Schritte beginnen deshalb bei h2.
-    const ebenen = await b.auswerten(
+    const layers = await b.auswerten(
       `[...document.querySelectorAll('#einrichtung-modal h1, #einrichtung-modal h2, #einrichtung-modal h3, #einrichtung-modal h4')].map(h => +h.tagName[1])`,
     );
-    assert.ok(ebenen.length >= 3, `Testdaten: ${ebenen}`);
+    assert.ok(layers.length >= 3, `Testdaten: ${layers}`);
     assert.ok(
-      ebenen[0] === 2 && ebenen.every((e, i) => i === 0 || e <= ebenen[i - 1] + 1),
-      `Überschriften im Assistenten: ${ebenen}`,
+      layers[0] === 2 && layers.every((e, i) => i === 0 || e <= layers[i - 1] + 1),
+      `Überschriften im Assistenten: ${layers}`,
     );
   });
 
@@ -120,7 +120,7 @@ test('Einrichtungsassistent nur über leerer Sammlung', { concurrency: 1, timeou
 
   await t.test('gefüllte Sammlung: kein Assistent, aber das Band', async () => {
     await b.auswerten(`document.querySelector('#einrichtung-modal [data-click="einrichtungSpaeter"]').click(); true`);
-    await haeltSet(db, uid, '10294-1', 1, { preis: 100 });
+    await holdsSet(db, uid, '10294-1', 1, { preis: 100 });
     await b.tab('Page.reload');
     await bis(
       `(() => { const g = document.getElementById('gallery'); return !!g && g.querySelectorAll('[data-click="openModal"], .card, .scard').length > 0; })()`,

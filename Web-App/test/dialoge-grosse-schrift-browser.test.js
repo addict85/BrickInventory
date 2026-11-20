@@ -20,11 +20,11 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterSammlung } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternCollection } = require('./helpers/bestand');
 
 /** Was ein Prüfer sieht: über den Rand, überlappend, abgeschnitten, zu niedrig. */
-const MESSEN = wurzelSel => `(() => {
+const MEASURE = wurzelSel => `(() => {
   const funde = [], breite = document.documentElement.clientWidth, hoehe = innerHeight;
   const wurzel = document.querySelector(${JSON.stringify(wurzelSel)});
   if (!wurzel) return ['nicht offen: ' + ${JSON.stringify(wurzelSel)}];
@@ -63,7 +63,7 @@ const MESSEN = wurzelSel => `(() => {
 })()`;
 
 test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async t => {
-  const app = await starteApp(t, { name: `dlg_${process.pid}`, bestand: musterSammlung, telefon: true });
+  const app = await startApp(t, { name: `dlg_${process.pid}`, bestand: patternCollection, telefon: true });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -96,7 +96,7 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
       );
       await b.auswerten(`document.getElementById('btn-umenu').click(); true`);
       await ruhig();
-      assert.deepEqual(await b.auswerten(MESSEN('#umenu-pop')), []);
+      assert.deepEqual(await b.auswerten(MEASURE('#umenu-pop')), []);
       await zu();
     });
 
@@ -104,7 +104,7 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
       await b.auswerten(`document.querySelector('#gallery .delbtn').click(); true`);
       await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, 'Bestätigungsdialog');
       await ruhig();
-      assert.deepEqual(await b.auswerten(MESSEN('#confirm-modal .modal')), []);
+      assert.deepEqual(await b.auswerten(MEASURE('#confirm-modal .modal')), []);
       await b.auswerten(`document.getElementById('cd-cancel').click(); true`);
       await ruhig();
       await zu();
@@ -113,7 +113,7 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
     await t.test(`${breite} px: Set erfassen`, async () => {
       await b.auswerten(`document.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
       await ruhig();
-      assert.deepEqual(await b.auswerten(MESSEN('#add-set-modal .modal')), []);
+      assert.deepEqual(await b.auswerten(MEASURE('#add-set-modal .modal')), []);
       await zu();
     });
 
@@ -125,7 +125,7 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
       );
       await b.auswerten(`document.querySelector('#set-modal [data-click="openAcqModal"]').click(); true`);
       await bis(`document.querySelector('#acq-modal .acq-preis')`, 'Kaufpreis-Dialog');
-      assert.deepEqual(await b.auswerten(MESSEN('#acq-modal .modal')), []);
+      assert.deepEqual(await b.auswerten(MEASURE('#acq-modal .modal')), []);
       await zu();
     });
   }

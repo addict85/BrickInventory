@@ -11,7 +11,7 @@ const ROOT = path.join(__dirname, '..');
  * Schlüssel, die absichtlich kein Client liest. Jeder mit Grund — die Liste
  * darf nur KÜRZER werden.
  */
-const ERLAUBT = new Map([
+const ALLOWED = new Map([
   // Diagnose-Endpunkte: für Betreiber und curl, nicht für die Oberfläche.
   ['body_check', 'Selbstprüfung /v1/admin'],
   ['datenbank', 'Selbstprüfung'],
@@ -37,10 +37,10 @@ const ERLAUBT = new Map([
 ]);
 
 /** Technische Umschläge, die in fast jeder Antwort stehen. */
-const RAHMEN = new Set(['success', 'error', 'message', 'ok', 'status', 'data', 'code', 'detail']);
+const FRAME = new Set(['success', 'error', 'message', 'ok', 'status', 'data', 'code', 'detail']);
 
-/** @param {string} wurzel @param {string[]} endungen @param {string[]} aus */
-function dateien(wurzel, endungen, aus) {
+/** @param {string} wurzel @param {string[]} extensions @param {string[]} aus */
+function dateien(wurzel, extensions, aus) {
   /** @type {string[]} */
   const out = [];
   /** @param {string} d */
@@ -55,7 +55,7 @@ function dateien(wurzel, endungen, aus) {
       const p = path.join(d, x.name);
       if (aus.some(a => p.includes(a))) continue;
       if (x.isDirectory()) lauf(p);
-      else if (endungen.some(s => x.name.endsWith(s))) out.push(p);
+      else if (extensions.some(s => x.name.endsWith(s))) out.push(p);
     }
   };
   lauf(wurzel);
@@ -68,7 +68,7 @@ function dateien(wurzel, endungen, aus) {
  * Antwort zurück, die eine Route unverändert weiterreicht.
  */
 /** @param {string} s @param {RegExp} [re] */
-function antwortSchluessel(s, re = /res\.json\(\s*\{|return\s*\{(?=\s*success:\s*true)/g) {
+function responseKey(s, re = /res\.json\(\s*\{|return\s*\{(?=\s*success:\s*true)/g) {
   const gefunden = new Set();
   while (re.exec(s) !== null) {
     let tiefe = 1,
@@ -80,12 +80,12 @@ function antwortSchluessel(s, re = /res\.json\(\s*\{|return\s*\{(?=\s*success:\s
       i++;
     }
     // Verschachteltes ausblenden — dort stehen fremde Objektformen.
-    let ebene = 0;
+    let layer = 0;
     let oben = '';
     for (const c of s.slice(re.lastIndex, i - 1)) {
-      if (c === '(' || c === '{' || c === '[') ebene++;
-      else if (c === ')' || c === '}' || c === ']') ebene--;
-      oben += ebene === 0 ? c : ' ';
+      if (c === '(' || c === '{' || c === '[') layer++;
+      else if (c === ')' || c === '}' || c === ']') layer--;
+      oben += layer === 0 ? c : ' ';
     }
     for (const k of oben.matchAll(/(?:^|,)\s*([A-Za-z_]\w*)\s*:/g)) gefunden.add(k[1]);
   }
@@ -105,10 +105,10 @@ const woher = new Map();
 /** @type {[string, string][]} */
 const texte = quellen.map(p => [path.relative(ROOT, p), fs.readFileSync(p, 'utf8')]);
 // Routen antworten mit `{ success: true, ...(await dienst(…)) }`: Die Felder stehen im return des Dienstes.
-const gespreizt = new Set(texte.flatMap(([, s]) => [...s.matchAll(/\.\.\.\(await (?:\w+\.)*(\w+)\(/g)].map(m => m[1])));
+const spread = new Set(texte.flatMap(([, s]) => [...s.matchAll(/\.\.\.\(await (?:\w+\.)*(\w+)\(/g)].map(m => m[1])));
 for (const [rel, s] of texte) {
   const rumpfe = [...s.matchAll(/function (\w+)\s*[(<]/g)]
-    .filter(m => gespreizt.has(m[1]))
+    .filter(m => spread.has(m[1]))
     .map(m => {
       let i = s.indexOf('{', s.indexOf(')', m.index));
       const anfang = i;
@@ -132,42 +132,39 @@ for (const [rel, s] of texte) {
   const ab = s.indexOf('.endpunkt(');
   const eigen =
     rel.startsWith(`routes${path.sep}`) && ab >= 0
-      ? new Set([
-          ...antwortSchluessel(s.slice(0, ab)),
-          ...antwortSchluessel(s.slice(ab), /res\.json\(\s*\{|return\s*\{/g),
-        ])
-      : antwortSchluessel(s);
-  for (const k of [eigen, ...rumpfe.map(r => antwortSchluessel(r, /§eturn\s*\{/g))].flatMap(m => [...m]))
+      ? new Set([...responseKey(s.slice(0, ab)), ...responseKey(s.slice(ab), /res\.json\(\s*\{|return\s*\{/g)])
+      : responseKey(s);
+  for (const k of [eigen, ...rumpfe.map(r => responseKey(r, /§eturn\s*\{/g))].flatMap(m => [...m]))
     woher.set(k, (woher.get(k) || []).concat(rel));
 }
 
-const verbraucher = dateien(path.join(ROOT, 'public'), ['.js', '.html'], ['app.bundle.js']);
-if (verbraucher.length < 40) {
+const consumer = dateien(path.join(ROOT, 'public'), ['.js', '.html'], ['app.bundle.js']);
+if (consumer.length < 40) {
   console.error(
-    `❌ Nur ${verbraucher.length} Verbraucherdateien gefunden — ohne sie ` +
+    `❌ Nur ${consumer.length} Verbraucherdateien gefunden — ohne sie ` +
       'gälte JEDES Feld als ungelesen, und die Prüfung wäre wertlos.',
   );
   process.exit(1);
 }
 // Was die App liest, steht in shared/app-schnittstelle.json (aus ihren Modellen erzeugt).
-const appFelder = JSON.parse(
+const appFields = JSON.parse(
   fs.readFileSync(path.join(ROOT, '..', 'shared', 'app-schnittstelle.json'), 'utf8'),
 ).antwortfelder;
-if (!Array.isArray(appFelder) || appFelder.length < 100) {
+if (!Array.isArray(appFields) || appFields.length < 100) {
   console.error('❌ shared/app-schnittstelle.json nennt kaum Antwortfelder der App — erzeugt?');
   process.exit(1);
 }
-const kunde = [...verbraucher.map(p => fs.readFileSync(p, 'utf8')), ...appFelder].join('\n');
+const customer = [...consumer.map(p => fs.readFileSync(p, 'utf8')), ...appFields].join('\n');
 
 const fehler = [];
-for (const [k, dateienListe] of [...woher].sort()) {
-  if (RAHMEN.has(k) || ERLAUBT.has(k)) continue;
-  if (!new RegExp(`\\b${k}\\b`).test(kunde)) {
-    fehler.push(`${k}  (${[...new Set(dateienListe)].slice(0, 2).join(', ')})`);
+for (const [k, filesList] of [...woher].sort()) {
+  if (FRAME.has(k) || ALLOWED.has(k)) continue;
+  if (!new RegExp(`\\b${k}\\b`).test(customer)) {
+    fehler.push(`${k}  (${[...new Set(filesList)].slice(0, 2).join(', ')})`);
   }
 }
 // Eine Erlaubnis, die niemand mehr braucht, ist eine, die niemand mehr prüft.
-const tot = [...ERLAUBT.keys()].filter(k => !woher.has(k));
+const tot = [...ALLOWED.keys()].filter(k => !woher.has(k));
 
 if (fehler.length || tot.length) {
   console.error('❌ Antwortfelder:');
@@ -178,10 +175,10 @@ if (fehler.length || tot.length) {
         'Rechnung dahinter) gehört aus der Antwort.',
     );
   }
-  for (const t of tot) console.error(`  TOTE AUSNAHME: ${t} — gibt es in keiner Antwort mehr, Zeile streichen.`);
+  for (const t of tot) console.error(`  TOTE EXCEPTION: ${t} — gibt es in keiner Antwort mehr, Zeile streichen.`);
   process.exit(1);
 }
 console.log(
   `✅ Antwortfelder: ${woher.size} Schlüssel aus ${quellen.length} Quellen, ` +
-    `${verbraucher.length} Verbraucherdateien, ${ERLAUBT.size} begründete Ausnahmen.`,
+    `${consumer.length} Verbraucherdateien, ${ALLOWED.size} begründete Ausnahmen.`,
 );

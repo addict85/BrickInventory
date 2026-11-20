@@ -19,7 +19,7 @@ export function bildTag(o) {
  * Der Platzhalter einer Art: das Set-Bild oder das Symbol in einer getönten Fläche.
  * @param {string} art
  */
-export function platzhalterInhalt(art) {
+export function placeholderContent(art) {
   // Dasselbe dezente Symbol wie bei Teilen und Figuren; das rote Logo füllte ohne Bilder jede Karte gleich.
   // Sets nehmen die Datei: Sie sieht in jedem Design gleich aus (UI-Prüfung 6, M3).
   if (art === 'set') return html`<img src="/assets/set-placeholder.svg" alt="" aria-hidden="true">`;
@@ -32,7 +32,7 @@ export function platzhalterInhalt(art) {
  * der Kachel.
  * @param {HTMLImageElement} img
  */
-export function bildVorlaeufig(img) {
+export function imageProvisional(img) {
   if (img.previousElementSibling?.classList.contains('bild-ph-vorlaeufig')) return;
   bildPlatzhalter(img, true);
   img.hidden = true;
@@ -45,7 +45,7 @@ export function bildVorlaeufig(img) {
  * Das Bild hat doch geladen: vorläufigen Platzhalter entfernen.
  * @param {HTMLImageElement} img
  */
-export function bildGeladen(img) {
+export function imageLoaded(img) {
   const ph = img.previousElementSibling;
   if (!ph?.classList.contains('bild-ph-vorlaeufig')) return;
   ph.remove();
@@ -74,7 +74,7 @@ export function bildPlatzhalter(img, vorlaeufig = false) {
   if (!img.closest('.sci'))
     for (const k of /** @type {const} */ (['width', 'height', 'borderRadius', 'margin']))
       if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
-  setzeHtml(ph, platzhalterInhalt(img.dataset.ph ?? ''));
+  setzeHtml(ph, placeholderContent(img.dataset.ph ?? ''));
   if (vorlaeufig) {
     ph.classList.add('bild-ph-vorlaeufig');
     img.before(ph);
@@ -89,14 +89,14 @@ export function bildPlatzhalter(img, vorlaeufig = false) {
  */
 const IMG_PROXY = '/api/v1/img-proxy';
 
-const IMG_PROXY_ALT = '/api/img-proxy';
+const IMG_PROXY_LEGACY = '/api/img-proxy';
 
 /**
  * Traegt diese Adresse eine der beiden Proxy-Formen?
  * @param {string} src
  */
-function istProxyPfad(src) {
-  return src.startsWith(IMG_PROXY) || src.startsWith(IMG_PROXY_ALT);
+function isProxyPath(src) {
+  return src.startsWith(IMG_PROXY) || src.startsWith(IMG_PROXY_LEGACY);
 }
 
 /**
@@ -112,14 +112,14 @@ function stripOwnOrigin(src) {
   return src;
 }
 
-export const PLATZHALTER_SET = '/assets/set-placeholder.svg';
+export const PLACEHOLDER_SET = '/assets/set-placeholder.svg';
 
 /**
  * Ein festes Dialogbild neu belegen. Die Merker der Fehlerbehandlung (aktionen.js) hängen am Element und
  * blieben vom letzten Öffnen stehen: Beim zweiten Mal gab es dann keinen Platzhalter, nur ein kaputtes Bild.
  * @param {HTMLElement} el @param {string} src @param {string} [orig]
  */
-export function setzeDialogbild(el, src, orig) {
+export function setDialogbild(el, src, orig) {
   const img = /** @type {HTMLImageElement} */ (el);
   delete img.dataset.retried;
   delete img.dataset.origVersucht;
@@ -135,7 +135,7 @@ export function setzeDialogbild(el, src, orig) {
  */
 export function zoomStand(img) {
   if (!img.classList.contains('zoombar')) return;
-  const leer = !img.getAttribute('src') || img.getAttribute('src') === PLATZHALTER_SET;
+  const leer = !img.getAttribute('src') || img.getAttribute('src') === PLACEHOLDER_SET;
   // Die Dialogbilder liegen in einem echten Knopf (Tastatur, Vorleser); gesperrt ist er kein Tab-Halt.
   const knopf = img.parentElement;
   if (knopf instanceof HTMLButtonElement && knopf.classList.contains('zoom-knopf')) {
@@ -174,7 +174,7 @@ export function imgUrl(src, thumb) {
 
   // Lokale Datei oder schon über den Proxy: unverändert. Fremde Adressen lädt der Browser nie direkt — nur
   // der Proxy setzt die Kopfzeilen gegen den Hotlink-Schutz und hält den Cache.
-  if (src.startsWith('/data/') || src.startsWith('/images/') || istProxyPfad(src)) {
+  if (src.startsWith('/data/') || src.startsWith('/images/') || isProxyPath(src)) {
     return src;
   }
   // Sonstige relative Pfade (z. B. /assets/…) unverändert.
@@ -204,7 +204,7 @@ export function imgUrl(src, thumb) {
 export function fullUrl(src) {
   if (!src) return '';
   src = stripOwnOrigin(src);
-  if (istProxyPfad(src)) return src.replace(/&thumb=1\b/, '').replace(/&gen=0\b/, '');
+  if (isProxyPath(src)) return src.replace(/&thumb=1\b/, '').replace(/&gen=0\b/, '');
   // Absolute Adresse (CDN) auch hier über den Proxy — vorher wurde sie unverändert zurückgegeben, sodass
   // Detailansicht und Zoom direkt beim CDN luden. Siehe die Begründung in imgUrl().
   if (/^https?:\/\//.test(src)) return IMG_PROXY + '?url=' + encodeURIComponent(src);
@@ -223,7 +223,7 @@ export function thumbUrl(src) {
 }
 
 /** Einer für alle Bilder der Seite. @type {IntersectionObserver | null} */
-let bildBeobachter = null;
+let imageObserver = null;
 
 /**
  * Blendet Bilder beim Sichtbarwerden ein und markiert schon geladene sofort: Nach innerHTML starten alle
@@ -239,7 +239,7 @@ export function observeLazyImages(root) {
   imgs.forEach(img => {
     if (img.complete && img.naturalWidth > 0) img.classList.add('loaded');
   });
-  bildBeobachter ??= new IntersectionObserver(
+  imageObserver ??= new IntersectionObserver(
     (entries, obs) => {
       entries.forEach(e => {
         if (e.isIntersecting) {
@@ -252,9 +252,9 @@ export function observeLazyImages(root) {
     },
     { rootMargin: '200px' },
   );
-  const beobachter = bildBeobachter;
+  const observer = imageObserver;
   imgs.forEach(img => {
     img.classList.add('observed');
-    beobachter.observe(img);
+    observer.observe(img);
   });
 }

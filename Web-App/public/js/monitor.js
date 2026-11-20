@@ -1,8 +1,8 @@
 // Beide Seiten der Überwachung beieinander: die Liste der Dienste und das Protokollfenster.
 import { echt, registerActions } from './registry.js';
 import { asHtml, escHtmlAttr, esc, html, rawHtml } from './escaping.js';
-import { api, apiDaten } from './api.js';
-import { ico, G, setzeHtml, wennSichtbar } from './dom.js';
+import { api, apiData } from './api.js';
+import { ico, G, setzeHtml, ifVisible } from './dom.js';
 import { fmtDatum } from './format.js';
 import { meldeAmFeld, toast } from './meldungen.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
@@ -16,13 +16,13 @@ let _monitorTimer = null;
 let _monitorLauf = 0;
 
 // Was logviewer.js zur Laufzeit schreibt, etwa die wechselnde Beschriftung des Auto-Knopfes.
-const FENSTER_TEXTE = ['common.loading', 'common.network_error', 'log.none_found', 'log.entries', 'toast.error'].concat(
+const WINDOW_TEXTS = ['common.loading', 'common.network_error', 'log.none_found', 'log.entries', 'toast.error'].concat(
   ['log.auto', 'log.stop', 'log.stufe.info', 'log.stufe.warn', 'log.stufe.error', 'log.mehr_zeilen'],
   ['log.mehr_zeilen_one'],
 );
 
 /** @param {'info' | 'warn' | 'error'} stufe @param {string} zeichen @param {boolean} an */
-function stufenKnopf(stufe, zeichen, an) {
+function levelsButton(stufe, zeichen, an) {
   return (
     `<button type="button" class="lvbtn ${stufe}-btn${an ? ' active' : ''}" id="btn-${stufe}" data-click="toggleLevel"` +
     ` data-arg="${stufe}" aria-pressed="${an}"><span aria-hidden="true">${zeichen}</span> ` +
@@ -39,7 +39,7 @@ function openLogViewer() {
   const base = window.location.origin;
 
   // Die Zeitspannen als Daten: Die Beschriftung steht einmal da, in der Sprache des Nutzers.
-  const spannen = [15, 30, 60, 360, 1440, 2880]
+  const spans = [15, 30, 60, 360, 1440, 2880]
     .map(min => {
       const text =
         min < 60 ? t('log.minutes_n', { n: min }) : min === 60 ? t('log.hour_1') : t('log.hours_n', { n: min / 60 });
@@ -72,7 +72,7 @@ function openLogViewer() {
     escHtmlAttr(base) +
     '"' +
     ' data-i18n="' +
-    escHtmlAttr(JSON.stringify(Object.fromEntries(FENSTER_TEXTE.map(k => [k, tRaw(k)])))) +
+    escHtmlAttr(JSON.stringify(Object.fromEntries(WINDOW_TEXTS.map(k => [k, tRaw(k)])))) +
     '">' +
     '<header>' +
     '<h1>' +
@@ -83,12 +83,12 @@ function openLogViewer() {
     esc(tRaw('log.zeitraum')) +
     '</label>' +
     '<select id="period" data-change="loadLogs">' +
-    spannen +
+    spans +
     '</select>' +
     '<span class="sep">|</span>' +
-    stufenKnopf('info', '\u2139', false) +
-    stufenKnopf('warn', '\u26A0', true) +
-    stufenKnopf('error', '\u2716', true) +
+    levelsButton('info', '\u2139', false) +
+    levelsButton('warn', '\u26A0', true) +
+    levelsButton('error', '\u2716', true) +
     '<span class="sep">|</span>' +
     '<input id="search" type="search" aria-label="' +
     escHtmlAttr(tRaw('log.search')) +
@@ -119,7 +119,7 @@ function openLogViewer() {
 
 /** Je Code des Servers ein ausgeschriebener Schlüssel: So prüft test/i18n-aufrufe.test.js, dass es ihn gibt. */
 /** @type {Record<string, (w?: Record<string, string | number>) => string>} */
-const SUB_TEXTE = {
+const SUB_TEXTS = {
   teil_gemappt: w => tRaw('monitor.sub.teil_gemappt', w),
   // Bei 0 sagte die Mehrzahlform „Alle 0 …“.
   all_mapped: w => tRaw(Number(w?.n) === 0 ? 'monitor.sub.nichts_zuzuordnen' : 'monitor.sub.all_mapped', w),
@@ -147,9 +147,9 @@ const SUB_TEXTE = {
  * Ein unbekannter Code (neuerer Server) fällt auf den Text des Servers zurück.
  * @param {{ code: string, werte?: Record<string, string | number>, vor?: string }[]} teile @param {string} sub
  */
-function subAusCodes(teile, sub) {
+function subFromCodes(teile, sub) {
   const text = (/** @type {string} */ code, /** @type {Record<string, string | number> | undefined} */ werte) => {
-    const f = Object.hasOwn(SUB_TEXTE, code) ? SUB_TEXTE[code] : null;
+    const f = Object.hasOwn(SUB_TEXTS, code) ? SUB_TEXTS[code] : null;
     return f ? f(werte) : null;
   };
   const stuecke = teile.map(t => {
@@ -164,10 +164,10 @@ function translateJobSub(sub) {
   if (!sub) return '';
   let m;
   m = sub.match(/^Alle (\d+) gemappt$/);
-  if (m) return SUB_TEXTE.all_mapped({ n: Number(m[1]) });
+  if (m) return SUB_TEXTS.all_mapped({ n: Number(m[1]) });
   if (sub === 'Alle erledigt') return tRaw('monitor.sub.all_done');
   m = sub.match(/^Alle (\d+) Bilder gecacht$/);
-  if (m) return SUB_TEXTE.imgs_cached({ n: Number(m[1]) });
+  if (m) return SUB_TEXTS.imgs_cached({ n: Number(m[1]) });
   if (sub === 'Alle Bilder gecacht') return tRaw('monitor.sub.imgs_cached', { n: '' }).trim();
   if (/^Keine aktiven/.test(sub)) return tRaw('monitor.sub.no_active');
   m = sub.match(/^(\d+) Sets bereit zum Retry, (\d+) warten$/);
@@ -219,17 +219,17 @@ const schedText = (schedules, k) => {
 };
 
 /** Die Zeitpläne als Felder in Einstellungen › Hintergrundarbeiten. */
-export async function ladeZeitplaene() {
+export async function loadSchedules() {
   const el = G('einst-zeitplaene');
   if (!el) return;
-  const d = await apiDaten('GET', '/v1/admin/jobs');
+  const d = await apiData('GET', '/v1/admin/jobs');
   if (!d?.success || !d.jobs) return;
   const zeilen = Object.entries(d.jobs).filter(([k]) => d.schedules?.[k]);
   setzeHtml(
     el,
     html`<div class="tw"><table class="dt mon-tabelle" aria-label="${tRaw('settings.zeitplaene')}">
       <thead><tr><th>${tRaw('monitor.col.dienst')}</th><th>${tRaw('monitor.col.zeitplan')}</th></tr></thead>
-      <tbody>${zeilen.map(([k, j]) => html`<tr><td>${dienstName(k, j)}</td><td>${schedInput(d.schedules, k)}</td></tr>`)}</tbody>
+      <tbody>${zeilen.map(([k, j]) => html`<tr><td>${serviceName(k, j)}</td><td>${schedInput(d.schedules, k)}</td></tr>`)}</tbody>
     </table></div>`,
   );
 }
@@ -245,7 +245,7 @@ const JOB_SYMBOL = /** @type {Record<string, string>} */ ({
 });
 const jobIconSvg = (/** @type {string} */ k) =>
   html`<svg class="ico mon-sinnbild" aria-hidden="true"><use href="#i-${JOB_SYMBOL[k] || 'uhr'}"/></svg>`;
-const jobZustand = (/** @type {string} */ s) =>
+const jobState = (/** @type {string} */ s) =>
   ({ running: tRaw('monitor.state.running'), done: tRaw('monitor.state.done'), error: tRaw('monitor.state.error') })[
     s
   ] || tRaw('monitor.state.idle');
@@ -284,11 +284,11 @@ const aktionen = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
       ? html`<button class="btn bs btn-sm" type="button" data-click="toggleBricksetQueue" data-self="1"><span>${tRaw('monitor.show')}</span></button>`
       : '',
   ].filter(Boolean);
-const dienstName = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
+const serviceName = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
   tRaw('monitor.job.' + k) !== 'monitor.job.' + k ? tRaw('monitor.job.' + k) : j.label || k;
 
 /** Feste Schlüssel statt zusammengesetzter (test/i18n-aufrufe.test.js); Text wie im Protokoll (src/http/proxyHinweis.ts). */
-const PROXY_HINWEIS = {
+const PROXY_HINT = {
   gateway: 'monitor.proxy.gateway',
   docker_netz: 'monitor.proxy.docker_netz',
   eine_adresse: 'monitor.proxy.eine_adresse',
@@ -297,16 +297,16 @@ const PROXY_HINWEIS = {
 export async function loadMonitor() {
   const el = G('monitor-content');
   if (!el) return;
-  stoppeMonitor();
+  stopMonitor();
   const lauf = ++_monitorLauf;
   // Ruhig alle 15 s, solange etwas läuft alle 5 s; ein gescheiterter Abruf plant die nächste Runde trotzdem.
   const runde = async () => {
     const aktiv = await render();
     if (lauf !== _monitorLauf) return;
-    _monitorTimer = setTimeout(() => wennSichtbar(() => lauf === _monitorLauf && runde()), aktiv ? 5000 : 15000);
+    _monitorTimer = setTimeout(() => ifVisible(() => lauf === _monitorLauf && runde()), aktiv ? 5000 : 15000);
   };
   const render = async () => {
-    const d = await apiDaten('GET', '/v1/admin/jobs');
+    const d = await apiData('GET', '/v1/admin/jobs');
     if (!d?.success) return false;
     const { jobs, schedules } = d;
     // db und lastRun nennt der Vertrag nicht (JobsResponse); der Server schickt sie mit.
@@ -331,14 +331,14 @@ export async function loadMonitor() {
       html`
       <p class="mon-hinweis">${tRaw('monitor.services_hint')}</p>
       ${d.degradiert?.length ? html`<p class="mon-hinweis" role="status">${tRaw('monitor.degradiert', { teile: d.degradiert.join(', ') })}</p>` : ''}
-      ${d.proxy_hinweis ? html`<p class="mon-warnung" role="status" id="mon-proxy-hinweis">${ico('warnung')} ${tRaw(PROXY_HINWEIS[d.proxy_hinweis.art], d.proxy_hinweis.vars)}</p>` : ''}
+      ${d.proxy_hinweis ? html`<p class="mon-warnung" role="status" id="mon-proxy-hinweis">${ico('warnung')} ${tRaw(PROXY_HINT[d.proxy_hinweis.art], d.proxy_hinweis.vars)}</p>` : ''}
       <div class="tw"><table class="dt mon-tabelle mon-dienste" aria-label="${tRaw('tabelle.dienste')}">
         <thead><tr><th>${tRaw('monitor.col.dienst')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeitplan')}</th><th>${tRaw('monitor.col.zuletzt')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
         <tbody>${Object.entries(jobs).map(
           ([k, j]) => html`<tr>
-          <td><span class="mon-name">${jobIconSvg(k === 'bricksetRetry' ? 'brickset' : k)}${dienstName(k, j)}</span></td>
-          <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobZustand(j.status)}</span>
-            ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subAusCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.status === 'running' && j.total > 0 ? bar(j.progress, j.total) : ''}</td>
+          <td><span class="mon-name">${jobIconSvg(k === 'bricksetRetry' ? 'brickset' : k)}${serviceName(k, j)}</span></td>
+          <td><span class="mon-zustand mon-${j.status || 'idle'}">${statusIcon(j.status, j)} ${jobState(j.status)}</span>
+            ${j.sub_teile?.length || j.sub ? html`<div class="mon-leise">${j.sub_teile?.length ? subFromCodes(j.sub_teile, j.sub ?? '') : translateJobSub(j.sub ?? '')}</div>` : ''}${j.status === 'running' && j.total > 0 ? bar(j.progress, j.total) : ''}</td>
           <td>${schedText(schedules, k)}</td>
           <td>${j.lastRun ? fmtDatum(/** @type {string} */ (j.lastRun), 'wann') : ''}</td>
           <td><div class="mon-knoepfe">${aktionen(k, j).length ? aktionen(k, j) : html`<span class="mon-leise">–</span>`}</div></td>
@@ -358,7 +358,7 @@ export async function loadMonitor() {
       }
     }
 
-    await zeigeAuftraege();
+    await showJobs();
     return Object.values(jobs).some(j => j.status === 'running');
   };
   await runde();
@@ -368,7 +368,7 @@ export async function loadMonitor() {
  * Namen der Auftragsarten und Status — ausgeschrieben, damit jeder Schlüssel prüfbar im Wörterbuch steht.
  * @type {Record<string, () => string>}
  */
-const ARTNAMEN = {
+const KIND_NAMES = {
   nacharbeit: () => tRaw('monitor.art.nacharbeit'),
   bilder: () => tRaw('monitor.art.bilder'),
   pdf: () => tRaw('monitor.art.pdf'),
@@ -397,11 +397,11 @@ const STATUSNAMEN = {
   abgebrochen: () => tRaw('monitor.auftraege.abgebrochen'),
 };
 /** Der Name einer Auftragsart in der Oberflächensprache, fertig maskiert; unbekannte bleiben, wie sie sind. */
-const artName = (/** @type {string} */ art) => (Object.hasOwn(ARTNAMEN, art) ? ARTNAMEN[art]() : art);
+const artName = (/** @type {string} */ art) => (Object.hasOwn(KIND_NAMES, art) ? KIND_NAMES[art]() : art);
 
 /** Eine Serverfehlermeldung in einem Satz ohne Netzwerkwissen; das Original bleibt zur Fehlersuche aufklappbar.
  * @param {unknown} text */
-export function fehlerKurz(text) {
+export function errorShort(text) {
   const s = String(text || '');
   if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|fetch failed|network|socket hang up/i.test(s))
     return tRaw('monitor.err.net');
@@ -414,7 +414,7 @@ export function fehlerKurz(text) {
 
 /** @param {unknown} text */
 function fehlerKasten(text) {
-  return html`<details class="fehler-kasten"><summary>${ico('warnung')} ${fehlerKurz(text)}</summary><code>${text}</code></details>`;
+  return html`<details class="fehler-kasten"><summary>${ico('warnung')} ${errorShort(text)}</summary><code>${text}</code></details>`;
 }
 
 // Sieben gleiche „Jetzt starten“ sind für Vorleser ununterscheidbar: Der Name nennt die Art mit.
@@ -423,7 +423,7 @@ const knopf = (/** @type {string} */ aktion, /** @type {string} */ arg, /** @typ
 const statusName = (/** @type {string} */ s) => (Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : s);
 /** Eine Zeile der einzelnen Aufträge. Steht eine Art mehrfach offen, nennt die Rolle am Namen, welcher Eintrag
  * Wiederholung und welcher regulärer Lauf ist. @param {Auftrag} a @param {Set<string>} mehrfach */
-const auftragsZeile = (a, mehrfach) => {
+const jobRow = (a, mehrfach) => {
   const offen = a.status === 'offen' || a.status === 'laeuft';
   const rolle =
     !offen || !mehrfach.has(a.type)
@@ -471,7 +471,7 @@ const auftragsZeile = (a, mehrfach) => {
 
 /** Die Karte „Hintergrundarbeiten“: je Art die Zahlen mit „Jetzt“ und „Leeren“, darunter die einzelnen
  * laufenden, wartenden und gescheiterten Aufträge (GET /api/v1/admin/auftraege). */
-async function zeigeAuftraege() {
+async function showJobs() {
   const el = G('auftraege-karte');
   if (!el) return;
   const d = await api('GET', '/v1/admin/auftraege');
@@ -496,9 +496,9 @@ async function zeigeAuftraege() {
     html`<span class="mon-ziffer${n ? html`${' '}${rawHtml(klasse)}` : ' null'}">${n || 0}</span>`;
   const mehr = d.auftraege.length - 40;
   /** @type {Record<string, number>} */
-  const nachFehler = {};
+  const afterError = {};
   for (const a of d.auftraege)
-    if (a.status === 'offen' && (a.attempts > 1 || a.error_message)) nachFehler[a.type] = (nachFehler[a.type] || 0) + 1;
+    if (a.status === 'offen' && (a.attempts > 1 || a.error_message)) afterError[a.type] = (afterError[a.type] || 0) + 1;
   const jeArt = d.auftraege.filter(a => a.status === 'offen' || a.status === 'laeuft').map(a => a.type);
   const mehrfach = new Set(jeArt.filter((art, i) => jeArt.indexOf(art) !== i));
   const pause = (/** @type {AuftragPause} */ p) =>
@@ -518,7 +518,7 @@ async function zeigeAuftraege() {
       <tbody>${arten.map(
         art => html`<tr>
         <td>${artName(art)}</td>
-        <td class="zahl">${ziffer(zahl[art].offen)}${nachFehler[art] ? html`<span class="mon-leise mon-zusatz">${tRaw('monitor.auftraege.davon_nach_fehler', { n: nachFehler[art] })}</span>` : ''}</td>
+        <td class="zahl">${ziffer(zahl[art].offen)}${afterError[art] ? html`<span class="mon-leise mon-zusatz">${tRaw('monitor.auftraege.davon_nach_fehler', { n: afterError[art] })}</span>` : ''}</td>
         <td class="zahl">${ziffer(zahl[art].laeuft, 'mon-laeuft')}</td>
         <td class="zahl">${ziffer(zahl[art].fehler, 'mon-fehler')}</td>
         <td>${naechster[art] ? fmtDatum(naechster[art], 'wann') : ''}</td>
@@ -529,26 +529,25 @@ async function zeigeAuftraege() {
     }
     ${
       d.auftraege.length
-        ? html`<details class="mon-einzeln"${einzelnOffen() ? ' open' : ''}>
+        ? html`<details class="mon-einzeln"${openSingle() ? ' open' : ''}>
       <summary class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')} <span class="mon-leise">(${d.auftraege.length})</span></summary>
       <div class="tw"><table class="dt mon-tabelle" aria-labelledby="mon-t-auftraege">
       <thead><tr><th>${tRaw('monitor.col.auftrag')}</th><th>${tRaw('monitor.col.zustand')}</th><th>${tRaw('monitor.col.zeit')}</th><th>${tRaw('monitor.col.hinweis')}</th><th>${tRaw('monitor.col.aktionen')}</th></tr></thead>
-      <tbody>${d.auftraege.slice(0, 40).map(a => auftragsZeile(a, mehrfach))}</tbody></table></div>
+      <tbody>${d.auftraege.slice(0, 40).map(a => jobRow(a, mehrfach))}</tbody></table></div>
       ${mehr > 0 ? html`<p class="mon-leise">${tRaw('monitor.auftraege.mehr', { n: mehr })}</p>` : ''}</details>`
         : html`<h3 class="mon-untertitel">${tRaw('monitor.auftraege.einzeln')}</h3><p class="mon-leise">${tRaw('monitor.auftraege.leer')}</p>`
     }`,
   );
 }
 /** Einzelne Aufträge: am Telefon zu, sonst offen; ein Klick gilt bis zum Neuladen. @type {boolean | null} */
-let _einzelnOffen = null;
-const einzelnOffen = () =>
-  _einzelnOffen ?? !(typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches);
+let _openSingle = null;
+const openSingle = () => _openSingle ?? !(typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches);
 if (typeof document !== 'undefined')
   document.addEventListener(
     'toggle',
     ev => {
       const d = ev.target;
-      if (d instanceof HTMLDetailsElement && d.classList.contains('mon-einzeln')) _einzelnOffen = d.open;
+      if (d instanceof HTMLDetailsElement && d.classList.contains('mon-einzeln')) _openSingle = d.open;
     },
     true,
   );
@@ -557,14 +556,14 @@ if (typeof document !== 'undefined')
 async function auftragAbbrechen(id) {
   const d = await api('POST', `/v1/admin/auftraege/${encodeURIComponent(id)}/abbrechen`);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
-  await zeigeAuftraege();
+  await showJobs();
 }
 
 /** @param {string} art */
 async function auftragsArtJetzt(art) {
   const d = await api('POST', `/v1/admin/auftraege/art/${encodeURIComponent(art)}/jetzt`);
   if (!d?.success) toast(d?.error || t('settings.error'), 'error');
-  await zeigeAuftraege();
+  await showJobs();
 }
 
 /** @param {string} art */
@@ -572,11 +571,11 @@ async function auftragsArtLeeren(art) {
   const d = await api('DELETE', `/v1/admin/auftraege/art/${encodeURIComponent(art)}`);
   if (d?.success) toast(tRaw('monitor.auftraege.geleert', { n: d.entfernt }), 'success');
   else toast(d?.error || t('settings.error'), 'error');
-  await zeigeAuftraege();
+  await showJobs();
 }
 
 /** Beim Verlassen des Reiters: die Abfrage anhalten. @returns {boolean} ob sie lief */
-export function stoppeMonitor() {
+export function stopMonitor() {
   _monitorLauf++;
   if (!_monitorTimer) return false;
   clearTimeout(_monitorTimer);

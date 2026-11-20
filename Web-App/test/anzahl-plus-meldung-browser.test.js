@@ -7,7 +7,7 @@
  *   A  in autosaveSet den Aufruf meldeNeueExemplare(...) entfernt und wieder
  *      immer toast('Gespeichert') → rot: Zeitüberschreitung „Toast nach +“
  *      (es kommt nur „Gespeichert“)
- *   B  legendeGeschaetzt() liefert '' → rot: „die Kaufpreisliste erklärt ≈“
+ *   B  legendEstimated() liefert '' → rot: „die Kaufpreisliste erklärt ≈“
  *   C  im Toast die Aktion weggelassen → rot: „Ändern öffnet die Kaufpreise“
  *
  * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
@@ -15,15 +15,15 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { haeltSet, katalogSet } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { holdsSet, catalogSet } = require('./helpers/bestand');
 
 test('Anzahl „+“ meldet das neue Exemplar mit Preis', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `plus_${process.pid}`,
     bestand: async (db, uid) => {
-      await katalogSet(db, '21318-1', { name: 'Baumhaus', year: 2019 });
-      await haeltSet(db, uid, '21318-1', 1, { preis: 224.99 });
+      await catalogSet(db, '21318-1', { name: 'Baumhaus', year: 2019 });
+      await holdsSet(db, uid, '21318-1', 1, { preis: 224.99 });
       await db
         .run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                     VALUES ('21318-1', 'N', 'EUR', 300, 364.32, 400, 364.32, 10, NOW()) ON CONFLICT DO NOTHING`)

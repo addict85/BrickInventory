@@ -4,13 +4,13 @@
  * alte Protokollzeilen verfallen im Aufräumlauf.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in spurenLoeschen() entferneKontoAusSicherungen() entfernt → rot:
+ *   A  in deleteTraces() removeAccountFromBackups() entfernt → rot:
  *      „das gelöschte Konto ist in keiner Kopie …“ (users und sets)
- *   B  in raeumeProtokollAuf() das UPDATE auf target_name entfernt → rot:
+ *   B  in cleanLogOn() das UPDATE auf target_name entfernt → rot:
  *      „nach dem Aufräumlauf nennt das Verwaltungsprotokoll den Namen nicht mehr“
- *   C  raeumeAlteSicherungenAuf() vergleicht mit 3000 statt `tage` Tagen →
+ *   C  cleanOldBackupsOn() vergleicht mit 3000 statt `tage` Tagen →
  *      rot: „Kopien älter als die Frist …“
- *   D  raeumeProtokollAuf() mit 3650 statt 365 Tagen → rot: „Protokollzeilen
+ *   D  cleanLogOn() mit 3650 statt 365 Tagen → rot: „Protokollzeilen
  *      älter als ein Jahr …“
  *   Seit Migration 0117 räumt die Funktion verwaltungsprotokoll_aufraeumen() auf (14.11.2026
  *   wiederholt): dort `target_name = target_name` → rot wie B; 3650 statt 365 Tage → rot wie D.
@@ -26,22 +26,22 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const { sichereNutzerdaten, raeumeAlteSicherungenAuf } = _req('db/migrate.js');
-const { raeumeProtokollAuf } = require('./helpers/sources').testBereich('konto').protokoll;
+const { secureUserData, cleanOldBackupsOn } = _req('db/migrate.js');
+const { cleanLogOn } = require('./helpers/sources').testArea('konto').protokoll;
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const P = process.pid,
     NAME = `spur_${P}`,
     CHEF = `spur_chef_${P}`,
     PASS = 'Spuren-Passwort-17';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, CHEF]]);
-  const lege = async (n, admin) =>
+  const put = async (n, admin) =>
     (
       await db.get(
         `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
@@ -49,8 +49,8 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
         [n, `${n}@example.org`, await bcrypt.hash(PASS, 4), admin],
       )
     ).id;
-  const uid = await lege(NAME, false),
-    chef = await lege(CHEF, true);
+  const uid = await put(NAME, false),
+    chef = await put(CHEF, true);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, `8${P % 100000}-1`]);
   await db.run(
     `INSERT INTO admin_log (admin_id, target_id, target_name, action)
@@ -60,7 +60,7 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
   const client = await db.pool.connect();
   let schema;
   try {
-    schema = await sichereNutzerdaten(client, ['probe']);
+    schema = await secureUserData(client, ['probe']);
   } finally {
     client.release();
   }
@@ -94,7 +94,7 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
   });
 
   await t.test('nach dem Aufräumlauf nennt das Verwaltungsprotokoll den Namen nicht mehr', async () => {
-    await raeumeProtokollAuf();
+    await cleanLogOn();
     const z = await db.all('SELECT target_id, target_name FROM admin_log WHERE target_id = $1', [uid]);
     assert.equal(z.length, 1, 'die Zeile selbst bleibt');
     assert.equal(z[0].target_name, null);
@@ -103,7 +103,7 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
   await t.test('Kopien älter als die Frist verschwinden im Aufräumlauf', async () => {
     await db.run('CREATE SCHEMA vor_migration_20200101000000000');
     await db.run('CREATE TABLE vor_migration_20200101000000000.users (id int)');
-    assert.ok((await raeumeAlteSicherungenAuf(db)) >= 1);
+    assert.ok((await cleanOldBackupsOn(db)) >= 1);
     const da = (await db.all(`SELECT nspname FROM pg_namespace WHERE nspname ~ '^vor_migration_'`)).map(z => z.nspname);
     assert.ok(!da.includes('vor_migration_20200101000000000'), da.join(', '));
     assert.ok(da.includes(schema), 'die frische Kopie bleibt');
@@ -124,7 +124,7 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
         [chef],
       )
     ).id;
-    await raeumeProtokollAuf();
+    await cleanLogOn();
     const ids = (await db.all('SELECT id FROM admin_log WHERE id = ANY($1)', [[alt, jung]])).map(z => z.id);
     assert.deepEqual(ids, [jung]);
   });

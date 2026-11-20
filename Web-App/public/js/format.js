@@ -36,7 +36,7 @@ export function fmtGeldCode(v, cur) {
  * Ein erfasster Kaufpreis von 0 ist ein Geschenk; fehlt er (null), ist er unbekannt.
  * @param {unknown} kauf
  */
-export function istGeschenk(kauf) {
+export function isGift(kauf) {
   return kauf !== null && kauf !== undefined && String(kauf).trim() !== '' && Number(kauf) === 0;
 }
 
@@ -64,7 +64,7 @@ export function fmtGeld(v, cur) {
  * @param {unknown} roh
  * @returns {number|null}
  */
-export function leseBetrag(roh) {
+export function readAmount(roh) {
   const s = String(roh ?? '')
     .replace(/[\s  '’]/g, '')
     .replace(/^[€$£]|[€$£]$/g, '');
@@ -91,7 +91,7 @@ export function leseBetrag(roh) {
  * Ein Betrag für ein Eingabefeld in der Schreibweise der Sprache („129,99“ de-DE), ohne Tausender.
  * @param {number | string | null | undefined} v
  */
-export function betragFuerFeld(v) {
+export function amountForField(v) {
   if (v === null || v === undefined || String(v).trim() === '' || !Number.isFinite(Number(v))) return '';
   return new Intl.NumberFormat(locale(), {
     useGrouping: false,
@@ -104,7 +104,7 @@ export function betragFuerFeld(v) {
  * Prozent in der Form der Oberfläche (de-DE „+51,1 %“, en-GB „+51.1%“), damit sie neben den Beträgen aus
  * fmtN() nicht in einer zweiten Schreibweise steht.
  * @param {number|string} v  Prozentwert (51.1, nicht 0.511)
- * @param {{vorzeichen?: boolean, stellen?: number}} [o]
+ * @param {{sign?: boolean, stellen?: number}} [o]
  */
 export function fmtPct(v, o = {}) {
   const n = parseFloat(String(v));
@@ -114,7 +114,7 @@ export function fmtPct(v, o = {}) {
     style: 'percent',
     minimumFractionDigits: stellen,
     maximumFractionDigits: stellen,
-    signDisplay: o.vorzeichen === false ? 'auto' : 'exceptZero',
+    signDisplay: o.sign === false ? 'auto' : 'exceptZero',
   }).format(n / 100);
 }
 
@@ -134,7 +134,7 @@ export function fmtBig(n) {
  * braucht es keine zweite Schreibweise daneben.
  * @param {string} iso  JJJJ-MM-TT
  */
-export function browserSchreibtDatumWieApp(iso) {
+export function browserWritesDateHowApp(iso) {
   if (!iso) return true;
   const d = new Date(iso + 'T00:00:00');
   /** @type {Intl.DateTimeFormatOptions} */

@@ -6,15 +6,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = testDaten();
+const db = testData();
 
 // idx_parts_blnum stand hier und ist weg: Er war ein Teilindex auf
 // parts.bl_part_number, und Migration 0037 hat die Spalte geloescht (die
 // BrickLink-Nummer steht jetzt in bl_mapping). Postgres entfernt
 // abhaengige Indizes beim DROP COLUMN selbst.
-const ERWARTET = ['idx_set_figuren_fig', 'idx_sets_setnum'];
+const EXPECTED = ['idx_set_figuren_fig', 'idx_sets_setnum'];
 
 /**
  * Den Plan einer Abfrage holen — ohne Tabellenscan-Ausweg.
@@ -24,7 +24,7 @@ const ERWARTET = ['idx_set_figuren_fig', 'idx_sets_setnum'];
  * die Einstellung wäre dort nie gesetzt.
  */
 async function plan(sql) {
-  const c = await db.eigeneVerbindung();
+  const c = await db.ownConnection();
   try {
     await c.query('SET enable_seqscan = off');
     const r = await c.query(`EXPLAIN ${sql}`);
@@ -52,23 +52,23 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
     const da = (
       await db.all('SELECT indexname FROM pg_indexes WHERE schemaname = $1 AND indexname = ANY($2)', [
         'public',
-        ERWARTET,
+        EXPECTED,
       ])
     )
       .map(r => r.indexname)
       .sort();
     assert.deepEqual(
       da,
-      [...ERWARTET].sort(),
+      [...EXPECTED].sort(),
       `db/database.ts legt nicht alle erwarteten Indizes an — gefunden: ${da.join(', ') || '(keine)'}`,
     );
 
     // GEGENPROBE: Die Abfrage darf nicht einfach alles bestätigen.
-    const erfunden = await db.all('SELECT indexname FROM pg_indexes WHERE schemaname = $1 AND indexname = ANY($2)', [
+    const invented = await db.all('SELECT indexname FROM pg_indexes WHERE schemaname = $1 AND indexname = ANY($2)', [
       'public',
       ['idx_gibt_es_nicht'],
     ]);
-    assert.equal(erfunden.length, 0, 'Gegenprobe: die Index-Abfrage meldet auch erfundene Namen als vorhanden');
+    assert.equal(invented.length, 0, 'Gegenprobe: die Index-Abfrage meldet auch erfundene Namen als vorhanden');
 
     // ── 2. Der Planer kann sie nehmen ──────────────────────────────────────
     //
@@ -83,7 +83,7 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
       c0.release();
     }
 
-    // Zeichengleich die Abfrage aus src/katalog/blZuordnung.ts (blAbrufNummer).
+    // Zeichengleich die Abfrage aus src/katalog/blZuordnung.ts (blFetchNumber).
     const blPlan = await plan(
       `SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_mapping
         WHERE type = 'part' AND rb_id = 'x'`,
@@ -94,8 +94,8 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
       `Die BrickLink-Nachschlage laeuft nicht ueber einen Index:\n${blPlan}`,
     );
 
-    const figurPlan = await plan(`SELECT set_number FROM set_minifigs_catalog WHERE fig_number = 'x' LIMIT 1`);
-    assert.match(figurPlan, /idx_set_figuren_fig/, `Plan:\n${figurPlan}`);
+    const minifigPlan = await plan(`SELECT set_number FROM set_minifigs_catalog WHERE fig_number = 'x' LIMIT 1`);
+    assert.match(minifigPlan, /idx_set_figuren_fig/, `Plan:\n${minifigPlan}`);
 
     const setPlan = await plan(`SELECT user_id FROM sets WHERE set_number = 'x' ORDER BY user_id`);
     assert.match(setPlan, /idx_sets_setnum/, `Plan:\n${setPlan}`);
@@ -104,11 +104,11 @@ test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', asy
     // sitzt, muss zu einem Tabellenscan fuehren. Sonst waere die
     // Zusicherung oben blind dafuer, ob der Planer ueberhaupt zwischen
     // beidem unterscheidet.
-    const ohneIndex = await plan(`SELECT rb_id FROM bl_mapping WHERE fetched_at < NOW()`);
+    const withoutIndex = await plan(`SELECT rb_id FROM bl_mapping WHERE fetched_at < NOW()`);
     assert.match(
-      ohneIndex,
+      withoutIndex,
       /Seq Scan on bl_mapping/,
-      `Gegenprobe: auch ohne Index kam kein Tabellenscan:\n${ohneIndex}`,
+      `Gegenprobe: auch ohne Index kam kein Tabellenscan:\n${withoutIndex}`,
     );
   } finally {
     await db.pool.end().catch(() => {});

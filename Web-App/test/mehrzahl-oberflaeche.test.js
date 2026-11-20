@@ -7,14 +7,14 @@
  *   - Finanzen ohne Marktpreis: „Marktpreis fehlt für 1 Position“.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  mehrzahlSchluessel() in i18n.js gibt immer `key` zurück → rot: alle drei,
+ *   A  pluralKey() in i18n.js gibt immer `key` zurück → rot: alle drei,
  *      z. B. „1 Typen“ und „Marktpreis fehlt für 1 Positionen“
  *   B  'parts.group_types_one' aus locales/en.js entfernt → rot: „en: Gruppen
  *      der Teile“ (der Rückfall auf Deutsch ergab „1 Typ“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const TEILE = {
   '/v1/parts': {
@@ -57,7 +57,7 @@ for (const [sprache, eins, zwei] of [
   ['en', '1 kind', '2 kinds'],
 ]) {
   test(`${sprache}: Gruppen der Teile`, async () => {
-    const { w, d } = await oeffneOberflaeche(TEILE, { sprache });
+    const { w, d } = await openUi(TEILE, { sprache });
     try {
       await reiter(w, 'parts');
       await warte(() => d.querySelectorAll('#parts-main .parts-group').length === 2);
@@ -70,7 +70,7 @@ for (const [sprache, eins, zwei] of [
 }
 
 test('Finanzen: eine Position ohne Preis', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/finance/valuation': {
       success: true,
       currency: 'EUR',

@@ -1,9 +1,9 @@
 /**
  * Ein Set, das schon im Blickfeld steht, wird beim Erfassen NICHT erhöht.
  *
- * Gegenprobe (durchgeführt): den findeSetImBlickfeld-Zweig aus routes/api_v1/sets.ts
+ * Gegenprobe (durchgeführt): den findSetInScope-Zweig aus routes/api_v1/sets.ts
  * entfernt → der erste Teilschritt wird rot (Menge 1 → 2).
- * Gegenprobe (15.11.2026): in setVorhanden() (src/sets/erfassen.ts) die Nummer ohne
+ * Gegenprobe (15.11.2026): in setPresent() (src/sets/erfassen.ts) die Nummer ohne
  * normalisiereSetNummer zurückgegeben → rot „exists: false, set_number“ (ohne -1).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
@@ -14,17 +14,17 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const HAUPT = `ex-haupt-${process.pid}`,
+  const MAIN = `ex-haupt-${process.pid}`,
     SUB = `ex-sub-${process.pid}`;
   // Endung bewusst „-1": normalisiereSetNummer() hängt an eine Nummer OHNE Suffix
   // immer „-1" an. Ein Set 97001-42 wäre über die blosse Eingabe „97001" also
@@ -32,36 +32,36 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
   // Gegenstand dieses Tests. Teilschritt 2 prüft die Normalisierung deshalb an
   // Nummern, für die sie überhaupt greifen kann.
   const basis = 97000 + (process.pid % 900);
-  const EIGEN = `${basis}-1`; // gehört dem Hauptkonto
+  const OWN = `${basis}-1`; // gehört dem Hauptkonto
   const KIND = `${basis + 1000}-1`; // gehört dem Unterkonto
   const NEU = `${basis + 2000}-1`; // gibt es nirgends
 
   const aufraeumen = async () => {
-    for (const sn of [EIGEN, KIND, NEU]) {
+    for (const sn of [OWN, KIND, NEU]) {
       await db.run(`DELETE FROM sets WHERE set_number=$1`, [sn]).catch(() => {});
       await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [sn]).catch(() => {});
     }
   };
 
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
-  const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [MAIN, SUB]);
+  const mainId = (await db.get(`SELECT id FROM users WHERE username=$1`, [MAIN])).id;
   const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
-    hauptId,
+    mainId,
     subId,
   ]);
   await aufraeumen();
 
   const anlegen = async (besitzer, sn) => {
-    await haeltSet(db, besitzer, sn, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, besitzer, sn, 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`,
       [besitzer, sn],
     );
   };
-  await anlegen(hauptId, EIGEN);
+  await anlegen(mainId, OWN);
   await anlegen(subId, KIND);
 
   const stand = async sn => ({
@@ -80,7 +80,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
     zeilen: (await db.get(`SELECT COUNT(*)::int AS c FROM sets WHERE set_number=$1`, [sn])).c,
   });
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: hauptId }, t });
+  const { base, srv } = testServer(_req, { sitzung: { userId: mainId }, t });
 
   const erfassen = async (pfad, sn) => {
     const r = await fetch(base + pfad, {
@@ -94,7 +94,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
   try {
     // 1. EIGENES Set und Set des UNTERKONTOS — beide Wege, beide Sets.
     for (const [wer, sn] of [
-      ['eigenes', EIGEN],
+      ['eigenes', OWN],
       ['Unterkonto', KIND],
     ]) {
       for (const [name, pfad] of [
@@ -118,55 +118,55 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
     // 2. Die Nummer wird VOR der Prüfung normalisiert — sonst gälte "97001"
     //    als neu, obwohl "97001-1" längst existiert, und genau daran hängt
     //    die ganze Regel.
-    const ohneSuffix = EIGEN.replace(/-\d+$/, '');
-    const vor = await stand(EIGEN);
-    const r = await erfassen('/api/v1/sets', ohneSuffix);
+    const withoutSuffix = OWN.replace(/-\d+$/, '');
+    const vor = await stand(OWN);
+    const r = await erfassen('/api/v1/sets', withoutSuffix);
     assert.equal(r.body?.action, 'exists', 'ohne Suffix eingegeben muss dasselbe Set erkannt werden');
-    assert.deepEqual(await stand(EIGEN), vor);
+    assert.deepEqual(await stand(OWN), vor);
 
     // 3. Die Vorabfrage sagt dasselbe wie das Erfassen — sonst könnte der
     //    Scanner einen Zwischendialog zeigen für ein Set, das danach als
     //    „schon vorhanden" abgewiesen wird.
     for (const [sn, erwartet] of [
-      [EIGEN, true],
+      [OWN, true],
       [KIND, true],
       [NEU, false],
-      [ohneSuffix, true],
+      [withoutSuffix, true],
     ]) {
       const e = await (await fetch(`${base}/api/v1/sets/exists/${encodeURIComponent(sn)}`)).json();
       assert.equal(e.exists, erwartet, `exists für ${sn}`);
       if (erwartet) assert.ok(e.owner_user_id > 0, `Besitzer fehlt für ${sn}`);
     }
     // Ohne Treffer nennt die Vorabfrage die Nummer so, wie sie angelegt würde (mit Suffix).
-    const neuOhneSuffix = NEU.replace(/-1$/, '');
-    const keins = await (await fetch(`${base}/api/v1/sets/exists/${neuOhneSuffix}`)).json();
-    assert.deepEqual([keins.exists, keins.set_number], [false, NEU], 'exists: false, set_number');
+    const newWithoutSuffix = NEU.replace(/-1$/, '');
+    const none = await (await fetch(`${base}/api/v1/sets/exists/${newWithoutSuffix}`)).json();
+    assert.deepEqual([none.exists, none.set_number], [false, NEU], 'exists: false, set_number');
     // Das eigene Konto gewinnt, wenn beide dasselbe Set haben.
-    await anlegen(subId, EIGEN);
-    const beide = await (await fetch(`${base}/api/v1/sets/exists/${EIGEN}`)).json();
+    await anlegen(subId, OWN);
+    const beide = await (await fetch(`${base}/api/v1/sets/exists/${OWN}`)).json();
     assert.equal(
       beide.owner_user_id,
-      hauptId,
+      mainId,
       'bei zwei Besitzern muss die eigene Zeile gewinnen — die Detailansicht soll die eigene zeigen',
     );
     assert.equal(beide.is_self, true);
 
-    // 4. AUSNAHME: Der CSV-Import stockt auf (wennVorhanden: 'aufstocken').
-    const { setErfassen } = require('./helpers/sources').bereichsSeite('sets');
+    // 4. EXCEPTION: Der CSV-Import stockt auf (ifPresent: 'aufstocken').
+    const { setErfassen } = require('./helpers/sources').areaPage('sets');
     const vorImport = await stand(KIND);
     const erg = await setErfassen({
-      anfragender: subId,
+      requester: subId,
       setNumber: KIND,
       menge: 1,
       zustand: 'N',
-      wennVorhanden: 'aufstocken',
+      ifPresent: 'aufstocken',
     });
     assert.equal(erg.action, 'updated', 'der Import muss aufstocken — sonst steht der CSV-Import still');
     assert.equal((await stand(KIND)).menge, vorImport.menge + 1);
   } finally {
     await aufraeumen();
-    await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [hauptId]).catch(() => {});
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [mainId]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }

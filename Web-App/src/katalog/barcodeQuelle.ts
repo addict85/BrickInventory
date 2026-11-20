@@ -1,6 +1,6 @@
 /** Ob der Mensch bei einem Barcode-Treffer hinsehen muss, hängt am Weg. */
 
-export const GEPRUEFT: ReadonlySet<string> = new Set([
+export const CHECKED: ReadonlySet<string> = new Set([
   'catalog_cache',
   'rebrickable-ean',
   'brickset-ean',
@@ -8,6 +8,6 @@ export const GEPRUEFT: ReadonlySet<string> = new Set([
   'rebrickable-direct',
 ]);
 
-export function istVermutung(quelle: string | null | undefined): boolean {
-  return !quelle || !GEPRUEFT.has(quelle);
+export function isGuess(quelle: string | null | undefined): boolean {
+  return !quelle || !CHECKED.has(quelle);
 }

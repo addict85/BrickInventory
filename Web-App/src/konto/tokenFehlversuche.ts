@@ -4,45 +4,45 @@
  * jeder Prozess, damit ein gültiger Token keine zusätzliche Abfrage kostet.
  * Ersetzte Token einer Familie zählen nicht mit (Wiederverwendungserkennung). */
 import { drosselAdresse } from '../infra/drosselAdresse';
-import { zaehleAnfrage } from './loginLimiter';
-import { meldeFehler } from '../infra/fehler';
-import type { KontoKontext } from './kontext';
+import { countRequest } from './loginLimiter';
+import { reportError } from '../infra/fehler';
+import type { AccountContext } from './kontext';
 import { prozessweit } from '../infra/prozessweit';
 
-export const FEHLVERSUCH_FENSTER_MS = 60_000;
-export const FEHLVERSUCH_MAX = 60;
+export const FAILED_ATTEMPT_WINDOW_MS = 60_000;
+export const FAILED_ATTEMPT_MAX = 60;
 const BUCKET = 'token-fehlversuch';
 
 /** Adresse → Ende der Sperre, nur als Abkürzung: Die Zählung steht in der Datenbank. */
 const gesperrt = () => prozessweit('tokenSperre', () => new Map<string, number>());
 
-export async function zaehleFehlversuch(
-  kx: KontoKontext,
+export async function countFailedAttempt(
+  kx: AccountContext,
   ip: string | null | undefined,
   jetzt = Date.now(),
 ): Promise<void> {
   if (!ip) return;
-  const st = await zaehleAnfrage(kx, BUCKET, ip, FEHLVERSUCH_FENSTER_MS);
-  if (st.count <= FEHLVERSUCH_MAX) return;
-  const gesperrtBis = gesperrt();
-  gesperrtBis.set(drosselAdresse(ip), jetzt + Math.min(st.waitMin * 60_000, FEHLVERSUCH_FENSTER_MS));
-  if (gesperrtBis.size > 5000) for (const [k, bis] of gesperrtBis) if (bis <= jetzt) gesperrtBis.delete(k);
+  const st = await countRequest(kx, BUCKET, ip, FAILED_ATTEMPT_WINDOW_MS);
+  if (st.count <= FAILED_ATTEMPT_MAX) return;
+  const lockedUntil = gesperrt();
+  lockedUntil.set(drosselAdresse(ip), jetzt + Math.min(st.waitMin * 60_000, FAILED_ATTEMPT_WINDOW_MS));
+  if (lockedUntil.size > 5000) for (const [k, bis] of lockedUntil) if (bis <= jetzt) lockedUntil.delete(k);
 }
 
-export function zuVieleFehlversuche(ip: string | null | undefined, jetzt = Date.now()): boolean {
+export function toManyFailedAttempts(ip: string | null | undefined, jetzt = Date.now()): boolean {
   if (!ip) return false;
   const bis = gesperrt().get(drosselAdresse(ip));
   return bis !== undefined && jetzt < bis;
 }
 
 /** Nur die Abkürzung dieses Prozesses; ein anderer Prozess hat seine eigene. */
-export function vergissSperrenImProzess(): void {
+export function forgetLockInProcess(): void {
   gesperrt().clear();
 }
 
-export async function vergissFehlversuche(k: KontoKontext): Promise<void> {
+export async function forgetFailedAttempts(k: AccountContext): Promise<void> {
   gesperrt().clear();
   await k.throttle
-    .forgetCounter(BUCKET, { auchDarunter: true })
-    .catch((e: unknown) => meldeFehler('token-fehlversuch:vergessen', e));
+    .forgetCounter(BUCKET, { alsoBelow: true })
+    .catch((e: unknown) => reportError('token-fehlversuch:vergessen', e));
 }

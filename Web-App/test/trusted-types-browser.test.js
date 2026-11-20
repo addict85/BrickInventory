@@ -17,11 +17,11 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterSammlung } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternCollection } = require('./helpers/bestand');
 
 test('Trusted Types', { timeout: 180_000 }, async t => {
-  const app = await starteApp(t, { name: `tt_${process.pid}`, bestand: musterSammlung });
+  const app = await startApp(t, { name: `tt_${process.pid}`, bestand: patternCollection });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -55,16 +55,16 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
         innerHTML: versuch(() => { div.innerHTML = '<b>x</b>'; }),
         insertAdjacentHTML: versuch(() => div.insertAdjacentHTML('beforeend', '<img src=x>')),
         leer: versuch(() => { div.innerHTML = ''; }),
-        skript: versuch(() => { document.createElement('script').src = 'https://fremd.example/x.js'; }),
-        eigenesSkript: versuch(() => { document.createElement('script').src = '/locales/en.js'; }),
+        script: versuch(() => { document.createElement('script').src = 'https://fremd.example/x.js'; }),
+        ownScript: versuch(() => { document.createElement('script').src = '/locales/en.js'; }),
       };
     })()`);
     assert.deepEqual(fehler, {
       innerHTML: 'TypeError',
       insertAdjacentHTML: 'TypeError',
       leer: 'kein Fehler',
-      skript: 'TypeError',
-      eigenesSkript: 'kein Fehler',
+      script: 'TypeError',
+      ownScript: 'kein Fehler',
     });
   });
 

@@ -1,29 +1,29 @@
 /** Bilder eines Sets laden: Teile und Figuren aus dem CDN in den eigenen Ordner,
  * unter einer Sperre je Set, die auch andere Prozesse sehen. */
-import { meldeFehler, logAndContinue } from '../infra/fehler';
-import { mitVersion } from '../infra/setNummer';
-import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
-import { BILD_KOPFZEILEN } from '../fremdquellen';
+import { reportError, logAndContinue } from '../infra/fehler';
+import { withVersion } from '../infra/setNummer';
+import { setPartImageLocal, setMinifigImageLocal } from './katalogPflege';
+import { IMAGE_HEADERS } from '../fremdquellen';
 
 // Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
 // bekommt deshalb die Art mit.
-import { bildEndung, dateiTeil, zielImOrdner } from '../bilder';
-import { ERLAUBTE_BILD_HOSTS } from '../infra/fremdeAdressen';
+import { imageExtension, filePart, targetInFolder } from '../bilder';
+import { ALLOWED_IMAGE_HOSTS } from '../infra/fremdeAdressen';
 import * as repo from './repository/teileAnreicherung';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } from '../infra/appPaths';
-import type { KatalogKontext } from './kontext';
+import type { CatalogContext } from './kontext';
 
 /** Wie viele Bilder gerade noch zu laden sind; die Verwaltung zeigt es in der Kachel. */
-export const BILDLADE_ZAEHLER = 'imgdl_pending_count';
-async function bildladeZaehler(k: KatalogKontext, delta: number): Promise<void> {
+export const IMAGE_LOAD_COUNTER = 'imgdl_pending_count';
+async function imageLoadCounter(k: CatalogContext, delta: number): Promise<void> {
   const d = Math.round(Number(delta) || 0);
-  if (d) await k.auftraege.zaehleZustand(BILDLADE_ZAEHLER, d).catch(logAndContinue('teile-enrich:imgDlAdd'));
+  if (d) await k.auftraege.countState(IMAGE_LOAD_COUNTER, d).catch(logAndContinue('teile-enrich:imgDlAdd'));
 }
 
 /** @param kind Bestimmt Zielverzeichnis und Web-Pfad. */
 async function downloadImage(
-  k: KatalogKontext,
+  k: CatalogContext,
   imgUrl: string | null | undefined,
   partNum: string,
   colorId: number,
@@ -34,26 +34,26 @@ async function downloadImage(
   const webBase = kind === 'minifig' ? '/images/minifigs/' : '/images/parts/';
   // Nummer und Adresse kommen bei manuellen Teilen vom Nutzer: Sie dürfen weder
   // einen Pfad bilden noch die Endung bestimmen.
-  const nummer = dateiTeil(partNum),
-    farbe = dateiTeil(colorId);
+  const nummer = filePart(partNum),
+    farbe = filePart(colorId);
   if (!nummer || !farbe) return null;
-  const file = `${nummer}_${farbe}.${bildEndung(imgUrl)}`;
-  const dest = zielImOrdner(IMG_DIR, file);
+  const file = `${nummer}_${farbe}.${imageExtension(imgUrl)}`;
+  const dest = targetInFolder(IMG_DIR, file);
   if (!dest) return null;
   const rel = `${webBase}${file}`;
   if (fs.existsSync(dest)) return rel;
   fs.mkdirSync(IMG_DIR, { recursive: true });
-  if (!(await k.bilder.ladeBild(imgUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN))) return null;
+  if (!(await k.bilder.loadImage(imgUrl, dest, ALLOWED_IMAGE_HOSTS, IMAGE_HEADERS))) return null;
   try {
-    await k.bilder.vorschauErzeugen(rel).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));
+    await k.bilder.createPreview(rel).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));
   } catch (e) {
-    meldeFehler('teile-enrich:vorschau', e);
+    reportError('teile-enrich:vorschau', e);
   }
   return rel;
 }
 
 /** Ein Bild vom CDN in den Teile-Ordner, dann in den Katalog. */
-async function ladeTeilbild(k: KatalogKontext, p: repo.Bildwunsch): Promise<void> {
+async function loadPartImage(k: CatalogContext, p: repo.ImageRequest): Promise<void> {
   const rawUrl = p.image_url || '';
   let cdnUrl = rawUrl;
   // Beide Schreibweisen: Altzeilen tragen noch /api/img-proxy.
@@ -64,14 +64,15 @@ async function ladeTeilbild(k: KatalogKontext, p: repo.Bildwunsch): Promise<void
     return;
   }
 
-  const nummer = dateiTeil(p.id),
-    farbe = dateiTeil(p.color_id);
+  const nummer = filePart(p.id),
+    farbe = filePart(p.color_id);
   if (!nummer || (p.kind !== 'fig' && !farbe)) {
     console.warn(`[img-dl] skipping unsafe number ${String(p.id).substring(0, 40)}`);
     return;
   }
-  const file = p.kind === 'fig' ? `${nummer}.${bildEndung(cdnUrl)}` : `${nummer}_${farbe}.${bildEndung(cdnUrl)}`;
-  const dest = zielImOrdner(PART_IMAGES_DIR, file);
+  const file =
+    p.kind === 'fig' ? `${nummer}.${imageExtension(cdnUrl)}` : `${nummer}_${farbe}.${imageExtension(cdnUrl)}`;
+  const dest = targetInFolder(PART_IMAGES_DIR, file);
   if (!dest) return;
   const rel = `/images/parts/${file}`;
 
@@ -79,7 +80,7 @@ async function ladeTeilbild(k: KatalogKontext, p: repo.Bildwunsch): Promise<void
     await k.cdnDrossel.acquire();
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     const ok = await k.bilder
-      .ladeBild(cdnUrl, dest, ERLAUBTE_BILD_HOSTS, BILD_KOPFZEILEN, text =>
+      .loadImage(cdnUrl, dest, ALLOWED_IMAGE_HOSTS, IMAGE_HEADERS, text =>
         console.warn(`[img-dl] ${p.id}: ${text}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, '')),
       )
       .finally(() => k.cdnDrossel.release());
@@ -88,22 +89,22 @@ async function ladeTeilbild(k: KatalogKontext, p: repo.Bildwunsch): Promise<void
 
   // Ein Schreibfehler bricht den Lauf ab, statt eine Datei ohne Verweis zu hinterlassen;
   // der nächste Lauf findet die Datei und schreibt nur den Verweis nach.
-  if (p.kind === 'fig') await setzeFigurBildLokal(k, p.id, rel);
-  else await setzeTeilBildLokal(k, p.id, p.color_id, rel);
+  if (p.kind === 'fig') await setMinifigImageLocal(k, p.id, rel);
+  else await setPartImageLocal(k, p.id, p.color_id, rel);
 }
 
 /** Prozessübergreifend auf einer EIGENEN Verbindung: Ein Advisory-Lock hängt an
  * der Session, über den Pool würde er unzuverlässig freigegeben. waitIfBusy (PDF)
  * wartet auf den anderen Prozess, sonst fehlten Bilder im PDF. */
-async function holeBildSperre(
-  k: KatalogKontext,
+async function fetchImageLock(
+  k: CatalogContext,
   n: string,
   waitIfBusy: boolean,
 ): Promise<'belegt' | { lockClient: import('pg').PoolClient | null; haveXlock: boolean }> {
   let lockClient: import('pg').PoolClient | null = null,
     haveXlock = false;
   try {
-    lockClient = await k.teileAnreicherung.sperrVerbindung();
+    lockClient = await k.teileAnreicherung.lockConnection();
   } catch (_) {
     lockClient = null;
   }
@@ -111,7 +112,7 @@ async function holeBildSperre(
   const deadline = k.uhr.jetzt() + 180000; // max. 3 Min auf anderen Worker warten
   while (true) {
     try {
-      haveXlock = await repo.versucheBildSperre(lockClient, n);
+      haveXlock = await repo.attemptsImageLock(lockClient, n);
     } catch (_) {
       haveXlock = false;
     }
@@ -131,10 +132,10 @@ async function holeBildSperre(
 }
 
 // Je Set eine Sperre: Gleichzeitige Aufrufe für dasselbe Set warten auf den ersten.
-const sperren = (k: KatalogKontext) => k.faecher.fach('setBilder:sperren', () => new Map<string, Promise<void>>());
+const sperren = (k: CatalogContext) => k.faecher.fach('setBilder:sperren', () => new Map<string, Promise<void>>());
 
-async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBusy = false) {
-  const n = mitVersion(setNumber);
+async function downloadSetImages(k: CatalogContext, setNumber: string, waitIfBusy = false) {
+  const n = withVersion(setNumber);
   const _downloadLocks = sperren(k);
   if (_downloadLocks.has(n)) {
     await _downloadLocks.get(n);
@@ -148,7 +149,7 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
   });
   _downloadLocks.set(n, lock);
 
-  const sperre = await holeBildSperre(k, n, waitIfBusy);
+  const sperre = await fetchImageLock(k, n, waitIfBusy);
   if (sperre === 'belegt') {
     resolveLock();
     _downloadLocks.delete(n);
@@ -160,14 +161,14 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
   let _flushed = 0; // davon bereits an den Zähler gemeldet (Rest im finally)
   let _lastFlush = k.uhr.jetzt();
   try {
-    const needsImg = await k.teileAnreicherung.bilderOhneDatei(n);
+    const needsImg = await k.teileAnreicherung.imagesWithoutFile(n);
     if (!needsImg.length) return;
 
     console.log(`[img-dl] ${n}: lade ${needsImg.length} Bilder`);
     // Zum globalen Zähler ADDIEREN statt ihn zu überschreiben, sonst zeigte die
     // Überwachung nur den zuletzt gestarteten Stapel.
     _pendingAdded = needsImg.length;
-    await bildladeZaehler(k, _pendingAdded);
+    await imageLoadCounter(k, _pendingAdded);
 
     let done = 0;
     // Höchstens ein Schreibvorgang je Sekunde statt einer je Bild, das entlastet
@@ -178,11 +179,11 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
       if (!force && k.uhr.jetzt() - _lastFlush < 1000) return;
       _flushed += delta;
       _lastFlush = k.uhr.jetzt();
-      await bildladeZaehler(k, -delta);
+      await imageLoadCounter(k, -delta);
     };
     await Promise.all(
       needsImg.map(async p => {
-        await ladeTeilbild(k, p);
+        await loadPartImage(k, p);
         done++;
         await flushProgress(false);
       }),
@@ -193,9 +194,9 @@ async function downloadSetImages(k: KatalogKontext, setNumber: string, waitIfBus
     // Nur den noch nicht gemeldeten Rest verrechnen — deckt Abbruch ab, ohne im
     // Normalfall doppelt abzuziehen.
     const _rest = _pendingAdded - _flushed;
-    if (_rest > 0) await bildladeZaehler(k, -_rest);
+    if (_rest > 0) await imageLoadCounter(k, -_rest);
     if (lockClient) {
-      if (haveXlock) await repo.gibBildSperreFrei(lockClient, n).catch(logAndContinue('teile-enrich:hashtext'));
+      if (haveXlock) await repo.giveImageLockFree(lockClient, n).catch(logAndContinue('teile-enrich:hashtext'));
       lockClient.release();
     }
     resolveLock();

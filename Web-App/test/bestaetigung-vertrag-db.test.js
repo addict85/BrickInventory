@@ -6,20 +6,20 @@
  * bestätigt, antwortet in Tests mit 500.
  *
  * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  in pruefeBestaetigung `mitFaktor = false` (nur Passwort, der alte
+ *   A  in checkConfirmation `withFactor = false` (nur Passwort, der alte
  *      Befund M1) → rot: „… ohne Code" für alle markierten Routen
  *   B  im Vertrag die Marke von DELETE /api/v1/bestand entfernt → rot: „die
  *      Pflichtrouten tragen die Marke"
  *   C  im Vertrag DELETE /users/:id mit `eingabe: { admin_password }` statt
- *      verwalterBestaetigt() → rot: „jede Passwort-Eingabe trägt die Marke"
- *   D  in bestaetigeMitFaktor die Prüfung auf die Marke entfernt → rot:
+ *      adminConfirmed() → rot: „jede Passwort-Eingabe trägt die Marke"
+ *   D  in confirmWithFactor die Prüfung auf die Marke entfernt → rot:
  *      „ohne Marke keine Bestätigung"
  *   E  in routes/api_v1/papierkorb.ts ein eigenes bcrypt.compare( → rot:
  *      „kein zweiter Weg zum Passwortvergleich"
  *   F  (05.11.2026) in NurCode (konto.ts) `password: txtLeer(…)` statt
  *      `z.null()` → rot: „jede Passwort-Eingabe trägt die Marke"
  *   G  (09.11.2026) DELETE /settings/tokens/:tokenId wieder mit
- *      `eingabe: OHNE_RUMPF` statt bestaetigt() → rot: „die Pflichtrouten
+ *      `eingabe: WITHOUT_BODY` statt bestaetigt() → rot: „die Pflichtrouten
  *      tragen die Marke"
  *   H  (15.11.2026) in routes/api_v1/papierkorb.ts `import { verify } from
  *      '@node-rs/argon2'` → rot: „kein zweiter Weg zum Passwortvergleich"
@@ -35,19 +35,19 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const zf = _req('src/factors/secondFactor.js');
-const { VERTRAG } = _req('src/vertrag/index.js');
-const { entschluessele } = _req('src/infra/geheimnis.js');
+const { CONTRACT } = _req('src/vertrag/index.js');
+const { decrypt } = _req('src/infra/geheimnis.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Vertrag-Passwort-1';
 
 /** Was eine Route ausser Passwort und Code braucht, um bis zur Bestätigung zu kommen. */
-const ZUSATZ = {
+const EXTRA = {
   'POST /api/v1/auth/users': { username: `bv_neu_${process.pid}`, password: 'Lang-genug-Passwort-1', is_admin: true },
   'PUT /api/v1/auth/users/:id/admin': { is_admin: true },
   'PUT /api/v1/auth/users/:id/aktiv': { is_active: false },
@@ -86,7 +86,7 @@ const PFLICHT = [
   'POST /api/v1/vouchers/export/pdf-freigabe',
 ];
 /** Vor der Anmeldung gibt es nichts zu bestätigen. */
-const OEFFENTLICH = ['POST /api/v1/auth/login', 'POST /api/v1/auth/register', 'POST /api/v1/auth/reset-password'];
+const PUBLIC = ['POST /api/v1/auth/login', 'POST /api/v1/auth/register', 'POST /api/v1/auth/reset-password'];
 const PASSWORTFELDER = ['password', 'admin_password', 'current', 'password_current'];
 
 async function konto(name, admin) {
@@ -99,19 +99,19 @@ async function konto(name, admin) {
     )
   ).id;
 }
-async function mitFaktor(uid) {
+async function withFactor(uid) {
   await zf.beginSetup(uid);
   const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
   const codes = await zf.confirmSetup(
     uid,
-    zf.hotp(zf.fromBase32(entschluessele(z.secret, zf.secondFactorContext(uid))), zf.timeStep()),
+    zf.hotp(zf.fromBase32(decrypt(z.secret, zf.secondFactorContext(uid))), zf.timeStep()),
   );
   assert.ok(Array.isArray(codes), 'Vorbedingung: Faktor active');
   return codes;
 }
 
 test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const CHEF = `bv_chef_${process.pid}`,
     ZIEL = `bv_ziel_${process.pid}`,
     OHNE = `bv_ohne_${process.pid}`;
@@ -122,7 +122,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
     await db
       .run('DELETE FROM users WHERE id = ANY($1) OR username = $2', [
         [chef, ziel, ohne],
-        ZUSATZ['POST /api/v1/auth/users'].username,
+        EXTRA['POST /api/v1/auth/users'].username,
       ])
       .catch(() => {});
     await db.run("DELETE FROM global_settings WHERE key = 'smtp_host' AND value = 'mail.bv.example'").catch(() => {});
@@ -135,8 +135,8 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
       .catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  const codes = await mitFaktor(chef);
-  await mitFaktor(ziel);
+  const codes = await withFactor(chef);
+  await withFactor(ziel);
   const basis = testServer(_req, { sitzung: { userId: chef, username: CHEF, isAdmin: true }, t }).base;
   const ruf = async (b, schluessel, body) => {
     const [methode, muster] = schluessel.split(' ');
@@ -147,24 +147,24 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json().catch(() => ({})) };
   };
-  const markiert = Object.entries(VERTRAG).filter(([, r]) => r.bestaetigung);
+  const markiert = Object.entries(CONTRACT).filter(([, r]) => r.bestaetigung);
 
   await t.test('die Pflichtrouten tragen die Marke', () => {
-    const fehlt = PFLICHT.filter(k => !VERTRAG[k]?.bestaetigung);
+    const fehlt = PFLICHT.filter(k => !CONTRACT[k]?.bestaetigung);
     assert.deepEqual(fehlt, []);
   });
 
   await t.test('jede Passwort-Eingabe trägt die Marke', () => {
-    const ohneMarke = Object.entries(VERTRAG)
+    const withoutBrand = Object.entries(CONTRACT)
       .filter(
         ([k, r]) =>
-          !OEFFENTLICH.includes(k) &&
+          !PUBLIC.includes(k) &&
           !r.bestaetigung &&
           r.eingabe?.shape &&
           PASSWORTFELDER.some(f => r.eingabe.shape[f]?.safeParse('x').success),
       )
       .map(([k]) => k);
-    assert.deepEqual(ohneMarke, []);
+    assert.deepEqual(withoutBrand, []);
   });
 
   for (const [schluessel, route] of markiert) {
@@ -175,10 +175,10 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
         `%-bestaetigen-konto|${chef}`,
       ]);
       const { passwort, code } = route.bestaetigung;
-      const rumpf = { ...ZUSATZ[schluessel], [passwort]: PASS };
-      const ohneCode = await ruf(basis, schluessel, rumpf);
+      const rumpf = { ...EXTRA[schluessel], [passwort]: PASS };
+      const withoutCode = await ruf(basis, schluessel, rumpf);
       assert.deepEqual(
-        [ohneCode.status, ohneCode.body.code],
+        [withoutCode.status, withoutCode.body.code],
         [400, 'zweiter_faktor_noetig'],
         `${schluessel} ohne Code`,
       );
@@ -199,8 +199,8 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
     });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await zf.isActive(ziel), false);
-    const ohneFaktor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, t }).base;
-    const tok = await ruf(ohneFaktor, 'POST /api/v1/auth/token-create', { password: PASS });
+    const withoutFactor = testServer(_req, { sitzung: { userId: ohne, username: OHNE }, t }).base;
+    const tok = await ruf(withoutFactor, 'POST /api/v1/auth/token-create', { password: PASS });
     assert.equal(tok.status, 200, JSON.stringify(tok.body));
   });
 
@@ -219,17 +219,17 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
     assert.deepEqual(
       treffer,
       ['src/konto/bcryptPool.ts'],
-      'nur der Rückfall des Pools; alle anderen über passwortPasst()',
+      'nur der Rückfall des Pools; alle anderen über passwordFits()',
     );
     // argon2 verify() ginge ebenso an Anmeldung und Bestätigung vorbei.
     const argon2 = dateien
       .filter(f => /['"]@node-rs\/argon2['"]/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
       .map(f => path.relative(ROOT, f).replace(/\\/g, '/'));
-    assert.deepEqual(argon2, ['src/konto/passwortHash.ts'], 'argon2 nur über passwortPasst()/hashePasswort()');
+    assert.deepEqual(argon2, ['src/konto/passwortHash.ts'], 'argon2 nur über passwordFits()/hashePassword()');
   });
 
   await t.test('ohne Marke keine Bestätigung', async () => {
-    const route = VERTRAG['DELETE /api/v1/bestand'];
+    const route = CONTRACT['DELETE /api/v1/bestand'];
     const marke = route.bestaetigung;
     delete route.bestaetigung;
     try {

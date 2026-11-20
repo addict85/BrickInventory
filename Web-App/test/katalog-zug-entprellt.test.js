@@ -11,7 +11,7 @@ const { warte } = require('./helpers/zeit');
 const JS = path.join(__dirname, '..', 'public', 'js');
 
 /** import/export entfernen — die Datei wird hier als klassisches Skript ausgewertet. */
-function ohneModulhuelle(src) {
+function withoutModuleShell(src) {
   return (
     'function registerActions(){}\n' +
     'function tRaw(k, v){ return typeof t === "function" ? t(k, v) : k; }\n' +
@@ -19,24 +19,24 @@ function ohneModulhuelle(src) {
   );
 }
 
-const BLOCK_HOEHE = 900; // Pixel je Seitenblock
+const BLOCK_HEIGHT = 900; // Pixel je Seitenblock
 const SEITEN = 50;
 const SETS = SEITEN * 60;
-const SCHRITTE = 40; // Beruehrungspunkte eines Zuges
-const SCHRITT_MS = 15; // Abstand zwischen zwei Punkten — schneller als die Ruhe
+const STEPS = 40; // Beruehrungspunkte eines Zuges
+const STEP_MS = 15; // Abstand zwischen zwei Punkten — schneller als die Ruhe
 
 /**
  * Einen Zug ueber die ganze Leiste fahren und die Seitenabrufe zaehlen.
- * @param {boolean} entprellt false = Gegenprobe, die Ruhe wird herausgenommen
+ * @param {boolean} debounced false = Gegenprobe, die Ruhe wird herausgenommen
  */
-async function zugMessen(entprellt) {
+async function measureMove(debounced) {
   let code =
-    ohneModulhuelle(fs.readFileSync(path.join(JS, 'bausteine.js'), 'utf8')) +
+    withoutModuleShell(fs.readFileSync(path.join(JS, 'bausteine.js'), 'utf8')) +
     '\n' +
-    ohneModulhuelle(fs.readFileSync(path.join(JS, 'load-guard.js'), 'utf8')) +
+    withoutModuleShell(fs.readFileSync(path.join(JS, 'load-guard.js'), 'utf8')) +
     '\n' +
-    ohneModulhuelle(fs.readFileSync(path.join(JS, 'katalog.js'), 'utf8'));
-  if (!entprellt) {
+    withoutModuleShell(fs.readFileSync(path.join(JS, 'katalog.js'), 'utf8'));
+  if (!debounced) {
     const vorher = code;
     code = code.replace(/_catLadeTimer = setTimeout\(tun, \d+\)/, 'tun()');
     assert.notEqual(
@@ -76,15 +76,15 @@ async function zugMessen(entprellt) {
     });
   }
 
-  const abrufe = [];
-  w.api = (_methode, url) => {
+  const fetches = [];
+  w.api = (_method, url) => {
     if (url.startsWith('/v1/catalog/meta')) {
       return Promise.resolve({ success: true, themes: [], year_min: 2000, year_max: 2026, year_counts: [] });
     }
     if (url.startsWith('/v1/catalog/sets?')) {
       const p = new w.URLSearchParams(url.split('?')[1]);
       const seite = parseInt(p.get('page') || '1', 10);
-      abrufe.push(seite);
+      fetches.push(seite);
       return Promise.resolve({
         success: true,
         total: SETS,
@@ -97,20 +97,20 @@ async function zugMessen(entprellt) {
     }
     return Promise.resolve({ success: false, error: 'unbekannt: ' + url });
   };
-  Object.assign(w, require('./helpers/markup').markupHelfer());
+  Object.assign(w, require('./helpers/markup').markupHelper());
   w.eval(`
     window.G = id => document.getElementById(id);
     window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
     window.t = k => k; window.tRaw = k => k;
-    window.locale = () => 'de-CH'; window.toast = () => {}; window.meldeTreffer = () => {};
+    window.locale = () => 'de-CH'; window.toast = () => {}; window.reportHits = () => {};
     window.PARTS_ICON_SVG = ''; window.setScrollLabel = () => {};
     window.imgUrl = s => s;
-    window.bildTag = o => '<img src="' + o.src + '" alt="">'; window.platzhalterInhalt = () => '';
-    window.thumbUrl = s => s; window.fullUrl = s => s; window.detailZeile = () => '';
+    window.bildTag = o => '<img src="' + o.src + '" alt="">'; window.placeholderContent = () => '';
+    window.thumbUrl = s => s; window.fullUrl = s => s; window.detailRow = () => '';
   `);
 
   // Echte Blocklagen statt der Nullen, die jsdom ohne Layout liefert. Sonst
-  // gilt JEDER Block als sichtbar, _ladeSichtbareSeiten() laedt einmal alles
+  // gilt JEDER Block als sichtbar, _loadVisiblePages() laedt einmal alles
   // und der Zug misst nichts mehr.
   let rollY = 0;
   Object.defineProperty(w, 'scrollY', { get: () => rollY, configurable: true });
@@ -120,45 +120,45 @@ async function zugMessen(entprellt) {
     if (!nr) return { top: 0, bottom: 0, left: 0, right: 0, width: 0, height: 0 };
     const n = parseInt(nr, 10);
     return {
-      top: (n - 1) * BLOCK_HOEHE - rollY,
-      bottom: n * BLOCK_HOEHE - rollY,
+      top: (n - 1) * BLOCK_HEIGHT - rollY,
+      bottom: n * BLOCK_HEIGHT - rollY,
       left: 0,
       right: 0,
       width: 0,
-      height: BLOCK_HOEHE,
+      height: BLOCK_HEIGHT,
     };
   };
 
   w.eval(code);
   w.eval('initCatalog()');
   await warte(300);
-  const vorDemZug = abrufe.length;
+  const beforeTheMove = fetches.length;
 
-  const maxRollen = SEITEN * BLOCK_HOEHE - 800;
-  for (let i = 0; i < SCHRITTE; i++) {
-    rollY = Math.round((i / (SCHRITTE - 1)) * maxRollen);
+  const maxRoles = SEITEN * BLOCK_HEIGHT - 800;
+  for (let i = 0; i < STEPS; i++) {
+    rollY = Math.round((i / (STEPS - 1)) * maxRoles);
     w.dispatchEvent(new w.Event('scroll'));
-    await warte(SCHRITT_MS);
+    await warte(STEP_MS);
   }
   await warte(400); // Ruhe nach dem Loslassen — jetzt darf geladen werden
 
-  const imZug = abrufe.slice(vorDemZug);
+  const inMove = fetches.slice(beforeTheMove);
   const zustand = {
-    anzahl: imZug.length,
-    seiten: [...new Set(imZug)].sort((a, b) => a - b),
-    aufbau: vorDemZug,
+    anzahl: inMove.length,
+    seiten: [...new Set(inMove)].sort((a, b) => a - b),
+    setup: beforeTheMove,
   };
   dom.window.close();
   return zustand;
 }
 
 test('Katalog: ein Zug ueber die Leiste laedt das Ziel, nicht den Weg dorthin', async () => {
-  const mit = await zugMessen(true);
-  const ohne = await zugMessen(false);
+  const mit = await measureMove(true);
+  const ohne = await measureMove(false);
 
   // Der Pruefstand muss ueberhaupt etwas tun: Beim Aufbau wird die erste Seite
   // geholt. Bliebe das aus, waere „wenige Abrufe" bedeutungslos.
-  assert.ok(mit.aufbau >= 1, `Der Aufbau holte keine Seite (${mit.aufbau}) — der Pruefstand laeuft leer`);
+  assert.ok(mit.setup >= 1, `Der Aufbau holte keine Seite (${mit.setup}) — der Pruefstand laeuft leer`);
 
   // Die Gegenprobe belegt, dass der Zug ueberhaupt ueber viele Seiten fuehrt.
   // Ohne sie koennte die Leiste auch nur ein paar Bloecke ueberstreichen.

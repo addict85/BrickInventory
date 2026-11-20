@@ -1,9 +1,9 @@
 import { lagerorte, setBestand } from '../../../db/bestandSicht';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { mengeAus, mengeJoin, teilmengeAus, teilmengeJoin } from '../../../db/bestandsmenge';
-import type { Zeile, DbSchnittstelle } from '../../../db/database';
+import type { Zeile, DbInterface } from '../../../db/database';
 import { figurSichtJoin, FIGUR } from '../../../db/katalogSicht';
-import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
+import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSuche';
 
 // One search for both minifig lists; it searches the number shown on the tile.
 function minifigSearch(nummer: string, name: string, pi: number) {
@@ -12,7 +12,7 @@ function minifigSearch(nummer: string, name: string, pi: number) {
 
 /** Groups are counted, or a minifig from five sets would count five times. */
 export async function groupedMinifigs(
-  db: DbSchnittstelle,
+  db: DbInterface,
   uids: number[],
   f: {
     search?: string | null;
@@ -35,7 +35,7 @@ export async function groupedMinifigs(
     // The minifig's name sits in the catalog; figurSichtJoin follows every
     // query that uses this condition.
     where += ` AND ${minifigSearch('m.fig_number', FIGUR.name, pi)}`;
-    params.push(enthaeltMuster(search));
+    params.push(containsPattern(search));
     pi++;
   }
   const figParams = [...params];
@@ -111,7 +111,7 @@ export async function groupedMinifigs(
 }
 
 export async function manualMinifigsList(
-  db: DbSchnittstelle,
+  db: DbInterface,
   uids: number[],
   search: string | null | undefined,
   seite: { groesse: number; versatz: number } | null,
@@ -120,7 +120,7 @@ export async function manualMinifigsList(
   // Placeholders before LIMIT/OFFSET.
   let suche = '';
   if (search) {
-    params.push(enthaeltMuster(search));
+    params.push(containsPattern(search));
     suche = ` AND ${minifigSearch('m.fig_number', FIGUR.name, params.length)}`;
   }
   let limit = '';
@@ -166,7 +166,7 @@ export async function manualMinifigsList(
   return figs;
 }
 
-export function conditionCountsOfManualMinifigs(db: DbSchnittstelle, uids: number[]) {
+export function conditionCountsOfManualMinifigs(db: DbInterface, uids: number[]) {
   return db.all<{ fkey: string; acq_count: number; used_count: number }>(
     `SELECT LOWER(TRIM(a.fig_number)) AS fkey,
             COUNT(*)::int AS acq_count,
@@ -178,7 +178,7 @@ export function conditionCountsOfManualMinifigs(db: DbSchnittstelle, uids: numbe
   );
 }
 
-export function minifigStats(db: DbSchnittstelle, uids: number[]) {
+export function minifigStats(db: DbInterface, uids: number[]) {
   return db.get<{ types: number; total_quantity: number; manual: number }>(
     `
     SELECT COUNT(*)::int AS types,

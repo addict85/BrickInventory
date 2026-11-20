@@ -1,13 +1,13 @@
 /** The mail factory: every mail reads SMTP and theme from the settings carried by the
  * context at send time, so no module needs the process. */
-import { mit, type Einblick } from '../infra/bereich';
+import { mit, type Inspect } from '../infra/bereich';
 import type { Db } from '../../db/database';
 import * as mailer from './mailer';
 import type { MailDependencies, MailContext } from './context';
 
 export type { MailDependencies, MailContext } from './context';
 
-export function createMail(a: MailDependencies, inspect?: Einblick<MailContext>) {
+export function createMail(a: MailDependencies, inspect?: Inspect<MailContext>) {
   const k: MailContext = { einstellungen: a.einstellungen, konfig: a.konfig, uhr: a.uhr };
   inspect?.(k);
   const services = {

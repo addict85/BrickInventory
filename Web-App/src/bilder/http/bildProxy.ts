@@ -6,29 +6,29 @@ import { APP_ROOT, PUBLIC_DIR, SET_IMAGES_DIR } from '../../infra/appPaths';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { prozessweit } from '../../infra/prozessweit';
-import type { KontoDienste } from '../../konto';
-import { nutzerIdDerAnfrage } from '../../konto/http/anmeldung';
-import { vorDem, ohneFehlendeDatei, fehlertext, meldeFehler } from '../../infra/fehler';
+import type { AccountServices } from '../../konto';
+import { userIdTheRequest } from '../../konto/http/anmeldung';
+import { beforeThe, withoutMissingFile, fehlertext, reportError } from '../../infra/fehler';
 import { streamFileToResponse } from '../../http/httpAntwort';
-import { merkeCacheZuwachs, bildTyp } from '../imgCacheServe';
-import { liefereAusCache } from './bildCacheAuslieferung';
-import { imgProxyFailures, zaehleProxyFehler } from '../imgProxyStats';
-import { proxyAdresse, proxyCacheSchluessel } from '../images';
+import { rememberCacheGrowth, imageType } from '../imgCacheServe';
+import { deliverFromCache } from './bildCacheAuslieferung';
+import { imgProxyFailures, countProxyError } from '../imgProxyStats';
+import { proxyAddress, proxyCacheKey } from '../images';
 import type { Request, Response } from 'express';
 import type { Readable } from 'node:stream';
-import { AbrufFehler, type AbrufStrom } from '../../infra/abruf';
-import { BILD_KOPFZEILEN, BILD_KOPFZEILEN_OHNE_REFERER } from '../../fremdquellen';
+import { AbrufFehler, type FetchStream } from '../../infra/abruf';
+import { IMAGE_HEADERS, IMAGE_HEADERS_WITHOUT_REFERER } from '../../fremdquellen';
 import zlib from 'node:zlib';
-import { setBildVollstaendig } from '../setImages';
-import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../../infra/fremdeAdressen';
+import { setImageComplete } from '../setImages';
+import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../../infra/fremdeAdressen';
 
-import { einmalDekodiert, urlOderNull } from '../../infra/validate';
-import type { BilderDienste } from '../bereich';
+import { onceDecoded, urlOrNull } from '../../infra/validate';
+import type { ImagesServices } from '../bereich';
 
 /** Was der Proxy von der Anwendung braucht: Katalog (Cache, Vorschau, Vormerken) und Konto (Anmeldung, Takt). */
-export interface BildDienste {
-  bilder: BilderDienste;
-  konto: KontoDienste;
+export interface ImageServices {
+  bilder: ImagesServices;
+  konto: AccountServices;
 }
 /** 20 MB, weil grosse Set-Bilder sonst nie vollständig im Speicher landeten. */
 const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
@@ -37,14 +37,14 @@ const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
 
 /** 200 mit Platzhalter statt 404: Den Platzhalter zeigen beide Oberflächen
  * ohnehin, und die Browserkonsole bleibt frei von Fehlzeilen. */
-function sendePlatzhalter(res: Response) {
+function sendPlaceholder(res: Response) {
   // Einmal von Platte: wenige hundert Byte, beim Blättern dutzendfach gebraucht.
   const platzhalter = prozessweit('platzhalterBild', () => {
     try {
       return fs.readFileSync(path.join(PUBLIC_DIR, 'assets', 'set-placeholder.svg'));
     } catch (e) {
       // Ausnahme: Ohne lesbaren Platzhalter antwortet der Proxy 404; das Bild fehlt ja wirklich.
-      meldeFehler('bild-proxy:platzhalter', e);
+      reportError('bild-proxy:platzhalter', e);
       return Buffer.alloc(0);
     }
   });
@@ -60,22 +60,22 @@ function sendePlatzhalter(res: Response) {
 /** Erst mit Referer, dann ohne; ein 404 wird gemerkt. `ersatz` antwortet statt
  * des Fehlers, wenn es kann (etwa mit der Vorschau aus dem Cache).
  * @returns null, wenn schon geantwortet ist */
-async function vomCdn(
-  d: BildDienste,
+async function fromCdn(
+  d: ImageServices,
   url: string,
   cacheKey: string,
   res: Response,
   ersatz: () => Promise<boolean> = async () => false,
-): Promise<AbrufStrom | null> {
+): Promise<FetchStream | null> {
   // Unkomprimiert: Ein komprimierter Körper ergäbe still eine weisse Fläche.
   const HEADER_SETS = [
-    { ...BILD_KOPFZEILEN, 'Accept-Language': 'en-US,en;q=0.9', 'Accept-Encoding': 'identity' },
-    { ...BILD_KOPFZEILEN_OHNE_REFERER, 'Accept-Encoding': 'identity' },
+    { ...IMAGE_HEADERS, 'Accept-Language': 'en-US,en;q=0.9', 'Accept-Encoding': 'identity' },
+    { ...IMAGE_HEADERS_WITHOUT_REFERER, 'Accept-Encoding': 'identity' },
   ] as const;
 
   const holen = (kopfzeilen: Record<string, string>) =>
-    d.bilder.bildOeffnen(url, { maxBytes: PROXY_CACHE_MAX_BYTES, zeitlimitMs: 25_000, kopfzeilen, pool: true });
-  let r: AbrufStrom;
+    d.bilder.openImage(url, { maxBytes: PROXY_CACHE_MAX_BYTES, zeitlimitMs: 25_000, kopfzeilen, pool: true });
+  let r: FetchStream;
   try {
     r = await holen(HEADER_SETS[0]);
     // Einmal ohne Referer nachfassen, BEVOR die Adresse als tot gilt: Der
@@ -102,7 +102,7 @@ async function vomCdn(
     r.verwerfen();
     // NUR 404 merken: 403 ist bei einer Kachelwand oft nur Drosselung.
     if (r.status === 404) {
-      d.bilder.merkeFehlend(cacheKey);
+      d.bilder.rememberMissing(cacheKey);
     }
     if (r.status === 404) imgProxyFailures.notFound++;
     else imgProxyFailures.other++;
@@ -112,7 +112,7 @@ async function vomCdn(
     if (r.status === 404) console.info(meldung.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     else console.error(meldung.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     if (await ersatz()) return null;
-    void (r.status === 404 ? sendePlatzhalter(res) : res.status(r.status || 502).end());
+    void (r.status === 404 ? sendPlaceholder(res) : res.status(r.status || 502).end());
     return null;
   }
   return r;
@@ -120,18 +120,18 @@ async function vomCdn(
 
 /** Was der Proxy vollständig hat, wird das Set-Bild: Ein zweiter Abruf beim CDN
  * scheiterte, wo der erste ging. Die Vorschau erzeugt der Auftrag bildbedarf. */
-async function alsSetBildAblegen(d: BildDienste, cacheFile: string, setNummer: string): Promise<void> {
+async function storeAsSetImage(d: ImageServices, cacheFile: string, setNummer: string): Promise<void> {
   const ziel = path.join(SET_IMAGES_DIR, `${setNummer.replace(/[^a-z0-9-]/gi, '_')}.jpg`);
   const teil = `${ziel}.${process.pid}-${randomUUID()}.teil`;
   await fs.promises.mkdir(SET_IMAGES_DIR, { recursive: true });
   await fs.promises.copyFile(cacheFile, teil);
   await fs.promises.rename(teil, ziel);
-  merkeCacheZuwachs((await fs.promises.stat(ziel)).size, d.bilder.bildGrenzen().cacheMaxBytes);
+  rememberCacheGrowth((await fs.promises.stat(ziel)).size, d.bilder.imageLimits().cacheMaxBytes);
 }
 
 /** Der entpackte Strom geht nebenher in den Cache — erst in .tmp, dann atomar. */
 function inDenCache(
-  d: BildDienste,
+  d: ImageServices,
   body: Readable,
   res: Response,
   o: {
@@ -143,23 +143,23 @@ function inDenCache(
     enc: string;
     expected: number;
     wantThumb: boolean;
-    darfErzeugen: boolean;
-    notiere: () => void;
+    createMay: boolean;
+    note: () => void;
     setNummer: string | null;
   },
 ): void {
-  const { url, cacheDir, cacheFile, thumbFile, contentType, enc, expected, wantThumb, darfErzeugen, notiere } = o;
+  const { url, cacheDir, cacheFile, thumbFile, contentType, enc, expected, wantThumb, createMay, note } = o;
   fs.mkdirSync(cacheDir, { recursive: true });
   // Je ANFRAGE eindeutig: Sonst schrieben gleichzeitige in dieselbe Datei.
   const tmpFile = `${cacheFile}.tmp-${process.pid}-${randomUUID()}`;
   const ws = fs.createWriteStream(tmpFile);
   let bytes = 0,
     aborted = false;
-  const verwirf = (grund: string) => {
+  const discard = (grund: string) => {
     if (aborted) return;
     aborted = true;
     ws.destroy();
-    fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
+    fs.promises.unlink(tmpFile).catch(withoutMissingFile('bild-proxy:unlink'));
     imgProxyFailures.other++;
     imgProxyFailures.lastError = `${grund}: ${url}`;
     console.error(
@@ -170,13 +170,13 @@ function inDenCache(
   body.on('data', (chunk: Buffer) => {
     bytes += chunk.length;
     if (bytes > PROXY_CACHE_MAX_BYTES) {
-      verwirf(`grösser als ${Math.round(PROXY_CACHE_MAX_BYTES / 1024 / 1024)} MB`);
+      discard(`grösser als ${Math.round(PROXY_CACHE_MAX_BYTES / 1024 / 1024)} MB`);
       body.destroy();
       res.destroy();
     }
   });
   body.on('error', (e: Error) => {
-    verwirf(`Abruf abgebrochen (${e.message})`);
+    discard(`Abruf abgebrochen (${e.message})`);
     res.destroy();
   });
   // Der ENTPACKTE Strom geht in den Cache — die Datei ist immer ein echtes Bild.
@@ -192,24 +192,24 @@ function inDenCache(
             .replace(/\r?\n/g, ' ⏎ ')
             .replace(/\n|\r/g, ''),
         );
-        await fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
+        await fs.promises.unlink(tmpFile).catch(withoutMissingFile('bild-proxy:unlink'));
         return;
       }
       await fs.promises.writeFile(cacheFile + '.ct', contentType);
       await fs.promises.rename(tmpFile, cacheFile);
-      merkeCacheZuwachs(st.size, d.bilder.bildGrenzen().cacheMaxBytes);
+      rememberCacheGrowth(st.size, d.bilder.imageLimits().cacheMaxBytes);
       if (o.setNummer)
-        await setBildAusCache(d, url, o.setNummer, cacheFile).catch(e => zaehleProxyFehler('img-proxy:setbild', e));
+        await setImageFromCache(d, url, o.setNummer, cacheFile).catch(e => countProxyError('img-proxy:setbild', e));
       // Gleich miterzeugen, sonst später für eine ganze Kachelwand auf einmal.
       if (wantThumb) {
-        if (darfErzeugen) d.bilder.queueThumb(cacheFile, thumbFile);
-        else notiere();
+        if (createMay) d.bilder.queueThumb(cacheFile, thumbFile);
+        else note();
       }
     } catch (_) {
-      fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink'));
+      fs.promises.unlink(tmpFile).catch(withoutMissingFile('bild-proxy:unlink'));
     }
   });
-  ws.on('error', () => fs.promises.unlink(tmpFile).catch(ohneFehlendeDatei('bild-proxy:unlink')));
+  ws.on('error', () => fs.promises.unlink(tmpFile).catch(withoutMissingFile('bild-proxy:unlink')));
 }
 
 /** Entpacken, auch wenn identity verlangt war: Nicht jedes CDN hält sich daran.
@@ -246,146 +246,146 @@ function entpackt(roh: Readable, enc: string, res: Response, url: string, expect
   return body;
 }
 
-const liegtDa = (datei: string) =>
+const liesDa = (datei: string) =>
   fs.promises.access(datei).then(
     () => true,
     () => false,
   );
 
 /** @returns true, wenn Bild oder Vorschau unter images/sets noch fehlen */
-async function setBildFehlt(d: BildDienste, setNummer: string, quelle: string): Promise<boolean> {
-  if (!(await setBildVollstaendig(setNummer))) return true;
+async function setImageMissing(d: ImageServices, setNummer: string, quelle: string): Promise<boolean> {
+  if (!(await setImageComplete(setNummer))) return true;
   // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht
   // mehr hier. Ohne Warten — ein Schreibfehler darf die Auslieferung nicht aufhalten.
-  void d.bilder.meldeSetBildGeladen(setNummer, quelle).then(ok => {
-    if (!ok) zaehleProxyFehler('img-proxy:setBildLokal', new Error('Eintrag des Set-Bilds gescheitert'));
+  void d.bilder.reportSetImageLoaded(setNummer, quelle).then(ok => {
+    if (!ok) countProxyError('img-proxy:setBildLokal', new Error('Eintrag des Set-Bilds gescheitert'));
   });
   return false;
 }
 
 /** Vorgemerkt wird nur, was der Proxy als Bild hat (Cache oder gedrosselter Abruf),
- * und je Set einmal in einer Frist (bildEinmalVormerken): Sonst füllte ein Konto mit
+ * und je Set einmal in einer Frist (imageOnceReserve): Sonst füllte ein Konto mit
  * erfundenen Set-Nummern die Notizen des Bild-Auftrags. */
-function vormerkenEinmal(d: BildDienste, url: string, setNummer: string): void {
-  d.bilder.bildEinmalVormerken(url, setNummer);
+function reserveOnce(d: ImageServices, url: string, setNummer: string): void {
+  d.bilder.imageOnceReserve(url, setNummer);
 }
 
-function ausSetBildern(
-  d: BildDienste,
+function fromSetImages(
+  d: ImageServices,
   req: Request,
   res: Response,
   setNummer: string,
   wantThumb: boolean,
 ): Promise<boolean> {
   const stamm = path.join(SET_IMAGES_DIR, setNummer.replace(/[^a-z0-9-]/gi, '_'));
-  return liefereAusCache(d.bilder, {
+  return deliverFromCache(d.bilder, {
     res,
     req,
     cacheFile: `${stamm}.jpg`,
     thumbFile: `${stamm}_thumb.jpg`,
     wantThumb,
-    darfErzeugen: false,
-    notiere: () => {},
+    createMay: false,
+    note: () => {},
     streamFileToResponse,
   });
 }
 
 /** Aus dem Cache des Proxys nach images/sets, dann vormerken; ohne Cache-Datei nichts. */
-async function setBildAusCache(d: BildDienste, url: string, setNummer: string, cacheFile: string): Promise<void> {
+async function setImageFromCache(d: ImageServices, url: string, setNummer: string, cacheFile: string): Promise<void> {
   try {
-    await alsSetBildAblegen(d, cacheFile, setNummer);
+    await storeAsSetImage(d, cacheFile, setNummer);
   } catch (e) {
-    return ohneFehlendeDatei('img-proxy:setbild')(e);
+    return withoutMissingFile('img-proxy:setbild')(e);
   }
-  vormerkenEinmal(d, url, setNummer);
+  reserveOnce(d, url, setNummer);
 }
 
-export async function bildDurchreichen(d: BildDienste, req: Request, res: Response) {
+export async function passThroughImage(d: ImageServices, req: Request, res: Response) {
   // Ohne Login-Pflicht ein offener Proxy (Bandbreite, IP-Verschleierung).
-  const proxyUserId = await nutzerIdDerAnfrage(d.konto, req);
+  const proxyUserId = await userIdTheRequest(d.konto, req);
   if (!proxyUserId) return res.status(401).end();
-  const ziel = proxyZiel(String(req.query.url || ''));
+  const ziel = proxyTarget(String(req.query.url || ''));
   if (typeof ziel === 'number') return res.status(ziel).end();
   const url = ziel;
   // Jedes Bild nur einmal holen; Content-Type liegt daneben (.ct).
   const cacheDir = path.join(APP_ROOT, 'data', 'img_proxy_cache');
-  const cacheKey = proxyCacheSchluessel(url);
+  const cacheKey = proxyCacheKey(url);
   const cacheFile = path.join(cacheDir, cacheKey);
   // ?thumb=1: Teilebilder gibt es auf dem CDN nicht verkleinert.
   const wantThumb = req.query.thumb === '1';
   // gen=0: Die Anfrage rechnet nichts, sie hinterlässt eine Notiz für den
   // Auftrag 'bildbedarf' — gedrosselt und nur im Job-Prozess.
-  const darfErzeugen = req.query.gen !== '0';
-  const setNummer = setNummerAusBildAdresse(String(url || ''));
+  const createMay = req.query.gen !== '0';
+  const setNummer = setNumberFromImageAddress(String(url || ''));
   const thumbFile = cacheFile + '_thumb.jpg';
   // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,
   // sobald es einmal über den Proxy gefragt war.
-  const setFehlt = setNummer ? await setBildFehlt(d, setNummer, url) : false;
+  const setMissing = setNummer ? await setImageMissing(d, setNummer, url) : false;
   // images/sets gilt für alle Konten und hat keinen Deckel: Ablegen und vormerken nur für ein Set
   // im Blickfeld des Kontos, sonst füllte ein Konto die Platte mit erfundenen Nummern.
-  const ablegen = setFehlt && !!setNummer && (await d.bilder.setNummerImBlickfeld(proxyUserId, setNummer));
-  const notiere = () => {
-    if (ablegen && setNummer) d.bilder.merkeGebraucht(String(url), setNummer);
+  const ablegen = setMissing && !!setNummer && (await d.bilder.setNumberInScope(proxyUserId, setNummer));
+  const note = () => {
+    if (ablegen && setNummer) d.bilder.rememberUsed(String(url), setNummer);
   };
   // Liegt nur noch die Vorschau im Cache (die Pflege löscht das unbenutzte Original
   // nach 30 Tagen), holt der Proxy das Original neu: Den Abruf des Bild-Jobs mit
   // eigener Kennung weist das CDN ab, ohne diesen Weg bekäme das Set nie eine Datei.
-  const originalFehlt = ablegen && !(await liegtDa(cacheFile));
-  if (ablegen && setNummer && !originalFehlt) await setBildAusCache(d, url, setNummer, cacheFile);
+  const originalMissing = ablegen && !(await liesDa(cacheFile));
+  if (ablegen && setNummer && !originalMissing) await setImageFromCache(d, url, setNummer, cacheFile);
 
   // Liegt das Set-Bild samt Vorschau in images/sets, kommt es von dort statt aus
   // Cache oder CDN: Den Proxy-Cache räumt die Pflege nach 30 Tagen, images/sets nicht.
-  if (setNummer && !setFehlt && (await ausSetBildern(d, req, res, setNummer, wantThumb))) return;
-  const ausCache = () =>
-    liefereAusCache(d.bilder, {
+  if (setNummer && !setMissing && (await fromSetImages(d, req, res, setNummer, wantThumb))) return;
+  const fromCache = () =>
+    deliverFromCache(d.bilder, {
       res,
       req,
       cacheFile,
       thumbFile,
       wantThumb,
-      darfErzeugen,
-      notiere,
+      createMay,
+      note,
       streamFileToResponse,
     });
   // Scheitert der neue Abruf, bleibt es bei der Vorschau aus dem Cache.
-  const ersatz = async () => originalFehlt && (await ausCache());
-  if (!originalFehlt && (await ausCache())) return;
+  const ersatz = async () => originalMissing && (await fromCache());
+  if (!originalMissing && (await fromCache())) return;
 
   // Der Merker (eine Stunde) erspart dem CDN die Frage bei jedem Seitenaufruf.
-  if (d.bilder.istBekanntFehlend(cacheKey) && (await ersatz())) return;
-  if (d.bilder.istBekanntFehlend(cacheKey)) return sendePlatzhalter(res);
+  if (d.bilder.isKnownMissing(cacheKey) && (await ersatz())) return;
+  if (d.bilder.isKnownMissing(cacheKey)) return sendPlaceholder(res);
 
   // Nur Abrufe beim CDN zählen: Jeder füllt Platte und Bandbreite, Treffer nicht.
-  const takt = await d.konto.zaehleAnfrage('bild-abruf', `konto:${proxyUserId}`, 60_000);
-  if (takt.count > d.bilder.bildGrenzen().abrufeJeMinute) {
+  const takt = await d.konto.countRequest('bild-abruf', `konto:${proxyUserId}`, 60_000);
+  if (takt.count > d.bilder.imageLimits().fetchesJeMinute) {
     if (await ersatz()) return;
     res.setHeader('Retry-After', String(takt.waitMin * 60));
     res.setHeader('Cache-Control', 'no-store');
     return res.status(429).end();
   }
 
-  const r = await vomCdn(d, url, cacheKey, res, ersatz);
+  const r = await fromCdn(d, url, cacheKey, res, ersatz);
   if (!r) return;
-  const setZiel = ablegen ? setNummer : null;
-  return weiterreichen(d, r, res, { url, cacheDir, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, setZiel });
+  const setTarget = ablegen ? setNummer : null;
+  return forward(d, r, res, { url, cacheDir, cacheFile, thumbFile, wantThumb, createMay, note, setTarget });
 }
 
 /** Die Adresse aus ?url=, oder der Status, mit dem abgewiesen wird. */
-function proxyZiel(roh: string): string | number {
+function proxyTarget(roh: string): string | number {
   let url = roh;
   if (!url?.startsWith('https://')) return 400;
   // Rebrickable liefert manchmal vorkodierte Adressen — einmal dekodieren.
-  const decoded = einmalDekodiert(url);
+  const decoded = onceDecoded(url);
   if (decoded.startsWith('https://')) url = decoded;
   // Nur bekannte Bild-CDNs; eine unlesbare Adresse ist ebenfalls 403.
-  if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) return 403;
-  return proxyAdresse(url) ?? url;
+  if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) return 403;
+  return proxyAddress(url) ?? url;
 }
 
 /** Die Antwort des CDN an den Client und zugleich in den Cache. */
-function weiterreichen(
-  d: BildDienste,
-  r: AbrufStrom,
+function forward(
+  d: ImageServices,
+  r: FetchStream,
   res: Response,
   o: {
     url: string;
@@ -393,17 +393,17 @@ function weiterreichen(
     cacheFile: string;
     thumbFile: string;
     wantThumb: boolean;
-    darfErzeugen: boolean;
-    notiere: () => void;
-    setZiel: string | null;
+    createMay: boolean;
+    note: () => void;
+    setTarget: string | null;
   },
 ) {
-  const { url, cacheDir, cacheFile, thumbFile, wantThumb, darfErzeugen, notiere, setZiel } = o;
-  const rohTyp = String(r.kopf['content-type'] || 'image/jpeg');
+  const { url, cacheDir, cacheFile, thumbFile, wantThumb, createMay, note, setTarget } = o;
+  const rawType = String(r.kopf['content-type'] || 'image/jpeg');
 
   // Nur Bilder: Auf den erlaubten CDNs liegen teils Nutzer-Uploads, und ein SVG
   // oder HTML liefe sonst unter unserer Herkunft.
-  const mime = vorDem(rohTyp, ';').trim().toLowerCase();
+  const mime = beforeThe(rawType, ';').trim().toLowerCase();
   if (!mime.startsWith('image/') || mime === 'image/svg+xml') {
     r.verwerfen();
     imgProxyFailures.other++;
@@ -414,7 +414,7 @@ function weiterreichen(
 
   // Nur eine vollständige Datei darf in den Cache.
   const expected = parseInt(String(r.kopf['content-length'] || '0'), 10) || 0;
-  const contentType = bildTyp(rohTyp);
+  const contentType = imageType(rawType);
   res.setHeader('Content-Type', contentType);
   // Mit Länge: Eine chunked-Antwort puffert ein Reverse-Proxy womöglich lange.
   if (expected > 0) res.setHeader('Content-Length', String(expected));
@@ -434,9 +434,9 @@ function weiterreichen(
     enc,
     expected,
     wantThumb,
-    darfErzeugen,
-    notiere,
-    setNummer: setZiel,
+    createMay,
+    note,
+    setNummer: setTarget,
   });
 
   // Abbruch beim Scrollen: Die CDN-Verbindung muss sofort zurück in den Pool.
@@ -456,8 +456,8 @@ function weiterreichen(
 /** Das Bild wird unter dieser Nummer für alle Konten abgelegt; deshalb zählt
  * nur der ganze Pfad ohne Anfrageteil, sonst legte `…/parts/x.png?/media/sets/10294-1.jpg`
  * ein fremdes Bild als Set ab. */
-export function setNummerAusBildAdresse(adresse: string): string | null {
-  const u = urlOderNull(adresse);
+export function setNumberFromImageAddress(adresse: string): string | null {
+  const u = urlOrNull(adresse);
   if (u?.protocol !== 'https:' || u.hostname !== 'cdn.rebrickable.com' || u.search || u.hash) return null;
   // Nur das Hauptbild: Unter /media/sets/<set>/<n>.jpg liegen Zusatzbilder, das erste gefragte
   // würde sonst für alle Konten das Set-Bild.

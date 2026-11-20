@@ -11,7 +11,7 @@
  *   c) In deleteGlobalValues nur den ERSTEN Schlüssel gelöscht
  *      (`WHERE key = $1`, `[keys[0]]`) → Teilschritt 3 rot.
  *
- *   d) (05.11.2026) setGlobalSetting ohne Prüfung gegen GLOBALE_REGELN → rot:
+ *   d) (05.11.2026) setGlobalSetting ohne Prüfung gegen GLOBAL_RULES → rot:
  *      „ein Schlüssel ohne Regel wird nicht geschrieben“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -21,15 +21,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { getGlobalSetting, setGlobalSetting, deleteGlobalValues } = _req('src/settings/settings.js');
-const { setzeZustand, liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
+const { setzeZustand, liesZustand, deleteState } = require('./helpers/sources').testArea('auftraege').laufzustand;
 
 test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   {
     const c = await db.pool.connect();
     try {
@@ -39,7 +39,7 @@ test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }
     }
   }
 
-  // Echte Schlüssel: Ein Schlüssel ohne Regel in GLOBALE_REGELN wird nicht geschrieben.
+  // Echte Schlüssel: Ein Schlüssel ohne Regel in GLOBAL_RULES wird nicht geschrieben.
   const A = 'smtp_host',
     B = 'smtp_user',
     T = 'smtp_from';
@@ -63,7 +63,7 @@ test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }
     // 2. Laufzustand: gelöscht heisst, die Zeile ist weg.
     await setzeZustand(T, 'x');
     assert.equal(await liesZustand(T), 'x');
-    await loescheZustand(T);
+    await deleteState(T);
     assert.equal(await liesZustand(T), null, 'abgearbeitet heisst: die Zeile ist weg');
     await setGlobalSetting(T, 'bleibt');
 
@@ -87,7 +87,7 @@ test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }
     await db.run(`DELETE FROM global_settings WHERE key = ANY($1)`, [alle]).catch(() => {});
     for (const z of vorher)
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]).catch(() => {});
-    await loescheZustand(T).catch(() => {});
+    await deleteState(T).catch(() => {});
     await db.pool.end().catch(() => {});
   }
 });

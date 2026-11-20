@@ -2,18 +2,18 @@
  * Eine Webapp-Sitzung endet nach der Höchstdauer, auch wenn sie benutzt wird.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  `app.use(sitzungsHoechstdauer())` in startup/app.ts entfernt → rot in
+ *   A  `app.use(sessionMaxDuration())` in startup/app.ts entfernt → rot in
  *      sitzung-app-db.test.js „nach der Höchstdauer ist niemand mehr angemeldet“
- *   B  in sitzungsHoechstdauer `s.destroy(...)` durch `next()` ersetzt → rot:
+ *   B  in sessionMaxDuration `s.destroy(...)` durch `next()` ersetzt → rot:
  *      „trotz Betrieb endet die Sitzung nach der Höchstdauer"
  *   C  `angemeldetAm` in establishSession nicht gesetzt → rot: „die Anmeldung
  *      setzt den Zeitpunkt" (die Frist begänne erst beim nächsten Aufruf)
  *   Verwalter (14.11.2026 gemessen, je einzeln):
- *   D  in sitzungsHoechstdauer die Leerlaufprüfung für Verwalter gestrichen → rot:
+ *   D  in sessionMaxDuration die Leerlaufprüfung für Verwalter gestrichen → rot:
  *      „eine Verwaltersitzung endet nach kurzem Leerlauf …“ (nach dem Leerlauf noch angemeldet)
- *   E  das Nachführen von zuletztAm gestrichen → rot: dieselbe Prüfung („solange sie
+ *   E  das Nachführen von lastlyAt gestrichen → rot: dieselbe Prüfung („solange sie
  *      arbeitet“: trotz Anfragen abgemeldet)
- *   F  verwalterHoechstMs durch hoechstMs ersetzt → rot: „… und nach ihrer kürzeren Höchstdauer“
+ *   F  adminMaxMs durch maxMs ersetzt → rot: „… und nach ihrer kürzeren Höchstdauer“
  *   G  in sitzungsfristen() das Math.min für den Leerlauf gestrichen → rot: „Verwalter nie länger …“
  */
 const test = require('node:test');
@@ -24,22 +24,22 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
-const { sitzungsHoechstdauer } = _req('src/konto/sitzungsFrist.js');
+const { sessionMaxDuration } = _req('src/konto/sitzungsFrist.js');
 const establishSession = (...a) =>
-  _req('src/konto/http/anmeldung.js').establishSession(require('./helpers/sources').testDienste().konto, ...a);
+  _req('src/konto/http/anmeldung.js').establishSession(require('./helpers/sources').testServices().konto, ...a);
 
 const { warte } = require('./helpers/zeit');
 
 const LANG = 3_600_000;
 
-function testApp(hoechstMs, verwalter = {}) {
+function testApp(maxMs, verwalter = {}) {
   const app = express();
   app.use(session({ secret: 'test-geheimnis', resave: false, saveUninitialized: false }));
   app.use(
-    sitzungsHoechstdauer({
-      hoechstMs,
-      verwalterHoechstMs: verwalter.hoechstMs ?? hoechstMs,
-      verwalterLeerlaufMs: verwalter.leerlaufMs ?? LANG,
+    sessionMaxDuration({
+      maxMs,
+      adminMaxMs: verwalter.maxMs ?? maxMs,
+      adminIdleMs: verwalter.idleMs ?? LANG,
     }),
   );
   app.post('/anmelden', async (req, res) => {
@@ -90,7 +90,7 @@ async function anmelden(base, verwalter) {
 test('Verwaltersitzungen haben kürzere Fristen', async t => {
   await t.test('eine Verwaltersitzung endet nach kurzem Leerlauf, solange sie arbeitet aber nicht', async () => {
     const LEER = 3_000;
-    const { srv, base } = testApp(LANG, { leerlaufMs: LEER });
+    const { srv, base } = testApp(LANG, { idleMs: LEER });
     t.after(() => new Promise(r => srv.close(r)));
     const chef = await anmelden(base, true);
     const nutzer = await anmelden(base, false);
@@ -106,13 +106,13 @@ test('Verwaltersitzungen haben kürzere Fristen', async t => {
   });
 
   await t.test('… und nach ihrer kürzeren Höchstdauer', async () => {
-    const HOECHST = 2_000;
-    const { srv, base } = testApp(LANG, { hoechstMs: HOECHST });
+    const MAX = 2_000;
+    const { srv, base } = testApp(LANG, { maxMs: MAX });
     t.after(() => new Promise(r => srv.close(r)));
     const chef = await anmelden(base, true);
     const nutzer = await anmelden(base, false);
     assert.equal(await chef.wer(), 8);
-    await warte(Math.max(0, chef.am + HOECHST + 300 - Date.now()));
+    await warte(Math.max(0, chef.am + MAX + 300 - Date.now()));
     assert.equal(await chef.wer(), null);
     assert.equal(await nutzer.wer(), 7);
   });
@@ -126,12 +126,12 @@ test('Verwaltersitzungen haben kürzere Fristen', async t => {
       sitzungVerwalterLeerlaufMin: 30,
     });
     assert.deepEqual(f, {
-      hoechstMs: 2 * 3_600_000,
-      verwalterHoechstMs: 2 * 3_600_000,
-      verwalterLeerlaufMs: 10 * 60_000,
+      maxMs: 2 * 3_600_000,
+      adminMaxMs: 2 * 3_600_000,
+      adminIdleMs: 10 * 60_000,
     });
     const vorgabe = sitzungsfristen(_req('src/infra/konfig.js').ladeKonfig({}));
-    assert.equal(vorgabe.verwalterLeerlaufMs, 30 * 60_000, 'Vorgabe 30 Minuten');
-    assert.equal(vorgabe.verwalterHoechstMs, 12 * 3_600_000, 'Vorgabe 12 Stunden');
+    assert.equal(vorgabe.adminIdleMs, 30 * 60_000, 'Vorgabe 30 Minuten');
+    assert.equal(vorgabe.adminMaxMs, 12 * 3_600_000, 'Vorgabe 12 Stunden');
   });
 });

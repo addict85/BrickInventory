@@ -1,9 +1,9 @@
 import { lagerorte } from '../../../db/bestandSicht';
-import type { DbSchnittstelle, Treffer } from '../../../db/database';
+import type { DbInterface, Treffer } from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { teilSichtJoin, TEIL } from '../../../db/katalogSicht';
-import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
+import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSuche';
 
 /** Both paths (summary and live) return the same shape, so the UIs don't need to
  * know where the rows came from. */
@@ -15,7 +15,7 @@ export interface PartsFilter {
   spare?: '0' | '1' | null;
   set_number?: string | null;
   storage?: string | null;
-  ohneManuelle?: boolean;
+  withoutManual?: boolean;
 }
 
 export type PartsOrder = 'farbe' | 'name' | 'menge';
@@ -31,8 +31,8 @@ function orderSql(o: PartsOrder, sp: { farbe: string; name: string; menge: strin
 }
 
 /** `pi` is the placeholder for `%text%`. */
-function partsSearch(nummer: string, name: string, blNummer: string, pi: number) {
-  return `(${nummer} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E} OR ${blNummer} ILIKE $${pi}${E})`;
+function partsSearch(nummer: string, name: string, blNumber: string, pi: number) {
+  return `(${nummer} ILIKE $${pi}${E} OR ${name} ILIKE $${pi}${E} OR ${blNumber} ILIKE $${pi}${E})`;
 }
 
 export interface PartRow {
@@ -58,7 +58,7 @@ export interface Page {
   ordnung: PartsOrder;
 }
 
-export function stockColors(db: DbSchnittstelle, uids: number[], fromSummary: boolean) {
+export function stockColors(db: DbInterface, uids: number[], fromSummary: boolean) {
   type Farbe = { color_name: string | null; color_hex: string | null; unique_parts: number; total_quantity: number };
   if (fromSummary)
     return db.all<Farbe>(
@@ -90,7 +90,7 @@ export function stockColors(db: DbSchnittstelle, uids: number[], fromSummary: bo
   );
 }
 
-export async function pageFromSummary(db: DbSchnittstelle, uids: number[], f: PartsFilter, s: Page) {
+export async function pageFromSummary(db: DbInterface, uids: number[], f: PartsFilter, s: Page) {
   const cond: string[] = ['user_id = ANY($1)'];
   const params: unknown[] = [uids];
   // The filter sends the color name, not the ID — same as the live path.
@@ -112,7 +112,7 @@ export async function pageFromSummary(db: DbSchnittstelle, uids: number[], f: Pa
   }
   if (f.search) {
     cond.push(partsSearch('part_number', 'part_name', 'bl_part_number', params.length + 1));
-    params.push(enthaeltMuster(f.search));
+    params.push(containsPattern(f.search));
   }
   const where = cond.join(' AND ');
   const multi = uids.length > 1;
@@ -178,10 +178,10 @@ function partsWhere(uids: number[], f: PartsFilter) {
   // Spare is a property of the set list; without a row there, there is none.
   if (f.spare === '0') where += ' AND NOT COALESCE(tm_k.is_spare, false)';
   if (f.spare === '1') where += ' AND COALESCE(tm_k.is_spare, false)';
-  if (f.ohneManuelle) where += " AND COALESCE(p.source,'set') <> 'manual'";
+  if (f.withoutManual) where += " AND COALESCE(p.source,'set') <> 'manual'";
   if (f.search) {
     where += ` AND ${partsSearch('p.part_number', TEIL.name, blNummerSql('p.part_number'), pi)}`;
-    params.push(enthaeltMuster(f.search));
+    params.push(containsPattern(f.search));
     pi++;
   }
   // Storage as its own filter, by name, from the stock location view (lo).
@@ -193,7 +193,7 @@ function partsWhere(uids: number[], f: PartsFilter) {
 }
 
 /** With a set filter, no set-count multiplier, because that is about the parts OF a set. */
-export async function pageLive(db: DbSchnittstelle, uids: number[], f: PartsFilter, s: Page) {
+export async function pageLive(db: DbInterface, uids: number[], f: PartsFilter, s: Page) {
   const { where, params, pi } = partsWhere(uids, f);
   // ::int: total_quantity's JSON type must not depend on the branch.
   const qtyExpr = f.set_number
@@ -247,7 +247,7 @@ export async function pageLive(db: DbSchnittstelle, uids: number[], f: PartsFilt
   return { total: anzahl?.c ?? 0, zeilen };
 }
 
-export function usedManualParts(db: DbSchnittstelle, uids: number[]) {
+export function usedManualParts(db: DbInterface, uids: number[]) {
   return db.all<{ pid: string; color_id: number; any_used: number }>(
     `SELECT ${blNummerSql('p.part_number')} AS pid, p.color_id,
             MAX(CASE WHEN pa.condition='U' THEN 1 ELSE 0 END) AS any_used
@@ -260,7 +260,7 @@ export function usedManualParts(db: DbSchnittstelle, uids: number[]) {
   );
 }
 
-export async function hasUnseenBlNumber(db: DbSchnittstelle, uids: number[]): Promise<boolean> {
+export async function hasUnseenBlNumber(db: DbInterface, uids: number[]): Promise<boolean> {
   return !!(await db.get<Treffer>(
     `SELECT 1 FROM parts p
      LEFT JOIN bl_mapping m ON m.type = 'part' AND m.rb_id = p.part_number
@@ -269,7 +269,7 @@ export async function hasUnseenBlNumber(db: DbSchnittstelle, uids: number[]): Pr
   ));
 }
 
-export function inventoryAsParts(db: DbSchnittstelle, inventoryId: number, setNumber: string) {
+export function inventoryAsParts(db: DbInterface, inventoryId: number, setNumber: string) {
   return db.all<PartRow>(
     `
         SELECT ip.part_num AS part_number,
@@ -290,7 +290,7 @@ export function inventoryAsParts(db: DbSchnittstelle, inventoryId: number, setNu
   );
 }
 
-export function categories(db: DbSchnittstelle, uids: number[], fromSummary: boolean) {
+export function categories(db: DbInterface, uids: number[], fromSummary: boolean) {
   type Kategorie = { category_name: string | null; label: string | null; unique_parts: number; total_quantity: number };
   const categoryJoin = (spalte: string, nummer: string) => `
       LEFT JOIN rb_part_categories rc
@@ -333,8 +333,8 @@ export function categories(db: DbSchnittstelle, uids: number[], fromSummary: boo
   );
 }
 
-export async function stats(db: DbSchnittstelle, uids: number[], fromSummary: boolean) {
-  type Roh = {
+export async function stats(db: DbInterface, uids: number[], fromSummary: boolean) {
+  type Raw = {
     unique_parts: string | number | null;
     unique_colors: string | number | null;
     total_parts: string | number | null;
@@ -343,7 +343,7 @@ export async function stats(db: DbSchnittstelle, uids: number[], fromSummary: bo
   // list below shows both. The total stays without individual parts;
   // those are added as manual_parts (breakdown in the tile).
   const r = fromSummary
-    ? await db.get<Roh>(
+    ? await db.get<Raw>(
         `
       WITH arten AS (
         SELECT part_number, color_id FROM parts_summary WHERE user_id = ANY($1)
@@ -354,7 +354,7 @@ export async function stats(db: DbSchnittstelle, uids: number[], fromSummary: bo
              (SELECT COALESCE(SUM(total_quantity), 0) FROM parts_summary WHERE user_id = ANY($1)) AS total_parts`,
         [uids],
       )
-    : await db.get<Roh>(
+    : await db.get<Raw>(
         `
     SELECT COUNT(DISTINCT p.part_number) AS unique_parts,
            COUNT(DISTINCT p.color_id)    AS unique_colors,
@@ -409,7 +409,7 @@ export interface ManualPart {
 }
 
 export function manualParts(
-  db: DbSchnittstelle,
+  db: DbInterface,
   uids: number[],
   f: { search?: string | null; storage?: string | null },
   seite: { groesse: number; versatz: number } | null,
@@ -417,7 +417,7 @@ export function manualParts(
   const params: unknown[] = [uids];
   let filter = '';
   if (f.search) {
-    params.push(enthaeltMuster(f.search));
+    params.push(containsPattern(f.search));
     filter = ` AND ${partsSearch('t.part_number', TEIL.name, blNummerSql('t.part_number'), params.length)}`;
   }
   if (f.storage) {
@@ -471,7 +471,7 @@ export function manualParts(
 type Bestand = { gesamt: number; lose: number };
 
 /** gesamt includes the set multiplier, lose only from manual acquisitions. */
-export function ownedParts(db: DbSchnittstelle, uids: number[], nummern: string[], farbIds: number[]) {
+export function ownedParts(db: DbInterface, uids: number[], nummern: string[], farbIds: number[]) {
   return db.all<Bestand & { part_number: string; color_id: number }>(
     `SELECT p.part_number,
             p.color_id,
@@ -492,7 +492,7 @@ export function ownedParts(db: DbSchnittstelle, uids: number[], nummern: string[
   );
 }
 
-export function ownedMinifigs(db: DbSchnittstelle, uids: number[], nummern: string[]) {
+export function ownedMinifigs(db: DbInterface, uids: number[], nummern: string[]) {
   return db.all<Bestand & { part_number: string }>(
     `SELECT m.fig_number                                                AS part_number,
             COALESCE(SUM(CASE WHEN COALESCE(m.source,'set') = 'manual'

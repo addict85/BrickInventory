@@ -20,29 +20,29 @@
  *      „das Protokollfenster lädt sein Skript als Datei“
  *   H  `import './aktionen.js';` aus main.js gestrichen → rot: alle Fälle hier
  */
-const { istAppModul } = require('../scripts/build-frontend');
+const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { baueTestbuendel } = require('./helpers/buendel');
+const { buildTestbuendel } = require('./helpers/buendel');
 
-process.env.TEST_BUENDEL = baueTestbuendel(
+process.env.TEST_BUENDEL = buildTestbuendel(
   'aktionen-dispatcher',
   "import { actionNames, registerActions } from './registry.js';\n" +
     'window.__registry = { actionNames, registerActions };\n',
 );
-const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/oberflaeche');
 
 const PUB = path.join(__dirname, '..', 'public');
 
 /** Handlernamen im Markup und in den Vorlagen (Struktur); ob sie angemeldet sind, sagt die Laufzeit. */
-function namenImMarkup() {
+function namesInMarkup() {
   const quellen = [
     fs.readFileSync(path.join(PUB, 'index.html'), 'utf8'),
     ...fs
       .readdirSync(path.join(PUB, 'js'))
-      .filter(f => istAppModul(f) && f !== 'registry.js')
+      .filter(f => isAppModule(f) && f !== 'registry.js')
       .map(f =>
         fs
           .readFileSync(path.join(PUB, 'js', f), 'utf8')
@@ -59,9 +59,9 @@ function namenImMarkup() {
 }
 
 test('jeder Handler aus Markup und Vorlagen ist angemeldet', async () => {
-  const { w } = await oeffneOberflaeche();
+  const { w } = await openUi();
   try {
-    const namen = namenImMarkup();
+    const namen = namesInMarkup();
     assert.ok(namen.length > 100, `nur ${namen.length} Namen gefunden — greift die Suche noch?`);
     const angemeldet = new Set(w.__registry.actionNames());
     assert.deepEqual(
@@ -75,24 +75,24 @@ test('jeder Handler aus Markup und Vorlagen ist angemeldet', async () => {
 });
 
 test('ein Klick reicht Argumente, Feldwert und this durch', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
     const gesehen = [];
     w.__registry.registerActions({
-      probeAktion(...args) {
+      probeAction(...args) {
         gesehen.push({ dies: this, args });
       },
     });
-    const wirt = d.createElement('div');
-    wirt.innerHTML =
-      '<button id="p1" data-click="probeAktion" data-arg="1" data-arg2="b" data-arg3="c">x</button>' +
-      '<input id="p2" data-click="probeAktion" data-arg="k" data-val="1" value="42">' +
+    const host = d.createElement('div');
+    host.innerHTML =
+      '<button id="p1" data-click="probeAction" data-arg="1" data-arg2="b" data-arg3="c">x</button>' +
+      '<input id="p2" data-click="probeAction" data-arg="k" data-val="1" value="42">' +
       '<button id="p3" data-click="gibtEsNicht">x</button>';
-    d.body.append(wirt);
+    d.body.append(host);
     d.getElementById('p1').click();
     d.getElementById('p2').click();
-    const warnungen = [];
-    w.console.warn = (...a) => warnungen.push(a.join(' '));
+    const warnings = [];
+    w.console.warn = (...a) => warnings.push(a.join(' '));
     d.getElementById('p3').click();
     assert.equal(gesehen.length, 2);
     assert.equal(gesehen[0].dies, d.getElementById('p1'), 'this ist das auslösende Element');
@@ -101,7 +101,7 @@ test('ein Klick reicht Argumente, Feldwert und this durch', async () => {
     assert.equal(gesehen[0].args[3]?.type, 'click');
     assert.deepEqual(gesehen[1].args.slice(0, 2), ['k', '42'], 'data-val="1" reicht den Feldwert');
     assert.ok(
-      warnungen.some(t => t.includes('unknown handler') && t.includes('gibtEsNicht')),
+      warnings.some(t => t.includes('unknown handler') && t.includes('gibtEsNicht')),
       'Ein Tippfehler im Handlernamen muss auffallen',
     );
   } finally {
@@ -110,14 +110,14 @@ test('ein Klick reicht Argumente, Feldwert und this durch', async () => {
 });
 
 /** Ein Bild, das nicht lädt: error steigt nicht auf, der Dispatcher hört in der Capture-Phase. */
-const fehlschlag = (w, img) => img.dispatchEvent(new w.Event('error'));
+const failure = (w, img) => img.dispatchEvent(new w.Event('error'));
 
 test('ein Bildfehler wird einmal wiederholt, bevor der Rückfall greift', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
-    const wirt = d.createElement('div');
-    wirt.innerHTML = '<img id="b1" alt="" src="/images/sets/1-1.jpg" data-orig="/images/sets/1-1-gross.jpg">';
-    d.body.append(wirt);
+    const host = d.createElement('div');
+    host.innerHTML = '<img id="b1" alt="" src="/images/sets/1-1.jpg" data-orig="/images/sets/1-1-gross.jpg">';
+    d.body.append(host);
     const img = d.getElementById('b1');
     const gesetzt = [];
     const echt = Object.getOwnPropertyDescriptor(w.HTMLImageElement.prototype, 'src');
@@ -130,14 +130,14 @@ test('ein Bildfehler wird einmal wiederholt, bevor der Rückfall greift', async 
         echt.set.call(this, v);
       },
     });
-    fehlschlag(w, img);
+    failure(w, img);
     assert.equal(img.dataset.retried, '1', 'Kein zweiter Versuch vorgemerkt');
     assert.ok(img.getAttribute('src'), 'Das Bild ist nach dem ersten Fehler schon weg');
     // Nach einer Sekunde dieselbe Adresse noch einmal, über ein frisch gesetztes Attribut.
     assert.ok(await warte(() => gesetzt.length > 0, 3000), 'Der zweite Versuch kommt nicht');
     assert.equal(gesetzt[0], 'http://localhost/images/sets/1-1.jpg');
     // Erst der zweite Fehler greift zum Rückfall: die volle Auflösung aus data-orig.
-    fehlschlag(w, img);
+    failure(w, img);
     assert.equal(img.getAttribute('src'), '/images/sets/1-1-gross.jpg');
   } finally {
     w.close();
@@ -145,20 +145,20 @@ test('ein Bildfehler wird einmal wiederholt, bevor der Rückfall greift', async 
 });
 
 test('der Zoom behält seine Adresse, wenn das Bild nicht lädt', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
     const img = d.getElementById('lightbox-img');
     assert.equal(img.dataset.onerror, 'keep');
     img.dataset.retried = '1';
     img.setAttribute('src', '/images/sets/2-1.jpg');
-    const warnungen = [];
-    w.console.warn = (...a) => warnungen.push(a.join(' '));
-    fehlschlag(w, img);
-    fehlschlag(w, img);
+    const warnings = [];
+    w.console.warn = (...a) => warnings.push(a.join(' '));
+    failure(w, img);
+    failure(w, img);
     assert.equal(img.getAttribute('src'), '/images/sets/2-1.jpg', 'Der Zoom zeigt sonst ein leeres Overlay');
     assert.equal(img.dataset.fallbackDone, undefined);
     assert.ok(
-      warnungen.some(t => t.includes('[img]') && t.includes('/images/sets/2-1.jpg')),
+      warnings.some(t => t.includes('[img]') && t.includes('/images/sets/2-1.jpg')),
       'Die Konsole nennt die Adresse',
     );
   } finally {
@@ -167,7 +167,7 @@ test('der Zoom behält seine Adresse, wenn das Bild nicht lädt', async () => {
 });
 
 test('das Protokollfenster lädt sein Skript als Datei', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
     let geschrieben = '';
     w.open = () => ({

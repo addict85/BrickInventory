@@ -1,14 +1,14 @@
 /**
  * Tabellen ohne user_id teilen sich alle Konten. Welche das sind, steht unten
- * in GEMEINSAM, je Tabelle mit Art und ob Eingaben eines Kontos hinein dürfen.
+ * in SHARED, je Tabelle mit Art und ob Eingaben eines Kontos hinein dürfen.
  * Die Tabellen kommen aus dem echten Schema, die schreibenden Stellen aus dem
  * Quelltext (eine neue Stelle auf eine Katalogtabelle muss hier eingetragen …
  *
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  routes/api_v1/wanted.ts: merkeNummer schreibt immer merkeBlNummer →
+ *   A  routes/api_v1/wanted.ts: rememberNumber schreibt immer rememberBlNumber →
  *      rot: „Eingaben eines Kontos landen in keiner gemeinsamen Tabelle“
  *      (bl_mapping trägt die Marke)
- *   B  merkeFigur() in src/katalog/katalogPflege.ts ohne den Zweig für `von` →
+ *   B  rememberMinifig() in src/katalog/katalogPflege.ts ohne den Zweig für `von` →
  *      rot: dieselbe Prüfung (minifigs_catalog)
  *   C  ein `INSERT INTO part_catalog` in src/parts/repository/manualParts.ts
  *      → rot: „jede schreibende Stelle auf eine Katalogtabelle ist eingetragen“
@@ -42,7 +42,7 @@
  * Ein Lesebaustein in db/ zählt beim Bereich, der ihn importiert; was er liest, zeigt sein Ergebnis.
  * Liegt der Bereich unter dem Besitzer, bekommt er den Baustein über seinen Lesevertrag (src/dienste.ts
  * reicht ihn). Gegenproben (15.11.2026 gemessen, je einzeln):
- *   M  src/bilder/repository/bildBlickfeld.ts importiert gezaehlteSets wieder aus db/bestandSicht →
+ *   M  src/bilder/repository/bildBlickfeld.ts importiert countedSets wieder aus db/bestandSicht →
  *      rot: „… aufwärts über db/“ ['src/bilder → price_alerts', 'src/bilder → sets', 'src/bilder → wanted']
  *   N  src/katalog/repository/katalogSuche.ts importiert mengeJoin wieder aus db/bestandsmenge → rot:
  *      dieselbe Prüfung, ['src/katalog → set_acquisitions']
@@ -50,16 +50,16 @@
  *      sets“; setzt es den Namen zur Laufzeit zusammen, bleibt es grün: gezählt wird das Ergebnis.
  *
  * Wählt eine Datei den Tabellennamen zur Laufzeit, zählt, was sie beim Aufruf über einen mitschreibenden
- * Zugang liest und schreibt (DYNAMISCH, messeDatei). Gegenproben (15.11.2026 gemessen, je einzeln):
+ * Zugang liest und schreibt (DYNAMISCH, measureFile). Gegenproben (15.11.2026 gemessen, je einzeln):
  *   P  src/bestand/repository/lagerort.ts: TABELLEN.set = 'instructions' → rot: „gemessen, wie
  *      eingetragen“, „nur er schreibt hinein“ ['…/lagerort.ts → instructions'] und „lesen nie
  *      aufwärts“ ['src/bestand → instructions']; die Regex auf wörtliche Namen sah beides nicht
- *   Q  cacheZahlen() in src/katalog/repository/katalogCache.ts zählt wieder zaehle('price_cache') →
+ *   Q  cacheNumbers() in src/katalog/repository/katalogCache.ts zählt wieder zaehle('price_cache') →
  *      rot: „gemessen, wie eingetragen“ und „lesen nie aufwärts“ ['src/katalog → price_cache']
  *   R  src/wanted/repository/wanted.ts liest wieder `FROM sets s` statt setBestand() → rot:
  *      „25 direkte Lesestellen (abwärts), erlaubt sind 24“
  *
- * Die Eingaben macht jedes Konto in seinem Namen (alsKonto) als Laufzeitrolle, wie im
+ * Die Eingaben macht jedes Konto in seinem Namen (asAccount) als Laufzeitrolle, wie im
  * Betrieb; Testdaten und die Suche danach laufen über die Eigentümerin.
  *
  * REQUIRE_DB=1.
@@ -72,15 +72,15 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, ohneKommentare, testDaten, alsKonto, testQuellen } = require('./helpers/sources');
+const { buildAndRequire, ohneKommentare, testData, asAccount, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
 
-// Ohne Netz: Rebrickable kennt nichts (testQuellen), dann bleibt nur die Eingabe selbst.
-testQuellen(null, {
+// Ohne Netz: Rebrickable kennt nichts (testSources), dann bleibt nur die Eingabe selbst.
+testSources(null, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
   setAngaben: async () => null,
@@ -91,7 +91,7 @@ const BETRIEB = 'betrieb'; // Zustand des Servers, keine Angaben über Teile
 const KONTO = 'account_id'; // gehört einem Konto über einen anderen Schlüssel
 
 /** type, eingabe (false oder warum Eingaben hinein dürfen), schreiber (nur Katalog). */
-const GEMEINSAM = {
+const SHARED = {
   bl_mapping: { type: KATALOG, eingabe: false, schreiber: ['src/katalog/repository/blZuordnung.ts'] },
   catalog_cache: {
     type: KATALOG,
@@ -202,7 +202,7 @@ const GEMEINSAM = {
 };
 
 /** Dateien, die einen Tabellennamen zur Laufzeit wählen (nicht über den Lesevertrag `l.`): was sie
- * lesen und schreiben, gemessen (messeDatei). Steht es hier, ist die Messung vollständig; Besitzer
+ * lesen und schreiben, gemessen (measureFile). Steht es hier, ist die Messung vollständig; Besitzer
  * und Stufen gelten für das Gemessene wie für wörtliche Namen. */
 const DYNAMISCH = {
   'src/bestand/repository/erfassungen.ts': {
@@ -328,7 +328,7 @@ const DYNAMISCH = {
   },
 };
 
-const SCHREIBE =
+const WRITE =
   /\b(?:INSERT INTO|DELETE FROM|TRUNCATE(?: TABLE)?)\s+(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)|(?<!DO )\bUPDATE\s+(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)[^;`'"]*?\bSET\b/g;
 const LIES = /\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?(?:[a-z_][a-z0-9_]*\.)?([a-z_][a-z0-9_]*)\b/g;
 const NAME_ZUR_LAUFZEIT =
@@ -336,7 +336,7 @@ const NAME_ZUR_LAUFZEIT =
 
 /** Dateien unter src/, deren SQL einen Tabellennamen aus einer eigenen Variablen nimmt. Ausgenommen:
  * der Lesevertrag (`l.…`) und Lesebausteine aus db/, deren Ergebnis die Prüfung über db/ misst. */
-function dateienMitNamenZurLaufzeit() {
+function filesWithNamesToRuntime() {
   const aus = [];
   (function lauf(d) {
     for (const n of fs.readdirSync(d)) {
@@ -344,7 +344,7 @@ function dateienMitNamenZurLaufzeit() {
       if (fs.statSync(p).isDirectory()) lauf(p);
       else if (n.endsWith('.ts')) {
         const s = ohneKommentare(fs.readFileSync(p, 'utf8'));
-        const ausDb = new Set(
+        const fromDb = new Set(
           [...s.matchAll(/^import\s+\{([^}]*)\}\s+from\s+'(?:\.\.?\/)+db\/\w+'/gm)].flatMap(m =>
             m[1].split(',').map(x =>
               x
@@ -355,7 +355,7 @@ function dateienMitNamenZurLaufzeit() {
           ),
         );
         const eigen = [...s.matchAll(NAME_ZUR_LAUFZEIT)].some(
-          m => !(m[1] === 'l' && /[.[]/.test(m[2] ?? '')) && !(ausDb.has(m[1]) && (m[2] ?? '').trim() === '('),
+          m => !(m[1] === 'l' && /[.[]/.test(m[2] ?? '')) && !(fromDb.has(m[1]) && (m[2] ?? '').trim() === '('),
         );
         if (eigen) aus.push(path.relative(ROOT, p).split(path.sep).join('/'));
       }
@@ -389,16 +389,16 @@ const ARTEN = ['set', 'part', 'fig', 'teil', 'figur'];
 /** Ruft jeden Export der Datei je Art über einen Zugang, der die Abfragen nur mitschreibt. Wählt der
  * Aufrufer den Namen, dann aus einer exportierten Liste der Datei: Ihre Werte sind weitere Proben.
  * @returns gelesene und geschriebene Tabellen, soweit das Schema sie kennt */
-async function messeDatei(datei, bekannt) {
+async function measureFile(datei, bekannt) {
   const liest = new Set(),
     schreibt = new Set();
   const c = chamaeleon();
-  const merke = sql => {
+  const remember = sql => {
     for (const m of String(sql).matchAll(LIES)) if (bekannt.has(m[1])) liest.add(m[1]);
-    for (const m of String(sql).matchAll(SCHREIBE)) if (bekannt.has(m[1] ?? m[2])) schreibt.add(m[1] ?? m[2]);
+    for (const m of String(sql).matchAll(WRITE)) if (bekannt.has(m[1] ?? m[2])) schreibt.add(m[1] ?? m[2]);
   };
   const antwort = value => async sql => {
-    merke(sql);
+    remember(sql);
     return value;
   };
   const zugang = {
@@ -472,31 +472,31 @@ function stufenAusDoku() {
   );
 }
 
-/** „aufwärts“, „katalog“ oder „abwärts“ für den Leser `b` einer Tabelle des Besitzers `eigner`. */
-function leseRichtung(stufen, b, eigner) {
-  if (eigner === 'src/katalog') return 'katalog';
-  return stufen.get(eigner) > stufen.get(b) ? 'aufwärts' : 'abwärts';
+/** „aufwärts“, „katalog“ oder „abwärts“ für den Leser `b` einer Tabelle des Besitzers `owner`. */
+function readDirection(stufen, b, owner) {
+  if (owner === 'src/katalog') return 'katalog';
+  return stufen.get(owner) > stufen.get(b) ? 'aufwärts' : 'abwärts';
 }
 
-function fremdeLeser(besitzer) {
-  const paare = new Set();
+function foreignReader(besitzer) {
+  const pairs = new Set();
   (function lauf(d) {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
       if (fs.statSync(p).isDirectory()) lauf(p);
       else if (n.endsWith('.ts')) {
         const datei = path.relative(ROOT, p).split(path.sep).join('/');
-        const b = bereichVon(datei);
+        const b = areaOf(datei);
         const s = ohneKommentare(fs.readFileSync(p, 'utf8'));
         for (const m of s.matchAll(/\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?([a-z_][a-z0-9_]*)\b/g))
-          if (besitzer.has(m[1]) && besitzer.get(m[1]) !== b) paare.add(`${b} → ${m[1]}`);
+          if (besitzer.has(m[1]) && besitzer.get(m[1]) !== b) pairs.add(`${b} → ${m[1]}`);
       }
     }
   })(path.join(ROOT, 'src'));
-  return [...paare].sort();
+  return [...pairs].sort();
 }
 
-const bereichVon = datei => (datei.startsWith('src/') ? datei.split('/').slice(0, 2).join('/') : datei.split('/')[0]);
+const areaOf = datei => (datei.startsWith('src/') ? datei.split('/').slice(0, 2).join('/') : datei.split('/')[0]);
 
 const LESE = /\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?([a-z_][a-z0-9_]*)\b/g;
 
@@ -513,22 +513,22 @@ async function lesebausteine(_req) {
     je[modul] = {};
     for (const [name, value] of Object.entries(_req(`db/${modul}.js`))) {
       const tabellen = new Set();
-      const merke = sql => {
+      const remember = sql => {
         for (const m of String(sql).matchAll(LESE)) tabellen.add(m[1]);
       };
       const zugang = {
         get: async sql => {
-          merke(sql);
+          remember(sql);
           return null;
         },
         all: async sql => {
-          merke(sql);
+          remember(sql);
           return [];
         },
-        run: async sql => merke(sql),
+        run: async sql => remember(sql),
         toString: () => '$9',
       };
-      if (typeof value === 'string') merke(value);
+      if (typeof value === 'string') remember(value);
       else if (typeof value === 'function')
         for (const type of ['part', 'fig', 'set']) {
           const proben = [
@@ -543,7 +543,7 @@ async function lesebausteine(_req) {
             try {
               const r = value(...probe);
               if (r && typeof r.then === 'function') await r.catch(() => {});
-              else merke(r);
+              else remember(r);
             } catch {
               // Eine Probe, die nicht passt, liest nichts.
             }
@@ -556,8 +556,8 @@ async function lesebausteine(_req) {
 }
 
 /** Paare „Bereich → Tabelle“, die ein Bereich über importierte Lesebausteine liest (auch `* as`). */
-function leserUeberDb(bausteine) {
-  const paare = new Set();
+function readerViaDb(bausteine) {
+  const pairs = new Set();
   const dateien = [];
   const lauf = d => {
     for (const n of fs.readdirSync(d)) {
@@ -575,13 +575,13 @@ function leserUeberDb(bausteine) {
     lauf(d);
   for (const p of dateien) {
     const datei = path.relative(ROOT, p).split(path.sep).join('/');
-    const b = datei === 'src/dienste.ts' ? datei : bereichVon(datei);
+    const b = datei === 'src/dienste.ts' ? datei : areaOf(datei);
     const s = fs.readFileSync(p, 'utf8');
     for (const m of s.matchAll(/^import\s+(?:type\s+)?(\{[^}]*\}|\*\s+as\s+\w+)\s+from\s+'(?:\.\.?\/)+db\/(\w+)'/gm)) {
-      const baustein = bausteine[m[2]];
-      if (!baustein) continue;
+      const component = bausteine[m[2]];
+      if (!component) continue;
       const namen = m[1].startsWith('*')
-        ? Object.keys(baustein)
+        ? Object.keys(component)
         : m[1]
             .slice(1, -1)
             .split(',')
@@ -593,16 +593,16 @@ function leserUeberDb(bausteine) {
                   .split(/\s+as\s+/)[0],
             )
             .filter(Boolean);
-      for (const name of namen) for (const t of baustein[name] ?? []) paare.add(`${b} → ${t}`);
+      for (const name of namen) for (const t of component[name] ?? []) pairs.add(`${b} → ${t}`);
     }
   }
-  return [...paare].sort();
+  return [...pairs].sort();
 }
 
 const MARKE = 'zzmarke7q';
 
 /** Datei → geschriebene Tabellen, ohne Kommentare; `DO UPDATE SET` ist kein Tabellenname. */
-function schreibendeStellen() {
+function writingPlaces() {
   const tabellen = new Map(),
     dynamisch = new Set();
   (function lauf(d) {
@@ -657,21 +657,21 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
          SELECT 1 FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attname = 'user_id' AND NOT a.attisdropped)`)
     ).map(z => z.t);
     assert.ok(ohne.length > 30, `nur ${ohne.length} Tabellen gefunden — greift die Abfrage noch?`);
-    assert.deepEqual(ohne.sort(), Object.keys(GEMEINSAM).sort());
+    assert.deepEqual(ohne.sort(), Object.keys(SHARED).sort());
   });
 
   // Gemessen einmal, für die Prüfungen auf Schreiber, Besitzer und Stufen unten.
   const gemessen = {};
   await t.test('Tabellennamen zur Laufzeit: gemessen, wie eingetragen', async () => {
     const bekannt = new Set(Object.values(BESITZER).flat());
-    const dateien = dateienMitNamenZurLaufzeit();
+    const dateien = filesWithNamesToRuntime();
     assert.ok(dateien.length > 5, `nur ${dateien.length} Dateien — greift die Suche noch?`);
-    for (const d of dateien) gemessen[d] = await messeDatei(d, bekannt);
+    for (const d of dateien) gemessen[d] = await measureFile(d, bekannt);
     assert.deepEqual(gemessen, DYNAMISCH, 'Neue Datei oder neue Tabelle zur Laufzeit: in DYNAMISCH eintragen');
   });
 
   await t.test('jede schreibende Stelle auf eine Katalogtabelle ist eingetragen', () => {
-    const { tabellen, dynamisch } = schreibendeStellen();
+    const { tabellen, dynamisch } = writingPlaces();
     assert.ok(tabellen.size > 40, `nur ${tabellen.size} Tabellen beschrieben — greift die Suche noch?`);
     assert.ok(dynamisch.size > 0, 'Selbstbeweis: Schreibstellen mit Namen zur Laufzeit werden erkannt');
     assert.deepEqual(
@@ -683,7 +683,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
       for (const name of schreibt) (tabellen.get(name) ?? tabellen.set(name, new Set()).get(name)).add(d);
     const ist = {},
       soll = {};
-    for (const [name, e] of Object.entries(GEMEINSAM)) {
+    for (const [name, e] of Object.entries(SHARED)) {
       if (e.type !== KATALOG) continue;
       ist[name] = [...(tabellen.get(name) ?? [])].sort();
       soll[name] = [...e.schreiber].sort();
@@ -715,13 +715,13 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     );
     const fremd = [];
     // Tabellen ausserhalb des Schemas (Kopien vor Migrationen, temporäre) haben keinen Besitzer.
-    for (const [tabelle, dateien] of schreibendeStellen().tabellen)
+    for (const [tabelle, dateien] of writingPlaces().tabellen)
       for (const d of dateien)
-        if (besitzer.has(tabelle) && bereichVon(d) !== besitzer.get(tabelle)) fremd.push(`${d} → ${tabelle}`);
+        if (besitzer.has(tabelle) && areaOf(d) !== besitzer.get(tabelle)) fremd.push(`${d} → ${tabelle}`);
     assert.ok(Object.keys(gemessen).length > 5, 'Selbstbeweis: die Messung der Namen zur Laufzeit lief');
     for (const [d, { schreibt }] of Object.entries(gemessen))
       for (const tabelle of schreibt)
-        if (bereichVon(d) !== besitzer.get(tabelle) && !fremd.includes(`${d} → ${tabelle}`))
+        if (areaOf(d) !== besitzer.get(tabelle) && !fremd.includes(`${d} → ${tabelle}`))
           fremd.push(`${d} → ${tabelle}`);
     assert.deepEqual(
       fremd.sort(),
@@ -757,22 +757,22 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     const stufen = stufenAusDoku();
     assert.ok(stufen.size > 20, `nur ${stufen.size} Stufen in docs/architektur.md — greift die Suche noch?`);
     const je = { aufwärts: [], katalog: [], abwärts: [] };
-    const paare = new Set(fremdeLeser(besitzer));
+    const pairs = new Set(foreignReader(besitzer));
     assert.ok(Object.keys(gemessen).length > 5, 'Selbstbeweis: die Messung der Namen zur Laufzeit lief');
     // Was die Messung über einen importierten Lesebaustein sieht, zählt die Prüfung über db/ unten.
-    const ueberDb = new Set(leserUeberDb(await lesebausteine(_req)));
+    const viaDb = new Set(readerViaDb(await lesebausteine(_req)));
     for (const [d, { liest }] of Object.entries(gemessen))
       for (const tabelle of liest) {
-        const paar = `${bereichVon(d)} → ${tabelle}`;
-        if (besitzer.get(tabelle) !== bereichVon(d) && !ueberDb.has(paar)) paare.add(paar);
+        const paar = `${areaOf(d)} → ${tabelle}`;
+        if (besitzer.get(tabelle) !== areaOf(d) && !viaDb.has(paar)) pairs.add(paar);
       }
-    for (const paar of [...paare].sort()) {
+    for (const paar of [...pairs].sort()) {
       const [b, tabelle] = paar.split(' → ');
       assert.ok(stufen.has(b), `${b} hat keine Stufe`);
-      je[leseRichtung(stufen, b, besitzer.get(tabelle))].push(paar);
+      je[readDirection(stufen, b, besitzer.get(tabelle))].push(paar);
     }
     // Selbstbeweis der Einteilung, an echten Stufen.
-    assert.equal(leseRichtung(stufen, 'src/finanzen', besitzer.get('sets')), 'aufwärts');
+    assert.equal(readDirection(stufen, 'src/finanzen', besitzer.get('sets')), 'aufwärts');
     assert.ok(je.abwärts.includes('src/management → sets'), 'Selbstbeweis: die Verwaltung liest sets direkt');
     assert.ok(je.katalog.length > 10, 'Selbstbeweis: Katalogtabellen werden gelesen');
     assert.deepEqual(
@@ -780,16 +780,16 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
       [],
       'Ein tieferer Bereich liest die Tabelle eines höheren: Form im eigenen Lesevertrag nennen, SQL über src/dienste.ts reichen.',
     );
-    for (const [type, schranke] of [
+    for (const [type, limit] of [
       ['katalog', KATALOG_LESER_HOECHSTENS],
       ['abwärts', ABWAERTS_LESER_HOECHSTENS],
     ]) {
       assert.ok(
-        je[type].length <= schranke,
-        `${je[type].length} direkte Lesestellen (${type}), erlaubt sind ${schranke}.\n${je[type].join('\n')}`,
+        je[type].length <= limit,
+        `${je[type].length} direkte Lesestellen (${type}), erlaubt sind ${limit}.\n${je[type].join('\n')}`,
       );
-      if (je[type].length < schranke)
-        console.log(`  ℹ fremde Leser (${type}): ${je[type].length} (Schranke ${schranke}) — Schranke nachziehen`);
+      if (je[type].length < limit)
+        console.log(`  ℹ fremde Leser (${type}): ${je[type].length} (Schranke ${limit}) — Schranke nachziehen`);
     }
   });
 
@@ -801,11 +801,11 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.deepEqual(bausteine.bestandSicht?.setBestand, ['sets'], 'setBestand liest sets');
     assert.deepEqual(bausteine.zugangSicht?.familieLebt, ['api_tokens']);
     assert.ok(bausteine.bestandSicht?.setZaehlt?.includes('price_alerts'), 'setZaehlt liest über ZAEHLT');
-    assert.ok(bausteine.bestandsmenge?.mengeDesSets?.includes('sets'), 'asynchrone Bausteine zählen');
-    const leser = leserUeberDb(bausteine);
-    assert.ok(leser.includes('src/sets → set_acquisitions'), 'Selbstbeweis: sets liest eigene Käufe über db/');
-    assert.ok(leser.includes('src/dienste.ts → price_alerts'), 'Selbstbeweis: `* as` zählt alle Exporte');
-    const aufwaerts = leser.filter(paar => {
+    assert.ok(bausteine.bestandsmenge?.quantityOfSets?.includes('sets'), 'asynchrone Bausteine zählen');
+    const reader = readerViaDb(bausteine);
+    assert.ok(reader.includes('src/sets → set_acquisitions'), 'Selbstbeweis: sets liest eigene Käufe über db/');
+    assert.ok(reader.includes('src/dienste.ts → price_alerts'), 'Selbstbeweis: `* as` zählt alle Exporte');
+    const aufwaerts = reader.filter(paar => {
       const [b, tabelle] = paar.split(' → ');
       assert.ok(stufen.has(b), `${b} hat keine Stufe`);
       return besitzer.has(tabelle) && stufen.get(besitzer.get(tabelle)) > stufen.get(b);
@@ -831,7 +831,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     const { addManualPart } = _req('src/parts/manualParts.js');
     const { addManualMinifig, updateManualMinifig, importMinifigsCsv } = _req('src/minifigs/manualMinifigs.js');
     const bild = `https://cdn.rebrickable.com/${MARKE}.png`;
-    await alsKonto(A, async () => {
+    await asAccount(A, async () => {
       await addManualPart(A, {
         part_number: '3005',
         color_id: 4,
@@ -851,7 +851,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
         unit_price: 1,
       });
     });
-    await alsKonto(B, async () => {
+    await asAccount(B, async () => {
       await addManualMinifig(B, { fig_number: 'fig-000001', quantity: 1, unit_price: 1 });
       await updateManualMinifig(B, 'fig-000001', { bl_fig_number: `${MARKE}2` });
       await importMinifigsCsv(B, `fig_number,fig_name,bl_fig_number,quantity\nfig-000003,${MARKE} csv,${MARKE}3,1\n`);
@@ -883,7 +883,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.equal(bericht.korrekturen?.angewandt, 2, JSON.stringify(bericht));
 
     const befallen = [];
-    for (const [name, e] of Object.entries(GEMEINSAM)) {
+    for (const [name, e] of Object.entries(SHARED)) {
       if (e.eingabe !== false) continue;
       const n = (await db.get(`SELECT count(*)::int AS n FROM ${name} x WHERE x::text LIKE $1`, [`%${MARKE}%`])).n;
       if (n) befallen.push(`${name} (${n})`);

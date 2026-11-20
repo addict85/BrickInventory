@@ -2,18 +2,18 @@
  * und Prozess nicht für alle belegen. Im Speicher, denn es gibt genau einen Web-Prozess. */
 import { prozessweit } from '../infra/prozessweit';
 
-export const GLEICHZEITIG = { upload: 2, voucherPdf: 1, strom: 6 } as const;
-export type Schranke = keyof typeof GLEICHZEITIG;
+export const CONCURRENT = { upload: 2, voucherPdf: 1, strom: 6 } as const;
+export type Schranke = keyof typeof CONCURRENT;
 
 /** Je Prozess, nicht je Zugang: Der Platz ist Speicher dieses Prozesses (src/infra/prozessweit.ts). */
-const plaetze = () => prozessweit('kontoSchranke', () => new Map<string, number>());
+const places = () => prozessweit('kontoSchranke', () => new Map<string, number>());
 
 /** @returns die Freigabe (mehrfach rufbar), oder null, wenn das Konto schon am Limit ist. */
-export function belegeKontoPlatz(art: Schranke, konto: number): (() => void) | null {
+export function receiptsAccountSpace(art: Schranke, konto: number): (() => void) | null {
   const schluessel = `${art}:${konto}`;
-  const offen = plaetze();
+  const offen = places();
   const n = offen.get(schluessel) ?? 0;
-  if (n >= GLEICHZEITIG[art]) return null;
+  if (n >= CONCURRENT[art]) return null;
   offen.set(schluessel, n + 1);
   let frei = false;
   return () => {

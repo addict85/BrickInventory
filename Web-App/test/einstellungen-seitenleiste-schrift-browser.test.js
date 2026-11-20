@@ -10,10 +10,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
+const { startApp } = require('./helpers/app-browser');
 
 /** Je Eintrag: ragt sein Text über den Eintrag, ragt der Eintrag über die Spalte, steht der Text sichtbar? */
-const MESSEN = `(() => {
+const MEASURE = `(() => {
   const nav = document.querySelector('#global-settings-grid > .einst-nav'), n = nav.getBoundingClientRect();
   const funde = [];
   for (const a of nav.querySelectorAll('.einst-link')) {
@@ -32,7 +32,7 @@ const MESSEN = `(() => {
 })()`;
 
 test('Einstellungen: Abschnittsliste bei grosser Schrift am Desktop', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, { name: `einstnav_${process.pid}`, alleDesigns: true });
+  const app = await startApp(t, { name: `einstnav_${process.pid}`, allDesigns: true });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -54,7 +54,7 @@ test('Einstellungen: Abschnittsliste bei grosser Schrift am Desktop', { concurre
         await b.auswerten(`document.documentElement.setAttribute('data-theme', '${design}');
           document.documentElement.style.fontSize = '${schrift}'; true`);
         await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
-        const m = await b.auswerten(MESSEN);
+        const m = await b.auswerten(MEASURE);
         assert.ok(m.eintraege >= 6, `nur ${m.eintraege} Einträge gemessen`);
         assert.deepEqual(m.funde, [], `Spalte ${m.spalte} px`);
         assert.ok(m.seite <= m.innen, `Seite ${m.seite} px breit bei ${m.innen} px Fenster`);

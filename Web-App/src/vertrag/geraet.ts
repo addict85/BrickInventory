@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { type Route, zeit, Erfolg, OHNE_RUMPF } from './grund';
+import { type Route, zeit, Erfolg, WITHOUT_BODY } from './grund';
 
 /** Die Schritte, die die App hinter ihren Schrittschutz stellt (src/geraete/geraeteChallenge.ts). */
-export const AKTIONEN = ['gutschein', 'verwaltung', 'zweiter_faktor'] as const;
+export const ACTIONS = ['gutschein', 'verwaltung', 'zweiter_faktor'] as const;
 
 export const SchrittChallenge = z.looseObject({
   success: z.literal(true),
@@ -14,7 +14,7 @@ export const SchrittChallenge = z.looseObject({
 
 export const SchrittFreigabe = z.looseObject({
   success: z.literal(true),
-  aktion: z.enum(AKTIONEN),
+  aktion: z.enum(ACTIONS),
   gueltig_bis: zeit,
 });
 
@@ -22,7 +22,7 @@ export const SchrittFreigabe = z.looseObject({
 export const SchluesselNonce = z.looseObject({ success: z.literal(true), nonce: z.string() });
 
 export const routen = {
-  'POST /api/v1/geraet/schluessel/nonce': { antwort: SchluesselNonce, geheim: true, eingabe: OHNE_RUMPF },
+  'POST /api/v1/geraet/schluessel/nonce': { antwort: SchluesselNonce, geheim: true, eingabe: WITHOUT_BODY },
   'POST /api/v1/geraet/schluessel': {
     antwort: Erfolg,
     /** `kette`: die Zertifikate des Keystore-Schlüssels (Base64-DER, Blatt zuerst). `oeffentlich`
@@ -35,7 +35,7 @@ export const routen = {
   'POST /api/v1/geraet/schritt/challenge': {
     antwort: SchrittChallenge,
     geheim: true,
-    eingabe: z.strictObject({ aktion: z.enum(AKTIONEN) }),
+    eingabe: z.strictObject({ aktion: z.enum(ACTIONS) }),
   },
   'POST /api/v1/geraet/schritt/freigabe': {
     antwort: SchrittFreigabe,

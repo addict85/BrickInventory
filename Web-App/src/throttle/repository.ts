@@ -1,11 +1,11 @@
-import type { DbSchnittstelle } from '../../db/database';
+import type { DbInterface } from '../../db/database';
 
 /** `ongoing` counts checks currently in flight, so concurrent attempts can't jointly
  * jump the limit. */
 
 export type CounterRow = { count: string; wait_min: string; seit: string };
 
-export function read(db: DbSchnittstelle, key: string, windowMin: number) {
+export function read(db: DbInterface, key: string, windowMin: number) {
   return db.get<CounterRow>(
     `SELECT count, EXTRACT(EPOCH FROM (first_at + make_interval(mins => $2) - NOW()))/60 AS wait_min,
             EXTRACT(EPOCH FROM (NOW() - COALESCE(last_at, first_at))) AS seit
@@ -15,7 +15,7 @@ export function read(db: DbSchnittstelle, key: string, windowMin: number) {
   );
 }
 
-export async function increase(db: DbSchnittstelle, key: string, windowMin: number): Promise<number> {
+export async function increase(db: DbInterface, key: string, windowMin: number): Promise<number> {
   return Number(
     (
       await db.get<{ count: string }>(
@@ -43,12 +43,7 @@ export type LockState = {
   seit: string;
 };
 
-export async function lock(
-  tx: DbSchnittstelle,
-  key: string,
-  windowMin: number,
-  ongoingDecayS: number,
-): Promise<LockState> {
+export async function lock(tx: DbInterface, key: string, windowMin: number, ongoingDecayS: number): Promise<LockState> {
   await tx.run(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at, ongoing)
                 VALUES ($1, 0, NOW(), NULL, 0) ON CONFLICT (key) DO NOTHING`,
@@ -65,7 +60,7 @@ export async function lock(
   ))!;
 }
 
-export async function occupySlot(tx: DbSchnittstelle, key: string, ongoing: number, fresh: boolean): Promise<void> {
+export async function occupySlot(tx: DbInterface, key: string, ongoing: number, fresh: boolean): Promise<void> {
   await tx.run(
     `UPDATE rate_limit_attempts
         SET ongoing = $2, ongoing_since = NOW(),
@@ -76,19 +71,19 @@ export async function occupySlot(tx: DbSchnittstelle, key: string, ongoing: numb
   );
 }
 
-export async function freeSlot(db: DbSchnittstelle, key: string): Promise<void> {
+export async function freeSlot(db: DbInterface, key: string): Promise<void> {
   await db.run('UPDATE rate_limit_attempts SET ongoing = GREATEST(ongoing - 1, 0) WHERE key = $1', [key]);
 }
 
-export async function deleteCounter(db: DbSchnittstelle, key: string): Promise<void> {
+export async function deleteCounter(db: DbInterface, key: string): Promise<void> {
   await db.run('DELETE FROM rate_limit_attempts WHERE key = $1', [key]);
 }
 
-export async function deleteCountersWithPrefix(db: DbSchnittstelle, prefix: string): Promise<void> {
+export async function deleteCountersWithPrefix(db: DbInterface, prefix: string): Promise<void> {
   await db.run('DELETE FROM rate_limit_attempts WHERE left(key, length($1)) = $1', [prefix]);
 }
 
-export async function deleteOldCounters(db: DbSchnittstelle, knownMin: number): Promise<number> {
+export async function deleteOldCounters(db: DbInterface, knownMin: number): Promise<number> {
   return (
     (
       await db.run(
@@ -103,7 +98,7 @@ export async function deleteOldCounters(db: DbSchnittstelle, knownMin: number): 
 }
 
 export async function countUp(
-  db: DbSchnittstelle,
+  db: DbInterface,
   key: string,
   windowMin: number,
 ): Promise<{ count: string; wait_min: string }> {
@@ -121,7 +116,7 @@ export async function countUp(
 }
 
 /** Per account and hour (balance lookups): the limit only falls after a full hour. */
-export function hourlyState(tx: DbSchnittstelle, key: string) {
+export function hourlyState(tx: DbInterface, key: string) {
   return tx.get<{ anzahl: number; warten_sek: number }>(
     `SELECT count AS anzahl,
        CEIL(EXTRACT(EPOCH FROM (first_at + INTERVAL '1 hour' - NOW())))::int AS warten_sek
@@ -130,7 +125,7 @@ export function hourlyState(tx: DbSchnittstelle, key: string) {
   );
 }
 
-export async function countHour(tx: DbSchnittstelle, key: string): Promise<void> {
+export async function countHour(tx: DbInterface, key: string): Promise<void> {
   await tx.run(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
      ON CONFLICT (key) DO UPDATE SET last_at = NOW(),
@@ -141,7 +136,7 @@ export async function countHour(tx: DbSchnittstelle, key: string): Promise<void>
 }
 
 /** Count and return state in one step: one row, if the day was free. */
-export function countOncePerDay(db: DbSchnittstelle, key: string) {
+export function countOncePerDay(db: DbInterface, key: string) {
   return db.get<{ key: string }>(
     `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, 1, NOW(), NOW())
      ON CONFLICT (key) DO UPDATE SET count = 1, first_at = NOW(), last_at = NOW()

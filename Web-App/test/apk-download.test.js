@@ -19,11 +19,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { oeffneOberflaeche, sicht } = require('./helpers/oberflaeche');
+const { openUi, sicht } = require('./helpers/oberflaeche');
 
 /** Der Knopf, wie ihn die geöffnete Sicht „App“ zeigt. */
 async function knopf() {
-  const o = await oeffneOberflaeche({ '/v1/settings/tokens': { success: true, tokens: [] } });
+  const o = await openUi({ '/v1/settings/tokens': { success: true, tokens: [] } });
   try {
     await sicht(o.w, 'app');
     const a = o.d.querySelector('a.apk-btn');

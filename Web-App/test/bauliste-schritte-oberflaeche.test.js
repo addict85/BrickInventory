@@ -27,7 +27,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const TEIL = {
@@ -39,8 +39,8 @@ const TEIL = {
   total_quantity: 6,
 };
 
-async function erstelle(teile, nummern = '10294') {
-  const o = await oeffneOberflaeche({
+async function create(teile, nummern = '10294') {
+  const o = await openUi({
     '/v1/sets/10294-1/parts-list': { success: true, parts: teile },
     '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
     '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
@@ -61,7 +61,7 @@ async function erstelle(teile, nummern = '10294') {
 }
 
 test('Aufbau: Beschriftungen, Zurücksetzen nicht rot', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
     assert.equal(text(d.querySelector('label[for="pl-setnr"]')), 'Setnummern (mehrere mit Komma trennen)');
     assert.equal(text(d.querySelector('label[for="pl-bl-condition"]')), 'Zustand für BrickLink');
@@ -74,7 +74,7 @@ test('Aufbau: Beschriftungen, Zurücksetzen nicht rot', async () => {
 });
 
 test('Hinzufügen rechnet sofort, ohne zweiten Schritt; „Neu berechnen“ erst mit einem Set', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
     '/v1/sets/10294-1/parts-list': { success: true, parts: [TEIL] },
     '/v1/sets/10294-1/minifigs-list': { success: true, figs: [] },
@@ -111,7 +111,7 @@ test('Hinzufügen rechnet sofort, ohne zweiten Schritt; „Neu berechnen“ erst
 });
 
 test('Entfernen rechnet neu', async () => {
-  const { w, d } = await erstelle([TEIL], '10294, 99999-1');
+  const { w, d } = await create([TEIL], '10294, 99999-1');
   try {
     d.querySelector('#pl-sets .pl-chip:nth-child(2) [data-click="plRemoveSet"]').click();
     assert.ok(
@@ -125,7 +125,7 @@ test('Entfernen rechnet neu', async () => {
 });
 
 test('leeres Ergebnis: Grund, keine Exporte', async () => {
-  const { w, d } = await erstelle([]);
+  const { w, d } = await create([]);
   try {
     assert.equal(d.getElementById('pl-optionen').hidden, true, 'Export und Optionen bei 0 Teilen');
     assert.equal(d.getElementById('btn-pl-pdf').disabled, true, 'PDF bei 0 Teilen');
@@ -137,7 +137,7 @@ test('leeres Ergebnis: Grund, keine Exporte', async () => {
 });
 
 test('unbekannte Nummer: im Chip genannt, nicht mitgezählt', async () => {
-  const { w, d } = await erstelle([TEIL], '10294, 99999-1');
+  const { w, d } = await create([TEIL], '10294, 99999-1');
   try {
     const chips = [...d.querySelectorAll('#pl-sets .pl-chip')].map(c => ({
       text: text(c),
@@ -157,7 +157,7 @@ test('unbekannte Nummer: im Chip genannt, nicht mitgezählt', async () => {
 });
 
 test('Ergebnis mit Teilen: Exporte frei, Eingabefelder beschriftet', async () => {
-  const { w, d } = await erstelle([TEIL]);
+  const { w, d } = await create([TEIL]);
   try {
     assert.equal(d.getElementById('pl-optionen').hidden, false);
     assert.equal(d.getElementById('btn-pl-pdf').disabled, false);
@@ -169,10 +169,7 @@ test('Ergebnis mit Teilen: Exporte frei, Eingabefelder beschriftet', async () =>
 });
 
 test('Farbgruppen deutsch, Zusammenfassung nennt Sorten', async () => {
-  const { w, d } = await erstelle([
-    TEIL,
-    { ...TEIL, part_number: '3003', part_name: 'Brick 2 x 2', total_quantity: 10 },
-  ]);
+  const { w, d } = await create([TEIL, { ...TEIL, part_number: '3003', part_name: 'Brick 2 x 2', total_quantity: 10 }]);
   try {
     assert.match(text(d.getElementById('pl-result')), /^Rot \(2 Sorten\)/, 'Farbgruppe in der Sprache der Oberfläche');
     assert.doesNotMatch(text(d.getElementById('pl-result')), /\bRed\b/);

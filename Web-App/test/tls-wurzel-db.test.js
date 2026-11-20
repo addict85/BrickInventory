@@ -4,13 +4,13 @@
  * und das Sitzungscookie nur über TLS.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in tlsStandAus() über das ganze Zertifikat (zert.raw) statt über SPKI
+ *   A  in tlsStatusFrom() über das ganze Zertifikat (zert.raw) statt über SPKI
  *      gehasht → rot: „Fingerabdruck = Base64 SHA-256 des SPKI …“
  *   B  in tlsStand() den Zwischenspeicher nicht an mtime gebunden → rot:
  *      „/ca.crt, Einstellungen und QR …“ (nach dem Tausch der Datei alter fp)
  *   C  in /qr-token die https-Bedingung für `fp` entfernt → rot: dieselbe
  *      Prüfung (fp zur http-Adresse)
- *   D  cookieSicher() ohne hinterTls → rot: „Cookie nur über TLS …“
+ *   D  cookieSafe() ohne hinterTls → rot: „Cookie nur über TLS …“
  *   E  (09.11.2026) zert_sha256 aus dem SPKI statt aus dem ganzen Zertifikat →
  *      rot: „zum Abgleich auf dem Gerät …“
  *   F  (14.11.2026, nur noch HTTPS) in /ca.crt die Absage ohne req.secure
@@ -20,7 +20,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (für Sitzung und QR-Code).
  */
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -28,18 +28,18 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
-umgebung({ APP_BASE_URL: 'https://lego.test' });
+environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
+environment({ APP_BASE_URL: 'https://lego.test' });
 
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bim-ca-'));
 const CA = path.join(ordner, 'root.crt');
-umgebung({ CA_ZERTIFIKAT: CA });
+environment({ CA_ZERTIFIKAT: CA });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { tlsStandAus } = _req('src/infra/tlsWurzel.js');
-const { ladeKonfig, cookieSicher } = _req('src/infra/konfig.js');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { tlsStatusFrom } = _req('src/infra/tlsWurzel.js');
+const { ladeKonfig, cookieSafe } = _req('src/infra/konfig.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -51,11 +51,11 @@ const FP1 = '6a2+vi4vM1RWOxXv8B8h4GIn8x0V+ELcjAp3DATfCE8=';
 const FP2 = 'N3/8TmZexexJN1wTiG1qcdjYhdQ/Bm3Gds0Om73H7wQ=';
 
 test('Fingerabdruck = Base64 SHA-256 des SPKI, 32 Byte', () => {
-  const s = tlsStandAus(PEM1);
+  const s = tlsStatusFrom(PEM1);
   assert.equal(s.fp, FP1);
   assert.equal(Buffer.from(s.fp, 'base64').length, 32);
   assert.equal(s.fp_hex, Buffer.from(FP1, 'base64').toString('hex').toUpperCase().match(/../g).join(':'));
-  assert.equal(tlsStandAus(PEM2).fp, FP2);
+  assert.equal(tlsStatusFrom(PEM2).fp, FP2);
 });
 
 test('zum Abgleich auf dem Gerät: SHA-256 des ganzen Zertifikats, wie im Protokoll von Caddy', () => {
@@ -68,7 +68,7 @@ test('zum Abgleich auf dem Gerät: SHA-256 des ganzen Zertifikats, wie im Protok
     .toUpperCase()
     .match(/../g)
     .join(':');
-  const stand = _req('src/infra/tlsWurzel.js').tlsStandAus(PEM1);
+  const stand = _req('src/infra/tlsWurzel.js').tlsStatusFrom(PEM1);
   assert.equal(stand.zert_sha256, hex);
   assert.notEqual(stand.zert_sha256, stand.fp_hex);
 });
@@ -76,16 +76,16 @@ test('zum Abgleich auf dem Gerät: SHA-256 des ganzen Zertifikats, wie im Protok
 test('Cookie nur über TLS: in Produktion und hinter https, abschaltbar', () => {
   // Ohne NODE_ENV gelten die Regeln des Betriebs; locker ist nur die Entwicklung.
   const ent = { NODE_ENV: 'development' };
-  assert.equal(cookieSicher(ladeKonfig({})), true);
-  assert.equal(cookieSicher(ladeKonfig(ent)), false);
-  assert.equal(cookieSicher(ladeKonfig({ ...ent, APP_BASE_URL: 'https://lego.test' })), true);
-  assert.equal(cookieSicher(ladeKonfig({ ...ent, APP_BASE_URL: 'http://192.168.1.5:3000' })), false);
-  assert.equal(cookieSicher(ladeKonfig({ NODE_ENV: 'production' })), true);
-  assert.equal(cookieSicher(ladeKonfig({ APP_BASE_URL: 'https://lego.test', COOKIE_SECURE: '0' })), false);
+  assert.equal(cookieSafe(ladeKonfig({})), true);
+  assert.equal(cookieSafe(ladeKonfig(ent)), false);
+  assert.equal(cookieSafe(ladeKonfig({ ...ent, APP_BASE_URL: 'https://lego.test' })), true);
+  assert.equal(cookieSafe(ladeKonfig({ ...ent, APP_BASE_URL: 'http://192.168.1.5:3000' })), false);
+  assert.equal(cookieSafe(ladeKonfig({ NODE_ENV: 'production' })), true);
+  assert.equal(cookieSafe(ladeKonfig({ APP_BASE_URL: 'https://lego.test', COOKIE_SECURE: '0' })), false);
 });
 
 test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run("DELETE FROM users WHERE username = 'tls_nutzer'");
   await db.run(
     "INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ('tls_nutzer',$1,false,true,true)",
@@ -103,14 +103,13 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
       saveUninitialized: false,
     }),
   );
-  app.use(_req('routes/zertifikat.js').baueZertifikatRouter());
+  app.use(_req('routes/zertifikat.js').buildCertificateRouter());
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').waechterFuer(require('./helpers/sources').testDienste().konto)
-      .anmeldungAmEingang,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
   );
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/settings.js'));
-  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
   t.after(async () => {
@@ -142,7 +141,7 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
   const r = await zert();
   assert.equal(r.status, 200);
   assert.match(r.headers.get('content-type'), /application\/x-x509-ca-cert/);
-  assert.equal(tlsStandAus(await r.text()).fp, FP1, '/ca.crt liefert das Zertifikat selbst');
+  assert.equal(tlsStatusFrom(await r.text()).fp, FP1, '/ca.crt liefert das Zertifikat selbst');
   // Auch über HTTPS: Vor der Installation traut das Gerät der Verbindung nicht, Name und Kopf sagen es.
   assert.match(r.headers.get('content-disposition'), /filename="brickinventory-ca-fingerabdruck-pruefen\.crt"/);
   assert.match(r.headers.get('x-fingerabdruck-pruefen') ?? '', /SHA-256 vor dem Installieren/);
@@ -151,11 +150,11 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
   assert.doesNotMatch(await klar.text(), /BEGIN CERTIFICATE/);
   const tls = await (await ruf('/api/v1/settings/tls', { cookie })).json();
   assert.equal(tls.fp, FP1);
-  assert.equal(tls.zert_sha256, tlsStandAus(PEM1).zert_sha256);
+  assert.equal(tls.zert_sha256, tlsStatusFrom(PEM1).zert_sha256);
   assert.equal(tls.https, true);
   const q = await qr();
   assert.equal(q.fp, FP1);
-  assert.equal(q.zert_sha256, tlsStandAus(PEM1).zert_sha256, 'Neben dem QR-Code steht der Wert zum Abgleich');
+  assert.equal(q.zert_sha256, tlsStatusFrom(PEM1).zert_sha256, 'Neben dem QR-Code steht der Wert zum Abgleich');
   assert.equal(q.url, 'https://lego.test');
 
   // Die Datei wird getauscht (neue CA): Der Server liest neu, ohne Neustart.
@@ -164,12 +163,12 @@ test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { conc
   assert.equal((await qr()).fp, FP2);
 
   // Zu einer http-Adresse gehört kein fp: Die App prüft dann kein Zertifikat.
-  umgebung({ APP_BASE_URL: 'http://192.168.1.5:3000' });
+  environment({ APP_BASE_URL: 'http://192.168.1.5:3000' });
   try {
     const ohne = await qr();
     assert.equal(ohne.success, true);
     assert.equal(ohne.fp, undefined);
   } finally {
-    umgebung({ APP_BASE_URL: 'https://lego.test' });
+    environment({ APP_BASE_URL: 'https://lego.test' });
   }
 });

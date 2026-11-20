@@ -5,11 +5,11 @@
  * sie neu an; aus {id:1, storage_id:1} wurde {id:2, storage_id:null}.
  *
  * Gegenproben (am 29.10.2026 gemessen):
- *   A  in importiereFiguren wieder zuerst `DELETE … source='set'` ohne
+ *   A  in importMinifigs wieder zuerst `DELETE … source='set'` ohne
  *      Bedingung → rot: „die Figur behält Kennung und Lagerort“
- *   B  dasselbe in importiereTeile → rot: „das Teil behält Kennung, Lagerort
+ *   B  dasselbe in importParts → rot: „das Teil behält Kennung, Lagerort
  *      und Datum“
- *   C  das gezielte DELETE in importiereFiguren entfernt → rot: „eine
+ *   C  das gezielte DELETE in importMinifigs entfernt → rot: „eine
  *      weggefallene Figur geht, eine eingetippte bleibt“
  *   D  in merkeSetTeile das Zusammenfassen je Teil und Farbe entfernt → rot:
  *      „Bau- und Ersatzteil derselben Farbe“ (ON CONFLICT DO UPDATE command
@@ -23,15 +23,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const { importiereFiguren, importiereTeile } = _req('src/sets/setInhaltImport.js');
+  const { importMinifigs, importParts } = _req('src/sets/setInhaltImport.js');
   const NAME = `nachimport-${process.pid}`;
   const SN = `8${process.pid % 10000}-1`;
   const INV = 900000000 + (process.pid % 100000);
@@ -66,24 +66,24 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
 
   try {
     await t.test('die Figur behält Kennung und Lagerort', async () => {
-      assert.equal(await importiereFiguren(SN, uid), 2);
+      assert.equal(await importMinifigs(SN, uid), 2);
       await db.run('UPDATE minifigs SET storage_id=$1 WHERE user_id=$2 AND fig_number=$3', [ort, uid, 'fig-t1']);
       const vorher = await figur('fig-t1');
       assert.equal(vorher.storage_id, ort);
-      assert.equal(await importiereFiguren(SN, uid), 2);
+      assert.equal(await importMinifigs(SN, uid), 2);
       assert.deepEqual(await figur('fig-t1'), vorher);
     });
 
     await t.test('eine weggefallene Figur geht, eine eingetippte bleibt', async () => {
       await db.run(`DELETE FROM set_minifigs WHERE set_number=$1 AND fig_number='fig-t2'`, [SN]);
-      assert.equal(await importiereFiguren(SN, uid), 1);
+      assert.equal(await importMinifigs(SN, uid), 1);
       assert.equal(await figur('fig-t2'), undefined);
       assert.ok(await figur('fig-t1'));
       assert.ok(await figur('fig-t9'), 'die eingetippte Figur ohne Set gehört nicht zum Import');
     });
 
     await t.test('Bau- und Ersatzteil derselben Farbe', async () => {
-      assert.equal(await importiereTeile(SN, uid), 3);
+      assert.equal(await importParts(SN, uid), 3);
       const liste = await db.get(
         `SELECT quantity, is_spare FROM set_parts WHERE set_number=$1 AND part_number='tp-1'`,
         [SN],
@@ -98,13 +98,13 @@ test('erneuter Set-Import behält Lagerort und Kennung', { concurrency: 1 }, asy
       );
       const vorher = await teil('tp-1');
       assert.equal(vorher.storage_id, ort);
-      await importiereTeile(SN, uid);
+      await importParts(SN, uid);
       assert.deepEqual(await teil('tp-1'), vorher);
     });
 
     await t.test('ein weggefallenes Teil geht', async () => {
       await db.run(`DELETE FROM rb_inventory_parts WHERE inventory_id=$1 AND part_num='tp-2'`, [INV]);
-      await importiereTeile(SN, uid);
+      await importParts(SN, uid);
       assert.equal(await teil('tp-2'), undefined);
       assert.ok(await teil('tp-1'));
     });

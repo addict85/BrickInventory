@@ -1,12 +1,12 @@
-import type { DbSchnittstelle } from '../../../db/database';
-import type { ErfassungsZeile } from '../../../db/bestandsmenge';
+import type { DbInterface } from '../../../db/database';
+import type { EntryRow } from '../../../db/bestandsmenge';
 import type { Spalten } from '../../../db/zeilen';
 
 /** Price and condition live in the LATEST acquisition, the stock row only holds the key —
  * the quantity is the sum of the acquisitions. */
 
 export function manualPartRow(
-  db: DbSchnittstelle,
+  db: DbInterface,
   uid: number,
   partNumber: string,
   colorId: number,
@@ -17,7 +17,7 @@ export function manualPartRow(
   );
 }
 
-export function manualPartWithCondition(db: DbSchnittstelle, uid: number, partNumber: string, colorId: number) {
+export function manualPartWithCondition(db: DbInterface, uid: number, partNumber: string, colorId: number) {
   return db.get<{ id: number; condition: string | null }>(
     `SELECT p.id,
             (SELECT a.condition FROM part_acquisitions a
@@ -30,12 +30,12 @@ export function manualPartWithCondition(db: DbSchnittstelle, uid: number, partNu
   );
 }
 
-export async function rbColorHex(db: DbSchnittstelle, colorId: number): Promise<string | null> {
+export async function rbColorHex(db: DbInterface, colorId: number): Promise<string | null> {
   return (await db.get<{ rgb: string | null }>('SELECT rgb FROM rb_colors WHERE id=$1', [colorId]))?.rgb || null;
 }
 
-export function partAcquisitions(db: DbSchnittstelle, uids: number[], partNumber: string, colorId: number) {
-  return db.all<ErfassungsZeile>(
+export function partAcquisitions(db: DbInterface, uids: number[], partNumber: string, colorId: number) {
+  return db.all<EntryRow>(
     `SELECT a.id, a.quantity, a.unit_price,
             COALESCE(a.condition, 'N') AS condition, a.price_estimated, a.currency,
             a.created_at, a.user_id AS owner_user_id

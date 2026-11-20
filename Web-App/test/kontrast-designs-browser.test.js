@@ -65,7 +65,7 @@ function abschnitt(n) {
   <div class="rollen-zelle"><span class="rb rv rolle-chip" data-k="${n}: Rollen-Chip Administrator">Administrator<button type="button" class="chip-weg" data-k="${n}: X am Rollen-Chip">×</button></span><span class="rb ru" data-k="${n}: Rollen-Chip Standard">Standard</span></div>`;
 }
 
-function testseite() {
+function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
   const teile = [];
   for (const d of DESIGNS)
@@ -103,7 +103,7 @@ test('Kontrast in allen Designs, hell und dunkel', t => {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'kontrast-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testseite());
+  fs.writeFileSync(datei, testPage());
   const dom = execFileSync(
     bin,
     [

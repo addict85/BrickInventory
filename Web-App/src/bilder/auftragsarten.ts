@@ -1,22 +1,22 @@
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../auftraege';
-import { bildbedarfAbarbeiten } from './bildbedarfLauf';
-import type { BilderKontext } from './kontext';
+import { processImageDemand } from './bildbedarfLauf';
+import type { ImagesContext } from './kontext';
 
 const LEER = z.object({});
 
 declare module '../auftraege/auftraege' {
-  interface AuftragsNutzlasten {
+  interface JobPayloads {
     bildbedarf: typeof LEER;
   }
 }
 
-export function bilderAuftragsarten(k: BilderKontext): Anmeldung[] {
+export function imagesJobTypes(k: ImagesContext): Anmeldung[] {
   return [
     auftragsart({
       art: 'bildbedarf',
       nutzlast: LEER,
-      ausfuehren: (_n, l) => bildbedarfAbarbeiten(k, l),
+      ausfuehren: (_n, l) => processImageDemand(k, l),
       exklusiv: true,
       kontouebergreifend: 'Bildbedarf aller Bestände',
     }),

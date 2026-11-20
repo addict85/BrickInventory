@@ -9,7 +9,7 @@ type Umgebung = Record<string, string | undefined>;
 
 /** Docker-Secrets: Steht X_FILE, kommt X aus der Datei statt aus der Umgebung,
  * die `docker inspect` und /proc/<pid>/environ jedem zeigen, der dort hinsieht. */
-export const DATEI_VARIABLEN = [
+export const FILE_VARIABLES = [
   'SESSION_SECRET',
   'PGPASSWORD',
   'PGSYSTEM_PASSWORD',
@@ -19,9 +19,9 @@ export const DATEI_VARIABLEN = [
 ] as const;
 
 /** Übernimmt jede lesbare X_FILE nach X und streicht X_FILE; ein zweiter Aufruf ändert nichts. */
-export function geheimnisseAusDateien(env: Umgebung): string[] {
+export function secretsFromFiles(env: Umgebung): string[] {
   const fehler: string[] = [];
-  for (const name of DATEI_VARIABLEN) {
+  for (const name of FILE_VARIABLES) {
     const datei = env[`${name}_FILE`]?.trim();
     if (!datei) continue;
     if (env[name]) {
@@ -39,19 +39,19 @@ export function geheimnisseAusDateien(env: Umgebung): string[] {
 }
 
 export interface Konfig {
-  produktion: boolean;
+  production: boolean;
   nodeEnv: string;
   /** Nur ausdrücklich development oder test: ohne NODE_ENV gelten die Regeln des Betriebs. */
   entwicklung: boolean;
   /** Alles ausser development/test: Auch ohne NODE_ENV gelten die Verbote des Betriebs. */
-  betrieb: boolean;
+  operation: boolean;
   /** Ausweg für den Start als Datenbank-Superuser in Produktion (UPGRADE.md). */
-  dbSuperuserErlaubt: boolean;
+  dbSuperuserAllowed: boolean;
   port: number;
   hstsMaxAge: number;
   trustProxy: string | undefined;
   /** Ein Netz über acht Adressen in TRUST_PROXY ist gewollt (src/infra/proxyVertrauen.ts). */
-  proxyNetzBestaetigt: boolean;
+  proxyNetworkConfirmed: boolean;
   sessionSecret: string | undefined;
   /** null: nach NODE_ENV (secure nur in Produktion). */
   cookieSecure: boolean | null;
@@ -60,7 +60,7 @@ export interface Konfig {
   /** Eine offene Verwaltersitzung ist mehr wert: kürzer, höchstens die allgemeinen Fristen. */
   sitzungVerwalterLeerlaufMin: number;
   sitzungVerwalterHoechstStd: number;
-  tokenLeerlaufTage: number;
+  tokenIdleDays: number;
   rolle: Rolle;
   /** Für einen Hinweis beim Start. */
   veraltet: string[];
@@ -70,36 +70,36 @@ export interface Konfig {
   pgConnMs: number;
   pgStmtMs: number;
   /** Eine hängende Transaktion hält sonst Advisory- und Zeilensperren unbegrenzt. */
-  pgLeerlaufTxMs: number;
+  pgIdleTxMs: number;
   pgSperreMs: number;
-  adminPasswort: string;
+  adminPassword: string;
   appBaseUrl: string | null;
   appRoot: string | null;
   appVersion: string | null;
   datenSchluessel: string;
   /** Pfad der Schlüsseldatei; null: <APP_ROOT>/schluessel/datenschluessel. */
-  datenSchluesselDatei: string | null;
+  dataKeyFile: string | null;
   /** Der vorige Schlüssel während eines Wechsels (DATA_KEY_ALT oder die Datei). */
-  datenSchluesselAlt: string;
-  datenSchluesselAltDatei: string | null;
-  erfassungZeitzone: string;
-  preisverlaufTage: number;
-  uploadKontingentMb: number;
-  uploadGesamtMb: number;
-  mailKonsoleMitToken: boolean;
+  dataKeyAlt: string;
+  dataKeyAltFile: string | null;
+  entryTimeZone: string;
+  priceHistoryDays: number;
+  uploadQuotaMb: number;
+  uploadTotalMb: number;
+  mailConsoleWithToken: boolean;
   bildUserAgent: string | null;
-  bildCacheMaxMb: number;
-  bildAbrufeJeMinute: number;
-  csvZeileFristMs: number;
-  auftragParallel: number;
+  imageCacheMaxMb: number;
+  imageFetchesJeMinute: number;
+  csvRowDeadlineMs: number;
+  jobParallel: number;
   /** null: nach Kernen und cgroup-Kontingent (src/konto/bcryptSchranke.ts). */
   bcryptArbeiter: number | null;
-  auftragFristSek: number;
+  jobDeadlineSec: number;
   /** PEM; null: keine eigene CA. */
-  caZertifikat: string | null;
+  caCertificate: string | null;
   hinterTls: boolean;
   /** Nur in Tests: Antworten gegen den API-Vertrag prüfen (src/http/vertragsRouter.ts). */
-  vertragPruefen: boolean;
+  checkContract: boolean;
   /** SHA-256 der Signaturzertifikate der App, 64 Hex-Zeichen in Grossbuchstaben. */
   androidZertifikate: string[];
   androidPaket: string;
@@ -108,12 +108,12 @@ export interface Konfig {
   /** Bis dahin gelten Geräteschlüssel, die vor der Attestation hinterlegt wurden (UPGRADE.md). */
   geraeteschluesselAltBis: Date;
   /** So alt darf Googles Widerrufsliste höchstens sein; älter nimmt der Server keinen Schlüssel an. */
-  attestationWiderrufTage: number;
-  attestationPatchMindestens: number | null;
+  attestationRevocationDays: number;
+  attestationPatchAtLeast: number | null;
 }
 
 export type Rolle = 'web' | 'jobs' | 'beides';
-const ROLLEN: readonly Rolle[] = ['web', 'jobs', 'beides'];
+const ROLES: readonly Rolle[] = ['web', 'jobs', 'beides'];
 
 /** Auch andere Module nennen sie; Höchstdauer eine Woche wie der Browser-Token. */
 export const VORGABE = {
@@ -121,8 +121,8 @@ export const VORGABE = {
   sitzungHoechstStd: 168,
   sitzungVerwalterLeerlaufMin: 30,
   sitzungVerwalterHoechstStd: 12,
-  auftragParallel: 4,
-  auftragFristSek: 300,
+  jobParallel: 4,
+  jobDeadlineSec: 300,
 } as const;
 
 /** Die Meldung nennt jede ungültige Variable. */
@@ -134,7 +134,7 @@ export class KonfigFehler extends Error {
 }
 
 /** Jede Variable, die ladeKonfig liest; .env.example nennt sie alle (test/konfig.test.js). */
-export const VARIABLEN = [
+export const VARIABLES = [
   'NODE_ENV',
   'PORT',
   'HSTS_MAX_AGE',
@@ -195,16 +195,16 @@ export const VARIABLEN = [
   'GERAETESCHLUESSEL_ALT_BIS',
   'ATTESTATION_WIDERRUF_TAGE',
   'ATTESTATION_PATCH_MINDESTENS',
-  ...DATEI_VARIABLEN.map(n => `${n}_FILE` as const),
+  ...FILE_VARIABLES.map(n => `${n}_FILE` as const),
 ] as const;
 
 /** Steht sie noch in einer alten compose.yaml, sagt der Start es. */
-const VERALTET = ['WEB_WORKERS'] as const;
+const STALE = ['WEB_WORKERS'] as const;
 
 /** Ohne Angabe beides in einem Prozess: der einfache Start ohne Compose. */
-function rolleAus(env: Umgebung, fehler: string[]): Rolle {
+function roleFrom(env: Umgebung, fehler: string[]): Rolle {
   const roh = env.ROLLE?.trim().toLowerCase() || 'beides';
-  if ((ROLLEN as readonly string[]).includes(roh)) return roh as Rolle;
+  if ((ROLES as readonly string[]).includes(roh)) return roh as Rolle;
   fehler.push(`ROLLE="${env.ROLLE}" ist weder web noch jobs noch beides`);
   return 'beides';
 }
@@ -264,27 +264,28 @@ function androidPaket(env: Umgebung, fehler: string[]): string {
  * darum nur, wo NODE_ENV ausdrücklich development oder test sagt. */
 function attestationWurzeln(env: Umgebung, fehler: string[]): string | null {
   const pem = env.ATTESTATION_WURZELN?.trim() || null;
-  if (pem && !entwicklungsUmgebung(env)) fehler.push('ATTESTATION_WURZELN gilt nur mit NODE_ENV=development oder test');
+  if (pem && !developmentEnvironment(env))
+    fehler.push('ATTESTATION_WURZELN gilt nur mit NODE_ENV=development oder test');
   return pem;
 }
 
-export const ALTSCHLUESSEL_STICHTAG = '2027-02-01';
+export const LEGACY_KEY_CUTOFF_DATE = '2027-02-01';
 
-function altschluesselBis(env: Umgebung, fehler: string[]): Date {
-  const roh = env.GERAETESCHLUESSEL_ALT_BIS?.trim() || ALTSCHLUESSEL_STICHTAG;
+function legacyKeyUntil(env: Umgebung, fehler: string[]): Date {
+  const roh = env.GERAETESCHLUESSEL_ALT_BIS?.trim() || LEGACY_KEY_CUTOFF_DATE;
   const d = /^\d{4}-\d{2}-\d{2}$/.test(roh) ? new Date(`${roh}T00:00:00Z`) : new Date(Number.NaN);
-  const stichtag = new Date(`${ALTSCHLUESSEL_STICHTAG}T00:00:00Z`);
+  const stichtag = new Date(`${LEGACY_KEY_CUTOFF_DATE}T00:00:00Z`);
   // Nur früher, nie später: Ein Datum in ferner Zukunft liesse unattestierte Schlüssel auf Dauer gelten.
   if (d.getTime() <= stichtag.getTime()) return d;
   fehler.push(
     Number.isNaN(d.getTime())
       ? `GERAETESCHLUESSEL_ALT_BIS="${roh}" ist kein Datum JJJJ-MM-TT`
-      : `GERAETESCHLUESSEL_ALT_BIS="${roh}" liegt nach ${ALTSCHLUESSEL_STICHTAG}; nur ein früheres Datum ist erlaubt`,
+      : `GERAETESCHLUESSEL_ALT_BIS="${roh}" liegt nach ${LEGACY_KEY_CUTOFF_DATE}; nur ein früheres Datum ist erlaubt`,
   );
   return stichtag;
 }
 
-function patchMindestens(env: Umgebung, fehler: string[]): number | null {
+function patchAtLeast(env: Umgebung, fehler: string[]): number | null {
   const roh = env.ATTESTATION_PATCH_MINDESTENS?.trim();
   if (!roh) return null;
   if (/^20\d\d(0[1-9]|1[0-2])$/.test(roh)) return Number(roh);
@@ -293,7 +294,7 @@ function patchMindestens(env: Umgebung, fehler: string[]): number | null {
 }
 
 /** Sicher genug, um in eine Verbindungsoption eingesetzt zu werden. */
-export function zeitzoneGueltig(name: string): boolean {
+export function timeZoneValid(name: string): boolean {
   if (!/^[A-Za-z0-9_+\-/]+$/.test(name)) return false;
   try {
     new Intl.DateTimeFormat('de', { timeZone: name });
@@ -305,17 +306,17 @@ export function zeitzoneGueltig(name: string): boolean {
 
 /** Ausdrücklich gesetzt muss die Zone stimmen; TZ und Prozesszone sind nur
  * Rückfall und fallen bei einem Fremdwert auf UTC. */
-function zoneAus(env: Umgebung, fehler: string[]): string {
+function zoneFrom(env: Umgebung, fehler: string[]): string {
   let zone = env.ERFASSUNG_ZEITZONE?.trim() || '';
-  if (zone && !zeitzoneGueltig(zone)) {
+  if (zone && !timeZoneValid(zone)) {
     fehler.push(`ERFASSUNG_ZEITZONE="${zone}" ist keine bekannte Zeitzone`);
     zone = '';
   }
   if (!zone) zone = env.TZ?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  return zeitzoneGueltig(zone) ? zone : 'UTC';
+  return timeZoneValid(zone) ? zone : 'UTC';
 }
 
-function entwicklungsUmgebung(env: Umgebung): boolean {
+function developmentEnvironment(env: Umgebung): boolean {
   return ['development', 'test'].includes(env.NODE_ENV?.trim() ?? '');
 }
 
@@ -345,7 +346,7 @@ function sitzungsKonfig(env: Umgebung, f: string[]) {
 }
 
 export function ladeKonfig(env: Umgebung = process.env): Konfig {
-  const f: string[] = geheimnisseAusDateien(env);
+  const f: string[] = secretsFromFiles(env);
   const nodeEnv = env.NODE_ENV?.trim() || 'development';
 
   const basis = env.APP_BASE_URL?.trim().replace(/\/+$/, '') || null;
@@ -355,66 +356,66 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
   const datenSchluessel = env.DATA_KEY?.trim() || '';
   if (datenSchluessel && Buffer.from(datenSchluessel, 'base64').length !== 32)
     f.push('DATA_KEY muss 32 Byte als base64 sein (openssl rand -base64 32)');
-  const datenSchluesselAlt = env.DATA_KEY_ALT?.trim() || '';
-  if (datenSchluesselAlt && Buffer.from(datenSchluesselAlt, 'base64').length !== 32)
+  const dataKeyAlt = env.DATA_KEY_ALT?.trim() || '';
+  if (dataKeyAlt && Buffer.from(dataKeyAlt, 'base64').length !== 32)
     f.push('DATA_KEY_ALT muss 32 Byte als base64 sein (der vorige DATA_KEY)');
 
-  const zone = zoneAus(env, f);
+  const zone = zoneFrom(env, f);
 
   const pgPoolMax = env.PG_POOL_MAX?.trim() ? ganzzahl(env, 'PG_POOL_MAX', 15, 1, 1000, f) : null;
   const k: Konfig = {
-    produktion: nodeEnv === 'production',
+    production: nodeEnv === 'production',
     nodeEnv,
-    entwicklung: entwicklungsUmgebung(env),
-    betrieb: !entwicklungsUmgebung(env),
-    dbSuperuserErlaubt: schalter(env, 'DB_SUPERUSER_ERLAUBT', f) === true,
+    entwicklung: developmentEnvironment(env),
+    operation: !developmentEnvironment(env),
+    dbSuperuserAllowed: schalter(env, 'DB_SUPERUSER_ERLAUBT', f) === true,
     port: ganzzahl(env, 'PORT', 3000, 1, 65535, f),
     hstsMaxAge: ganzzahl(env, 'HSTS_MAX_AGE', 31_536_000, 0, 2 ** 31 - 1, f),
     trustProxy: env.TRUST_PROXY,
-    proxyNetzBestaetigt: schalter(env, 'PROXY_NETZ_BESTAETIGT', f) === true,
+    proxyNetworkConfirmed: schalter(env, 'PROXY_NETZ_BESTAETIGT', f) === true,
     sessionSecret: env.SESSION_SECRET || undefined,
     cookieSecure: schalter(env, 'COOKIE_SECURE', f),
     ...sitzungsKonfig(env, f),
-    tokenLeerlaufTage: ganzzahl(env, 'TOKEN_IDLE_DAYS', 90, 1, 36_500, f),
-    rolle: rolleAus(env, f),
-    veraltet: VERALTET.filter(n => env[n]?.trim()),
+    tokenIdleDays: ganzzahl(env, 'TOKEN_IDLE_DAYS', 90, 1, 36_500, f),
+    rolle: roleFrom(env, f),
+    veraltet: STALE.filter(n => env[n]?.trim()),
     pgPoolMax,
     pgPoolMin: ganzzahl(env, 'PG_POOL_MIN', 2, 0, 1000, f),
     pgIdleMs: ganzzahl(env, 'PG_IDLE_MS', 30_000, 0, 86_400_000, f),
     pgConnMs: ganzzahl(env, 'PG_CONN_MS', 30_000, 0, 600_000, f),
     pgStmtMs: ganzzahl(env, 'PG_STMT_MS', 30_000, 0, 86_400_000, f),
-    pgLeerlaufTxMs: ganzzahl(env, 'PG_IDLE_TX_MS', 60_000, 0, 86_400_000, f),
+    pgIdleTxMs: ganzzahl(env, 'PG_IDLE_TX_MS', 60_000, 0, 86_400_000, f),
     pgSperreMs: ganzzahl(env, 'PG_LOCK_MS', 10_000, 0, 86_400_000, f),
-    adminPasswort: env.ADMIN_PASSWORD || '',
+    adminPassword: env.ADMIN_PASSWORD || '',
     appBaseUrl: basis,
     appRoot: env.APP_ROOT?.trim() || null,
     appVersion: env.APP_VERSION?.trim() || null,
     datenSchluessel,
-    datenSchluesselDatei: env.DATA_KEY_FILE?.trim() || null,
-    datenSchluesselAlt,
-    datenSchluesselAltDatei: env.DATA_KEY_ALT_FILE?.trim() || null,
-    erfassungZeitzone: zone,
+    dataKeyFile: env.DATA_KEY_FILE?.trim() || null,
+    dataKeyAlt,
+    dataKeyAltFile: env.DATA_KEY_ALT_FILE?.trim() || null,
+    entryTimeZone: zone,
     // 0 oder weniger schaltet das Beschneiden des Preisverlaufs ab.
-    preisverlaufTage: ganzzahl(env, 'PRICE_HISTORY_KEEP_DAYS', 1095, -1, 36_500, f),
-    uploadKontingentMb: zahl(env, 'UPLOAD_KONTINGENT_MB', 2048, f),
-    uploadGesamtMb: zahl(env, 'UPLOAD_GESAMT_MB', 20_480, f),
-    mailKonsoleMitToken: env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1',
+    priceHistoryDays: ganzzahl(env, 'PRICE_HISTORY_KEEP_DAYS', 1095, -1, 36_500, f),
+    uploadQuotaMb: zahl(env, 'UPLOAD_KONTINGENT_MB', 2048, f),
+    uploadTotalMb: zahl(env, 'UPLOAD_GESAMT_MB', 20_480, f),
+    mailConsoleWithToken: env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1',
     bildUserAgent: env.IMG_USER_AGENT?.trim() || null,
-    bildCacheMaxMb: zahl(env, 'BILD_CACHE_MAX_MB', 2048, f),
-    bildAbrufeJeMinute: ganzzahl(env, 'BILD_ABRUFE_JE_MINUTE', 240, 1, 100_000, f),
-    csvZeileFristMs: ganzzahl(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
-    auftragParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', VORGABE.auftragParallel, 1, 64, f),
+    imageCacheMaxMb: zahl(env, 'BILD_CACHE_MAX_MB', 2048, f),
+    imageFetchesJeMinute: ganzzahl(env, 'BILD_ABRUFE_JE_MINUTE', 240, 1, 100_000, f),
+    csvRowDeadlineMs: ganzzahl(env, 'CSV_ZEILE_FRIST_MS', 120_000, 1, 86_400_000, f),
+    jobParallel: ganzzahl(env, 'AUFTRAG_PARALLEL', VORGABE.jobParallel, 1, 64, f),
     bcryptArbeiter: env.BCRYPT_ARBEITER?.trim() ? ganzzahl(env, 'BCRYPT_ARBEITER', 4, 1, 64, f) : null,
-    auftragFristSek: ganzzahl(env, 'AUFTRAG_FRIST_SEK', VORGABE.auftragFristSek, 1, 86_400, f),
-    caZertifikat: env.CA_ZERTIFIKAT?.trim() || null,
+    jobDeadlineSec: ganzzahl(env, 'AUFTRAG_FRIST_SEK', VORGABE.jobDeadlineSec, 1, 86_400, f),
+    caCertificate: env.CA_ZERTIFIKAT?.trim() || null,
     hinterTls: !!basis && /^https:\/\//i.test(basis),
-    vertragPruefen: env.VERTRAG_PRUEFEN?.trim() === '1',
+    checkContract: env.VERTRAG_PRUEFEN?.trim() === '1',
     androidZertifikate: androidZertifikate(env, f),
     androidPaket: androidPaket(env, f),
     attestationWurzeln: attestationWurzeln(env, f),
-    geraeteschluesselAltBis: altschluesselBis(env, f),
-    attestationWiderrufTage: ganzzahl(env, 'ATTESTATION_WIDERRUF_TAGE', 7, 1, 90, f),
-    attestationPatchMindestens: patchMindestens(env, f),
+    geraeteschluesselAltBis: legacyKeyUntil(env, f),
+    attestationRevocationDays: ganzzahl(env, 'ATTESTATION_WIDERRUF_TAGE', 7, 1, 90, f),
+    attestationPatchAtLeast: patchAtLeast(env, f),
   };
   if (f.length) throw new KonfigFehler(f);
   return k;
@@ -422,32 +423,32 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
 
 /** Im Betrieb und hinter Caddy (APP_BASE_URL https://). COOKIE_SECURE=0 ist die bewusste
  * Ausnahme für einen Betrieb ohne TLS. */
-export function cookieSicher(k: Konfig): boolean {
-  return k.cookieSecure ?? (k.betrieb || k.hinterTls);
+export function cookieSafe(k: Konfig): boolean {
+  return k.cookieSecure ?? (k.operation || k.hinterTls);
 }
 
 const K = prozessweit('konfig', () => ({ v: null as Readonly<Konfig> | null }));
 
 /** Beim ersten Aufruf gelesen und eingefroren: konfig() steht im heissen Pfad
  * jeder Anfrage, und der Betrieb ändert seine Umgebung nicht zur Laufzeit.
- * Wer es doch tut (Tests), sagt es ausdrücklich mit setzeKonfig/konfigNeuLesen. */
+ * Wer es doch tut (Tests), sagt es ausdrücklich mit setKonfig/readKonfigNew. */
 export function konfig(): Readonly<Konfig> {
   K.v ??= Object.freeze(ladeKonfig(process.env));
   return K.v;
 }
 
 /** Für Tests: einzelne Werte über die gelesene Konfiguration legen; null hebt das auf. */
-export function setzeKonfig(teil: Partial<Konfig> | null): Readonly<Konfig> {
+export function setKonfig(teil: Partial<Konfig> | null): Readonly<Konfig> {
   K.v = teil ? Object.freeze({ ...ladeKonfig(process.env), ...teil }) : null;
   return konfig();
 }
 
 /** Für Tests und Skripte, die process.env nach dem Start umstellen. */
-export function konfigNeuLesen(): Readonly<Konfig> {
-  return setzeKonfig(null);
+export function readKonfigNew(): Readonly<Konfig> {
+  return setKonfig(null);
 }
 
-export function pruefeKonfigBeimStart(): Konfig {
+export function checkKonfigOnStart(): Konfig {
   try {
     return konfig();
   } catch (e) {
@@ -459,26 +460,26 @@ export function pruefeKonfigBeimStart(): Konfig {
 
 /** Für Server, Worker und Skripte gleich: Eigene Vorgaben verbanden sich
  * ausserhalb von Docker mit einer anderen Datenbank. */
-export function datenbankVerbindung(env: NodeJS.ProcessEnv = process.env) {
-  geheimnisseAusDateien(env);
+export function databaseConnection(env: NodeJS.ProcessEnv = process.env) {
+  secretsFromFiles(env);
   if (env.DATABASE_URL) return { connectionString: env.DATABASE_URL };
   return {
     host: env.PGHOST || 'postgres',
     port: parseInt(env.PGPORT || '5432', 10),
     user: env.PGUSER || 'brickinventory',
-    password: env.PGPASSWORD || STANDARD_DB_PASSWORT,
+    password: env.PGPASSWORD || STANDARD_DB_PASSWORD,
     database: env.PGDATABASE || 'brickinventory',
   };
 }
 
 /** Die Systemrolle (BYPASSRLS) für Arbeit über Kontogrenzen, sonst null: Mit
  * einer einzigen Rolle, der die Tabellen gehören, greift der Zeilenschutz nicht. */
-export function systemVerbindung(env: NodeJS.ProcessEnv = process.env, art = 'PGSYSTEM') {
-  geheimnisseAusDateien(env);
+export function systemConnection(env: NodeJS.ProcessEnv = process.env, art = 'PGSYSTEM') {
+  secretsFromFiles(env);
   const user = env[`${art}_USER`]?.trim();
   if (!user) return null;
   const password = env[`${art}_PASSWORD`] ?? '';
-  const basis = datenbankVerbindung(env);
+  const basis = databaseConnection(env);
   if (!('connectionString' in basis)) return { ...basis, user, password };
   const u = new URL(basis.connectionString);
   u.username = encodeURIComponent(user);
@@ -486,17 +487,17 @@ export function systemVerbindung(env: NodeJS.ProcessEnv = process.env, art = 'PG
   return { connectionString: u.toString() };
 }
 
-export const systemWebVerbindung = (env: NodeJS.ProcessEnv = process.env) => systemVerbindung(env, 'PGSYSTEM_WEB');
+export const systemWebConnection = (env: NodeJS.ProcessEnv = process.env) => systemConnection(env, 'PGSYSTEM_WEB');
 
 /** Das Beispielpasswort aus compose.yaml; es steht in jedem öffentlichen Klon. */
-export const STANDARD_DB_PASSWORT = 'brickinventory_secret';
+export const STANDARD_DB_PASSWORD = 'brickinventory_secret';
 
 /** In Produktion ein Startverbot. */
-export function standardPasswortInBenutzung(env: NodeJS.ProcessEnv = process.env): boolean {
-  const v = datenbankVerbindung(env);
-  if (!('connectionString' in v)) return v.password === STANDARD_DB_PASSWORT;
+export function standardPasswordInUse(env: NodeJS.ProcessEnv = process.env): boolean {
+  const v = databaseConnection(env);
+  if (!('connectionString' in v)) return v.password === STANDARD_DB_PASSWORD;
   try {
-    return decodeURIComponent(new URL(v.connectionString).password) === STANDARD_DB_PASSWORT;
+    return decodeURIComponent(new URL(v.connectionString).password) === STANDARD_DB_PASSWORD;
   } catch {
     return false;
   }
@@ -504,11 +505,11 @@ export function standardPasswortInBenutzung(env: NodeJS.ProcessEnv = process.env
 
 /** Ein öffentlich bekanntes Datenbankpasswort oder ein TRUST_PROXY, der Clients
  * ihre Adresse selbst angeben lässt, soll beim Deploy auffallen. */
-export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
-  if (entwicklungsUmgebung(env)) return [];
-  const gruende: string[] = [];
-  if (standardPasswortInBenutzung(env))
-    gruende.push(
+export function startBans(env: NodeJS.ProcessEnv = process.env): string[] {
+  if (developmentEnvironment(env)) return [];
+  const reasons: string[] = [];
+  if (standardPasswordInUse(env))
+    reasons.push(
       '[datenbank] Die Datenbank benutzt das Beispielpasswort „brickinventory_secret" aus compose.yaml — ' +
         "Start verweigert. Ein eigenes setzen: in psql `ALTER USER brickinventory PASSWORD '…';` und denselben " +
         'Wert als DB_PASSWORD in .env (siehe UPGRADE.md).',
@@ -516,7 +517,7 @@ export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
   try {
     proxyVertrauen(env.TRUST_PROXY, env.PROXY_NETZ_BESTAETIGT?.trim() === '1');
   } catch (e) {
-    gruende.push(`[proxy] ${(e as Error).message} Start verweigert.`);
+    reasons.push(`[proxy] ${(e as Error).message} Start verweigert.`);
   }
   // Ohne die Adresse kennt der Host-Filter keinen Namen und nimmt nur IP-Adressen an; wer das will, sagt es.
   if (
@@ -524,21 +525,21 @@ export function startVerbote(env: NodeJS.ProcessEnv = process.env): string[] {
     env.ROLLE?.trim().toLowerCase() !== 'jobs' &&
     env.APP_BASE_URL_FEHLT_OK?.trim() !== '1'
   )
-    gruende.push(
+    reasons.push(
       '[start] APP_BASE_URL fehlt im Betrieb: Der Host-Filter nähme nur IP-Adressen an — Start verweigert. ' +
         'In .env setzen (README.md); nur bewusst ohne: APP_BASE_URL_FEHLT_OK=1 (UPGRADE.md).',
     );
   if (env.MAIL_KONSOLE_MIT_TOKEN?.trim() === '1')
-    gruende.push(
+    reasons.push(
       '[mail] MAIL_KONSOLE_MIT_TOKEN=1 schreibt Rücksetz- und Bestätigungslinks samt Token ins Protokoll — ' +
         'im Betrieb Start verweigert. Nur auf einem Entwicklungsrechner setzen (NODE_ENV=development).',
     );
-  return gruende;
+  return reasons;
 }
 
 /** Erlaubt, aber laut: Schalter, die im Betrieb eine Schutzschicht abschalten. */
-export function startWarnungen(env: NodeJS.ProcessEnv = process.env): string[] {
-  if (entwicklungsUmgebung(env)) return [];
+export function startWarnings(env: NodeJS.ProcessEnv = process.env): string[] {
+  if (developmentEnvironment(env)) return [];
   const w: string[] = [];
   if (schalter(env, 'COOKIE_SECURE', []) === false)
     w.push(
@@ -550,7 +551,7 @@ export function startWarnungen(env: NodeJS.ProcessEnv = process.env): string[] {
       '[start] HSTS_MAX_AGE=0: Browser vergessen, dass der Server nur HTTPS spricht; ein Angreifer im Netz ' +
         'kann die erste Anfrage auf http umlenken. Nur zum Rückbau von HTTPS gedacht (README.md).',
     );
-  if (dbOhneTls(env))
+  if (dbWithoutTls(env))
     w.push(
       '[datenbank] Die Datenbank liegt auf einem anderen Rechner, die Verbindung prüft aber kein Zertifikat: ' +
         'Passwort und Daten gehen ungeschützt durchs Netz. PGSSLMODE=verify-full setzen (bzw. sslmode=verify-full ' +
@@ -562,7 +563,7 @@ export function startWarnungen(env: NodeJS.ProcessEnv = process.env): string[] {
 /** Klartext nur auf demselben Rechner: Loopback, Socket oder ein Name ohne Punkt.
  * Den vergibt Docker für Dienste und Container im eigenen Netz (`postgres`,
  * `db-brickinventory`); ein Rechner im LAN hat in der Regel einen Namen mit Domain. */
-function dbOhneTls(env: NodeJS.ProcessEnv): boolean {
+function dbWithoutTls(env: NodeJS.ProcessEnv): boolean {
   let host = env.PGHOST?.trim() || 'postgres',
     modus = env.PGSSLMODE?.trim() || '';
   if (env.DATABASE_URL) {

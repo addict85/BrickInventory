@@ -2,7 +2,7 @@
  * Die Idempotenz-Middleware antwortet aus dem Speicher, bevor die Route ihren
  * Verwalter-Wächter (requireApiAdmin) prüft. Eine gespeicherte Verwalter-Antwort
  * darf deshalb nicht einem App-Token desselben Kontos ausgeliefert werden.
- * Geprüft an der echten Kette vor /api/v1 (apiEingang) mit echten Tokens.
+ * Geprüft an der echten Kette vor /api/v1 (apiInbox) mit echten Tokens.
  *
  * Gegenprobe (13.11.2026 gemessen):
  *   A  in middleware.ts die Rolle nicht an fingerprint() übergeben → rot:
@@ -18,12 +18,12 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { zugangOderSkip } = require('./helpers/db');
+const { accessOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
+const { adminWithFactor } = require('./helpers/verwalter');
 
 test('Idempotenz: Verwalter-Antworten nur für die Verwalterrolle', { concurrency: 1 }, async t => {
-  const db = await zugangOderSkip(t, _req);
+  const db = await accessOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const name = `idem_rolle_${process.pid}`;
@@ -36,8 +36,8 @@ test('Idempotenz: Verwalter-Antworten nur für die Verwalterrolle', { concurrenc
     )
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {}));
-  await verwalterMitFaktor(_req, uid);
-  const appToken = await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Rollen-Probe', false, null, {
+  await adminWithFactor(_req, uid);
+  const appToken = await _req('src/konto/geraeteToken.js').createToken(uid, 'Rollen-Probe', false, null, {
     scope: 'app',
   });
 

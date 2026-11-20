@@ -11,17 +11,17 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet, mengeVon } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet, quantityOf } = require('./helpers/bestand');
+const db = testData();
 
 test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const HAUPT = `mh-${process.pid}`,
+  const MAIN = `mh-${process.pid}`,
     SUB = `ms-${process.pid}`;
   const SN = `78${(process.pid % 900) + 100}-1`;
 
@@ -30,12 +30,12 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
       await db.run(`DELETE FROM ${tab} WHERE set_number=$1`, [SN]).catch(() => {});
   };
 
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
-  const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [MAIN, SUB]);
+  const mainId = (await db.get(`SELECT id FROM users WHERE username=$1`, [MAIN])).id;
   const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
-    hauptId,
+    mainId,
     subId,
   ]);
   await aufraeumen();
@@ -47,14 +47,14 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
     [SN],
   );
   // NUR das Unterkonto hält ein Exemplar — Marcos Ausgangslage.
-  await haeltSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,3.94,'U',1)`,
     [subId, SN],
   );
 
-  const { base, srv } = testServer(_req, { sitzung: { userId: hauptId }, t });
+  const { base, srv } = testServer(_req, { sitzung: { userId: mainId }, t });
 
   const detail = async () => (await (await fetch(`${base}/api/v1/sets/${SN}`)).json()).set;
   const setzen = async n => {
@@ -66,7 +66,7 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
     return { status: r.status, body: await r.json() };
   };
   // Aus den Erfassungen (Migration 0036 hat sets.quantity geloescht).
-  const menge = async uid => await mengeVon(db, uid, SN);
+  const menge = async uid => await quantityOf(db, uid, SN);
 
   try {
     await t.test('das Detail zeigt die Menge aller Konten', async () => {
@@ -81,12 +81,12 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
     await t.test('erhöhen legt im EIGENEN Konto an, mit Marktpreis', async () => {
       const r = await setzen(2);
       assert.equal(r.status, 200);
-      assert.equal(await menge(hauptId), 1, 'die Differenz gehört dem eigenen Konto');
+      assert.equal(await menge(mainId), 1, 'die Differenz gehört dem eigenen Konto');
       assert.equal(await menge(subId), 1, 'der fremde Bestand bleibt unberührt');
       const acq = await db.get(
         `SELECT quantity, purchase_price, condition FROM set_acquisitions
           WHERE user_id=$1 AND set_number=$2`,
-        [hauptId, SN],
+        [mainId, SN],
       );
       assert.ok(acq, 'im eigenen Konto ist keine Erfassung entstanden');
       assert.equal(acq.quantity, 1);
@@ -104,20 +104,20 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
       // Die Tagesregel gilt unverändert: eine Erfassung je Konto, Set und Tag.
       await setzen(4);
       const zeilen = await db.all(`SELECT quantity FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [
-        hauptId,
+        mainId,
         SN,
       ]);
       assert.equal(zeilen.length, 1, `${zeilen.length} Erfassungen — die Tagesregel greift nicht`);
       assert.equal(zeilen[0].quantity, 3);
-      assert.equal(await menge(hauptId), 3);
+      assert.equal(await menge(mainId), 3);
     });
 
     await t.test('verringern nimmt zuerst die eigenen Exemplare', async () => {
       await setzen(1);
-      assert.equal(await menge(hauptId), 0, 'die eigenen Exemplare gehen zuerst');
+      assert.equal(await menge(mainId), 0, 'die eigenen Exemplare gehen zuerst');
       assert.equal(await menge(subId), 1, 'das fremde bleibt');
       // Bleibt nichts übrig, verschwindet die eigene Zeile ganz.
-      const eigene = await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [hauptId, SN]);
+      const eigene = await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [mainId, SN]);
       assert.equal(eigene.c, 0, 'eine eigene Zeile mit Menge 0 bleibt zurück');
     });
 
@@ -131,8 +131,8 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
     });
   } finally {
     await aufraeumen();
-    await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [hauptId]).catch(() => {});
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [mainId]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }

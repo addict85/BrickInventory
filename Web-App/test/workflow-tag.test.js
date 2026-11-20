@@ -30,7 +30,7 @@ const { spawnSync } = require('node:child_process');
 const YML = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'docker-publish.yml'), 'utf8');
 
 /** Den run-Block des Schritts `id: p` ausschneiden (Einrückung zehn Leerzeichen). */
-function pruefSkript() {
+function pruefScript() {
   const schritt = YML.split('\n      - id: p\n')[1]?.split(/\n {6}- /)[0] ?? '';
   const zeilen = schritt.split('\n');
   const start = zeilen.indexOf('        run: |');
@@ -61,7 +61,7 @@ esac
 `,
     { mode: 0o755 },
   );
-  const r = spawnSync('bash', ['-e', '-c', pruefSkript()], {
+  const r = spawnSync('bash', ['-e', '-c', pruefScript()], {
     encoding: 'utf8',
     cwd: __dirname,
     env: {
@@ -75,35 +75,35 @@ esac
       REPO: 'probe/probe',
     },
   });
-  const ausgabe = fs.readFileSync(aus, 'utf8');
+  const output = fs.readFileSync(aus, 'utf8');
   fs.rmSync(path.dirname(aus), { recursive: true, force: true });
-  return { status: r.status, ausgabe };
+  return { status: r.status, output };
 }
 
 test('gültige Tags gehen als Ausgabe weiter', () => {
   for (const tag of ['2026.11.01', 'v1_2-rc.3', '']) {
     const r = lauf(tag);
     assert.equal(r.status, 0, `„${tag}" abgewiesen`);
-    assert.match(r.ausgabe, new RegExp(`^tag=${tag.replace(/\./g, '\\.')}$`, 'm'));
-    assert.match(r.ausgabe, /^bauen=true$/m);
-    assert.match(r.ausgabe, /^kurz=a1a1a1a$/m, 'der Commit kommt aus git rev-parse');
+    assert.match(r.output, new RegExp(`^tag=${tag.replace(/\./g, '\\.')}$`, 'm'));
+    assert.match(r.output, /^bauen=true$/m);
+    assert.match(r.output, /^kurz=a1a1a1a$/m, 'der Commit kommt aus git rev-parse');
   }
 });
 
 const BOESE = {
   'zwei Zeilen': 'gut\ntype=raw,value=latest',
   Leerzeichen: 'a b',
-  Strichpunkt: 'a;b',
+  Semicolon: 'a;b',
   'Bindestrich vorn': '-a',
   Umlaut: 'ä',
   'zu lang': 'a'.repeat(129),
-  Wagenrücklauf: 'gut\r',
+  CarriageReturn: 'gut\r',
 };
 for (const [fall, tag] of Object.entries(BOESE)) {
   test(`abgewiesen: ${fall}`, () => {
     const r = lauf(tag);
     assert.notEqual(r.status, 0, `abgewiesen: ${fall}`);
-    assert.doesNotMatch(r.ausgabe, /^tag=/m);
+    assert.doesNotMatch(r.output, /^tag=/m);
   });
 }
 
@@ -115,14 +115,14 @@ test('ohne grüne CI kein Image', () => {
   ]) {
     const r = lauf('', { gruen });
     assert.notEqual(r.status, 0, `ohne grüne CI kein Image: ${fall}`);
-    assert.doesNotMatch(r.ausgabe, /^bauen=true$/m, fall);
+    assert.doesNotMatch(r.output, /^bauen=true$/m, fall);
   }
 });
 
 test('Handstart auf einem Nebenzweig', () => {
   const r = lauf('', { ref: 'refs/heads/probe' });
   assert.notEqual(r.status, 0, 'Handstart auf einem Nebenzweig');
-  assert.doesNotMatch(r.ausgabe, /^bauen=true$/m);
+  assert.doesNotMatch(r.output, /^bauen=true$/m);
 });
 
 test('inputs.tag steht nur in env', () => {

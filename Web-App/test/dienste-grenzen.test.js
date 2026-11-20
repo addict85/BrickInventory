@@ -4,11 +4,11 @@
  * greift darauf mit @ts-expect-error zu, und tsc muss jeden Zugriff ablehnen.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in erzeugeBestand (src/bestand/bereich.ts) wieder `...k,` vor die Dienste →
+ *   A  in createInventory (src/bestand/bereich.ts) wieder `...k,` vor die Dienste →
  *      rot: vier unbenutzte @ts-expect-error (d.bestand.db, .transaktion,
  *      .papierkorb, .manuelleMengen)
- *   B  in erzeugeKonto `protokoll: k.protokoll,` ergänzt → rot: d.konto.protokoll
- *   C  `lagerortDienst` aus erzeugeBestand entfernt → rot: tsc meldet die Nutzer und die Probe
+ *   B  in createAccount `protokoll: k.protokoll,` ergänzt → rot: d.konto.protokoll
+ *   C  `locationService` aus createInventory entfernt → rot: tsc meldet die Nutzer und die Probe
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

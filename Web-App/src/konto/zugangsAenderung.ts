@@ -5,10 +5,10 @@ import { prozessweit } from '../infra/prozessweit';
  * NOTIFY), sollen sie es sofort merken und nicht erst beim nächsten Takt. */
 const zugangsAenderung = prozessweit('zugangsHoerer', () => ereignis('zugangsAenderung'));
 
-export function beiZugangsAenderung(f: () => unknown): () => void {
+export function atAccessChange(f: () => unknown): () => void {
   return zugangsAenderung.horche(f);
 }
 
-export function meldeZugangsAenderung(): void {
+export function reportAccessChange(): void {
   void zugangsAenderung.melde();
 }

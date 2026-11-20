@@ -17,20 +17,20 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet, katalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { holdsSet, catalogSet } = require('./helpers/bestand');
 
 test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const USERNAME = 'img-fallback-test';
   const OHNE = '60445-1'; // Bild nur im Katalog
   const MIT = '60446-1'; // eigene Adresse vorhanden
   const CDN = 'https://cdn.rebrickable.com/media/sets/60445-1.jpg';
-  const EIGEN = 'https://cdn.rebrickable.com/media/sets/eigen.jpg';
+  const OWN = 'https://cdn.rebrickable.com/media/sets/eigen.jpg';
 
   await db.run(`DELETE FROM users WHERE username=$1`, [USERNAME]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USERNAME]);
@@ -40,15 +40,15 @@ test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog', { co
   await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
 
   // Was Migration 0033 an diesem Aufbau geaendert hat
-  await haeltSet(db, uid, OHNE, 1);
-  await katalogSet(db, OHNE, { name: 'F1 Truck', image_url: CDN });
+  await holdsSet(db, uid, OHNE, 1);
+  await catalogSet(db, OHNE, { name: 'F1 Truck', image_url: CDN });
 
   // Gegenstück: eine ANDERE Adresse im Katalog — sie muss unveraendert durchkommen.
-  await haeltSet(db, uid, MIT, 1);
-  await katalogSet(db, MIT, { name: 'Anderes', image_url: EIGEN });
+  await holdsSet(db, uid, MIT, 1);
+  await catalogSet(db, MIT, { name: 'Anderes', image_url: OWN });
 
   try {
-    const { setsLesen } = require('./helpers/sources').handlerModul(_req);
+    const { setsLesen } = require('./helpers/sources').handlerModule(_req);
     const r = await setsLesen([uid], {});
     const ohne = r.sets.find(s => s.set_number === OHNE);
     const mit = r.sets.find(s => s.set_number === MIT);
@@ -64,7 +64,7 @@ test('fehlt die Bildadresse am Set, kommt sie aus dem gemeinsamen Katalog', { co
 
     assert.equal(
       mit.image_url,
-      EIGEN,
+      OWN,
       'eine vorhandene eigene Adresse hat Vorrang und wird NICHT vom Katalog überschrieben',
     );
   } finally {

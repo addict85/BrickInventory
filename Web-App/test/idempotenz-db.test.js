@@ -24,22 +24,22 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { warte } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
-const freierPort = () =>
+const { portOf } = require('./helpers/server');
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
 
 test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const konto = async name => {
     await db.run('DELETE FROM users WHERE username = $1', [name]);
     const id = (
@@ -54,7 +54,7 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity) VALUES ($1, '3001id', 5, 2)`,
       [id],
     );
-    return { id, token: await _req('src/konto/geraeteToken.js').tokenAnlegen(id, 'Idempotenz-Probe') };
+    return { id, token: await _req('src/konto/geraeteToken.js').createToken(id, 'Idempotenz-Probe') };
   };
   const a = await konto(`idem_a_${process.pid}`),
     b = await konto(`idem_b_${process.pid}`);
@@ -63,7 +63,7 @@ test('Idempotency-Key', { concurrency: 1, timeout: 180_000 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const port = await freierPort();
+  const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],

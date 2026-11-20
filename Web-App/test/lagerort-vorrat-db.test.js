@@ -7,11 +7,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 const U = {};
 
@@ -25,7 +25,7 @@ async function seed() {
   } finally {
     client.release();
   }
-  for (const name of ['opa', 'enkel']) {
+  for (const name of ['grandparent', 'enkel']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [name]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
   }
@@ -49,18 +49,18 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
   await seed();
   const L = {
     ..._req('src/bestand/lagerort.js'),
-    ...require('./helpers/sources').testBereich('bestand').lagerortDienst,
+    ...require('./helpers/sources').testArea('bestand').locationService,
   };
 
   await t.test('anlegen, und dasselbe zweimal anlegen ist kein zweiter Eintrag', async () => {
-    const a = await L.legeOrtAn(U.opa, 'Regal A');
+    const a = await L.putLocationAn(U.grandparent, 'Regal A');
     assert.equal(a.war_neu, true);
     assert.equal(a.ort.name, 'Regal A');
 
     // Gross-/Kleinschreibung entscheidet NICHT: „Regal A" und „regal a" sind
     // dasselbe Regal. Zwei Einträge dafür wären eine Falle in der
     // Auswahlliste, nicht eine Wahlmöglichkeit.
-    const b = await L.legeOrtAn(U.opa, 'regal a');
+    const b = await L.putLocationAn(U.grandparent, 'regal a');
     assert.equal(b.war_neu, false, '„regal a" wurde als zweiter Ort angelegt');
     assert.equal(b.ort.id, a.ort.id);
     // Und der ursprüngliche Name bleibt stehen — die erste Schreibweise gewinnt.
@@ -70,18 +70,18 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
   await t.test('leer und zu lang werden abgelehnt, nicht zurechtgebogen', async () => {
     for (const roh of ['', '   ', null, undefined]) {
       await assert.rejects(
-        () => L.legeOrtAn(U.opa, roh),
+        () => L.putLocationAn(U.grandparent, roh),
         (/** @type {any} */ e) => String(e.code) === 'lagerort_leer',
         `${JSON.stringify(roh)} wurde angenommen`,
       );
     }
     await assert.rejects(
-      () => L.legeOrtAn(U.opa, 'x'.repeat(61)),
+      () => L.putLocationAn(U.grandparent, 'x'.repeat(61)),
       (/** @type {any} */ e) => String(e.code) === 'lagerort_zu_lang',
     );
     // Genau auf der Grenze ist erlaubt — sonst wäre die Zahl in der
     // Fehlermeldung („höchstens 60") gelogen.
-    const rand = await L.legeOrtAn(U.opa, 'y'.repeat(60));
+    const rand = await L.putLocationAn(U.grandparent, 'y'.repeat(60));
     assert.equal(rand.war_neu, true);
     await db.run('DELETE FROM storage_locations WHERE id = $1', [rand.ort.id]);
   });
@@ -89,19 +89,19 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
   await t.test('jedes Konto hat seinen eigenen Vorrat', async () => {
     // Ein Lagerort ist ein Regal in einer Wohnung. Der Grossvater hat andere
     // Regale als der Enkel, auch wenn er dessen Sets sehen darf.
-    await L.legeOrtAn(U.enkel, 'Kinderzimmer');
+    await L.putLocationAn(U.enkel, 'Kinderzimmer');
     assert.deepEqual(
-      (await L.orteVon([U.opa])).map(o => o.name),
+      (await L.locationsOf([U.grandparent])).map(o => o.name),
       ['Regal A'],
     );
     assert.deepEqual(
-      (await L.orteVon([U.enkel])).map(o => o.name),
+      (await L.locationsOf([U.enkel])).map(o => o.name),
       ['Kinderzimmer'],
     );
     // Und der Grossvater kann beide Listen zusammen abfragen — genau das tut
     // das Auswahlfeld bei einem Set, das beiden gehört.
     assert.deepEqual(
-      (await L.orteVon([U.opa, U.enkel])).map(o => o.name),
+      (await L.locationsOf([U.grandparent, U.enkel])).map(o => o.name),
       ['Kinderzimmer', 'Regal A'],
       'sortiert ohne Rücksicht auf Gross-/Kleinschreibung',
     );
@@ -111,10 +111,10 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     // Marcos „man kann auch gleich neue Auswahlwerte erfassen". Ohne das
     // stünde der Ort am Set, fehlte aber in der Liste, aus der er beim
     // nächsten Mal gewählt werden soll.
-    await haeltSet(db, U.enkel, '10179-1', 1);
-    assert.equal(await L.setzeLagerort('set', [U.enkel], ['10179-1'], 'Unterm Bett'), 1);
+    await holdsSet(db, U.enkel, '10179-1', 1);
+    assert.equal(await L.setLocation('set', [U.enkel], ['10179-1'], 'Unterm Bett'), 1);
     assert.ok(
-      (await L.orteVon([U.enkel])).some(o => o.name === 'Unterm Bett'),
+      (await L.locationsOf([U.enkel])).some(o => o.name === 'Unterm Bett'),
       'Der frisch getippte Ort fehlt im Vorrat',
     );
   });
@@ -122,13 +122,17 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
   await t.test('ein Ort, der keine Zeile trifft, hinterlässt keinen Eintrag', async () => {
     // Kein Schreibrecht, falsche Setnummer: Dann soll auch nichts im Vorrat
     // stehen bleiben. Sonst sammelte die Liste Namen aus Fehlversuchen.
-    const vorher = (await L.orteVon([U.opa])).length;
-    assert.equal(await L.setzeLagerort('set', [U.opa], ['99999-1'], 'Geisterkiste'), 0);
-    assert.equal((await L.orteVon([U.opa])).length, vorher, 'Ein Fehlversuch hat einen Ort im Vorrat hinterlassen');
+    const vorher = (await L.locationsOf([U.grandparent])).length;
+    assert.equal(await L.setLocation('set', [U.grandparent], ['99999-1'], 'Geisterkiste'), 0);
+    assert.equal(
+      (await L.locationsOf([U.grandparent])).length,
+      vorher,
+      'Ein Fehlversuch hat einen Ort im Vorrat hinterlassen',
+    );
   });
 
   await t.test('Umbenennen nimmt die Zuordnungen mit', async () => {
-    const ort = (await L.orteVon([U.enkel])).find(o => o.name === 'Unterm Bett');
+    const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'Unterm Bett');
     await L.benenneOrtUm(U.enkel, ort.id, 'Kiste 3');
     // Die Aussage ist dieselbe wie vorher, der Weg dahin ein anderer: Bis
     // Migration 0031 schrieb benenneOrtUm() den neuen Namen in drei Tabellen
@@ -142,11 +146,11 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
       ['10179-1'],
     );
     assert.equal(amSet.storage, 'Kiste 3', 'Das Set steht noch im alten Ort — das Umbenennen war ein Verlieren');
-    assert.ok((await L.orteVon([U.enkel])).some(o => o.name === 'Kiste 3'));
+    assert.ok((await L.locationsOf([U.enkel])).some(o => o.name === 'Kiste 3'));
   });
 
   await t.test('Umbenennen auf einen belegten Namen wird abgelehnt', async () => {
-    const ort = (await L.orteVon([U.enkel])).find(o => o.name === 'Kiste 3');
+    const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'Kiste 3');
     await assert.rejects(
       () => L.benenneOrtUm(U.enkel, ort.id, 'kinderzimmer'),
       (/** @type {any} */ e) => String(e.code) === 'lagerort_doppelt',
@@ -155,37 +159,37 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     // Der eigene Name auf sich selbst ist dagegen in Ordnung — sonst liesse
     // sich „Kiste 3" nicht zu „KISTE 3" korrigieren.
     await L.benenneOrtUm(U.enkel, ort.id, 'KISTE 3');
-    assert.ok((await L.orteVon([U.enkel])).some(o => o.name === 'KISTE 3'));
+    assert.ok((await L.locationsOf([U.enkel])).some(o => o.name === 'KISTE 3'));
   });
 
   await t.test('ein fremdes Konto kann nichts umbenennen', async () => {
-    const ort = (await L.orteVon([U.enkel])).find(o => o.name === 'KISTE 3');
+    const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'KISTE 3');
     await assert.rejects(
-      () => L.benenneOrtUm(U.opa, ort.id, 'Opas Keller'),
+      () => L.benenneOrtUm(U.grandparent, ort.id, 'Opas Keller'),
       (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
     );
     await assert.rejects(
-      () => L.loescheOrt(U.opa, ort.id),
+      () => L.loescheOrt(U.grandparent, ort.id),
       (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
     );
   });
 
   await t.test('Löschen geht nur bei einem leeren Ort', async () => {
-    const belegt = (await L.orteVon([U.enkel])).find(o => o.name === 'KISTE 3');
+    const belegt = (await L.locationsOf([U.enkel])).find(o => o.name === 'KISTE 3');
     await assert.rejects(
       () => L.loescheOrt(U.enkel, belegt.id),
       (/** @type {any} */ e) => String(e.code) === 'lagerort_in_benutzung',
       'Ein belegter Ort liess sich löschen — die Zuordnung wäre ohne Weg zurück weg',
     );
 
-    const leer = (await L.orteVon([U.enkel])).find(o => o.name === 'Kinderzimmer');
+    const leer = (await L.locationsOf([U.enkel])).find(o => o.name === 'Kinderzimmer');
     await L.loescheOrt(U.enkel, leer.id);
-    assert.ok(!(await L.orteVon([U.enkel])).some(o => o.name === 'Kinderzimmer'));
+    assert.ok(!(await L.locationsOf([U.enkel])).some(o => o.name === 'Kinderzimmer'));
 
     // Und nach dem Ausräumen geht auch der belegte.
     await db.run('UPDATE sets SET storage_id = NULL WHERE set_number = $1', ['10179-1']);
     await L.loescheOrt(U.enkel, belegt.id);
-    assert.deepEqual(await L.orteVon([U.enkel]), []);
+    assert.deepEqual(await L.locationsOf([U.enkel]), []);
   });
 
   await t.test('eine Zuordnung ohne Ort im Vorrat ist nicht mehr moeglich', async () => {

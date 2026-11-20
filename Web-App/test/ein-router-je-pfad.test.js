@@ -22,14 +22,14 @@ const _req = buildAndRequire();
 /** Alle Routen eines Routers als „METHODE /pfad", samt eingehängter Unterrouter. */
 function routen(router, praefix = '') {
   const raus = [];
-  for (const schicht of router.stack) {
-    if (schicht.route) {
-      for (const m of Object.keys(schicht.route.methods).filter(m => m !== '_all'))
-        raus.push(`${m.toUpperCase()} ${praefix}${schicht.route.path === '/' ? '' : schicht.route.path}`);
-    } else if (schicht.handle && Array.isArray(schicht.handle.stack)) {
+  for (const layer of router.stack) {
+    if (layer.route) {
+      for (const m of Object.keys(layer.route.methods).filter(m => m !== '_all'))
+        raus.push(`${m.toUpperCase()} ${praefix}${layer.route.path === '/' ? '' : layer.route.path}`);
+    } else if (layer.handle && Array.isArray(layer.handle.stack)) {
       // Ein Unterrouter mit eigenem Pfad liesse sich hier nicht auflösen.
-      assert.ok(schicht.slash, `Unterrouter mit eigenem Pfad unter ${praefix || '/'} — bitte ohne Pfad einhängen`);
-      raus.push(...routen(schicht.handle, praefix));
+      assert.ok(layer.slash, `Unterrouter mit eigenem Pfad unter ${praefix || '/'} — bitte ohne Pfad einhängen`);
+      raus.push(...routen(layer.handle, praefix));
     }
   }
   return raus;
@@ -39,21 +39,21 @@ function routen(router, praefix = '') {
 function einhaengungen() {
   const v1 = { mount: '/api/v1', datei: path.join(ROOT, 'routes/api_v1/index.ts'), name: 'api_v1/index' };
   // Die Teile von routes/auth.ts stecken schon in dessen Stapel.
-  return [v1, ...routerEinhaengungen({ ohneTeile: true })];
+  return [v1, ...routerEinhaengungen({ withoutParts: true })];
 }
 
 test('ein Router je Einhängepunkt', () => {
   const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
-  // Router heissen in startup/app.ts `…Router`; Middleware (anmeldungAmEingang) darf daneben stehen.
+  // Router heissen in startup/app.ts `…Router`; Middleware (loginAtInbox) darf daneben stehen.
   const je = new Map();
   for (const m of server.matchAll(/app\.use\(\s*'(\/api[^']*)'\s*,\s*(\w+Router)(?:\(d\))?\s*\)/g))
     je.set(m[1], [...(je.get(m[1]) || []), m[2]]);
   assert.ok(je.size >= 2, `nur ${je.size} Router-Einhängungen in startup/app.ts gefunden`);
-  // Gesundheit und Startstatus antworten VOR dem Eingang (anmeldungAmEingang),
+  // Gesundheit und Startstatus antworten VOR dem Eingang (loginAtInbox),
   // der Router der API dahinter: zwei Stellen im Stapel, deshalb zwei Router.
-  const VOR_DEM_EINGANG = new Set(['baueGesundheitRouter']);
+  const BEFORE_THE_INBOX = new Set(['buildGesundheitRouter']);
   const doppelt = [...je]
-    .map(([p, r]) => [p, r.filter(n => !VOR_DEM_EINGANG.has(n))])
+    .map(([p, r]) => [p, r.filter(n => !BEFORE_THE_INBOX.has(n))])
     .filter(([, r]) => r.length > 1)
     .map(([p, r]) => `${p}: ${r.join(', ')}`);
   assert.deepEqual(doppelt, []);
@@ -62,7 +62,7 @@ test('ein Router je Einhängepunkt', () => {
 test('jede Route genau einmal', () => {
   const alle = [];
   for (const e of einhaengungen()) {
-    const modul = require('./helpers/sources').routerAus(_req, path.relative(ROOT, e.datei).replace(/\.ts$/, '.js'));
+    const modul = require('./helpers/sources').routerFrom(_req, path.relative(ROOT, e.datei).replace(/\.ts$/, '.js'));
     alle.push(...routen(modul.default || modul, e.mount));
   }
   assert.ok(alle.length > 150, `nur ${alle.length} Routen gefunden — greift die Suche noch?`);

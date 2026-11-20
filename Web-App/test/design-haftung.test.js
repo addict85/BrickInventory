@@ -1,5 +1,5 @@
 /**
- * Kopf- und Reiterleiste haften GEMEINSAM — in jedem Design, gemessen in Chrome
+ * Kopf- und Reiterleiste haften SHARED — in jedem Design, gemessen in Chrome
  * nach dem Rollen. Haftet nur die Reiterleiste, steht sie auf der Höhe der
  * weggerollten Kopfleiste und schiebt sich über den Inhalt; sitzt sie nicht
  * genau unter der Kopfleiste, klafft eine Lücke oder beide überdecken sich.
@@ -27,7 +27,7 @@ const DESIGNS = [
     .map(n => n.slice(0, -4)),
 ];
 
-function messe(bin, ordner, design) {
+function measure(bin, ordner, design) {
   const css = ['tokens.css', 'styles.css', ...fs.readdirSync(path.join(PUBLIC, 'themes')).map(n => `themes/${n}`)]
     .map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`)
     .join('');
@@ -73,18 +73,18 @@ test('Kopf- und Reiterleiste haften in jedem Design gemeinsam und schliessen ane
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const fehler = [];
   for (const d of DESIGNS) {
-    const { kopf, reiter, gerollt } = messe(bin, ordner, d);
+    const { kopf, reiter, gerollt } = measure(bin, ordner, d);
     assert.ok(gerollt > 1000, `${d}: die Seite rollt nicht (${gerollt})`);
-    const kopfHaftet = Math.round(kopf[0]) === 0,
-      reiterSichtbar = reiter[1] > 0;
-    if (kopfHaftet !== reiterSichtbar)
+    const headerSticks = Math.round(kopf[0]) === 0,
+      tabVisible = reiter[1] > 0;
+    if (headerSticks !== tabVisible)
       fehler.push(
-        `${d}: Kopfleiste ${kopfHaftet ? 'haftet' : 'rollt weg'}, Reiterleiste ${reiterSichtbar ? 'haftet' : 'rollt weg'}`,
+        `${d}: Kopfleiste ${headerSticks ? 'haftet' : 'rollt weg'}, Reiterleiste ${tabVisible ? 'haftet' : 'rollt weg'}`,
       );
-    else if (kopfHaftet && Math.round(reiter[0]) !== Math.round(kopf[1]))
+    else if (headerSticks && Math.round(reiter[0]) !== Math.round(kopf[1]))
       fehler.push(`${d}: Reiterleiste bei ${Math.round(reiter[0])}, Kopfleiste endet bei ${Math.round(kopf[1])}`);
   }
   assert.deepEqual(fehler, []);
   // Die Grundgestaltung heftet beide an; ohne das prüfte der Vergleich oben zweimal „rollt weg“.
-  assert.equal(Math.round(messe(bin, ordner, 'classic').kopf[0]), 0, 'classic: die Kopfleiste haftet nicht');
+  assert.equal(Math.round(measure(bin, ordner, 'classic').kopf[0]), 0, 'classic: die Kopfleiste haftet nicht');
 });

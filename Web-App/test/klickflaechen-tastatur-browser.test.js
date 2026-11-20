@@ -19,8 +19,8 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterHaushalt } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternHousehold } = require('./helpers/bestand');
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const reiter = r => klick(`.ntab[data-tab="${r}"]`);
@@ -65,7 +65,7 @@ const UNBEDIENBAR = `(() => {
   return [...funde]; })()`;
 
 test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async t => {
-  const app = await starteApp(t, { name: `kft_${process.pid}`, bestand: musterHaushalt });
+  const app = await startApp(t, { name: `kft_${process.pid}`, bestand: patternHousehold });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -73,7 +73,7 @@ test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async t => {
   const { b, bis, ruhig } = app;
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
-  const ruhe = () => b.auswerten(`new Promise(r => setTimeout(() => requestAnimationFrame(() => r(true)), 700))`);
+  const rest = () => b.auswerten(`new Promise(r => setTimeout(() => requestAnimationFrame(() => r(true)), 700))`);
 
   await t.test('jede Klickfläche ist bedienbar', async () => {
     const funde = [];
@@ -82,7 +82,7 @@ test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async t => {
       await b.auswerten(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open')); true`);
       for (const s of schritte) {
         await b.auswerten(s);
-        await ruhe();
+        await rest();
       }
       geprueft += await b.auswerten(
         `[...document.querySelectorAll('[data-click]')].filter(e => e.checkVisibility()).length`,

@@ -1,30 +1,30 @@
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
-import type { BilderKontext } from './kontext';
+import type { ImagesContext } from './kontext';
 
 /** Umleiten auf die CDN-Adresse heilt Web und App, ohne verwaiste
  * image_local-Einträge bereinigen zu müssen. Gesucht über den indizierten
  * Dateinamen-Stamm (bild_stamm()). */
 const CACHE_MS = 10 * 60 * 1000;
-const cdnSpeicher = (k: BilderKontext) =>
+const cdnStorage = (k: ImagesContext) =>
   k.faecher.fach('cdnZuPfad', () => new Zwischenspeicher<string, { url: string | null }>(5000, CACHE_MS));
 
-export function bildStammAusPfad(webPfad: string): string {
-  const datei = webPfad.split('/').pop() || '';
+export function imageMasterFromPath(webPath: string): string {
+  const datei = webPath.split('/').pop() || '';
   return datei.replace(/_thumb\.jpg$/i, '').replace(/\.[^.]+$/, '');
 }
 
-export async function cdnFuerFehlendesBild(k: BilderKontext, webPfad: string): Promise<string | null> {
-  const gemerkt = cdnSpeicher(k).hole(webPfad);
+export async function cdnForMissingImage(k: ImagesContext, webPath: string): Promise<string | null> {
+  const gemerkt = cdnStorage(k).hole(webPath);
   if (gemerkt) return gemerkt.url;
-  const stamm = bildStammAusPfad(webPfad);
+  const stamm = imageMasterFromPath(webPath);
   let url: string | null = null;
   if (stamm) {
     const z = await k.bildStammCdn.cdnZuBildstamm(stamm);
     url = z?.url ?? null;
   }
-  cdnSpeicher(k).setze(webPfad, { url });
+  cdnStorage(k).setze(webPath, { url });
   return url;
 }
 
 /** Für Tests, damit der Plan der Abfrage geprüft werden kann. */
-export { CDN_ABFRAGE } from './repository/bildStammCdn';
+export { CDN_QUERY } from './repository/bildStammCdn';

@@ -14,7 +14,7 @@
  *      nennen nicht die Web-Version“ („android-v2026.11.12.4-1-g…“)
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { environment } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -34,13 +34,13 @@ test('das Projekt hat kein Install-Skript', () => {
 test('ein Build-Argument geht vor, sonst Git', () => {
   const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'version-'));
   try {
-    const skript = path.join(ROOT, 'scripts', 'version.js');
-    execFileSync(process.execPath, [skript, '--outdir', ziel], {
+    const script = path.join(ROOT, 'scripts', 'version.js');
+    execFileSync(process.execPath, [script, '--outdir', ziel], {
       env: { PATH: process.env.PATH, APP_VERSION: '2026.10.30' },
       stdio: 'ignore',
     });
     assert.equal(JSON.parse(fs.readFileSync(path.join(ziel, 'version.json'), 'utf8')).version, '2026.10.30');
-    const ohne = execFileSync(process.execPath, [skript], { env: { PATH: process.env.PATH }, encoding: 'utf8' });
+    const ohne = execFileSync(process.execPath, [script], { env: { PATH: process.env.PATH }, encoding: 'utf8' });
     assert.match(ohne, /^\[version\] [\w.-]+\n$/);
     assert.doesNotMatch(ohne, /2026\.10\.30/);
   } finally {
@@ -52,20 +52,20 @@ test('der Server meldet die gebaute Version', () => {
   const _req = require('./helpers/sources').buildAndRequire();
   const gebaut = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'version.json'), 'utf8')).version;
   const alt = process.env.APP_VERSION;
-  umgebung({ APP_VERSION: undefined });
+  environment({ APP_VERSION: undefined });
   try {
     const { appVersion } = _req('src/infra/appVersion.js');
     assert.equal(appVersion(), gebaut);
-    umgebung({ APP_VERSION: 'laufzeit-1' });
+    environment({ APP_VERSION: 'laufzeit-1' });
     assert.equal(appVersion(), 'laufzeit-1', 'APP_VERSION zur Laufzeit geht vor');
   } finally {
-    if (alt === undefined) umgebung({ APP_VERSION: undefined });
-    else umgebung({ APP_VERSION: alt });
+    if (alt === undefined) environment({ APP_VERSION: undefined });
+    else environment({ APP_VERSION: alt });
   }
 });
 
 test('Android-Etiketten nennen nicht die Web-Version', () => {
-  const { bauVersion } = require('../scripts/version');
+  const { buildVersion } = require('../scripts/version');
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'version-git-'));
   const git = (...a) =>
     execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.org', ...a], { cwd: repo, stdio: 'ignore' });
@@ -77,7 +77,7 @@ test('Android-Etiketten nennen nicht die Web-Version', () => {
     git('tag', 'android-v2026.11.12.4');
     git('tag', 'apk-neuste');
     git('commit', '-q', '--allow-empty', '-m', 'drei');
-    assert.match(bauVersion({}, repo), /^v2026\.11\.01-2-g[0-9a-f]+$/);
+    assert.match(buildVersion({}, repo), /^v2026\.11\.01-2-g[0-9a-f]+$/);
   } finally {
     fs.rmSync(repo, { recursive: true, force: true });
   }

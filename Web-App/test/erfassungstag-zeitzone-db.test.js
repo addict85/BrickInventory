@@ -13,7 +13,7 @@
  *   C  der Trigger liest wieder current_setting('brickinventory.zeitzone')
  *      → rot: alle drei Teilprüfungen, auch „eine Verbindung ausserhalb des
  *      Pools rechnet denselben Tag“ (2026-03-09 statt 2026-03-10)
- *   D  schreibeErfassungsZeitzone() in initSchemaOnce() ausgelassen → rot:
+ *   D  writeEntryTimeZone() in initSchemaOnce() ausgelassen → rot:
  *      alle drei (es gilt UTC)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -25,10 +25,10 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.ERFASSUNG_ZEITZONE = 'Europe/Zurich';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async t => {
   // initSchemaOnce wie beim Start: Schema, Migrationen, Zone in die Datenbank.
@@ -38,14 +38,14 @@ test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async
     keineDb(t, e);
     return;
   }
-  const { kaufAmTagErfassen } = _req('src/bestand/acquisitions.js');
+  const { addPurchaseAtTag } = _req('src/bestand/acquisitions.js');
   const NAME = `tagzone-${process.pid}`;
   const SN = `TZ${process.pid}-1`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SN]);
   const kauf = am =>
-    kaufAmTagErfassen('set', uid, [SN], {
+    addPurchaseAtTag('set', uid, [SN], {
       quantity: 1,
       price: 10,
       condition: 'N',
@@ -67,7 +67,7 @@ test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async
     });
     await t.test('eine Verbindung ausserhalb des Pools rechnet denselben Tag', async () => {
       // So schreibt psql oder ein Skript: ohne Sitzungseinstellungen des Pools.
-      const c = await db.eigeneVerbindung();
+      const c = await db.ownConnection();
       try {
         const r = await c.query(
           `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at)

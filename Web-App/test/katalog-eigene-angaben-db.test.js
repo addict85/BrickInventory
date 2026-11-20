@@ -5,7 +5,7 @@
  * Haushalt: Listen der Teile und Figuren, manuelle Listen und der CSV-Export.
  *
  * Gegenproben (am 03.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  merkeTeil()/merkeTeilFarbe()/merkeFigur() ohne den Zweig für `von`
+ *   A  rememberPart()/rememberPartColor()/rememberMinifig() ohne den Zweig für `von`
  *      (Eingaben wieder in den gemeinsamen Katalog) → rot: alle Teiltests
  *      ausser „Alice sieht ihre eigenen Angaben“
  *   B  in db/katalogSicht.ts part_custom ohne `te.user_id = konto` verbunden
@@ -22,14 +22,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
+const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
-// Kein Netz: Rebrickable kennt nur 3003 (an der Verdrahtung gestellt, testQuellen).
-testQuellen(null, {
+// Kein Netz: Rebrickable kennt nur 3003 (an der Verdrahtung gestellt, testSources).
+testSources(null, {
   lookupPart: async nr =>
     nr === '3003'
       ? {
@@ -86,7 +86,7 @@ test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurren
     B = api(bob),
     C = api(carol),
     K = api(kind);
-  const { teileCsv, figurenCsv } = _req('src/bestand/bestandExport.js');
+  const { partsCsv, figurenCsv } = _req('src/bestand/bestandExport.js');
 
   const ALICE = ['Alices Prototyp', 'Tresorrot', 'AB1234', 'Privat', 'media/alice.jpg', 'Geheimfigur', 'Gefälscht'];
   await A('POST', '/parts', {
@@ -122,12 +122,12 @@ test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurren
     const l = await listen(A);
     for (const s of ['Alices Prototyp', 'Tresorrot', 'AB1234', 'Privat', 'media/alice.jpg', 'Geheimfigur'])
       assert.ok(l.includes(s), `Alices Liste ohne ${s}`);
-    const csv = await teileCsv(alice);
+    const csv = await partsCsv(alice);
     assert.match(csv, /geheim-77,1,4,Tresorrot/);
   });
 
   await t.test('Bob sieht Alices Eingaben in keiner Liste und keinem Export', async () => {
-    const l = (await listen(B)) + (await teileCsv(bob)) + (await figurenCsv(bob));
+    const l = (await listen(B)) + (await partsCsv(bob)) + (await figurenCsv(bob));
     assert.ok(l.includes('geheim-77') && l.includes('fig-000001'), 'Testdaten: Bob führt beide Nummern');
     for (const s of ALICE) assert.ok(!l.includes(s), `Bob sieht ${s}`);
   });

@@ -1,4 +1,4 @@
-import { ladeAnzeige, verstaendlicherGrund, pnlBadge } from './bausteine.js';
+import { loadDisplay, clearerReason, pnlBadge } from './bausteine.js';
 import { registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
 import { html } from './escaping.js';
@@ -7,7 +7,7 @@ import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { scopeMode } from './kontofilter.js';
 import { accountCurrency, financeHeaderValue } from './state.js';
-import { diagrammBreite, portfolioChartSVG, zeitpunkt, diagrammLeer } from './diagramme.js';
+import { chartWidth, portfolioChartSVG, zeitpunkt, diagrammLeer } from './diagramme.js';
 
 // Value trend of the holdings: period, curve and its reference line (cost basis) from the metrics.
 // The longest period is preselected: a week often has only one data point on a fresh collection and
@@ -50,7 +50,7 @@ export function setCostBasis(costBasis, currency, text) {
 function redrawCurve() {
   const el = G('portfolio-chart');
   if (!_lastCurve || !el?.querySelector('svg') || !el.clientWidth) return;
-  const b = diagrammBreite(el);
+  const b = chartWidth(el);
   if (Math.abs(b - _curveWidth) < 24) return;
   _curveWidth = b;
   setzeHtml(
@@ -78,14 +78,14 @@ window.addEventListener('resize', redrawCurve);
  * just smaller.
  * @param {boolean} offline @param {{ networkError?: boolean, status?: number, error?: unknown } | null | undefined} d */
 function chartUnavailable(offline, d) {
-  const { grund, details } = offline ? { grund: tRaw('api.unreachable') } : verstaendlicherGrund(d);
+  const { grund, details } = offline ? { grund: tRaw('api.unreachable') } : clearerReason(d);
   return html`${html`<div class="empty leer klein fehler-zustand" role="status"><div class="leer-ico">${ico('warnung')}</div>`}${html`<h2>${tRaw('chart.unavailable')}</h2><p>${grund}</p>`}${details ? html`<details class="fehler-details"><summary>${tRaw('liste.details')}</summary><code>${details}</code></details>` : ''}${html`<button type="button" class="btn bs" data-lesend data-click="loadPortfolioChart">${ico('aktualisieren')}<span>${tRaw('liste.erneut')}</span></button></div>`}`;
 }
 
 export async function loadPortfolioChart() {
   const el = G('portfolio-chart');
   if (!el) return;
-  setzeHtml(el, ladeAnzeige(tRaw('common.loading'), { klein: true }));
+  setzeHtml(el, loadDisplay(tRaw('common.loading'), { klein: true }));
 
   const d = await api(
     'GET',
@@ -136,7 +136,7 @@ export async function loadPortfolioChart() {
     total: i === d.points.length - 1 ? grandTotal : parseFloat((p.value * scale).toFixed(2)),
   }));
   _lastCurve = finalChartData;
-  _curveWidth = diagrammBreite(el);
+  _curveWidth = chartWidth(el);
   setzeHtml(
     el,
     portfolioChartSVG(finalChartData, _chartPeriod, _curveWidth, _costBasis, cur, _costBasisText || undefined),
@@ -147,7 +147,7 @@ export async function loadPortfolioChart() {
   if (pnlEl) {
     // Without a market value there is no trend: the history then only carries the purchase price, and
     // "0.0 %" next to "—" would claim no movement.
-    const zeitraumText = {
+    const periodText = {
       week: 'finance.change.week',
       month: 'finance.change.month',
       year: 'finance.change.year',
@@ -159,7 +159,7 @@ export async function loadPortfolioChart() {
       _chartPeriod === 'max' && start !== undefined && Number.isFinite(start)
         ? tRaw('finance.change.seit', { datum: fmtDatum(new Date(start)) })
         : '';
-    const zeitraum = zeitraumText ? html`<span class="pnl-zeitraum">${since ? since : tRaw(zeitraumText)}</span>` : '';
+    const zeitraum = periodText ? html`<span class="pnl-zeitraum">${since ? since : tRaw(periodText)}</span>` : '';
     if (!(financeHeaderValue > 0)) pnlEl.replaceChildren();
     else if (d.period_change_pct != null) {
       setzeHtml(pnlEl, html`${pnlBadge(d.period_change_pct)}${zeitraum}`);

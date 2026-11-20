@@ -5,14 +5,14 @@
  * bevor er eine Datenbank braucht.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in server.ts den Aufruf von startVerbote() entfernt → rot: „der Server
+ *   A  in server.ts den Aufruf von startBans() entfernt → rot: „der Server
  *      läuft mit dem Beispielpasswort weiter“ (beide Teilprüfungen)
- *   B  in startVerbote() den TRUST_PROXY-Zweig entfernt → rot nur bei
+ *   B  in startBans() den TRUST_PROXY-Zweig entfernt → rot nur bei
  *      „TRUST_PROXY=docker“
- *   C  startVerbote() ohne die Abfrage auf NODE_ENV → rot: „ausserhalb von
+ *   C  startBans() ohne die Abfrage auf NODE_ENV → rot: „ausserhalb von
  *      Produktion kein Verbot“
  * Gegenproben (04.11.2026 gemessen):
- *   D  sitzungsGeheimnis() wieder mit `!konfig().produktion` statt
+ *   D  sitzungsGeheimnis() wieder mit `!konfig().production` statt
  *      `konfig().entwicklung` → rot: „ohne NODE_ENV kein öffentliches
  *      Sitzungsgeheimnis“ (beide Fälle starten)
  *   E  der frühe Aufruf von sitzungsGeheimnis() in starte() gestrichen → rot:
@@ -21,13 +21,13 @@
  *   G  die Meldung zu APP_BASE_URL in server.ts gestrichen → rot: „ohne
  *      APP_BASE_URL im Betrieb …“ (mit der Ausnahme keine Meldung)
  * Gegenproben H4 (04.11.2026 gemessen, je einzeln):
- *   H  in startVerbote() den Zweig zu APP_BASE_URL entfernt → rot: „ohne
+ *   H  in startBans() den Zweig zu APP_BASE_URL entfernt → rot: „ohne
  *      APP_BASE_URL im Betrieb …“ (Code statt 1: Datenbankfehler)
  *   I  APP_BASE_URL_FEHLT_OK nicht ausgewertet → rot: dieselbe Prüfung (mit
  *      der Ausnahme verweigert)
  *   J  die Ausnahme für ROLLE=jobs entfernt → rot: dieselbe Prüfung ({"ROLLE":"jobs"})
  * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   K  'change-me-to-a-long-random-string' aus PLATZHALTER_GEHEIMNISSE
+ *   K  'change-me-to-a-long-random-string' aus PLACEHOLDER_SECRETS
  *      gestrichen → rot: „Beispielwert und zu kurzes Sitzungsgeheimnis …“
  *   L  die Mindestlänge in sitzungsGeheimnis() gestrichen → rot: dieselbe Prüfung
  */
@@ -39,7 +39,7 @@ const { spawn } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { startVerbote } = _req('src/infra/konfig.js');
+const { startBans } = _req('src/infra/konfig.js');
 
 /** Server starten und auf sein Ende warten — höchstens `ms`, dann gilt er als laufend. */
 function starte(env, ms = 8000) {
@@ -142,8 +142,8 @@ test('npm start setzt NODE_ENV=production', () => {
 });
 
 test('ausserhalb von Produktion kein Verbot, mit eigenem Passwort keines', () => {
-  assert.deepEqual(startVerbote({ NODE_ENV: 'development' }), [], 'ausserhalb von Produktion kein Verbot');
+  assert.deepEqual(startBans({ NODE_ENV: 'development' }), [], 'ausserhalb von Produktion kein Verbot');
   const basis = { NODE_ENV: 'production', PGPASSWORD: 'eigenes', APP_BASE_URL: 'https://lego.example.org' };
-  assert.deepEqual(startVerbote({ ...basis, TRUST_PROXY: '172.28.73.10' }), []);
-  assert.equal(startVerbote({ ...basis, TRUST_PROXY: '1' }).length, 1);
+  assert.deepEqual(startBans({ ...basis, TRUST_PROXY: '172.28.73.10' }), []);
+  assert.equal(startBans({ ...basis, TRUST_PROXY: '1' }).length, 1);
 });

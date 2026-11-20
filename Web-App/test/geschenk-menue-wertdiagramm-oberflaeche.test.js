@@ -8,10 +8,10 @@
  * machte genau ihren eigenen Fall rot):
  *   A  pnlBadge ohne den Geschenk-Zweig → rot: „Geschenk in Kachel, Tabelle
  *      und Detail“ (Kachel zeigte „+163.700,0 %“)
- *   B  in oeffneSicht markiereGruppe(null) entfernt → rot: „Menüseite:
+ *   B  in oeffneSicht markGroup(null) entfernt → rot: „Menüseite:
  *      kein Reiter markiert“ (aria-current an „Sammlung“)
  *   C  smeta-text wieder mit substring(0,12) → rot: „Thema ganz“
- *   D  bezugsLinie im Wertdiagramm nicht gezeichnet → rot: „Wertdiagramm“
+ *   D  referenceLine im Wertdiagramm nicht gezeichnet → rot: „Wertdiagramm“
  *   E  setChartPeriod wieder über alle .period-btn → rot: „Zeitraum ohne
  *      Verlauf“ (der Chip „Alle“ verlor active)
  *   F  de 'gallery.add.price_ph' wieder „79.99“ → rot: „Platzhalter je Sprache“
@@ -20,7 +20,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { oeffneOberflaeche, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 // jsdom formatiert je nach Umgebung „1.500 €“ oder „EUR 1’500“; verglichen wird ohne Trenner.
@@ -106,7 +106,7 @@ const SETS = {
 };
 
 test('Geschenk in Kachel, Tabelle und Detail', async () => {
-  const { w, d } = await oeffneOberflaeche(SETS);
+  const { w, d } = await openUi(SETS);
   try {
     await warte(() => /\d/.test(text(d.querySelector('[data-price-for="10300-1"]'))));
     const kachel = text(d.querySelector('[data-price-for="10300-1"]'));
@@ -142,13 +142,13 @@ test('Geschenk in Kachel, Tabelle und Detail', async () => {
 
 test('Set ohne Bild: derselbe Würfel wie in der Kachel', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  const wuerfel = html.match(/<symbol id="i-set"[^>]*>(.*?)<\/symbol>/)[1];
+  const cube = html.match(/<symbol id="i-set"[^>]*>(.*?)<\/symbol>/)[1];
   const bild = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'set-placeholder.svg'), 'utf8');
-  for (const pfad of wuerfel.match(/d="[^"]+"/g)) assert.ok(bild.includes(pfad), `${pfad} fehlt im Platzhalterbild`);
+  for (const pfad of cube.match(/d="[^"]+"/g)) assert.ok(bild.includes(pfad), `${pfad} fehlt im Platzhalterbild`);
 });
 
 test('Menüseite: kein Reiter markiert, Name im Kopf', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/auth/profile': { success: true, user: { username: 'anna' } } });
+  const { w, d } = await openUi({ '/v1/auth/profile': { success: true, user: { username: 'anna' } } });
   try {
     await sicht(w, 'profil');
     assert.deepEqual(
@@ -168,7 +168,7 @@ test('Menüseite: kein Reiter markiert, Name im Kopf', async () => {
 });
 
 test('Import als ein Menü', async () => {
-  const { w, d } = await oeffneOberflaeche({});
+  const { w, d } = await openUi({});
   try {
     for (const tab of ['gallery', 'parts', 'minifigs']) {
       const leiste = d.querySelector(`#tab-${tab} .erfassen-leiste`);
@@ -190,7 +190,7 @@ test('Import als ein Menü', async () => {
 });
 
 test('Thema ganz', async () => {
-  const { w, d } = await oeffneOberflaeche(SETS);
+  const { w, d } = await openUi(SETS);
   try {
     await warte(() => d.querySelector('#gallery .smeta-text'));
     const thema = d.querySelector('[data-arg="10300-1"] .smeta-text');
@@ -201,20 +201,20 @@ test('Thema ganz', async () => {
   }
 });
 
-const zeitpunkte = ['2026-08-01', '2026-09-01', '2026-10-01', '2026-10-29'];
-const VERLAUF = {
+const moments = ['2026-08-01', '2026-09-01', '2026-10-01', '2026-10-29'];
+const HISTORY = {
   success: true,
   currency: 'EUR',
   period_change_pct: 5,
   messpunkte: 4,
-  points: [1700, 1750, 1720, 1850].map((value, i) => ({ x_label: zeitpunkte[i], value })),
-  chart: { values: [{ values: zeitpunkte.map(x => ({ x })) }] },
+  points: [1700, 1750, 1720, 1850].map((value, i) => ({ x_label: moments[i], value })),
+  chart: { values: [{ values: moments.map(x => ({ x })) }] },
 };
 
 test('Wertdiagramm: Währung, Einstand, Achsenbruch, Fadenkreuz per Tastatur', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     ...SETS,
-    '/v1/finance/portfolio-history': VERLAUF,
+    '/v1/finance/portfolio-history': HISTORY,
     '/v1/finance/pnl': { ...SETS['/v1/finance/pnl'], totals: { grand_total: '1850', purchase: '1568.98' } },
   });
   try {
@@ -238,7 +238,7 @@ test('Wertdiagramm: Währung, Einstand, Achsenbruch, Fadenkreuz per Tastatur', a
 });
 
 test('Zeitraum ohne Verlauf', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     ...SETS,
     '/v1/finance/portfolio-history': { success: true, currency: 'EUR', points: [], messpunkte: 0 },
   });
@@ -266,7 +266,7 @@ test('Platzhalter je Sprache', async () => {
     ['de', 'z. B. 79,99'],
     ['en', 'e.g. 79.99'],
   ]) {
-    const { w, d } = await oeffneOberflaeche({}, { sprache });
+    const { w, d } = await openUi({}, { sprache });
     try {
       assert.equal(d.getElementById('add-price').placeholder, erwartet);
     } finally {

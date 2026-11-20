@@ -5,13 +5,13 @@
  * Eingetippte Bilder kommen nur von den Hosts, die der Bild-Proxy zeigt.
  *
  * Gegenproben (am 03.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  merkeTeil()/merkeTeilFarbe()/merkeFigur() ohne den Zweig für `von`
+ *   A  rememberPart()/rememberPartColor()/rememberMinifig() ohne den Zweig für `von`
  *      (Eingabe in den gemeinsamen Katalog) → rot: alle fünf Teiltests
- *   B  teilAusKatalog() verbindet part_custom und part_color_custom ohne
+ *   B  partFromCatalog() verbindet part_custom und part_color_custom ohne
  *      `user_id = $3` → rot: „ein anderes Konto fragt trotzdem Rebrickable“
  *      und „der geprüfte Wert hat Vorrang …“ (nur der Name allein bleibt
  *      grün: Annas Bild fehlt Bruno und löst den Abruf schon aus)
- *   C  bildEingabe() gibt jede URL zurück → rot: „ein fremder Bild-Host …“
+ *   C  imageInput() gibt jede URL zurück → rot: „ein fremder Bild-Host …“
  *
  * REQUIRE_DB=1.
  */
@@ -21,16 +21,16 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
+const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
-// Rebrickable an der Verdrahtung gestellt (testQuellen); `abrufe` zählt, was gefragt wurde.
-let abrufe = [];
-testQuellen(null, {
+// Rebrickable an der Verdrahtung gestellt (testSources); `fetches` zählt, was gefragt wurde.
+let fetches = [];
+testSources(null, {
   lookupPart: async nr => {
-    abrufe.push(`lookupPart ${nr}`);
+    fetches.push(`lookupPart ${nr}`);
     return {
       part_name: 'Brick 2 x 4',
       category_name: 'Bricks',
@@ -38,7 +38,7 @@ testQuellen(null, {
     };
   },
   getMinifigInfo: async nr => {
-    abrufe.push(`getMinifigInfo ${nr}`);
+    fetches.push(`getMinifigInfo ${nr}`);
     return { fig_number: nr, fig_name: 'Chewbacca', image_url: 'https://cdn.rebrickable.com/media/sets/fig.jpg' };
   },
 });
@@ -74,7 +74,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
 
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
-  const { katalogTeil } = _req('src/katalog/katalogPflege.js');
+  const { catalogPart } = _req('src/katalog/katalogPflege.js');
   const gemeinsam = nr =>
     db.get(
       `SELECT pc.part_name, pcc.image_url
@@ -93,7 +93,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
     );
 
   await t.test('die Eingabe steht in den eigenen Angaben, nicht im gemeinsamen Katalog', async () => {
-    abrufe = [];
+    fetches = [];
     await addManualPart(A, {
       part_number: '3001',
       color_id: 4,
@@ -101,7 +101,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
       part_name: 'Annas Name',
       image_url: 'https://cdn.rebrickable.com/media/anna.jpg',
     });
-    assert.deepEqual(abrufe, [], 'mit Namen wird nicht nachgeschlagen');
+    assert.deepEqual(fetches, [], 'mit Namen wird nicht nachgeschlagen');
     assert.deepEqual(
       { ...(await eigen(A, '3001')) },
       { part_name: 'Annas Name', image_url: 'https://cdn.rebrickable.com/media/anna.jpg' },
@@ -110,19 +110,19 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein anderes Konto fragt trotzdem Rebrickable', async () => {
-    abrufe = [];
+    fetches = [];
     await addManualPart(B, { part_number: '3001', color_id: 4, quantity: 1 });
-    assert.deepEqual(abrufe, ['lookupPart 3001'], 'Annas Eingabe zählt für Bruno nicht als bekannt');
+    assert.deepEqual(fetches, ['lookupPart 3001'], 'Annas Eingabe zählt für Bruno nicht als bekannt');
     assert.deepEqual(
       { ...(await gemeinsam('3001')) },
       { part_name: 'Brick 2 x 4', image_url: 'https://cdn.rebrickable.com/media/parts/3001.jpg' },
     );
-    assert.equal((await katalogTeil('3001', 4, B)).name, 'Brick 2 x 4');
+    assert.equal((await catalogPart('3001', 4, B)).name, 'Brick 2 x 4');
   });
 
   await t.test('der geprüfte Wert hat Vorrang, die eigene Angabe bleibt erhalten', async () => {
     await addManualPart(A, { part_number: '3001', color_id: 4, quantity: 1, part_name: 'Neuer Name' });
-    assert.equal((await katalogTeil('3001', 4, A)).name, 'Brick 2 x 4');
+    assert.equal((await catalogPart('3001', 4, A)).name, 'Brick 2 x 4');
     assert.equal((await gemeinsam('3001')).part_name, 'Brick 2 x 4');
     assert.equal((await eigen(A, '3001')).part_name, 'Annas Name');
   });
@@ -142,9 +142,9 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
 
   await t.test('Figuren: die Eingabe bleibt beim Konto, die geprüfte Quelle füllt den Katalog', async () => {
     await addManualMinifig(A, { fig_number: 'sw0011', quantity: 1, fig_name: 'Annas Figur' });
-    abrufe = [];
+    fetches = [];
     await addManualMinifig(B, { fig_number: 'sw0011', quantity: 1 });
-    assert.deepEqual(abrufe, ['getMinifigInfo sw0011']);
+    assert.deepEqual(fetches, ['getMinifigInfo sw0011']);
     assert.equal(
       (await db.get('SELECT fig_name FROM minifigs_catalog WHERE fig_number = $1', ['sw0011'])).fig_name,
       'Chewbacca',

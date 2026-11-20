@@ -8,13 +8,13 @@
  *   A  in server.ts `name: sitzungsKeksName()` entfernt (wieder connect.sid)
  *      → rot: „mit TLS …" und „ohne TLS …"
  *   B  sitzungsKeksName() gibt immer `__Host-bim.sid` → rot: „ohne TLS …"
- *   C  sitzungsKeksOptionen() mit `secure: false` → rot: „mit TLS …" (kein
+ *   C  sessionCookieOptions() mit `secure: false` → rot: „mit TLS …" (kein
  *      Secure; `path` wegzulassen bleibt grün, Path=/ ist die Vorgabe)
  *   D  in POST /logout clearCookie() entfernt → rot: beide („Abmelden: null")
- *   E  traegtSitzungsKeks() wieder auf `connect.sid` → rot: beide („die
+ *   E  carriesSessionCookie() wieder auf `connect.sid` → rot: beide („die
  *      Herkunftsprüfung erkennt das Cookie")
- *   F  (15.11.2026) angemeldetAntworten() ohne keks_fehlt → rot: beide
- *      („über http: keks_fehlt" bzw. „COOKIE_SECURE=0 …"); keksBleibtAus()
+ *   F  (15.11.2026) signedInResponses() ohne keks_fehlt → rot: beide
+ *      („über http: keks_fehlt" bzw. „COOKIE_SECURE=0 …"); cookieStaysFrom()
  *      ohne `!req.secure` → rot: „mit TLS …" („über https kein Hinweis")
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -28,17 +28,17 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { warte } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
-const freierPort = () =>
+const { portOf } = require('./helpers/server');
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
@@ -47,8 +47,8 @@ const NAME = `keks_${process.pid}`,
   PASS = 'Keks-Passwort-1';
 
 /** Der echte Server aus dist/, in Produktion; `env` entscheidet über TLS. */
-async function starteServer(t, env) {
-  const port = await freierPort();
+async function startServer(t, env) {
+  const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -83,7 +83,7 @@ async function starteServer(t, env) {
 }
 
 /** Anmelden, mit dem Cookie fragen, wer man ist, abmelden. */
-async function durchlauf(server, kopf) {
+async function pass(server, kopf) {
   const login = await fetch(`${server.basis}/api/v1/auth/login`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', ...kopf },
@@ -118,7 +118,7 @@ async function durchlauf(server, kopf) {
 }
 
 test('Sitzungscookie mit und ohne TLS', { concurrency: 1, timeout: 240_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(`INSERT INTO users (username, password_hash, is_active, email_verified) VALUES ($1, $2, true, true)`, [
     NAME,
@@ -132,8 +132,8 @@ test('Sitzungscookie mit und ohne TLS', { concurrency: 1, timeout: 240_000 }, as
 
   // Je Fall ein Server, der mit dem Fall endet: Auf einer Datenbank läuft nur ein Web-Prozess.
   await t.test('mit TLS: __Host-bim.sid, Secure, Path=/, ohne Domain', async st => {
-    const server = await starteServer(st, {});
-    const d = await durchlauf(server, { 'x-forwarded-proto': 'https' });
+    const server = await startServer(st, {});
+    const d = await pass(server, { 'x-forwarded-proto': 'https' });
     assert.match(d.setzen, /^__Host-bim\.sid=/, d.setzen);
     assert.match(d.setzen, /; Path=\/(;|$)/, d.setzen);
     assert.match(d.setzen, /; Secure(;|$)/, d.setzen);
@@ -158,8 +158,8 @@ test('Sitzungscookie mit und ohne TLS', { concurrency: 1, timeout: 240_000 }, as
   });
 
   await t.test('ohne TLS: bim.sid ohne Präfix und ohne Secure', async st => {
-    const server = await starteServer(st, { COOKIE_SECURE: '0' });
-    const d = await durchlauf(server, {});
+    const server = await startServer(st, { COOKIE_SECURE: '0' });
+    const d = await pass(server, {});
     assert.match(d.setzen, /^bim\.sid=/, d.setzen);
     assert.doesNotMatch(d.setzen, /Secure/i, d.setzen);
     assert.equal(d.angemeldet.loggedIn, true, 'die Anmeldung trägt');

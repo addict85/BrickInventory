@@ -7,7 +7,7 @@
  *      (`[...keys()].pop()`) → rot: „der älteste weicht“
  *   B  hole() prüft die Frist nicht → rot: „nach der Frist vergessen“
  *   C  Faecher.fach() legt bei jedem Aufruf neu an → rot: „ein Fach bleibt“
- *   D  erzeugeKatalog gibt allen Fabriken dieselben Fächer (modulweites
+ *   D  createCatalog gibt allen Fabriken dieselben Fächer (modulweites
  *      `const FAECHER = new Faecher()`) → rot: „je Fabrik eigene Fächer“
  */
 const test = require('node:test');
@@ -15,7 +15,7 @@ const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { Zwischenspeicher, Faecher } = _req('src/infra/zwischenspeicher.js');
-const { erzeugeKatalog } = _req('src/katalog/bereich.js');
+const { createCatalog } = _req('src/katalog/bereich.js');
 
 test('der älteste weicht, wenn der Speicher voll ist', () => {
   const z = new Zwischenspeicher(2);
@@ -49,10 +49,10 @@ test('ein Fach bleibt, je Fabrik eigene Fächer', () => {
   );
   /** @type {any[]} */
   const k = [];
-  // Der Katalog horcht beim Bau auf die Bilder (beiSetBildGeladen); mehr braucht der Bau nicht.
-  const abh = /** @type {any} */ ({ db: {}, bilder: { beiSetBildGeladen() {} } });
-  erzeugeKatalog(abh, x => k.push(x));
-  erzeugeKatalog(abh, x => k.push(x));
+  // Der Katalog horcht beim Bau auf die Bilder (atSetImageLoaded); mehr braucht der Bau nicht.
+  const abh = /** @type {any} */ ({ db: {}, bilder: { atSetImageLoaded() {} } });
+  createCatalog(abh, x => k.push(x));
+  createCatalog(abh, x => k.push(x));
   const [k1, k2] = k;
   k1.faecher.fach('themenbaum', () => ({ n: 1 })).n = 2;
   assert.equal(k2.faecher.fach('themenbaum', () => ({ n: 1 })).n, 1);

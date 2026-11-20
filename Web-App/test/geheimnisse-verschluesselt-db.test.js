@@ -19,23 +19,23 @@
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-umgebung({ DATA_KEY: crypto.randomBytes(32).toString('base64') });
+environment({ DATA_KEY: crypto.randomBytes(32).toString('base64') });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const g = _req('src/infra/geheimnis.js');
 
 const NAME = `geheim_${process.pid}`;
 
 test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const vorher = await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'");
@@ -69,7 +69,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [b.voucher.id])).pin;
     assert.ok(roh.startsWith('v2:') && !roh.includes('8642'), roh);
     assert.equal(
-      (await require('./helpers/sources').testBereich('vouchers').vouchers.voucher(uid, b.voucher.id)).pin,
+      (await require('./helpers/sources').testArea('vouchers').vouchers.voucher(uid, b.voucher.id)).pin,
       '8642',
       'entschlüsselt lesbar',
     );
@@ -80,13 +80,13 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
     const secret = await zf.beginSetup(uid);
     const roh = (await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid])).secret;
     assert.ok(roh.startsWith('v2:') && !roh.includes(secret), roh);
-    assert.equal(g.entschluessele(roh, zf.secondFactorContext(uid)), secret);
+    assert.equal(g.decrypt(roh, zf.secondFactorContext(uid)), secret);
   });
 
   await t.test('Altbestand wird nachverschlüsselt', async () => {
     const gs = {
       ..._req('src/vouchers/repository/vouchers.js'),
-      ...require('./helpers/sources').testBereich('vouchers').vouchers,
+      ...require('./helpers/sources').testArea('vouchers').vouchers,
     };
     const { id } = await gs.createVoucher(uid, {
       number: '5045076374450013131',
@@ -98,17 +98,17 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
     await gs.reencryptNumbers();
     const roh = (await db.get('SELECT pin FROM vouchers WHERE id = $1', [id])).pin;
     assert.ok(roh.startsWith('v2:'), roh);
-    assert.equal(g.entschluessele(roh, gs.pinContext(uid, id)), '9753');
+    assert.equal(g.decrypt(roh, gs.pinContext(uid, id)), '9753');
   });
 
   await t.test('falscher Schlüssel ergibt null, nicht Unsinn', async () => {
-    const wert = g.verschluessele('geheim', g.kontext('probe'));
-    umgebung({ DATA_KEY: crypto.randomBytes(32).toString('base64') });
-    g._vergissSchluessel();
+    const wert = g.encrypt('geheim', g.kontext('probe'));
+    environment({ DATA_KEY: crypto.randomBytes(32).toString('base64') });
+    g._forgetKey();
     const echt = console.warn;
     console.warn = () => {};
     try {
-      assert.equal(g.entschluessele(wert, g.kontext('probe')), null);
+      assert.equal(g.decrypt(wert, g.kontext('probe')), null);
     } finally {
       console.warn = echt;
     }

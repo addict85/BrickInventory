@@ -7,11 +7,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet } = require('./helpers/bestand');
+const db = testData();
+const { holdsSet } = require('./helpers/bestand');
 
 /**
  * Alle Spalten, die Geld führen.
@@ -118,7 +118,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
   await t.test('tausend Beträge summieren sich exakt', async () => {
     await db.run("INSERT INTO users (username,password_hash) VALUES ('geld','x')");
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
-    await haeltSet(db, uid, '99001-1', 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, uid, '99001-1', 0); // Menge 0: die Erfassung dahinter traegt sie
     // 1000 Zeilen à 0.07 — in REAL ergab das 69.99974 statt 70.00.
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
@@ -133,14 +133,14 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
 
   await t.test('ein gespeicherter Kaufpreis kommt unverändert zurück', async () => {
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
-    await haeltSet(db, uid, '99002-1', 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, uid, '99002-1', 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,'99002-1',1,49.90,'N')`,
       [uid],
     );
 
-    const { setsLesen } = require('./helpers/sources').handlerModul(_req);
+    const { setsLesen } = require('./helpers/sources').handlerModule(_req);
     const r = await setsLesen([uid], { search: '99002' });
     const satz = r.sets.find(s => s.set_number === '99002-1');
     assert.ok(satz, 'Set nicht gefunden');

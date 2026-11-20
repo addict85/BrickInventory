@@ -2,8 +2,8 @@
 import type { Konfig } from '../infra/konfig';
 import type { MailServices } from '../mail';
 import type { Db } from '../../db/database';
-import { mit, mitVertrag, type Kontext } from '../infra/bereich';
-import type { FinanzenLesevertrag } from './lesevertrag';
+import { mit, withContract, type Kontext } from '../infra/bereich';
+import type { FinancesReadContract } from './lesevertrag';
 import type { Faecher } from '../infra/zwischenspeicher';
 import * as bewertung from './repository/bewertung';
 import * as erfassungen from './repository/erfassungen';
@@ -17,125 +17,125 @@ import * as preisverlauf from './repository/preisverlauf';
 import * as setWert from './repository/setWert';
 import * as wechselkurse from './repository/wechselkurse';
 import type { SettingsServices } from '../settings';
-import type { HaushaltDienste } from '../haushalt';
-import type { KatalogDienste } from '../katalog';
-import type { AuftraegeDienste } from '../auftraege';
-import type { FremdquellenDienste } from '../fremdquellen';
+import type { HouseholdServices } from '../haushalt';
+import type { CatalogServices } from '../katalog';
+import type { JobsServices } from '../auftraege';
+import type { ForeignSourcesServices } from '../fremdquellen';
 import type { Uhr } from '../infra/uhr';
 
-export interface FinanzenAbhaengigkeiten {
+export interface FinancesDependencies {
   uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
   einstellungen: SettingsServices;
-  auftraege: AuftraegeDienste;
-  haushalt: HaushaltDienste;
-  katalog: KatalogDienste;
-  fremdquellen: FremdquellenDienste;
+  auftraege: JobsServices;
+  haushalt: HouseholdServices;
+  katalog: CatalogServices;
+  fremdquellen: ForeignSourcesServices;
   faecher: Faecher;
   mail: MailServices;
-  lesevertrag: FinanzenLesevertrag;
+  lesevertrag: FinancesReadContract;
 }
 
 /** Bewertung, Erfassungen, Gewinn und Marktpreise. */
-const bestandszugang = (db: Db, l: FinanzenLesevertrag) => ({
+const bestandszugang = (db: Db, l: FinancesReadContract) => ({
   bewertung: {
-    manuelleErfassungen: mitVertrag(db, l)(bewertung.manuelleErfassungen),
-    setsZurBewertung: mitVertrag(db, l)(bewertung.setsZurBewertung),
-    katalogMerkmale: mit(db)(bewertung.katalogMerkmale),
-    manuelleFigurenZurBewertung: mitVertrag(db, l)(bewertung.manuelleFigurenZurBewertung),
-    manuelleTeileZurBewertung: mitVertrag(db, l)(bewertung.manuelleTeileZurBewertung),
+    manualEntries: withContract(db, l)(bewertung.manualEntries),
+    setsToValuation: withContract(db, l)(bewertung.setsToValuation),
+    catalogFeatures: mit(db)(bewertung.catalogFeatures),
+    manualMinifigsToValuation: withContract(db, l)(bewertung.manualMinifigsToValuation),
+    manualPartsToValuation: withContract(db, l)(bewertung.manualPartsToValuation),
   },
   erfassungen: {
-    ladeSetErfassungen: mitVertrag(db, l)(erfassungen.ladeSetErfassungen),
+    loadSetEntries: withContract(db, l)(erfassungen.loadSetEntries),
   },
   gewinnVerlust: {
-    setsMitErfassungen: mitVertrag(db, l)(gewinnVerlust.setsMitErfassungen),
-    frischeMarktpreise: mit(db)(gewinnVerlust.frischeMarktpreise),
-    letzteMarktpreiseAusVerlauf: mit(db)(gewinnVerlust.letzteMarktpreiseAusVerlauf),
+    setsWithEntries: withContract(db, l)(gewinnVerlust.setsWithEntries),
+    freshMarketPrices: mit(db)(gewinnVerlust.freshMarketPrices),
+    lastMarketPricesFromHistory: mit(db)(gewinnVerlust.lastMarketPricesFromHistory),
   },
   marktpreise: {
-    setPreisAusCache: mit(db)(marktpreise.setPreisAusCache),
-    teilErfassungsZustand: mitVertrag(db, l)(marktpreise.teilErfassungsZustand),
-    figurErfassungsZustand: mitVertrag(db, l)(marktpreise.figurErfassungsZustand),
-    figurenpreiseAusCache: mit(db)(marktpreise.figurenpreiseAusCache),
-    teilepreiseAusCache: mit(db)(marktpreise.teilepreiseAusCache),
-    geschaetzteFigurenpreise: mit(db)(marktpreise.geschaetzteFigurenpreise),
-    geschaetzterFigurenpreis: mit(db)(marktpreise.geschaetzterFigurenpreis),
-    merkeGeschaetztenFigurenpreis: mit(db)(marktpreise.merkeGeschaetztenFigurenpreis),
-    merkeGeschaetztenFigurenverlauf: mit(db)(marktpreise.merkeGeschaetztenFigurenverlauf),
+    setPriceFromCache: mit(db)(marktpreise.setPriceFromCache),
+    partEntryState: withContract(db, l)(marktpreise.partEntryState),
+    minifigEntryState: withContract(db, l)(marktpreise.minifigEntryState),
+    minifigsPricesFromCache: mit(db)(marktpreise.minifigsPricesFromCache),
+    partsPricesFromCache: mit(db)(marktpreise.partsPricesFromCache),
+    estimatedMinifigsPrices: mit(db)(marktpreise.estimatedMinifigsPrices),
+    estimatedMinifigsPrice: mit(db)(marktpreise.estimatedMinifigsPrice),
+    rememberEstimatedMinifigsPrice: mit(db)(marktpreise.rememberEstimatedMinifigsPrice),
+    rememberEstimatedMinifigsHistory: mit(db)(marktpreise.rememberEstimatedMinifigsHistory),
   },
   portfolioKurve: {
-    tageswerteAusVerlauf: mit(db)(portfolioKurve.tageswerteAusVerlauf),
-    cachePreiseDerSets: mit(db)(portfolioKurve.cachePreiseDerSets),
-    letzteWerteVorBeginn: mit(db)(portfolioKurve.letzteWerteVorBeginn),
-    setsMitKaufsumme: mitVertrag(db, l)(portfolioKurve.setsMitKaufsumme),
+    dailyValuesFromHistory: mit(db)(portfolioKurve.dailyValuesFromHistory),
+    cachePricesTheSets: mit(db)(portfolioKurve.cachePricesTheSets),
+    lastValuesBeforeStart: mit(db)(portfolioKurve.lastValuesBeforeStart),
+    setsWithPurchaseTotal: withContract(db, l)(portfolioKurve.setsWithPurchaseTotal),
   },
 });
 
 /** Alarme, Preiszwischenspeicher, Preislauf und Kurse. */
-const preiszugang = (db: Db, l: FinanzenLesevertrag) => ({
+const preiszugang = (db: Db, l: FinancesReadContract) => ({
   preisalarme: {
-    uebertrageAlarm: mit(db)(preisalarme.uebertrageAlarm),
-    schreibeAlarm: mit(db)(preisalarme.schreibeAlarm),
-    entferneAlarm: mit(db)(preisalarme.entferneAlarm),
-    alarmeDesSets: mitVertrag(db, l)(preisalarme.alarmeDesSets),
-    alarmeImBlickfeld: mitVertrag(db, l)(preisalarme.alarmeImBlickfeld),
-    datenbankJetzt: mit(db)(preisalarme.datenbankJetzt),
-    alarmeDesKontos: mitVertrag(db, l)(preisalarme.alarmeDesKontos),
-    alleAktivenAlarme: mit(db)(preisalarme.alleAktivenAlarme),
-    cachePreisFuerAlarm: mit(db)(preisalarme.cachePreisFuerAlarm),
-    setzeAlarmZurueck: mit(db)(preisalarme.setzeAlarmZurueck),
-    loeseAlarmAus: mit(db)(preisalarme.loeseAlarmAus),
-    setNameAusStamm: mit(db)(preisalarme.setNameAusStamm),
-    alarmeFuerExport: mit(db)(preisalarme.alarmeFuerExport),
+    transferAlarm: mit(db)(preisalarme.transferAlarm),
+    writeAlarm: mit(db)(preisalarme.writeAlarm),
+    removeAlarm: mit(db)(preisalarme.removeAlarm),
+    alertsOfSets: withContract(db, l)(preisalarme.alertsOfSets),
+    alertsInScope: withContract(db, l)(preisalarme.alertsInScope),
+    databaseNow: mit(db)(preisalarme.databaseNow),
+    alertsOfAccount: withContract(db, l)(preisalarme.alertsOfAccount),
+    allActiveAlerts: mit(db)(preisalarme.allActiveAlerts),
+    cachePriceForAlarm: mit(db)(preisalarme.cachePriceForAlarm),
+    setAlarmBack: mit(db)(preisalarme.setAlarmBack),
+    resolveAlarmFrom: mit(db)(preisalarme.resolveAlarmFrom),
+    setNameFromMaster: mit(db)(preisalarme.setNameFromMaster),
+    alertsForExport: mit(db)(preisalarme.alertsForExport),
   },
   preisCache: {
-    setZustandsZaehler: mitVertrag(db, l)(preisCache.setZustandsZaehler),
-    loescheAlleSetPreise: mit(db)(preisCache.loescheAlleSetPreise),
-    setPreisFrisch: mit(db)(preisCache.setPreisFrisch),
-    setPreiseFrisch: mit(db)(preisCache.setPreiseFrisch),
-    merkeSetPreis: mit(db)(preisCache.merkeSetPreis),
-    merkeSetVerlauf: mit(db)(preisCache.merkeSetVerlauf),
+    setStateCounter: withContract(db, l)(preisCache.setStateCounter),
+    deleteAllSetPrices: mit(db)(preisCache.deleteAllSetPrices),
+    setPriceFresh: mit(db)(preisCache.setPriceFresh),
+    setPricesFresh: mit(db)(preisCache.setPricesFresh),
+    rememberSetPrice: mit(db)(preisCache.rememberSetPrice),
+    rememberSetHistory: mit(db)(preisCache.rememberSetHistory),
     blFarben: mit(db)(preisCache.blFarben),
-    teilepreiseFrisch: mit(db)(preisCache.teilepreiseFrisch),
-    marktpreisAusCache: mit(db)(preisCache.marktpreisAusCache),
-    marktpreisAusVerlauf: mit(db)(preisCache.marktpreisAusVerlauf),
-    figurenpreiseFrisch: mit(db)(preisCache.figurenpreiseFrisch),
-    teilpreisFrisch: mit(db)(preisCache.teilpreisFrisch),
-    figurpreisFrisch: mit(db)(preisCache.figurpreisFrisch),
-    merkeTeilpreis: mit(db)(preisCache.merkeTeilpreis),
-    merkeTeilVerlauf: mit(db)(preisCache.merkeTeilVerlauf),
-    merkeFigurpreis: mit(db)(preisCache.merkeFigurpreis),
-    merkeFigurVerlauf: mit(db)(preisCache.merkeFigurVerlauf),
+    partsPricesFresh: mit(db)(preisCache.partsPricesFresh),
+    marketPriceFromCache: mit(db)(preisCache.marketPriceFromCache),
+    marketPriceFromHistory: mit(db)(preisCache.marketPriceFromHistory),
+    minifigsPricesFresh: mit(db)(preisCache.minifigsPricesFresh),
+    partPriceFresh: mit(db)(preisCache.partPriceFresh),
+    minifigPriceFresh: mit(db)(preisCache.minifigPriceFresh),
+    rememberPartPrice: mit(db)(preisCache.rememberPartPrice),
+    rememberPartHistory: mit(db)(preisCache.rememberPartHistory),
+    rememberMinifigPrice: mit(db)(preisCache.rememberMinifigPrice),
+    rememberMinifigHistory: mit(db)(preisCache.rememberMinifigHistory),
   },
   preisLauf: {
-    bestandsPlaetze: mitVertrag(db, l)(preisLauf.bestandsPlaetze),
-    merklistenPlaetze: mitVertrag(db, l)(preisLauf.merklistenPlaetze),
-    erfassteZustaende: mitVertrag(db, l)(preisLauf.erfassteZustaende),
-    gewuenschteZustaende: mitVertrag(db, l)(preisLauf.gewuenschteZustaende),
-    schreibeTagesstand: mit(db)(preisLauf.schreibeTagesstand),
-    setsMitAlarm: mit(db)(preisLauf.setsMitAlarm),
+    inventoryPlaces: withContract(db, l)(preisLauf.inventoryPlaces),
+    wantedListsPlaces: withContract(db, l)(preisLauf.wantedListsPlaces),
+    recordedStates: withContract(db, l)(preisLauf.recordedStates),
+    desiredStates: withContract(db, l)(preisLauf.desiredStates),
+    writeDailyStatus: mit(db)(preisLauf.writeDailyStatus),
+    setsWithAlarm: mit(db)(preisLauf.setsWithAlarm),
   },
   preisverlauf: {
-    tagespreiseDesSets: mit(db)(preisverlauf.tagespreiseDesSets),
-    cachePreiseDesSets: mit(db)(preisverlauf.cachePreiseDesSets),
-    ersterKaufDesSets: mitVertrag(db, l)(preisverlauf.ersterKaufDesSets),
-    kaufschnittDesSets: mitVertrag(db, l)(preisverlauf.kaufschnittDesSets),
-    loescheAltenVerlauf: mit(db)(preisverlauf.loescheAltenVerlauf),
+    dailyPricesOfSets: mit(db)(preisverlauf.dailyPricesOfSets),
+    cachePricesOfSets: mit(db)(preisverlauf.cachePricesOfSets),
+    firstPurchaseOfSets: withContract(db, l)(preisverlauf.firstPurchaseOfSets),
+    purchaseChnittOfSets: withContract(db, l)(preisverlauf.purchaseChnittOfSets),
+    deleteOldHistory: mit(db)(preisverlauf.deleteOldHistory),
     manualSeries: mit(db)(preisverlauf.manualSeries),
-    cachePreiseNachSchluessel: mit(db)(preisverlauf.cachePreiseNachSchluessel),
-    kaufschnitteNachSchluessel: mitVertrag(db, l)(preisverlauf.kaufschnitteNachSchluessel),
+    cachePricesAfterKey: mit(db)(preisverlauf.cachePricesAfterKey),
+    purchaseChnitteAfterKey: withContract(db, l)(preisverlauf.purchaseChnitteAfterKey),
   },
   setWert: {
-    cachePreiseFuerSets: mit(db)(setWert.cachePreiseFuerSets),
-    setErfassungenZumWert: mitVertrag(db, l)(setWert.setErfassungenZumWert),
+    cachePricesForSets: mit(db)(setWert.cachePricesForSets),
+    setEntriesToValue: withContract(db, l)(setWert.setEntriesToValue),
   },
   wechselkurse: {
-    schreibeKurse: mit(db)(wechselkurse.schreibeKurse),
-    gibtEsKurse: mit(db)(wechselkurse.gibtEsKurse),
+    writeRates: mit(db)(wechselkurse.writeRates),
+    givesEsRates: mit(db)(wechselkurse.givesEsRates),
   },
 });
 
-export const zugang = (db: Db, l: FinanzenLesevertrag) => ({ ...bestandszugang(db, l), ...preiszugang(db, l) });
-export type FinanzenKontext = Kontext<FinanzenAbhaengigkeiten, ReturnType<typeof zugang>>;
+export const zugang = (db: Db, l: FinancesReadContract) => ({ ...bestandszugang(db, l), ...preiszugang(db, l) });
+export type FinancesContext = Kontext<FinancesDependencies, ReturnType<typeof zugang>>;

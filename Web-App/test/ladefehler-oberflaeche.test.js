@@ -2,7 +2,7 @@
  * Ladefehler und fehlende Verbindung — am echten Bündel in jsdom.
  *
  * Gegenproben (am 29.10.2026 gemessen):
- *   A  in loadGallery den Aufruf von listeLadefehler entfernt → rot:
+ *   A  in loadGallery den Aufruf von listLoadError entfernt → rot:
  *      „Sammlung: Serverfehler beim ersten Laden“ (es stand „Noch keine Sets“)
  *      und „… alte Liste bleibt stehen“ (0 statt 2 Kacheln)
  *   B  in ladeMerkliste wieder `d?.merkposten || []` ohne Prüfung → rot:
@@ -13,10 +13,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte, takt } = require('./helpers/oberflaeche');
 
 const SERVERFEHLER = { $status: 500, success: false, error: 'Interner Fehler', code: 'interner_fehler' };
-const ZWEI_SETS = {
+const TWO_SETS = {
   success: true,
   total: 2,
   themes: [],
@@ -29,7 +29,7 @@ const ZWEI_SETS = {
 test('Sammlung: Serverfehler beim ersten Laden zeigt den Grund und „Erneut versuchen“', async () => {
   /** @type {object} */
   let antwort = SERVERFEHLER;
-  const { w, d } = await oeffneOberflaeche({ '/v1/sets': () => antwort });
+  const { w, d } = await openUi({ '/v1/sets': () => antwort });
   try {
     await warte(() => d.querySelector('#gallery .fehler-zustand'));
     const box = d.querySelector('#gallery .fehler-zustand');
@@ -38,7 +38,7 @@ test('Sammlung: Serverfehler beim ersten Laden zeigt den Grund und „Erneut ver
     assert.doesNotMatch(d.getElementById('gallery').textContent, /Noch keine Sets/);
     const knopf = box.querySelector('button[data-click="loadGallery"]');
     assert.match(knopf.textContent, /Erneut versuchen/);
-    antwort = ZWEI_SETS;
+    antwort = TWO_SETS;
     knopf.click();
     await warte(() => d.querySelectorAll('#gallery .sc').length === 2);
     assert.equal(d.querySelectorAll('#gallery .sc').length, 2, 'Erneut versuchen lädt nicht neu');
@@ -49,8 +49,8 @@ test('Sammlung: Serverfehler beim ersten Laden zeigt den Grund und „Erneut ver
 
 test('Sammlung: scheitert das Neuladen, bleibt die alte Liste stehen', async () => {
   /** @type {object} */
-  let antwort = ZWEI_SETS;
-  const { w, d } = await oeffneOberflaeche({ '/v1/sets': () => antwort });
+  let antwort = TWO_SETS;
+  const { w, d } = await openUi({ '/v1/sets': () => antwort });
   try {
     await warte(() => d.querySelectorAll('#gallery .sc').length === 2);
     antwort = SERVERFEHLER;
@@ -70,7 +70,7 @@ test('jede Liste zeigt ihren Ladefehler mit demselben Baustein', async () => {
   const kaputt = () => {
     throw new TypeError('Failed to fetch');
   };
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/wanted': kaputt,
     '/v1/parts': kaputt,
     '/v1/minifigs': kaputt,
@@ -100,7 +100,7 @@ test('jede Liste zeigt ihren Ladefehler mit demselben Baustein', async () => {
 });
 
 test('Netzfehler beim Erfassen: „Keine Verbindung zum Server“ statt „Failed to fetch“', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/sets/add-stream': () => {
       throw new TypeError('Failed to fetch');
     },
@@ -119,7 +119,7 @@ test('Netzfehler beim Erfassen: „Keine Verbindung zum Server“ statt „Faile
 });
 
 test('Band ohne Verbindung: „Keine Verbindung seit …“', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
     const band = d.getElementById('offline-band');
     assert.equal(band.hidden, true, 'das Band steht schon mit Verbindung da');

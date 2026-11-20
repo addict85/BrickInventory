@@ -16,7 +16,7 @@ const _req = buildAndRequire();
 const { handleRouteError } = _req('src/http/httpAntwort.js');
 
 /** Ruft handleRouteError; liefert die eine Zeile samt Stufe (error/warn). */
-function protokolliereMitStufe(fehler, req) {
+function logWithLevel(fehler, req) {
   const zeilen = [];
   const echt = { error: console.error, warn: console.warn };
   console.error = (...teile) => zeilen.push({ stufe: 'error', zeile: require('node:util').format(...teile) });
@@ -39,7 +39,7 @@ function protokolliereMitStufe(fehler, req) {
   assert.equal(zeilen.length, 1, 'Es soll genau eine Zeile geschrieben werden');
   return zeilen[0];
 }
-const protokolliere = (fehler, req) => protokolliereMitStufe(fehler, req).zeile;
+const protokolliere = (fehler, req) => logWithLevel(fehler, req).zeile;
 
 test('die Fehlerzeile nennt Methode und Pfad', () => {
   const e = Object.assign(new Error('Nicht gefunden'), { status: 404, code: 'nicht_gefunden' });
@@ -77,7 +77,7 @@ test('ohne Anfrage bleibt die Zeile wie bisher', () => {
 });
 
 test('ein 4xx ist eine Warnung ohne Stack, ein 5xx ein Fehler mit Stack', () => {
-  const nicht = protokolliereMitStufe(Object.assign(new Error('Nicht gefunden'), { status: 404 }), {
+  const nicht = logWithLevel(Object.assign(new Error('Nicht gefunden'), { status: 404 }), {
     method: 'GET',
     originalUrl: '/api/v1/sets/1-1',
   });
@@ -85,7 +85,7 @@ test('ein 4xx ist eine Warnung ohne Stack, ein 5xx ein Fehler mit Stack', () => 
   assert.match(nicht.zeile, /Nicht gefunden/);
   assert.ok(!/\n\s+at /.test(nicht.zeile), `Stack in einer 4xx-Zeile: ${nicht.zeile}`);
 
-  const kaputt = protokolliereMitStufe(new Error('Verbindung weg'), { method: 'GET', originalUrl: '/api/v1/sets' });
+  const kaputt = logWithLevel(new Error('Verbindung weg'), { method: 'GET', originalUrl: '/api/v1/sets' });
   assert.equal(kaputt.stufe, 'error');
   assert.match(kaputt.zeile, /\n\s+at /, 'ein 5xx trägt seinen Stack');
 });

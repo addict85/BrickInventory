@@ -2,7 +2,7 @@
  * und db/bestandsmenge.ts. Ohne Import, damit Repositories ihn lesen dürfen (Konten wie db/konten.ts). */
 type Konten = `= $${number}` | `= ANY($${number})`;
 
-export interface KatalogLesevertrag {
+export interface CatalogReadContract {
   setBestand(konten?: Konten): string;
   teilBestand(konten?: Konten): string;
   figurBestand(konten?: Konten): string;

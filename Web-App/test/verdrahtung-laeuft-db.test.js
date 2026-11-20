@@ -2,28 +2,28 @@
  * Fünf Verdrahtungen, die bisher nur als Textmuster zugesichert waren.
  */
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
-const { haeltSet, katalogSet } = require('./helpers/bestand');
-const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+const { holdsSet, catalogSet } = require('./helpers/bestand');
+const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
 mailAttrappe();
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-let HAUPT = 0,
+let MAIN = 0,
   KIND = 0;
 const SN = '75192-1';
 
-async function aufbau() {
+async function setup() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -35,10 +35,10 @@ async function aufbau() {
   }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x')`);
   const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
-  HAUPT = await id('haupt');
+  MAIN = await id('haupt');
   KIND = await id('kind');
-  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [HAUPT, KIND]);
-  await katalogSet(db, SN, { name: 'Falcon' });
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [MAIN, KIND]);
+  await catalogSet(db, SN, { name: 'Falcon' });
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ('3001','Brick')
                 ON CONFLICT (part_number) DO NOTHING`);
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
@@ -54,12 +54,12 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     keineDb(t, e);
     return;
   }
-  await aufbau();
+  await setup();
 
   // Ohne Sitzung und ohne Token sieht die App genau das, was sie bei einer Anfrage
   // ohne gültige Anmeldung sieht. Darum geht es im ersten Fall.
   const ohne = testServer(_req, { sitzung: {}, t });
-  const mit = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const mit = testServer(_req, { sitzung: { userId: MAIN }, t });
 
   await t.test('1. der PDF-Download antwortet ohne Token nicht mit der Datei', async () => {
     const r = await fetch(`${ohne.base}/api/v1/sets/partslist-pdf/download/irgendwas`);
@@ -96,17 +96,17 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
   });
 
   await t.test('3. ein zu kurzes Passwort wird abgelehnt', async () => {
-    // passwortZuKurz() liegt in src/konto/anmeldepruefung.ts und gilt für Registrierung,
+    // passwordToShort() liegt in src/konto/anmeldepruefung.ts und gilt für Registrierung,
     // Anlegen durch den Admin und das Ändern. Zugesichert war bisher, dass
     // die Routen die Funktion NENNEN.
     await db.run(`INSERT INTO global_settings (key,value) VALUES ('registration_enabled','1')
                   ON CONFLICT (key) DO UPDATE SET value='1'`);
-    await mailserverEintragen(db);
-    const basisVorher = process.env.APP_BASE_URL;
-    umgebung({ APP_BASE_URL: 'http://localhost' });
+    await enterMailServer(db);
+    const baseBefore = process.env.APP_BASE_URL;
+    environment({ APP_BASE_URL: 'http://localhost' });
     t.after(() => {
-      if (basisVorher === undefined) umgebung({ APP_BASE_URL: undefined });
-      else umgebung({ APP_BASE_URL: basisVorher });
+      if (baseBefore === undefined) environment({ APP_BASE_URL: undefined });
+      else environment({ APP_BASE_URL: baseBefore });
     });
     const r = await fetch(`${mit.base}/api/v1/auth/register`, {
       method: 'POST',
@@ -141,23 +141,23 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
   });
 
   await t.test('4. ein Datum, an dem schon ein Kauf steht, wird abgelehnt', async () => {
-    // kaufAmSelbenTag() sitzt im ÄNDERN-Weg: Wer das Datum einer
+    // purchaseAtSameTag() sitzt im ÄNDERN-Weg: Wer das Datum einer
     // Erfassung auf einen Tag schiebt, an dem für dieselbe Position schon
     // eine steht, bekommt 409. Ohne die Prüfung liefe es in den eindeutigen
     // Index (seit 0047 idx_set_acq_tag_merkmale) und käme als 500 zurück. …
     const heute = new Date().toISOString().slice(0, 10);
     const gestern = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
-    await haeltSet(db, HAUPT, SN, 1, { preis: 100, am: gestern });
+    await holdsSet(db, MAIN, SN, 1, { preis: 100, am: gestern });
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                   VALUES ($1,$2,1,100,'N',$3::timestamptz)`,
-      [HAUPT, SN, heute],
+      [MAIN, SN, heute],
     );
     const zeilen = await db.all(
       `SELECT id, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
         ORDER BY created_at`,
-      [HAUPT, SN],
+      [MAIN, SN],
     );
     assert.equal(zeilen.length, 2, 'Vorbedingung: zwei Erfassungen an zwei Tagen');
 
@@ -176,18 +176,18 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
         'statt einer Auskunft.',
     );
     assert.equal(
-      (await db.get(`SELECT COUNT(*)::int c FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [HAUPT, SN])).c,
+      (await db.get(`SELECT COUNT(*)::int c FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [MAIN, SN])).c,
       2,
       'Trotz Ablehnung hat sich die Zahl der Erfassungen geändert',
     );
 
     // Gegenrichtung: ein FREIER Tag geht durch. Ohne sie wäre die Regel auch
     // erfüllt, wenn jede Datumsänderung abgelehnt würde.
-    const vorgestern = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
+    const dayBeforeYesterday = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
     const r2 = await fetch(`${mit.base}/api/v1/sets/${SN}/acquisitions/${zeilen[0].id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ date: vorgestern }),
+      body: JSON.stringify({ date: dayBeforeYesterday }),
     });
     assert.ok(
       r2.status < 400,

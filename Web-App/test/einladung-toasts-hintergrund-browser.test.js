@@ -7,15 +7,15 @@
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
  *   A  redeemHouseholdInvite wieder ohne Prüfroute (Titel „Einladung annehmen“)
  *      → rot: „Einladung nennt das Hauptkonto“
- *   B  einladungAnlegen wieder mit randomBytes(24).base64url → rot: „Einladungscode
+ *   B  createInvitation wieder mit randomBytes(24).base64url → rot: „Einladungscode
  *      in Vierergruppen“ (Format) und „Einladung nennt das Hauptkonto“
  *      (kleingeschrieben ohne Striche eingegeben: abgelaufen)
  *   C  Profil wieder mit tRaw('konto.profil') ohne Erklärung → rot: „E-Mail-
  *      Änderung: Titel und neue Adresse“
- *   D  verwirfToasts wieder „alle mit Knopf bleiben“ → rot: „Toast der Ansicht
+ *   D  discardToasts wieder „alle mit Knopf bleiben“ → rot: „Toast der Ansicht
  *      schliesst beim Wechsel“
  *   E  Entf-Zweig in aktionen.js entfernt → rot: „Lösch-Kreuz: Entf auf der Karte“
- *   F  preisZeile wieder mit Geschenk im Preiskasten → rot: „Geschenk als Plakette“
+ *   F  priceRow wieder mit Geschenk im Preiskasten → rot: „Geschenk als Plakette“
  *   G  jobIconSvg ohne imgDl und pdfJobs → rot: „Hintergrundarbeiten: jeder Dienst
  *      mit Symbol“
  *   H  priceStatusBadge ohne neutralen Zweig → rot: „Preis fehlt: grau, wenn er
@@ -23,15 +23,15 @@
  *   I  die Regeln .knopf-schwebend > span { display: none } entfernt → rot:
  *      „Schwebender Knopf: nur Symbol“ (05.11.2026 mit Warten auf den Zustand
  *      erneut gemessen: rot nach 5 s bei „beim Rollen nur das Symbol“)
- *   K  bezugsLinie ohne den Platz-Test oben → rot: „Unterkonto: Kaufpreis-
+ *   K  referenceLine ohne den Platz-Test oben → rot: „Unterkonto: Kaufpreis-
  *      Beschriftung im Diagramm“ (abgeschnitten oben)
- *   L  zeigeBestaetigungsziel nicht aufgerufen → rot: „Bestätigungsseite nennt
+ *   L  showConfirmationTarget nicht aufgerufen → rot: „Bestätigungsseite nennt
  *      Konto und Adresse“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { musterHaushalt, haeltSet } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { patternHousehold, holdsSet } = require('./helpers/bestand');
 const { buildAndRequire } = require('./helpers/sources');
 const { LAYOUT } = require('./helpers/layout-messung');
 
@@ -44,7 +44,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
   const NAME = `r13_${process.pid}`,
     KIND = `${NAME}_kind`,
     ANDERE = `r13x_${process.pid}`;
-  const app = await starteApp(t, { name: NAME, bestand: musterHaushalt });
+  const app = await startApp(t, { name: NAME, bestand: patternHousehold });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -53,7 +53,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
   buildAndRequire();
-  const haushalt = require('./helpers/sources').testDienste().haushalt;
+  const haushalt = require('./helpers/sources').testServices().haushalt;
   const geh = async pfad => {
     await b.auswerten(`location.hash = '#/${pfad}'; true`);
     await warte(300);
@@ -79,7 +79,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
   });
 
   await t.test('Einladung nennt das Hauptkonto', async () => {
-    const { code } = await require('./helpers/sources').alsKonto(andere, () => haushalt.einladungAnlegen(andere));
+    const { code } = await require('./helpers/sources').asAccount(andere, () => haushalt.createInvitation(andere));
     assert.match(code, CODE);
     assert.match(
       await b.auswerten(text('#household-redeem-box')),
@@ -150,9 +150,9 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
     // fokussierte Karte, und Entf ginge an den Körper der Seite.
     await ruhig();
     const z = await b.auswerten(`(() => { const k = document.querySelector('#gallery .sc'); k.focus();
-      return { taste: k.getAttribute('aria-keyshortcuts'), kreuz: k.querySelector('.delbtn').getAttribute('aria-hidden'),
+      return { taste: k.getAttribute('aria-keyshortcuts'), cross: k.querySelector('.delbtn').getAttribute('aria-hidden'),
         fokus: document.activeElement === k }; })()`);
-    assert.deepEqual(z, { taste: 'Delete', kreuz: 'true', fokus: true });
+    assert.deepEqual(z, { taste: 'Delete', cross: 'true', fokus: true });
     for (const type of ['rawKeyDown', 'keyUp'])
       await b.tab('Input.dispatchKeyEvent', { type, key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 });
     await bis(offen, 'Löschdialog');
@@ -187,10 +187,10 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
       );
     };
     // Ohne Preis im Zwischenspeicher und ohne BrickLink-Zugang scheitert der Abruf.
-    await haeltSet(db, app.uid, '60001-1', 1, { preis: 20, am: '2026-06-03T10:00:00Z' });
+    await holdsSet(db, app.uid, '60001-1', 1, { preis: 20, am: '2026-06-03T10:00:00Z' });
     assert.deepEqual(await zeichen(), { rot: 1, grau: 0 }, 'ein einzelner Fehlschlag bleibt rot');
     for (const nr of ['60002-1', '60003-1', '60004-1', '60005-1', '60006-1'])
-      await haeltSet(db, app.uid, nr, 1, { preis: 20, am: '2026-06-03T10:00:00Z' });
+      await holdsSet(db, app.uid, nr, 1, { preis: 20, am: '2026-06-03T10:00:00Z' });
     assert.deepEqual(await zeichen(), { rot: 0, grau: 6 }, 'fehlt er fast überall, ist es kein Alarm');
     await db.run(`DELETE FROM set_acquisitions WHERE user_id = $1 AND set_number LIKE '6000_-1'`, [app.uid]);
     await db.run(`DELETE FROM sets WHERE user_id = $1 AND set_number LIKE '6000_-1'`, [app.uid]);

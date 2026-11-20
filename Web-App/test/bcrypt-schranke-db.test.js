@@ -5,19 +5,19 @@
  * bei jeder Passwortbestätigung.
  *
  * Gegenproben (am 03.11.2026 gemessen, je einzeln):
- *   A  in neueSchranke() die Grenze der Warteschlange entfernt → rot: beide
+ *   A  in newLimit() die Grenze der Warteschlange entfernt → rot: beide
  *      Tests (der Überzählige wartete, statt abgewiesen zu werden)
- *   B  pruefeAnmeldedaten() ohne bcryptSchranke.mit() → rot: „bei voller
+ *   B  checkCredentials() ohne bcryptSchranke.mit() → rot: „bei voller
  *      Schranke …“ (die Anmeldung lief durch)
- *   C  pruefeBestaetigung() ohne bcryptSchranke.mit() → rot: „bei voller
+ *   C  checkConfirmation() ohne bcryptSchranke.mit() → rot: „bei voller
  *      Schranke …“ (die Passwortbestätigung lief durch)
  *
  * Wer sich von dieser Adresse mit diesem Namen zuletzt angemeldet hat, wartet
  * vorne und wird nicht wegen der Länge der Schlange abgewiesen (Runde 12, H3).
  * Gegenproben (04.11.2026 gemessen):
- *   D  in neueSchranke() `vorrang` übergangen → rot: „Vorrang …“ und „bei
+ *   D  in newLimit() `priority` übergangen → rot: „Vorrang …“ und „bei
  *      voller Schranke …“ (die bekannte Anmeldung steht nicht in der Schlange)
- *   E  pruefeAnmeldedaten() ohne bekannteAnmeldung() (immer false) → rot:
+ *   E  checkCredentials() ohne knownLogin() (immer false) → rot:
  *      „bei voller Schranke …“ (dasselbe)
  *
  * REQUIRE_DB=1.
@@ -31,12 +31,12 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
-const { neueSchranke, bcryptSchranke, BcryptUeberlast } = _req('src/konto/bcryptSchranke.js');
+const db = testData();
+const { newLimit, bcryptSchranke, BcryptOverload } = _req('src/konto/bcryptSchranke.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 test.after(async () => {
@@ -44,7 +44,7 @@ test.after(async () => {
 });
 
 test('die Schranke lässt n laufen, m warten und weist den Rest ab', async () => {
-  const s = neueSchranke(2, 1, 200);
+  const s = newLimit(2, 1, 200);
   const offen = [];
   const blockiert = () => new Promise(r => offen.push(r));
   const a = s.mit(blockiert),
@@ -52,7 +52,7 @@ test('die Schranke lässt n laufen, m warten und weist den Rest ab', async () =>
   const c = s.mit(async () => 'c');
   await assert.rejects(
     s.mit(async () => 'd'),
-    BcryptUeberlast,
+    BcryptOverload,
   );
   assert.deepEqual(s.stand(), { laufend: 2, wartend: 1 });
   offen.shift()('a');
@@ -66,7 +66,7 @@ test('die Schranke lässt n laufen, m warten und weist den Rest ab', async () =>
     y = s.mit(blockiert);
   await assert.rejects(
     s.mit(async () => 'z'),
-    BcryptUeberlast,
+    BcryptOverload,
   );
   assert.deepEqual(s.stand(), { laufend: 2, wartend: 0 });
   for (const r of offen.splice(0)) r();
@@ -75,7 +75,7 @@ test('die Schranke lässt n laufen, m warten und weist den Rest ab', async () =>
 });
 
 test('Vorrang: vorne in die Schlange, auch wenn sie voll ist', async () => {
-  const s = neueSchranke(1, 1, 1000);
+  const s = newLimit(1, 1, 1000);
   const offen = [],
     reihe = [];
   const a = s.mit(() => new Promise(r => offen.push(r)));
@@ -87,7 +87,7 @@ test('Vorrang: vorne in die Schlange, auch wenn sie voll ist', async () => {
   }, true);
   await assert.rejects(
     s.mit(async () => 'x'),
-    BcryptUeberlast,
+    BcryptOverload,
   );
   assert.deepEqual(s.stand(), { laufend: 1, wartend: 2 });
   offen.shift()();

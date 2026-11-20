@@ -8,7 +8,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-const SENKEN = [
+const LOWER = [
   /\.(?:textContent|placeholder|title)\s*=\s*'([^']{2,})'/g,
   /\.(?:textContent|placeholder|title)\s*=\s*"([^"]{2,})"/g,
   /\btoast\(\s*'([^']{2,})'/g,
@@ -42,7 +42,7 @@ test('kein fester Text in textContent, placeholder, title, toast, confirm oder a
   let geprueft = 0;
   const fest = [];
   for (const [rel, src] of dateien)
-    for (const muster of SENKEN)
+    for (const muster of LOWER)
       for (const m of src.matchAll(muster)) {
         geprueft++;
         // Mindestens zwei zusammenhängende Buchstaben — „…" ist kein Text.
@@ -56,7 +56,7 @@ test('kein fester Text in textContent, placeholder, title, toast, confirm oder a
   // der Symbolfamilie gewichen. Der Selbstbeweis prüft deshalb die Muster an
   // einer Probe — jedes muss dort genau einmal greifen.
   const probe = `a.textContent = 'Hallo'; b.title = "Welt"; toast('Text'); toast("Text"); confirm('Ja?'); alert('Nein');`;
-  for (const muster of SENKEN)
+  for (const muster of LOWER)
     assert.equal([...probe.matchAll(muster)].length, 1, `Das Muster ${muster} greift nicht mehr`);
   void geprueft;
 

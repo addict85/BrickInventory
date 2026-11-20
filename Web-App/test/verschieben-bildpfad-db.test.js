@@ -6,14 +6,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/bestand');
+const db = testData();
 
 test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const p = String(process.pid).slice(-5);
   const VON = `mv_von_${p}`,
@@ -21,20 +21,20 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
   const SN = `81${p}-1`,
     PN = `pt${p}`,
     FN = `fig${p}`;
-  const PFAD_TEIL = `/img/parts/${PN}.png`;
-  const PFAD_FIGUR = `/img/minifigs/${FN}.png`;
+  const PATH_PART = `/img/parts/${PN}.png`;
+  const PATH_MINIFIG = `/img/minifigs/${FN}.png`;
 
   await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [VON, NACH]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [VON, NACH]);
-  const vonId = (await db.get(`SELECT id FROM users WHERE username=$1`, [VON])).id;
+  const ofId = (await db.get(`SELECT id FROM users WHERE username=$1`, [VON])).id;
   const nachId = (await db.get(`SELECT id FROM users WHERE username=$1`, [NACH])).id;
 
   try {
-    await haeltSet(db, vonId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, ofId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,10,'N')`,
-      [vonId, SN],
+      [ofId, SN],
     );
     // Beide Bestandteile kommen AUS DEM SET (source='set') und haben ein
     // zwischengespeichertes Bild — genau der Fall, den der Bild-Job herstellt.
@@ -44,23 +44,21 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
       `INSERT INTO part_color_catalog (part_number,color_id,image_local)
                   VALUES ($1,4,$2)
                   ON CONFLICT (part_number,color_id) DO UPDATE SET image_local=EXCLUDED.image_local`,
-      [PN, PFAD_TEIL],
+      [PN, PATH_PART],
     );
     await db.run(
       `INSERT INTO minifigs_catalog (fig_number,fig_name,image_local)
                   VALUES ($1,'Testfigur',$2)
                   ON CONFLICT (fig_number) DO UPDATE SET image_local=EXCLUDED.image_local`,
-      [FN, PFAD_FIGUR],
+      [FN, PATH_MINIFIG],
     );
-    await haeltTeil(db, vonId, PN, { setNumber: SN, menge: 2, colorId: 4 });
-    await haeltFigur(db, vonId, FN, { setNumber: SN, menge: 1 });
+    await holdsPart(db, ofId, PN, { setNumber: SN, menge: 2, colorId: 4 });
+    await holdsMinifig(db, ofId, FN, { setNumber: SN, menge: 1 });
 
     // Wie die Sammlung: in einer Transaktion über deren Kontext; zwei fremde Konten nur im Systemrahmen.
-    const { imSystemkontext } = _req('src/infra/kontoKontext.js');
-    const sammlung = require('./helpers/sources').testKontext('collection');
-    await imSystemkontext('Testdaten', () =>
-      sammlung.transaktion(tt => tt.sets.setErfassungenUmhaengen(SN, vonId, nachId)),
-    );
+    const { inSystemContext } = _req('src/infra/kontoKontext.js');
+    const sammlung = require('./helpers/sources').testContext('collection');
+    await inSystemContext('Testdaten', () => sammlung.transaktion(tt => tt.sets.setEntriesReassign(SN, ofId, nachId)));
 
     // Gelesen wird über denselben JOIN, den die Oberflächen benutzen — also
     // über die Wirkung. Eine Abfrage auf parts.image_local gibt es nicht mehr,
@@ -87,15 +85,15 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
 
     assert.equal(
       figur.image_local,
-      PFAD_FIGUR,
-      `Die verschobene Minifigur hat image_local=${figur.image_local} statt "${PFAD_FIGUR}". ` +
+      PATH_MINIFIG,
+      `Die verschobene Minifigur hat image_local=${figur.image_local} statt "${PATH_MINIFIG}". ` +
         'Das Figurenbild ist im Zielkonto nicht sichtbar, und bis zum nächsten ' +
         'Serverstart kommt es wieder über den Proxy vom CDN.',
     );
     assert.equal(
       teil.image_local,
-      PFAD_TEIL,
-      `Das verschobene Teil hat image_local=${teil.image_local} statt "${PFAD_TEIL}".`,
+      PATH_PART,
+      `Das verschobene Teil hat image_local=${teil.image_local} statt "${PATH_PART}".`,
     );
 
     // Die eigentliche Regel: Beide Zweige liefern dasselbe Ergebnis.
@@ -107,7 +105,7 @@ test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concur
         'einer davon fehlt hinterher das Bild.',
     );
   } finally {
-    for (const uid of [vonId, nachId]) {
+    for (const uid of [ofId, nachId]) {
       await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});
       await db.run(`DELETE FROM parts WHERE user_id=$1`, [uid]).catch(() => {});
       await db.run(`DELETE FROM minifigs WHERE user_id=$1`, [uid]).catch(() => {});

@@ -15,8 +15,8 @@ if (art !== 'lint' && art !== 'format') {
   console.error('Aufruf: node scripts/lint-ratsche.js lint|format');
   process.exit(2);
 }
-const schrankenDatei = process.env.LINT_SCHRANKEN || path.join(__dirname, 'lint-schranken.json');
-const schranke = JSON.parse(fs.readFileSync(schrankenDatei, 'utf8'))[art];
+const limitsFile = process.env.LINT_SCHRANKEN || path.join(__dirname, 'lint-schranken.json');
+const limit = JSON.parse(fs.readFileSync(limitsFile, 'utf8'))[art];
 
 const biome = path.join(ROOT, 'node_modules', '@biomejs', 'biome', 'bin', 'biome');
 // LINT_WURZEL: ein anderer Baum mit eigener biome.json, für den Test mit absichtlichen Funden.
@@ -35,9 +35,9 @@ try {
 }
 
 // Eigene Regeln (biome/*.grit) melden als „plugin“; sie zählen wie jede andere Lint-Regel.
-const istLint = (/** @type {{ category: string }} */ d) => d.category.startsWith('lint/') || d.category === 'plugin';
-const funde = bericht.diagnostics.filter(d => (art === 'lint' ? istLint(d) : d.category === 'format'));
-const fremd = bericht.diagnostics.filter(d => !istLint(d) && d.category !== 'format');
+const isLint = (/** @type {{ category: string }} */ d) => d.category.startsWith('lint/') || d.category === 'plugin';
+const funde = bericht.diagnostics.filter(d => (art === 'lint' ? isLint(d) : d.category === 'format'));
+const fremd = bericht.diagnostics.filter(d => !isLint(d) && d.category !== 'format');
 if (fremd.length) {
   console.error(
     `[${art}] Biome meldet Fehler ausserhalb der Regeln:\n${fremd.map(d => `${d.category}: ${d.location?.path ?? ''}`).join('\n')}`,
@@ -48,9 +48,9 @@ const ist = funde.length;
 const je = new Map();
 for (const d of funde) je.set(d.category, (je.get(d.category) || 0) + 1);
 const was = art === 'lint' ? 'Lint-Funde' : 'nicht formatierte Dateien';
-if (ist > schranke) {
+if (ist > limit) {
   console.error(
-    `[${art}] ${ist} ${was}, erlaubt sind ${schranke}. Neue Funde mit \`npx biome ${art} <datei>\` ansehen` +
+    `[${art}] ${ist} ${was}, erlaubt sind ${limit}. Neue Funde mit \`npx biome ${art} <datei>\` ansehen` +
       (art === 'format' ? ' und mit `npx biome format --write <datei>` beheben.' : '.'),
   );
   if (art === 'lint')
@@ -64,5 +64,5 @@ if (ist > schranke) {
   process.exit(1);
 }
 console.log(
-  `[${art}] ${ist} ${was} (Schranke ${schranke})${ist < schranke ? ' — Schranke in scripts/lint-schranken.json nachziehen' : ''}`,
+  `[${art}] ${ist} ${was} (Schranke ${limit})${ist < limit ? ' — Schranke in scripts/lint-schranken.json nachziehen' : ''}`,
 );

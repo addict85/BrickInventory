@@ -15,18 +15,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { pruefeParameter } = require('./helpers/sources');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { checkParameter } = require('./helpers/sources');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /function zustandsAggregat/, 'Der gemeinsame Helfer fehlt');
-  // Weder setsLesen()/setLesen() noch die manuellen Listen dürfen die Regel je
+  // Weder setsLesen()/readSet() noch die manuellen Listen dürfen die Regel je
   // eigen ausformulieren — sie steht in conditionFromAcquisitions().
   // Zwei Parameter, nicht drei: Der dritte war der gespeicherte Zustand der
   // Stammzeile. Migration 0032 hat ihn den Sets genommen, 0035 den Teilen und
   // Minifiguren — es gibt keinen Rueckfall mehr, auf den er zeigen koennte.
-  pruefeParameter(h, 'conditionFromAcquisitions', ['acqCount', 'usedCount'], 'der gemeinsame Regel-Helfer fehlt');
+  checkParameter(h, 'conditionFromAcquisitions', ['acqCount', 'usedCount'], 'der gemeinsame Regel-Helfer fehlt');
   // Kommentare ausblenden: Der Erklärtext am Helfer zitiert die Regel selbst.
   const code = h.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
   // Der Anker nennt bewusst KEINEN Variablennamen: Er hiess frueher
@@ -78,40 +78,37 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
 
   // Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis, auch
   // bei „Gebraucht".
-  const ohneZustand = [
+  const withoutState = [
     ...src.matchAll(
-      /(?:aktuellerTeilMarktpreis|aktuellerTeilMarktpreis)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?([^)]*)\)/g,
+      /(?:currentPartMarketPrice|currentPartMarketPrice)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?([^)]*)\)/g,
     ),
   ]
     .filter(m => !m[1].includes('function')) // die Definition selbst nicht
     .filter(m => m[1].split(',').length < 4);
   assert.equal(
-    ohneZustand.length,
+    withoutState.length,
     0,
     'Diese Aufrufe holen den Marktpreis OHNE Zustand:\n  ' +
-      ohneZustand.map(m => m[0]).join('\n  ') +
+      withoutState.map(m => m[0]).join('\n  ') +
       '\nDann fällt die Ermittlung intern auf den Standardzustand zurück, und ein ' +
       'als gebraucht erfasstes Teil bekommt den Neupreis.',
   );
   // Selbstbeweis: Ohne Fundstellen sagt eine leere Liste nichts.
-  const alleAufrufe = [
+  const allCalls = [
     ...src.matchAll(
-      /(?:aktuellerTeilMarktpreis|aktuellerTeilMarktpreis)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/g,
+      /(?:currentPartMarketPrice|currentPartMarketPrice)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/g,
     ),
   ];
-  assert.ok(
-    alleAufrufe.length >= 4,
-    `Nur ${alleAufrufe.length} Vorkommen von aktuellerTeilMarktpreis( — Muster veraltet?`,
-  );
+  assert.ok(allCalls.length >= 4, `Nur ${allCalls.length} Vorkommen von currentPartMarketPrice( — Muster veraltet?`);
   // Zwei Pfade: neu angelegt und erneut erfasst — BEIDE brauchen eine
   // Erfassung. Der zweite endete früher mit `return { action: 'updated' }`,
   // ohne eine anzulegen; ein abweichendes Erfassungsdatum ging dabei verloren.
   //
-  // Geschrieben wird seit hardened-93 über kaufAmTagErfassen(), das die
+  // Geschrieben wird seit hardened-93 über addPurchaseAtTag(), das die
   // Zeile des Tages im selben Zustand aufstockt statt eine zweite anzulegen.
   const writes = [
     ...fn.matchAll(
-      /(?:kaufAmTagErfassen|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'part', uid,/g,
+      /(?:addPurchaseAtTag|bookDailyEntry)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'part', uid,/g,
     ),
   ];
   assert.equal(
@@ -144,12 +141,12 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // übersprungen, die Teile-Schätzung übernahm, und die liefert ohne
   // Teile-Zusammensetzung von Rebrickable nichts: gar kein Preis.
   const src = fs.readFileSync(path.join(ROOT, 'src/finanzen/marketPrice.ts'), 'utf8');
-  // Der Abruf heisst seit einer früheren Runde figMarktpreisMitHerkunft: Er liefert
-  // neben dem Preis den Zustand, aus dem dieser stammt. aktuellerFigurMarktpreis
+  // Der Abruf heisst seit einer früheren Runde figMarketPriceWithOrigin: Er liefert
+  // neben dem Preis den Zustand, aus dem dieser stammt. currentMinifigMarketPrice
   // steht als duenne Huelle daneben und gibt nur die Zahl weiter — geprueft
   // wird hier der Abruf selbst, nicht die Huelle.
   const fn = src.slice(
-    src.indexOf('async function figMarktpreisMitHerkunft'),
+    src.indexOf('async function figMarketPriceWithOrigin'),
     src.indexOf('async function manuellerFigurenkauf'),
   );
   assert.ok(fn.length > 0, 'Der Minifiguren-Preisabruf ist nicht mehr zu finden');
@@ -163,7 +160,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
 
   // Reihenfolge: BrickLink zuerst, Teile-Schätzung nur als Rückfall
   const iLoop = fn.indexOf('for (const num of');
-  const iEst = fn.indexOf('schaetzeFigurenpreis');
+  const iEst = fn.indexOf('estimateMinifigsPrice');
   assert.ok(iLoop > 0 && iEst > iLoop, 'Die Teile-Schätzung gehört hinter den BrickLink-Abruf');
 
   // Und sie schätzt im ERMITTELTEN Zustand, nicht im Standardzustand: Ohne
@@ -173,13 +170,13 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   // genau der Fall ohne Nummer fiel durch.
   assert.match(
     fn,
-    /schaetzeFigurenpreis\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?figNumber, userId, effCond\)/,
+    /estimateMinifigsPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?figNumber, userId, effCond\)/,
     'Der ermittelte Zustand muss in die Schätzung',
   );
 
   const est = src.slice(
     src.indexOf('async function estimateFigPriceFromParts'),
-    src.indexOf('async function aktuellerFigurMarktpreis'),
+    src.indexOf('async function currentMinifigMarketPrice'),
   );
   assert.match(
     est,
@@ -216,7 +213,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
     fs.readFileSync(path.join(ROOT, 'src/minifigs/manualMinifigs.ts'), 'utf8');
   const est = src.slice(
     src.indexOf('async function estimateFigPriceFromParts'),
-    src.indexOf('async function aktuellerFigurMarktpreis'),
+    src.indexOf('async function currentMinifigMarketPrice'),
   );
 
   // Cache und Verlauf je Zustand prüft test/figurenschaetzung-ablage-db.test.js.
@@ -226,10 +223,10 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   // Und beim Anlegen muss der ermittelte Preis in die Erfassung
   // created_at gehört seit der Datumsübernahme zur Spaltenliste.
   // Beide Wege (Neuanlage und Zweiterfassung), ohne Kommentare gelesen.
-  const ohneKommentar = src.replace(/\/\/[^\n]*/g, '');
+  const withoutComment = src.replace(/\/\/[^\n]*/g, '');
   const erfassungen = [
-    ...ohneKommentar.matchAll(
-      /(?:kaufAmTagErfassen|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?acquisitionPrice/g,
+    ...withoutComment.matchAll(
+      /(?:addPurchaseAtTag|bookDailyEntry)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\], \{\s*quantity,\s*price: (?:re\.)?acquisitionPrice/g,
     ),
   ];
   assert.equal(erfassungen.length, 2, 'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
@@ -247,7 +244,7 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
 
   const writes = [
     ...fn.matchAll(
-      /(?:kaufAmTagErfassen|bucheTageserfassung)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\]/g,
+      /(?:addPurchaseAtTag|bookDailyEntry)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'fig', uid, \[num\]/g,
     ),
   ];
   assert.equal(
@@ -302,7 +299,7 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   // Und der Import selbst soll seltener ohne Preis enden
   // Den Marktpreis aus Cache und Verlauf liest der Set-Dienst über finanzen (Besitzer von price_history).
   const sets =
-    require('./helpers/sources').setKernQuelle() +
+    require('./helpers/sources').setCoreSource() +
     fs.readFileSync(path.join(ROOT, 'src/finanzen/repository/preisCache.ts'), 'utf8');
   assert.match(
     sets,
@@ -345,18 +342,18 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
 });
 
 // Preis- und Verlaufsroute im Zustand des Sets prüft test/preis-zustand-des-sets-db.test.js am Server.
-test('genau EINE Zustandsauflösung für Einzelsets — setZustand', () => {
-  // Fünfter Fundort desselben Fehlers in dieser Sitzung: bewerteSets,
-  // aktuellerMarktpreis, gewinnUndVerlust, die Webapp-Verlaufsroute und jetzt die
+test('genau EINE Zustandsauflösung für Einzelsets — setState', () => {
+  // Fünfter Fundort desselben Fehlers in dieser Sitzung: valueSets,
+  // aktuellerMarktpreis, gainAndLoss, die Webapp-Verlaufsroute und jetzt die
   // Android-API hatten je eine eigene Fassung. Ab jetzt genau eine Funktion für
   // Aufrufer ohne bereits geladene acq_count/used_count-Felder.
   const fc = require('./helpers/sources').finanzQuelle();
   // Nimmt seit der Haushaltssicht auch eine Liste von Konten entgegen — der
   // Hauptaccount fragt den Zustand eines Sets ab, das einem Unterkonto gehört.
-  pruefeParameter(fc, 'setZustand', ['uid', 'setNumber'], 'der gemeinsame Helfer fehlt');
+  checkParameter(fc, 'setState', ['uid', 'setNumber'], 'der gemeinsame Helfer fehlt');
   assert.match(
     fc,
-    /export async function setZustand\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
+    /export async function setState\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/,
     'Der Helfer muss exportiert sein',
   );
 
@@ -368,17 +365,17 @@ test('genau EINE Zustandsauflösung für Einzelsets — setZustand', () => {
   // UMFORMULIERT in: Geprüft wurde die Importzeile WÖRTLICH.
   // Seit dem Fix für die BrickLink-Schlüssel holt priceHistory.ts aus derselben
   // Datei zwei weitere Namen — die Zeile lautet jetzt
-  //     import { setZustand, resolveBlColorId, resolveBlPartNumber } … …
+  //     import { setState, resolveBlColorId, resolveBlPartNumber } … …
   assert.match(
     helper,
-    /import \{[^}]*\bsetZustand\b[^}]*\} from '\.\/financeCalc';/,
+    /import \{[^}]*\bsetState\b[^}]*\} from '\.\/financeCalc';/,
     'src/finanzen/priceHistory.ts muss den gemeinsamen Helfer benutzen',
   );
 
   // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
   // Preis, keinen Verlauf) — genau ein Vorkommen.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/preise.ts'), 'utf8');
-  const uses = (apiV1.match(/sk\.finanzen\.setZustand\(blickfeld, sn\)/g) || []).length;
+  const uses = (apiV1.match(/sk\.finanzen\.setState\(blickfeld, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
@@ -391,7 +388,7 @@ test('CDN-Anfragen erzwingen IPv4', () => {
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/bilder/setImages.ts'), 'utf8');
   assert.match(
     setsFile,
-    /await (?:k\.fremdquellen\.quellen\s*\.)?hole(?:Https|Bild)\(url, \{/,
+    /await (?:k\.fremdquellen\.quellen\s*\.)?(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
     'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort',
   );
 });
@@ -403,10 +400,10 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
   const _req = require('./helpers/sources').buildAndRequire();
   const { holeHttps } = _req('src/infra/abruf.js');
   const { oeffneBild } = _req('clients/bildCdn.js');
-  const { mitschnitt } = require('./helpers/https-mitschnitt');
+  const { recording } = require('./helpers/https-mitschnitt');
   const hosts = ['cdn.rebrickable.com'];
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
-  const aufrufe = await mitschnitt(async () => {
+  const aufrufe = await recording(async () => {
     await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000 }).catch(() => {});
     await holeHttps(url, { hosts, maxBytes: 1000, zeitlimitMs: 5000, methode: 'POST', rumpf: '{}' }).catch(() => {});
     await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});
@@ -440,7 +437,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   assert.match(src, /vorschauErzeugenAus/, 'vorschauErzeugenAus ist in server.ts nicht mehr verfügbar');
   assert.match(
     partsLoop,
-    /(?:vorschauErzeugenAus|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    /(?:vorschauErzeugenAus|\w+\.bilder\.createPreview)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Teile-Schleife muss vorschauErzeugenAus() nach einem erfolgreichen Download aufrufen',
   );
 
@@ -450,7 +447,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
   );
   assert.match(
     figsLoop,
-    /(?:vorschauErzeugenAus|\w+\.bilder\.vorschauErzeugen)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
+    /(?:vorschauErzeugenAus|\w+\.bilder\.createPreview)\(local\)\.catch\(logAndContinue\('[^']+'\)\);/,
     'Die Minifiguren-Schleife muss vorschauErzeugenAus() nach einem erfolgreichen Download aufrufen',
   );
 });
@@ -459,8 +456,8 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
 // Welche Plaketten die Kachel zeigt (hardened-91)
 // ═══════════════════════════════════════════════════════════════════════════
 // utils/handlers.ts gibt es seit nicht mehr (aufgeteilt nach …
-const { buildAndRequire, handlerModul } = require('./helpers/sources');
-const { conditionsFromAcquisitions, conditionFromAcquisitions } = handlerModul(buildAndRequire());
+const { buildAndRequire, handlerModule } = require('./helpers/sources');
+const { conditionsFromAcquisitions, conditionFromAcquisitions } = handlerModule(buildAndRequire());
 
 test('gemischte Erfassungen ergeben ZWEI Plaketten', () => {
   // Der gemeldete Fall: ein Exemplar neu, eines gebraucht. Bisher zeigte die
@@ -519,18 +516,18 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
 // ═══════════════════════════════════════════════════════════════════════════
 // Anmelden mit E-Mail (hardened-100)
 // ═══════════════════════════════════════════════════════════════════════════
-const authModul = buildAndRequire()('src/konto/namensRegeln.js');
-const { anmeldenameGueltig, USERNAME_RE, EMAIL_RE } = authModul;
+const authModule = buildAndRequire()('src/konto/namensRegeln.js');
+const { loginNameValid, USERNAME_RE, EMAIL_RE } = authModule;
 
 test('der Anmeldename darf eine E-Mail-Adresse sein', () => {
   // Über dem Feld steht „Benutzername oder E-Mail", und die Abfrage sucht in
   // beiden Spalten — davor stand aber ein Wächter, der nur das
   // Benutzernamen-Muster zuliess. Das @ fiel durch, und die Meldung sprach von
   // erlaubten Zeichen im Benutzernamen.
-  assert.ok(anmeldenameGueltig('marco@example.com'));
-  assert.ok(anmeldenameGueltig('marco.meier+lego@sub.example.co.uk'));
-  assert.ok(anmeldenameGueltig('marco'), 'Benutzername muss weiterhin gehen');
-  assert.ok(anmeldenameGueltig('mar_co.1-x'));
+  assert.ok(loginNameValid('marco@example.com'));
+  assert.ok(loginNameValid('marco.meier+lego@sub.example.co.uk'));
+  assert.ok(loginNameValid('marco'), 'Benutzername muss weiterhin gehen');
+  assert.ok(loginNameValid('mar_co.1-x'));
 });
 
 test('offensichtlicher Unsinn kommt weiterhin nicht bis zur Abfrage', () => {
@@ -545,7 +542,7 @@ test('offensichtlicher Unsinn kommt weiterhin nicht bis zur Abfrage', () => {
     'a'.repeat(300) + '@example.com',
     "' OR 1=1 --",
   ]) {
-    assert.equal(anmeldenameGueltig(bad), false, `\`${bad}\` sollte abgelehnt werden`);
+    assert.equal(loginNameValid(bad), false, `\`${bad}\` sollte abgelehnt werden`);
   }
 });
 
@@ -559,13 +556,13 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
 });
 
 test('beide Login-Wege prüfen gleich', async () => {
-  // Webapp und Android-API gehen durch pruefeAnmeldedaten(); dort fällt ein
+  // Webapp und Android-API gehen durch checkCredentials(); dort fällt ein
   // unbrauchbarer Name ab, bevor Zähler oder Datenbank ihn sehen.
-  // Gegenprobe (11.11.2026): die Formprüfung in pruefeAnmeldedaten() gestrichen → rot hier.
-  const { pruefeAnmeldedaten } = buildAndRequire()('src/konto/anmeldepruefung.js');
+  // Gegenprobe (11.11.2026): die Formprüfung in checkCredentials() gestrichen → rot hier.
+  const { checkCredentials } = buildAndRequire()('src/konto/anmeldepruefung.js');
   for (const name of ['a b', "' OR 1=1 --", '@example.com'])
     assert.deepEqual(
-      await pruefeAnmeldedaten({ ip: '192.0.2.1' }, name, 'irgendein-Passwort'),
+      await checkCredentials({ ip: '192.0.2.1' }, name, 'irgendein-Passwort'),
       { ok: false, absage: { art: 'ungueltig', code: 'name_oder_email_eingeben' } },
       name,
     );
@@ -589,7 +586,7 @@ test('die Kachel übernimmt den Zustand aus der Antwort des Servers', async () =
   // antwortet danach absichtlich nicht mehr — die Kachel darf nur aus der Antwort auf die Änderung kommen.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 1, conditions: ['N'], condition: 'N' };
   let listen = 0;
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/sets': () => (++listen === 1 ? { success: true, total: 1, themes: [], sets: [SET] } : new Promise(() => {})),
     '/v1/sets/10294-1': { success: true, set: SET },
     '/v1/sets/10294-1/acquisitions': {
@@ -612,9 +609,9 @@ test('die Kachel übernimmt den Zustand aus der Antwort des Servers', async () =
       set: { set_number: '10294-1', conditions: ['U'], condition: 'U' },
     },
   });
-  const plaketten = () => d.querySelector('#gallery .sc .splaketten')?.textContent ?? '';
+  const badges = () => d.querySelector('#gallery .sc .splaketten')?.textContent ?? '';
   try {
-    assert.ok(await warte(() => /Neu/.test(plaketten())), `vorher: ${plaketten()}`);
+    assert.ok(await warte(() => /Neu/.test(badges())), `vorher: ${badges()}`);
     d.querySelector('#gallery [data-click="openModal"]').click();
     assert.ok(await warte(() => d.querySelector('[data-click="openAcqModal"]')));
     d.querySelector('[data-click="openAcqModal"]').click();
@@ -625,7 +622,7 @@ test('die Kachel übernimmt den Zustand aus der Antwort des Servers', async () =
     const wahl = d.querySelector('select[data-change="acqSave"][data-arg3="cond"]');
     wahl.value = 'U';
     wahl.dispatchEvent(new w.Event('change', { bubbles: true }));
-    assert.ok(await warte(() => /Gebraucht/.test(plaketten()) && !/Neu/.test(plaketten())), `nachher: ${plaketten()}`);
+    assert.ok(await warte(() => /Gebraucht/.test(badges()) && !/Neu/.test(badges())), `nachher: ${badges()}`);
   } finally {
     w.close();
   }

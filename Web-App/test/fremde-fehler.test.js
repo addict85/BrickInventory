@@ -10,7 +10,7 @@ const QUELLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'fehle
  */
 
 /** `fromUs` woertlich aus fehlerfang.js holen und mit gestelltem Ursprung laufen lassen. */
-function holeVonUns(ursprung = 'https://lego.bigolin.online') {
+function fetchOfUs(ursprung = 'https://lego.bigolin.online') {
   const auf = QUELLE.indexOf('function fromUs(');
   assert.ok(auf > 0, 'fromUs() steht nicht mehr in fehlerfang.js — heisst die Regel noch so?');
   const zu = QUELLE.indexOf('\n}', auf) + 2;
@@ -23,13 +23,13 @@ function holeVonUns(ursprung = 'https://lego.bigolin.online') {
   return new Function('location', `${text}; return fromUs;`)({ origin: ursprung });
 }
 
-const mitStapel = (nachricht, stapel) => Object.assign(new Error(nachricht), { stack: stapel });
+const withStack = (nachricht, stapel) => Object.assign(new Error(nachricht), { stack: stapel });
 const UNS = 'https://lego.bigolin.online';
 
 test('eine Erweiterung loest bei uns keinen Fehler aus', () => {
-  const fromUs = holeVonUns(UNS);
+  const fromUs = fetchOfUs(UNS);
   // Ein echter Stapel, so wie Chromium ihn schreibt.
-  const metamask = mitStapel(
+  const metamask = withStack(
     'Failed to connect to MetaMask',
     'Error: MetaMask extension not found\n' +
       '    at Object.connect (chrome-extension://nkbihfbeogaeaoehlefnkodbefgpgknn/inpage.js:4:42708)\n' +
@@ -37,33 +37,33 @@ test('eine Erweiterung loest bei uns keinen Fehler aus', () => {
   );
   assert.equal(fromUs(metamask), false, 'MetaMask gilt weiter als unser Fehler');
   assert.equal(
-    fromUs(mitStapel('x', 'Error: x\n    at moz-extension://abc/inpage.js:1:1')),
+    fromUs(withStack('x', 'Error: x\n    at moz-extension://abc/inpage.js:1:1')),
     false,
     'Firefox-Erweiterungen gelten als unser Fehler',
   );
   assert.equal(
-    fromUs(mitStapel('x', 'Error: x\n    at https://cdn.example.com/w.js:1:1')),
+    fromUs(withStack('x', 'Error: x\n    at https://cdn.example.com/w.js:1:1')),
     false,
     'Ein fremder Host gilt als unser Fehler',
   );
 });
 
 test('unsere eigenen Fehler kommen weiterhin an', () => {
-  const fromUs = holeVonUns(UNS);
+  const fromUs = fetchOfUs(UNS);
   assert.equal(
-    fromUs(mitStapel('kaputt', `TypeError: kaputt\n    at h (${UNS}/js/app.bundle.js:428:12)`)),
+    fromUs(withStack('kaputt', `TypeError: kaputt\n    at h (${UNS}/js/app.bundle.js:428:12)`)),
     true,
     'Ein Fehler aus unserem Bundle wird verschluckt',
   );
   assert.equal(
-    fromUs(mitStapel('kaputt', `Error: kaputt\n    at ${UNS}/:17:3`)),
+    fromUs(withStack('kaputt', `Error: kaputt\n    at ${UNS}/:17:3`)),
     true,
     'Ein Fehler aus der Seite selbst wird verschluckt',
   );
   // Eine Erweiterung, die UNSEREN Code aufruft und dort etwas ausloest, ist
   // unser Fehler: Der Stapel nennt beide, und eine Adresse von uns genuegt.
   assert.equal(
-    fromUs(mitStapel('x', `Error: x\n    at chrome-extension://abc/inpage.js:1:1\n    at ${UNS}/js/app.bundle.js:9:1`)),
+    fromUs(withStack('x', `Error: x\n    at chrome-extension://abc/inpage.js:1:1\n    at ${UNS}/js/app.bundle.js:9:1`)),
     true,
     'Ein Fehler in unserem Code wird verschluckt, weil eine Erweiterung ihn ausgeloest hat',
   );
@@ -73,11 +73,11 @@ test('im Zweifel gilt der Fehler als unserer', () => {
   // Der teurere der beiden Irrtuemer ist der verschwiegene EIGENE Fehler —
   // genau dagegen gibt es dieses Netz. Ohne Stapel oder ohne erkennbare
   // Adresse wird deshalb weiter gemeldet.
-  const fromUs = holeVonUns(UNS);
+  const fromUs = fetchOfUs(UNS);
   assert.equal(fromUs('nur ein Text'), true, 'Eine Ablehnung ohne Stapel wird verschluckt');
   assert.equal(fromUs(undefined), true, 'Eine Ablehnung ohne Wert wird verschluckt');
   assert.equal(
-    fromUs(mitStapel('x', 'Error: x\n    at <anonymous>')),
+    fromUs(withStack('x', 'Error: x\n    at <anonymous>')),
     true,
     'Ein Stapel ohne Adresse wird verschluckt',
   );
@@ -86,9 +86,9 @@ test('im Zweifel gilt der Fehler als unserer', () => {
 test('ein fremder Host mit unserem Namen als Anfang zaehlt nicht als unserer', () => {
   // `startsWith(origin)` ohne den Schraegstrich wuerde
   // https://lego.bigolin.online.boeswillig.example als unseren lesen.
-  const fromUs = holeVonUns(UNS);
+  const fromUs = fetchOfUs(UNS);
   assert.equal(
-    fromUs(mitStapel('x', `Error: x\n    at ${UNS}.boeswillig.example/w.js:1:1`)),
+    fromUs(withStack('x', `Error: x\n    at ${UNS}.boeswillig.example/w.js:1:1`)),
     false,
     'Ein fremder Host, der mit unserem Ursprung anfaengt, gilt als unserer',
   );
@@ -128,7 +128,7 @@ test('keine liegengebliebene Fehlersuche im Auslieferungsstand', () => {
   const dateien = fs.readdirSync(ordner).filter(n => n.endsWith('.js') && n !== 'app.bundle.js');
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
 
-  const spuren = [];
+  const traces = [];
   for (const name of dateien) {
     fs.readFileSync(path.join(ordner, name), 'utf8')
       .split('\n')
@@ -136,12 +136,12 @@ test('keine liegengebliebene Fehlersuche im Auslieferungsstand', () => {
         if (/^\s*\/\//.test(z)) return;
         for (const m of z.matchAll(/console\.log\(\s*['"`]\[/g)) {
           void m;
-          spuren.push(`${name}:${i + 1}  ${z.trim().slice(0, 80)}`);
+          traces.push(`${name}:${i + 1}  ${z.trim().slice(0, 80)}`);
         }
       });
   }
   assert.deepEqual(
-    spuren,
+    traces,
     [],
     'Diese console.log sehen nach Fehlersuche aus und stehen im ' +
       'Auslieferungsstand. Sie stehen zwischen den echten Meldungen.',

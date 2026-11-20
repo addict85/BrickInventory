@@ -3,7 +3,7 @@
  * CSV-Datum landet in genau der Erfassung, die der Import anlegt.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  in preisFuerNeueErfassung wieder die globale Währung (`'EUR'` fest)
+ *   A  in priceForNewEntry wieder die globale Währung (`'EUR'` fest)
  *      → rot: „die Mengenerhöhung nimmt den Preis in der Kontowährung“
  *      (500 statt 800)
  *   B  das CSV-Erfassen (damals addSetWithDate) wieder mit nachträglichem UPDATE auf die höchste id
@@ -18,14 +18,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { holdsSet } = require('./helpers/bestand');
 
 test('Erfassungen: Kontowährung und CSV-Datum', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `waehr-datum-${process.pid}`,
     SN = `31160-${process.pid % 1000}`;
@@ -42,12 +42,12 @@ test('Erfassungen: Kontowährung und CSV-Datum', { concurrency: 1 }, async t => 
                   VALUES ($1,'N',$2,$3,$3,3)`,
       [SN, w, p],
     );
-  const { setAendern, setErfassen } = require('./helpers/sources').bereichsSeite('sets');
+  const { changeSet, setErfassen } = require('./helpers/sources').areaPage('sets');
 
   try {
     await t.test('die Mengenerhöhung nimmt den Preis in der Kontowährung', async () => {
-      await haeltSet(db, uid, SN, 1, { preis: 700, am: '2026-09-01T10:00:00Z' });
-      await setAendern(uid, SN, { quantity: 2 });
+      await holdsSet(db, uid, SN, 1, { preis: 700, am: '2026-09-01T10:00:00Z' });
+      await changeSet(uid, SN, { quantity: 2 });
       const neu = await db.get(
         `SELECT purchase_price, currency, price_estimated FROM set_acquisitions
           WHERE user_id=$1 AND set_number=$2 ORDER BY id DESC LIMIT 1`,
@@ -66,13 +66,13 @@ test('Erfassungen: Kontowährung und CSV-Datum', { concurrency: 1 }, async t => 
         [uid, SN],
       );
       await setErfassen({
-        anfragender: uid,
+        requester: uid,
         setNumber: SN,
         menge: 1,
         kaufpreis: 100,
         zustand: 'N',
-        erfasstAm: '2020-05-05',
-        wennVorhanden: 'aufstocken',
+        recordedAt: '2020-05-05',
+        ifPresent: 'aufstocken',
       });
       const zeilen = await db.all(
         `SELECT quantity, purchase_price::float AS preis, (created_at AT TIME ZONE 'UTC')::date::text AS tag

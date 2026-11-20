@@ -27,22 +27,22 @@ const fs = require('node:fs');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { DATEI, alsText } = require('../scripts/vertrag-openapi.js');
-const { VERTRAG, BEREICHE } = _req('src/vertrag/index.js');
+const { CONTRACT, AREAS } = _req('src/vertrag/index.js');
 const { openapi } = _req('src/vertrag/openapi.js');
 
 /** Methode und voller Pfad jeder Route eines Routers, auch in eingehängten Routern. */
-function routenVon(router, basis) {
+function routesOf(router, basis) {
   const aus = [];
-  for (const schicht of router.stack) {
-    if (schicht.route)
-      for (const m of Object.keys(schicht.route.methods)) aus.push(`${m.toUpperCase()} ${basis}${schicht.route.path}`);
-    else if (schicht.handle?.stack) aus.push(...routenVon(schicht.handle, basis));
+  for (const layer of router.stack) {
+    if (layer.route)
+      for (const m of Object.keys(layer.route.methods)) aus.push(`${m.toUpperCase()} ${basis}${layer.route.path}`);
+    else if (layer.handle?.stack) aus.push(...routesOf(layer.handle, basis));
   }
   return aus;
 }
 const EXPRESS = [
-  ...routenVon(require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'), '/api/v1'),
-  ...routenVon(require('./helpers/sources').routerAus(_req, 'routes/auth.js'), '/api/v1/auth'),
+  ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'), '/api/v1'),
+  ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/auth.js'), '/api/v1/auth'),
   // Direkt in server.ts: Sie antworten, bevor die Router stehen.
   'GET /api/v1/startup-status',
   'GET /api/v1/health',
@@ -53,21 +53,21 @@ const EXPRESS = [
 test('jede Route hat einen Vertrag', () => {
   assert.ok(EXPRESS.length > 150, `nur ${EXPRESS.length} Routen gefunden — greift die Suche noch?`);
   assert.deepEqual(
-    EXPRESS.filter(k => !Object.hasOwn(VERTRAG, k)),
+    EXPRESS.filter(k => !Object.hasOwn(CONTRACT, k)),
     [],
   );
 });
 
 test('kein Vertrag ohne Route', () => {
   assert.deepEqual(
-    Object.keys(VERTRAG).filter(k => !EXPRESS.includes(k)),
+    Object.keys(CONTRACT).filter(k => !EXPRESS.includes(k)),
     [],
   );
 });
 
 test('kein Schlüssel doppelt', () => {
-  const summe = Object.values(BEREICHE).reduce((n, b) => n + Object.keys(b.routen).length, 0);
-  assert.equal(Object.keys(VERTRAG).length, summe);
+  const summe = Object.values(AREAS).reduce((n, b) => n + Object.keys(b.routen).length, 0);
+  assert.equal(Object.keys(CONTRACT).length, summe);
 });
 
 test('die eingecheckte openapi.json ist erzeugt', () => {
@@ -97,34 +97,34 @@ test('jede lange Liste nimmt Seiten', () => {
 });
 
 /** Die Vertragsdatei eines Schemas: wo sein Objekt exportiert ist, sonst der Bereich der Route, die es benennt. */
-function dateiJeSchema() {
+function fileJeSchema() {
   const datei = new Map();
-  for (const f of ['grund', 'gemeinsam', ...Object.keys(BEREICHE)])
+  for (const f of ['grund', 'gemeinsam', ...Object.keys(AREAS)])
     for (const [n, w] of Object.entries(_req(`src/vertrag/${f}.js`))) if (!datei.has(n) && w?._zod) datei.set(n, f);
-  for (const [b, m] of Object.entries(BEREICHE))
+  for (const [b, m] of Object.entries(AREAS))
     for (const k of Object.keys(m.routen)) datei.set(k.replace(/[^A-Za-z0-9]+/g, '_').replace(/_+$/, ''), b);
   return datei;
 }
 
 /** Felder der Antwortschemas (alles, was eine 200 erreicht), je Vertragsdatei: wie viele, freiwillig, nullbar. */
-function antwortFelder(o) {
+function responseFields(o) {
   const S = o.components.schemas;
   const erreicht = new Set();
-  const folge = s => {
+  const sequence = s => {
     if (!s || typeof s !== 'object') return;
     if (s.$ref) {
       const n = s.$ref.split('/').pop();
       if (erreicht.has(n)) return;
       erreicht.add(n);
-      folge(S[n]);
+      sequence(S[n]);
       return;
     }
-    for (const v of Object.values(s)) folge(v);
+    for (const v of Object.values(s)) sequence(v);
   };
-  for (const ops of Object.values(o.paths)) for (const op of Object.values(ops)) folge(op.responses?.['200']);
+  for (const ops of Object.values(o.paths)) for (const op of Object.values(ops)) sequence(op.responses?.['200']);
   const nullbar = s =>
     !!s && (s.type === 'null' || (Array.isArray(s.type) && s.type.includes('null')) || (s.anyOf ?? []).some(nullbar));
-  const datei = dateiJeSchema();
+  const datei = fileJeSchema();
   const je = {};
   for (const n of erreicht) {
     const d = datei.get(n) ?? '?';
@@ -150,7 +150,7 @@ test('Antwortfelder sind Pflicht, wo der Server sie immer liefert: freiwillige u
   // Ein freiwilliges oder nullbares Feld wird in OpenAPI, den Typen der Oberfläche und in Kotlin nullbar.
   // Je Vertragsdatei, damit sichtbar ist, wo der Vertrag noch weich ist; gesamt 1728 → 1449 Felder,
   // freiwillig 719 → 329 (41,6 % → 22,7 %), nullbar 700 → 484.
-  const SCHRANKE = {
+  const LIMIT = {
     bestand: { frei: 10, nullbar: 12 },
     einstellungen: { frei: 14, nullbar: 11 },
     figuren: { frei: 21, nullbar: 27 },
@@ -166,20 +166,20 @@ test('Antwortfelder sind Pflicht, wo der Server sie immer liefert: freiwillige u
     teile: { frei: 9, nullbar: 20 },
     verwaltung: { frei: 42, nullbar: 51 },
   };
-  const je = antwortFelder(openapi());
+  const je = responseFields(openapi());
   const summe = Object.values(je).reduce((a, z) => a + z.felder, 0);
   assert.ok(summe > 1400, `nur ${summe} Antwortfelder — greift die Suche noch?`);
-  assert.deepEqual(Object.keys(je).sort(), Object.keys(SCHRANKE).sort(), 'jede Vertragsdatei hat ihre Schranke');
-  const zuViel = [],
+  assert.deepEqual(Object.keys(je).sort(), Object.keys(LIMIT).sort(), 'jede Vertragsdatei hat ihre Schranke');
+  const toMuch = [],
     weniger = [];
   for (const [datei, z] of Object.entries(je)) {
-    const s = SCHRANKE[datei];
+    const s = LIMIT[datei];
     for (const art of /** @type {const} */ (['frei', 'nullbar'])) {
-      if (z[art] > s[art]) zuViel.push(`${datei}: ${z[art]} ${art}, erlaubt ${s[art]}`);
+      if (z[art] > s[art]) toMuch.push(`${datei}: ${z[art]} ${art}, erlaubt ${s[art]}`);
       if (z[art] < s[art]) weniger.push(`${datei} ${art} ${z[art]}`);
     }
   }
-  assert.deepEqual(zuViel, []);
+  assert.deepEqual(toMuch, []);
   const frei = Object.values(je).reduce((a, z) => a + z.frei, 0);
   assert.ok(frei / summe < 0.23, `${frei} von ${summe} Antwortfeldern freiwillig`);
   if (weniger.length) console.log(`  ℹ Antwortfelder ${weniger.join(', ')} — Schranke nachziehen`);

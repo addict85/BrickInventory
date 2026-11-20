@@ -20,18 +20,18 @@ const os = require('node:os');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 // Der Kindprozess: horcht, lässt sich die Verbindung abschiessen und meldet
 // über den Exitcode, ob er das überlebt hat.
 const CHILD = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
-const dbModul = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
-const db     = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
-const notify = db.benachrichtigung;
+const dbModule = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
+const db     = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const notify = db.notification;
 const { bis } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'zeit.js'))});
 const LISTEN = \`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND query LIKE 'LISTEN "reconnect_probe"%'\`;
 let empfangen = 0;
@@ -107,9 +107,9 @@ test('close() während des Verbindungsaufbaus lässt keine Verbindung offen', as
   // Kein process.exit im Kind: Es muss von selbst enden.
   const kind = `
 process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
-const dbModul = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
-const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
-const notify = db.benachrichtigung;
+const dbModule = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
+const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
+const notify = db.notification;
 notify.listen('rennen_probe', () => {});
 notify.close().then(() => console.log('GESCHLOSSEN'));
 `;

@@ -1,14 +1,14 @@
 /** Fehlende Bilddateien nachladen: Verweise ohne Datei finden, laden oder leeren. */
-import { fehlertext, logAndContinue, ohneFehlendeDatei } from '../infra/fehler';
+import { fehlertext, logAndContinue, withoutMissingFile } from '../infra/fehler';
 
-import { pruefeAbbruch, type AuftragsLauf } from '../auftraege';
+import { checkAbort, type JobRun } from '../auftraege';
 import * as repo from './repository/teileAnreicherung';
 import fs from 'node:fs';
 import type { PoolClient } from 'pg';
 import path from 'node:path';
 import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
 import { versuche } from '../infra/ergebnis';
-import type { KatalogKontext } from './kontext';
+import type { CatalogContext } from './kontext';
 
 // „Fehlend" = image_local gesetzt, Datei fehlt. Nicht wiederherstellbare
 // Einträge werden geleert, damit die Oberflächen auf die CDN-Adresse zurückfallen.
@@ -33,24 +33,24 @@ function _fsPathFromLocal(imageLocal: string) {
 }
 
 // Mit await, sonst ginge der Endstand bei einem Neustart verloren.
-async function _redlSetStatus(k: KatalogKontext, obj: Record<string, unknown>) {
+async function _redlSetStatus(k: CatalogContext, obj: Record<string, unknown>) {
   await k.auftraege
     .setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: k.uhr.jetzt() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }
 
-async function redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) {
+async function redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
   const lauf_ = k.faecher.fach('bilderNachladen', () => ({ laeuft: false }));
   if (lauf_.laeuft) return { alreadyRunning: true };
   // Sperre auf EIGENER Verbindung: Advisory-Locks hängen an der Session.
   let lockClient: PoolClient;
   try {
-    lockClient = await k.teileAnreicherung.sperrVerbindung();
+    lockClient = await k.teileAnreicherung.lockConnection();
   } catch (e) {
     return { error: fehlertext(e) || 'keine Verbindung' };
   }
   try {
-    if (!(await repo.versucheNachlaufSperre(lockClient))) {
+    if (!(await repo.attemptsFollowUpLock(lockClient))) {
       lockClient.release();
       return { alreadyRunning: true };
     }
@@ -63,19 +63,19 @@ async function redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) {
     return await _redownloadMissingImages(k, lauf);
   } finally {
     lauf_.laeuft = false;
-    await repo.gibNachlaufSperreFrei(lockClient).catch(logAndContinue('teile-enrich:pg_advisory_unlock'));
+    await repo.giveFollowUpLockFree(lockClient).catch(logAndContinue('teile-enrich:pg_advisory_unlock'));
     lockClient.release();
   }
 }
 
-type FehlendesBild = { image_local: string; image_url: string | null; fp: string };
+type MissingImage = { image_local: string; image_url: string | null; fp: string };
 
-async function _redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) {
+async function _redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
   try {
     fs.mkdirSync(PART_IMAGES_DIR, { recursive: true });
     await _redlSetStatus(k, { running: true, phase: 'scanning', total: 0, done: 0, redownloaded: 0, cleared: 0 });
-    const { missing, ohneVorschau } = await fehlendeDateienSuchen(k);
-    const thumbsErzeugt = await vorschauenNachholen(k, ohneVorschau);
+    const { missing, withoutPreview } = await searchMissingFiles(k);
+    const thumbsCreated = await catchUpPreviews(k, withoutPreview);
     const total = missing.length;
     await _redlSetStatus(k, { running: true, phase: 'downloading', total, done: 0, redownloaded: 0, cleared: 0 });
     if (!total) {
@@ -86,13 +86,13 @@ async function _redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) 
         done: 0,
         redownloaded: 0,
         cleared: 0,
-        thumbs: thumbsErzeugt,
+        thumbs: thumbsCreated,
       });
-      return { total: 0, redownloaded: 0, cleared: 0, thumbs: thumbsErzeugt };
+      return { total: 0, redownloaded: 0, cleared: 0, thumbs: thumbsCreated };
     }
 
-    const { done, redownloaded, cleared } = await fehlendeNachladen(k, missing, lauf);
-    pruefeAbbruch(lauf);
+    const { done, redownloaded, cleared } = await reloadMissing(k, missing, lauf);
+    checkAbort(lauf);
 
     await _redlSetStatus(k, {
       running: false,
@@ -101,12 +101,12 @@ async function _redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) 
       done,
       redownloaded,
       cleared,
-      thumbs: thumbsErzeugt,
+      thumbs: thumbsCreated,
     });
     console.log(
-      `[img-redl] fertig: ${redownloaded} neu geladen, ${cleared} geleert (von ${total} fehlenden), ${thumbsErzeugt} Vorschauen erzeugt`,
+      `[img-redl] fertig: ${redownloaded} neu geladen, ${cleared} geleert (von ${total} fehlenden), ${thumbsCreated} Vorschauen erzeugt`,
     );
-    return { total, redownloaded, cleared, thumbs: thumbsErzeugt };
+    return { total, redownloaded, cleared, thumbs: thumbsCreated };
   } catch (e) {
     await _redlSetStatus(k, { running: false, phase: 'error', error: fehlertext(e) });
     if (lauf?.signal?.aborted) throw e;
@@ -115,53 +115,53 @@ async function _redownloadMissingImages(k: KatalogKontext, lauf?: AuftragsLauf) 
   }
 }
 
-const gibtDatei = (fp: string) =>
+const givesFile = (fp: string) =>
   fs.promises
     .access(fp)
     .then(() => true)
-    .catch(ohneFehlendeDatei('teile-enrich:access', false));
+    .catch(withoutMissingFile('teile-enrich:access', false));
 
 /** Auch fehlende Vorschauen: Sie entstehen sonst nur beim Erfassen und hätten
  * keinen zweiten Anlauf. */
-async function fehlendeDateienSuchen(k: KatalogKontext) {
-  const rows = await k.teileAnreicherung.lokaleBilderMitAdresse();
-  const missing: FehlendesBild[] = [];
-  const ohneVorschau: string[] = [];
+async function searchMissingFiles(k: CatalogContext) {
+  const rows = await k.teileAnreicherung.localImagesWithAddress();
+  const missing: MissingImage[] = [];
+  const withoutPreview: string[] = [];
   for (const r of rows) {
     const fp = _fsPathFromLocal(r.image_local);
     if (!fp) continue; // gebündelte /images/ o.ä. überspringen
-    if (!(await gibtDatei(fp))) {
+    if (!(await givesFile(fp))) {
       missing.push({ image_local: r.image_local, image_url: r.image_url, fp });
       continue;
     }
-    if (!(await gibtDatei(fp.replace(/(\.[^.]+)$/, '_thumb.jpg')))) ohneVorschau.push(r.image_local);
+    if (!(await givesFile(fp.replace(/(\.[^.]+)$/, '_thumb.jpg')))) withoutPreview.push(r.image_local);
   }
-  return { missing, ohneVorschau };
+  return { missing, withoutPreview };
 }
 
 /** Vorschauen zuerst: Sie brauchen kein Netz und wirken sofort auf jede Kachelwand. */
-async function vorschauenNachholen(k: KatalogKontext, ohneVorschau: string[]): Promise<number> {
-  let thumbsErzeugt = 0;
-  if (!ohneVorschau.length) return 0;
+async function catchUpPreviews(k: CatalogContext, withoutPreview: string[]): Promise<number> {
+  let thumbsCreated = 0;
+  if (!withoutPreview.length) return 0;
   await _redlSetStatus(k, {
     running: true,
     phase: 'thumbs',
-    total: ohneVorschau.length,
+    total: withoutPreview.length,
     done: 0,
     redownloaded: 0,
     cleared: 0,
   });
-  for (const web of ohneVorschau) {
-    const r = await versuche('teile-enrich:vorschau', () => k.bilder.vorschauErzeugen(web));
-    if (r.ok && r.wert) thumbsErzeugt++;
+  for (const web of withoutPreview) {
+    const r = await versuche('teile-enrich:vorschau', () => k.bilder.createPreview(web));
+    if (r.ok && r.wert) thumbsCreated++;
   }
-  console.log(`[img-redl] ${thumbsErzeugt} fehlende Vorschauen erzeugt (von ${ohneVorschau.length})`);
-  return thumbsErzeugt;
+  console.log(`[img-redl] ${thumbsCreated} fehlende Vorschauen erzeugt (von ${withoutPreview.length})`);
+  return thumbsCreated;
 }
 
 /** Neu laden, was eine Adresse hat; sonst den Verweis leeren, damit die Kachel nicht
  * auf eine Datei zeigt, die es nicht gibt. */
-async function fehlendeNachladen(k: KatalogKontext, missing: FehlendesBild[], lauf?: AuftragsLauf) {
+async function reloadMissing(k: CatalogContext, missing: MissingImage[], lauf?: JobRun) {
   const total = missing.length;
   let done = 0,
     redownloaded = 0,
@@ -179,12 +179,12 @@ async function fehlendeNachladen(k: KatalogKontext, missing: FehlendesBild[], la
     while (idx < missing.length && !lauf?.signal?.aborted) {
       const m = missing[idx++];
       if (!m) break;
-      if (await bildNachladen(k, m)) redownloaded++;
+      if (await reloadImage(k, m)) redownloaded++;
       else {
         // Die Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben.
-        for (const tbl of repo.KATALOGE_MIT_BILD) {
+        for (const tbl of repo.CATALOGS_WITH_IMAGE) {
           await k.teileAnreicherung
-            .vergissLokalesBild(tbl, m.image_local)
+            .forgetLocalImage(tbl, m.image_local)
             .catch(logAndContinue(`img-redl:leeren ${tbl}`));
         }
         cleared++;
@@ -198,7 +198,7 @@ async function fehlendeNachladen(k: KatalogKontext, missing: FehlendesBild[], la
   return { done, redownloaded, cleared };
 }
 
-async function bildNachladen(k: KatalogKontext, m: FehlendesBild): Promise<boolean> {
+async function reloadImage(k: CatalogContext, m: MissingImage): Promise<boolean> {
   let ok = false;
   if (m.image_url) {
     await k.cdnDrossel.acquire();
@@ -210,7 +210,7 @@ async function bildNachladen(k: KatalogKontext, m: FehlendesBild): Promise<boole
       k.cdnDrossel.release();
     }
   }
-  if (ok) await k.bilder.vorschauErzeugen(m.image_local).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));
+  if (ok) await k.bilder.createPreview(m.image_local).catch(logAndContinue('teile-enrich:vorschauErzeugenAus'));
   return ok;
 }
 

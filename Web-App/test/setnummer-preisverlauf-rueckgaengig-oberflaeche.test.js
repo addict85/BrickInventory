@@ -11,7 +11,7 @@
  *      „Konto: Währung wirkt sofort“
  *   D  Rückgängig im Toast von merkpostenLoeschen entfernt → rot: „Merkposten löschen“
  *   (alle acht gemessen: je genau der genannte Test rot, die übrigen grün)
- *   E  LAND_WAEHRUNG['de-CH'] auf EUR → rot: „Gutscheine: Währung des Ausgabelandes“
+ *   E  LAND_CURRENCY['de-CH'] auf EUR → rot: „Gutscheine: Währung des Ausgabelandes“
  *   F  legeAlarmAn ohne -1-Ergänzung → rot: „Preisalarm in seiner Ansicht“
  *   G  Hinweisspalte der Auftragszeile ohne Fehlerkasten → rot: „Hintergrundarbeiten“
  *   H  fmtDatum in Englisch wieder 2-stellig numerisch → rot: „Datum auf Englisch“
@@ -24,7 +24,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const SET = {
@@ -41,7 +41,7 @@ const SET = {
 };
 
 test('unbekannte Setnummer: erst Rückfrage, dann anlegen', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     '/v1/catalog/sets/99999-1': {
       $status: 404,
       success: false,
@@ -78,7 +78,7 @@ test('Preisverlauf: Kaufpreis als Punkt, nicht als Anfang der Kurve', async () =
     { recorded_at: '2026-09-01', avg_price: 186 },
     { recorded_at: '2026-10-01', avg_price: 190 },
   ];
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
     '/v1/sets/21318-1': { success: true, set: SET },
     '/v1/sets/21318-1/price-history': {
@@ -106,7 +106,7 @@ test('Preisverlauf: Kaufpreis als Punkt, nicht als Anfang der Kurve', async () =
 });
 
 test('Konto: Währung wirkt sofort, Passwort hat seinen eigenen Knopf', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
@@ -143,7 +143,7 @@ test('Konto: Währung wirkt sofort, Passwort hat seinen eigenen Knopf', async ()
 });
 
 test('Merkposten löschen: Rückgängig legt ihn wieder an', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     '/v1/wanted': (_u, o) =>
       o.method === 'POST'
         ? { success: true, merkposten: { set_number: '10276-1', condition: 'N', user_id: 1, name: 'Colosseum' } }
@@ -164,7 +164,7 @@ test('Merkposten löschen: Rückgängig legt ihn wieder an', async () => {
 });
 
 test('Gutscheine: Währung des Ausgabelandes, Abweichung benannt', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/settings/raw': {
       success: true,
       settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe', gutschein_land: 'de-CH' },
@@ -186,7 +186,7 @@ test('Gutscheine: Währung des Ausgabelandes, Abweichung benannt', async () => {
 });
 
 test('Preisalarm in seiner Ansicht anlegen', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche({ '/v1/alerts': { success: true, alerts: [] } });
+  const { w, d, aufrufe } = await openUi({ '/v1/alerts': { success: true, alerts: [] } });
   try {
     await sicht(w, 'alarme');
     d.getElementById('alarm-neu-set').value = '10294';
@@ -202,7 +202,7 @@ test('Preisalarm in seiner Ansicht anlegen', async () => {
 });
 
 test('Hintergrundarbeiten: beschriftete Spalten, Fehler in der Zeile, Uhrzeit in 24 h', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     '/v1/admin/job-status': { success: true, job: { running: false } },
     '/v1/admin/jobs': {
       success: true,
@@ -231,8 +231,8 @@ test('Hintergrundarbeiten: beschriftete Spalten, Fehler in der Zeile, Uhrzeit in
   try {
     await reiter(w, 'monitor');
     await warte(() => d.querySelector('#auftraege-karte table') && d.querySelector('#monitor-content table'));
-    const koepfe = [...d.querySelectorAll('#auftraege-karte .mon-arten th')].map(text);
-    assert.deepEqual(koepfe, ['Art', 'Offen', 'Läuft', 'Aufgegeben', 'Nächster Lauf', 'Aktionen']);
+    const headers = [...d.querySelectorAll('#auftraege-karte .mon-arten th')].map(text);
+    assert.deepEqual(headers, ['Art', 'Offen', 'Läuft', 'Aufgegeben', 'Nächster Lauf', 'Aktionen']);
     assert.ok(d.querySelector('#auftraege-karte tbody tr .fehler-kasten'), 'Fehler nicht in der Zeile seines Auftrags');
     assert.equal(d.querySelectorAll('#tab-monitor h1, #tab-monitor h2').length, 5);
     assert.match(text(d.querySelector('#monitor-content .mon-plan')), /03:00/);
@@ -254,7 +254,7 @@ test('Hintergrundarbeiten: beschriftete Spalten, Fehler in der Zeile, Uhrzeit in
 });
 
 test('Datum auf Englisch mit Monatsnamen', async () => {
-  const { w, d } = await oeffneOberflaeche(
+  const { w, d } = await openUi(
     { '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] } },
     { sprache: 'en' },
   );

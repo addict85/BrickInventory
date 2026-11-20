@@ -9,15 +9,15 @@
  *      filterBedienbar(false) → rot: ebenda (Chip „Sets“ bedienbar); ohne filterBedienbar(true) → rot: ebenda
  *      (nach „Erneut versuchen“ gesperrt)
  *   C  teile.js wieder fmtN() ohne „je“ → rot: „N3 …“ (Teil „0,12 €“); minifigs.js ebenso → rot: ebenda (Figur)
- *   D  doLogin() ohne die Prüfung der Pflichtfelder → rot: „N4 …“ (alle drei Teilfälle); fehlerPlatzieren()
+ *   D  doLogin() ohne die Prüfung der Pflichtfelder → rot: „N4 …“ (alle drei Teilfälle); errorPlace()
  *      ohne .geheim-feld → rot: „beide leer“ (Meldung zwischen Passwortfeld und Augen-Knopf)
  *   E  kontoSprung() ohne focus() → rot: „N5 …“ (Fokus bleibt auf dem Link)
- *   F  sitzungBeendet ohne den Zweig ohneKeks → rot: „Betrieb …“ (Sitzung abgelaufen); mit isSecureContext
+ *   F  sitzungBeendet ohne den Zweig withoutCookie → rot: „Betrieb …“ (Sitzung abgelaufen); mit isSecureContext
  *      true zeigt derselbe Ablauf „Sitzung abgelaufen“ (zweiter Teilfall, Gegenstück)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
@@ -31,7 +31,7 @@ const SET = {
   wert_gesamt: 700,
   acquisitions: [{ id: 1, condition: 'N', quantity: 1, purchase_price: 629, avg_price: 700, wert_gesamt: 700 }],
 };
-const BEWERTUNG = {
+const VALUATION = {
   success: true,
   currency: 'EUR',
   totals: { min: '650', avg: '700', max: '760' },
@@ -60,8 +60,8 @@ test('N1 Kaufpreis-Kachel: beim Laden neutral, der Zusatz erst mit Daten', async
   /** @type {null | ((v: unknown) => void)} */
   let freigeben = null;
   let anhalten = false;
-  const { w, d, ruhig } = await oeffneOberflaeche({
-    '/v1/finance/valuation': () => (anhalten ? new Promise(r => (freigeben = () => r(BEWERTUNG))) : BEWERTUNG),
+  const { w, d, ruhig } = await openUi({
+    '/v1/finance/valuation': () => (anhalten ? new Promise(r => (freigeben = () => r(VALUATION))) : VALUATION),
     '/v1/finance/pnl': PNL,
   });
   try {
@@ -85,9 +85,9 @@ test('N1 Kaufpreis-Kachel: beim Laden neutral, der Zusatz erst mit Daten', async
 
 test('N2 Finanzen-Fehler: eigener Titel, Chips und Suche gesperrt, nach Erfolg frei', async () => {
   let kaputt = true;
-  const { w, d, ruhig } = await oeffneOberflaeche({
+  const { w, d, ruhig } = await openUi({
     '/v1/finance/valuation': () =>
-      kaputt ? { $status: 500, success: false, error: 'interner Fehler', code: 'interner_fehler' } : { ...BEWERTUNG },
+      kaputt ? { $status: 500, success: false, error: 'interner Fehler', code: 'interner_fehler' } : { ...VALUATION },
     '/v1/finance/pnl': PNL,
   });
   try {
@@ -109,7 +109,7 @@ test('N2 Finanzen-Fehler: eigener Titel, Chips und Suche gesperrt, nach Erfolg f
 });
 
 test('N3 Manuell erfasste Teile und Figuren: Stückpreis mit „je“', async () => {
-  const { w, d, ruhig } = await oeffneOberflaeche({
+  const { w, d, ruhig } = await openUi({
     '/v1/parts/manual': {
       success: true,
       parts: [
@@ -147,7 +147,7 @@ test('N3 Manuell erfasste Teile und Figuren: Stückpreis mit „je“', async ()
 });
 
 test('N4 Anmeldung: leere Pflichtfelder melden sich am Feld', async t => {
-  const { w, d, aufrufe } = await oeffneOberflaeche(
+  const { w, d, aufrufe } = await openUi(
     {
       '/v1/auth/login': {
         $status: 401,
@@ -203,7 +203,7 @@ test('N4 Anmeldung: leere Pflichtfelder melden sich am Feld', async t => {
 });
 
 test('N5 Konto: Sprungleiste zu allen Abschnitten', async () => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
     await sicht(w, 'profil');
     const nav = d.querySelector('#tab-profil [role="navigation"].konto-nav');
@@ -238,22 +238,22 @@ test('N5 Konto: Sprungleiste zu allen Abschnitten', async () => {
 });
 
 /** Anmelden; danach antwortet die Sammlung mit 401 wie ohne Cookie. */
-async function anmeldenOhneKeks(sicher) {
+async function signInWithoutCookie(sicher) {
   let angemeldet = false;
-  const ohneSitzung = { $status: 401, success: false, error: 'Nicht angemeldet', code: 'nicht_angemeldet' };
-  const o = await oeffneOberflaeche(
+  const withoutSession = { $status: 401, success: false, error: 'Nicht angemeldet', code: 'nicht_angemeldet' };
+  const o = await openUi(
     {
       '/v1/auth/login': () => {
         angemeldet = true;
         // Wie ein älterer Server ohne keks_fehlt: Die Oberfläche schliesst dann selbst aufs fehlende HTTPS.
         return {
-          $vertragswidrig: 'älterer Server ohne keks_fehlt',
+          $contractViolating: 'älterer Server ohne keks_fehlt',
           success: true,
           user: { id: 1, username: 'anna', is_admin: false },
         };
       },
-      '/v1/sets': () => (angemeldet ? ohneSitzung : { success: true, sets: [], count: 0, total: 0, themes: [] }),
-      '/v1/stats': () => (angemeldet ? ohneSitzung : { success: true, stats: {} }),
+      '/v1/sets': () => (angemeldet ? withoutSession : { success: true, sets: [], count: 0, total: 0, themes: [] }),
+      '/v1/stats': () => (angemeldet ? withoutSession : { success: true, stats: {} }),
     },
     {
       angemeldet: false,
@@ -272,7 +272,7 @@ async function anmeldenOhneKeks(sicher) {
 
 test('Betrieb: Anmeldung ohne gespeichertes Sitzungs-Cookie', async t => {
   await t.test('Seite ohne HTTPS: klarer Hinweis statt „abgelaufen“', async () => {
-    const { w, d } = await anmeldenOhneKeks(false);
+    const { w, d } = await signInWithoutCookie(false);
     try {
       const h = text(d.getElementById('login-hinweis'));
       assert.match(h, /^Anmeldung erfolgreich, aber der Browser hat das Sitzungs-Cookie nicht gespeichert\./);
@@ -284,7 +284,7 @@ test('Betrieb: Anmeldung ohne gespeichertes Sitzungs-Cookie', async t => {
     }
   });
   await t.test('sichere Seite: wie bisher „Sitzung abgelaufen“', async () => {
-    const { w, d } = await anmeldenOhneKeks(true);
+    const { w, d } = await signInWithoutCookie(true);
     try {
       assert.match(text(d.getElementById('login-hinweis')), /Sitzung abgelaufen/);
     } finally {

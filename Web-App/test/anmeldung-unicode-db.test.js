@@ -25,19 +25,19 @@ process.env.APP_BASE_URL = 'http://localhost';
 process.env.MAIL_KONSOLE_MIT_TOKEN = '1';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, einhaengung, testDaten } = require('./helpers/sources');
+const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `unicode_${process.pid}`;
 const MAIL = `opfer${process.pid}@mailbox.example`;
-const VARIANTE = MAIL.replace('mailbox', 'maİlbox');
+const VARIANT = MAIL.replace('mailbox', 'maİlbox');
 
 test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(
@@ -58,22 +58,22 @@ test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const { pruefeAnmeldedaten } = _req('src/konto/anmeldepruefung.js');
+  const { checkCredentials } = _req('src/konto/anmeldepruefung.js');
 
   await t.test('nach fünf Fehlversuchen ist auch die Unicode-Schreibweise gesperrt', async () => {
     const anfrage = { ip: '203.0.113.9', socket: {}, headers: {} };
     for (let i = 0; i < 5; i++) {
-      const r = await pruefeAnmeldedaten(anfrage, MAIL, 'falsch');
+      const r = await checkCredentials(anfrage, MAIL, 'falsch');
       assert.equal(r.absage?.art, 'nicht_angemeldet', `Versuch ${i + 1}`);
     }
-    const r = await pruefeAnmeldedaten(anfrage, VARIANTE, 'richtig-geheim');
+    const r = await checkCredentials(anfrage, VARIANT, 'richtig-geheim');
     assert.equal(r.absage?.art, 'zu_viele', 'die Variante bekam frische Zähler');
   });
 
   await t.test('die Rücksetz-Mail geht an die gespeicherte Adresse', async () => {
     const app = express();
     app.use(express.json());
-    app.use(einhaengung('auth'), require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+    app.use(einhaengung('auth'), require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
     const srv = app.listen(0);
     const zeilen = [];
     const echt = console.log;
@@ -84,7 +84,7 @@ test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async t => {
       const r = await fetch(`http://localhost:${srv.address().port}${einhaengung('auth')}/forgot-password`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: VARIANTE.toUpperCase() }),
+        body: JSON.stringify({ email: VARIANT.toUpperCase() }),
       });
       assert.equal(r.status, 200);
       for (let i = 0; i < 50 && !zeilen.some(z => z.includes('An:')); i++) await new Promise(f => setTimeout(f, 50));

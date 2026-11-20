@@ -9,10 +9,10 @@
  *   A  in verkleinern() die Prüfung `isOpaque` entfernt (immer JPEG auf Weiss)
  *      → rot: „sharp: durchsichtig …“ (jpeg statt png)
  *   B  `fit: 'inside'` → `fit: 'cover'` → rot: „sharp: durchsichtig …“ und
- *      „sharp: deckend …“ (200 × 200); jimpEinpassen() wieder mit cover() → rot:
+ *      „sharp: deckend …“ (200 × 200); fitJimp() wieder mit cover() → rot:
  *      „ohne sharp …“ (200 × 200)
  *   C  im catch um require('sharp') `throw e` statt Jimp → rot: „ohne sharp …“
- *   D  in jimpVorschau() `durchsichtig` fest false → rot: „ohne sharp …“ (jpeg)
+ *   D  in jimpPreview() `transparent` fest false → rot: „ohne sharp …“ (jpeg)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,7 +30,7 @@ const { vorschauErzeugenAus } = _req('src/bilder/thumbs.js');
 const ordner = path.join(DATA_DIR, 'images', 'sets');
 
 /** Ein grünes PNG 300 × 200 mit Alphakanal unter /images/sets/; `alpha` 0 = ganz durchsichtig, 1 = deckend. */
-async function lege(name, alpha) {
+async function put(name, alpha) {
   fs.mkdirSync(ordner, { recursive: true });
   const datei = path.join(ordner, `${name}.png`);
   await sharp({ create: { width: 300, height: 200, channels: 4, background: { r: 10, g: 200, b: 10, alpha } } })
@@ -46,49 +46,49 @@ async function lege(name, alpha) {
   };
 }
 
-async function pruefeVorschau(datei, durchsichtig) {
+async function checkPreview(datei, transparent) {
   const meta = await sharp(datei).metadata();
-  assert.deepEqual([meta.format, meta.width, meta.height], [durchsichtig ? 'png' : 'jpeg', 200, 133]);
+  assert.deepEqual([meta.format, meta.width, meta.height], [transparent ? 'png' : 'jpeg', 200, 133]);
   const { data, info } = await sharp(datei).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   assert.equal(info.channels, 4);
-  if (durchsichtig) assert.equal(data[3], 0, 'Transparenz ging verloren');
+  if (transparent) assert.equal(data[3], 0, 'Transparenz ging verloren');
   else assert.ok(data[1] > 150 && data[3] === 255, `Grund (${[...data.subarray(0, 4)]}) ist nicht das deckende Grün`);
 }
 
 test('sharp: durchsichtig bleibt PNG mit Alpha, 200 × 133', async () => {
-  const b = await lege(`zz-sharp-${process.pid}`, 0);
+  const b = await put(`zz-sharp-${process.pid}`, 0);
   try {
     assert.equal(await vorschauErzeugenAus(b.web), b.web.replace('.png', '_thumb.jpg'));
-    await pruefeVorschau(b.vorschau, true);
+    await checkPreview(b.vorschau, true);
   } finally {
     b.weg();
   }
 });
 
 test('sharp: deckend mit Alphakanal wird JPEG, 200 × 133', async () => {
-  const b = await lege(`zz-deckend-${process.pid}`, 1);
+  const b = await put(`zz-deckend-${process.pid}`, 1);
   try {
     assert.equal(await vorschauErzeugenAus(b.web), b.web.replace('.png', '_thumb.jpg'));
-    await pruefeVorschau(b.vorschau, false);
+    await checkPreview(b.vorschau, false);
   } finally {
     b.weg();
   }
 });
 
 test('ohne sharp rechnet Jimp dieselbe Vorschau', async () => {
-  for (const [alpha, durchsichtig] of [
+  for (const [alpha, transparent] of [
     [0, true],
     [1, false],
   ]) {
-    const b = await lege(`zz-jimp-${alpha}-${process.pid}`, alpha);
+    const b = await put(`zz-jimp-${alpha}-${process.pid}`, alpha);
     const laden = Module._load;
-    const warnungen = [];
+    const warnings = [];
     const warn = console.warn;
     Module._load = function (/** @type {string} */ anfrage, /** @type {unknown[]} */ ...rest) {
       if (anfrage === 'sharp') throw new Error('Cannot find module sharp');
       return laden.call(this, anfrage, ...rest);
     };
-    console.warn = (...a) => warnungen.push(a.join(' '));
+    console.warn = (...a) => warnings.push(a.join(' '));
     try {
       assert.equal(await vorschauErzeugenAus(b.web), b.web.replace('.png', '_thumb.jpg'));
     } finally {
@@ -96,10 +96,10 @@ test('ohne sharp rechnet Jimp dieselbe Vorschau', async () => {
       console.warn = warn;
     }
     try {
-      await pruefeVorschau(b.vorschau, durchsichtig);
+      await checkPreview(b.vorschau, transparent);
       assert.ok(
-        warnungen.some(w => /sharp nicht verfügbar.*Jimp/.test(w)),
-        warnungen.join('\n'),
+        warnings.some(w => /sharp nicht verfügbar.*Jimp/.test(w)),
+        warnings.join('\n'),
       );
     } finally {
       b.weg();

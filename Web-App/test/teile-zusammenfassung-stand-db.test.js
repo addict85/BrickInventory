@@ -18,14 +18,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { holdsSet, holdsPart } = require('./helpers/bestand');
 
 test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const PS = _req('src/parts/summary.js');
   const NAME = `stand-${process.pid}`,
     SN = `31170-${process.pid % 1000}`,
@@ -34,8 +34,8 @@ test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async t => {
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const ort = (await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Kiste 1') RETURNING id`, [uid]))
     .id;
-  await haeltSet(db, uid, SN, 1);
-  await haeltTeil(db, uid, TEIL, { setNumber: SN, menge: 2, colorId: 4, storageId: ort });
+  await holdsSet(db, uid, SN, 1);
+  await holdsPart(db, uid, TEIL, { setNumber: SN, menge: 2, colorId: 4, storageId: ort });
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name) VALUES ($1, 'Alter Name')
                 ON CONFLICT (part_number) DO UPDATE SET part_name = 'Alter Name'`,

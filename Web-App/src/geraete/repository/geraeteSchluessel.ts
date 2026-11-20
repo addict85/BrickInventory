@@ -1,5 +1,5 @@
-import type { DbSchnittstelle } from '../../../db/database';
-import type { GeraeteLesevertrag } from '../lesevertrag';
+import type { DbInterface } from '../../../db/database';
+import type { DevicesReadContract } from '../lesevertrag';
 
 /** Eine Token-Familie: Konto und created_at (auf Millisekunden, wie es über JavaScript reist). */
 export interface Familie {
@@ -9,16 +9,12 @@ export interface Familie {
 
 /** Ein unbestätigter Schlüssel (vor der Attestation hinterlegt) gilt nur bis [altBis]. */
 /** Die Familie eines eben ausgestellten Tokens, auf Millisekunden wie familieLebt. */
-export async function familieDesTokens(
-  db: DbSchnittstelle,
-  l: GeraeteLesevertrag,
-  hash: string,
-): Promise<Familie | null> {
-  const z = await db.get<{ uid: number; seit: Date }>(l.tokenFamilieSql('$1'), [hash]);
+export async function familyOfTokens(db: DbInterface, l: DevicesReadContract, hash: string): Promise<Familie | null> {
+  const z = await db.get<{ uid: number; seit: Date }>(l.tokenFamilySql('$1'), [hash]);
   return z ? { uid: z.uid, seit: new Date(z.seit).toISOString() } : null;
 }
 
-export async function schluesselDer(db: DbSchnittstelle, f: Familie, altBis: Date): Promise<string | null> {
+export async function keyThe(db: DbInterface, f: Familie, altBis: Date): Promise<string | null> {
   const z = await db.get<{ public_key: string }>(
     `SELECT public_key FROM device_keys WHERE user_id = $1 AND token_family = $2::timestamptz
        AND (attested OR NOW() < $3)`,
@@ -27,10 +23,7 @@ export async function schluesselDer(db: DbSchnittstelle, f: Familie, altBis: Dat
   return z?.public_key ?? null;
 }
 
-export async function eintragDer(
-  db: DbSchnittstelle,
-  f: Familie,
-): Promise<{ public_key: string; attested: boolean } | null> {
+export async function entryThe(db: DbInterface, f: Familie): Promise<{ public_key: string; attested: boolean } | null> {
   return (
     (await db.get<{ public_key: string; attested: boolean }>(
       'SELECT public_key, attested FROM device_keys WHERE user_id = $1 AND token_family = $2::timestamptz',
@@ -42,9 +35,9 @@ export async function eintragDer(
 /** Nur für eine lebende, junge Familie; ein unbestätigter Schlüssel darf dabei einem
  * attestierten weichen. Reste widerrufener Familien fallen weg.
  * @returns ob er jetzt gilt */
-export async function legeSchluesselAn(
-  db: DbSchnittstelle,
-  l: GeraeteLesevertrag,
+export async function putKeyAn(
+  db: DbInterface,
+  l: DevicesReadContract,
   f: Familie,
   public_key: string,
   fristS: number,
@@ -64,12 +57,12 @@ export async function legeSchluesselAn(
 }
 
 /** Eine Nonce für die Attestation-Challenge; höchstens [offen] je Familie, nur für eine junge Familie. */
-export async function legeNonceAn(
-  db: DbSchnittstelle,
-  l: GeraeteLesevertrag,
+export async function putNonceAn(
+  db: DbInterface,
+  l: DevicesReadContract,
   f: Familie,
   nonce: string,
-  o: { fristS: number; offen: number; ausQr: boolean },
+  o: { fristS: number; offen: number; fromQr: boolean },
 ): Promise<boolean> {
   await db.run(
     `DELETE FROM device_nonces WHERE user_id = $1 AND token_family = $2::timestamptz AND (expires_at <= NOW()
@@ -81,12 +74,12 @@ export async function legeNonceAn(
     `INSERT INTO device_nonces (nonce, user_id, token_family, from_qr, expires_at)
      SELECT $3, $1, $2::timestamptz, $5, $2::timestamptz + make_interval(secs => $4)
       WHERE ${l.familieLebt('$1', '$2')} AND $2::timestamptz > NOW() - make_interval(secs => $4) RETURNING nonce`,
-    [f.uid, f.seit, nonce, o.fristS, o.ausQr],
+    [f.uid, f.seit, nonce, o.fristS, o.fromQr],
   ));
 }
 
 /** Die bei der QR-Abholung ausgegebene Nonce, solange sie gilt. */
-export async function qrNonceDer(db: DbSchnittstelle, f: Familie): Promise<{ nonce: string; expires_at: Date } | null> {
+export async function qrNonceThe(db: DbInterface, f: Familie): Promise<{ nonce: string; expires_at: Date } | null> {
   return (
     (await db.get<{ nonce: string; expires_at: Date }>(
       `SELECT nonce, expires_at FROM device_nonces WHERE user_id = $1 AND token_family = $2::timestamptz AND from_qr
@@ -97,7 +90,7 @@ export async function qrNonceDer(db: DbSchnittstelle, f: Familie): Promise<{ non
 }
 
 /** Löschen und Lesen in einem Schritt: Eine Nonce gilt genau einmal und nur für ihre Familie. */
-export async function nimmNonce(db: DbSchnittstelle, f: Familie, nonce: string): Promise<boolean> {
+export async function takeNonce(db: DbInterface, f: Familie, nonce: string): Promise<boolean> {
   return !!(await db.get<{ nonce: string }>(
     `DELETE FROM device_nonces WHERE nonce = $1 AND user_id = $2 AND token_family = $3::timestamptz AND expires_at > NOW()
      RETURNING nonce`,
@@ -106,8 +99,8 @@ export async function nimmNonce(db: DbSchnittstelle, f: Familie, nonce: string):
 }
 
 /** Höchstens [offen] gleichzeitig je Familie: Abholen ohne Einlösen füllt die Tabelle nicht. */
-export async function legeChallengeAn(
-  db: DbSchnittstelle,
+export async function putChallengeAn(
+  db: DbInterface,
   f: Familie,
   challenge: string,
   action: string,
@@ -130,7 +123,7 @@ export async function legeChallengeAn(
 }
 
 /** Löschen und Lesen in einem Schritt: Eine Challenge gilt genau einmal, und nur für ihre Familie. */
-export async function nimmChallenge(db: DbSchnittstelle, f: Familie, challenge: string): Promise<string | null> {
+export async function takeChallenge(db: DbInterface, f: Familie, challenge: string): Promise<string | null> {
   const z = await db.get<{ action: string }>(
     `DELETE FROM step_up_challenges WHERE challenge = $1 AND user_id = $2 AND token_family = $3::timestamptz
        AND expires_at > NOW() RETURNING action`,
@@ -139,36 +132,31 @@ export async function nimmChallenge(db: DbSchnittstelle, f: Familie, challenge: 
   return z?.action ?? null;
 }
 
-export async function oeffneFreigabe(
-  db: DbSchnittstelle,
+export async function openRelease(
+  db: DbInterface,
   f: Familie,
   action: string,
-  leerlaufS: number,
-  hoechstensS: number,
+  idleS: number,
+  atMostS: number,
 ): Promise<Date> {
   const z = await db.get<{ until_at: Date }>(
     `INSERT INTO step_up_approvals (user_id, token_family, action, until_at, max_until)
      VALUES ($1, $2::timestamptz, $3, NOW() + make_interval(secs => $4), NOW() + make_interval(secs => $5))
      ON CONFLICT (user_id, token_family, action) DO UPDATE SET until_at = EXCLUDED.until_at, max_until = EXCLUDED.max_until
      RETURNING until_at`,
-    [f.uid, f.seit, action, leerlaufS, hoechstensS],
+    [f.uid, f.seit, action, idleS, atMostS],
   );
   if (!z) throw new Error('step_up_approvals: UPSERT ohne Zeile');
   return z.until_at;
 }
 
 /** Prüfen und Verlängern in einem Schritt, nie über `max_until` hinaus. */
-export async function nutzeFreigabe(
-  db: DbSchnittstelle,
-  f: Familie,
-  action: string,
-  leerlaufS: number,
-): Promise<boolean> {
+export async function useRelease(db: DbInterface, f: Familie, action: string, idleS: number): Promise<boolean> {
   return !!(
     await db.run(
       `UPDATE step_up_approvals SET until_at = LEAST(NOW() + make_interval(secs => $4), max_until)
       WHERE user_id = $1 AND token_family = $2::timestamptz AND action = $3 AND until_at > NOW()`,
-      [f.uid, f.seit, action, leerlaufS],
+      [f.uid, f.seit, action, idleS],
     )
   ).changes;
 }

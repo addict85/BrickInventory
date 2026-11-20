@@ -14,11 +14,11 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 /** @type {Record<string, { createHTML(s: string): unknown }>} */
-const richtlinien = {};
+const policies = {};
 globalThis.trustedTypes = {
   createPolicy(name, regeln) {
     const r = { createHTML: s => ({ geprueft: regeln.createHTML(s) }) };
-    richtlinien[name] = r;
+    policies[name] = r;
     return r;
   },
 };
@@ -35,10 +35,10 @@ test('Markup aus html`` wird TrustedHTML, der Wert darin maskiert', async () => 
 
 test('direkt aufgerufen nimmt die Richtlinie nichts an', async () => {
   const { asHtml, html } = await laden();
-  assert.throws(() => richtlinien.app.createHTML('<img src=x onerror=alert(1)>'), TypeError);
+  assert.throws(() => policies.app.createHTML('<img src=x onerror=alert(1)>'), TypeError);
   // Auch nicht den Text, der eben durchging: Die Freigabe gilt einmal.
   asHtml(html`<b>x</b>`);
-  assert.throws(() => richtlinien.app.createHTML('<b>x</b>'), TypeError);
+  assert.throws(() => policies.app.createHTML('<b>x</b>'), TypeError);
 });
 
 test('eine Zeichenkette kommt maskiert als Text an', async () => {
@@ -55,6 +55,6 @@ test('ein nachgebautes SafeHtml ohne Marke wird maskiert', async () => {
 
 test('die Richtlinie default nimmt nur das Leeren an', async () => {
   await laden();
-  assert.deepEqual(richtlinien.default.createHTML(''), { geprueft: '' });
-  assert.throws(() => richtlinien.default.createHTML('<b>'), TypeError);
+  assert.deepEqual(policies.default.createHTML(''), { geprueft: '' });
+  assert.throws(() => policies.default.createHTML('<b>'), TypeError);
 });

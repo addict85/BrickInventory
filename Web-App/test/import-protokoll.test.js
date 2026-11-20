@@ -2,11 +2,11 @@
  * Das Protokoll des Import-Balkens: EINE Fassung, und keine Zeile ohne Namen.
  *
  * Gegenproben (10.11.2026 gemessen):
- *   A  in set-csv-import.js eine zweite function protokollZeile() → rot:
+ *   A  in set-csv-import.js eine zweite function logRow() → rot:
  *      „nur EINE Fassung …“
  *   B  'csv.items_progress' im Deutschen auf „{done} / {total} Sets“ → rot:
  *      „der Fortschrittstext …“
- * Dass keine Zeile an protokollZeile vorbei entsteht, prüft das Ergebnis in
+ * Dass keine Zeile an logRow vorbei entsteht, prüft das Ergebnis in
  * csv-import-ergebnis-oberflaeche.test.js („Ergebnisliste mit Zeilen“).
  */
 const test = require('node:test');
@@ -18,7 +18,7 @@ const ROOT = path.join(__dirname, '..');
 const lies = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
 
-const FORTSCHRITT = 'public/js/fortschritt.js';
+const PROGRESS = 'public/js/fortschritt.js';
 
 test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
   const quellen = fs
@@ -28,11 +28,11 @@ test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
   // Selbstnachweis: Fände die Suche kaum Dateien, wäre die Regel leer wahr.
   assert.ok(quellen.length >= 20, `Nur ${quellen.length} Oberflächen-Dateien gefunden — die Suche greift nicht mehr`);
 
-  const definiert = quellen.filter(([, js]) => /function protokollZeile\s*\(/.test(js));
+  const definiert = quellen.filter(([, js]) => /function logRow\s*\(/.test(js));
   assert.deepEqual(
     definiert.map(([n]) => n),
-    [FORTSCHRITT],
-    'protokollZeile() gehört genau einmal in den Baum. Zwei Fassungen heissen ' +
+    [PROGRESS],
+    'logRow() gehört genau einmal in den Baum. Zwei Fassungen heissen ' +
       'zwei Stellen, an denen die nächste Schranke fehlt — und genau das war ' +
       'der Fall, als dieselben drei Zeilen hier und in sammlung.js standen.',
   );

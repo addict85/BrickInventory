@@ -1,5 +1,5 @@
-/** The area's factory: services as a closure over k (baueBereich, src/infra/bereich.ts). */
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import * as queries from './queries';
 import * as service from './service';
 import * as manualMinifigs from './manualMinifigs';
@@ -7,8 +7,8 @@ import { access, type MinifigsDependencies, type MinifigsContext } from './conte
 
 export type { MinifigsDependencies, MinifigsContext } from './context';
 
-export function createMinifigs(a: MinifigsDependencies, einblick?: Einblick<MinifigsContext>) {
-  return baueBereich(
+export function createMinifigs(a: MinifigsDependencies, inspect?: Inspect<MinifigsContext>) {
+  return buildArea(
     a,
     access,
     (k: MinifigsContext) => ({
@@ -21,7 +21,7 @@ export function createMinifigs(a: MinifigsDependencies, einblick?: Einblick<Mini
       minifigAcquisitions: mit(k)(manualMinifigs.minifigAcquisitionsInScope),
       importMinifigsCsv: mit(k)(manualMinifigs.importMinifigsCsv),
     }),
-    einblick,
+    inspect,
   );
 }
 

@@ -13,7 +13,7 @@ import {
   rgb,
 } from '@cantoo/pdf-lib';
 import { valuesFromPdf, pdfText, textOperators, type ParsedVoucher } from './pdfParsing';
-import { meldeUndLiefere } from '../infra/fehler';
+import { reportAndDeliver } from '../infra/fehler';
 
 /** Only here does a literal ASCII string print what it says. Without /Encoding it
  * is a standard font with StandardEncoding — the same holds there. */
@@ -302,7 +302,7 @@ export async function combineVouchers(vouchers: ExportVoucher[]): Promise<{ pdf:
 /** Exception: a PDF that cannot be read page by page is a single voucher — the
  * empty list here means "not splittable", not "nothing found". */
 export function pagesOrNone(data: Buffer): Promise<ParsedVoucher[]> {
-  return readPageByPage(data).catch(meldeUndLiefere('gutschein:seitenweise', []));
+  return readPageByPage(data).catch(reportAndDeliver('gutschein:seitenweise', []));
 }
 
 /** Marks first, because they are a direct read; guessing only as a fallback. */

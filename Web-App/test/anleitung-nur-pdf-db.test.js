@@ -5,7 +5,7 @@
  * und Platte sind echt.
  *
  * Gegenproben (am 08.11.2026 gemessen, je einzeln):
- *   A  in setAnleitungenLaden() `PDF_ANFANG` nicht mehr übergeben → rot:
+ *   A  in setAnleitungenLaden() `PDF_START` nicht mehr übergeben → rot:
  *      „eine Datei ohne %PDF- wird nicht abgelegt“ (Datei liegt, Pfad steht
  *      in der Tabelle)
  *   B  in downloadFile() den Block `if (anfang && …)` entfernt → dasselbe rot
@@ -28,22 +28,22 @@ test.after(() => fs.rmSync(WURZEL, { recursive: true, force: true }));
 
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
 // Die Quelle nennt zwei Adressen; was dort liegt, bestimmt der Test.
 const URLS = ['https://cdn.rebrickable.com/media/echt.pdf', 'https://cdn.rebrickable.com/media/seite.pdf'];
-S.testQuellen(null, {
+S.testSources(null, {
   scrapeInstructions: async () => URLS.map((url, i) => ({ url, description: `Anleitung ${i}` })),
 });
 const { setAnleitungenLaden } = _req('src/katalog/instructions.js');
 
-const INHALT = {
+const CONTENT = {
   [URLS[0]]: Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.alloc(3000, 7)]),
   [URLS[1]]: Buffer.concat([Buffer.from('<html>Bitte anmelden</html>'), Buffer.alloc(3000, 32)]),
 };
 
 test('Anleitungen nur mit PDF-Anfang', async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   const sn = '99981-1';
   await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [sn]);
@@ -61,7 +61,7 @@ test('Anleitungen nur mit PDF-Anfang', async t => {
     res.headers = {};
     setImmediate(() => {
       cb(res);
-      res.end(INHALT[String(url)]);
+      res.end(CONTENT[String(url)]);
     });
     return req;
   };
@@ -76,11 +76,11 @@ test('Anleitungen nur mit PDF-Anfang', async t => {
     sn,
   ]);
   const pfad = u => zeilen.find(z => z.url === u)?.local_path;
-  const aufPlatte = rel => fs.existsSync(path.join(WURZEL, rel));
+  const onDisk = rel => fs.existsSync(path.join(WURZEL, rel));
 
   await t.test('ein echtes PDF wird abgelegt und eingetragen', () => {
     assert.ok(pfad(URLS[0]), 'der Pfad steht in der Tabelle');
-    assert.ok(aufPlatte(pfad(URLS[0])), 'die Datei liegt auf der Platte');
+    assert.ok(onDisk(pfad(URLS[0])), 'die Datei liegt auf der Platte');
   });
 
   await t.test('eine Datei ohne %PDF- wird nicht abgelegt', () => {

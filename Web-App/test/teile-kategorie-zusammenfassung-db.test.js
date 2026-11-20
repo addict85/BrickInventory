@@ -19,18 +19,18 @@
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
+const { holdsSet, holdsPart } = require('./helpers/bestand');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
-  const H = require('./helpers/sources').handlerModul(_req);
+  if (!(await dataOrSkip(t, _req))) return;
+  const H = require('./helpers/sources').handlerModule(_req);
   const PS = _req('src/parts/summary.js');
   const NAME = `kategorie-${process.pid}`;
   const SN = `KZ${process.pid}-1`;
@@ -50,13 +50,13 @@ test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async t => {
                 VALUES ($1, 'kz1', 5, 4, false), ($1, 'kz2', 5, 2, true), ($1, 'kz3', 1, 3, false)`,
     [SN],
   );
-  await haeltSet(db, U, SN, 2);
+  await holdsSet(db, U, SN, 2);
   for (const [nr, farbe, menge] of [
     ['kz1', 5, 4],
     ['kz2', 5, 2],
     ['kz3', 1, 3],
   ])
-    await haeltTeil(db, U, nr, { setNumber: SN, colorId: farbe, menge });
+    await holdsPart(db, U, nr, { setNumber: SN, colorId: farbe, menge });
 
   const zeilen = r => r.parts.map(p => `${p.part_number}|${p.color_id}|${p.total_quantity}`).sort();
   const kategorien = l => l.map(k => `${k.category_name}|${k.label}|${k.total_quantity}`).sort();

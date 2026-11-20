@@ -4,11 +4,11 @@
  * höchstens einmal je Minute gemeldet statt verschluckt.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in leereProtokoll() den Fehlerzweig wieder `() => {}` → rot:
+ *   A  in emptyLog() den Fehlerzweig wieder `() => {}` → rot:
  *      „Schreibfehler: sofort, dann je Minute gesammelt“ (keine Meldung)
  *   B  in schreibfehler() die Minutenregel entfernt (immer sofort melden) →
  *      rot: dieselbe Prüfung (drei Meldungen statt einer)
- *   C  in jsonZeile() die Anfragekennung weggelassen → rot: „eine Zeile ist
+ *   C  in jsonRow() die Anfragekennung weggelassen → rot: „eine Zeile ist
  *      JSON mit Zeit, Stufe, Nachricht, Anfrage und Kontext“
  *   D  in anfrageKennung() den Filter entfernt (jede Zeichenkette übernommen)
  *      → rot: „X-Request-Id: nur harmlose Kennungen …“
@@ -20,15 +20,15 @@ const _req = require('./helpers/sources').buildAndRequire();
 const P = _req('src/infra/protokoll.js');
 
 /** Eine Ausgabe zum Mitlesen, mit stellbarer Uhr. */
-function mitschrift() {
+function transcript() {
   const m = { out: [], err: [], uhr: Date.parse('2026-10-30T12:00:00Z') };
-  return { m, ausgabe: { out: z => m.out.push(z), err: z => m.err.push(z), jetzt: () => m.uhr } };
+  return { m, output: { out: z => m.out.push(z), err: z => m.err.push(z), jetzt: () => m.uhr } };
 }
 
 test('eine Zeile ist JSON mit Zeit, Stufe, Nachricht, Anfrage und Kontext', t => {
-  const { m, ausgabe } = mitschrift();
-  t.after(P.installiereProtokoll(ausgabe));
-  P.anfrageKontext.run({ rid: 'ab12' }, () => console.warn('Preis fehlt für', '10294-1', { zustand: 'N' }));
+  const { m, output } = transcript();
+  t.after(P.installLog(output));
+  P.requestContext.run({ rid: 'ab12' }, () => console.warn('Preis fehlt für', '10294-1', { zustand: 'N' }));
   console.log('ohne Anfrage');
   console.error('kaputt', new Error('Verbindung weg'));
   assert.equal(m.err.length, 2);
@@ -55,32 +55,32 @@ test('eine Zeile ist JSON mit Zeit, Stufe, Nachricht, Anfrage und Kontext', t =>
 });
 
 test('app_logs bekommt die Zeilen im bisherigen Textformat', async t => {
-  const { ausgabe } = mitschrift();
-  t.after(P.installiereProtokoll(ausgabe));
+  const { output } = transcript();
+  t.after(P.installLog(output));
   const geschrieben = [];
-  P.protokollInDieDatenbank({
+  P.logInDieDatabase({
     query: async (sql, werte) => {
       if (sql.startsWith('INSERT')) geschrieben.push(werte);
     },
   });
-  P.anfrageKontext.run({ rid: 'cd34' }, () => console.info('Set angelegt', { set: '42115-1' }));
-  await P.leereProtokoll();
+  P.requestContext.run({ rid: 'cd34' }, () => console.info('Set angelegt', { set: '42115-1' }));
+  await P.emptyLog();
   assert.equal(geschrieben.length, 1);
   assert.equal(geschrieben[0][0], 'info');
   assert.match(geschrieben[0][1], /^\[\d{1,4}\/cd34\] Set angelegt \{"set":"42115-1"\}$/);
 });
 
 test('Schreibfehler: sofort, dann je Minute gesammelt', async t => {
-  const { m, ausgabe } = mitschrift();
-  t.after(P.installiereProtokoll(ausgabe));
-  P.protokollInDieDatenbank({
+  const { m, output } = transcript();
+  t.after(P.installLog(output));
+  P.logInDieDatabase({
     query: async () => {
       throw new Error('Datenbank weg');
     },
   });
   const zeile = async n => {
     for (let i = 0; i < n; i++) console.log('Zeile', i);
-    await P.leereProtokoll();
+    await P.emptyLog();
   };
   await zeile(3);
   m.uhr += 10_000;
@@ -90,9 +90,9 @@ test('Schreibfehler: sofort, dann je Minute gesammelt', async t => {
   const meldungen = () => m.err.map(z => JSON.parse(z)).filter(z => z.nachricht.startsWith('app_logs:'));
   assert.equal(meldungen().length, 1, 'innerhalb der Minute nur die erste Meldung');
   assert.equal(meldungen()[0].nachricht, 'app_logs: 3 Zeile(n) nicht geschrieben');
-  assert.equal(meldungen()[0].kontext.letzter_fehler, 'Datenbank weg');
+  assert.equal(meldungen()[0].kontext.last_error, 'Datenbank weg');
   m.uhr += 60_000;
-  P.meldeSchreibfehler();
+  P.reportWriteError();
   assert.equal(meldungen().length, 2);
   assert.equal(
     meldungen()[1].nachricht,

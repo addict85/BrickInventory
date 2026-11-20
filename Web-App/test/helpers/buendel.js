@@ -6,7 +6,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { OUT_REL, stelleBuendelSicher } = require('../../scripts/build-frontend');
+const { OUT_REL, placeBundleSafe } = require('../../scripts/build-frontend');
 
 const ROOT = path.join(__dirname, '..', '..');
 const BUENDEL = path.join(ROOT, 'public', OUT_REL);
@@ -15,13 +15,13 @@ const BUENDEL = path.join(ROOT, 'public', OUT_REL);
  * Ein Bündel aus main.js plus `zusatz` (Quelltext mit Importen relativ zu
  * public/js), etwa um die Registry auf window zu legen. Das ausgelieferte
  * Bündel bleibt unverändert; die Datei wird beim Prozessende gelöscht.
- * Nutzung: `process.env.TEST_BUENDEL = baueTestbuendel(…)` vor helpers/oberflaeche.
+ * Nutzung: `process.env.TEST_BUENDEL = buildTestbuendel(…)` vor helpers/oberflaeche.
  * @param {string} name
  * @param {string} zusatz
  */
-function baueTestbuendel(name, zusatz) {
+function buildTestbuendel(name, zusatz) {
   const esbuild = require(path.join(ROOT, 'node_modules', 'esbuild'));
-  const { erlaubteStile } = require('../../scripts/build-frontend');
+  const { allowedStyles } = require('../../scripts/build-frontend');
   const ziel = path.join(os.tmpdir(), `${name}-${process.pid}.js`);
   esbuild.buildSync({
     stdin: {
@@ -35,10 +35,10 @@ function baueTestbuendel(name, zusatz) {
     charset: 'utf8',
     outfile: ziel,
     logLevel: 'error',
-    define: { __ERLAUBTE_STILE__: JSON.stringify(erlaubteStile()) },
+    define: { __ERLAUBTE_STILE__: JSON.stringify(allowedStyles()) },
   });
   process.on('exit', () => fs.rmSync(ziel, { force: true }));
   return ziel;
 }
 
-module.exports = { BUENDEL, stelleBuendelSicher, baueTestbuendel };
+module.exports = { BUENDEL, placeBundleSafe, buildTestbuendel };

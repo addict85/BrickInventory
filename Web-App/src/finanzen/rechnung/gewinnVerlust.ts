@@ -1,19 +1,19 @@
 import type { Sicht } from '../../haushalt';
-import { valueSet, valueAcquisitionRows, weightedPurchase, entwicklungProzent, kachelWerte } from '../setValue';
+import { valueSet, valueAcquisitionRows, weightedPurchase, developmentPercent, tileValues } from '../setValue';
 import { effectiveCondition } from './zustand';
-import { bewerteFiguren, bewerteTeile } from './bewertung';
+import { valueMinifigs, valueParts } from './bewertung';
 import type { Blickfeld } from './preise';
 import { zaehle } from './abfragen';
-import type { ladeSetErfassungen } from '../repository/erfassungen';
-import { aufRappen, inZehntel4, summeAus } from '../../infra/geld';
+import type { loadSetEntries } from '../repository/erfassungen';
+import { aufRappen, inZehntel4, sumFrom } from '../../infra/geld';
 import type * as repo from '../repository/gewinnVerlust';
-import { marktpreisAus } from '../../katalog';
-import type { FinanzenKontext } from '../kontext';
+import { marketPriceFrom } from '../../katalog';
+import type { FinancesContext } from '../kontext';
 
-type PnlSet = Awaited<ReturnType<typeof repo.setsMitErfassungen>>[number];
-type Erfassung = Awaited<ReturnType<typeof ladeSetErfassungen>>[number];
+type PnlSet = Awaited<ReturnType<typeof repo.setsWithEntries>>[number];
+type Erfassung = Awaited<ReturnType<typeof loadSetEntries>>[number];
 /** Je Set: Marktpreis jetzt und zuerst bekannt, Kaufpreis und Menge aus den Erfassungen. */
-type Marktwerte = {
+type MarketValues = {
   preis: Map<string, number>;
   erster: Map<string, number>;
   kauf: Map<string, number>;
@@ -21,10 +21,10 @@ type Marktwerte = {
 };
 
 /** Das Ausweichen auf den anderen Zustand steckt in valueSet() (priceFor). */
-function preiseDesSets(sn: string, jeSchluessel: Map<string, { avg_price?: unknown; qty_avg_price?: unknown }>) {
+function pricesOfSets(sn: string, jeKey: Map<string, { avg_price?: unknown; qty_avg_price?: unknown }>) {
   const aus = new Map<string, number>();
   for (const cond of ['N', 'U']) {
-    const v = marktpreisAus(jeSchluessel.get(`${sn}|${cond}`));
+    const v = marketPriceFrom(jeKey.get(`${sn}|${cond}`));
     if (v !== null) aus.set(`${sn}|${cond}`, v);
   }
   return aus;
@@ -32,30 +32,30 @@ function preiseDesSets(sn: string, jeSchluessel: Map<string, { avg_price?: unkno
 
 /** Je Erfassung mit dem Preis IHRES Zustands, erst danach verdichten — dieselbe
  * Rechnung wie im Finanzen-Reiter. Ungerundet; gerundet wird in der Antwort. */
-async function setMarktwerte(
-  k: FinanzenKontext,
+async function setMarketValues(
+  k: FinancesContext,
   sets: PnlSet[],
   jeSet: Map<string, Erfassung[]>,
   currency: string,
   ttl: number,
-): Promise<Marktwerte> {
-  const w: Marktwerte = { preis: new Map(), erster: new Map(), kauf: new Map(), menge: new Map() };
+): Promise<MarketValues> {
+  const w: MarketValues = { preis: new Map(), erster: new Map(), kauf: new Map(), menge: new Map() };
   const nummern = sets.map(s => s.set_number);
   if (!nummern.length) return w;
   const [aktuell, verlauf] = await Promise.all([
-    k.gewinnVerlust.frischeMarktpreise(nummern, currency, ttl),
-    k.gewinnVerlust.letzteMarktpreiseAusVerlauf(nummern, currency),
+    k.gewinnVerlust.freshMarketPrices(nummern, currency, ttl),
+    k.gewinnVerlust.lastMarketPricesFromHistory(nummern, currency),
   ]);
   type Preiszeile = { set_number: string; condition: string; avg_price?: unknown; qty_avg_price?: unknown };
-  const nachSchluessel = (rows: Preiszeile[]) => new Map(rows.map(r => [`${r.set_number}|${r.condition}`, r]));
-  const jetzt = nachSchluessel(aktuell),
-    zuerst = nachSchluessel(verlauf);
+  const afterKey = (rows: Preiszeile[]) => new Map(rows.map(r => [`${r.set_number}|${r.condition}`, r]));
+  const jetzt = afterKey(aktuell),
+    zuerst = afterKey(verlauf);
   for (const set of sets) {
     const acqs = jeSet.get(set.set_number) || [];
     const zustand = effectiveCondition(set),
-      preise = preiseDesSets(set.set_number, jetzt);
+      preise = pricesOfSets(set.set_number, jetzt);
     const cur = valueSet(set.set_number, acqs, preise, zustand, set.quantity || 1);
-    const hist = valueSet(set.set_number, acqs, preiseDesSets(set.set_number, zuerst), zustand, set.quantity || 1);
+    const hist = valueSet(set.set_number, acqs, pricesOfSets(set.set_number, zuerst), zustand, set.quantity || 1);
     if (cur.unit_z) w.preis.set(set.set_number, cur.unit_z / 10000);
     if (hist.unit_z) w.erster.set(set.set_number, hist.unit_z / 10000);
     const kauf = weightedPurchase(valueAcquisitionRows(set.set_number, acqs, preise));
@@ -68,7 +68,7 @@ async function setMarktwerte(
 /** EIN Kostenpfad. Fehlt der Kaufpreis, ist er unbekannt (null), nicht 0 — sonst
  * stünde ein Set ohne Preis als reiner Gewinn da. Ohne Kaufpreis ist der erste
  * bekannte Preis die Basis. */
-function pnlSetZeile(set: PnlSet, w: Marktwerte) {
+function pnlSetRow(set: PnlSet, w: MarketValues) {
   const sn = set.set_number;
   const currentPrice = w.preis.get(sn) || 0;
   const kauf = w.kauf.get(sn);
@@ -76,9 +76,9 @@ function pnlSetZeile(set: PnlSet, w: Marktwerte) {
     purchasePrice = kauf ?? 0;
   const qty = w.menge.get(sn) || set.quantity || 1;
   const pnlAbs = hasCost ? (currentPrice - purchasePrice) * qty : null;
-  const pnlPct = hasCost ? entwicklungProzent(purchasePrice, currentPrice) : null;
+  const pnlPct = hasCost ? developmentPercent(purchasePrice, currentPrice) : null;
   const baselinePrice = hasCost ? purchasePrice : (w.erster.get(sn) ?? null);
-  const baselinePnlPct = hasCost || w.erster.has(sn) ? entwicklungProzent(baselinePrice, currentPrice) : null;
+  const baselinePnlPct = hasCost || w.erster.has(sn) ? developmentPercent(baselinePrice, currentPrice) : null;
   return {
     set_number: sn,
     name: set.name,
@@ -102,12 +102,12 @@ function pnlSetZeile(set: PnlSet, w: Marktwerte) {
 }
 
 /** Teil oder Figur: dieselbe Zeile, nur mit Kauf- und Marktpreis. */
-function postenZeile(p: { quantity?: number | null; avg_price?: unknown; purchase_price?: unknown }) {
+function itemRow(p: { quantity?: number | null; avg_price?: unknown; purchase_price?: unknown }) {
   const qty = p.quantity || 1;
   const currentPrice = parseFloat(String(p.avg_price || 0));
   const hasCost = p.purchase_price != null;
   const purchasePrice = parseFloat(String(p.purchase_price || 0));
-  const pnlPct = hasCost ? entwicklungProzent(purchasePrice, currentPrice) : null;
+  const pnlPct = hasCost ? developmentPercent(purchasePrice, currentPrice) : null;
   return {
     purchase_price: hasCost ? purchasePrice : null,
     current_price: currentPrice,
@@ -117,41 +117,41 @@ function postenZeile(p: { quantity?: number | null; avg_price?: unknown; purchas
 }
 
 /** In Zehntausendsteln summiert, erst am Ende auf Rappen gerundet. */
-const kaufsumme = (rs: Array<{ purchase_price: number | null; quantity: number }>) =>
-  summeAus(rs.map(r => ({ preis: r.purchase_price || 0, menge: r.quantity || 1 })));
+const purchaseTotal = (rs: Array<{ purchase_price: number | null; quantity: number }>) =>
+  sumFrom(rs.map(r => ({ preis: r.purchase_price || 0, menge: r.quantity || 1 })));
 
-export async function gewinnUndVerlust(k: FinanzenKontext, viewerId: number, idsWahl: Sicht | Blickfeld) {
+export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
   // Zwei Grössen: viewerId — wessen EINSTELLUNGEN gelten; ids — WESSEN DATEN
   // gerechnet werden. Mit dem Filter „Unterkonten" fehlt viewerId in ids.
-  const uids = await k.haushalt.blickfeldAus(idsWahl);
+  const uids = await k.haushalt.scopeFrom(idsChoice);
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
     k.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
-  const sets = await k.gewinnVerlust.setsMitErfassungen(uids);
+  const sets = await k.gewinnVerlust.setsWithEntries(uids);
   // Aus den Erfassungen, damit Galerie, Detail und Finanzen dieselben Zahlen zeigen.
-  const acqRows = sets.length ? await k.erfassungen.ladeSetErfassungen(uids, currency) : [];
+  const acqRows = sets.length ? await k.erfassungen.loadSetEntries(uids, currency) : [];
   const jeSet = new Map<string, Erfassung[]>();
   for (const a of acqRows) {
     const l = jeSet.get(a.set_number);
     if (l) l.push(a);
     else jeSet.set(a.set_number, [a]);
   }
-  const werte = await setMarktwerte(k, sets, jeSet, currency, Math.max(1, parseInt(ttlHours, 10)));
+  const werte = await setMarketValues(k, sets, jeSet, currency, Math.max(1, parseInt(ttlHours, 10)));
 
-  const setResults = sets.map(s => pnlSetZeile(s, werte));
-  const kachel = kachelWerte(setResults);
-  const [partsVal, figsVal] = await Promise.all([bewerteTeile(k, viewerId, uids), bewerteFiguren(k, viewerId, uids)]);
-  const partsResults = partsVal.parts.map(postenZeile),
-    figsResults = figsVal.figs.map(postenZeile);
+  const setResults = sets.map(s => pnlSetRow(s, werte));
+  const kachel = tileValues(setResults);
+  const [partsVal, figsVal] = await Promise.all([valueParts(k, viewerId, uids), valueMinifigs(k, viewerId, uids)]);
+  const partsResults = partsVal.parts.map(itemRow),
+    figsResults = figsVal.figs.map(itemRow);
 
-  const alleZeilen = [...setResults, ...partsResults, ...figsResults];
+  const allRows = [...setResults, ...partsResults, ...figsResults];
   const totalPurchase = aufRappen(
-    [setResults, partsResults, figsResults].reduce((z, rs) => z + (inZehntel4(kaufsumme(rs)) ?? 0), 0),
+    [setResults, partsResults, figsResults].reduce((z, rs) => z + (inZehntel4(purchaseTotal(rs)) ?? 0), 0),
   );
-  const totalCurrent = summeAus(alleZeilen.map(r => ({ preis: r.current_price || 0, menge: r.quantity || 1 })));
-  const vergleichbar = vergleichbareSummen(alleZeilen);
-  const totalPnlPct = gesamtGuvProzent(alleZeilen);
+  const totalCurrent = sumFrom(allRows.map(r => ({ preis: r.current_price || 0, menge: r.quantity || 1 })));
+  const comparable = comparableSums(allRows);
+  const totalPnlPct = totalGuvPercent(allRows);
   return {
     currency,
     sets: setResults.map(r => ({ ...r, ...kachel.get(r.set_number) })),
@@ -170,14 +170,14 @@ export async function gewinnUndVerlust(k: FinanzenKontext, viewerId: number, ids
         (figsVal.kaufpreise_umgerechnet ?? 0),
       // Aus denselben Posten wie pnl_pct: Aus allen gerechnet zählte jeder Posten
       // ohne Marktpreis als Verlust.
-      pnl_purchase: vergleichbar.kauf.toFixed(2),
-      pnl_current: vergleichbar.markt.toFixed(2),
+      pnl_purchase: comparable.kauf.toFixed(2),
+      pnl_current: comparable.markt.toFixed(2),
       // Sets + manuelle Teile + Minifiguren.
       grand_total: totalCurrent.toFixed(2),
-      sets_purchase: kaufsumme(setResults).toFixed(2),
-      parts_purchase: kaufsumme(partsResults).toFixed(2),
-      figs_purchase: kaufsumme(figsResults).toFixed(2),
-      ...basisDerKennzahlen(alleZeilen),
+      sets_purchase: purchaseTotal(setResults).toFixed(2),
+      parts_purchase: purchaseTotal(partsResults).toFixed(2),
+      figs_purchase: purchaseTotal(figsResults).toFixed(2),
+      ...baseTheMetrics(allRows),
     },
   };
 }
@@ -185,14 +185,14 @@ export async function gewinnUndVerlust(k: FinanzenKontext, viewerId: number, ids
 /** Nur über Posten mit Kaufpreis UND Marktpreis: Ein fehlender Marktpreis ist
  * kein Wert 0; mitgezählt ergäbe er −100 %. Ein Geschenk (Kaufpreis 0) zählt mit.
  * @returns null, wenn der Einstand dieser Posten 0 ist */
-export function gesamtGuvProzent(zeilen: GuvZeile[]): string | null {
-  const { kauf, markt } = vergleichbareSummen(zeilen);
+export function totalGuvPercent(zeilen: GuvRow[]): string | null {
+  const { kauf, markt } = comparableSums(zeilen);
   return kauf > 0 ? (((markt - kauf) / kauf) * 100).toFixed(1) : null;
 }
 
-type GuvZeile = { purchase_price: number | null; current_price: number; quantity: number };
+type GuvRow = { purchase_price: number | null; current_price: number; quantity: number };
 
-export function vergleichbareSummen(zeilen: GuvZeile[]): { kauf: number; markt: number } {
+export function comparableSums(zeilen: GuvRow[]): { kauf: number; markt: number } {
   let kauf = 0,
     markt = 0;
   for (const z of zeilen) {
@@ -208,31 +208,31 @@ export function vergleichbareSummen(zeilen: GuvZeile[]): { kauf: number; markt: 
 
 /** Einstand, Marktwert und G/V der Finanzkarten über dieselben Posten, dazu was fehlt.
  * So gilt immer Einstand + G/V = Marktwert, und die Karte nennt die ausgelassenen Posten. */
-export function basisDerKennzahlen(zeilen: GuvZeile[]) {
-  const { kauf, markt } = vergleichbareSummen(zeilen);
-  let ohneMarkt = 0,
-    ohneMarktKauf = 0,
-    ohneKauf = 0,
-    ohneKaufMarkt = 0;
+export function baseTheMetrics(zeilen: GuvRow[]) {
+  const { kauf, markt } = comparableSums(zeilen);
+  let withoutMarket = 0,
+    withoutMarketPurchase = 0,
+    withoutPurchase = 0,
+    withoutPurchaseMarket = 0;
   for (const z of zeilen) {
     const n = z.quantity || 1;
     if (!(z.current_price > 0)) {
-      ohneMarkt++;
-      ohneMarktKauf += (z.purchase_price || 0) * n;
+      withoutMarket++;
+      withoutMarketPurchase += (z.purchase_price || 0) * n;
     } else if (z.purchase_price == null) {
-      ohneKauf++;
-      ohneKaufMarkt += z.current_price * n;
+      withoutPurchase++;
+      withoutPurchaseMarket += z.current_price * n;
     }
   }
   return {
     positionen: zeilen.length,
-    positionen_bewertet: zeilen.length - ohneMarkt - ohneKauf,
-    positionen_ohne_marktpreis: ohneMarkt,
-    positionen_ohne_kaufpreis: ohneKauf,
+    positionen_bewertet: zeilen.length - withoutMarket - withoutPurchase,
+    positionen_ohne_marktpreis: withoutMarket,
+    positionen_ohne_kaufpreis: withoutPurchase,
     basis_einstand: kauf.toFixed(2),
     basis_marktwert: markt.toFixed(2),
     basis_guv_betrag: (markt - kauf).toFixed(2),
-    ohne_marktpreis_einstand: ohneMarktKauf.toFixed(2),
-    ohne_kaufpreis_marktwert: ohneKaufMarkt.toFixed(2),
+    ohne_marktpreis_einstand: withoutMarketPurchase.toFixed(2),
+    ohne_kaufpreis_marktwert: withoutPurchaseMarket.toFixed(2),
   };
 }

@@ -20,10 +20,10 @@ const dok = _req('src/vertrag/openapi.js').openapi();
 const app = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'app-schnittstelle.json'), 'utf8'));
 
 /** @param {string} p */
-const gleichfoermig = p => p.replace(/\{\w+\}/g, '{}');
+const uniform = p => p.replace(/\{\w+\}/g, '{}');
 /** @param {string} methode @param {string} pfad */
 function operation(methode, pfad) {
-  const treffer = Object.entries(dok.paths).filter(([p]) => gleichfoermig(p) === gleichfoermig(pfad));
+  const treffer = Object.entries(dok.paths).filter(([p]) => uniform(p) === uniform(pfad));
   return treffer.length === 1 ? treffer[0][1][methode.toLowerCase()] : undefined;
 }
 
@@ -54,21 +54,21 @@ test('jeder Abfrageparameter der App steht im Vertrag', () => {
 test('jedes Rumpffeld der App steht im Vertrag', () => {
   // Ein erzeugter Rumpftyp dient mehreren Routen (Vereinigung ihrer Schemas); ein Feld muss in
   // einer von ihnen stehen.
-  const mitRumpf = app.routen.filter(x => x.rumpffelder.length);
+  const withBody = app.routen.filter(x => x.rumpffelder.length);
   /** @type {Map<string, Set<string>>} */
-  const jeTyp = new Map();
-  for (const r of mitRumpf) {
+  const jeType = new Map();
+  for (const r of withBody) {
     const schema = operation(r.methode, r.pfad)?.requestBody?.content?.['application/json']?.schema;
-    const felder = jeTyp.get(r.rumpf ?? '') ?? new Set();
+    const felder = jeType.get(r.rumpf ?? '') ?? new Set();
     for (const f of Object.keys(schema?.properties ?? {})) felder.add(f);
-    jeTyp.set(r.rumpf ?? '', felder);
+    jeType.set(r.rumpf ?? '', felder);
   }
   const fehlt = [];
   let geprueft = 0;
-  for (const r of mitRumpf) {
+  for (const r of withBody) {
     geprueft++;
     for (const f of r.rumpffelder)
-      if (!jeTyp.get(r.rumpf ?? '')?.has(f)) fehlt.push(`${r.methode} ${r.pfad} ${r.rumpf}.${f}`);
+      if (!jeType.get(r.rumpf ?? '')?.has(f)) fehlt.push(`${r.methode} ${r.pfad} ${r.rumpf}.${f}`);
   }
   assert.ok(geprueft >= 35, `nur ${geprueft} Rümpfe verglichen`);
   assert.deepEqual(fehlt, []);

@@ -1,7 +1,7 @@
 /**
  * Die Auslieferungsreihenfolge des Bild-Proxys — AUSGEFÜHRT, nicht gelesen.
  *
- * Gegenprobe (04.11.2026 gemessen): bildTyp() gibt wie vorher den rohen Wert
+ * Gegenprobe (04.11.2026 gemessen): imageType() gibt wie vorher den rohen Wert
  * zurück, sobald er mit `image/` beginnt und kein SVG ist → rot: „Abgelegt als
  * image/png, text/html …“.
  * (11.11.2026) in cacheTreffer() die ETag-Angabe weggelassen (`etag: null`) →
@@ -14,19 +14,19 @@ const os = require('node:os');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const liefereAusCache = (...a) =>
-  _req('src/bilder/http/bildCacheAuslieferung.js').liefereAusCache(
-    require('./helpers/sources').testDienste().bilder,
+const deliverFromCache = (...a) =>
+  _req('src/bilder/http/bildCacheAuslieferung.js').deliverFromCache(
+    require('./helpers/sources').testServices().bilder,
     ...a,
   );
 
 /** Ein res, das nur festhält, was mit ihm geschehen ist. */
-function attrappeRes() {
+function fakeRes() {
   const r = {
     kopf: {},
     status: 200,
     beendet: false,
-    gestreamt: null,
+    streamed: null,
     setHeader(k, v) {
       this.kopf[k.toLowerCase()] = String(v);
     },
@@ -51,22 +51,22 @@ function attrappeRes() {
   return r;
 }
 
-/** Ein Aufruf von liefereAusCache mit sinnvollen Vorgaben. */
-async function ruf(dir, { wantThumb, darfErzeugen = true, fresh = false }) {
-  const res = attrappeRes();
-  const gestreamt = [];
-  const notiert = [];
-  const erledigt = await liefereAusCache({
+/** Ein Aufruf von deliverFromCache mit sinnvollen Vorgaben. */
+async function ruf(dir, { wantThumb, createMay = true, fresh = false }) {
+  const res = fakeRes();
+  const streamed = [];
+  const noted = [];
+  const erledigt = await deliverFromCache({
     res,
     req: { fresh },
     cacheFile: path.join(dir, 'bild'),
     thumbFile: path.join(dir, 'bild_thumb.jpg'),
     wantThumb,
-    darfErzeugen,
-    notiere: () => notiert.push(1),
-    streamFileToResponse: (_res, datei) => gestreamt.push(datei),
+    createMay,
+    note: () => noted.push(1),
+    streamFileToResponse: (_res, datei) => streamed.push(datei),
   });
-  return { erledigt, res, gestreamt, notiert };
+  return { erledigt, res, streamed, noted };
 }
 
 /** Eine Datei mit `n` Bytes anlegen. */
@@ -84,18 +84,18 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
 
   await t.test('nichts im Cache → der Aufrufer muss beim CDN holen', async () => {
     aufraeumen();
-    const { erledigt, gestreamt } = await ruf(dir, { wantThumb: false });
+    const { erledigt, streamed } = await ruf(dir, { wantThumb: false });
     assert.equal(erledigt, false, 'false heisst: nicht beantwortet, bitte holen');
-    assert.deepEqual(gestreamt, []);
+    assert.deepEqual(streamed, []);
   });
 
   await t.test('Original da, Vorschau gewünscht → Original SOFORT, Vorschau vorgemerkt', async () => {
     aufraeumen();
     datei(orig, 5000);
-    const { erledigt, gestreamt, res } = await ruf(dir, { wantThumb: true });
+    const { erledigt, streamed, res } = await ruf(dir, { wantThumb: true });
     assert.equal(erledigt, true);
     assert.deepEqual(
-      gestreamt,
+      streamed,
       [orig],
       'Es darf NICHT auf die Verkleinerung gewartet werden — das war einmal ' +
         'rund 150 ms je Bild und bei einer Kachelwand Sekunden',
@@ -108,8 +108,8 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     aufraeumen();
     datei(orig, 5000);
     datei(thumb, 900);
-    const { gestreamt, res } = await ruf(dir, { wantThumb: true });
-    assert.deepEqual(gestreamt, [thumb], 'Die Vorschau hat Vorrang, wenn es sie gibt');
+    const { streamed, res } = await ruf(dir, { wantThumb: true });
+    assert.deepEqual(streamed, [thumb], 'Die Vorschau hat Vorrang, wenn es sie gibt');
     assert.equal(res.kopf['content-type'], 'image/jpeg');
     assert.equal(res.kopf['content-length'], '900');
   });
@@ -118,8 +118,8 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     aufraeumen();
     datei(orig, 5000);
     datei(thumb, 900);
-    const { gestreamt } = await ruf(dir, { wantThumb: false });
-    assert.deepEqual(gestreamt, [orig], 'Ohne ?thumb=1 gehört das Original raus, auch wenn eine Vorschau daliegt');
+    const { streamed } = await ruf(dir, { wantThumb: false });
+    assert.deepEqual(streamed, [orig], 'Ohne ?thumb=1 gehört das Original raus, auch wenn eine Vorschau daliegt');
   });
 
   await t.test('Rumpf-Vorschau wird verworfen und das Original geliefert', async () => {
@@ -129,8 +129,8 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     aufraeumen();
     datei(orig, 5000);
     datei(thumb, 50);
-    const { gestreamt } = await ruf(dir, { wantThumb: true });
-    assert.deepEqual(gestreamt, [orig], 'Die unbrauchbare Vorschau wurde ausgeliefert');
+    const { streamed } = await ruf(dir, { wantThumb: true });
+    assert.deepEqual(streamed, [orig], 'Die unbrauchbare Vorschau wurde ausgeliefert');
     assert.equal(
       fs.existsSync(thumb),
       false,
@@ -143,8 +143,8 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     // Hintergrund-Job, gedrosselt und nur im Primärprozess.
     aufraeumen();
     datei(orig, 5000);
-    const { notiert } = await ruf(dir, { wantThumb: true, darfErzeugen: false });
-    assert.deepEqual(notiert, [1], 'Ohne Erzeugungsrecht muss vorgemerkt werden');
+    const { noted } = await ruf(dir, { wantThumb: true, createMay: false });
+    assert.deepEqual(noted, [1], 'Ohne Erzeugungsrecht muss vorgemerkt werden');
   });
 
   await t.test('bekannter Stand → 304 und KEIN Bild', async () => {
@@ -160,13 +160,13 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     assert.equal(v.erledigt, true, '304 ist eine FERTIGE Antwort');
     assert.equal(v.res.code, 304);
     assert.equal(v.res.beendet, true);
-    assert.deepEqual(v.gestreamt, [], 'Bei 304 darf kein Bild mehr rausgehen');
+    assert.deepEqual(v.streamed, [], 'Bei 304 darf kein Bild mehr rausgehen');
 
     fs.unlinkSync(thumb);
     const o = await ruf(dir, { wantThumb: false, fresh: true });
     assert.equal(o.erledigt, true);
     assert.equal(o.res.code, 304);
-    assert.deepEqual(o.gestreamt, [], 'Auch der Original-Zweig darf bei 304 nichts senden');
+    assert.deepEqual(o.streamed, [], 'Auch der Original-Zweig darf bei 304 nichts senden');
   });
 
   await t.test('nur Bild-Typen verlassen den Cache', async () => {
@@ -205,8 +205,8 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
       cacheFile: orig,
       thumbFile: thumb,
       wantThumb: false,
-      darfErzeugen: false,
-      notiere() {},
+      createMay: false,
+      note() {},
     });
     assert.equal(treffer.datei, orig);
     assert.equal(treffer.typ, 'image/png');
@@ -214,7 +214,7 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     assert.match(String(treffer.etag), /^"c-5000-\d+"$/);
     aufraeumen();
     assert.equal(
-      await cacheTreffer({ cacheFile: orig, thumbFile: thumb, wantThumb: false, darfErzeugen: false, notiere() {} }),
+      await cacheTreffer({ cacheFile: orig, thumbFile: thumb, wantThumb: false, createMay: false, note() {} }),
       null,
     );
   });

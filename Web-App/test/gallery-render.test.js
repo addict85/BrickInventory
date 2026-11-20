@@ -15,7 +15,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { oeffneOberflaeche } = require('./helpers/oberflaeche');
+const { openUi } = require('./helpers/oberflaeche');
 
 const STILE = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
 const SETS = {
@@ -39,7 +39,7 @@ const SETS = {
 };
 
 /** Bilder gelten als fertig geladen, wie aus dem Cache des Browsers. */
-function geladeneBilder(w) {
+function loadedImages(w) {
   Object.defineProperty(w.HTMLImageElement.prototype, 'complete', { get: () => true });
   Object.defineProperty(w.HTMLImageElement.prototype, 'naturalWidth', { get: () => 120 });
   const stil = w.document.createElement('style');
@@ -48,18 +48,18 @@ function geladeneBilder(w) {
 }
 
 test('geladene Bilder sind sofort als loaded markiert, auch in der Liste', async () => {
-  const { w, d, warte } = await oeffneOberflaeche({ '/v1/sets': SETS }, { vorher: geladeneBilder });
+  const { w, d, warte } = await openUi({ '/v1/sets': SETS }, { vorher: loadedImages });
   try {
     assert.ok(await warte(() => d.querySelectorAll('#gallery img').length === 2));
-    const nichtGeladen = () => [...d.querySelectorAll('#gallery img')].filter(i => !i.classList.contains('loaded'));
+    const notLoaded = () => [...d.querySelectorAll('#gallery img')].filter(i => !i.classList.contains('loaded'));
     assert.deepEqual(
-      nichtGeladen().map(i => i.outerHTML.slice(0, 60)),
+      notLoaded().map(i => i.outerHTML.slice(0, 60)),
       [],
     );
     d.getElementById('vl').click();
     assert.ok(await warte(() => d.querySelector('#gallery .tw img, #gallery table img')));
     assert.deepEqual(
-      nichtGeladen().map(i => i.outerHTML.slice(0, 60)),
+      notLoaded().map(i => i.outerHTML.slice(0, 60)),
       [],
       'Listenansicht',
     );
@@ -69,11 +69,11 @@ test('geladene Bilder sind sofort als loaded markiert, auch in der Liste', async
 });
 
 test('Preise kommen in die bestehende Kachel; ein leerer Container ist verborgen', async () => {
-  let preisLos;
+  let priceLos;
   const preise = new Promise(r => {
-    preisLos = r;
+    priceLos = r;
   });
-  const { w, d, warte, ruhig } = await oeffneOberflaeche(
+  const { w, d, warte, ruhig } = await openUi(
     {
       '/v1/sets': SETS,
       '/v1/finance/pnl': () =>
@@ -84,22 +84,22 @@ test('Preise kommen in die bestehende Kachel; ein leerer Container ist verborgen
           totals: { purchase: '0', current: '679.99', kaufpreise_fremde_waehrung: 0 },
         })),
     },
-    { vorher: geladeneBilder },
+    { vorher: loadedImages },
   );
   try {
     assert.ok(await warte(() => d.querySelector('#gallery [data-price-for="10294-1"]')));
     const bild = d.querySelector('#gallery img');
     const titanic = d.querySelector('#gallery [data-price-for="10294-1"]');
-    const baumhaus = d.querySelector('#gallery [data-price-for="21318-1"]');
+    const treehouse = d.querySelector('#gallery [data-price-for="21318-1"]');
     assert.equal(titanic.hidden, true, 'vor dem Preis verborgen');
     assert.equal(w.getComputedStyle(titanic).display, 'none', '.price-badge[hidden] muss display:none setzen');
-    preisLos();
+    priceLos();
     assert.ok(await warte(() => /679/.test(d.querySelector('#gallery [data-price-for="10294-1"]')?.textContent || '')));
     await ruhig();
     assert.equal(d.querySelector('#gallery img'), bild, 'die Kachelwand wurde neu gebaut');
     assert.equal(d.querySelector('#gallery [data-price-for="10294-1"]'), titanic);
     assert.equal(titanic.hidden, false);
-    assert.equal(baumhaus.hidden, true, 'ohne Preis bleibt der Container verborgen');
+    assert.equal(treehouse.hidden, true, 'ohne Preis bleibt der Container verborgen');
   } finally {
     w.close();
   }

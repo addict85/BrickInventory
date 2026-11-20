@@ -9,12 +9,12 @@ import { fmtDatum } from './format.js';
 // Ohne Netz zeigt die Seite weiter den letzten Stand. Das Band sagt, dass es einer ist und von wann — sonst
 // hält man alte Zahlen für aktuell.
 /** @type {Date | null} */
-let _letzteAntwort = null;
+let _lastResponse = null;
 
 let _offline = false;
 
 /** @param {boolean} erreichbar */
-export function zeigeVerbindung(erreichbar) {
+export function showConnection(erreichbar) {
   if (erreichbar && typeof navigator !== 'undefined' && navigator.onLine === false) erreichbar = false;
   const band = typeof document !== 'undefined' ? document.getElementById('offline-band') : null;
   if (!band) return;
@@ -31,12 +31,12 @@ export function zeigeVerbindung(erreichbar) {
     return;
   }
   _offline = true;
-  const heute = _letzteAntwort && new Date(_letzteAntwort).toDateString() === new Date().toDateString();
+  const heute = _lastResponse && new Date(_lastResponse).toDateString() === new Date().toDateString();
   const seit = heute
-    ? tRaw('net.heute', { zeit: fmtDatum(_letzteAntwort, 'zeit') })
-    : fmtDatum(_letzteAntwort, 'tagzeit');
+    ? tRaw('net.heute', { zeit: fmtDatum(_lastResponse, 'zeit') })
+    : fmtDatum(_lastResponse, 'tagzeit');
   band.textContent =
-    (_letzteAntwort ? tRaw('net.offline_since', { zeit: seit }) : tRaw('net.offline')) +
+    (_lastResponse ? tRaw('net.offline_since', { zeit: seit }) : tRaw('net.offline')) +
     ' ' +
     tRaw('net.offline_gesperrt');
   band.hidden = false;
@@ -47,14 +47,14 @@ export function zeigeVerbindung(erreichbar) {
 // schreibenden Bedienelemente gesperrt und nennen per aria-describedby das Band als Grund. Ob ein Knopf
 // schreibt, entscheidet seine Aktion, nicht ihr Name: Ein Wort im Namen verfehlte Handler wie revokeToken.
 // Jede angemeldete Aktion steht in genau einer der beiden Listen (test/offline-einstufung-oberflaeche.test.js).
-const BEDIENT = 'button, input[type=file], .import-menue > summary, [data-click]';
+const SERVED = 'button, input[type=file], .import-menue > summary, [data-click]';
 
 /**
  * Handler, die per POST/PUT/PATCH/DELETE Serverzustand ändern (auch über einen anderen Handler), dazu die
  * Öffner von Formularen, die nur speichern können (Erfassen, Bearbeiten, Übernehmen): Offline ausgefüllt,
  * wäre die Eingabe verloren.
  */
-export const SCHREIBENDE_AKTIONEN = new Set([
+export const WRITING_ACTIONS = new Set([
   'acqDelete',
   'acqSave',
   'aendereAlarmSchwelle',
@@ -167,7 +167,7 @@ export const SCHREIBENDE_AKTIONEN = new Set([
 
 // Lesen, Prüfen ohne Speichern (Quelle testen, Vorschau, Klartext) und alles nur Lokale bleibt offline frei.
 // einrichtungWeiter meldet erst im letzten Schritt „fertig“; davor blättert es nur.
-export const LESENDE_AKTIONEN = new Set([
+export const READING_ACTIONS = new Set([
   'ansichtWaehlen',
   'benutzerMenue',
   'blurOnEnter',
@@ -281,26 +281,26 @@ export const LESENDE_AKTIONEN = new Set([
 
 // Datei-Wahl und Import-Menü führen immer zu einem Hochladen; Knöpfe ohne data-click (per id verdrahtet)
 // tragen data-schreibend im Markup. Die Anmeldung braucht offline keine Sperre, sie zeigt ihren eigenen Fehler.
-const IMMER_SCHREIBEND = 'input[type=file], .import-menue > summary, [data-schreibend]';
+const ALWAYS_WRITING = 'input[type=file], .import-menue > summary, [data-schreibend]';
 
-const NICHT_SPERREN = '#login-screen, .toast';
+const NOT_LOCK = '#login-screen, .toast';
 
 /** @param {Element} k */
 function schreibt(k) {
-  if (k.closest(NICHT_SPERREN)) return false;
-  if (k.matches(IMMER_SCHREIBEND)) return true;
-  return SCHREIBENDE_AKTIONEN.has(k.getAttribute('data-click') || '');
+  if (k.closest(NOT_LOCK)) return false;
+  if (k.matches(ALWAYS_WRITING)) return true;
+  return WRITING_ACTIONS.has(k.getAttribute('data-click') || '');
 }
 
 /** @type {MutationObserver|null} */
-let _sperrBeobachter = null;
+let _lockObserver = null;
 
 /** @param {Element|Document} wurzel */
 function sperreIn(wurzel) {
-  const selbst = wurzel instanceof Element && wurzel.matches(BEDIENT) ? [wurzel] : [];
-  /** @type {HTMLElement[]} */ ([...selbst, ...wurzel.querySelectorAll(BEDIENT)]).forEach(k => {
-    if ((kenntDisabled(k) && k.disabled) || k.dataset.offlineGesperrt || !schreibt(k)) return;
-    if (kenntDisabled(k)) k.disabled = true;
+  const selbst = wurzel instanceof Element && wurzel.matches(SERVED) ? [wurzel] : [];
+  /** @type {HTMLElement[]} */ ([...selbst, ...wurzel.querySelectorAll(SERVED)]).forEach(k => {
+    if ((knowsDisabled(k) && k.disabled) || k.dataset.offlineGesperrt || !schreibt(k)) return;
+    if (knowsDisabled(k)) k.disabled = true;
     else {
       k.setAttribute('aria-disabled', 'true');
       if (k.tagName === 'SUMMARY') k.parentElement?.removeAttribute('open');
@@ -314,7 +314,7 @@ function sperreIn(wurzel) {
  * @param {Element} k
  * @returns {k is HTMLButtonElement | HTMLInputElement}
  */
-function kenntDisabled(k) {
+function knowsDisabled(k) {
   return k instanceof HTMLButtonElement || k instanceof HTMLInputElement;
 }
 
@@ -339,18 +339,18 @@ function schreibenSperren(an) {
   document.documentElement.toggleAttribute('data-offline', an);
   if (an) {
     sperreIn(document);
-    if (!_sperrBeobachter && typeof MutationObserver !== 'undefined') {
-      _sperrBeobachter = new MutationObserver(m => {
+    if (!_lockObserver && typeof MutationObserver !== 'undefined') {
+      _lockObserver = new MutationObserver(m => {
         for (const x of m) for (const n of x.addedNodes) if (n.nodeType === 1) sperreIn(/** @type {Element} */ (n));
       });
-      _sperrBeobachter.observe(document.body, { childList: true, subtree: true });
+      _lockObserver.observe(document.body, { childList: true, subtree: true });
     }
     return;
   }
-  _sperrBeobachter?.disconnect();
-  _sperrBeobachter = null;
+  _lockObserver?.disconnect();
+  _lockObserver = null;
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-offline-gesperrt]')).forEach(k => {
-    if (kenntDisabled(k)) k.disabled = false;
+    if (knowsDisabled(k)) k.disabled = false;
     else k.removeAttribute('aria-disabled');
     delete k.dataset.offlineGesperrt;
     const rest = (k.getAttribute('aria-describedby') || '').split(/\s+/).filter(x => x && x !== 'offline-band');
@@ -360,12 +360,12 @@ function schreibenSperren(an) {
 }
 
 if (typeof window !== 'undefined') {
-  window.addEventListener('offline', () => zeigeVerbindung(false));
-  window.addEventListener('online', () => zeigeVerbindung(true));
+  window.addEventListener('offline', () => showConnection(false));
+  window.addEventListener('online', () => showConnection(true));
 }
 
 /** Eine Antwort kam an: Zeitpunkt merken (für „Stand von …“) und das Band abräumen. */
-export function antwortErhalten() {
-  _letzteAntwort = new Date();
-  zeigeVerbindung(true);
+export function receiveResponse() {
+  _lastResponse = new Date();
+  showConnection(true);
 }

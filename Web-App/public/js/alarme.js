@@ -1,12 +1,12 @@
 import { echt, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
 import { api } from './api.js';
-import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';
+import { bildTag, placeholderContent, imgUrl, thumbUrl } from './bilder.js';
 import { ico, G, setzeHtml } from './dom.js';
-import { fmtN, leseBetrag, betragFuerFeld } from './format.js';
+import { fmtN, readAmount, amountForField } from './format.js';
 import { feldFehler } from './formular.js';
 import { toast } from './meldungen.js';
-import { csvHochladen } from './bausteine.js';
+import { uploadCsv } from './bausteine.js';
 import { confirmDelete } from './rueckfrage.js';
 import { gallerySets } from './state.js';
 import { esc, html, rawHtml } from './escaping.js';
@@ -16,7 +16,7 @@ import { esc, html, rawHtml } from './escaping.js';
 async function legeAlarmAn() {
   const raw = String(G('alarm-neu-set')?.value || '').trim();
   const sn = /^\d+$/.test(raw) ? raw + '-1' : raw;
-  const threshold = leseBetrag(G('alarm-neu-preis')?.value);
+  const threshold = readAmount(G('alarm-neu-preis')?.value);
   if (!sn) {
     feldFehler('alarm-neu-set', tRaw('alerts.new_set_fehlt'));
     return;
@@ -81,7 +81,7 @@ export async function ladeAlarmUebersicht() {
       const imageSource = a.image_local || a.image_url || a.set_img_url || '';
       const image = imageSource
         ? bildTag({ src: imgUrl(thumbUrl(imageSource) || imageSource, true), alt: '', klasse: 'bild-38', ph: 'set' })
-        : `<span class="bild-ph bild-38" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
+        : `<span class="bild-ph bild-38" aria-hidden="true">${placeholderContent('set')}</span>`;
       // The row opens the set detail, but only if the set is in the collection — otherwise an error would
       // show instead of the dialog. The field and delete button have their own data-click, otherwise every
       // click into the field would open the dialog above it.
@@ -95,7 +95,7 @@ export async function ladeAlarmUebersicht() {
       <div class="alarm-ue-stand">${rawHtml(badge)}<span class="alarm-ue-zuletzt">${last}</span></div>
       <div class="alarm-ue-schwelle">
         <span class="alarm-ue-richtung">${direction}</span>
-        <span class="alarm-ue-betrag"><input inputmode="decimal" type="text" autocomplete="off" value="${betragFuerFeld(a.threshold)}" aria-label="${tRaw('detail.alert_price')} ${a.set_number}"
+        <span class="alarm-ue-betrag"><input inputmode="decimal" type="text" autocomplete="off" value="${amountForField(a.threshold)}" aria-label="${tRaw('detail.alert_price')} ${a.set_number}"
                data-change="aendereAlarmSchwelle" data-arg="${key}" data-val="1" data-click="stopEvent" class="alarm-ue-feld" />
         <span class="alarm-ue-waehrung">${a.currency_code}</span></span>
       </div>
@@ -111,7 +111,7 @@ export async function ladeAlarmUebersicht() {
  * (Set, condition) from the row's key — one place, two readers.
  * @param {string} s
  */
-function alarmSchluessel(s) {
+function alarmKey(s) {
   const i = String(s).lastIndexOf('|');
   return { setNumber: String(s).slice(0, i), condition: String(s).slice(i + 1) };
 }
@@ -121,7 +121,7 @@ function alarmSchluessel(s) {
  * @param {string} value
  */
 async function aendereAlarmSchwelle(key, value) {
-  const threshold = leseBetrag(value);
+  const threshold = readAmount(value);
   // No silently writing back nonsense: whoever enters 0 or text should see that nothing happened, instead
   // of looking for an alert later that doesn't exist.
   if (!(threshold != null && threshold > 0)) {
@@ -129,7 +129,7 @@ async function aendereAlarmSchwelle(key, value) {
     await ladeAlarmUebersicht();
     return;
   }
-  const { setNumber, condition } = alarmSchluessel(key);
+  const { setNumber, condition } = alarmKey(key);
   // Written via the EXISTING route on the set — the overview gets no write path of its own (see
   // routes/api_v1/sets.ts).
   const d = await api('PUT', `/v1/sets/${encodeURIComponent(setNumber)}/alert`, { condition, threshold });
@@ -145,7 +145,7 @@ async function loescheAlarm(key, setNumber) {
   // Same confirmation dialog as everywhere else (rueckfrage.js) instead of the browser's, followed by "undo".
   if (!(await confirmDelete(tRaw('alerts.delete_title'), tRaw('alerts.confirm_delete', { set: setNumber }), 'alarm')))
     return;
-  const { setNumber: sn, condition } = alarmSchluessel(key);
+  const { setNumber: sn, condition } = alarmKey(key);
   const before = (await api('GET', `/v1/sets/${encodeURIComponent(sn)}/alert`))?.alerts?.find(
     a => a.condition === condition,
   );
@@ -183,7 +183,7 @@ async function loescheAlarm(key, setNumber) {
  */
 async function importAlarmeCsv() {
   const status = G('alerts-csv-status');
-  const d = await csvHochladen({
+  const d = await uploadCsv({
     feld: 'alerts-csv-file',
     pfad: '/v1/alerts/import/csv',
     hinweise: a => [a.waehrung_hinweis],

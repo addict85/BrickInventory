@@ -1,13 +1,13 @@
-import { schliesseErfassen, csvHochladen } from './bausteine.js';
+import { schliesseErfassen, uploadCsv } from './bausteine.js';
 import { registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { rawHex, html } from './escaping.js';
 import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
-import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
+import { amountFromField, quantityFromField, purchaseDateValid } from './formular.js';
 import { toast } from './meldungen.js';
-import { csvImportStatus, preisHerkunftHinweis } from './minifigs.js';
-import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
+import { csvImportStatus, priceOriginHint } from './minifigs.js';
+import { emptyLocationField, selectedOwner, selectedStorage } from './konten-orte.js';
 import { loadManualParts } from './teile.js';
 
 // Ein Teil von Hand erfassen: Formular oben im Teile-Reiter, Farbauswahl und CSV-Import.
@@ -62,9 +62,9 @@ G('btn-add-part')?.addEventListener('click', async () => {
   const colorOpt = colorSel?.options[colorSel.selectedIndex];
   const colorName = colorOpt?.dataset.name || null;
   const colorHex = colorOpt?.dataset.hex || null;
-  const preis = betragAusFeld('ap-price-inline');
-  const datumOk = kaufdatumGueltig('ap-date');
-  const menge = mengeAusFeld('ap-qty-inline');
+  const preis = amountFromField('ap-price-inline');
+  const datumOk = purchaseDateValid('ap-date');
+  const menge = quantityFromField('ap-qty-inline');
   if (!preis.ok || !menge.ok || !datumOk) return;
   const btn = G('btn-add-part');
   btn.disabled = true;
@@ -86,18 +86,18 @@ G('btn-add-part')?.addEventListener('click', async () => {
   btn.disabled = false;
   btn.textContent = tRaw('gallery.add.submit');
   if (d.success) {
-    const hinweisT = preisHerkunftHinweis(d.price_from_condition);
+    const hintT = priceOriginHint(d.price_from_condition);
     res.style.color = 'var(--g700)';
     res.textContent =
       `${d.part_number} ${d.action === 'added' ? t('common.added') : t('common.updated')}` +
-      (hinweisT ? ` — ${hinweisT}` : '');
+      (hintT ? ` — ${hintT}` : '');
     schliesseErfassen('part');
     toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
     G('ap-num-inline').value = '';
     G('ap-qty-inline').value = '1';
     G('ap-price-inline').value = '';
     G('ap-date').value = '';
-    leereLagerortFeld('ap-storage');
+    emptyLocationField('ap-storage');
     if (colorSel) colorSel.selectedIndex = 0;
     loadManualParts();
     // Siehe die Figuren-Erfassung darueber: ein Satz braucht laenger als ein Haekchen.
@@ -105,7 +105,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
       () => {
         res.textContent = '';
       },
-      hinweisT ? 9000 : 3000,
+      hintT ? 9000 : 3000,
     );
   } else {
     res.style.color = 'var(--r500)';
@@ -115,7 +115,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
 
 // CSV import
 async function importPartsCsv() {
-  const d = await csvHochladen({
+  const d = await uploadCsv({
     feld: 'part-csv-file',
     pfad: '/v1/parts/import/csv',
     zeige: l => csvImportStatus('part-csv-status', l ? 'running' : 'hide', tRaw('import.running')),

@@ -22,9 +22,9 @@ const Z = prozessweit('indexHtml', () => ({
 }));
 
 /** CSP source for the one inline block <style id="startstil"> (start skeleton), else ''. */
-export function startPageStyleHash(produktion: boolean): string {
+export function startPageStyleHash(production: boolean): string {
   const mtime =
-    produktion && Z.stil ? Z.stil.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
+    production && Z.stil ? Z.stil.mtime : (fs.statSync(INDEX_PATH, { throwIfNoEntry: false })?.mtimeMs ?? 0);
   if (Z.stil && Z.stil.mtime === mtime) return Z.stil.hash;
   const m = /<style id="startstil">([\s\S]*?)<\/style>/.exec(
     fs.existsSync(INDEX_PATH) ? fs.readFileSync(INDEX_PATH, 'utf8') : '',
@@ -47,8 +47,8 @@ export function forgetTheme() {
   Z.theme = null;
 }
 
-async function readIndex(produktion: boolean): Promise<string> {
-  if (Z.html !== null && produktion) return Z.html;
+async function readIndex(production: boolean): Promise<string> {
+  if (Z.html !== null && production) return Z.html;
   // One handle for stat and content: both are then guaranteed to belong to the same file.
   const datei = await fs.promises.open(INDEX_PATH, 'r');
   try {
@@ -132,7 +132,7 @@ export async function setGlobalTheme(k: ProfileContext, theme: string): Promise<
 }
 
 export async function startPageHtml(k: ProfileContext, userId?: number): Promise<string> {
-  const html = await readIndex(k.konfig.produktion);
+  const html = await readIndex(k.konfig.production);
   try {
     const theme = await currentTheme(k, userId);
     let out = /<html[^>]*\sdata-theme=/i.test(html)

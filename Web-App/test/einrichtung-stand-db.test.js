@@ -4,7 +4,7 @@
  *
  * Gegenproben:
  *   A  Konten-Zähler in setupStatus.ts entfernt → rot: „für den Verwalter steht das Konto erst auf bereit, …“
- *   B  Pfad aus OEFFENTLICH gestrichen               → rot: 401 statt 200
+ *   B  Pfad aus PUBLIC gestrichen               → rot: 401 statt 200
  *   C  users-Zeile in die Antwort übernommen         → rot: „keine Adressen, keine Namen“
  *   D  BrickLink-/Rebrickable-Prüfung in setupStatus.ts entfernt → rot: „mit hinterlegter Quelle gilt die Einrichtung als begonnen“
  *   E  in routes/api_v1/einrichtung.ts `verwalter: true` fest gesetzt (07.11.2026)
@@ -19,18 +19,18 @@ const express = require('express');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
 // Eine offene Verbindung aus dem Pool hält den Prozess am Leben; im Volllauf steht dann
 // die ganze Datei still, statt zu enden. Deshalb schliesst die Datei ihren Pool selbst.
 after(() => db.pool.end().catch(() => {}));
 
 test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [schluessel]);
@@ -93,10 +93,10 @@ test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
 });
 
 test('der Eingang lässt ohne Sitzung nur den Stand durch', async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const app = express();
   const mw = _req('routes/api_v1/middleware.js');
-  app.use('/api/v1', mw.waechterFuer(require('./helpers/sources').testDienste().konto).anmeldungAmEingang);
+  app.use('/api/v1', mw.guardFor(require('./helpers/sources').testServices().konto).loginAtInbox);
   app.use('/api/v1', (req, res) => res.json({ success: true, pfad: req.path }));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));

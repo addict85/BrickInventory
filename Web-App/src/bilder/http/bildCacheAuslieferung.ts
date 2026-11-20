@@ -1,24 +1,24 @@
 import type { ServerResponse } from 'node:http';
-import type { BilderDienste } from '../bereich';
+import type { ImagesServices } from '../bereich';
 
-type BildAntwort = ServerResponse & { status(c: number): { end(): unknown } };
-interface BildAnfrage {
+type ImageResponse = ServerResponse & { status(c: number): { end(): unknown } };
+interface ImageRequest {
   fresh: boolean;
   headers?: Record<string, unknown>;
 }
 
 /** Aus dem Platten-Cache, falls vorhanden; true heisst beantwortet. */
-export async function liefereAusCache(
-  bilder: Pick<BilderDienste, 'cacheTreffer'>,
+export async function deliverFromCache(
+  bilder: Pick<ImagesServices, 'cacheTreffer'>,
   opts: {
-    res: BildAntwort;
-    req: BildAnfrage;
+    res: ImageResponse;
+    req: ImageRequest;
     cacheFile: string;
     thumbFile: string;
     wantThumb: boolean;
-    darfErzeugen: boolean;
-    notiere: () => void;
-    streamFileToResponse(res: BildAntwort, datei: string, onEnd?: () => void, req?: BildAnfrage): unknown;
+    createMay: boolean;
+    note: () => void;
+    streamFileToResponse(res: ImageResponse, datei: string, onEnd?: () => void, req?: ImageRequest): unknown;
   },
 ): Promise<boolean> {
   const { res, req, streamFileToResponse } = opts;

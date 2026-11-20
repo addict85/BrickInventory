@@ -12,7 +12,7 @@ const ROOT = path.resolve(__dirname, '..');
 const ZIEL = path.join(ROOT, 'coverage');
 const BUENDEL = path.join(ROOT, 'dist', 'abdeckung', 'app.bundle.js');
 /** Bereiche der Schranken: Präfix relativ zu ROOT. */
-const BEREICHE = {
+const AREAS = {
   gesamt: '',
   server: 'dist/',
   clients: 'dist/clients/',
@@ -36,7 +36,7 @@ const relevant = (/** @type {{ url: string }} */ s) => {
  * für den nächsten Durchgang liegen.
  * @param {string} v8 @param {Set<string>} erledigt
  */
-function verdichte(v8, erledigt = new Set()) {
+function compact(v8, erledigt = new Set()) {
   for (const f of fs.readdirSync(v8).filter(n => n.endsWith('.json') && !erledigt.has(n))) {
     const datei = path.join(v8, f);
     let daten;
@@ -63,8 +63,8 @@ async function bericht(v8 = path.join(ZIEL, 'v8'), ziel = ZIEL) {
     gemessen.push({ result: result.filter(relevant) });
   }
   const karte = libCoverage.createCoverageMap({});
-  for (const skript of mergeProcessCovs(gemessen).result) {
-    const datei = new URL(skript.url).pathname;
+  for (const script of mergeProcessCovs(gemessen).result) {
+    const datei = new URL(script.url).pathname;
     // Quellen der Sourcemap ausserhalb von public/js (esbuild-Hilfen) zählen nicht.
     const umw = v2i(
       datei,
@@ -74,7 +74,7 @@ async function bericht(v8 = path.join(ZIEL, 'v8'), ziel = ZIEL) {
         datei === BUENDEL && !path.resolve(path.dirname(BUENDEL), q).startsWith(path.join(ROOT, 'public', 'js')),
     );
     await umw.load();
-    umw.applyCoverage(skript.functions);
+    umw.applyCoverage(script.functions);
     karte.merge(umw.toIstanbul());
     umw.destroy();
   }
@@ -88,11 +88,11 @@ async function bericht(v8 = path.join(ZIEL, 'v8'), ziel = ZIEL) {
 /** Zeilenabdeckung je Bereich in Prozent, eine Nachkommastelle. */
 function zusammenfassung(/** @type {any} */ karte) {
   /** @type {Record<string, { gedeckt: number, gesamt: number }>} */
-  const summe = Object.fromEntries(Object.keys(BEREICHE).map(k => [k, { gedeckt: 0, gesamt: 0 }]));
+  const summe = Object.fromEntries(Object.keys(AREAS).map(k => [k, { gedeckt: 0, gesamt: 0 }]));
   for (const datei of karte.files()) {
     const rel = path.relative(ROOT, datei).split(path.sep).join('/');
     const z = karte.fileCoverageFor(datei).toSummary().lines;
-    for (const [k, praefix] of Object.entries(BEREICHE)) {
+    for (const [k, praefix] of Object.entries(AREAS)) {
       const b = summe[k];
       if (!b || !rel.startsWith(praefix)) continue;
       b.gedeckt += z.covered;
@@ -107,19 +107,19 @@ function zusammenfassung(/** @type {any} */ karte) {
 /** Rot, wenn ein Bereich unter seine Schranke fällt; nennt Bereiche, deren Schranke nachgezogen werden kann. */
 function pruefen(
   /** @type {Record<string, number>} */ ist,
-  schrankenDatei = path.join(__dirname, 'abdeckung-schranken.json'),
+  limitsFile = path.join(__dirname, 'abdeckung-schranken.json'),
 ) {
   /** @type {Record<string, number>} */
-  const schranken = JSON.parse(fs.readFileSync(schrankenDatei, 'utf8'));
-  const zuWenig = Object.entries(schranken).filter(([k, s]) => !((ist[k] ?? -1) >= s));
+  const schranken = JSON.parse(fs.readFileSync(limitsFile, 'utf8'));
+  const toLittle = Object.entries(schranken).filter(([k, s]) => !((ist[k] ?? -1) >= s));
   for (const [k, s] of Object.entries(schranken))
     console.log(
       `[abdeckung] ${k.padEnd(12)} ${String(ist[k]).padStart(5)} % (Schranke ${s} %)${(ist[k] ?? -1) >= s + 1 ? ' — nachziehen' : ''}`,
     );
-  return zuWenig.map(([k, s]) => `${k}: ${ist[k]} % < ${s} %`);
+  return toLittle.map(([k, s]) => `${k}: ${ist[k]} % < ${s} %`);
 }
 
-module.exports = { bericht, pruefen, verdichte, zusammenfassung, BEREICHE };
+module.exports = { bericht, pruefen, compact, zusammenfassung, AREAS };
 
 if (require.main === module) {
   const art = process.argv[2];

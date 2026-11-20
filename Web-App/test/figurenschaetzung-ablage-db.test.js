@@ -7,10 +7,10 @@
  * Gegenproben (31.10.2026, gemessen):
  *   a) in src/finanzen/repository/marktpreise.ts beim Schreiben der Schätzung
  *      `condition` durch 'N' ersetzt → Teil 1 rot (der Eintrag „U" fehlt).
- *   b) in schaetzeFigurenpreis() fetchPartPrice mit DEFAULT_PRICE_CONDITION statt
+ *   b) in estimateMinifigsPrice() fetchPartPrice mit DEFAULT_PRICE_CONDITION statt
  *      `cond` → Teil 1 rot (beide Zustände 2 × 3 = 6, nicht 4 und 6).
- *   c) merkeGeschaetztenFigurenverlauf() nicht aufgerufen → Teil 1 rot (Verlauf leer).
- *   d) in setPreisAusCache() `ORDER BY (condition = $2) DESC` → `ASC` → Teil 2 rot.
+ *   c) rememberEstimatedMinifigsHistory() nicht aufgerufen → Teil 1 rot (Verlauf leer).
+ *   d) in setPriceFromCache() `ORDER BY (condition = $2) DESC` → `ASC` → Teil 2 rot.
  *   e) in aktuellerMarktpreis() die Wache `if (!condition)` entfernt → Teil 2 rot
  *      (die Erfassung „Neu“ überstimmt den angefragten Zustand: 10 statt 20).
  */
@@ -18,12 +18,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
 test('Figurenschätzung und Setpreis je Zustand', async t => {
-  const db = testDaten();
+  const db = testData();
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -53,8 +53,8 @@ test('Figurenschätzung und Setpreis je Zustand', async t => {
           [farbe, zustand, preis],
         );
 
-      assert.deepEqual(await mf.schaetzeFigurenpreis(FIG, u.id, 'N'), { preis: 4, abdeckung: 1 });
-      assert.deepEqual(await mf.schaetzeFigurenpreis(FIG, u.id, 'U'), { preis: 6, abdeckung: 1 });
+      assert.deepEqual(await mf.estimateMinifigsPrice(FIG, u.id, 'N'), { preis: 4, abdeckung: 1 });
+      assert.deepEqual(await mf.estimateMinifigsPrice(FIG, u.id, 'U'), { preis: 6, abdeckung: 1 });
       const cache = await db.all(
         `SELECT condition, avg_price::float AS preis, estimated AS geschaetzt FROM minifig_price_cache
                                    WHERE fig_number = $1 ORDER BY condition`,

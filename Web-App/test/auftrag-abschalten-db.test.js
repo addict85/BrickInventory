@@ -17,22 +17,22 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { warte } = require('./helpers/zeit');
 
 test('Abschalten während einer Belegung', async t => {
-  if (!(await datenOderSkip(t, _req))) return;
-  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('auftraege').auftraege };
-  const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
+  if (!(await dataOrSkip(t, _req))) return;
+  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testArea('auftraege').auftraege };
+  const { createWorker } = _req('jobs/auftragsWorker.js');
   const ART = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;
   // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
   require('./helpers/sources')
-    .testDienste()
-    .auftraege.meldeArtAn({ art: ART, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
+    .testServices()
+    .auftraege.reportKindAn({ art: ART, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
   await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [ART]);
   const sperre = await db.pool.connect();
   let loslassen = () => {};
@@ -44,26 +44,26 @@ test('Abschalten während einer Belegung', async t => {
     await sperre.query('ROLLBACK').catch(() => {});
     sperre.release();
     await db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]).catch(() => {});
-    await testZugang()
-      .benachrichtigung.close()
+    await testAccess()
+      .notification.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
-  const id = await A.stelleAuftragEin(ART, { marke: MARKE });
-  let angefangen = false;
+  const id = await A.placeJobOne(ART, { marke: MARKE });
+  let started = false;
   // Hängt bis zum Testende: Ein angelaufener Auftrag bliebe so auf 'laeuft'.
-  const w = erzeugeWorker(
-    require('./helpers/sources').testDienste().auftraege,
+  const w = createWorker(
+    require('./helpers/sources').testServices().auftraege,
     {
       [ART]: {
         ausfuehren: () => {
-          angefangen = true;
+          started = true;
           return haengt;
         },
       },
     },
-    { fristSek: 600, taktMs: 60_000 },
+    { deadlineSec: 600, taktMs: 60_000 },
   );
 
   await sperre.query('BEGIN');
@@ -77,13 +77,13 @@ test('Abschalten während einer Belegung', async t => {
     if (r.n > 0) break;
     await warte(20);
   }
-  const gestoppt = w.stoppe(3000);
+  const stopped = w.stop(3000);
   await warte(200);
   await sperre.query('COMMIT');
-  await gestoppt;
+  await stopped;
   await warte(300);
 
   const z = await db.get('SELECT status FROM jobs WHERE id = $1', [id]);
-  assert.equal(angefangen, false, 'nach stoppe() läuft kein Bearbeiter mehr an');
+  assert.equal(started, false, 'nach stoppe() läuft kein Bearbeiter mehr an');
   assert.notEqual(z.status, 'laeuft', 'der Auftrag bleibt nicht belegt');
 });

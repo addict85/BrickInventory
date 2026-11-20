@@ -23,13 +23,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { startPageStyleHash, startPageHtml, stripComments } = _req('src/profile/indexHtml.js');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 // startPageHtml() fragt das Design aus der Datenbank; offen hielte der Pool den Lauf an.
 test.after(() =>
-  testDaten()
+  testData()
     .pool.end()
     .catch(() => {}),
 );
@@ -46,14 +46,14 @@ test('vor dem ersten Stylesheet und vor jedem blockierenden Skript', () => {
   const html = stripComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8'));
   const geruest = html.indexOf('id="startgeruest"');
   assert.ok(geruest > 0);
-  const erstesStylesheet = html.search(/<link rel="stylesheet"/);
-  const erstesSkript = html.search(/<script (?!defer)[^>]*src=/);
-  assert.ok(geruest < erstesStylesheet, 'vor dem ersten Stylesheet');
-  assert.ok(geruest < erstesSkript, 'vor dem ersten blockierenden Skript');
+  const firstStylesheet = html.search(/<link rel="stylesheet"/);
+  const firstScript = html.search(/<script (?!defer)[^>]*src=/);
+  assert.ok(geruest < firstStylesheet, 'vor dem ersten Stylesheet');
+  assert.ok(geruest < firstScript, 'vor dem ersten blockierenden Skript');
 });
 
 test('angemeldet: Gerüst weg, App da', async () => {
-  const { w, d } = await oeffneOberflaeche({});
+  const { w, d } = await openUi({});
   try {
     await warte(() => !d.getElementById('startgeruest'));
     assert.equal(d.getElementById('startgeruest'), null, 'angemeldet: Gerüst weg');
@@ -63,7 +63,7 @@ test('angemeldet: Gerüst weg, App da', async () => {
 });
 
 test('abgemeldet: Gerüst weg, Anmeldung da', async () => {
-  const { w, d } = await oeffneOberflaeche({}, { angemeldet: false });
+  const { w, d } = await openUi({}, { angemeldet: false });
   try {
     await warte(() => d.getElementById('login-screen').style.display === 'flex');
     assert.equal(d.getElementById('startgeruest'), null);

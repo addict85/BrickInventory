@@ -1,26 +1,26 @@
 // Der Katalog: Sets suchen, Details zeigen und in die Sammlung übernehmen.
 import { emit } from './events.js';
-import { detailZeile, kachelName, ladeAnzeige, listeLadefehler } from './bausteine.js';
+import { detailRow, kachelName, loadDisplay, listLoadError } from './bausteine.js';
 import { registerActions } from './registry.js';
 import { loadGuard } from './load-guard.js';
 import { locale, t, tRaw } from '../i18n.js';
-import { fehlerMeldung, api } from './api.js';
-import { bildTag, platzhalterInhalt, fullUrl, imgUrl, thumbUrl, setzeDialogbild, PLATZHALTER_SET } from './bilder.js';
-import { leerZustand, meldeTreffer, ico, G, zuruecksetzenKnopf, alle, eins, setzeHtml, fuegeHtmlEin } from './dom.js';
-import { betragAusFeld, mengeAusFeld } from './formular.js';
+import { errorMessage, api } from './api.js';
+import { bildTag, placeholderContent, fullUrl, imgUrl, thumbUrl, setDialogbild, PLACEHOLDER_SET } from './bilder.js';
+import { emptyState, reportHits, ico, G, resetButton, alle, eins, setzeHtml, fuegeHtmlEin } from './dom.js';
+import { amountFromField, quantityFromField } from './formular.js';
 import { toast } from './meldungen.js';
 import { setScrollLabel } from './rollbalken.js';
 import { setLastImportAt, loggedInAccount, settingsSnapshot } from './state.js';
 import { esc, html, joinHtml } from './escaping.js';
-import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';
-import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
+import { handleSseEvent, hideProgress, showProgress, streamDone, streamRequest } from './fortschritt.js';
+import { emptyLocationField, selectedOwner, selectedStorage } from './konten-orte.js';
 
 // Datenquelle ist /api/v1/catalog/* (lokale rb_*-Tabellen aus dem täglichen CSV-Sync) — serverseitig
 // paginiert, da der Katalog ~25k Sets umfasst.
 
 const _catState = { page: 1, q: '', theme: '', yearFrom: '', yearTo: '', sort: 'year_desc' };
 // _catItems hält die geladenen Sets für In-Place-Updates (owned-Badge nach Galerie-Aufnahme).
-const katalogLaden = loadGuard();
+const loadCatalog = loadGuard();
 // Fensterladen statt Endlos-Scroll: Die Jahresleiste springt mitten in die Liste, und eine angehängte Liste
 // hätte darüber und darunter nichts. Ein Block je Seite; geladen wird, was ins Bild kommt, Platzhalter halten
 // die Höhe frei.
@@ -29,7 +29,7 @@ let _catTotal = 0;
 let _catPageCount = 0;
 let _catLoadedPages = new Set();
 let _catLoadingPages = new Set();
-let _catScrollGebunden = false;
+let _catScrollBound = false;
 /** @type {import('../../frontend-typen/vertrag').CatalogSetItem[]} */
 let _catItems = [];
 /** Datenbereich aus /catalog/meta. @type {number | null} */
@@ -90,7 +90,7 @@ function _bindCatalogControls() {
   });
   // Der Von-Bis-Schieber ist entfallen — gefiltert wird über die beiden Auswahlfelder oben, gesprungen über
   // die Leiste am rechten Rand. Auch der Sentinel des Endlos-Scrolls ist weg: Geladen wird die Seite, die
-  // gerade ins Bild kommt (siehe _beobachteSeiten).
+  // gerade ins Bild kommt (siehe _observePages).
   G('cat-modal').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeCatModal();
   });
@@ -113,13 +113,13 @@ async function loadCatalogMeta() {
     const mk = (
       /** @type {HTMLElement | null} */ el,
       /** @type {string} */ placeholderKey,
-      /** @type {string} */ jahrKey,
+      /** @type {string} */ yearKey,
       /** @type {string} */ cur,
     ) => {
       // „ab 2015“ statt nur „2015“: Gewählt steht sonst eine Zahl im Feld, die nicht sagt, welche Grenze sie ist.
       let opts = html`<option value="">${tRaw(placeholderKey)}</option>`;
       for (let y = bis; y >= von; y--) {
-        opts = html`${opts}${html`<option value="${y}"${String(y) === cur ? ' selected' : ''}>${tRaw(jahrKey, { jahr: y })}</option>`}`;
+        opts = html`${opts}${html`<option value="${y}"${String(y) === cur ? ' selected' : ''}>${tRaw(yearKey, { jahr: y })}</option>`}`;
       }
       if (el) setzeHtml(el, opts);
     };
@@ -135,7 +135,7 @@ async function loadCatalogMeta() {
 }
 
 /** Suche, Thema und Jahre leeren; die Sortierung bleibt. */
-export function katalogZuruecksetzen() {
+export function resetCatalog() {
   G('cat-search').value = '';
   G('cat-theme').value = '';
   _catState.q = '';
@@ -192,15 +192,15 @@ function _catQuery(page) {
  * filtern.
  */
 async function loadCatalogSets() {
-  katalogLaden.start();
+  loadCatalog.start();
   _catLoadedPages = new Set();
   _catLoadingPages = new Set();
   const grid = G('catalog-grid');
-  setzeHtml(grid, ladeAnzeige(tRaw('catalog.loading')));
+  setzeHtml(grid, loadDisplay(tRaw('catalog.loading')));
   _catState.page = 1;
-  const d = await katalogLaden.whenCurrent(api('GET', `/v1/catalog/sets?${_catQuery(1)}`));
+  const d = await loadCatalog.whenCurrent(api('GET', `/v1/catalog/sets?${_catQuery(1)}`));
   if (d === undefined) return;
-  if (listeLadefehler(grid, d, { erneut: 'loadCatalogSets' })) return;
+  if (listLoadError(grid, d, { erneut: 'loadCatalogSets' })) return;
 
   _catTotal = d.total || 0;
   _catPageCount = Math.max(1, Math.ceil(_catTotal / CAT_LIMIT));
@@ -208,7 +208,7 @@ async function loadCatalogSets() {
   G('cat-count').textContent = tRaw(_catTotal === 1 ? 'catalog.result_count_one' : 'catalog.result_count', {
     count: _catTotal.toLocaleString(locale()),
   });
-  meldeTreffer(
+  reportHits(
     _catTotal ? G('cat-count').textContent : tRaw('common.no_hits', { query: G('cat-search')?.value.trim() || '' }),
   );
 
@@ -223,8 +223,8 @@ async function loadCatalogSets() {
         : ohneSchluessel
           ? 'catalog.empty_ohne_schluessel'
           : 'catalog.empty_hint';
-    const leerKnopf = gefiltert
-      ? zuruecksetzenKnopf('catalog')
+    const emptyButton = gefiltert
+      ? resetButton('catalog')
       : !loggedInAccount?.isAdmin
         ? undefined
         : ohneSchluessel
@@ -232,11 +232,11 @@ async function loadCatalogSets() {
           : { text: tRaw('catalog.zum_abgleich'), click: 'oeffneReiter', arg: 'monitor', ico: 'aktualisieren' };
     setzeHtml(
       grid,
-      leerZustand({
+      emptyState({
         ico: gefiltert ? 'suche' : 'katalog',
         titel: tRaw(gefiltert ? 'catalog.no_results' : 'catalog.leer_titel'),
         text: tRaw(leerText),
-        knopf: leerKnopf,
+        knopf: emptyButton,
       }),
     );
     setScrollLabel(null);
@@ -257,9 +257,9 @@ async function loadCatalogSets() {
   }
   setzeHtml(grid, joinHtml(bloecke));
   _catLoadedPages.add(1);
-  _ladeJahrVerteilung();
-  _setzePlatzhalterHoehe();
-  _beobachteSeiten();
+  _loadYearDistribution();
+  _setPlaceholderHeight();
+  _observePages();
   _initYearRail();
 }
 
@@ -270,15 +270,15 @@ async function loadCatalogSets() {
  * Schätzung läge bei einem anderen Fenster daneben. Und eine falsche Höhe ist hier teuer — die Liste springt
  * beim Nachladen, und man verliert die Stelle, an der man gerade war.
  */
-function _setzePlatzhalterHoehe() {
+function _setPlaceholderHeight() {
   const erste = eins('#catalog-grid .cat-page[data-page="1"]');
   if (!erste) return;
   const hoehe = erste.offsetHeight;
   if (hoehe < 10) return; // noch nicht gezeichnet
-  const proKachel = hoehe / Math.max(1, _catItems.length);
+  const proTile = hoehe / Math.max(1, _catItems.length);
   for (const el of alle('#catalog-grid .cat-page-ph')) {
     const anzahl = parseInt(el.dataset.anzahl ?? '', 10) || CAT_LIMIT;
-    el.style.height = Math.round(anzahl * proKachel) + 'px';
+    el.style.height = Math.round(anzahl * proTile) + 'px';
   }
 }
 
@@ -287,17 +287,17 @@ function _setzePlatzhalterHoehe() {
  * erzwang über 400 Layouts, und das Ziehen am Balken legte die CPU auf 100 %.
  */
 /** @type {{ seite: number, oben: number, unten: number }[]} */
-let _catBlockLagen = [];
+let _catBlockStates = [];
 // Jahre mit ihrer Anzahl, in der Reihenfolge der Liste — die Grundlage für das Etikett am Scrollbalken (siehe
-// _jahrAnPosition).
+// _yearAnPosition).
 /** @type {import('../../frontend-typen/vertrag').JahrAnzahl[]} */
-let _catJahrVerteilung = [];
+let _catYearDistribution = [];
 
-function _messeBloecke() {
-  _catBlockLagen = [];
+function _measureBlocks() {
+  _catBlockStates = [];
   for (const el of alle('#catalog-grid .cat-page')) {
     const r = el.getBoundingClientRect();
-    _catBlockLagen.push({
+    _catBlockStates.push({
       seite: parseInt(el.dataset.page ?? '', 10),
       oben: r.top + window.scrollY,
       unten: r.bottom + window.scrollY,
@@ -314,13 +314,13 @@ let _catLadeTimer = null;
 /**
  * @param {boolean} [sofort]
  */
-function _ladeSichtbareSeiten(sofort) {
+function _loadVisiblePages(sofort) {
   clearTimeout(_catLadeTimer);
   const tun = () => {
     const oben = window.scrollY - 600;
     const unten = window.scrollY + window.innerHeight + 600;
-    for (const b of _catBlockLagen) {
-      if (b.unten >= oben && b.oben <= unten) ladeSeite(b.seite);
+    for (const b of _catBlockStates) {
+      if (b.unten >= oben && b.oben <= unten) loadPage(b.seite);
     }
   };
   if (sofort) tun();
@@ -334,32 +334,32 @@ function _ladeSichtbareSeiten(sofort) {
  * ÄNDERUNGEN der Sichtbarkeit (weshalb bei grossen Blöcken nichts nachkam) und feuerte zusätzlich zu dieser
  * Rechnung. Ein Weg, der immer greift, ist besser als zwei, die sich ergänzen sollen.
  */
-function _beobachteSeiten() {
-  _messeBloecke();
-  if (!_catScrollGebunden) {
-    _catScrollGebunden = true;
+function _observePages() {
+  _measureBlocks();
+  if (!_catScrollBound) {
+    _catScrollBound = true;
     let angefordert = false;
-    const beiBewegung = () => {
+    const atMovement = () => {
       if (angefordert) return;
       angefordert = true;
       // Über requestAnimationFrame gedrosselt: Ein Scroll-Ereignis feuert dutzende Male je Sekunde.
       requestAnimationFrame(() => {
         angefordert = false;
-        _ladeSichtbareSeiten();
+        _loadVisiblePages();
       });
     };
-    window.addEventListener('scroll', beiBewegung, { passive: true });
+    window.addEventListener('scroll', atMovement, { passive: true });
     window.addEventListener(
       'resize',
       () => {
-        _messeBloecke();
-        beiBewegung();
+        _measureBlocks();
+        atMovement();
       },
       { passive: true },
     );
   }
   // Was schon im Bild steht, sofort — darauf wartet der Nutzer.
-  _ladeSichtbareSeiten(true);
+  _loadVisiblePages(true);
 }
 
 /**
@@ -369,12 +369,12 @@ function _beobachteSeiten() {
  * Scroll-Schritt denselben Abruf mehrfach aus.
  * @param {number} seite
  */
-export async function ladeSeite(seite) {
+export async function loadPage(seite) {
   if (seite < 1 || seite > _catPageCount) return;
   if (_catLoadedPages.has(seite) || _catLoadingPages.has(seite)) return;
   _catLoadingPages.add(seite);
   try {
-    const d = await katalogLaden.whenCurrent(api('GET', `/v1/catalog/sets?${_catQuery(seite)}`));
+    const d = await loadCatalog.whenCurrent(api('GET', `/v1/catalog/sets?${_catQuery(seite)}`));
     if (d === undefined) return;
     if (!d.success || !d.sets?.length) return;
     const block = eins(`#catalog-grid .cat-page[data-page="${seite}"]`);
@@ -387,8 +387,8 @@ export async function ladeSeite(seite) {
     _catLoadedPages.add(seite);
     _catItems = _catItems.concat(d.sets);
     // Die Blockhöhen haben sich geändert — neu messen, dann nachsehen, was jetzt zusätzlich im Bild steht.
-    _messeBloecke();
-    _ladeSichtbareSeiten();
+    _measureBlocks();
+    _loadVisiblePages();
   } finally {
     _catLoadingPages.delete(seite);
   }
@@ -401,7 +401,7 @@ function catCard(s) {
   const src = s.image_local || s.image_url;
   const img = src
     ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: '', fade: true, ph: 'set' })
-    : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
+    : html`<span class="bild-ph" aria-hidden="true">${placeholderContent('set')}</span>`;
   const themeShort = s.theme_name ? s.theme_name.split(' › ').pop() : '';
   const ownedBadge = s.owned
     ? html`<span class="ibadge besitz-badge">${ico('ok')}${tRaw('catalog.owned_badge')}${s.owned_quantity > 1 ? html`${' ×'}${s.owned_quantity}` : ''}</span>`
@@ -442,11 +442,11 @@ async function openCatModal(setNumber) {
   _catCurSet = s;
   G('cat-m-tit').textContent = s.name || s.set_number;
   G('cat-m-sub').textContent = s.set_number;
-  leereLagerortFeld('cat-m-storage');
+  emptyLocationField('cat-m-storage');
   // Die volle Auflösung im Detail direkt vom CDN, nicht über den Proxy: Für ein einmaliges grosses Bild ist
   // das schneller und entlastet den Server; der Proxy lohnt sich nur für die vielen kleinen Vorschauen.
   const detailSrc = s.image_local || s.image_url;
-  setzeDialogbild(G('cat-m-img'), detailSrc ? fullUrl(detailSrc) : PLATZHALTER_SET, PLATZHALTER_SET);
+  setDialogbild(G('cat-m-img'), detailSrc ? fullUrl(detailSrc) : PLACEHOLDER_SET, PLACEHOLDER_SET);
   /** @type {[string, string | number][]} */
   const rows = [
     [tRaw('detail.year'), s.year || '—'],
@@ -457,7 +457,7 @@ async function openCatModal(setNumber) {
   if (s.owned) rows.push([tRaw('catalog.owned'), '×' + s.owned_quantity]);
   setzeHtml(
     G('cat-m-det'),
-    rows.map(([k, v]) => detailZeile(k, esc(String(v)))),
+    rows.map(([k, v]) => detailRow(k, esc(String(v)))),
   );
   // Der Kauf-Link kommt fertig vom Server (bricklinkLink.ts): Aus der Rebrickable-Nummer gebaut, war er für
   // Gear, Bücher und Sammelfiguren falsch. Ist der Artikel nicht eindeutig, zeigt er auf die Suche — nie
@@ -492,8 +492,8 @@ function closeCatModal() {
 async function addCatalogSetToGallery() {
   if (!_catCurSet) return;
   const num = _catCurSet.set_number;
-  const preis = betragAusFeld('cat-m-price');
-  const menge = mengeAusFeld('cat-m-qty');
+  const preis = amountFromField('cat-m-price');
+  const menge = quantityFromField('cat-m-qty');
   if (!preis.ok || !menge.ok) return;
   const qty = menge.wert;
   const purchase_price = preis.wert;
@@ -516,7 +516,7 @@ async function addCatalogSetToGallery() {
       ev => {
         handleSseEvent(ev, num);
         if (ev.step === 'done') {
-          streamFertig();
+          streamDone();
           setTimeout(() => {
             hideProgress();
             toast(
@@ -530,7 +530,7 @@ async function addCatalogSetToGallery() {
             emit('sammlungLaden');
           }, 800);
         } else if (ev.step === 'error') {
-          streamFertig();
+          streamDone();
           setTimeout(() => {
             hideProgress();
             toast(ev.error, 'error');
@@ -541,7 +541,7 @@ async function addCatalogSetToGallery() {
   } catch (e) {
     if (/** @type {Error} */ (e).name !== 'AbortError') {
       hideProgress();
-      toast(fehlerMeldung(e), 'error');
+      toast(errorMessage(e), 'error');
     }
   }
 }
@@ -575,7 +575,7 @@ registerActions({
 
 // Den Balken zeichnet die Anwendung (#app-scrollbar); der Katalog liefert nur das Jahr daneben. Gelesen aus
 // der obersten sichtbaren Kachel — geschätzt wird nur, wo noch nichts geladen ist.
-function _jahrAnPosition() {
+function _yearAnPosition() {
   const grid = G('catalog-grid');
   if (!grid) return null;
   // Erste Wahl: die oberste SICHTBARE Kachel. Sobald die Seite geladen ist, ist das die Wahrheit und keine
@@ -590,16 +590,16 @@ function _jahrAnPosition() {
   }
   // Zweite Wahl: über die tatsächliche Verteilung der Jahre rechnen. Linear auf 1949–2027 umgerechnet stand
   // bei neun Zehnteln „1965“, weil der Katalog fast ganz aus den letzten Jahrzehnten stammt.
-  if (!_catJahrVerteilung.length || !_catTotal) return null;
+  if (!_catYearDistribution.length || !_catTotal) return null;
   const doc = document.documentElement;
   const rollbar = Math.max(1, doc.scrollHeight - window.innerHeight);
   const anteil = Math.min(1, Math.max(0, window.scrollY / rollbar));
   let nummer = Math.round(anteil * (_catTotal - 1));
-  for (const eintrag of _catJahrVerteilung) {
+  for (const eintrag of _catYearDistribution) {
     if (nummer < eintrag.n) return eintrag.year;
     nummer -= eintrag.n;
   }
-  return _catJahrVerteilung[_catJahrVerteilung.length - 1]?.year ?? null;
+  return _catYearDistribution[_catYearDistribution.length - 1]?.year ?? null;
 }
 
 /**
@@ -608,34 +608,34 @@ function _jahrAnPosition() {
  * Vom SERVER, weil nur er die Filter kennt: Eine Verteilung über den ganzen Katalog läge bei gesetztem Thema
  * oder Suchtext genauso daneben wie die frühere lineare Schätzung. Einmal je Listenaufbau, nicht beim Rollen.
  */
-async function _ladeJahrVerteilung() {
+async function _loadYearDistribution() {
   const p = new URLSearchParams();
   if (_catState.q) p.set('q', _catState.q);
   if (_catState.theme) p.set('theme_id', _catState.theme);
   p.set('sort', _catState.sort);
-  if (p.toString() === _jahrVerteilungFuer && _catJahrVerteilung.length) return;
-  _jahrVerteilungFuer = p.toString();
-  _catJahrVerteilung = [];
-  const d = await katalogLaden.whenCurrent(api('GET', `/v1/catalog/year-verteilung?${p.toString()}`));
+  if (p.toString() === _yearDistributionFor && _catYearDistribution.length) return;
+  _yearDistributionFor = p.toString();
+  _catYearDistribution = [];
+  const d = await loadCatalog.whenCurrent(api('GET', `/v1/catalog/year-verteilung?${p.toString()}`));
   if (d === undefined) return;
-  if (d?.success) _catJahrVerteilung = (d.years || []).filter(y => y.year);
-  else _jahrVerteilungFuer = '';
+  if (d?.success) _catYearDistribution = (d.years || []).filter(y => y.year);
+  else _yearDistributionFor = '';
 }
 /** Filter der geladenen Jahresverteilung: Beim Wiederbetreten des Reiters ändert sie sich nicht. */
-let _jahrVerteilungFuer = '';
+let _yearDistributionFor = '';
 
 /** Beim Betreten des Reiters das Etikett anmelden, beim Verlassen abmelden. */
 function _initYearRail() {
-  const sinnvoll =
+  const sensible =
     _catYearMin &&
     _catYearMax &&
     _catYearMax > _catYearMin &&
     (_catState.sort === 'year_desc' || _catState.sort === 'year_asc');
   // Bei „Name A–Z" liegen die Jahre verstreut — ein Jahr im Etikett wäre dort ohne Aussage.
   setScrollLabel(
-    sinnvoll
+    sensible
       ? () => {
-          const j = _jahrAnPosition();
+          const j = _yearAnPosition();
           return j ? String(j) : null;
         }
       : null,

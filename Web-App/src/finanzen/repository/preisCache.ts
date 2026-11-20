@@ -1,5 +1,5 @@
-import type { DbSchnittstelle } from '../../../db/database';
-import type { FinanzenLesevertrag } from '../lesevertrag';
+import type { DbInterface } from '../../../db/database';
+import type { FinancesReadContract } from '../lesevertrag';
 import { marktpreisSql } from '../../../db/geldSql';
 import type { Tabellen } from '../../../db/zeilen';
 
@@ -23,7 +23,7 @@ export interface Preiszeile {
   fetched_at: Date | null;
 }
 
-export function setZustandsZaehler(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[], setNumber: string) {
+export function setStateCounter(db: DbInterface, l: FinancesReadContract, uids: number[], setNumber: string) {
   return db.get<{ acq_count: string; used_count: string }>(
     `SELECT COUNT(a.id)                                 AS acq_count,
             COUNT(a.id) FILTER (WHERE a.condition='U')  AS used_count
@@ -34,12 +34,12 @@ export function setZustandsZaehler(db: DbSchnittstelle, l: FinanzenLesevertrag, 
   );
 }
 
-export async function loescheAlleSetPreise(db: DbSchnittstelle): Promise<void> {
+export async function deleteAllSetPrices(db: DbInterface): Promise<void> {
   await db.run('DELETE FROM price_cache');
 }
 
-export function setPreisFrisch(
-  db: DbSchnittstelle,
+export function setPriceFresh(
+  db: DbInterface,
   setNumber: string,
   condition: string,
   currency: string,
@@ -53,7 +53,7 @@ export function setPreisFrisch(
   );
 }
 
-export function setPreiseFrisch(db: DbSchnittstelle, setNumbers: string[], currency: string, ttlStunden: number) {
+export function setPricesFresh(db: DbInterface, setNumbers: string[], currency: string, ttlStunden: number) {
   return db.all<SetPreiszeile>(
     `SELECT ${PRICE_CACHE_COLS} FROM price_cache
        WHERE set_number = ANY($1) AND currency_code = $2 AND fetched_at > NOW() - make_interval(hours => $3)`,
@@ -61,7 +61,7 @@ export function setPreiseFrisch(db: DbSchnittstelle, setNumbers: string[], curre
   );
 }
 
-export interface SetPreis {
+export interface SetPrice {
   min: number;
   avg: number;
   max: number;
@@ -70,13 +70,7 @@ export interface SetPreis {
 }
 
 /** Auch eine Antwort ohne Preis: Sie hält den nächsten Abruf zurück. */
-export function merkeSetPreis(
-  db: DbSchnittstelle,
-  setNumber: string,
-  condition: string,
-  currency: string,
-  p: SetPreis,
-) {
+export function rememberSetPrice(db: DbInterface, setNumber: string, condition: string, currency: string, p: SetPrice) {
   return db.run(
     `INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) ON CONFLICT (set_number,condition,currency_code) DO UPDATE SET min_price=$4,avg_price=$5,max_price=$6,qty_avg_price=$7,total_quantity=$8,fetched_at=NOW()`,
@@ -84,12 +78,12 @@ export function merkeSetPreis(
   );
 }
 
-export function merkeSetVerlauf(
-  db: DbSchnittstelle,
+export function rememberSetHistory(
+  db: DbInterface,
   setNumber: string,
   condition: string,
   currency: string,
-  p: SetPreis,
+  p: SetPrice,
 ) {
   return db.run(
     'INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price) VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING',
@@ -97,14 +91,14 @@ export function merkeSetVerlauf(
   );
 }
 
-export function blFarben(db: DbSchnittstelle) {
+export function blFarben(db: DbInterface) {
   return db.all<{ id: number; bl_color_id: number }>(
     'SELECT id, bl_color_id FROM rb_colors WHERE bl_color_id IS NOT NULL',
   );
 }
 
-export function teilepreiseFrisch(
-  db: DbSchnittstelle,
+export function partsPricesFresh(
+  db: DbInterface,
   nummern: string[],
   farben: number[],
   currency: string,
@@ -121,7 +115,7 @@ export function teilepreiseFrisch(
 }
 
 /** Nur echte, keine geschätzten. */
-export function figurenpreiseFrisch(db: DbSchnittstelle, figuren: string[], currency: string, ttlStunden: number) {
+export function minifigsPricesFresh(db: DbInterface, figuren: string[], currency: string, ttlStunden: number) {
   return db.all<Preiszeile & { fig_number: string }>(
     `SELECT fig_number, condition, avg_price, qty_avg_price, fetched_at FROM minifig_price_cache
       WHERE fig_number = ANY($1) AND currency_code = $2 AND NOT estimated
@@ -130,8 +124,8 @@ export function figurenpreiseFrisch(db: DbSchnittstelle, figuren: string[], curr
   );
 }
 
-export function teilpreisFrisch(
-  db: DbSchnittstelle,
+export function partPriceFresh(
+  db: DbInterface,
   blPartNumber: string,
   blColorId: number,
   condition: string,
@@ -144,8 +138,8 @@ export function teilpreisFrisch(
   );
 }
 
-export function figurpreisFrisch(
-  db: DbSchnittstelle,
+export function minifigPriceFresh(
+  db: DbInterface,
   figNumber: string,
   condition: string,
   currency: string,
@@ -157,8 +151,8 @@ export function figurpreisFrisch(
   );
 }
 
-export function merkeTeilpreis(
-  db: DbSchnittstelle,
+export function rememberPartPrice(
+  db: DbInterface,
   blPartNumber: string,
   blColorId: number,
   condition: string,
@@ -174,8 +168,8 @@ export function merkeTeilpreis(
   );
 }
 
-export function merkeTeilVerlauf(
-  db: DbSchnittstelle,
+export function rememberPartHistory(
+  db: DbInterface,
   blPartNumber: string,
   blColorId: number,
   condition: string,
@@ -191,8 +185,8 @@ export function merkeTeilVerlauf(
 }
 
 /** Ein echter BrickLink-Preis ersetzt eine frühere Schätzung. */
-export function merkeFigurpreis(
-  db: DbSchnittstelle,
+export function rememberMinifigPrice(
+  db: DbInterface,
   figNumber: string,
   condition: string,
   currency: string,
@@ -207,8 +201,8 @@ export function merkeFigurpreis(
   );
 }
 
-export function merkeFigurVerlauf(
-  db: DbSchnittstelle,
+export function rememberMinifigHistory(
+  db: DbInterface,
   figNumber: string,
   condition: string,
   currency: string,
@@ -226,7 +220,7 @@ export function merkeFigurVerlauf(
 type Marktpreis = { marktpreis: NonNullable<Tabellen['price_cache']['avg_price']> };
 
 /** Der angefragte Zustand gewinnt, wenn er einen Preis hat. */
-export function marktpreisAusCache(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
+export function marketPriceFromCache(dbh: DbInterface, setNumber: string, currency: string, zustand: string) {
   return dbh.get<Marktpreis>(
     `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
      WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL
@@ -236,7 +230,7 @@ export function marktpreisAusCache(dbh: DbSchnittstelle, setNumber: string, curr
 }
 
 /** Rückfall, wenn der Cache leer ist (CSV-Import ohne Kontingent). */
-export function marktpreisAusVerlauf(dbh: DbSchnittstelle, setNumber: string, currency: string, zustand: string) {
+export function marketPriceFromHistory(dbh: DbInterface, setNumber: string, currency: string, zustand: string) {
   return dbh.get<Marktpreis>(
     `SELECT ${marktpreisSql()} AS marktpreis FROM price_history
         WHERE set_number=$1 AND currency_code=$2 AND condition IN ('N','U') AND ${marktpreisSql()} IS NOT NULL

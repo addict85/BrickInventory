@@ -10,9 +10,9 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/oberflaeche');
 
-const ANTWORTEN = {
+const RESPONSES = {
   '/v1/parts/manual': {
     success: true,
     parts: [
@@ -56,7 +56,7 @@ const ANTWORTEN = {
 };
 
 async function detail() {
-  const o = await oeffneOberflaeche(ANTWORTEN);
+  const o = await openUi(RESPONSES);
   const knopf = o.d.createElement('button');
   Object.assign(knopf.dataset, { click: 'openManDetail', arg: 'part', arg2: '3001', arg3: '4' });
   o.d.body.appendChild(knopf);

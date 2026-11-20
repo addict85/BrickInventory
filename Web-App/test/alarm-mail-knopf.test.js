@@ -8,7 +8,7 @@
  *   c) Den Hinweis bei JEDEM Aufruf ausgeben            → Schritt 3 rot.
  */
 const test = require('node:test');
-const { umgebung } = require('./helpers/sources');
+const { environment } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
@@ -26,16 +26,16 @@ const DATEN = {
 };
 
 /** console.warn einsammeln, statt den Testlauf zuzumuellen. */
-async function warnungenVon(fn) {
+async function warningsOf(fn) {
   const echt = console.warn;
-  const gesammelt = [];
-  console.warn = (...a) => gesammelt.push(a.join(' '));
+  const collected = [];
+  console.warn = (...a) => collected.push(a.join(' '));
   try {
     await fn();
   } finally {
     console.warn = echt;
   }
-  return gesammelt;
+  return collected;
 }
 
 test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
@@ -45,7 +45,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
   const vorher = process.env.APP_BASE_URL;
 
   await t.test('1. mit APP_BASE_URL trägt die Mail den Link', async () => {
-    umgebung({ APP_BASE_URL: 'https://lego.example.test/' });
+    environment({ APP_BASE_URL: 'https://lego.example.test/' });
     const m = await mailer.buildAlertMail(DATEN);
     // Der abschliessende Schrägstrich der Variablen darf sich nicht verdoppeln.
     assert.match(
@@ -62,9 +62,9 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
     // Bequemlichkeit: Der Hinweis faellt genau EINMAL je Prozess, also muss
     // der erste Aufruf ohne Basis-URL beide Fragen beantworten. Ein zweiter
     // Schritt davor haette den Merker verbraucht — genau das ist beim ersten …
-    umgebung({ APP_BASE_URL: undefined });
+    environment({ APP_BASE_URL: undefined });
     let m;
-    const gesammelt = await warnungenVon(async () => {
+    const collected = await warningsOf(async () => {
       m = await mailer.buildAlertMail(DATEN);
     });
 
@@ -78,8 +78,8 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
     // nichts. Dieselbe Luecke hat getBaseUrl() in routes/auth.ts laengst
     // geschlossen — mit demselben Mittel.
     assert.ok(
-      gesammelt.some(z => z.includes('APP_BASE_URL')),
-      `Kein Hinweis im Protokoll. Gesammelt: ${JSON.stringify(gesammelt)}`,
+      collected.some(z => z.includes('APP_BASE_URL')),
+      `Kein Hinweis im Protokoll. Gesammelt: ${JSON.stringify(collected)}`,
     );
   });
 
@@ -88,11 +88,11 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
     // Alarmen saehe zwanzigmal dieselbe Zeile aus wie ein Sturm statt wie ein
     // Hinweis. Schritt 2 hat den Hinweis bereits ausgeloest — hier darf keiner
     // mehr kommen.
-    umgebung({ APP_BASE_URL: undefined });
-    const gesammelt = await warnungenVon(async () => {
+    environment({ APP_BASE_URL: undefined });
+    const collected = await warningsOf(async () => {
       for (let i = 0; i < 3; i++) await mailer.buildAlertMail(DATEN);
     });
-    const treffer = gesammelt.filter(z => z.includes('APP_BASE_URL')).length;
+    const treffer = collected.filter(z => z.includes('APP_BASE_URL')).length;
     assert.equal(treffer, 0, `Der Hinweis wiederholt sich (${treffer}-mal bei drei Mails).`);
   });
 
@@ -103,7 +103,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
   //                                    dann in Pixeln und faellt aus der Zaehlung)
   //   b) Kacheln ungleich (44/12/40) -> rot: „Die Breiten ergeben 96 %"
   await t.test('4. die beiden Kacheln lassen in der Mitte Platz', async () => {
-    umgebung({ APP_BASE_URL: 'https://lego.example.org' });
+    environment({ APP_BASE_URL: 'https://lego.example.org' });
     const m = await mailer.buildAlertMail(DATEN);
     const breiten = [...m.html.matchAll(/<td width="(\d+)%"/g)].map(t => Number(t[1]));
     assert.equal(
@@ -121,6 +121,6 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
     assert.ok(mitte > 0, 'In der Mitte steht kein Abstand.');
   });
 
-  if (vorher === undefined) umgebung({ APP_BASE_URL: undefined });
-  else umgebung({ APP_BASE_URL: vorher });
+  if (vorher === undefined) environment({ APP_BASE_URL: undefined });
+  else environment({ APP_BASE_URL: vorher });
 });

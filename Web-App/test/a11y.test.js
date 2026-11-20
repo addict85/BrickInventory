@@ -19,7 +19,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 /** Felder, die bewusst keine sichtbare Beschriftung brauchen. */
 const EXEMPT = new Set([
@@ -43,7 +43,7 @@ const FIN_SETS = [
 let _o;
 /** Eine Oberfläche für alle Fälle: Laden dauert, geprüft wird nur gelesen. */
 async function oberflaeche() {
-  _o ??= await oeffneOberflaeche({
+  _o ??= await openUi({
     '/v1/finance/valuation': {
       success: true,
       currency: 'EUR',
@@ -106,7 +106,7 @@ test('modale Overlays sind als Dialog ausgezeichnet', async () => {
 
 test('die Sprache steht am <html>-Element', async () => {
   // Ohne lang= rät der Screenreader die Aussprache — bei gemischt deutsch-englischen Oberflächen hörbar falsch.
-  const en = await oeffneOberflaeche({}, { sprache: 'en' });
+  const en = await openUi({}, { sprache: 'en' });
   try {
     assert.equal(en.d.documentElement.lang, 'en');
   } finally {
@@ -121,16 +121,16 @@ test('bedeutungstragende Zeichen in der Finanztabelle sind erklärt', async () =
   const { w, d } = await oberflaeche();
   await reiter(w, 'finance');
   assert.ok(await warte(() => d.querySelectorAll('#fin-tbl .pst:not([aria-hidden])').length >= 3), 'Plaketten fehlen');
-  const zustaende = new Set();
+  const states = new Set();
   for (const p of d.querySelectorAll('#fin-tbl .pst:not([aria-hidden])')) {
-    zustaende.add([...p.classList].find(k => k.startsWith('pst-')));
+    states.add([...p.classList].find(k => k.startsWith('pst-')));
     for (const a of ['title', 'aria-label'])
       assert.ok(
         p.getAttribute(a) && !/^finance\./.test(p.getAttribute(a)),
         `${p.className}: ${a}="${p.getAttribute(a)}"`,
       );
   }
-  assert.deepEqual([...zustaende].sort(), ['pst-err', 'pst-leer', 'pst-ok']);
+  assert.deepEqual([...states].sort(), ['pst-err', 'pst-leer', 'pst-ok']);
 });
 
 /** Sichtbar heisst hier: kein Vorfahr mit display:none (Markup oder Skript). */
@@ -150,10 +150,10 @@ test('jedes sichtbare Bedienelement hat einen vorlesbaren Namen', async () => {
       .join(' ') ||
     [...(el.labels || [])].map(l => l.textContent).join(' ') ||
     el.textContent;
-  const elemente = [...d.querySelectorAll('button, a[href], select, textarea')].filter(sichtbar);
-  assert.ok(elemente.length >= 50, `Nur ${elemente.length} Bedienelemente gefunden`);
+  const elements = [...d.querySelectorAll('button, a[href], select, textarea')].filter(sichtbar);
+  assert.ok(elements.length >= 50, `Nur ${elements.length} Bedienelemente gefunden`);
   // Mindestens zwei Buchstaben — ein Symbol oder ein ✕ ist kein Name.
-  const ohne = elemente
+  const ohne = elements
     .filter(el => !/[^\W\d_]{2,}/u.test(name(el) || ''))
     .map(el => `<${el.tagName.toLowerCase()}> ${el.id || el.className}`);
   assert.deepEqual(ohne, []);

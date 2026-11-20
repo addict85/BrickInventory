@@ -10,14 +10,14 @@
  *   A  die alte Prüfung (parseInt auf segments[0], NaN = keine Prüfung, Segmente
  *      nur auf '..' geprüft) → rot: „%2F im Segment" (200 statt 404) und
  *      „kein Benutzerordner" (200 statt 404)
- *   B  blickfeldIds-Abfrage entfernt (nur eigene ID) → rot: „Hauptkonto liest Unterkonto"
+ *   B  scopeIds-Abfrage entfernt (nur eigene ID) → rot: „Hauptkonto liest Unterkonto"
  *   C  (28.10.) die Verwalter-Ausnahme wieder eingebaut → rot: „auch ein
  *      Verwalter liest fremde Uploads nicht"
  *   D  (03.11.) für fremde Konten wieder 403 „Kein Zugriff“ → rot: „fremd und
  *      fehlend antworten gleich“ und die drei Teiltests davor
- *   E  (05.11.) alsAnhang() in beiden Routen entfernt → rot: „als Anhang in
+ *   E  (05.11.) asAttachment() in beiden Routen entfernt → rot: „als Anhang in
  *      einer Sandbox“ (beide Wege, Kopf fehlt)
- *   F  (08.11.) siehtKonto liest wieder über blickfeldIds (Gedächtnis) → rot:
+ *   F  (08.11.) seesAccount liest wieder über scopeIds (Gedächtnis) → rot:
  *      „gelöstes Unterkonto ist sofort nicht mehr lesbar“ (200 statt 404)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -34,16 +34,16 @@ fs.writeFileSync(path.join(WURZEL, 'package.json'), '{}');
 process.env.APP_ROOT = WURZEL;
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
 const NAMEN = ['dd_haupt', 'dd_unter', 'dd_fremd'].map(n => `${n}_${process.pid}`);
 
 test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];
@@ -104,13 +104,13 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async t =
   });
 
   await t.test('fremd und fehlend antworten gleich', async () => {
-    const ohneKopf = ({ kopf, ...r }) => {
+    const withoutHeader = ({ kopf, ...r }) => {
       void kopf;
       return r;
     };
     const fremd = await hole(F, `/data/uploads/${H}/a.pdf`);
     const fehlt = await hole(F, `/data/uploads/${F}/gibt-es-nicht.pdf`);
-    assert.deepEqual(ohneKopf(fremd), ohneKopf(fehlt));
+    assert.deepEqual(withoutHeader(fremd), withoutHeader(fehlt));
   });
 
   await t.test('als Anhang in einer Sandbox', async () => {

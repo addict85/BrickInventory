@@ -3,12 +3,12 @@
  *
  * Gegenproben zu den 08.11.2026 gestrichenen Fällen, die anderswo laufen:
  * Anmeldung und `private` an Bild und Anleitung → bild-blickfeld-db.test.js
- * (liefereBild ohne 401 bzw. mit `public` → dort rot); PDF-Download ohne
+ * (deliverImage ohne 401 bzw. mit `public` → dort rot); PDF-Download ohne
  * requireToken → verdrahtung-laeuft-db.test.js rot.
  * „die Webapp ruft nie direkt ein CDN auf“ → bilder-proxy-oberflaeche.test.js
  * (imgUrl() bzw. fullUrl() geben eine CDN-Adresse roh zurück → dort rot, H bzw. D).
  */
-const { istAppModul } = require('../scripts/build-frontend');
+const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -112,7 +112,7 @@ test('data-self-Handler nehmen das Element als ERSTES Argument', () => {
   // Woher dieser Test kommt
   const fs2 = require('node:fs');
   const jsDir = path.join(ROOT, 'public', 'js');
-  const files = fs2.readdirSync(jsDir).filter(f => istAppModul(f) && f !== 'registry.js');
+  const files = fs2.readdirSync(jsDir).filter(f => isAppModule(f) && f !== 'registry.js');
   const withSelfAndArg = new Set();
   for (const f of files) {
     const src = fs2.readFileSync(path.join(jsDir, f), 'utf8');
@@ -141,15 +141,15 @@ test('Adressen auf den eigenen Server gehen nicht durch den Proxy', () => {
   // Woher dieser Test kommt
   const vm = require('node:vm');
   const src = require('./helpers/sources')
-    .coreQuelle()
+    .coreSource()
     .replace(/^export /gm, '')
     .replace(/^import[^;]*;\s*$/gm, '');
   const ctx = { console, encodeURIComponent, decodeURIComponent, location: { origin: 'https://example.test' } };
   vm.createContext(ctx);
   // Ab den ADRESSHELFERN, nicht erst ab stripOwnOrigin: fullUrl() erkennt
-  // eine Proxy-Adresse ueber istProxyPfad(), und das steht mit den beiden
+  // eine Proxy-Adresse ueber isProxyPath(), und das steht mit den beiden
   // Konstanten gleich darueber. Vorher endete dieser Pruefstand in
-  // „istProxyPfad is not defined" — die Funktion war da, nur nicht im
+  // „isProxyPath is not defined" — die Funktion war da, nur nicht im
   // ausgeschnittenen Stueck.
   vm.runInContext(
     src.slice(src.indexOf('const IMG_PROXY ='), src.indexOf('function thumbUrl', src.indexOf('const IMG_PROXY ='))),

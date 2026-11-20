@@ -5,7 +5,7 @@
  * Gegenproben (am 29.10.2026 gemessen):
  *   A  in themeFor `eigenes` immer null → rot: „Konto mit eigenem Design“
  *      (noppe statt werkbank) und „index.html“
- *   B  GET /theme wieder ohne nutzerIdDerAnfrage → rot: „App mit Token“
+ *   B  GET /theme wieder ohne userIdTheRequest → rot: „App mit Token“
  *   C  setOwnTheme schreibt ungeprüft, auch '' → rot: „leer heisst
  *      Vorgabe“ (/settings/raw: app_theme ''), „unbekanntes Design abgewiesen“
  *   D  in indexHtml wieder ALLOWED = ['classic', 'brick'] → rot: „index.html“
@@ -22,14 +22,14 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
 test('Design je Konto', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const namen = [`design_a_${process.pid}`, `design_b_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -86,10 +86,10 @@ test('Design je Konto', { concurrency: 1 }, async t => {
 
   await t.test('App mit Token: dasselbe Design wie im Browser', async () => {
     als(null);
-    const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(ids[0], 'Prüfung', true);
-    const mitToken = { headers: { Authorization: `Bearer ${token}` } };
-    assert.equal((await hole('/theme', mitToken)).theme, 'werkbank');
-    assert.equal((await hole('', mitToken)).settings?.app_theme, 'werkbank', 'GET /api/v1/settings nennt die Vorgabe');
+    const token = await _req('src/konto/geraeteToken.js').createToken(ids[0], 'Prüfung', true);
+    const withToken = { headers: { Authorization: `Bearer ${token}` } };
+    assert.equal((await hole('/theme', withToken)).theme, 'werkbank');
+    assert.equal((await hole('', withToken)).settings?.app_theme, 'werkbank', 'GET /api/v1/settings nennt die Vorgabe');
   });
 
   await t.test('unbekanntes Design abgewiesen', async () => {
@@ -101,10 +101,10 @@ test('Design je Konto', { concurrency: 1 }, async t => {
 
   await t.test('index.html: Design des Kontos, ohne Konto die Vorgabe', async () => {
     const { startPageHtml } = _req('src/profile/indexHtml.js');
-    const designVon = html => /<html[^>]*\sdata-theme="([^"]+)"/.exec(html)?.[1];
-    assert.equal(designVon(await startPageHtml(ids[0])), 'werkbank');
-    assert.equal(designVon(await startPageHtml(ids[1])), 'noppe');
-    assert.equal(designVon(await startPageHtml()), 'noppe');
+    const designOf = html => /<html[^>]*\sdata-theme="([^"]+)"/.exec(html)?.[1];
+    assert.equal(designOf(await startPageHtml(ids[0])), 'werkbank');
+    assert.equal(designOf(await startPageHtml(ids[1])), 'noppe');
+    assert.equal(designOf(await startPageHtml()), 'noppe');
   });
 
   await t.test('leer heisst Vorgabe — auch nach einem Wechsel des Verwalters', async () => {

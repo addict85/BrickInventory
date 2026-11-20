@@ -12,12 +12,12 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, einhaengung, testDaten } = require('./helpers/sources');
+const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const AUTH = einhaengung('auth');
 const SETTINGS = '/api/v1/settings';
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -27,7 +27,7 @@ const NAME = 'geraete_test',
   PASS = 'richtigesPasswort1';
 
 test('Zugänge auflisten und aussperren — über Sitzung UND über Token', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(
@@ -45,8 +45,8 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token', { co
       saveUninitialized: false,
     }),
   );
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/settings.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/settings.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
@@ -70,28 +70,28 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token', { co
     // Sitzung und Token kommen aus getrennten Anmeldungen: Ein Token-Login legt keine Sitzung an.
     const cookie = (await anmelden({ ohne_token: true })).cookie.split(';')[0];
 
-    // ── 1. Über die SITZUNG (Webapp) ────────────────────────────────────────
-    const perSitzung = await ruf(SETTINGS + '/tokens', { headers: { cookie } });
-    assert.equal(perSitzung.status, 200, JSON.stringify(perSitzung.body));
-    assert.equal(perSitzung.body.tokens.length, 3, 'Alle drei Anmeldungen müssen auftauchen');
+    // ── 1. Über die SESSION (Webapp) ────────────────────────────────────────
+    const perSession = await ruf(SETTINGS + '/tokens', { headers: { cookie } });
+    assert.equal(perSession.status, 200, JSON.stringify(perSession.body));
+    assert.equal(perSession.body.tokens.length, 3, 'Alle drei Anmeldungen müssen auftauchen');
     // Die Sitzung ALLEIN sagt nichts darüber, welche Zeile zu ihr gehört —
     // der Client muss seinen Token mitschicken. Genau das prüft der nächste
     // Block; hier darf also noch nichts markiert sein.
     assert.equal(
-      perSitzung.body.tokens.filter(x => x.aktuell).length,
+      perSession.body.tokens.filter(x => x.aktuell).length,
       0,
       'Ohne mitgeschickten Token ist keine Zeile als „dieses Gerät" erkennbar',
     );
 
-    const mitEigenem = await ruf(SETTINGS + '/tokens', {
+    const withOwn = await ruf(SETTINGS + '/tokens', {
       headers: { cookie, authorization: `Bearer ${browser.body.token}` },
     });
-    const markiert = mitEigenem.body.tokens.filter(x => x.aktuell);
+    const markiert = withOwn.body.tokens.filter(x => x.aktuell);
     assert.equal(markiert.length, 1, 'Genau eine Zeile ist „dieses Gerät"');
     assert.equal(markiert[0].label, 'webapp-session');
     // Der Token selbst darf NICHT herauskommen — nur ein Stück seines Hashes.
     assert.ok(
-      !JSON.stringify(mitEigenem.body).includes(browser.body.token),
+      !JSON.stringify(withOwn.body).includes(browser.body.token),
       'Der Klartext-Token darf in der Übersicht nicht auftauchen',
     );
 
@@ -117,20 +117,20 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token', { co
     );
 
     // 3. Ein fremdes Gerät aussperren
-    const aufwaermen = await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${tablet.body.token}` } });
+    const warmUp = await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${tablet.body.token}` } });
     assert.equal(
-      aufwaermen.body.loggedIn,
+      warmUp.body.loggedIn,
       true,
       'Vorbedingung: Der Token des Tablets muss VOR dem Löschen gelten und damit im Cache liegen',
     );
 
-    const zuLoeschen = perToken.body.tokens.find(x => x.label === 'Tablet');
-    const ohne = await ruf(SETTINGS + '/tokens/' + zuLoeschen.token_id, {
+    const deleteTo = perToken.body.tokens.find(x => x.label === 'Tablet');
+    const ohne = await ruf(SETTINGS + '/tokens/' + deleteTo.token_id, {
       method: 'DELETE',
       headers: { authorization: `Bearer ${telefon.body.token}` },
     });
     assert.equal(ohne.status, 400, 'ohne Passwort sperrt ein Gerät kein anderes aus');
-    const weg = await ruf(SETTINGS + '/tokens/' + zuLoeschen.token_id, {
+    const weg = await ruf(SETTINGS + '/tokens/' + deleteTo.token_id, {
       method: 'DELETE',
       headers: { authorization: `Bearer ${telefon.body.token}` },
       body: { password: PASS },
@@ -141,9 +141,9 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token', { co
     // Und zwar WIRKLICH: Der Token des Tablets gilt nicht mehr. Das ist der
     // Punkt der ganzen Übung — die Zeile zu löschen ist nur die halbe Miete,
     // wenn der Cache in src/konto/tokenCache.ts sie noch bedient.
-    const tabletVersucht = await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${tablet.body.token}` } });
+    const tabletTried = await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${tablet.body.token}` } });
     assert.equal(
-      tabletVersucht.status,
+      tabletTried.status,
       401,
       'Der ausgesperrte Zugang gilt weiter — dann nützt die ganze Verwaltung nichts',
     );
@@ -170,19 +170,19 @@ test('Zugänge auflisten und aussperren — über Sitzung UND über Token', { co
       ['Fremd'],
       'Ein fremdes Konto darf die eigenen Zugänge nicht sehen',
     );
-    const fremdVersuch = await ruf(SETTINGS + '/tokens/' + danach.body.tokens[0].token_id, {
+    const foreignAttempt = await ruf(SETTINGS + '/tokens/' + danach.body.tokens[0].token_id, {
       method: 'DELETE',
       headers: { authorization: `Bearer ${fremd.body.token}` },
       body: { password: PASS },
     });
-    assert.equal(fremdVersuch.body.deleted, 0, 'Ein fremdes Konto darf keinen Zugang entwerten');
+    assert.equal(foreignAttempt.body.deleted, 0, 'Ein fremdes Konto darf keinen Zugang entwerten');
 
     // ── 5. Der %-Fall: Nur die volle Kennung (16 Hex-Zeichen) gilt ─────────
     const alles = await ruf(SETTINGS + '/tokens/' + encodeURIComponent('%'), {
       method: 'DELETE',
       headers: { authorization: `Bearer ${telefon.body.token}` },
     });
-    // Seit 05.11.2026 weist schon der Vertrag (PFAD) die Kennung ab.
+    // Seit 05.11.2026 weist schon der Vertrag (PATH) die Kennung ab.
     assert.equal(alles.status, 400, 'Ein "%" als Token-Kennung darf nicht alle Zugänge auf einmal löschen');
   } finally {
     await new Promise(r => srv.close(r));

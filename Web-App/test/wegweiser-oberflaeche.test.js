@@ -12,28 +12,25 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche } = require('./helpers/oberflaeche');
+const { openUi } = require('./helpers/oberflaeche');
 
-const OHNE_PFAD =
+const WITHOUT_PATH =
   /unter Einstellungen\b|in den Einstellungen\b|in the settings\b|under Settings\b|in Settings\b|Reiter (Sets|Teile)/i;
 
 for (const sprache of ['de', 'en']) {
   test(`${sprache}: Wegweiser stimmen`, async () => {
-    const { w, d } = await oeffneOberflaeche({}, { sprache });
+    const { w, d } = await openUi({}, { sprache });
     try {
       const menue = [...d.querySelectorAll('#umenu-pop .umenu-item span')].map(s => s.textContent.trim());
-      const abschnitte = [...d.querySelectorAll('.einst-nav a')].map(a => a.textContent.trim());
-      assert.ok(
-        menue.length >= 8 && abschnitte.length >= 5,
-        `Menü/Abschnitte nicht gerendert: ${menue} / ${abschnitte}`,
-      );
-      const woerter = sprache === 'de' ? w.I18N_DE : w.I18N_EN;
-      const MENUE = sprache === 'de' ? 'Menü' : 'Menu';
+      const sections = [...d.querySelectorAll('.einst-nav a')].map(a => a.textContent.trim());
+      assert.ok(menue.length >= 8 && sections.length >= 5, `Menü/Abschnitte nicht gerendert: ${menue} / ${sections}`);
+      const words = sprache === 'de' ? w.I18N_DE : w.I18N_EN;
+      const MENU = sprache === 'de' ? 'Menü' : 'Menu';
       const funde = [];
       let gesehen = 0;
-      for (const [k, text] of Object.entries(woerter)) {
+      for (const [k, text] of Object.entries(words)) {
         if (typeof text !== 'string') continue;
-        if (OHNE_PFAD.test(text)) funde.push(`${k}: Ziel ohne Pfad — „${text.match(OHNE_PFAD)[0]}“`);
+        if (WITHOUT_PATH.test(text)) funde.push(`${k}: Ziel ohne Pfad — „${text.match(WITHOUT_PATH)[0]}“`);
         // Nach „Menü → “ muss ein Menüpunkt stehen (der längste, der passt);
         // nach „Einstellungen → “ ein Abschnitt der Einstellungen.
         const einst = sprache === 'de' ? 'Einstellungen' : 'Settings';
@@ -43,7 +40,7 @@ for (const sprache of ['de', 'en']) {
             .find(n => rest.startsWith(n) && !/^[\p{L}\d]/u.test(rest.slice(n.length)));
         for (const m of text.matchAll(/\b(Menü|Menu|menu) → /g)) {
           gesehen++;
-          if (m[1] !== MENUE) funde.push(`${k}: „${m[1]}“ statt „${MENUE}“`);
+          if (m[1] !== MENU) funde.push(`${k}: „${m[1]}“ statt „${MENU}“`);
           const rest = text.slice(m.index + m[0].length);
           const ziel = beginnt(rest, menue);
           if (!ziel) {
@@ -51,7 +48,7 @@ for (const sprache of ['de', 'en']) {
             continue;
           }
           const danach = rest.slice(ziel.length);
-          if (ziel === einst && danach.startsWith(' → ') && !beginnt(danach.slice(3), abschnitte))
+          if (ziel === einst && danach.startsWith(' → ') && !beginnt(danach.slice(3), sections))
             funde.push(`${k}: „${danach.slice(3, 27)}…“ ist kein Abschnitt der Einstellungen`);
         }
       }

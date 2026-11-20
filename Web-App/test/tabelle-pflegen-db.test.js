@@ -4,7 +4,7 @@
  *
  * ── Gegenproben (durchgefuehrt) ─────────────────────────────────────────────
  *
- *   a) pflegeTabelle() wirft nicht, wenn das Ausfuehren scheitert — eigener
+ *   a) maintainTable() wirft nicht, wenn das Ausfuehren scheitert — eigener
  *      Fall unten, mit einem Ausfuehrer, der immer wirft.
  *   b) Ein Name, der kein einfacher Tabellenname ist, fuehrt NICHTS aus —
  *      eigener Fall, der mitzaehlt, wie oft der Ausfuehrer gerufen wurde.
@@ -20,11 +20,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { pflegeTabelle } = _req('db/tabellePflegen.js');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { maintainTable } = _req('db/tabellePflegen.js');
 
 /** Wann wurde die Tabelle zuletzt aufgeraeumt und vermessen? */
 async function stand(tabelle) {
@@ -39,7 +39,7 @@ async function stand(tabelle) {
  * Auf die Statistik warten. Postgres schreibt sie nicht synchron zum Befehl —
  * ohne diese Schleife haengt der Test an der Laune des Sammlers.
  */
-async function wartenAufStand(tabelle, vorher, ms = 5000) {
+async function waitOnStatus(tabelle, vorher, ms = 5000) {
   const ende = Date.now() + ms;
   for (;;) {
     const jetzt = await stand(tabelle);
@@ -50,7 +50,7 @@ async function wartenAufStand(tabelle, vorher, ms = 5000) {
 }
 
 test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   // Ein echtes Konto: parts_summary hat seit Migration 0043 einen Schlüssel auf users.
   const NAME = `pflege_${process.pid}`;
@@ -61,7 +61,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('pflegeTabelle raeumt auf UND vermisst neu', async () => {
+  await t.test('maintainTable raeumt auf UND vermisst neu', async () => {
     // Erst etwas einfuegen, damit es auch etwas zu tun gibt.
     await db.run(
       `INSERT INTO parts_summary (user_id, part_key, color_id, part_number,
@@ -73,10 +73,10 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
     const vorher = await stand('parts_summary');
     await new Promise(r => setTimeout(r, 1100)); // Zeitstempel haben Sekunden-Auflösung in der Anzeige
 
-    const ok = await pflegeTabelle(sql => db.exec(sql), 'parts_summary');
-    assert.equal(ok, true, 'pflegeTabelle hat aufgegeben — laeuft der Test als Eigentuemer der Tabelle?');
+    const ok = await maintainTable(sql => db.exec(sql), 'parts_summary');
+    assert.equal(ok, true, 'maintainTable hat aufgegeben — laeuft der Test als Eigentuemer der Tabelle?');
 
-    const nachher = await wartenAufStand('parts_summary', vorher);
+    const nachher = await waitOnStatus('parts_summary', vorher);
     assert.ok(
       nachher.vacuum > vorher.vacuum,
       `last_vacuum hat sich nicht bewegt (${nachher.vacuum} vs ${vorher.vacuum}). Ohne VACUUM ` +
@@ -91,7 +91,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
 
   await t.test('ein Name, der kein Tabellenname ist, fuehrt NICHTS aus', async () => {
     const gerufen = [];
-    const fuehreAus = async sql => {
+    const runFrom = async sql => {
       gerufen.push(sql);
     };
     for (const name of [
@@ -102,7 +102,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
       '',
       'Parts_Summary',
     ]) {
-      const ok = await pflegeTabelle(fuehreAus, name);
+      const ok = await maintainTable(runFrom, name);
       assert.equal(ok, false, `"${name}" haette abgelehnt werden muessen.`);
     }
     assert.deepEqual(
@@ -115,14 +115,14 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
   await t.test('ein Fehlschlag bleibt ein Fehlschlag und wird kein Absturz', async () => {
     // VACUUM braucht Rechte. Ein Import, der an der NACHSORGE scheitert, waere
     // das falsche Ergebnis — die Daten sind dann vollstaendig da.
-    const ok = await pflegeTabelle(async () => {
+    const ok = await maintainTable(async () => {
       throw new Error('permission denied for table');
     }, 'parts_summary');
     assert.equal(ok, false);
   });
 
   await t.test('rebuild() frischt parts_summary auf', async () => {
-    const { rebuild } = _req('src/parts/summary.js');
+    const { rebuildSummary: rebuild } = _req('src/parts/summary.js');
     const nutzer = 90002;
     await db.run(
       `INSERT INTO users (id, username, password_hash) VALUES ($1, $2, 'x')
@@ -151,7 +151,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
     const vorher = await stand('parts_summary');
     await new Promise(r => setTimeout(r, 1100));
     await rebuild(nutzer);
-    const nachher = await wartenAufStand('parts_summary', vorher);
+    const nachher = await waitOnStatus('parts_summary', vorher);
 
     assert.ok(
       nachher.analyze > vorher.analyze,

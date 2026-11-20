@@ -21,10 +21,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterSammlung } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternCollection } = require('./helpers/bestand');
 
-const MESSUNG = `(() => {
+const MEASUREMENT = `(() => {
   const funde = [];
   const name = (e) => e.tagName.toLowerCase() + [...e.classList].slice(0, 2).map(c => '.' + c).join('') + ' „' + (e.textContent || '').trim().replace(/\\s+/g, ' ').slice(0, 20) + '“';
   const breite = document.documentElement.clientWidth;
@@ -41,8 +41,8 @@ const MESSUNG = `(() => {
   }
   // Ein Wort, das bricht, macht die Beschriftung höher als die Zahl ihrer Wörter Zeilen.
   for (const l of document.querySelectorAll('#tab-gallery .bstat-l')) {
-    const woerter = l.textContent.trim().split(/\\s+/).length;
-    if (l.getBoundingClientRect().height > zeile(l) * woerter + 1) funde.push('Wort gebrochen: ' + name(l));
+    const words = l.textContent.trim().split(/\\s+/).length;
+    if (l.getBoundingClientRect().height > zeile(l) * words + 1) funde.push('Wort gebrochen: ' + name(l));
   }
   for (const t of document.querySelectorAll('nav .ntab')) {
     if (!t.checkVisibility()) continue;
@@ -59,7 +59,7 @@ const MESSUNG = `(() => {
 })()`;
 
 test('grosse Schrift und schmale Geräte: Sammlung lesbar', { timeout: 180_000 }, async t => {
-  const app = await starteApp(t, { name: `gross_${process.pid}`, bestand: musterSammlung });
+  const app = await startApp(t, { name: `gross_${process.pid}`, bestand: patternCollection });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -78,7 +78,7 @@ test('grosse Schrift und schmale Geräte: Sammlung lesbar', { timeout: 180_000 }
     });
     await b.tab('Page.setFontSizes', { fontSizes: { standard: schrift, fixed: Math.round(schrift * 0.8) } });
     await ruhig();
-    return b.auswerten(MESSUNG);
+    return b.auswerten(MEASUREMENT);
   };
   for (const [breite, schrift, spalten] of [
     [390, 16, 2],

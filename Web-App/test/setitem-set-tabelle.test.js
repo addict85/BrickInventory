@@ -5,13 +5,13 @@
  * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut), alle in
  * set-teile.js → rot „die Webapp zeigt die Sets als Tabelle …“:
  *   A  die Bildzelle `${setBild(s)}` geleert
- *   B  zeilenStil 'flex-direction:column…' entfernt (Tabelle neben der Beschriftung)
+ *   B  rowsStyle 'flex-direction:column…' entfernt (Tabelle neben der Beschriftung)
  *   C  `orig:` aus bildTag entfernt (kein Rückfall auf das CDN-Bild)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 test('die Webapp zeigt die Sets als Tabelle mit Bild, Nummer und Name, unter der Beschriftung', async () => {
   const SETS = [
@@ -24,7 +24,7 @@ test('die Webapp zeigt die Sets als Tabelle mit Bild, Nummer und Name, unter der
     },
     { set_number: '6080-1', set_name: 'Königsburg', quantity: 1, image_local: null, image_url: null },
   ];
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/parts/3001/5/sets': {
       success: true,
       item: { name: 'Stein 2 x 4', color_name: 'Red', total_quantity: 5, owner_ids: [1] },

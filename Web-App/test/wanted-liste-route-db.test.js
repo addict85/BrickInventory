@@ -7,7 +7,7 @@
  *   b) <INVENTORY>-Prüfung entfernt                 → 1 rot
  *   c) BL-Nummer roh übernommen statt abgebildet    → 4 rot
  *   d) BL-Farbe statt der abgebildeten genommen     → 4 rot
- *   e) (14.11.2026) im Wanted-Anleger für Sets `wennVorhanden: 'aufstocken'`
+ *   e) (14.11.2026) im Wanted-Anleger für Sets `ifPresent: 'aufstocken'`
  *      weggelassen → 9 rot (aufgestockt 0: das zweite Mal hiess „exists“)
  *
  * Zwei Vorhersagen waren zu eng, und beide sagen etwas über diesen Test:
@@ -18,7 +18,7 @@
  * Fall 4 die Folge.
  *
  * Bei (c) hatte ich 3 UND 4 erwartet. Rot wurde nur 4. Fall 3 zählt die
- * STUFEN, und die stimmen auch dann, wenn die falsche Nummer übernommen wird
+ * LEVELS, und die stimmen auch dann, wenn die falsche Nummer übernommen wird
  * — er prüft die Abbildung nicht. Das tut Fall 4, und nur er.
  *
  * Damit hängt an Fall 4 viel: Abbildung der Nummer, Abbildung der Farbe,
@@ -35,19 +35,19 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { importWorker } = require('./helpers/auftraege');
-const { katalogSet } = require('./helpers/bestand');
-const db = testDaten();
+const { catalogSet } = require('./helpers/bestand');
+const db = testData();
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-let HAUPT = 0;
+let MAIN = 0;
 
 function item(typ, id, farbe, menge = 1) {
   return (
@@ -74,7 +74,7 @@ async function hochladen(base, xml, abfrage = '') {
 }
 
 /** Dieselbe Adresse, aber die Antwort ZEILENWEISE (NDJSON) gelesen. */
-async function hochladenStrom(base, xml, abfrage) {
+async function uploadStream(base, xml, abfrage) {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
   const r = await fetch(`${base}/api/v1/wanted-list/import/xml${abfrage}`, { method: 'POST', body: fd });
@@ -86,7 +86,7 @@ async function hochladenStrom(base, xml, abfrage) {
   return { status: r.status, typ: r.headers.get('content-type') || '', zeilen };
 }
 
-async function aufbau() {
+async function setup() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -97,7 +97,7 @@ async function aufbau() {
     c.release();
   }
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x')`);
-  HAUPT = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
+  MAIN = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   await db.run(`INSERT INTO part_catalog (part_number, part_name)
                 VALUES ('3001','Brick 2x4'), ('98765','Umgetauft')`);
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
@@ -115,10 +115,10 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     keineDb(t, e);
     return;
   }
-  await aufbau();
+  await setup();
 
   importWorker(t, _req);
-  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
 
   await t.test('1. eine Datei ohne <INVENTORY> wird vorher abgewiesen', async () => {
     const { status, body } = await hochladen(srv.base, '<?xml version="1.0"?>\n<FOO/>\n');
@@ -142,7 +142,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     // „vorschau: true" meldet und trotzdem schreibt, sähe in der Antwort
     // richtig aus.
     assert.equal(
-      (await db.get('SELECT COUNT(*)::int c FROM parts WHERE user_id=$1', [HAUPT])).c,
+      (await db.get('SELECT COUNT(*)::int c FROM parts WHERE user_id=$1', [MAIN])).c,
       0,
       'Die Vorschau hat Teile angelegt',
     );
@@ -178,7 +178,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
          FROM parts p LEFT JOIN part_acquisitions pa
            ON pa.user_id=p.user_id AND pa.part_number=p.part_number AND pa.color_id=p.color_id
         WHERE p.user_id=$1 AND p.part_number='3001' GROUP BY p.color_id`,
-      [HAUPT],
+      [MAIN],
     );
     assert.ok(a, '3001 wurde nicht angelegt');
     assert.equal(Number(a.color_id), 4, `Farbe ${a.color_id} statt 4 (BL 5 = Rebrickable 4)`);
@@ -186,11 +186,11 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
 
     // Stufe 1: die abweichende Nummer muss UMGESETZT sein, nicht übernommen.
     assert.ok(
-      await db.get(`SELECT 1 FROM parts WHERE user_id=$1 AND part_number='98765'`, [HAUPT]),
+      await db.get(`SELECT 1 FROM parts WHERE user_id=$1 AND part_number='98765'`, [MAIN]),
       'Die BrickLink-Nummer 4162 wurde nicht auf 98765 abgebildet',
     );
     assert.equal(
-      (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='4162'`, [HAUPT])).c,
+      (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='4162'`, [MAIN])).c,
       0,
       'Die BrickLink-Nummer 4162 steht roh im Bestand — sie ist KEINE ' +
         'Rebrickable-Nummer, und ein Teil darunter findet keinen Katalogeintrag',
@@ -198,7 +198,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
 
     // Der offene Posten ist NICHT angelegt worden.
     assert.equal(
-      (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='99999'`, [HAUPT])).c,
+      (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='99999'`, [MAIN])).c,
       0,
       'Ein Posten ohne bekannte Rebrickable-Nummer wurde trotzdem angelegt',
     );
@@ -209,7 +209,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     // selbst ein echter Wert dürfte nicht als Kaufpreis landen — sonst stünde
     // in der Finanzansicht ein Betrag, den niemand ausgegeben hat.
     // Die Spalte heisst `unit_price`, nicht `price` — nachgesehen, nachdem mein …
-    const preise = await db.all('SELECT unit_price FROM part_acquisitions WHERE user_id=$1', [HAUPT]);
+    const preise = await db.all('SELECT unit_price FROM part_acquisitions WHERE user_id=$1', [MAIN]);
     assert.ok(preise.length > 0, 'Vorbedingung: es gibt Erfassungen');
     for (const p of preise) {
       assert.ok(
@@ -233,7 +233,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
   // Der Fortschritt
 
   await t.test('7. mit strom=1 kommen Fortschrittszeilen, zuletzt der Bericht', async () => {
-    const { status, typ, zeilen } = await hochladenStrom(srv.base, XML, '?schreiben=1&strom=1');
+    const { status, typ, zeilen } = await uploadStream(srv.base, XML, '?schreiben=1&strom=1');
     assert.equal(status, 200);
     assert.match(
       typ,
@@ -268,11 +268,11 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
   // Derselbe Balken wie beim Set-Import
 
   await t.test('9. ein Import hinterlässt einen abgeschlossenen Auftrag', async () => {
-    await db.run('DELETE FROM import_status WHERE user_id = $1', [HAUPT]);
+    await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
     const { body } = await hochladen(srv.base, XML, '?schreiben=1');
     assert.equal(body.success, true);
 
-    const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [HAUPT]);
+    const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
     assert.ok(
       job,
       'Ohne Auftragszeile zeigt weder die App noch eine zweite ' + 'Sitzung etwas an — genau darum geht es',
@@ -327,10 +327,10 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
   });
 
   await t.test('10. eine VORSCHAU legt keinen Auftrag an', async () => {
-    await db.run('DELETE FROM import_status WHERE user_id = $1', [HAUPT]);
+    await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
     const { body } = await hochladen(srv.base, XML);
     assert.equal(body.vorschau, true, 'Vorbedingung: das ist eine Vorschau');
-    const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [HAUPT]);
+    const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
     assert.equal(
       job,
       undefined,
@@ -348,18 +348,18 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
        VALUES ($1,'running',380,42,'10256-1','[]', NOW())
        ON CONFLICT (user_id) DO UPDATE SET status='running', total=380, done=42,
          current='10256-1', results='[]'`,
-      [HAUPT],
+      [MAIN],
     );
 
     const { body } = await hochladen(srv.base, XML, '?schreiben=1');
     assert.equal(body.success, true, 'Der Import selbst läuft weiter');
 
-    const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [HAUPT]);
+    const job = await db.get('SELECT * FROM import_status WHERE user_id=$1', [MAIN]);
     assert.equal(job.status, 'running', 'Der fremde Auftrag muss unberührt bleiben');
     assert.equal(Number(job.total), 380, `total=${job.total} — der Wanted-Import hat den CSV-Auftrag überschrieben`);
     assert.equal(Number(job.done), 42, 'auch die Zählung gehört dem anderen Import');
     assert.equal(job.current, '10256-1');
-    await db.run('DELETE FROM import_status WHERE user_id = $1', [HAUPT]);
+    await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
   });
 
   await t.test('8. ohne strom=1 antwortet die Adresse unverändert als JSON', async () => {
@@ -380,7 +380,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
 
   await t.test('9. ein Set geht durch setErfassen: angelegt, dann aufgestockt, mit Nacharbeit', async () => {
     const SN = '76001-1';
-    await katalogSet(db, SN, { name: 'Wanted-Set', minifigs: 0 });
+    await catalogSet(db, SN, { name: 'Wanted-Set', minifigs: 0 });
     const datei = liste(item('S', SN, null, 2));
     const erst = (await hochladen(srv.base, datei, '?schreiben=1')).body;
     assert.equal(erst.angelegt, 1, JSON.stringify(erst));
@@ -388,7 +388,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     assert.equal(dann.aufgestockt, 1, JSON.stringify(dann));
     const menge = await db.get(
       'SELECT SUM(quantity)::int AS n FROM set_acquisitions WHERE user_id = $1 AND set_number = $2',
-      [HAUPT, SN],
+      [MAIN, SN],
     );
     assert.equal(menge.n, 4);
     const nacharbeit = await db.all("SELECT 1 FROM jobs WHERE type = 'nacharbeit' AND payload->>'set_number' = $1", [

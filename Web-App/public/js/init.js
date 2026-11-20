@@ -1,12 +1,12 @@
 import { registerActions } from './registry.js';
 import { colorName, locale, t, tRaw } from '../i18n.js';
 import { escHex, esc, html } from './escaping.js';
-import { fehlerMeldung, api, apiRoh, strom } from './api.js';
-import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';
-import { leerZustand, ico, G, knopfBesetzt, alle, setzeHtml } from './dom.js';
-import { feldFehler, istSetnummer } from './formular.js';
+import { errorMessage, api, apiRaw, strom } from './api.js';
+import { bildTag, placeholderContent, imgUrl, thumbUrl } from './bilder.js';
+import { emptyState, ico, G, knopfBesetzt, alle, setzeHtml } from './dom.js';
+import { feldFehler, isSetnummer } from './formular.js';
 import { toast } from './meldungen.js';
-import { baueWantedXmlStuecke } from './bricklink-xml.js';
+import { buildWantedXmlPieces } from './bricklink-xml.js';
 
 // Auffangnetz für unbehandelte Fehler und die temporäre Teileliste. Gestartet wird die Anwendung von
 // sitzung.js (startApp), nicht beim Laden dieses Moduls.
@@ -16,7 +16,7 @@ import { baueWantedXmlStuecke } from './bricklink-xml.js';
  * @typedef {{ set_number: string, name: string, unbekannt?: boolean }} PlSet
  * @typedef {{ part_number: string, bl_part_number: string, part_name: string, color_name: string, color_hex: string | null,
  *   color_id: number, bl_color_id?: number | null, quantity: number, image_local?: string | null, image_url: string | null, is_fig?: boolean }} PlTeil
- * @typedef {{ type: string, part: string, color: number | null, colorName?: string, qty: number }} Fehlteil
+ * @typedef {{ type: string, part: string, color: number | null, colorName?: string, qty: number }} MissingPart
  */
 /** Die Sets der Teileliste; sie gilt nur bis zum Verlassen der Seite. @type {PlSet[]} */
 let _plSets = [];
@@ -41,7 +41,7 @@ async function plAddSet() {
     .split(',')
     .map(s => s.trim().replace(/\s/g, ''))
     .filter(Boolean);
-  const falsch = nrs.filter(nr => !istSetnummer(nr));
+  const falsch = nrs.filter(nr => !isSetnummer(nr));
   if (falsch.length) {
     feldFehler('pl-setnr', tRaw('gallery.add.number_invalid', { num: falsch.join(', ') }));
     return;
@@ -79,7 +79,7 @@ export function plRenderSets() {
   // Ohne Set gibt es nichts neu zu berechnen; was zu tun ist, sagt der Leerzustand einmal.
   G('btn-pl-gen').hidden = !_plSets.length;
   if (!_plSets.length) {
-    setzeHtml(c, leerZustand({ ico: 'liste', titelKey: 'pl.no_sets', textKey: 'pl.leer_wie' }));
+    setzeHtml(c, emptyState({ ico: 'liste', titleKey: 'pl.no_sets', textKey: 'pl.leer_wie' }));
     return;
   }
   setzeHtml(
@@ -249,8 +249,8 @@ async function plFuelleBestand() {
   // `own` und `all` sind die Namen, die der Server ohnehin kennt
   // (src/haushalt/haushalt.ts, parseScopeMode) — die Wahl ist also nur eine andere Bedienung derselben Sache,
   // kein zweiter Begriff daneben.
-  const mitSubs = !!G('pl-bestand-subs')?.checked;
-  const d = await api('POST', `/v1/parts/owned${mitSubs ? '' : '?accounts=own'}`, { teile });
+  const withSubs = !!G('pl-bestand-subs')?.checked;
+  const d = await api('POST', `/v1/parts/owned${withSubs ? '' : '?accounts=own'}`, { teile });
   frei();
   if (!d?.success) {
     toast(d?.error || t('settings.error'), 'error');
@@ -259,7 +259,7 @@ async function plFuelleBestand() {
 
   let getroffen = 0,
     fehlend = 0,
-    fehlendeArten = 0;
+    missingKinds = 0;
   for (const el of felder) {
     const [num, farbe] = String(el.dataset.key || '').split('__');
     const eintrag = d.bestand?.[`${num}|${parseInt(farbe, 10) || 0}`];
@@ -269,19 +269,19 @@ async function plFuelleBestand() {
     const braucht = parseInt(el.dataset.need ?? '', 10) || 0;
     if (habe < braucht) {
       fehlend += braucht - habe;
-      fehlendeArten++;
+      missingKinds++;
     }
   }
 
   const status = G('pl-status');
   if (!status) return;
   if (!getroffen) status.textContent = tRaw('pl.owned_none');
-  else if (!fehlendeArten) status.textContent = tRaw('pl.owned_complete');
+  else if (!missingKinds) status.textContent = tRaw('pl.owned_complete');
   else
     status.textContent =
       tRaw('pl.owned_filled', { n: getroffen, m: felder.length }) +
       ' ' +
-      tRaw('pl.owned_missing', { n: fehlend, m: fehlendeArten });
+      tRaw('pl.owned_missing', { n: fehlend, m: missingKinds });
 }
 
 /** Export und Bestand erst, wenn die Liste Teile hat: Eine leere Datei hilft niemandem.
@@ -307,9 +307,9 @@ function plRenderTable(fehler = 0) {
     // Die Ursache nennen: Fehlende Teilelisten kommen aus dem Rebrickable-Katalog, nicht aus der Eingabe.
     setzeHtml(
       G('pl-result'),
-      leerZustand({
+      emptyState({
         ico: 'warnung',
-        titelKey: fehler ? 'pl.leer_fehler_titel' : 'pl.leer_titel',
+        titleKey: fehler ? 'pl.leer_fehler_titel' : 'pl.leer_titel',
         textKey: fehler ? 'pl.leer_fehler_text' : 'pl.leer_text',
         knopf: { textKey: 'liste.erneut', click: 'plGenerate', ico: 'aktualisieren', art: 'bs' },
       }),
@@ -343,7 +343,7 @@ function plRenderTable(fehler = 0) {
       const imgSrc = p.image_url || '';
       const img = imgSrc
         ? bildTag({ src: imgUrl(thumbUrl(imgSrc) || imgSrc, true), alt: '', klasse: 'bild-44', ph: 'teil' })
-        : html`<span class="bild-ph bild-44" aria-hidden="true">${platzhalterInhalt('teil')}</span>`;
+        : html`<span class="bild-ph bild-44" aria-hidden="true">${placeholderContent('teil')}</span>`;
       const pkey = `${p.part_number}__${p.color_id || 0}`;
       // Kein Rückfall auf die Rebrickable-Farbnummer: Das ergäbe eine gültige Datei mit der falschen Farbe.
       // Leer heisst unbekannt; plExportBricklink lässt solche Posten weg und nennt sie.
@@ -377,7 +377,7 @@ async function plExportPdf() {
     }));
 
     // Step 1: Async PDF-Job starten
-    const startResp = await apiRoh('POST', '/v1/sets/partslist-pdf', { body: { sets: _plSets, parts: pdfParts } });
+    const startResp = await apiRaw('POST', '/v1/sets/partslist-pdf', { body: { sets: _plSets, parts: pdfParts } });
     if (!startResp.ok) throw new Error(`HTTP ${startResp.status}`);
     const { jobId } = await startResp.json();
     if (!jobId) throw new Error(tRaw('pdf.no_job_id'));
@@ -441,7 +441,7 @@ async function plExportPdf() {
     );
 
     // Step 3: Download
-    const dlResp = await apiRoh('GET', `/v1/sets/partslist-pdf/download/${jobId}`);
+    const dlResp = await apiRaw('GET', `/v1/sets/partslist-pdf/download/${jobId}`);
     if (!dlResp.ok) throw new Error(tRaw('pdf.download_error', { status: dlResp.status }));
     const blob = await dlResp.blob();
     const url = URL.createObjectURL(blob);
@@ -453,7 +453,7 @@ async function plExportPdf() {
     toast(tRaw('pdf.created'), 'success');
   } catch (e) {
     console.error('PDF error:', e);
-    toast(tRaw('pdf.error_prefix') + ' ' + fehlerMeldung(e), 'error');
+    toast(tRaw('pdf.error_prefix') + ' ' + errorMessage(e), 'error');
   } finally {
     frei();
   }
@@ -469,7 +469,7 @@ async function pollPdfStatus(jobId, _btn, finish, startEta) {
   while (Date.now() < deadline) {
     await new Promise(r => setTimeout(r, 1500));
     try {
-      const r = await apiRoh('GET', `/v1/sets/partslist-pdf/status/${jobId}`);
+      const r = await apiRaw('GET', `/v1/sets/partslist-pdf/status/${jobId}`);
       // Ein Fehlerstatus (Auftrag unbekannt, Server weg) beendet das Warten gleich.
       if (!r.ok) {
         finish(tRaw('pdf.server_error'));
@@ -486,7 +486,7 @@ async function pollPdfStatus(jobId, _btn, finish, startEta) {
         return;
       }
     } catch (e) {
-      finish(fehlerMeldung(e));
+      finish(errorMessage(e));
       return;
     }
   }
@@ -498,10 +498,10 @@ export function plInit() {
 }
 
 /** Was laut Tabelle fehlt (Bedarf minus vorhanden), mit BrickLink-Farbe. */
-function fehlendeTeile() {
+function missingParts() {
   // Alle Felder „vorhanden“ aus der Tabelle einsammeln
   const inputs = /** @type {HTMLInputElement[]} */ (alle('.pl-have-input'));
-  /** @type {Fehlteil[]} */
+  /** @type {MissingPart[]} */
   const missing = [];
   inputs.forEach(inp => {
     const need = parseInt(inp.dataset.need ?? '', 10) || 0;
@@ -513,8 +513,8 @@ function fehlendeTeile() {
       // (siehe plRenderTable). Die Karte wird noch einmal befragt, weil sie beim Zeichnen der Tabelle
       // vielleicht noch nicht geladen war.
       const roh = inp.dataset.color;
-      const ausKarte = _rbToBlColor[rbColor];
-      const blColor = ausKarte ?? (roh === '' || roh === undefined ? null : parseInt(roh, 10));
+      const fromCard = _rbToBlColor[rbColor];
+      const blColor = fromCard ?? (roh === '' || roh === undefined ? null : parseInt(roh, 10));
       missing.push({
         type: inp.dataset.type || 'P',
         part: inp.dataset.part ?? '',
@@ -528,10 +528,10 @@ function fehlendeTeile() {
 }
 
 /** Figuren in ihre Teile auflösen und gleiche BrickLink-Nummer+Farbe zusammenzählen.
- * @param {Fehlteil[]} missing @returns {Promise<Fehlteil[]>} */
-async function figurenAufloesen(missing) {
+ * @param {MissingPart[]} missing @returns {Promise<MissingPart[]>} */
+async function resolveMinifigs(missing) {
   // Expand minifigs into individual parts and deduplicate by BL-ID + color
-  /** @type {Record<string, Fehlteil>} Schlüssel „Art|Teilnummer|Farbe“ */
+  /** @type {Record<string, MissingPart>} Schlüssel „Art|Teilnummer|Farbe“ */
   const blMap = {};
   for (const m of missing) {
     if (m.type === 'M') {
@@ -545,7 +545,7 @@ async function figurenAufloesen(missing) {
             );
           for (const p of teile) {
             const blNum = p.bl_part_number || p.part_number;
-            // Dieselbe Regel wie in der Tabelle: keine Zuordnung heisst UNBEKANNT, nicht „nimm die
+            // Dieselbe Regel wie in der Tabelle: keine Zuordnung heisst UNKNOWN, nicht „nimm die
             // Rebrickable-Nummer".
             const blColId = p.bl_color_id ?? _rbToBlColor[p.color_id] ?? null;
             const key = `P|${blNum}|${blColId}`;
@@ -570,7 +570,7 @@ async function figurenAufloesen(missing) {
 }
 
 /** Ein Stück im neuen Tab (zum Kopieren), mehrere als Downloads. @param {string[]} stuecke */
-function wantedXmlAusliefern(stuecke) {
+function deliverWantedXml(stuecke) {
   if (stuecke.length === 1) {
     const blob = new Blob([stuecke[0]], { type: 'text/plain; charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -605,39 +605,39 @@ async function plExportBricklink() {
     } catch (_) {}
   }
   const condition = G('pl-bl-condition')?.value || 'X';
-  const missing = fehlendeTeile();
+  const missing = missingParts();
   if (!missing.length) {
     toast(tRaw('pl.none_missing'), 'info');
     return;
   }
 
-  const expanded = await figurenAufloesen(missing);
+  const expanded = await resolveMinifigs(missing);
 
   // Posten ohne bekannte BrickLink-Farbe gehen nicht mit, sie werden genannt: Eine geratene Farbe bestellt
   // das falsche Teil, und das merkt man erst am Paket. Figuren (Typ M) haben keine Farbe und sind nie
   // betroffen.
-  const ohneFarbe = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
-  const exportierbar = expanded.filter(m => !ohneFarbe.includes(m));
+  const withoutColor = expanded.filter(m => m.type !== 'M' && (m.color === null || m.color === undefined));
+  const exportable = expanded.filter(m => !withoutColor.includes(m));
 
-  const stuecke = baueWantedXmlStuecke(exportierbar.map(m => ({ ...m, condition })));
+  const stuecke = buildWantedXmlPieces(exportable.map(m => ({ ...m, condition })));
 
   // BrickLink weist eine Datei über BL_UPLOAD_MAX_BYTES ganz ab. Ein Stück öffnet wie bisher im Tab zum
   // Kopieren; mehrere werden heruntergeladen — ein Tab je Stück wäre ein Popup-Gewitter.
-  wantedXmlAusliefern(stuecke);
+  deliverWantedXml(stuecke);
 
-  toast(tRaw('pl.bl_exported', { n: exportierbar.length }), 'success');
+  toast(tRaw('pl.bl_exported', { n: exportable.length }), 'success');
   if (stuecke.length > 1) toast(tRaw('pl.bl_split', { n: stuecke.length }), 'info');
   // Zuletzt und als eigene Meldung, damit sie nicht neben der Erfolgsmeldung untergeht: Was fehlt, muss man
   // lesen.
-  if (ohneFarbe.length) {
+  if (withoutColor.length) {
     toast(
       tRaw('pl.bl_no_color', {
-        n: ohneFarbe.length,
+        n: withoutColor.length,
         liste:
-          ohneFarbe
+          withoutColor
             .slice(0, 5)
             .map(m => (m.colorName ? `${m.part} (${m.colorName})` : m.part))
-            .join(', ') + (ohneFarbe.length > 5 ? ' …' : ''),
+            .join(', ') + (withoutColor.length > 5 ? ' …' : ''),
       }),
       'error',
     );

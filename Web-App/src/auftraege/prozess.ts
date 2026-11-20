@@ -1,32 +1,32 @@
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import * as repo from './repository/auftraege';
-import { meldeFehler } from '../infra/fehler';
-import type { AuftraegeKontext } from './kontext';
+import { reportError } from '../infra/fehler';
+import type { JobsContext } from './kontext';
 
 /** Jede Belegung trägt die Kennung ihres Prozesses. Ein Prozess, der hart endet
  * (Speicher, Stromausfall), gibt nichts zurück; seine Sperre endet aber mit der
  * Verbindung, und der nächste Start übernimmt sofort statt nach der Frist. */
-export const PROZESS = randomUUID();
+export const PROCESS = randomUUID();
 
-export const belegKennung = (): string => `${PROZESS}/${randomUUID()}`;
+export const receiptId = (): string => `${PROCESS}/${randomUUID()}`;
 
 /** Die Sperrverbindung gehört zum Zugang, aus dessen Pool sie stammt. */
-const sperre = (k: AuftraegeKontext) => k.faecher.fach('prozessSperre', () => ({ client: null as PoolClient | null }));
+const sperre = (k: JobsContext) => k.faecher.fach('prozessSperre', () => ({ client: null as PoolClient | null }));
 
 /** @returns übernommene Aufträge toter Prozesse */
-export async function meldeProzessAn(k: AuftraegeKontext): Promise<number> {
+export async function reportProcessAn(k: JobsContext): Promise<number> {
   const s = sperre(k);
   if (!s.client) {
     const c = await k.db.systemPool.connect();
-    c.on('error', e => meldeFehler('auftraege:prozess-sperre', e));
-    await repo.halteProzessSperre(c, PROZESS);
+    c.on('error', e => reportError('auftraege:prozess-sperre', e));
+    await repo.holdProcessLock(c, PROCESS);
     s.client = c;
   }
-  return repo.gibVerwaisteZurueck(s.client, PROZESS);
+  return repo.giveOrphanedBack(s.client, PROCESS);
 }
 
-export function meldeProzessAb(k: AuftraegeKontext): void {
+export function reportProcessAb(k: JobsContext): void {
   const s = sperre(k);
   s.client?.release(true);
   s.client = null;

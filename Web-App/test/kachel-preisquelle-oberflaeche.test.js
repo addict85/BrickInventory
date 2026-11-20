@@ -2,18 +2,18 @@
  * Die Sammlungskachel nennt, woher ihr Betrag stammt. Ohne Marktpreis liefert
  * der Server den Kaufpreis als kachel_preis — mit kachel_quelle 'kauf', und
  * die Kachel schreibt „Kaufpreis“ statt „Marktpreis“. Die Werte kommen aus der
- * echten Serverrechnung (kachelWerte), gezeigt vom echten Bündel in jsdom.
+ * echten Serverrechnung (tileValues), gezeigt vom echten Bündel in jsdom.
  *
  * Gegenproben (am 03.11.2026 gemessen):
- *   A  in preisZeile() wieder `markt = !!s._price` → rot: „ohne Marktpreis“
+ *   A  in priceRow() wieder `markt = !!s._price` → rot: „ohne Marktpreis“
  *      (Kachel zeigte „Marktpreis 99,99 €“)
- *   B  in kachelWerte() kachel_quelle immer 'markt' → rot: „ohne Marktpreis“
+ *   B  in tileValues() kachel_quelle immer 'markt' → rot: „ohne Marktpreis“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
-const { kachelWerte } = _req('src/finanzen/setValue.js');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { tileValues } = _req('src/finanzen/setValue.js');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const zeile = (nr, markt, kauf) => ({
@@ -27,10 +27,10 @@ const zeile = (nr, markt, kauf) => ({
 });
 
 test('Kachelpreis: Markt- und Kaufpreis beschriftet, wie der Server sie liefert', async () => {
-  const k = kachelWerte([zeile('42115-1', 0, 99.99), zeile('21318-1', 186.2, 199.99)]);
+  const k = tileValues([zeile('42115-1', 0, 99.99), zeile('21318-1', 186.2, 199.99)]);
   assert.equal(k.get('42115-1').kachel_quelle, 'kauf');
   assert.equal(k.get('21318-1').kachel_quelle, 'markt');
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/sets': {
       success: true,
       total: 2,

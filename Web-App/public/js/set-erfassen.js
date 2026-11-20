@@ -4,14 +4,14 @@ import { emit } from './events.js';
 import { schliesseErfassen } from './bausteine.js';
 import { registerActions } from './registry.js';
 import { tRaw } from '../i18n.js';
-import { fehlerMeldung, api } from './api.js';
-import { G, aktiverReiter } from './dom.js';
-import { setnummerFeldGueltig, betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
+import { errorMessage, api } from './api.js';
+import { G, activeTab } from './dom.js';
+import { setnummerFieldValid, amountFromField, quantityFromField, purchaseDateValid } from './formular.js';
 import { toast } from './meldungen.js';
-import { handleSseEvent, hideProgress, showProgress, streamFertig, streamRequest } from './fortschritt.js';
+import { handleSseEvent, hideProgress, showProgress, streamDone, streamRequest } from './fortschritt.js';
 import { setLastImportAt } from './state.js';
 import { jumpTo } from './targets.js';
-import { leereLagerortFeld, selectedOwner, selectedStorage } from './konten-orte.js';
+import { emptyLocationField, selectedOwner, selectedStorage } from './konten-orte.js';
 
 G('btn-add').onclick = addSet;
 G('add-num').addEventListener('input', resetUnknown);
@@ -76,7 +76,7 @@ export function erfassenZumSet(nr) {
 
 async function addSet() {
   const num = G('add-num').value.trim();
-  const price = betragAusFeld('add-price');
+  const price = amountFromField('add-price');
   const purchase_price = price.wert;
   const condition = G('add-condition')?.value || 'N';
   const currency = price.wert != null ? G('add-currency')?.value || null : null;
@@ -85,9 +85,9 @@ async function addSet() {
   // nothing at all, and the server stays with the own account — the same response as before household views.
   const owner_user_id = selectedOwner('add-owner');
   // Check every field, don't stop at the first error: each shows its own message, focus stays on the first (set number).
-  const dateOk = kaufdatumGueltig('add-date');
-  const qtyField = mengeAusFeld('add-qty');
-  const numberOk = setnummerFeldGueltig('add-num', num);
+  const dateOk = purchaseDateValid('add-date');
+  const qtyField = quantityFromField('add-qty');
+  const numberOk = setnummerFieldValid('add-num', num);
   if (!numberOk || !qtyField.ok || !price.ok || !dateOk) return;
   const qty = qtyField.wert;
   // If the set is already there, the main button says "Open set" and does exactly that, with no write attempt.
@@ -116,7 +116,7 @@ async function addSet() {
         handleSseEvent(ev, num);
         if (ev.step === 'done' && ev.action === 'exists') {
           // Already in view, the server wrote nothing: the detail view instead of a message, as in the app.
-          streamFertig();
+          streamDone();
           hideProgress();
           G('add-num').value = '';
           schliesseErfassen();
@@ -124,7 +124,7 @@ async function addSet() {
           return;
         }
         if (ev.step === 'done') {
-          streamFertig();
+          streamDone();
           schliesseErfassen();
           setTimeout(() => {
             hideProgress();
@@ -132,7 +132,7 @@ async function addSet() {
             G('add-num').value = '';
             if (G('add-price')) G('add-price').value = '';
             if (G('add-date')) G('add-date').value = '';
-            leereLagerortFeld('add-storage');
+            emptyLocationField('add-storage');
             if (ev.katalog_offen) toast(tRaw('gallery.added_no_catalog', { num: ev.set_number }), 'info');
             else
               toast(
@@ -146,12 +146,12 @@ async function addSet() {
             // If the stream couldn't fill in name and image, a job catches up after a minute.
             for (const delay of [3000, 8000, 15000, 25000, ...(ev.ergaenzung === 'ausstehend' ? [70000, 120000] : [])])
               setTimeout(() => {
-                const tab = aktiverReiter();
+                const tab = activeTab();
                 emit(tab === 'parts' || tab === 'minifigs' ? 'bestandGeaendert' : 'sammlungLaden');
               }, delay);
           }, 800);
         } else if (ev.step === 'error') {
-          streamFertig();
+          streamDone();
           setTimeout(() => {
             hideProgress();
             toast(ev.error, 'error');
@@ -162,7 +162,7 @@ async function addSet() {
   } catch (e) {
     if (/** @type {Error} */ (e).name !== 'AbortError') {
       hideProgress();
-      toast(fehlerMeldung(e), 'error');
+      toast(errorMessage(e), 'error');
     }
   }
 }

@@ -7,12 +7,12 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, handlerModul, testDaten } = require('./helpers/sources');
+const { buildAndRequire, handlerModule, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = testDaten();
-const H = handlerModul(_req);
+const db = testData();
+const H = handlerModule(_req);
 const MF = _req('src/minifigs/queries.js');
-const { haeltFigur, haeltTeil } = require('./helpers/bestand');
+const { holdsMinifig, holdsPart } = require('./helpers/bestand');
 
 const U = 990701;
 const FIG = 'mp-fig-1',
@@ -47,19 +47,19 @@ test('manuelle Listen tragen den Marktpreis aus dem Cache', async t => {
     // prueft den Marktpreis OHNE Erfassung, also bleibt es beim Vorgabewert
     // 'N', den conditionFromAcquisitions() ohne Erfassungen liefert.
     // bl_fig_number ist mit Migration 0037 weg; dieselbe Nummer in beiden …
-    await haeltFigur(db, U, FIG, { menge: 1 });
-    await haeltTeil(db, U, TEIL, { menge: 1, colorId: FARBE });
+    await holdsMinifig(db, U, FIG, { menge: 1 });
+    await holdsPart(db, U, TEIL, { menge: 1, colorId: FARBE });
 
     // ── 2 zuerst: OHNE Cache-Eintrag ───────────────────────────────────────
     // Diese Reihenfolge ist Absicht. Stünde sie hinten, könnte ein Fehler in
     // Zusicherung 1 sie nie erreichen — und gerade sie schützt davor, dass
     // die Liste bei fehlendem Preis scheitert statt leer zu bleiben.
-    const figsOhne = await MF.readManualMinifigs([U], U);
-    const teileOhne = await H.manualPartsList([U], U);
-    assert.equal(figsOhne.length, 1, 'die Figur muss auch ohne Preis in der Liste stehen');
-    assert.equal(teileOhne.length, 1, 'das Teil muss auch ohne Preis in der Liste stehen');
-    assert.equal(figsOhne[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
-    assert.equal(teileOhne[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
+    const figsWithout = await MF.readManualMinifigs([U], U);
+    const partsWithout = await H.manualPartsList([U], U);
+    assert.equal(figsWithout.length, 1, 'die Figur muss auch ohne Preis in der Liste stehen');
+    assert.equal(partsWithout.length, 1, 'das Teil muss auch ohne Preis in der Liste stehen');
+    assert.equal(figsWithout[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
+    assert.equal(partsWithout[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
 
     // ── 1. MIT Cache-Eintrag ───────────────────────────────────────────────
     await db.run(

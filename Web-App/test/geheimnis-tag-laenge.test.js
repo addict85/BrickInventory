@@ -17,7 +17,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const g = _req('src/infra/geheimnis.js');
 
-/** Derselbe Teilschlüssel wie v2Schluessel(): Der Test fälscht, was ein Angreifer probieren würde. */
+/** Derselbe Teilschlüssel wie v2Key(): Der Test fälscht, was ein Angreifer probieren würde. */
 const v2 = Buffer.from(
   crypto.hkdfSync(
     'sha256',
@@ -27,7 +27,7 @@ const v2 = Buffer.from(
     32,
   ),
 );
-function mitKurzemTag(klar, k, laenge) {
+function withRecentlyTag(klar, k, laenge) {
   const iv = crypto.randomBytes(12);
   const c = crypto.createCipheriv('aes-256-gcm', v2, iv, { authTagLength: laenge });
   c.setAAD(Buffer.from(k, 'utf8'));
@@ -37,9 +37,9 @@ function mitKurzemTag(klar, k, laenge) {
 
 test('ein 4-Byte-Tag wird nicht angenommen, ein voller schon', () => {
   const k = g.kontext('test', 1);
-  const kurz = mitKurzemTag('', k, 4);
-  assert.equal(g.entschluessele(`v2:${kurz.toString('base64')}`, k), null);
-  assert.equal(g.entschluesselePuffer(Buffer.concat([Buffer.from('BIENC2\n'), kurz]), k), null);
-  assert.equal(g.entschluessele(g.verschluessele('geheim', k), k), 'geheim');
-  assert.equal(g.entschluessele(`v2:${Buffer.alloc(20).toString('base64')}`, k), null, 'zu kurz');
+  const kurz = withRecentlyTag('', k, 4);
+  assert.equal(g.decrypt(`v2:${kurz.toString('base64')}`, k), null);
+  assert.equal(g.decryptBuffer(Buffer.concat([Buffer.from('BIENC2\n'), kurz]), k), null);
+  assert.equal(g.decrypt(g.encrypt('geheim', k), k), 'geheim');
+  assert.equal(g.decrypt(`v2:${Buffer.alloc(20).toString('base64')}`, k), null, 'zu kurz');
 });

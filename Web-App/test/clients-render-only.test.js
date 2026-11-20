@@ -13,7 +13,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 /** Feldnamen, deren Summe eine Geschäftsregel wäre. */
 const GELDFELDER =
@@ -25,7 +25,7 @@ const GELDFELDER =
  * Kurz halten: Jede Zeile hier ist eine Ausnahme von der Regel und sollte
  * erklären, warum der Server sie nicht liefern kann.
  */
-const ERLAUBT = [
+const ALLOWED = [
   // Fortschrittsbalken rechnen Prozent aus done/total — kein Geld.
 ];
 
@@ -38,7 +38,7 @@ test('die Webapp summiert keine Geldbeträge selbst', () => {
     for (const m of src.matchAll(re)) {
       const zeile = src.slice(0, m.index).split('\n').length;
       const eintrag = `${f}:${zeile} summiert .${m[1]}`;
-      if (!ERLAUBT.includes(eintrag)) treffer.push(eintrag);
+      if (!ALLOWED.includes(eintrag)) treffer.push(eintrag);
     }
   }
   assert.deepEqual(
@@ -54,7 +54,7 @@ test('die Webapp summiert keine Geldbeträge selbst', () => {
 test('die Webapp zeigt den Gesamtwert des Servers', async () => {
   // Ohne Marktpreis bei den Posten trägt die Kopfzahl den Gesamtwert; der Server sagt 777,
   // die eigene Summe der Tabellen wäre 0.
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/finance/pnl': {
       success: true,
       currency: 'EUR',

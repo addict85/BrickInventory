@@ -5,7 +5,7 @@
  * führt zu Preisalarmen und Lagerorten (der Dialog schliesst dabei).
  *
  * Gegenproben (12.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  formatDur wieder mit toFixed(1) und „s“ ohne Leerzeichen → rot: „Dauer
+ *   A  formatDuration wieder mit toFixed(1) und „s“ ohne Leerzeichen → rot: „Dauer
  *      in der Schreibweise der Sprache“ („1.5s“)
  *   B  in katalog.js die Jahresoption wieder nur mit `${y}` → rot: „Jahresfilter
  *      …“ („2016“ statt „ab 2016“)
@@ -17,7 +17,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const MONITOR = lastDuration => ({
@@ -50,12 +50,12 @@ const SET = {
 };
 
 test('Dauer in der Schreibweise der Sprache', async () => {
-  for (const { sprache, browserSprache, ms, erwartet } of [
-    { sprache: 'de', browserSprache: 'de-DE', ms: 1500, erwartet: /1,5 s/ },
-    { sprache: 'de', browserSprache: 'de-DE', ms: 125_000, erwartet: /2 min 5 s/ },
-    { sprache: 'en', browserSprache: 'en-US', ms: 1500, erwartet: /1\.5 s/ },
+  for (const { sprache, browserLanguage, ms, erwartet } of [
+    { sprache: 'de', browserLanguage: 'de-DE', ms: 1500, erwartet: /1,5 s/ },
+    { sprache: 'de', browserLanguage: 'de-DE', ms: 125_000, erwartet: /2 min 5 s/ },
+    { sprache: 'en', browserLanguage: 'en-US', ms: 1500, erwartet: /1\.5 s/ },
   ]) {
-    const o = await oeffneOberflaeche(MONITOR(ms), { sprache, browserSprache });
+    const o = await openUi(MONITOR(ms), { sprache, browserLanguage });
     try {
       await reiter(o.w, 'monitor');
       const detail = () => text(o.d.getElementById('job-status-detail'));
@@ -68,7 +68,7 @@ test('Dauer in der Schreibweise der Sprache', async () => {
 });
 
 test('Jahresfilter sagen, dass es um Jahre geht', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/catalog/meta': { success: true, themes: [], year_min: 2015, year_max: 2016, year_counts: [] },
   });
   try {
@@ -83,7 +83,7 @@ test('Jahresfilter sagen, dass es um Jahre geht', async () => {
 });
 
 test('Set ohne Bild: kein Knopf „Bild vergrössern“', async () => {
-  const o = await oeffneOberflaeche(SET);
+  const o = await openUi(SET);
   try {
     const bild = o.d.getElementById('m-img');
     // Seit Runde 27 liegt das Bild in einem Knopf; ohne Bild ist der gesperrt.
@@ -107,7 +107,7 @@ test('Set ohne Bild: kein Knopf „Bild vergrössern“', async () => {
 });
 
 test('Menü in Gruppen mit Titel', async () => {
-  const o = await oeffneOberflaeche();
+  const o = await openUi();
   try {
     const gruppen = [...o.d.querySelectorAll('#umenu-pop [role="group"]')].map(g => ({
       titel: text(o.d.getElementById(g.getAttribute('aria-labelledby'))),
@@ -127,7 +127,7 @@ test('Menü in Gruppen mit Titel', async () => {
 });
 
 test('aus dem Set-Detail zu Preisalarmen und Lagerorten', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     ...SET,
     '/v1/alerts': { success: true },
     '/v1/storage/locations': { success: true },

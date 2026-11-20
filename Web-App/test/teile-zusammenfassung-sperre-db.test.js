@@ -14,12 +14,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
 test('rebuild weicht einer gehaltenen Kontosperre aus', async t => {
-  const db = testDaten();
+  const db = testData();
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -44,7 +44,7 @@ test('rebuild weicht einer gehaltenen Kontosperre aus', async t => {
     ]);
     await halter.query('BEGIN');
     await halter.query('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.PARTS_SUMMARY, u]);
-    await PS.rebuild(u, { v: 7 });
+    await PS.rebuildSummary(u, { v: 7 });
     assert.deepEqual(
       await stand(),
       { zeilen: 1, version: null },
@@ -52,7 +52,7 @@ test('rebuild weicht einer gehaltenen Kontosperre aus', async t => {
     );
     await halter.query('COMMIT');
 
-    await PS.rebuild(u, { v: 7 });
+    await PS.rebuildSummary(u, { v: 7 });
     assert.deepEqual(await stand(), { zeilen: 0, version: 7 }, 'Ohne Sperre baut rebuild neu');
   } finally {
     await halter.query('ROLLBACK').catch(() => {});

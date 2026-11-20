@@ -2,18 +2,18 @@
  * Marktwert eines Sets je Zustand (src/finanzen/setValue.ts).
  *
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   cacheVerwendbar ohne die kurze Frist für 0-Einträge → rot „ein gecachter
+ *   cacheUsable ohne die kurze Frist für 0-Einträge → rot „ein gecachter
  *   Null-Preis …“; effectiveCondition bei Erfassungen immer 'N' → rot
  *   „Bewertung und Anzeige …“; buildChart() mit firstRealIndex immer 0 oder
  *   ohne Auffüllen mit 0 → rot „die Verlaufs-Endpunkte …“. Gestrichen, weil set-zustand-aggregat-db.test.js
  *   es ausführt: „der P&L-Pfad wählt je Set …“ (priceFor() immer Neupreis →
  *   dort rot) und „es gibt einen Diagnose-Endpunkt …“ (ohne price_cache → rot);
  *   „nur 404 wird negativ gemerkt, kein 403“ läuft in bild-proxy-deckel.test.js.
- *   Am 08.11.2026 gestrichen: „preisfuehrerAbfrage holt ohne Angabe den Neupreis“ und
+ *   Am 08.11.2026 gestrichen: „priceGuideQuery holt ohne Angabe den Neupreis“ und
  *   „ohne Verkauf in sechs Monaten wird auf 'stock' ausgewichen“ →
  *   bricklink-preisfuehrer-db.test.js (Gegenproben A–D dort).
  *   Am 09.11.2026 gestrichen: drei SQL-Suchen in Dateien ohne SQL (prüften nichts) und „der Preisjob
- *   holt alle Zustände …“ → preislauf-zustaende-db.test.js führt zustaendeJeSet() aus.
+ *   holt alle Zustände …“ → preislauf-zustaende-db.test.js führt statesJeSet() aus.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -109,12 +109,12 @@ test('by_condition weist die Zusammensetzung aus', () => {
 
 test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
   // Der Set-Kern arbeitet ausschliesslich mit Set-Preisen — dort darf der
-  // Bezeichner nicht vorkommen. Ausnahme ist setPreis(): Die Preis-Antwort der
+  // Bezeichner nicht vorkommen. Ausnahme ist setPrice(): Die Preis-Antwort der
   // App führt das Feld qty_avg_price und reicht es nur durch.
-  const roh = require('./helpers/sources').setKernQuelle();
-  const von = roh.indexOf('export async function setPreis');
-  const bis = roh.indexOf('export async function waehrungVon', von);
-  assert.ok(von > 0 && bis > von, 'setPreis() nicht gefunden');
+  const roh = require('./helpers/sources').setCoreSource();
+  const von = roh.indexOf('export async function setPrice');
+  const bis = roh.indexOf('export async function currencyOf', von);
+  assert.ok(von > 0 && bis > von, 'setPrice() nicht gefunden');
   const sets = roh.slice(0, von) + roh.slice(bis);
   assert.equal((sets.match(/qty_avg_price/g) || []).length, 0, 'Set-Kern: Set-Preise müssen über avg_price laufen');
 });
@@ -151,31 +151,31 @@ test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
   // Ein 0-Eintrag galt für das volle TTL-Fenster als endgültige Antwort; die
   // Logik wich dann auf den ANDEREN Zustand aus. Ein Eintrag mit Preis gilt
   // das ganze Fenster, einer ohne nur kurz.
-  const { cacheVerwendbar } = _req('src/finanzen/rechnung/preise.js');
+  const { cacheUsable } = _req('src/finanzen/rechnung/preise.js');
   // Die Zeit ist ein Parameter: ein fester Augenblick statt der Uhr des Rechners.
   const JETZT = Date.UTC(2026, 0, 10, 12);
   const vor = (/** @type {number} */ h) => new Date(JETZT - h * 3600000).toISOString();
   assert.equal(
-    cacheVerwendbar({ avg_price: '0', fetched_at: vor(1) }, 24, JETZT),
+    cacheUsable({ avg_price: '0', fetched_at: vor(1) }, 24, JETZT),
     true,
     'ein frischer 0-Eintrag antwortet',
   );
   assert.equal(
-    cacheVerwendbar({ avg_price: '0', fetched_at: vor(7) }, 24, JETZT),
+    cacheUsable({ avg_price: '0', fetched_at: vor(7) }, 24, JETZT),
     false,
     'ein alter 0-Eintrag muss durchfallen und einen Neuabruf auslösen',
   );
-  assert.equal(cacheVerwendbar({ avg_price: '0' }, 24, JETZT), false, 'ohne fetched_at ist das Alter unbekannt');
-  assert.equal(cacheVerwendbar({ avg_price: '0', fetched_at: vor(3) }, 2, JETZT), false, 'die kürzere Frist gewinnt');
+  assert.equal(cacheUsable({ avg_price: '0' }, 24, JETZT), false, 'ohne fetched_at ist das Alter unbekannt');
+  assert.equal(cacheUsable({ avg_price: '0', fetched_at: vor(3) }, 2, JETZT), false, 'die kürzere Frist gewinnt');
   assert.equal(
-    cacheVerwendbar({ avg_price: '12.5', fetched_at: vor(20) }, 24, JETZT),
+    cacheUsable({ avg_price: '12.5', fetched_at: vor(20) }, 24, JETZT),
     true,
     'ein Preis gilt das volle Fenster',
   );
   assert.equal(
-    cacheVerwendbar({ avg_price: '0', qty_avg_price: '9', fetched_at: vor(7) }, 24, JETZT),
+    cacheUsable({ avg_price: '0', qty_avg_price: '9', fetched_at: vor(7) }, 24, JETZT),
     true,
-    'ein Mengenschnitt allein ist ein Preis (marktpreisAus) und gilt das volle Fenster',
+    'ein Mengenschnitt allein ist ein Preis (marketPriceFrom) und gilt das volle Fenster',
   );
 });
 
@@ -250,7 +250,7 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
 });
 
 test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
-  const src = require('./helpers/sources').adminQuelle();
+  const src = require('./helpers/sources').adminSource();
   // Seit Runde 24 (N7) kommt die Figurenzahl aus dem Katalog; nachgeladen wird nur noch der Preisverlauf.
   const i = src.indexOf("api('GET', `/v1/sets/${sn}/price-history`)");
   assert.ok(i > 0, 'Die Nachfrage nach dem Preisverlauf fehlt');
@@ -303,7 +303,7 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
   // Und der Katalog erzeugt gar keine Vorschauen
   assert.match(
     server,
-    /const darfErzeugen = req\.query\.gen !== '0'/,
+    /const createMay = req\.query\.gen !== '0'/,
     'Der Proxy kennt kein „Vorschau nutzen, aber keine erzeugen"',
   );
   const kat = fs.readFileSync(path.join(ROOT, 'public', 'js', 'katalog.js'), 'utf8');
@@ -396,7 +396,7 @@ test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
   // Der Renderer darf die aufgefüllten Nullen nicht zeichnen — sonst beginnt
   // die Linie bei null und springt senkrecht hoch: ein Kurssturz, den es nie
   // gab.
-  const admin = require('./helpers/sources').adminQuelle();
+  const admin = require('./helpers/sources').adminSource();
   assert.match(admin, /slice\(sd\.firstRealIndex \?\? 0\)/, 'priceChartSVG muss führende Nullen überspringen');
 });
 

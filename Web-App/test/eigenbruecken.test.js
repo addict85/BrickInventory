@@ -35,7 +35,7 @@ const QUELLE = /\.(ts|js|sql|html|json|yml|xml)$/;
 /**
  * Gibt es diese Datei — oder die Quelle, aus der sie gebaut wird?
  */
-function existiertQuelle(rel) {
+function existsSource(rel) {
   if (fs.existsSync(path.join(ROOT, rel))) return true;
   if (!rel.endsWith('.js')) return false;
   return fs.existsSync(path.join(ROOT, rel.replace(/\.js$/, '.ts')));
@@ -53,13 +53,13 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
 
   const kaputt = [];
   const offen = [];
-  const abwesend = [];
+  const absent = [];
   let geprueft = 0;
 
   /**
    * Steht der Pfad in einer ABWESENHEITS-Zusicherung?
    */
-  const istAbwesenheitsPruefung = (src, bis) => /!\s*fs\.existsSync\($/.test(src.slice(0, bis).trimEnd());
+  const isAbwesenheitsCheck = (src, bis) => /!\s*fs\.existsSync\($/.test(src.slice(0, bis).trimEnd());
 
   for (const datei of dateien) {
     const src = ohneKommentare(fs.readFileSync(path.join(__dirname, datei), 'utf8'));
@@ -70,7 +70,7 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
       if (!QUELLE.test(p)) continue;
       if (!ORDNER.includes(p.split('/')[0])) continue;
       geprueft++;
-      if (!existiertQuelle(p)) kaputt.push(`${datei}: ${p}`);
+      if (!existsSource(p)) kaputt.push(`${datei}: ${p}`);
     }
 
     // ── Form 2: path.join(ROOT, 'src/konto/geraeteToken.ts') ────────────────────────
@@ -87,12 +87,12 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
       }
       const p = segmente.join('/');
       if (!QUELLE.test(p)) continue;
-      if (istAbwesenheitsPruefung(src, m.index)) {
-        abwesend.push(`${datei}: ${p}`);
+      if (isAbwesenheitsCheck(src, m.index)) {
+        absent.push(`${datei}: ${p}`);
         continue;
       }
       geprueft++;
-      if (!existiertQuelle(p)) kaputt.push(`${datei}: ${p}`);
+      if (!existsSource(p)) kaputt.push(`${datei}: ${p}`);
     }
   }
 
@@ -118,10 +118,7 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
   // nimmt der Pruefung aber die Sicht. Ein paar Faelle sind legitim (ein Test,
   // der eine Liste von Dateien durchgeht) — die Zahl darf nur nicht wachsen,
   // ohne dass es jemand merkt. …
-  assert.ok(
-    abwesend.length <= 3,
-    `${abwesend.length} Abwesenheits-Zusicherungen (erlaubt: 3):\n  ` + abwesend.join('\n  '),
-  );
+  assert.ok(absent.length <= 3, `${absent.length} Abwesenheits-Zusicherungen (erlaubt: 3):\n  ` + absent.join('\n  '));
 
   // GEMESSEN: 62, und die Zahl ist nicht das Problem, das sie auf den ersten
   // Blick scheint. Fast alle sind SCHLEIFENVARIABLEN (`f`, `datei`, `rel`,
@@ -144,8 +141,8 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
  */
 test('wer die Bild-Warteschlange abarbeitet, leert sie vorher', () => {
   const dir = __dirname;
-  const BENUTZT = /_arbeiteStapel|_taktDurchgang/;
-  const LEERT = /leereWarteschlange\s*\(/;
+  const USED = /_workStack|_tickPass/;
+  const CLEARS = /emptyQueue\s*\(/;
 
   const betroffen = [];
   const ohne = [];
@@ -161,9 +158,9 @@ test('wer die Bild-Warteschlange abarbeitet, leert sie vorher', () => {
         return t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') ? '' : z;
       })
       .join('\n');
-    if (!BENUTZT.test(code)) continue;
+    if (!USED.test(code)) continue;
     betroffen.push(f);
-    if (!LEERT.test(code)) ohne.push(f);
+    if (!CLEARS.test(code)) ohne.push(f);
   }
 
   // Selbstbeweis: Ohne Fund prueft die Zusicherung darunter nichts.
@@ -181,7 +178,7 @@ test('wer die Bild-Warteschlange abarbeitet, leert sie vorher', () => {
       '\n\n_arbeiteStapel() nimmt die aeltesten Notizen der GANZEN Tabelle. Bleibt aus ' +
       'einer frueher gelaufenen Datei etwas liegen, arbeitet der Stapel DEREN Zeilen ab ' +
       'und der Test misst etwas anderes, als er glaubt — und zwar nur manchmal, je ' +
-      'nachdem, was vorher lief. Abhilfe: `await leereWarteschlange(db)` nach dem ' +
+      'nachdem, was vorher lief. Abhilfe: `await emptyQueue(db)` nach dem ' +
       'Schema-Vorbau (helpers/bildwarteschlange.js).',
   );
 });

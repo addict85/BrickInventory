@@ -6,11 +6,11 @@
  * v1 und Klartext vorher um — Datenbank und Gutschein-PDFs.
  *
  * Gegenproben (01.11.2026 gemessen):
- *   A  setAAD() in versiegle() und oeffne() gestrichen → rot: „vertauscht …"
+ *   A  setAad() in versiegle() und oeffne() gestrichen → rot: „vertauscht …"
  *      (die PIN ist im fremden Konto lesbar)
  *   B  entschluessele() gibt Klartext ohne Präfix wieder zurück → rot:
  *      „Klartext und v1 …"
- *   C  bereiteDatenbankVor() ohne verschluesseleAltbestand() → rot:
+ *   C  prepareDatabaseBefore() ohne verschluesseleAltbestand() → rot:
  *      „ein v1-Altbestand …" (TOTP und SMTP-Passwort bleiben v1)
  *   D  encryptLegacyVoucherFiles() liest BIENC1 nicht mehr (nur
  *      Klartext) → rot: „ein v1-Altbestand …" (PDF bleibt BIENC1)
@@ -27,19 +27,19 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATA_KEY = crypto.randomBytes(32).toString('base64');
-const SANDKASTEN = fs.mkdtempSync(path.join(os.tmpdir(), 'secret-kontext-'));
-fs.mkdirSync(path.join(SANDKASTEN, 'data'), { recursive: true });
-fs.writeFileSync(path.join(SANDKASTEN, 'package.json'), '{"name":"sandkasten"}');
-process.env.APP_ROOT = SANDKASTEN;
+const SANDBOX = fs.mkdtempSync(path.join(os.tmpdir(), 'secret-kontext-'));
+fs.mkdirSync(path.join(SANDBOX, 'data'), { recursive: true });
+fs.writeFileSync(path.join(SANDBOX, 'package.json'), '{"name":"sandkasten"}');
+process.env.APP_ROOT = SANDBOX;
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const g = _req('src/infra/geheimnis.js');
 const gr = {
   ..._req('src/vouchers/repository/vouchers.js'),
-  ...require('./helpers/sources').testBereich('vouchers').vouchers,
+  ...require('./helpers/sources').testArea('vouchers').vouchers,
 };
 const dateien = _req('src/vouchers/voucherFiles.js');
 const zf = _req('src/factors/secondFactor.js');
@@ -57,7 +57,7 @@ const alsV1 = klar => 'v1:' + roh1(Buffer.from(klar, 'utf8')).toString('base64')
 const PDF = Buffer.from('%PDF-1.4\nGutschein 5045076374450099999 PIN 4711\n%%EOF\n');
 
 test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const namen = [`kontext_a_${process.pid}`, `kontext_b_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
@@ -69,7 +69,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
     for (const z of vorher) await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]);
-    fs.rmSync(SANDKASTEN, { recursive: true, force: true });
+    fs.rmSync(SANDBOX, { recursive: true, force: true });
     await db.pool.end().catch(() => {});
   });
   const [a, b] = ids;
@@ -82,7 +82,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
       console.warn = w;
     }
   };
-  const pinVon = async (uid, id) => (await gr.voucher(uid, id)).pin;
+  const pinOf = async (uid, id) => (await gr.voucher(uid, id)).pin;
 
   await t.test('vertauscht zwischen Konten, Zeilen und Spalten ist nichts mehr lesbar', async () => {
     const ga = await gr.createVoucher(a, {
@@ -104,7 +104,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
       currency: 'CHF',
     });
     assert.deepEqual(
-      [await pinVon(a, ga.id), await pinVon(b, gb.id)],
+      [await pinOf(a, ga.id), await pinOf(b, gb.id)],
       ['1111', '3333'],
       'Vorbedingung: lesbar am eigenen Ort',
     );
@@ -112,13 +112,13 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     // PIN von Konto a nach Konto b, Nummer innerhalb von a von einer Zeile zur anderen.
     await db.run('UPDATE vouchers SET pin = $1 WHERE id = $2', [(await zeile(ga.id)).pin, gb.id]);
     await db.run('UPDATE vouchers SET number = $1 WHERE id = $2', [(await zeile(ga.id)).number, ga2.id]);
-    assert.equal(await stumm(() => pinVon(b, gb.id)), null, 'PIN in fremdem Konto lesbar');
+    assert.equal(await stumm(() => pinOf(b, gb.id)), null, 'PIN in fremdem Konto lesbar');
     assert.equal(await stumm(async () => (await gr.voucher(a, ga2.id)).number), '', 'Nummer in anderer Zeile lesbar');
 
     // TOTP-Geheimnis von a nach b.
-    const geheimA = await zf.beginSetup(a);
+    const secretA = await zf.beginSetup(a);
     await zf.beginSetup(b);
-    const codeA = zf.hotp(zf.fromBase32(geheimA), zf.timeStep());
+    const codeA = zf.hotp(zf.fromBase32(secretA), zf.timeStep());
     await db.run(
       'UPDATE second_factor SET secret = (SELECT secret FROM second_factor WHERE user_id = $1) WHERE user_id = $2',
       [a, b],
@@ -165,9 +165,9 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
 
   await t.test('Klartext und v1 werden beim Lesen abgewiesen', async () => {
     const k = g.kontext('probe', 1);
-    assert.equal(await stumm(() => g.entschluessele('klartext', k)), null);
-    assert.equal(await stumm(() => g.entschluessele(alsV1('alt'), k)), null);
-    assert.equal(g.altwertLesen(alsV1('alt'), k), 'alt', 'nur das Umschlüsseln liest v1');
+    assert.equal(await stumm(() => g.decrypt('klartext', k)), null);
+    assert.equal(await stumm(() => g.decrypt(alsV1('alt'), k)), null);
+    assert.equal(g.readOldValue(alsV1('alt'), k), 'alt', 'nur das Umschlüsseln liest v1');
     await db.run("UPDATE global_settings SET value = 'eingeschleust' WHERE key = 'smtp_pass'");
     assert.equal(await stumm(() => settings.getGlobalSetting('smtp_pass')), null);
     const pdf = path.join(dateien.VOUCHER_DIR, String(a), 'klartext.pdf');
@@ -206,12 +206,12 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     fs.writeFileSync(pdf, Buffer.concat([Buffer.from('BIENC1\n'), roh1(PDF)]));
 
     // Ein Altbestand trägt die Marke der Umschlüsselung noch nicht (die Testvorlage schon).
-    await require('./helpers/sources').testBereich('auftraege').laufzustand.loescheZustand('altbestand_v2');
-    await _req('startup/datenbank.js').bereiteDatenbankVor(testZugang(), require('./helpers/sources').testDienste());
+    await require('./helpers/sources').testArea('auftraege').laufzustand.deleteState('altbestand_v2');
+    await _req('startup/datenbank.js').prepareDatabaseBefore(testAccess(), require('./helpers/sources').testServices());
 
     const v = await db.get('SELECT number, pin FROM vouchers WHERE id = $1', [id]);
     assert.ok(v.number.startsWith('v2:') && v.pin.startsWith('v2:'), JSON.stringify(v));
-    assert.deepEqual([(await gr.voucher(a, id)).number, await pinVon(a, id)], [nr, '4444']);
+    assert.deepEqual([(await gr.voucher(a, id)).number, await pinOf(a, id)], [nr, '4444']);
     assert.match((await db.get("SELECT value FROM global_settings WHERE key = 'smtp_pass'")).value, /^v2:/);
     assert.equal(await settings.getGlobalSetting('smtp_pass'), 'Smtp-Alt-2');
     assert.match((await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [b])).secret, /^v2:/);

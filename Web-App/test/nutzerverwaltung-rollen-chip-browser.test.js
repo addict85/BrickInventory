@@ -20,11 +20,11 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
+const { startApp } = require('./helpers/app-browser');
 
 test('Rollen-Chip: Tippfläche, Fokus, 320 px und 200 %', { timeout: 200_000 }, async t => {
   const ANDERE = `rc_admin_${process.pid}`;
-  const app = await starteApp(t, { name: `rc_${process.pid}` });
+  const app = await startApp(t, { name: `rc_${process.pid}` });
   if (app.grund) {
     t.skip(app.grund);
     return;
@@ -36,7 +36,7 @@ test('Rollen-Chip: Tippfläche, Fokus, 320 px und 200 %', { timeout: 200_000 }, 
   );
   t.after(() => db.run('DELETE FROM users WHERE username = $1', [ANDERE]).catch(() => {}));
   const X = `[...document.querySelectorAll('#users-tbl tbody tr')].find(r => r.querySelector('strong')?.textContent === ${JSON.stringify(ANDERE)})?.querySelector('.rolle-chip .chip-weg')`;
-  const metrik = (breite, telefon) =>
+  const metric = (breite, telefon) =>
     b.tab('Emulation.setDeviceMetricsOverride', {
       width: breite,
       height: 800,
@@ -44,7 +44,7 @@ test('Rollen-Chip: Tippfläche, Fokus, 320 px und 200 %', { timeout: 200_000 }, 
       mobile: telefon,
     });
   // Neu laden über einen anderen Reiter: Die Liste steht dann in der Breite, die gerade gilt.
-  const zurListe = async () => {
+  const toList = async () => {
     await b.auswerten(`location.hash = '#/sammlung'; true`);
     await bis(`document.getElementById('tab-gallery').classList.contains('active')`, 'Sammlung');
     await b.auswerten(`location.hash = '#/einstellungen/benutzer'; true`);
@@ -57,8 +57,8 @@ test('Rollen-Chip: Tippfläche, Fokus, 320 px und 200 %', { timeout: 200_000 }, 
         ragt: chip.left < karte.left - 0.5 || chip.right > karte.right + 0.5 || el.scrollWidth > el.clientWidth + 1 }; })()`);
 
   await t.test('Rechner: X mindestens 24 px, sichtbarer Fokus, Rückfrage nennt das Konto', async () => {
-    await metrik(1280, false);
-    await zurListe();
+    await metric(1280, false);
+    await toList();
     const m = await mass();
     assert.ok(m.b >= 24 && m.h >= 24, `Rechner: X mindestens 24 px (${m.b} × ${m.h})`);
     // Tastatur zuletzt benutzt: Dann gilt :focus-visible auch für focus().
@@ -78,8 +78,8 @@ test('Rollen-Chip: Tippfläche, Fokus, 320 px und 200 %', { timeout: 200_000 }, 
   });
 
   await t.test('Telefon: X mindestens 44 px', async () => {
-    await metrik(390, true);
-    await zurListe();
+    await metric(390, true);
+    await toList();
     const m = await mass();
     assert.ok(m.b >= 44 && m.h >= 44, `Telefon: X mindestens 44 px (${m.b} × ${m.h})`);
   });
@@ -87,8 +87,8 @@ test('Rollen-Chip: Tippfläche, Fokus, 320 px und 200 %', { timeout: 200_000 }, 
   await t.test('320 px, 200 %: nichts ragt aus der Karte', async () => {
     for (const schrift of ['', '200%']) {
       await b.auswerten(`document.documentElement.style.fontSize = '${schrift}'; true`);
-      await metrik(320, true);
-      await zurListe();
+      await metric(320, true);
+      await toList();
       const m = await mass();
       assert.ok(m.b >= 44 && m.h >= 44, `${schrift || '100 %'}: X ${m.b} × ${m.h}`);
       assert.equal(m.ragt, false, `${schrift || '100 %'}: der Chip ragt aus der Karte`);

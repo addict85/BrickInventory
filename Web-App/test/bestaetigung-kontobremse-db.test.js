@@ -5,14 +5,14 @@
  * eigene Fehlversuche bestätigt weiter.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in bestaetigungGesperrt() die Kontogrenze gestrichen → rot: „über
+ *   A  in confirmationLocked() die Kontogrenze gestrichen → rot: „über
  *      viele Zugänge höchstens 20 …“ (der 21. Versuch wird geprüft, 400) und
  *      „Mail und Protokoll …“
  *   B  Bedingung `s.count > 0` gestrichen → rot: „der saubere Zugang des
  *      Inhabers …“ (429 statt 200)
- *   C  in gebremst() hinweisNebenher() entfernt → rot: „Mail und
+ *   C  in gebremst() hintInBackground() entfernt → rot: „Mail und
  *      Protokoll …“ (keine Mail)
- *   D  kontoGedrosselt() vor der Mail entfernt → rot: „Mail und Protokoll …“
+ *   D  accountThrottled() vor der Mail entfernt → rot: „Mail und Protokoll …“
  *      (zwei Mails)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -26,24 +26,24 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const mails = [];
-require('./helpers/sources').ersetzeDienste('mail', {
+require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (an, _name, art) => {
     mails.push({ an, art });
     return { success: true };
   },
 });
-const db = S.testDaten();
-const { datenOderSkip } = require('./helpers/db');
+const db = S.testData();
+const { dataOrSkip } = require('./helpers/db');
 const protokoll = _req('src/infra/protokoll.js');
-const { pruefeBestaetigung } = _req('src/konto/passwortBestaetigung.js');
-const { STATUS_DER_ART } = _req('src/http/fehlerArt.js');
+const { checkConfirmation } = _req('src/konto/passwortBestaetigung.js');
+const { STATUS_THE_KIND } = _req('src/http/fehlerArt.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const PASS = 'Konto-Bremse-Passwort-1',
   FALSCH = 'Falsch-geraten-0815';
 
 test('Bremse für Bestätigungen je Konto', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `kbremse_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -61,7 +61,7 @@ test('Bremse für Bestätigungen je Konto', { concurrency: 1, timeout: 120_000 }
     ]);
   await leere();
   const zeilen = [];
-  const zurueck = protokoll.installiereProtokoll({ out: () => {}, err: z => zeilen.push(z), jetzt: () => Date.now() });
+  const zurueck = protokoll.installLog({ out: () => {}, err: z => zeilen.push(z), jetzt: () => Date.now() });
   t.after(async () => {
     zurueck();
     await leere();
@@ -69,7 +69,7 @@ test('Bremse für Bestätigungen je Konto', { concurrency: 1, timeout: 120_000 }
     await db.pool.end().catch(() => {});
   });
   const versuch = async (zugang, pw = FALSCH) =>
-    STATUS_DER_ART[(await pruefeBestaetigung(uid, zugang, pw, {}))?.art] ?? 200;
+    STATUS_THE_KIND[(await checkConfirmation(uid, zugang, pw, {}))?.art] ?? 200;
 
   await t.test('über viele Zugänge höchstens 20 Fehlversuche am Tag', async () => {
     const ist = [];

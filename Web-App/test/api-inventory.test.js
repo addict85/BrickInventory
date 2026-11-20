@@ -16,7 +16,7 @@ const ROOT = path.join(__dirname, '..');
 function scan(file, mount) {
   const src = fs.readFileSync(file, 'utf8');
   return require('./helpers/sources')
-    .routenAusQuelle(src, mount)
+    .routesFromSource(src, mount)
     .filter(m => m[1] !== 'patch')
     .map(m => [m[1].toUpperCase(), m[2]]);
 }
@@ -106,7 +106,7 @@ const C = {
   'GET /api/v1/minifigs/:figNumber/price-history': 'nur-v1',
   // Detail-Dialog fuer Teile/Figuren AUS SETS: welche Sets
   // verwenden dieses Teil? Beide gehen durch DIESELBE Funktion
-  // (verwendendeSets in src/bestand/gemeinsam.ts) — die alte Oberflaeche hat
+  // (usingSets in src/bestand/gemeinsam.ts) — die alte Oberflaeche hat
   // dafuer nie etwas gehabt, es gibt also kein Gegenstueck zu paaren.
   'GET /api/v1/parts/:partNumber/:colorId/sets': 'nur-v1',
   'GET /api/v1/minifigs/:figNumber/sets': 'nur-v1',
@@ -232,7 +232,7 @@ const C = {
   // keiner der beiden Familien allein.
   // Preisalarm — beide Oberflaechen. Ohne Kontofilter: Ein …
   'GET /api/v1/alerts/pending': 'nur-v1',
-  // Die UEBERSICHT ueber alle Alarme — beide Oberflaechen. Bewusst getrennt
+  // Die OVERVIEW ueber alle Alarme — beide Oberflaechen. Bewusst getrennt
   // von /alerts/pending: Das sind zwei Fragen. `pending` ist fluechtig („was
   // hat seit meiner letzten Abholung gemeldet?"), diese hier ist vollstaendig
   // („was habe ich gesetzt?"). Geschrieben wird weiter ueber die Route zum
@@ -404,23 +404,23 @@ test('keine verwaisten Klassifikations-Einträge', () => {
 });
 
 /** Jede Adresse, die die Android-App ruft (shared/app-schnittstelle.json). */
-function androidAdressen() {
+function androidAddresses() {
   const { routen, adressen } = require('./helpers/vertrag').appSchnittstelle();
-  const gefunden = new Set(routen.map(r => `${r.methode} ${vergleichbar(r.pfad)}`));
+  const gefunden = new Set(routen.map(r => `${r.methode} ${comparable(r.pfad)}`));
   // Von Hand gebaut: Die Methode steht nicht dabei, also unter allen Verben. Das kann eine
   // Adresse zu viel entlasten, aber keine zu Unrecht anklagen.
   for (const a of adressen)
-    for (const v of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) gefunden.add(`${v} ${vergleichbar(a)}`);
+    for (const v of ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']) gefunden.add(`${v} ${comparable(a)}`);
   return gefunden;
 }
 
 /** Retrofit schreibt `{x}` und laesst den Schraegstrich weg, Express nimmt `:x`. */
-function vergleichbar(p) {
+function comparable(p) {
   return ('/' + p.trim().replace(/^\/+|\/+$/g, '')).replace(/\{[^}]+\}/g, ':X').replace(/:[A-Za-z_]\w*/g, ':X');
 }
 
 test('kein „nur-web" wird in Wahrheit von der Android-App gerufen', () => {
-  const app = androidAdressen();
+  const app = androidAddresses();
   // Selbstbeweis: Greift das Muster nicht mehr, waere die Menge leer und der
   // Test gruen, ohne etwas geprueft zu haben. GEMESSEN sind es ueber 90.
   assert.ok(app.size >= 80, `Nur ${app.size} Android-Adressen gefunden — Muster veraltet?`);
@@ -429,7 +429,7 @@ test('kein „nur-web" wird in Wahrheit von der Android-App gerufen', () => {
     .filter(([, k]) => k === 'nur-web')
     .map(([e]) => {
       const [verb, pfad] = e.split(' ');
-      return app.has(`${verb} ${vergleichbar(pfad)}`) ? e : null;
+      return app.has(`${verb} ${comparable(pfad)}`) ? e : null;
     })
     .filter(Boolean)
     .sort();

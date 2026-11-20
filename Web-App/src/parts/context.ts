@@ -6,13 +6,13 @@ import * as manualParts from './repository/manualParts';
 import * as partsList from './repository/partsList';
 import * as summary from './repository/summary';
 import * as partColor from './repository/partColor';
-import type { AuftraegeDienste } from '../auftraege';
+import type { JobsServices } from '../auftraege';
 import type { SettingsServices } from '../settings';
-import type { HaushaltDienste } from '../haushalt';
-import type { KatalogDienste } from '../katalog';
-import type { FremdquellenDienste } from '../fremdquellen';
-import type { FinanzenDienste } from '../finanzen';
-import type { BestandDienste } from '../bestand';
+import type { HouseholdServices } from '../haushalt';
+import type { CatalogServices } from '../katalog';
+import type { ForeignSourcesServices } from '../fremdquellen';
+import type { FinancesServices } from '../finanzen';
+import type { InventoryServices } from '../bestand';
 import type { Uhr } from '../infra/uhr';
 
 export interface PartsDependencies {
@@ -21,12 +21,12 @@ export interface PartsDependencies {
   /** State per access (rebuilding the parts summary); createParts sets it up. */
   faecher: Faecher;
   einstellungen: SettingsServices;
-  auftraege: AuftraegeDienste;
-  haushalt: HaushaltDienste;
-  katalog: KatalogDienste;
-  fremdquellen: FremdquellenDienste;
-  finanzen: FinanzenDienste;
-  bestand: BestandDienste;
+  auftraege: JobsServices;
+  haushalt: HouseholdServices;
+  katalog: CatalogServices;
+  fremdquellen: ForeignSourcesServices;
+  finanzen: FinancesServices;
+  bestand: InventoryServices;
 }
 
 export const access = (db: Db) => ({

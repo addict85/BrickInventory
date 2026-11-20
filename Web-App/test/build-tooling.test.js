@@ -150,7 +150,7 @@ test('@types/* beschreiben dieselbe Hauptversion wie das Paket selbst', () => {
   // Freibriefe: DefinitelyTyped zählt die Hauptversion nach den Deklarationen,
   // nicht nach der Bibliothek. Ein Eintrag ist eine ENTSCHEIDUNG mit Begründung,
   // kein Stummschalten.
-  const freibrief = {
+  const carteBlanche = {
     archiver: 'Typpaket zählt eigenständig; 8.x ist die aktuelle Fassung für archiver 7',
     'connect-pg-simple': 'Typpaket steht seit Jahren auf 7.x, die Bibliothek bei 10 — DT zählt hier nicht mit',
     nodemailer: '8.0.1 ist die NEUESTE veröffentlichte Fassung; für nodemailer 9 gibt es noch keine',
@@ -163,7 +163,7 @@ test('@types/* beschreiben dieselbe Hauptversion wie das Paket selbst', () => {
     const ziel = name.slice('@types/'.length).replace('__', '/');
     if (!(ziel in alle)) continue; // @types/node u.ä. haben kein Gegenstück
     geprueft++;
-    if (ziel in freibrief) continue;
+    if (ziel in carteBlanche) continue;
     const a = haupt(alle[ziel]),
       b = haupt(spanne);
     if (a && b && a !== b) abweichend.push(`${ziel} ${alle[ziel]} ↔ ${name} ${spanne}`);
@@ -171,7 +171,7 @@ test('@types/* beschreiben dieselbe Hauptversion wie das Paket selbst', () => {
 
   // Ein Freibrief für ein Paket, das es nicht mehr gibt, verdeckt beim nächsten
   // Mal die echte Frage.
-  const verwaist = Object.keys(freibrief).filter(z => !(z in alle));
+  const verwaist = Object.keys(carteBlanche).filter(z => !(z in alle));
   assert.deepEqual(verwaist, [], 'Freibrief ohne Paket — Eintrag entfernen: ' + verwaist.join(', '));
 
   assert.ok(geprueft >= 5, `Nur ${geprueft} Paare gefunden — heissen die Typpakete noch @types/<paket>?`);
@@ -204,22 +204,22 @@ test('die Adresse der Test-Datenbank hat überall einen Rückfallwert', () => {
   const { ohneKommentare } = require('./helpers/sources');
   const dateien = fs.readdirSync(__dirname).filter(f => f.endsWith('.js'));
   let gelesen = 0;
-  const ohneRueckfall = [];
+  const withoutFallback = [];
   for (const f of dateien) {
     const src = ohneKommentare(fs.readFileSync(path.join(__dirname, f), 'utf8'));
     for (const m of src.matchAll(/process\.env\.TEST_DATABASE_URL\s*(\|\|)?/g)) {
       gelesen++;
-      if (!m[1]) ohneRueckfall.push(`${f}:${src.slice(0, m.index).split('\n').length}`);
+      if (!m[1]) withoutFallback.push(`${f}:${src.slice(0, m.index).split('\n').length}`);
     }
   }
   // Selbstbeweis: Findet das Muster nichts, wäre die Liste leer und der Test
   // grün, ohne etwas geprüft zu haben.
   assert.ok(gelesen >= 50, `Nur ${gelesen} Zugriffe auf TEST_DATABASE_URL gefunden — Muster veraltet?`);
   assert.deepEqual(
-    ohneRueckfall,
+    withoutFallback,
     [],
     'Diese Stellen lesen TEST_DATABASE_URL ohne Rückfallwert:\n  ' +
-      ohneRueckfall.join('\n  ') +
+      withoutFallback.join('\n  ') +
       '\nIst die Variable nicht gesetzt, kommt dort undefined an. In einem ' +
       'Kindprozess bricht der ganze Testlauf dann mit einer Meldung ab, die ' +
       'nichts über die Ursache sagt.',
@@ -239,11 +239,11 @@ test('der pg-Klient in CI folgt der Version des Dienstes', () => {
   assert.ok(dienst, 'Keine Postgres-Dienstdefinition im Workflow gefunden — Muster veraltet?');
 
   // Keine zweite Fassung derselben Zahl.
-  const festeKlienten = [...yml.matchAll(/postgresql-client-(\d+)/g)].map(m => m[1]);
+  const fixedClients = [...yml.matchAll(/postgresql-client-(\d+)/g)].map(m => m[1]);
   assert.deepEqual(
-    festeKlienten,
+    fixedClients,
     [],
-    `Die Klientenversion steht als feste Zahl im Workflow (${festeKlienten.join(', ')}). ` +
+    `Die Klientenversion steht als feste Zahl im Workflow (${fixedClients.join(', ')}). ` +
       `Der Dienst laeuft auf ${dienst[1]}; zwei Zahlen fuer dieselbe Sache laufen auseinander — ` +
       'die Version gehoert aus der Dienstdefinition gelesen.',
   );
@@ -278,11 +278,11 @@ test('beide Workflows melden, was rot war', () => {
     assert.ok(fehler >= 2, `${datei}: nur ${fehler} Fehler-Annotation(en) — beide Ausgaenge muessen gemeldet werden`);
     // Und der Reporter, den die eingestellte Node-Fassung wirklich nimmt
     if (datei === 'web-ci.yml') {
-      const zuweisung = (yml.match(/^\s*ROT_MUSTER=.*$/m) || [''])[0];
-      assert.ok(zuweisung, `${datei}: kein ROT_MUSTER definiert`);
-      assert.match(zuweisung, /not ok/, `${datei}: ROT_MUSTER kennt den TAP-Reporter nicht`);
+      const assignment = (yml.match(/^\s*ROT_MUSTER=.*$/m) || [''])[0];
+      assert.ok(assignment, `${datei}: kein ROT_MUSTER definiert`);
+      assert.match(assignment, /not ok/, `${datei}: ROT_MUSTER kennt den TAP-Reporter nicht`);
       assert.match(
-        zuweisung,
+        assignment,
         /✖/,
         `${datei}: ROT_MUSTER kennt den spec-Reporter (Node 26) nicht — ` +
           'gemessen an Lauf 15: vier rote Tests, kein einziger gemeldet',
@@ -302,13 +302,13 @@ test('beide Workflows melden, was rot war', () => {
  * Gefunden statt aufgezaehlt: Die Schritte kommen aus der Datei, und der
  * Selbstnachweis unten faellt auf, wenn das Zerlegen nicht mehr greift.
  */
-function schrittRumpf(yml, teilname) {
-  const koepfe = [...yml.matchAll(/^ {6}- name: (.+)$/gm)];
-  assert.ok(koepfe.length >= 8, `Nur ${koepfe.length} Schritte erkannt — das Zerlegen greift nicht mehr`);
-  for (let i = 0; i < koepfe.length; i++) {
-    if (!koepfe[i][1].includes(teilname)) continue;
-    const ende = i + 1 < koepfe.length ? koepfe[i + 1].index : yml.length;
-    return yml.slice(koepfe[i].index, ende);
+function stepBody(yml, teilname) {
+  const headers = [...yml.matchAll(/^ {6}- name: (.+)$/gm)];
+  assert.ok(headers.length >= 8, `Nur ${headers.length} Schritte erkannt — das Zerlegen greift nicht mehr`);
+  for (let i = 0; i < headers.length; i++) {
+    if (!headers[i][1].includes(teilname)) continue;
+    const ende = i + 1 < headers.length ? headers[i + 1].index : yml.length;
+    return yml.slice(headers[i].index, ende);
   }
   return null;
 }
@@ -316,7 +316,7 @@ function schrittRumpf(yml, teilname) {
 test('die Sicherheitsprüfung sagt, was sie gefunden hat', () => {
   // Der Befund
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
-  const rumpf = schrittRumpf(yml, 'Sicherheitsprüfung');
+  const rumpf = stepBody(yml, 'Sicherheitsprüfung');
   assert.ok(rumpf, 'Der Schritt heisst anders — diese Regel prueft dann nichts mehr');
 
   assert.match(rumpf, /--json/, 'Der Schritt betrachtet nur den Rueckgabewert. Der sagt nicht, WAS los war');
@@ -343,10 +343,10 @@ test('die Sicherheitsprüfung sagt, was sie gefunden hat', () => {
 // gestrichen → rot „ein Befund „moderate“ macht den Lauf rot“.
 test('npm audit: ein Befund ab „moderate“ macht den Lauf rot', t => {
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
-  const rumpf = schrittRumpf(yml, 'Sicherheitsprüfung');
+  const rumpf = stepBody(yml, 'Sicherheitsprüfung');
   const stuecke = [...rumpf.matchAll(/node -e '\n([\s\S]*?)\n\s*'/g)].map(m => m[1]);
-  const auswertung = stuecke.find(s => s.includes('process.env.BERICHT'));
-  assert.ok(auswertung, 'die Auswertung des Berichts ist nicht zu finden');
+  const evaluation = stuecke.find(s => s.includes('process.env.BERICHT'));
+  assert.ok(evaluation, 'die Auswertung des Berichts ist nicht zu finden');
   const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-'));
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   const lauf = stufe => {
@@ -360,7 +360,7 @@ test('npm audit: ein Befund ab „moderate“ macht den Lauf rot', t => {
       path.join(ort, 'audit.json'),
       JSON.stringify({ metadata: { vulnerabilities: m }, vulnerabilities }),
     );
-    return spawnSync(process.execPath, ['-e', auswertung], {
+    return spawnSync(process.execPath, ['-e', evaluation], {
       encoding: 'utf8',
       env: { ...process.env, BERICHT: path.join(ort, 'audit.json') },
     });
@@ -385,13 +385,13 @@ test('der CI-Workflow prüft, was er prüfen soll', () => {
 
   // 2. Eine echte Datenbank, und zwar in der Hauptversion aus dem Betrieb.
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
-  const betrieb = (compose.match(/image:\s*postgres:(\d+)/) || [])[1];
+  const operation = (compose.match(/image:\s*postgres:(\d+)/) || [])[1];
   const ci = (yml.match(/image:\s*postgres:(\d+)/) || [])[1];
-  assert.ok(betrieb && ci, 'Postgres-Abbild nicht auffindbar');
+  assert.ok(operation && ci, 'Postgres-Abbild nicht auffindbar');
   assert.equal(
     ci,
-    betrieb,
-    `CI prüft gegen PostgreSQL ${ci}, im Betrieb läuft ${betrieb} — ` +
+    operation,
+    `CI prüft gegen PostgreSQL ${ci}, im Betrieb läuft ${operation} — ` +
       'Sperren, Indizes und Planerverhalten unterscheiden sich zwischen Hauptversionen',
   );
 
@@ -554,7 +554,7 @@ test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async t => {
   // zaehlt Pfade mit variablem Segment und laesst die Zahl nicht wachsen. Die
   // Ratsche ist berechtigt — ein zusammengesetzter Pfad ist genau der, bei dem
   // niemand merkt, dass die Datei nicht mehr existiert.
-  const baue = () =>
+  const build = () =>
     execFileSync(process.execPath, [path.join(ROOT, 'scripts/build-ts.js'), '--outdir', ziel], {
       cwd: ROOT,
       encoding: 'utf8',
@@ -571,7 +571,7 @@ test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async t => {
   const quelle = path.join(ROOT, 'db/migrations');
   const gebaut = path.join(ziel, 'db/migrations');
 
-  baue();
+  build();
   const erwartet = sql(quelle);
   assert.ok(
     erwartet.length >= 20,
@@ -583,9 +583,9 @@ test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async t => {
   // Den Fall herstellen: eine Migration, die es nur im Ziel gibt.
   const fremd = path.join(gebaut, '9999-verwaist-aus-anderem-zweig.sql');
   fs.writeFileSync(fremd, '-- aus einem anderen Zweig zurueckgeblieben\nSELECT 1;\n');
-  const jsVorher = zaehleJs(ziel);
+  const jsBefore = countJs(ziel);
 
-  baue();
+  build();
   assert.ok(
     !fs.existsSync(fremd),
     'Die verwaiste Migration liegt nach dem Bau noch in dist/. db/migrate.ts liest ' +
@@ -593,23 +593,23 @@ test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async t => {
   );
   assert.deepEqual(sql(gebaut), erwartet, 'Beim Aufraeumen ist mehr verschwunden als die verwaiste Datei.');
   assert.equal(
-    zaehleJs(ziel),
-    jsVorher,
+    countJs(ziel),
+    jsBefore,
     'Das Aufraeumen hat .js-Dateien angefasst. Es darf ausschliesslich quellenlose ' + 'Nicht-TS-Abbilder entfernen.',
   );
 
-  // Zwei unabhängige Belege, dass entferneVerwaiste() die Datei nahm: Der Bau nennt sie,
+  // Zwei unabhängige Belege, dass removeOrphaned() die Datei nahm: Der Bau nennt sie,
   // und eine Datei mit fremder Endung bleibt liegen (sonst räumte etwas pauschal auf).
   const fremdTxt = path.join(gebaut, 'nicht-mitkopiert.md');
   fs.writeFileSync(fremd, '-- zweiter Versuch\nSELECT 1;\n');
   fs.writeFileSync(fremdTxt, 'keine mitkopierte Endung — darf liegen bleiben\n');
 
-  const protokoll = baue();
+  const protokoll = build();
   assert.match(
     protokoll,
     /verwaiste Datei\(en\) entfernt:.*9999-verwaist-aus-anderem-zweig\.sql/,
     'Der Bau nennt die entfernte Datei nicht im Protokoll. Dann ist unklar, ob sie ' +
-      'entferneVerwaiste() zum Opfer fiel oder aus einem anderen Grund fehlt — und wer ' +
+      'removeOrphaned() zum Opfer fiel oder aus einem anderen Grund fehlt — und wer ' +
       'spaeter sucht, warum eine Datei weg ist, findet keine Spur.\n' +
       protokoll,
   );
@@ -622,11 +622,11 @@ test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async t => {
 });
 
 /** @param {string} wurzel @returns {number} Anzahl .js-Dateien darunter */
-function zaehleJs(wurzel) {
+function countJs(wurzel) {
   let n = 0;
   for (const e of fs.readdirSync(wurzel, { withFileTypes: true })) {
     const abs = path.join(wurzel, e.name);
-    if (e.isDirectory()) n += zaehleJs(abs);
+    if (e.isDirectory()) n += countJs(abs);
     else if (e.name.endsWith('.js')) n++;
   }
   return n;

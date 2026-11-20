@@ -1,12 +1,12 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 import { kaufpreisSpalten } from '../../../db/geldSql';
 import { mengeAus, teilmengeAus } from '../../../db/bestandsmenge';
-import type { FinanzenLesevertrag } from '../lesevertrag';
+import type { FinancesReadContract } from '../lesevertrag';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/katalogSicht';
 
 /** Eine Erfassung eines manuellen Teils oder einer Figur, Kaufpreis in der Kontowährung. */
-export interface ManuelleErfassung {
+export interface ManualEntry {
   id: number;
   user_id: number;
   part_number?: string;
@@ -22,14 +22,14 @@ export interface ManuelleErfassung {
   created_at: Date;
 }
 
-export function manuelleErfassungen(
-  db: DbSchnittstelle,
-  l: FinanzenLesevertrag,
+export function manualEntries(
+  db: DbInterface,
+  l: FinancesReadContract,
   art: 'part' | 'fig',
   uids: number[],
   waehrung: string,
 ) {
-  return db.all<ManuelleErfassung>(
+  return db.all<ManualEntry>(
     art === 'part'
       ? `SELECT id, user_id, part_number, color_id, quantity,
               ${kaufpreisSpalten('unit_price', '$2')}, currency, price_estimated,
@@ -43,7 +43,7 @@ export function manuelleErfassungen(
   );
 }
 
-export interface BewertetesSet {
+export interface ValuedSet {
   user_id: number;
   set_number: string;
   name: string | null;
@@ -55,8 +55,8 @@ export interface BewertetesSet {
 }
 
 /** Kaufpreis und Zustand stehen in den Erfassungen. */
-export function setsZurBewertung(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[]) {
-  return db.all<BewertetesSet>(
+export function setsToValuation(db: DbInterface, l: FinancesReadContract, uids: number[]) {
+  return db.all<ValuedSet>(
     `SELECT s.user_id, s.set_number, ${SET.name} AS name, ${SET.jahr} AS year,
             ${mengeAus('sm', 0)}::int AS quantity,
             c.image_local, c.image_url, s.added_at
@@ -70,7 +70,7 @@ export function setsZurBewertung(db: DbSchnittstelle, l: FinanzenLesevertrag, ui
 }
 
 /** Die Nummern tragen den Versionsanhang. */
-export function katalogMerkmale(db: DbSchnittstelle, setNumbers: string[]) {
+export function catalogFeatures(db: DbInterface, setNumbers: string[]) {
   return db.all<{ set_number: string; is_gear: boolean; bl_type: string | null; fetched_at: Date | null }>(
     'SELECT set_number, is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = ANY($1)',
     [setNumbers],
@@ -91,7 +91,7 @@ export interface ManuelleFigur {
   image_local: string | null;
 }
 
-export function manuelleFigurenZurBewertung(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[]) {
+export function manualMinifigsToValuation(db: DbInterface, l: FinancesReadContract, uids: number[]) {
   return db.all<ManuelleFigur>(
     `
     SELECT m.id, m.user_id, m.set_number, m.fig_number,
@@ -127,7 +127,7 @@ export interface ManuellesTeil {
   image_local: string | null;
 }
 
-export function manuelleTeileZurBewertung(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[]) {
+export function manualPartsToValuation(db: DbInterface, l: FinancesReadContract, uids: number[]) {
   return db.all<ManuellesTeil>(
     `
     SELECT p.id, p.user_id, p.set_number, p.part_number,

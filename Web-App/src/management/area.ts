@@ -1,5 +1,5 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (baueBereich, src/infra/bereich.ts). */
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/bereich.ts). */
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import { managementJobTypes } from './jobTypes';
 import * as dataExport from './dataExport';
 import * as diagnostics from './diagnostics';
@@ -12,8 +12,8 @@ import { zugang, type ManagementDependencies, type ManagementContext } from './c
 
 export type { ManagementDependencies, ManagementContext } from './context';
 
-export function createManagement(a: ManagementDependencies, einblick?: Einblick<ManagementContext>) {
-  return baueBereich(
+export function createManagement(a: ManagementDependencies, inspect?: Inspect<ManagementContext>) {
+  return buildArea(
     a,
     zugang,
     (k: ManagementContext) => ({
@@ -46,7 +46,7 @@ export function createManagement(a: ManagementDependencies, einblick?: Einblick<
       jobsOverview: mit(k)(background.jobsOverview),
       clearJobType: mit(k)(background.clearJobType),
     }),
-    einblick,
+    inspect,
   );
 }
 

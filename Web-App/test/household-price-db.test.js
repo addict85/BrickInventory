@@ -1,7 +1,7 @@
 /**
  * Marktpreis und Preisverlauf für HAUSHALTS-Sets — gegen echte Routen.
  *
- * Gegenprobe (durchgeführt): blickfeldIds in der Preisroute wieder durch die
+ * Gegenprobe (durchgeführt): scopeIds in der Preisroute wieder durch die
  * nackte ID ersetzt → der 404-Schritt hier wird rot.
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für
@@ -12,15 +12,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // account_links kommt aus den Migrationen, nicht aus initSchema
   // (Muster wie in test/household-db.test.js).
   const mc = await db.pool.connect();
@@ -30,21 +30,21 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets', { conc
     mc.release();
   }
 
-  const HAUPT = 'hhprice-haupt',
+  const MAIN = 'hhprice-haupt',
     SUB = 'hhprice-sub',
     SET = '42200-1';
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
-  const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [MAIN, SUB]);
+  const mainId = (await db.get(`SELECT id FROM users WHERE username=$1`, [MAIN])).id;
   const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
-    hauptId,
+    mainId,
     subId,
   ]);
   await db.run(
     `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
                 ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`,
-    [hauptId],
+    [mainId],
   );
   // Im Haushalt gilt eine Währung (src/haushalt/haushalt.ts) — auch für das Unterkonto.
   await db.run(
@@ -56,7 +56,7 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets', { conc
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
   await db.run(`DELETE FROM price_history WHERE set_number=$1`, [SET]);
   // Das Set gehört dem UNTERKONTO — wie im Screenshot.
-  await haeltSet(db, subId, SET, 0); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, subId, SET, 0); // Menge 0: die Erfassung dahinter traegt sie
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity) VALUES ($1,$2,18.20,'U',1)`,
     [subId, SET],
@@ -74,7 +74,7 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets', { conc
   );
 
   // Betrachter ist das HAUPTKONTO.
-  const { base, srv } = testServer(_req, { sitzung: { userId: hauptId, username: HAUPT, isAdmin: false }, t });
+  const { base, srv } = testServer(_req, { sitzung: { userId: mainId, username: MAIN, isAdmin: false }, t });
 
   try {
     // 1. Der eigentliche Fund: Die Preisroute darf nicht mehr 404 geben.
@@ -105,7 +105,7 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets', { conc
       assert.ok(j.by_condition?.U, 'auch die Webapp-Route liefert by_condition.U für das Haushalts-Set');
     }
   } finally {
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]).catch(() => {});
     await db.run(`DELETE FROM price_history WHERE set_number=$1`, [SET]).catch(() => {});
     await db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SET]).catch(() => {});

@@ -15,7 +15,7 @@
  *   D  in kauf-dialoge.js einen Pfad als Variable statt Vorlage → rot:
  *      „api()-Pfade stehen als Literal oder Vorlage da“ (13 statt 12)
  */
-const { istAppModul } = require('../scripts/build-frontend');
+const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -24,11 +24,11 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const { QUELLE, ZIEL, erzeuge, formatiert } = require('../scripts/vertrag-frontend-typen.js');
+const { QUELLE, ZIEL, create, formatiert } = require('../scripts/vertrag-frontend-typen.js');
 const TSC = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
 
 test('die eingecheckten Typen sind aus openapi.json erzeugt', () => {
-  const soll = formatiert(erzeuge(JSON.parse(fs.readFileSync(QUELLE, 'utf8'))));
+  const soll = formatiert(create(JSON.parse(fs.readFileSync(QUELLE, 'utf8'))));
   assert.ok(
     fs.readFileSync(ZIEL, 'utf8') === soll,
     'frontend-typen/vertrag.d.ts ist veraltet — npm run vertrag:frontend',
@@ -72,7 +72,7 @@ function pruefe(probe) {
   }
 }
 
-const KOPF = `/**
+const HEADER = `/**
  * @template {string} M @template {string} P
  * @param {M} m @param {P} p
  * @returns {Promise<import(${JSON.stringify(path.join(ROOT, 'frontend-typen', 'api'))}).ApiAntwort<M, P>>}
@@ -94,8 +94,8 @@ test('api(): jeder Pfad bekommt die Antwort seiner Route', () => {
     "api('GET', '/v1/sets').then(d => { zahl(d.total); }); // FEHLT",
     "api('GET', '/v1/sets/' + nr).then(d => { zahl(d.waswillstdu); });",
   ];
-  const probe = KOPF + faelle.join('\n') + '\n';
-  const versatz = KOPF.split('\n').length - 1;
+  const probe = HEADER + faelle.join('\n') + '\n';
+  const versatz = HEADER.split('\n').length - 1;
   const meldungen = pruefe(probe);
   faelle.forEach((f, i) => {
     const rot = !!meldungen[versatz + i + 1];
@@ -106,31 +106,31 @@ test('api(): jeder Pfad bekommt die Antwort seiner Route', () => {
 
 test('/v1/sets/:nr/parts-list trifft nur seine Route', () => {
   const m = pruefe(
-    KOPF + "api('GET', `/v1/sets/${nr}/parts-list`).then(d => { if (d.success) zahl(d.parts.length); });\n",
+    HEADER + "api('GET', `/v1/sets/${nr}/parts-list`).then(d => { if (d.success) zahl(d.parts.length); });\n",
   );
   assert.deepEqual(Object.values(m), []);
 });
 
 test('ohne Prüfung auf success ist ein Feld undefined, nicht unbekannt', () => {
   // Unter strict: `d.total` ist number | undefined, mit Rückfall also eine Zahl.
-  const m = pruefe(KOPF + "api('GET', '/v1/sets').then(d => { zahl(d.total ?? 0); });\n");
+  const m = pruefe(HEADER + "api('GET', '/v1/sets').then(d => { zahl(d.total ?? 0); });\n");
   assert.deepEqual(Object.values(m), []);
 });
 
 test('api()-Pfade stehen als Literal oder Vorlage da', () => {
   // Nur dann kennt tsc die Route. Ein zusammengesetzter Pfad (Variable,
   // `'/v1/x/' + nr`) bleibt ungeprüft; ihre Zahl darf sinken, nie steigen.
-  const SCHRANKE = 12;
+  const LIMIT = 12;
   const js = path.join(ROOT, 'public', 'js');
   const offen = [];
-  for (const f of fs.readdirSync(js).filter(n => istAppModul(n))) {
+  for (const f of fs.readdirSync(js).filter(n => isAppModule(n))) {
     const src = fs.readFileSync(path.join(js, f), 'utf8');
     for (const m of src.matchAll(/\bapi\(\s*(['"])[A-Z]+\1\s*,\s*([^'"`\s])/g))
       offen.push(`${f}: ${src.slice(m.index, m.index + 50)}`);
     for (const m of src.matchAll(/\bapi\(\s*(['"])[A-Z]+\1\s*,\s*(['"])[^'"]*\2\s*\+/g))
       offen.push(`${f}: ${src.slice(m.index, m.index + 50)}`);
   }
-  assert.ok(offen.length <= SCHRANKE, `${offen.length} ungeprüfte Pfade (Schranke ${SCHRANKE}):\n${offen.join('\n')}`);
-  if (offen.length < SCHRANKE)
-    console.log(`  ℹ ungeprüfte api()-Pfade: ${offen.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
+  assert.ok(offen.length <= LIMIT, `${offen.length} ungeprüfte Pfade (Schranke ${LIMIT}):\n${offen.join('\n')}`);
+  if (offen.length < LIMIT)
+    console.log(`  ℹ ungeprüfte api()-Pfade: ${offen.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });

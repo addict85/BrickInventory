@@ -21,11 +21,11 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, einhaengung, testDaten } = require('./helpers/sources');
+const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const AUTH = einhaengung('auth');
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -36,7 +36,7 @@ const CHEF = 'rechte_chef',
   PASS = 'richtigesPasswort1';
 
 test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username IN ($1,$2)', [CHEF, ZIEL]);
   const hash = await bcrypt.hash(PASS, 4);
@@ -48,7 +48,7 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
     'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
     [ZIEL, hash],
   );
-  const idZiel = (await db.get('SELECT id FROM users WHERE username=$1', [ZIEL])).id;
+  const idTarget = (await db.get('SELECT id FROM users WHERE username=$1', [ZIEL])).id;
 
   const app = express();
   app.use(express.json());
@@ -60,7 +60,7 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
       saveUninitialized: false,
     }),
   );
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
@@ -91,9 +91,9 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
   /** Die Ankündigung fällig machen und den Aufräumlauf ausführen. */
   const faellig = async () => {
     await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [
-      idZiel,
+      idTarget,
     ]);
-    return _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus();
+    return _req('src/konto/verwalterAktionen.js').runDueTakeoversFrom();
   };
 
   try {
@@ -101,25 +101,25 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
 
     // ── 1. Rechteentzug ─────────────────────────────────────────────────────
     await anmelden(ZIEL);
-    assert.equal(await sitzungen(idZiel), 1, 'Vorbedingung: Das Ziel hat genau eine offene Sitzung');
+    assert.equal(await sitzungen(idTarget), 1, 'Vorbedingung: Das Ziel hat genau eine offene Sitzung');
 
-    const ohne = await ruf(AUTH + `/users/${idZiel}/admin`, {
+    const ohne = await ruf(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: false },
     });
     assert.equal(ohne.status, 400, 'Rechte entziehen ohne Verwalterpasswort');
-    const entzug = await ruf(AUTH + `/users/${idZiel}/admin`, {
+    const revocation = await ruf(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: false, admin_password: PASS },
     });
-    assert.equal(entzug.status, 200, `Entzug scheiterte: ${JSON.stringify(entzug.body)}`);
-    assert.ok(entzug.body.effective_at, 'Bei einem Verwalter wird der Entzug angekündigt');
-    assert.equal(await sitzungen(idZiel), 1, 'Vor der Frist bleibt die Sitzung');
+    assert.equal(revocation.status, 200, `Entzug scheiterte: ${JSON.stringify(revocation.body)}`);
+    assert.ok(revocation.body.effective_at, 'Bei einem Verwalter wird der Entzug angekündigt');
+    assert.equal(await sitzungen(idTarget), 1, 'Vor der Frist bleibt die Sitzung');
     assert.equal(await faellig(), 1);
     assert.equal(
-      await sitzungen(idZiel),
+      await sitzungen(idTarget),
       0,
       'Die Sitzung des Ziels lebt weiter — dann bleibt es in seinem offenen Fenster Verwalter, ' +
         'denn session.isAdmin wird nie nachgefuehrt',
@@ -131,8 +131,8 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
     // eine fremde Sitzung ohne Grund beenden — und sich selbst aussperren,
     // wenn er es an seinem eigenen Konto tut.
     await anmelden(ZIEL);
-    assert.equal(await sitzungen(idZiel), 1, 'Vorbedingung fuer den Nicht-Wechsel');
-    const nochmal = await ruf(AUTH + `/users/${idZiel}/admin`, {
+    assert.equal(await sitzungen(idTarget), 1, 'Vorbedingung fuer den Nicht-Wechsel');
+    const nochmal = await ruf(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: false, admin_password: PASS },
@@ -143,7 +143,7 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
       'Denselben Wert nochmal zu setzen muss gelingen — die Existenzpruefung haengt ' +
         'nicht mehr an r.changes, das bei einem wertgleichen UPDATE 0 sein kann',
     );
-    assert.equal(await sitzungen(idZiel), 1, 'Ohne echte Aenderung darf keine Sitzung enden');
+    assert.equal(await sitzungen(idTarget), 1, 'Ohne echte Aenderung darf keine Sitzung enden');
 
     // ── 2b. Ein unbekanntes Konto ───────────────────────────────────────────
     //
@@ -159,14 +159,14 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
     assert.equal(unbekannt.status, 404, 'Ein nicht vorhandenes Konto muss 404 ergeben, nicht 200');
 
     // ── 3. Und die Gegenrichtung: Rechte ERTEILEN ───────────────────────────
-    const vergabe = await ruf(AUTH + `/users/${idZiel}/admin`, {
+    const vergabe = await ruf(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
       body: { is_admin: true, admin_password: PASS },
     });
     assert.equal(vergabe.status, 200);
     assert.equal(
-      await sitzungen(idZiel),
+      await sitzungen(idTarget),
       0,
       'Auch bei der Vergabe muss die Sitzung enden — eine fremde Sitzung laesst sich ' +
         'nicht umschreiben, und sonst saehe das Ziel seine neuen Rechte nie',
@@ -174,11 +174,11 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
 
     // ── 4. Kontoloeschung ───────────────────────────────────────────────────
     await anmelden(ZIEL);
-    assert.equal(await sitzungen(idZiel), 1, 'Vorbedingung fuer die Loeschung');
-    const ohnePw = await ruf(AUTH + `/users/${idZiel}`, { method: 'DELETE', headers: { cookie: chefCookie } });
-    assert.equal(ohnePw.status, 400, 'Ein Konto zu löschen verlangt das Verwalterpasswort');
-    assert.ok(await db.get('SELECT id FROM users WHERE id=$1', [idZiel]), 'ohne Passwort wurde trotzdem gelöscht');
-    const weg = await ruf(AUTH + `/users/${idZiel}`, {
+    assert.equal(await sitzungen(idTarget), 1, 'Vorbedingung fuer die Loeschung');
+    const withoutPw = await ruf(AUTH + `/users/${idTarget}`, { method: 'DELETE', headers: { cookie: chefCookie } });
+    assert.equal(withoutPw.status, 400, 'Ein Konto zu löschen verlangt das Verwalterpasswort');
+    assert.ok(await db.get('SELECT id FROM users WHERE id=$1', [idTarget]), 'ohne Passwort wurde trotzdem gelöscht');
+    const weg = await ruf(AUTH + `/users/${idTarget}`, {
       method: 'DELETE',
       headers: { cookie: chefCookie },
       body: { admin_password: PASS },
@@ -187,19 +187,19 @@ test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { con
     assert.ok(weg.body.effective_at, 'Bei einem Verwalter wird die Löschung angekündigt');
     assert.equal(await faellig(), 1);
     assert.equal(
-      await sitzungen(idZiel),
+      await sitzungen(idTarget),
       0,
       'Das geloeschte Konto ist noch angemeldet — user_sessions haengt an keinem ' +
         'Fremdschluessel, die Zeile muss ausdruecklich weg',
     );
     assert.equal(
-      await db.get('SELECT id FROM users WHERE id=$1', [idZiel]),
+      await db.get('SELECT id FROM users WHERE id=$1', [idTarget]),
       undefined,
       'Vorbedingung: Das Konto ist wirklich geloescht',
     );
 
     // ── 5. Jede Verwalteraktion steht im Protokoll — auch die Löschung ──────
-    const prot = await db.all(`SELECT action, target_name FROM admin_log WHERE target_id = $1 ORDER BY id`, [idZiel]);
+    const prot = await db.all(`SELECT action, target_name FROM admin_log WHERE target_id = $1 ORDER BY id`, [idTarget]);
     assert.deepEqual(
       prot.map(p => p.action),
       [

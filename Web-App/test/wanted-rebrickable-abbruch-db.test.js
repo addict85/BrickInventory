@@ -7,7 +7,7 @@
  * Gegenproben (am 11.11.2026 gemessen):
  *   A  in blTeilZuRb() wieder `.catch(() => null)` an beiden rbGet-Aufrufen →
  *      rot: „ohne Schlüssel …“, „Serverfehler 500 …“, „Tageslimit …“
- *   B  in loeseUeberRebrickableAuf() wieder `catch { rbId = null; }` → rot:
+ *   B  in resolveViaRebrickableOn() wieder `catch { rbId = null; }` → rot:
  *      dieselben drei
  *   C  in rbGet() `if (status === 404) return null;` entfernt → rot: „404 ist
  *      unbekannt, der Lauf geht weiter“ (und „Tageslimit …“, Grund stoerung)
@@ -20,21 +20,21 @@ const { Readable } = require('node:stream');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 /** Jede Anfrage bekommt `status` mit leerem JSON-Körper. */
-async function mitAntwort(status, lauf) {
+async function withResponse(status, lauf) {
   const echt = https.get;
   let anfragen = 0;
   // @ts-expect-error — Attrappe mit genau dem, was src/infra/abruf.ts benutzt.
-  https.get = (_u, _o, beiAntwort) => {
+  https.get = (_u, _o, atResponse) => {
     anfragen++;
     const r = Object.assign(Readable.from([Buffer.from('{}')]), { statusCode: status, headers: {} });
     // @ts-expect-error — kein vollständiges IncomingMessage
-    setImmediate(() => beiAntwort(r));
+    setImmediate(() => atResponse(r));
     return Object.assign(new EventEmitter(), { destroy: () => {}, end: () => {} });
   };
   try {
@@ -56,24 +56,24 @@ const posten = n =>
   }));
 
 test('Wanted-Auflösung über Rebrickable bricht mit Grund ab', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const S = _req('src/settings/settings.js');
   const k = _req('src/fremdquellen/apiKontingent.js');
-  const { loeseUeberRebrickableAuf } = _req('src/wanted/wantedAufloesung.js');
+  const { resolveViaRebrickableOn } = _req('src/wanted/wantedAufloesung.js');
   await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
 
   await t.test('ohne Schlüssel: abgebrochen mit Grund kein_schluessel', async () => {
-    const r = await loeseUeberRebrickableAuf(posten(3));
+    const r = await resolveViaRebrickableOn(posten(3));
     assert.equal(r.abgebrochen, 'kein_schluessel');
     assert.equal(r.gefunden, 0);
   });
 
   await S.setGlobalSetting('rebrickable_api_key', 'testschluessel');
-  await k.setzeKontingentZurueck('rebrickable');
+  await k.setQuotaBack('rebrickable');
 
   await t.test('404 ist unbekannt, der Lauf geht weiter', async () => {
-    const { ergebnis, anfragen } = await mitAntwort(404, () => loeseUeberRebrickableAuf(posten(3)));
+    const { ergebnis, anfragen } = await withResponse(404, () => resolveViaRebrickableOn(posten(3)));
     assert.equal(ergebnis.abgebrochen, undefined);
     assert.equal(ergebnis.gefragt, 3);
     // Je Posten zwei Wege (Nummer selbst, dann der Filter).
@@ -81,7 +81,7 @@ test('Wanted-Auflösung über Rebrickable bricht mit Grund ab', { concurrency: 1
   });
 
   await t.test('Serverfehler 500 ist kein „unbekannt“', async () => {
-    const { ergebnis, anfragen } = await mitAntwort(500, () => loeseUeberRebrickableAuf(posten(3)));
+    const { ergebnis, anfragen } = await withResponse(500, () => resolveViaRebrickableOn(posten(3)));
     assert.equal(ergebnis.abgebrochen, 'stoerung');
     assert.equal(anfragen, 1, 'nach dem ersten Fehler weiter gefragt');
   });
@@ -89,8 +89,8 @@ test('Wanted-Auflösung über Rebrickable bricht mit Grund ab', { concurrency: 1
   await t.test('Tageslimit: abgebrochen mit Grund kontingent', async () => {
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('api_limit_rebrickable', '1')
                   ON CONFLICT (key) DO UPDATE SET value = '1'`);
-    await k.setzeKontingentZurueck('rebrickable');
-    const { ergebnis, anfragen } = await mitAntwort(404, () => loeseUeberRebrickableAuf(posten(3)));
+    await k.setQuotaBack('rebrickable');
+    const { ergebnis, anfragen } = await withResponse(404, () => resolveViaRebrickableOn(posten(3)));
     assert.equal(ergebnis.abgebrochen, 'kontingent');
     assert.equal(anfragen, 1, 'nur der eine Aufruf des Kontingents ging hinaus');
   });

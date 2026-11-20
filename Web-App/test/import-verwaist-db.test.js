@@ -1,7 +1,7 @@
 /**
  * Ein Import, dessen Prozess nicht mehr lebt (Neustart, Absturz), sperrt
- * keinen weiteren: Ohne Lebenszeichen seit VERWAIST_MIN Minuten gilt er als
- * unterbrochen. Vorher blieb „running" für immer stehen, und starteAuftrag
+ * keinen weiteren: Ohne Lebenszeichen seit ORPHANED_MIN Minuten gilt er als
+ * unterbrochen. Vorher blieb „running" für immer stehen, und startJob
  * verweigerte jeden neuen Auftrag, bis jemand von Hand abbrach.
  *
  * Gegenprobe (am 27.10. gemessen): das UPDATE in jobGet entfernt → rot:
@@ -14,16 +14,16 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { jobGet, starteAuftrag, VERWAIST_MIN } = _req('src/auftraege/importAuftrag.js');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { jobGet, startJob, ORPHANED_MIN } = _req('src/auftraege/importAuftrag.js');
 
 const NAME = `verwaist_${process.pid}`;
 
 test('verwaiste Importe', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(
@@ -48,15 +48,15 @@ test('verwaiste Importe', { concurrency: 1 }, async t => {
   await t.test('ein laufender Auftrag bleibt', async () => {
     await auftrag(1);
     assert.equal((await jobGet(uid)).status, 'running');
-    assert.equal(await starteAuftrag(uid, { total: 5 }), false, 'Ein zweiter Auftrag verdrängt den laufenden');
+    assert.equal(await startJob(uid, { total: 5 }), false, 'Ein zweiter Auftrag verdrängt den laufenden');
   });
 
   await t.test('ein verwaister Auftrag', async () => {
-    await auftrag(VERWAIST_MIN + 1);
+    await auftrag(ORPHANED_MIN + 1);
     const stand = await jobGet(uid);
     assert.equal(stand.status, 'error');
     assert.match(stand.error, /unterbrochen/);
     assert.equal(stand.current, null);
-    assert.equal(await starteAuftrag(uid, { total: 5 }), true, 'Der verwaiste Auftrag sperrt weiter');
+    assert.equal(await startJob(uid, { total: 5 }), true, 'Der verwaiste Auftrag sperrt weiter');
   });
 });

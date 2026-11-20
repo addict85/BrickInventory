@@ -2,7 +2,7 @@
  * entstehen docs/openapi.json (npm run vertrag:openapi), die Typen der
  * Routen (src/http/vertragsRouter.ts) und die Prüfung der Antworten in den Tests. */
 import type { z } from 'zod';
-import type { Draht, Route } from './grund';
+import type { Wire, Route } from './grund';
 import * as bestand from './bestand';
 import * as einstellungen from './einstellungen';
 import * as figuren from './figuren';
@@ -17,7 +17,7 @@ import * as sets from './sets';
 import * as teile from './teile';
 import * as verwaltung from './verwaltung';
 
-export const BEREICHE = {
+export const AREAS = {
   bestand,
   einstellungen,
   figuren,
@@ -33,7 +33,7 @@ export const BEREICHE = {
   verwaltung,
 };
 
-export const VERTRAG = {
+export const CONTRACT = {
   ...bestand.routen,
   ...einstellungen.routen,
   ...figuren.routen,
@@ -49,29 +49,29 @@ export const VERTRAG = {
   ...verwaltung.routen,
 };
 
-export type Schluessel = keyof typeof VERTRAG;
-type Rumpf<K extends Schluessel> = (typeof VERTRAG)[K] extends { antwort: infer S extends z.ZodType }
-  ? Draht<z.output<S>>
+export type Schluessel = keyof typeof CONTRACT;
+type Rumpf<K extends Schluessel> = (typeof CONTRACT)[K] extends { antwort: infer S extends z.ZodType }
+  ? Wire<z.output<S>>
   : never;
 /** Der Rumpf einer Route, für Dienste, die ihn ganz zusammensetzen. */
-export type AntwortRumpf<K extends Schluessel> = Rumpf<K>;
+export type ResponseBody<K extends Schluessel> = Rumpf<K>;
 
-type Teil<K extends Schluessel, F extends 'eingabe' | 'abfrage'> = (typeof VERTRAG)[K] extends {
+type Teil<K extends Schluessel, F extends 'eingabe' | 'abfrage'> = (typeof CONTRACT)[K] extends {
   [P in F]: infer S extends z.ZodType;
 }
   ? z.output<S>
   : Record<never, never>;
-/** Der geprüfte Rumpf (eingabePruefen); ohne Schema leer. */
+/** Der geprüfte Rumpf (checkInput); ohne Schema leer. */
 export type Eingabe<K extends Schluessel> = Teil<K, 'eingabe'>;
 /** Die geprüfte Abfrage; ohne Schema leer, ein Lesen dort ist ein Übersetzungsfehler. */
 export type Abfrage<K extends Schluessel> = Teil<K, 'abfrage'>;
 
 export function routeZu(schluessel: string): Route | undefined {
-  return Object.hasOwn(VERTRAG, schluessel) ? (VERTRAG as Record<string, Route>)[schluessel] : undefined;
+  return Object.hasOwn(CONTRACT, schluessel) ? (CONTRACT as Record<string, Route>)[schluessel] : undefined;
 }
 
 /** Wörtliche Abschnitte vor Platzhaltern, wie Express es für diese Pfade hält. */
-const MUSTER = Object.entries(VERTRAG as Record<string, Route>)
+const MUSTER = Object.entries(CONTRACT as Record<string, Route>)
   .map(([k, route]) => {
     const [methode, pfad] = k.split(' ') as [string, string];
     const teile = pfad.split('/');
@@ -79,7 +79,7 @@ const MUSTER = Object.entries(VERTRAG as Record<string, Route>)
   })
   .sort((a, b) => a.offen - b.offen);
 
-function musterFuerAnfrage(methode: string, pfad: string) {
+function patternForRequest(methode: string, pfad: string) {
   const teile = pfad.replace(/\/+$/, '').split('/');
   return MUSTER.find(
     m =>
@@ -90,11 +90,11 @@ function musterFuerAnfrage(methode: string, pfad: string) {
 }
 
 /** Die Vertragsroute zu einer Anfrage, bevor Express sie zugeordnet hat. */
-export function routeFuerAnfrage(methode: string, pfad: string): Route | undefined {
-  return musterFuerAnfrage(methode, pfad)?.route;
+export function routeForRequest(methode: string, pfad: string): Route | undefined {
+  return patternForRequest(methode, pfad)?.route;
 }
 
 /** Ihr Schlüssel: Wer Routen danach einordnet, nennt sie so, wie der Übersetzer sie prüft. */
-export function schluesselFuerAnfrage(methode: string, pfad: string): Schluessel | undefined {
-  return musterFuerAnfrage(methode, pfad)?.schluessel;
+export function keyForRequest(methode: string, pfad: string): Schluessel | undefined {
+  return patternForRequest(methode, pfad)?.schluessel;
 }

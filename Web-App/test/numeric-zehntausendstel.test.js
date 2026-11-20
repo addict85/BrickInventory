@@ -11,7 +11,7 @@ const path = require('node:path');
 const { buildAndRequire, ROOT } = require('./helpers/sources');
 
 buildAndRequire();
-const { numericAlsZahl } = require(path.join(ROOT, 'dist/db/database.js'));
+const { numericAsNumber } = require(path.join(ROOT, 'dist/db/database.js'));
 const { inZehntel4 } = require(path.join(ROOT, 'dist/src/infra/geld.js'));
 
 test('NUMERIC(12,4) bleibt in Zehntausendsteln genau', () => {
@@ -22,11 +22,11 @@ test('NUMERIC(12,4) bleibt in Zehntausendsteln genau', () => {
     ['0.0001', 1],
     ['1.005', 10050],
   ];
-  for (const [roh, z] of faelle) assert.equal(inZehntel4(numericAlsZahl(roh)), z, roh);
-  assert.equal(numericAlsZahl(null), null);
+  for (const [roh, z] of faelle) assert.equal(inZehntel4(numericAsNumber(roh)), z, roh);
+  assert.equal(numericAsNumber(null), null);
 });
 
 test('jenseits von 2^53/10^4 wirft der Parser', () => {
-  assert.throws(() => numericAlsZahl('900719925474.0993'), RangeError);
-  assert.equal(inZehntel4(numericAlsZahl('900719925474.0000')), 9007199254740000);
+  assert.throws(() => numericAsNumber('900719925474.0993'), RangeError);
+  assert.equal(inZehntel4(numericAsNumber('900719925474.0000')), 9007199254740000);
 });

@@ -125,21 +125,21 @@ function fakeApi(_method, url) {
 }
 
 // ── Globale Stubs, wie sie die Bausteine und i18n bereitstellen ────────────────────────
-Object.assign(w, require('./helpers/markup').markupHelfer());
+Object.assign(w, require('./helpers/markup').markupHelper());
 w.eval(`
   window.G = id => document.getElementById(id);
   window.alle = (s, w = document) => [...w.querySelectorAll(s)]; window.eins = (s, w = document) => w.querySelector(s);
   window.t = (k, v) => { let s = k; if (v) for (const [a,b] of Object.entries(v)) s += ' ' + b; return s; };
   window.locale = () => 'de-CH';
-  window.toast = () => {}; window.meldeTreffer = () => {};
-  window.PLATZHALTER_SET = '/assets/set-placeholder.svg'; window.setzeDialogbild = (img, src) => { img.src = src; };
+  window.toast = () => {}; window.reportHits = () => {};
+  window.PLACEHOLDER_SET = '/assets/set-placeholder.svg'; window.setDialogbild = (img, src) => { img.src = src; };
   // Das Teile-Symbol kommt aus collection.js und wird hier nur als Marke
   // gebraucht: Der Test prüft die Katalog-Kachel, nicht das Bild darin.
   // Seit einer früheren Runde steht es dort statt des Puzzleteil-Emojis.
   window.PARTS_ICON_SVG = '<svg data-test-parts-icon></svg>';
   // Bild und Platzhalter kommen aus bilder.js; hier zählt nur die Kachel.
   window.bildTag = o => '<img src="' + o.src + '" alt="">';
-  window.platzhalterInhalt = () => '';
+  window.placeholderContent = () => '';
   // Den gemeinsamen Scrollbalken stellt js/rollbalken.js; hier zählt nur, DASS
   // der Katalog sein Etikett dort anmeldet.
   window.__scrollLabelFn = undefined;
@@ -171,10 +171,10 @@ const check = (name, cond, extra) => {
 const lastSetsReq = () => requests.filter(u => u.includes('/catalog/sets?')).pop();
 const hasYearFilter = u => /[?&]year_(from|to)=/.test(u);
 const bloecke = () => w.document.querySelectorAll('#catalog-grid .cat-page');
-const echteKacheln = () => w.document.querySelectorAll('#catalog-grid .sc:not(.cat-page-ph)').length;
+const realTiles = () => w.document.querySelectorAll('#catalog-grid .sc:not(.cat-page-ph)').length;
 const platzhalter = () => w.document.querySelectorAll('#catalog-grid .cat-page-ph').length;
 /** Eine Seite ins Bild schieben — so, wie es der Beobachter meldet. */
-const zeigeSeite = n => {
+const showPage = n => {
   const el = w.document.querySelector(`#catalog-grid .cat-page[data-page="${n}"]`);
   for (const cb of w.__ioCallbacks) cb([{ isIntersecting: true, target: el }]);
 };
@@ -188,26 +188,26 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   check('85 Sets, also 2 Seitenblöcke', bloecke().length === 2, bloecke().length);
 
   // jsdom rechnet KEIN Layout: getBoundingClientRect() liefert überall Nullen,
-  // also hält _ladeSichtbareSeiten() jeden Block für sichtbar und lädt sofort
+  // also hält _loadVisiblePages() jeden Block für sichtbar und lädt sofort
   // alles. Im Browser passiert das nicht — dort haben die Blöcke echte
   // Koordinaten. Geprüft wird hier deshalb das ERGEBNIS des Nachladens; dass …
   await sleep(80);
-  check('alle Seiten geladen (85 Kacheln)', echteKacheln() === 85, echteKacheln());
+  check('alle Seiten geladen (85 Kacheln)', realTiles() === 85, realTiles());
   check('keine Platzhalter mehr übrig', platzhalter() === 0, platzhalter());
 
   // Eine geladene Seite darf kein zweites Mal geholt werden — sonst löste
   // jeder Scroll-Schritt denselben Abruf erneut aus.
-  const nachSeite2 = requests.length;
-  zeigeSeite(2);
+  const afterSeite2 = requests.length;
+  showPage(2);
   await sleep(60);
-  check('geladene Seite wird nicht erneut geholt', requests.length === nachSeite2, requests.length - nachSeite2);
+  check('geladene Seite wird nicht erneut geholt', requests.length === afterSeite2, requests.length - afterSeite2);
 
   // ── Der Jahresfilter über die Auswahlfelder BLEIBT ──────────────────────
   w.G('cat-year-from').value = '2027';
   fire(w.G('cat-year-from'), 'change');
   await sleep(80);
   check('Anfrage mit year_from=2027', lastSetsReq().includes('year_from=2027'), lastSetsReq());
-  check('nur die 4 Zukunfts-Sets', echteKacheln() === 4, echteKacheln());
+  check('nur die 4 Zukunfts-Sets', realTiles() === 4, realTiles());
   check('ein einziger Block', bloecke().length === 1, bloecke().length);
   w.G('cat-year-from').value = '';
   fire(w.G('cat-year-from'), 'change');
@@ -220,7 +220,7 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   check('Browser-Balken ausgeblendet (WebKit)', /html::-webkit-scrollbar\{width:0/.test(css), null);
   check('eigener Balken am Fensterrand', /#app-scrollbar\{[^}]*position:fixed[^}]*right:0/.test(css), null);
 
-  const kern = require('./helpers/sources').coreQuelle();
+  const kern = require('./helpers/sources').coreSource();
   check('der Balken rollt die Seite', /window\.scrollTo\(/.test(kern), null);
   // Ohne diese Beobachtung bliebe der Griff auf seiner alten Grösse, wenn
   // Kacheln nachladen und die Seite länger wird.
@@ -232,10 +232,10 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   check('Beobachter ohne eigene Wurzel', !/root: G\(/.test(quelle), null);
   // Und der zweite Weg, der unabhängig vom Beobachter lädt — genau der Fehler,
   // den Marco gemeldet hat („beim Scrollen erscheinen keine Einträge").
-  check('Seiten laden auch ohne Beobachter', /_ladeSichtbareSeiten/.test(quelle), null);
+  check('Seiten laden auch ohne Beobachter', /_loadVisiblePages/.test(quelle), null);
   check(
     'nach dem Füllen wird erneut nachgesehen',
-    /_catItems = _catItems\.concat\(d\.sets\);[\s\S]{0,200}_ladeSichtbareSeiten\(\)/.test(quelle),
+    /_catItems = _catItems\.concat\(d\.sets\);[\s\S]{0,200}_loadVisiblePages\(\)/.test(quelle),
     null,
   );
   check('Kacheln tragen ihr Jahr', /data-year="/.test(quelle), null);
@@ -247,23 +247,27 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   // die Liste beim Nachladen und man verliert die Stelle.
   check(
     'Höhe wird gemessen, nicht geraten',
-    /erste\.offsetHeight/.test(quelle) && /_setzePlatzhalterHoehe\(\)/.test(quelle),
+    /erste\.offsetHeight/.test(quelle) && /_setPlaceholderHeight\(\)/.test(quelle),
     null,
   );
   // Der verlässliche Ladeweg: das Scroll-Ereignis selbst, gedrosselt.
-  check('Scrollen löst das Nachladen aus', /addEventListener\('scroll', beiBewegung/.test(quelle), null);
+  check('Scrollen löst das Nachladen aus', /addEventListener\('scroll', atMovement/.test(quelle), null);
   check(
     'gedrosselt über requestAnimationFrame',
-    /requestAnimationFrame\([\s\S]{0,120}_ladeSichtbareSeiten/.test(quelle),
+    /requestAnimationFrame\([\s\S]{0,120}_loadVisiblePages/.test(quelle),
     null,
   );
   // Die Last beim Ziehen
   check(
     'Blocklagen kommen aus dem Gedächtnis',
-    /_catBlockLagen/.test(quelle) && /function _messeBloecke/.test(quelle),
+    /_catBlockStates/.test(quelle) && /function _measureBlocks/.test(quelle),
     null,
   );
-  check('beim Rollen wird NICHT neu gemessen', !/requestAnimationFrame\([\s\S]{0,160}_messeBloecke/.test(quelle), null);
+  check(
+    'beim Rollen wird NICHT neu gemessen',
+    !/requestAnimationFrame\([\s\S]{0,160}_measureBlocks/.test(quelle),
+    null,
+  );
   // 2. Geladen wird erst in der Ruhe; dass das wirkt, misst katalog-zug-entprellt.test.js.
   check('Laden wartet auf Ruhe', /_catLadeTimer = setTimeout\(tun, \d+\)/.test(quelle), null);
   // Der Beobachter ist entfallen — ein Weg, der immer greift, statt zweier,
@@ -276,7 +280,7 @@ test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', asyn
   // Wahrheit 1995 stand — Marcos Befund.
   check(
     'Etikett rechnet über die Verteilung',
-    /_catJahrVerteilung/.test(quelle) && /year-verteilung/.test(quelle),
+    /_catYearDistribution/.test(quelle) && /year-verteilung/.test(quelle),
     null,
   );
   check('keine lineare Schätzung mehr', !/_catYearMax - anteil \* spanne/.test(quelle), null);

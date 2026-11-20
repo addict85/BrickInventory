@@ -24,12 +24,12 @@ const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 const FIX = path.join(__dirname, 'fixtures');
 const key = fs.readFileSync(path.join(FIX, 'abruf-test.key'));
 const cert = fs.readFileSync(path.join(FIX, 'abruf-test.crt'));
-const BILD = Buffer.alloc(600, 0xff);
+const IMAGE = Buffer.alloc(600, 0xff);
 
 let port = 0;
 const server = https.createServer({ key, cert }, (_q, res) => {
   res.writeHead(200, { 'Content-Type': 'image/jpeg' });
-  res.end(BILD);
+  res.end(IMAGE);
 });
 
 /** Jede Verbindung landet beim Testserver; SNI und Zertifikatsprüfung bleiben echt. */
@@ -62,5 +62,5 @@ test('das Bild landet, auch wenn der Ordner fehlt', async t => {
     await setBildHerunterladen('https://cdn.rebrickable.com/media/sets/10001-1.jpg', '10001-1'),
     '/images/sets/10001-1.jpg',
   );
-  assert.equal(fs.readFileSync(path.join(SET_IMAGES_DIR, '10001-1.jpg')).length, BILD.length);
+  assert.equal(fs.readFileSync(path.join(SET_IMAGES_DIR, '10001-1.jpg')).length, IMAGE.length);
 });

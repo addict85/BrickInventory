@@ -16,7 +16,7 @@
  *      imgUrl(fullUrl(…), false) → rot: „der Kaufpreis-Detail-Dialog …“.
  *      `fullUrl(rawImgSrc)` allein bleibt grün: fullUrl() leitet eine
  *      CDN-Adresse inzwischen selbst über den Proxy (bilder-proxy-oberflaeche D).
- *   E  (16.11.2026) in en.js „email“ einmal wieder „e-mail“ → rot: „kein Text steht in beiden Sprachen unübersetzt“ (begriffePruefen); in de.js
+ *   E  (16.11.2026) in en.js „email“ einmal wieder „e-mail“ → rot: „kein Text steht in beiden Sprachen unübersetzt“ (checkTerms); in de.js
  *      csv.import_title wieder „CSV Import“ → rot: ebenda; settings.users_new wieder „Neuen Benutzer
  *      erstellen“ → rot: ebenda
  *   F  (16.11.2026) users.role.user (de) wieder „Benutzer“ → rot: „kein Text … unübersetzt“ und „die
@@ -27,7 +27,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 // Die Wörterbücher liegen seit der Aufteilung in public/locales/{de,en}.js —
 // index.html lädt nur die aktive Sprache, den Rest holt loadLang() nach.
@@ -111,13 +111,13 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
   assert.ok(Object.keys(en).length > 400, `Zu wenige Texte geladen (${Object.keys(en).length}) — Helfer kaputt?`);
 
   const gleich = Object.keys(en).filter(k => k in de && de[k] === en[k]);
-  const unuebersetzt = gleich.filter(k => !gewolltGleich.has(k)).sort();
+  const untranslated = gleich.filter(k => !gewolltGleich.has(k)).sort();
   assert.deepEqual(
-    unuebersetzt,
+    untranslated,
     [],
     'Diese Texte stehen auf Deutsch wortgleich wie auf Englisch — sehr wahrscheinlich ' +
       'beim Anlegen kopiert und nicht übersetzt:\n  ' +
-      unuebersetzt.map(k => `${k} = "${en[k]}"`).join('\n  ') +
+      untranslated.map(k => `${k} = "${en[k]}"`).join('\n  ') +
       '\nIst er wirklich in beiden Sprachen gleich, gehört er in `gewolltGleich`.',
   );
 
@@ -127,11 +127,11 @@ test('kein Text steht in beiden Sprachen unübersetzt', () => {
     [],
     `Diese Einträge in \`gewolltGleich\` stimmen nicht mehr: ${veraltet.join(', ')} — raus damit.`,
   );
-  begriffePruefen(de, en);
+  checkTerms(de, en);
 });
 
 /** Begriffe einheitlich: Konto statt Benutzer, CSV-Import, englisch email. @param {Record<string, string>} de @param {Record<string, string>} en */
-function begriffePruefen(de, en) {
+function checkTerms(de, en) {
   const fund = (/** @type {Record<string, string>} */ w, /** @type {RegExp} */ r) =>
     Object.entries(w)
       .filter(([, v]) => r.test(v))
@@ -189,8 +189,8 @@ test('der Papierkorb im Brick-Design ist von Anfang an weiss hinterlegt, nicht e
   );
 });
 
-const GRAU = 'Dark Bluish Gray';
-const FARBEN = {
+const GRAY = 'Dark Bluish Gray';
+const COLORS = {
   '/v1/parts': {
     success: true,
     total: 1,
@@ -201,7 +201,7 @@ const FARBEN = {
         part_number: '3001',
         part_name: 'Brick 2 x 4',
         color_id: 72,
-        color_name: GRAU,
+        color_name: GRAY,
         color_hex: '6C6E68',
         total_quantity: 2,
       },
@@ -209,17 +209,17 @@ const FARBEN = {
   },
   '/v1/parts/colors': {
     success: true,
-    colors: [{ color_name: GRAU, color_hex: '6C6E68', unique_parts: 1, total_quantity: 2 }],
+    colors: [{ color_name: GRAY, color_hex: '6C6E68', unique_parts: 1, total_quantity: 2 }],
   },
-  '/v1/parts/brick-colors': { success: true, colors: [{ id: 72, name: GRAU, hex: '6C6E68' }] },
+  '/v1/parts/brick-colors': { success: true, colors: [{ id: 72, name: GRAY, hex: '6C6E68' }] },
 };
 
 test('Farbnamen: deutsch angezeigt, englisch gespeichert und gefiltert', async () => {
   for (const [sprache, sichtbar] of [
     ['de', 'Dunkelbläulichgrau'],
-    ['en', GRAU],
+    ['en', GRAY],
   ]) {
-    const { w, d } = await oeffneOberflaeche(FARBEN, { sprache });
+    const { w, d } = await openUi(COLORS, { sprache });
     try {
       await reiter(w, 'parts');
       assert.ok(
@@ -229,14 +229,14 @@ test('Farbnamen: deutsch angezeigt, englisch gespeichert und gefiltert', async (
       );
       const option = d.querySelector('#ap-color-select option[data-name]');
       // data-name geht beim Speichern ans Backend und an BrickLink: englisch.
-      assert.deepEqual([option.textContent.trim(), option.dataset.name], [sichtbar, GRAU], sprache);
+      assert.deepEqual([option.textContent.trim(), option.dataset.name], [sichtbar, GRAY], sprache);
       assert.equal(
         d.querySelector('#parts-main .group-title').textContent.trim(),
         sichtbar,
         `${sprache}: Gruppenüberschrift`,
       );
       assert.match(d.querySelector('#parts-main .part-color').textContent, new RegExp(sichtbar), `${sprache}: Kachel`);
-      const filter = [...d.querySelectorAll('#parts-color option')].find(o => o.value === GRAU);
+      const filter = [...d.querySelectorAll('#parts-color option')].find(o => o.value === GRAY);
       assert.ok(filter, 'Der Filterwert bleibt englisch');
       assert.match(filter.textContent, new RegExp(`^${sichtbar} `), `${sprache}: Filterbeschriftung`);
     } finally {
@@ -247,8 +247,8 @@ test('Farbnamen: deutsch angezeigt, englisch gespeichert und gefiltert', async (
 
 test('der Kaufpreis-Detail-Dialog lädt das Teilebild in voller Grösse über den Proxy', async () => {
   const CDN = 'https://cdn.rebrickable.com/media/parts/elements/300121.jpg';
-  const { w, d } = await oeffneOberflaeche({
-    ...FARBEN,
+  const { w, d } = await openUi({
+    ...COLORS,
     '/v1/parts/manual': {
       success: true,
       parts: [
@@ -256,7 +256,7 @@ test('der Kaufpreis-Detail-Dialog lädt das Teilebild in voller Grösse über de
           part_number: '3002',
           part_name: 'Brick 2 x 3',
           color_id: 72,
-          color_name: GRAU,
+          color_name: GRAY,
           color_hex: '6C6E68',
           quantity: 1,
           image_url: CDN,

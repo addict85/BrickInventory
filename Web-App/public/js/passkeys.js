@@ -6,7 +6,7 @@ import { fmtDatum } from './format.js';
 import { toast } from './meldungen.js';
 import { loggedInAccount } from './state.js';
 import { html } from './escaping.js';
-import { bestaetigeMitPasswort, mitZweitemFaktor, setzePasskeyHolen } from './rueckfrage.js';
+import { bestaetigeMitPasswort, withSecondFactor, fetchSetPasskey } from './rueckfrage.js';
 
 // ═══ Passkeys (server: src/factors/repository/passkeys.ts, routes/auth.ts) ═══════════════
 // No third-party script: the server sends the options as JSON (Base64URL), the browser needs an
@@ -35,7 +35,7 @@ const withIds = (/** @type {IdJson[] | null | undefined} */ list) =>
   /** @type {PublicKeyCredentialDescriptor[]} */ ((list || []).map(c => ({ ...c, id: toBuffer(c.id) })));
 
 /** Can this browser do passkeys? (Only in a secure context, i.e. over HTTPS.) */
-export const passkeysMoeglich = () => !!(window.PublicKeyCredential && window.isSecureContext && navigator.credentials);
+export const passkeysPossible = () => !!(window.PublicKeyCredential && window.isSecureContext && navigator.credentials);
 
 /** @param {OptionsJson & { user: { id: string, name: string, displayName: string } }} o */
 async function createPasskey(o) {
@@ -175,7 +175,7 @@ export async function ladePasskeys() {
     : html`<p class="hinweis-absatz">${tRaw('pk.none')}</p>`;
   const addForm = !d.verfuegbar
     ? html`<p class="text-klein hinweis-warnung">${tRaw(loggedInAccount?.isAdmin ? 'pk.ohne_domain_verwalter' : 'pk.ohne_domain')}</p>`
-    : !passkeysMoeglich()
+    : !passkeysPossible()
       ? html`<p class="text-klein hinweis-warnung">${tRaw('pk.browser')}</p>`
       : html`<form class="sform abstand-o-075" data-submit="pk-neu" data-stil="max-width:420px">
         <div class="fg"><label for="pk-name">${tRaw('pk.name')}</label><input type="text" id="pk-name" maxlength="60" /></div>
@@ -224,7 +224,7 @@ export async function passkeyLoeschen(id, name) {
     { knopf: 'confirm.btn.entfernen', art: 'bd' },
   );
   if (password === null) return;
-  const d = await mitZweitemFaktor(z =>
+  const d = await withSecondFactor(z =>
     api('DELETE', `/v1/auth/passkeys/${encodeURIComponent(id)}`, { password, ...z }),
   );
   if (!d) return;
@@ -239,8 +239,8 @@ export async function passkeyLoeschen(id, name) {
 // The button on the login page only shows up where the browser can do passkeys.
 {
   const k = G('btn-passkey');
-  if (k) k.hidden = !passkeysMoeglich();
-  if (passkeysMoeglich()) setzePasskeyHolen(() => getAssertion('zweiter_faktor'));
+  if (k) k.hidden = !passkeysPossible();
+  if (passkeysPossible()) fetchSetPasskey(() => getAssertion('zweiter_faktor'));
 }
 
 // Names below are registry-exposed (index.html/verbindung.js) — kept unchanged.

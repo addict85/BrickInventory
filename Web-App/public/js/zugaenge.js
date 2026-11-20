@@ -1,11 +1,11 @@
 import { echt, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
 import { fmtDatum } from './format.js';
-import { fehlerMeldung, api } from './api.js';
+import { errorMessage, api } from './api.js';
 import { ico, G, knopfBesetzt, setzeHtml } from './dom.js';
 import { toast } from './meldungen.js';
 import { html, safeUrl } from './escaping.js';
-import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
+import { bestaetigeMitPasswort, withSecondFactor } from './rueckfrage.js';
 
 // Account access: app tokens, QR sign-in and the TLS certificate for the app.
 // After scanning, the app announces itself with a device name and shows a code; only once it is typed in
@@ -107,7 +107,7 @@ async function generateQrCode() {
     endPairing();
     clearInterval(_expiry);
     if (G('qr-kopplung')) G('qr-kopplung').hidden = true;
-    const d = await mitZweitemFaktor(z => api('POST', '/v1/auth/qr-token', { gueltigkeit: validity, password, ...z }));
+    const d = await withSecondFactor(z => api('POST', '/v1/auth/qr-token', { gueltigkeit: validity, password, ...z }));
     if (d === null) {
       release();
       return;
@@ -167,7 +167,7 @@ async function generateQrCode() {
     // deliberately changes.
     release(tRaw('qr.regenerate'));
   } catch (e) {
-    hint.textContent = tRaw('toast.error') + ': ' + fehlerMeldung(e);
+    hint.textContent = tRaw('toast.error') + ': ' + errorMessage(e);
     release();
   }
 }
@@ -261,7 +261,7 @@ async function revokeToken(tokenId, label) {
     { knopf: 'confirm.btn.geraet_abmelden', art: 'bp' },
   );
   if (password === null) return;
-  const d = await mitZweitemFaktor(z =>
+  const d = await withSecondFactor(z =>
     api('DELETE', `/v1/settings/tokens/${encodeURIComponent(tokenId)}`, { password, ...z }),
   );
   if (!d) return;
@@ -286,7 +286,7 @@ async function revokeOtherTokens() {
     { knopf: 'confirm.btn.abmelden', art: 'bp' },
   );
   if (password === null) return;
-  const s = await mitZweitemFaktor(z =>
+  const s = await withSecondFactor(z =>
     api('POST', '/v1/settings/sessions/andere-beenden', { password, zugaenge: true, ...z }),
   );
   if (s === null) return;

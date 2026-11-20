@@ -4,8 +4,8 @@
  * eine davon, meldet tsc die überflüssige Markierung — dann ist die Prüfung weg.
  *
  * Gegenproben (14.11.2026, je einzeln):
- *   A  `SchluesselUnter<P>` durch `Schluessel` ersetzt → rot an „Präfix passt nicht“.
- *   B  `endpunkt(schluessel: string, …)` statt `K extends SchluesselUnter<P>` → rot an
+ *   A  `KeyBelow<P>` durch `Schluessel` ersetzt → rot an „Präfix passt nicht“.
+ *   B  `endpunkt(schluessel: string, …)` statt `K extends KeyBelow<P>` → rot an
  *      allen vier Zeilen (unbekannter Schlüssel, Präfix, Antwort, Pfadparameter).
  *   C  `Ergebnis<K>` durch `Record<string, unknown>` ersetzt → rot an „Antwort weicht ab“.
  */

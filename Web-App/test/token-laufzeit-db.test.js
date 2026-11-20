@@ -4,7 +4,7 @@
  * Gegenprobe (am 28.10. gemessen): in /qr-token die Prüfung von Sitzung und
  * Passwort entfernt → rot im Schritt „0. Ein Code nur mit Sitzung UND
  * Passwort"
- * Gegenprobe (am 03.11. gemessen): in /qr-token `?? APP_HOECHSTDAUER_TAGE`
+ * Gegenprobe (am 03.11. gemessen): in /qr-token `?? APP_MAX_DURATION_DAYS`
  * entfernt → rot „Ohne Wahl gilt die Höchstdauer von 180 Tagen"
  */
 const test = require('node:test');
@@ -22,12 +22,12 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 // test/qr-adresse.test.js.
 process.env.APP_BASE_URL = 'https://lego.example.org';
 
-const { buildAndRequire, einhaengung, ohneKommentare, testDaten } = require('./helpers/sources');
-const { qrKoppeln } = require('./helpers/qr');
+const { buildAndRequire, einhaengung, ohneKommentare, testData } = require('./helpers/sources');
+const { pairQr } = require('./helpers/qr');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const AUTH = einhaengung('auth');
-const db = testDaten();
+const db = testData();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -39,10 +39,10 @@ const NAME = `qr_laufzeit_${process.pid}`,
   PASS = 'richtigesPasswort1';
 
 /** Wie viele Tage liegt dieser Zeitpunkt in der Zukunft? */
-const tageVoraus = wert => (new Date(wert).getTime() - Date.now()) / 86400_000;
+const daysAhead = wert => (new Date(wert).getTime() - Date.now()) / 86400_000;
 
 test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(
@@ -61,7 +61,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
       saveUninitialized: false,
     }),
   );
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}${AUTH}`;
 
@@ -74,10 +74,10 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
     return { status: r.status, cookie: r.headers.get('set-cookie'), body: await r.json().catch(() => null) };
   };
   const koppeln = (qr, keks) =>
-    qrKoppeln((p, body, kopf) => ruf(p, { method: 'POST', headers: kopf, body }), qr, { cookie: keks });
+    pairQr((p, body, kopf) => ruf(p, { method: 'POST', headers: kopf, body }), qr, { cookie: keks });
   /** Die api_tokens-Zeile zu einem ausgegebenen Klartext-Token. */
   const zeile = token =>
-    db.get('SELECT expires_at, hard_expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenAbdruck(token)]);
+    db.get('SELECT expires_at, hard_expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenDigest(token)]);
 
   try {
     const an = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS, ohne_token: true } });
@@ -88,15 +88,19 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
     // Sonst machte ein erbeuteter Token (oder eine offene Sitzung) über den
     // QR-Weg einen neuen Dauerzugang — ohne das Passwort, das /token-create
     // für genau denselben Zweck verlangt.
-    const ohnePw = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks }, body: { gueltigkeit: '6m' } });
-    assert.equal(ohnePw.status, 400, `ohne Passwort: ${ohnePw.status} ${JSON.stringify(ohnePw.body)}`);
+    const withoutPw = await ruf('/qr-token', {
+      method: 'POST',
+      headers: { cookie: keks },
+      body: { gueltigkeit: '6m' },
+    });
+    assert.equal(withoutPw.status, 400, `ohne Passwort: ${withoutPw.status} ${JSON.stringify(withoutPw.body)}`);
     const falsch = await ruf('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
       body: { gueltigkeit: '6m', password: 'falsch-falsch' },
     });
     assert.equal(falsch.status, 400);
-    const geraet = await auth.tokenAnlegen(uid, 'Probe', true);
+    const geraet = await auth.createToken(uid, 'Probe', true);
     const perToken = await ruf('/qr-token', {
       method: 'POST',
       headers: { authorization: `Bearer ${geraet}` },
@@ -120,11 +124,11 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
     assert.ok(z, 'Zum ausgegebenen Token muss eine Zeile existieren');
     assert.equal(z.sliding, true, 'Die Gleitfrist bleibt — sie ist der Rueckhalt gegen vergessene Geraete');
     assert.ok(
-      Math.abs(tageVoraus(z.hard_expires_at) - 180) < 1,
-      `Die feste Frist soll 180 Tage betragen, gemessen: ${tageVoraus(z.hard_expires_at)}`,
+      Math.abs(daysAhead(z.hard_expires_at) - 180) < 1,
+      `Die feste Frist soll 180 Tage betragen, gemessen: ${daysAhead(z.hard_expires_at)}`,
     );
     assert.ok(
-      tageVoraus(z.expires_at) < tageVoraus(z.hard_expires_at),
+      daysAhead(z.expires_at) < daysAhead(z.hard_expires_at),
       'Die gleitende Frist (90 Tage) liegt frueher — sie greift zuerst, genau wie zugesagt',
     );
 
@@ -145,7 +149,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
     assert.equal(eingeloest.status, 200, JSON.stringify(eingeloest.body));
     const zv = await zeile(eingeloest.body.token);
     assert.ok(
-      zv.hard_expires_at && Math.abs(tageVoraus(zv.hard_expires_at) - 180) < 1,
+      zv.hard_expires_at && Math.abs(daysAhead(zv.hard_expires_at) - 180) < 1,
       'Das einloesende Geraet darf sich keine Laufzeit erteilen — sonst reicht ein abfotografierter Code',
     );
     assert.ok(zv.expires_at, 'Und erst recht keine unbegrenzte: Der Zugang muss die gewoehnliche Gleitfrist tragen');
@@ -157,9 +161,9 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
       body: { gueltigkeit: 'unbegrenzt', password: PASS },
     });
     assert.equal(ewig.body.token_days, 0, '„unbegrenzt" reist als 0 mit — null hiesse „nichts gewaehlt"');
-    const zugangEwig = await koppeln(ewig.body, keks);
-    const rohEwig = zugangEwig.body.token;
-    const ze = await zeile(rohEwig);
+    const accessForever = await koppeln(ewig.body, keks);
+    const rawForever = accessForever.body.token;
+    const ze = await zeile(rawForever);
     assert.equal(ze.expires_at, null, 'Unbegrenzt heisst: keine gleitende Frist');
     assert.equal(ze.hard_expires_at, null, 'Unbegrenzt heisst: auch keine feste Frist');
     assert.equal(ze.sliding, false, 'Ohne Datum darf die Zeile auch nicht gleiten');
@@ -168,32 +172,32 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
       `UPDATE api_tokens SET last_used = NOW() - INTERVAL '400 days',
                              created_at = NOW() - INTERVAL '400 days'
         WHERE token = $1`,
-      [auth.tokenAbdruck(rohEwig)],
+      [auth.tokenDigest(rawForever)],
     );
-    await auth.tokensAufraeumen();
-    const nachher = await zeile(rohEwig);
+    await auth.tokensCleanup();
+    const nachher = await zeile(rawForever);
     assert.ok(nachher, 'Der unbegrenzte Zugang darf vom Aufraeumjob nicht geloescht werden');
     assert.equal(
       nachher.expires_at,
       null,
       'Der Aufraeumjob darf ihm auch kein Ablaufdatum verpassen — sonst waere die Wahl still weg',
     );
-    tokenCache.tokenVergessen(rohEwig);
-    assert.ok(await auth.nutzerZumToken(rohEwig), 'Und er muss nach dem Aufraeumen noch gelten');
+    tokenCache.tokenForgotten(rawForever);
+    assert.ok(await auth.nutzerZumToken(rawForever), 'Und er muss nach dem Aufraeumen noch gelten');
 
     // ── 4. Ein Wert ausserhalb der Liste weist nicht ab, er waehlt nichts ──
     //
     // Auch `constructor`: Ein direkter Zugriff auf die Tabelle lieferte dafuer
     // die geerbte Object-Funktion — wahrheitswertig, und damit waere sie als
-    // Tageszahl an die Datenbank gegangen (ausTabelle, src/infra/validate).
-    for (const unsinn of ['99m', 'constructor', '__proto__', 999999]) {
+    // Tageszahl an die Datenbank gegangen (fromTable, src/infra/validate).
+    for (const nonsense of ['99m', 'constructor', '__proto__', 999999]) {
       const r = await ruf('/qr-token', {
         method: 'POST',
         headers: { cookie: keks },
-        body: { gueltigkeit: unsinn, password: PASS },
+        body: { gueltigkeit: nonsense, password: PASS },
       });
-      assert.equal(r.status, 200, `„${unsinn}" soll nicht scheitern, sondern nichts waehlen`);
-      assert.equal(r.body.token_days, 180, `„${unsinn}" darf nur die Vorgabe von 180 Tagen ergeben`);
+      assert.equal(r.status, 200, `„${nonsense}" soll nicht scheitern, sondern nichts waehlen`);
+      assert.equal(r.body.token_days, 180, `„${nonsense}" darf nur die Vorgabe von 180 Tagen ergeben`);
     }
 
     // ── 5. Die feste Frist sperrt auch dann aus, wenn die gleitende offen ist ──
@@ -209,9 +213,9 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
     const roh = zugang.body.token;
     assert.ok(await auth.nutzerZumToken(roh), 'Frisch ausgestellt muss der Zugang gelten');
     await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() - INTERVAL '1 day' WHERE token = $1`, [
-      auth.tokenAbdruck(roh),
+      auth.tokenDigest(roh),
     ]);
-    tokenCache.tokenVergessen(roh); // sonst antwortet bis zu eine Minute der Cache
+    tokenCache.tokenForgotten(roh); // sonst antwortet bis zu eine Minute der Cache
     assert.equal(
       await auth.nutzerZumToken(roh),
       null,
@@ -243,14 +247,10 @@ test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', ()
   assert.ok(/id="qr-validity"/.test(html), 'Das Auswahlfeld fehlt in der Oberflaeche');
 
   // Und die Auswahl deckt sich mit der Liste des Servers
-  const serverListe = [...auth.LAUFZEIT_WAHLEN];
-  for (const w of serverListe) assert.notEqual(auth.laufzeitTage(w), null, `${w} kennt der Server nicht`);
-  const markupListe = [...html.matchAll(/<option value="(\w+)" data-i18n="qr\.validity_/g)].map(m => m[1]);
-  assert.deepEqual(
-    markupListe,
-    serverListe,
-    'Die Auswahl im Markup und die Liste in TOKEN_LAUFZEITEN laufen auseinander',
-  );
-  assert.ok(serverListe.length >= 5, 'Die Liste des Servers ist zu kurz');
-  assert.ok(serverListe.includes('unbegrenzt'), 'Die Wahl „unbegrenzt" fehlt auf der Serverseite');
+  const serverList = [...auth.RUNTIME_CHOICES];
+  for (const w of serverList) assert.notEqual(auth.runtimeDays(w), null, `${w} kennt der Server nicht`);
+  const markupList = [...html.matchAll(/<option value="(\w+)" data-i18n="qr\.validity_/g)].map(m => m[1]);
+  assert.deepEqual(markupList, serverList, 'Die Auswahl im Markup und die Liste in TOKEN_RUNTIMES laufen auseinander');
+  assert.ok(serverList.length >= 5, 'Die Liste des Servers ist zu kurz');
+  assert.ok(serverList.includes('unbegrenzt'), 'Die Wahl „unbegrenzt" fehlt auf der Serverseite');
 });

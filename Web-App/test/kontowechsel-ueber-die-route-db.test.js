@@ -6,23 +6,23 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
-const { haeltSet, katalogSet } = require('./helpers/bestand');
+const { holdsSet, catalogSet } = require('./helpers/bestand');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
 const SN = '75192-1';
-let HAUPT = 0,
+let MAIN = 0,
   KIND = 0,
   FREMD = 0;
 
-async function aufbau() {
+async function setup() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -36,14 +36,14 @@ async function aufbau() {
   await db.run(`INSERT INTO users (username,password_hash)
                 VALUES ('haupt','x'),('kind','x'),('fremd','x')`);
   const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
-  HAUPT = await id('haupt');
+  MAIN = await id('haupt');
   KIND = await id('kind');
   FREMD = await id('fremd');
   // Nur haupt+kind sind ein Haushalt. `fremd` steht bewusst daneben — ohne
   // ihn liesse sich „403 fuer ein fremdes Konto" nicht pruefen.
-  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [HAUPT, KIND]);
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [MAIN, KIND]);
 
-  await katalogSet(db, SN, { name: 'Millennium Falcon' });
+  await catalogSet(db, SN, { name: 'Millennium Falcon' });
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ('3001','Brick 2x4')
                 ON CONFLICT (part_number) DO NOTHING`);
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
@@ -52,29 +52,29 @@ async function aufbau() {
                 ON CONFLICT (fig_number) DO NOTHING`);
 
   // Set mit einer Erfassung beim Hauptkonto.
-  await haeltSet(db, HAUPT, SN, 2, { preis: 100 });
+  await holdsSet(db, MAIN, SN, 2, { preis: 100 });
   // Manuelles Teil und manuelle Figur, je eine Erfassung.
   await db.run(
     `INSERT INTO parts (user_id,part_number,color_id,source)
                 VALUES ($1,'3001',4,'manual')`,
-    [HAUPT],
+    [MAIN],
   );
   await db.run(
     `INSERT INTO part_acquisitions
                   (user_id,part_number,color_id,quantity,unit_price,condition)
                 VALUES ($1,'3001',4,4,0.50,'N')`,
-    [HAUPT],
+    [MAIN],
   );
   await db.run(
     `INSERT INTO minifigs (user_id,fig_number,source)
                 VALUES ($1,'sw0001','manual')`,
-    [HAUPT],
+    [MAIN],
   );
   await db.run(
     `INSERT INTO minifig_acquisitions
                   (user_id,fig_number,quantity,unit_price,condition)
                 VALUES ($1,'sw0001',3,12.00,'N')`,
-    [HAUPT],
+    [MAIN],
   );
 }
 
@@ -85,9 +85,9 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
     keineDb(t, e);
     return;
   }
-  await aufbau();
+  await setup();
 
-  const { base } = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
   const setze = async (pfad, koerper) => {
     const r = await fetch(base + pfad, {
       method: 'PUT',
@@ -96,7 +96,7 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  const erfassungId = async (tab, feld, wert) =>
+  const entryId = async (tab, feld, wert) =>
     (await db.get(`SELECT id FROM ${tab} WHERE ${feld} = $1 ORDER BY id LIMIT 1`, [wert])).id;
   const besitzer = async (tab, feld, wert) =>
     (await db.all(`SELECT user_id FROM ${tab} WHERE ${feld} = $1 ORDER BY user_id`, [wert])).map(r =>
@@ -104,7 +104,7 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
     );
 
   await t.test('Set: die Erfassung UND die Bestandszeile sind danach beim Kind', async () => {
-    const id = await erfassungId('set_acquisitions', 'set_number', SN);
+    const id = await entryId('set_acquisitions', 'set_number', SN);
     const a = await setze(`/api/v1/sets/${SN}/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(
@@ -118,13 +118,13 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
     );
     // Und der Absender haelt es nicht mehr: Es war seine einzige Erfassung.
     assert.ok(
-      !(await besitzer('sets', 'set_number', SN)).includes(HAUPT),
+      !(await besitzer('sets', 'set_number', SN)).includes(MAIN),
       'Beim Absender ist die leere Set-Zeile stehengeblieben',
     );
   });
 
   await t.test('Teil: dieselbe Fabrik, andere Adresse', async () => {
-    const id = await erfassungId('part_acquisitions', 'part_number', '3001');
+    const id = await entryId('part_acquisitions', 'part_number', '3001');
     const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [KIND]);
@@ -137,9 +137,9 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
 
   await t.test('Figur: der dritte Zweig, und er wird sonst nirgends ausgeführt', async () => {
     // Bis hierher war fuer die Figuren NUR zugesichert, dass der Quelltext
-    // `manuelleErfassungUmhaengen(tx, 'fig'` enthaelt. Genau diese Art Zusicherung
+    // `manualEntryReassign(tx, 'fig'` enthaelt. Genau diese Art Zusicherung
     // hat heute zweimal bestanden, waehrend der Weg kaputt war.
-    const id = await erfassungId('minifig_acquisitions', 'fig_number', 'sw0001');
+    const id = await entryId('minifig_acquisitions', 'fig_number', 'sw0001');
     const a = await setze(`/api/v1/minifigs/sw0001/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.deepEqual(await besitzer('minifig_acquisitions', 'fig_number', 'sw0001'), [KIND]);
@@ -151,11 +151,11 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
   });
 
   await t.test('ein Konto AUSSERHALB des Haushalts wird mit 403 abgewiesen', async () => {
-    // Bisher ein Muster: /if \(to === null\)\s*\n\s*return sendeFehler\(req, res, 403/.
+    // Bisher ein Muster: /if \(to === null\)\s*\n\s*return sendError\(req, res, 403/.
     // Das faengt eine geloeschte Zeile — nicht eine Bedingung, die nie
-    // zutrifft, oder ein schreibzielOderNull(), das zu viel erlaubt.
-    await aufbau();
-    const id = await erfassungId('part_acquisitions', 'part_number', '3001');
+    // zutrifft, oder ein writeTargetOrNull(), das zu viel erlaubt.
+    await setup();
+    const id = await entryId('part_acquisitions', 'part_number', '3001');
     const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: FREMD });
     assert.equal(
       a.status,
@@ -168,12 +168,12 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
     // wenn die Route erst verschoebe und dann 403 antwortete.
     assert.deepEqual(
       await besitzer('part_acquisitions', 'part_number', '3001'),
-      [HAUPT],
+      [MAIN],
       'Trotz 403 ist die Erfassung gewandert',
     );
     assert.deepEqual(
       await besitzer('parts', 'part_number', '3001'),
-      [HAUPT],
+      [MAIN],
       'Trotz 403 ist die Bestandszeile gewandert',
     );
   });
@@ -182,10 +182,10 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
     // Der Weg daneben: Wer auf sein eigenes Konto schiebt, bekommt 200 und
     // `unchanged`. Ohne diesen Fall koennte die Route jeden Wechsel ablehnen
     // und der 403-Fall darueber waere trotzdem gruen.
-    const id = await erfassungId('part_acquisitions', 'part_number', '3001');
-    const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: HAUPT });
+    const id = await entryId('part_acquisitions', 'part_number', '3001');
+    const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: MAIN });
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal(a.body?.unchanged, true, 'Ein Wechsel auf das eigene Konto muss als „unveraendert" antworten');
-    assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [HAUPT]);
+    assert.deepEqual(await besitzer('part_acquisitions', 'part_number', '3001'), [MAIN]);
   });
 });

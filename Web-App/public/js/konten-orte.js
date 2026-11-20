@@ -3,7 +3,7 @@
 import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
 import { SCOPE_VIEWS, scopeMode, setScopeMode } from './kontofilter.js';
-import { ladeLagerorte, lagerortBlock } from './detailfelder.js';
+import { loadLocations, locationBlock } from './detailfelder.js';
 import { tRaw } from '../i18n.js';
 import { html, rawHtml } from './escaping.js';
 import { subscribe } from './events.js';
@@ -43,7 +43,7 @@ export function initScopeSelects(members) {
     el.style.display = '';
   }
 
-  for (const view of ['gallery', 'parts', 'minifigs']) sammlungUntertitel(view);
+  for (const view of ['gallery', 'parts', 'minifigs']) collectionSubtitle(view);
 
   // Der Schalter „Unterkonten einbeziehen“ der Teileliste folgt derselben Regel: ohne Unterkonten nicht zu
   // sehen. Er steht hier, weil isMain hier aus derselben Antwort feststeht.
@@ -62,7 +62,7 @@ export function initScopeSelects(members) {
 /** Untertitel je Kopf der Sammlung: Mit „Alle Konten“ zählt die Seite fremden Bestand mit, „deiner Sammlung“
  * stimmte dann nicht. Der Titel selbst bleibt fest, damit der Kopf beim Laden nicht umspringt.
  * @param {string} view */
-export function sammlungUntertitel(view) {
+export function collectionSubtitle(view) {
   const el = G(view + '-unter'),
     wahl = G('scope-' + view);
   if (!el) return;
@@ -84,7 +84,7 @@ export function sammlungUntertitel(view) {
 let _haushalt = [];
 
 /** Die gemerkten Konten. Leer, solange noch keine Antwort da war. */
-export function haushaltsKonten() {
+export function householdAccounts() {
   return _haushalt;
 }
 
@@ -100,12 +100,12 @@ export async function loadHouseholdMembers() {
   initScopeSelects(members);
   // Die Lagerorte in EINEM Zug: Sie fuellen die Auswahlfelder der Filter UND die gemeinsame <datalist> der
   // Eingabefelder. Zwei Aufrufe waeren zwei Staende derselben Liste.
-  const orte = ladeLagerorte(members.map(m => m.id)).catch(() => {});
+  const orte = loadLocations(members.map(m => m.id)).catch(() => {});
   // Die Vorgabe fuer die Erfassungsfelder (Marcos Stern) — eigener Abruf, Begruendung bei
-  // ladeLagerortVorgabe().
-  ladeLagerortVorgabe().catch(() => {});
-  zeichneKontoauswahl(members);
-  zeichneLagerortFelder();
+  // loadLocationDefault().
+  loadLocationDefault().catch(() => {});
+  drawAccountSelection(members);
+  drawLocationFields();
   // Erst mit den Orten steht die Filterzeile fest (Lagerortauswahl); der Start wartet darauf.
   await orte;
 }
@@ -115,7 +115,7 @@ export async function loadHouseholdMembers() {
  * ein Kind zu erfassen soll überall gleich gehen. Eine getroffene Wahl bleibt beim Neuzeichnen.
  * @param {HouseholdMember[]} members
  */
-function zeichneKontoauswahl(members) {
+function drawAccountSelection(members) {
   const markup = members
     .map(
       m =>
@@ -138,16 +138,16 @@ function zeichneKontoauswahl(members) {
 }
 
 // Erzeugte Auswahlfelder tragen Texte der Sprache, in der sie gebaut wurden; beim Wechsel neu zeichnen, die
-// Wahl bleibt. Die Lagerorte zieht ladeLagerorte() samt Vorrat und Filtern nach.
+// Wahl bleibt. Die Lagerorte zieht loadLocations() samt Vorrat und Filtern nach.
 subscribe('spracheGewechselt', () => {
   if (!_haushalt.length) return;
   initScopeSelects(_haushalt);
-  zeichneKontoauswahl(_haushalt);
-  ladeLagerorte().catch(() => {});
+  drawAccountSelection(_haushalt);
+  loadLocations().catch(() => {});
 });
 
 /**
- * Die Lagerortfelder der fünf Erfassungswege, einmal aus lagerortBlock() gezeichnet statt fünfmal im HTML.
+ * Die Lagerortfelder der fünf Erfassungswege, einmal aus locationBlock() gezeichnet statt fünfmal im HTML.
  * Zusammen mit der Kontoauswahl, weil beide warten, bis der Haushalt geladen ist.
  */
 export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage', 'cat-m-storage', 'mk-take-storage'];
@@ -160,17 +160,17 @@ export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage', 
  *
  * Leer heisst: keine Vorgabe, die Felder stehen auf „—" wie bisher.
  */
-let _ortVorgabe = '';
+let _locationDefault = '';
 
 /**
  * Ein Lagerortfeld eines Erfassungswegs neu zeichnen.
  * @param {string} id
  * @param {string} wert
  */
-function zeichneOrtFeld(id, wert) {
+function drawLocationField(id, wert) {
   const slot = G(`${id}-slot`);
   if (!slot) return;
-  setzeHtml(slot, lagerortBlock(id, wert));
+  setzeHtml(slot, locationBlock(id, wert));
   // Die sichtbare Beschriftung steht im HTML, die beiden Bedienelemente entstehen hier — ein `for=` darauf
   // waere im Quelltext ein Verweis ins Leere (test/a11y.test.js meldet genau das, zu Recht). aria-labelledby
   // stellt die Verbindung zur Laufzeit her, und zwar fuer BEIDE: Auswahl und Textfeld tragen denselben Namen,
@@ -179,12 +179,12 @@ function zeichneOrtFeld(id, wert) {
   slot.dataset.gezeichnet = '1';
 }
 
-export function zeichneLagerortFelder() {
+export function drawLocationFields() {
   for (const id of ERFASSUNGS_ORTFELDER) {
     const slot = G(`${id}-slot`);
     // Nur einmal: Ein zweiter Durchlauf wuerfe eine bereits getroffene Wahl weg.
     if (!slot || slot.dataset.gezeichnet === '1') continue;
-    zeichneOrtFeld(id, _ortVorgabe);
+    drawLocationField(id, _locationDefault);
   }
 }
 
@@ -192,13 +192,13 @@ export function zeichneLagerortFelder() {
  * Die Vorgabe steht beim Vorrat (/v1/storage/locations), nicht bei den belegten Orten. Nachgezogen wird nur
  * ein noch leeres Feld: Wer inzwischen selbst gewählt hat, behält seine Wahl.
  */
-export async function ladeLagerortVorgabe() {
+export async function loadLocationDefault() {
   const d = await api('GET', '/v1/storage/locations');
   if (!d?.success) return;
-  _ortVorgabe = d.vorgabe?.name || '';
-  if (!_ortVorgabe) return;
+  _locationDefault = d.vorgabe?.name || '';
+  if (!_locationDefault) return;
   for (const id of ERFASSUNGS_ORTFELDER) {
-    if (!(G(id)?.value || '').trim()) zeichneOrtFeld(id, _ortVorgabe);
+    if (!(G(id)?.value || '').trim()) drawLocationField(id, _locationDefault);
   }
 }
 
@@ -207,9 +207,9 @@ export async function ladeLagerortVorgabe() {
  * sie da; gezeichnet statt gesetzt, damit Auswahl und Textfeld dasselbe sagen.
  * @param {string} id
  */
-export function leereLagerortFeld(id) {
+export function emptyLocationField(id) {
   if (G(`${id}-slot`)) {
-    zeichneOrtFeld(id, _ortVorgabe);
+    drawLocationField(id, _locationDefault);
     return;
   }
   // Ohne Slot gibt es das zusammengesetzte Feld nicht; dann bleibt es beim alten Weg. Heute hat jeder der
@@ -217,7 +217,7 @@ export function leereLagerortFeld(id) {
   const feld = G(id),
     sel = G(`${id}-sel`);
   if (feld) {
-    feld.value = _ortVorgabe;
+    feld.value = _locationDefault;
     feld.style.display = 'none';
   }
   if (sel) sel.selectedIndex = 0;

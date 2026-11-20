@@ -1,15 +1,15 @@
 /** Proben für Verwalter: Bild- und Preisabruf und die Fragen zu einer leeren Kachel. */
-import { proxyCacheSchluessel, proxyCachePathFor, imgProxyFailures } from '../bilder';
-import { ERLAUBTE_BILD_HOSTS, hostErlaubt } from '../infra/fremdeAdressen';
-import { urlOderNull } from '../infra/validate';
+import { proxyCacheKey, proxyCachePathFor, imgProxyFailures } from '../bilder';
+import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../infra/fremdeAdressen';
+import { urlOrNull } from '../infra/validate';
 import type { AccountImageRow } from './repository/management';
 import fs from 'node:fs';
-import { AbrufFehler, type AbrufStrom } from '../infra/abruf';
+import { AbrufFehler, type FetchStream } from '../infra/abruf';
 import path from 'node:path';
 import { DATA_DIR, SET_IMAGES_DIR } from '../infra/appPaths';
-import { fehlertext, ohneFehlendeDatei } from '../infra/fehler';
-import { Abstriche } from '../infra/ergebnis';
-import { ohneBricklinkPreis } from '../infra/setNummer';
+import { fehlertext, withoutMissingFile } from '../infra/fehler';
+import { Degradations } from '../infra/ergebnis';
+import { withoutBricklinkPrice } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import type { ManagementContext } from './context';
 
@@ -27,16 +27,16 @@ const VARIANTS = [
 /** Meldet, was der Proxy davon ausliefern würde — mit und ohne Referer. */
 export async function imageProbe(k: ManagementContext, url: string) {
   if (!/^https:\/\//.test(url)) fachfehler('ungueltig', 'url_fehlt_https');
-  const adresse = urlOderNull(url);
+  const adresse = urlOrNull(url);
   if (!adresse) fachfehler('ungueltig', 'url_ungueltig');
   // Dieselben Hosts wie der Bild-Proxy: Der Abruf läuft aus dem internen Netz;
   // jede Adresse zuzulassen wäre Server-Side Request Forgery.
-  if (!hostErlaubt(url, ERLAUBTE_BILD_HOSTS)) fachfehler('verboten', 'host_nicht_erlaubt', { host: adresse.hostname });
+  if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) fachfehler('verboten', 'host_nicht_erlaubt', { host: adresse.hostname });
 
   const results: Awaited<ReturnType<typeof probeVariant>>[] = [];
   for (const v of VARIANTS) results.push(await probeVariant(k, url, v));
 
-  const key = proxyCacheSchluessel(url);
+  const key = proxyCacheKey(url);
   const dir = path.join(DATA_DIR, 'img_proxy_cache');
   const cached = await fileSize(path.join(dir, key));
   const thumb = await fileSize(path.join(dir, key + '_thumb.jpg'));
@@ -49,9 +49,9 @@ export async function imageProbe(k: ManagementContext, url: string) {
 
 /** Ohne Umleitungen: Die Probe soll den rohen Status des CDN zeigen. */
 const fetchWithoutRedirect = (k: ManagementContext, url: string, kopfzeilen: Record<string, string>) =>
-  k.fremdquellen.quellen.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, umleitungen: 0, kopfzeilen });
+  k.fremdquellen.quellen.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, redirects: 0, kopfzeilen });
 
-function readStream(a: AbrufStrom, genug = Infinity) {
+function readStream(a: FetchStream, genug = Infinity) {
   return new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(fertig => {
     const teile: Buffer[] = [];
     let bytes = 0;
@@ -104,7 +104,7 @@ const fileSize = (datei: string) =>
   fs.promises
     .stat(datei)
     .then(st => ({ bytes: st.size }))
-    .catch(ohneFehlendeDatei('management:stat', null));
+    .catch(withoutMissingFile('management:stat', null));
 
 /** Durch dieselbe Kette wie der Proxy, aber die ersten Bytes kommen als Hex hierher. */
 function firstBytes(k: ManagementContext, url: string) {
@@ -135,7 +135,7 @@ function imageKind(b: Buffer): string {
 
 /** Mit `live` auch die Antwort von BrickLink. */
 export async function priceProbe(k: ManagementContext, uid: number, setNumber: string, live: boolean) {
-  const ab = new Abstriche();
+  const ab = new Degradations();
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
     k.management.sampleSet(uid, setNumber),
     k.management.sampleAcquisitions(uid, setNumber),
@@ -174,31 +174,31 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
 
   // Dieselbe Währung wie die Bewertung, sonst zeigte die Probe andere Cache-Zeilen.
   out.currency = await k.settings.userValue(uid, 'currency', 'EUR');
-  // „BrickLink kennt das Set nicht": Steht sie, liefert holePreis still 0.
-  const katalog = await k.katalog.katalogEintrag(setNumber);
-  out.katalog = katalog ? { ...katalog, gilt_als_unbekannt: ohneBricklinkPreis(katalog) } : null;
+  // „BrickLink kennt das Set nicht": Steht sie, liefert fetchPrice still 0.
+  const katalog = await k.katalog.catalogEntry(setNumber);
+  out.katalog = katalog ? { ...katalog, applies_as_unknown: withoutBricklinkPrice(katalog) } : null;
   // Genau der Aufruf, den Finanzen macht.
   try {
-    out.finanzen_preis = await k.finanzen.holePreis(setNumber, chosen, 'sold', out.currency, out.ttl_hours);
+    out.finances_price = await k.finanzen.fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours);
   } catch (e) {
-    out.finanzen_preis = { error: fehlertext(e) };
+    out.finances_price = { error: fehlertext(e) };
   }
 
   if (live) {
     const cur = out.currency;
-    const liveWerte: Record<string, unknown> = {};
-    out.live = liveWerte;
+    const liveValues: Record<string, unknown> = {};
+    out.live = liveValues;
     for (const cond of ['N', 'U']) {
       try {
-        const g = await k.katalog.preisfuehrer(setNumber, cond, 'sold', cur);
-        liveWerte[cond] = {
+        const g = await k.katalog.priceGuide(setNumber, cond, 'sold', cur);
+        liveValues[cond] = {
           avg_price: g?.avg_price,
           qty_avg_price: g?.qty_avg_price,
           guide_used: g?.guide_used,
           guide_fallback: g?.guide_fallback || false,
         };
       } catch (e) {
-        liveWerte[cond] = { error: fehlertext(e) };
+        liveValues[cond] = { error: fehlertext(e) };
       }
     }
   }
@@ -208,7 +208,7 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
 
 /** Die wiederkehrenden Fragen zu einer leeren Kachel in einer Antwort: Datenbank, Platte, Proxy, Fehlanzeige. */
 export async function imageDiagnostics(kx: ManagementContext, sn: string) {
-  const ab = new Abstriche();
+  const ab = new Degradations();
   const konten: AccountImageRow = await ab.oder('konten', kx.management.accountImageRows(sn), {
     anzahl_konten: 0,
     image_local: null,
@@ -218,7 +218,7 @@ export async function imageDiagnostics(kx: ManagementContext, sn: string) {
 
   const safe = sn.replace(/[^a-z0-9-]/gi, '_');
   const datei = async (p: string) => {
-    const st = await fs.promises.stat(p).catch(ohneFehlendeDatei('management:bilddatei', null));
+    const st = await fs.promises.stat(p).catch(withoutMissingFile('management:bilddatei', null));
     return st
       ? { vorhanden: true, bytes: st.size, geaendert: st.mtime }
       : { vorhanden: false, bytes: 0, geaendert: null };
@@ -237,7 +237,7 @@ export async function imageDiagnostics(kx: ManagementContext, sn: string) {
   }
 
   const merker = await ab.oder('fehlanzeige', kx.management.setImageMiss(sn), null);
-  const vorschauMerker = await ab.oder('fehlanzeige', kx.management.thumbnailImageMiss(safe), null);
+  const previewMarker = await ab.oder('fehlanzeige', kx.management.thumbnailImageMiss(safe), null);
 
   // Eine Diagnose aus Ersatzwerten führte in die Irre: zuerst sagen, was nicht lesbar war.
   const hinweise: string[] = ab.teile.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${ab.teile.join(', ')}.`] : [];
@@ -257,7 +257,7 @@ export async function imageDiagnostics(kx: ManagementContext, sn: string) {
         '. Solange der Eintrag steht, wird das Bild NICHT geholt. ' +
         'Zurücknehmen: POST /api/v1/admin/forget-image-misses',
     );
-  if (vorschauMerker) hinweise.push('Für die Vorschau ist ein Fehlschlag vermerkt — sie wird nicht erneut versucht.');
+  if (previewMarker) hinweise.push('Für die Vorschau ist ein Fehlschlag vermerkt — sie wird nicht erneut versucht.');
   if (!hinweise.length) hinweise.push('Alles vorhanden: Original und Vorschau liegen bereit.');
 
   return {

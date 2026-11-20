@@ -1,7 +1,7 @@
 /**
  * db/zeilen.ts (scripts/zeilentypen.js) bindet die Zeilentypen der Repositories an das
  * Schema. Geprüft an der echten Datenbank: Jede Tabelle und Spalte samt NULL steht dort
- * so, und jeder Spaltentyp kommt über den Zugang (erzeugeDb) als der JavaScript-Typ an,
+ * so, und jeder Spaltentyp kommt über den Zugang (createDb) als der JavaScript-Typ an,
  * den die Datei verspricht.
  *
  * Gegenproben (14.11.2026, je einzeln):
@@ -20,9 +20,9 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const Z = require('../scripts/zeilentypen');
 
 /** Je PostgreSQL-Typ ein Wert; `typeof` bzw. Klasse, wie node-pg ihn liefert. */
@@ -60,8 +60,8 @@ test('db/zeilen.ts ist erzeugt und passt zum Schema', () => {
 });
 
 test('Zeilentypen gegen die Datenbank', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
-  const db = testZugang();
+  if (!(await dataOrSkip(t, _req))) return;
+  const db = testAccess();
   t.after(() => db.pool.end());
   const schema = Z.tabellen(fs.readFileSync(path.join(__dirname, '..', 'db', 'schema-stand.sql'), 'utf8'));
 
@@ -86,7 +86,7 @@ test('Zeilentypen gegen die Datenbank', { concurrency: 1 }, async t => {
     assert.deepEqual(fehlt, [], 'Probe für neue Spaltentypen nachtragen');
     for (const typ of typen) {
       const z = await db.get(`SELECT (${PROBE[/** @type {keyof typeof PROBE} */ (typ)]})::${typ} AS v`);
-      assert.equal(art(z.v), Z.jsTyp(typ), `${typ}: erwartet ${Z.jsTyp(typ)}, kam ${art(z.v)}`);
+      assert.equal(art(z.v), Z.jsType(typ), `${typ}: erwartet ${Z.jsType(typ)}, kam ${art(z.v)}`);
     }
   });
 });

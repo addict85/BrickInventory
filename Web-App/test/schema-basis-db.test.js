@@ -6,7 +6,7 @@
  *   A  in initSchema() die Prüfung auf eine leere Datenbank entfernt → rot:
  *      „eine bestehende Datenbank bleibt, wie sie ist“ (die Basis scheitert an
  *      vorhandenen Tabellen)
- *   B  (10.11.) den Erststart aus erzeugeDb(…, { erststart }) nicht aufgerufen → rot:
+ *   B  (10.11.) den Erststart aus createDb(…, { firstStart }) nicht aufgerufen → rot:
  *      „eine leere Datenbank bekommt Basis, Vorgaben und einen Administrator“
  *   D  (29.10.) in initSchema() wieder die Sperre „älter als 0050“ → rot:
  *      „eine Datenbank mit 0045, aber ohne 0050 startet …“ (der Stand von
@@ -14,7 +14,7 @@
  *   F  (09.11.) in db/basis.sql eine Zeile `ALTER TABLE ONLY public.users ALTER COLUMN …` von Hand
  *      ergänzt → rot: „db/basis.sql ist ein unverändertes Abbild …“; ebenso eine Migration, die
  *      in basis.sql als angewandt steht, deren Datei es nicht gibt → rot: „… eine lückenlose Folge …“
- *   E  (08.11.) in initSchemaOnce() den Aufruf pruefeMindeststand() entfernt
+ *   E  (08.11.) in initSchemaOnce() den Aufruf checkMinimumVersion() entfernt
  *      → rot: „eine Datenbank älter als 0050 hält den Start an …“ (der Start
  *      lief durch und spielte die offenen Migrationen ein)
  *
@@ -30,14 +30,14 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { testName, raeumeReste, id } = require('./helpers/testnamen');
+const { testName, cleanRemainder, id } = require('./helpers/testnamen');
 const NAME = testName('schema_basis');
 const ziel = new URL(BASIS);
 ziel.pathname = '/' + NAME;
 process.env.DATABASE_URL = ziel.toString();
 process.env.ADMIN_PASSWORD = 'Basis-Pruefung-2026';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
@@ -50,17 +50,17 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
     keineDb(t, e);
     return;
   }
-  await raeumeReste(admin, 'schema_basis');
+  await cleanRemainder(admin, 'schema_basis');
   await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)}`);
   await admin.query(`CREATE DATABASE ${id(NAME)}`);
   // Wie server.ts: Der Zugang bekommt den Erststart mit, der das erste Konto anlegt.
   const modul = require(path.join(ROOT, 'dist', 'db', 'database.js'));
-  const db = modul.erzeugeDb(modul.dbKonfigAusUmgebung(), {
-    erststart: () => require('./helpers/sources').testDienste().konto.legeStartVerwalterAn(),
+  const db = modul.createDb(modul.dbKonfigFromEnvironment(), {
+    firstStart: () => require('./helpers/sources').testServices().konto.putStartAdminAn(),
   });
   t.after(async () => {
     await db.pool.end().catch(() => {});
-    await testDaten()
+    await testData()
       .pool.end()
       .catch(() => {});
     await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)} WITH (FORCE)`).catch(() => {});
@@ -147,7 +147,7 @@ test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 1
     return;
   }
   const NAME2 = testName('schema_abbild');
-  await raeumeReste(admin, 'schema_abbild');
+  await cleanRemainder(admin, 'schema_abbild');
   await admin.query(`CREATE DATABASE ${id(NAME2)}`);
   const ziel2 = new URL(BASIS);
   ziel2.pathname = '/' + NAME2;
@@ -177,7 +177,7 @@ test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 1
 
   await t.test('db/basis.sql ist ein unverändertes Abbild der Datenbank, die es erzeugt', async tt => {
     const sk = require(path.join(ROOT, 'scripts', 'schema-stand.js'));
-    const erzeugtMit = Number((datei.match(/^-- Erzeugt mit pg_dump (\d+)\./m) || [])[1]);
+    const createdWith = Number((datei.match(/^-- Erzeugt mit pg_dump (\d+)\./m) || [])[1]);
     let jetzt = null;
     try {
       jetzt = sk.pgDumpVersion();
@@ -185,8 +185,8 @@ test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 1
       /* kein pg_dump im Pfad */
     }
     // pg_dump schreibt je Hauptversion anders; verglichen wird nur mit derselben.
-    if (jetzt !== erzeugtMit) {
-      tt.skip(`pg_dump ${jetzt ?? 'fehlt'}, die Basis ist mit ${erzeugtMit} erzeugt`);
+    if (jetzt !== createdWith) {
+      tt.skip(`pg_dump ${jetzt ?? 'fehlt'}, die Basis ist mit ${createdWith} erzeugt`);
       return;
     }
     assert.equal(

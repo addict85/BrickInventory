@@ -24,15 +24,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { katalogSet } = require('./helpers/bestand');
-const { datenOderSkip } = require('./helpers/db');
+const { catalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
 test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `setinfo-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}-f`]]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
@@ -42,7 +42,7 @@ test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, asy
   const [fremd, eigen, nie] = [`${process.pid}7-1`, `${process.pid}8-1`, `${process.pid}9-1`];
   const nummern = ['price-history-1', `${process.pid}-1`, fremd, eigen];
   for (const [i, name] of ['Pfadwort', 'Gewöhnlich', null, null].entries())
-    await katalogSet(db, nummern[i], { name: name ?? `Set ${nummern[i]}` });
+    await catalogSet(db, nummern[i], { name: name ?? `Set ${nummern[i]}` });
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2), ($3, $4)', [fremdId, fremd, uid, eigen]);
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: false }, t });
 

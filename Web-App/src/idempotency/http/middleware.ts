@@ -2,11 +2,11 @@
  * goes out: if the connection drops, the retry already finds it. */
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from '../../konto/http/anmeldung';
-import { meldeFehler } from '../../infra/fehler';
+import { reportError } from '../../infra/fehler';
 import * as service from '../service';
-import { routeFuerAnfrage } from '../../vertrag';
-import { nichtWiederholbar } from '../../vertrag/grund';
-import { sendeFehler } from '../../http/httpAntwort';
+import { routeForRequest } from '../../vertrag';
+import { notRetryable } from '../../vertrag/grund';
+import { sendError } from '../../http/httpAntwort';
 import type { IdempotencyServices } from '../area';
 
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -15,7 +15,7 @@ const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
  * never land in the table, not even encrypted. Their retry gets 409 instead of
  * a second run or the old response. */
 export function responseIsSecret(method: string, path: string): boolean {
-  return nichtWiederholbar(routeFuerAnfrage(method, path));
+  return notRetryable(routeForRequest(method, path));
 }
 
 /** Only routes with a contract entry: without it, it's unknown whether the
@@ -24,9 +24,9 @@ export function idempotency(d: IdempotencyServices) {
   return async (req: Request, res: Response, next: NextFunction) => {
     const key = req.get('Idempotency-Key');
     if (key === undefined || !WRITE_METHODS.has(req.method)) return next();
-    const route = routeFuerAnfrage(req.method, req.baseUrl + req.path);
+    const route = routeForRequest(req.method, req.baseUrl + req.path);
     if (!route) return next();
-    if (!service.KEY_PATTERN.test(key)) return sendeFehler(req, res, 'ungueltig', 'idempotenz_schluessel_ungueltig');
+    if (!service.KEY_PATTERN.test(key)) return sendError(req, res, 'ungueltig', 'idempotenz_schluessel_ungueltig');
     const uid = nutzerId(req);
     if (uid === null) return next();
 
@@ -35,32 +35,31 @@ export function idempotency(d: IdempotencyServices) {
       key,
       service.fingerprint(req.method, req.originalUrl, req.body, req.apiUser?.is_admin === true),
     );
-    if (outcome.kind === 'different')
-      return sendeFehler(req, res, 'nicht_verarbeitbar', 'idempotenz_schluessel_anders');
+    if (outcome.kind === 'different') return sendError(req, res, 'nicht_verarbeitbar', 'idempotenz_schluessel_anders');
     if (outcome.kind === 'running') {
       res.set('Retry-After', '1');
-      return sendeFehler(req, res, 'konflikt', 'idempotenz_laeuft');
+      return sendError(req, res, 'konflikt', 'idempotenz_laeuft');
     }
-    if (outcome.kind === 'not_replayable') return sendeFehler(req, res, 'konflikt', 'idempotenz_nicht_wiederholbar');
+    if (outcome.kind === 'not_replayable') return sendError(req, res, 'konflikt', 'idempotenz_nicht_wiederholbar');
     if (outcome.kind === 'replay') {
       res.set('Idempotent-Replay', 'true');
       return res.status(outcome.status).type('application/json').send(outcome.response);
     }
 
-    const secret = nichtWiederholbar(route);
+    const secret = notRetryable(route);
     let recorded = false;
     const json = res.json.bind(res);
     res.json = (body: unknown) => {
       recorded = true;
       void d
         .end(uid, key, res.statusCode, secret ? null : JSON.stringify(body))
-        .catch((e: unknown) => meldeFehler('idempotenz:merken', e))
+        .catch((e: unknown) => reportError('idempotenz:merken', e))
         .finally(() => json(body));
       return res;
     };
     // No JSON response (file, stream): nothing to replay, the key is released.
     res.on('finish', () => {
-      if (!recorded) d.release(uid, key, res.statusCode).catch((e: unknown) => meldeFehler('idempotenz:freigeben', e));
+      if (!recorded) d.release(uid, key, res.statusCode).catch((e: unknown) => reportError('idempotenz:freigeben', e));
     });
     // Every transaction of the route marks its effect on the key, in the same COMMIT.
     d.withEffectMark(uid, key, next);

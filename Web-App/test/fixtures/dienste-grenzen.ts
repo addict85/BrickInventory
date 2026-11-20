@@ -63,8 +63,8 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.idempotency.db,
     // Die ausdrücklichen Dienste dagegen stehen da.
-    d.bestand.lagerortDienst.lagerorte,
+    d.bestand.locationService.lagerorte,
     d.auftraege.liesZustand,
-    d.konto.verwalter.verwalterAktionMerken,
+    d.konto.verwalter.rememberAdminAction,
   ];
 }

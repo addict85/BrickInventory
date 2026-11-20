@@ -11,12 +11,12 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 // Nicht die Vorgabe 90: So zeigt der Test, dass die Frist aus der Konfiguration kommt.
 process.env.TOKEN_IDLE_DAYS = '23';
 
-const { buildAndRequire, einhaengung, testDaten } = require('./helpers/sources');
+const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
 const AUTH = einhaengung('auth');
-const db = testDaten();
+const db = testData();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -29,7 +29,7 @@ const NAME = 'gleitfrist_test',
 const TAG = 86400_000;
 
 test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run(
@@ -48,7 +48,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
       saveUninitialized: false,
     }),
   );
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
@@ -61,10 +61,10 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
     return { status: r.status, body: await r.json().catch(() => null) };
   };
   const zeile = klartext =>
-    db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenAbdruck(klartext)]);
+    db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenDigest(klartext)]);
 
   try {
-    const frist = _req('src/infra/konfig.js').konfig().tokenLeerlaufTage;
+    const frist = _req('src/infra/konfig.js').konfig().tokenIdleDays;
     assert.equal(frist, 23, 'die Frist kommt aus TOKEN_IDLE_DAYS');
 
     // ── 1. Der App-Token ────────────────────────────────────────────────────
@@ -74,41 +74,41 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
     });
     assert.equal(appA.status, 200, `Anmeldung scheiterte: ${JSON.stringify(appA.body)}`);
     const appToken = appA.body.token;
-    const appZeile = await zeile(appToken);
-    assert.equal(appZeile.sliding, true, 'Der App-Token muss als gleitend markiert sein');
+    const appRow = await zeile(appToken);
+    assert.equal(appRow.sliding, true, 'Der App-Token muss als gleitend markiert sein');
     // Auf den Tag genau statt auf die Millisekunde: Zwischen dem INSERT und
     // dieser Zeile liegt echte Zeit, und NOW() ist die der Datenbank.
-    const tageBis = d => Math.round((new Date(d).getTime() - Date.now()) / TAG);
+    const daysUntil = d => Math.round((new Date(d).getTime() - Date.now()) / TAG);
     assert.equal(
-      tageBis(appZeile.expires_at),
+      daysUntil(appRow.expires_at),
       frist,
       `Der App-Token muss ${frist} Tage laufen — die Frist steht in TOKEN_IDLE_DAYS`,
     );
 
     // ── 2. Der Browser-Token gleitet nicht ──────────────────────────────────
     const webA = await ruf(AUTH + '/login', { method: 'POST', body: { username: NAME, password: PASS } });
-    const webZeile = await zeile(webA.body.token);
+    const webRow = await zeile(webA.body.token);
     assert.equal(
-      webZeile.sliding,
+      webRow.sliding,
       false,
       'Der Token im sessionStorage darf NICHT gleiten — sonst haelt ihn ein Angreifer durch Benutzung am Leben',
     );
-    assert.equal(tageBis(webZeile.expires_at), 7, 'Die sieben festen Tage des Browsers bleiben');
+    assert.equal(daysUntil(webRow.expires_at), 7, 'Die sieben festen Tage des Browsers bleiben');
 
     // 3. Die stille Erneuerung
     await db.run("UPDATE api_tokens SET expires_at = NOW() + INTERVAL '3 days' WHERE token = $1", [
-      auth.tokenAbdruck(appToken),
+      auth.tokenDigest(appToken),
     ]);
-    tokenCache.leereTokenCache();
+    tokenCache.emptyTokenCache();
     const wer = await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${appToken}` } });
     assert.equal(wer.body?.user?.id, uid, 'Vorbedingung: Die Anfrage muss ueberhaupt durchgehen');
 
     // Das UPDATE laeuft ohne await im Anfrageweg (fire-and-forget, damit die
     // Auth keine zwei DB-Runden kostet). Deshalb wird gewartet statt geraten —
     // ein fester Schlaf waere entweder zu kurz oder Zeitverschwendung.
-    await bis(async () => tageBis((await zeile(appToken)).expires_at) > 3, 2000);
+    await bis(async () => daysUntil((await zeile(appToken)).expires_at) > 3, 2000);
     assert.equal(
-      tageBis((await zeile(appToken)).expires_at),
+      daysUntil((await zeile(appToken)).expires_at),
       frist,
       'Die Benutzung muss das Ablaufdatum wieder auf die volle Frist schieben — sonst ' +
         'sperrt sich ein taeglich benutztes Telefon nach 90 Tagen selbst aus',
@@ -117,21 +117,21 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
     // Gegenprobe in derselben Lage: Der Browser-Token wird ebenso benutzt und
     // darf sich NICHT verlaengern.
     await db.run("UPDATE api_tokens SET expires_at = NOW() + INTERVAL '3 days' WHERE token = $1", [
-      auth.tokenAbdruck(webA.body.token),
+      auth.tokenDigest(webA.body.token),
     ]);
-    tokenCache.leereTokenCache();
+    tokenCache.emptyTokenCache();
     await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${webA.body.token}` } });
     // Die Berührung schreibt last_used; erst danach ist sicher, dass sie die Frist nicht schob.
     assert.ok(
       await bis(
         async () =>
-          (await db.get('SELECT last_used FROM api_tokens WHERE token = $1', [auth.tokenAbdruck(webA.body.token)]))
+          (await db.get('SELECT last_used FROM api_tokens WHERE token = $1', [auth.tokenDigest(webA.body.token)]))
             ?.last_used,
       ),
       'die Benutzung wurde nicht vermerkt',
     );
     assert.equal(
-      tageBis((await zeile(webA.body.token)).expires_at),
+      daysUntil((await zeile(webA.body.token)).expires_at),
       3,
       'Der Browser-Token darf durch Benutzung nicht laenger werden',
     );
@@ -144,7 +144,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
        VALUES ($1,$2,'Altzeile',NULL, NOW() - INTERVAL '40 days', NOW() - INTERVAL '10 days')`,
       [alt, uid],
     );
-    await auth.tokensAufraeumen();
+    await auth.tokensCleanup();
     const nachgezogen = await db.get('SELECT expires_at, sliding FROM api_tokens WHERE token = $1', [alt]);
     assert.ok(nachgezogen, 'Die Altzeile darf nicht geloescht werden — sie ist noch gueltig');
     assert.equal(nachgezogen.sliding, true, 'Eine Altzeile ohne Datum war ein App-/QR-Token und gleitet');
@@ -155,7 +155,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
     );
 
     // 5. Eine Altzeile, die nie benutzt wurde, zählt ab ihrer Anlage und fällt.
-    // Gegenprobe (11.11.2026 gemessen): in tokensAufraeumen() die Summe durch 0
+    // Gegenprobe (11.11.2026 gemessen): in tokensCleanup() die Summe durch 0
     // ersetzt → rot „das Aufräumen zählt …“.
     const nie = 'b'.repeat(64);
     await db.run('DELETE FROM api_tokens WHERE token = $1', [nie]);
@@ -164,7 +164,7 @@ test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 
        VALUES ($1,$2,'Nie benutzt',NULL, NOW() - INTERVAL '40 days', NULL)`,
       [nie, uid],
     );
-    assert.ok((await auth.tokensAufraeumen()) >= 1, 'das Aufräumen zählt, was es entfernt');
+    assert.ok((await auth.tokensCleanup()) >= 1, 'das Aufräumen zählt, was es entfernt');
     assert.equal(
       await db.get('SELECT 1 FROM api_tokens WHERE token = $1', [nie]),
       undefined,

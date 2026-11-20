@@ -33,26 +33,26 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { testServer, portVon } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { dataOrSkip } = require('./helpers/db');
+const { testServer, portOf } = require('./helpers/server');
+const { adminWithFactor } = require('./helpers/verwalter');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 const { bis } = require('./helpers/zeit');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const db = testDaten();
+const db = testData();
 
 const NAME = `haerte_${process.pid}`,
   PASS = 'Haerte-Passwort-1';
 // Die Zähler-Fälle sperren diesen Namen; das Testkonto bleibt für den Token-Fall frei.
-const ZAEHLER = `${NAME}_zaehler`;
+const COUNTER = `${NAME}_zaehler`;
 let uid = 0;
 
 test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const aufraeumen = async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_v`]]);
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', ['%203.0.113.%']);
@@ -67,7 +67,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     ).id;
   uid = await anlegen(NAME, false);
   const verwalter = await anlegen(`${NAME}_v`, true);
-  await verwalterMitFaktor(_req, verwalter);
+  await adminWithFactor(_req, verwalter);
   t.after(async () => {
     await aufraeumen().catch(() => {});
   });
@@ -78,10 +78,10 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     app.use(express.json());
     app.use(session({ secret: 'haerte-test-geheimnis-lang-genug', resave: false, saveUninitialized: false }));
     app.get('/vorher', (req, res) => {
-      req.session.besuch = 1;
+      req.session.visit = 1;
       res.json({});
     });
-    app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+    app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
     const srv = app.listen(0);
     t.after(() => new Promise(r => srv.close(r)));
     const base = `http://127.0.0.1:${srv.address().port}`;
@@ -105,15 +105,15 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
   await t.test('Anmeldezähler: ein zweiter Prozess sieht die Sperre', async () => {
     const IP = '203.0.113.7';
     const a = _req('src/konto/loginLimiter.js');
-    assert.equal(await a.anmeldungErlaubt(IP, ZAEHLER), null, 'Vorbedingung: frei');
-    for (let i = 0; i < a.MAX_ATTEMPTS; i++) await a.anmeldungGescheitert(IP, ZAEHLER);
+    assert.equal(await a.loginAllowed(IP, COUNTER), null, 'Vorbedingung: frei');
+    for (let i = 0; i < a.MAX_ATTEMPTS; i++) await a.loginFailed(IP, COUNTER);
     // Ein frisch geladenes Modul hat leeren Speicher, wie ein zweiter Arbeitsprozess.
     const datei = path.join(ROOT, 'dist', 'src', 'konto', 'loginLimiter.js');
     delete require.cache[datei];
     const b = require(datei);
     assert.notEqual(a, b, 'Vorbedingung: zwei Modulinstanzen');
-    const konto = require('./helpers/sources').testBereich('konto');
-    assert.equal((await b.anmeldungErlaubt(konto, IP, ZAEHLER))?.code, 'zu_viele_fehlversuche');
+    const konto = require('./helpers/sources').testArea('konto');
+    assert.equal((await b.loginAllowed(konto, IP, COUNTER))?.code, 'zu_viele_fehlversuche');
   });
 
   await t.test('Anmeldezähler: ohne Datenbank bremst der Speicher', async () => {
@@ -123,13 +123,9 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     console.warn = () => {};
     await db.run('ALTER TABLE rate_limit_attempts RENAME TO rate_limit_attempts_weg');
     try {
-      assert.equal(await l.anmeldungErlaubt(IP, ZAEHLER), null, 'ein Datenbankfehler sperrt die Anmeldung');
-      for (let i = 0; i < l.MAX_ATTEMPTS; i++) await l.anmeldungGescheitert(IP, ZAEHLER);
-      assert.equal(
-        (await l.anmeldungErlaubt(IP, ZAEHLER))?.code,
-        'zu_viele_fehlversuche',
-        'ohne Datenbank keine Bremse',
-      );
+      assert.equal(await l.loginAllowed(IP, COUNTER), null, 'ein Datenbankfehler sperrt die Anmeldung');
+      for (let i = 0; i < l.MAX_ATTEMPTS; i++) await l.loginFailed(IP, COUNTER);
+      assert.equal((await l.loginAllowed(IP, COUNTER))?.code, 'zu_viele_fehlversuche', 'ohne Datenbank keine Bremse');
     } finally {
       await db.run('ALTER TABLE rate_limit_attempts_weg RENAME TO rate_limit_attempts');
       console.warn = warn;
@@ -176,7 +172,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
   await t.test('offene Ereignis-Ströme halten das Herunterfahren nicht auf', async () => {
     const port = await new Promise(r => {
       const s = net.createServer().listen(0, () => {
-        const p = portVon(s);
+        const p = portOf(s);
         s.close(() => r(p));
       });
     });
@@ -235,12 +231,12 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
 
 test('Minifiguren und Finanzen fordern Vorschaubilder an', async () => {
   // Volle Auflösung bei 36–100 px Anzeigegrösse liess die Kacheln sichtbar nachtröpfeln.
-  const BILD = 'https://cdn.rebrickable.com/media/sets/fig-000123.jpg';
-  const { w, d } = await oeffneOberflaeche({
+  const IMAGE = 'https://cdn.rebrickable.com/media/sets/fig-000123.jpg';
+  const { w, d } = await openUi({
     '/v1/minifigs': {
       success: true,
       total: 1,
-      figs: [{ fig_number: 'fig-000123', fig_name: 'Chewbacca', source: 'set', total_quantity: 1, image_url: BILD }],
+      figs: [{ fig_number: 'fig-000123', fig_name: 'Chewbacca', source: 'set', total_quantity: 1, image_url: IMAGE }],
     },
     '/v1/finance/valuation': {
       success: true,
@@ -282,8 +278,8 @@ test('Minifiguren und Finanzen fordern Vorschaubilder an', async () => {
 
 test('die Webapp hängt keinen Token an eine Adresse', () => {
   // Der Server sieht ihn dort nicht mehr an (Test oben); er stünde nur im Protokoll.
-  const { ohneKommentare, setKernQuelle } = require('./helpers/sources');
-  const anhaengen = [/'\?token='\s*\+/, /\?token=\$/];
+  const { ohneKommentare, setCoreSource } = require('./helpers/sources');
+  const append = [/'\?token='\s*\+/, /\?token=\$/];
   const dateien = [
     path.join(ROOT, 'public', 'js', 'api.js'),
     path.join(ROOT, 'public', 'js', 'bilder.js'),
@@ -296,25 +292,25 @@ test('die Webapp hängt keinen Token an eine Adresse', () => {
   for (const voll of dateien) {
     assert.ok(fs.existsSync(voll), `${path.basename(voll)} steht nicht mehr dort — Pfad im Test veraltet`);
     const src = ohneKommentare(fs.readFileSync(voll, 'utf8'));
-    if (anhaengen.some(re => re.test(src))) treffer.push(path.basename(voll));
+    if (append.some(re => re.test(src))) treffer.push(path.basename(voll));
   }
   assert.deepEqual(treffer, []);
   // Eine zweite Fassung des Wächters umginge die eine Regel in src/konto/http/anmeldung.ts.
-  assert.doesNotMatch(setKernQuelle(), /function requireLoginOrToken/);
+  assert.doesNotMatch(setCoreSource(), /function requireLoginOrToken/);
   // Während eines Imports ist 503 nach 3 s besser als eine hängende Verbindung.
-  assert.match(setKernQuelle(), /loginOrTokenGuard\(d\.konto, \{ timeoutMs: 3000 \}\)/);
+  assert.match(setCoreSource(), /loginOrTokenGuard\(d\.konto, \{ timeoutMs: 3000 \}\)/);
 });
 
 test('jede Preisabfrage auf price_cache nennt die Währung', () => {
   // price_cache ist über Set, Zustand UND Währung verschlüsselt; ohne currency_code mischen sich Währungen,
   // und ein Währungswechsel bräuchte eine Cache-Leerung. Zählungen und Abfragen ohne WHERE wählen keinen Preis.
   const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-  const leser = require('./helpers/sources')
-    .alleQuellen()
+  const reader = require('./helpers/sources')
+    .allSources()
     .filter(d => read(d).includes('FROM price_cache'));
-  assert.ok(leser.length >= 4, `nur ${leser.length} Leser von price_cache gefunden — Suche veraltet?`);
+  assert.ok(reader.length >= 4, `nur ${reader.length} Leser von price_cache gefunden — Suche veraltet?`);
   const ohne = [];
-  for (const datei of leser) {
+  for (const datei of reader) {
     const src = read(datei);
     for (let i = src.indexOf('FROM price_cache'); i !== -1; i = src.indexOf('FROM price_cache', i + 1)) {
       const vorher = src.slice(Math.max(0, i - 400), i);

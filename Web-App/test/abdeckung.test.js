@@ -14,13 +14,13 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { baueDist } = require('./helpers/sources');
+const { buildDist } = require('./helpers/sources');
 const { bericht, pruefen } = require('../scripts/abdeckung');
 
 const ROOT = path.join(__dirname, '..');
 
 test('ein Lauf über dist/ ergibt lcov und Bereiche', async () => {
-  baueDist();
+  buildDist();
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'abdeckung-'));
   try {
     const v8 = path.join(ordner, 'v8');

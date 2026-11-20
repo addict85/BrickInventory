@@ -1,12 +1,12 @@
-/** The area's factory: services as a closure over k (baueBereich, src/infra/bereich.ts). */
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import * as service from './service';
 import { access, type IdempotencyDependencies, type IdempotencyContext } from './context';
 
 export type { IdempotencyDependencies, IdempotencyContext } from './context';
 
-export function createIdempotency(a: IdempotencyDependencies, einblick?: Einblick<IdempotencyContext>) {
-  return baueBereich(
+export function createIdempotency(a: IdempotencyDependencies, inspect?: Inspect<IdempotencyContext>) {
+  return buildArea(
     a,
     access,
     (k: IdempotencyContext) => ({
@@ -19,7 +19,7 @@ export function createIdempotency(a: IdempotencyDependencies, einblick?: Einblic
       release: mit(k)(service.release),
       withEffectMark: mit(k)(service.withEffectMark),
     }),
-    einblick,
+    inspect,
   );
 }
 

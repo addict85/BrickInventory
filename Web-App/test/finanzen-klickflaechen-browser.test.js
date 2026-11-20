@@ -14,21 +14,21 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { haeltSet } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { holdsSet } = require('./helpers/bestand');
 
-const ZU_KLEIN = `[...document.querySelectorAll('a[href], button, [role=button], [role=tab], select, input:not([type=hidden])')]
+const TO_SMALL = `[...document.querySelectorAll('a[href], button, [role=button], [role=tab], select, input:not([type=hidden])')]
   .filter(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden')
   .map(e => { const r = e.getBoundingClientRect(); return { k: e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + '.' + String(e.className).trim().split(/\\s+/).join('.'),
     w: Math.round(r.width), h: Math.round(r.height), t: (e.textContent || e.getAttribute('aria-label') || '').trim().slice(0, 20) }; })
   .filter(x => x.h < 32 || x.w < 32).map(x => x.k + ' ' + x.w + '×' + x.h + ' „' + x.t + '“')`;
 
 test('Finanzen am Rechner: Bedienelemente mindestens 32 px', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `finklick_${process.pid}`,
     bestand: async (db, uid) => {
-      await haeltSet(db, uid, '10294-1', 2, { preis: 100 });
-      await haeltSet(db, uid, '75192-1', 1, { preis: 50 });
+      await holdsSet(db, uid, '10294-1', 2, { preis: 100 });
+      await holdsSet(db, uid, '75192-1', 1, { preis: 50 });
     },
   });
   if (app.grund) {
@@ -43,7 +43,7 @@ test('Finanzen am Rechner: Bedienelemente mindestens 32 px', { concurrency: 1, t
   await ruhig();
 
   await t.test('Bedienelemente der Finanzen', async () => {
-    assert.deepEqual(await b.auswerten(ZU_KLEIN), []);
+    assert.deepEqual(await b.auswerten(TO_SMALL), []);
     const m =
       await b.auswerten(`({ sort: document.querySelectorAll('.sort-knopf').length, zeile: document.querySelectorAll('.zeile-oeffnen').length,
       kopf: Math.round(document.querySelector('header').getBoundingClientRect().height) })`);

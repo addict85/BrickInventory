@@ -17,10 +17,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
@@ -49,9 +49,9 @@ test('eine von zwei Erfassungen verschieben laesst den Rest beim Absender', { co
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('kind','x')`);
   const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
-  const HAUPT = await id('haupt'),
+  const MAIN = await id('haupt'),
     KIND = await id('kind');
-  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [HAUPT, KIND]);
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [MAIN, KIND]);
 
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ('3001','Brick 2x4')`);
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
@@ -64,32 +64,32 @@ test('eine von zwei Erfassungen verschieben laesst den Rest beim Absender', { co
    * Position und Tag nur eine Erfassung erlaubt — mit demselben Datum braeche
    * das zweite INSERT ab, und der Aufbau waere gar nicht erst herzustellen.
    */
-  const aufbau = async () => {
+  const setup = async () => {
     await db.run(`DELETE FROM part_acquisitions`);
     await db.run(`DELETE FROM parts`);
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
                   VALUES ($1,'3001',4,'manual')`,
-      [HAUPT],
+      [MAIN],
     );
     await db.run(
       `INSERT INTO part_acquisitions
                     (user_id,part_number,color_id,quantity,unit_price,condition,created_at)
                   VALUES ($1,'3001',4,2,0.50,'N', NOW() - INTERVAL '2 days'),
                          ($1,'3001',4,3,0.60,'N', NOW() - INTERVAL '1 day')`,
-      [HAUPT],
+      [MAIN],
     );
     return (
-      await db.all(`SELECT id, quantity FROM part_acquisitions WHERE user_id=$1 ORDER BY created_at`, [HAUPT])
+      await db.all(`SELECT id, quantity FROM part_acquisitions WHERE user_id=$1 ORDER BY created_at`, [MAIN])
     ).map(r => ({ id: r.id, menge: Number(r.quantity) }));
   };
 
-  const { base } = testServer(_req, { sitzung: { userId: HAUPT }, t });
-  const verschiebe = async (erfassungId, nachKonto) => {
-    const r = await fetch(`${base}/api/v1/parts/3001/4/acquisitions/${erfassungId}`, {
+  const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
+  const move = async (entryId, afterAccount) => {
+    const r = await fetch(`${base}/api/v1/parts/3001/4/acquisitions/${entryId}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ owner_user_id: nachKonto }),
+      body: JSON.stringify({ owner_user_id: afterAccount }),
     });
     return { status: r.status, body: await r.json() };
   };
@@ -101,19 +101,19 @@ test('eine von zwei Erfassungen verschieben laesst den Rest beim Absender', { co
   });
 
   await t.test('die zweite Erfassung wandert, die erste bleibt', async () => {
-    const erf = await aufbau();
-    const a = await verschiebe(erf[0].id, KIND); // die mit Menge 2
+    const erf = await setup();
+    const a = await move(erf[0].id, KIND); // die mit Menge 2
     assert.equal(a.status, 200, JSON.stringify(a.body));
 
-    const absender = await zaehle(HAUPT);
+    const sender = await zaehle(MAIN);
     assert.deepEqual(
-      absender.erfassungen,
+      sender.erfassungen,
       [3],
-      `Der Absender hat ${absender.erfassungen.length} Erfassungen uebrig (${absender.erfassungen}), ` +
+      `Der Absender hat ${sender.erfassungen.length} Erfassungen uebrig (${sender.erfassungen}), ` +
         'erwartet 1 mit Menge 3. Sind es 0, hat das Verschieben ALLE geloescht — ' +
         'genau der Fehler, um den es hier geht.',
     );
-    assert.equal(absender.zeilen, 1, 'Die Bestandszeile des Absenders ist weg, obwohl er noch 3 Stueck hat');
+    assert.equal(sender.zeilen, 1, 'Die Bestandszeile des Absenders ist weg, obwohl er noch 3 Stueck hat');
     assert.equal(
       a.body.source_emptied,
       false,
@@ -129,11 +129,11 @@ test('eine von zwei Erfassungen verschieben laesst den Rest beim Absender', { co
     // Die Gegenrichtung. Ohne sie waere der Fall darueber auch gruen, wenn
     // nie geloescht wuerde — und eine manuelle Zeile ohne Erfassung ist
     // Ballast, kein Bestand.
-    const erf = await aufbau();
-    assert.equal((await verschiebe(erf[0].id, KIND)).status, 200);
-    const zweite = (await db.all(`SELECT id FROM part_acquisitions WHERE user_id=$1`, [HAUPT])).map(r => r.id);
+    const erf = await setup();
+    assert.equal((await move(erf[0].id, KIND)).status, 200);
+    const zweite = (await db.all(`SELECT id FROM part_acquisitions WHERE user_id=$1`, [MAIN])).map(r => r.id);
     assert.equal(zweite.length, 1, 'Vorbedingung: beim Absender muss genau eine uebrig sein');
-    const b = await verschiebe(zweite[0], KIND);
+    const b = await move(zweite[0], KIND);
     assert.equal(b.status, 200, JSON.stringify(b.body));
     assert.equal(
       b.body.source_emptied,
@@ -141,10 +141,10 @@ test('eine von zwei Erfassungen verschieben laesst den Rest beim Absender', { co
       'Die Antwort muss source_emptied=true melden, wenn beim Absender nichts bleibt',
     );
 
-    const absender = await zaehle(HAUPT);
-    assert.deepEqual(absender.erfassungen, [], 'Beim Absender darf keine Erfassung bleiben');
+    const sender = await zaehle(MAIN);
+    assert.deepEqual(sender.erfassungen, [], 'Beim Absender darf keine Erfassung bleiben');
     assert.equal(
-      absender.zeilen,
+      sender.zeilen,
       0,
       'Die leere Bestandszeile des Absenders muss weg sein — eine manuelle Zeile ' +
         'ohne Erfassung ist Ballast, kein Bestand',

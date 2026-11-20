@@ -19,15 +19,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { conditionForPrice, setGlobalSetting } = _req('src/settings/settings.js');
 const { setUserSetting } = _req('src/settings/userSetting.js');
 
 test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   // Eigener Nutzer je Prozess — der Test läuft neben anderen auf derselben DB.
   const name = `zfp_${process.pid}`;
@@ -39,7 +39,7 @@ test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurre
   );
   const uid = angelegt.id;
 
-  const vorherGlobal = await db
+  const beforeGlobal = await db
     .get(`SELECT value FROM global_settings WHERE key='default_price_condition'`)
     .catch(() => null);
 
@@ -69,11 +69,11 @@ test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurre
     // ── Eine ungültige Eingabe zählt nicht ──────────────────────────────────
     // Der Rumpf kommt vom Client; dort kann alles stehen. Ein 'X' darf nicht
     // als Zustand durchgereicht werden, sonst landet es in der Erfassung.
-    for (const müll of ['X', '', 'neu', 0, true, null, {}]) {
+    for (const garbage of ['X', '', 'neu', 0, true, null, {}]) {
       assert.equal(
-        await conditionForPrice(müll, 'U', uid),
+        await conditionForPrice(garbage, 'U', uid),
         'U',
-        `Eingabe ${JSON.stringify(müll)} ist kein Zustand und muss übergangen werden`,
+        `Eingabe ${JSON.stringify(garbage)} ist kein Zustand und muss übergangen werden`,
       );
     }
 
@@ -96,8 +96,8 @@ test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurre
   } finally {
     await db.run(`DELETE FROM user_settings WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM users WHERE id=$1`, [uid]).catch(() => {});
-    if (vorherGlobal?.value !== undefined)
-      await setGlobalSetting('default_price_condition', vorherGlobal.value).catch(() => {});
+    if (beforeGlobal?.value !== undefined)
+      await setGlobalSetting('default_price_condition', beforeGlobal.value).catch(() => {});
     else await db.run(`DELETE FROM global_settings WHERE key='default_price_condition'`).catch(() => {});
     // Ohne das endet der Prozess nie: Der Pool hält offene Verbindungen, und
     // node:test wartet darauf. Dieselbe Zeile steht am Ende jedes anderen

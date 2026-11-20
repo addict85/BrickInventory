@@ -9,20 +9,20 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { manualPartsList } = _req('src/parts/queries.js');
 const { readManualMinifigs } = _req('src/minifigs/queries.js');
-const { bewerteTeile, bewerteFiguren } = _req('src/finanzen/financeCalc.js');
+const { valueParts, valueMinifigs } = _req('src/finanzen/financeCalc.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { haeltFigur, haeltTeil } = require('./helpers/bestand');
+const { holdsMinifig, holdsPart } = require('./helpers/bestand');
 
 const NAME = 'zustand_eine_regel';
 
 test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   await db.run('INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,true,true)', [
@@ -53,13 +53,13 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand', 
                     VALUES ($1,4,'Rot') ON CONFLICT (part_number,color_id) DO NOTHING`,
         [f.nr],
       );
-      await haeltTeil(db, uid, f.nr, { menge: 0, colorId: 4 }); // Menge 0: die Erfassung dahinter traegt sie
+      await holdsPart(db, uid, f.nr, { menge: 0, colorId: 4 }); // Menge 0: die Erfassung dahinter traegt sie
       await db.run(
         `INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ($1,$2)
                     ON CONFLICT (fig_number) DO NOTHING`,
         ['fig' + f.nr, 'Figur ' + f.nr],
       );
-      await haeltFigur(db, uid, 'fig' + f.nr, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+      await holdsMinifig(db, uid, 'fig' + f.nr, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
       // Verschiedene Tage, damit „die neueste Erfassung" eindeutig ist.
       for (const [i, z] of f.erfassungen.entries()) {
         await db.run(
@@ -75,11 +75,11 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand', 
       }
     }
 
-    const [liste, bewertung, figListe, figBewertung] = await Promise.all([
+    const [liste, bewertung, figList, figValuation] = await Promise.all([
       manualPartsList([uid]),
-      bewerteTeile(uid, [uid]),
+      valueParts(uid, [uid]),
       readManualMinifigs([uid]),
-      bewerteFiguren(uid, [uid]),
+      valueMinifigs(uid, [uid]),
     ]);
 
     // Selbstbeweis: Kämen leere Listen zurück, wäre jeder Vergleich darunter
@@ -87,7 +87,7 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand', 
     for (const [was, l] of [
       ['/parts/manual', liste],
       ['parts-valuation', bewertung.parts],
-      ['/minifigs/manual', figListe],
+      ['/minifigs/manual', figList],
       ['minifigs-valuation', bewertung.parts],
     ])
       assert.equal(l.length, faelle.length, `${was}: ${l.length} statt ${faelle.length} Einträgen`);
@@ -98,25 +98,25 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand', 
       const beschreibung =
         `Teil ${f.nr} (` + (f.erfassungen.length ? `Erfassungen ${f.erfassungen.join('+')}` : 'ohne Erfassung') + ')';
 
-      const ausListe = zustand(liste, 'part_number', f.nr);
-      const ausBewertung = zustand(bewertung.parts, 'part_number', f.nr);
+      const fromList = zustand(liste, 'part_number', f.nr);
+      const fromValuation = zustand(bewertung.parts, 'part_number', f.nr);
       assert.equal(
-        ausListe,
-        ausBewertung,
-        `${beschreibung}: /parts/manual sagt ${ausListe}, die Bewertung sagt ${ausBewertung}. ` +
+        fromList,
+        fromValuation,
+        `${beschreibung}: /parts/manual sagt ${fromList}, die Bewertung sagt ${fromValuation}. ` +
           'Die Webapp liest die eine Antwort, die App die andere — dasselbe Teil ' +
           'trüge in den beiden Oberflächen verschiedene Plaketten.',
       );
-      assert.equal(ausListe, f.erwartet, `${beschreibung}: erwartet ${f.erwartet}, bekommen ${ausListe}`);
+      assert.equal(fromList, f.erwartet, `${beschreibung}: erwartet ${f.erwartet}, bekommen ${fromList}`);
 
-      const figAusListe = zustand(figListe, 'fig_number', 'fig' + f.nr);
-      const figAusBewertung = zustand(figBewertung.figs, 'fig_number', 'fig' + f.nr);
+      const figFromList = zustand(figList, 'fig_number', 'fig' + f.nr);
+      const figFromValuation = zustand(figValuation.figs, 'fig_number', 'fig' + f.nr);
       assert.equal(
-        figAusListe,
-        figAusBewertung,
-        `Figur fig${f.nr}: /minifigs/manual sagt ${figAusListe}, die Bewertung sagt ${figAusBewertung}`,
+        figFromList,
+        figFromValuation,
+        `Figur fig${f.nr}: /minifigs/manual sagt ${figFromList}, die Bewertung sagt ${figFromValuation}`,
       );
-      assert.equal(figAusListe, f.erwartet, `Figur fig${f.nr}: erwartet ${f.erwartet}, bekommen ${figAusListe}`);
+      assert.equal(figFromList, f.erwartet, `Figur fig${f.nr}: erwartet ${f.erwartet}, bekommen ${figFromList}`);
     }
 
     // Und die Hülle der beiden Bewertungen ist gleich geformt. Das oberste
@@ -133,7 +133,7 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand', 
       'total_value',
       'wert_gesamt',
     ]);
-    assert.deepEqual(Object.keys(figBewertung).sort(), [
+    assert.deepEqual(Object.keys(figValuation).sort(), [
       'currency',
       'figs',
       'kaufpreise_fremde_waehrung',

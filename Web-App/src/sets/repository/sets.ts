@@ -1,21 +1,21 @@
 import { lagerorte } from '../../../db/bestandSicht';
 import {
-  mengeSummeSql,
+  quantitySumSql,
   erfassungsTagSql,
   mengeAus,
   mengeJoin,
   inKontowaehrung,
   kontowaehrungJoin,
 } from '../../../db/bestandsmenge';
-import { ausTabelle } from '../../infra/validate';
-import type { DbSchnittstelle, Zeile } from '../../../db/database';
-import { LIKE_ESCAPE as E, enthaeltMuster } from '../../../db/likeSuche';
+import { fromTable } from '../../infra/validate';
+import type { DbInterface, Zeile } from '../../../db/database';
+import { LIKE_ESCAPE as E, containsPattern } from '../../../db/likeSuche';
 import { setStammJoin, SET } from '../../../db/katalogSicht';
 import { LOCKS } from '../../infra/lockNamespaces';
-import { sperreBisZumEnde } from '../../../db/txLock';
+import { lockUntilToEnd } from '../../../db/txLock';
 
 /** Das eigene Konto gewinnt, wenn mehrere Konten das Set halten. */
-export function setImBlickfeld(db: DbSchnittstelle, ids: number[], setNumber: string, viewerId: number) {
+export function setInScope(db: DbInterface, ids: number[], setNumber: string, viewerId: number) {
   return db.get<{ set_number: string; user_id: number }>(
     `SELECT set_number, user_id FROM sets
       WHERE user_id = ANY($1) AND set_number = $2
@@ -28,7 +28,7 @@ export function setImBlickfeld(db: DbSchnittstelle, ids: number[], setNumber: st
   );
 }
 
-export function setErfassungenNeuesteZuerst(dbh: DbSchnittstelle, userId: number, setNumber: string) {
+export function setEntriesNewestFirst(dbh: DbInterface, userId: number, setNumber: string) {
   return dbh.all<{ id: number; quantity: number; created_at: Date }>(
     'SELECT id, quantity, created_at FROM set_acquisitions WHERE user_id=$1 AND set_number=$2 ORDER BY created_at DESC, id DESC',
     [userId, setNumber],
@@ -36,13 +36,13 @@ export function setErfassungenNeuesteZuerst(dbh: DbSchnittstelle, userId: number
 }
 
 /** Die ganze Zeile, für den Papierkorb: Wiederherstellen schreibt sie Spalte für Spalte zurück. */
-export async function setErfassungAlsJson(dbh: DbSchnittstelle, id: number) {
+export async function setEntryAsJson(dbh: DbInterface, id: number) {
   return (
     await dbh.get<{ z: Record<string, unknown> }>('SELECT to_jsonb(t) AS z FROM set_acquisitions t WHERE id = $1', [id])
   )?.z;
 }
 
-export async function setErfassungenAlsJson(dbh: DbSchnittstelle, userId: number, setNumber: string) {
+export async function setEntriesAsJson(dbh: DbInterface, userId: number, setNumber: string) {
   return (
     await dbh.all<{ z: Record<string, unknown> }>(
       'SELECT to_jsonb(t) AS z FROM set_acquisitions t WHERE user_id = $1 AND set_number = $2 ORDER BY created_at DESC, id DESC',
@@ -51,24 +51,24 @@ export async function setErfassungenAlsJson(dbh: DbSchnittstelle, userId: number
   ).map(r => r.z);
 }
 
-export function setZeileDesKontos(db: DbSchnittstelle, userId: number, setNumber: string) {
+export function setRowOfAccount(db: DbInterface, userId: number, setNumber: string) {
   return db.get<{ id: number }>('SELECT id FROM sets WHERE user_id = $1 AND set_number = $2', [userId, setNumber]);
 }
 
 /** Je Setnummer, dann wie jede andere Änderung dieses Bestands (db/txLock.ts); bis zum Ende der Transaktion. */
-export async function sperreSetErfassen(tx: DbSchnittstelle, setNumber: string, besitzer: number) {
-  await sperreBisZumEnde(tx, LOCKS.SET_ERFASSEN, setNumber);
-  await sperreBisZumEnde(tx, LOCKS.INVENTAR, `${besitzer}|${setNumber}`);
+export async function addLockSet(tx: DbInterface, setNumber: string, besitzer: number) {
+  await lockUntilToEnd(tx, LOCKS.SET_ADD, setNumber);
+  await lockUntilToEnd(tx, LOCKS.INVENTORY, `${besitzer}|${setNumber}`);
 }
 
-export function erfassungenOhnePreisDesSets(db: DbSchnittstelle, userId: number, setNumber: string) {
+export function entriesWithoutPriceOfSets(db: DbInterface, userId: number, setNumber: string) {
   return db.all<{ id: number; condition: string | null }>(
     'SELECT id, condition FROM set_acquisitions WHERE user_id = $1 AND set_number = $2 AND purchase_price IS NULL ORDER BY id',
     [userId, setNumber],
   );
 }
 
-export function setZeileImSchreibfeld(db: DbSchnittstelle, wids: number[], setNumber: string, uid: number) {
+export function setRowInWriteField(db: DbInterface, wids: number[], setNumber: string, uid: number) {
   return db.get<{ id: number; user_id: number }>(
     `SELECT id, user_id FROM sets WHERE user_id = ANY($1) AND set_number=$2
       ORDER BY (user_id = $3) DESC, id ASC LIMIT 1`,
@@ -76,7 +76,7 @@ export function setZeileImSchreibfeld(db: DbSchnittstelle, wids: number[], setNu
   );
 }
 
-export function zustandNeuesteSetErfassung(db: DbSchnittstelle, ownerId: number, setNumber: string) {
+export function stateNewestSetEntry(db: DbInterface, ownerId: number, setNumber: string) {
   return db.get<{ condition: string | null }>(
     `SELECT condition FROM set_acquisitions
           WHERE user_id=$1 AND set_number=$2
@@ -86,12 +86,12 @@ export function zustandNeuesteSetErfassung(db: DbSchnittstelle, ownerId: number,
 }
 
 export async function setMenge(
-  dbh: Pick<DbSchnittstelle, 'get'>,
+  dbh: Pick<DbInterface, 'get'>,
   konten: 'eines' | 'blickfeld',
   ids: number | number[],
   setNumber: string,
 ): Promise<number> {
-  return (await dbh.get<{ q: number }>(mengeSummeSql(konten), [ids, setNumber]))?.q ?? 0;
+  return (await dbh.get<{ q: number }>(quantitySumSql(konten), [ids, setNumber]))?.q ?? 0;
 }
 
 // Eine Zeile je Erfassung, damit Kaufpreis, Zustand und Datum beim Re-Import
@@ -119,7 +119,7 @@ const SETS_CSV_SQL = `
    WHERE s.user_id = $1
    ORDER BY s.set_number ASC, a.created_at ASC, a.id ASC`;
 
-export function setsFuerCsv(db: DbSchnittstelle, uid: number) {
+export function setsForCsv(db: DbInterface, uid: number) {
   return db.all<Record<string, unknown>>(SETS_CSV_SQL, [uid]);
 }
 
@@ -145,7 +145,7 @@ const SET_SORTS = {
 };
 
 /** acq_count und used_count sind ::int, die Preise numeric (Text). */
-export type SetListenZeile = {
+export type SetListenRow = {
   set_number: string;
   acq_count: number;
   used_count: number;
@@ -167,7 +167,7 @@ export type SetFilter = {
 /** Die Sets der Konten als Unterabfrage `s`. Im Haushalt ein Set, EINE Zeile,
  * auch wenn zwei Kinder es besitzen: Zwei Zeilen mit demselben Bild lesen sich
  * wie ein Fehler. */
-function setsQuelle(uids: number[]): string {
+function setsSource(uids: number[]): string {
   return uids.length > 1
     ? `(SELECT s.set_number,
                MIN(${SET.name}) AS name, MIN(${SET.jahr}) AS year, MIN(${SET.thema}) AS theme,
@@ -224,7 +224,7 @@ function setsQuelle(uids: number[]): string {
 
 /** Mehrere Konten werden je Set zusammengefasst; der Lagerort beschreibt das
  * Exemplar und wird deshalb aufgezählt statt gewählt. */
-export async function setListe(db: DbSchnittstelle, uids: number[], f: SetFilter) {
+export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
   const SET_COLS = [
     'set_number',
     'name',
@@ -242,7 +242,7 @@ export async function setListe(db: DbSchnittstelle, uids: number[], f: SetFilter
     .join(', ');
   const { search, theme, sort, storage } = f;
 
-  const setsFrom = setsQuelle(uids);
+  const setsFrom = setsSource(uids);
   const SET_OWNER_COL = uids.length > 1 ? ', s.owner_ids' : '';
   const where = uids.length > 1 ? [] : ['s.user_id = ANY($1)'];
   const params: unknown[] = [uids];
@@ -257,14 +257,14 @@ export async function setListe(db: DbSchnittstelle, uids: number[], f: SetFilter
     where.push(`s.storage = $${params.length}`);
   }
   if (search) {
-    params.push(enthaeltMuster(String(search).toLowerCase()));
+    params.push(containsPattern(String(search).toLowerCase()));
     const i = params.length;
     where.push(`(LOWER(s.set_number) LIKE $${i}${E} OR LOWER(s.name) LIKE $${i}${E}
                  OR LOWER(COALESCE(s.theme,'')) LIKE $${i}${E} OR COALESCE(s.year,0)::text LIKE $${i}${E})`);
   }
   const whereSql = where.length ? where.join(' AND ') : 'TRUE';
-  // ausTabelle: Ein direkter Zugriff liefert auch geerbte Eigenschaften.
-  const orderSql = ausTabelle(SET_SORTS, sort, SET_SORTS.added_desc);
+  // fromTable: Ein direkter Zugriff liefert auch geerbte Eigenschaften.
+  const orderSql = fromTable(SET_SORTS, sort, SET_SORTS.added_desc);
 
   // Ohne page_size unbegrenzt.
   const listParams = [...params];
@@ -277,7 +277,7 @@ export async function setListe(db: DbSchnittstelle, uids: number[], f: SetFilter
   // Die Set-Abfrage zuerst: Die Anleitungen brauchen die Setnummern der Seite.
   const [sets, countRow, themeRows] = await Promise.all([
     // Ein gruppierter Scan per LEFT JOIN statt drei korrelierter Subqueries je Zeile.
-    db.all<Zeile<SetListenZeile>>(
+    db.all<Zeile<SetListenRow>>(
       `SELECT ${SET_COLS}${SET_OWNER_COL},
       a.max_purchase_price, a.avg_purchase_price, a.kaufpreis_geschaetzt, a.letzter_kauf,
       COALESCE(a.acq_count, 0)::int AS acq_count, COALESCE(a.used_count, 0)::int AS used_count
@@ -324,24 +324,24 @@ export async function setListe(db: DbSchnittstelle, uids: number[], f: SetFilter
   return { sets, countRow, themeRows };
 }
 
-export function geteilteAnleitungen(db: DbSchnittstelle, setNummern: string[], uids: number[]) {
+export function sharedInstructions(db: DbInterface, setNumbers: string[], uids: number[]) {
   return db.all<Zeile<{ set_number: string }>>(
     `SELECT si.* FROM shared_instructions si
                 WHERE si.set_number = ANY($1)
                   AND EXISTS (SELECT 1 FROM sets s
                               WHERE s.set_number = si.set_number AND s.user_id = ANY($2))`,
-    [setNummern, uids],
+    [setNumbers, uids],
   );
 }
 
-export function eigeneAnleitungen(db: DbSchnittstelle, uids: number[], setNummern: string[]) {
+export function ownInstructions(db: DbInterface, uids: number[], setNumbers: string[]) {
   return db.all<Zeile<{ set_number: string }>>(
     'SELECT * FROM instructions WHERE user_id = ANY($1) AND set_number = ANY($2)',
-    [uids, setNummern],
+    [uids, setNumbers],
   );
 }
 
-export function setErfassungsKennzahlen(db: DbSchnittstelle, uids: number[], setNumber: string) {
+export function setEntryMetrics(db: DbInterface, uids: number[], setNumber: string) {
   return db.get<{
     acq_count: string;
     used_count: string;
@@ -358,7 +358,7 @@ export function setErfassungsKennzahlen(db: DbSchnittstelle, uids: number[], set
 }
 
 /** Die eigene Zeile gewinnt. */
-export function setDetailZeile(db: DbSchnittstelle, uids: number[], setNumber: string, eigenes: number | undefined) {
+export function setDetailRow(db: DbInterface, uids: number[], setNumber: string, eigenes: number | undefined) {
   return db.get<
     Zeile<{ set_number: string; name: string | null; image_local: string | null; owner_ids: number[] | null }>
   >(
@@ -399,20 +399,20 @@ export function setDetailZeile(db: DbSchnittstelle, uids: number[], setNumber: s
   );
 }
 
-export function eigeneAnleitungenDesSets(db: DbSchnittstelle, uids: number[], setNumber: string) {
+export function ownInstructionsOfSets(db: DbInterface, uids: number[], setNumber: string) {
   return db.all<Zeile<{ set_number: string }>>(
     'SELECT * FROM instructions WHERE user_id = ANY($1) AND set_number = $2',
     [uids, setNumber],
   );
 }
 
-export function besitzerDesSets(tx: DbSchnittstelle, uids: number[], setNumber: string) {
+export function ownerOfSets(tx: DbInterface, uids: number[], setNumber: string) {
   return tx.all<{ user_id: number }>('SELECT user_id FROM sets WHERE user_id = ANY($1) AND set_number = $2', [
     uids,
     setNumber,
   ]);
 }
 
-export function setsDesKontos(db: DbSchnittstelle, uid: number) {
+export function setsOfAccount(db: DbInterface, uid: number) {
   return db.all<{ set_number: string }>('SELECT set_number FROM sets WHERE user_id = $1', [uid]);
 }

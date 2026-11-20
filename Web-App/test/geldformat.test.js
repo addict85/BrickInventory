@@ -1,7 +1,7 @@
 /**
  * Wer Geld formatiert, sagt auch WELCHES.
  *
- * Gegenprobe (08.11.2026 gemessen): in fmtN `cur||kontoWaehrung||'EUR'` →
+ * Gegenprobe (08.11.2026 gemessen): in fmtN `cur||accountCurrency||'EUR'` →
  * `cur||'EUR'` → rot: „der Rückfall von fmtN ist die eingestellte Währung“.
  */
 const test = require('node:test');
@@ -11,12 +11,12 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
-const { baueTestbuendel } = require('./helpers/buendel');
-process.env.TEST_BUENDEL = baueTestbuendel(
+const { buildTestbuendel } = require('./helpers/buendel');
+process.env.TEST_BUENDEL = buildTestbuendel(
   'geldformat',
   "import { fmtN } from './format.js';\nwindow.__fmtN = fmtN;\n",
 );
-const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche');
+const { openUi, ANMELDUNG, warte } = require('./helpers/oberflaeche');
 
 /**
  * Hat dieser Aufruf ein ZWEITES Argument?
@@ -25,7 +25,7 @@ const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche')
  * Klammern (`fmtN(v.total_value, v.currency || accountCurrency)`) und Aufrufe. Deshalb
  * wird die Klammertiefe mitgezählt und nur ein Komma auf Ebene 1 gewertet.
  */
-function hatZweitesArgument(src, ab) {
+function hatSecondArgument(src, ab) {
   let tiefe = 0;
   for (let i = ab; i < src.length; i++) {
     const c = src[i];
@@ -58,7 +58,7 @@ test('jeder fmtN-Aufruf nennt die Währung', () => {
       // Die Definition selbst ist kein Aufruf.
       if (/function\s+fmtN\($/.test(src.slice(0, m.index + 5))) continue;
       gefunden++;
-      if (!hatZweitesArgument(src, m.index + 4)) {
+      if (!hatSecondArgument(src, m.index + 4)) {
         const zeile = src.slice(0, m.index).split('\n').length;
         ohne.push(`${rel}:${zeile}  ${src.slice(m.index, m.index + 46).split('\n')[0]}`);
       }
@@ -84,7 +84,7 @@ test('jeder fmtN-Aufruf nennt die Währung', () => {
  * Franken rechnet. Am Bündel in jsdom, mit Franken in den Einstellungen.
  */
 test('der Rückfall von fmtN ist die eingestellte Währung', async () => {
-  const { w } = await oeffneOberflaeche({
+  const { w } = await openUi({
     '/v1/settings/raw': { success: true, settings: { ...ANMELDUNG['/v1/settings/raw'].settings, currency: 'CHF' } },
   });
   try {

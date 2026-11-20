@@ -13,20 +13,21 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { neuestesInventar } = _req('src/katalog/rbInventar.js');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { newestInventory } = _req('src/katalog/rbInventar.js');
 
 test('ein Inventar wird unter beiden Schreibweisen gefunden', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   // rb_inventories.id ist kein SERIAL — die Nummern kommen aus der CSV.
   const idBlank = 900000 + (process.pid % 10000) * 2;
-  const idMitV = idBlank + 1;
+  const idWithV = idBlank + 1;
   const NR = `${9000000 + (process.pid % 100000)}`;
-  const aufraeumen = () => db.run('DELETE FROM rb_inventories WHERE id = ANY($1)', [[idBlank, idMitV]]).catch(() => {});
+  const aufraeumen = () =>
+    db.run('DELETE FROM rb_inventories WHERE id = ANY($1)', [[idBlank, idWithV]]).catch(() => {});
   await aufraeumen();
 
   try {
@@ -40,19 +41,19 @@ test('ein Inventar wird unter beiden Schreibweisen gefunden', { concurrency: 1 }
       'Eine blank geschriebene Nummer wird mit Versionsanhang abgelegt',
     );
     assert.equal(
-      await neuestesInventar(NR),
+      await newestInventory(NR),
       idBlank,
       'Eine unter der blanken Nummer abgelegte Zeile wird nicht gefunden',
     );
     assert.equal(
-      await neuestesInventar(`${NR}-1`),
+      await newestInventory(`${NR}-1`),
       idBlank,
       'Auch mit Versionsanhang in der Eingabe muss die blanke Zeile gefunden werden',
     );
 
     // 2. Liegt beides vor, gewinnt die hoechste version — nicht die blanke.
-    await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,2)', [idMitV, `${NR}-1`]);
-    assert.equal(await neuestesInventar(NR), idMitV);
+    await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,2)', [idWithV, `${NR}-1`]);
+    assert.equal(await newestInventory(NR), idWithV);
   } finally {
     await aufraeumen();
     await db.pool.end();

@@ -4,25 +4,25 @@ import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import { KEINE_FARBE } from '../infra/validate';
 import { versuche } from '../infra/ergebnis';
 import { anleitungEinreihen } from './anleitungsAuftrag';
-import type { KatalogKontext } from './kontext';
+import type { CatalogContext } from './kontext';
 
-export async function bilderFuerNachlauf(k: KatalogKontext) {
+export async function imagesForFollowUp(k: CatalogContext) {
   const [sets, teile, figuren] = await Promise.all([
-    k.bildlage.setsMitFehlendenKatalogbildern(),
+    k.bildlage.setsWithMissingCatalogImages(),
     // Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten.
-    k.bildlage.manuelleTeileOhneBild(),
+    k.bildlage.manualPartsWithoutImage(),
     // Alle Figuren, nicht nur manuelle: Sonst lief jede Kachel über den Proxy.
-    k.bildlage.figurenOhneBild(),
+    k.bildlage.minifigsWithoutImage(),
   ]);
   return { sets, teile, figuren };
 }
 
 /** Vorhandenes bleibt. @returns ob Brickset das Set kennt */
-export async function fuelleAusBrickset(k: KatalogKontext, setNumber: string): Promise<boolean> {
+export async function fillFromBrickset(k: CatalogContext, setNumber: string): Promise<boolean> {
   const info = await k.fremdquellen.quellen.setAngaben(setNumber);
   if (!info) return false;
   // Scheitert es, wirft es: Der Auftrag versucht es erneut, statt das Set namenlos zu lassen.
-  await k.bildlage.fuelleSetLuecken(setNumber, info);
+  await k.bildlage.fillSetGaps(setNumber, info);
   return true;
 }
 
@@ -35,19 +35,19 @@ export type Bildposten = {
 
 /** Nur aus geprüfter Quelle: Die Dateien gelten für alle Konten, ein Bild vom
  * Client landete sonst bei allen anderen. */
-export async function bilderAusKatalog<T extends Bildposten>(
-  k: KatalogKontext,
+export async function imagesFromCatalog<T extends Bildposten>(
+  k: CatalogContext,
   posten: T[],
-  istFigur: (p: T) => boolean,
+  isMinifig: (p: T) => boolean,
 ): Promise<void> {
   for (const p of posten) {
     p.image_url = null;
     p.image_local = null;
   }
-  const teile = posten.filter(p => !istFigur(p)),
-    figuren = posten.filter(istFigur);
+  const teile = posten.filter(p => !isMinifig(p)),
+    figuren = posten.filter(isMinifig);
   if (teile.length) {
-    const zeilen = await k.bildlage.teilbilder([...new Set(teile.map(p => String(p.part_number)))]);
+    const zeilen = await k.bildlage.partImages([...new Set(teile.map(p => String(p.part_number)))]);
     const m = new Map(zeilen.map(r => [`${r.part_number}|${r.color_id}`, r] as const));
     for (const p of teile) {
       const z = m.get(`${p.part_number}|${p.color_id ?? KEINE_FARBE}`);
@@ -58,7 +58,7 @@ export async function bilderAusKatalog<T extends Bildposten>(
     }
   }
   if (!figuren.length) return;
-  const zeilen = await k.bildlage.figurenbilder([...new Set(figuren.map(p => String(p.part_number)))]);
+  const zeilen = await k.bildlage.minifigImages([...new Set(figuren.map(p => String(p.part_number)))]);
   const m = new Map(zeilen.map(r => [r.fig_number, r] as const));
   for (const p of figuren) {
     const z = m.get(String(p.part_number));
@@ -71,25 +71,25 @@ export async function bilderAusKatalog<T extends Bildposten>(
 
 /** Nicht, wenn ein Abruf wartet oder kürzlich ohne Ergebnis lief — danach
  * wieder, sobald die erledigten Aufträge verfallen. */
-export async function anleitungenNachtragen(k: KatalogKontext): Promise<void> {
-  const missing = await k.bildlage.setsOhneAnleitungsabruf();
+export async function backfillInstructions(k: CatalogContext): Promise<void> {
+  const missing = await k.bildlage.setsWithoutInstructionFetch();
   if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
   for (const set_number of missing) await anleitungEinreihen(k, set_number);
 }
 
 /** Die Oberfläche lädt nur über image_local aus images/sets; ohne den Eintrag
  * ginge jedes Set-Bild weiter über den Proxy, obwohl die Datei längst da ist. */
-export async function setBildLokalEintragen(
-  k: KatalogKontext,
+export async function enterSetImageLocal(
+  k: CatalogContext,
   setNumber: string,
   quelle: string | null = null,
 ): Promise<void> {
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
-  await k.bildlage.merkeSetBildLokal(setNumber, `/images/sets/${safe}.jpg`, quelle);
+  await k.bildlage.rememberSetImageLocal(setNumber, `/images/sets/${safe}.jpg`, quelle);
 }
 
-export async function setBilderNachladen(k: KatalogKontext): Promise<void> {
-  const missing = await k.bildlage.setBilderOhneDatei();
+export async function reloadSetImages(k: CatalogContext): Promise<void> {
+  const missing = await k.bildlage.setImagesWithoutFile();
   if (!missing.length) return;
   console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
   let gescheitert = 0;
@@ -99,23 +99,23 @@ export async function setBilderNachladen(k: KatalogKontext): Promise<void> {
     const r = await versuche('nachlauf:setBildHerunterladen', k.bilder.setBildLaden(image_url, set_number, info));
     const local = r.ok ? r.wert : null;
     if (!local && (info.status === 404 || info.status === 410))
-      k.bilder.merkeFehlend('set:' + set_number, `HTTP ${info.status} vom CDN`);
+      k.bilder.rememberMissing('set:' + set_number, `HTTP ${info.status} vom CDN`);
     if (!local && (info.status === 403 || info.status === 429)) {
       console.warn(`[set-img-bg] CDN drosselt (HTTP ${info.status}) — Rest im nächsten Lauf`);
       break;
     }
     // Ein Fehlschlag zählt im Abschluss; der nächste Lauf findet das Bild wieder ohne Eintrag.
-    if (local && !(await versuche(`bilder:set ${set_number}`, k.bildlage.merkeSetBildLokal(set_number, local))).ok)
+    if (local && !(await versuche(`bilder:set ${set_number}`, k.bildlage.rememberSetImageLocal(set_number, local))).ok)
       gescheitert++;
-    if (local && !(await versuche('nachlauf:vorschauErzeugenAus', k.bilder.vorschauErzeugen(local))).ok) gescheitert++;
+    if (local && !(await versuche('nachlauf:vorschauErzeugenAus', k.bilder.createPreview(local))).ok) gescheitert++;
     await new Promise(r => setTimeout(r, 300));
   }
   console.log(`[set-img-bg] Done${gescheitert ? `, ${gescheitert} Schritte gescheitert` : ''}`);
 }
 
 /** Asynchron geprüft, damit der Lauf die Ereignisschleife nicht blockiert. */
-export async function vorschaubilderNachtragen(k: KatalogKontext): Promise<void> {
-  const paths = await k.bildlage.lokaleKatalogbilder();
+export async function backfillThumbnails(k: CatalogContext): Promise<void> {
+  const paths = await k.bildlage.localCatalogImages();
   let generated = 0,
     gescheitert = 0;
   const exists = (fp: string) =>
@@ -133,11 +133,11 @@ export async function vorschaubilderNachtragen(k: KatalogKontext): Promise<void>
     const d = datei(web);
     return d ? [{ web, datei: d }] : [];
   });
-  await versuche('nachlauf:vorschauen einpassen', k.bilder.zugeschnitteneVorschauenEinpassen(lokale));
+  await versuche('nachlauf:vorschauen einpassen', k.bilder.fitTailoredPreviews(lokale));
   for (const { web: localPath, datei: fsPath } of lokale) {
     const thumbPath = fsPath.replace(path.extname(fsPath), '_thumb.jpg');
     if ((await exists(thumbPath)) || !(await exists(fsPath))) continue;
-    if ((await versuche('nachlauf:vorschauErzeugenAus', k.bilder.vorschauErzeugen(localPath))).ok) generated++;
+    if ((await versuche('nachlauf:vorschauErzeugenAus', k.bilder.createPreview(localPath))).ok) generated++;
     else gescheitert++;
     if (generated % 10 === 0) await new Promise(r => setTimeout(r, 10));
   }

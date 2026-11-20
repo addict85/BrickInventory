@@ -1,14 +1,14 @@
 import { z } from 'zod';
-import { eingabe, GROESSTE_ID } from '../infra/validate';
-import { KontoName, type Route, zeit, ganz, OHNE_RUMPF, KENNUNG, ZUSTAND, TEXT, abfrage, Q } from './grund';
+import { eingabe, LARGEST_ID } from '../infra/validate';
+import { KontoName, type Route, zeit, ganz, WITHOUT_BODY, KENNUNG, ZUSTAND, TEXT, abfrage, Q } from './grund';
 import {
   BrickLinkRef,
   CsvImportErgebnis,
-  DEGRADIERT,
+  DEGRADED,
   GenericResponse,
   SetFigurenResponse,
   SetTeileResponse,
-  InDenPapierkorb,
+  InDenTrash,
 } from './gemeinsam';
 
 export { GenericResponse, SetFigurenResponse, SetTeileResponse };
@@ -175,29 +175,29 @@ export const AnleitungenGeladen = z.looseObject({
 });
 export const PdfAuftrag = z.looseObject({ success: z.literal(true), jobId: z.string() });
 
-const textOderNull = (max: number) => z.string().max(max).nullish();
+const textOrNull = (max: number) => z.string().max(max).nullish();
 /** Der Job zeichnet jede Zeile und lädt Bilder nach: Zahl und Grösse begrenzt. */
 export const PdfEingabe = z.strictObject({
   sets: z
-    .array(z.object({ set_number: z.string().trim().min(1).max(32), name: textOderNull(500) }))
+    .array(z.object({ set_number: z.string().trim().min(1).max(32), name: textOrNull(500) }))
     .max(1000)
     .optional(),
   parts: z
     .array(
       z.object({
         part_number: z.string().trim().min(1).max(64),
-        bl_part_number: textOderNull(64),
-        part_name: textOderNull(500),
-        color_name: textOderNull(100),
+        bl_part_number: textOrNull(64),
+        part_name: textOrNull(500),
+        color_name: textOrNull(100),
         color_hex: z
           .string()
           .regex(/^#?[0-9A-Fa-f]{0,8}$/)
           .nullish(),
-        color_id: z.number().int().min(-1).max(GROESSTE_ID).nullish(),
+        color_id: z.number().int().min(-1).max(LARGEST_ID).nullish(),
         quantity: z.union([z.number().int().min(1).max(9999), z.string().regex(/^[1-9]\d{0,3}$/)]),
         is_fig: z.union([z.boolean(), z.number()]).nullish(),
-        image_url: textOderNull(2048),
-        image_local: textOderNull(512),
+        image_url: textOrNull(2048),
+        image_local: textOrNull(512),
       }),
     )
     .max(5000)
@@ -235,7 +235,7 @@ export const MengeGeaendert = GenericResponse.extend({
   /** null: geschrieben, aber nicht nachgelesen (siehe degradiert). */
   quantity: ganz.nullable(),
   papierkorb: z.number().int().optional(),
-  degradiert: DEGRADIERT,
+  degradiert: DEGRADED,
   entfallen: z
     .array(
       z.looseObject({
@@ -252,7 +252,7 @@ export const MengeGeaendert = GenericResponse.extend({
 });
 
 /** Ein neues Set; dieselben Felder für den Strom (add-stream). */
-const NeuesSet = z.strictObject({
+const NewSet = z.strictObject({
   set_number: z.union([z.string().max(64), z.number()]).optional(),
   quantity: eingabe.stueckzahl(),
   purchase_price: eingabe.geld('Kaufpreis'),
@@ -302,12 +302,12 @@ export const routen = {
     formular: true,
     eingabe: z.strictObject({ description: TEXT(500).optional() }),
   },
-  'DELETE /api/v1/sets/:setNumber/instructions/:instrId': { eingabe: OHNE_RUMPF, antwort: GenericResponse },
-  'POST /api/v1/sets': { antwort: AddSetResponse, eingabe: NeuesSet },
+  'DELETE /api/v1/sets/:setNumber/instructions/:instrId': { eingabe: WITHOUT_BODY, antwort: GenericResponse },
+  'POST /api/v1/sets': { antwort: AddSetResponse, eingabe: NewSet },
   'PUT /api/v1/sets/:setNumber': {
     eingabe: z.strictObject({
-      quantity: eingabe.mengeOderNichts(0, 100_000).optional(),
-      quantity_delta: eingabe.mengenDelta(),
+      quantity: eingabe.quantityOrNothing(0, 100_000).optional(),
+      quantity_delta: eingabe.quantitiesDelta(),
       purchase_price: eingabe.geld('Kaufpreis'),
       condition: ZUSTAND.nullable().optional(),
       owner_user_id: KENNUNG.nullable().optional(),
@@ -315,8 +315,8 @@ export const routen = {
     antwort: MengeGeaendert,
   },
   'DELETE /api/v1/sets/:setNumber': {
-    eingabe: OHNE_RUMPF,
-    antwort: InDenPapierkorb,
+    eingabe: WITHOUT_BODY,
+    antwort: InDenTrash,
     abfrage: abfrage({ accounts: Q.konten }),
   },
   'PUT /api/v1/sets/:setNumber/alert': {
@@ -328,7 +328,7 @@ export const routen = {
     antwort: PreisalarmResponse,
   },
   'DELETE /api/v1/sets/:setNumber/alert': {
-    eingabe: OHNE_RUMPF,
+    eingabe: WITHOUT_BODY,
     antwort: PreisalarmResponse,
     abfrage: abfrage({ condition: z.enum(['N', 'U', 'n', 'u']) }),
   },
@@ -346,12 +346,12 @@ export const routen = {
     abfrage: abfrage({ pruefen: Q.schalter }),
   },
   'POST /api/v1/alerts/import/csv': { formular: true, antwort: CsvImportErgebnis },
-  'POST /api/v1/sets/:setNumber/instructions': { eingabe: OHNE_RUMPF, antwort: AnleitungenGeladen },
+  'POST /api/v1/sets/:setNumber/instructions': { eingabe: WITHOUT_BODY, antwort: AnleitungenGeladen },
   'POST /api/v1/sets/partslist-pdf': { antwort: PdfAuftrag, eingabe: PdfEingabe },
   'GET /api/v1/sets/partslist-pdf/status/:jobId': { antwort: PdfStand },
   'GET /api/v1/sets/partslist-pdf/download/:jobId': { art: 'pdf' },
   'GET /api/v1/sets/partslist-pdf/stream/:jobId': { art: 'strom', ereignis: PdfStand },
-  'POST /api/v1/sets/add-stream': { art: 'strom', eingabe: NeuesSet },
+  'POST /api/v1/sets/add-stream': { art: 'strom', eingabe: NewSet },
   'GET /api/v1/sets/export/rebrickable': { art: 'csv' },
-  'POST /api/v1/sets/:setNumber/parts': { eingabe: OHNE_RUMPF, antwort: TeileGeladen },
+  'POST /api/v1/sets/:setNumber/parts': { eingabe: WITHOUT_BODY, antwort: TeileGeladen },
 } satisfies Record<string, Route>;

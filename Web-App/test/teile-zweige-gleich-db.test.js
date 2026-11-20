@@ -3,9 +3,9 @@
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
+const { holdsSet, holdsPart } = require('./helpers/bestand');
 
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -16,9 +16,9 @@ let db,
 try {
   const _req = require('./helpers/sources').buildAndRequire();
   process.env.DATABASE_URL = DB_URL;
-  umgebung({ SESSION_SECRET: 'test' });
-  db = testDaten();
-  H = require('./helpers/sources').handlerModul(_req);
+  environment({ SESSION_SECRET: 'test' });
+  db = testData();
+  H = require('./helpers/sources').handlerModule(_req);
   PS = _req('src/parts/summary.js');
 } catch (e) {
   skip = e.message;
@@ -46,7 +46,7 @@ test('beide Wege der Teileliste liefern dieselben Typen', async t => {
     await db.run("INSERT INTO users (id,username,password_hash) VALUES ($1,'zweige','x') ON CONFLICT (id) DO NOTHING", [
       U,
     ]);
-    await haeltSet(db, U, 'Z-1', 1);
+    await holdsSet(db, U, 'Z-1', 1);
     // Ein Ersatzteil UND ein gewöhnliches: Wäre nur eines dabei, könnte ein
     // Zweig zufällig richtig liegen, ohne die Umwandlung zu machen.
     // Das Ersatzteilkennzeichen steht seit Migration 0034 in
@@ -62,8 +62,8 @@ test('beide Wege der Teileliste liefern dieselben Typen', async t => {
     await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
                   VALUES ('3001',5,'Rot'),('3002',1,'Blau')
                   ON CONFLICT (part_number,color_id) DO NOTHING`);
-    await haeltTeil(db, U, '3001', { setNumber: 'Z-1', menge: 3, colorId: 5 });
-    await haeltTeil(db, U, '3002', { setNumber: 'Z-1', menge: 1, colorId: 1 });
+    await holdsPart(db, U, '3001', { setNumber: 'Z-1', menge: 3, colorId: 5 });
+    await holdsPart(db, U, '3002', { setNumber: 'Z-1', menge: 1, colorId: 1 });
 
     const abfrage = { exclude_manual: '1', page: 1, page_size: 50 };
 
@@ -85,7 +85,7 @@ test('beide Wege der Teileliste liefern dieselben Typen', async t => {
     assert.ok(a.size > 0, 'die Live-Abfrage lieferte keine Teile — dann prüft der Vergleich nichts');
     assert.deepEqual([...a.keys()].sort(), [...b.keys()].sort(), 'beide Wege müssen dieselben Teile liefern');
 
-    const abweichungen = [];
+    const deviations = [];
     for (const [schluessel, links] of a) {
       const rechts = b.get(schluessel);
       for (const feld of Object.keys(links)) {
@@ -93,19 +93,19 @@ test('beide Wege der Teileliste liefern dieselben Typen', async t => {
         // null auf einer Seite ist kein Typkonflikt: Ein Feld darf leer sein.
         if (links[feld] === null || rechts[feld] === null) continue;
         if (typ(links[feld]) !== typ(rechts[feld]))
-          abweichungen.push(
+          deviations.push(
             `${schluessel} ${feld}: live=${typ(links[feld])} (${JSON.stringify(links[feld])}), ` +
               `Zusammenfassung=${typ(rechts[feld])} (${JSON.stringify(rechts[feld])})`,
           );
       }
     }
     assert.deepEqual(
-      abweichungen,
+      deviations,
       [],
       'Der JSON-Typ eines Feldes darf nicht davon abhängen, welcher Zweig antwortet — ' +
         'ein Client, der den einen Typ erwartet, scheitert sonst genau dann, wenn die ' +
         'Zusammenfassung zum ersten Mal frisch ist:\n  ' +
-        abweichungen.join('\n  '),
+        deviations.join('\n  '),
     );
 
     // ── Und is_spare im Besonderen ─────────────────────────────────────────

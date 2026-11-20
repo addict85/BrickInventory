@@ -3,7 +3,7 @@
  * complete these are only flags — no names, addresses or keys. Afterwards the
  * page only ever answers "done" and names the certificate, which is public
  * under /ca.crt anyway. */
-import { Abstriche } from '../infra/ergebnis';
+import { Degradations } from '../infra/ergebnis';
 import { tlsStand } from '../infra/tlsWurzel';
 import type { ProfileContext } from './context';
 
@@ -74,7 +74,7 @@ async function compute(kx: ProfileContext, isAdmin: boolean): Promise<SetupStatu
 
   // What couldn't be read reads "missing" and goes into `degradiert`; only the
   // database row is itself the probe.
-  const ab = new Abstriche();
+  const ab = new Degradations();
   const done = !!(await ab.oder('erledigt', kx.einstellungen.globalValue('einrichtung_erledigt'), null));
   // Once setup is done, decrypting the keys is no longer needed.
   if (done) return { ...base, erledigt: true, konfiguriert: true, schritte: [] };
@@ -89,12 +89,12 @@ async function compute(kx: ProfileContext, isAdmin: boolean): Promise<SetupStatu
   ).every(Boolean);
 
   const steps: StepState[] = [];
-  const database = await kx.db.datenbankAntwortet();
+  const database = await kx.db.databaseResponds();
   steps.push({ id: 'datenbank', ok: database, pflicht: true });
   steps.push({ id: 'basis_url', ok: !!k.appBaseUrl, pflicht: true });
   steps.push({ id: 'https', ok: k.hinterTls, pflicht: false });
   steps.push({ id: 'ca', ok: !!ca, pflicht: !!k.hinterTls });
-  const account = await ab.oder('konten', kx.konto.kontoEingerichtet(isAdmin), false);
+  const account = await ab.oder('konten', kx.konto.accountConfigured(isAdmin), false);
   steps.push({ id: 'konto', ok: account, pflicht: true });
   steps.push({ id: 'quelle', ok: rebrickable, pflicht: true });
 

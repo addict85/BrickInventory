@@ -1,5 +1,5 @@
 /**
- * Bilder werden im HINTERGRUND lokal abgelegt — die Anfrage rechnet nichts.
+ * Bilder werden im BACKGROUND lokal abgelegt — die Anfrage rechnet nichts.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,35 +14,35 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 let geladen = 0,
   verkleinert = 0;
 
-const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
-testBildwerk(null, {
+testImageWorker(null, {
   setBildLaden: async () => {
     geladen++;
     return '/images/sets/test.jpg';
   },
-  vorschauErzeugen: async () => {
+  createPreview: async () => {
     verkleinert++;
     return true;
   },
 });
-const { datenOderSkip, keineDb } = require('./helpers/db');
-const { leereWarteschlange } = require('./helpers/bildwarteschlange');
+const { dataOrSkip, keineDb } = require('./helpers/db');
+const { emptyQueue } = require('./helpers/bildwarteschlange');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const db = testDaten();
+const { adminWithFactor } = require('./helpers/verwalter');
+const db = testData();
 
 test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
-  await leereWarteschlange(db);
+  await emptyQueue(db);
 
   const IQ = _req('src/bilder/bildbedarfLauf.js');
-  await IQ.bildbedarfEinrichten();
-  const PRAEFIX = `TQ${process.pid}`;
-  const weg = async () => db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [PRAEFIX + '%']).catch(() => {});
+  await IQ.setUpImageDemand();
+  const PREFIX = `TQ${process.pid}`;
+  const weg = async () => db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%']).catch(() => {});
   await weg();
 
   try {
@@ -50,13 +50,13 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
       // Beim Scrollen kommt dasselbe Bild mehrfach vorbei. Ohne Entdopplung
       // stünde es mehrfach in der Warteschlange und würde mehrfach geholt.
       for (let i = 1; i <= 25; i++)
-        IQ.merkeGebraucht(`https://cdn.rebrickable.com/media/sets/${PRAEFIX}_${i}.jpg`, `${PRAEFIX}_${i}`);
-      IQ.merkeGebraucht(`https://cdn.rebrickable.com/media/sets/${PRAEFIX}_1.jpg`, `${PRAEFIX}_1`);
-      // Seit einer früheren Runde wird GEPUFFERT: merkeGebraucht() schreibt nichts mehr
+        IQ.rememberUsed(`https://cdn.rebrickable.com/media/sets/${PREFIX}_${i}.jpg`, `${PREFIX}_${i}`);
+      IQ.rememberUsed(`https://cdn.rebrickable.com/media/sets/${PREFIX}_1.jpg`, `${PREFIX}_1`);
+      // Seit einer früheren Runde wird GEPUFFERT: rememberUsed() schreibt nichts mehr
       // selbst — ein INSERT je Bildanfrage leerte den Verbindungspool. Das
       // Wegschreiben läuft im Takt; hier von Hand angestossen.
-      await IQ._schreibePuffer();
-      const n = (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [PRAEFIX + '%'])).c;
+      await IQ._writeBuffer();
+      const n = (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%'])).c;
       assert.equal(n, 25, `${n} Notizen statt 25`);
     });
 
@@ -68,7 +68,7 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
       const stapel = IQ.STAPEL;
       assert.ok(stapel > 0, 'STAPEL nicht auffindbar');
       const vorher = geladen;
-      const n1 = (await IQ._arbeiteStapel()).gesamt;
+      const n1 = (await IQ._workStack()).gesamt;
       assert.ok(
         n1 > 0 && n1 <= stapel,
         `${n1} Bilder in einem Durchgang bei STAPEL=${stapel} — die Begrenzung greift nicht`,
@@ -79,8 +79,8 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
     });
 
     await t.test('am Ende bleibt keine Notiz liegen', async () => {
-      for (let i = 0; i < 5; i++) await IQ._arbeiteStapel();
-      const n = (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [PRAEFIX + '%'])).c;
+      for (let i = 0; i < 5; i++) await IQ._workStack();
+      const n = (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%'])).c;
       assert.equal(n, 0, `${n} Notizen übrig`);
     });
   } finally {
@@ -100,14 +100,14 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
-  await leereWarteschlange(db);
+  await emptyQueue(db);
 
   const NUTZER = `ka-${process.pid}`;
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
   await db.run(`INSERT INTO users (username,password_hash,is_admin) VALUES ($1,'x',true)`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
 
-  await verwalterMitFaktor(_req, uid);
+  await adminWithFactor(_req, uid);
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
   const kachel = async () => (await (await fetch(`${base}/api/v1/admin/jobs`)).json()).jobs?.imgDl;
 
@@ -133,17 +133,17 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
       .imgDlReset()
       .catch(() => {});
     _req('src/bilder/bildbedarfLauf.js').letzterLauf.zeit = null;
-    const ohneLauf = await kachel();
-    assert.equal(ohneLauf.status, 'idle', 'Ohne Durchgang darf die Kachel keinen Betrieb melden');
+    const withoutRun = await kachel();
+    assert.equal(withoutRun.status, 'idle', 'Ohne Durchgang darf die Kachel keinen Betrieb melden');
     assert.match(
-      ohneLauf.sub,
+      withoutRun.sub,
       /Job noch nicht gelaufen/,
       'Die Kachel verschweigt, dass der Job noch nicht gelaufen ist',
     );
 
     // Und nach einem Durchgang meldet sie Betrieb. Gemeint ist der TAKT —
     // dort wird der Stand für die anderen Arbeitsprozesse abgelegt.
-    await _req('src/bilder/bildbedarfLauf.js')._taktDurchgang();
+    await _req('src/bilder/bildbedarfLauf.js')._tickPass();
     const nachLauf = await kachel();
     assert.equal(nachLauf.status, 'running', 'Nach einem Durchgang muss die Kachel Betrieb melden');
     assert.ok(nachLauf.queueLastRun, 'Der Zeitpunkt des letzten Durchgangs fehlt');
@@ -194,19 +194,19 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
 test('der Job meldet auch reine Übersprünge', () => {
   // Marcos Befund
   const { meldung } = _req('src/bilder/bildbedarfLauf.js');
-  const nurUebersprungen = {
+  const onlySkipped = {
     geholt: 0,
     vorschau: 0,
     uebersprungen: 10,
     gesamt: 10,
-    nichtGeladen: 0,
-    keineVorschau: 0,
-    bekanntFehlend: 0,
+    notLoaded: 0,
+    noPreview: 0,
+    knownMissing: 0,
     ohneNummer: 0,
-    zurueckgelegt: 0,
-    arbeit: 0,
+    setAside: 0,
+    work: 0,
   };
-  const text = meldung(nurUebersprungen);
+  const text = meldung(onlySkipped);
   assert.match(text, /10 bearbeitet/, 'Ein Durchgang mit lauter Übersprüngen nennt seine Zahl nicht');
   assert.match(
     text,
@@ -217,7 +217,7 @@ test('der Job meldet auch reine Übersprünge', () => {
   // Und der Takt darf sie nicht verschweigen: Die Bedingung vor der Ausgabe
   // darf an keiner Zahl hängen, die bei reinen Übersprüngen null ist.
   const q = fs.readFileSync(path.join(ROOT, 'src/bilder/bildbedarfLauf.ts'), 'utf8');
-  const i = q.indexOf('async function bildbedarfAbarbeiten');
+  const i = q.indexOf('async function processImageDemand');
   assert.ok(i > 0, 'Kein Takt');
   const fn = q.slice(i, q.indexOf('\n}\n', i)).replace(/\/\/[^\n]*/g, '');
   assert.doesNotMatch(
@@ -257,11 +257,11 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
   // Die init-Funktionen laufen NACH Schema und Migrationen (sonst fehlt die
   // Tabelle beim Laden des Bestands) und in jedem Arbeitsprozess: Sie stehen in
   // startup/datenbank.ts hinter initSchemaOnce(), das jeder Prozess aufruft.
-  const vorbereitung = fs.readFileSync(path.join(ROOT, 'startup/datenbank.ts'), 'utf8');
-  const schema = vorbereitung.indexOf('await db.initSchemaOnce()');
+  const preparation = fs.readFileSync(path.join(ROOT, 'startup/datenbank.ts'), 'utf8');
+  const schema = preparation.indexOf('await db.initSchemaOnce()');
   assert.ok(
-    schema > 0 && vorbereitung.indexOf('await d.bilder.starteFehlanzeige()') > schema,
-    'bildFehlstellenEinrichten() läuft vor den Migrationen — dann fehlt die Tabelle noch',
+    schema > 0 && preparation.indexOf('await d.bilder.startNone()') > schema,
+    'setUpImageGaps() läuft vor den Migrationen — dann fehlt die Tabelle noch',
   );
 });
 
@@ -269,26 +269,26 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   // Marcos Befund
   const q = fs.readFileSync(path.join(ROOT, 'src/bilder/bildbedarf.ts'), 'utf8');
   const init = q.slice(
-    q.indexOf('export async function bildbedarfEinrichten'),
-    q.indexOf('export async function loescheVerfallene'),
+    q.indexOf('export async function setUpImageDemand'),
+    q.indexOf('export async function deleteExpired'),
   );
   assert.match(
     init,
     /setInterval\([\s\S]{0,80}schreibePuffer/,
-    'Das Wegschreiben steht nicht in bildbedarfEinrichten() — dann läuft es nur dort, ' +
+    'Das Wegschreiben steht nicht in setUpImageDemand() — dann läuft es nur dort, ' +
       'wo start() aufgerufen wird, also nur im Primärprozess',
   );
 
-  // Und bildbedarfEinrichten() muss tatsächlich überall laufen.
+  // Und setUpImageDemand() muss tatsächlich überall laufen.
   const dbInit = fs.readFileSync(path.join(ROOT, 'startup/datenbank.ts'), 'utf8');
   // UMFORMULIERT in — aus demselben Grund wie zwoelf Zeilen
   // tiefer bei start(), nur hatte diese Nachbarzusicherung den Fehler behalten:
-  // Sie verlangte die Schreibweise `jobs/imageQueue').bildbedarfEinrichten()`, also
+  // Sie verlangte die Schreibweise `jobs/imageQueue').setUpImageDemand()`, also
   // ausdruecklich ein require(). Als daraus ein Top-Level-Import wurde, wurde …
   assert.match(
     dbInit,
-    /\bd\.bilder\.starteBildbedarf\(\)/,
-    'starteBildbedarf() wird nicht beim Aufbau der Datenbank aufgerufen',
+    /\bd\.bilder\.startImageDemand\(\)/,
+    'startImageDemand() wird nicht beim Aufbau der Datenbank aufgerufen',
   );
 
   // Abgearbeitet wird nur im Job-Prozess: test/web-und-jobs-db.test.js prüft das am echten Server.
@@ -299,17 +299,17 @@ test('die Anfrage rechnet nichts mehr, sie notiert nur', () => {
   // gen=0-Fall keine Verkleinerung anstossen, sondern muss die Notiz
   // hinterlassen. Ein Test über die Route würde beides nicht unterscheiden —
   // ausgeliefert wird so oder so sofort.
-  const px = require('./helpers/sources').kompakt(require('./helpers/sources').proxyThumbQuelle());
-  assert.match(px, /const notiere = \(\) => \{/, 'Der Proxy hinterlässt keine Notiz');
+  const px = require('./helpers/sources').kompakt(require('./helpers/sources').proxyThumbSource());
+  assert.match(px, /const note = \(\) => \{/, 'Der Proxy hinterlässt keine Notiz');
   assert.match(
     px,
-    /if \(darfErzeugen\) queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\); else notiere\(\);/,
+    /if \(createMay\) queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\); else note\(\);/,
     'Im gen=0-Fall wird weiter sofort verkleinert statt notiert',
   );
   // Und die Notiz braucht die Setnummer — ohne sie weiss der Job nicht, wohin.
-  assert.match(px, /const setNummer = setNummerAusBildAdresse\(/, 'Die Setnummer wird nicht aus der Adresse gelesen');
+  assert.match(px, /const setNummer = setNumberFromImageAddress\(/, 'Die Setnummer wird nicht aus der Adresse gelesen');
   assert.equal(
-    _req('routes/imgProxy.js').setNummerAusBildAdresse('https://cdn.rebrickable.com/media/sets/10294-1.jpg'),
+    _req('routes/imgProxy.js').setNumberFromImageAddress('https://cdn.rebrickable.com/media/sets/10294-1.jpg'),
     '10294-1',
     'Die Setnummer wird nicht aus der Adresse gelesen',
   );

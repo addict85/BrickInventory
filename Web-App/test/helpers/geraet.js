@@ -21,7 +21,7 @@ const signiere = (privateKey, text) =>
  * @param {(weg: string, opt: object) => Promise<{status: number, body: any}>} ruf  ruft /api/v1 + weg
  * @param {string} token
  */
-async function hinterlege(ruf, token, o = {}) {
+async function deposit(ruf, token, o = {}) {
   const n = await ruf('/geraet/schluessel/nonce', { method: 'POST', token, body: {} });
   if (n.status !== 200) return { antwort: n, schluessel: null };
   const k = attestation.kette({ challenge: Buffer.from(n.body.nonce, 'base64url'), ...o });
@@ -35,10 +35,10 @@ async function hinterlege(ruf, token, o = {}) {
  * @param {string} aktion
  * @param {{ privateKey: import('node:crypto').KeyObject }} [schluessel]  fehlt er, wird einer erzeugt und hinterlegt
  */
-async function geraetFreigeben(ruf, token, aktion, schluessel) {
+async function releaseDevice(ruf, token, aktion, schluessel) {
   let s = schluessel;
   if (!s) {
-    const h = await hinterlege(ruf, token);
+    const h = await deposit(ruf, token);
     const r = h.antwort;
     if (r.status !== 200 || !h.schluessel)
       throw new Error(`Schlüssel nicht hinterlegt: ${r.status} ${JSON.stringify(r.body)}`);
@@ -55,4 +55,4 @@ async function geraetFreigeben(ruf, token, aktion, schluessel) {
   return s;
 }
 
-module.exports = { geraeteSchluessel, signiere, geraetFreigeben, hinterlege };
+module.exports = { geraeteSchluessel, signiere, releaseDevice, deposit };

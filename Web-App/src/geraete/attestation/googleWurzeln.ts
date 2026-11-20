@@ -1,10 +1,10 @@
 /** Die Wurzeln der Android-Schlüssel-Attestation. Quelle:
  * https://android.googleapis.com/attestation/root (abgerufen am 11.11.2026; die
  * Liste nennt auch https://developer.android.com/privacy-and-security/security-key-attestation).
- * FINGERABDRUECKE ist die Prüfsumme (SHA-256 des DER); test/geraete-attestation.test.js
+ * FINGERPRINTS ist die Prüfsumme (SHA-256 des DER); test/geraete-attestation.test.js
  * rechnet sie nach. Eine neue Wurzel kommt nur mit Quelle und Fingerabdruck hinein. */
 
-export const GOOGLE_WURZELN: readonly string[] = [
+export const GOOGLE_ROOTS: readonly string[] = [
   `-----BEGIN CERTIFICATE-----
 MIIFHDCCAwSgAwIBAgIJAPHBcqaZ6vUdMA0GCSqGSIb3DQEBCwUAMBsxGTAXBgNV
 BAUTEGY5MjAwOWU4NTNiNmIwNDUwHhcNMjIwMzIwMTgwNzQ4WhcNNDIwMzE1MTgw
@@ -51,7 +51,7 @@ uR2zh/80lQyu9vAFCj6E4AXc+osmRg==
 -----END CERTIFICATE-----`,
 ];
 
-export const FINGERABDRUECKE: readonly string[] = [
+export const FINGERPRINTS: readonly string[] = [
   // serialNumber=f92009e853b6b045, gültig bis 2042-03-15
   'CE:DB:1C:B6:DC:89:6A:E5:EC:79:73:48:BC:E9:28:67:53:C2:B3:8E:E7:1C:E0:FB:E3:4A:9A:12:48:80:0D:FC',
   // CN=Key Attestation CA1, OU=Android, O=Google LLC, C=US, gültig bis 2035-07-15

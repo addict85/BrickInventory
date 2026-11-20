@@ -6,7 +6,7 @@
  * Gegenproben (13.11.2026, je einzeln):
  *   A  in public/js/passkeys.js Zeile 11 den früheren Routen-Pfad (passkeys.ts
  *      unter routes) zurückgesetzt → „der Bestand hat keine toten Verweise“ rot mit dieser Zeile
- *   B  kommentarJs() gibt die ganze Zeile zurück → „im Probebaum …“ rot
+ *   B  commentJs() gibt die ganze Zeile zurück → „im Probebaum …“ rot
  *      (der Pfad im Zeichenkettenwert des Codes wurde gemeldet)
  *   C  docs/ nicht mehr gelesen → „im Probebaum …“ rot (der tote Verweis aus der Doku fehlt)
  */
@@ -17,7 +17,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const SKRIPT = path.join(__dirname, '..', 'scripts', 'verweise-pruefen.js');
+const SCRIPT = path.join(__dirname, '..', 'scripts', 'verweise-pruefen.js');
 
 /** Repo/Web-App mit src/, docs/ und README.md; tote Verweise stehen nur in Kommentaren und Doku. */
 function probebaum() {
@@ -40,7 +40,7 @@ function probebaum() {
   return { repo, web };
 }
 
-const lauf = (/** @type {string} */ web) => spawnSync(process.execPath, [SKRIPT, web], { encoding: 'utf8' });
+const lauf = (/** @type {string} */ web) => spawnSync(process.execPath, [SCRIPT, web], { encoding: 'utf8' });
 
 test('im Probebaum meldet das Skript genau die toten Verweise in Kommentaren und Doku', t => {
   const { repo, web } = probebaum();

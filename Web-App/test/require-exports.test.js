@@ -13,7 +13,7 @@ const { ROOT, buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const DIST = path.join(ROOT, 'dist');
 
 /** Alle .ts-Quellen des Servers (ohne Tests, Skripte und Frontend). */
-function quellDateien() {
+function quellFiles() {
   const out = [];
   (function walk(d) {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -27,7 +27,7 @@ function quellDateien() {
 }
 
 test('kein Servermodul holt ein anderes per spätem require()', () => {
-  const dateien = quellDateien();
+  const dateien = quellFiles();
   assert.ok(dateien.length > 100, `Nur ${dateien.length} Quelldateien gefunden — die Prüfung liefe ins Leere`);
   const treffer = [];
   for (const datei of dateien) {

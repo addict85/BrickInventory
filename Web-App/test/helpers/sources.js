@@ -3,14 +3,14 @@
  * den GEGENSTAND einer Prüfung, nicht den Ablageort: Wandert Code um, ändert
  * sich eine Stelle hier statt zwanzig Prüfungen.
  */
-const { istAppModul } = require('../../scripts/build-frontend');
+const { isAppModule } = require('../../scripts/build-frontend');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..', '..');
 
 /** Die App (startup/app.ts, Middleware in ihrer Reihenfolge) und server.ts:
- *  für Prüfungen, bei denen die REIHENFOLGE zählt. Wer den Start meint, nimmt startQuelle(). */
+ *  für Prüfungen, bei denen die REIHENFOLGE zählt. Wer den Start meint, nimmt startSource(). */
 const serverOnly = () =>
   fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8') +
   '\n' +
@@ -24,18 +24,18 @@ const imgProxy = () =>
 /** Server, Bild-Proxy und Vorschau-Weg: für „kommt X irgendwo vor". Die
  *  Reihenfolge über Dateigrenzen ist bedeutungslos — für indexOf-Vergleiche
  *  serverOnly() oder imgProxy() nehmen. */
-const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuelle() + '\n' + startQuelle();
+const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbSource() + '\n' + startSource();
 
 /** Die ganze Finanzschicht aneinandergehängt: Die Regeln („nur EINE
  *  Zustandsauflösung") gelten der Schicht, nicht der Fassade financeCalc.ts. */
 const finanzQuelle = () => {
   const ordner = path.join(ROOT, 'src/finanzen/rechnung');
-  const teile = [dienstQuelle('src/finanzen/financeCalc.ts')];
+  const teile = [serviceSource('src/finanzen/financeCalc.ts')];
   for (const n of fs
     .readdirSync(ordner)
     .filter(x => x.endsWith('.ts'))
     .sort()) {
-    teile.push(dienstQuelle('src/finanzen/rechnung/' + n));
+    teile.push(serviceSource('src/finanzen/rechnung/' + n));
   }
   // Selbstbeweis: Fände der Helfer die Module nicht, prüften die Regeln nur die
   // Fassade und wären still grün.
@@ -86,9 +86,9 @@ function distIsFresh() {
 
 /** dist/ und Bündel auf den Stand der Quellen bringen, ohne etwas daraus zu laden.
  *  Das Bündel gehört dazu, weil jeder Server mit Oberfläche es ausliefert. */
-function baueDist() {
+function buildDist() {
   if (_built) return;
-  require('./buendel').stelleBuendelSicher();
+  require('./buendel').placeBundleSafe();
   if (!distIsFresh()) {
     const { execFileSync } = require('node:child_process');
     execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')], {
@@ -101,21 +101,21 @@ function baueDist() {
 /** Der Zugang der Testdatei: db/database kennt keinen Zugang des Prozesses mehr;
  *  ein Test bekommt ihn wie der Server von seinem Einstieg, hier also von hier. */
 let _testDb = null;
-let _eigenDb = null;
+let _ownDb = null;
 /** Erzeugen die Zugänge; gesetzt von buildAndRequire(). */
-let _zugangFabrik = null;
+let _accessFactory = null;
 /** Baut Dienste und Kontexte dieser Testdatei; gesetzt von buildAndRequire(). */
-let _dienstFabrik = null;
+let _serviceFactory = null;
 let _gebaut = null;
-/** Ersetzungen (ersetzeDienste), auch vor dem ersten Bau gemerkt. */
+/** Ersetzungen (replaceServices), auch vor dem ersten Bau gemerkt. */
 const _ersatz = [];
 
-/** Die Dienste dieser Testdatei: baueDienste(testZugang()) wie im Server, einmal je Datei. */
+/** Die Dienste dieser Testdatei: buildServices(testAccess()) wie im Server, einmal je Datei. */
 /** @returns {any} */
-function testDienste() {
-  if (!_dienstFabrik) throw new Error('testDienste() erst nach buildAndRequire()');
+function testServices() {
+  if (!_serviceFactory) throw new Error('testServices() erst nach buildAndRequire()');
   if (!_gebaut) {
-    _gebaut = _dienstFabrik();
+    _gebaut = _serviceFactory();
     for (const [b, e] of _ersatz) Object.assign(_gebaut.d[b], e);
   }
   return _gebaut.d;
@@ -124,90 +124,90 @@ function testDienste() {
 /** Der Kontext eines Bereichs (Repositories, Zugang, Abhängigkeiten) für Tests, die
  *  hineinsehen; die Dienste selbst geben ihn nicht heraus. */
 /** @param {string} bereich @returns {any} */
-function testKontext(bereich) {
-  testDienste();
-  const k = _gebaut.kontexte[bereich];
+function testContext(bereich) {
+  testServices();
+  const k = _gebaut.contexts[bereich];
   if (!k) throw new Error(`kein Kontext für ${bereich}`);
   return k;
 }
 
 /** Ersetzt Dienste eines Bereichs für diese Testdatei, auch für andere Bereiche, die
  *  sie über ihren Kontext rufen (dasselbe Objekt). Vor oder nach dem ersten Bau. */
-function ersetzeDienste(bereich, ersatz) {
+function replaceServices(bereich, ersatz) {
   _ersatz.push([bereich, ersatz]);
   if (_gebaut) Object.assign(_gebaut.d[bereich], ersatz);
 }
 
 /** Die öffentliche Seite eines Bereichs (index.js) samt seinen Diensten dieser Testdatei:
- *  Was index.js nicht exportiert, reicht beim Aufruf an testDienste()[bereich] weiter,
+ *  Was index.js nicht exportiert, reicht beim Aufruf an testServices()[bereich] weiter,
  *  damit eine Datei die Dienste erst baut, wenn ein Test sie ruft. */
 /** @param {string} bereich @returns {any} */
-function bereichsSeite(bereich) {
+function areaPage(bereich) {
   const modul = require(path.join(ROOT, 'dist', 'src', bereich, 'index.js'));
   return new Proxy(modul, {
-    get: (m, n) => (n in m ? m[n] : (...a) => testDienste()[bereich][n](...a)),
+    get: (m, n) => (n in m ? m[n] : (...a) => testServices()[bereich][n](...a)),
   });
 }
 
-/** Schreibt mit, was die Bilder vormerken (merkeGebraucht, src/bilder/bildbedarf.ts): am Puffer
+/** Schreibt mit, was die Bilder vormerken (rememberUsed, src/bilder/bildbedarf.ts): am Puffer
  *  selbst, damit jeder Weg dorthin zählt. `ende()` hört wieder auf. */
-/** @param {any} [kontext] @returns {{ notizen: [string, string][], ende: () => void }} */
-function bildNotizen(kontext = testKontext('bilder')) {
+/** @param {any} [kontext] @returns {{ notes: [string, string][], ende: () => void }} */
+function imageNotes(kontext = testContext('bilder')) {
   const puffer = kontext.faecher.fach('bildbedarf:puffer', () => new Map());
   /** @type {[string, string][]} */
-  const notizen = [];
+  const notes = [];
   puffer.set = (/** @type {string} */ url, /** @type {string} */ sn) => {
-    notizen.push([url, sn]);
+    notes.push([url, sn]);
     return Map.prototype.set.call(puffer, url, sn);
   };
-  return { notizen, ende: () => delete puffer.set };
+  return { notes, ende: () => delete puffer.set };
 }
 
 /** Wie früher xBereich(): Dienste eines Bereichs, Lesezugriff fällt auf seinen Kontext
  *  zurück. Schreiben geht an die Dienste. */
 /** @param {string} bereich @returns {any} */
-function testBereich(bereich) {
+function testArea(bereich) {
   return new Proxy(
     {},
     {
       get: (_z, n) => {
-        const d = testDienste()[bereich];
-        return n in d ? d[n] : testKontext(bereich)[n];
+        const d = testServices()[bereich];
+        return n in d ? d[n] : testContext(bereich)[n];
       },
       set: (_z, n, v) => {
-        testDienste()[bereich][n] = v;
+        testServices()[bereich][n] = v;
         return true;
       },
-      has: (_z, n) => n in testDienste()[bereich] || n in testKontext(bereich),
+      has: (_z, n) => n in testServices()[bereich] || n in testContext(bereich),
       ownKeys: () => [
-        ...new Set([...Reflect.ownKeys(testKontext(bereich)), ...Reflect.ownKeys(testDienste()[bereich])]),
+        ...new Set([...Reflect.ownKeys(testContext(bereich)), ...Reflect.ownKeys(testServices()[bereich])]),
       ],
       getOwnPropertyDescriptor: (_z, n) => {
-        const d = testDienste()[bereich];
-        const quelle = n in d ? d : testKontext(bereich);
+        const d = testServices()[bereich];
+        const quelle = n in d ? d : testContext(bereich);
         return n in quelle ? { value: quelle[n], enumerable: true, configurable: true, writable: true } : undefined;
       },
     },
   );
 }
-let _datenFabrik = null;
+let _dataFactory = null;
 /** Das Bildwerk der Dienste (src/katalog/kontext.ts): eines je Datei, auch wenn sie
  *  buildAndRequire() mehrmals ruft, damit ein ersetzter Teil nicht verloren geht. */
-const _bildwerk = {
+const _imageWorker = {
   setBildLaden: (...a) =>
-    require(path.join(ROOT, 'dist', 'src/bilder/setImages.js')).setBildHerunterladen(testKontext('bilder'), ...a),
-  vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/thumbs.js')).vorschauErzeugenAus(...a),
+    require(path.join(ROOT, 'dist', 'src/bilder/setImages.js')).setBildHerunterladen(testContext('bilder'), ...a),
+  createPreview: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/thumbs.js')).vorschauErzeugenAus(...a),
 };
 
 /** Die ersetzten Klienten der Dienste (src/fremdquellen/quellen.ts): leer heisst echt. */
-const _quellen = {};
+const _sources = {};
 
-/** Die Uhr der Dienste dieser Testdatei (k.uhr, stellbareUhr aus src/infra/uhr.ts): Sie läuft
+/** Die Uhr der Dienste dieser Testdatei (k.uhr, stellbareClock aus src/infra/uhr.ts): Sie läuft
  *  mit der Systemzeit, ein Test springt mit vor(ms) über eine Frist, statt sie abzuwarten. */
-let _uhr = null;
-function testUhr() {
-  if (!_uhr) _uhr = require(path.join(ROOT, 'dist', 'src/infra/uhr.js')).stellbareUhr();
-  return _uhr;
+let _clock = null;
+function testClock() {
+  if (!_clock) _clock = require(path.join(ROOT, 'dist', 'src/infra/uhr.js')).stellbareClock();
+  return _clock;
 }
 
 function buildAndRequire() {
@@ -216,66 +216,66 @@ function buildAndRequire() {
   // Ohne NODE_ENV gelten die Regeln des Betriebs (Superuser-Verbot, APP_BASE_URL);
   // ausserhalb von npm test (und mit `@superuser`) ist die Test-DB Superuser, und gestartete Server erben das.
   process.env.NODE_ENV ??= 'test';
-  baueDist();
+  buildDist();
   const V = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js'));
-  const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
+  const dbModule = require(path.join(ROOT, 'dist', 'db/database.js'));
   // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
-  const erststart = () => testDienste().konto.legeStartVerwalterAn();
-  const testDb = () => (_testDb ??= dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart }));
-  _zugangFabrik = testDb;
-  // Dieselbe Verdrahtung wie der Server (baueDienste), gebaut erst beim ersten Gebrauch:
-  // Ein Test stellt Klienten über testQuellen(), auch nach diesem Aufruf.
-  _dienstFabrik = () => {
-    const kontexte = {};
-    // Die Konfiguration, die baueDienste reicht, liest beim Zugriff: Ein Test, der mit
-    // umgebung()/setzeKonfig() einen Wert ändert, sieht ihn auch in k.konfig.
+  const firstStart = () => testServices().konto.putStartAdminAn();
+  const testDb = () => (_testDb ??= dbModule.createDb(dbModule.dbKonfigFromEnvironment(), { firstStart }));
+  _accessFactory = testDb;
+  // Dieselbe Verdrahtung wie der Server (buildServices), gebaut erst beim ersten Gebrauch:
+  // Ein Test stellt Klienten über testSources(), auch nach diesem Aufruf.
+  _serviceFactory = () => {
+    const contexts = {};
+    // Die Konfiguration, die buildServices reicht, liest beim Zugriff: Ein Test, der mit
+    // umgebung()/setKonfig() einen Wert ändert, sieht ihn auch in k.konfig.
     const K = require(path.join(ROOT, 'dist', 'src/infra/konfig.js'));
     const konfig = {};
     for (const n of Object.keys(K.konfig()))
       Object.defineProperty(konfig, n, { enumerable: true, get: () => K.konfig()[n] });
-    const d = V().baueDienste(testDb(), {
-      bildwerk: _bildwerk,
-      quellen: _quellen,
-      kontexte,
+    const d = V().buildServices(testDb(), {
+      bildwerk: _imageWorker,
+      quellen: _sources,
+      contexts,
       konfig,
-      uhr: testUhr(),
+      uhr: testClock(),
     });
-    return { d, kontexte };
+    return { d, contexts };
   };
   // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
   // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/eigene-db.js).
-  const eigenDb = () => (_eigenDb ??= eigentuemerZugang(dbModul, testDb, erststart));
-  _datenFabrik = eigenDb;
+  const ownDb = () => (_ownDb ??= ownerAccess(dbModule, testDb, firstStart));
+  _dataFactory = ownDb;
   return rel => {
-    const m = mitKontext(rel, require(path.join(ROOT, 'dist', rel)));
-    return rel.startsWith('routes/') ? mitKontoDerAnfrage(m) : m;
+    const m = withContext(rel, require(path.join(ROOT, 'dist', rel)));
+    return rel.startsWith('routes/') ? withAccountTheRequest(m) : m;
   };
 }
 
 /** Innere Dienste eines Bereichs nehmen den Kontext als ersten Parameter (src/infra/bereich.ts).
  *  Ein Test, der ein solches Modul direkt lädt, ruft sie mit dem Kontext dieser Testdatei. */
-const _mitKontext = new Map();
-const KONTEXT_FN =
+const _withContext = new Map();
+const CONTEXT_FN =
   /^(?:export )?(?:async )?function (\w+)(?:<[^(]*>)?\(\s*kx?: \w+(?:Kontext|Context)\b|^(?:export )?const (\w+) = (?:async )?\(\s*kx?: \w+(?:Kontext|Context)\b/gm;
 /** Die Namen der Kontext-Dienste einer Quelle, auch weitergereichte (export { a as b } [from './x']). */
-function kontextNamen(ts, tiefe = 0) {
+function contextNames(ts, tiefe = 0) {
   const quelle = fs.existsSync(ts) ? fs.readFileSync(ts, 'utf8') : '';
-  const namen = new Set([...quelle.matchAll(KONTEXT_FN)].map(x => x[1] || x[2]));
+  const namen = new Set([...quelle.matchAll(CONTEXT_FN)].map(x => x[1] || x[2]));
   if (tiefe < 2)
     for (const i of quelle.matchAll(/^import \{([^}]*)\} from '(\.[^']+)';/gm)) {
-      const dort = kontextNamen(path.join(path.dirname(ts), `${i[2]}.ts`), tiefe + 1);
+      const dort = contextNames(path.join(path.dirname(ts), `${i[2]}.ts`), tiefe + 1);
       for (const n of i[1].split(',').map(x => x.trim())) if (dort.has(n)) namen.add(n);
     }
   for (const e of quelle.matchAll(/^export \{([^}]*)\}(?: from '(\.[^']+)')?;/gm)) {
-    const quellNamen = e[2] && tiefe < 2 ? kontextNamen(path.join(path.dirname(ts), `${e[2]}.ts`), tiefe + 1) : namen;
+    const quellNames = e[2] && tiefe < 2 ? contextNames(path.join(path.dirname(ts), `${e[2]}.ts`), tiefe + 1) : namen;
     for (const teil of e[1].split(',')) {
       const [a, b = a] = teil.trim().split(/\s+as\s+/);
-      if (a && quellNamen.has(a)) namen.add(b);
+      if (a && quellNames.has(a)) namen.add(b);
     }
   }
   return namen;
 }
-function mitKontext(rel, modul) {
+function withContext(rel, modul) {
   const m =
     /^src\/(\w+)\/(?!index\.js$|bereich\.js$|kontext\.js$|area\.js$|context\.js$|repository\/|http\/)[\w/]+\.js$/.exec(
       rel,
@@ -288,10 +288,10 @@ function mitKontext(rel, modul) {
     )
   )
     return modul;
-  if (!_mitKontext.has(rel)) {
-    const namen = kontextNamen(path.join(ROOT, rel.replace(/\.js$/, '.ts')));
-    const bereich = () => testKontext(m[1]);
-    _mitKontext.set(
+  if (!_withContext.has(rel)) {
+    const namen = contextNames(path.join(ROOT, rel.replace(/\.js$/, '.ts')));
+    const bereich = () => testContext(m[1]);
+    _withContext.set(
       rel,
       namen.size
         ? new Proxy(modul, {
@@ -303,20 +303,20 @@ function mitKontext(rel, modul) {
         : modul,
     );
   }
-  return _mitKontext.get(rel);
+  return _withContext.get(rel);
 }
 
 /** Der Zugang der Eigentümerin, wenn der Lauf Rollen trennt, sonst der Testzugang selbst.
  * Wer einen der beiden Pools schliesst, schliesst beide: Früher war es einer. */
-function eigentuemerZugang(dbModul, testDb, erststart) {
+function ownerAccess(dbModule, testDb, firstStart) {
   const url = process.env.TEST_DB_EIGEN_URL;
   if (!url || url === process.env.DATABASE_URL) return testDb();
-  const k = dbModul.dbKonfigAusUmgebung();
+  const k = dbModule.dbKonfigFromEnvironment();
   // Wie server.ts: Der Erststart legt das erste Konto im Systemrahmen an.
-  const { imSystemkontext } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
-  const eigen = dbModul.erzeugeDb(
+  const { inSystemContext } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
+  const eigen = dbModule.createDb(
     { ...k, verbindung: { connectionString: url }, system: null },
-    { erststart: () => imSystemkontext('start', erststart) },
+    { firstStart: () => inSystemContext('start', firstStart) },
   );
   const app = testDb();
   const enden = [eigen.pool, app.pool].map(p => {
@@ -328,86 +328,86 @@ function eigentuemerZugang(dbModul, testDb, erststart) {
   return eigen;
 }
 
-/** Wie startup/app.ts (merkeAnfrage vor allen Routen): Ein Router aus routes/, den ein Test
+/** Wie startup/app.ts (rememberRequest vor allen Routen): Ein Router aus routes/, den ein Test
  * selbst einhängt, läuft im Konto seiner Anfrage, sonst sähe er unter dem Zeilenschutz nichts. */
-function mitKontoDerAnfrage(m) {
-  const istRouter = x => typeof x === 'function' && Array.isArray(x.stack) && typeof x.handle === 'function';
-  if (!istRouter(m)) return m;
-  const { alsAnfrage } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
-  const { fehlerAntwort } = require(path.join(ROOT, 'dist', 'src/http/httpAntwort.js'));
+function withAccountTheRequest(m) {
+  const isRouter = x => typeof x === 'function' && Array.isArray(x.stack) && typeof x.handle === 'function';
+  if (!isRouter(m)) return m;
+  const { asRequest } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
+  const { errorResponse } = require(path.join(ROOT, 'dist', 'src/http/httpAntwort.js'));
   // Wie startup/app.ts: Den Fehlerweg hängt die App an, nicht der Router.
   const weiter = (req, res, next) => e =>
-    e && e !== 'route' && e !== 'router' ? fehlerAntwort(e, req, res, next) : next();
+    e && e !== 'route' && e !== 'router' ? errorResponse(e, req, res, next) : next();
   return new Proxy(m, {
-    apply: (ziel, ich, [req, res, next]) => alsAnfrage(req, () => ziel.call(ich, req, res, weiter(req, res, next))),
+    apply: (ziel, ich, [req, res, next]) => asRequest(req, () => ziel.call(ich, req, res, weiter(req, res, next))),
   });
 }
 
 /** Ein Routenmodul mit Fabrik (baueXRouter(d)) als Router, mit den Diensten dieser Testdatei
- *  (testDienste()); ein Modul ohne Fabrik unverändert. */
-function routerAus(_req, rel) {
+ *  (testServices()); ein Modul ohne Fabrik unverändert. */
+function routerFrom(_req, rel) {
   const m = _req(rel);
-  const baue = Object.entries(m).find(([n, f]) => /^baue\w*Router$/.test(n) && typeof f === 'function');
+  const build = Object.entries(m).find(([n, f]) => /^build\w*Router$/.test(n) && typeof f === 'function');
   // Wie startup/app.ts: Der gebaute Router läuft im Konto seiner Anfrage.
-  return baue ? mitKontoDerAnfrage(baue[1](testDienste())) : m;
+  return build ? withAccountTheRequest(build[1](testServices())) : m;
 }
 
-/** Der Zugang aus erzeugeDb(), den auch die verdrahteten Dienste dieser Testdatei
+/** Der Zugang aus createDb(), den auch die verdrahteten Dienste dieser Testdatei
  *  benutzen: für Code unter Test, der als Laufzeitrolle fragen soll wie im Betrieb.
  *  Erst nach buildAndRequire(). */
-function testZugang() {
-  if (!_zugangFabrik) throw new Error('testZugang() erst nach buildAndRequire()');
-  return _zugangFabrik();
+function testAccess() {
+  if (!_accessFactory) throw new Error('testAccess() erst nach buildAndRequire()');
+  return _accessFactory();
 }
 
-/** Das Bildwerk, das baueDienste() dieser Datei bekommen hat: Ein Test ersetzt einen Teil
+/** Das Bildwerk, das buildServices() dieser Datei bekommen hat: Ein Test ersetzt einen Teil
  *  darin, statt das Modul beim Laden umzubiegen. Mit `t` gilt der Ersatz bis zum Ende des Tests.
  *  @param {{ after: (f: () => void) => void } | null} [t] @param {Record<string, Function>} [ersatz] */
-function testBildwerk(t, ersatz = {}) {
-  const vorher = { ..._bildwerk };
-  Object.assign(_bildwerk, ersatz);
-  t?.after(() => Object.assign(_bildwerk, vorher));
-  return _bildwerk;
+function testImageWorker(t, ersatz = {}) {
+  const vorher = { ..._imageWorker };
+  Object.assign(_imageWorker, ersatz);
+  t?.after(() => Object.assign(_imageWorker, vorher));
+  return _imageWorker;
 }
 
-/** Ruft f im Namen eines Kontos wie eine Anfrage (alsAnfrage): Der Code unter Test sieht
+/** Ruft f im Namen eines Kontos wie eine Anfrage (asRequest): Der Code unter Test sieht
  *  unter dem Zeilenschutz nur dessen Haushalt, wie im Betrieb.
  *  @template T @param {number} uid @param {() => T} f @param {{ verwalter?: boolean }} [o] @returns {T} */
-function alsKonto(uid, f, o = {}) {
-  const { alsAnfrage } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
-  return alsAnfrage({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
+function asAccount(uid, f, o = {}) {
+  const { asRequest } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
+  return asRequest({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
 }
 
-/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in baueQuellen(), src/fremdquellen/quellen.ts)
+/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in buildSources(), src/fremdquellen/quellen.ts)
  *  an der Verdrahtung, statt Module beim Laden umzubiegen. Mit `t` bis zum Ende des Tests.
  *  @param {{ after: (f: () => void) => void } | null} t @param {Record<string, unknown>} ersatz */
-function testQuellen(t, ersatz) {
-  Object.assign(_quellen, ersatz);
+function testSources(t, ersatz) {
+  Object.assign(_sources, ersatz);
   t?.after(() => {
-    for (const k of Object.keys(ersatz)) delete _quellen[k];
+    for (const k of Object.keys(ersatz)) delete _sources[k];
   });
-  return _quellen;
+  return _sources;
 }
 
 /** Der Zugang der Eigentümerin für Testdaten: Er schreibt am Zeilenschutz vorbei, damit
  *  ein Test Zeilen beliebiger Konten anlegt. Erst beim ersten Gebrauch gebaut, damit eine
  *  Testdatei die Umgebung noch nach dem Aufruf stellen kann. Erst nach buildAndRequire(). */
-function testDaten() {
-  if (!_datenFabrik) throw new Error('testDaten() erst nach buildAndRequire()');
-  return _datenGriff;
+function testData() {
+  if (!_dataFactory) throw new Error('testData() erst nach buildAndRequire()');
+  return _dataHandle;
 }
-const _datenGriff = new Proxy(/** @type {any} */ ({}), { get: (_z, k) => _datenFabrik()[k] });
+const _dataHandle = new Proxy(/** @type {any} */ ({}), { get: (_z, k) => _dataFactory()[k] });
 
 /** Stellt Umgebungsvariablen um (undefined löscht) und lässt konfig() sie neu
  *  lesen: Der Server liest sie einmal beim Start (src/infra/konfig.ts). */
-function umgebung(werte) {
+function environment(werte) {
   for (const [k, v] of Object.entries(werte)) {
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;
   }
   // Noch nicht geladen: Der erste konfig()-Aufruf liest die neuen Werte ohnehin.
   const datei = path.join(ROOT, 'dist', 'src/infra/konfig.js');
-  if (require.cache[datei]) require(datei).konfigNeuLesen();
+  if (require.cache[datei]) require(datei).readKonfigNew();
 }
 
 /** Beide Sprachdateien zusammen: i18n.js allein liefert ein leeres I18N.
@@ -454,7 +454,7 @@ function kompakt(src) {
 }
 
 /** HTML-Kommentare bis zum Fixpunkt: Ein Rest wie „<!<!---->--“ ergäbe sonst einen neuen. */
-function ohneHtmlKommentare(src) {
+function withoutHtmlComments(src) {
   let s = String(src);
   for (let vorher; vorher !== s; ) {
     vorher = s;
@@ -464,10 +464,10 @@ function ohneHtmlKommentare(src) {
 }
 
 /** Für `new RegExp`: jedes Sonderzeichen wörtlich. */
-const regexWoertlich = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const regexLiteral = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Der Vorschau-Weg des Bild-Proxys (src/bilder/proxyThumbs.ts). */
-function proxyThumbQuelle() {
+function proxyThumbSource() {
   return [
     'src/bilder/http/bildProxy.ts',
     'routes/imgProxy.ts',
@@ -475,13 +475,13 @@ function proxyThumbQuelle() {
     'src/bilder/imgCacheServe.ts',
     'src/bilder/http/bildCacheAuslieferung.ts',
   ]
-    .map(dienstQuelle)
+    .map(serviceSource)
     .join('\n');
 }
 
 /** Die Oberfläche rund um Erfassungen: Set-Detail, Kaufpreis-Modal, Detailfenster
  *  und ihre Bausteine (Lagerort, Preisalarm, Diagramme, Rückfragen). */
-function adminQuelle() {
+function adminSource() {
   const path = require('node:path'),
     fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
@@ -502,7 +502,7 @@ function adminQuelle() {
 }
 
 /** Der Weg, auf dem ein Set entsteht oder sich ändert, samt Katalogarbeit. */
-function setKernQuelle() {
+function setCoreSource() {
   return [
     ['routes/api_v1/sets.ts'],
     ['routes/api_v1/setsImport.ts'],
@@ -519,7 +519,7 @@ function setKernQuelle() {
     ['src/katalog/minifigsImport.ts'],
     ['src/sets/setInhaltImport.ts'],
   ]
-    .map(p => dienstQuelle(p[0]))
+    .map(p => serviceSource(p[0]))
     .join('\n');
 }
 
@@ -534,18 +534,18 @@ const HANDLER_MODULE = [
   'src/bestand/kennzahlen',
 ];
 function handlerQuelle() {
-  return HANDLER_MODULE.map(m => dienstQuelle(m + '.ts')).join('\n');
+  return HANDLER_MODULE.map(m => serviceSource(m + '.ts')).join('\n');
 }
 
 /** Das gebaute Modul für einen Namen aus den Leseabfragen. */
-function handlerModul(_req) {
+function handlerModule(_req) {
   // Die Sets-Dienste dieser Testdatei, mit ihrem Kontext gebunden.
-  return Object.assign({}, ...(_req && HANDLER_MODULE.map(m => _req(`${m}.js`))), _req && testDienste().sets);
+  return Object.assign({}, ...(_req && HANDLER_MODULE.map(m => _req(`${m}.js`))), _req && testServices().sets);
 }
 
 /** server.ts samt Start des Job-Prozesses und der Läufe dort: für „läuft X
  *  beim Start an". */
-function startQuelle() {
+function startSource() {
   const path = require('node:path'),
     fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
@@ -556,32 +556,32 @@ function startQuelle() {
     'src/management/startFollowUpRuns.ts',
     'src/management/cleanup.ts',
     'src/katalog/bildlage.ts',
-  ].map(f => dienstQuelle(f));
+  ].map(f => serviceSource(f));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
-      teile.push(dienstQuelle('startup/' + f));
+      teile.push(serviceSource('startup/' + f));
     }
   }
   return teile.join('\n');
 }
 
 /** Die Portfolio-Kurve: Orchestrierung, Rekonstruktion und Diagrammdaten. */
-function portfolioQuelle() {
+function portfolioSource() {
   const path = require('node:path'),
     fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'src/finanzen/portfolio');
-  const teile = [dienstQuelle('src/finanzen/portfolioHistory.ts')];
+  const teile = [serviceSource('src/finanzen/portfolioHistory.ts')];
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
-      teile.push(dienstQuelle('src/finanzen/portfolio/' + f));
+      teile.push(serviceSource('src/finanzen/portfolio/' + f));
     }
   }
   return teile.join('\n');
 }
 
 /** Die Grundausstattung des Frontends samt der ausgelagerten Abschnitte. */
-function coreQuelle() {
+function coreSource() {
   const path = require('node:path'),
     fs = require('node:fs');
   const dir = path.join(__dirname, '..', '..', 'public', 'js');
@@ -615,7 +615,7 @@ function coreQuelle() {
  * aller anderen — die fielen bei jeder Typschärfung um.
  * @returns {string} z.B. "function f(a, b: string | null = null)"
  */
-function funktionsKopf(src, name) {
+function functionHeader(src, name) {
   // Auch mit Typparametern (`function f<T>(`).
   const i = Math.max(src.indexOf(`function ${name}(`), src.indexOf(`function ${name}<`));
   if (i < 0) throw new Error(`Funktion ${name} gibt es nicht (mehr)`);
@@ -633,36 +633,36 @@ function funktionsKopf(src, name) {
  * gefunden wird — ein -1 aus indexOf ergäbe sonst still eine leere Funktion.
  * Das Ende ist die schliessende Klammer in SPALTE 0.
  */
-function funktionsRumpf(src, name) {
-  const kopf = funktionsKopf(src, name);
-  const nachKopf = src.indexOf(kopf) + kopf.length;
-  const auf = src.indexOf('{', nachKopf);
+function functionBody(src, name) {
+  const kopf = functionHeader(src, name);
+  const afterHeader = src.indexOf(kopf) + kopf.length;
+  const auf = src.indexOf('{', afterHeader);
   if (auf < 0) throw new Error(`Rumpf von ${name} beginnt nicht mit {`);
   const zu = src.indexOf('\n}', auf);
   if (zu < 0) throw new Error(`Rumpf von ${name} ist nicht geschlossen`);
   return src.slice(auf + 1, zu);
 }
 
-/** Unabhängig von Typannotation und Position; mit `mitVorgabeNull` zusätzlich
+/** Unabhängig von Typannotation und Position; mit `withDefaultNull` zusätzlich
  *  die Vorgabe null (dann dürfen Aufrufer ihn weglassen). */
-function hatParameter(src, name, param, mitVorgabeNull = false) {
-  const kopf = funktionsKopf(src, name);
+function hatParameter(src, name, param, withDefaultNull = false) {
+  const kopf = functionHeader(src, name);
   const drin = new RegExp(`\\b${param}\\b`).test(kopf);
   if (!drin) return false;
-  if (!mitVorgabeNull) return true;
+  if (!withDefaultNull) return true;
   return new RegExp(`\\b${param}\\b[^,)]*=\\s*null`).test(kopf);
 }
 
 /**
  * Genau diese Parameter, der Reihe nach, ohne Rücksicht auf Typannotationen,
- * Vorgabewerte oder Zeilenumbrüche: `pruefeParameter(src, 'besitzerAnhaengen',
+ * Vorgabewerte oder Zeilenumbrüche: `checkParameter(src, 'besitzerAnhaengen',
  * ['uids', 'rows'])`. Ein Muster über den ganzen Kopf fiele um, sobald jemand
  * einen Typ schärft.
  * @param {string} [hinweis] Zusatz für die Fehlermeldung
  */
-function pruefeParameter(src, name, params, hinweis = '') {
+function checkParameter(src, name, params, hinweis = '') {
   const assert = require('node:assert/strict');
-  const kopf = funktionsKopf(src, name);
+  const kopf = functionHeader(src, name);
   const innen = kopf.slice(kopf.indexOf('(') + 1, kopf.length - 1);
 
   let zuletzt = -1;
@@ -679,11 +679,11 @@ function pruefeParameter(src, name, params, hinweis = '') {
  * @returns [{ mount: '/api/v1/sets', datei: '<abs>/routes/sets.ts', name: 'sets' }]
  *          ohne routes/api_v1/* — das ist der Index selbst.
  */
-/** @param {{ ohneTeile?: boolean }} [o] ohneTeile: nur die eingehängten Module, nicht die Dateien eines Zusammenbaus */
+/** @param {{ withoutParts?: boolean }} [o] withoutParts: nur die eingehängten Module, nicht die Dateien eines Zusammenbaus */
 function routerEinhaengungen(o = {}) {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
   // `import xRouter from '../routes/x'` oben, `app.use('/api/…', xRouter)` unten.
-  const dateiJeName = new Map(
+  const fileJeName = new Map(
     [...src.matchAll(/import\s+(?:\{\s*)?(\w+)(?:\s*\})?\s+from\s+['"](?:\.\.?\/)+(routes\/[^'"]+)['"]/g)].map(m => [
       m[1],
       m[2],
@@ -692,7 +692,7 @@ function routerEinhaengungen(o = {}) {
   const out = [];
   // Ein Router mit Fabrik hängt als `baueXRouter(d)` ein.
   for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)(?:\(\w+\))?\s*\)/g)) {
-    const datei = dateiJeName.get(m[2]);
+    const datei = fileJeName.get(m[2]);
     if (!datei || datei.startsWith('routes/api_v1')) continue;
     out.push({
       mount: m[1].replace(/\/+$/, ''),
@@ -701,7 +701,7 @@ function routerEinhaengungen(o = {}) {
     });
     // Ein Zusammenbau (routes/auth.ts) hängt seine Teile unter derselben Adresse ein.
     const teile = path.join(ROOT, datei);
-    if (!o.ohneTeile && fs.existsSync(teile) && fs.statSync(teile).isDirectory())
+    if (!o.withoutParts && fs.existsSync(teile) && fs.statSync(teile).isDirectory())
       for (const n of fs
         .readdirSync(teile)
         .filter(n => n.endsWith('.ts'))
@@ -731,18 +731,19 @@ function einhaengung(name) {
  * Einen Ausschnitt schneiden — und WERFEN, wenn ein Anker fehlt: `slice(-1)`
  * gäbe sonst einen leeren Ausschnitt, auf dem `assert.doesNotMatch` still grün ist.
  * @param {string} [bis]   bis hierher (muss vorkommen, wenn angegeben), sonst bis zum Ende
- * @param {string} [wozu]  wofür der Ausschnitt gebraucht wird, für die Meldung
+ * @param {string} [purpose]  wofür der Ausschnitt gebraucht wird, für die Meldung
  */
-function abschnitt(quelle, ab, bis, wozu = '') {
+function abschnitt(quelle, ab, bis, purpose = '') {
   const i = String(quelle).indexOf(ab);
   if (i < 0)
     throw new Error(
-      `Ankertext nicht gefunden${wozu ? ` (${wozu})` : ''}: ${JSON.stringify(ab).slice(0, 90)}\n` +
+      `Ankertext nicht gefunden${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(ab).slice(0, 90)}\n` +
         'Der Ausschnitt waere leer, und Zusicherungen darauf pruefen nichts mehr.',
     );
   if (bis === undefined) return String(quelle).slice(i);
   const j = String(quelle).indexOf(bis, i);
-  if (j < 0) throw new Error(`Endanker nicht gefunden${wozu ? ` (${wozu})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
+  if (j < 0)
+    throw new Error(`Endanker nicht gefunden${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
   return String(quelle).slice(i, j);
 }
 
@@ -754,7 +755,7 @@ function abschnitt(quelle, ab, bis, wozu = '') {
  *     `/v1/minifigs/${nr}${owner ? …: ''}`  → /v1/minifigs/:X
  * @param {string} [marke]   Platzhalter je Abschnitt — ':X' oder ':x'
  */
-function pfadForm(roh, marke = ':X') {
+function pathForm(roh, marke = ':X') {
   let s = String(roh);
   let vor = null;
   // Innerste zuerst, bis nichts mehr passt — so verschwindet auch ein
@@ -825,7 +826,7 @@ function leseLiteral(src, i) {
  * relativ zu `mount`]. Vertragsrouter nennen den vollen Pfad im Schlüssel (`endpunkt('GET /api/v1/…'`).
  * @param {string} src @param {string} mount @returns {string[][]}
  */
-function routenAusQuelle(src, mount) {
+function routesFromSource(src, mount) {
   const raus = [];
   for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]*)['"`]/g)) raus.push([...m]);
   for (const m of src.matchAll(/\.endpunkt\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g)) {
@@ -838,7 +839,7 @@ function routenAusQuelle(src, mount) {
 
 /** Die Dateiliste steht hier, damit test/api-eingang-db.test.js keinen
  *  variablen Pfad liest (test/eigenbruecken.test.js zählt sie). */
-function v1Routen() {
+function v1Routes() {
   const gefunden = [];
   const lies = (datei, vorne) => {
     const s = fs.readFileSync(path.join(ROOT, datei), 'utf8');
@@ -859,7 +860,7 @@ function v1Routen() {
 
 /** Für Prüfungen, die eine Eigenschaft überall verlangen, statt eine
  *  Dateiliste zu führen, die beim nächsten Umzug veraltet. */
-function alleQuellen() {
+function allSources() {
   const raus = [];
   const lauf = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -876,7 +877,7 @@ function alleQuellen() {
 /** Prüfungen auf das SQL eines Dienstes meinen seinen Weg zur Datenbank,
  *  nicht die Datei.
  * @param {string} rel Pfad relativ zu ROOT, z. B. 'src/sets/setMove.ts' */
-function dienstQuelle(rel) {
+function serviceSource(rel) {
   const s = fs.readFileSync(path.join(ROOT, rel), 'utf8');
   const repos = new Set(
     [...ohneKommentare(s).matchAll(/(?:from\s+|import\(\s*|require\(\s*)['"](\.[^'"]*repository[^'"]*)['"]/g)]
@@ -889,19 +890,19 @@ function dienstQuelle(rel) {
       repos.add(`src/katalog/repository/${m[1]}.ts`);
   // Die übrigen Bereiche ebenso (src/<b>/bereich.ts, Zugriff über <b>Bereich()).
   for (const m of ohneKommentare(s).matchAll(/\b(\w+)Bereich\(\)\.(\w+)\./g)) {
-    const fabrikDatei = ['bereich.ts', 'area.ts'].find(f => fs.existsSync(path.join(ROOT, `src/${m[1]}/${f}`)));
-    if (!fabrikDatei) continue;
-    const fabrik = path.join(ROOT, `src/${m[1]}/${fabrikDatei}`);
-    const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`));
+    const factoryFile = ['bereich.ts', 'area.ts'].find(f => fs.existsSync(path.join(ROOT, `src/${m[1]}/${f}`)));
+    if (!factoryFile) continue;
+    const factory = path.join(ROOT, `src/${m[1]}/${factoryFile}`);
+    const ziel = fs.readFileSync(factory, 'utf8').match(new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`));
     if (ziel && /repository/.test(ziel[1])) repos.add(`src/${m[1]}/${ziel[1]}.ts`);
   }
   // Über den Kontext des Dienstes (k.repo., k.<bereich>.repo.; t in einer Transaktion).
   const eigener = /^src\/(\w+)\//.exec(rel)?.[1];
   const ueber = (b, name) => {
-    const fabrikDatei = b && ['kontext.ts', 'context.ts'].find(f => fs.existsSync(path.join(ROOT, `src/${b}/${f}`)));
-    const fabrik = fabrikDatei && path.join(ROOT, `src/${b}/${fabrikDatei}`);
-    if (!fabrik) return;
-    const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${name} from '\\./([^']+)'`));
+    const factoryFile = b && ['kontext.ts', 'context.ts'].find(f => fs.existsSync(path.join(ROOT, `src/${b}/${f}`)));
+    const factory = factoryFile && path.join(ROOT, `src/${b}/${factoryFile}`);
+    if (!factory) return;
+    const ziel = fs.readFileSync(factory, 'utf8').match(new RegExp(`import \\* as ${name} from '\\./([^']+)'`));
     if (ziel && /repository/.test(ziel[1])) repos.add(`src/${b}/${ziel[1]}.ts`);
   };
   for (const m of ohneKommentare(s).matchAll(/\b(?:k|kx|sk|t)\.(\w+)\.(\w+)?/g)) {
@@ -921,7 +922,7 @@ function frontendQuelle() {
   return [
     ...fs
       .readdirSync(path.join(pub, 'js'))
-      .filter(f => istAppModul(f))
+      .filter(f => isAppModule(f))
       .sort()
       .map(f => path.join(pub, 'js', f)),
     path.join(pub, 'i18n.js'),
@@ -931,7 +932,7 @@ function frontendQuelle() {
 }
 
 /** Die Anmelderouten: routes/auth.ts setzt sie aus routes/auth/*.ts zusammen. */
-function anmeldeQuelle() {
+function loginSource() {
   const teile = fs
     .readdirSync(path.join(ROOT, 'routes', 'auth'))
     .filter(n => n.endsWith('.ts'))
@@ -943,14 +944,14 @@ function anmeldeQuelle() {
 }
 
 /** Die Dateien je Ansicht; eine geteilte Ansicht bleibt so unter einem Namen prüfbar. */
-const ANSICHTEN = {
+const VIEWS = {
   einstellungen: ['settings.js', 'zugaenge.js', 'haushalt.js', 'user-management.js', 'alarme.js', 'lagerorte.js'],
 };
 
-/** Alle Dateien einer Ansicht (Schlüssel aus ANSICHTEN) als EIN Text. */
-function ansichtQuelle(/** @type {keyof typeof ANSICHTEN} */ name) {
+/** Alle Dateien einer Ansicht (Schlüssel aus VIEWS) als EIN Text. */
+function ansichtQuelle(/** @type {keyof typeof VIEWS} */ name) {
   const js = path.join(ROOT, 'public', 'js');
-  return ANSICHTEN[name].map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
+  return VIEWS[name].map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
 }
 
 module.exports = {
@@ -959,52 +960,52 @@ module.exports = {
   imgProxy,
   serverAll,
   finanzQuelle,
-  umgebung,
+  environment,
   buildAndRequire,
-  testZugang,
-  testDaten,
-  testBildwerk,
-  testQuellen,
-  alsKonto,
-  testDienste,
-  testKontext,
-  testBereich,
-  ersetzeDienste,
-  bildNotizen,
-  bereichsSeite,
-  routerAus,
-  baueDist,
+  testAccess,
+  testData,
+  testImageWorker,
+  testSources,
+  asAccount,
+  testServices,
+  testContext,
+  testArea,
+  replaceServices,
+  imageNotes,
+  areaPage,
+  routerFrom,
+  buildDist,
   loadTranslations,
   localeSource,
   i18nAll,
   ohneKommentare,
   kompakt,
-  ohneHtmlKommentare,
-  regexWoertlich,
-  proxyThumbQuelle,
-  adminQuelle,
-  setKernQuelle,
+  withoutHtmlComments,
+  regexLiteral,
+  proxyThumbSource,
+  adminSource,
+  setCoreSource,
   handlerQuelle,
-  handlerModul,
-  startQuelle,
-  portfolioQuelle,
-  coreQuelle,
-  funktionsKopf,
-  funktionsRumpf,
+  handlerModule,
+  startSource,
+  portfolioSource,
+  coreSource,
+  functionHeader,
+  functionBody,
   hatParameter,
-  pruefeParameter,
+  checkParameter,
   routerEinhaengungen,
   einhaengung,
   abschnitt,
-  pfadForm,
+  pathForm,
   leseLiteral,
-  routenAusQuelle,
-  v1Routen,
-  alleQuellen,
-  dienstQuelle,
+  routesFromSource,
+  v1Routes,
+  allSources,
+  serviceSource,
   frontendQuelle,
-  anmeldeQuelle,
+  loginSource,
   ansichtQuelle,
-  testUhr,
+  testClock,
   DIST: path.join(ROOT, 'dist'),
 };

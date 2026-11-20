@@ -20,7 +20,7 @@
  *   L  ohne @container ovl → rot: „Grosse Schrift: Set-Detail“ (250 px Inhalt)
  *   M  rb-hinweis offline wieder sichtbar → rot: „Offline-Band allein“
  *   N  --chart-wert wieder var(--chart-new) → rot: „Wertlinie in der Farbe der Beträge“ (Hochglanz blau)
- *   O  fokusWennDa() ohne el.focus() → rot: „Fokus nach Rückgängig“ (bleibt auf der Überschrift)
+ *   O  focusIfDa() ohne el.focus() → rot: „Fokus nach Rückgängig“ (bleibt auf der Überschrift)
  *   P  #tab-monitor .mon-knoepfe .btn ohne hyphens:manual → rot: „Abbrechen in einer Zeile“ (42 > 33 px)
  *   Q  Telefontext wieder „neben dem Titel“ → rot: „Leere Sammlung am Telefon“
  *
@@ -32,11 +32,11 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterHaushalt } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternHousehold } = require('./helpers/bestand');
 
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
-const SCHLIESSEN = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
+const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
 
 async function groesse(b, breite, telefon, hoehe) {
   await b.tab('Emulation.setDeviceMetricsOverride', {
@@ -48,7 +48,7 @@ async function groesse(b, breite, telefon, hoehe) {
 }
 
 async function geh(a, hash, bereit, was) {
-  await a.b.auswerten(SCHLIESSEN);
+  await a.b.auswerten(CLOSE);
   await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
   await a.bis(bereit, was, 200);
   await a.ruhig(5000);
@@ -66,9 +66,9 @@ async function taste(b, key, vk) {
   await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key, code: key, windowsVirtualKeyCode: vk });
 }
 
-const oeffneSetErfassen = `(() => { document.querySelector('#tab-gallery [data-click="oeffneErfassen"][data-arg="set"]').click(); return true; })()`;
+const addOpenSet = `(() => { document.querySelector('#tab-gallery [data-click="oeffneErfassen"][data-arg="set"]').click(); return true; })()`;
 
-async function enterAusJedemFeld(_t, a) {
+async function enterFromEachField(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   const anfragen = () =>
@@ -79,8 +79,8 @@ async function enterAusJedemFeld(_t, a) {
         /\/api\/v1\/sets\/21318-1$/.test(e.params.request.url),
     ).length;
   for (const feld of ['add-num', 'add-qty', 'add-price', 'add-date']) {
-    await b.auswerten(SCHLIESSEN);
-    await b.auswerten(oeffneSetErfassen);
+    await b.auswerten(CLOSE);
+    await b.auswerten(addOpenSet);
     await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog offen');
     await b.auswerten(`(() => { document.getElementById('add-num').value = '21318-1';
       document.getElementById('${feld}').focus(); return true; })()`);
@@ -103,19 +103,19 @@ async function enterAusJedemFeld(_t, a) {
     await bis(`/erforderlich/.test(${text(`#${result}`)})`, `Enter aus ${feld}`, 50);
     assert.equal(await b.auswerten(text(`#${result}`)), meldung);
   }
-  await b.auswerten(SCHLIESSEN);
+  await b.auswerten(CLOSE);
 }
 
-async function entwurfVerworfen(_t, a) {
+async function draftDiscarded(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
-  await b.auswerten(oeffneSetErfassen);
+  await b.auswerten(addOpenSet);
   await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog offen');
   await b.auswerten(`(() => { document.getElementById('add-num').value = '10276-1';
     const p = document.getElementById('add-price'); p.value = '12'; p.focus(); return true; })()`);
   await taste(b, 'Escape', 27);
   await bis(`!document.getElementById('add-set-modal').classList.contains('open')`, 'Esc schliesst');
-  await b.auswerten(oeffneSetErfassen);
+  await b.auswerten(addOpenSet);
   const m =
     await b.auswerten(`({ preis: document.getElementById('add-price').value, nr: document.getElementById('add-num').value,
     datum: document.getElementById('add-date').value,
@@ -146,9 +146,9 @@ async function finanzenFehler(_t, a) {
     );
     await a.ruhig();
     const m = await b.auswerten(`(() => { const k = document.querySelector('.tab.active .error_message-zustand button');
-      return { imKasten: !!k?.closest('#portfolio-chart'), unten: k?.getBoundingClientRect().bottom, hoehe: innerHeight,
+      return { inBox: !!k?.closest('#portfolio-chart'), unten: k?.getBoundingClientRect().bottom, hoehe: innerHeight,
         karten: document.getElementById('fin-sum').checkVisibility(), strich: [...document.querySelectorAll('#fin-sum .fval')].filter(f => f.checkVisibility() && f.textContent.trim() === '—').length }; })()`);
-    assert.ok(m.imKasten, `Fehler nicht im Diagrammkasten: ${JSON.stringify(m)}`);
+    assert.ok(m.inBox, `Fehler nicht im Diagrammkasten: ${JSON.stringify(m)}`);
     assert.ok(m.unten <= m.hoehe, `„Erneut versuchen“ nicht im ersten Bildschirm: ${JSON.stringify(m)}`);
     assert.equal(m.karten, false, 'Karten ohne Zahl stehen über dem Fehler');
     await b.auswerten(
@@ -193,7 +193,7 @@ async function filterKnopf(_t, a) {
   }
 }
 
-async function entfLoescht(_t, a) {
+async function entfDeletes(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   await b.auswerten(`document.getElementById('gs').focus(); true`);
@@ -217,26 +217,26 @@ async function setsTabelle(_t, a) {
   try {
     const t = await b.auswerten(`(() => { const kopf = [...document.querySelectorAll('#gallery thead th')];
       const z = document.querySelector('#gallery tr[data-arg="10294-1"]');
-      return { koepfe: kopf.map(k => k.textContent.trim()), zellen: z.children.length,
+      return { headers: kopf.map(k => k.textContent.trim()), cells: z.children.length,
         datum: z.children[kopf.findIndex(k => k.textContent.trim() === 'Gekauft am')]?.textContent.trim(),
         namen: [...z.querySelectorAll('.zeilen-aktionen button')].map(k => k.getAttribute('aria-label')),
         bunt: !!z.querySelector('.zeilen-aktionen [fill^="#"]') }; })()`);
-    assert.equal(t.koepfe.length, t.zellen, 'Spalten ohne Kopf');
+    assert.equal(t.headers.length, t.cells, 'Spalten ohne Kopf');
     assert.deepEqual(
-      t.koepfe.filter(k => !k),
+      t.headers.filter(k => !k),
       [],
-      `leere Spaltenköpfe: ${JSON.stringify(t.koepfe)}`,
+      `leere Spaltenköpfe: ${JSON.stringify(t.headers)}`,
     );
-    assert.ok(!t.koepfe.includes('In der App eingetragen'), 'Aufnahmedatum statt Kaufdatum');
+    assert.ok(!t.headers.includes('In der App eingetragen'), 'Aufnahmedatum statt Kaufdatum');
     assert.equal(t.datum, '01.06.2026', 'Kaufdatum');
     assert.deepEqual(t.namen, ['Teile von Titanic neu importieren', 'Titanic löschen']);
     assert.equal(t.bunt, false, 'buntes Sinnbild in der Zeile');
 
-    const folge = `[...document.querySelectorAll('#gallery tbody tr')].map(z => z.children[2].textContent.trim())`;
+    const sequence = `[...document.querySelectorAll('#gallery tbody tr')].map(z => z.children[2].textContent.trim())`;
     const stand = `document.querySelector('#gallery [data-arg="name"]').closest('th').getAttribute('aria-sort')`;
     await b.auswerten(`document.querySelector('#gallery [data-click="setsSortieren"][data-arg="name"]').click(); true`);
     await bis(`${stand} === 'ascending'`, 'Name aufsteigend');
-    const auf = await b.auswerten(folge);
+    const auf = await b.auswerten(sequence);
     assert.deepEqual(
       auf,
       [...auf].sort((x, y) => x.localeCompare(y, 'de')),
@@ -244,7 +244,7 @@ async function setsTabelle(_t, a) {
     await b.auswerten(`document.querySelector('#gallery [data-click="setsSortieren"][data-arg="name"]').click(); true`);
     await bis(`${stand} === 'descending'`, 'Name absteigend');
     await a.ruhig();
-    assert.deepEqual(await b.auswerten(folge), [...auf].reverse(), 'absteigend nicht sortiert');
+    assert.deepEqual(await b.auswerten(sequence), [...auf].reverse(), 'absteigend nicht sortiert');
     assert.equal(
       await b.auswerten(`document.activeElement.dataset.arg`),
       'name',
@@ -257,7 +257,7 @@ async function setsTabelle(_t, a) {
   }
 }
 
-async function geschenkUndFiguren(_t, a) {
+async function giftAndMinifigs(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   await b.auswerten(`document.getElementById('vl').click(); true`);
@@ -275,7 +275,7 @@ async function geschenkUndFiguren(_t, a) {
   assert.doesNotMatch(d.kauf, /0,00/, 'Kaufpreis 0 als Betrag');
   assert.equal(tabelle, '4', 'Testdaten: Katalog kennt 4 Figuren');
   assert.equal(d.figuren, tabelle, 'Tabelle und Detail zählen verschieden');
-  await b.auswerten(SCHLIESSEN);
+  await b.auswerten(CLOSE);
 }
 
 async function brick320(_t, a) {
@@ -304,13 +304,13 @@ async function brick320(_t, a) {
   }
 }
 
-async function grosseSchriftErfassen(_t, a) {
+async function addLargeFont(_t, a) {
   const { b, bis } = a;
   await groesse(b, 320, true);
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   try {
     await b.auswerten(`document.documentElement.style.fontSize = '32px'; true`);
-    await b.auswerten(oeffneSetErfassen);
+    await b.auswerten(addOpenSet);
     await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog');
     await a.ruhig(1000);
     const m = await b.auswerten(`(() => { const r = id => document.getElementById(id).getBoundingClientRect();
@@ -318,12 +318,12 @@ async function grosseSchriftErfassen(_t, a) {
     assert.ok(m.preis >= 200, `Preisfeld zu schmal: ${JSON.stringify(m)}`);
     assert.ok(m.waehrung > m.oben, `Währung nicht unter dem Preis: ${JSON.stringify(m)}`);
   } finally {
-    await b.auswerten(`${SCHLIESSEN}; document.documentElement.style.fontSize = ''; true`);
+    await b.auswerten(`${CLOSE}; document.documentElement.style.fontSize = ''; true`);
     await groesse(b, 1280, false);
   }
 }
 
-async function grosseSchriftDetail(_t, a) {
+async function largeFontDetail(_t, a) {
   const { b, bis } = a;
   await groesse(b, 320, true, 700);
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="21318-1"]')`, 'Sammlung');
@@ -337,7 +337,7 @@ async function grosseSchriftDetail(_t, a) {
       return { inhalt: Math.round(Math.min(f.top, m.bottom) - k.bottom), modal: Math.round(m.height) }; })()`);
     assert.ok(m.inhalt >= 400, `Kopf und Fuss lassen dem Inhalt zu wenig: ${JSON.stringify(m)}`);
   } finally {
-    await b.auswerten(`${SCHLIESSEN}; document.documentElement.style.fontSize = ''; true`);
+    await b.auswerten(`${CLOSE}; document.documentElement.style.fontSize = ''; true`);
     await groesse(b, 1280, false);
   }
 }
@@ -417,7 +417,7 @@ async function rueckgaengig(_t, a) {
   await bis(`document.activeElement?.dataset?.arg === '75192-1'`, 'Fokus auf der zurückgeholten Karte', 60);
 }
 
-async function abbrechenEinzeilig(_t, a) {
+async function cancelSingleLine(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/hintergrund', `!!document.querySelector('#jobs-karte .mon-einzeln')`, 'Hintergrund');
   await b.auswerten(`document.querySelectorAll('#tab-monitor details').forEach(d => { d.open = true; }); true`);
@@ -431,7 +431,7 @@ async function abbrechenEinzeilig(_t, a) {
   assert.ok(h.abbrechen <= h.jetzt + 1, `„Abbrechen“ bricht um: ${JSON.stringify(h)}`);
 }
 
-async function leereSammlung(_t, a, kid) {
+async function emptyCollection(_t, a, kid) {
   const { b } = a;
   await a.db.run('DELETE FROM set_acquisitions WHERE user_id = ANY($1)', [[a.uid, kid]]);
   await a.db.run('DELETE FROM sets WHERE user_id = ANY($1)', [[a.uid, kid]]);
@@ -455,11 +455,11 @@ async function leereSammlung(_t, a, kid) {
 test('Tastatur in Formularen, Filterleiste, grosse Schrift', { concurrency: 1, timeout: 600_000 }, async t => {
   const name = `r24_${process.pid}`;
   let kid = 0;
-  const a = await starteApp(t, {
+  const a = await startApp(t, {
     name,
-    alleDesigns: true,
+    allDesigns: true,
     bestand: async (db, uid) => {
-      kid = await musterHaushalt(db, uid);
+      kid = await patternHousehold(db, uid);
       await db.run(`INSERT INTO jobs (type, due_at) VALUES ('wechselkurse', NOW() + interval '6 hours')`);
     },
   });
@@ -471,23 +471,23 @@ test('Tastatur in Formularen, Filterleiste, grosse Schrift', { concurrency: 1, t
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object, kid: number) => Promise<void>][]} */
   const pruefungen = [
-    ['Enter aus jedem Feld', enterAusJedemFeld],
-    ['Esc verwirft den Entwurf, „Abbrechen“', entwurfVerworfen],
+    ['Enter aus jedem Feld', enterFromEachField],
+    ['Esc verwirft den Entwurf, „Abbrechen“', draftDiscarded],
     ['Filter hinter dem Knopf', filterKnopf],
-    ['Entf löscht', entfLoescht],
+    ['Entf löscht', entfDeletes],
     ['Tabelle der Sets', setsTabelle],
-    ['Geschenk und Figurenzahl', geschenkUndFiguren],
+    ['Geschenk und Figurenzahl', giftAndMinifigs],
     ['Brick bei 320 px', brick320],
-    ['Grosse Schrift: Set hinzufügen', grosseSchriftErfassen],
-    ['Grosse Schrift: Set-Detail', grosseSchriftDetail],
+    ['Grosse Schrift: Set hinzufügen', addLargeFont],
+    ['Grosse Schrift: Set-Detail', largeFontDetail],
     ['Offline-Band allein', offlineBand],
     ['Wertlinie in der Farbe der Beträge', wertlinie],
     ['Sprache der Seite', sprache],
     ['Fokus nach Rückgängig', rueckgaengig],
-    ['Abbrechen in einer Zeile', abbrechenEinzeilig],
+    ['Abbrechen in einer Zeile', cancelSingleLine],
     // Lädt die Seite neu und verliert damit die übrigen Design-Stylesheets: nach den Designprüfungen.
     ['Finanzen bei Serverfehler', finanzenFehler],
-    ['Leere Sammlung am Telefon', leereSammlung],
+    ['Leere Sammlung am Telefon', emptyCollection],
   ];
   for (const [titel, fn] of pruefungen) await t.test(titel, () => fn(t, a, kid));
 });

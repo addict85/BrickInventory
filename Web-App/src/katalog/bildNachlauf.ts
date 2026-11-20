@@ -1,15 +1,15 @@
 /** Stündlich, der erste 30 s nach dem Start (src/auftraege/zeitplan.ts). */
-import { logAndContinue, meldeFehler } from '../infra/fehler';
-import { setzeTeilBildLokal, setzeFigurBildLokal } from './katalogPflege';
+import { logAndContinue, reportError } from '../infra/fehler';
+import { setPartImageLocal, setMinifigImageLocal } from './katalogPflege';
 import { KEINE_FARBE } from '../infra/validate';
 import * as enrich from './teileAnreicherung';
-import { AuftragUnterbrochen, type AuftragsKontext } from '../auftraege';
+import { JobInterrupted, type JobContext } from '../auftraege';
 import { versuche } from '../infra/ergebnis';
-import { bilderFuerNachlauf } from './bildlage';
-import type { KatalogKontext } from './kontext';
+import { imagesForFollowUp } from './bildlage';
+import type { CatalogContext } from './kontext';
 
-async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<void> {
-  const { sets, teile: manualParts, figuren: figsToFetch } = await bilderFuerNachlauf(kx);
+async function bildNachlauf(kx: CatalogContext, k: JobContext): Promise<void> {
+  const { sets, teile: manualParts, figuren: figsToFetch } = await imagesForFollowUp(kx);
   if (!sets.length && !manualParts.length && !figsToFetch.length) {
     await k.fortschritt({ erledigt: 0, gesamt: 0, text: 'Alle Bilder gecacht' });
     return;
@@ -29,10 +29,10 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
     if (done % 10 === 0 || done === total) {
       await k.fortschritt({ erledigt: done, gesamt: total, text: `${done} / ${total} geladen` });
     }
-    if (k.beendet) throw new AuftragUnterbrochen();
+    if (k.beendet) throw new JobInterrupted();
   };
   for (const set_number of sets) {
-    await enrich.downloadSetImages(kx, set_number).catch((e: unknown) => meldeFehler(`bild-nachlauf:${set_number}`, e));
+    await enrich.downloadSetImages(kx, set_number).catch((e: unknown) => reportError(`bild-nachlauf:${set_number}`, e));
     await tick();
   }
   for (const p of manualParts) {
@@ -45,10 +45,10 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
     if (local) {
       // Einmal für alle Konten in den Katalog. Ein Schreibfehler bricht den Lauf ab wie bei
       // den Figuren; der nächste findet die Datei und schreibt nach.
-      await setzeTeilBildLokal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local);
+      await setPartImageLocal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local);
       // Die Vorschau gleich anstossen, sonst bliebe es bis zum nächsten Neustart
       // bei der Originalgrösse.
-      kx.bilder.vorschauErzeugen(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
+      kx.bilder.createPreview(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
     }
     await tick();
   }
@@ -61,8 +61,8 @@ async function bildNachlauf(kx: KatalogKontext, k: AuftragsKontext): Promise<voi
     if (local) {
       // Eine Zeile: Der Katalog führt die Figur seit Migration 0034 genau einmal. Ein
       // Schreibfehler bricht den Lauf ab; der nächste findet die Datei und schreibt nach.
-      await setzeFigurBildLokal(kx, f.fig_number, local);
-      kx.bilder.vorschauErzeugen(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
+      await setMinifigImageLocal(kx, f.fig_number, local);
+      kx.bilder.createPreview(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
     }
     await tick();
   }

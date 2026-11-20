@@ -3,13 +3,13 @@
  * Verbindung. Das Protokoll zuletzt, damit es die Meldungen davor noch schreibt. */
 import type { Db } from '../db/database';
 import type { Dienste } from './verdrahtung';
-import { stoppeProtokoll } from '../src/infra/protokoll';
+import { stopLog } from '../src/infra/protokoll';
 import { logAndContinue } from '../src/infra/fehler';
 
-export async function schliessePufferUndTakte(zugang: Db, d: Dienste): Promise<void> {
+export async function closeBufferAndTicks(zugang: Db, d: Dienste): Promise<void> {
   // Beide fangen ihre Schreibfehler selbst.
-  await d.bilder.stoppeBildbedarf();
-  await d.bilder.stoppeFehlanzeige();
-  await zugang.benachrichtigung.close().catch(logAndContinue('server:close'));
-  await stoppeProtokoll();
+  await d.bilder.stopImageDemand();
+  await d.bilder.stopNone();
+  await zugang.notification.close().catch(logAndContinue('server:close'));
+  await stopLog();
 }

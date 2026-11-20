@@ -7,7 +7,7 @@
  * Gegenproben (09.11.2026 gemessen, je einzeln):
  *   A  in deleteVoucher() (src/vouchers/repository) `user_id = $2`
  *      durch `$2::int > 0` ersetzt → rot: „keine Zeile des Opfers ändert sich“
- *   B  in blickfeldIds() (src/haushalt) eine angefragte Konto-ID ohne Prüfung der
+ *   B  in scopeIds() (src/haushalt) eine angefragte Konto-ID ohne Prüfung der
  *      Mitgliedschaft übernommen → rot: „keine Antwort enthält Daten des
  *      Opfers“ und „keine Zeile des Opfers ändert sich“
  *   Grün blieb dagegen das Entfernen der Besitzprüfung nur beim Umbenennen
@@ -26,20 +26,20 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
-const { katalogSet } = require('./helpers/bestand');
+const { catalogSet } = require('./helpers/bestand');
 const _req = S.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { mailAttrappe } = require('./helpers/mail-attrappe');
 mailAttrappe();
-const db = S.testDaten();
+const db = S.testData();
 const auth = _req('src/konto/geraeteToken.js');
-const { VERTRAG } = _req('src/vertrag/index.js');
+const { CONTRACT } = _req('src/vertrag/index.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
 
 const MARKE = `GEHEIM${process.pid}`;
-const OPFER = `opfer_${MARKE}`,
+const VICTIM = `opfer_${MARKE}`,
   FREMD = `fremd_${process.pid}`,
   PASS = 'Fremd-Passwort-1!';
 const SET = '99181-1',
@@ -49,10 +49,10 @@ const SET = '99181-1',
   FARBE = 5,
   FIGUR = 'fk0001';
 const GUTSCHEIN = '5045076374450019876';
-const VOR_DER_ANMELDUNG =
+const BEFORE_THE_LOGIN =
   /^(POST|GET) \/api\/v1\/auth\/(login|register|forgot-password|reset-password|verify[\w/-]*|resend-verification|qr-login[\w/-]*|passkey\/anmelden[\w/-]*|name-frei|email-frei)$/;
 
-function pdfMit(rows) {
+function pdfWith(rows) {
   return new Promise(fertig => {
     const doc = new PDFDocument({ compress: false });
     const stuecke = [];
@@ -120,9 +120,9 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   concurrency: 1,
   timeout: 600_000,
 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[OPFER, FREMD]]);
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[VICTIM, FREMD]]);
   const hash = await bcrypt.hash(PASS, 4);
   const anlegen = async n =>
     (
@@ -132,7 +132,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
         [n, `${n}@example.org`, hash],
       )
     ).id;
-  const opfer = await anlegen(OPFER),
+  const opfer = await anlegen(VICTIM),
     fremd = await anlegen(FREMD);
   for (const k of [opfer, fremd])
     await db.run(
@@ -151,7 +151,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   });
 
   for (const s of [SET, SET2, SET3])
-    await katalogSet(db, s, { name: 'Fremdprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 1 });
+    await catalogSet(db, s, { name: 'Fremdprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 1 });
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ($1, 'Stein 2x2', 'Steine')
                 ON CONFLICT DO NOTHING`,
@@ -171,7 +171,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
-    const name = als === opfer ? OPFER : FREMD;
+    const name = als === opfer ? VICTIM : FREMD;
     req.session = {
       userId: als,
       username: name,
@@ -189,16 +189,16 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
     req.apiUser = { user_id: als, username: name, is_admin: 0 };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   for (const r of S.routerEinhaengungen())
-    app.use(r.mount, require('./helpers/sources').routerAus(_req, `routes/${r.name}.js`));
+    app.use(r.mount, require('./helpers/sources').routerFrom(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(async () => {
     srv.closeAllConnections?.();
     await new Promise(r => srv.close(r));
     // LISTEN-Verbindung und Zeitgeber, die Routen nebenher anstossen, hielten den Prozess sonst offen.
-    await S.testZugang()
-      .benachrichtigung.close()
+    await S.testAccess()
+      .notification.close()
       .catch(() => {});
   });
   const basis = `http://127.0.0.1:${srv.address().port}`;
@@ -230,7 +230,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   await ok('PUT', `/api/v1/sets/${SET}/alert`, { direction: 'unter', threshold: 30, condition: 'N' });
   const setAcq = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1 AND set_number = $2', [opfer, SET]))
     .id;
-  const pdf = await pdfMit(['Bauanleitung']);
+  const pdf = await pdfWith(['Bauanleitung']);
   const f = new FormData();
   f.append('file', new Blob([pdf], { type: 'application/pdf' }), 'anleitung.pdf');
   f.append('description', `Anleitung ${MARKE}`);
@@ -256,13 +256,13 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   await ok('POST', '/api/v1/sets', { set_number: SET3, quantity: 1, condition: 'N' });
   await ok('DELETE', `/api/v1/sets/${SET3}`);
   const trash = (await db.get('SELECT id FROM trash WHERE user_id = $1', [opfer])).id;
-  const token = await auth.tokenAnlegen(opfer, `Gerät ${MARKE}`, true);
+  const token = await auth.createToken(opfer, `Gerät ${MARKE}`, true);
   const nonce = `fremd${process.pid}${Date.now()}`;
   const qr = (
     await db.get(
       `INSERT INTO qr_login_tokens (token, user_id, expires_at, pickup_code, code_hash)
     VALUES ($1, $2, NOW() + INTERVAL '5 minutes', 'abh', 'x') RETURNING id`,
-      [auth.tokenAbdruck(nonce), opfer],
+      [auth.tokenDigest(nonce), opfer],
     )
   ).id;
 
@@ -278,11 +278,11 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
     return aus;
   };
   const vorher = await bestand();
-  const zeilenDesOpfers = Object.values(vorher).reduce((n, z) => n + z.length, 0);
-  assert.ok(zeilenDesOpfers >= 15, `nur ${zeilenDesOpfers} Zeilen des Opfers angelegt`);
+  const rowsOfVictim = Object.values(vorher).reduce((n, z) => n + z.length, 0);
+  assert.ok(rowsOfVictim >= 15, `nur ${rowsOfVictim} Zeilen des Opfers angelegt`);
 
   // ── Werte des Opfers für Pfad, Abfrage und Rumpf ───────────────────────
-  const idFuer = p =>
+  const idFor = p =>
     p.includes('/storage/locations/')
       ? ort
       : p.includes('/papierkorb/')
@@ -296,18 +296,18 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
               : p.includes('/minifigs/')
                 ? figAcq
                 : opfer;
-  const acqFuer = p => (p.startsWith('/api/v1/parts') ? teilAcq : p.startsWith('/api/v1/minifigs') ? figAcq : setAcq);
-  const pfadWert = (p, n) =>
+  const acqFor = p => (p.startsWith('/api/v1/parts') ? teilAcq : p.startsWith('/api/v1/minifigs') ? figAcq : setAcq);
+  const pathValue = (p, n) =>
     ({
       setNumber: p.includes('/wanted/') ? SET2 : SET,
       sn: SET,
       partNumber: TEIL,
       colorId: FARBE,
       figNumber: FIGUR,
-      id: idFuer(p),
-      acqId: acqFuer(p),
+      id: idFor(p),
+      acqId: acqFor(p),
       instrId: anleitung,
-      tokenId: auth.tokenAbdruck(token).slice(0, 16),
+      tokenId: auth.tokenDigest(token).slice(0, 16),
       jobId: '1700000000000-abcd',
       condition: 'N',
       type: 'anleitung',
@@ -315,7 +315,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
     })[n];
   /** `konto`: das Opfer (fremde Konto-ID im Feld) oder das eigene — dann kommt die Anfrage an der
    * Kontoprüfung vorbei und trifft mit den Kennungen des Opfers die Besitzprüfung der Zeile. */
-  const feldWert = (k, konto) =>
+  const fieldValue = (k, konto) =>
     ({
       accounts: String(konto),
       owner: String(konto),
@@ -351,24 +351,24 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
       date: '2024-01-01',
       acquired_at: '2024-01-01',
     })[k];
-  const abfrageWert = (k, konto) => {
-    const v = feldWert(k, konto);
+  const queryValue = (k, konto) => {
+    const v = fieldValue(k, konto);
     return v === undefined ? undefined : Array.isArray(v) ? v.join(',') : String(v);
   };
 
   // ── Das fremde Konto ruft jede Route mit diesen Werten ──────────────────
   als = fremd;
-  const lecks = [],
+  const leaks = [],
     gerufen = [];
-  for (const [schluessel, route] of Object.entries(VERTRAG)) {
-    if (VOR_DER_ANMELDUNG.test(schluessel) || schluessel === 'DELETE /api/v1/auth/konto') continue;
+  for (const [schluessel, route] of Object.entries(CONTRACT)) {
+    if (BEFORE_THE_LOGIN.test(schluessel) || schluessel === 'DELETE /api/v1/auth/konto') continue;
     const [methode, muster] = schluessel.split(' ');
-    const weg = muster.replace(/:(\w+)/g, (_, n) => encodeURIComponent(String(pfadWert(muster, n) ?? 'x')));
+    const weg = muster.replace(/:(\w+)/g, (_, n) => encodeURIComponent(String(pathValue(muster, n) ?? 'x')));
     const felder = route.abfrage?.shape ? Object.keys(route.abfrage.shape) : [];
     for (const konto of [opfer, fremd]) {
-      const w = k => feldWert(k, konto);
+      const w = k => fieldValue(k, konto);
       const abfrage = new URLSearchParams(
-        felder.map(k => [k, abfrageWert(k, konto)]).filter(([, v]) => v !== undefined),
+        felder.map(k => [k, queryValue(k, konto)]).filter(([, v]) => v !== undefined),
       ).toString();
       const rumpfe =
         methode === 'GET' || route.formular
@@ -380,7 +380,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
           gerufen.push(`${schluessel} ${r.status}`);
           for (const geheim of [MARKE, GUTSCHEIN])
             if (r.text.includes(geheim))
-              lecks.push(`${schluessel}${q ? '?' + q : ''} → ${r.status}: enthält ${geheim}`);
+              leaks.push(`${schluessel}${q ? '?' + q : ''} → ${r.status}: enthält ${geheim}`);
         }
     }
   }
@@ -397,7 +397,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
     );
   });
 
-  await t.test('keine Antwort enthält Daten des Opfers', () => assert.deepEqual(lecks, []));
+  await t.test('keine Antwort enthält Daten des Opfers', () => assert.deepEqual(leaks, []));
 
   await t.test('keine Zeile des Opfers ändert sich', async () => {
     const nachher = await bestand();

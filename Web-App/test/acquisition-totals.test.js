@@ -2,7 +2,7 @@
  * Die Summenzeile der Erfassungen rechnet der SERVER — einmal.
  *
  * Gegenprobe (08.11.2026 gemessen): acqSummary() liest totals.quantity nicht
- * (`const menge = 0`) bzw. summenText() rechnet nicht mit totals.amount → rot:
+ * (`const menge = 0`) bzw. sumsText() rechnet nicht mit totals.amount → rot:
  * „keine Oberfläche rechnet die Summe noch einmal“.
  * Gegenprobe (durchgeführt): `amount` in acquisitionTotals() auf 0 statt null
  * bei fehlenden Preisen → der Randfall-Teilschritt wird rot. Und ein
@@ -17,10 +17,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { openUi, warte } = require('./helpers/oberflaeche');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { acquisitionTotals } = _req('src/bestand/acquisitions.js');
 
@@ -80,8 +80,8 @@ test('leere Liste', () => {
 // ── Teil 2: die Regel ───────────────────────────────────────────────────────
 
 test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, async t => {
-  const db = testDaten();
-  if (!(await datenOderSkip(t, _req))) return;
+  const db = testData();
+  if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid,
     NAME = `summen-${P}`,
     SN = `${P}7-1`,
@@ -143,7 +143,7 @@ test('keine Oberfläche rechnet die Summe noch einmal', async () => {
     created_at: '2026-10-01T10:00:00Z',
     user_id: 1,
   });
-  const { d } = await oeffneOberflaeche({
+  const { d } = await openUi({
     '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
     '/v1/sets/10294-1': { success: true, set: SET },
     '/v1/sets/10294-1/acquisitions': {

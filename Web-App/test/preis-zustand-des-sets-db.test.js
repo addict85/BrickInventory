@@ -5,9 +5,9 @@
  * aus set-condition-aggregate.test.js.
  *
  * Gegenproben (15.11.2026 gemessen):
- *   A  in src/sets/preise.ts (setPreis) `await sk.finanzen.setZustand(blickfeld, sn)`
+ *   A  in src/sets/preise.ts (setPrice) `await sk.finanzen.setState(blickfeld, sn)`
  *      durch 'U' ersetzt → rot: „/price nimmt den Neupreis“ (50 statt 100)
- *   B  in src/finanzen/priceHistory.ts (preisverlaufSet) den Zustand fest auf
+ *   B  in src/finanzen/priceHistory.ts (priceHistorySet) den Zustand fest auf
  *      DEFAULT_PRICE_CONDITION gesetzt → rot: „/price-history im Zustand des Sets“ ('U')
  */
 const test = require('node:test');
@@ -15,15 +15,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 test('Preis und Verlauf eines neuen Sets kommen im Zustand N', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = 'preiszustand-n',
     SET = '42201-1';
   await db.run(`DELETE FROM users WHERE username = $1`, [NAME]);
@@ -35,7 +35,7 @@ test('Preis und Verlauf eines neuen Sets kommen im Zustand N', { concurrency: 1 
   );
   await db.run(`DELETE FROM price_cache WHERE set_number = $1`, [SET]);
   await db.run(`DELETE FROM price_history WHERE set_number = $1`, [SET]);
-  await haeltSet(db, uid, SET, 0);
+  await holdsSet(db, uid, SET, 0);
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, purchase_price, condition, quantity) VALUES ($1, $2, 90, 'N', 1)`,
     [uid, SET],

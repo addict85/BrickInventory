@@ -5,11 +5,11 @@
  * mit einer, die der Bestand nicht einhält.
  *
  * Gegenproben (05.11.2026, je einzeln):
- *   A  `if (ist > schranke)` → `if (false)` → „eine zu niedrige Schranke ist rot“ rot
+ *   A  `if (ist > limit)` → `if (false)` → „eine zu niedrige Schranke ist rot“ rot
  *   B  nur `lint/style` gezählt statt aller Regeln → „lint: … zählt die Funde eines
  *      Probebaums“ rot (seit der Bestand 0 Funde hat, zählt ein Probebaum mit Funden;
  *      12.11.2026 wiederholt)
- *   C  check-test-typen.js: `if (meldungen.length > schranke)` → `if (false)`
+ *   C  check-test-typen.js: `if (meldungen.length > limit)` → `if (false)`
  *      → „typecheck:tests …“ rot (14.11.2026 mit Schranke 0 und Probe -1 wiederholt)
  */
 const test = require('node:test');
@@ -20,7 +20,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
-const SCHRANKEN = require('../scripts/lint-schranken.json');
+const LIMITS = require('../scripts/lint-schranken.json');
 
 /** Ein Baum mit einem Lint-Fund (`==`) und einer unformatierten Datei: Am Bestand ohne Funde
  *  liesse sich nicht sehen, ob das Skript überhaupt zählt. */
@@ -59,9 +59,9 @@ for (const art of ['lint', 'format']) {
     const r = ratsche(art);
     assert.equal(r.code, 0, r.aus);
     const ist = Number(/\] (\d+) /.exec(r.aus)?.[1]);
-    assert.ok(ist >= 0 && ist <= SCHRANKEN[art], r.aus);
+    assert.ok(ist >= 0 && ist <= LIMITS[art], r.aus);
     // Spielraum für Aufräumen in parallelen Zweigen; mehr heisst: die Schranke nachziehen.
-    assert.ok(SCHRANKEN[art] - ist <= 50, `Schranke ${SCHRANKEN[art]}, gezählt ${ist}: nachziehen`);
+    assert.ok(LIMITS[art] - ist <= 50, `Schranke ${LIMITS[art]}, gezählt ${ist}: nachziehen`);
   });
 
   test(`${art}: zählt die Funde eines Probebaums`, () => {
@@ -80,11 +80,11 @@ for (const art of ['lint', 'format']) {
 test('typecheck:tests: rot über der Schranke, der Bestand hält sie', () => {
   // Der Bestand hat 0 Meldungen: Einmal mit der echten Schranke grün, einmal mit -1 rot,
   // damit sichtbar ist, dass das Skript überhaupt vergleicht.
-  const lauf = (/** @type {number | null} */ schranke) => {
+  const lauf = (/** @type {number | null} */ limit) => {
     const env = { ...process.env };
-    if (schranke !== null) {
+    if (limit !== null) {
       const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'tt-')), 's.json');
-      fs.writeFileSync(datei, JSON.stringify({ testtypen: schranke }));
+      fs.writeFileSync(datei, JSON.stringify({ testtypen: limit }));
       env.LINT_SCHRANKEN = datei;
     }
     return spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'check-test-typen.js')], {
@@ -96,8 +96,8 @@ test('typecheck:tests: rot über der Schranke, der Bestand hält sie', () => {
   };
   const echt = lauf(null);
   assert.equal(echt.status, 0, echt.stdout + echt.stderr);
-  assert.match(echt.stdout, new RegExp(`\\] 0 Meldungen \\(Schranke ${SCHRANKEN.testtypen}\\)`));
-  const zuKnapp = lauf(-1);
-  assert.equal(zuKnapp.status, 1, zuKnapp.stdout + zuKnapp.stderr);
-  assert.match(zuKnapp.stderr, /0 Meldungen, erlaubt sind -1/);
+  assert.match(echt.stdout, new RegExp(`\\] 0 Meldungen \\(Schranke ${LIMITS.testtypen}\\)`));
+  const toTight = lauf(-1);
+  assert.equal(toTight.status, 1, toTight.stdout + toTight.stderr);
+  assert.match(toTight.stderr, /0 Meldungen, erlaubt sind -1/);
 });

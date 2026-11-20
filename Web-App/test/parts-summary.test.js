@@ -3,11 +3,11 @@
  */
 require('./helpers/systemrahmen');
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
+const { holdsSet, holdsPart } = require('./helpers/bestand');
 const { keineDb } = require('./helpers/db');
 
 const ROOT = path.join(__dirname, '..');
@@ -65,7 +65,7 @@ test('set_number und storage gehen bewusst an der Zusammenfassung vorbei', () =>
   // verdichtet und kann nach nichts filtern, was INNERHALB einer Gruppe
   // verschieden ist.
   const h = require('./helpers/sources').handlerQuelle();
-  const zeile = /if \(filter\.ohneManuelle && ([^)]*)\)/.exec(h)?.[1] || '';
+  const zeile = /if \(filter\.withoutManual && ([^)]*)\)/.exec(h)?.[1] || '';
   assert.ok(
     zeile.includes('!filter.set_number'),
     'Die Teile EINES Sets sind ein anderer Anwendungsfall — dort ist die Live-Abfrage passend und schnell genug',
@@ -86,9 +86,9 @@ try {
   // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
   const _req = require('./helpers/sources').buildAndRequire();
   process.env.DATABASE_URL = DB_URL;
-  umgebung({ SESSION_SECRET: 'test' });
-  db = testDaten();
-  H = require('./helpers/sources').handlerModul(_req);
+  environment({ SESSION_SECRET: 'test' });
+  db = testData();
+  H = require('./helpers/sources').handlerModule(_req);
   PS = _req('src/parts/summary.js');
   S = _req('src/bestand/kennzahlen.js');
 } catch (e) {
@@ -117,8 +117,8 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
     [U],
   );
   // Zwei Sets, das zweite doppelt vorhanden — die Menge muss mitmultipliziert werden.
-  await haeltSet(db, U, 'A-1', 1);
-  await haeltSet(db, U, 'B-1', 2);
+  await holdsSet(db, U, 'A-1', 1);
+  await holdsSet(db, U, 'B-1', 2);
   // Farbbezeichnung und Name stehen seit Migration 0034 in den Katalogen.
   // Hier nicht nebensaechlich: Die Prüfungen unten suchen die Gruppe über
   // `color_name === 'Rot'`.
@@ -128,9 +128,9 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES
     ('3001',5,'Rot'),('3002',1,'Blau'),('3003',2,'Gruen')
     ON CONFLICT (part_number, color_id) DO NOTHING`);
-  await haeltTeil(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
-  await haeltTeil(db, U, '3001', { setNumber: 'B-1', menge: 4, colorId: 5 });
-  await haeltTeil(db, U, '3002', { setNumber: 'A-1', menge: 1, colorId: 1 });
+  await holdsPart(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
+  await holdsPart(db, U, '3001', { setNumber: 'B-1', menge: 4, colorId: 5 });
+  await holdsPart(db, U, '3002', { setNumber: 'A-1', menge: 1, colorId: 1 });
   // Die Setliste für 3003 steht schon jetzt im Katalog; unten kommt nur die
   // Bestandszeile dazu (eine Katalogänderung zöge die Gruppe sofort nach).
   await db.run(`INSERT INTO set_parts (set_number, part_number, color_id, quantity) VALUES ('A-1','3003',2,9)
@@ -181,7 +181,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   );
   await PS.rebuildNow(U);
   assert.equal(await PS.summaryFresh(U, { strict: true }), true, 'Vorbedingung: die eigene Zusammenfassung ist frisch');
-  await haeltTeil(db, FREMD, '9999', { menge: 1, colorId: 7 });
+  await holdsPart(db, FREMD, '9999', { menge: 1, colorId: 7 });
   assert.equal(
     await PS.summaryFresh(U, { strict: true }),
     true,
@@ -320,37 +320,37 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
     "INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',false) ON CONFLICT DO NOTHING",
     [U],
   );
-  await haeltSet(db, U, 'A-1', 1);
-  await haeltTeil(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
-  await haeltTeil(db, U, '9999', { menge: 11, colorId: 7 });
+  await holdsSet(db, U, 'A-1', 1);
+  await holdsPart(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
+  await holdsPart(db, U, '9999', { menge: 11, colorId: 7 });
 
   // Weg 1: aus der Zusammenfassung.
   await PS.rebuildNow(U);
-  const ausSummary = await H.partStatsQuery([U]);
+  const fromSummary = await H.partStatsQuery([U]);
 
   // Weg 2: der Rückfall. Die Zusammenfassung wird dafür entfernt — dann
   // liefert summaryFresh(strict) false, und partStatsQuery geht live.
   await db.run('DELETE FROM parts_summary WHERE user_id=$1', [U]);
   await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
-  const ausLive = await H.partStatsQuery([U]);
+  const fromLive = await H.partStatsQuery([U]);
 
   assert.deepEqual(
-    ausLive,
-    ausSummary,
+    fromLive,
+    fromSummary,
     'Die beiden Wege zählen Verschiedenes. Aus der Zusammenfassung: ' +
-      `${JSON.stringify(ausSummary)}, live: ${JSON.stringify(ausLive)}. ` +
+      `${JSON.stringify(fromSummary)}, live: ${JSON.stringify(fromLive)}. ` +
       'Das manuell erfasste Teil (Menge 11) gehört in keine der Set-Mengen.',
   );
 
   // Sorten und Farben zählen beide Quellen, wie die Liste darunter (siehe
   // teile-kennzahlen-einzeln-db.test.js); die Menge bleibt nach Quelle getrennt.
-  assert.equal(ausSummary.unique_parts, 2, 'Das manuelle Teil fehlt in den Sorten');
-  assert.equal(ausSummary.unique_colors, 2, 'Die Farbe des manuellen Teils fehlt');
-  assert.equal(ausSummary.total_parts, 3, 'Die Menge des manuellen Teils steckt in der Summe');
+  assert.equal(fromSummary.unique_parts, 2, 'Das manuelle Teil fehlt in den Sorten');
+  assert.equal(fromSummary.unique_colors, 2, 'Die Farbe des manuellen Teils fehlt');
+  assert.equal(fromSummary.total_parts, 3, 'Die Menge des manuellen Teils steckt in der Summe');
   // Getrennt ausgewiesen: Der Teile-Reiter zählt beide zusammen, wie die
   // Kachel der Sammlung (/v1/stats). Gegenprobe (01.11.2026): manual_parts in
   // kennzahlen() fest auf 0 → rot „Die einzeln erfassten Teile fehlen …“.
-  assert.equal(ausSummary.manual_parts, 11, 'Die einzeln erfassten Teile fehlen in der Aufschlüsselung');
+  assert.equal(fromSummary.manual_parts, 11, 'Die einzeln erfassten Teile fehlen in der Aufschlüsselung');
   const gesamt = await S.getStats([U]);
   assert.deepEqual(
     [gesamt.total_parts, gesamt.set_parts, gesamt.manual_parts],

@@ -29,26 +29,26 @@ process.env.APP_ROOT = wurzel;
 process.env.BILD_ABRUFE_JE_MINUTE = '1000';
 const express = require('express');
 const sharp = require('sharp');
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { bis } = require('./helpers/zeit');
-const bildDurchreichen = (...a) =>
-  _req('routes/imgProxy.js').bildDurchreichen(require('./helpers/sources').testDienste(), ...a);
+const passThroughImage = (...a) =>
+  _req('routes/imgProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
 const { SET_IMG_MAX_BYTES, setBildHerunterladen } = _req('src/bilder/setImages.js');
 const { imgProxyFailures } = _req('src/bilder/imgProxyStats.js');
 const cacheDir = path.join(wurzel, 'data', 'img_proxy_cache');
 
 fs.mkdirSync(path.join(wurzel, 'data', 'images', 'sets'), { recursive: true });
 
-let cdnRumpf = Buffer.alloc(300, 7);
-let mitLaenge = true;
+let cdnBody = Buffer.alloc(300, 7);
+let withLength = true;
 const echt = https.get;
 https.get = /** @type {typeof https.get} */ (
   /** @type {unknown} */ (
     (/** @type {unknown} */ _url, /** @type {unknown} */ _o, /** @type {(r: unknown) => void} */ cb) => {
       const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
-      const rumpf = cdnRumpf;
+      const rumpf = cdnBody;
       // In Stücken wie ein echter Strom: Die Grenze greift mitten im Lesen.
       const stuecke = [];
       for (let i = 0; i < rumpf.length; i += 1 << 20) stuecke.push(rumpf.subarray(i, i + (1 << 20)));
@@ -56,7 +56,10 @@ https.get = /** @type {typeof https.get} */ (
         cb(
           Object.assign(Readable.from(stuecke), {
             statusCode: 200,
-            headers: { 'content-type': 'image/jpeg', ...(mitLaenge ? { 'content-length': String(rumpf.length) } : {}) },
+            headers: {
+              'content-type': 'image/jpeg',
+              ...(withLength ? { 'content-length': String(rumpf.length) } : {}),
+            },
           }),
         ),
       );
@@ -67,10 +70,10 @@ https.get = /** @type {typeof https.get} */ (
 
 // Die Vorschau-Sperre hält eine eigene Verbindung; mitgeschrieben, damit der Test sie schliesst.
 const eigene = [];
-const standard = testZugang();
-const verbinde = standard.eigeneVerbindung;
-standard.eigeneVerbindung = async () => {
-  const c = await verbinde();
+const standard = testAccess();
+const connect = standard.ownConnection;
+standard.ownConnection = async () => {
+  const c = await connect();
   eigene.push(c);
   return c;
 };
@@ -81,7 +84,7 @@ app.use((req, _res, next) => {
   Object.assign(req, { session: { userId: 500000 + (konto++ % 1000) } });
   next();
 });
-app.get('/p', bildDurchreichen);
+app.get('/p', passThroughImage);
 const srv = app.listen(0);
 const hole = (adresse, thumb = false) =>
   fetch(
@@ -92,13 +95,13 @@ const hole = (adresse, thumb = false) =>
 const imCache = () => (fs.existsSync(cacheDir) ? fs.readdirSync(cacheDir) : []);
 const adresse = name => `https://cdn.rebrickable.com/media/parts/elements/${name}-${process.pid}.jpg`;
 
-/** Fängt console.error während `arbeit` ab. */
-async function mitFehlern(arbeit) {
+/** Fängt console.error während `work` ab. */
+async function withErrors(work) {
   const zeilen = [];
   const e = console.error;
   console.error = (...a) => zeilen.push(a.join(' '));
   try {
-    await arbeit();
+    await work();
   } finally {
     console.error = e;
   }
@@ -109,16 +112,16 @@ test.after(async () => {
   https.get = echt;
   srv.close();
   for (const c of eigene) await c.end().catch(() => {});
-  await testDaten()
+  await testData()
     .pool?.end?.()
     .catch(() => {});
   fs.rmSync(wurzel, { recursive: true, force: true });
 });
 
 test('ein Bild genau an der Grenze geht hinaus und in den Cache', async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   assert.ok(SET_IMG_MAX_BYTES >= 10 * 1024 * 1024, 'hochauflösende Katalogbilder (5 MB und mehr) fielen heraus');
-  cdnRumpf = Buffer.alloc(SET_IMG_MAX_BYTES, 3);
+  cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES, 3);
   const r = await hole(adresse('grenze'));
   assert.deepEqual([r.status, r.n], [200, SET_IMG_MAX_BYTES]);
   assert.ok(
@@ -130,9 +133,9 @@ test('ein Bild genau an der Grenze geht hinaus und in den Cache', async t => {
 });
 
 test('ein Bild über der Grenze wird verworfen, gezählt und gemeldet', async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
-  cdnRumpf = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 4);
-  const vorherCache = imCache().length;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 4);
+  const beforeCache = imCache().length;
   // Mit Content-Length lehnt schon der Abruf ab; ohne zählt der Strom mit und bricht ab.
   /** @type {Array<{ laenge: boolean, zaehler: 'error' | 'other', meldung: RegExp }>} */
   const faelle = [
@@ -140,9 +143,9 @@ test('ein Bild über der Grenze wird verworfen, gezählt und gemeldet', async t 
     { laenge: false, zaehler: 'other', meldung: /Antwort über 20971520 Byte.*weder gecacht/ },
   ];
   for (const { laenge, zaehler, meldung } of faelle) {
-    mitLaenge = laenge;
+    withLength = laenge;
     const vorher = imgProxyFailures[zaehler];
-    const zeilen = await mitFehlern(async () => {
+    const zeilen = await withErrors(async () => {
       await hole(adresse(`zugross-${laenge}`));
       await bis(() => imgProxyFailures[zaehler] > vorher);
     });
@@ -152,14 +155,14 @@ test('ein Bild über der Grenze wird verworfen, gezählt und gemeldet', async t 
       `Content-Length ${laenge}:\n${zeilen.join('\n')}`,
     );
   }
-  mitLaenge = true;
-  assert.equal(imCache().length, vorherCache, 'etwas liegt im Cache');
+  withLength = true;
+  assert.equal(imCache().length, beforeCache, 'etwas liegt im Cache');
 });
 
 test('der lokale Download verwirft dasselbe Bild und meldet es', async () => {
-  cdnRumpf = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 5);
+  cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 5);
   let pfad = 'unberührt';
-  const zeilen = await mitFehlern(async () => {
+  const zeilen = await withErrors(async () => {
     pfad = await setBildHerunterladen(adresse('lokal'), '99999-1');
   });
   assert.equal(pfad, null);
@@ -167,7 +170,7 @@ test('der lokale Download verwirft dasselbe Bild und meldet es', async () => {
     zeilen.some(z => /99999-1: Bild grösser als 20 MB/.test(z)),
     zeilen.join('\n'),
   );
-  cdnRumpf = Buffer.alloc(SET_IMG_MAX_BYTES, 5);
+  cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES, 5);
   assert.equal(
     await setBildHerunterladen(adresse('lokal2'), '99998-1'),
     '/images/sets/99998-1.jpg',
@@ -176,12 +179,12 @@ test('der lokale Download verwirft dasselbe Bild und meldet es', async () => {
 });
 
 test('die Vorschau entsteht aus dem fertig geschriebenen Cache', async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
-  cdnRumpf = await sharp({ create: { width: 640, height: 480, channels: 3, background: '#36c' } })
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+  cdnBody = await sharp({ create: { width: 640, height: 480, channels: 3, background: '#36c' } })
     .jpeg()
     .toBuffer();
   const r = await hole(adresse('vorschau'), true);
-  assert.deepEqual([r.status, r.n], [200, cdnRumpf.length], 'zuerst geht das Original hinaus');
+  assert.deepEqual([r.status, r.n], [200, cdnBody.length], 'zuerst geht das Original hinaus');
   assert.ok(await bis(() => imCache().some(f => f.endsWith('_thumb.jpg')), 10_000), 'keine Vorschau entstanden');
   const vorschau = imCache().find(f => f.endsWith('_thumb.jpg'));
   assert.equal((await sharp(path.join(cacheDir, vorschau)).metadata()).width, 200);

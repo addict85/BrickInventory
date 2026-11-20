@@ -10,7 +10,7 @@
  *      tryGet(res.headers.location)) zurückgeholt → rot: „setBildHerunterladen
  *      übersteht jede Umleitung" (uncaughtException ERR_INVALID_URL)
  *   B  in abruf.ts die Hostliste nur noch für die Startadresse geprüft
- *      (naechsteUmleitung ohne o.hosts, sprung() nur bei u === start) → rot:
+ *      (nextRedirect ohne o.hosts, sprung() nur bei u === start) → rot:
  *      „fremder Host wird abgewiesen" und „setBildHerunterladen übersteht …"
  *   C  in abruf.ts die Zählung im data-Handler von holeHttps entfernt → rot:
  *      „Körper ohne Längenangabe über der Grenze"
@@ -25,40 +25,40 @@ const https = require('node:https');
 const tls = require('node:tls');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { portVon } = require('./helpers/server');
-const { holeHttps, oeffneHttps, AbrufFehler } = _req('src/infra/abruf.js');
+const { portOf } = require('./helpers/server');
+const { holeHttps, openHttps, AbrufFehler } = _req('src/infra/abruf.js');
 const { setBildHerunterladen } = _req('src/bilder/setImages.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 const FIX = path.join(__dirname, 'fixtures');
 const key = fs.readFileSync(path.join(FIX, 'abruf-test.key'));
 const cert = fs.readFileSync(path.join(FIX, 'abruf-test.crt'));
-const BILD = Buffer.alloc(600, 0xff);
+const IMAGE = Buffer.alloc(600, 0xff);
 
 let port = 0;
 const gesehen = [];
 const server = https.createServer({ key, cert }, (req, res) => {
   gesehen.push({ host: req.headers.host, pfad: req.url, auth: req.headers.authorization || null });
-  const umleiten = ziel => {
+  const redirect = ziel => {
     res.writeHead(302, { Location: ziel });
     res.end();
   };
   switch (req.url.split('?')[0]) {
     case '/relativ':
-      return umleiten('/bild.jpg');
+      return redirect('/bild.jpg');
     case '/http':
-      return umleiten(`http://localhost:${port}/bild.jpg`);
+      return redirect(`http://localhost:${port}/bild.jpg`);
     case '/fremd':
-      return umleiten(`https://example.org:${port}/bild.jpg`);
+      return redirect(`https://example.org:${port}/bild.jpg`);
     case '/ohne-ziel':
       res.writeHead(302);
       return res.end();
     case '/kaputt':
-      return umleiten('https://[::1');
+      return redirect('https://[::1');
     case '/schleife':
-      return umleiten('/schleife');
+      return redirect('/schleife');
     case '/wechsel':
-      return umleiten(`https://127.0.0.1:${port}/echo`);
+      return redirect(`https://127.0.0.1:${port}/echo`);
     case '/echo':
       res.writeHead(200, { 'Content-Type': 'application/json' });
       return res.end(JSON.stringify({ auth: req.headers.authorization || null }));
@@ -73,7 +73,7 @@ const server = https.createServer({ key, cert }, (req, res) => {
       return;
     case '/bild.jpg':
       res.writeHead(200, { 'Content-Type': 'image/jpeg' });
-      return res.end(BILD);
+      return res.end(IMAGE);
     default:
       res.writeHead(404);
       res.end();
@@ -93,16 +93,16 @@ const basis = () => `https://localhost:${port}`;
 
 test.before(async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', () => r(null)));
-  port = portVon(server);
+  port = portOf(server);
 });
 test.after(() => {
   server.closeAllConnections();
   server.close();
 });
 
-async function grund(versprechen) {
+async function grund(promise) {
   try {
-    await versprechen;
+    await promise;
   } catch (e) {
     assert.ok(e instanceof AbrufFehler, `kein AbrufFehler: ${e}`);
     return e.grund;
@@ -114,7 +114,7 @@ test('relative Umleitung wird gegen die Ausgangsadresse aufgelöst', async () =>
   const r = await holeHttps(`${basis()}/relativ`, opt());
   assert.equal(r.status, 200);
   assert.equal(r.url, `${basis()}/bild.jpg`);
-  assert.equal(r.koerper.length, BILD.length);
+  assert.equal(r.koerper.length, IMAGE.length);
 });
 
 // Gegenprobe (02.11.2026 gemessen): in abruf.ts die Bedingung „nur GET folgt“
@@ -154,7 +154,7 @@ test('Startadresse ausserhalb der Liste oder ohne https geht nicht hinaus', asyn
 
 test('Umleitungsschleife endet an der Grenze', async () => {
   const vorher = gesehen.length;
-  assert.equal(await grund(holeHttps(`${basis()}/schleife`, opt({ umleitungen: 3 }))), 'umleitung');
+  assert.equal(await grund(holeHttps(`${basis()}/schleife`, opt({ redirects: 3 }))), 'umleitung');
   assert.equal(gesehen.length - vorher, 4);
 });
 
@@ -177,7 +177,7 @@ test('Körper über der Grenze, angesagt oder ohne Längenangabe', async () => {
     'zu-gross',
     'Körper ohne Längenangabe über der Grenze',
   );
-  const a = await oeffneHttps(`${basis()}/gross-still`, opt());
+  const a = await openHttps(`${basis()}/gross-still`, opt());
   const fehler = await new Promise(fertig => {
     const s = a.strom();
     s.resume();
@@ -206,5 +206,5 @@ test('setBildHerunterladen übersteht jede Umleitung', async t => {
     assert.equal(await setBildHerunterladen(`https://cdn.rebrickable.com${pfad}`, nr), null, pfad);
   assert.equal(fs.existsSync(datei), false);
   assert.equal(await setBildHerunterladen('https://cdn.rebrickable.com/relativ', nr), `/images/sets/${nr}.jpg`);
-  assert.equal(fs.readFileSync(datei).length, BILD.length);
+  assert.equal(fs.readFileSync(datei).length, IMAGE.length);
 });

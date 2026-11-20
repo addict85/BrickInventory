@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '..');
 // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { assertLoginAllowed } = _req('src/konto/anmeldepruefung.js');
-const { ARGON2_KOSTEN } = _req('src/konto/passwortHash.js');
+const { ARGON2_COST } = _req('src/konto/passwortHash.js');
 const { USERNAME_RE } = _req('src/konto/namensRegeln.js');
 const { escapeLike } = _req('src/konto/geraeteToken.js');
 const { ohneKommentare } = require('./helpers/sources');
@@ -30,7 +30,7 @@ const { ohneKommentare } = require('./helpers/sources');
 /**
  * Jeden Anmelde-Handler SUCHEN statt zwei aufzuzählen.
  */
-function anmeldeHandler() {
+function loginHandler() {
   const dateien = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
       const p = path.join(dir, e.name);
@@ -89,28 +89,28 @@ test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
 });
 
 test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
-  const gefunden = anmeldeHandler();
+  const gefunden = loginHandler();
   // Selbstbeweis: Findet das Muster nichts, wäre die Fehlerliste leer und der
   // Test grün, ohne etwas geprüft zu haben.
   assert.ok(gefunden.length >= 2, `Nur ${gefunden.length} Anmelde-Routen gefunden — Muster veraltet?`);
-  const mitPasswort = gefunden.filter(h => /password/.test(h.koerper));
+  const withPassword = gefunden.filter(h => /password/.test(h.koerper));
   assert.equal(
-    mitPasswort.length,
+    withPassword.length,
     1,
-    `${mitPasswort.length} passwortbasierte Anmeldungen: ` +
-      mitPasswort.map(h => `${h.datei} ${h.pfad}`).join(', ') +
+    `${withPassword.length} passwortbasierte Anmeldungen: ` +
+      withPassword.map(h => `${h.datei} ${h.pfad}`).join(', ') +
       ' — es soll genau eine geben.',
   );
 
-  const abweichler = mitPasswort
-    .filter(h => !/\b(pruefeAnmeldedaten|anmelden)\(/.test(h.koerper))
+  const outlier = withPassword
+    .filter(h => !/\b(checkCredentials|anmelden)\(/.test(h.koerper))
     .map(h => `${h.datei}  ${h.pfad}`);
   assert.deepEqual(
-    abweichler,
+    outlier,
     [],
     'Diese Anmeldungen prüfen die Zugangsdaten selbst statt über ' +
-      'pruefeAnmeldedaten() aus src/konto/anmeldepruefung.ts:\n  ' +
-      abweichler.join('\n  ') +
+      'checkCredentials() aus src/konto/anmeldepruefung.ts:\n  ' +
+      outlier.join('\n  ') +
       '\nEine zweite Fassung ist schon zweimal auseinandergelaufen: erst fehlten ' +
       'die Konto-Vorbedingungen, dann der Vergleich gegen den Dummy-Hash ' +
       '(415 ms Unterschied, siehe test/login-zeitgleich-db.test.js).',
@@ -121,15 +121,19 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
   // Wer den Zähler selbst hochzählt, hat auch die Passwortprüfung selbst
   // gebaut — der Aufruf ist damit der zuverlässigste Fingerabdruck einer
   // zweiten Anmeldefassung, unabhängig davon, wie ihre Route heisst.
-  const zaehler = /\b(anmeldungErlaubt|anmeldungGescheitert|anmeldungGelungen)\s*\(/;
+  const zaehler = /\b(loginAllowed|loginFailed|loginSucceeded)\s*\(/;
   const erlaubt = new Set(['src/konto/anmeldepruefung.ts', 'src/konto/loginLimiter.ts']);
 
-  const sammle = dir =>
+  const collect = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
       const p = path.join(dir, e.name);
-      return e.isDirectory() ? sammle(p) : e.name.endsWith('.ts') ? [p] : [];
+      return e.isDirectory() ? collect(p) : e.name.endsWith('.ts') ? [p] : [];
     });
-  const alle = [...sammle(path.join(ROOT, 'routes')), ...sammle(path.join(ROOT, 'src')), path.join(ROOT, 'server.ts')];
+  const alle = [
+    ...collect(path.join(ROOT, 'routes')),
+    ...collect(path.join(ROOT, 'src')),
+    path.join(ROOT, 'server.ts'),
+  ];
   assert.ok(alle.length >= 30, `Nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
 
   const fremd = alle
@@ -141,13 +145,13 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
     [],
     'Diese Dateien bedienen den Anmelde-Zähler selbst: ' +
       fremd.join(', ') +
-      ' — die Anmeldung gehört ganz in pruefeAnmeldedaten() (src/konto/anmeldepruefung.ts).',
+      ' — die Anmeldung gehört ganz in checkCredentials() (src/konto/anmeldepruefung.ts).',
   );
 
   // Gegenprobe zur Regel: Die erlaubte Stelle muss ihn auch wirklich bedienen.
-  const zentral = require('./helpers/sources').dienstQuelle('src/konto/anmeldepruefung.ts');
-  for (const name of ['anmeldungErlaubt', 'anmeldungGescheitert', 'anmeldungGelungen'])
-    assert.match(zentral, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/konto/anmeldepruefung.ts ruft ${name} nicht auf`);
+  const central = require('./helpers/sources').serviceSource('src/konto/anmeldepruefung.ts');
+  for (const name of ['loginAllowed', 'loginFailed', 'loginSucceeded'])
+    assert.match(central, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/konto/anmeldepruefung.ts ruft ${name} nicht auf`);
 });
 
 test('die Benutzernamen-Regel', () => {
@@ -171,6 +175,6 @@ test('die Gleitfrist lässt sich nicht abschalten', () => {
   // der Konfiguration kommt und das Aufräumen zählt, zeigt token-gleitfrist-db.
   const { ladeKonfig } = _req('src/infra/konfig.js');
   assert.throws(() => ladeKonfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/);
-  assert.equal(ladeKonfig({ TOKEN_IDLE_DAYS: '23' }).tokenLeerlaufTage, 23);
-  assert.ok(ARGON2_KOSTEN.memoryCost >= 19_456 && ARGON2_KOSTEN.timeCost >= 2);
+  assert.equal(ladeKonfig({ TOKEN_IDLE_DAYS: '23' }).tokenIdleDays, 23);
+  assert.ok(ARGON2_COST.memoryCost >= 19_456 && ARGON2_COST.timeCost >= 2);
 });

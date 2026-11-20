@@ -1,5 +1,5 @@
-/** The area's factory: services as a closure over k (baueBereich, src/infra/bereich.ts). */
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
 import * as settings from './settings';
 import * as userSetting from './userSetting';
@@ -7,8 +7,8 @@ import { access, type SettingsDependencies, type SettingsContext } from './conte
 
 export type { SettingsDependencies, SettingsContext } from './context';
 
-export function createSettings(a: Omit<SettingsDependencies, 'faecher'>, einblick?: Einblick<SettingsContext>) {
-  return baueBereich(
+export function createSettings(a: Omit<SettingsDependencies, 'faecher'>, inspect?: Inspect<SettingsContext>) {
+  return buildArea(
     { ...a, faecher: new Faecher() },
     access,
     (k: SettingsContext) => ({
@@ -42,7 +42,7 @@ export function createSettings(a: Omit<SettingsDependencies, 'faecher'>, einblic
         <T>(key: string, fallback: T): Promise<string | T>;
       },
     }),
-    einblick,
+    inspect,
   );
 }
 

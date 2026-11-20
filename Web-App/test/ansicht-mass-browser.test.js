@@ -19,28 +19,28 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { holdsSet, holdsPart } = require('./helpers/bestand');
 
 /** Kontrast zweier CSS-Farben (rgb[a]) im Browser. */
-const KONTRAST = `(vorne, hinten) => { const f = s => (s.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);
+const CONTRAST = `(vorne, hinten) => { const f = s => (s.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);
   const l = ([r, g, b]) => { const c = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
     return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b); };
   const [a, b] = [l(f(vorne)), l(f(hinten))].sort((x, y) => y - x); return (a + 0.05) / (b + 0.05); }`;
 
 test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `mass_${process.pid}`,
-    alleDesigns: true,
+    allDesigns: true,
     telefon: true,
     bestand: async (db, uid) => {
-      await haeltSet(db, uid, '10294-1', 1, { preis: 4894.77 });
+      await holdsSet(db, uid, '10294-1', 1, { preis: 4894.77 });
       await db
         .run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                     VALUES ('10294-1', 'N', 'EUR', 4005.5, 5002.2, 6295.5, 5000, 10, NOW())
                     ON CONFLICT DO NOTHING`)
         .catch(() => {});
-      await haeltTeil(db, uid, '3001', { colorId: 4, menge: 250, preis: 0.12 });
+      await holdsPart(db, uid, '3001', { colorId: 4, menge: 250, preis: 0.12 });
       await db.run(
         `INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '10276-1', 'N') ON CONFLICT DO NOTHING`,
         [uid],
@@ -124,7 +124,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
   await t.test('Noppe: untere Leiste mindestens 4,5:1', async () => {
     await b.auswerten(`document.documentElement.setAttribute('data-theme', 'noppe'); true`);
     await ruhig();
-    const werte = await b.auswerten(`(() => { const k = ${KONTRAST};
+    const werte = await b.auswerten(`(() => { const k = ${CONTRAST};
       const nav = getComputedStyle(document.querySelector('nav')).backgroundColor;
       return [...document.querySelectorAll('nav .ntab:not(.active)')].filter(e => e.getClientRects().length)
         .map(e => Math.round(k(getComputedStyle(e).color, nav) * 100) / 100); })()`);
@@ -185,9 +185,9 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
       return { zeile1: Math.abs(r(labels[0]).top - r(labels[1]).top) < 1, zeile2: Math.abs(r(labels[2]).top - r(labels[3]).top) < 1,
                buendig: felder.every((f, i) => Math.abs(r(f).left - r(labels[i]).left) < 1),
                spalten: Math.abs(r(felder[0]).left - r(felder[2]).left) < 1 && Math.abs(r(felder[1]).left - r(felder[3]).left) < 1,
-               knopfRechts: Math.abs(knopf.right - raster.right) < 1 }; })()`);
+               buttonRight: Math.abs(knopf.right - raster.right) < 1 }; })()`);
     await b.auswerten(`document.querySelector('#add-set-modal [data-click="schliesseErfassen"]').click(); true`);
-    assert.deepEqual(m, { zeile1: true, zeile2: true, buendig: true, spalten: true, knopfRechts: true });
+    assert.deepEqual(m, { zeile1: true, zeile2: true, buendig: true, spalten: true, buttonRight: true });
   });
 
   await t.test('Rechner: Konto mit begrenzter Breite', async () => {

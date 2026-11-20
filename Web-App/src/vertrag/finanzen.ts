@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { type Route, KontoName, zeit, abfrage, Q, veraltet, PROZENT_TEXT, SEITE, SEITEN_ANGABE } from './grund';
+import { type Route, KontoName, zeit, abfrage, Q, veraltet, PERCENT_TEXT, SEITE, PAGES_DETAIL } from './grund';
 import { FigValuationItem, PartValuationItem, ValuationAcquisition } from './gemeinsam';
 
 export const ChartPoint = z.looseObject({
@@ -17,7 +17,7 @@ export const ChartYAxis = z.looseObject({
 export const ConditionValuation = z.looseObject({
   market_price: z.number().nullable(),
   purchase_price: z.number().nullable(),
-  pnl_pct: PROZENT_TEXT,
+  pnl_pct: PERCENT_TEXT,
   pnl_prozent: z.number().nullable(),
 });
 
@@ -38,7 +38,7 @@ export const DashboardStats = z.looseObject({
 export const FigsValuationResponse = z.looseObject({
   kaufpreise_umgerechnet: z.number().int(),
   success: z.boolean(),
-  ...SEITEN_ANGABE,
+  ...PAGES_DETAIL,
   currency: z.string(),
   figs: z.array(FigValuationItem),
   total_value: veraltet(z.string(), 'wert_gesamt'),
@@ -50,7 +50,7 @@ export const FigsValuationResponse = z.looseObject({
 export const PartsValuationResponse = z.looseObject({
   kaufpreise_umgerechnet: z.number().int(),
   success: z.boolean(),
-  ...SEITEN_ANGABE,
+  ...PAGES_DETAIL,
   currency: z.string(),
   parts: z.array(PartValuationItem),
   total_value: veraltet(z.string(), 'wert_gesamt'),
@@ -65,7 +65,7 @@ export const PnlTotals = z.looseObject({
   pnl_purchase: z.union([z.string(), z.number()]).nullable(),
   purchase: z.string(),
   current: z.string(),
-  pnl_pct: PROZENT_TEXT,
+  pnl_pct: PERCENT_TEXT,
   pnl_prozent: z.number().nullable(),
   kaufpreise_fremde_waehrung: z.number().int(),
   sets_purchase: z.string(),
@@ -96,7 +96,7 @@ export const PnlSetZeile = z.looseObject({
   quantity: z.number().int(),
   current_price: z.number().nullable(),
   baseline_price: z.number().nullable(),
-  pnl_pct: PROZENT_TEXT,
+  pnl_pct: PERCENT_TEXT,
   baseline_pnl_pct: veraltet(z.string().nullable().optional(), 'baseline_pnl_prozent'),
   pnl_betrag: z.number().nullable(),
   pnl_prozent: z.number().nullable(),
@@ -108,7 +108,7 @@ export const PnlSetZeile = z.looseObject({
 
 export const PnlResponse = z.looseObject({
   success: z.boolean(),
-  ...SEITEN_ANGABE,
+  ...PAGES_DETAIL,
   currency: z.string(),
   totals: PnlTotals,
   sets: z.array(PnlSetZeile),
@@ -167,7 +167,7 @@ export const PriceHistoryResponse = z.looseObject({
   history_used: z.array(PriceHistoryPoint),
   by_condition: PriceByCondition,
   chart: PriceChartData,
-  pnl_pct: PROZENT_TEXT,
+  pnl_pct: PERCENT_TEXT,
   pnl_prozent: z.number().nullable().optional(),
   purchase_price: z.number().nullable().optional(),
 });
@@ -182,7 +182,7 @@ export const SetPriceResponse = z.looseObject({
   max_price: z.number().nullable(),
   qty_avg_price: z.number().nullable(),
   no_price: z.boolean(),
-  /** Warum kein Preis kam (setPreis); dann ist no_price gesetzt. */
+  /** Warum kein Preis kam (setPrice); dann ist no_price gesetzt. */
   error: z.string().optional(),
 });
 
@@ -203,7 +203,7 @@ export const ValuationSet = z.looseObject({
   condition: z.string(),
   conditions: z.array(z.string()),
   error_code: z.string().nullable().optional(),
-  pnl_pct: PROZENT_TEXT,
+  pnl_pct: PERCENT_TEXT,
   user_id: z.number().int(),
   set_number: z.string(),
   added_at: zeit.nullable(),
@@ -238,7 +238,7 @@ export const ValuationResponse = z.looseObject({
   guide_type: z.string(),
   ttl_hours: z.union([z.string(), z.number()]).nullable(),
   success: z.boolean(),
-  ...SEITEN_ANGABE,
+  ...PAGES_DETAIL,
   total_value: veraltet(z.string(), 'wert_gesamt'),
   wert_gesamt: z.number().nullable(),
   preise_ausstehend: z.number().int(),

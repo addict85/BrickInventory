@@ -1,29 +1,29 @@
 import { z } from 'zod';
-import { type Route, zeit, bestaetigt, OHNE_RUMPF, abfrage, Q, SEITE, SEITEN_ANGABE } from './grund';
+import { type Route, zeit, bestaetigt, WITHOUT_BODY, abfrage, Q, SEITE, PAGES_DETAIL } from './grund';
 import { GenericResponse } from './gemeinsam';
 import { eingabe } from '../infra/validate';
 import {
   gutscheinNummer,
-  gutscheinNummerOderMaske,
-  gutscheinPin,
-  gutscheinPinOderMaske,
-  gutscheinWaehrung,
-  gutscheinWaehrungAenderung,
+  voucherNumberOrMask,
+  voucherPin,
+  voucherPinOrMask,
+  voucherCurrency,
+  voucherCurrencyChange,
 } from '../infra/gutscheinWerte';
 
 /** Das Format prüft der Vertrag; der Dienst bekommt nur geprüfte Werte (src/infra/gutscheinWerte.ts). */
-const GUTSCHEIN_NUMMER = eingabe.regel(gutscheinNummer, { type: 'string', pattern: '^[0-9 -]{4,40}$' });
-const GUTSCHEIN_PIN = eingabe.regel(gutscheinPin, { type: ['string', 'null'], pattern: '^\\s*([0-9]{3,10})?\\s*$' });
-const GUTSCHEIN_WAEHRUNG = eingabe.regel(gutscheinWaehrung, { type: ['string', 'null'], pattern: '^([A-Za-z]{3})?$' });
-const NUMMER_ODER_MASKE = eingabe.regel(gutscheinNummerOderMaske, {
+const VOUCHER_NUMBER = eingabe.regel(gutscheinNummer, { type: 'string', pattern: '^[0-9 -]{4,40}$' });
+const VOUCHER_PIN = eingabe.regel(voucherPin, { type: ['string', 'null'], pattern: '^\\s*([0-9]{3,10})?\\s*$' });
+const VOUCHER_CURRENCY = eingabe.regel(voucherCurrency, { type: ['string', 'null'], pattern: '^([A-Za-z]{3})?$' });
+const NUMBER_OR_MASK = eingabe.regel(voucherNumberOrMask, {
   type: 'string',
   pattern: '^([0-9 -]{4,40}|…[0-9]{4})$',
 });
-const PIN_ODER_MASKE = eingabe.regel(gutscheinPinOderMaske, {
+const PIN_OR_MASK = eingabe.regel(voucherPinOrMask, {
   type: ['string', 'null'],
   pattern: '^(\\s*([0-9]{3,10})?\\s*|•••)$',
 });
-const WAEHRUNG_AENDERUNG = eingabe.regel(gutscheinWaehrungAenderung, {
+const CURRENCY_CHANGE = eingabe.regel(voucherCurrencyChange, {
   type: ['string', 'null'],
   pattern: '^([A-Za-z]{3})?$',
 });
@@ -77,7 +77,7 @@ export const GutscheinAntwort = z.looseObject({
 
 export const GutscheinListe = z.looseObject({
   success: z.boolean(),
-  ...SEITEN_ANGABE,
+  ...PAGES_DETAIL,
   vouchers: z.array(Gutschein),
 });
 
@@ -98,19 +98,19 @@ export const routen = {
   'GET /api/v1/vouchers': { antwort: GutscheinListe, abfrage: abfrage(SEITE) },
   'POST /api/v1/vouchers': {
     eingabe: z.strictObject({
-      number: GUTSCHEIN_NUMMER,
-      pin: GUTSCHEIN_PIN.optional(),
-      amount: eingabe.geld('Betrag', { nullbar: false, einCode: 'betrag_ungueltig' }),
-      currency: GUTSCHEIN_WAEHRUNG.optional(),
+      number: VOUCHER_NUMBER,
+      pin: VOUCHER_PIN.optional(),
+      amount: eingabe.geld('Betrag', { nullbar: false, oneCode: 'betrag_ungueltig' }),
+      currency: VOUCHER_CURRENCY.optional(),
     }),
     antwort: GutscheinAntwort,
   },
   'PUT /api/v1/vouchers/:id': {
     eingabe: z.strictObject({
-      number: NUMMER_ODER_MASKE.optional(),
-      pin: PIN_ODER_MASKE.optional(),
-      amount: eingabe.geld('Betrag', { nullbar: false, einCode: 'betrag_ungueltig' }).optional(),
-      currency: WAEHRUNG_AENDERUNG.optional(),
+      number: NUMBER_OR_MASK.optional(),
+      pin: PIN_OR_MASK.optional(),
+      amount: eingabe.geld('Betrag', { nullbar: false, oneCode: 'betrag_ungueltig' }).optional(),
+      currency: CURRENCY_CHANGE.optional(),
     }),
     antwort: GutscheinAntwort,
   },
@@ -119,13 +119,13 @@ export const routen = {
     formular: true,
     antwort: GutscheinAntwort,
     eingabe: z.strictObject({
-      number: GUTSCHEIN_NUMMER.optional(),
-      pin: GUTSCHEIN_PIN.optional(),
-      amount: eingabe.geld('Betrag', { nullbar: false, einCode: 'betrag_ungueltig' }).optional(),
-      currency: GUTSCHEIN_WAEHRUNG.optional(),
+      number: VOUCHER_NUMBER.optional(),
+      pin: VOUCHER_PIN.optional(),
+      amount: eingabe.geld('Betrag', { nullbar: false, oneCode: 'betrag_ungueltig' }).optional(),
+      currency: VOUCHER_CURRENCY.optional(),
     }),
   },
-  'POST /api/v1/vouchers/:id/guthaben': { eingabe: OHNE_RUMPF, antwort: GuthabenAntwort },
+  'POST /api/v1/vouchers/:id/guthaben': { eingabe: WITHOUT_BODY, antwort: GuthabenAntwort },
   'POST /api/v1/vouchers/:id/klartext': {
     antwort: GutscheinKlartext,
     ...bestaetigt(),

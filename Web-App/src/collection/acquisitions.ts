@@ -1,18 +1,18 @@
 /** One rule for three kinds, so the webapp and the app don't drift apart. */
-import { geldEingabe } from '../infra/geld';
+import { moneyInput } from '../infra/geld';
 import type { Sicht } from '../haushalt';
-import { Abstriche } from '../infra/ergebnis';
-import { bestandsSchluessel } from '../../db/txLock';
-import { fachfehler, type FehlerCode } from '../infra/fehlerTexte';
-import { mengeDesSets, mengeDerPosition, preisSpalte, type ErfassungsArt } from '../../db/bestandsmenge';
-import { bestandsMenge, zustand } from '../infra/validate';
+import { Degradations } from '../infra/ergebnis';
+import { inventoryKey } from '../../db/txLock';
+import { fachfehler, type ErrorCode } from '../infra/fehlerTexte';
+import { quantityOfSets, quantityThePosition, priceColumn, type ErfassungsArt } from '../../db/bestandsmenge';
+import { inventoryQuantity, zustand } from '../infra/validate';
 import type { CollectionContext } from './context';
 
 export type { ErfassungsArt } from '../../db/bestandsmenge';
 type Keys = Array<string | number>;
 
 interface Kind {
-  notFound: FehlerCode;
+  notFound: ErrorCode;
   /** In this row's condition, if the price is cleared. */
   resolvePrice: (uid: number, keys: Keys, cond: string | null) => Promise<number | null>;
   /** Inside the transaction: `t` is its context. */
@@ -25,19 +25,24 @@ const kinds = (k: CollectionContext): Record<ErfassungsArt, Kind> => ({
     resolvePrice: (uid, [sn], cond) => k.finanzen.aktuellerMarktpreis(String(sn), uid, cond || null),
     // Same as explicit deletion: the set's parts and minifigs would otherwise
     // sit in the parts/minifigs list and finance totals without a set.
-    cleanupWhenEmpty: (t, ownerId, [sn]) => t.sets.setZeilenLoeschen([ownerId], String(sn)),
+    cleanupWhenEmpty: (t, ownerId, [sn]) => t.sets.deleteSetRows([ownerId], String(sn)),
   },
   part: {
     notFound: 'nicht_gefunden',
-    resolvePrice: (uid, [pn, cid], cond) => k.finanzen.aktuellerTeilMarktpreis(String(pn), Number(cid), uid, cond),
+    resolvePrice: (uid, [pn, cid], cond) => k.finanzen.currentPartMarketPrice(String(pn), Number(cid), uid, cond),
     // Only the manual holding; set parts go with their set.
-    cleanupWhenEmpty: (t, ownerId, keys) => t.bestand.loescheManuell('part', ownerId, keys),
+    cleanupWhenEmpty: (t, ownerId, keys) => t.bestand.deleteManual('part', ownerId, keys),
   },
   fig: {
     notFound: 'nicht_gefunden',
     resolvePrice: async (uid, [fn], cond) =>
-      k.finanzen.aktuellerFigurMarktpreis(String(fn), uid, await k.katalog.blAbrufNummer('fig', String(fn), uid), cond),
-    cleanupWhenEmpty: (t, ownerId, keys) => t.bestand.loescheManuell('fig', ownerId, keys),
+      k.finanzen.currentMinifigMarketPrice(
+        String(fn),
+        uid,
+        await k.katalog.blFetchNumber('fig', String(fn), uid),
+        cond,
+      ),
+    cleanupWhenEmpty: (t, ownerId, keys) => t.bestand.deleteManual('fig', ownerId, keys),
   },
 });
 
@@ -64,7 +69,7 @@ function holdingQuantity(
   ownerId: number,
   keys: Keys,
 ): Promise<number | null> {
-  return art === 'set' ? mengeDesSets(ownerId, String(keys[0]), t.db) : mengeDerPosition(art, ownerId, keys, t.db);
+  return art === 'set' ? quantityOfSets(ownerId, String(keys[0]), t.db) : quantityThePosition(art, ownerId, keys, t.db);
 }
 const isEmpty = (q: number | null) => q === null || q <= 0;
 
@@ -89,7 +94,7 @@ async function response(
   keys: Keys,
   payload: Record<string, unknown>,
 ) {
-  return art === 'set' ? k.sets.mitSetAggregat(uid, String(keys[0]), payload) : payload;
+  return art === 'set' ? k.sets.withSetAggregate(uid, String(keys[0]), payload) : payload;
 }
 
 export interface Change {
@@ -110,21 +115,21 @@ export async function changeAcquisition(
 ) {
   const a = kinds(k)[art];
   const { quantity, condition, date } = body;
-  const rawPrice = body[preisSpalte(art)];
+  const rawPrice = body[priceColumn(art)];
 
   const ownerReq = body.owner_user_id;
   if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {
-    const from = await k.haushalt.umzugsQuelle(uid, art, id);
-    const to = await k.haushalt.schreibzielOderNull(uid, ownerReq);
+    const from = await k.haushalt.moveSource(uid, art, id);
+    const to = await k.haushalt.writeTargetOrNull(uid, ownerReq);
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
     if (from === to) return { unchanged: true };
-    // Like setVerschieben(): opposite directions lock both accounts' rows in reverse order.
+    // Like moveSet(): opposite directions lock both accounts' rows in reverse order.
     const moved = await k.transaktion(
       t =>
         art === 'set'
-          ? t.sets.setErfassungenUmhaengen(String(keys[0]), from, to, [id])
-          : t.bestand.manuelleErfassungUmhaengen(art, keys, id, from, to),
-      { sperren: [{ konto: from, schluessel: bestandsSchluessel(art, keys) }], wiederholeBeiKonflikt: true },
+          ? t.sets.setEntriesReassign(String(keys[0]), from, to, [id])
+          : t.bestand.manualEntryReassign(art, keys, id, from, to),
+      { sperren: [{ konto: from, schluessel: inventoryKey(art, keys) }], repeatAtConflict: true },
     );
     return { from_user_id: from, to_user_id: to, ...moved };
   }
@@ -134,9 +139,9 @@ export async function changeAcquisition(
   let priceVal: number | null = null;
   let priceEstimated = false;
   // If the market price doesn't arrive, the price stays empty; the response says so in `degradiert`.
-  const ab = new Abstriche();
+  const ab = new Degradations();
   if (rawPrice !== undefined) {
-    let p = geldEingabe(rawPrice, preisSpalte(art) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
+    let p = moneyInput(rawPrice, priceColumn(art) === 'purchase_price' ? 'Kaufpreis' : 'Stückpreis');
     if (p === null) {
       priceEstimated = true;
       const bisher = condition ? null : ((await beforehand(k, art, uid, id, keys))?.condition ?? null);
@@ -162,24 +167,16 @@ export async function changeAcquisition(
       const targetEstimated = rawPrice !== undefined ? priceEstimated && priceVal != null : !!acq.price_estimated;
       // Checked against the values AFTER this change.
       if (newDate || rawPrice !== undefined || hasCondition) {
-        const clash = await t.bestand.erfassungAmSelbenTag(
-          art,
-          ownerId,
-          keys,
-          newDate || acq.tag,
-          id,
-          targetCondition,
-          {
-            preis: rawPrice !== undefined ? priceVal : acq.preis,
-            geschaetzt: targetEstimated,
-            waehrung: acq.currency,
-          },
-        );
+        const clash = await t.bestand.entryAtSameTag(art, ownerId, keys, newDate || acq.tag, id, targetCondition, {
+          preis: rawPrice !== undefined ? priceVal : acq.preis,
+          geschaetzt: targetEstimated,
+          waehrung: acq.currency,
+        });
         if (clash) fachfehler('konflikt', 'datum_belegt');
       }
       const hasQuantity = quantity !== undefined && quantity !== null;
       await t.bestand.erfassung.aendere(art, id, wids, {
-        ...(hasQuantity ? { menge: bestandsMenge(quantity, 1) } : {}),
+        ...(hasQuantity ? { menge: inventoryQuantity(quantity, 1) } : {}),
         ...(rawPrice !== undefined ? { preis: { wert: priceVal, geschaetzt: targetEstimated } } : {}),
         ...(hasCondition ? { zustand: targetCondition } : {}),
         ...(newDate ? { datum: newDate } : {}),
@@ -187,7 +184,7 @@ export async function changeAcquisition(
       if (hasQuantity && isEmpty(await holdingQuantity(t, art, ownerId, keys)))
         await a.cleanupWhenEmpty(t, ownerId, keys);
     },
-    { sperren: [{ konto: besitzer, schluessel: bestandsSchluessel(art, keys) }] },
+    { sperren: [{ konto: besitzer, schluessel: inventoryKey(art, keys) }] },
   );
   return response(k, art, uid, keys, { ...ab.angabe() });
 }
@@ -205,11 +202,11 @@ export async function deleteAcquisition(k: CollectionContext, art: ErfassungsArt
       if (isEmpty(q)) await a.cleanupWhenEmpty(t, ownerId, keys);
       return q;
     },
-    { sperren: [{ konto: besitzer, schluessel: bestandsSchluessel(art, keys) }] },
+    { sperren: [{ konto: besitzer, schluessel: inventoryKey(art, keys) }] },
   );
   return response(k, art, uid, keys, { new_quantity: menge ?? 0 });
 }
 
 export async function setAcquisitionsForSet(k: CollectionContext, sicht: Sicht | number[], setNumber: string) {
-  return k.setAcquisitions.inScope(await k.haushalt.blickfeldAus(sicht), setNumber);
+  return k.setAcquisitions.inScope(await k.haushalt.scopeFrom(sicht), setNumber);
 }

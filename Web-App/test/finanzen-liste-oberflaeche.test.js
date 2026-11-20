@@ -20,7 +20,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt, reiter } = require('./helpers/oberflaeche');
+const { openUi, warte, takt, reiter } = require('./helpers/oberflaeche');
 
 function sets(n) {
   return Array.from({ length: n }, (_, i) => {
@@ -43,9 +43,9 @@ function sets(n) {
   });
 }
 
-async function oeffneFinanzen(anzahl) {
+async function openFinances(anzahl) {
   const liste = sets(anzahl);
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/finance/valuation': {
         success: true,
@@ -75,14 +75,14 @@ async function oeffneFinanzen(anzahl) {
         },
       },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   // jsdom kennt kein Scrollen: Die Beobachter werden mitgeschrieben, der Test meldet „in Sicht“ selbst.
-  o.beobachter = [];
+  o.observer = [];
   o.w.IntersectionObserver = class {
-    constructor(rueckruf) {
-      this.rueckruf = rueckruf;
-      o.beobachter.push(this);
+    constructor(callback) {
+      this.callback = callback;
+      o.observer.push(this);
     }
     observe(el) {
       this.el = el;
@@ -98,15 +98,15 @@ async function oeffneFinanzen(anzahl) {
 }
 /** Das Tabellenende kommt in Sicht: Der letzte lebende Beobachter der Markierung meldet es. */
 function inSicht(o) {
-  const b = o.beobachter.filter(x => !x.getrennt && x.el?.id === 'fin-sentinel').at(-1);
+  const b = o.observer.filter(x => !x.getrennt && x.el?.id === 'fin-sentinel').at(-1);
   if (!b) return false;
-  b.rueckruf([{ isIntersecting: true }]);
+  b.callback([{ isIntersecting: true }]);
   return true;
 }
 const zeilen = o => [...o.d.querySelectorAll('#fin-tbl [data-fin-art="sets"] tbody tr[data-arg]')];
 
 test('blockweise beim Scrollen', async () => {
-  const o = await oeffneFinanzen(250);
+  const o = await openFinances(250);
   try {
     assert.equal(zeilen(o).length, 100);
     assert.equal(o.d.querySelector('#fin-tbl [data-click="finMehr"]'), null, 'der Weitere-Knopf ist weg');
@@ -123,7 +123,7 @@ test('blockweise beim Scrollen', async () => {
 });
 
 test('Suche über alle Positionen', async () => {
-  const o = await oeffneFinanzen(250);
+  const o = await openFinances(250);
   try {
     const feld = o.d.getElementById('fin-suche');
     assert.ok(feld.labels?.length || feld.getAttribute('aria-label'), 'Suchfeld ohne Namen');
@@ -138,10 +138,10 @@ test('Suche über alle Positionen', async () => {
 });
 
 test('Sortierköpfe mit aria-sort', async () => {
-  const o = await oeffneFinanzen(30);
+  const o = await openFinances(30);
   try {
-    const koepfe = [...o.d.querySelectorAll('#fin-tbl [data-fin-art="sets"] th[aria-sort]')];
-    assert.ok(koepfe.length >= 3, `sortierbare Köpfe: ${koepfe.length}`);
+    const headers = [...o.d.querySelectorAll('#fin-tbl [data-fin-art="sets"] th[aria-sort]')];
+    assert.ok(headers.length >= 3, `sortierbare Köpfe: ${headers.length}`);
     const knopf = () => o.d.querySelector('#fin-tbl [data-click="finSortiere"][data-arg="wert"]');
     knopf().click();
     await takt(10);
@@ -158,7 +158,7 @@ test('Sortierköpfe mit aria-sort', async () => {
 });
 
 test('Legende zeigt Zeichen', async () => {
-  const o = await oeffneFinanzen(3);
+  const o = await openFinances(3);
   try {
     const legende = o.d.querySelector('#fin-tbl .fin-legende');
     assert.ok(legende, 'Legende fehlt');

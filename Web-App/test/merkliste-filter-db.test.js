@@ -12,7 +12,7 @@
  *   d) NULLS LAST bei price_desc gestrichen        → Schritt 5 rot.
  *      (Bei name_asc gestrichen: BLIEB GRÜN — bei ASC ist NULLS LAST die
  *      Vorgabe von Postgres. Gemessen, nicht vermutet; der Schritt sagt es.)
- *   e) ausTabelle() durch WANTED_SORTS[x] ersetzt    → Schritt 7 rot.
+ *   e) fromTable() durch WANTED_SORTS[x] ersetzt    → Schritt 7 rot.
  *
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
  */
@@ -22,10 +22,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 const U = {};
 
@@ -40,7 +40,7 @@ async function seed() {
     client.release();
   }
 
-  for (const n of ['opa', 'enkel']) {
+  for (const n of ['grandparent', 'enkel']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [n]);
     U[n] = (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
   }
@@ -63,11 +63,11 @@ async function seed() {
   await db.run(`INSERT INTO rb_sets (set_num, name, year) VALUES ('60001-1','Feuerwehr 5000er',2014)`);
 
   const posten = [
-    [U.opa, '10179-1', 'N'],
-    [U.opa, '10179-1', 'U'],
-    [U.opa, '60000-1', 'N'],
-    [U.opa, '60001-1', 'N'],
-    [U.opa, '99999-1', 'N'], // kein Katalogeintrag: Name und Jahr NULL
+    [U.grandparent, '10179-1', 'N'],
+    [U.grandparent, '10179-1', 'U'],
+    [U.grandparent, '60000-1', 'N'],
+    [U.grandparent, '60001-1', 'N'],
+    [U.grandparent, '99999-1', 'N'], // kein Katalogeintrag: Name und Jahr NULL
     [U.enkel, '75192-1', 'N'],
   ];
   // created_at absteigend gestaffelt, damit die Vorgabesortierung eine
@@ -114,7 +114,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
   }
   await seed();
   const M = _req('src/wanted/wanted.js');
-  const alle = [U.opa, U.enkel];
+  const alle = [U.grandparent, U.enkel];
 
   await t.test('1. Ohne Filter bleibt alles, wie es war', async () => {
     // Der Ausgangspunkt: Vier Parameter sind dazugekommen, und ein Aufruf ohne
@@ -126,8 +126,8 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
   });
 
   await t.test('2. Die Suche trifft Nummer UND Name', async () => {
-    const perNummer = await M.wantedItemsOf(alle, undefined, 'EUR', { search: '75192' });
-    assert.deepEqual(nummern(perNummer), ['75192-1/N']);
+    const perNumber = await M.wantedItemsOf(alle, undefined, 'EUR', { search: '75192' });
+    assert.deepEqual(nummern(perNumber), ['75192-1/N']);
 
     // „Falcon" steht in keiner Setnummer — ohne den Namensvergleich käme hier
     // nichts zurück. Der Name kommt aus rb_sets, nicht aus wanted.
@@ -168,27 +168,27 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     );
     assert.equal(nachName[0].name, 'Feuerwehr 5000er');
 
-    const nachPreis = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: 'price_desc' });
-    assert.equal(nachPreis[0].marktpreis, 500);
-    assert.equal(nachPreis[1].marktpreis, 80);
-    assert.equal(nachPreis[nachPreis.length - 1].marktpreis, null, 'Ein Merkposten ohne Preis steht nicht am Ende.');
+    const afterPrice = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: 'price_desc' });
+    assert.equal(afterPrice[0].marktpreis, 500);
+    assert.equal(afterPrice[1].marktpreis, 80);
+    assert.equal(afterPrice[afterPrice.length - 1].marktpreis, null, 'Ein Merkposten ohne Preis steht nicht am Ende.');
 
-    const nachNummer = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: 'num_asc' });
-    assert.equal(nachNummer[0].set_number, '10179-1');
+    const afterNumber = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: 'num_asc' });
+    assert.equal(afterNumber[0].set_number, '10179-1');
   });
 
   await t.test('6. Der Inhaber ist das Blickfeld, kein eigener Parameter', async () => {
-    // Genau so steht es in der Route: `accounts=` geht durch blickfeldIds() und
+    // Genau so steht es in der Route: `accounts=` geht durch scopeIds() und
     // kommt als userIds herein. Eine zweite Stelle, die Konten auswählt, wäre
     // die Doppelung, vor der src/haushalt/haushalt.ts warnt.
-    const nurEnkel = await M.wantedItemsOf([U.enkel], undefined, 'EUR');
-    assert.deepEqual(nummern(nurEnkel), ['75192-1/N']);
-    const nurOpa = await M.wantedItemsOf([U.opa], undefined, 'EUR');
-    assert.equal(nurOpa.length, 5);
+    const onlyGrandchild = await M.wantedItemsOf([U.enkel], undefined, 'EUR');
+    assert.deepEqual(nummern(onlyGrandchild), ['75192-1/N']);
+    const onlyGrandparent = await M.wantedItemsOf([U.grandparent], undefined, 'EUR');
+    assert.equal(onlyGrandparent.length, 5);
   });
 
   await t.test('7. Eine erfundene Sortierung fällt auf die Vorgabe zurück', async () => {
-    // ausTabelle() prüft mit hasOwnProperty. Mit `WANTED_SORTS[x] || vorgabe`
+    // fromTable() prüft mit hasOwnProperty. Mit `WANTED_SORTS[x] || vorgabe`
     // wäre 'constructor' ein gültiger Wert gewesen — und was dann in ORDER BY
     // landet, ist keine Sortierung mehr, sondern eine Funktion als Text.
     for (const boese of ['constructor', 'toString', '__proto__', 'gibtsnicht']) {
@@ -203,7 +203,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     // Bauen hochgezählt, und die Währung hängt sich ganz am Ende an. Verrutscht
     // eine Nummer, bekäme Postgres die Währung als Setnummer und liefe still
     // leer — kein Fehler, nur eine leere Liste.
-    const liste = await M.wantedItemsOf([U.opa], undefined, 'EUR', {
+    const liste = await M.wantedItemsOf([U.grandparent], undefined, 'EUR', {
       search: 'falcon',
       condition: 'N',
       sort: 'num_asc',

@@ -2,7 +2,7 @@
  * Ein BrickLink-Preis wird auf EINEM Weg weggeschrieben.
  *
  * Gegenproben (durchgefuehrt):
- *   a) In speicherePreis() den price_history-Schreibvorgang entfernt
+ *   a) In savePrice() den price_history-Schreibvorgang entfernt
  *      → beide Teilschritte rot. Der Vergleich Job/Anfrageweg allein haette
  *        das NICHT gemerkt (beide verlieren den Punkt gleichermassen) —
  *        deshalb steht darunter zusaetzlich, was herauskommen soll.
@@ -14,7 +14,7 @@
  *      rot: zweiter Lauf 'updated' statt 'skipped'.
  *   c) Einen zweiten INSERT INTO price_cache in src/finanzen/preisLauf.ts gesetzt
  *      → Teilschritt 2 rot.
- *   d) (13.11.2026) in speicherePreis() der Verlauf wieder mit logAndContinue
+ *   d) (13.11.2026) in savePrice() der Verlauf wieder mit logAndContinue
  *      und ohne Transaktion → Teilschritt 3 rot (keine Absage); nur die
  *      Transaktion weggelassen → rot (die Cache-Zeile stand ohne Verlaufspunkt da).
  *
@@ -28,20 +28,20 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
-// BrickLink vorgeben, BEVOR financeCalc/priceJob preisfuehrerAbfrage herausziehen.
-// esbuild exportiert ueber Getter, ein `bl.preisfuehrerAbfrage = …` liefe ins
+// BrickLink vorgeben, BEVOR financeCalc/priceJob priceGuideQuery herausziehen.
+// esbuild exportiert ueber Getter, ein `bl.priceGuideQuery = …` liefe ins
 // Leere — deshalb wird der Eintrag im require-Zwischenspeicher ersetzt.
-const blPfad = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPreise.js'));
-const echt = require(blPfad);
-let abrufe = [];
-require.cache[blPfad].exports = Object.assign({}, echt, {
-  preisfuehrerAbfrage: async (_k, _sn, cond) => {
-    abrufe.push(cond);
+const blPath = require.resolve(path.join(ROOT, 'dist', 'src/katalog/bricklinkPreise.js'));
+const echt = require(blPath);
+let fetches = [];
+require.cache[blPath].exports = Object.assign({}, echt, {
+  priceGuideQuery: async (_k, _sn, cond) => {
+    fetches.push(cond);
     // 'N' ohne Preis, 'U' mit — genau die Lage, in der der Rueckfall greift.
     return cond === 'U'
       ? { min_price: '8', avg_price: '10', max_price: '12', qty_avg_price: '9', total_quantity: '4' }
@@ -50,7 +50,7 @@ require.cache[blPfad].exports = Object.assign({}, echt, {
 });
 
 /** price_cache und price_history eines Sets, vergleichbar aufbereitet. */
-async function spuren(sn) {
+async function traces(sn) {
   const cache = await db.all(
     'SELECT condition, avg_price::float AS avg FROM price_cache WHERE set_number=$1 ORDER BY condition',
     [sn],
@@ -63,14 +63,14 @@ async function spuren(sn) {
 }
 
 test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const JOB = `schreibweg-${process.pid}-job`;
-  const WEG = `schreibweg-${process.pid}-weg`;
-  const FEHL = `schreibweg-${process.pid}-fehl`;
+  const ROUTE = `schreibweg-${process.pid}-weg`;
+  const FAIL = `schreibweg-${process.pid}-fehl`;
   const aufraeumen = async () => {
-    await db.run('DELETE FROM price_cache   WHERE set_number = ANY($1)', [[JOB, WEG, FEHL]]).catch(() => {});
-    await db.run('DELETE FROM price_history WHERE set_number = ANY($1)', [[JOB, WEG, FEHL]]).catch(() => {});
+    await db.run('DELETE FROM price_cache   WHERE set_number = ANY($1)', [[JOB, ROUTE, FAIL]]).catch(() => {});
+    await db.run('DELETE FROM price_history WHERE set_number = ANY($1)', [[JOB, ROUTE, FAIL]]).catch(() => {});
   };
   await aufraeumen();
 
@@ -78,9 +78,9 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
     // 1. Der Job schreibt die Null-Zeile mit — sonst kostet dasselbe Set
     //    jeden Lauf erneut zwei Abrufe.
     const { fetchAndCachePrice } = _req('src/finanzen/preisLauf.js');
-    abrufe = [];
+    fetches = [];
     assert.equal(await fetchAndCachePrice(JOB, 'N', 'sold', 'EUR', 24), 'updated');
-    const nachLauf1 = abrufe.length;
+    const nachLauf1 = fetches.length;
     assert.equal(
       await fetchAndCachePrice(JOB, 'N', 'sold', 'EUR', 24),
       'skipped',
@@ -88,25 +88,25 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
         'auch wenn sie „kein Preis" lautet',
     );
     assert.equal(
-      abrufe.length,
+      fetches.length,
       nachLauf1,
-      `Zweiter Lauf hat ${abrufe.length - nachLauf1} zusaetzliche BrickLink-Abrufe gekostet`,
+      `Zweiter Lauf hat ${fetches.length - nachLauf1} zusaetzliche BrickLink-Abrufe gekostet`,
     );
 
     // 2. Derselbe Fall ueber den Anfrageweg hinterlaesst dasselbe.
-    const { holePreis } = _req('src/finanzen/financeCalc.js');
-    abrufe = [];
-    await holePreis(WEG, 'N', 'sold', 'EUR', 24);
-    const abrufeWeg = abrufe.length;
+    const { fetchPrice } = _req('src/finanzen/financeCalc.js');
+    fetches = [];
+    await fetchPrice(ROUTE, 'N', 'sold', 'EUR', 24);
+    const fetchesRoute = fetches.length;
 
-    const j = await spuren(JOB),
-      w = await spuren(WEG);
+    const j = await traces(JOB),
+      w = await traces(ROUTE);
     assert.deepEqual(j.cache, w.cache, 'Job und Anfrageweg hinterlassen unterschiedliche price_cache-Zeilen');
     assert.deepEqual(j.hist, w.hist, 'Job und Anfrageweg hinterlassen unterschiedliche price_history-Punkte');
     assert.equal(
       nachLauf1,
-      abrufeWeg,
-      `Job braucht ${nachLauf1} Abrufe, der Anfrageweg ${abrufeWeg} — fuer dieselbe Auskunft`,
+      fetchesRoute,
+      `Job braucht ${nachLauf1} Abrufe, der Anfrageweg ${fetchesRoute} — fuer dieselbe Auskunft`,
     );
 
     // Und das Hinterlassene ist auch das Richtige: die Null-Zeile fuer den
@@ -120,13 +120,13 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
 
     // 3. Scheitert der Verlaufspunkt, gilt auch der Cache nicht: Sonst hielte er den
     //    nächsten Abruf zurück, und die Lücke im Verlauf füllte niemand mehr.
-    const fk = require('./helpers/sources').testKontext('finanzen');
+    const fk = require('./helpers/sources').testContext('finanzen');
     /** Derselbe Kontext, dessen Verlauf nicht schreibbar ist — ausserhalb und in der Transaktion. */
     const kaputt = z => ({
       ...z,
       preisCache: {
         ...z.preisCache,
-        merkeSetVerlauf: async () => {
+        rememberSetHistory: async () => {
           throw new Error('Verlauf nicht schreibbar (Probe)');
         },
       },
@@ -135,10 +135,10 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
     const k = kaputt(fk);
     const guide = { min_price: '8', avg_price: '10', max_price: '12', qty_avg_price: '9', total_quantity: '4' };
     await assert.rejects(
-      require(path.join(ROOT, 'dist', 'src/finanzen/rechnung/preise.js')).speicherePreis(k, FEHL, 'U', 'EUR', guide),
+      require(path.join(ROOT, 'dist', 'src/finanzen/rechnung/preise.js')).savePrice(k, FAIL, 'U', 'EUR', guide),
       /Verlauf nicht schreibbar/,
     );
-    assert.deepEqual(await spuren(FEHL), { cache: [], hist: [] });
+    assert.deepEqual(await traces(FAIL), { cache: [], hist: [] });
   } finally {
     await aufraeumen();
     await db.pool.end();
@@ -167,27 +167,27 @@ test('die Schreibregel steht nur an einer Stelle', () => {
   // Selbstnachweis: Faende die Suche nichts, waere die Regel unten leer wahr.
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
-  const cacheSchreiber = [],
-    verlaufSchreiber = [];
+  const cacheWriter = [],
+    historyWriter = [];
   for (const f of dateien) {
     const code = fs
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/[^\n]*$/gm, '');
     const rel = path.relative(ROOT, f);
-    for (const _ of code.matchAll(/INSERT INTO price_cache/g)) cacheSchreiber.push(rel);
+    for (const _ of code.matchAll(/INSERT INTO price_cache/g)) cacheWriter.push(rel);
     // Nur der zeilenweise Schreibvorgang. Der Tages-Schnappschuss im Job
     // kopiert per SELECT und ist etwas anderes als „einen Punkt setzen".
     for (const m of code.matchAll(/INSERT INTO price_history[\s\S]{0,220}?(VALUES|SELECT)/g))
-      if (m[1] === 'VALUES') verlaufSchreiber.push(rel);
+      if (m[1] === 'VALUES') historyWriter.push(rel);
   }
   assert.deepEqual(
-    cacheSchreiber,
+    cacheWriter,
     ['src/finanzen/repository/preisCache.ts'],
     'price_cache wird an mehr als einer Stelle beschrieben — genau daran sind die ' + 'beiden Wege auseinandergelaufen',
   );
   assert.deepEqual(
-    verlaufSchreiber,
+    historyWriter,
     ['src/finanzen/repository/preisCache.ts'],
     'Ein Verlaufspunkt wird an mehr als einer Stelle gesetzt',
   );

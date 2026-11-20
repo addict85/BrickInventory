@@ -1,10 +1,10 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 import { erfassungsTagSql } from '../../../db/bestandsmenge';
-import type { BestandLesevertrag } from '../lesevertrag';
+import type { InventoryReadContract } from '../lesevertrag';
 import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 // Eine Zeile je Erfassung in einer Abfrage statt einer je Teil.
-const partsCsvSql = (l: BestandLesevertrag) => `
+const partsCsvSql = (l: InventoryReadContract) => `
   SELECT p.part_number,
          -- Die Menge der ERFASSUNG, ohne Rueckfall auf die Zeile: Migration
          -- 0038 hat p.quantity geloescht, und dieser Export liefert eine
@@ -29,7 +29,7 @@ const partsCsvSql = (l: BestandLesevertrag) => `
 
 // Zu einer Erfassung OHNE Preis gehört ein leeres Feld, nicht der Preis der
 // Figuren-Zeile — deshalb `a.id IS NULL` statt COALESCE über die Werte.
-const figsCsvSql = (l: BestandLesevertrag) => `
+const figsCsvSql = (l: InventoryReadContract) => `
   SELECT f.fig_number,
          -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier
          -- stand COALESCE(f.bl_fig_number,''), eine Abschrift je Konto.
@@ -56,10 +56,10 @@ const figsCsvSql = (l: BestandLesevertrag) => `
    WHERE f.user_id = $1 AND f.source = 'manual'
    ORDER BY ${FIGUR.name} ASC, f.fig_number ASC, a.created_at ASC, a.id ASC`;
 
-export function teileFuerCsv(db: DbSchnittstelle, l: BestandLesevertrag, uid: number) {
+export function partsForCsv(db: DbInterface, l: InventoryReadContract, uid: number) {
   return db.all<Record<string, unknown> & { unit_price: number | null }>(partsCsvSql(l), [uid]);
 }
 
-export function figurenFuerCsv(db: DbSchnittstelle, l: BestandLesevertrag, uid: number) {
+export function minifigsForCsv(db: DbInterface, l: InventoryReadContract, uid: number) {
   return db.all<Record<string, unknown> & { unit_price: number | null }>(figsCsvSql(l), [uid]);
 }

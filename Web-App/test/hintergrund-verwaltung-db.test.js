@@ -5,19 +5,19 @@
  * job-status, job-schedule, trigger-price-job) liefern ihre Felder weiter.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in leereArt() die Ausnahme für `plan:%` entfernt → rot: „Leeren
+ *   A  in emptyKind() die Ausnahme für `plan:%` entfernt → rot: „Leeren
  *      verwirft Wartende, nicht den Zeitplan“
- *   B  in auftragAbbrechen() planeNaechsten() entfernt → rot: „ein
+ *   B  in auftragAbbrechen() planeNext() entfernt → rot: „ein
  *      abgebrochener geplanter Lauf hinterlässt den nächsten Termin“
- *   C  in rescheduleJobs() zeitplanGeaendert('preise') entfernt → rot: „ein
+ *   C  in rescheduleJobs() scheduleChanged('preise') entfernt → rot: „ein
  *      neues Intervall verschiebt den offenen Termin“
- *   D  in bricksetListe() `to_char(…)` durch den rohen Zeitstempel ersetzt →
+ *   D  in bricksetList() `to_char(…)` durch den rohen Zeitstempel ersetzt →
  *      rot: „die Brickset-Liste behält ihre Felder“ (retry_after kein Datum)
  *
  * Seit Migration 0110 (am 13.11.2026 gemessen):
- *   E  in auftraegeImUeberblick() wieder 'fehler' und 'abgebrochen' als Vorgabe →
+ *   E  in jobsInOverview() wieder 'fehler' und 'abgebrochen' als Vorgabe →
  *      rot: „die Liste zeigt nur Anstehende …“ (beendete stehen in der Liste)
- *   F  in setzeVerschoben() `waiting = NOT $3` entfernt → rot: derselbe Test
+ *   F  in setMoved() `waiting = NOT $3` entfernt → rot: derselbe Test
  *      (waiting false statt true)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -27,12 +27,12 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const db = testDaten();
+const { adminWithFactor } = require('./helpers/verwalter');
+const db = testData();
 
 test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   try {
@@ -53,17 +53,17 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   const Z = _req('src/auftraege/zeitplan.js');
   const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
     ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testBereich('auftraege').auftraege,
+    ...require('./helpers/sources').testArea('auftraege').auftraege,
   });
   t.after(async () => {
     await db.run('DELETE FROM jobs');
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
-    await testZugang()
-      .benachrichtigung.close()
+    await testAccess()
+      .notification.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  await verwalterMitFaktor(_req, uid);
+  await adminWithFactor(_req, uid);
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: true }, t });
   const rufe = async (methode, pfad, body) => {
     const r = await fetch(base + '/api/v1' + pfad, {
@@ -80,19 +80,19 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
 
   // Ein Intervall aus einem früheren Lauf liesse den Termin schon richtig stehen.
   await db.run(`DELETE FROM global_settings WHERE key = 'price_job_interval_minutes'`);
-  await Z.planeAlle();
+  await Z.planeAll();
   // Ein verschobener (Kontingent) und ein abgebrochener Auftrag neben dem gescheiterten.
-  const verschoben = await A.stelleAuftragEin('anleitung', { set_number: '44444-1' });
-  const beleg = await A.belegeAuftrag(['anleitung'], 60);
-  assert.equal(beleg.id, verschoben, 'der verschobene Auftrag sollte als erster belegt werden');
-  await A.verschoben(beleg, new Date(Date.now() + 3_600_000), 'Tageskontingent erschöpft', false);
-  const abgebrochen = await A.stelleAuftragEin('nachlauf', { schritt: 'vorschauen' });
-  await A.brichAb(abgebrochen);
+  const verschoben = await A.placeJobOne('anleitung', { set_number: '44444-1' });
+  const receipt = await A.belegeAuftrag(['anleitung'], 60);
+  assert.equal(receipt.id, verschoben, 'der verschobene Auftrag sollte als erster belegt werden');
+  await A.verschoben(receipt, new Date(Date.now() + 3_600_000), 'Tageskontingent erschöpft', false);
+  const abgebrochen = await A.placeJobOne('nachlauf', { schritt: 'vorschauen' });
+  await A.abortAb(abgebrochen);
 
   const wartend = [];
   for (const sn of ['11111-1', '22222-1'])
-    wartend.push(await A.stelleAuftragEin('anleitung', { set_number: sn }, { schluessel: `anleitung:${sn}` }));
-  const kaputt = await A.stelleAuftragEin('nachlauf', { schritt: 'katalog' });
+    wartend.push(await A.placeJobOne('anleitung', { set_number: sn }, { schluessel: `anleitung:${sn}` }));
+  const kaputt = await A.placeJobOne('nachlauf', { schritt: 'katalog' });
   await db.run(`UPDATE jobs SET status = 'fehler', error_message = 'Quelle weg' WHERE id = $1`, [kaputt]);
   await db.run(`INSERT INTO run_state (key, value) VALUES ('jobs_lebenszeichen', NOW()::text)
                 ON CONFLICT (key) DO UPDATE SET value = NOW()::text`);
@@ -159,7 +159,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   await t.test('Leeren verwirft Wartende, nicht den Zeitplan', async () => {
     const r = await rufe('DELETE', '/admin/auftraege/art/anleitung');
     assert.deepEqual([r.status, r.body.entfernt], [200, 2]);
-    await A.stelleAuftragEin('preise', {}, {});
+    await A.placeJobOne('preise', {}, {});
     const r2 = await rufe('DELETE', '/admin/auftraege/art/preise');
     assert.equal(r2.body.entfernt, 1, 'der einzelne Preis-Auftrag ist weg');
     assert.ok(await plan('preise'), 'der geplante Preis-Lauf wurde mit geleert');
@@ -183,7 +183,7 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
   });
 
   await t.test('die Brickset-Liste behält ihre Felder', async () => {
-    await _req('src/fremdquellen/bricksetWiedervorlage.js').bricksetVormerken('33333-1', 'Quota exceeded');
+    await _req('src/fremdquellen/bricksetWiedervorlage.js').bricksetReserve('33333-1', 'Quota exceeded');
     const r = await rufe('GET', '/admin/brickset-queue');
     const e = r.body.entries.find(x => x.set_number === '33333-1');
     assert.ok(e, JSON.stringify(r.body));

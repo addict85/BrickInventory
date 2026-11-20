@@ -24,14 +24,14 @@ function dialog(id) {
 
 // Die drei Dialoge mit Papierkorb. Der vierte (#setitem-modal, Teile AUS
 // Sets) hat keinen: Was zu einem Set gehoert, loescht man ueber das Set.
-const MIT_PAPIERKORB = [
+const WITH_TRASH = [
   ['Set-Detail', 'set-modal', 'btn-md'],
   ['Merkposten-Detail', 'mk-detail-modal', 'mk-m-del'],
   ['Teile/Figuren', 'man-detail-modal', 'man-detail-del'],
 ];
 
 test('der Papierkorb ist in jedem Detail-Dialog gleich gross', () => {
-  for (const [name, modal, knopf] of MIT_PAPIERKORB) {
+  for (const [name, modal, knopf] of WITH_TRASH) {
     const zeile = dialog(modal)
       .split('\n')
       .find(z => z.includes(`id="${knopf}"`));
@@ -103,17 +103,17 @@ test('Titel- und Fussleiste kleben — und koennen das auch', () => {
     `Nur ${dialoge.length} Dialoge gefunden — Muster veraltet? Ohne Fund prueft der Rest nichts.`,
   );
 
-  let mitLeiste = 0;
+  let withBar = 0;
   for (const id of dialoge) {
     const rumpf = dialog(id);
     if (!/class="mhd"/.test(rumpf)) continue;
-    mitLeiste++;
+    withBar++;
     // Zwischen `<div class="modal…">` und `<div class="mhd">` darf kein
     // weiteres oeffnendes <div> stehen.
     const abModal = rumpf.search(/<div class="modal/);
     assert.ok(abModal >= 0, `#${id}: kein .modal gefunden`);
-    const bisKopf = rumpf.slice(abModal, rumpf.indexOf('<div class="mhd"'));
-    const dazwischen = (bisKopf.match(/<div\b/g) || []).length - 1; // das .modal selbst abziehen
+    const untilHeader = rumpf.slice(abModal, rumpf.indexOf('<div class="mhd"'));
+    const dazwischen = (untilHeader.match(/<div\b/g) || []).length - 1; // das .modal selbst abziehen
     assert.equal(
       dazwischen,
       0,
@@ -123,7 +123,7 @@ test('Titel- und Fussleiste kleben — und koennen das auch', () => {
         `stillschweigend auf zu kleben — kein Fehler, keine Warnung.`,
     );
   }
-  assert.ok(mitLeiste >= 6, `Nur ${mitLeiste} Dialoge mit Titelleiste — zu wenig, da stimmt das Muster nicht mehr.`);
+  assert.ok(withBar >= 6, `Nur ${withBar} Dialoge mit Titelleiste — zu wenig, da stimmt das Muster nicht mehr.`);
 
   // ── 2. Die Regeln selbst ──────────────────────────────────────────────────
   //
@@ -131,8 +131,8 @@ test('Titel- und Fussleiste kleben — und koennen das auch', () => {
   // zitieren die Regeln, um die es geht („hier stand `.mhd { position:
   // sticky; top: 0 }`"). Ohne das meldet die Pruefung den Erklaertext als
   // Verstoss — genau das ist beim Schreiben dieser Datei passiert.
-  const ohneCssKommentare = t => t.replace(/\/\*[\s\S]*?\*\//g, '');
-  const css = ohneCssKommentare(fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8'));
+  const withoutCssComments = t => t.replace(/\/\*[\s\S]*?\*\//g, '');
+  const css = withoutCssComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8'));
   const regel = wahl => {
     const ab = css.indexOf(wahl + '{');
     assert.ok(ab > 0, `${wahl} nicht mehr in styles.css gefunden`);
@@ -184,7 +184,7 @@ test('Titel- und Fussleiste kleben — und koennen das auch', () => {
     );
 
   // ── 3. Die Handyfassung darf die Polsterung nicht zurueckdrehen ───────────
-  const mobil = ohneCssKommentare(fs.readFileSync(path.join(__dirname, '..', 'public', 'mobile.css'), 'utf8'));
+  const mobil = withoutCssComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'mobile.css'), 'utf8'));
   assert.doesNotMatch(
     mobil,
     /\.mhd\s*\{[^}]*position:\s*sticky/,

@@ -3,7 +3,7 @@
  * dann aus X-Forwarded-For, wenn ein vertrauter Proxy davorsteht.
  *
  * Gegenproben (am 25.10. gemessen):
- *   A  Zähler je Name in anmeldungErlaubt entfernt → rot: „mit wechselnden
+ *   A  Zähler je Name in loginAllowed entfernt → rot: „mit wechselnden
  *      Adressen unbegrenzt raten" (seit 28.10. je Konto mit wachsender Wartezeit)
  *   B  server.ts wieder mit `trust proxy` 1 statt proxyVertrauen() → rot:
  *      „TRUST_PROXY=false wird nicht beachtet"
@@ -15,15 +15,15 @@
  *   J  (29.10.) Standard ohne TRUST_PROXY wieder das Docker-Netz → rot:
  *      „ohne TRUST_PROXY dem Docker-Netz vertraut: 172.18.0.2"
  *   K  (30.10.) proxyVertrauen nimmt wieder „docker" (172.16/12 ohne Gateway)
- *      an → rot: „angenommen: docker"; Präfixgrenze in proxyEintragGueltig
+ *      an → rot: „angenommen: docker"; Präfixgrenze in proxyEntryValid
  *      entfernt → rot: „angenommen: 172.16.0.0/12"
- *   L  (14.11.2026) in proxyEintragGueltig die enge Grenze wieder /16 bzw. /64 → rot:
+ *   L  (14.11.2026) in proxyEntryValid die enge Grenze wieder /16 bzw. /64 → rot:
  *      „ohne Bestätigung angenommen: 192.168.1.0/24“
  *   M  (14.11.2026) die Bestätigung erlaubt alles (`p <= max`) → rot: „bestätigt
  *      angenommen: 172.16.0.0/12“
  *   H  (28.10.) kontoKennung() liefert wieder den rohen Namen → rot: „Name
  *      und E-Mail zählen gemeinsam" (und der Zähler je Konto fehlt)
- *   I  (28.10.) wartezeitSekunden() fest auf 1 s → rot: „Sperre je
+ *   I  (28.10.) waitTimeSeconds() fest auf 1 s → rot: „Sperre je
  *      Benutzername gilt über alle Adressen" (keine Verdoppelung)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -39,34 +39,34 @@ process.env.DATABASE_URL = URL_DB;
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = testDaten();
+const db = testData();
 const { proxyVertrauen } = _req('src/infra/proxyVertrauen.js');
-const { MAX_ATTEMPTS, wartezeitSekunden } = _req('src/konto/loginLimiter.js');
+const { MAX_ATTEMPTS, waitTimeSeconds } = _req('src/konto/loginLimiter.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `sperre_${process.pid}`,
   PASS = 'richtigesPasswort1';
 const { warte } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
+const { portOf } = require('./helpers/server');
 
 let UID = null;
 /** Schlüssel des Zählers je Konto (Name und E-Mail zählen gemeinsam). */
-const kontoSchluessel = () => `login-name|konto:${UID}`;
-const zaehlerLeeren = () =>
+const accountKey = () => `login-name|konto:${UID}`;
+const clearCounter = () =>
   db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [`%${NAME}%`, `%konto:${UID}`]);
 
 test.after(async () => {
   await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
-  await zaehlerLeeren().catch(() => {});
+  await clearCounter().catch(() => {});
   await db.pool.end().catch(() => {});
 });
 
-async function vorbereiten(t) {
+async function prepare(t) {
   try {
     await db.initSchema();
   } catch (e) {
@@ -86,14 +86,14 @@ async function vorbereiten(t) {
       [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)],
     )
   ).id;
-  await zaehlerLeeren();
+  await clearCounter();
   return true;
 }
 
 test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
-  const vertraut = (einstellung, adresse) => {
+  const vertraut = (setting, adresse) => {
     const app = express();
-    app.set('trust proxy', proxyVertrauen(einstellung));
+    app.set('trust proxy', proxyVertrauen(setting));
     return app.get('trust proxy fn')(adresse, 0);
   };
   // Ohne Angabe nur Loopback: Ausserhalb von Docker ist 172.16/12 ein Netz wie jedes andere.
@@ -105,8 +105,8 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
   // und nicht das Gateway, über das Clients selbst hereinkommen.
   assert.equal(vertraut('172.28.73.10', '172.28.73.10'), true, 'der eingetragene Proxy');
   assert.equal(vertraut('172.28.73.10', '::ffff:172.28.73.10'), true, 'auch in der IPv6-Hülle');
-  for (const nachbar of ['172.28.73.11', '172.28.73.1', '172.18.0.2', '127.0.0.1'])
-    assert.equal(vertraut('172.28.73.10', nachbar), false, `nicht eingetragen und doch vertraut: ${nachbar}`);
+  for (const neighbor of ['172.28.73.11', '172.28.73.1', '172.18.0.2', '127.0.0.1'])
+    assert.equal(vertraut('172.28.73.10', neighbor), false, `nicht eingetragen und doch vertraut: ${neighbor}`);
   // Ganze Netze, Hop-Zahlen und Freibriefe verweigern den Start.
   for (const falsch of [
     'docker',
@@ -135,8 +135,8 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
     assert.throws(() => proxyVertrauen(weit), /PROXY_NETZ_BESTAETIGT=1/, `ohne Bestätigung angenommen: ${weit}`);
     assert.deepEqual(proxyVertrauen(weit, true), [weit]);
   }
-  for (const zuWeit of ['172.16.0.0/12', 'fd00::/48'])
-    assert.throws(() => proxyVertrauen(zuWeit, true), /TRUST_PROXY enthält/, `bestätigt angenommen: ${zuWeit}`);
+  for (const toWide of ['172.16.0.0/12', 'fd00::/48'])
+    assert.throws(() => proxyVertrauen(toWide, true), /TRUST_PROXY enthält/, `bestätigt angenommen: ${toWide}`);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
     assert.equal(vertraut(undefined, fremd), false, `öffentliche Adresse vertraut: ${fremd}`);
   // Rechner im Heimnetz geben ihre Adresse nicht selbst an.
@@ -149,11 +149,11 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
 });
 
 test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, async t => {
-  if (!(await vorbereiten(t))) return;
+  if (!(await prepare(t))) return;
   const app = express();
   app.set('trust proxy', proxyVertrauen(undefined)); // Anfragen kommen von 127.0.0.1
   app.use(express.json());
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const anmelden = async (password, ip) =>
@@ -177,30 +177,30 @@ test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, asyn
   // Ist die Wartezeit um, geht es weiter — und sie verdoppelt sich.
   const zurueck = sek =>
     db.run(`UPDATE rate_limit_attempts SET last_at = NOW() - make_interval(secs => $2) WHERE key = $1`, [
-      kontoSchluessel(),
+      accountKey(),
       sek,
     ]);
-  assert.equal(wartezeitSekunden(MAX_ATTEMPTS), 1);
-  assert.equal(wartezeitSekunden(MAX_ATTEMPTS + 1), 2);
-  await zurueck(wartezeitSekunden(MAX_ATTEMPTS) + 0.5);
+  assert.equal(waitTimeSeconds(MAX_ATTEMPTS), 1);
+  assert.equal(waitTimeSeconds(MAX_ATTEMPTS + 1), 2);
+  await zurueck(waitTimeSeconds(MAX_ATTEMPTS) + 0.5);
   assert.equal(await anmelden('falsch', '198.51.100.3'), 401, 'nach Ablauf der Wartezeit darf es weitergehen');
-  await zurueck(wartezeitSekunden(MAX_ATTEMPTS) + 0.5);
+  await zurueck(waitTimeSeconds(MAX_ATTEMPTS) + 0.5);
   assert.equal(await anmelden(PASS, '198.51.100.4'), 429, 'die Wartezeit wächst nicht');
 
   // Nach der Wartezeit gilt das richtige Passwort und räumt den Zähler ab.
-  await zurueck(wartezeitSekunden(MAX_ATTEMPTS + 1) + 0.5);
+  await zurueck(waitTimeSeconds(MAX_ATTEMPTS + 1) + 0.5);
   assert.equal(await anmelden(PASS, '198.51.100.5'), 200);
-  const rest = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [kontoSchluessel()]);
+  const rest = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [accountKey()]);
   assert.equal(rest, undefined, 'erfolgreiche Anmeldung leert den Zähler je Konto nicht');
 });
 
 test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, async t => {
-  if (!(await vorbereiten(t))) return;
+  if (!(await prepare(t))) return;
   await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%${NAME}%`]);
   const app = express();
   app.set('trust proxy', proxyVertrauen(undefined));
   app.use(express.json());
-  app.use(AUTH, require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const anmelden = async (password, ip, name = NAME) =>
@@ -233,7 +233,7 @@ test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, asyn
 });
 
 test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concurrency: 1, timeout: 120_000 }, async t => {
-  if (!(await vorbereiten(t))) return;
+  if (!(await prepare(t))) return;
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(
       `INSERT INTO run_state (key, value) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
@@ -242,7 +242,7 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concur
     );
   const port = await new Promise(auf => {
     const s = net.createServer().listen(0, '127.0.0.1', () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => auf(p));
     });
   });

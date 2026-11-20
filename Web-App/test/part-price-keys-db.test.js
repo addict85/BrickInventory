@@ -7,12 +7,12 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
 test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickable-Nummer', async t => {
-  const db = testDaten();
+  const db = testData();
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -51,7 +51,7 @@ test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickabl
      ON CONFLICT (part_number,color_id,condition,currency_code) DO UPDATE SET avg_price = 0.13`,
   );
 
-  const r = await ph.preisverlaufTeil([u.id], '31000', 1, 'CHF');
+  const r = await ph.priceHistoryPart([u.id], '31000', 1, 'CHF');
 
   assert.ok(r.by_condition.U, 'Für den erfassten Zustand fehlt die Zeile ganz');
   assert.equal(

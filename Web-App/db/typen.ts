@@ -1,4 +1,4 @@
-export interface DbSchnittstelle {
+export interface DbInterface {
   /** T beschreibt die Zeile. Ohne Angabe ist sie `unknown`: Wer Felder liest,
    * muss sagen, welche — numeric und bigint kommen als Zeichenkette. */
   all<T = unknown>(sql: string, params?: unknown[]): Promise<T[]>;

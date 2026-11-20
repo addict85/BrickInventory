@@ -4,7 +4,7 @@
  * ohne Anmeldung) und existiert auch angemeldet nicht (404).
  *
  * Gegenproben (01.11.2026 gemessen):
- *   A  `serverbeweis` zurück in die öffentlichen Pfade von anmeldungAmEingang
+ *   A  `serverbeweis` zurück in die öffentlichen Pfade von loginAtInbox
  *      → rot: „ohne Anmeldung 401" (404 statt 401)
  *   B  eine Route POST /serverbeweis (Antwort 400 wie die alte bei falscher
  *      Eingabe) wieder in routes/auth.ts → rot: „angemeldet 404"
@@ -17,14 +17,14 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
 test('POST /api/v1/auth/serverbeweis gibt es nicht mehr', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const app = express();
   app.use(express.json());
@@ -34,10 +34,9 @@ test('POST /api/v1/auth/serverbeweis gibt es nicht mehr', { concurrency: 1 }, as
   });
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').waechterFuer(require('./helpers/sources').testDienste().konto)
-      .anmeldungAmEingang,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
   );
-  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const frage = (kopf = {}) =>

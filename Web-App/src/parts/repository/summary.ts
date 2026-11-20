@@ -1,21 +1,21 @@
 import { lagerorte } from '../../../db/bestandSicht';
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 import { mengeJoin, mengeAus, teilmengeJoin, teilmengeAus } from '../../../db/bestandsmenge';
 import { blJoin, blNummerSql } from '../../../db/blZuordnungSql';
 import { teilSichtJoin, TEIL } from '../../../db/katalogSicht';
 import { LOCKS } from '../../infra/lockNamespaces';
 
 /** State of an account's raw data and whether catalog changes are pending (migration 0079). */
-export async function rawState(db: DbSchnittstelle, userId: number): Promise<{ v: number; katalogOffen: boolean }> {
+export async function rawState(db: DbInterface, userId: number): Promise<{ v: number; openCatalog: boolean }> {
   const r = await db.get<{ v: number | null; katalog_offen: boolean }>(
     `SELECT (SELECT v FROM parts_version_user WHERE user_id = $1) AS v,
             EXISTS (SELECT 1 FROM parts_catalog_pending) AS katalog_offen`,
     [userId],
   );
-  return { v: Number(r?.v) || 0, katalogOffen: !!r?.katalog_offen };
+  return { v: Number(r?.v) || 0, openCatalog: !!r?.katalog_offen };
 }
 
-export async function builtState(db: DbSchnittstelle, userId: number): Promise<number | null> {
+export async function builtState(db: DbInterface, userId: number): Promise<number | null> {
   const r = await db.get<{ built_version: number }>(
     'SELECT built_version FROM parts_summary_state WHERE user_id = $1',
     [userId],
@@ -58,18 +58,18 @@ function summaryInsert(groupsOnly: boolean): string {
        GROUP BY p.user_id, ${blNummerSql('p.part_number')}, p.color_id`;
 }
 
-export async function lockAccount(tx: DbSchnittstelle, userId: number): Promise<boolean> {
+export async function lockAccount(tx: DbInterface, userId: number): Promise<boolean> {
   return !!(
     await tx.get<{ ok: boolean }>('SELECT pg_try_advisory_xact_lock($1, $2) AS ok', [LOCKS.PARTS_SUMMARY, userId])
   )?.ok;
 }
 
 /** Same lock, but waiting: an in-progress rebuild gets waited out. */
-export async function waitForAccount(tx: DbSchnittstelle, userId: number): Promise<void> {
+export async function waitForAccount(tx: DbInterface, userId: number): Promise<void> {
   await tx.run('SELECT pg_advisory_xact_lock($1, $2)', [LOCKS.PARTS_SUMMARY, userId]);
 }
 
-export async function rebuildAll(tx: DbSchnittstelle, userId: number, stand: number): Promise<void> {
+export async function rebuildAll(tx: DbInterface, userId: number, stand: number): Promise<void> {
   await tx.run('DELETE FROM parts_summary WHERE user_id = $1', [userId]);
   await tx.run(summaryInsert(false), [userId]);
   await tx.run(
@@ -81,21 +81,21 @@ export async function rebuildAll(tx: DbSchnittstelle, userId: number, stand: num
   );
 }
 
-export async function rebuildGroups(tx: DbSchnittstelle, userId: number, gruppen: string[]): Promise<void> {
+export async function rebuildGroups(tx: DbInterface, userId: number, gruppen: string[]): Promise<void> {
   await tx.run('DELETE FROM parts_summary WHERE user_id = $1 AND part_key = ANY($2)', [userId, gruppen]);
   await tx.run(summaryInsert(true), [userId, gruppen]);
 }
 
-export function analyze(db: DbSchnittstelle) {
+export function analyze(db: DbInterface) {
   return db.exec('ANALYZE parts_summary');
 }
 
-export async function lockCatalogFollowUp(tx: DbSchnittstelle): Promise<boolean> {
+export async function lockCatalogFollowUp(tx: DbInterface): Promise<boolean> {
   return !!(await tx.get<{ ok: boolean }>('SELECT pg_try_advisory_xact_lock($1, 0) AS ok', [LOCKS.PARTS_CATALOG]))?.ok;
 }
 
 /** What arrives after stays for the next run. */
-export async function pendingNumbers(tx: DbSchnittstelle): Promise<string[]> {
+export async function pendingNumbers(tx: DbInterface): Promise<string[]> {
   return [
     ...new Set(
       (await tx.all<{ number: string }>('DELETE FROM parts_catalog_pending RETURNING number')).map(r => r.number),
@@ -104,12 +104,12 @@ export async function pendingNumbers(tx: DbSchnittstelle): Promise<string[]> {
 }
 
 /** Discard all states: every account rebuilds on its next read. */
-export async function discardAllStates(tx: DbSchnittstelle): Promise<number> {
+export async function discardAllStates(tx: DbInterface): Promise<number> {
   return (await tx.run('DELETE FROM parts_summary_state')).changes ?? 0;
 }
 
 /** Before and after: a new mapping moves a part into another group. */
-export function affectedGroups(tx: DbSchnittstelle, nummern: string[]) {
+export function affectedGroups(tx: DbInterface, nummern: string[]) {
   return tx.all<{ user_id: number; part_key: string }>(
     `
       SELECT DISTINCT p.user_id, ${blNummerSql('p.part_number')} AS part_key

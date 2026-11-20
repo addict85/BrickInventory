@@ -9,7 +9,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-const schranke = JSON.parse(
+const limit = JSON.parse(
   fs.readFileSync(process.env.LINT_SCHRANKEN || path.join(__dirname, 'lint-schranken.json'), 'utf8'),
 ).testtypen;
 const r = spawnSync(
@@ -26,11 +26,11 @@ if (meldungen.some(z => /^tsconfig\.test\.json/.test(z))) {
   console.error(`[typecheck:tests] Konfiguration fehlerhaft:\n${meldungen.join('\n')}`);
   process.exit(2);
 }
-if (meldungen.length > schranke) {
+if (meldungen.length > limit) {
   console.error(meldungen.slice(0, 30).join('\n'));
-  console.error(`[typecheck:tests] ${meldungen.length} Meldungen, erlaubt sind ${schranke}`);
+  console.error(`[typecheck:tests] ${meldungen.length} Meldungen, erlaubt sind ${limit}`);
   process.exit(1);
 }
 console.log(
-  `[typecheck:tests] ${meldungen.length} Meldungen (Schranke ${schranke})${meldungen.length < schranke ? ' — Schranke nachziehen' : ''}`,
+  `[typecheck:tests] ${meldungen.length} Meldungen (Schranke ${limit})${meldungen.length < limit ? ' — Schranke nachziehen' : ''}`,
 );

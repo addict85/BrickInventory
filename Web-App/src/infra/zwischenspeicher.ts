@@ -23,8 +23,8 @@ export class Zwischenspeicher<K, V> {
   setze(k: K, wert: V, fristMs = this.fristMs): void {
     this.eintraege.delete(k);
     if (this.eintraege.size >= this.max) {
-      const aeltester = this.eintraege.keys().next();
-      if (!aeltester.done) this.eintraege.delete(aeltester.value);
+      const oldest = this.eintraege.keys().next();
+      if (!oldest.done) this.eintraege.delete(oldest.value);
     }
     this.eintraege.set(k, { wert, bis: Date.now() + fristMs });
   }
@@ -48,8 +48,8 @@ export class Zwischenspeicher<K, V> {
 export class Faecher {
   private readonly inhalt = new Map<string, unknown>();
 
-  fach<T>(name: string, erzeuge: () => T): T {
-    if (!this.inhalt.has(name)) this.inhalt.set(name, erzeuge());
+  fach<T>(name: string, create: () => T): T {
+    if (!this.inhalt.has(name)) this.inhalt.set(name, create());
     return this.inhalt.get(name) as T;
   }
 }

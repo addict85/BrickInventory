@@ -5,15 +5,15 @@
  * höchstens fünf Minuten lang, nur mit Sitzung. Jedes andere Konto nennt das Passwort. Ohne Frist und …
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  in angemeldetAntworten `passwortBestaetigtAm` nie gesetzt → rot:
+ *   A  in signedInResponses `passwordConfirmedAt` nie gesetzt → rot:
  *      „nach der Anmeldung ohne Passwort“ (400 statt 200)
- *   B  in gnadenfristVerbrauchen das `delete` entfernt → rot: „nur einmal“,
+ *   B  in consumeGracePeriod das `delete` entfernt → rot: „nur einmal“,
  *      „ohne Frist zählt nicht in der Bremse“
- *   C  PASSWORT_GNADENFRIST_MS auf eine Stunde → rot: „nach Ablauf der Frist“
+ *   C  PASSWORD_GRACE_PERIOD_MS auf eine Stunde → rot: „nach Ablauf der Frist“
  *   D  in der Route die Absage ohne Frist entfernt (leeres Passwort geht in
  *      die Prüfung) → rot: „nur einmal“, „nach Ablauf der Frist“, „ohne Frist
  *      zählt nicht in der Bremse“, „mit Token nie“ (aktuelles_passwort_falsch)
- *   E  gnadenfristVerbrauchen gibt Token-Zugriffen die Frist → rot: „mit Token nie“
+ *   E  consumeGracePeriod gibt Token-Zugriffen die Frist → rot: „mit Token nie“
  *   F  (04.11.) in der Route wieder `!zf.istAktiv(uid)` statt zweiterFaktorPflicht(req)
  *      → rot: „ein gewöhnliches Konto nennt immer das Passwort“ (200 statt 400)
  *
@@ -27,16 +27,16 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Gnaden-Passwort-1';
 
 test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `gnade_${process.pid}`,
     NUTZER = `gnade_n_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, NUTZER]]);
@@ -91,14 +91,14 @@ test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, asyn
 
   await t.test('nach Ablauf der Frist', async () => {
     await anmelden();
-    sitzung.passwortBestaetigtAm = Date.now() - 6 * 60 * 1000;
+    sitzung.passwordConfirmedAt = Date.now() - 6 * 60 * 1000;
     const r = await einrichten();
     assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], 'nach Ablauf der Frist');
   });
 
   await t.test('nach dem Passwortwechsel', async () => {
     await anmelden();
-    delete sitzung.passwortBestaetigtAm;
+    delete sitzung.passwordConfirmedAt;
     const w = await ruf('/change-password', { current: PASS, newPassword: 'Gnaden-Passwort-2' });
     assert.equal(w.status, 200, JSON.stringify(w.body));
     await db.run('UPDATE users SET password_hash = $2 WHERE id = $1', [uid, await bcrypt.hash(PASS, 4)]);

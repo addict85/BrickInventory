@@ -8,7 +8,7 @@
  *   A  in der Migration `starts_with(key, 'job_monitor_')` weggelassen (im
  *      INSERT und im DELETE) → rot: „Migration 0063 trennt Zustand von
  *      Konfiguration“
- *   B  zaehleZustand() als Lesen-dann-Schreiben (liesZustand + setzeZustand)
+ *   B  countState() als Lesen-dann-Schreiben (liesZustand + setzeZustand)
  *      → rot: „der Bildzähler zählt gleichzeitige Aufrufe genau“
  * Gegenprobe (05.11.2026): in letzteJeArt() `ORDER BY type, updated_at DESC`
  *   → rot: „die Kachel zeigt den laufenden Auftrag“ (der jüngere offene gewann)
@@ -22,15 +22,15 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0063-laufzustand.sql'), 'utf8');
 const SCHEMA = `probe0063_${process.pid}`;
 
 test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   {
     const c = await db.pool.connect();
     try {
@@ -74,8 +74,8 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t =
   });
 
   const jm = _req('src/management/tiles.js');
-  const { auftraege } = require('./helpers/sources').testDienste();
-  const imgDlAdd = n => auftraege.zaehleZustand('imgdl_pending_count', n);
+  const { auftraege } = require('./helpers/sources').testServices();
+  const imgDlAdd = n => auftraege.countState('imgdl_pending_count', n);
 
   await t.test('die Kacheln lesen den Stand aus der Auftragstabelle', async () => {
     await db.run("DELETE FROM jobs WHERE type = 'preise'");

@@ -27,7 +27,7 @@ function holeNach(handler: Handler) {
 /** Was ein Zugang an LISTEN/NOTIFY anbietet. */
 export interface Signale {
   listen(channel: string, handler: Handler): void;
-  hoertZu(channel: string): boolean;
+  listensTo(channel: string): boolean;
   notify(channel: string, payload?: string): Promise<void>;
   unlisten(channel: string, handler: Handler): void;
   close(): Promise<void>;
@@ -37,7 +37,7 @@ export interface Signale {
 
 /** Fehler werden geschluckt: Der Datenbankeintrag ist die belastbare Quelle,
  * das Signal nur die Beschleunigung. */
-async function notifyUeber(senden: (sql: string, p: unknown[]) => Promise<unknown>, channel: string, payload: string) {
+async function notifyVia(senden: (sql: string, p: unknown[]) => Promise<unknown>, channel: string, payload: string) {
   try {
     await senden(`SELECT pg_notify($1, $2)`, [channel, payload]);
   } catch (e) {
@@ -56,7 +56,7 @@ export class Benachrichtigung implements Signale {
   /** Nach close() wird nicht wieder verbunden — bis ein neues listen() kommt. */
   private _closed = false;
   /** Kanäle, deren LISTEN auf der lebenden Verbindung steht; leer, solange sie fehlt. */
-  private readonly _lauscht = new Set<string>();
+  private readonly _listens = new Set<string>();
 
   constructor(
     private readonly verbindung: ClientConfig,
@@ -94,7 +94,7 @@ export class Benachrichtigung implements Signale {
       // Ein Signal aus der Trennung ist verloren: Die Handler holen einmal nach.
       for (const [channel, hs] of this._handlers) {
         for (const h of hs) holeNach(h.lauf);
-        if (this._client === c) this._lauscht.add(channel);
+        if (this._client === c) this._listens.add(channel);
       }
     } catch (e) {
       console.error('[notify] Verbindung fehlgeschlagen:', (e as Error).message);
@@ -112,7 +112,7 @@ export class Benachrichtigung implements Signale {
     c.on('error', () => {});
     if (this._client !== c) return; // Nachzügler desselben Abrisses
     this._client = null;
-    this._lauscht.clear();
+    this._listens.clear();
     this.scheduleReconnect();
   }
 
@@ -139,7 +139,7 @@ export class Benachrichtigung implements Signale {
     if (c) {
       c.query(`LISTEN ${quoteIdent(channel)}`).then(() => {
         holeNach(handler);
-        if (this._client === c) this._lauscht.add(channel);
+        if (this._client === c) this._listens.add(channel);
       }, logAndContinue('notify:listen'));
     } else {
       void this.connect();
@@ -147,21 +147,21 @@ export class Benachrichtigung implements Signale {
   }
 
   /** Kommt ein Signal auf diesem Kanal gerade an? Wer darauf einen Zwischenspeicher baut, fragt hier. */
-  hoertZu(channel: string): boolean {
-    return this._lauscht.has(channel);
+  listensTo(channel: string): boolean {
+    return this._listens.has(channel);
   }
 
   /** Fehler werden geschluckt: Der Datenbankeintrag ist die belastbare Quelle,
    * das Signal nur die Beschleunigung. */
   async notify(channel: string, payload = '') {
-    await notifyUeber(this.senden, channel, payload);
+    await notifyVia(this.senden, channel, payload);
   }
 
   ueber(senden: (sql: string, p: unknown[]) => Promise<unknown>): Signale {
     return {
       listen: (c, h) => this.listen(c, h),
-      hoertZu: c => this.hoertZu(c),
-      notify: (c, p = '') => notifyUeber(senden, c, p),
+      listensTo: c => this.listensTo(c),
+      notify: (c, p = '') => notifyVia(senden, c, p),
       unlisten: (c, h) => this.unlisten(c, h),
       close: () => this.close(),
       ueber: s => this.ueber(s),
@@ -175,7 +175,7 @@ export class Benachrichtigung implements Signale {
     if (i !== -1) hs.splice(i, 1);
     if (!hs.length) {
       this._handlers.delete(channel);
-      this._lauscht.delete(channel);
+      this._listens.delete(channel);
     }
   }
 
@@ -189,7 +189,7 @@ export class Benachrichtigung implements Signale {
     }
     const c = this._client;
     this._client = null;
-    this._lauscht.clear();
+    this._listens.clear();
     this._handlers.clear();
     this._retryMs = 1000;
     if (c) {

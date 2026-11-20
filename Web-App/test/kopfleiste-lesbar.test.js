@@ -37,7 +37,7 @@ const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochgl
 
 /** Die Kopfleiste wie im Betrieb: data-stil als Stil (styles.js), Klappe offen, Name gesetzt. */
 function kopfleiste() {
-  const html = require('./helpers/sources').ohneHtmlKommentare(fs.readFileSync(P('public', 'index.html'), 'utf8'));
+  const html = require('./helpers/sources').withoutHtmlComments(fs.readFileSync(P('public', 'index.html'), 'utf8'));
   const kopf = html
     .slice(html.indexOf('<header'), html.indexOf('</header>') + 9)
     .replace(/data-stil="/g, 'style="')
@@ -46,7 +46,7 @@ function kopfleiste() {
   return kopf;
 }
 
-function testseite() {
+function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${P('public', s)}">`).join('\n');
   const kopf = kopfleiste();
   const teile = [];
@@ -91,7 +91,7 @@ test('jeder Text in der Kopfleiste ist in jedem Design lesbar', t => {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'kopfleiste-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testseite());
+  fs.writeFileSync(datei, testPage());
   const dom = execFileSync(
     bin,
     [

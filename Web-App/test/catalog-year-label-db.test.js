@@ -6,14 +6,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
 test('das Jahres-Etikett trifft die Stelle', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NUTZER = `jv-${process.pid}`;
   await db.run(`CREATE TABLE IF NOT EXISTS rb_themes (id INT PRIMARY KEY, name TEXT, parent_id INT)`);
@@ -55,7 +55,7 @@ test('das Jahres-Etikett trifft die Stelle', { concurrency: 1 }, async t => {
     return verteilung[verteilung.length - 1].year;
   };
   /** Was an dieser Stelle wirklich steht — aus der echten Liste. */
-  const dortSteht = async (gesamt, anteil, filter = '') => {
+  const thereStands = async (gesamt, anteil, filter = '') => {
     const nr = Math.round(anteil * (gesamt - 1));
     const seite = Math.floor(nr / 60) + 1;
     const d = await hol(`/api/v1/catalog/sets?limit=60&page=${seite}${NUR}${filter}`);
@@ -69,7 +69,7 @@ test('das Jahres-Etikett trifft die Stelle', { concurrency: 1 }, async t => {
         const gesamt = v.reduce((s, e) => s + e.n, 0);
         assert.ok(gesamt > 1000, `zu wenige Sets: ${gesamt}`);
         for (const anteil of [0, 0.25, 0.5, 0.75, 0.9, 1]) {
-          const echt = await dortSteht(gesamt, anteil, `&sort=${sort}`);
+          const echt = await thereStands(gesamt, anteil, `&sort=${sort}`);
           assert.equal(
             etikett(v, gesamt, anteil),
             echt,
@@ -89,7 +89,7 @@ test('das Jahres-Etikett trifft die Stelle', { concurrency: 1 }, async t => {
       const gesamt = v.reduce((s, e) => s + e.n, 0);
       assert.equal(gesamt, 1000, `Filter nicht berücksichtigt: ${gesamt}`);
       for (const anteil of [0, 0.5, 1]) {
-        const echt = await dortSteht(gesamt, anteil, '&sort=year_desc&theme_id=2');
+        const echt = await thereStands(gesamt, anteil, '&sort=year_desc&theme_id=2');
         assert.equal(
           etikett(v, gesamt, anteil),
           echt,
@@ -107,7 +107,7 @@ test('das Jahres-Etikett trifft die Stelle', { concurrency: 1 }, async t => {
       const min = Math.min(...v.map(x => x.year)),
         max = Math.max(...v.map(x => x.year));
       const linear = a => Math.round(max - a * (max - min));
-      const echt = await dortSteht(gesamt, 0.9, '&sort=year_desc');
+      const echt = await thereStands(gesamt, 0.9, '&sort=year_desc');
       assert.notEqual(linear(0.9), echt, 'Die Bühne ist gleichverteilt — dann prüft dieser Test die Verteilung nicht');
     });
   } finally {

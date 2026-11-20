@@ -19,17 +19,17 @@ export function setScrollLabel(fn) {
   scrollLabelFn = fn;
 }
 
-function _rollbarerBereich() {
+function _scrollableArea() {
   const doc = document.documentElement;
   return Math.max(0, doc.scrollHeight - window.innerHeight);
 }
 
 /** Griffgrösse und -lage aus dem Rollzustand — wie bei einem echten Balken. */
-export function zeichneScrollbalken() {
+export function drawScrollbar() {
   const bar = G('app-scrollbar'),
     thumb = G('app-scrollbar-thumb');
   if (!bar || !thumb) return;
-  const rollbar = _rollbarerBereich();
+  const rollbar = _scrollableArea();
   // Passt alles ins Fenster, gibt es nichts zu rollen — dann auch keinen Balken.
   if (rollbar < 8) {
     bar.style.display = 'none';
@@ -39,17 +39,17 @@ export function zeichneScrollbalken() {
   const spur = bar.clientHeight;
   const anteil = window.innerHeight / document.documentElement.scrollHeight;
   const hoehe = Math.max(32, Math.round(spur * anteil));
-  const maxOben = Math.max(0, spur - hoehe);
+  const maxTop = Math.max(0, spur - hoehe);
   const fortschritt = window.scrollY / rollbar;
   thumb.style.height = hoehe + 'px';
-  thumb.style.top = Math.round(maxOben * Math.min(1, Math.max(0, fortschritt))) + 'px';
+  thumb.style.top = Math.round(maxTop * Math.min(1, Math.max(0, fortschritt))) + 'px';
 }
 
 /**
  * Das Balken-Element aus JavaScript erzeugen: app.bundle.js läuft, sobald der Parser es erreicht, und ein
  * <div> dahinter im Markup gab es beim Start noch nicht — der Balken fehlte still.
  */
-function _erzeugeScrollbalken() {
+function _createScrollbar() {
   /** @type {HTMLElement} */
   let bar = G('app-scrollbar');
   if (!bar) {
@@ -62,8 +62,8 @@ function _erzeugeScrollbalken() {
   return bar;
 }
 
-export function initScrollbalken() {
-  const bar = _erzeugeScrollbalken();
+export function initScrollbar() {
+  const bar = _createScrollbar();
   const thumb = G('app-scrollbar-thumb'),
     label = G('app-scrollbar-label');
   if (!bar || !thumb) return;
@@ -71,31 +71,31 @@ export function initScrollbalken() {
     griffOffset = 0;
 
   // Gedrosselt über requestAnimationFrame: Ein Scroll-Ereignis feuert dutzende Male je Sekunde, und
-  // zeichneScrollbalken() LIEST Layout (scrollHeight). Ungedrosselt erzwingt das je Ereignis eine
+  // drawScrollbar() LIEST Layout (scrollHeight). Ungedrosselt erzwingt das je Ereignis eine
   // Neuberechnung — die Seite fühlt sich dann zäh an, obwohl der Server längst geantwortet hat.
   let angefordert = false;
-  const nachzeichnen = () => {
+  const retrace = () => {
     if (angefordert) return;
     angefordert = true;
     requestAnimationFrame(() => {
       angefordert = false;
-      zeichneScrollbalken();
+      drawScrollbar();
     });
   };
-  window.addEventListener('scroll', nachzeichnen, { passive: true });
-  window.addEventListener('resize', nachzeichnen, { passive: true });
+  window.addEventListener('scroll', retrace, { passive: true });
+  window.addEventListener('resize', retrace, { passive: true });
   // Die Seitenhöhe ändert sich beim Nachladen von Kacheln, ohne dass gerollt wird — ohne diese Beobachtung
   // bliebe der Griff auf seiner alten Grösse.
   if (typeof ResizeObserver !== 'undefined') {
-    new ResizeObserver(nachzeichnen).observe(document.body);
+    new ResizeObserver(retrace).observe(document.body);
   }
 
   const rollen = (/** @type {number} */ clientY) => {
     const r = bar.getBoundingClientRect();
     const hoehe = thumb.offsetHeight;
-    const maxOben = Math.max(1, r.height - hoehe);
-    const oben = Math.min(maxOben, Math.max(0, clientY - r.top - griffOffset));
-    window.scrollTo({ top: (oben / maxOben) * _rollbarerBereich() });
+    const maxTop = Math.max(1, r.height - hoehe);
+    const oben = Math.min(maxTop, Math.max(0, clientY - r.top - griffOffset));
+    window.scrollTo({ top: (oben / maxTop) * _scrollableArea() });
     if (label) {
       const text = scrollLabelFn ? scrollLabelFn() : null;
       label.textContent = text || '';
@@ -113,7 +113,7 @@ export function initScrollbalken() {
     rollen(y);
     ev.preventDefault();
   };
-  const bewegen = (/** @type {MouseEvent | TouchEvent} */ ev) => {
+  const move = (/** @type {MouseEvent | TouchEvent} */ ev) => {
     if (!ziehen) return;
     rollen('touches' in ev ? ev.touches[0].clientY : ev.clientY);
     ev.preventDefault();
@@ -128,10 +128,10 @@ export function initScrollbalken() {
   };
 
   bar.addEventListener('mousedown', start);
-  window.addEventListener('mousemove', bewegen);
+  window.addEventListener('mousemove', move);
   window.addEventListener('mouseup', ende);
   bar.addEventListener('touchstart', start, { passive: false });
-  bar.addEventListener('touchmove', bewegen, { passive: false });
+  bar.addEventListener('touchmove', move, { passive: false });
   bar.addEventListener('touchend', ende);
-  zeichneScrollbalken();
+  drawScrollbar();
 }

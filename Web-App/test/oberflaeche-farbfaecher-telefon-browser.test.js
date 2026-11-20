@@ -2,4 +2,4 @@
  * Design Farbfächer, Telefon: axe-core und Layout jeder Ansicht, hell und dunkel (@einzeln: Chrome).
  * Gegenproben (30.10.2026, beschrieben in helpers/oberflaeche-pruefung.js): A, B, C, D, E rot.
  */
-require('./helpers/oberflaeche-pruefung').pruefeOberflaeche('farbfaecher', 'telefon');
+require('./helpers/oberflaeche-pruefung').checkUi('farbfaecher', 'telefon');

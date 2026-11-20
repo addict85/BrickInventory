@@ -1,16 +1,10 @@
-import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
-import type { DbSchnittstelle } from '../../../db/database';
+import { erfassungsTagSql, ENTRY_TABLES as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
+import type { DbInterface } from '../../../db/database';
 
-export type NeuestesFeld = 'preis' | 'zustand';
+export type NewestField = 'preis' | 'zustand';
 
 /** Das Set wörtlich: Es gibt genau eine Stelle, die die letzte Set-Erfassung beschreibt. */
-function neuesteSetErfassung(
-  db: DbSchnittstelle,
-  feld: NeuestesFeld,
-  wert: number | string | null,
-  uid: number,
-  sn: string,
-) {
+function newestSetEntry(db: DbInterface, feld: NewestField, wert: number | string | null, uid: number, sn: string) {
   const spalte = feld === 'preis' ? 'purchase_price' : 'condition';
   return db.run(
     `UPDATE set_acquisitions SET ${spalte} = $1
@@ -22,16 +16,16 @@ function neuesteSetErfassung(
 }
 
 /** 0 heisst bei Teilen und Figuren „für nichts gekauft“; ohne Preis steht NULL. */
-export async function neuesteSetzen(
-  db: DbSchnittstelle,
+export async function setNewest(
+  db: DbInterface,
   art: ErfassungsArt,
-  feld: NeuestesFeld,
+  feld: NewestField,
   wert: number | string | null,
   uid: number,
   schluessel: (string | number)[],
 ): Promise<void> {
   if (art === 'set') {
-    await neuesteSetErfassung(db, feld, wert, uid, String(schluessel[0]));
+    await newestSetEntry(db, feld, wert, uid, String(schluessel[0]));
     return;
   }
   const s = SHAPES[art];
@@ -45,7 +39,7 @@ export async function neuesteSetzen(
   );
 }
 
-export function loescheTeilErfassungen(tx: DbSchnittstelle, besitzer: number, partNumber: string, colorId: number) {
+export function deletePartEntries(tx: DbInterface, besitzer: number, partNumber: string, colorId: number) {
   return tx.run('DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number=$2 AND color_id=$3', [
     besitzer,
     partNumber,
@@ -53,18 +47,12 @@ export function loescheTeilErfassungen(tx: DbSchnittstelle, besitzer: number, pa
   ]);
 }
 
-export function loescheFigurErfassungen(tx: DbSchnittstelle, besitzer: number, figNumber: string) {
+export function deleteMinifigEntries(tx: DbInterface, besitzer: number, figNumber: string) {
   return tx.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [besitzer, figNumber]);
 }
 
 /** Umfärben: Gleiche Käufe desselben Tags gehen in der neuen Farbe auf (eindeutiger Index). */
-export function stockeGleicheErfassungenAuf(
-  tx: DbSchnittstelle,
-  uid: number,
-  partNumber: string,
-  alt: number,
-  neu: number,
-) {
+export function stallSameEntriesOn(tx: DbInterface, uid: number, partNumber: string, alt: number, neu: number) {
   return tx.run(
     `UPDATE part_acquisitions z
           SET quantity = z.quantity + a.quantity
@@ -78,13 +66,7 @@ export function stockeGleicheErfassungenAuf(
   );
 }
 
-export function loescheAufgestockteErfassungen(
-  tx: DbSchnittstelle,
-  uid: number,
-  partNumber: string,
-  alt: number,
-  neu: number,
-) {
+export function deleteToppedUpEntries(tx: DbInterface, uid: number, partNumber: string, alt: number, neu: number) {
   return tx.run(
     `DELETE FROM part_acquisitions a
         WHERE a.user_id = $1 AND a.part_number = $2 AND a.color_id = $3
@@ -97,7 +79,7 @@ export function loescheAufgestockteErfassungen(
   );
 }
 
-export function faerbeErfassungenUm(tx: DbSchnittstelle, uid: number, partNumber: string, alt: number, neu: number) {
+export function colorEntriesUm(tx: DbInterface, uid: number, partNumber: string, alt: number, neu: number) {
   return tx.run(
     `UPDATE part_acquisitions SET color_id = $4
         WHERE user_id = $1 AND part_number = $2 AND color_id = $3`,

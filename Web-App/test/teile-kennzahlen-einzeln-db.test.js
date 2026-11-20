@@ -17,18 +17,18 @@
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
+const { holdsSet, holdsPart } = require('./helpers/bestand');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
-  const H = require('./helpers/sources').handlerModul(_req);
+  if (!(await dataOrSkip(t, _req))) return;
+  const H = require('./helpers/sources').handlerModule(_req);
   const PS = _req('src/parts/summary.js');
   const A = `kz-einzeln-${process.pid}`,
     B = `kz-gemischt-${process.pid}`;
@@ -41,14 +41,14 @@ test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async 
     await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, $1) ON CONFLICT DO NOTHING`, [nr]);
   try {
     // Konto A: nur einzelne Teile, vier Sorten in vier Farben.
-    for (const [i, nr] of TEILE.entries()) await haeltTeil(db, UA, nr, { colorId: [1, 4, 15, 0][i], menge: 25 });
+    for (const [i, nr] of TEILE.entries()) await holdsPart(db, UA, nr, { colorId: [1, 4, 15, 0][i], menge: 25 });
     // Konto B: ein Set mit ke1/Farbe 1 (×3) und ke2/Farbe 4 (×2), dazu einzeln
     // ke1/Farbe 1 (dieselbe Sorte) und ke3/Farbe 15 (neue Sorte und Farbe).
-    await haeltSet(db, UB, SN, 1);
-    await haeltTeil(db, UB, 'ke1', { setNumber: SN, colorId: 1, menge: 3 });
-    await haeltTeil(db, UB, 'ke2', { setNumber: SN, colorId: 4, menge: 2 });
-    await haeltTeil(db, UB, 'ke1', { colorId: 1, menge: 7 });
-    await haeltTeil(db, UB, 'ke3', { colorId: 15, menge: 1 });
+    await holdsSet(db, UB, SN, 1);
+    await holdsPart(db, UB, 'ke1', { setNumber: SN, colorId: 1, menge: 3 });
+    await holdsPart(db, UB, 'ke2', { setNumber: SN, colorId: 4, menge: 2 });
+    await holdsPart(db, UB, 'ke1', { colorId: 1, menge: 7 });
+    await holdsPart(db, UB, 'ke3', { colorId: 15, menge: 1 });
 
     await t.test('nur einzelne Teile: 4 Sorten in 4 Farben', async () => {
       const s = await H.partStatsQuery(UA);
@@ -69,7 +69,7 @@ test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async 
       await PS.rebuildNow(UB);
       const repo = {
         ..._req('src/parts/repository/partsList.js'),
-        ...require('./helpers/sources').testBereich('parts').partsList,
+        ...require('./helpers/sources').testArea('parts').partsList,
       };
       const zsf = await repo.stats([UB], true);
       assert.deepEqual(zsf, live);

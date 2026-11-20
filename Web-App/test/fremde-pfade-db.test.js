@@ -4,14 +4,14 @@
  * des Servers an eine andere Stelle der API, `?…` hängte eigene Parameter an.
  *
  * Geprüft zweimal: GET /sets/:setNumber/parts-list weist solche Nummern am
- * Eingang ab (Vertrag: PFAD), und dahinter baut holeSetTeile() die Adresse mit
+ * Eingang ab (Vertrag: PATH), und dahinter baut holeSetTeile() die Adresse mit
  * abgefangenem https.get.
  *
  * Gegenproben (am 30.10.2026 gemessen):
- *   A  in getAllSetPartsApi() wieder `${n}` statt `${pfadSegment(n)}` → rot:
+ *   A  in getAllSetPartsApi() wieder `${n}` statt `${pathSegment(n)}` → rot:
  *      „verlässt das Pfadsegment“
- *   B  pfadSegment() ohne die Prüfung auf Punktsegmente → rot: „„..“ geht durch“
- *   C  (05.11.2026) setNumber in PFAD ohne Muster (TEXT) → rot: „kommt am
+ *   B  pathSegment() ohne die Prüfung auf Punktsegmente → rot: „„..“ geht durch“
+ *   C  (05.11.2026) setNumber in PATH ohne Muster (TEXT) → rot: „kommt am
  *      Eingang durch“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -23,18 +23,18 @@ const { EventEmitter } = require('node:events');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 
-test('pfadSegment', () => {
-  const { pfadSegment, nummernListe } = _req('src/infra/fremdeAdressen.js');
-  assert.equal(pfadSegment('10294-1'), '10294-1');
-  assert.equal(pfadSegment('x/../y?z'), 'x%2F..%2Fy%3Fz');
-  for (const p of ['', '.', '..', '...']) assert.throws(() => pfadSegment(p), /Pfadsegment/, `„${p}“ geht durch`);
-  assert.equal(nummernListe(['3001', 'a&b=c', '3,4']), '3001,a%26b%3Dc,3%2C4');
+test('pathSegment', () => {
+  const { pathSegment, numbersList } = _req('src/infra/fremdeAdressen.js');
+  assert.equal(pathSegment('10294-1'), '10294-1');
+  assert.equal(pathSegment('x/../y?z'), 'x%2F..%2Fy%3Fz');
+  for (const p of ['', '.', '..', '...']) assert.throws(() => pathSegment(p), /Pfadsegment/, `„${p}“ geht durch`);
+  assert.equal(numbersList(['3001', 'a&b=c', '3,4']), '3001,a%26b%3Dc,3%2C4');
 });
 
 test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, async t => {
@@ -90,7 +90,7 @@ test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, asy
     t,
   });
   let geprueft = 0;
-  const { holeSetTeile } = require('./helpers/sources').testDienste().fremdquellen.quellen;
+  const { holeSetTeile } = require('./helpers/sources').testServices().fremdquellen.quellen;
   for (const roh of ['x%2F..%2F..%2Fusers', '10294-1%3Fsearch%3Dboese', '%2E%2E%2Fcolors']) {
     const r = await fetch(`${base}/api/v1/sets/${roh}/parts-list`);
     assert.equal(r.status, 400, `${roh}: kommt am Eingang durch`);

@@ -5,7 +5,7 @@
  * „nicht wiederholbar“ statt eines zweiten Laufs.
  *
  * Gegenproben (10.11.2026 gemessen):
- * - db/database.ts: der Aufruf von commitBegleiter vor dem COMMIT entfernt →
+ * - db/database.ts: der Aufruf von commitCompanion vor dem COMMIT entfernt →
  *   rot: „abgebrochen nach dem COMMIT“ (zwei Zeilen statt einer) und „ein
  *   Serverfehler nach dem COMMIT“ (Wiederholung lief, 200 statt 409).
  * - repository.ts: in belege() `AND NOT idempotency.has_effect` gestrichen → rot:
@@ -21,17 +21,17 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { idempotency } = _req('src/idempotency/http/middleware.js');
 const dienst = _req('src/idempotency/service.js');
 
 const NAME = `idem_wirkung_${process.pid}`;
 
 test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(
@@ -57,7 +57,7 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
     /** @type {any} */ (req).apiUser = { user_id: uid };
     next();
   });
-  app.use('/api/v1', idempotency(require('./helpers/sources').testDienste().idempotency));
+  app.use('/api/v1', idempotency(require('./helpers/sources').testServices().idempotency));
   app.post('/api/v1/parts', async (req, res) => {
     await db.transaction(async tx => {
       await tx.run(`INSERT INTO ${tabelle} VALUES ($1)`, [req.get('Idempotency-Key')]);
@@ -79,8 +79,8 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
       headers: { 'Content-Type': 'application/json', 'Idempotency-Key': k },
       body: '{"part_number":"3001"}',
     }).catch(() => null);
-  const wirkungen = async k => (await db.get(`SELECT COUNT(*)::int AS n FROM ${tabelle} WHERE key = $1`, [k])).n;
-  const verwaise = k =>
+  const effects = async k => (await db.get(`SELECT COUNT(*)::int AS n FROM ${tabelle} WHERE key = $1`, [k])).n;
+  const orphan = k =>
     db.run(
       `UPDATE idempotency SET created_at = NOW() - make_interval(secs => $3)
                                   WHERE user_id = $1 AND key = $2`,
@@ -97,12 +97,12 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
   await t.test('abgebrochen nach dem COMMIT', async () => {
     danach = 'abbrechen';
     assert.equal(await sende('k-abbruch'), null, 'Vorbedingung: Die Verbindung reisst ab');
-    await verwaise('k-abbruch');
+    await orphan('k-abbruch');
     danach = 'antworten';
     const r = await sende('k-abbruch');
     assert.equal(r.status, 409);
     assert.equal((await r.json()).code, 'idempotenz_nicht_wiederholbar');
-    assert.equal(await wirkungen('k-abbruch'), 1);
+    assert.equal(await effects('k-abbruch'), 1);
   });
 
   await t.test('ein Serverfehler nach dem COMMIT', async () => {
@@ -112,7 +112,7 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
     danach = 'antworten';
     const r = await sende('k-fehler');
     assert.equal(r.status, 409);
-    assert.equal(await wirkungen('k-fehler'), 1);
+    assert.equal(await effects('k-fehler'), 1);
   });
 
   await t.test('ohne COMMIT darf sie neu', async () => {
@@ -122,6 +122,6 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
     rollback = false;
     const r = await sende('k-rollback');
     assert.equal(r.status, 200);
-    assert.equal(await wirkungen('k-rollback'), 1);
+    assert.equal(await effects('k-rollback'), 1);
   });
 });

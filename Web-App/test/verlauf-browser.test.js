@@ -4,25 +4,25 @@
  * ein Link öffnet die genannte Ansicht, Filter stehen als Query darin.
  *
  * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  meldeAnsicht(tab) in bindTabs entfernt → rot: „Reiter schreiben die
+ *   A  reportView(tab) in bindTabs entfernt → rot: „Reiter schreiben die
  *      Adresse“ (bleibt „#/sammlung“) und die drei folgenden
- *   B  beiDialogWechsel(dialogGewechselt) in router.js entfernt → rot:
+ *   B  beiDialogWechsel(dialogSwitched) in router.js entfernt → rot:
  *      „Zurück schliesst den Dialog“ (Dialog bleibt, Ansicht wechselt)
- *   C  routeBeimStart() in showApp entfernt → rot: alle vier (der Router
+ *   C  routeOnStart() in showApp entfernt → rot: alle vier (der Router
  *      startet nie; „Neuladen“ zeigt die Sammlung statt der Finanzen)
- *   D  meldeFilter() im Ereignis der Filterfelder entfernt → rot: „Filter in
+ *   D  reportFilter() im Ereignis der Filterfelder entfernt → rot: „Filter in
  *      der Adresse“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { musterSammlung } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { patternCollection } = require('./helpers/bestand');
 
 const ZUSTAND = `({ url: location.hash, ansicht: document.querySelector('.tab.active')?.id,
   dialoge: [...document.querySelectorAll('.ovl.open')].map(o => o.id) })`;
 
 test('Adresse und Verlauf', { timeout: 180_000 }, async t => {
-  const app = await starteApp(t, { name: `verlauf_${process.pid}`, bestand: musterSammlung });
+  const app = await startApp(t, { name: `verlauf_${process.pid}`, bestand: patternCollection });
   if (app.grund) {
     t.skip(app.grund);
     return;

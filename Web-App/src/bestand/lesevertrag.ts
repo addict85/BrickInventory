@@ -3,7 +3,7 @@
  * Repositories ihn lesen dürfen (Konten wie db/konten.ts). */
 type Konten = `= $${number}` | `= ANY($${number})`;
 
-export interface BestandLesevertrag {
+export interface InventoryReadContract {
   setBestand(konten?: Konten): string;
   setErfassungen(konten?: Konten): string;
   teilErfassungen(konten?: Konten): string;

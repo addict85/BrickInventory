@@ -1,14 +1,14 @@
 /** Here and not in a route, because the session route and the v1 factory both
  * reach for it — a route shouldn't import another route. */
 import type { Sicht } from '../haushalt';
-import { oeffentlicherFehler } from '../infra/fehler';
-import { Abstriche, versuche } from '../infra/ergebnis';
-import { csvGemeinsameFelder, csvZeilenAusAnfrage } from '../infra/csvExport';
+import { publicError } from '../infra/fehler';
+import { Degradations, versuche } from '../infra/ergebnis';
+import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
 import { mengenwunsch } from '../bestand';
 import { KEINE_FARBE } from '../katalog';
 import type { Quellen } from '../fremdquellen';
 import * as V0 from '../infra/validate';
-import { geldEingabe } from '../infra/geld';
+import { moneyInput } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
 import type { PartsContext } from './context';
 
@@ -26,7 +26,7 @@ export async function manualPartPurchase(
   // The rule lives in src/finanzen/preisRegel.ts; what remains here is only what
   // differs for a PART versus a minifig: the lookup key.
   const r = await k.finanzen.manuellerKaufpreis(uid, { unitPrice, condition }, zustand =>
-    k.finanzen.marktpreisMitHerkunft(partNumber, colorId, uid, zustand),
+    k.finanzen.marketPriceWithOrigin(partNumber, colorId, uid, zustand),
   );
   return {
     effectiveUnitPrice: r.unitPrice,
@@ -34,7 +34,7 @@ export async function manualPartPurchase(
     erfassungsPreis: r.erfassungsPreis,
     effectiveCondition: r.zustand,
     // null when there is nothing to flag.
-    preisAusZustand: r.preisAusZustand,
+    priceFromState: r.priceFromState,
     geschaetzt: r.geschaetzt,
   };
 }
@@ -42,12 +42,12 @@ export async function manualPartPurchase(
 /** One path for the webapp and the app, so purchase price and storage are handled the same everywhere. */
 export async function addManualPart(k: PartsContext, uid: number, rawBody: Record<string, unknown>) {
   // Without a given location, the account's default location applies (src/bestand/lagerort.ts).
-  const ort = await k.bestand.lagerortDienst.ortFuerNeuerfassung(uid, rawBody?.storage);
+  const ort = await k.bestand.locationService.locationForNewEntry(uid, rawBody?.storage);
   // The SAME conversion as in the body, on the same input — it cannot drift apart.
   const farbe = V0.colorId(rawBody?.color_id);
   const ergebnis = await addManualPartInternal(k, uid, rawBody);
   if (ort && ergebnis?.part_number) {
-    await k.bestand.lagerortDienst.setzeLagerort('part', [uid], [ergebnis.part_number, String(farbe)], ort);
+    await k.bestand.locationService.setLocation('part', [uid], [ergebnis.part_number, String(farbe)], ort);
   }
   return ergebnis;
 }
@@ -56,14 +56,14 @@ async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Reco
   // Every field validated: they get rendered later, and unvalidated they were the
   // server half of a stored-XSS chain. image_url must be https.
   const V = V0;
-  const part_number = V.nummerPflicht(rawBody?.part_number, 'part_number');
+  const part_number = V.numberRequired(rawBody?.part_number, 'part_number');
   const color_id = V.colorId(rawBody?.color_id);
   const color_name = V.optionalText(rawBody?.color_name, 100);
   const color_hex = V.optionalHex(rawBody?.color_hex);
   const quantity = V.acquisitionQuantity(rawBody?.quantity, 1);
   const condition = V.optionalCondition(rawBody?.condition);
   // Negative amounts used to end up in the finance tab's totals.
-  const unit_price = geldEingabe(rawBody?.unit_price, 'Stückpreis');
+  const unit_price = moneyInput(rawBody?.unit_price, 'Stückpreis');
   // Allows several acquisitions of the same part at different times.
   const acquiredAt = String(rawBody?.acquired_at || '').trim() || null;
 
@@ -80,24 +80,24 @@ async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Reco
   }
 
   // One calculation, the same one used in the CSV import.
-  const { erfassungsPreis, effectiveCondition, preisAusZustand, geschaetzt } = await manualPartPurchase(k, uid, {
+  const { erfassungsPreis, effectiveCondition, priceFromState, geschaetzt } = await manualPartPurchase(k, uid, {
     partNumber: part_number,
     colorId: color_id,
     unitPrice: unit_price,
     condition,
   });
   // Without a color code, the color dot in the UI would stay grey.
-  const rbFarbcode = await k.manualParts.rbColorHex(color_id);
+  const rbColorCode = await k.manualParts.rbColorHex(color_id);
 
   // Description applies to ALL accounts (catalog), the stock to one.
-  await k.katalog.merkeTeil(part_number, gefunden?.part_name, gefunden?.category_name);
-  await k.katalog.merkeTeil(part_number, eingabe.name, eingabe.kategorie, k.db, uid);
-  await k.katalog.merkeTeilFarbe(part_number, color_id, null, rbFarbcode, gefunden?.image_url);
-  await k.katalog.merkeTeilFarbe(part_number, color_id, color_name, color_hex, eingabe.bild, null, k.db, uid);
+  await k.katalog.rememberPart(part_number, gefunden?.part_name, gefunden?.category_name);
+  await k.katalog.rememberPart(part_number, eingabe.name, eingabe.kategorie, k.db, uid);
+  await k.katalog.rememberPartColor(part_number, color_id, null, rbColorCode, gefunden?.image_url);
+  await k.katalog.rememberPartColor(part_number, color_id, color_name, color_hex, eingabe.bild, null, k.db, uid);
 
   // Price, condition and quantity live in the acquisition, not on the row.
-  await k.bestand.manuell.legeZeileAn('part', uid, [part_number, color_id]);
-  await k.bestand.bucheTageserfassung('part', uid, [part_number, color_id], {
+  await k.bestand.manuell.putRowAn('part', uid, [part_number, color_id]);
+  await k.bestand.bookDailyEntry('part', uid, [part_number, color_id], {
     quantity,
     price: erfassungsPreis,
     geschaetzt,
@@ -107,7 +107,7 @@ async function addManualPartInternal(k: PartsContext, uid: number, rawBody: Reco
 
   // `price_from_condition`: the carried-over market price comes from the OTHER
   // condition — carried over, but flagged.
-  return { action: 'added', part_number, part_name, price_from_condition: preisAusZustand };
+  return { action: 'added', part_number, part_name, price_from_condition: priceFromState };
 }
 
 /** Typed and looked-up kept apart: only what Rebrickable returns goes into the shared
@@ -125,15 +125,15 @@ async function partDescription(
   if (part_name) return { part_name, gefunden };
 
   const hasColor = color_id !== KEINE_FARBE;
-  const lokal = await k.katalog.katalogTeil(part_number, hasColor ? color_id : null, uid);
+  const lokal = await k.katalog.catalogPart(part_number, hasColor ? color_id : null, uid);
   if (lokal) {
     part_name = lokal.name;
     image_url = image_url || lokal.bild;
   }
 
-  // `hatBild` instead of `image_url`: a local path would fail the URL check, but
+  // `hatImage` instead of `image_url`: a local path would fail the URL check, but
   // still proves the fetch has nothing more to get.
-  if (!part_name || !(image_url || lokal?.hatBild)) {
+  if (!part_name || !(image_url || lokal?.hatImage)) {
     // Without Rebrickable, the part gets logged with whatever the catalog already knows.
     const abruf = await versuche(
       'parts:lookupPart',
@@ -157,13 +157,13 @@ async function additionalAcquisition(
   const reCond =
     e.condition && ['N', 'U'].includes(e.condition)
       ? e.condition
-      : await k.finanzen.teilZustand(uid, part_number, color_id);
+      : await k.finanzen.partState(uid, part_number, color_id);
   const reEntered = e.unit_price;
   const rePrice =
-    reEntered !== null ? reEntered : await k.finanzen.aktuellerTeilMarktpreis(part_number, color_id, uid, reCond);
+    reEntered !== null ? reEntered : await k.finanzen.currentPartMarketPrice(part_number, color_id, uid, reCond);
 
   // One acquisition per day and condition (src/bestand/acquisitions.ts).
-  await k.bestand.bucheTageserfassung('part', uid, [part_number, color_id], {
+  await k.bestand.bookDailyEntry('part', uid, [part_number, color_id], {
     quantity: e.quantity,
     price: (rePrice ?? 0) > 0 ? rePrice : null,
     condition: reCond,
@@ -186,47 +186,47 @@ export async function changeManualPart(
 
   const raus: { quantity?: number } = {};
   // If the market price for the new acquisition didn't arrive, `degradiert` says so.
-  const ab = new Abstriche();
-  const wunsch = mengenwunsch(body);
-  if (wunsch) {
+  const ab = new Degradations();
+  const wish = mengenwunsch(body);
+  if (wish) {
     const cond = await k.einstellungen.conditionForPrice(undefined, existing.condition, uid);
-    raus.quantity = await k.bestand.passeManuelleMengeAn(
+    raus.quantity = await k.bestand.passeManualQuantityAn(
       'part',
       uid,
       [partNumber, colorId],
-      wunsch,
+      wish,
       cond,
-      () => k.finanzen.aktuellerTeilMarktpreis(partNumber, colorId, uid, cond),
+      () => k.finanzen.currentPartMarketPrice(partNumber, colorId, uid, cond),
       ab,
     );
   }
   if (body.unit_price !== undefined) {
     // The rule lives in src/finanzen/preisRegel.ts; only the lookup and table are here.
-    const { unitPrice } = await k.finanzen.kaufpreisAusEingabe(
+    const { unitPrice } = await k.finanzen.purchasePriceFromInput(
       body.unit_price,
       body.condition,
       existing.condition,
       uid,
-      zustand => k.finanzen.aktuellerTeilMarktpreis(partNumber, colorId, uid, zustand),
+      zustand => k.finanzen.currentPartMarketPrice(partNumber, colorId, uid, zustand),
     );
     // Into the LATEST acquisition: there NULL means "no price known", the 0 shown
     // on display is formed by the read query.
-    await k.bestand.neuesteSetzen('part', 'preis', unitPrice, uid, [partNumber, colorId]);
+    await k.bestand.setNewest('part', 'preis', unitPrice, uid, [partNumber, colorId]);
   }
   if (body.condition !== undefined && body.condition !== null) {
     const cond = V0.zustand(body.condition);
-    await k.bestand.neuesteSetzen('part', 'zustand', cond, uid, [partNumber, colorId]);
+    await k.bestand.setNewest('part', 'zustand', cond, uid, [partNumber, colorId]);
   }
   return { ...raus, ...ab.angabe() };
 }
 
 export async function listPartAcquisitions(
   k: PartsContext,
-  uidWahl: Sicht | number[],
+  uidChoice: Sicht | number[],
   partNumber: string,
   colorId: string | number,
 ) {
-  const uid = await k.haushalt.blickfeldAus(uidWahl);
+  const uid = await k.haushalt.scopeFrom(uidChoice);
   // The VIEWPOINT: each row comes with its owner, otherwise the picker in the
   // dialog wouldn't know what it's choosing from.
   return k.manualParts.partAcquisitions(uid, partNumber, V0.colorId(colorId));
@@ -243,18 +243,18 @@ export function manualPartExists(
 
 /** Same pricing rule as when adding by hand; one bad row doesn't abort the rest. */
 export async function importPartsCsv(k: PartsContext, uid: number, text: string) {
-  const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
+  const { records, cleaned, uebersprungen } = csvRowsFromRequest(text);
   let added = 0,
     updated = 0,
     errors = 0;
   const results: Array<{ part_number: string; action: string; error?: string }> = [];
 
-  for (const row of bereinigt) {
+  for (const row of cleaned) {
     const partNumber = String(row.part_number || row.Teilenummer || row.part_num || Object.values(row)[0] || '').trim();
     if (!partNumber) continue;
     const colorId = V0.colorId(row.color_id ?? row['Farb-ID']);
     const colorName = row.color_name || row.Farbe || null;
-    const { menge: qty, preis: unitPrice, erfasstAm: acquiredAt, zustand: rawCondition } = csvGemeinsameFelder(row);
+    const { menge: qty, preis: unitPrice, recordedAt: acquiredAt, zustand: rawCondition } = csvSharedFields(row);
 
     try {
       let partName = row.part_name || row.Name || null;
@@ -288,19 +288,19 @@ export async function importPartsCsv(k: PartsContext, uid: number, text: string)
       };
 
       if (await manualPartExists(k, uid, partNumber, colorId)) {
-        await k.bestand.bucheTageserfassung('part', uid, [partNumber, colorId], erfassung);
+        await k.bestand.bookDailyEntry('part', uid, [partNumber, colorId], erfassung);
         updated++;
         results.push({ part_number: partNumber, action: 'updated' });
         continue;
       }
       // Catalog before stock: better a description without stock than the other way round.
       const colorHex = await k.manualParts.rbColorHex(colorId);
-      if (eingetippt) await k.katalog.merkeTeil(partNumber, partName, null, k.db, uid);
-      else await k.katalog.merkeTeil(partNumber, partName, categoryName);
-      await k.katalog.merkeTeilFarbe(partNumber, colorId, null, colorHex, imageUrl);
-      await k.katalog.merkeTeilFarbe(partNumber, colorId, colorName, null, null, null, k.db, uid);
-      await k.bestand.manuell.legeZeileAn('part', uid, [partNumber, colorId]);
-      await k.bestand.bucheTageserfassung('part', uid, [partNumber, colorId], erfassung);
+      if (eingetippt) await k.katalog.rememberPart(partNumber, partName, null, k.db, uid);
+      else await k.katalog.rememberPart(partNumber, partName, categoryName);
+      await k.katalog.rememberPartColor(partNumber, colorId, null, colorHex, imageUrl);
+      await k.katalog.rememberPartColor(partNumber, colorId, colorName, null, null, null, k.db, uid);
+      await k.bestand.manuell.putRowAn('part', uid, [partNumber, colorId]);
+      await k.bestand.bookDailyEntry('part', uid, [partNumber, colorId], erfassung);
       added++;
       results.push({ part_number: partNumber, action: 'added' });
     } catch (e) {
@@ -308,7 +308,7 @@ export async function importPartsCsv(k: PartsContext, uid: number, text: string)
       results.push({
         part_number: partNumber,
         action: 'error',
-        error: oeffentlicherFehler(e, 'parts-csv:row').error,
+        error: publicError(e, 'parts-csv:row').error,
       });
     }
   }

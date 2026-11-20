@@ -4,7 +4,7 @@ import type { Db } from '../../db/database';
 import type { Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { SettingsServices } from '../settings';
-import type { KontoDienste } from '../konto';
+import type { AccountServices } from '../konto';
 import type { MailServices } from '../mail';
 import type { Uhr } from '../infra/uhr';
 
@@ -14,7 +14,7 @@ export interface ProfileDependencies {
   uhr: Uhr;
   faecher: Faecher;
   einstellungen: SettingsServices;
-  konto: KontoDienste;
+  konto: AccountServices;
   mail: MailServices;
 }
 

@@ -8,12 +8,12 @@
  *   C  istVerwalter-Prüfung in /einrichtung weg   → rot: „Nicht-Verwalter sieht den Stand"
  *   D  (04.11.) in quellenAbsage die Zeile für fehlende Schlüssel entfernt
  *      → rot: „fehlender Schlüssel in Klartext" (quelle_test_fehlgeschlagen)
- *   E  (13.11.) in eingangsSperre() die Prüfung mussWechseln() entfernt → rot:
+ *   E  (13.11.) in inboundLock() die Prüfung switchMust() entfernt → rot:
  *      „mit dem Startpasswort führt der Eingang nur zum Wechsel“ (200 statt 403)
  *
  * Über die echte Kette (testServer): Mit dem Startpasswort lässt der Eingang nur
  * den Wechsel zu; die Oberfläche öffnet den Assistenten erst danach (sitzung.js:
- * oeffneApp → Pflichtwechsel → Neuladen → showApp → pruefeEinrichtung).
+ * openApp → Pflichtwechsel → Neuladen → showApp → pruefeEinrichtung).
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -22,12 +22,12 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const db = testDaten();
+const { adminWithFactor } = require('./helpers/verwalter');
+const db = testData();
 
 const SCHLUESSEL = [
   'rebrickable_api_key',
@@ -40,7 +40,7 @@ const SCHLUESSEL = [
 ];
 
 test('Einrichtungs-Assistent', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
 
@@ -51,7 +51,7 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async t => {
       [name],
     )
   ).id;
-  await verwalterMitFaktor(_req, uid);
+  await adminWithFactor(_req, uid);
   const verwalter = { userId: uid, isAdmin: true };
   const V = testServer(_req, { sitzung: verwalter, t });
   const N = testServer(_req, { sitzung: { userId: uid, isAdmin: false }, t });

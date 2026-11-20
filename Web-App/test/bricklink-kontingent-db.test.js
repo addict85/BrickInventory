@@ -4,7 +4,7 @@
  *
  * Gegenproben (am 28.10.2026 gemessen):
  *   A  die Zählung in bricklinkRequest() entfernt → rot: beide Fälle
- *   B  in holePreis wieder kontingentPruefenUndZaehlen statt kontingentFrei
+ *   B  in fetchPrice wieder kontingentPruefenUndZaehlen statt quotaFree
  *      → rot: beide Fälle (der Vorabcheck zählt mit)
  *   C  in bricklinkRequest den Abbruch bei erschöpftem Kontingent entfernt
  *      → rot: „ein erschöpftes Kontingent hält auch den Rückfall an“
@@ -22,10 +22,10 @@ const { Readable } = require('node:stream');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 /** @type {string[]} */
 const aufrufe = [];
@@ -59,7 +59,7 @@ const zaehler = async () =>
   );
 
 test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const SN = `91${process.pid % 10000}-1`;
   const heute = new Date().toISOString().slice(0, 10);
@@ -69,20 +69,20 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
       k,
       v,
     ]);
-  const neuerTag = async () => {
+  const newTag = async () => {
     await db.run(`DELETE FROM api_calls WHERE day = $1 AND api = 'bricklink'`, [heute]);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     aufrufe.length = 0;
   };
   const zugang = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
-  const alterZugang = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
+  const alterAccess = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
   for (const k of zugang) await setze(k, 'test');
   await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
-  const { holePreis } = _req('src/finanzen/financeCalc.js');
+  const { fetchPrice } = _req('src/finanzen/financeCalc.js');
   t.after(async () => {
     await setze('api_limit_bricklink', vorher?.value ?? '4000');
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [zugang]);
-    for (const z of alterZugang) await setze(z.key, z.value);
+    for (const z of alterAccess) await setze(z.key, z.value);
     await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
     await db.run('DELETE FROM price_history WHERE set_number = $1', [SN]);
     await db.pool.end().catch(() => {});
@@ -90,8 +90,8 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
 
   await t.test('sold und stock zählen je einmal', async () => {
     await setze('api_limit_bricklink', '100');
-    await neuerTag();
-    const p = await holePreis(SN, 'N', 'sold', 'EUR', 24);
+    await newTag();
+    const p = await fetchPrice(SN, 'N', 'sold', 'EUR', 24);
     assert.equal(parseFloat(p.avg_price), 12.5, 'der Rückfall auf Angebote hat keinen Preis geliefert');
     assert.equal(aufrufe.length, 2, `erwartet zwei Abrufe, gesehen: ${aufrufe.join(' | ')}`);
     assert.equal(await zaehler(), 2, 'das Kontingent zählt nicht jeden Abruf');
@@ -99,8 +99,8 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
 
   await t.test('ein erschöpftes Kontingent hält auch den Rückfall an', async () => {
     await setze('api_limit_bricklink', '1');
-    await neuerTag();
-    await holePreis(SN, 'N', 'sold', 'EUR', 24).catch(() => null);
+    await newTag();
+    await fetchPrice(SN, 'N', 'sold', 'EUR', 24).catch(() => null);
     assert.equal(aufrufe.length, 1, `über das Limit hinaus abgerufen: ${aufrufe.join(' | ')}`);
     assert.equal(await zaehler(), 1);
   });

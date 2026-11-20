@@ -1,8 +1,8 @@
-import type { DbSchnittstelle } from '../../../db/database';
-import type { FinanzenLesevertrag } from '../lesevertrag';
+import type { DbInterface } from '../../../db/database';
+import type { FinancesReadContract } from '../lesevertrag';
 import { marktpreisSql } from '../../../db/geldSql';
 
-export function cachePreiseFuerSets(db: DbSchnittstelle, werte: (string[] | string | number)[], ttlClause: string) {
+export function cachePricesForSets(db: DbInterface, werte: (string[] | string | number)[], ttlClause: string) {
   return db.all<{ set_number: string; condition: string; marktpreis: number | null }>(
     `SELECT set_number, condition, ${marktpreisSql()} AS marktpreis
        FROM price_cache
@@ -11,7 +11,7 @@ export function cachePreiseFuerSets(db: DbSchnittstelle, werte: (string[] | stri
   );
 }
 
-export function setErfassungenZumWert(db: DbSchnittstelle, l: FinanzenLesevertrag, userId: number, setNumber: string) {
+export function setEntriesToValue(db: DbInterface, l: FinancesReadContract, userId: number, setNumber: string) {
   return db.all<{ quantity: number; condition: string | null }>(
     `SELECT quantity, condition FROM ${l.setErfassungen('= $1')} e WHERE set_number=$2`,
     [userId, setNumber],

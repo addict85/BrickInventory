@@ -1,5 +1,5 @@
-/** The area's factory: services as a closure over k (baueBereich, src/infra/bereich.ts). */
-import { mit, baueBereich, type Einblick } from '../infra/bereich';
+/** The area's factory: services as a closure over k (buildArea, src/infra/bereich.ts). */
+import { mit, buildArea, type Inspect } from '../infra/bereich';
 import * as legacySecrets from './legacySecrets';
 import * as passkeys from './passkeys';
 import * as secondFactor from './secondFactor';
@@ -8,8 +8,8 @@ import { access, type FactorsDependencies, type FactorsContext } from './context
 export type { FactorsDependencies, FactorsContext } from './context';
 
 /** Second factor and passkeys: their own tables, no account. When they apply is the account's call. */
-export function createFactors(a: FactorsDependencies, einblick?: Einblick<FactorsContext>) {
-  return baueBereich(
+export function createFactors(a: FactorsDependencies, inspect?: Inspect<FactorsContext>) {
+  return buildArea(
     a,
     access,
     (k: FactorsContext) => ({
@@ -32,7 +32,7 @@ export function createFactors(a: FactorsDependencies, einblick?: Einblick<Factor
       revokePasskeys: mit(k)(passkeys.revokePasskeys),
       encryptLegacySecrets: mit(k)(legacySecrets.encryptLegacySecrets),
     }),
-    einblick,
+    inspect,
   );
 }
 

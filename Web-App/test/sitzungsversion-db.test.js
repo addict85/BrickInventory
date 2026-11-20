@@ -6,9 +6,9 @@
  * wird nachgestellt, indem die alte Zeile wieder eingefügt wird.
  *
  * Gegenproben (01.11.2026 gemessen, je einzeln):
- *   A  sitzungsVersionPruefen() ruft immer next() → rot: „die zurückgeschriebene
+ *   A  checkSessionVersion() ruft immer next() → rot: „die zurückgeschriebene
  *      Verwaltersitzung gilt nicht mehr" und „das andere Fenster bleibt draussen"
- *   B  erhoeheSitzungsVersion() in alleSitzungenBeenden (src/konto/zugangsende.ts) entfernt → rot:
+ *   B  increaseSessionVersion() in endAllSessions (src/konto/zugangsende.ts) entfernt → rot:
  *      „die zurückgeschriebene Verwaltersitzung gilt nicht mehr"
  *   C  in routes/api_v1/settings.ts die neue Version nicht in die eigene
  *      Sitzung geschrieben → rot: „das eigene Fenster bleibt angemeldet"
@@ -24,27 +24,27 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-const NAMEN = ['sv_chef', 'sv_zweiter', 'sv_nutzer'];
+const NAMEN = ['sv_chef', 'sv_second', 'sv_nutzer'];
 const PW = 'sitzungsVersion-1';
 
 test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   for (const n of NAMEN) await db.run('DELETE FROM users WHERE username = $1', [n]);
   const hash = await bcrypt.hash(PW, 4);
   const id = {};
   for (const [n, admin] of [
     ['sv_chef', true],
-    ['sv_zweiter', true],
+    ['sv_second', true],
     ['sv_nutzer', false],
   ])
     id[n] = (
@@ -54,10 +54,10 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
       )
     ).id;
   // Verwalter brauchen einen Code-Generator; Anmeldung und Bestätigung nehmen je einen Wiederherstellungscode.
-  const { verwalterMitFaktor } = require('./helpers/verwalter');
+  const { adminWithFactor } = require('./helpers/verwalter');
   const codes = {
-    sv_chef: await verwalterMitFaktor(_req, id.sv_chef),
-    sv_zweiter: await verwalterMitFaktor(_req, id.sv_zweiter),
+    sv_chef: await adminWithFactor(_req, id.sv_chef),
+    sv_second: await adminWithFactor(_req, id.sv_second),
   };
 
   const app = express();
@@ -71,15 +71,14 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
     }),
   );
   app.use(
-    _req('src/konto/http/sitzungsPruefung.js').sitzungsVersionPruefen(require('./helpers/sources').testDienste().konto),
+    _req('src/konto/http/sitzungsPruefung.js').checkSessionVersion(require('./helpers/sources').testServices().konto),
   );
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').waechterFuer(require('./helpers/sources').testDienste().konto)
-      .anmeldungAmEingang,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
   );
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
-  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
@@ -96,7 +95,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
   const sid = cookie => decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0];
   const zeile = async cookie => db.get('SELECT sid, sess, expire FROM user_sessions WHERE sid = $1', [sid(cookie)]);
   // Was eine Anfrage tut, die vor dem Löschen begann und danach speichert.
-  const zurueckschreiben = z =>
+  const writeBack = z =>
     db.run(
       'INSERT INTO user_sessions (sid, sess, expire) VALUES ($1,$2,$3) ON CONFLICT (sid) DO UPDATE SET sess = EXCLUDED.sess',
       [z.sid, z.sess, z.expire],
@@ -106,29 +105,29 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
   try {
     await t.test('Rechteentzug: die zurückgeschriebene Verwaltersitzung gilt nicht mehr', async () => {
       const chef = await anmelden('sv_chef');
-      const zweiter = await anmelden('sv_zweiter');
+      const zweiter = await anmelden('sv_second');
       assert.equal((await ruf('/api/v1/auth/users', zweiter)).status, 200, 'Vorbedingung: Verwalter');
       const alt = await zeile(zweiter);
       assert.ok(alt, 'Vorbedingung: Sitzungszeile liegt');
 
-      const r = await ruf(`/api/v1/auth/users/${id.sv_zweiter}/admin`, chef, {
+      const r = await ruf(`/api/v1/auth/users/${id.sv_second}/admin`, chef, {
         method: 'PUT',
         body: JSON.stringify({ is_admin: false, admin_password: PW, code: codes.sv_chef.shift() }),
       });
       assert.equal(r.status, 200, await r.text());
       // Einem Verwalter wird die Rolle erst nach der Frist entzogen: fällig machen und ausführen.
       await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [
-        id.sv_zweiter,
+        id.sv_second,
       ]);
-      assert.equal(await _req('src/konto/verwalterAktionen.js').fuehreFaelligeUebernahmenAus(), 1);
+      assert.equal(await _req('src/konto/verwalterAktionen.js').runDueTakeoversFrom(), 1);
       assert.equal(await zeile(zweiter), undefined, 'Vorbedingung: Zeile gelöscht');
-      await zurueckschreiben(alt);
+      await writeBack(alt);
 
       const danach = await ruf('/api/v1/auth/users', zweiter);
       assert.equal(danach.status, 401, 'die zurückgeschriebene Verwaltersitzung gilt nicht mehr');
       assert.equal(await angemeldet(zweiter), false);
       assert.equal(await zeile(zweiter), undefined, 'die alte Zeile ist beim Abweisen wieder entfernt');
-      assert.equal(await angemeldet(await anmelden('sv_zweiter')), true, 'neu anmelden geht');
+      assert.equal(await angemeldet(await anmelden('sv_second')), true, 'neu anmelden geht');
     });
 
     await t.test('andere Fenster beenden: das eigene bleibt, das andere bleibt draussen', async () => {
@@ -140,7 +139,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
         body: JSON.stringify({ password: PW }),
       });
       assert.equal(r.status, 200, await r.text());
-      await zurueckschreiben(altB);
+      await writeBack(altB);
       assert.equal(await angemeldet(b), false, 'das andere Fenster bleibt draussen');
       assert.equal(await angemeldet(a), true, 'das eigene Fenster bleibt angemeldet');
       assert.equal((await ruf('/api/v1/settings/tokens', a)).status, 200, 'das eigene Fenster arbeitet weiter');

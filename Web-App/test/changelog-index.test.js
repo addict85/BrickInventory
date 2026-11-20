@@ -11,13 +11,13 @@ const INDEX = path.join(ROOT, 'CHANGELOG-fixes.md');
 const DIR = path.join(ROOT, 'CHANGELOG');
 
 /** Die Dateinamen, die die Tabelle im Index nennt. */
-function ausTabelle() {
+function fromTable() {
   const src = fs.readFileSync(INDEX, 'utf8');
   return [...src.matchAll(/^\|\s*\[([^\]]+\.md)\]\(CHANGELOG\/[^)]+\)/gm)].map(m => m[1]);
 }
 
 /** Die Dateien, die es wirklich gibt. */
-function aufPlatte() {
+function onDisk() {
   return fs
     .readdirSync(DIR)
     .filter(f => f.endsWith('.md'))
@@ -25,17 +25,17 @@ function aufPlatte() {
 }
 
 test('jeder Teil steht im Index und umgekehrt', () => {
-  const tabelle = ausTabelle().sort();
-  const platte = aufPlatte();
+  const tabelle = fromTable().sort();
+  const disk = onDisk();
 
-  assert.ok(platte.length >= 5, `Nur ${platte.length} Teile gefunden — liegt die Historie noch in CHANGELOG/?`);
-  assert.deepEqual(tabelle, platte, 'Tabelle in CHANGELOG-fixes.md und Ordner CHANGELOG/ laufen auseinander');
+  assert.ok(disk.length >= 5, `Nur ${disk.length} Teile gefunden — liegt die Historie noch in CHANGELOG/?`);
+  assert.deepEqual(tabelle, disk, 'Tabelle in CHANGELOG-fixes.md und Ordner CHANGELOG/ laufen auseinander');
 });
 
 test('kein Nachtrag steht in zwei Teilen', () => {
   const gesehen = new Map(); // Nummer → Datei
   const doppelt = [];
-  for (const f of aufPlatte()) {
+  for (const f of onDisk()) {
     const src = fs.readFileSync(path.join(DIR, f), 'utf8');
     for (const m of src.matchAll(/^## Nachtrag (\d+)\b/gm)) {
       const n = Number(m[1]);
@@ -57,7 +57,7 @@ test('der Dateiname deckt sich mit dem Inhalt', () => {
   // blieben grün — die Nummern überschnitten sich nicht, jede Datei stand im
   // Index, jeder Verweis stimmte. Nur hiess die Datei etwas anderes, als sie …
   const daneben = [];
-  for (const f of aufPlatte()) {
+  for (const f of onDisk()) {
     const spanne = f.match(/nachtraege-(\d+)-(\d+)\.md$/);
     if (!spanne) continue; // 01-frueh-N.md
     const [von, bis] = [Number(spanne[1]), Number(spanne[2])];
@@ -77,7 +77,7 @@ test('der Dateiname deckt sich mit dem Inhalt', () => {
 });
 
 test('jeder Teil nennt am Anfang, wohin er gehört', () => {
-  const ohne = aufPlatte().filter(
+  const ohne = onDisk().filter(
     f => !fs.readFileSync(path.join(DIR, f), 'utf8').slice(0, 400).includes('CHANGELOG-fixes.md'),
   );
   assert.deepEqual(ohne, [], 'Diese Teile verweisen nicht zurück auf den Index: ' + ohne.join(', '));

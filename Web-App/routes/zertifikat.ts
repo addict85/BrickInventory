@@ -4,7 +4,7 @@
 import express from 'express';
 import { tlsStand } from '../src/infra/tlsWurzel';
 
-export function baueZertifikatRouter() {
+export function buildCertificateRouter() {
   const router = express.Router();
 
   router.get('/ca.crt', async (req, res) => {

@@ -1,9 +1,9 @@
-import type { DbSchnittstelle } from '../../../db/database';
-import type { FinanzenLesevertrag } from '../lesevertrag';
+import type { DbInterface } from '../../../db/database';
+import type { FinancesReadContract } from '../lesevertrag';
 import { marktpreisSql } from '../../../db/geldSql';
 
-export function tageswerteAusVerlauf(
-  db: DbSchnittstelle,
+export function dailyValuesFromHistory(
+  db: DbInterface,
   currency: string,
   condition: string,
   setNumbers: string[],
@@ -72,8 +72,8 @@ export function tageswerteAusVerlauf(
   );
 }
 
-export function cachePreiseDerSets(
-  db: DbSchnittstelle,
+export function cachePricesTheSets(
+  db: DbInterface,
   currency: string,
   condition: string,
   setNumbers: string[],
@@ -96,13 +96,13 @@ export function cachePreiseDerSets(
   );
 }
 
-export function letzteWerteVorBeginn(
-  db: DbSchnittstelle,
+export function lastValuesBeforeStart(
+  db: DbInterface,
   currency: string,
   condition: string,
   setNumbers: string[],
   mengen: number[],
-  ersterTag: string,
+  firstTag: string,
   datumsFilter: string,
 ) {
   return db.all<{ total: number }>(
@@ -133,11 +133,11 @@ export function letzteWerteVorBeginn(
        )
        SELECT ROUND(SUM(m.qty * l.preis), 2) AS total
          FROM letzte l JOIN mengen m ON m.set_number = l.set_number`,
-    [currency, condition, setNumbers, mengen, ersterTag],
+    [currency, condition, setNumbers, mengen, firstTag],
   );
 }
 
-export function setsMitKaufsumme(db: DbSchnittstelle, l: FinanzenLesevertrag, uids: number[]) {
+export function setsWithPurchaseTotal(db: DbInterface, l: FinancesReadContract, uids: number[]) {
   return db.all<{ set_number: string; quantity: number; purchase_price: number | null }>(
     `SELECT s.set_number, COALESCE(SUM(a.total_qty), 0)::int AS quantity,
             SUM(COALESCE(a.total_price, 0))

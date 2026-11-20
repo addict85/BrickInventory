@@ -1,16 +1,16 @@
 /**
  * Der Kontext `t` einer Transaktion entsteht je Verbindung einmal, nicht je Transaktion
- * (db/database.ts verbindungsZugang, src/infra/bereich.ts baueKontext). Dass er beständig
+ * (db/database.ts connectionAccess, src/infra/bereich.ts buildContext). Dass er beständig
  * ist, darf nichts umleiten: Ein Nachzügler einer beendeten Transaktion, deren Verbindung
  * schon die nächste trägt, fragt nicht in die fremde hinein. Pool mit einer Verbindung.
  *
  * Gegenproben (14.11.2026, je einzeln):
- *   A  in baueKontext `fn(ueber(tx.db))` → `fn(baueKontext(umbau(a, tx.db), zugang))` → rot:
+ *   A  in buildContext `fn(ueber(tx.db))` → `fn(buildContext(rebuild(a, tx.db), zugang))` → rot:
  *      „zwei Transaktionen auf einer Verbindung teilen t“
- *   B  in neuerPlatz die Bedingung `laufendeTx() !== stand` gestrichen → rot: „ein Nachzügler …“
+ *   B  in newSpace die Bedingung `runningTx() !== stand` gestrichen → rot: „ein Nachzügler …“
  *      (seine Abfrage lief in der zweiten Transaktion)
- *   C  in verbindungsZugang `platz.stand = stand` gestrichen → rot: „ein Nachzügler …“
- *      (TransaktionBeendet auch für die zweite Transaktion selbst)
+ *   C  in connectionAccess `platz.stand = stand` gestrichen → rot: „ein Nachzügler …“
+ *      (TransactionEnded auch für die zweite Transaktion selbst)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -23,13 +23,13 @@ require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const DIST = path.join(__dirname, '..', 'dist');
 const modul = require(path.join(DIST, 'db', 'database.js'));
-const { baueDienste } = require(path.join(DIST, 'startup', 'verdrahtung.js'));
+const { buildServices } = require(path.join(DIST, 'startup', 'verdrahtung.js'));
 const { konfig } = require(path.join(DIST, 'src', 'infra', 'konfig.js'));
-const { imSystemkontext } = require(path.join(DIST, 'src', 'infra', 'kontoKontext.js'));
+const { inSystemContext } = require(path.join(DIST, 'src', 'infra', 'kontoKontext.js'));
 
 test('Transaktionskontext je Verbindung', { concurrency: 1 }, async t => {
-  const k0 = modul.dbKonfigAusUmgebung();
-  const db = modul.erzeugeDb({ ...k0, pool: { ...k0.pool, max: 1 } });
+  const k0 = modul.dbKonfigFromEnvironment();
+  const db = modul.createDb({ ...k0, pool: { ...k0.pool, max: 1 } });
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -39,10 +39,10 @@ test('Transaktionskontext je Verbindung', { concurrency: 1 }, async t => {
   }
   t.after(() => db.pool.end());
   /** @type {Record<string, any>} */
-  const kontexte = {};
-  baueDienste(db, { kontexte, konfig: konfig() });
-  const k = kontexte.collection;
-  const imSystem = (/** @type {() => Promise<any>} */ f) => imSystemkontext('test', f);
+  const contexts = {};
+  buildServices(db, { contexts, konfig: konfig() });
+  const k = contexts.collection;
+  const imSystem = (/** @type {() => Promise<any>} */ f) => inSystemContext('test', f);
 
   await t.test('zwei Transaktionen auf einer Verbindung teilen t und die Dienste darin', async () => {
     const t1 = await imSystem(() => k.transaktion(async (/** @type {any} */ t) => t));
@@ -54,22 +54,22 @@ test('Transaktionskontext je Verbindung', { concurrency: 1 }, async t => {
 
   await t.test('ein Nachzügler fragt nicht in die nächste Transaktion der Verbindung', async () => {
     /** @type {Promise<unknown> | undefined} */
-    let nachzuegler;
+    let stragglers;
     /** @type {() => void} */
     let los = () => {};
-    const zweiteLaeuft = new Promise(r => {
+    const secondRunning = new Promise(r => {
       los = /** @type {() => void} */ (r);
     });
     await imSystem(() =>
       k.transaktion(async (/** @type {any} */ t) => {
-        nachzuegler = zweiteLaeuft.then(() => t.db.get('SELECT txid_current() AS id'));
-        nachzuegler.catch(() => {});
+        stragglers = secondRunning.then(() => t.db.get('SELECT txid_current() AS id'));
+        stragglers.catch(() => {});
       }),
     );
     await imSystem(() =>
       k.transaktion(async (/** @type {any} */ t) => {
         los();
-        await assert.rejects(/** @type {Promise<unknown>} */ (nachzuegler), modul.TransaktionBeendet);
+        await assert.rejects(/** @type {Promise<unknown>} */ (stragglers), modul.TransactionEnded);
         assert.ok((await t.db.get('SELECT txid_current() AS id')).id, 'die zweite selbst fragt weiter');
       }),
     );

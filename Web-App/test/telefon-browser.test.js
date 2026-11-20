@@ -21,7 +21,7 @@ const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css', 'mobile.css
 
 const { chrome } = require('./helpers/app-browser');
 
-function testseite() {
+function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">${css}</head><body>
@@ -50,7 +50,7 @@ test('Finanzkacheln am Telefon', t => {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'telefon-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testseite());
+  fs.writeFileSync(datei, testPage());
   const dom = execFileSync(
     bin,
     [

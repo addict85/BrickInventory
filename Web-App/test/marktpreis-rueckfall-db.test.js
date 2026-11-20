@@ -4,7 +4,7 @@
  * denselben — für Set, Teil und Figur. Echter Code, echte Datenbank.
  *
  * Gegenproben (13.11.2026 gemessen, jeweils zurückgenommen):
- *   A  marktpreisAus() (src/katalog/bricklinkPreise.ts) nur noch avg_price → rot:
+ *   A  marketPriceFrom() (src/katalog/bricklinkPreise.ts) nur noch avg_price → rot:
  *      „Bewertung“ (Stückpreis 0 statt 37.5), „G&V“, „Preisverlauf“; Wertkurve grün
  *   B  marktpreisSql() (db/geldSql.ts) nur noch avg_price → rot: „Wertkurve“
  *      (60, der Kaufpreis als Startpunkt, statt 75) und „Preisverlauf“
@@ -18,20 +18,20 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { zugangOderSkip } = require('./helpers/db');
-const { haeltSet, haeltTeil, haeltFigur, katalogSet } = require('./helpers/bestand');
+const { accessOrSkip } = require('./helpers/db');
+const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/bestand');
 
 const NAME = `mengenschnitt_${process.pid}`;
 const SET = `7${process.pid}2-1`,
   TEIL = `mt${process.pid}`,
   FARBE = 11,
   FIGUR = `mf${process.pid}`;
-const SET_PREIS = 37.5,
-  TEIL_PREIS = 0.25,
-  FIGUR_PREIS = 8;
+const SET_PRICE = 37.5,
+  PART_PRICE = 0.25,
+  MINIFIG_PRICE = 8;
 
 test('avg_price 0 neben einem Mengenschnitt: überall derselbe Wert', { concurrency: 1 }, async t => {
-  const db = await zugangOderSkip(t, _req);
+  const db = await accessOrSkip(t, _req);
   if (!db) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
@@ -44,49 +44,49 @@ test('avg_price 0 neben einem Mengenschnitt: überall derselbe Wert', { concurre
     await db.pool.end().catch(() => {});
   });
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
-  await katalogSet(db, SET, { name: SET });
+  await catalogSet(db, SET, { name: SET });
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, fetched_at)
      VALUES ($1, 'N', 'CHF', 30, 0, 45, $2, NOW())`,
-    [SET, SET_PREIS],
+    [SET, SET_PRICE],
   );
   await db.run(
     `INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, recorded_at)
      VALUES ($1, 'N', 'CHF', 0, $2, NOW() - INTERVAL '2 days')`,
-    [SET, SET_PREIS],
+    [SET, SET_PRICE],
   );
   await db.run(
     `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
      VALUES ($1, $2, 'N', 'CHF', 0, $3, NOW())`,
-    [TEIL, FARBE, TEIL_PREIS],
+    [TEIL, FARBE, PART_PRICE],
   );
   await db.run(
     `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, fetched_at)
      VALUES ($1, 'N', 'CHF', 0, $2, NOW())`,
-    [FIGUR, FIGUR_PREIS],
+    [FIGUR, MINIFIG_PRICE],
   );
-  await haeltSet(db, uid, SET, 2, { preis: 30 });
-  await haeltTeil(db, uid, TEIL, { colorId: FARBE, menge: 4, preis: 0.2 });
-  await haeltFigur(db, uid, FIGUR, { menge: 1, preis: 5 });
+  await holdsSet(db, uid, SET, 2, { preis: 30 });
+  await holdsPart(db, uid, TEIL, { colorId: FARBE, menge: 4, preis: 0.2 });
+  await holdsMinifig(db, uid, FIGUR, { menge: 1, preis: 5 });
 
   const f = _req('src/finanzen/financeCalc.js');
 
   await t.test('Bewertung', async () => {
-    const sets = await f.bewerteSets(uid, [uid]);
+    const sets = await f.valueSets(uid, [uid]);
     const s = sets.sets.find(z => z.set_number === SET);
-    assert.equal(s.avg_price, SET_PREIS);
+    assert.equal(s.avg_price, SET_PRICE);
     assert.equal(s.wert_gesamt, 75);
-    const teile = await f.bewerteTeile(uid, [uid]);
-    assert.equal(teile.parts.find(z => z.part_number === TEIL).avg_price, TEIL_PREIS);
+    const teile = await f.valueParts(uid, [uid]);
+    assert.equal(teile.parts.find(z => z.part_number === TEIL).avg_price, PART_PRICE);
     assert.equal(teile.wert_gesamt, 1);
-    const figuren = await f.bewerteFiguren(uid, [uid]);
-    assert.equal(figuren.figs.find(z => z.fig_number === FIGUR).avg_price, FIGUR_PREIS);
-    assert.equal(figuren.wert_gesamt, FIGUR_PREIS);
+    const figuren = await f.valueMinifigs(uid, [uid]);
+    assert.equal(figuren.figs.find(z => z.fig_number === FIGUR).avg_price, MINIFIG_PRICE);
+    assert.equal(figuren.wert_gesamt, MINIFIG_PRICE);
   });
 
   await t.test('G&V', async () => {
-    const pnl = await f.gewinnUndVerlust(uid, [uid]);
-    assert.equal(pnl.sets.find(z => z.set_number === SET).current_price, SET_PREIS);
+    const pnl = await f.gainAndLoss(uid, [uid]);
+    assert.equal(pnl.sets.find(z => z.set_number === SET).current_price, SET_PRICE);
     // 2 × 37,50 + 4 × 0,25 + 1 × 8
     assert.equal(pnl.totals.grand_total, '84.00');
   });
@@ -100,8 +100,8 @@ test('avg_price 0 neben einem Mengenschnitt: überall derselbe Wert', { concurre
 
   await t.test('Preisverlauf', async () => {
     const pv = _req('src/finanzen/priceHistory.js');
-    assert.equal((await pv.preisverlaufSet([uid], SET, 'CHF')).by_condition.N.market_price, SET_PREIS);
-    assert.equal((await pv.preisverlaufTeil([uid], TEIL, FARBE, 'CHF')).by_condition.N.market_price, TEIL_PREIS);
-    assert.equal((await pv.preisverlaufFigur([uid], FIGUR, 'CHF')).by_condition.N.market_price, FIGUR_PREIS);
+    assert.equal((await pv.priceHistorySet([uid], SET, 'CHF')).by_condition.N.market_price, SET_PRICE);
+    assert.equal((await pv.priceHistoryPart([uid], TEIL, FARBE, 'CHF')).by_condition.N.market_price, PART_PRICE);
+    assert.equal((await pv.priceHistoryMinifig([uid], FIGUR, 'CHF')).by_condition.N.market_price, MINIFIG_PRICE);
   });
 });

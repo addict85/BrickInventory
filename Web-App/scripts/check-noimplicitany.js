@@ -19,8 +19,8 @@ const ROOT = path.join(__dirname, '..');
 const OFFEN = new Set([]);
 
 /** tsc mit noImplicitAny laufen lassen und die Meldungen je Datei sammeln. */
-function meldungenJeDatei() {
-  let ausgabe = '';
+function messagesJeFile() {
+  let output = '';
   try {
     execFileSync(
       process.execPath,
@@ -34,17 +34,17 @@ function meldungenJeDatei() {
     // `unknown` liesse sich sonst nicht auslesen, und ein `any` am
     // catch-Parameter waere wieder die Tuer, die dieser Schalter schliesst.
     const p = /** @type {{ stdout?: unknown, stderr?: unknown }} */ (e);
-    ausgabe = String(p.stdout || '') + String(p.stderr || '');
+    output = String(p.stdout || '') + String(p.stderr || '');
   }
-  const jeDatei = new Map();
-  for (const zeile of ausgabe.split('\n')) {
+  const jeFile = new Map();
+  for (const zeile of output.split('\n')) {
     const m = zeile.match(/^([^(]+)\(\d+,\d+\): error TS\d+/);
     if (!m) continue;
     const datei = (m[1] ?? '').replace(/\\/g, '/');
-    if (!jeDatei.has(datei)) jeDatei.set(datei, []);
-    jeDatei.get(datei).push(zeile);
+    if (!jeFile.has(datei)) jeFile.set(datei, []);
+    jeFile.get(datei).push(zeile);
   }
-  return jeDatei;
+  return jeFile;
 }
 
 /**
@@ -54,7 +54,7 @@ function meldungenJeDatei() {
  * (JSONC), JSON.parse scheitert daran. Ein Muster reicht hier — geprüft wird
  * eine einzelne, eindeutige Zeile, nicht die Struktur der Datei.
  */
-function schalterIstAn() {
+function toggleIsAn() {
   const roh = require('node:fs').readFileSync(path.join(ROOT, 'tsconfig.json'), 'utf8');
   const m = roh.match(/"noImplicitAny"\s*:\s*(true|false)/);
   if (!m) return { an: false, grund: 'Der Eintrag "noImplicitAny" fehlt in tsconfig.json.' };
@@ -63,7 +63,7 @@ function schalterIstAn() {
 }
 
 function main() {
-  const schalter = schalterIstAn();
+  const schalter = toggleIsAn();
   if (!schalter.an) {
     console.error('\n❌ ' + schalter.grund + '\n');
     console.error('Der Schalter war einmal aus, und der Abbau von 454 Meldungen hat');
@@ -72,16 +72,16 @@ function main() {
     process.exit(1);
   }
 
-  const jeDatei = meldungenJeDatei();
+  const jeFile = messagesJeFile();
 
-  const neu = [...jeDatei.keys()].filter(d => !OFFEN.has(d)).sort();
-  const verwaist = [...OFFEN].filter(d => !jeDatei.has(d)).sort();
+  const neu = [...jeFile.keys()].filter(d => !OFFEN.has(d)).sort();
+  const verwaist = [...OFFEN].filter(d => !jeFile.has(d)).sort();
 
   if (neu.length) {
     console.error('\n❌ noImplicitAny: Meldungen aus Dateien, die sauber sein sollten:\n');
     for (const d of neu) {
-      for (const z of jeDatei.get(d).slice(0, 5)) console.error('   ' + z);
-      const rest = jeDatei.get(d).length - 5;
+      for (const z of jeFile.get(d).slice(0, 5)) console.error('   ' + z);
+      const rest = jeFile.get(d).length - 5;
       if (rest > 0) console.error(`   … und ${rest} weitere in ${d}`);
     }
     console.error('\nEntweder die Typen ergänzen — oder, wenn die Datei wirklich noch');
@@ -95,7 +95,7 @@ function main() {
     console.error('mitschrumpft, verliert genau den Zweck, für den es sie gibt.');
   }
 
-  const offeneMeldungen = [...jeDatei.entries()].filter(([d]) => OFFEN.has(d)).reduce((n, [, z]) => n + z.length, 0);
+  const openMessages = [...jeFile.entries()].filter(([d]) => OFFEN.has(d)).reduce((n, [, z]) => n + z.length, 0);
 
   if (neu.length || verwaist.length) process.exit(1);
 
@@ -105,7 +105,7 @@ function main() {
   }
   console.log(
     `✅ noImplicitAny: alle Dateien ausser den ${OFFEN.size} bekannten sind sauber ` +
-      `(${offeneMeldungen} Meldungen stehen dort noch offen).`,
+      `(${openMessages} Meldungen stehen dort noch offen).`,
   );
 }
 

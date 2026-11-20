@@ -17,15 +17,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { katalogSet } = require('./helpers/bestand');
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { catalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const NAME = `geldpruef_${process.pid}`;
 
 test('Geld und Währung in der Datenbank geprüft', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_2`]]);
   const uid = (
     await db.get(`INSERT INTO users (username, email, password_hash) VALUES ($1, $2, 'x') RETURNING id`, [
@@ -33,13 +33,13 @@ test('Geld und Währung in der Datenbank geprüft', { concurrency: 1 }, async t 
       `${NAME}@example.org`,
     ])
   ).id;
-  await katalogSet(db, '99901-1', { name: 'Probe' });
+  await catalogSet(db, '99901-1', { name: 'Probe' });
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, '99901-1']);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_2`]]);
     await db.pool.end().catch(() => {});
   });
-  const erfasse = (preis, waehrung) =>
+  const record = (preis, waehrung) =>
     db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, currency) VALUES ($1, '99901-1', 1, $2, $3)`,
       [uid, preis, waehrung],
@@ -54,20 +54,20 @@ test('Geld und Währung in der Datenbank geprüft', { concurrency: 1 }, async t 
   };
 
   await t.test('eine gültige Erfassung geht durch', async () => {
-    assert.equal(await abgelehnt(erfasse(19.9, 'CHF')), null);
+    assert.equal(await abgelehnt(record(19.9, 'CHF')), null);
   });
 
   await t.test('eine Währung in Kleinbuchstaben wird abgelehnt', async () => {
-    assert.equal(await abgelehnt(erfasse(5, 'chf')), '23514');
-    assert.equal(await abgelehnt(erfasse(5, 'EURO')), '23514');
+    assert.equal(await abgelehnt(record(5, 'chf')), '23514');
+    assert.equal(await abgelehnt(record(5, 'EURO')), '23514');
   });
 
   await t.test('ein negativer Betrag wird abgelehnt', async () => {
-    assert.equal(await abgelehnt(erfasse(-1, 'CHF')), '23514');
+    assert.equal(await abgelehnt(record(-1, 'CHF')), '23514');
     assert.equal(
       await abgelehnt(
         require('./helpers/sources')
-          .testBereich('vouchers')
+          .testArea('vouchers')
           .vouchers.createVoucher(uid, { number: '5045076374450019999', pin: null, amount: -5, currency: 'CHF' }),
       ),
       '23514',

@@ -1,7 +1,7 @@
 import { tRaw } from '../i18n.js';
 import { api } from './api.js';
 import { G } from './dom.js';
-import { formularFehler } from './formular.js';
+import { formError } from './formular.js';
 
 // Links from emails that work without being logged in: cancel an announced admin action
 // (server: src/konto/verwalterAktionen.ts) and release a login past the daily limit
@@ -31,7 +31,7 @@ const TEXTS = {
  * @param {string} token @param {string} path
  * @returns {boolean}
  */
-export function mailLinkAnnehmen(token, path) {
+export function acceptMailLink(token, path) {
   const kind = path === '/uebernahme-abbrechen' ? 'abbrechen' : path === '/anmeldung-freigeben' ? 'freigeben' : null;
   if (!kind) return false;
   open = { token, kind };
@@ -42,13 +42,13 @@ export function mailLinkAnnehmen(token, path) {
   return true;
 }
 
-export const mailLinkOffen = () => open !== null;
+export const openMailLink = () => open !== null;
 
 G('btn-maillink')?.addEventListener('click', async () => {
   if (!open) return;
   const err = G('maillink-err'),
     btn = G('btn-maillink');
-  formularFehler(err, '');
+  formError(err, '');
   btn.disabled = true;
   const body = { token: open.token };
   const d =
@@ -57,7 +57,7 @@ G('btn-maillink')?.addEventListener('click', async () => {
       : await api('POST', '/v1/auth/anmeldung-freigeben', body);
   btn.disabled = false;
   if (!d.success) {
-    formularFehler(err, d.error || tRaw('settings.error'));
+    formError(err, d.error || tRaw('settings.error'));
     return;
   }
   btn.hidden = true;

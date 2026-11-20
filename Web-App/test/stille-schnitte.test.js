@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 /** Zusicherungen, die auf einem LEEREN Ausschnitt gruen bleiben. */
-const VERNEINEND = new Set(['doesNotMatch', 'doesNotThrow', 'notMatch']);
+const NEGATING = new Set(['doesNotMatch', 'doesNotThrow', 'notMatch']);
 
 test('kein Ausschnitt mit nur verneinenden Zusicherungen ist ungesichert', () => {
   const dateien = fs
@@ -34,7 +34,7 @@ test('kein Ausschnitt mit nur verneinenden Zusicherungen ist ungesichert', () =>
       // Welche Zusicherungen laufen auf diesem Ausschnitt?
       const arten = [...block.matchAll(new RegExp(`assert\\.(\\w+)\\(\\s*${ziel}\\b`, 'g'))].map(a => a[1]);
       if (!arten.length) continue; // wird nur weitergereicht
-      if (arten.some(a => !VERNEINEND.has(a))) continue; // eine positive genuegt
+      if (arten.some(a => !NEGATING.has(a))) continue; // eine positive genuegt
 
       // Doch abgesichert?
       const abgeleitet = new RegExp(`(\\w+)\\s*=\\s*${ziel}\\.indexOf\\(`, 'g');

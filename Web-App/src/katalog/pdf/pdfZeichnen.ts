@@ -3,8 +3,8 @@ import fsp from 'node:fs/promises';
 import fs from 'node:fs';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import PDFDocument from 'pdfkit';
-import { IMAGES_DIR, webPfadAufloesen } from '../../infra/appPaths';
-import { meldeFehler } from '../../infra/fehler';
+import { IMAGES_DIR, resolveWebPath } from '../../infra/appPaths';
+import { reportError } from '../../infra/fehler';
 import type { Nutzlast } from '../../auftraege';
 
 /** Im worker_thread: pdfkit zeichnet synchron und hielte bei tausenden Zeilen
@@ -15,7 +15,7 @@ export type PdfSet = Nutzlast<'pdf'>['sets'][number];
 
 /** Nur innerhalb des Bildordners: Die Liste kommt vom Client, ein `image_local`
  * wie `/images/../../…` läse sonst fremde Dateien ins PDF. */
-function pdfBildPfad(p: PdfTeil): string | null {
+function pdfImagePath(p: PdfTeil): string | null {
   let src = p.image_local || p.image_url || '';
   const m = src.match(/\/api\/img-proxy\?url=(.+)/);
   if (m) {
@@ -25,17 +25,17 @@ function pdfBildPfad(p: PdfTeil): string | null {
       return null;
     }
   }
-  const roh = webPfadAufloesen(src);
+  const roh = resolveWebPath(src);
   if (!roh) return null;
   const voll = path.resolve(roh);
   return voll.startsWith(path.resolve(IMAGES_DIR) + path.sep) ? voll : null;
 }
 
 /** Fehlt ein Bild, steht die Zeile ohne Bild da — das PDF entsteht trotzdem. */
-const ohneBild = (): null => null;
+const withoutImage = (): null => null;
 
 /** Je BrickLink-Nummer und Farbe eine Zeile, nach Farbe gruppiert und nach Nummer sortiert. */
-function nachFarbe(parts: PdfTeil[]) {
+function afterColor(parts: PdfTeil[]) {
   const deduped = new Map<string, PdfTeil & { quantity: number }>();
   for (const p of parts) {
     const blNum = p.bl_part_number || p.part_number;
@@ -86,28 +86,28 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
     doc.on('error', reject);
   });
 
-  const seiten = seitenFuehrung(doc);
-  kopfZeichnen(doc, sets, parts);
+  const seiten = pagesLead(doc);
+  drawHeader(doc, sets, parts);
 
-  const { colorOrder, byColor } = nachFarbe(parts);
+  const { colorOrder, byColor } = afterColor(parts);
   // Je Farbgruppe vorladen und freigeben: Im Speicher liegt nur eine Gruppe.
   const bilder = new Map<string, Buffer | null>();
   for (const colorName of colorOrder) {
     const colorParts = byColor.get(colorName) ?? [];
-    await ladeBilder(colorParts, bilder);
-    farbGruppeZeichnen(doc, colorName, colorParts, bilder, seiten.neueSeite);
+    await loadImages(colorParts, bilder);
+    drawFarbGroup(doc, colorName, colorParts, bilder, seiten.newPage);
   }
 
-  seiten.fusszeile();
+  seiten.footer();
   doc.end();
   await pdfDone;
   await fsp.rename(teil, ziel);
 }
 
 /** Seitenzahl unten mittig; der Rand wird dafür kurz aufgehoben, sonst bricht pdfkit um. */
-function seitenFuehrung(doc: Doc) {
+function pagesLead(doc: Doc) {
   let seite = 1;
-  const fusszeile = () => {
+  const footer = () => {
     const savedY = doc.y,
       savedX = doc.x,
       savedSize = (doc as unknown as { _fontSize: number })._fontSize;
@@ -122,16 +122,16 @@ function seitenFuehrung(doc: Doc) {
     doc.x = savedX;
     doc.fontSize(savedSize).fillColor('#1e293b');
   };
-  const neueSeite = () => {
-    fusszeile();
+  const newPage = () => {
+    footer();
     seite++;
     doc.addPage();
     doc.y = 40;
   };
-  return { fusszeile, neueSeite };
+  return { footer, newPage };
 }
 
-function kopfZeichnen(doc: Doc, sets: PdfSet[], parts: PdfTeil[]) {
+function drawHeader(doc: Doc, sets: PdfSet[], parts: PdfTeil[]) {
   doc.fontSize(18).font('Helvetica-Bold').text('Bauliste', { align: 'left' });
   doc
     .fontSize(10)
@@ -144,26 +144,26 @@ function kopfZeichnen(doc: Doc, sets: PdfSet[], parts: PdfTeil[]) {
   doc.moveDown(1);
 }
 
-async function ladeBilder(gruppe: PdfTeil[], bilder: Map<string, Buffer | null>) {
+async function loadImages(gruppe: PdfTeil[], bilder: Map<string, Buffer | null>) {
   bilder.clear();
-  const pfade = [...new Set(gruppe.map(pdfBildPfad).filter((fp): fp is string => !!fp))];
+  const pfade = [...new Set(gruppe.map(pdfImagePath).filter((fp): fp is string => !!fp))];
   for (let i = 0; i < pfade.length; i += 32) {
     const stueck = pfade.slice(i, i + 32);
-    const bufs = await Promise.all(stueck.map(fp => fsp.readFile(fp).catch(ohneBild)));
+    const bufs = await Promise.all(stueck.map(fp => fsp.readFile(fp).catch(withoutImage)));
     stueck.forEach((fp, j) => {
       bilder.set(fp, bufs[j] ?? null);
     });
   }
 }
 
-function farbGruppeZeichnen(
+function drawFarbGroup(
   doc: Doc,
   colorName: string,
   colorParts: Zeile[],
   bilder: Map<string, Buffer | null>,
-  neueSeite: () => void,
+  newPage: () => void,
 ) {
-  if (doc.y > 700) neueSeite();
+  if (doc.y > 700) newPage();
 
   const hexColor = colorParts[0]?.color_hex ? '#' + colorParts[0].color_hex : '#94a3b8';
   const dotX = 40,
@@ -188,15 +188,15 @@ function farbGruppeZeichnen(
   doc.moveTo(START_X, doc.y).lineTo(555, doc.y).lineWidth(0.5).strokeColor('#e2e8f0').stroke();
   doc.moveDown(0.2);
 
-  for (const p of colorParts) teilZeichnen(doc, p, bilder, neueSeite);
+  for (const p of colorParts) drawPart(doc, p, bilder, newPage);
   doc.moveDown(0.6);
 }
 
-function teilZeichnen(doc: Doc, p: Zeile, bilder: Map<string, Buffer | null>, neueSeite: () => void) {
+function drawPart(doc: Doc, p: Zeile, bilder: Map<string, Buffer | null>, newPage: () => void) {
   const rowHeight = 36;
-  if (doc.y > 730 - rowHeight) neueSeite();
+  if (doc.y > 730 - rowHeight) newPage();
   const rowY = doc.y;
-  const fp = pdfBildPfad(p);
+  const fp = pdfImagePath(p);
   const imgBuf = fp ? bilder.get(fp) || null : null;
   let imgOffset = 0;
   if (imgBuf) {
@@ -205,7 +205,7 @@ function teilZeichnen(doc: Doc, p: Zeile, bilder: Map<string, Buffer | null>, ne
       imgOffset = 36;
     } catch (e) {
       // Ausnahme: Ein Bild, das pdfkit nicht lesen kann, fällt weg; die Zeile bleibt.
-      meldeFehler(`pdf:teilbild ${p.part_number}`, e);
+      reportError(`pdf:teilbild ${p.part_number}`, e);
     }
   }
   doc.fontSize(8).font('Helvetica').fillColor('#1e293b');
@@ -218,13 +218,13 @@ function teilZeichnen(doc: Doc, p: Zeile, bilder: Map<string, Buffer | null>, ne
   doc.y = rowY + rowHeight + 2;
 }
 
-type FadenAuftrag = { art: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfTeil[]; ziel: string };
+type ThreadJob = { art: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfTeil[]; ziel: string };
 
 /** Aus den TypeScript-Quellen (tsx) gibt es keine .js-Datei für den Faden; dann wird hier gezeichnet. */
-function zeichnePdfImFaden(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
+function drawPdfInThread(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
   if (__filename.endsWith('.ts')) return buildPdf(sets, parts, ziel);
   return new Promise((resolve, reject) => {
-    const w = new Worker(__filename, { workerData: { art: 'pdf-zeichnen', sets, parts, ziel } satisfies FadenAuftrag });
+    const w = new Worker(__filename, { workerData: { art: 'pdf-zeichnen', sets, parts, ziel } satisfies ThreadJob });
     w.once('message', (m: { ok: boolean; fehler?: string }) => (m.ok ? resolve() : reject(new Error(m.fehler))));
     w.once('error', reject);
     w.once('exit', code => {
@@ -233,8 +233,8 @@ function zeichnePdfImFaden(sets: PdfSet[], parts: PdfTeil[], ziel: string): Prom
   });
 }
 
-if (!isMainThread && parentPort && (workerData as FadenAuftrag | undefined)?.art === 'pdf-zeichnen') {
-  const { sets, parts, ziel } = workerData as FadenAuftrag;
+if (!isMainThread && parentPort && (workerData as ThreadJob | undefined)?.art === 'pdf-zeichnen') {
+  const { sets, parts, ziel } = workerData as ThreadJob;
   const port = parentPort;
   buildPdf(sets, parts, ziel).then(
     () => port.postMessage({ ok: true }),
@@ -242,4 +242,4 @@ if (!isMainThread && parentPort && (workerData as FadenAuftrag | undefined)?.art
   );
 }
 
-export { pdfBildPfad, buildPdf, zeichnePdfImFaden };
+export { pdfImagePath, buildPdf, drawPdfInThread };

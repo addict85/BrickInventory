@@ -4,9 +4,9 @@
  * Speicher sofort — ein widerrufener Token gilt dort nicht bis zu einer Minute weiter.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  in horcheAufTokenWiderruf() das pgNotify.listen() entfernt → rot: „ein
+ *   A  in listenOnTokenRevocation() das pgNotify.listen() entfernt → rot: „ein
  *      Widerruf aus einem anderen Prozess gilt sofort“
- *   B  meldeWiderruf() in leereTokenCache() entfernt → rot: „ein Widerruf hier
+ *   B  reportRevocation() in emptyTokenCache() entfernt → rot: „ein Widerruf hier
  *      meldet sich bei den anderen“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -19,17 +19,17 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const auth = _req('src/konto/geraeteToken.js');
 const tokenCache = _req('src/konto/tokenCache.js');
-const pgNotify = testZugang().benachrichtigung;
+const pgNotify = testAccess().notification;
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
 test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `widerruf_p_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -48,7 +48,7 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  tokenCache.horcheAufTokenWiderruf();
+  tokenCache.listenOnTokenRevocation();
   // Steht die Horch-Verbindung, leert sie einmal den Speicher; das darf nicht
   // mitten in den ersten Fall fallen. Ein eigener Horcher meldet, wann es so weit ist.
   let bereit = false;
@@ -61,9 +61,9 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
   assert.ok(bereit, 'die Horch-Verbindung kam nicht zustande');
 
   await t.test('ein Widerruf aus einem anderen Prozess gilt sofort', async () => {
-    const token = await auth.tokenAnlegen(uid, 'Probe', true);
+    const token = await auth.createToken(uid, 'Probe', true);
     assert.ok((await auth.pruefeToken(token)).nutzer, 'Vorbedingung: Token gilt');
-    await anderer.query('DELETE FROM api_tokens WHERE token = $1', [auth.tokenAbdruck(token)]);
+    await anderer.query('DELETE FROM api_tokens WHERE token = $1', [auth.tokenDigest(token)]);
     assert.ok((await auth.pruefeToken(token)).nutzer, 'Vorbedingung: der Zwischenspeicher trägt ihn noch');
     let gilt = true;
     for (let i = 0; i < 40 && gilt; i++) {
@@ -78,7 +78,7 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
     const gehoert = [];
     anderer.on('notification', m => gehoert.push(m.channel));
     await anderer.query('LISTEN token_widerrufen');
-    await auth.alleTokensWiderrufen(uid);
+    await auth.revokeAllTokens(uid);
     for (let i = 0; i < 40 && !gehoert.length; i++) await new Promise(r => setTimeout(r, 25));
     assert.deepEqual(gehoert.slice(0, 1), ['token_widerrufen']);
   });

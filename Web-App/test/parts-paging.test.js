@@ -24,14 +24,14 @@
  * (Join auf rb_parts im Live-Filter bzw. in der Kategorienliste gestrichen →
  * dort rot).
  */
-const { istAppModul } = require('../scripts/build-frontend');
+const { isAppModule } = require('../scripts/build-frontend');
 require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { holdsSet, holdsPart } = require('./helpers/bestand');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -69,7 +69,7 @@ test('der Proxy kann verkleinern und tut es nur einmal je Bild', () => {
   // Rückfragepflicht gesetzt ist.
   assert.match(server, /must-revalidate/, 'Ohne Rückfragepflicht bleiben Fehler im Browser stehen');
 
-  const core = stripModuleSyntax(require('./helpers/sources').coreQuelle());
+  const core = stripModuleSyntax(require('./helpers/sources').coreSource());
   assert.match(core, /thumb \? '&thumb=1' : ''/, 'imgUrl() reicht den Wunsch nicht weiter');
 });
 
@@ -80,7 +80,7 @@ test('alle Listenbilder laden verzögert', () => {
   // drei von vier Stellen, in Finanzen an beiden.
   const dir = path.join(ROOT, 'public', 'js');
   const bad = [];
-  for (const f of fs.readdirSync(dir).filter(x => istAppModul(x))) {
+  for (const f of fs.readdirSync(dir).filter(x => isAppModule(x))) {
     const src = fs.readFileSync(path.join(dir, f), 'utf8');
     for (const m of src.matchAll(/<img\s[^>]*>/g)) {
       const tag = m[0];
@@ -109,7 +109,7 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
   // grosszügig geschnittenes Stück des Route-Rumpfs, was nach dem Umzug ins
   // Leere zeigte.
   const proxy = fs.readFileSync(path.join(ROOT, 'src/bilder/imgCacheServe.ts'), 'utf8');
-  assert.doesNotMatch(proxy, /await proxyVorschauErzeugen/, 'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
+  assert.doesNotMatch(proxy, /await createProxyPreview/, 'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
   assert.match(
     proxy,
     /queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\)/,
@@ -119,10 +119,10 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
 
 test('Teileliste an der Datenbank: Seiten, Farbfilter und Obergrenze auf beiden Wegen', { concurrency: 1 }, async t => {
   const _req = require('./helpers/sources').buildAndRequire();
-  const { datenOderSkip } = require('./helpers/db');
-  const db = await datenOderSkip(t, _req);
+  const { dataOrSkip } = require('./helpers/db');
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const H = require('./helpers/sources').handlerModul(_req);
+  const H = require('./helpers/sources').handlerModule(_req);
   const PS = _req('src/parts/summary.js');
   const NAME = `seiten-${process.pid}`,
     SN = `PP${process.pid}-1`;
@@ -146,8 +146,8 @@ test('Teileliste an der Datenbank: Seiten, Farbfilter und Obergrenze auf beiden 
       [SN, nr, farbe],
     );
   }
-  await haeltSet(db, U, SN, 1);
-  for (const [nr, farbe] of TEILE) await haeltTeil(db, U, nr, { setNumber: SN, colorId: farbe, menge: 1 });
+  await holdsSet(db, U, SN, 1);
+  for (const [nr, farbe] of TEILE) await holdsPart(db, U, nr, { setNumber: SN, colorId: farbe, menge: 1 });
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id=$1', [U]);
     await db.run('DELETE FROM set_parts WHERE set_number=$1', [SN]);
@@ -182,7 +182,7 @@ test('Teileliste an der Datenbank: Seiten, Farbfilter und Obergrenze auf beiden 
 });
 
 test('nachgeladen wird nur im sichtbaren Teile-Tab', async () => {
-  const beobachter = [];
+  const observer = [];
   const seite = url => {
     const p = Number(new URL(url, 'http://x').searchParams.get('page'));
     return {
@@ -199,13 +199,13 @@ test('nachgeladen wird nur im sichtbaren Teile-Tab', async () => {
       })),
     };
   };
-  const { w, d, aufrufe, ruhig } = await oeffneOberflaeche(
+  const { w, d, aufrufe, ruhig } = await openUi(
     { '/v1/parts': seite },
     {
       vorher(w) {
         w.IntersectionObserver = class {
           constructor(cb) {
-            beobachter.push(cb);
+            observer.push(cb);
           }
           observe() {}
           unobserve() {}
@@ -220,7 +220,7 @@ test('nachgeladen wird nur im sichtbaren Teile-Tab', async () => {
     assert.ok(await warte(() => seiten() >= 2), 'Die erste Seite füllt den Schirm nicht, die zweite kommt nicht');
     await ruhig();
     const sichtbar = () => {
-      for (const cb of beobachter) cb([{ isIntersecting: true }]);
+      for (const cb of observer) cb([{ isIntersecting: true }]);
     };
     const vorher = seiten();
     sichtbar();
@@ -237,7 +237,7 @@ test('nachgeladen wird nur im sichtbaren Teile-Tab', async () => {
 });
 
 test('Argumente aus data-arg werden als Zeichenkette behandelt', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     '/v1/minifigs/manual': { success: true, figs: [{ fig_number: 'fig-000001', fig_name: 'Figur', quantity: 2 }] },
     '/v1/auth/users': {
       success: true,

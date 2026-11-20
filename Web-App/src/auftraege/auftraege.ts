@@ -3,15 +3,13 @@ import type { z } from 'zod';
 /** Je Art das zod-Schema der Nutzlast. Jeder Bereich ergänzt seine Arten per `declare module`
  * (auftragsarten.ts des Bereichs): Das Einstellen ist geprüft, ohne dass dieser Bereich sie kennt. */
 // biome-ignore lint/suspicious/noEmptyInterface: die Bereiche ergänzen es
-export interface AuftragsNutzlasten {}
-export type AuftragsArt = keyof AuftragsNutzlasten & string;
-export type NutzlastSchema<A extends AuftragsArt> = AuftragsNutzlasten[A] extends z.ZodType
-  ? AuftragsNutzlasten[A]
-  : never;
-export type Nutzlast<A extends AuftragsArt> = z.output<NutzlastSchema<A>>;
-export type NutzlastEingabe<A extends AuftragsArt> = z.input<NutzlastSchema<A>>;
+export interface JobPayloads {}
+export type JobKind = keyof JobPayloads & string;
+export type PayloadSchema<A extends JobKind> = JobPayloads[A] extends z.ZodType ? JobPayloads[A] : never;
+export type Nutzlast<A extends JobKind> = z.output<PayloadSchema<A>>;
+export type PayloadInput<A extends JobKind> = z.input<PayloadSchema<A>>;
 
-export type AuftragsStatus = 'offen' | 'laeuft' | 'erledigt' | 'fehler' | 'abgebrochen';
+export type JobStatus = 'offen' | 'laeuft' | 'erledigt' | 'fehler' | 'abgebrochen';
 
 export interface Fortschritt {
   erledigt?: number;
@@ -21,23 +19,23 @@ export interface Fortschritt {
 }
 
 /** Was ein Dienst vom laufenden Auftrag braucht: Stand melden, am Signal aufhören. */
-export interface AuftragsLauf {
+export interface JobRun {
   readonly signal?: AbortSignal;
   fortschritt?(f: Fortschritt): Promise<boolean>;
 }
 
 /** Wirft den Grund des Abbruchs; zwischen zwei Schritten eines langen Laufs. */
-export function pruefeAbbruch(lauf: AuftragsLauf | undefined): void {
+export function checkAbort(lauf: JobRun | undefined): void {
   lauf?.signal?.throwIfAborted();
 }
 
-export interface AuftragsZeile {
+export interface JobRow {
   id: string;
-  type: AuftragsArt;
+  type: JobKind;
   payload: Record<string, unknown>;
   user_id: number | null;
   dedupe_key: string | null;
-  status: AuftragsStatus;
+  status: JobStatus;
   attempts: number;
   max_attempts: number;
   locked_by: string | null;
@@ -48,14 +46,14 @@ export interface Einstellen {
   userId?: number | null;
   /** Steht ein offener Auftrag mit diesem Schlüssel schon da, kommt kein zweiter dazu. */
   schluessel?: string;
-  maxVersuche?: number;
-  nachSekunden?: number;
-  /** Geht nachSekunden vor. */
-  faelligAb?: Date;
+  maxAttempts?: number;
+  afterSeconds?: number;
+  /** Geht afterSeconds vor. */
+  dueAb?: Date;
   fortschritt?: Fortschritt;
 }
 
-export type Belegung = Pick<AuftragsZeile, 'id' | 'locked_by'>;
+export type Belegung = Pick<JobRow, 'id' | 'locked_by'>;
 
 /** Drosselt eine Gegenseite, wartet die ganze Art, nicht ein Auftrag. */
 
@@ -67,7 +65,7 @@ export interface Pause {
 }
 
 /** Was ein Bearbeiter vom Worker bekommt; die Fachdienste kennen nur dies, nicht den Worker. */
-export interface AuftragsKontext {
+export interface JobContext {
   /** false: Der Auftrag gehört nicht mehr diesem Lauf (abgebrochen, neu vergeben). */
   lebenszeichen(): Promise<boolean>;
   fortschritt(f: Fortschritt): Promise<boolean>;
@@ -79,13 +77,13 @@ export interface AuftragsKontext {
 }
 
 /** Wird zurückgegeben und später fortgesetzt, ohne als gescheitert zu gelten. */
-export class AuftragUnterbrochen extends Error {
+export class JobInterrupted extends Error {
   constructor() {
     super('Auftrag unterbrochen');
   }
 }
 
-export class AuftragVerloren extends Error {
+export class JobLost extends Error {
   constructor() {
     super('Auftrag gehört nicht mehr diesem Lauf');
   }
@@ -93,7 +91,7 @@ export class AuftragVerloren extends Error {
 
 /** Die Gegenseite drosselt oder ein Kontingent ist erschöpft. `zaehlt`
  * entscheidet, ob es als Versuch gilt (und damit irgendwann endet). */
-export class AuftragVerschieben extends Error {
+export class JobMove extends Error {
   constructor(
     readonly bis: Date,
     readonly grund: string,

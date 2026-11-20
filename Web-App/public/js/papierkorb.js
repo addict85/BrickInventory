@@ -5,7 +5,7 @@ import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum } from './format.js';
 import { toast } from './meldungen.js';
 import { html, joinHtml } from './escaping.js';
-import { bestaetigeMitPasswort, mitZweitemFaktor } from './rueckfrage.js';
+import { bestaetigeMitPasswort, withSecondFactor } from './rueckfrage.js';
 import { emit } from './events.js';
 
 // ═══ Papierkorb (Einstellungen → Daten) ═════════════════════════════════════
@@ -36,7 +36,7 @@ function zeile(e, konten) {
 }
 
 /** Name je Konto, nur im Haushalt: Mit einem Konto wäre der Name auf jeder Zeile derselbe. */
-async function kontenNamen() {
+async function accountsNames() {
   const d = await api('GET', '/v1/sets/household-members');
   const m = d?.success ? d.members : [];
   return new Map(
@@ -44,14 +44,14 @@ async function kontenNamen() {
   );
 }
 
-/** @param {string} [fokusNach] Kennung des eben entfernten Eintrags: Der Fokus geht auf seinen Nachbarn. */
-export async function ladePapierkorb(fokusNach) {
+/** @param {string} [focusAfter] Kennung des eben entfernten Eintrags: Der Fokus geht auf seinen Nachbarn. */
+export async function loadTrash(focusAfter) {
   const liste = G('papierkorb-liste');
   if (!liste) return;
-  const vorher = fokusNach
-    ? [...liste.querySelectorAll('.pk-zeile')].findIndex(z => z.getAttribute('data-pk-id') === fokusNach)
+  const vorher = focusAfter
+    ? [...liste.querySelectorAll('.pk-zeile')].findIndex(z => z.getAttribute('data-pk-id') === focusAfter)
     : -1;
-  const [d, konten] = await Promise.all([api('GET', '/v1/papierkorb'), kontenNamen()]);
+  const [d, konten] = await Promise.all([api('GET', '/v1/papierkorb'), accountsNames()]);
   const leeren = G('papierkorb-leeren');
   if (!d?.success) {
     setzeHtml(liste, html`<div class="voucher-leer">${tRaw('trash.load_error')}</div>`);
@@ -67,12 +67,14 @@ export async function ladePapierkorb(fokusNach) {
   if (leeren) leeren.style.display = eintraege.length ? '' : 'none';
   if (vorher < 0) return;
   const zeilen = liste.querySelectorAll('.pk-zeile');
-  const nachbar = zeilen[Math.min(vorher, zeilen.length - 1)];
-  /** @type {HTMLElement | null} */ (nachbar?.querySelector('button') ?? liste.querySelector('.voucher-leer'))?.focus();
+  const neighbor = zeilen[Math.min(vorher, zeilen.length - 1)];
+  /** @type {HTMLElement | null} */ (
+    neighbor?.querySelector('button') ?? liste.querySelector('.voucher-leer')
+  )?.focus();
 }
 
 /** Alles nachladen, was ein Wiederherstellen verändert haben kann. */
-function bestandNeuLaden() {
+function loadInventoryNew() {
   emit('bestandGeaendert');
 }
 
@@ -95,8 +97,8 @@ export async function papierkorbWiederherstellen(id) {
   for (const t of document.querySelectorAll('#toasts [data-papierkorb]'))
     if (t.getAttribute('data-papierkorb')?.split(',').includes(String(id))) t.remove();
   toast(tRaw('trash.restored'), 'success');
-  bestandNeuLaden();
-  await ladePapierkorb(String(id));
+  loadInventoryNew();
+  await loadTrash(String(id));
 }
 
 // Endgültig heisst unumkehrbar: Der Server verlangt dafür das Passwort (und den zweiten Faktor).
@@ -107,13 +109,13 @@ export async function papierkorbEndgueltig(id) {
     art: 'bd',
   });
   if (password === null) return;
-  const d = await mitZweitemFaktor(z => api('DELETE', `/v1/papierkorb/${id}`, { password, ...z }));
+  const d = await withSecondFactor(z => api('DELETE', `/v1/papierkorb/${id}`, { password, ...z }));
   if (d === null) return;
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  await ladePapierkorb(String(id));
+  await loadTrash(String(id));
 }
 
 export async function papierkorbLeeren() {
@@ -122,13 +124,13 @@ export async function papierkorbLeeren() {
     art: 'bd',
   });
   if (password === null) return;
-  const d = await mitZweitemFaktor(z => api('DELETE', '/v1/papierkorb', { password, ...z }));
+  const d = await withSecondFactor(z => api('DELETE', '/v1/papierkorb', { password, ...z }));
   if (d === null) return;
   if (!d?.success) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  await ladePapierkorb();
+  await loadTrash();
 }
 
 /**
@@ -137,7 +139,7 @@ export async function papierkorbLeeren() {
  * Fokus zurück, solange er nur auf Seite oder Überschrift gefallen ist, nicht wenn jemand weitergegangen ist.
  * @param {string} sel
  */
-function fokusWennDa(sel) {
+function focusIfDa(sel) {
   const ende = Date.now() + 5000;
   const versuch = () => {
     const el = /** @type {HTMLElement | null} */ (document.querySelector(`#app .tab.active :is(${sel})`));
@@ -156,7 +158,7 @@ function fokusWennDa(sel) {
  * @param {() => unknown} [nachher] was danach neu zu zeichnen ist, etwa das offene Set-Detail
  * @param {string} [fokus] Selektor des Eintrags, der nach dem Zurückholen den Fokus bekommt
  */
-export function geloeschtMitRueckgaengig(meldung, antwort, nachher, fokus) {
+export function deletedWithUndo(meldung, antwort, nachher, fokus) {
   const ids = antwort?.papierkorb || [];
   const el = toast(
     meldung,
@@ -168,9 +170,9 @@ export function geloeschtMitRueckgaengig(meldung, antwort, nachher, fokus) {
           fn: async () => {
             if (!(await wiederherstellen(ids))) return;
             toast(tRaw('trash.restored'), 'success');
-            bestandNeuLaden();
+            loadInventoryNew();
             nachher?.();
-            if (fokus) fokusWennDa(fokus);
+            if (fokus) focusIfDa(fokus);
           },
         }
       : undefined,

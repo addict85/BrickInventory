@@ -1,6 +1,6 @@
 /** Jimp dekodiert ohne Grenze; ein kleines Bild mit riesigen Abmessungen wäre
  * eine Dekompressionsbombe. */
-import { meldeFehler } from '../infra/fehler';
+import { reportError } from '../infra/fehler';
 import fs from 'node:fs';
 
 /** Obergrenze in Pixeln (Breite × Höhe). 40 MP ≈ 160 MB Bitmap. */
@@ -9,7 +9,7 @@ export const MAX_PIXELS = 40_000_000;
 const HEADER_BYTES = 65536;
 
 /** Ohne die Bilddaten zu dekodieren — genau das soll ja verhindert werden. */
-export function bildmasse(buf: Buffer) {
+export function imageSize(buf: Buffer) {
   // PNG: Breite/Höhe als 32-Bit-Big-Endian an Offset 16 bzw. 20.
   if (buf.length >= 24 && buf.readUInt32BE(0) === 0x89504e47) {
     return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
@@ -48,7 +48,7 @@ export function bildmasse(buf: Buffer) {
 }
 
 /** @returns false, wenn das Bild zu gross ist */
-export async function lesbaresBild(filePath: string) {
+export async function readableImage(filePath: string) {
   let fh: fs.promises.FileHandle | undefined;
   try {
     fh = await fs.promises.open(filePath, 'r');
@@ -64,7 +64,7 @@ export async function lesbaresBild(filePath: string) {
       );
       return false;
     }
-    const dim = bildmasse(buf.subarray(0, bytesRead));
+    const dim = imageSize(buf.subarray(0, bytesRead));
     // Unbekanntes Format: durchlassen. Jimp wirft bei allem, was es nicht kennt —
     // der harmlose Ausgang.
     if (!dim) return true;
@@ -82,6 +82,6 @@ export async function lesbaresBild(filePath: string) {
   } catch (_) {
     return false; // nicht lesbar → nicht dekodieren
   } finally {
-    await fh?.close().catch(e => meldeFehler('bild-wache:close', e));
+    await fh?.close().catch(e => reportError('bild-wache:close', e));
   }
 }

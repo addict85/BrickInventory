@@ -7,13 +7,13 @@
  * Testdateien im Temp-Ordner.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  in mitNachlauf() sofort `return r.code` → rot: „unter Last zu langsam,
+ *   A  in withFollowUp() sofort `return r.code` → rot: „unter Last zu langsam,
  *      einzeln grün: der Lauf ist grün“
- *   B  in fristFehler() jede rote Datei als Fristfehler gezählt → rot: „ein
+ *   B  in deadlineError() jede rote Datei als Fristfehler gezählt → rot: „ein
  *      echter Fehler wird nicht nachgeholt“
  *   C  im Nachlauf dieselbe Frist statt der doppelten → rot: „unter Last zu
  *      langsam …“ (die Datei braucht mehr als die einfache Frist)
- *   D  meldeNachlauf() nicht aufgerufen → rot: „unter Last zu langsam …“ (keine WARNUNG)
+ *   D  reportFollowUp() nicht aufgerufen → rot: „unter Last zu langsam …“ (keine WARNUNG)
  *   E  TEST_NACHLAUF nicht ausgewertet → rot: „mit TEST_NACHLAUF=aus …“
  */
 const test = require('node:test');

@@ -1,70 +1,70 @@
 /** Anmeldung, Token und Profil unter /api/v1/auth; die Teilrouter aus routes/auth/ hängen dahinter. */
-import { waechterFuer } from './api_v1/middleware';
-import { keksBleibtAus, sitzungsKeksName, sitzungsKeksOptionen } from '../src/http/sitzungsKeks';
-import { meldeFehler } from '../src/infra/fehler';
+import { guardFor } from './api_v1/middleware';
+import { cookieStaysFrom, sitzungsKeksName, sessionCookieOptions } from '../src/http/sitzungsKeks';
+import { reportError } from '../src/infra/fehler';
 import {
   anmelden,
   establishSession,
   nutzerId,
-  angemeldeteNutzerId,
+  signedInUserId,
   ipThrottle,
-  bestaetigeMitFaktor,
+  confirmWithFactor,
   zweiterFaktorPflicht,
 } from '../src/konto/http/anmeldung';
 import type { Request, Response } from 'express';
-import { meldeZugangsAenderung } from '../src/konto/http/zugangsWache';
-import { fehlerText, antwortSprache, fachfehler, nichtGefunden, Fachfehler } from '../src/infra/fehlerTexte';
-import { baueBenutzerRouter } from './auth/benutzer';
-import { baueZweiterFaktorRouter } from './auth/zweiterFaktor';
-import { baueRegistrierungRouter } from './auth/registrierung';
-import { baueQrRouter } from './auth/qr';
-import { bauePasskeyRouter } from './auth/passkey';
+import { reportAccessChange } from '../src/konto/http/zugangsWache';
+import { errorText, responseLanguage, fachfehler, notFound, Fachfehler } from '../src/infra/fehlerTexte';
+import { buildUserRouter } from './auth/benutzer';
+import { buildSecondFactorRouter } from './auth/zweiterFaktor';
+import { buildRegistrationRouter } from './auth/registrierung';
+import { buildQrRouter } from './auth/qr';
+import { buildPasskeyRouter } from './auth/passkey';
 import { vertragsRouter } from '../src/http/vertragsRouter';
 import {
   assertLoginAllowed,
   USERNAME_RE,
-  emailGueltig,
-  rotationFaellig,
-  UEBERLAPPUNG_MS,
-  nameGueltig,
-  geraeteNameInhaltGueltig,
-  meldeAnmeldung,
-  emailWirdGeaendert,
+  emailValid,
+  rotationDue,
+  OVERLAP_MS,
+  nameValid,
+  devicesNameContentValid,
+  reportLogin,
+  emailBecomesChanged,
   type Angemeldet,
-  type TokenWunsch,
+  type TokenWish,
 } from '../src/konto';
 import type { Dienste } from '../src/dienste';
 type Absage = Extract<Awaited<ReturnType<typeof anmelden>>, { ok: false }>['absage'];
 /** Derselbe Weg nach Passwort und Passkey. Token ODER Sitzung: Die Sitzung trüge die Rechte am Scope des Tokens
  * vorbei. keks_fehlt immer, auch als false: Dann rät die Oberfläche bei einem 401 nicht auf „ohne HTTPS“. */
-async function angemeldetAntworten(
+async function signedInResponses(
   d: Pick<Dienste, 'konto'>,
   req: Request,
   res: Response,
   user: Angemeldet,
-  wunsch: TokenWunsch,
-  mitToken: boolean,
-  mitPasswort = false,
+  wish: TokenWish,
+  withToken: boolean,
+  withPassword = false,
 ) {
-  await d.konto.verwalter.uebernahmenAbbrechen(Number(user.id));
-  if (!mitToken)
+  await d.konto.verwalter.cancelTakeovers(Number(user.id));
+  if (!withToken)
     await establishSession(d.konto, req, {
       userId: Number(user.id),
       username: user.username,
       isAdmin: user.is_admin,
       mussPasswortAendern: user.must_change_password === true,
       // Nur nach einem Passwort, nicht nach einem Passkey allein: Grundlage der Gnadenfrist.
-      ...(mitPasswort ? { passwortBestaetigtAm: Date.now() } : {}),
+      ...(withPassword ? { passwordConfirmedAt: Date.now() } : {}),
     });
   res.json({
     success: true,
-    ...(await d.konto.anmeldeAntwort(user, wunsch, mitToken, req.ip)),
-    keks_fehlt: !mitToken && keksBleibtAus(req),
+    ...(await d.konto.loginResponse(user, wish, withToken, req.ip)),
+    keks_fehlt: !withToken && cookieStaysFrom(req),
   });
 }
 
 /** `zweiter_faktor` zeigt das Codefeld (oder `passkey`), `unverified` blendet „E-Mail erneut senden?" ein. */
-function anmeldungAbsagen(absage: Absage): never {
+function loginRejections(absage: Absage): never {
   const { art, code, vars, unverified, zweiterFaktor, passkey } = absage;
   const zusatz = zweiterFaktor
     ? { zweiter_faktor: true, ...(passkey ? { passkey: true } : {}) }
@@ -74,11 +74,11 @@ function anmeldungAbsagen(absage: Absage): never {
   throw new Fachfehler(art, code, vars, zusatz);
 }
 
-type GeprueftesToken = NonNullable<Awaited<ReturnType<Dienste['konto']['pruefeToken']>>['nutzer']>;
+type CheckedToken = NonNullable<Awaited<ReturnType<Dienste['konto']['pruefeToken']>>['nutzer']>;
 
 /** is_admin ist das Recht DIESES Tokens: bei Scope `app` immer false. */
-async function tokenNutzer(d: Pick<Dienste, 'konto'>, res: Response, u: GeprueftesToken) {
-  const faellig = rotationFaellig(u);
+async function tokenUser(d: Pick<Dienste, 'konto'>, res: Response, u: CheckedToken) {
+  const faellig = rotationDue(u);
   if (faellig) res.setHeader('X-Token-Rotation', 'faellig');
   return {
     success: true,
@@ -88,7 +88,7 @@ async function tokenNutzer(d: Pick<Dienste, 'konto'>, res: Response, u: Geprueft
       username: u.username,
       is_admin: u.is_admin === true,
       mustChangePassword: u.muss_passwort_aendern === true,
-      zweiterFaktorPflicht: await d.konto.faktorPflichtOffen(u.user_id, u.is_admin === true),
+      zweiterFaktorPflicht: await d.konto.openFactorRequired(u.user_id, u.is_admin === true),
     },
     token_expires: u.expires_at,
     token_last_used: u.last_used,
@@ -103,8 +103,8 @@ async function tokenNutzer(d: Pick<Dienste, 'konto'>, res: Response, u: Geprueft
   } as const;
 }
 
-async function sitzungsNutzer(d: Pick<Dienste, 'konto'>, req: Request, uid: number) {
-  const user = await d.konto.kontoKurzVon(uid);
+async function sessionUser(d: Pick<Dienste, 'konto'>, req: Request, uid: number) {
+  const user = await d.konto.accountShortOf(uid);
   if (!user) return null;
   return {
     success: true,
@@ -119,8 +119,8 @@ async function sitzungsNutzer(d: Pick<Dienste, 'konto'>, req: Request, uid: numb
   } as const;
 }
 
-export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 'factors' | 'profile'>) {
-  const { requireLoginOrToken } = waechterFuer(d.konto);
+export function buildAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 'factors' | 'profile'>) {
+  const { requireLoginOrToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1/auth');
 
   // Ein Wächter für Sitzung UND Token: Die App hat keine Sitzung.
@@ -128,11 +128,11 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
 
   /** Die EINE Anmeldung für Webapp und App, damit beide dieselben Regeln erfüllen. */
   router.endpunkt('POST /api/v1/auth/login', async (req, res) => {
-    const { username, password, code: zweiterCode, ohne_token, passkey } = req.eingabe;
-    if (!geraeteNameInhaltGueltig(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
-    const pruefung = await anmelden(d.konto, req, username, password, zweiterCode, passkey);
-    if (!pruefung.ok) anmeldungAbsagen(pruefung.absage);
-    await angemeldetAntworten(d, req, res, pruefung.user as Angemeldet, req.eingabe, ohne_token !== true, true);
+    const { username, password, code: secondCode, ohne_token, passkey } = req.eingabe;
+    if (!devicesNameContentValid(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
+    const check = await anmelden(d.konto, req, username, password, secondCode, passkey);
+    if (!check.ok) loginRejections(check.absage);
+    await signedInResponses(d, req, res, check.user as Angemeldet, req.eingabe, ohne_token !== true, true);
   });
 
   /** Sitzung beenden UND Token entwerten, damit ein Aufruf beides wegräumt. */
@@ -144,8 +144,8 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
     if (req.session?.destroy) {
       req.session.destroy(() => {
         // Offene Ströme dieser Sitzung prüfen sofort, nicht erst im nächsten Takt.
-        meldeZugangsAenderung();
-        res.clearCookie(sitzungsKeksName(), sitzungsKeksOptionen()).json({ success: true });
+        reportAccessChange();
+        res.clearCookie(sitzungsKeksName(), sessionCookieOptions()).json({ success: true });
       });
       return;
     }
@@ -156,11 +156,11 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
   router.endpunkt('GET /api/v1/auth/me', async (req, res) => {
     const auth = String(req.headers.authorization || '');
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-    const antworte = async () => {
-      const sitzung = req.session?.userId ? await sitzungsNutzer(d, req, req.session.userId) : null;
+    const respond = async () => {
+      const sitzung = req.session?.userId ? await sessionUser(d, req, req.session.userId) : null;
       if (sitzung) return res.json(sitzung);
       const p = token ? await d.konto.pruefeToken(token, { ip: req.ip }) : { nutzer: null };
-      if (p.nutzer) return res.json(await tokenNutzer(d, res, p.nutzer));
+      if (p.nutzer) return res.json(await tokenUser(d, res, p.nutzer));
       if (!token) return res.json({ success: true, loggedIn: false, user: null });
       const code = 'grund' in p && p.grund ? p.grund : 'token_ungueltig';
       res.status(code === 'zu_viele_anfragen' ? 429 : 401).json({
@@ -168,12 +168,12 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
         loggedIn: false,
         user: null,
         code,
-        error: fehlerText(code, antwortSprache(req), code === 'zu_viele_anfragen' ? { minuten: 1 } : undefined),
+        error: errorText(code, responseLanguage(req), code === 'zu_viele_anfragen' ? { minuten: 1 } : undefined),
       });
     };
-    await antworte().catch((e: unknown) => {
+    await respond().catch((e: unknown) => {
       // Ein Lesefehler ist keine Abmeldung: Mit 401 verwürfe die App ihren Token.
-      meldeFehler('auth:me', e);
+      reportError('auth:me', e);
       fachfehler('nicht_verfuegbar', 'server_ausgelastet');
     });
   });
@@ -187,7 +187,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
       const alt = auth.startsWith('Bearer ') ? auth.slice(7) : '';
       if (!alt || !(await d.konto.pruefeToken(alt, { ip: req.ip, zweck: 'rotation' })).nutzer)
         fachfehler('nicht_angemeldet', 'token_ungueltig');
-      const t = await d.konto.rotiereToken(alt, req.ip);
+      const t = await d.konto.rotateToken(alt, req.ip);
       if (!t) fachfehler('nicht_angemeldet', 'token_ungueltig');
       return {
         token: t.token,
@@ -200,7 +200,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
           rotation_faellig: false,
         },
         alt_gueltig_bis: t.alt_gueltig_bis,
-        ueberlappung_sek: UEBERLAPPUNG_MS / 1000,
+        ueberlappung_sek: OVERLAP_MS / 1000,
       };
     },
   );
@@ -209,23 +209,23 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
    * erbeuteter Zugang einen dauerhaften. Die Mail meldet ihn dem Inhaber. */
   router.endpunkt('POST /api/v1/auth/token-create', requireLogin, async (req, res) => {
     if (!req.session?.userId) fachfehler('verboten', 'nur_mit_sitzung');
-    if (!geraeteNameInhaltGueltig(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
-    const userId = angemeldeteNutzerId(req);
-    if (!(await bestaetigeMitFaktor(d.konto, req, res, userId, req.eingabe.password))) return;
-    const t = await d.konto.geraeteTokenAusstellen(userId, req.eingabe.label, req.eingabe.scope, req.ip);
+    if (!devicesNameContentValid(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
+    const userId = signedInUserId(req);
+    if (!(await confirmWithFactor(d.konto, req, res, userId, req.eingabe.password))) return;
+    const t = await d.konto.devicesTokenIssue(userId, req.eingabe.label, req.eingabe.scope, req.ip);
     return { token: t.token, label: t.label, never_expires: false, token_info: t.token_info };
   });
 
   router.endpunkt('GET /api/v1/auth/profile', requireLogin, async req => {
     const user = await d.konto.profil(nutzerId(req)!);
-    if (!user) nichtGefunden('benutzer_nicht_gefunden');
+    if (!user) notFound('benutzer_nicht_gefunden');
     return { user };
   });
 
   router.endpunkt('PUT /api/v1/auth/profile', requireLogin, async (req, res) => {
     const { username, email, first_name, last_name, password, password_current } = req.eingabe;
-    const user = await d.konto.kontoVollVon(nutzerId(req)!);
-    if (!user) nichtGefunden('benutzer_nicht_gefunden');
+    const user = await d.konto.accountFullOf(nutzerId(req)!);
+    if (!user) notFound('benutzer_nicht_gefunden');
 
     // Das Passwort nur über /change-password: Nur dort fallen danach alle anderen Zugänge.
     if (password) fachfehler('ungueltig', 'passwort_ueber_change_password');
@@ -234,13 +234,13 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
     // Benutzername eintragen, und der Login sucht „username ODER email".
     if (username !== undefined && !USERNAME_RE.test(String(username || '')))
       fachfehler('ungueltig', 'benutzername_ungueltig');
-    if (!nameGueltig(first_name) || !nameGueltig(last_name)) fachfehler('ungueltig', 'name_ungueltig');
+    if (!nameValid(first_name) || !nameValid(last_name)) fachfehler('ungueltig', 'name_ungueltig');
 
-    if (emailWirdGeaendert(user, email) && !emailGueltig(email)) fachfehler('ungueltig', 'email_ungueltig');
+    if (emailBecomesChanged(user, email) && !emailValid(email)) fachfehler('ungueltig', 'email_ungueltig');
     // Mit Passwort (und zweitem Faktor): Über eine neue Adresse liesse sich das Passwort
     // zurücksetzen; erst danach verrät die Vergabeprüfung, ob es Name oder Adresse gibt.
     if (!password_current) fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
-    if (!(await bestaetigeMitFaktor(d.konto, req, res, user.id, String(password_current)))) return;
+    if (!(await confirmWithFactor(d.konto, req, res, user.id, String(password_current)))) return;
     const r = await d.konto.profilAendern(user, { username, email, first_name, last_name });
     if (r.emailChanged) return { emailChanged: true, emailSent: r.emailSent ?? false };
     return {};
@@ -248,11 +248,11 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
 
   // Das eigene Konto, endgültig: Passwort und, falls eingerichtet, zweiter Faktor.
   router.endpunkt('DELETE /api/v1/auth/konto', requireLogin, async (req, res) => {
-    const uid = angemeldeteNutzerId(req);
-    if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, req.eingabe.password))) return;
+    const uid = signedInUserId(req);
+    if (!(await confirmWithFactor(d.konto, req, res, uid, req.eingabe.password))) return;
     await d.konto.kontoEntfernen(uid, null);
     console.log(`[konto] Konto ${uid} hat sich selbst gelöscht`);
-    req.session.destroy(() => res.clearCookie(sitzungsKeksName(), sitzungsKeksOptionen()).json({ success: true }));
+    req.session.destroy(() => res.clearCookie(sitzungsKeksName(), sessionCookieOptions()).json({ success: true }));
   });
 
   router.endpunkt('POST /api/v1/auth/change-password', requireLogin, async (req, res) => {
@@ -260,7 +260,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
     if (!current || !newPassword) fachfehler('ungueltig', 'alle_felder_erforderlich');
     const uid = nutzerId(req);
     if (uid == null) fachfehler('nicht_angemeldet', 'nicht_angemeldet');
-    if (!(await bestaetigeMitFaktor(d.konto, req, res, uid, String(current)))) return;
+    if (!(await confirmWithFactor(d.konto, req, res, uid, String(current)))) return;
     // NACH der Prüfung des alten Passworts: Ein Fremder erfährt über das neue nichts.
     // Beendet alle Zugänge, auch den eigenen; die Sitzung wird danach neu aufgebaut.
     const konto = await d.konto.eigenesPasswortAendern(uid, newPassword, req.eingabe.passkeys_widerrufen === true);
@@ -270,7 +270,7 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
         username: konto.username,
         isAdmin: req.session.isAdmin === true,
         mussPasswortAendern: false,
-        passwortBestaetigtAm: Date.now(),
+        passwordConfirmedAt: Date.now(),
       });
     }
     return {};
@@ -293,22 +293,22 @@ export function baueAuthRouter(d: Pick<Dienste, 'settings' | 'mail' | 'konto' | 
     'POST /api/v1/auth/passkey/anmelden',
     ipThrottle(d.konto, 'passkey-anmelden', 30, 60 * 60 * 1000),
     async (req, res) => {
-      if (!geraeteNameInhaltGueltig(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
+      if (!devicesNameContentValid(req.eingabe.label)) fachfehler('ungueltig', 'geraetename_ungueltig');
       const uid = await d.factors.verifyAuthentication(req.eingabe.antwort, 'anmelden');
       if (!uid) fachfehler('nicht_angemeldet', 'passkey_ungueltig');
-      const user = await d.konto.kontoVollVon(uid);
+      const user = await d.konto.accountFullOf(uid);
       if (!user) fachfehler('nicht_angemeldet', 'passkey_ungueltig');
       const gesperrt = assertLoginAllowed(user);
       if (gesperrt) fachfehler(gesperrt.art, gesperrt.code);
-      meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'passkey' });
-      await angemeldetAntworten(d, req, res, user, req.eingabe, req.eingabe.mit_token === true);
+      reportLogin({ ip: req.ip, konto: user.id, zugang: 'passkey' });
+      await signedInResponses(d, req, res, user, req.eingabe, req.eingabe.mit_token === true);
     },
   );
 
-  router.haengeEin(baueQrRouter(d));
-  router.haengeEin(bauePasskeyRouter(d));
-  router.haengeEin(baueBenutzerRouter(d));
-  router.haengeEin(baueZweiterFaktorRouter(d));
-  router.haengeEin(baueRegistrierungRouter(d));
+  router.attachOne(buildQrRouter(d));
+  router.attachOne(buildPasskeyRouter(d));
+  router.attachOne(buildUserRouter(d));
+  router.attachOne(buildSecondFactorRouter(d));
+  router.attachOne(buildRegistrationRouter(d));
   return router;
 }

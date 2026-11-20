@@ -8,7 +8,7 @@
  *      räumt doppelte Tagespunkte ab …“ (der eindeutige Index scheitert)
  *   B  in fetchMinifigPrice „AND NOT estimated“ entfernt → rot: „eine
  *      Schätzung im Cache gilt nicht als BrickLink-Preis“ (5 statt 20)
- *   C  in schaetzeFigurenpreis die Abdeckung nicht mehr gelesen → rot: „die
+ *   C  in estimateMinifigsPrice die Abdeckung nicht mehr gelesen → rot: „die
  *      Schätzung trägt ihre Abdeckung“
  *
  * BrickLink selbst wird nicht gefragt: https.get ist durch eine Attrappe
@@ -27,10 +27,10 @@ const { Readable } = require('node:stream');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 // @ts-expect-error — Attrappe mit genau dem, was clients/bricklink.ts benutzt.
 https.get = (_url, _opts, cb) => {
@@ -60,14 +60,14 @@ https.get = (_url, _opts, cb) => {
 };
 
 test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const ID = String(process.pid);
   const TEIL = `t${ID}`,
     FIGUR = `sw${ID}`,
     RBFIGUR = `fig-${ID}`;
   const zugang = ['bricklink_consumer_key', 'bricklink_consumer_secret', 'bricklink_token', 'bricklink_token_secret'];
-  const alterZugang = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
+  const alterAccess = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [zugang]);
   for (const k of zugang)
     await db.run(
       `INSERT INTO global_settings (key, value) VALUES ($1, 'test')
@@ -84,7 +84,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
   t.after(async () => {
     await aufraeumen();
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [zugang]);
-    for (const z of alterZugang)
+    for (const z of alterAccess)
       await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [z.key, z.value]);
     await db.pool.end().catch(() => {});
   });
@@ -175,8 +175,8 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
       VALUES ($1, 'N', 'EUR', 8, 8, TRUE, 0.75)`,
       [RBFIGUR],
     );
-    const { schaetzeFigurenpreis } = _req('src/finanzen/marketPrice.js');
-    const s = await schaetzeFigurenpreis(RBFIGUR, 0, 'N');
+    const { estimateMinifigsPrice } = _req('src/finanzen/marketPrice.js');
+    const s = await estimateMinifigsPrice(RBFIGUR, 0, 'N');
     assert.deepEqual(s, { preis: 8, abdeckung: 0.75 });
   });
 });

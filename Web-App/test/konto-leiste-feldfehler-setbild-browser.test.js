@@ -9,7 +9,7 @@
  *      rollt weg“); die mobile Regel der Einstellungen wieder position:static → rot: „M2 390 px … Einstellungen“
  *   B  Hintergrundarbeiten ohne Sprungleiste → rot: „M2 …“ (keine Leiste); ohne tabindex an den Titeln → rot:
  *      ebenda (Fokus)
- *   C  fehlerPlatzieren() ohne den Zweig für Rasterzellen → rot: „N2 …“ (Meldung nicht unter ihrem Feld)
+ *   C  errorPlace() ohne den Zweig für Rasterzellen → rot: „N2 …“ (Meldung nicht unter ihrem Feld)
  *   D  finanzen-fehler blendet nichts aus → rot: „N3 …“ (Zeitraum und Chips sichtbar)
  *   E  die Regel für 601–640 px entfernt (Namen wieder nur bis 640 px verborgen) → rot: „N4 …“ (640 × 450)
  *   F  .besitzer-badge wieder overflow:hidden → rot: „N5 …“ (Abzeichen 4–6 px versetzt)
@@ -22,8 +22,8 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterHaushalt } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternHousehold } = require('./helpers/bestand');
 
 async function groesse(b, breite, hoehe, telefon) {
   await b.tab('Emulation.setDeviceMetricsOverride', {
@@ -36,10 +36,10 @@ async function groesse(b, breite, hoehe, telefon) {
 const sichtbar = sel => `[...document.querySelectorAll(${JSON.stringify(sel)})].map(e => e.checkVisibility())`;
 
 test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency: 1, timeout: 420_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `r27_${process.pid}`,
     bestand: async (db, uid) => {
-      await musterHaushalt(db, uid);
+      await patternHousehold(db, uid);
       // Ein Bild, das der eigene Server ausliefert: Nur mit Bild ist der Zoom-Knopf bedienbar.
       await db.run(`UPDATE set_catalog SET image_local = '/favicon.svg' WHERE set_number = '10294-1'`);
     },
@@ -57,7 +57,7 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
   // Zuerst: Nur ohne geladene Liste und Kurve landet der Fehler im Diagrammkasten.
   await t.test('N3 Finanzen-Fehler: Zeitraum, Chips und Suche weg, nach Erfolg zurück', async () => {
     const kaputt = JSON.stringify({ success: false, error: 'interner Fehler', code: 'interner_fehler' });
-    const abfang = d => {
+    const intercept = d => {
       if (d.method !== 'Fetch.requestPaused') return;
       b.tab('Fetch.fulfillRequest', {
         requestId: d.params.requestId,
@@ -66,24 +66,24 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
         body: Buffer.from(kaputt).toString('base64'),
       }).catch(() => {});
     };
-    b.hoerer.push(abfang);
+    b.listener.push(intercept);
     await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*/api/v1/finance/valuation*', requestStage: 'Request' }] });
-    const ELEMENTE = '.zeitraum-wahl .period-btn, #fin-filter button, #fin-suche';
+    const ELEMENTS = '.zeitraum-wahl .period-btn, #fin-filter button, #fin-suche';
     try {
       await groesse(b, 1280, 900, false);
       await zu('#/finanzen');
       await bis(`!!document.querySelector('#portfolio-chart .fehler-zustand')`, 'Fehlerzustand');
-      const fehler = await b.auswerten(sichtbar(ELEMENTE));
+      const fehler = await b.auswerten(sichtbar(ELEMENTS));
       assert.equal(fehler.length, 9);
       assert.deepEqual(fehler, Array(9).fill(false), 'im Fehlerfall sichtbar');
     } finally {
       await b.tab('Fetch.disable');
-      b.hoerer.splice(b.hoerer.indexOf(abfang), 1);
+      b.listener.splice(b.listener.indexOf(intercept), 1);
     }
     await b.auswerten(`document.querySelector('#portfolio-chart .fehler-zustand button[data-click]').click(); true`);
     await bis(`!!document.querySelector('#fin-tbl table')`, 'Tabelle nach „Erneut versuchen“');
     await ruhig();
-    assert.deepEqual(await b.auswerten(sichtbar(ELEMENTE)), Array(9).fill(true), 'nach Erfolg');
+    assert.deepEqual(await b.auswerten(sichtbar(ELEMENTS)), Array(9).fill(true), 'nach Erfolg');
   });
 
   for (const [breite, telefon] of [
@@ -113,16 +113,16 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
               gerollt: scrollY,
               oben: Math.round(r.top), unten: Math.round(r.bottom),
               soll: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--leiste-oben')) || 0,
-              untereLeiste: unten ? Math.round(unten.getBoundingClientRect().top) : innerHeight,
+              lowerBar: unten ? Math.round(unten.getBoundingClientRect().top) : innerHeight,
               grund: getComputedStyle(nav).backgroundColor,
-              seiteBreiter: document.documentElement.scrollWidth > innerWidth,
+              pageWider: document.documentElement.scrollWidth > innerWidth,
             };
           })()`);
           assert.ok(m.gerollt > 300, `Seite zu kurz zum Rollen (${m.gerollt} px)`);
           assert.ok(Math.abs(m.oben - m.soll) <= 1, `Leiste rollt weg: oben ${m.oben} px statt ${m.soll} px`);
-          assert.ok(m.unten < m.untereLeiste, 'Leiste über der unteren Navigation');
+          assert.ok(m.unten < m.lowerBar, 'Leiste über der unteren Navigation');
           assert.notEqual(m.grund, 'rgba(0, 0, 0, 0)', 'Leiste ohne eigenen Grund: Inhalt scheint durch');
-          assert.equal(m.seiteBreiter, false, 'Seite breiter als das Fenster');
+          assert.equal(m.pageWider, false, 'Seite breiter als das Fenster');
           if (ansicht !== 'Hintergrundarbeiten') return;
           // Ein Sprung ganz nach oben: Die Überschrift steht im Bild und nicht unter der Leiste.
           await b.auswerten(`document.querySelector('${leiste} a[data-arg="mon-t-kontingente"]').click(); true`);
@@ -161,8 +161,8 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
   });
 
   await t.test('N4 untere Leiste bei geringer Höhe: Namen bis 601 px', async () => {
-    const LEISTE = `(() => { const tabs = [...document.querySelectorAll('nav .ntab')].filter(x => x.checkVisibility());
-      return { n: tabs.length, seiteBreiter: document.documentElement.scrollWidth > innerWidth,
+    const BAR = `(() => { const tabs = [...document.querySelectorAll('nav .ntab')].filter(x => x.checkVisibility());
+      return { n: tabs.length, pageWider: document.documentElement.scrollWidth > innerWidth,
         namen: tabs.map(x => { const t = x.getBoundingClientRect(), l = x.querySelector('.tab-label').getBoundingClientRect();
           return { breit: l.width > 20, innen: l.left >= t.left - 0.5 && l.right <= t.right + 0.5 }; }) }; })()`;
     await zu('#/sammlung');
@@ -175,9 +175,9 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
     ])) {
       await groesse(b, breite, hoehe, breite < 600);
       await ruhig(300);
-      const m = await b.auswerten(LEISTE);
+      const m = await b.auswerten(BAR);
       assert.equal(m.n, 5, `${breite} × ${hoehe}: Reiter`);
-      assert.equal(m.seiteBreiter, false, `${breite} × ${hoehe}: Seite breiter als das Fenster`);
+      assert.equal(m.pageWider, false, `${breite} × ${hoehe}: Seite breiter als das Fenster`);
       for (const x of m.namen) {
         assert.equal(x.breit, namen, `${breite} × ${hoehe}: Namen ${namen ? 'fehlen' : 'stehen da'}`);
         if (namen) assert.ok(x.innen, `${breite} × ${hoehe}: Name ragt aus dem Reiter`);
@@ -266,12 +266,12 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
           const r = e.getBoundingClientRect();
           return { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height,
             farbe: getComputedStyle(e).color.match(/[\\d.]+/g).slice(0, 3).map(Number) }; })()`);
-        const { farbe, ...ausschnitt } = r;
-        const mit = await bild(ausschnitt);
+        const { farbe, ...excerpt } = r;
+        const mit = await bild(excerpt);
         await b.auswerten(
           `document.querySelector('${sel}').style.setProperty('color', 'transparent', 'important'); true`,
         );
-        const ohne = await bild(ausschnitt);
+        const ohne = await bild(excerpt);
         await b.auswerten(`document.querySelector('${sel}').style.removeProperty('color'); true`);
         const werte = [];
         for (let i = 0; i < ohne.length; i += 3)

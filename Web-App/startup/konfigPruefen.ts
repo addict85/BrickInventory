@@ -3,8 +3,8 @@
  * anderes Modul beim Laden einen Wert liest. Ein Fehler beendet den Start mit
  * einer Meldung je Variable statt mit einem Stacktrace aus irgendeinem Modul.
  */
-import { pruefeKonfigBeimStart, konfig } from '../src/infra/konfig';
+import { checkKonfigOnStart, konfig } from '../src/infra/konfig';
 
-pruefeKonfigBeimStart();
+checkKonfigOnStart();
 
 export { konfig };

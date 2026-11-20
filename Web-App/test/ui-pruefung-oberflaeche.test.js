@@ -4,11 +4,11 @@
  * Zustand der Umschalter), nicht welche Zeile im Quelltext steht.
  *
  * Gegenproben (01.11.2026 gemessen, je einzeln zurückgedreht):
- *   A  gruppiereNummer ohne das Entfernen der Trenner → rot „Gutscheinnummer“
+ *   A  groupNumber ohne das Entfernen der Trenner → rot „Gutscheinnummer“
  *   B  role="alert" an #lerr entfernt → rot „Anmeldefehler“
  *   C  aria-pressed in setChartPeriod nicht nachgezogen → rot „Zeitraum“
  *   D  ps-total wieder nur total_parts → rot „Teile-Zahl“
- *   E  preisZeile ohne Beschriftung (art = '') → rot „Preis auf der Kachel“
+ *   E  priceRow ohne Beschriftung (art = '') → rot „Preis auf der Kachel“
  *   F  diagrammNichtDa im Fehlerzweig von loadFinance entfernt → rot „offline“
  *   G  Teile-Leerzustand wieder „Keine Teile gefunden“ ohne Knopf → rot „Teile-Suche ohne Treffer“
  *   H  fehlerKasten wieder als roher Text → rot „Hintergrundarbeiten“
@@ -21,7 +21,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
@@ -39,7 +39,7 @@ const SET = {
 };
 
 test('Gutscheinnummer: erst Trenner weg, dann Vierergruppen; ohne PDF steht es im Text', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/vouchers': {
       success: true,
       vouchers: [{ id: 1, number: '6123-4567-8901', pin: '4711', amount: 50, currency: 'EUR', hat_pdf: false }],
@@ -56,7 +56,7 @@ test('Gutscheinnummer: erst Trenner weg, dann Vierergruppen; ohne PDF steht es i
 });
 
 test('Anmeldefehler wird vorgelesen (role=alert) und steht da', async () => {
-  const { w, d } = await oeffneOberflaeche(
+  const { w, d } = await openUi(
     {
       '/v1/auth/login': {
         $status: 401,
@@ -82,7 +82,7 @@ test('Anmeldefehler wird vorgelesen (role=alert) und steht da', async () => {
 
 test('Zeitraum und Filter der Finanzen melden ihren Zustand (aria-pressed)', async () => {
   // Zwei Messpunkte: Ohne Verlauf sind die Zeitraum-Knöpfe gesperrt.
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/finance/portfolio-history': {
       success: true,
       messpunkte: 2,
@@ -121,7 +121,7 @@ test('Zeitraum und Filter der Finanzen melden ihren Zustand (aria-pressed)', asy
 });
 
 test('Teile-Zahl: Sammlung und Teile-Reiter zeigen dieselbe Summe mit Aufschlüsselung', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/stats': {
       success: true,
       stats: {
@@ -155,7 +155,7 @@ test('Preis auf der Kachel ist beschriftet, Zustand und Datum benannt (de und en
     ['de', 'Kaufpreis', 'Neuware', 'Gekauft', 'Unbekannt'],
     ['en', 'Purchase price', 'New', 'Bought', 'Unknown'],
   ]) {
-    const { w, d } = await oeffneOberflaeche(
+    const { w, d } = await openUi(
       { '/v1/sets': { success: true, sets: [SET], total: 1, themes: ['Ideas'] } },
       { sprache },
     );
@@ -176,7 +176,7 @@ test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf stat
   const netzweg = () => {
     throw new TypeError('Failed to fetch');
   };
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/finance/valuation': netzweg,
     '/v1/finance/portfolio-history': netzweg,
   });
@@ -204,7 +204,7 @@ test('offline: Die Kennzahl-Karten der Finanzen fallen weg, die Zeitraumknöpfe 
     throw new TypeError('Failed to fetch');
   };
   {
-    const { w, d } = await oeffneOberflaeche({
+    const { w, d } = await openUi({
       '/v1/finance/valuation': netzweg,
       '/v1/finance/portfolio-history': netzweg,
     });
@@ -222,7 +222,7 @@ test('offline: Die Kennzahl-Karten der Finanzen fallen weg, die Zeitraumknöpfe 
       w.close();
     }
   }
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/finance/valuation': { $status: 500, success: false, error: 'kaputt', code: 'intern' },
   });
   try {
@@ -235,7 +235,7 @@ test('offline: Die Kennzahl-Karten der Finanzen fallen weg, die Zeitraumknöpfe 
 });
 
 test('Teile-Suche ohne Treffer: „Keine Treffer für …“ mit Knopf, der die Suche leert', async () => {
-  const { w, d } = await oeffneOberflaeche({});
+  const { w, d } = await openUi({});
   try {
     await reiter(w, 'parts');
     const feld = d.getElementById('parts-search');
@@ -253,7 +253,7 @@ test('Teile-Suche ohne Treffer: „Keine Treffer für …“ mit Knopf, der die 
 
 test('Hintergrundarbeiten: technischer Fehler als Satz, Einzelheiten aufklappbar', async () => {
   const roh = 'getaddrinfo ENOTFOUND rebrickable.com';
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/admin/job-status': { success: true, job: { running: false } },
     '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
     '/v1/admin/auftraege': {
@@ -300,7 +300,7 @@ test('Hintergrundarbeiten: ein verschobener Auftrag wartet, ein abgebrochener is
     progress: null,
     ...mehr,
   });
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/admin/job-status': { success: true, job: { running: false } },
     '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },
     '/v1/admin/auftraege': {
@@ -325,7 +325,7 @@ test('Hintergrundarbeiten: ein verschobener Auftrag wartet, ein abgebrochener is
     assert.doesNotMatch(text(wartend), /Versuch/);
     assert.ok(wieder.querySelector('.fehler-kasten'), 'ein Fehler vor dem nächsten Versuch bleibt sichtbar');
     assert.equal(ab.querySelector('.fehler-kasten'), null, `abgebrochen als Fehler gezeigt: ${text(ab)}`);
-    assert.equal(d.querySelector('[data-click="auftragWiederholen"]'), null);
+    assert.equal(d.querySelector('[data-click="retryJob"]'), null);
   } finally {
     w.close();
   }

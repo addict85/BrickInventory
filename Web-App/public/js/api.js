@@ -1,7 +1,7 @@
 import { LANG, tRaw } from '../i18n.js';
 import { emit } from './events.js';
-import { merkeSitzungsende } from './meldungen.js';
-import { antwortErhalten, zeigeVerbindung } from './verbindung.js';
+import { rememberSessionEnd } from './meldungen.js';
+import { receiveResponse, showConnection } from './verbindung.js';
 
 // Die Hülle um die eigene API. Jeder Aufruf geht hierüber, damit Sprache, Verbindungsband, Sitzungsende und
 // Zwischenspeicher für alle gleich gelten.
@@ -15,7 +15,7 @@ import { antwortErhalten, zeigeVerbindung } from './verbindung.js';
  * @param {{ body?: FormData | object | null, signal?: AbortSignal, headers?: Record<string, string>, cache?: RequestCache }} [o]
  * @returns {Promise<Response>}
  */
-export async function apiRoh(method, path, o = {}) {
+export async function apiRaw(method, path, o = {}) {
   /** @type {Record<string, string>} */
   const headers = { 'Accept-Language': LANG, ...o.headers };
   /** @type {RequestInit} */
@@ -33,11 +33,11 @@ export async function apiRoh(method, path, o = {}) {
   } catch (e) {
     if (/** @type {{ name?: string } | null} */ (e)?.name !== 'AbortError') {
       console.warn('[api]', method, path, e);
-      zeigeVerbindung(false);
+      showConnection(false);
     }
     throw e;
   }
-  antwortErhalten();
+  receiveResponse();
   if (res.status === 401) emit('sitzungBeendet', path);
   return res;
 }
@@ -51,9 +51,9 @@ export async function apiRoh(method, path, o = {}) {
  * @param {M} method @param {P} path
  * @returns {Promise<import('../../frontend-typen/api').ApiDaten<M, P>>}
  */
-export async function apiDaten(method, path) {
+export async function apiData(method, path) {
   try {
-    const r = await apiRoh(method, path);
+    const r = await apiRaw(method, path);
     return r.ok ? await r.json() : null;
   } catch (_) {
     return null;
@@ -76,7 +76,7 @@ export async function apiDaten(method, path) {
 export async function api(method, path, body, o = {}) {
   let res;
   try {
-    res = await apiRoh(method, path, { ...o, body: body ?? null });
+    res = await apiRaw(method, path, { ...o, body: body ?? null });
   } catch (_) {
     const alt = method === 'GET' ? ausZwischenspeicher(path) : null;
     if (alt) return { ...alt, ausZwischenspeicher: true };
@@ -95,7 +95,7 @@ export async function api(method, path, body, o = {}) {
     };
   }
   if (res.status === 429 && daten && typeof daten === 'object')
-    daten.warteSek = Number(res.headers.get('Retry-After')) || 0;
+    daten.waitSec = Number(res.headers.get('Retry-After')) || 0;
   if (!res.ok && daten && typeof daten === 'object' && daten.success === undefined) {
     return {
       ...daten,
@@ -105,9 +105,9 @@ export async function api(method, path, body, o = {}) {
     };
   }
   if (daten && typeof daten === 'object') daten.status = res.status;
-  if (method === 'GET' && res.ok && daten?.success !== false) inZwischenspeicher(path, daten);
+  if (method === 'GET' && res.ok && daten?.success !== false) inCache(path, daten);
   if (res.status === 401 && daten?.error && !/^\/v1\/auth\/(me|login)/.test(path))
-    merkeSitzungsende(String(daten.error));
+    rememberSessionEnd(String(daten.error));
   if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') emit('passwortWechselNoetig');
   if (res.status === 403 && daten?.code === 'zweiter_faktor_pflicht') emit('zweiterFaktorPflicht');
   return /** @type {import('../../frontend-typen/api').ApiAntwort<M, P>} */ (/** @type {unknown} */ (daten));
@@ -154,7 +154,7 @@ export function strom(path, o) {
  * Nutzer soll lesen, was es heisst.
  * @param {unknown} e
  */
-export function fehlerMeldung(e) {
+export function errorMessage(e) {
   const text = String(/** @type {{ message?: unknown } | null} */ (e)?.message ?? e ?? '');
   if (
     /failed to fetch|networkerror|load failed|network request failed/i.test(text) ||
@@ -166,14 +166,14 @@ export function fehlerMeldung(e) {
 
 // ── Zwischenspeicher für Lesezugriffe ──────────────────────────────────────
 // Ohne Netz zeigen Listen den zuletzt geladenen Stand dieses Tabs statt eines Fehlers. sessionStorage: nur
-// dieser Tab, weg beim Abmelden (leereZwischenspeicher).
+// dieser Tab, weg beim Abmelden (emptyCache).
 const ZS = 'bim_api:';
 
-const ZS_PFADE = /^\/v1\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/sets\?)/;
+const ZS_PATHS = /^\/v1\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/sets\?)/;
 
 /** @param {string} pfad @param {unknown} daten */
-function inZwischenspeicher(pfad, daten) {
-  if (!ZS_PFADE.test(pfad)) return;
+function inCache(pfad, daten) {
+  if (!ZS_PATHS.test(pfad)) return;
   try {
     const s = JSON.stringify(daten);
     if (s.length < 400_000) sessionStorage.setItem(ZS + pfad, s);
@@ -192,7 +192,7 @@ function ausZwischenspeicher(pfad) {
   }
 }
 
-export function leereZwischenspeicher() {
+export function emptyCache() {
   try {
     for (const k of Object.keys(sessionStorage)) if (k.startsWith(ZS)) sessionStorage.removeItem(k);
   } catch (_) {

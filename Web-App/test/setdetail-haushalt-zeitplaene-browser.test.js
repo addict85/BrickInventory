@@ -1,11 +1,11 @@
 /**
- * UX-Prüfung 19 im echten Chrome, im Haushalt (musterHaushalt): Set-Detail
+ * UX-Prüfung 19 im echten Chrome, im Haushalt (patternHousehold): Set-Detail
  * (H1, H2, M1, M2), Einstellungen an einem Ort (M2, M3), erste Karte am
  * Telefon (M4), Pfad, Kacheln und Achse (M5, N1, N2, N3); was jeweils rot
  * wird, sagen die Gegenproben.
  *
  * Gegenproben (12.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in mengenBlock() `if (!imHaushalt(set))` zu `if (true)` → rot:
+ *   A  in mengenBlock() `if (!inHousehold(set))` zu `if (true)` → rot:
  *      „Set-Detail im Haushalt“ (keine Zeile je Konto)
  *   B  in untertitel() wieder nur die fremden Konten → rot: ebenda
  *      („Konto: …_kind“ statt „Konten: r19_… (ich), …_kind“)
@@ -17,7 +17,7 @@
  *      „Gespeichert ✓“)
  *   F  in monitor.js die Zeitplanfelder wieder in die Dienstetabelle → rot:
  *      „Einstellungen an einem Ort“ (Felder unter Hintergrundarbeiten)
- *   G  ladeZeitplaene() beim Öffnen der Einstellungen nicht gerufen → rot:
+ *   G  loadSchedules() beim Öffnen der Einstellungen nicht gerufen → rot:
  *      ebenda („Zeitpläne als Felder“)
  *   H  meldeAmFeld() in speichereCacheTtl entfernt → rot: ebenda
  *      („Gespeichert ✓“ am Feld)
@@ -38,14 +38,14 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterHaushalt } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternHousehold } = require('./helpers/bestand');
 
-const SCHLIESSEN = `(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+const CLOSE = `(() => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open')); return true; })()`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 
-async function setDetailImHaushalt(_t, a) {
+async function setDetailInHousehold(_t, a) {
   const { b, bis, ruhig } = a;
   const kind = `r19_${process.pid}_kind`;
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click();
@@ -80,7 +80,7 @@ async function setDetailImHaushalt(_t, a) {
   await bis(`/205,00/.test(${text('#m-sparkline-content')})`, 'Diagramm wieder mit dem Mischpreis', 50);
 }
 
-async function einstellungenEinOrt(_t, a) {
+async function settingsOneLocation(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.getElementById('ntab-monitor').click(); true`);
   await bis(`document.querySelectorAll('#monitor-content .mon-plan').length > 0`, 'Dienste');
@@ -104,10 +104,10 @@ async function einstellungenEinOrt(_t, a) {
   await bis(`${text('#einst-zeitplaene .feld-status')} === 'Gespeichert ✓'`, 'Zeitplan bestätigt am Feld');
 }
 
-const KARTE_OBEN = `(() => { scrollTo(0, 0); const k = document.querySelector('#gallery .sc');
+const CARD_TOP = `(() => { scrollTo(0, 0); const k = document.querySelector('#gallery .sc');
   return k ? k.getBoundingClientRect().top / innerHeight : 1; })()`;
 
-async function telefonErsteKarte(_t, a) {
+async function phoneFirstCard(_t, a) {
   const { b, bis, ruhig } = a;
   const groesse = (w, h, mobil) =>
     b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 2, mobile: mobil });
@@ -119,21 +119,21 @@ async function telefonErsteKarte(_t, a) {
       'Karten mit Band',
     );
     await ruhig();
-    const mitBand = await b.auswerten(KARTE_OBEN);
-    assert.ok(mitBand < 0.38, `erste Karte bei ${Math.round(mitBand * 100)} % der Höhe (vorher 43 %)`);
+    const withBand = await b.auswerten(CARD_TOP);
+    assert.ok(withBand < 0.38, `erste Karte bei ${Math.round(withBand * 100)} % der Höhe (vorher 43 %)`);
     await b.auswerten(`document.querySelector('#rb-hinweis [data-click="rbHinweisWeg"]').click(); true`);
     await b.tab('Page.reload');
     await bis(`!!document.querySelector('#gallery .sc')`, 'nach dem Neuladen', 200);
     await ruhig();
     assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').hidden`), true, 'Band nach Neuladen zurück');
-    const ohne = await b.auswerten(KARTE_OBEN);
+    const ohne = await b.auswerten(CARD_TOP);
     assert.ok(ohne < 0.3, `ohne Band erste Karte bei ${Math.round(ohne * 100)} % der Höhe`);
   } finally {
     await groesse(1280, 900, false);
   }
 }
 
-async function pfadKachelnAchse(_t, a) {
+async function pathTilesAxis(_t, a) {
   const { b, bis, ruhig } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="parts"]').click(); true`);
   await bis(`document.getElementById('tab-parts').classList.contains('active')`, 'Teile');
@@ -186,7 +186,7 @@ async function pfadKachelnAchse(_t, a) {
 }
 
 test('Set-Detail im Haushalt, Zeitpläne, Kacheln', { concurrency: 1, timeout: 300_000 }, async t => {
-  const a = await starteApp(t, { name: `r19_${process.pid}`, bestand: musterHaushalt });
+  const a = await startApp(t, { name: `r19_${process.pid}`, bestand: patternHousehold });
   if (a.grund) {
     t.skip(a.grund);
     return;
@@ -194,13 +194,13 @@ test('Set-Detail im Haushalt, Zeitpläne, Kacheln', { concurrency: 1, timeout: 3
   await a.ruhig();
   /** @type {[string, (t: import('node:test').TestContext, a: object) => Promise<void>][]} */
   const pruefungen = [
-    ['Set-Detail im Haushalt', setDetailImHaushalt],
-    ['Einstellungen an einem Ort', einstellungenEinOrt],
-    ['Telefon: erste Karte', telefonErsteKarte],
-    ['Pfad, Kacheln, Achse', pfadKachelnAchse],
+    ['Set-Detail im Haushalt', setDetailInHousehold],
+    ['Einstellungen an einem Ort', settingsOneLocation],
+    ['Telefon: erste Karte', phoneFirstCard],
+    ['Pfad, Kacheln, Achse', pathTilesAxis],
   ];
   for (const [name, fn] of pruefungen) {
-    await a.b.auswerten(SCHLIESSEN);
+    await a.b.auswerten(CLOSE);
     await t.test(name, () => fn(t, a));
   }
 });

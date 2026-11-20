@@ -14,11 +14,11 @@ declare module 'express-session' {
     /** Zeitpunkt der Anmeldung (ms), Grundlage der Höchstdauer */
     angemeldetAm?: number;
     /** Letzte Anfrage einer Verwaltersitzung, auf eine Minute genau (src/konto/sitzungsFrist.ts). */
-    zuletztAm?: number;
+    lastlyAt?: number;
     /** Startpasswort noch nicht ersetzt; undefined bei Sitzungen von vor dem Feld. */
     mussPasswortAendern?: boolean;
     /** Wann in dieser Sitzung zuletzt das Passwort eingegeben wurde (ms); Grundlage der Gnadenfrist. */
-    passwortBestaetigtAm?: number;
+    passwordConfirmedAt?: number;
     /** users.session_version bei der Anmeldung; weicht sie ab, ist die Sitzung beendet. */
     sitzungsVersion?: number;
   }
@@ -41,7 +41,7 @@ declare global {
       /** Von requireLoginOrToken gesetzt, wenn per Bearer-/Query-Token authentifiziert. */
       tokenUserId?: number;
       /** Warum ein vorgelegter Token nicht galt, wenn es mehr zu sagen gibt als „ungültig“. */
-      tokenAbsage?: 'token_rotation_noetig' | 'zu_viele_anfragen';
+      tokenRejection?: 'token_rotation_noetig' | 'zu_viele_anfragen';
       /** Rumpf und Abfrage nach der Prüfung gegen den Vertrag (src/http/vertragsRouter.ts);
        * ihren Typ setzt Anfrage<K> aus dem Vertrag. */
       eingabe: unknown;

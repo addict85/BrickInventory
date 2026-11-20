@@ -15,11 +15,11 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { haeltSet } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { holdsSet } = require('./helpers/bestand');
 
 /** Sichtbarer Text (ohne .vh), der umbricht oder über die Zelle ragt. */
-const UMBRUCH = `[...document.querySelectorAll('.dt-fin thead th, .dt-summe thead th')].filter(e => e.getClientRects().length).map(th => {
+const WRAP = `[...document.querySelectorAll('.dt-fin thead th, .dt-summe thead th')].filter(e => e.getClientRects().length).map(th => {
   const tops = new Set(); let rechts = 0; const w = document.createTreeWalker(th, NodeFilter.SHOW_TEXT);
   while (w.nextNode()) { const n = w.currentNode; if (!n.textContent.trim() || n.parentElement.closest('.vh')) continue;
     const r = document.createRange(); r.selectNodeContents(n);
@@ -28,11 +28,11 @@ const UMBRUCH = `[...document.querySelectorAll('.dt-fin thead th, .dt-summe thea
   return (tops.size > 1 || rechts > zelle.right + 0.5) ? th.textContent.trim() + ': ' + tops.size + ' Zeilen' : null; }).filter(Boolean)`;
 
 test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `fintab_${process.pid}`,
     bestand: async (db, uid) => {
-      await haeltSet(db, uid, '10294-1', 2, { preis: 100 });
-      await haeltSet(db, uid, '75192-1', 1, { preis: 50 });
+      await holdsSet(db, uid, '10294-1', 2, { preis: 100 });
+      await holdsSet(db, uid, '75192-1', 1, { preis: 50 });
       for (const [nr, p] of [
         ['10294-1', 120],
         ['75192-1', 60],
@@ -65,8 +65,8 @@ test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, t
       const tab = document.querySelector('[data-fin-art="sets"] table');
       const spalte = [...tab.querySelectorAll('thead th')].findIndex(th => th.textContent.trim() === 'Kaufpreis');
       const zahl = s => Number(s.replace(/\\D/g, '')) / 100;
-      const zellen = [...tab.querySelectorAll('tbody tr')].map(tr => tr.children[spalte]);
-      return { spalte, zeilen: zellen.map(z => zahl(z.firstChild.textContent)), je: zellen.map(z => z.querySelector('.fin-je')?.textContent || ''),
+      const cells = [...tab.querySelectorAll('tbody tr')].map(tr => tr.children[spalte]);
+      return { spalte, zeilen: cells.map(z => zahl(z.firstChild.textContent)), je: cells.map(z => z.querySelector('.fin-je')?.textContent || ''),
                summe: zahl(tab.querySelector('tfoot .fin-fuss-wert').textContent) }; })()`);
     assert.ok(m.spalte > 0, 'Spalte „Einstand“ fehlt');
     assert.deepEqual(
@@ -101,7 +101,7 @@ test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, t
       }
       for (const w of [1280, 1440]) {
         await groesse(w);
-        for (const f of await b.auswerten(UMBRUCH)) fehler.push(`${sprache} ${w}: ${f}`);
+        for (const f of await b.auswerten(WRAP)) fehler.push(`${sprache} ${w}: ${f}`);
       }
     }
     assert.deepEqual(fehler, []);

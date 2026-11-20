@@ -21,10 +21,10 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const MIGRATION = fs.readFileSync(
   path.join(__dirname, '..', 'db/migrations/0109-zustand-und-auftragsart-pruefen.sql'),
   'utf8',
@@ -44,7 +44,7 @@ const TABELLEN = [
 ];
 
 test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const c = await db.pool.connect();
   t.after(async () => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});
@@ -111,8 +111,8 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
 
   await t.test('job_types kennt genau die angemeldeten Arten', async () => {
     const angemeldet = require('./helpers/sources')
-      .testDienste()
-      .auftraege.angemeldeteArten()
+      .testServices()
+      .auftraege.signedInKinds()
       .map(a => a.art);
     const inDb = (await db.all('SELECT type FROM job_types ORDER BY type')).map(z => z.type);
     assert.ok(angemeldet.length > 15, `nur ${angemeldet.length} Arten angemeldet`);

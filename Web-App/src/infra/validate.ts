@@ -4,45 +4,45 @@
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
 import { z } from 'zod';
-import { fachfehler, type FehlerCode } from './fehlerTexte';
-import { geldEingabe } from './geld';
+import { fachfehler, type ErrorCode } from './fehlerTexte';
+import { moneyInput } from './geld';
 
 /** Die Spalten sind integer (int4): Ein grösserer Wert endete als 500 in PostgreSQL. */
-export const GROESSTE_ID = 2 ** 31 - 1;
+export const LARGEST_ID = 2 ** 31 - 1;
 
 /** Eine ID aus Pfad, Rumpf oder Abfrage: Ziffern bis `hoechstens`, sonst null. */
-export function idWert(wert: unknown, hoechstens = GROESSTE_ID): number | null {
+export function idWert(wert: unknown, hoechstens = LARGEST_ID): number | null {
   const roh = typeof wert === 'number' || typeof wert === 'string' ? String(wert).trim() : '';
   if (!/^\d{1,16}$/.test(roh)) return null;
   const n = Number(roh);
   return Number.isSafeInteger(n) && n <= hoechstens ? n : null;
 }
 
-const ID_FELD = /^(id|ids)$|_ids?$|[a-z]Ids?$/;
+const ID_FIELD = /^(id|ids)$|_ids?$|[a-z]Ids?$/;
 
 /** Der erste Feldname, der nach ID heisst und eine zu grosse oder krumme Zahl
  * trägt. Andere Werte (Setnummern, leere Angaben) prüft die Route selbst. */
-export function zuGrosseId(wert: unknown, tiefe = 0): string | null {
+export function toLargeId(wert: unknown, tiefe = 0): string | null {
   if (tiefe > 6 || wert === null || typeof wert !== 'object') return null;
   for (const [k, v] of Object.entries(wert)) {
     const liste = Array.isArray(v) ? v : [v];
     if (
-      ID_FELD.test(k) &&
+      ID_FIELD.test(k) &&
       liste.some(
         x =>
           (typeof x === 'number' || (typeof x === 'string' && /^-?\d+$/.test(x.trim()))) &&
-          !(Number.isSafeInteger(Number(x)) && Math.abs(Number(x)) <= GROESSTE_ID),
+          !(Number.isSafeInteger(Number(x)) && Math.abs(Number(x)) <= LARGEST_ID),
       )
     )
       return k;
-    const tiefer = zuGrosseId(v, tiefe + 1);
+    const tiefer = toLargeId(v, tiefe + 1);
     if (tiefer) return tiefer;
   }
   return null;
 }
 
 /** null, wenn es keines ist (die Route antwortet dann 400). */
-export function jsonOderNull(text: string): { wert: unknown } | null {
+export function jsonOrNull(text: string): { wert: unknown } | null {
   try {
     return { wert: JSON.parse(text) };
   } catch {
@@ -50,7 +50,7 @@ export function jsonOderNull(text: string): { wert: unknown } | null {
   }
 }
 
-export function urlOderNull(text: string): URL | null {
+export function urlOrNull(text: string): URL | null {
   try {
     return new URL(text);
   } catch {
@@ -61,11 +61,11 @@ export function urlOderNull(text: string): URL | null {
 /** Nur eine reine Adresse: nodemailer liest `x<a@b.de>` oder `a@b.de,c` als Liste mit
  * Anzeigenamen, Vergabeprüfung und Zieldrossel zählten dann eine andere Zeichenkette. */
 export const EMAIL_RE = /^[^\s@<>",;:()[\]\\]+@[^\s@<>",;:()[\]\\]+\.[^\s@<>",;:()[\]\\]+$/;
-export function emailGueltig(v: unknown): v is string {
+export function emailValid(v: unknown): v is string {
   return typeof v === 'string' && v.length <= 254 && EMAIL_RE.test(v) && !/\p{Cc}/u.test(v);
 }
 
-export function einmalDekodiert(text: string): string {
+export function onceDecoded(text: string): string {
   try {
     return decodeURIComponent(text);
   } catch {
@@ -73,7 +73,7 @@ export function einmalDekodiert(text: string): string {
   }
 }
 
-export function nummerPflicht(value: unknown, field = 'part_number'): string {
+export function numberRequired(value: unknown, field = 'part_number'): string {
   const v = String(value ?? '').trim();
   if (!v) fachfehler('ungueltig', 'feld_erforderlich', { feld: field });
   if (!ITEM_NUMBER_RE.test(v)) fachfehler('ungueltig', 'feld_nummer_ungueltig', { feld: field });
@@ -114,7 +114,7 @@ export function positiveInt(value: unknown, fallback = 1, max = 1_000_000): numb
 
 /** Kein Ersatzwert: `parseInt({a:1}) || 0` machte aus einer kaputten Anfrage
  * „Menge 0" und löschte den Bestand. */
-export function bestandsMenge(value: unknown, min = 0, max = 100_000): number {
+export function inventoryQuantity(value: unknown, min = 0, max = 100_000): number {
   const roh = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
   if (!/^\d{1,6}$/.test(roh) || +roh < min || +roh > max) fachfehler('ungueltig', 'wert_ungueltig');
   return +roh;
@@ -160,7 +160,7 @@ export function acquisitionQuantity(value: unknown, fallback = 1): number {
 }
 
 /** Relativ geänderte Menge (quantity_delta): ganzzahlig, |Δ| ≤ 9999; fehlt sie, null. */
-export function mengenDelta(value: unknown): number | null {
+export function quantitiesDelta(value: unknown): number | null {
   if (value === undefined || value === null) return null;
   const roh = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
   if (!/^-?\d{1,4}$/.test(roh)) fachfehler('ungueltig', 'wert_ungueltig');
@@ -176,11 +176,11 @@ export function strictBool(value: unknown, feld = 'Wert'): boolean {
 
 /** Aggregate kommen als Zeichenkette, und "0" ist in JavaScript wahr. */
 export function istErsatzteil(value: unknown): boolean {
-  return istJa(value);
+  return isJa(value);
 }
 
 /** Alles Unbekannte ist nein. */
-export function istJa(value: unknown): boolean {
+export function isJa(value: unknown): boolean {
   if (value === true || value === 1) return true;
   if (typeof value !== 'string') return false;
   const v = value.trim().toLowerCase();
@@ -188,7 +188,7 @@ export function istJa(value: unknown): boolean {
 }
 
 /** Express liefert bei doppeltem Parameter ein Array. */
-export function einzelwert(value: unknown, fallback = ''): string {
+export function singleValue(value: unknown, fallback = ''): string {
   if (Array.isArray(value)) return value.length ? String(value[0]) : fallback;
   if (value === undefined || value === null) return fallback;
   return String(value);
@@ -196,10 +196,10 @@ export function einzelwert(value: unknown, fallback = ''): string {
 
 /** Nur EIGENE Schlüssel zählen: Ein Wert von aussen wie 'constructor' fände
  * sonst ein geerbtes Mitglied. */
-export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe: T): T;
-export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown): T | undefined;
-export function ausTabelle<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe?: T): T | undefined {
-  const k = einzelwert(schluessel);
+export function fromTable<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe: T): T;
+export function fromTable<T>(tabelle: Record<string, T>, schluessel: unknown): T | undefined;
+export function fromTable<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe?: T): T | undefined {
+  const k = singleValue(schluessel);
   return Object.hasOwn(tabelle, k) ? tabelle[k] : vorgabe;
 }
 
@@ -234,16 +234,16 @@ function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, 
 export const eingabe = {
   /** Eine eigene Regel mit eigenem Fehlercode; Pflicht. */
   regel: <T>(pruefe: (v: unknown) => T, json: Record<string, unknown>) => alsSchema(pruefe, json, true),
-  artikelnummer: (feld: string) =>
-    alsSchema(v => nummerPflicht(v, feld), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
+  itemNumber: (feld: string) =>
+    alsSchema(v => numberRequired(v, feld), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
   text: (max = 200) => alsSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),
-  bildUrl: () => alsSchema(optionalImageUrl, { type: ['string', 'null'], format: 'uri', pattern: '^https:' }),
+  imageUrl: () => alsSchema(optionalImageUrl, { type: ['string', 'null'], format: 'uri', pattern: '^https:' }),
   /** Ohne `pflicht` darf die Menge fehlen oder null sein; dann bleibt sie, wie sie ist. */
   menge: (min = 0, max = 100_000) =>
-    alsSchema(v => bestandsMenge(v, min, max), { type: ['integer', 'string'], minimum: min, maximum: max }, true),
+    alsSchema(v => inventoryQuantity(v, min, max), { type: ['integer', 'string'], minimum: min, maximum: max }, true),
   /** Fehlt sie oder ist sie null, bleibt die Menge, wie sie ist. */
-  mengeOderNichts: (min = 0, max = 100_000) =>
-    alsSchema(v => (v == null ? null : bestandsMenge(v, min, max)), {
+  quantityOrNothing: (min = 0, max = 100_000) =>
+    alsSchema(v => (v == null ? null : inventoryQuantity(v, min, max)), {
       type: ['integer', 'string', 'null'],
       minimum: min,
       maximum: max,
@@ -255,15 +255,15 @@ export const eingabe = {
   farbcode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
   /** Geld (src/infra/geld.ts). Beschrieben als Zahl; Text mit Punkt oder Komma nimmt der
    * Server noch an (Formulare), er ist nicht Teil des Vertrags. */
-  geld: (feld: string, o: { nullbar?: boolean; max?: number; einCode?: FehlerCode } = {}) =>
-    alsSchema(v => geldEingabe(v, feld, o.max, o.einCode), {
+  geld: (feld: string, o: { nullbar?: boolean; max?: number; oneCode?: ErrorCode } = {}) =>
+    alsSchema(v => moneyInput(v, feld, o.max, o.oneCode), {
       ...(o.nullbar === false ? { type: 'number' } : { anyOf: [{ type: 'number' }, { type: 'null' }] }),
       minimum: 0,
       maximum: o.max ?? 1_000_000,
       description: 'Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag',
     }),
-  mengenDelta: () =>
-    alsSchema(mengenDelta, { anyOf: [{ type: 'integer', minimum: -9999, maximum: 9999 }, { type: 'null' }] }),
+  quantitiesDelta: () =>
+    alsSchema(quantitiesDelta, { anyOf: [{ type: 'integer', minimum: -9999, maximum: 9999 }, { type: 'null' }] }),
   zustand: () => alsSchema(optionalCondition, { enum: ['N', 'U', null] }),
   schalter: (feld: string) =>
     alsSchema(
@@ -272,7 +272,7 @@ export const eingabe = {
       true,
     ),
   /** Darf fehlen; dann ist er nein. */
-  schalterOderNein: (feld: string) =>
+  toggleOrNo: (feld: string) =>
     alsSchema(v => strictBool(v, feld), {
       type: ['boolean', 'integer', 'string'],
       enum: [true, false, 1, 0, 'true', 'false', '1', '0'],

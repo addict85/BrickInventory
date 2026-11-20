@@ -16,23 +16,23 @@
  *      erst fragen“ (zweite Anfrage ohne pruefen)
  *   B  in csvApplyOverlayStatus den Wartetext entfernt → rot: „Ergebnisliste
  *      mit Zeilen“ (kein „Wartet“)
- *   C  protokollZeile ohne die Zeilennummer (wo = set_number) → rot:
+ *   C  logRow ohne die Zeilennummer (wo = set_number) → rot:
  *      „Ergebnisliste mit Zeilen“
  *   D  role="status" an #prog-footer entfernt → rot: „Ergebnisliste mit Zeilen“
- *   E  merkeLetztenImport() in gibCheckOnLoad nicht gerufen → rot: „nach dem
+ *   E  rememberLastImport() in gibCheckOnLoad nicht gerufen → rot: „nach dem
  *      Neuladen“ (Eintrag bleibt hidden)
- *   F  csvPollLoop wieder mit api() statt apiDaten() → rot: „Ergebnisliste
+ *   F  csvPollLoop wieder mit api() statt apiData() → rot: „Ergebnisliste
  *      mit Zeilen“ (api() überschreibt `status` mit 200, der Abschluss kommt nie)
  *   G  csv.import_meldung aus de.js entfernt → rot: „Ergebnisliste mit Zeilen“
  *      (die Meldung zeigt den rohen Schlüssel; 08.11.2026)
- *   H  (16.11.2026) zeigeImportAbschluss() ohne das Verbergen von „Minimieren“ → rot: „Ergebnisliste mit
+ *   H  (16.11.2026) showImportCompletion() ohne das Verbergen von „Minimieren“ → rot: „Ergebnisliste mit
  *      Zeilen“ (nach Abschluss noch „Minimieren“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/oberflaeche');
 
-const ERGEBNISSE = [
+const RESULTS = [
   { zeile: 2, set_number: '10200-1', success: true, action: 'added', menge: 1 },
   { zeile: 4, set_number: 'abc', success: false, error: 'Das ist keine Setnummer' },
   { zeile: 5, set_number: '10312-1', success: false, code: 'csv_menge_ungueltig', error: 'Menge „x“ ungültig' },
@@ -40,7 +40,7 @@ const ERGEBNISSE = [
   { zeile: 7, set_number: '', success: false, code: 'csv_keine_setnummer', error: 'keine Setnummer' },
   { success: true, action: 'updated' },
 ];
-const FERTIG = {
+const DONE = {
   success: true,
   status: 'done',
   total: 8,
@@ -49,12 +49,12 @@ const FERTIG = {
   ok: 1,
   warn: 1,
   err: 3,
-  results: ERGEBNISSE,
+  results: RESULTS,
   beendet_am: new Date().toISOString(),
 };
 
 /** Eine Datei wählen, wie der Browser es täte. */
-function waehleDatei(w, d) {
+function chooseFile(w, d) {
   const feld = d.getElementById('csv-file');
   Object.defineProperty(feld, 'files', {
     configurable: true,
@@ -65,14 +65,14 @@ function waehleDatei(w, d) {
 
 test('vorhandene Sets: erst fragen, Abbrechen startet nichts', async () => {
   const posts = [];
-  const { w, d, ruhig } = await oeffneOberflaeche({
+  const { w, d, ruhig } = await openUi({
     '/v1/sets/import/csv': u => {
       posts.push(new URL(u, 'http://x').searchParams.get('pruefen'));
       return { success: true, total: 8, gestartet: false, vorhanden: 2, vorhanden_nummern: ['10305-1', '10200-1'] };
     },
   });
   try {
-    waehleDatei(w, d);
+    chooseFile(w, d);
     assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Rückfrage erscheint');
     assert.match(d.getElementById('cd-msg').textContent, /2 Sets .* schon in der Sammlung \(10305-1, 10200-1\)/);
     d.getElementById('cd-cancel').click();
@@ -85,9 +85,9 @@ test('vorhandene Sets: erst fragen, Abbrechen startet nichts', async () => {
 });
 
 test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
-  let abrufe = 0,
+  let fetches = 0,
     gestartet = false;
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/sets/import/csv': u => {
       if (u.includes('pruefen=1')) return { success: true, total: 8, gestartet: false, vorhanden: 0 };
       gestartet = true;
@@ -97,12 +97,12 @@ test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
     '/v1/sets/import/csv/status': () =>
       !gestartet
         ? { success: false, code: 'kein_import_laeuft' }
-        : ++abrufe < 2
+        : ++fetches < 2
           ? { success: true, status: 'running', total: 8, done: 0, current: null, ok: 0, warn: 0, err: 0, results: [] }
-          : FERTIG,
+          : DONE,
   });
   try {
-    waehleDatei(w, d);
+    chooseFile(w, d);
     const ovl = d.getElementById('progress-overlay');
     assert.ok(await warte(() => ovl.classList.contains('open')), 'Fortschritt offen');
     assert.equal(ovl.getAttribute('role'), 'dialog');
@@ -136,7 +136,7 @@ test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
 });
 
 test('nach dem Neuladen: der letzte Import im Menü', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/sets/import/csv/status': FERTIG });
+  const { w, d } = await openUi({ '/v1/sets/import/csv/status': DONE });
   try {
     const knopf = d.getElementById('letzter-import');
     assert.ok(await warte(() => !knopf.hidden), 'Eintrag sichtbar');
@@ -150,8 +150,8 @@ test('nach dem Neuladen: der letzte Import im Menü', async () => {
 });
 
 test('ein alter Import bleibt aus dem Menü', async () => {
-  const alt = { ...FERTIG, beendet_am: new Date(Date.now() - 25 * 3600_000).toISOString() };
-  const { w, d, ruhig } = await oeffneOberflaeche({ '/v1/sets/import/csv/status': alt });
+  const alt = { ...DONE, beendet_am: new Date(Date.now() - 25 * 3600_000).toISOString() };
+  const { w, d, ruhig } = await openUi({ '/v1/sets/import/csv/status': alt });
   try {
     await ruhig();
     assert.equal(d.getElementById('letzter-import').hidden, true);

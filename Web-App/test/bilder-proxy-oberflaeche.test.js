@@ -21,13 +21,13 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter } = require('./helpers/oberflaeche');
+const { openUi, reiter } = require('./helpers/oberflaeche');
 
 const CDN = 'https://cdn.rebrickable.com/media/parts/elements/300121.jpg';
 const proxy = url => `/api/v1/img-proxy?url=${encodeURIComponent(url)}`;
 
 test('Teilekachel: Vorschau und Zoom über den Proxy, ohne erratene Vorschau-Adresse', async () => {
-  const { w, d, warte } = await oeffneOberflaeche({
+  const { w, d, warte } = await openUi({
     '/v1/parts': {
       success: true,
       parts: [
@@ -51,7 +51,7 @@ test('Teilekachel: Vorschau und Zoom über den Proxy, ohne erratene Vorschau-Adr
 });
 
 test('manuell erfasstes Teil: Kachelbild über den Proxy', async () => {
-  const { w, d, warte } = await oeffneOberflaeche({
+  const { w, d, warte } = await openUi({
     '/v1/parts/manual': {
       success: true,
       parts: [
@@ -73,7 +73,7 @@ test('manuell erfasstes Teil: Kachelbild über den Proxy', async () => {
 test('Set-Detail und Zoom: volle Auflösung, eine CDN-Adresse nur über den Proxy', async () => {
   const SET_CDN = 'https://cdn.rebrickable.com/media/sets/10294-1.jpg';
   const set = (nr, felder) => ({ set_number: nr, name: `Set ${nr}`, year: 2021, quantity: 1, ...felder });
-  const { w, d, warte } = await oeffneOberflaeche({
+  const { w, d, warte } = await openUi({
     '/v1/sets': {
       success: true,
       total: 2,
@@ -111,7 +111,7 @@ test('Set-Detail und Zoom: volle Auflösung, eine CDN-Adresse nur über den Prox
 
 test('Minifigur: data-orig der Kachel geht über den Proxy', async () => {
   const FIG_CDN = 'https://cdn.rebrickable.com/media/sets/fig-000123.jpg';
-  const { w, d, warte } = await oeffneOberflaeche({
+  const { w, d, warte } = await openUi({
     '/v1/minifigs': {
       success: true,
       total: 1,

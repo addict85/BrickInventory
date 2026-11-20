@@ -15,7 +15,7 @@
  *   oberflaeche (Gegenproben A–H dort); der Platzhalter-Modus →
  *   bilder-platzhalter.test.js.
  */
-const { istAppModul } = require('../scripts/build-frontend');
+const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -24,7 +24,7 @@ const path = require('node:path');
 const PUB = path.join(__dirname, '..', 'public');
 const HTML = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
 const ACT = fs.readFileSync(path.join(PUB, 'js', 'aktionen.js'), 'utf8');
-const JS_FILES = fs.readdirSync(path.join(PUB, 'js')).filter(f => istAppModul(f));
+const JS_FILES = fs.readdirSync(path.join(PUB, 'js')).filter(f => isAppModule(f));
 
 test('nirgends mehr Inline-Handler — weder in index.html noch in den Templates', () => {
   // Wichtig: (?<!data-) schliesst data-onerror aus, und das Muster verlangt ="
@@ -47,7 +47,7 @@ test('kein style-Attribut und kein <style> im Markup — ausser dem Startgerüst
   // Gegenprobe: ein data-stil in index.html wieder als style= → rot.
   const strip = t =>
     require('./helpers/sources')
-      .ohneHtmlKommentare(t)
+      .withoutHtmlComments(t)
       .replace(/<style id="startstil">[\s\S]*?<\/style>/, '')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/[^\n]*$/gm, '');
@@ -61,7 +61,7 @@ test('kein style-Attribut und kein <style> im Markup — ausser dem Startgerüst
     // Ein Wert mit ${…} steht nicht auf der Freigabeliste und bliebe wirkungslos;
     // nur die Bausteine reichen den stil-Parameter ihres Aufrufers weiter.
     for (const m of src.matchAll(/data-stil="([^"]*\$\{[^"]*)"/g))
-      if (!/^\$\{(esc\()?o\.(stil|zeilenStil|wertStil)\)?\}$/.test(m[1])) found.push(`${name}: data-stil="${m[1]}"`);
+      if (!/^\$\{(esc\()?o\.(stil|rowsStyle|valueStyle)\)?\}$/.test(m[1])) found.push(`${name}: data-stil="${m[1]}"`);
   }
   assert.deepEqual(found, []);
 });
@@ -96,29 +96,29 @@ test('Hover-Effekte liegen im Stylesheet', () => {
 });
 
 test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
-  const core = require('./helpers/sources').coreQuelle();
+  const core = require('./helpers/sources').coreSource();
   assert.match(core, /const TRASH_ICON_SVG/, 'Symbol fehlt');
   // currentColor: derselbe Pfad dient weiss auf rotem Grund (.delbtn) und rot
   // auf hellem Grund (.bd) — keine zweite Fassung nötig.
   assert.match(core, /stroke="currentColor"/, 'Das Symbol muss die Farbe erben');
 
   // Die Regel statt der Anzahl
-  const AUSNAHME = new Set(['delInstr']);
-  let ausnahmenGesehen = 0;
+  const EXCEPTION = new Set(['delInstr']);
+  let exceptionsSeen = 0;
 
   // Der Selbstbeweis zählt über ALLE Dateien, nicht je Datei
-  let knoepfeGesamt = 0;
+  let buttonsTotal = 0;
   for (const file of ['collection.js', 'sets-tabelle.js', 'teile.js', 'minifigs.js', 'set-detail.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
     // `del\w*` und nicht `delete\w*`: Die Galerie-Kachel ruft `delSetStop`.
     // Mit dem engeren Muster fand die Suche dort NICHTS — und der Selbstbeweis
     // hat genau das gemeldet, statt gruen durchzulaufen.
     const knoepfe = [...src.matchAll(/<button[^>]*data-click="del\w*"[\s\S]{0,400}?<\/button>/g)].map(m => m[0]);
-    knoepfeGesamt += knoepfe.length;
+    buttonsTotal += knoepfe.length;
     let gefunden = 0;
     for (const k of knoepfe) {
       const name = (k.match(/data-click="(del\w*)"/) || [])[1];
-      if (AUSNAHME.has(name)) {
+      if (EXCEPTION.has(name)) {
         gefunden++;
         continue;
       }
@@ -129,16 +129,16 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
           `dieselbe Aktion soll überall gleich aussehen:\n${k.slice(0, 160)}`,
       );
     }
-    ausnahmenGesehen += gefunden;
+    exceptionsSeen += gefunden;
   }
-  assert.ok(knoepfeGesamt >= 1, 'Kein einziger Löschknopf gefunden — Muster veraltet?');
+  assert.ok(buttonsTotal >= 1, 'Kein einziger Löschknopf gefunden — Muster veraltet?');
 
   // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
   // prueft — dieselbe Regel wie in den anderen Waechtern dieses Baums.
   assert.equal(
-    ausnahmenGesehen,
-    AUSNAHME.size,
-    `${ausnahmenGesehen} von ${AUSNAHME.size} Ausnahmen gefunden — eine davon ` +
+    exceptionsSeen,
+    EXCEPTION.size,
+    `${exceptionsSeen} von ${EXCEPTION.size} Ausnahmen gefunden — eine davon ` +
       'beschreibt keinen Knopf mehr und gehoert gestrichen.',
   );
 
@@ -240,8 +240,8 @@ test('die Schriftdateien liegen wirklich im Baum', () => {
     assert.ok(fs.existsSync(path.join(dir, rel)), `Schriftdatei fehlt: ${rel}`);
   }
   // Die Lizenztexte gehören dazu (SIL OFL) — wie bei vendor/qrcode.
-  const lizenzen = fs.readdirSync(dir).filter(f => f.startsWith('LICENSE'));
-  assert.ok(lizenzen.length >= 2, 'Die Schriftlizenzen fehlen neben den Dateien');
+  const licenses = fs.readdirSync(dir).filter(f => f.startsWith('LICENSE'));
+  assert.ok(licenses.length >= 2, 'Die Schriftlizenzen fehlen neben den Dateien');
 });
 
 test('externe Links öffnen ohne Zugriff auf das Öffnerfenster', () => {

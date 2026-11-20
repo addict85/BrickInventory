@@ -7,15 +7,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet, mengeVon, haltZeile } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet, quantityOf, haltRow } = require('./helpers/bestand');
+const db = testData();
 
 test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const USER = `delp-${process.pid}`;
   const SN = `41439-${process.pid}`;
@@ -33,7 +33,7 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', 
     // den beiden Erfassungen darunter (Migration 0032 fuer Preis und Zustand,
     // 0036 fuer die Menge). Menge 0 heisst hier „die Erfassungen tragen sie" —
     // 1 + 1 = 2, wie vorher in der Spalte.
-    await haeltSet(db, uid, SN, 0);
+    await holdsSet(db, uid, SN, 0);
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                   VALUES ($1,$2,7.41,'U',1, NOW() - INTERVAL '2 days')`,
@@ -60,13 +60,17 @@ test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', 
     // zwei Fragen an zwei Tabellen — vorher beantwortete die Spalte beide
     // zugleich. Die Reihenfolge bleibt: ohne Bestandszeile gibt es keine
     // Elternangabe, auch wenn noch Erfassungen herumliegen sollten.
-    if (!(await haltZeile(db, uid, SN))) return undefined;
+    if (!(await haltRow(db, uid, SN))) return undefined;
     const agg = await _req('src/sets/lesen.js').zustandsAggregat(
-      require('./helpers/sources').testKontext('sets'),
+      require('./helpers/sources').testContext('sets'),
       [uid],
       SN,
     );
-    return { purchase_price: agg.avg_purchase_price, condition: agg.condition, quantity: await mengeVon(db, uid, SN) };
+    return {
+      purchase_price: agg.avg_purchase_price,
+      condition: agg.condition,
+      quantity: await quantityOf(db, uid, SN),
+    };
   };
 
   try {

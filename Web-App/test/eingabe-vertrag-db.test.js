@@ -1,16 +1,16 @@
 /**
  * Eingaben werden im Betrieb gegen den Vertrag geprüft, bevor die Route läuft
- * (eingabePruefen in src/http/vertragsRouter.ts, von vertragsRouter() vor
+ * (checkInput in src/http/vertragsRouter.ts, von vertragsRouter() vor
  * jeden Endpunkt gesetzt). Eine Liste statt eines Textes kam vorher an
  * USERNAME_RE vorbei bis ins SQL, und Freitext war unbegrenzt.
  *
  * Gegenproben (am 01.11.2026 gemessen):
- *   A  in vertragsRouter() das Einsetzen von eingabePruefen entfernt → rot:
+ *   A  in vertragsRouter() das Einsetzen von checkInput entfernt → rot:
  *      „eine Liste statt eines Namens ist 400“, „Freitext ist begrenzt“ und
  *      „ein wiederholter Abfragewert ist 400“
- *   B  in eingabePruefen die Abfrageprüfung entfernt → rot: „ein
+ *   B  in checkInput die Abfrageprüfung entfernt → rot: „ein
  *      wiederholter Abfragewert ist 400“
- *   C  in eingabePruefen den eigenen Fehler der Prüfer übergangen (immer
+ *   C  in checkInput den eigenen Fehler der Prüfer übergangen (immer
  *      eingabe_ungueltig) → rot: „die Prüfer aus validate.ts antworten wie die
  *      Route“
  *
@@ -21,15 +21,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const db = testDaten();
+const { adminWithFactor } = require('./helpers/verwalter');
+const db = testData();
 
 test('Eingaben gegen den Vertrag', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `eingabe_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const PASS = 'Eingabe-Passwort-1';
@@ -44,7 +44,7 @@ test('Eingaben gegen den Vertrag', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
-  const codes = await verwalterMitFaktor(_req, uid);
+  const codes = await adminWithFactor(_req, uid);
   const { base } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const sende = async (methode, pfad, rumpf) => {
     const r = await fetch(base + pfad, {

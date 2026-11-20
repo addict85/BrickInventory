@@ -9,25 +9,25 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 // Den Download abfangen und den Statuscode vorgeben.
 let antwort = 403;
-const thumbVersuche = { n: 0 };
+const thumbAttempts = { n: 0 };
 let versuche = 0;
 
-const { buildAndRequire, testDaten, testBildwerk } = require('./helpers/sources');
+const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
 const _req = buildAndRequire();
-testBildwerk(null, {
+testImageWorker(null, {
   setBildLaden: async (_u, _sn, info) => {
     versuche++;
     if (info) info.status = antwort;
     return null;
   },
-  vorschauErzeugen: async () => {
-    thumbVersuche.n++;
+  createPreview: async () => {
+    thumbAttempts.n++;
     return null;
   },
 });
 const { keineDb } = require('./helpers/db');
-const { leereWarteschlange } = require('./helpers/bildwarteschlange');
-const db = testDaten();
+const { emptyQueue } = require('./helpers/bildwarteschlange');
+const db = testData();
 
 test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 }, async t => {
   // Marcos Log
@@ -40,7 +40,7 @@ test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 },
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
-  await leereWarteschlange(db);
+  await emptyQueue(db);
   const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   const fsm = require('node:fs');
   fsm.mkdirSync(SET_IMAGES_DIR, { recursive: true });
@@ -52,19 +52,19 @@ test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 },
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['thumb:%' + P + '%']);
 
   try {
-    thumbVersuche.n = 0;
+    thumbAttempts.n = 0;
     for (let runde = 1; runde <= 3; runde++) {
       await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
       await db.run(`INSERT INTO image_wanted (url, set_number) VALUES ($1,$2)`, [`https://cdn/${P}_1.jpg`, `${P}_1`]);
-      await IQ._arbeiteStapel();
+      await IQ._workStack();
     }
     assert.equal(
-      thumbVersuche.n,
+      thumbAttempts.n,
       1,
-      `${thumbVersuche.n} Versuche in drei Durchgängen — eine Vorschau, die nicht ` +
+      `${thumbAttempts.n} Versuche in drei Durchgängen — eine Vorschau, die nicht ` +
         'gelingen kann, darf nur einmal Rechenzeit kosten',
     );
-    await IM._schreibePuffer();
+    await IM._writeBuffer();
     const gemerkt = (
       await db.get(`SELECT COUNT(*)::int c FROM image_misses WHERE cache_key LIKE $1`, ['thumb:%' + P + '%'])
     ).c;
@@ -86,7 +86,7 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
   // und Nachstellung in helpers/bildwarteschlange.js.
-  await leereWarteschlange(db);
+  await emptyQueue(db);
 
   const P = `DR${process.pid}`;
   const fuellen = async () => {
@@ -111,7 +111,7 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
       versuche = 0;
       await fuellen();
       const IQ = _req('src/bilder/bildbedarfLauf.js');
-      const e = await IQ._arbeiteStapel();
+      const e = await IQ._workStack();
       assert.equal(versuche, 1, `${versuche} Versuche — nach der ersten Drosselung muss der Stapel abbrechen`);
 
       // Zurückgelegt ist NICHT bearbeitet
@@ -122,7 +122,7 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
           'Zeile abbrach und alles zurückgelegt wurde',
       );
       assert.equal(
-        e.zurueckgelegt,
+        e.setAside,
         10,
         'Die zurückgelegten Notizen tauchen in keinem Zähler auf — dann ist ' +
           'aus der Meldung nicht zu erkennen, dass gedrosselt wurde',
@@ -144,7 +144,7 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
 
     await t.test('die Pause hält den nächsten Lauf zurück', async () => {
       const vorher = versuche;
-      const n = (await _req('src/bilder/bildbedarfLauf.js')._arbeiteStapel()).gesamt;
+      const n = (await _req('src/bilder/bildbedarfLauf.js')._workStack()).gesamt;
       assert.equal(n, 0);
       assert.equal(
         versuche,
@@ -160,8 +160,8 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
       antwort = 404;
       versuche = 0;
       await fuellen();
-      await IQ._arbeiteStapel();
-      await _req('src/bilder/imageMisses.js')._schreibePuffer();
+      await IQ._workStack();
+      await _req('src/bilder/imageMisses.js')._writeBuffer();
       assert.equal(versuche, 10, `${versuche} Versuche — bei 404 läuft der Stapel durch`);
       assert.equal(await gemerkt(), 10, 'Fehlende Bilder werden nicht gemerkt — dann fragt der Job sie ewig neu');
     });

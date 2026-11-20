@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 const ANTWORT = {
   success: true,
@@ -31,7 +31,7 @@ const ANTWORT = {
 };
 
 test('der Stand zeigt je Prüfung bereit oder fehlt', async () => {
-  const { w, d, ruhig } = await oeffneOberflaeche({ '/v1/einrichtung/stand': ANTWORT }, { angemeldet: false });
+  const { w, d, ruhig } = await openUi({ '/v1/einrichtung/stand': ANTWORT }, { angemeldet: false });
   try {
     await ruhig();
     // Ohne hinterlegte Quelle gehört die Prüfung zur Ersteinrichtung und steht da.
@@ -62,7 +62,7 @@ test('der Stand zeigt je Prüfung bereit oder fehlt', async () => {
 
 test('mit hinterlegter Quelle verschwindet der Prüfknopf', async () => {
   const antwort = { ...ANTWORT, konfiguriert: true };
-  const { w, d, ruhig } = await oeffneOberflaeche({ '/v1/einrichtung/stand': antwort }, { angemeldet: false });
+  const { w, d, ruhig } = await openUi({ '/v1/einrichtung/stand': antwort }, { angemeldet: false });
   try {
     await ruhig();
     assert.equal(d.getElementById('btn-einrichtung-pruefen').hidden, true, 'mit Quelle verschwindet er');
@@ -78,7 +78,7 @@ test('mit hinterlegter Quelle verschwindet der Prüfknopf', async () => {
 
 test('nach Abschluss bleibt die Meldung, die Prüfliste verschwindet', async () => {
   const antwort = { ...ANTWORT, erledigt: true, schritte: [] };
-  const { w, d } = await oeffneOberflaeche({ '/v1/einrichtung/stand': antwort }, { angemeldet: false });
+  const { w, d } = await openUi({ '/v1/einrichtung/stand': antwort }, { angemeldet: false });
   try {
     d.getElementById('btn-einrichtung-pruefen').click();
     await warte(() => d.getElementById('es-banner').textContent.includes('abgeschlossen'));
@@ -90,10 +90,7 @@ test('nach Abschluss bleibt die Meldung, die Prüfliste verschwindet', async () 
 });
 
 test('englisch: Knopf und Hinweis', async () => {
-  const { w, d, ruhig } = await oeffneOberflaeche(
-    { '/v1/einrichtung/stand': ANTWORT },
-    { angemeldet: false, sprache: 'en' },
-  );
+  const { w, d, ruhig } = await openUi({ '/v1/einrichtung/stand': ANTWORT }, { angemeldet: false, sprache: 'en' });
   try {
     await ruhig();
     await warte(

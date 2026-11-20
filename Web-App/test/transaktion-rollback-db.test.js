@@ -6,7 +6,7 @@
  *   A  wieder `await client.query('ROLLBACK')` ohne eigenes try und
  *      `client.release()` ohne Fehler → rot: „der Fehler aus fn kommt an,
  *      nicht der vom ROLLBACK"
- *   B  `client.on('error', abriss)` entfernt → rot: das 'error'-Ereignis des
+ *   B  `client.on('error', teardown)` entfernt → rot: das 'error'-Ereignis des
  *      Clients bleibt ohne Zuhörer und bricht den Lauf ab („danach arbeitet
  *      der Pool weiter" wird abgebrochen)
  *
@@ -17,10 +17,10 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
 test('transaction() bei kaputter Verbindung', async t => {
   try {

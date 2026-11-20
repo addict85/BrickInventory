@@ -5,22 +5,22 @@
  * Anfragen, die die Oberfläche schickt.
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  leseBetrag() in format.js durch parseFloat(roh) ersetzt → alle fünf
+ *   A  readAmount() in format.js durch parseFloat(roh) ersetzt → alle fünf
  *      rot (149,95 → 149; 1,299 en → 1; „12,3,4“ gesendet; Gutschein 50)
- *   B  in betragAusFeld() die Meldung bei NaN entfernt (ok: true, wert: null)
+ *   B  in amountFromField() die Meldung bei NaN entfernt (ok: true, wert: null)
  *      → rot: „Unsinn wird am Feld gemeldet“ (abc ging als null hinaus)
  *   C  Gruppen-Regel entfernt (einzelnes Trennzeichen immer Dezimal) → rot:
  *      „Set hinzufügen …“ (1.299 de-DE → 1.299) und „englisch …“ (1,299)
- *   D  betragFuerFeld() mit en-Format statt locale() → rot: „Kaufpreis-Dialog“
+ *   D  amountForField() mit en-Format statt locale() → rot: „Kaufpreis-Dialog“
  *      (Feld zeigte 129.99 statt 129,99)
- *   E  zeigeGespeichert() in acqSave() entfernt → rot: „Kaufpreis-Dialog“
+ *   E  showSaved() in acqSave() entfernt → rot: „Kaufpreis-Dialog“
  *      (keine Marke „Gespeichert“)
- *   F  (13.11.2026) betragAusFeld() ohne die Prüfung auf ein Minus → rot:
+ *   F  (13.11.2026) amountFromField() ohne die Prüfung auf ein Minus → rot:
  *      „Unsinn wird am Feld gemeldet“ („-5“ hiess „kein Betrag“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, sicht, takt, warte } = require('./helpers/oberflaeche');
+const { openUi, sicht, takt, warte } = require('./helpers/oberflaeche');
 
 async function setErfassen(o, preis) {
   const { d, w, aufrufe } = o;
@@ -44,7 +44,7 @@ async function setErfassen(o, preis) {
 }
 
 test('Set hinzufügen: Komma, Punkt und Tausender', async () => {
-  const o = await oeffneOberflaeche({}, { browserSprache: 'de-DE' });
+  const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     for (const [ein, aus] of [
       ['149,95', 149.95],
@@ -69,7 +69,7 @@ test('Set hinzufügen: Komma, Punkt und Tausender', async () => {
 });
 
 test('englisch: Komma als Tausender, Punkt als Dezimal', async () => {
-  const o = await oeffneOberflaeche({}, { sprache: 'en', browserSprache: 'en-GB' });
+  const o = await openUi({}, { sprache: 'en', browserLanguage: 'en-GB' });
   try {
     for (const [ein, aus] of [
       ['1,299', 1299],
@@ -86,7 +86,7 @@ test('englisch: Komma als Tausender, Punkt als Dezimal', async () => {
 });
 
 test('Unsinn wird am Feld gemeldet und nicht gesendet', async () => {
-  const o = await oeffneOberflaeche({}, { browserSprache: 'de-DE' });
+  const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     for (const ein of ['abc', '12,3,4', '-5', '1.29.9', '149,95€x', '1,2.3,4']) {
       const r = await setErfassen(o, ein);
@@ -105,7 +105,7 @@ test('Unsinn wird am Feld gemeldet und nicht gesendet', async () => {
 });
 
 test('Gutschein: Betrag mit Komma', async () => {
-  const o = await oeffneOberflaeche({ '/v1/vouchers': { success: true, vouchers: [] } }, { browserSprache: 'de-DE' });
+  const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [] } }, { browserLanguage: 'de-DE' });
   try {
     await sicht(o.w, 'gutscheine');
     o.d.getElementById('v-number').value = '6123-4567-8901';
@@ -122,7 +122,7 @@ test('Gutschein: Betrag mit Komma', async () => {
 
 test('Kaufpreis-Dialog: Anzeige in Sprachform, Komma gespeichert, Marke je Zeile', async () => {
   const puts = [];
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/sets/10294-1/acquisitions': (_url, opt) => {
         if (opt.method === 'PUT') return { success: true };
@@ -139,7 +139,7 @@ test('Kaufpreis-Dialog: Anzeige in Sprachform, Komma gespeichert, Marke je Zeile
         return { success: true };
       },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     const knopf = o.d.createElement('button');

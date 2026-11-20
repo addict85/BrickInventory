@@ -5,13 +5,13 @@
  * Vorrang in der bcrypt-Schranke (weiche Grenze), gesperrt wird er nicht.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  establishSession() ohne begrenzeSitzungen() → rot: „höchstens 50 Sitzungen …“
- *   B  in kappeSitzungen() `ORDER BY expire ASC` → rot: dieselbe Prüfung (die
+ *   A  establishSession() ohne limitSessions() → rot: „höchstens 50 Sitzungen …“
+ *   B  in capSessions() `ORDER BY expire ASC` → rot: dieselbe Prüfung (die
  *      zuletzt benutzten fielen)
- *   C  tokenAnlegen() ohne kappeTokens() → rot: „höchstens 50 Tokens …“
- *   D  kappeTokens() ohne `ersetzt_durch IS NULL` → rot: dieselbe Prüfung (der
+ *   C  createToken() ohne capTokens() → rot: „höchstens 50 Tokens …“
+ *   D  capTokens() ohne `ersetzt_durch IS NULL` → rot: dieselbe Prüfung (der
  *      getauschte Token in seiner Überlappung fiel)
- *   E  bekannteAnmeldung() ohne den Zähler `login-erfolg` → rot: „nach 30
+ *   E  knownLogin() ohne den Zähler `login-erfolg` → rot: „nach 30
  *      Anmeldungen …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -23,10 +23,10 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
@@ -49,7 +49,7 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
   const NAME = `grenze_${process.pid}`,
     ANDERER = `grenze_b_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, ANDERER]]);
-  const lege = async n =>
+  const put = async n =>
     (
       await db.get(
         `INSERT INTO users (username, password_hash, is_active, email_verified)
@@ -57,8 +57,8 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
         [n],
       )
     ).id;
-  const uid = await lege(NAME),
-    anderer = await lege(ANDERER);
+  const uid = await put(NAME),
+    anderer = await put(ANDERER);
   const sitzungen = id =>
     db.all(`SELECT sid FROM user_sessions WHERE sess::jsonb->>'userId' = $1 ORDER BY sid`, [String(id)]);
   t.after(async () => {
@@ -85,7 +85,7 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
       }
     }
     const establishSession = (...a) =>
-      _req('src/konto/http/anmeldung.js').establishSession(require('./helpers/sources').testDienste().konto, ...a);
+      _req('src/konto/http/anmeldung.js').establishSession(require('./helpers/sources').testServices().konto, ...a);
     const app = express();
     app.use(
       session({
@@ -127,7 +127,7 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
       `grenze_${uid}_54`,
     ]);
     const auth = _req('src/konto/geraeteToken.js');
-    const neu = auth.tokenAbdruck(await auth.tokenAnlegen(uid, 'neu'));
+    const neu = auth.tokenDigest(await auth.createToken(uid, 'neu'));
     const rest = (await db.all('SELECT token FROM api_tokens WHERE user_id = $1 ORDER BY token', [uid])).map(
       z => z.token,
     );
@@ -146,12 +146,12 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
   await t.test('nach 30 Anmeldungen je Adresse und Konto nur noch ohne Vorrang', async () => {
     const L = _req('src/konto/loginLimiter.js');
     const ip = '203.0.113.77';
-    assert.equal(await L.bekannteAnmeldung(ip, NAME), false, 'ein unbekanntes Gerät hat keinen Vorrang');
-    for (let i = 0; i < L.ERFOLGE_MIT_VORRANG - 1; i++) await L.anmeldungGelungen(ip, NAME);
-    assert.equal(await L.bekannteAnmeldung(ip, NAME), true);
-    await L.anmeldungGelungen(ip, NAME);
-    assert.equal(await L.bekannteAnmeldung(ip, NAME), false, 'nach 30 Anmeldungen …');
-    assert.equal(await L.anmeldungErlaubt(ip, NAME), null, 'die weiche Grenze sperrt nicht');
-    await L.gibAnmeldeplatzFrei(ip, NAME);
+    assert.equal(await L.knownLogin(ip, NAME), false, 'ein unbekanntes Gerät hat keinen Vorrang');
+    for (let i = 0; i < L.SUCCESSES_WITH_PRIORITY - 1; i++) await L.loginSucceeded(ip, NAME);
+    assert.equal(await L.knownLogin(ip, NAME), true);
+    await L.loginSucceeded(ip, NAME);
+    assert.equal(await L.knownLogin(ip, NAME), false, 'nach 30 Anmeldungen …');
+    assert.equal(await L.loginAllowed(ip, NAME), null, 'die weiche Grenze sperrt nicht');
+    await L.giveLoginSpaceFree(ip, NAME);
   });
 });

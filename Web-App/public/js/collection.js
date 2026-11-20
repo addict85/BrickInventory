@@ -2,38 +2,38 @@
 // reloads when a lower-level module emits 'setsGeaendert' or 'bestandGeaendert'.
 import { subscribe, emit } from './events.js';
 import {
-  skelettKacheln,
-  listeLadefehler,
+  skeletonTiles,
+  listLoadError,
   condBadges,
   ownerBadges,
   pnlBadge,
-  geschaetztKauf,
+  estimatedPurchase,
   kachelName,
-  kontoAnzeige,
+  accountDisplay,
 } from './bausteine.js';
 import { echt, registerActions } from './registry.js';
 import { t, tRaw } from '../i18n.js';
 import { html, rawHtml } from './escaping.js';
 import { api } from './api.js';
 import { loadGuard } from './load-guard.js';
-import { bildTag, fullUrl, platzhalterInhalt, imgUrl, observeLazyImages, thumbUrl } from './bilder.js';
+import { bildTag, fullUrl, placeholderContent, imgUrl, observeLazyImages, thumbUrl } from './bilder.js';
 import {
-  leerZustand,
-  meldeTreffer,
+  emptyState,
+  reportHits,
   ico,
   G,
   TRASH_ICON_SVG,
-  zuruecksetzenKnopf,
+  resetButton,
   alle,
   fuegeHtmlEin,
   setzeHtml,
   telefonBreite,
-  beiTelefonWechsel,
+  atPhoneSwitch,
 } from './dom.js';
-import { fmtDatum, fmtGeld, fmtN, istGeschenk } from './format.js';
+import { fmtDatum, fmtGeld, fmtN, isGift } from './format.js';
 import { toast } from './meldungen.js';
 import { addScopeParam, scopeQuery, addLagerParam, lagerModus } from './kontofilter.js';
-import { geloeschtMitRueckgaengig } from './papierkorb.js';
+import { deletedWithUndo } from './papierkorb.js';
 import {
   accountCurrency,
   loggedInAccount,
@@ -43,8 +43,8 @@ import {
   pnlBySet,
   setPnlBySet,
 } from './state.js';
-import { confirmDelete, loeschenMitWahl } from './rueckfrage.js';
-import { SPALTEN_SORT, setsTabelle, tableRow, wertZelle } from './sets-tabelle.js';
+import { confirmDelete, deleteWithChoice } from './rueckfrage.js';
+import { COLUMNS_SORT, setsTabelle, tableRow, valueCell } from './sets-tabelle.js';
 import { loadStats } from './kennzahlen.js';
 /** @typedef {import('./state.js').Tile} Tile */
 
@@ -206,7 +206,7 @@ function bindGallerySentinel() {
  * usual) and restores the scroll position after drawing.
  */
 export async function loadGallery(opts = {}) {
-  filterZahlZeigen();
+  showFilterNumber();
   // Remember depth and position BEFORE anything is reset.
   const depth = opts.restore ? Math.max(1, _galPage) : 1;
   const scrollY = opts.restore ? window.scrollY : null;
@@ -218,7 +218,7 @@ export async function loadGallery(opts = {}) {
   // empty wall flashed up.
   const gal = G('gallery');
   if (!gallerySets.length || !gal.querySelector('.sgrid, .tw, .empty')) {
-    setzeHtml(gal, skelettKacheln(8, tRaw('gallery.loading')));
+    setzeHtml(gal, skeletonTiles(8, tRaw('gallery.loading')));
   }
   galleryGuard.start();
   _galPage = 1;
@@ -229,7 +229,7 @@ export async function loadGallery(opts = {}) {
   const hadList = gallerySets.length > 0;
   const d = await galleryGuard.whenCurrent(api('GET', `/v1/sets?${galleryParams(1, fetchSize)}`));
   if (d === undefined) return;
-  if (listeLadefehler(gal, d, { erneut: 'loadGallery', behalten: hadList })) {
+  if (listLoadError(gal, d, { erneut: 'loadGallery', behalten: hadList })) {
     if (hadList) renderGallery();
     return;
   }
@@ -275,7 +275,7 @@ export function renderGallery() {
   // Without a single set, the fields filter and sort nothing (N5).
   G('tab-gallery')?.classList.toggle('sammlung-leer', !list.length && !filtered);
   if (filtered)
-    meldeTreffer(
+    reportHits(
       list.length
         ? tRaw('treffer.sets', { n: _galTotal || list.length })
         : q
@@ -286,12 +286,12 @@ export function renderGallery() {
     setzeHtml(
       c,
       filtered
-        ? leerZustand({
+        ? emptyState({
             ico: 'suche',
             titel: q ? tRaw('common.no_hits', { query: q }) : tRaw('gallery.no_results_filter'),
-            knopf: zuruecksetzenKnopf('gallery'),
+            knopf: resetButton('gallery'),
           })
-        : leerZustand({
+        : emptyState({
             ico: 'set',
             titel: tRaw('gallery.empty'),
             text: tRaw(telefonBreite() ? 'gallery.empty_hint_telefon' : 'gallery.empty_hint'),
@@ -323,7 +323,7 @@ export function updateGalleryPrices() {
   });
   alle('[data-tabwert-for]').forEach(el => {
     const s = bySet.get(el.dataset.tabwertFor ?? '');
-    if (s) setzeHtml(el, wertZelle(s));
+    if (s) setzeHtml(el, valueCell(s));
   });
 }
 
@@ -336,15 +336,15 @@ export function updateGalleryPrices() {
 function priceLine(s) {
   const buy = s.avg_purchase_price ?? s.max_purchase_price;
   // The server says where kachel_preis comes from: without a market price it is the purchase price.
-  const market = !!s._price && (s._quelle ? s._quelle === 'markt' : true);
+  const market = !!s._price && (s._source ? s._source === 'markt' : true);
   const buyAmount = buy != null ? fmtGeld(buy, accountCurrency) : s._price ? fmtGeld(s._price, accountCurrency) : '';
   const amount = market
     ? fmtN(s._price, accountCurrency)
     : s.kaufpreis_geschaetzt && buyAmount
-      ? String(geschaetztKauf(buyAmount))
+      ? String(estimatedPurchase(buyAmount))
       : buyAmount;
   // A gift shows as a badge next to the condition: in the price box it read as a property of the market price.
-  const pnl = istGeschenk(buy) ? '' : pnlBadge(s._pnl_pct, buy);
+  const pnl = isGift(buy) ? '' : pnlBadge(s._pnl_pct, buy);
   if (!amount && !pnl) return '';
   const kind = amount
     ? html`<span class="preis-art">${tRaw(market ? 'gallery.card.market' : 'gallery.card.paid')}</span>`
@@ -365,7 +365,7 @@ function gridCard(s) {
   // No alt text: the tile is a button, its text already names the set.
   const img = src
     ? bildTag({ src: thumb || src, alt: '', orig: imgUrl(fullUrl(src)), fade: true, ph: 'set' })
-    : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`;
+    : html`<span class="bild-ph" aria-hidden="true">${placeholderContent('set')}</span>`;
   // Without a loaded market price, the quantity-weighted purchase price, not the highest one.
   const price = priceLine(s);
   // The date of the last purchase: when importing, the date added to the account was the same day for
@@ -395,7 +395,7 @@ function gridCard(s) {
           ${s.instructions?.length ? html`<span class="ibadge">${ico('liste')}${s.instructions.length}</span>` : ''}
           ${s.quantity > 1 ? html`<span class="qbadge">×${s.quantity}</span>` : ''}
           ${condBadge}
-          ${istGeschenk(s.avg_purchase_price ?? s.max_purchase_price) ? html`<span class="geschenk-badge">${tRaw('finance.gift')}</span>` : ''}
+          ${isGift(s.avg_purchase_price ?? s.max_purchase_price) ? html`<span class="geschenk-badge">${tRaw('finance.gift')}</span>` : ''}
           ${unknown ? html`<span class="unbekannt-badge" title="${tRaw('gallery.card.unbekannt_hint')}">${tRaw('gallery.card.unbekannt')}</span>` : ''}
           ${ownerBadges(s)}
         </div>
@@ -408,7 +408,7 @@ function gridCard(s) {
 /** @param {string} field */
 async function setsSortieren(field) {
   const sel = G('gsort');
-  const [first, second] = SPALTEN_SORT[field];
+  const [first, second] = COLUMNS_SORT[field];
   sel.value = sel.value === first ? second : first;
   await loadGallery();
   /** @type {HTMLElement | null} */ (
@@ -418,7 +418,7 @@ async function setsSortieren(field) {
 
 // Add set via SSE stream
 /** On a phone the filter sits behind an icon; the number says that a filter is currently active. */
-export function filterZahlZeigen() {
+export function showFilterNumber() {
   const num = G('gallery-filter-zahl');
   if (!num) return;
   const n = ['gtheme', 'storage-gallery'].filter(id => /** @type {HTMLInputElement | null} */ (G(id))?.value).length;
@@ -426,7 +426,7 @@ export function filterZahlZeigen() {
   num.hidden = !n;
 }
 
-beiTelefonWechsel(() => {
+atPhoneSwitch(() => {
   if (G('gallery')?.querySelector('.sgrid, .tw, .empty.leer:not(.fehler-zustand)')) renderGallery();
 });
 G('vg').onclick = () => {
@@ -470,14 +470,14 @@ async function deletionChoice(sn, name, set) {
       .filter(a => (a.owner_user_id ?? loggedInAccount?.id) === o.id)
       .reduce((s, a) => s + (a.quantity || 0), 0),
   }));
-  const list = accounts.map(k => `${kontoAnzeige(k)} ×${k.n}`).join(', ');
+  const list = accounts.map(k => `${accountDisplay(k)} ×${k.n}`).join(', ');
   const total = accounts.reduce((s, k) => s + k.n, 0);
   // Pre-selected is the fewest, the own copy first: Enter would otherwise also have deleted the other one.
   const order = [...accounts].sort(
     (x, y) => Number(y.id === loggedInAccount?.id) - Number(x.id === loggedInAccount?.id),
   );
-  return loeschenMitWahl(title, tRaw('gallery.delete.konten', { name, konten: list }), [
-    ...order.map(k => ({ wert: String(k.id), text: tRaw('gallery.delete.nur', { konto: kontoAnzeige(k), n: k.n }) })),
+  return deleteWithChoice(title, tRaw('gallery.delete.konten', { name, konten: list }), [
+    ...order.map(k => ({ wert: String(k.id), text: tRaw('gallery.delete.nur', { konto: accountDisplay(k), n: k.n }) })),
     { wert: '', text: tRaw('gallery.delete.alle', { n: total }) },
   ]);
 }
@@ -500,8 +500,8 @@ export async function delSet(sn) {
   }
   const owner = (known?.owners || []).find(o => String(o.id) === account);
   const nr = CSS.escape(sn);
-  geloeschtMitRueckgaengig(
-    `${tRaw('users.deleted', { name })}${owner ? ` · ${kontoAnzeige(owner)}` : ''}`,
+  deletedWithUndo(
+    `${tRaw('users.deleted', { name })}${owner ? ` · ${accountDisplay(owner)}` : ''}`,
     d,
     undefined,
     `.sc[data-arg="${nr}"], tr[data-arg="${nr}"] .zeile-oeffnen`,
@@ -526,7 +526,7 @@ export async function enrichGalleryWithPrices() {
   if (!pnl.success) return;
   setPnlBySet({});
   // The server computes the tile's amount and P&L (kachel_preis, kachel_pnl_pct in /finance/pnl,
-  // src/finanzen/setValue.ts kachelWerte); in a household, every row of a set carries the same values.
+  // src/finanzen/setValue.ts tileValues); in a household, every row of a set carries the same values.
   for (const s of pnl.sets) {
     if (!pnlBySet[s.set_number])
       pnlBySet[s.set_number] = { price: s.kachel_preis, pnl_pct: s.kachel_pnl_pct, quelle: s.kachel_quelle };
@@ -536,7 +536,7 @@ export async function enrichGalleryWithPrices() {
     gallerySets.map(s => ({
       ...s,
       _price: pnlBySet[s.set_number]?.price || 0,
-      _quelle: pnlBySet[s.set_number]?.quelle,
+      _source: pnlBySet[s.set_number]?.quelle,
       _pnl_pct: pnlBySet[s.set_number]?.pnl_pct ?? undefined,
     })),
   );

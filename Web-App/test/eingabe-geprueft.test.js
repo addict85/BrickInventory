@@ -1,17 +1,17 @@
 /**
  * Die Route bekommt Rumpf und Abfrage so, wie der Vertrag sie geprüft hat
- * (req.eingabe, req.abfrage aus eingabePruefen): umgewandelt, ohne unbekannte
+ * (req.eingabe, req.abfrage aus checkInput): umgewandelt, ohne unbekannte
  * Felder. Eingaben und Abfragen sind geschlossen; ein unbekanntes Feld ist 400
  * mit dem Code feld_unbekannt. Die Abfrage steht in docs/openapi.json.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  in eingabePruefen `geprueft.eingabe = r.data` gestrichen → rot: „die
+ *   A  in checkInput `geprueft.eingabe = r.data` gestrichen → rot: „die
  *      Route sieht den umgewandelten Rumpf“
- *   B  in eingabePruefen `geprueft.abfrage = req.query` statt des Ergebnisses
+ *   B  in checkInput `geprueft.abfrage = req.query` statt des Ergebnisses
  *      → rot: „die Route sieht die umgewandelte Abfrage“
- *   C  NeuesSet (vertrag/sets.ts) als z.looseObject → rot: „ein unbekanntes Feld
+ *   C  NewSet (vertrag/sets.ts) als z.looseObject → rot: „ein unbekanntes Feld
  *      ist 400“ und „jede Eingabe und Abfrage ist geschlossen“
- *   D  in meldeAbweichung den Zweig unrecognized_keys gestrichen → rot: „ein
+ *   D  in reportDeviation den Zweig unrecognized_keys gestrichen → rot: „ein
  *      unbekanntes Feld ist 400“ und „eine falsche Abfrage ist 400“ (Code
  *      eingabe_ungueltig)
  *   E  in openapi.ts die Abfrageparameter als `in: 'header'` → rot: „die
@@ -22,9 +22,9 @@ const assert = require('node:assert/strict');
 const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { portVon } = require('./helpers/server');
+const { portOf } = require('./helpers/server');
 const { vertragsRouter } = _req('src/http/vertragsRouter.js');
-const { VERTRAG } = _req('src/vertrag/index.js');
+const { CONTRACT } = _req('src/vertrag/index.js');
 
 test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async t => {
   let aufrufe = 0;
@@ -41,7 +41,7 @@ test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async t => {
   app.use('/api/v1', router);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const basis = `http://localhost:${portVon(srv)}/api/v1`;
+  const basis = `http://localhost:${portOf(srv)}/api/v1`;
   const sende = async (pfad, rumpf) => {
     const r = await fetch(
       basis + pfad,
@@ -87,14 +87,14 @@ test('jede Eingabe und Abfrage ist geschlossen', () => {
   // Ausnahmen: Schlüssel-Wert-Listen, deren Schlüssel die Route selbst prüft.
   const OFFEN = ['PUT /api/v1/settings'];
   const offen = [];
-  for (const [k, r] of Object.entries(VERTRAG)) {
+  for (const [k, r] of Object.entries(CONTRACT)) {
     for (const s of [r.eingabe, r.abfrage].filter(Boolean)) {
       const def = s._zod.def;
       if (def.type === 'object' ? def.catchall?._zod.def.type !== 'never' : !OFFEN.includes(k)) offen.push(k);
     }
   }
   assert.deepEqual(offen, []);
-  assert.ok(Object.values(VERTRAG).filter(r => r.abfrage).length >= 40, 'zu wenige Routen mit Abfrage');
+  assert.ok(Object.values(CONTRACT).filter(r => r.abfrage).length >= 40, 'zu wenige Routen mit Abfrage');
 });
 
 test('die Abfrage steht in der OpenAPI-Beschreibung', () => {

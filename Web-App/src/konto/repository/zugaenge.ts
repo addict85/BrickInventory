@@ -1,10 +1,10 @@
-import type { Zeile, DbSchnittstelle } from '../../../db/database';
+import type { Zeile, DbInterface } from '../../../db/database';
 /** Tokens stehen nur als SHA-256 in der Tabelle; jede Funktion nimmt den Hash,
  * nie den Klartext. */
 
 export type TokenScope = 'app' | 'voll';
 
-export type TokenZeile = {
+export type TokenRow = {
   user_id: number;
   expires_at: string | Date | null;
   hard_expires_at: string | Date | null;
@@ -25,8 +25,8 @@ export type TokenZeile = {
 
 /** Fristen und Kontozustand in der Abfrage: Ein abgelaufener Token oder einer
  * eines deaktivierten Kontos wird nie geliefert. */
-export function gueltigerToken(db: DbSchnittstelle, hash: string) {
-  return db.get<TokenZeile>(
+export function validToken(db: DbInterface, hash: string) {
+  return db.get<TokenRow>(
     `
     SELECT t.user_id, t.expires_at, t.hard_expires_at, t.last_used, t.sliding, t.never_expires,
            t.scope, t.rotated_at, t.previous_token, t.label, t.ip_range, t.created_at,
@@ -42,7 +42,7 @@ export function gueltigerToken(db: DbSchnittstelle, hash: string) {
 /** created_at reist beim Tausch über JavaScript und verliert dabei die Mikrosekunden. */
 const familie = (spalte: string) => `date_trunc('milliseconds', ${spalte})`;
 
-export async function beendeUeberlappung(db: DbSchnittstelle, previous_token: string, hash: string): Promise<void> {
+export async function endOverlap(db: DbInterface, previous_token: string, hash: string): Promise<void> {
   await db.run(
     `WITH weg AS (DELETE FROM api_tokens WHERE token = $1 AND replaced_by = $2 RETURNING token, user_id, created_at)
     INSERT INTO api_tokens_consumed (token, user_id, token_family)
@@ -54,10 +54,10 @@ export async function beendeUeberlappung(db: DbSchnittstelle, previous_token: st
 
 /** Die WHERE-Klausel lässt höchstens einen Schreibvorgang je Tag durch, auch
  * über mehrere Prozesse. */
-export async function beruehreToken(
-  db: DbSchnittstelle,
+export async function touchToken(
+  db: DbInterface,
   hash: string,
-  leerlaufTage: number,
+  idleDays: number,
   bereich: string | null,
 ): Promise<void> {
   await db.run(
@@ -69,11 +69,11 @@ export async function beruehreToken(
       WHERE token = $1
         AND (last_used IS NULL OR last_used < NOW() - INTERVAL '1 day'
              OR (sliding AND expires_at < NOW() + make_interval(days => $2) - INTERVAL '1 day'))`,
-    [hash, leerlaufTage, bereich],
+    [hash, idleDays, bereich],
   );
 }
 
-export type NeuerToken = {
+export type NewToken = {
   hash: string;
   userId: number;
   label: string;
@@ -81,11 +81,11 @@ export type NeuerToken = {
   bereich: string | null;
   /** 'kurz' = sieben feste Tage */
   art: 'unbegrenzt' | 'gleitend' | 'kurz';
-  leerlaufTage: number;
-  festeTage: number | null;
+  idleDays: number;
+  fixedDays: number | null;
 };
 
-export async function legeTokenAn(db: DbSchnittstelle, t: NeuerToken): Promise<void> {
+export async function putTokenAn(db: DbInterface, t: NewToken): Promise<void> {
   if (t.art === 'unbegrenzt') {
     await db.run(
       `INSERT INTO api_tokens (token, user_id, label, expires_at, sliding, hard_expires_at, never_expires, scope, ip_range)
@@ -98,7 +98,7 @@ export async function legeTokenAn(db: DbSchnittstelle, t: NeuerToken): Promise<v
        VALUES ($1,$2,$3, NOW() + make_interval(days => $4), TRUE,
                CASE WHEN $5::int IS NULL THEN NULL ELSE NOW() + make_interval(days => $5::int) END, $6, $7)
        ON CONFLICT DO NOTHING`,
-      [t.hash, t.userId, t.label, t.leerlaufTage, t.festeTage, t.scope, t.bereich],
+      [t.hash, t.userId, t.label, t.idleDays, t.fixedDays, t.scope, t.bereich],
     );
   } else {
     await db.run(
@@ -109,7 +109,7 @@ export async function legeTokenAn(db: DbSchnittstelle, t: NeuerToken): Promise<v
   }
 }
 
-export type TauschQuelle = {
+export type SwapSource = {
   user_id: number;
   label: string | null;
   scope: TokenScope;
@@ -122,8 +122,8 @@ export type TauschQuelle = {
 };
 
 /** Gesperrt: Zwei Tausche desselben Tokens laufen nacheinander. */
-export function tauschQuelleSperren(tx: DbSchnittstelle, hash: string) {
-  return tx.get<TauschQuelle>(
+export function lockSwapSource(tx: DbInterface, hash: string) {
+  return tx.get<SwapSource>(
     `SELECT user_id, label, scope, sliding, never_expires, expires_at, hard_expires_at, created_at, replaced_by
        FROM api_tokens
       WHERE token = $1
@@ -135,37 +135,33 @@ export function tauschQuelleSperren(tx: DbSchnittstelle, hash: string) {
 }
 
 /** Der noch unbenutzte Nachfolger eines Tausches: wann und aus welchem Netz er entstand. */
-export function unbenutzterNachfolger(tx: DbSchnittstelle, nachfolger: string, alt: string) {
+export function unusedSuccessor(tx: DbInterface, successor: string, alt: string) {
   return tx.get<{ alter_s: number; ip_range: string | null }>(
     `SELECT EXTRACT(EPOCH FROM NOW() - rotated_at)::float AS alter_s, ip_range
        FROM api_tokens WHERE token = $1 AND previous_token = $2`,
-    [nachfolger, alt],
+    [successor, alt],
   );
 }
 
 /** Die ganze Familie eines Tokens (gleiches created_at), samt Nachfolger. */
-export async function loescheFamilie(tx: DbSchnittstelle, userId: number, seit: Date): Promise<void> {
+export async function deleteFamily(tx: DbInterface, userId: number, seit: Date): Promise<void> {
   await tx.run(
     `DELETE FROM api_tokens WHERE user_id = $1 AND ${familie('created_at')} = ${familie('$2::timestamptz')}`,
     [userId, seit],
   );
 }
 
-export async function loescheUnbenutztenNachfolger(
-  tx: DbSchnittstelle,
-  nachfolger: string,
-  alt: string,
-): Promise<void> {
-  await tx.run('DELETE FROM api_tokens WHERE token = $1 AND previous_token = $2', [nachfolger, alt]);
+export async function deleteUnusedSuccessor(tx: DbInterface, successor: string, alt: string): Promise<void> {
+  await tx.run('DELETE FROM api_tokens WHERE token = $1 AND previous_token = $2', [successor, alt]);
 }
 
 /** Der Nachfolger erbt Label, Scope und Fristen; die Gleitfrist beginnt neu. */
-export function legeNachfolgerAn(
-  tx: DbSchnittstelle,
+export function putSuccessorAn(
+  tx: DbInterface,
   neu: string,
   alt: string,
-  z: TauschQuelle,
-  leerlaufTage: number,
+  z: SwapSource,
+  idleDays: number,
   bereich: string | null,
 ) {
   return tx.get<{ expires_at: Date | null; hard_expires_at: Date | null; rotated_at: Date }>(
@@ -182,7 +178,7 @@ export function legeNachfolgerAn(
       z.created_at,
       z.sliding,
       z.expires_at,
-      leerlaufTage,
+      idleDays,
       z.hard_expires_at,
       z.never_expires,
       z.scope,
@@ -192,19 +188,19 @@ export function legeNachfolgerAn(
   );
 }
 
-export function befristeVorgaenger(tx: DbSchnittstelle, alt: string, neu: string, sekunden: number) {
+export function limitTimePredecessor(tx: DbInterface, alt: string, neu: string, seconds: number) {
   return tx.get<{ expires_at: Date }>(
     `UPDATE api_tokens
         SET replaced_by = $2, sliding = FALSE, never_expires = FALSE,
             expires_at = LEAST(COALESCE(expires_at, 'infinity'::timestamptz), NOW() + make_interval(secs => $3))
       WHERE token = $1 RETURNING expires_at`,
-    [alt, neu, sekunden],
+    [alt, neu, seconds],
   );
 }
 
 /** Ein verbrauchter Token kam wieder: Seine Familie endet samt Nachfolger. Erst nach
  * der Schonfrist, sonst träfe es Anfragen, die noch mit dem alten unterwegs waren. */
-export function sperreFamilie(db: DbSchnittstelle, hash: string, schonfristSek: number) {
+export function lockFamily(db: DbInterface, hash: string, gracePeriodSec: number) {
   return db.get<{ user_id: number; label: string | null }>(
     `
     WITH v AS (DELETE FROM api_tokens_consumed WHERE token = $1 AND consumed_at < NOW() - make_interval(secs => $2)
@@ -212,11 +208,11 @@ export function sperreFamilie(db: DbSchnittstelle, hash: string, schonfristSek: 
          t AS (DELETE FROM api_tokens a USING v WHERE a.user_id = v.user_id AND ${familie('a.created_at')} = v.token_family RETURNING a.label),
          r AS (DELETE FROM api_tokens_consumed x USING v WHERE x.user_id = v.user_id AND x.token_family = v.token_family AND x.token <> $1)
     SELECT v.user_id, (SELECT label FROM t LIMIT 1) AS label FROM v`,
-    [hash, schonfristSek],
+    [hash, gracePeriodSec],
   );
 }
 
-export async function loescheVerwaisteVerbrauchte(db: DbSchnittstelle): Promise<number> {
+export async function deleteOrphanedConsumed(db: DbInterface): Promise<number> {
   return (
     (
       await db.run(`DELETE FROM api_tokens_consumed v WHERE NOT EXISTS
@@ -225,12 +221,12 @@ export async function loescheVerwaisteVerbrauchte(db: DbSchnittstelle): Promise<
   );
 }
 
-export async function loescheToken(db: DbSchnittstelle, hash: string): Promise<void> {
+export async function loescheToken(db: DbInterface, hash: string): Promise<void> {
   await db.run('DELETE FROM api_tokens WHERE token = $1', [hash]);
 }
 
-export async function loescheTokensDesKontos(
-  db: DbSchnittstelle,
+export async function deleteTokensOfAccount(
+  db: DbInterface,
   userId: number,
   ausser: string | null = null,
 ): Promise<void> {
@@ -239,12 +235,7 @@ export async function loescheTokensDesKontos(
 }
 
 /** Behält die `behalten` zuletzt benutzten neben `eigene`; die übrigen fallen. */
-export async function kappeSitzungen(
-  db: DbSchnittstelle,
-  userId: number,
-  eigene: string,
-  behalten: number,
-): Promise<number> {
+export async function capSessions(db: DbInterface, userId: number, eigene: string, behalten: number): Promise<number> {
   return (
     (
       await db.run(
@@ -257,12 +248,7 @@ export async function kappeSitzungen(
 }
 
 /** Zählt nur Tokens ohne Nachfolger: Ein getauschter in seiner Überlappung ist dasselbe Gerät. */
-export async function kappeTokens(
-  db: DbSchnittstelle,
-  userId: number,
-  eigener: string,
-  behalten: number,
-): Promise<number> {
+export async function capTokens(db: DbInterface, userId: number, eigener: string, behalten: number): Promise<number> {
   return (
     (
       await db.run(
@@ -275,8 +261,8 @@ export async function kappeTokens(
   );
 }
 
-export async function loescheSitzungenDesKontos(
-  db: DbSchnittstelle,
+export async function deleteSessionsOfAccount(
+  db: DbInterface,
   userId: number,
   ausser: string | null = null,
 ): Promise<void> {
@@ -289,7 +275,7 @@ export async function loescheSitzungenDesKontos(
 }
 
 /** null: Konto fehlt oder ist gesperrt. */
-export async function sitzungsVersion(db: DbSchnittstelle, uid: number): Promise<number | null> {
+export async function sitzungsVersion(db: DbInterface, uid: number): Promise<number | null> {
   const r = await db.get<{ v: number | null }>(
     'SELECT CASE WHEN is_active THEN session_version END AS v FROM users WHERE id = $1',
     [uid],
@@ -297,7 +283,7 @@ export async function sitzungsVersion(db: DbSchnittstelle, uid: number): Promise
   return r?.v ?? null;
 }
 
-export async function zaehleSitzungsVersionHoch(db: DbSchnittstelle, uid: number): Promise<number> {
+export async function countSessionVersionHigh(db: DbInterface, uid: number): Promise<number> {
   const r = await db.get<{ v: number }>(
     'UPDATE users SET session_version = session_version + 1 WHERE id = $1 RETURNING session_version AS v',
     [uid],
@@ -305,7 +291,7 @@ export async function zaehleSitzungsVersionHoch(db: DbSchnittstelle, uid: number
   return r?.v ?? 0;
 }
 
-export async function ziehAltzeilenNach(db: DbSchnittstelle, leerlaufTage: number): Promise<number> {
+export async function pullAltzeilenAfter(db: DbInterface, idleDays: number): Promise<number> {
   return (
     (
       await db.run(
@@ -313,14 +299,14 @@ export async function ziehAltzeilenNach(db: DbSchnittstelle, leerlaufTage: numbe
         SET sliding = TRUE,
             expires_at = COALESCE(last_used, created_at) + make_interval(days => $1)
       WHERE expires_at IS NULL AND NOT never_expires`,
-        [leerlaufTage],
+        [idleDays],
       )
     ).changes || 0
   );
 }
 
 /** Beide Fristen in einer Anweisung — eine zweite wäre die Stelle, an der eine Regel fehlt. */
-export async function loescheAbgelaufene(db: DbSchnittstelle): Promise<number> {
+export async function deleteExpiredAccesses(db: DbInterface): Promise<number> {
   return (
     (
       await db.run(
@@ -333,14 +319,14 @@ export async function loescheAbgelaufene(db: DbSchnittstelle): Promise<number> {
 }
 
 /** NOT never_expires: Eine Zeile ohne Datum ist Altbestand oder die ausdrückliche Wahl „unbegrenzt". */
-export async function loescheUngenutzte(db: DbSchnittstelle, leerlaufTage: number): Promise<number> {
+export async function deleteUnused(db: DbInterface, idleDays: number): Promise<number> {
   return (
     (
       await db.run(
         `DELETE FROM api_tokens
       WHERE expires_at IS NULL AND NOT never_expires
         AND COALESCE(last_used, created_at) < NOW() - make_interval(days => $1)`,
-        [leerlaufTage],
+        [idleDays],
       )
     ).changes || 0
   );
@@ -348,7 +334,7 @@ export async function loescheUngenutzte(db: DbSchnittstelle, leerlaufTage: numbe
 
 /** Zwei Treffer (ein Name gleich der Adresse eines anderen Kontos, nur im
  * Altbestand möglich) heissen „kein Konto": Welches gemeint war, ist nicht zu entscheiden. */
-export async function kontoZurAnmeldung(db: DbSchnittstelle, name: string) {
+export async function accountToLogin(db: DbInterface, name: string) {
   const treffer = await db.all<
     Zeile<{
       id: number;
@@ -366,10 +352,10 @@ export async function kontoZurAnmeldung(db: DbSchnittstelle, name: string) {
 }
 
 /** Nur wenn der alte Hash noch gilt: Ein gleichzeitig geändertes Passwort bleibt stehen. */
-export async function ersetzePasswortHash(db: DbSchnittstelle, id: number, alt: string, neu: string): Promise<void> {
+export async function replacePasswordHash(db: DbInterface, id: number, alt: string, neu: string): Promise<void> {
   await db.run('UPDATE users SET password_hash = $3 WHERE id = $1 AND password_hash = $2', [id, alt, neu]);
 }
 
-export function passwortHash(db: DbSchnittstelle, id: number) {
+export function passwortHash(db: DbInterface, id: number) {
   return db.get<{ password_hash: string }>('SELECT password_hash FROM users WHERE id = $1', [id]);
 }

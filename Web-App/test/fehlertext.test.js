@@ -42,11 +42,11 @@ test('fehlertext gibt NICHT das ganze Objekt preis', () => {
   // Ein geworfener Datenbankfehler traegt gern die vollstaendige Abfrage samt
   // Parametern. Die darf nicht in einer Meldung landen, die bis zur
   // Oberflaeche laufen kann.
-  const dbFehler = Object.assign(new Error('duplicate key'), {
+  const dbError = Object.assign(new Error('duplicate key'), {
     query: 'INSERT INTO users (password_hash) VALUES ($1)',
     parameters: ['geheim'],
   });
-  const t = fehlertext(dbFehler);
+  const t = fehlertext(dbError);
   assert.equal(t, 'duplicate key');
   assert.ok(!t.includes('geheim'), 'Parameter duerfen nicht in der Meldung stehen');
   assert.ok(!t.includes('INSERT'), 'die Abfrage darf nicht in der Meldung stehen');

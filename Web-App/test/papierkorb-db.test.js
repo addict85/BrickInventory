@@ -5,10 +5,10 @@
  * dem Wiederherstellen — samt id, Kaufpreis und Erfassungsdatum.
  *
  * Gegenproben (25.10., gemessen):
- *   A  legeInPapierkorb() in loescheSet() entfernt      → rot: „Set fehlt im Papierkorb"
- *   B  Spaltenabgleich in stelleWiederHer() entfernt   → rot: „unbekannte Spalte"
- *   C  `user_id = ANY($2)` in stelleWiederHer() weg    → rot: „fremdes Konto"
- *   D  (03.11.2026) bestaetigeMitFaktor() in DELETE /papierkorb/:id bzw.
+ *   A  putInTrash() in deleteSet() entfernt      → rot: „Set fehlt im Papierkorb"
+ *   B  Spaltenabgleich in placeAgainHer() entfernt   → rot: „unbekannte Spalte"
+ *   C  `user_id = ANY($2)` in placeAgainHer() weg    → rot: „fremdes Konto"
+ *   D  (03.11.2026) confirmWithFactor() in DELETE /papierkorb/:id bzw.
  *      DELETE /papierkorb entfernt → rot: „endgültig löschen ohne Passwort"
  *      bzw. „Leeren mit falschem Passwort" (200 statt 400)
  *
@@ -20,12 +20,12 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet, haeltTeil, haeltFigur } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet, holdsPart, holdsMinifig } = require('./helpers/bestand');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const pk = _req('src/bestand/papierkorb.js');
 
 const SN = `99041-${process.pid}`,
@@ -39,11 +39,11 @@ async function rows(uid) {
   return {
     sets: await q('sets', 'user_id=$1 AND set_number=$2', [uid, SN]),
     setTeile: await q('parts', 'user_id=$1 AND set_number=$2', [uid, SN]),
-    setKauf: await q('set_acquisitions', 'user_id=$1 AND set_number=$2', [uid, SN]),
+    setPurchase: await q('set_acquisitions', 'user_id=$1 AND set_number=$2', [uid, SN]),
     teil: await q('parts', "user_id=$1 AND part_number=$2 AND source='manual'", [uid, PN]),
-    teilKauf: await q('part_acquisitions', 'user_id=$1 AND part_number=$2', [uid, PN]),
+    partPurchase: await q('part_acquisitions', 'user_id=$1 AND part_number=$2', [uid, PN]),
     figur: await q('minifigs', "user_id=$1 AND fig_number=$2 AND source='manual'", [uid, FN]),
-    figKauf: await q('minifig_acquisitions', 'user_id=$1 AND fig_number=$2', [uid, FN]),
+    figPurchase: await q('minifig_acquisitions', 'user_id=$1 AND fig_number=$2', [uid, FN]),
   };
 }
 
@@ -58,7 +58,7 @@ async function aufraeumen(namen) {
 }
 
 test('Papierkorb', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const namen = [`pk-haupt-${process.pid}`, `pk-sub-${process.pid}`, `pk-fremd-${process.pid}`];
   await aufraeumen(namen);
@@ -83,8 +83,8 @@ test('Papierkorb', { concurrency: 1 }, async t => {
 
   try {
     await t.test('Set des Unterkontos: löschen, ansehen, zurückholen', async () => {
-      await haeltSet(db, sub, SN, 2, { preis: 12.5, am: '2026-03-01T10:00:00Z' });
-      await haeltTeil(db, sub, '3001', { setNumber: SN, menge: 4, colorId: 4 });
+      await holdsSet(db, sub, SN, 2, { preis: 12.5, am: '2026-03-01T10:00:00Z' });
+      await holdsPart(db, sub, '3001', { setNumber: SN, menge: 4, colorId: 4 });
       const vorher = await rows(sub);
       assert.equal(vorher.sets.length, 1);
 
@@ -113,13 +113,13 @@ test('Papierkorb', { concurrency: 1 }, async t => {
       const nachher = await rows(sub);
       assert.deepEqual(nachher.sets, vorher.sets);
       assert.deepEqual(nachher.setTeile, vorher.setTeile);
-      assert.deepEqual(nachher.setKauf, vorher.setKauf, 'Kaufpreis und Datum kommen unverändert zurück');
+      assert.deepEqual(nachher.setPurchase, vorher.setPurchase, 'Kaufpreis und Datum kommen unverändert zurück');
       assert.equal((await eintraege(H)).length, 0, 'Wiederhergestelltes verlässt den Papierkorb');
     });
 
     await t.test('neu angelegt: Wiederherstellen weist ab und ändert nichts', async () => {
       assert.equal((await api(H, 'DELETE', `/sets/${SN}`)).status, 200);
-      await haeltSet(db, sub, SN, 1, { preis: 99 });
+      await holdsSet(db, sub, SN, 1, { preis: 99 });
       const neu = await rows(sub);
       const [e] = await eintraege(H);
       const r = await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`);
@@ -140,15 +140,15 @@ test('Papierkorb', { concurrency: 1 }, async t => {
     });
 
     await t.test('manuelles Teil und manuelle Figur', async () => {
-      await haeltTeil(db, haupt, PN, { colorId: 5, menge: 3, preis: 0.25, zustand: 'U' });
-      await haeltFigur(db, haupt, FN, { menge: 1, preis: 4 });
+      await holdsPart(db, haupt, PN, { colorId: 5, menge: 3, preis: 0.25, zustand: 'U' });
+      await holdsMinifig(db, haupt, FN, { menge: 1, preis: 4 });
       const vorher = await rows(haupt);
       const tw = await api(H, 'DELETE', `/parts/${PN}/5`);
       const fw = await api(H, 'DELETE', `/minifigs/${FN}`);
       assert.equal(tw.status, 200);
       assert.equal(fw.status, 200);
       const leer = await rows(haupt);
-      assert.deepEqual([leer.teil, leer.teilKauf, leer.figur, leer.figKauf], [[], [], [], []]);
+      assert.deepEqual([leer.teil, leer.partPurchase, leer.figur, leer.figPurchase], [[], [], [], []]);
 
       const liste = await eintraege(H);
       const teil = liste.find(x => x.type === 'teil'),
@@ -160,7 +160,7 @@ test('Papierkorb', { concurrency: 1 }, async t => {
       for (const e of [teil, figur])
         assert.equal((await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`)).status, 200);
       const nachher = await rows(haupt);
-      for (const k of ['teil', 'teilKauf', 'figur', 'figKauf']) assert.deepEqual(nachher[k], vorher[k], k);
+      for (const k of ['teil', 'partPurchase', 'figur', 'figPurchase']) assert.deepEqual(nachher[k], vorher[k], k);
     });
 
     await t.test('ein Schnappschuss übersteht eine entfallene Spalte', async () => {
@@ -175,20 +175,20 @@ test('Papierkorb', { concurrency: 1 }, async t => {
 
     await t.test('„Alle meine Daten löschen": alles Eigene in den Papierkorb, nichts Fremdes', async () => {
       await db.run('DELETE FROM trash WHERE user_id = ANY($1)', [ids]);
-      await haeltSet(db, haupt, SN, 1, { preis: 5 });
-      await haeltTeil(db, haupt, '3001', { setNumber: SN, menge: 2, colorId: 4 });
-      await haeltTeil(db, haupt, PN, { colorId: 5, menge: 3 });
-      await haeltFigur(db, haupt, FN, { menge: 1 });
+      await holdsSet(db, haupt, SN, 1, { preis: 5 });
+      await holdsPart(db, haupt, '3001', { setNumber: SN, menge: 2, colorId: 4 });
+      await holdsPart(db, haupt, PN, { colorId: 5, menge: 3 });
+      await holdsMinifig(db, haupt, FN, { menge: 1 });
       // Ein Set des Unterkontos: Das Hauptkonto sieht es, „meine Daten" ist es nicht.
       const SN2 = `${SN.replace(/-\d+$/, '')}9-1`; // mit Version: die Datenbank ergänzt sie sonst (Migration 0074)
-      await haeltSet(db, sub, SN2, 1);
+      await holdsSet(db, sub, SN2, 1);
       const vorher = await rows(haupt);
 
       const r = await api(H, 'DELETE', '/bestand', { password: PASS });
       assert.equal(r.status, 200, JSON.stringify(r.body));
       assert.deepEqual([r.body.sets, r.body.teile, r.body.figuren], [1, 1, 1]);
       const nachher = await rows(haupt);
-      for (const k of ['sets', 'setTeile', 'setKauf', 'teil', 'teilKauf', 'figur', 'figKauf'])
+      for (const k of ['sets', 'setTeile', 'setPurchase', 'teil', 'partPurchase', 'figur', 'figPurchase'])
         assert.deepEqual(nachher[k], [], `${k} ist nicht weg`);
       assert.ok(
         await db.get('SELECT 1 FROM sets WHERE user_id=$1 AND set_number=$2', [sub, SN2]),
@@ -225,7 +225,7 @@ test('Papierkorb', { concurrency: 1 }, async t => {
       const [a, b] = await eintraege(H);
       await db.run("UPDATE trash SET deleted_at = NOW() - interval '31 days' WHERE id=$1", [a.id]);
       await db.run("UPDATE trash SET deleted_at = NOW() - interval '29 days' WHERE id=$1", [b.id]);
-      assert.ok((await pk.raeumePapierkorbAuf()) >= 1);
+      assert.ok((await pk.cleanTrashOn()) >= 1);
       assert.deepEqual(
         (await eintraege(H)).map(x => x.id),
         [b.id],

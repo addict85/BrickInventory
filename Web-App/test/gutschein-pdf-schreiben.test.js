@@ -42,14 +42,14 @@ const PL = require('@cantoo/pdf-lib');
 const TTF = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
 
 /** Ein Gutschein-PDF, wie LEGO es schreibt: der Satz, die Nummer, die PIN. */
-function baueGutschein(betragText, nummer, pin, schrift) {
+function buildVoucher(amountText, nummer, pin, schrift) {
   return new Promise(fertig => {
     const d = new PDFKit({ size: 'A4' });
     const stuecke = [];
     d.on('data', c => stuecke.push(c));
     d.on('end', () => fertig(Buffer.concat(stuecke)));
     if (schrift) d.font(schrift);
-    d.fontSize(14).text(`Ihre LEGO-Geschenkkarte im Wert von ${betragText} CHF:`, 60, 100);
+    d.fontSize(14).text(`Ihre LEGO-Geschenkkarte im Wert von ${amountText} CHF:`, 60, 100);
     d.fontSize(12).text(nummer, 60, 140).text(`PIN: ${pin}`, 60, 170);
     d.end();
   });
@@ -60,11 +60,11 @@ function baueGutschein(betragText, nummer, pin, schrift) {
  * Kodierung trägt. Nur so lässt sich die Schriftschranke prüfen — pdfkit baut
  * so etwas nicht.
  */
-async function baueMitKodierung(unsicher) {
+async function buildWithEncoding(unsicher) {
   const doc = await PL.PDFDocument.create();
   const seite = doc.addPage([595, 842]);
   const ctx = doc.context;
-  const betragFont = ctx.obj({
+  const amountFont = ctx.obj({
     Type: 'Font',
     Subtype: 'TrueType',
     BaseFont: 'Sonderbar',
@@ -79,7 +79,7 @@ async function baueMitKodierung(unsicher) {
         }
       : { Encoding: 'WinAnsiEncoding' }),
   });
-  const sicherFont = ctx.obj({
+  const safeFont = ctx.obj({
     Type: 'Font',
     Subtype: 'Type1',
     BaseFont: 'Helvetica',
@@ -88,7 +88,7 @@ async function baueMitKodierung(unsicher) {
   seite.node.set(
     PL.PDFName.of('Resources'),
     ctx.obj({
-      Font: ctx.obj({ F9: ctx.register(betragFont), F1: ctx.register(sicherFont) }),
+      Font: ctx.obj({ F9: ctx.register(amountFont), F1: ctx.register(safeFont) }),
     }),
   );
   const inhalt =
@@ -111,7 +111,7 @@ test('1. der Betrag wird im Original ersetzt — drei Schreibweisen', async () =
     ["1'250", 300],
     ['49.90', 12.5],
   ]) {
-    const original = await baueGutschein(geschrieben, NR, '5225', null);
+    const original = await buildVoucher(geschrieben, NR, '5225', null);
     const vorher = valuesFromPdf(original);
     const r = await replaceAmount(original, neu);
     assert.ok(r.data, `„${geschrieben}" → ${neu} wurde abgelehnt: ${r.grund}`);
@@ -126,7 +126,7 @@ test('2. ein schon richtiger Betrag bleibt unangetastet', async () => {
   // Kein Treffer ist hier ERFOLG, nicht Fehlschlag: Das Original stimmt
   // bereits. Ohne diesen Fall wäre ein Ersetzen „richtig", das jedes PDF
   // umschreibt, auch wenn es nichts zu ändern gibt.
-  const original = await baueGutschein('400', NR, '5225', null);
+  const original = await buildVoucher('400', NR, '5225', null);
   const r = await replaceAmount(original, 400);
   assert.ok(r.data, `Abgelehnt, obwohl nichts zu tun war: ${r.grund}`);
   assert.equal(r.hits, 0, `${r.hits} Operatoren geändert, erwartet 0`);
@@ -134,7 +134,7 @@ test('2. ein schon richtiger Betrag bleibt unangetastet', async () => {
 });
 
 test('3. ein PDF ohne lesbaren Betrag wird abgelehnt, nicht geraten', async () => {
-  const original = await baueGutschein('400', NR, '5225', TTF); // Identity-H
+  const original = await buildVoucher('400', NR, '5225', TTF); // Identity-H
   assert.equal(
     valuesFromPdf(original).amount,
     null,
@@ -167,14 +167,14 @@ test('5. drei Gutscheine werden EIN PDF und kommen alle zurück', async () => {
   //   · mit Original, Schrift unlesbar   → bleibt unverändert, Marke trägt den Wert
   //   · ohne Original (von Hand erfasst) → Seite wird erzeugt
   const g = [
-    { id: 1, number: NR, pin: '5225', amount: 250, currency: 'CHF', pdf: await baueGutschein('400', NR, '5225', null) },
+    { id: 1, number: NR, pin: '5225', amount: 250, currency: 'CHF', pdf: await buildVoucher('400', NR, '5225', null) },
     {
       id: 2,
       number: '5045076374450022277',
       pin: '1234',
       amount: 150,
       currency: 'CHF',
-      pdf: await baueGutschein('150', '5045076374450022277', '1234', TTF),
+      pdf: await buildVoucher('150', '5045076374450022277', '1234', TTF),
     },
     { id: 3, number: '5045076374450033388', pin: null, amount: 42.5, currency: 'CHF', pdf: null },
   ];
@@ -209,8 +209,8 @@ test('5. drei Gutscheine werden EIN PDF und kommen alle zurück', async () => {
 test('6. eine Schrift mit eigener Kodierung wird NICHT angefasst', async () => {
   // Der wichtigste Fall. Beide PDFs sind zeichengleich bis auf die Kodierung
   // der Betragsschrift, und in BEIDEN liest der Leser 400.
-  const sicher = await baueMitKodierung(false);
-  const unsicher = await baueMitKodierung(true);
+  const sicher = await buildWithEncoding(false);
+  const unsicher = await buildWithEncoding(true);
   assert.equal(valuesFromPdf(sicher).amount, 400, 'Vorbedingung: WinAnsi ist lesbar');
   assert.equal(
     valuesFromPdf(unsicher).amount,
@@ -245,7 +245,7 @@ test('7. ein fremdes PDF ohne Marke wird seitenweise geraten', async () => {
     ['400', NR, '5225'],
     ['150', '5045076374450022277', '1234'],
   ]) {
-    const doc = await PL.PDFDocument.load(await baueGutschein(betrag, nr, pin, null));
+    const doc = await PL.PDFDocument.load(await buildVoucher(betrag, nr, pin, null));
     for (const s of await ziel.copyPages(doc, doc.getPageIndices())) ziel.addPage(s);
   }
   const stapel = Buffer.from(await ziel.save());
@@ -263,7 +263,7 @@ test('7. ein fremdes PDF ohne Marke wird seitenweise geraten', async () => {
 test('8. dieselbe Karte zweimal im Stapel ergibt EINEN Eintrag', async () => {
   const ziel = await PL.PDFDocument.create();
   for (let i = 0; i < 2; i++) {
-    const doc = await PL.PDFDocument.load(await baueGutschein('400', NR, '5225', null));
+    const doc = await PL.PDFDocument.load(await buildVoucher('400', NR, '5225', null));
     for (const s of await ziel.copyPages(doc, doc.getPageIndices())) ziel.addPage(s);
   }
   const zurueck = await readPageByPage(Buffer.from(await ziel.save()));
@@ -277,11 +277,11 @@ test('8. dieselbe Karte zweimal im Stapel ergibt EINEN Eintrag', async () => {
 
 test('9. die Nachprüfung fängt ein Ersetzen, das die Kartennummer trifft', async () => {
   // Woher dieser Fall kommt (Gegenprobe)
-  const nummerMit400 = '5045076374400011166';
-  const original = await baueGutschein('400', nummerMit400, '5225', null);
+  const numberMit400 = '5045076374400011166';
+  const original = await buildVoucher('400', numberMit400, '5225', null);
   const vorher = valuesFromPdf(original);
-  assert.equal(vorher.number, nummerMit400, 'Vorbedingung: die Nummer wird gelesen');
-  assert.ok(nummerMit400.includes('400'), 'Vorbedingung: der Betrag steht als Teilfolge in der Nummer');
+  assert.equal(vorher.number, numberMit400, 'Vorbedingung: die Nummer wird gelesen');
+  assert.ok(numberMit400.includes('400'), 'Vorbedingung: der Betrag steht als Teilfolge in der Nummer');
 
   const r = await replaceAmount(original, 250);
   if (r.data) {

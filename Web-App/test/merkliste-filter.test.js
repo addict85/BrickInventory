@@ -15,15 +15,15 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { ROOT } = require('./helpers/sources');
 const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
-const { oeffneOberflaeche, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/oberflaeche');
 
 /** Die Sortierwerte einer Quelle — alles, was wie ein WANTED_SORTS-Schlüssel aussieht. */
-function sortWerte(quelle) {
+function sortValues(quelle) {
   return [...new Set(quelle.match(/\b(?:added|name|num|year|price|qty)_(?:asc|desc)\b/g) || [])].sort();
 }
 
 test('1. die Webapp schickt alle vier Filter an den Server', async () => {
-  const o = await oeffneOberflaeche({
+  const o = await openUi({
     '/v1/sets/household-members': {
       success: true,
       members: [
@@ -68,7 +68,7 @@ test('3. die Webapp bietet genau die Sortierungen an, die der Server kennt', () 
     server.indexOf('const WANTED_SORTS'),
     server.indexOf('};', server.indexOf('const WANTED_SORTS')),
   );
-  const erlaubt = sortWerte(tabelle);
+  const erlaubt = sortValues(tabelle);
   assert.ok(erlaubt.length >= 5, `Nur ${erlaubt.length} Sortierwerte gefunden — Tabelle umbenannt?`);
   // qty_* gehört ausdrücklich NICHT dazu: Ein Merkposten hat keine Anzahl.
   assert.ok(
@@ -79,9 +79,9 @@ test('3. die Webapp bietet genau die Sortierungen an, die der Server kennt', () 
   // ── Webapp: die <option>-Werte des Sortierfelds ───────────────────────────
   const html = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'));
   const feld = html.slice(html.indexOf('id="mksort"'));
-  const webWerte = sortWerte(feld.slice(0, feld.indexOf('</select>')));
+  const webValues = sortValues(feld.slice(0, feld.indexOf('</select>')));
   assert.deepEqual(
-    webWerte,
+    webValues,
     erlaubt,
     'Die Auswahl der Webapp und WANTED_SORTS gehen auseinander — ein unbekannter ' +
       'Wert fällt am Server still auf die Vorgabe zurück.',
@@ -91,8 +91,8 @@ test('3. die Webapp bietet genau die Sortierungen an, die der Server kennt', () 
 test('4. die Vorgabe-Sortierung ist in Server und Webapp dieselbe', () => {
   // Sie entscheidet, ob die Webapp den Parameter überhaupt mitschickt.
   const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/wanted/repository/wanted.ts'), 'utf8'));
-  const ersteZeile = server.slice(server.indexOf('const WANTED_SORTS')).split('\n')[1];
-  assert.match(ersteZeile, /added_desc/, 'WANTED_SORTS beginnt nicht mit added_desc');
+  const firstRow = server.slice(server.indexOf('const WANTED_SORTS')).split('\n')[1];
+  assert.match(firstRow, /added_desc/, 'WANTED_SORTS beginnt nicht mit added_desc');
 
   const html = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'));
   const feld = html.slice(html.indexOf('id="mksort"'));

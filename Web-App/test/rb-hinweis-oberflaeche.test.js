@@ -6,12 +6,12 @@
  * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  in checkRbKey wieder der Sprung auf den Reiter „settings“ → rot:
  *      „Sammlung statt Einstellungen“
- *   B  rbHinweisZeigen() nicht aufgerufen → rot: „Band erscheint“
- *   C  localStorage-Prüfung in rbHinweisZeigen entfernt → rot: „weggeklickt
+ *   B  showRbHint() nicht aufgerufen → rot: „Band erscheint“
+ *   C  localStorage-Prüfung in showRbHint entfernt → rot: „weggeklickt
  *      bleibt es weg“ (03.11.2026: Frist auf 30 Tage gesetzt → rot: „nach
  *      30 Tagen kommt es wieder“)
  *   D  rbHinweisOeffnen ohne Klick auf den Abschnitt → rot: „Link führt zum Feld“
- *   E  einrichtungSpaeter ohne rbHinweisZeigen() → rot: „nach „Später“ im
+ *   E  einrichtungSpaeter ohne showRbHint() → rot: „nach „Später“ im
  *      Assistenten erscheint das Band“
  *   F  (12.11.2026, UX-Prüfung 19 M4: dauerhaft je Konto) Schlüssel wieder
  *      ohne Konto → rot: „ein anderes Konto sieht es wieder“; mit Frist von
@@ -19,9 +19,9 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/oberflaeche');
 
-const OHNE_SCHLUESSEL = {
+const WITHOUT_KEY = {
   '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
   '/v1/sets': {
     success: true,
@@ -32,7 +32,7 @@ const OHNE_SCHLUESSEL = {
 };
 
 test('ohne Rebrickable-Schlüssel: Sammlung mit Hinweisband', async t => {
-  const { w, d, aufrufe } = await oeffneOberflaeche(OHNE_SCHLUESSEL);
+  const { w, d, aufrufe } = await openUi(WITHOUT_KEY);
   try {
     const band = d.getElementById('rb-hinweis');
     await warte(() => !band.hidden, 2000);
@@ -63,7 +63,7 @@ test('ohne Rebrickable-Schlüssel: Sammlung mit Hinweisband', async t => {
 });
 
 test('weggeklickt bleibt es weg — auch in einer neuen Sitzung', async () => {
-  const erst = await oeffneOberflaeche(OHNE_SCHLUESSEL);
+  const erst = await openUi(WITHOUT_KEY);
   let gemerkt;
   try {
     const band = erst.d.getElementById('rb-hinweis');
@@ -75,7 +75,7 @@ test('weggeklickt bleibt es weg — auch in einer neuen Sitzung', async () => {
   } finally {
     erst.w.close();
   }
-  const zweit = await oeffneOberflaeche(OHNE_SCHLUESSEL, {
+  const zweit = await openUi(WITHOUT_KEY, {
     vorher: w => w.localStorage.setItem(gemerkt, '1'),
   });
   try {
@@ -87,7 +87,7 @@ test('weggeklickt bleibt es weg — auch in einer neuen Sitzung', async () => {
 });
 
 test('auch nach 31 Tagen bleibt es weg, ein anderes Konto sieht es wieder', async t => {
-  const erst = await oeffneOberflaeche(OHNE_SCHLUESSEL);
+  const erst = await openUi(WITHOUT_KEY);
   let schluessel;
   try {
     await warte(() => !erst.d.getElementById('rb-hinweis').hidden, 2000);
@@ -98,7 +98,7 @@ test('auch nach 31 Tagen bleibt es weg, ein anderes Konto sieht es wieder', asyn
   }
   await t.test('auch nach 31 Tagen bleibt es weg', async () => {
     const vor31 = Date.now() - 31 * 24 * 3600 * 1000;
-    const { w, d, ruhig } = await oeffneOberflaeche(OHNE_SCHLUESSEL, {
+    const { w, d, ruhig } = await openUi(WITHOUT_KEY, {
       vorher: f => {
         f.localStorage.setItem(schluessel, String(vor31));
         f.Date.now = () => vor31 + 62 * 24 * 3600 * 1000;
@@ -112,9 +112,9 @@ test('auch nach 31 Tagen bleibt es weg, ein anderes Konto sieht es wieder', asyn
     }
   });
   await t.test('ein anderes Konto sieht es wieder', async () => {
-    const { w, d } = await oeffneOberflaeche(
+    const { w, d } = await openUi(
       {
-        ...OHNE_SCHLUESSEL,
+        ...WITHOUT_KEY,
         '/v1/auth/me': {
           success: true,
           loggedIn: true,
@@ -133,8 +133,8 @@ test('auch nach 31 Tagen bleibt es weg, ein anderes Konto sieht es wieder', asyn
 });
 
 test('nach „Später“ im Assistenten erscheint das Band', async () => {
-  const { w, d, ruhig } = await oeffneOberflaeche({
-    ...OHNE_SCHLUESSEL,
+  const { w, d, ruhig } = await openUi({
+    ...WITHOUT_KEY,
     '/v1/settings/einrichtung': {
       success: true,
       offen: true,
@@ -155,7 +155,7 @@ test('nach „Später“ im Assistenten erscheint das Band', async () => {
 });
 
 test('mit Schlüssel kein Band', async () => {
-  const { w, d, ruhig } = await oeffneOberflaeche();
+  const { w, d, ruhig } = await openUi();
   try {
     assert.ok(await ruhig());
     assert.equal(d.getElementById('rb-hinweis').hidden, true);

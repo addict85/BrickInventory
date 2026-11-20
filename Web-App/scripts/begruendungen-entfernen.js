@@ -13,24 +13,24 @@ const path = require('node:path');
 const WEB = path.resolve(__dirname, '..');
 // Zusammengesetzt, damit weder dieses Skript noch sein Test sich selbst als Fund zählen.
 const ZIEL = ['docs', 'begruendungen'].join('/');
-const PFAD = `${ZIEL.replace('/', '\\/')}\\/[^\\s*]+`;
-const VERWEIS = new RegExp(`[ \\t]*Ausführlich:[ \\t]*${PFAD}`);
-const UMBRUCH = new RegExp(`[ \\t]*Ausführlich:[ \\t]*\\n[ \\t]*\\/\\/[ \\t]*${PFAD}[ \\t]*(?=\\n|$)`, 'g');
+const PATH = `${ZIEL.replace('/', '\\/')}\\/[^\\s*]+`;
+const REFERENCE = new RegExp(`[ \\t]*Ausführlich:[ \\t]*${PATH}`);
+const WRAP = new RegExp(`[ \\t]*Ausführlich:[ \\t]*\\n[ \\t]*\\/\\/[ \\t]*${PATH}[ \\t]*(?=\\n|$)`, 'g');
 const RAUS = new Set(['node_modules', 'dist', 'coverage', 'data', '.git', 'CHANGELOG', 'begruendungen', 'fixtures']);
 const ENDUNG = /\.(?:ts|js|cjs|mjs|html|css|sh)$/;
 
-const LEERE_ZEILE = /^\s*(?:\/\/|\*|\/\*\*?\s*\*\/|<!--\s*-->)\s*$/;
+const EMPTY_ROW = /^\s*(?:\/\/|\*|\/\*\*?\s*\*\/|<!--\s*-->)\s*$/;
 
 /**
  * Hängt einen Kommentarschluss (`*\/`, `-->`) an die letzte Inhaltszeile, wenn die Zeile dadurch nicht über
  * die 120 Zeichen von biome.json wächst; sonst bleibt er allein auf seiner Zeile.
  * @param {string[]} aus
  * @param {string} rest
- * @param {string} einzug
+ * @param {string} indent
  */
-function schliessen(aus, rest, einzug) {
+function schliessen(aus, rest, indent) {
   const vorher = aus[aus.length - 1];
-  if (vorher === undefined) return void aus.push(einzug + rest);
+  if (vorher === undefined) return void aus.push(indent + rest);
   const t = vorher.trim();
   if (rest === '*/' && (t === '/**' || t === '/*')) return void aus.pop();
   if (rest === '-->' && t === '<!--') return void aus.pop();
@@ -38,7 +38,7 @@ function schliessen(aus, rest, einzug) {
   const letzte = aus[aus.length - 1] ?? '';
   const tag = /^\s*\*\s*@/.test(letzte);
   if (!tag && `${letzte} ${rest}`.length <= 120) aus[aus.length - 1] = `${letzte} ${rest}`;
-  else aus.push(einzug + rest);
+  else aus.push(indent + rest);
 }
 
 /**
@@ -46,31 +46,31 @@ function schliessen(aus, rest, einzug) {
  * @param {string} text
  * @returns {string}
  */
-function entferneVerweise(text) {
-  if (!VERWEIS.test(text) && !new RegExp(UMBRUCH.source).test(text)) return text;
-  const zeilen = text.replace(UMBRUCH, '').split('\n');
+function removeReferences(text) {
+  if (!REFERENCE.test(text) && !new RegExp(WRAP.source).test(text)) return text;
+  const zeilen = text.replace(WRAP, '').split('\n');
   /** @type {string[]} */
   const aus = [];
   // Stand der Verweis allein zwischen zwei Leerzeilen, fällt eine davon mit weg.
-  let leerDavor = false;
+  let emptyBefore = false;
   for (const z of zeilen) {
-    if (!VERWEIS.test(z)) {
-      if (!(leerDavor && z.trim() === '')) aus.push(z);
-      leerDavor = false;
+    if (!REFERENCE.test(z)) {
+      if (!(emptyBefore && z.trim() === '')) aus.push(z);
+      emptyBefore = false;
       continue;
     }
-    leerDavor = false;
-    const neu = z.replace(new RegExp(VERWEIS.source, 'g'), '').replace(/[ \t]+$/, '');
-    const einzug = (z.match(/^\s*/) || [''])[0];
+    emptyBefore = false;
+    const neu = z.replace(new RegExp(REFERENCE.source, 'g'), '').replace(/[ \t]+$/, '');
+    const indent = (z.match(/^\s*/) || [''])[0];
     const t = neu.trim().replace(/^\*\s+(?=\*\/$)/, '');
     if (t === '*/' || t === '-->') {
-      schliessen(aus, t, einzug);
+      schliessen(aus, t, indent);
       continue;
     }
-    if (LEERE_ZEILE.test(neu)) {
+    if (EMPTY_ROW.test(neu)) {
       // Eine Leerzeile des Kommentars direkt davor stünde jetzt am Ende des Blocks.
       if (/^\s*\/\/$/.test(neu) && /^\s*\/\/$/.test(aus[aus.length - 1] ?? '')) aus.pop();
-      leerDavor = (aus[aus.length - 1] ?? '').trim() === '';
+      emptyBefore = (aus[aus.length - 1] ?? '').trim() === '';
       continue;
     }
     aus.push(neu);
@@ -94,14 +94,14 @@ function dateien(d, raus = []) {
 }
 
 /** @param {string} wurzel */
-function lauf(wurzel, nurPruefen = false) {
+function lauf(wurzel, checkOnly = false) {
   const geaendert = [];
   for (const f of dateien(wurzel)) {
     const alt = fs.readFileSync(f, 'utf8');
-    const neu = entferneVerweise(alt);
+    const neu = removeReferences(alt);
     if (neu === alt) continue;
     geaendert.push(path.relative(wurzel, f));
-    if (!nurPruefen) fs.writeFileSync(f, neu);
+    if (!checkOnly) fs.writeFileSync(f, neu);
   }
   return geaendert;
 }
@@ -117,4 +117,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { entferneVerweise, lauf };
+module.exports = { removeReferences, lauf };

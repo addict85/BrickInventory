@@ -1,10 +1,10 @@
-import type { DbSchnittstelle } from '../../../db/database';
-import type { BestandLesevertrag } from '../lesevertrag';
+import type { DbInterface } from '../../../db/database';
+import type { InventoryReadContract } from '../lesevertrag';
 
 const TABELLEN = { set: 'sets', part: 'parts', fig: 'minifigs' } as const;
-export type LagerTabelle = keyof typeof TABELLEN;
+export type StorageTable = keyof typeof TABELLEN;
 
-const BEDINGUNG: Record<LagerTabelle, (ab: number) => string> = {
+const BEDINGUNG: Record<StorageTable, (ab: number) => string> = {
   set: ab => `set_number = $${ab}`,
   part: ab => `part_number = $${ab} AND color_id = $${ab + 1}`,
   fig: ab => `fig_number = $${ab}`,
@@ -12,9 +12,9 @@ const BEDINGUNG: Record<LagerTabelle, (ab: number) => string> = {
 
 /** Über den Namen im Vorrat des EIGENEN Kontos: Im Haushalt kann derselbe Name
  * in zwei Konten mit je eigener ID liegen. */
-export async function ordneOrtZu(
-  dbh: DbSchnittstelle,
-  art: LagerTabelle,
+export async function sortLocationTo(
+  dbh: DbInterface,
+  art: StorageTable,
   besitzer: number[],
   ort: string | null,
   schluessel: string[],
@@ -30,9 +30,9 @@ export async function ordneOrtZu(
   return r.changes ?? 0;
 }
 
-export async function besitzerMitZeile(
-  tx: DbSchnittstelle,
-  art: LagerTabelle,
+export async function ownerWithRow(
+  tx: DbInterface,
+  art: StorageTable,
   besitzer: number[],
   schluessel: string[],
 ): Promise<number[]> {
@@ -44,7 +44,7 @@ export async function besitzerMitZeile(
   return zeilen.map(b => parseInt(String(b.user_id), 10));
 }
 
-export async function nimmOrtAuf(tx: DbSchnittstelle, ids: number[], ort: string): Promise<void> {
+export async function takeLocationOn(tx: DbInterface, ids: number[], ort: string): Promise<void> {
   await tx.run(
     `INSERT INTO storage_locations (user_id, name)
      SELECT id, $2 FROM users WHERE id = ANY($1)
@@ -53,7 +53,7 @@ export async function nimmOrtAuf(tx: DbSchnittstelle, ids: number[], ort: string
   );
 }
 
-export function orteDerKonten(db: DbSchnittstelle, userIds: number[]) {
+export function locationsTheAccounts(db: DbInterface, userIds: number[]) {
   return db.all<{ id: number; user_id: number; name: string }>(
     `SELECT id, user_id, name FROM storage_locations
       WHERE user_id = ANY($1) ORDER BY lower(name)`,
@@ -62,7 +62,7 @@ export function orteDerKonten(db: DbSchnittstelle, userIds: number[]) {
 }
 
 /** Ohne Gross/klein eindeutig je Konto; null, wenn es ihn schon gibt. */
-export function fuegeOrtEin(db: DbSchnittstelle, userId: number, name: string) {
+export function addLocationOne(db: DbInterface, userId: number, name: string) {
   return db.get<{ id: number; user_id: number; name: string }>(
     `INSERT INTO storage_locations (user_id, name) VALUES ($1, $2)
      ON CONFLICT (user_id, lower(name)) DO NOTHING
@@ -71,18 +71,18 @@ export function fuegeOrtEin(db: DbSchnittstelle, userId: number, name: string) {
   );
 }
 
-export function ortNachName(db: DbSchnittstelle, userId: number, name: string) {
+export function ortNachName(db: DbInterface, userId: number, name: string) {
   return db.get<{ id: number; user_id: number; name: string }>(
     'SELECT id, user_id, name FROM storage_locations WHERE user_id = $1 AND lower(name) = lower($2)',
     [userId, name],
   );
 }
 
-export function ortName(db: DbSchnittstelle, id: number, userId: number) {
+export function ortName(db: DbInterface, id: number, userId: number) {
   return db.get<{ name: string }>('SELECT name FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
 }
 
-export function andererOrtGleichenNamens(db: DbSchnittstelle, userId: number, name: string, id: number) {
+export function otherLocationSameNamed(db: DbInterface, userId: number, name: string, id: number) {
   return db.get<{ id: number }>(
     `SELECT id FROM storage_locations
       WHERE user_id = $1 AND lower(name) = lower($2) AND id <> $3`,
@@ -90,11 +90,11 @@ export function andererOrtGleichenNamens(db: DbSchnittstelle, userId: number, na
   );
 }
 
-export function schreibeOrtNamen(db: DbSchnittstelle, id: number, userId: number, name: string) {
+export function writeLocationNames(db: DbInterface, id: number, userId: number, name: string) {
   return db.run('UPDATE storage_locations SET name = $3 WHERE id = $1 AND user_id = $2', [id, userId, name]);
 }
 
-export function ortBelegung(db: DbSchnittstelle, l: BestandLesevertrag, userId: number, id: number) {
+export function locationOccupancy(db: DbInterface, l: InventoryReadContract, userId: number, id: number) {
   return db.get<{ n: string }>(
     `SELECT (SELECT COUNT(*) FROM ${l.setBestand('= $1')} s WHERE storage_id = $2)
           + (SELECT COUNT(*) FROM parts    WHERE user_id = $1 AND storage_id = $2)
@@ -103,11 +103,11 @@ export function ortBelegung(db: DbSchnittstelle, l: BestandLesevertrag, userId: 
   );
 }
 
-export function entferneOrt(db: DbSchnittstelle, id: number, userId: number) {
+export function removeLocation(db: DbInterface, id: number, userId: number) {
   return db.run('DELETE FROM storage_locations WHERE id = $1 AND user_id = $2', [id, userId]);
 }
 
-export function orteMitBestand(db: DbSchnittstelle, l: BestandLesevertrag, uids: number[]) {
+export function locationsWithInventory(db: DbInterface, l: InventoryReadContract, uids: number[]) {
   return db.all<{ ort: string; sets: number; teile: number; figuren: number }>(
     `SELECT ort,
             SUM(sets)::int    AS sets,
@@ -135,7 +135,7 @@ export function orteMitBestand(db: DbSchnittstelle, l: BestandLesevertrag, uids:
   );
 }
 
-export function ortDesKontos(db: DbSchnittstelle, id: number, userId: number) {
+export function locationOfAccount(db: DbInterface, id: number, userId: number) {
   return db.get<{ id: number; user_id: number; name: string }>(
     'SELECT id, user_id, name FROM storage_locations WHERE id = $1 AND user_id = $2',
     [id, userId],

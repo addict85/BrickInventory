@@ -2,7 +2,7 @@
 // The texts live in mailer.ts, sending in transport.ts.
 
 import type { MailContext } from './context';
-import { ausTabelle } from '../infra/validate';
+import { fromTable } from '../infra/validate';
 
 /** `unknown`: values from the database and from forms flow in here. */
 export function esc(s: unknown) {
@@ -97,9 +97,9 @@ export const MAIL_THEMES = {
 export async function mailTheme(k: MailContext) {
   try {
     const stored = await k.einstellungen.globalValue('app_theme');
-    // ausTabelle: a database value such as 'constructor' would otherwise find an
+    // fromTable: a database value such as 'constructor' would otherwise find an
     // inherited member, and the fallback would never apply.
-    return ausTabelle(MAIL_THEMES, stored, MAIL_THEMES.classic);
+    return fromTable(MAIL_THEMES, stored, MAIL_THEMES.classic);
   } catch (_) {
     return MAIL_THEMES.classic;
   }

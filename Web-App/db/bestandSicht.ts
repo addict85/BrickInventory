@@ -35,7 +35,7 @@ export const teilErfassungen = (konten?: Konten) =>
 export const figurErfassungen = (konten?: Konten) =>
   `(SELECT ${ERFASSUNG}, fig_number, unit_price FROM minifig_acquisitions${nur(konten)})`;
 
-/** Wanted list (src/wanted); the name mirrors src/finanzen's FinanzenLesevertrag.merkliste,
+/** Wanted list (src/wanted); the name mirrors src/finanzen's FinancesReadContract.merkliste,
  * which is out of this phase's scope — see the Phase 2a report. */
 export const merkliste = (konten?: Konten) => `(SELECT user_id, set_number, condition FROM wanted${nur(konten)})`;
 
@@ -55,7 +55,7 @@ export const setZaehlt = (nummer: string) =>
   `(${ZAEHLT.map(z => `EXISTS (SELECT 1 FROM ${z.tabelle} WHERE set_number = ${nummer})`).join(' OR ')})`;
 
 /** Abfrage: je Set, das für `konten` zählt, set_number und besitz (gehalten, nicht nur gemerkt). */
-export const gezaehlteSets = (konten?: Konten) =>
+export const countedSets = (konten?: Konten) =>
   `SELECT set_number, bool_or(besitz) AS besitz FROM (
      ${ZAEHLT.map(z => `SELECT set_number, ${z.besitz} AS besitz FROM ${z.tabelle}${nur(konten)}`).join('\n     UNION ALL ')}) t
    GROUP BY set_number`;

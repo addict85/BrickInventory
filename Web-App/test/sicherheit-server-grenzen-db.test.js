@@ -6,19 +6,19 @@
  * Gegenproben (04.11.2026 gemessen, je einzeln, danach gebaut):
  *   M1a `headersTimeout` aus den Fristen in server.ts gestrichen → rot: „ein
  *       stockender Kopf …“ (Node-Vorgabe 60 s, Prüfung nach 18 s)
- *   M1b `nurWenn(unangemeldet, rumpfFrist)` aus rumpfLesen gestrichen → rot:
+ *   M1b `onlyIf(anonymous, bodyDeadline)` aus readBody gestrichen → rot:
  *       „ein stockender Rumpf ohne Anmeldung …“
- *   M1c die Bedingung `unangemeldet` weggelassen (Frist für alle) → rot: „ein
+ *   M1c die Bedingung `anonymous` weggelassen (Frist für alle) → rot: „ein
  *       stockender Rumpf mit Anmeldung …“
  *   H1  in handleRouteError den Zweig für 4xx ohne Code gestrichen → rot:
  *       „GET /% …“ (Antwort „Failed to decode param '%'“); `fail()` in
  *       validate.ts wieder mit `new Error` → rot: „ein eigener Satz …“
- *   H2  in umzugsQuelle wieder 403 kein_schreibrecht für fremde
+ *   H2  in moveSource wieder 403 kein_schreibrecht für fremde
  *       Zeilen → rot: „eine fremde Erfassung antwortet wie eine fehlende“
- *   H4  `app.use(nurEigenerHost)` in server.ts gestrichen → rot: „ein fremder
+ *   H4  `app.use(onlyOwnHost)` in server.ts gestrichen → rot: „ein fremder
  *       Host-Kopf …“; die Ausnahme für IP-Adressen gestrichen → rot: „IP-Host“; Bearer wieder
  *       als Ausnahme → rot: „öffnet einen fremden Namen nicht“
- *   H5  GET /verify bestätigt wieder selbst (verifiziereEmailToken im Handler)
+ *   H5  GET /verify bestätigt wieder selbst (verifyEmailToken im Handler)
  *       → rot: „der Link allein bestätigt nichts“
  *
  * Token im Fragment statt in der Abfrage (13.11.2026 gemessen):
@@ -38,23 +38,23 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { warte } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
-const freierPort = () =>
+const { portOf } = require('./helpers/server');
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
 
 /** Eine Anfrage mit frei gewähltem Host-Kopf; fetch setzt ihn selbst. */
-function mitHost(port, host, pfad, kopf = {}) {
+function withHost(port, host, pfad, kopf = {}) {
   return new Promise((fertig, fehler) => {
     const r = http.request({ host: '127.0.0.1', port, path: pfad, setHost: false, headers: { host, ...kopf } }, res => {
       let text = '';
@@ -70,7 +70,7 @@ function mitHost(port, host, pfad, kopf = {}) {
 
 /** Rohe Verbindung: schickt `roh`, sammelt die Antwort und misst bis zum Schliessen. */
 function roh(port, text) {
-  const beginn = Date.now();
+  const start = Date.now();
   const s = net.connect(port, '127.0.0.1', () => s.write(text));
   const ergebnis = { antwort: '', zu: null, socket: s };
   s.on('data', d => {
@@ -78,7 +78,7 @@ function roh(port, text) {
   });
   s.on('error', () => {});
   s.on('close', () => {
-    ergebnis.zu = Date.now() - beginn;
+    ergebnis.zu = Date.now() - start;
   });
   return ergebnis;
 }
@@ -87,12 +87,12 @@ test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
   concurrency: 1,
   timeout: 240_000,
 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const PASS = 'Runde-Elf-Passwort-7x',
     NAME = `r11_${process.pid}`;
   const namen = [`${NAME}_a`, `${NAME}_b`, `${NAME}_v`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
-  const lege = async (name, bestaetigt, token = null) =>
+  const put = async (name, bestaetigt, token = null) =>
     (
       await db.get(
         `INSERT INTO users
@@ -101,15 +101,15 @@ test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
         [name, `${name}@example.org`, bcrypt.hashSync(PASS, 4), bestaetigt, token],
       )
     ).id;
-  const alice = await lege(namen[0], true),
-    bob = await lege(namen[1], true);
+  const alice = await put(namen[0], true),
+    bob = await put(namen[1], true);
   const MAILTOKEN = crypto.randomBytes(32).toString('hex');
-  const unbestaetigt = await lege(namen[2], false, crypto.createHash('sha256').update(MAILTOKEN).digest('hex'));
+  const unconfirmed = await put(namen[2], false, crypto.createHash('sha256').update(MAILTOKEN).digest('hex'));
   // Wie POST /register seit Runde 13: Adresse und Link nur ausstehend.
   await db.run(
     `UPDATE users SET new_email = email, new_email_token = verification_token, new_email_until = token_expires,
     email = NULL, verification_token = NULL, token_expires = NULL, registration_pending = true WHERE id = $1`,
-    [unbestaetigt],
+    [unconfirmed],
   );
   t.after(async () => {
     await db.run('DELETE FROM set_acquisitions WHERE user_id = $1', [alice]);
@@ -118,7 +118,7 @@ test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
     await db.pool.end().catch(() => {});
   });
 
-  const port = await freierPort();
+  const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -246,27 +246,27 @@ test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
   });
 
   await t.test('ein fremder Host-Kopf wird abgewiesen, der eigene nicht', async () => {
-    const fremd = await mitHost(port, 'boese.example', '/api/v1/auth/me');
+    const fremd = await withHost(port, 'boese.example', '/api/v1/auth/me');
     assert.equal(fremd.status, 421, 'ein fremder Host-Kopf wird abgewiesen');
     assert.equal(JSON.parse(fremd.text).code, 'fremder_host');
-    assert.equal((await mitHost(port, `NAS.example.lan:${port}`, '/api/v1/auth/me')).status, 200);
-    assert.equal((await mitHost(port, 'nas.example.lan', '/api/v1/auth/me')).status, 200);
-    assert.equal((await mitHost(port, 'boese.example', '/api/v1/health/live')).status, 200);
-    assert.notEqual((await mitHost(port, 'boese.example', '/ca.crt')).status, 421);
+    assert.equal((await withHost(port, `NAS.example.lan:${port}`, '/api/v1/auth/me')).status, 200);
+    assert.equal((await withHost(port, 'nas.example.lan', '/api/v1/auth/me')).status, 200);
+    assert.equal((await withHost(port, 'boese.example', '/api/v1/health/live')).status, 200);
+    assert.notEqual((await withHost(port, 'boese.example', '/ca.crt')).status, 421);
     assert.equal(
-      (await mitHost(port, 'boese.example', '/api/v1/auth/me', { authorization: 'Bearer falsch' })).status,
+      (await withHost(port, 'boese.example', '/api/v1/auth/me', { authorization: 'Bearer falsch' })).status,
       421,
       'ein Bearer-Kopf öffnet einen fremden Namen nicht',
     );
     for (const ip of [`192.168.1.20:${port}`, '10.0.0.5', '[fe80::1]:8080']) {
       assert.equal(
-        (await mitHost(port, ip, '/api/v1/auth/me', { authorization: 'Bearer falsch' })).status,
+        (await withHost(port, ip, '/api/v1/auth/me', { authorization: 'Bearer falsch' })).status,
         401,
         `ein IP-Host (${ip}) geht an die Anmeldung`,
       );
     }
     assert.equal(
-      (await mitHost(port, '1.2.3.4.boese.example', '/api/v1/auth/me')).status,
+      (await withHost(port, '1.2.3.4.boese.example', '/api/v1/auth/me')).status,
       421,
       'ein Name mit Ziffern ist keine Adresse',
     );
@@ -285,17 +285,17 @@ test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
     assert.equal(seite.headers.get('cache-control'), 'no-store');
     assert.match(await seite.text(), /id="panel-verify"/);
     const stand = async () =>
-      (await db.get('SELECT email_verified FROM users WHERE id = $1', [unbestaetigt])).email_verified;
+      (await db.get('SELECT email_verified FROM users WHERE id = $1', [unconfirmed])).email_verified;
     assert.equal(await stand(), false, 'der Link allein bestätigt nichts');
-    const bestaetige = token =>
+    const confirm = token =>
       fetch(`${basis}/api/v1/auth/email-bestaetigen`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token }),
       }).then(async r => [r.status, await r.json()]);
-    assert.deepEqual((await bestaetige('falsch'))[1].code, 'bestaetigungslink_ungueltig');
-    assert.deepEqual(await bestaetige(MAILTOKEN), [200, { success: true }]);
+    assert.deepEqual((await confirm('falsch'))[1].code, 'bestaetigungslink_ungueltig');
+    assert.deepEqual(await confirm(MAILTOKEN), [200, { success: true }]);
     assert.equal(await stand(), true);
-    assert.equal((await bestaetige(MAILTOKEN))[0], 400, 'ein zweiter Klick meldet keinen zweiten Erfolg');
+    assert.equal((await confirm(MAILTOKEN))[0], 400, 'ein zweiter Klick meldet keinen zweiten Erfolg');
   });
 });

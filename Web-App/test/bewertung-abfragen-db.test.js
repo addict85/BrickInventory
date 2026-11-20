@@ -8,11 +8,11 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = testDaten();
+const db = testData();
 const fc = _req('src/finanzen/financeCalc.js');
-const { haeltTeil } = require('./helpers/bestand');
+const { holdsPart } = require('./helpers/bestand');
 
 const UID = 990101;
 const N = 20; // genug, damit „je Stück" von „einmalig" trennbar ist
@@ -20,16 +20,16 @@ const NR = i => `bwt-teil-${i}`;
 
 // Alle Abfragen dieses Laufs mitschreiben.
 const gesehen = [];
-let zaehlen = false;
+let count = false;
 const altQuery = db.pool.query.bind(db.pool);
 db.pool.query = (text, ...rest) => {
-  if (zaehlen) {
+  if (count) {
     const sql = String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' ');
     gesehen.push(sql);
   }
   return altQuery(text, ...rest);
 };
-const wieOft = muster => gesehen.filter(q => muster.test(q)).length;
+const howOften = muster => gesehen.filter(q => muster.test(q)).length;
 
 async function aufraeumen() {
   await db.run('DELETE FROM parts WHERE user_id = $1', [UID]).catch(() => {});
@@ -50,8 +50,8 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
     await db.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'bwt_messnutzer', 'x')", [UID]);
     for (let i = 0; i < N; i++) {
       // Zustand und Preis stehen seit Migration 0035 in der Erfassung, die
-      // Stückzahl seit 0038 — haeltTeil() legt beides an.
-      await haeltTeil(db, UID, NR(i), { menge: 1, colorId: 4 });
+      // Stückzahl seit 0038 — holdsPart() legt beides an.
+      await holdsPart(db, UID, NR(i), { menge: 1, colorId: 4 });
       // Der Betriebsfall: Der Nachtrag-Job hat nachgesehen. Eine Zeile mit
       // LEERER bl_id heisst „keine abweichende Nummer" (Migration 0037) —
       // damit bleibt der Preis-Cache-Schlüssel die Rebrickable-Nummer.
@@ -78,9 +78,9 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
       .catch(() => {});
 
     gesehen.length = 0;
-    zaehlen = true;
-    const ergebnis = await fc.bewerteTeile(UID, [UID]);
-    zaehlen = false;
+    count = true;
+    const ergebnis = await fc.valueParts(UID, [UID]);
+    count = false;
 
     assert.equal(ergebnis.parts.length, N, 'alle Teile bewertet');
 
@@ -90,14 +90,14 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
     // `parts.bl_part_number` ist mit Migration 0037 weg, weil es die zweite
     // Quelle nicht mehr gibt (die Begründung steht in src/finanzen/rechnung/preise.ts).
     assert.equal(
-      wieOft(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
+      howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
       0,
-      'die Zuordnung wurde einzeln gefragt — das Vorladen (ladeBlNummernVor) greift nicht',
+      'die Zuordnung wurde einzeln gefragt — das Vorladen (loadBlNumbersBefore) greift nicht',
     );
 
     // ── 2. Statt dessen genau eine Sammelabfrage ───────────────────────────
     assert.equal(
-      wieOft(/FROM bl_mapping WHERE type=\$1 AND rb_id = ANY\(\$2\)/),
+      howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id = ANY\(\$2\)/),
       1,
       'die Sammelabfrage auf bl_mapping fehlt oder lief mehrfach',
     );
@@ -105,7 +105,7 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
     // ── 3. Die Farbtabelle höchstens einmal ────────────────────────────────
     // Höchstens, nicht genau: Ein vorheriger Test im selben Prozess kann sie
     // bereits geladen haben, und dann ist Null die richtige Zahl.
-    const farben = wieOft(/FROM rb_colors/);
+    const farben = howOften(/FROM rb_colors/);
     assert.ok(farben <= 1, `rb_colors wurde ${farben}x gefragt — erwartet höchstens 1x für alle Teile`);
 
     // ── 4. Die Gesamtzahl bleibt unter zwei Umläufen je Teil ───────────────
@@ -122,11 +122,11 @@ test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
     // vorgeladen wurde, muss beide Einzelwege auslösen — sonst prüfen die
     // Zusicherungen oben nichts.
     gesehen.length = 0;
-    zaehlen = true;
+    count = true;
     await fc.resolveBlPartNumber('bwt-teil-gibtesnicht');
-    zaehlen = false;
+    count = false;
     assert.equal(
-      wieOft(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
+      howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
       1,
       'Gegenprobe: die Einzelabfrage auf bl_mapping wurde nicht mitgezählt',
     );

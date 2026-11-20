@@ -14,7 +14,7 @@ type AbrufFehler = Error & {
 
 /** Einen gefangenen Wert als Abruf-Fehler lesen; immer ein Error, damit keine
  * Verzweigung darunter erneut prüfen muss, ob überhaupt ein Objekt vorliegt. */
-function alsAbrufFehler(e: unknown): AbrufFehler {
+function asFetchError(e: unknown): AbrufFehler {
   if (e instanceof Error) return e as AbrufFehler;
   // Kein Error: Wir behalten die Zusatzfelder, falls doch welche da sind, und
   // geben der Meldung einen Text, mit dem man etwas anfangen kann.
@@ -36,5 +36,5 @@ function alsAbrufFehler(e: unknown): AbrufFehler {
   return f;
 }
 
-export { alsAbrufFehler };
+export { asFetchError };
 export type { AbrufFehler };

@@ -629,17 +629,17 @@ export const FEHLER = {
   },
 } as const;
 
-export type FehlerCode = keyof typeof FEHLER;
+export type ErrorCode = keyof typeof FEHLER;
 
 // Aus Accept-Language; ohne Treffer Deutsch.
-export function antwortSprache(req: { headers?: Record<string, unknown> } | undefined): Sprache {
+export function responseLanguage(req: { headers?: Record<string, unknown> } | undefined): Sprache {
   const roh = String(req?.headers?.['accept-language'] || '').toLowerCase();
   return roh.startsWith('en') || roh.includes(',en') ? 'en' : 'de';
 }
 
 /** Was schiefging, fachlich gesagt. Welcher HTTP-Status dazu gehört, weiss nur
  * src/http/fehlerArt.ts: Dienste laufen auch im Job-Prozess und in Skripten. */
-export type FehlerArt =
+export type ErrorKind =
   | 'ungueltig'
   | 'nicht_angemeldet'
   | 'verboten'
@@ -664,28 +664,28 @@ export type FehlerArt =
 export class Fachfehler extends Error {
   /** `zusatz`: Felder, die die Antwort neben code und error trägt (z. B. `wartenSek`). */
   constructor(
-    readonly art: FehlerArt,
-    readonly code: FehlerCode,
+    readonly art: ErrorKind,
+    readonly code: ErrorCode,
     readonly vars?: Record<string, string | number>,
     readonly zusatz?: Record<string, unknown>,
   ) {
-    super(fehlerText(code, 'de', vars));
+    super(errorText(code, 'de', vars));
     this.name = 'Fachfehler';
   }
 }
 
 /** Zwei gleichzeitige Anlagen (23505) sind eine Nutzereingabe, kein
  * Serverfehler; alles andere geht unverändert weiter. */
-export function alsDoppelt(code: FehlerCode): (e: unknown) => never {
+export function asDuplicate(code: ErrorCode): (e: unknown) => never {
   return (e: unknown) => {
     if ((e as { code?: unknown } | null)?.code === '23505') throw new Fachfehler('konflikt', code);
     throw e;
   };
 }
 
-/** Wie alsDoppelt, aber mit einem Ergebnis statt einer Absage: Ein gleichzeitiger
+/** Wie asDuplicate, aber mit einem Ergebnis statt einer Absage: Ein gleichzeitiger
  * Gewinner ist dort ein Ausgang des Ablaufs, kein Fehler. */
-export function doppeltAls<T>(wert: T): (e: unknown) => T {
+export function duplicateAs<T>(wert: T): (e: unknown) => T {
   return (e: unknown) => {
     if ((e as { code?: unknown } | null)?.code === '23505') return wert;
     throw e;
@@ -693,21 +693,21 @@ export function doppeltAls<T>(wert: T): (e: unknown) => T {
 }
 
 /** Bricht den Dienst mit einem Grund ab, den die Route dem Anfragenden nennt. */
-export function fachfehler(art: FehlerArt, code: FehlerCode, vars?: Record<string, string | number>): never {
+export function fachfehler(art: ErrorKind, code: ErrorCode, vars?: Record<string, string | number>): never {
   throw new Fachfehler(art, code, vars);
 }
 
 /** Ein Lesepfad fand nichts: 404 mit dem Code, der sagt, was fehlt. */
-export function nichtGefunden(code: FehlerCode = 'nicht_gefunden', vars?: Record<string, string | number>): never {
+export function notFound(code: ErrorCode = 'nicht_gefunden', vars?: Record<string, string | number>): never {
   throw new Fachfehler('nicht_gefunden', code, vars);
 }
 
 /** Für Rückrufe wie multers fileFilter, die einen Fehler übergeben statt ihn zu werfen. */
-export function dateiFehler(art: FehlerArt, code: FehlerCode, vars?: Record<string, string | number>): Error {
+export function fileError(art: ErrorKind, code: ErrorCode, vars?: Record<string, string | number>): Error {
   return new Fachfehler(art, code, vars);
 }
 
-export function fehlerText(code: FehlerCode, sprache: Sprache = 'de', vars?: Record<string, string | number>): string {
+export function errorText(code: ErrorCode, sprache: Sprache = 'de', vars?: Record<string, string | number>): string {
   const eintrag = FEHLER[code];
   // Eine Fehlermeldung darf selbst nicht abstürzen: Ein fehlender Eintrag geht
   // als Code im Klartext durch und nennt dem Protokoll, was fehlt.

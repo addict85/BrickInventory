@@ -19,16 +19,16 @@ const ZIEL = path.join(ROOT, 'frontend-typen', 'vertrag.d.ts');
 const NAME = /^[A-Za-z_$][\w$]*$/;
 const schluessel = (/** @type {string} */ k) => (NAME.test(k) ? k : JSON.stringify(k));
 
-/** Ein JSON-Schema als TypeScript-Typ. @param {any} s @param {string} einzug @returns {string} */
-function typ(s, einzug) {
+/** Ein JSON-Schema als TypeScript-Typ. @param {any} s @param {string} indent @returns {string} */
+function typ(s, indent) {
   if (!s || typeof s !== 'object' || Object.keys(s).length === 0) return 'unknown';
   if (s.$ref) return s.$ref.split('/').pop();
   if (s.const !== undefined) return JSON.stringify(s.const);
   if (s.enum) return s.enum.map((/** @type {unknown} */ e) => JSON.stringify(e)).join(' | ');
   if (s.anyOf || s.oneOf)
-    return [...new Set((s.anyOf || s.oneOf).map((/** @type {any} */ t) => typ(t, einzug)))].join(' | ');
-  if (s.allOf) return s.allOf.map((/** @type {any} */ t) => typ(t, einzug)).join(' & ');
-  if (Array.isArray(s.type)) return s.type.map((/** @type {string} */ t) => typ({ ...s, type: t }, einzug)).join(' | ');
+    return [...new Set((s.anyOf || s.oneOf).map((/** @type {any} */ t) => typ(t, indent)))].join(' | ');
+  if (s.allOf) return s.allOf.map((/** @type {any} */ t) => typ(t, indent)).join(' & ');
+  if (Array.isArray(s.type)) return s.type.map((/** @type {string} */ t) => typ({ ...s, type: t }, indent)).join(' | ');
   switch (s.type) {
     case 'string':
       return 'string';
@@ -40,19 +40,19 @@ function typ(s, einzug) {
     case 'null':
       return 'null';
     case 'array': {
-      const t = typ(s.items, einzug);
+      const t = typ(s.items, indent);
       return /[|&]/.test(t) ? `Array<${t}>` : `${t}[]`;
     }
     case 'object':
-      return objekt(s, einzug);
+      return objekt(s, indent);
     default:
       return 'unknown';
   }
 }
 
-/** @param {any} s @param {string} einzug */
-function objekt(s, einzug) {
-  const innen = einzug + '  ';
+/** @param {any} s @param {string} indent */
+function objekt(s, indent) {
+  const innen = indent + '  ';
   const pflicht = new Set(s.required || []);
   const zeilen = Object.entries(s.properties || {}).map(
     ([k, v]) => `${innen}${schluessel(k)}${pflicht.has(k) ? '' : '?'}: ${typ(v, innen)};`,
@@ -60,13 +60,13 @@ function objekt(s, einzug) {
   // Der Server reicht weitere Felder durch (passthrough); gelesen werden sie
   // erst, wenn der Vertrag sie nennt.
   const ap = s.additionalProperties;
-  if (ap && !zeilen.length) return `Record<string, ${typ(ap, einzug)}>`;
+  if (ap && !zeilen.length) return `Record<string, ${typ(ap, indent)}>`;
   if (ap) zeilen.push(`${innen}[feld: string]: unknown;`);
-  return zeilen.length ? `{\n${zeilen.join('\n')}\n${einzug}}` : 'Record<string, never>';
+  return zeilen.length ? `{\n${zeilen.join('\n')}\n${indent}}` : 'Record<string, never>';
 }
 
 /** Der Inhalt von vertrag.d.ts. @param {any} dok @returns {string} */
-function erzeuge(dok) {
+function create(dok) {
   const aus = [
     '// Erzeugt von scripts/vertrag-frontend-typen.js aus docs/openapi.json — nicht von Hand ändern.',
     '// Neu schreiben: npm run vertrag:frontend',
@@ -90,18 +90,18 @@ function erzeuge(dok) {
     }
   }
   aus.push(...routen.map((z, i) => (i === routen.length - 1 ? z + ';' : z)), '');
-  const stroeme = [];
+  const streams = [];
   for (const [pfad, ops] of Object.entries(dok.paths || {})) {
     const schema = ops.get?.responses?.['200']?.content?.['text/event-stream']?.schema;
     if (!schema) continue;
     const muster = pfad.replace(/^\/api/, '').replace(/\{[^}]+\}/g, '${string}');
     const p = muster.includes('${') ? '`' + muster + '`' : `'${muster}'`;
-    stroeme.push(`  | { p: ${p}; e: ${typ(schema, '  ')} }`);
+    streams.push(`  | { p: ${p}; e: ${typ(schema, '  ')} }`);
   }
   aus.push(
     '/** Je Ereignisstrom (GET): Pfad und ein Ereignis, wie strom() in js/api.js es liefert. */',
     'export type Strom =',
-    ...stroeme.map((z, i) => (i === stroeme.length - 1 ? z + ';' : z)),
+    ...streams.map((z, i) => (i === streams.length - 1 ? z + ';' : z)),
     '',
   );
   return aus.join('\n');
@@ -120,8 +120,8 @@ function formatiert(text) {
 }
 
 if (require.main === module) {
-  fs.writeFileSync(ZIEL, formatiert(erzeuge(JSON.parse(fs.readFileSync(QUELLE, 'utf8')))));
+  fs.writeFileSync(ZIEL, formatiert(create(JSON.parse(fs.readFileSync(QUELLE, 'utf8')))));
   console.log(`geschrieben: ${path.relative(ROOT, ZIEL)}`);
 }
 
-module.exports = { QUELLE, ZIEL, erzeuge, formatiert };
+module.exports = { QUELLE, ZIEL, create, formatiert };

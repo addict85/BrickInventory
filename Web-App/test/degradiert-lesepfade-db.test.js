@@ -5,10 +5,10 @@
  *
  * Gegenproben (10.11.2026 gemessen):
  * - src/parts/queries.ts: Marktpreise wieder mit
- *   `.catch(meldeUndLiefere('teile:marktpreise', new Map()))` statt `ab.oder` → rot:
+ *   `.catch(reportAndDeliver('teile:marktpreise', new Map()))` statt `ab.oder` → rot:
  *   „ohne Preise sagt die Liste warum“ (kein `degradiert`).
  * - src/settings/settings.ts: getGlobalSetting wieder mit
- *   `.catch(meldeUndLiefere(…, null))` → rot: „eine Einstellung, die sich nicht
+ *   `.catch(reportAndDeliver(…, null))` → rot: „eine Einstellung, die sich nicht
  *   lesen lässt, ist keine Vorgabe“ (lieferte '24').
  * - Gegenrichtung „mit Preisen bleibt `degradiert` weg“ war in beiden grün.
  *
@@ -18,18 +18,18 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
+const db = testData();
 const { getGlobalSetting } = _req('src/settings/settings.js');
 
 const NAME = `degradiert_${process.pid}`,
   TEIL = '3001dg';
 
 test('Lesefehler: `degradiert` oder Fehler, nie still leer', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(

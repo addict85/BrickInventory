@@ -3,7 +3,7 @@
  * jsdom.
  *
  * Gegenproben (am 28.10.2026 gemessen):
- *   A  in renderGallery `knopf: zuruecksetzenKnopf('gallery')` entfernt → rot:
+ *   A  in renderGallery `knopf: resetButton('gallery')` entfernt → rot:
  *      „Sammlung: Suche ohne Treffer“ und „Sammlung: Themenfilter ohne Treffer“
  *   B  `gefiltert` wieder nur `q` → rot: „Sammlung: Themenfilter ohne Treffer“
  *   C  in filterZuruecksetzen den Zweig 'merkliste' entfernt → rot:
@@ -11,12 +11,12 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte, takt } = require('./helpers/oberflaeche');
 
 const LEER = { '/v1/sets': { success: true, sets: [], total: 0, themes: ['Icons'] } };
 
 test('Sammlung: Suche ohne Treffer', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche(LEER);
+  const { w, d, aufrufe } = await openUi(LEER);
   try {
     d.getElementById('gs').value = 'xyz';
     d.getElementById('gs').dispatchEvent(new w.Event('input'));
@@ -37,7 +37,7 @@ test('Sammlung: Suche ohne Treffer', async () => {
 });
 
 test('Sammlung: Themenfilter ohne Treffer', async () => {
-  const { w, d } = await oeffneOberflaeche(LEER);
+  const { w, d } = await openUi(LEER);
   try {
     await warte(() => d.querySelector('#gtheme option[value="Icons"]'));
     d.getElementById('gtheme').value = 'Icons';
@@ -51,7 +51,7 @@ test('Sammlung: Themenfilter ohne Treffer', async () => {
 });
 
 test('Merkliste: Suche ohne Treffer', async () => {
-  const { w, d } = await oeffneOberflaeche({ '/v1/wanted': { success: true, merkposten: [] } });
+  const { w, d } = await openUi({ '/v1/wanted': { success: true, merkposten: [] } });
   try {
     await reiter(w, 'wanted');
     d.getElementById('mks').value = 'xyz';

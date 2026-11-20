@@ -7,20 +7,20 @@
  * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
  *   A  manQtySave() lädt die Liste nur beim Erhöhen (`if (qty > 2)` um den
  *      Abruf) → rot „die Erfassungsliste wird in BEIDE Richtungen nachgeladen“
- *   B  passeManuelleMengeAn: `if (soll > bisher)` → `if (soll > bisher && bisher > 0)`
+ *   B  passeManualQuantityAn: `if (soll > bisher)` → `if (soll > bisher && bisher > 0)`
  *      → rot „eine Mengenerhöhung legt auch ohne bestehende Erfassung …“
- *   C  erfassungenNeuesteZuerst sortiert ASC → rot „die LIFO-Reduktion …“
- *   D  ERFASSUNGS_TABELLEN: Schlüssel des Teils ohne color_id → rot „die
+ *   C  entriesNewestFirst sortiert ASC → rot „die LIFO-Reduktion …“
+ *   D  ENTRY_TABLES: Schlüssel des Teils ohne color_id → rot „die
  *      Tagesregel gilt für alle drei Arten …“ (dazu „Erhöhung …“ und „Bearbeiten-Pfad …“)
  *   E  in src/collection/acquisitions.ts `if (clash)` → `if (false)` → rot „der
  *      Bearbeiten-Pfad lehnt ab, was die Tagesregel verbietet“ (500 statt 409)
- *   F  loescheTeil() ohne loescheTeilErfassungen → rot „das Löschen eines
+ *   F  deletePart() ohne deletePartEntries → rot „das Löschen eines
  *      manuellen Eintrags räumt die Kaufpreise mit ab“
- *   G  bewerteManuell() mit `acquisitions: []` statt `rows` → rot „die
+ *   G  valueManual() mit `acquisitions: []` statt `rows` → rot „die
  *      Bewertung liefert je Kaufpreis eine Zeile …“
  *   H  pmRows() zeichnet immer nur eine Zeile (`return pmRow(it, label, null,
- *      lage, text)`) → rot „die Finanzen zeigen je Kaufpreis eine Zeile …“
- *   I  in src/collection/deletion.ts `.catch(() => {})` an loescheTeilErfassungen → rot in
+ *      situation, text)`) → rot „die Finanzen zeigen je Kaufpreis eine Zeile …“
+ *   I  in src/collection/deletion.ts `.catch(() => {})` an deletePartEntries → rot in
  *      ratschen.test.js „stille Faenge …“ (deckt den gestrichenen Fall „kein
  *      stiller Fehler mehr auf Bestandstabellen“)
  */
@@ -28,13 +28,13 @@ require('./helpers/systemrahmen');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const read = f => require('./helpers/sources').dienstQuelle(f);
+const read = f => require('./helpers/sources').serviceSource(f);
 const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 test('die Erfassungsliste wird in BEIDE Richtungen nachgeladen', async t => {
   // Beim Verringern entfernt der Server Erfassungen; nur beim Erhöhen neu zu
   // laden liess gelöschte Einträge im Dialog stehen.
-  const { oeffneOberflaeche, reiter } = require('./helpers/oberflaeche');
+  const { openUi, reiter } = require('./helpers/oberflaeche');
   const zeile = (id, menge, tag) => ({
     id,
     quantity: menge,
@@ -46,7 +46,7 @@ test('die Erfassungsliste wird in BEIDE Richtungen nachgeladen', async t => {
     user_id: 1,
   });
   let erfassungen = [zeile(1, 1, '2026-10-01'), zeile(2, 1, '2026-10-02')];
-  const { w, d, warte, aufrufe } = await oeffneOberflaeche({
+  const { w, d, warte, aufrufe } = await openUi({
     '/v1/parts/manual': {
       success: true,
       total: 1,
@@ -87,7 +87,7 @@ test('die Erfassungsliste wird in BEIDE Richtungen nachgeladen', async t => {
 test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurrency: 1 }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
-  const db = await require('./helpers/db').datenOderSkip(t, _req);
+  const db = await require('./helpers/db').dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `macq_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -104,10 +104,10 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
   });
   const { changeManualPart } = _req('src/parts/manualParts.js');
   const { updateManualMinifig } = _req('src/minifigs/manualMinifigs.js');
-  const { kaufAmTagErfassen } = _req('src/bestand/acquisitions.js');
+  const { addPurchaseAtTag } = _req('src/bestand/acquisitions.js');
   const { testServer } = require('./helpers/server');
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
-  const teilZeilen = (pn, cid = 5) =>
+  const partRows = (pn, cid = 5) =>
     db.all(
       `SELECT id, quantity FROM part_acquisitions WHERE user_id = $1 AND part_number = $2 AND color_id = $3
       ORDER BY created_at, id`,
@@ -122,7 +122,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     await changeManualPart(uid, 'ma-leer', 5, { quantity: 3 });
     await updateManualMinifig(uid, 'ma-fig-leer', { quantity: 2 });
     assert.deepEqual(
-      (await teilZeilen('ma-leer')).map(r => r.quantity),
+      (await partRows('ma-leer')).map(r => r.quantity),
       [3],
       'Die Menge stieg, die Erfassungsliste blieb leer',
     );
@@ -144,44 +144,44 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
                          ($1, 'ma-lifo', 5, 1, 2, 'N', NOW())`,
       [uid],
     );
-    const [alt] = await teilZeilen('ma-lifo');
+    const [alt] = await partRows('ma-lifo');
     await changeManualPart(uid, 'ma-lifo', 5, { quantity: 2 });
     assert.deepEqual(
-      await teilZeilen('ma-lifo'),
+      await partRows('ma-lifo'),
       [{ id: alt.id, quantity: 2 }],
       'Beim Verringern muss die heutige Erfassung zuerst weichen, nicht die älteste',
     );
     await changeManualPart(uid, 'ma-lifo', 5, { quantity: 1 });
-    assert.deepEqual(await teilZeilen('ma-lifo'), [{ id: alt.id, quantity: 1 }]);
+    assert.deepEqual(await partRows('ma-lifo'), [{ id: alt.id, quantity: 1 }]);
   });
 
   await t.test('die Tagesregel gilt für alle drei Arten mit ihrem eigenen Schlüssel', async () => {
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, 'ma-1') ON CONFLICT DO NOTHING`, [uid]);
-    const erfasse = (art, keys) => kaufAmTagErfassen(art, uid, keys, { quantity: 1, price: 4, condition: 'N' });
+    const record = (art, keys) => addPurchaseAtTag(art, uid, keys, { quantity: 1, price: 4, condition: 'N' });
     for (const [art, keys] of [
       ['set', ['ma-1']],
       ['part', ['ma-tag', 5]],
       ['fig', ['ma-fig-tag']],
     ]) {
-      assert.deepEqual(await erfasse(art, keys), { merged: false }, `${art}: die erste Erfassung des Tages`);
+      assert.deepEqual(await record(art, keys), { merged: false }, `${art}: die erste Erfassung des Tages`);
       assert.deepEqual(
-        await erfasse(art, keys),
+        await record(art, keys),
         { merged: true },
         `${art}: der zweite Kauf desselben Tages stockt nicht auf`,
       );
     }
     // Eine andere Farbe ist ein anderes Teil, kein zweiter Kauf.
     assert.deepEqual(
-      await erfasse('part', ['ma-tag', 7]),
+      await record('part', ['ma-tag', 7]),
       { merged: false },
       'Eine andere Farbe wurde mit der ersten zusammengelegt',
     );
     assert.deepEqual(
-      (await teilZeilen('ma-tag', 5)).map(r => r.quantity),
+      (await partRows('ma-tag', 5)).map(r => r.quantity),
       [2],
     );
     assert.deepEqual(
-      (await teilZeilen('ma-tag', 7)).map(r => r.quantity),
+      (await partRows('ma-tag', 7)).map(r => r.quantity),
       [1],
     );
   });
@@ -196,7 +196,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
                          ($1, 'ma-datum', 5, 1, 1.5, 'N', NOW() - INTERVAL '5 days')`,
       [uid],
     );
-    const [frueher, heute] = await teilZeilen('ma-datum');
+    const [frueher, heute] = await partRows('ma-datum');
     const tag = async id =>
       (
         await db.get(
@@ -232,11 +232,11 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     );
     const r = await fetch(`${base}/api/v1/parts/ma-weg/5`, { method: 'DELETE' });
     assert.equal(r.status, 200, await r.text());
-    assert.deepEqual(await teilZeilen('ma-weg'), [], 'Verwaiste Erfassungen zählen in den Finanzsummen weiter');
+    assert.deepEqual(await partRows('ma-weg'), [], 'Verwaiste Erfassungen zählen in den Finanzsummen weiter');
   });
 
   await t.test('die Bewertung liefert je Kaufpreis eine Zeile, Altbestand ohne', async () => {
-    const { bewerteTeile, bewerteFiguren } = _req('src/finanzen/financeCalc.js');
+    const { valueParts, valueMinifigs } = _req('src/finanzen/financeCalc.js');
     await db.run(
       `INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, 'ma-preis', 5, 'manual'),
                   ($1, 'ma-alt', 5, 'manual')`,
@@ -258,8 +258,8 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
         [uid, preis, tag],
       );
     }
-    const teile = (await bewerteTeile(uid, [uid])).parts;
-    const figuren = (await bewerteFiguren(uid, [uid])).figs;
+    const teile = (await valueParts(uid, [uid])).parts;
+    const figuren = (await valueMinifigs(uid, [uid])).figs;
     const preise = e => (e?.acquisitions ?? []).map(a => a.purchase_price).sort();
     assert.deepEqual(preise(teile.find(p => p.part_number === 'ma-preis')), [2, 4], 'Teil: eine Zeile je Kaufpreis');
     assert.deepEqual(
@@ -272,7 +272,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
 });
 
 test('die Finanzen zeigen je Kaufpreis eine Zeile, den Altbestand in einer', async t => {
-  const { oeffneOberflaeche, reiter } = require('./helpers/oberflaeche');
+  const { openUi, reiter } = require('./helpers/oberflaeche');
   const erfassung = (id, preis) => ({
     id,
     condition: 'N',
@@ -299,7 +299,7 @@ test('die Finanzen zeigen je Kaufpreis eine Zeile, den Altbestand in einer', asy
     total_value: '3.0000',
     display_value: '3.00',
   });
-  const { w, d, warte } = await oeffneOberflaeche({
+  const { w, d, warte } = await openUi({
     '/v1/finance/parts-valuation': {
       success: true,
       currency: 'EUR',
@@ -317,7 +317,7 @@ test('die Finanzen zeigen je Kaufpreis eine Zeile, den Altbestand in einer', asy
 });
 
 test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
-  // Verbot: Erfassungen entstehen nur über kaufAmTagErfassen — sonst
+  // Verbot: Erfassungen entstehen nur über addPurchaseAtTag — sonst
   // gälte die Tagesregel (erfassung-je-zustand-db.test.js) nicht für jeden Weg.
   for (const f of [
     'src/parts/manualParts.ts',
@@ -331,7 +331,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
     assert.doesNotMatch(
       src,
       /INSERT INTO (part|minifig|set)_acquisitions/,
-      `${f}: Erfassungen gehören über kaufAmTagErfassen geschrieben`,
+      `${f}: Erfassungen gehören über addPurchaseAtTag geschrieben`,
     );
   }
   for (const f of [
@@ -373,44 +373,44 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   // Der frühere Zweig erhöhte bei einer heutigen Erfassung NUR die Menge. Ein
   // heute dazugekauftes Exemplar zum aktuellen Marktpreis verschwand damit im
   // alten Stückpreis — die Zeile zeigte zwei Stück zum Preis des ersten.
-  const src = require('./helpers/sources').kompakt(require('./helpers/sources').setKernQuelle());
+  const src = require('./helpers/sources').kompakt(require('./helpers/sources').setCoreSource());
   const fn = src.slice(
-    src.indexOf('async function erfassungenAnMengeAngleichen'),
-    src.indexOf('async function schreibeInLetzteErfassung'),
+    src.indexOf('async function entriesAnQuantityAlign'),
+    src.indexOf('async function writeInLastEntry'),
   );
   assert.doesNotMatch(
     fn,
     /UPDATE set_acquisitions SET quantity = quantity \+ \$1/,
-    'Kein direktes Aufstocken mehr — das entscheidet kaufAmTagErfassen',
+    'Kein direktes Aufstocken mehr — das entscheidet addPurchaseAtTag',
   );
   assert.match(
     fn,
-    /await erfassungBuchen\(sk, \{ konto: userId, setNumber, menge: delta, kaufpreis: plan\.price, zustand: plan\.condition,/,
+    /await bookEntry\(sk, \{ konto: userId, setNumber, menge: delta, kaufpreis: plan\.price, zustand: plan\.condition,/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg',
   );
-  // Der Preis kommt aus preisFuerNeueErfassung() — ausgelagert, weil der
+  // Der Preis kommt aus priceForNewEntry() — ausgelagert, weil der
   // BrickLink-Abruf darin VOR dem Advisory-Lock laufen muss (ein Netzaufruf
   // in offener Transaktion hielte Sperre und Verbindung).
   assert.match(
     fn,
-    /pricePlan \?\? \(?await preisFuerNeueErfassung\(sk, userId, setNumber\)/,
+    /pricePlan \?\? \(?await priceForNewEntry\(sk, userId, setNumber\)/,
     'Ein vorab ermittelter Preis muss durchgereicht werden können',
   );
   // Ziel der Mengenänderung ist das Konto `ziel` (ohne Angabe das eigene, im Haushalt das gewählte).
   // Die geprüfte REGEL ist unverändert: Preis ermitteln (Netzaufruf), DANN sperren.
   assert.match(
     src,
-    /const plan = [\s\S]{0,120}preisFuerNeueErfassung\(sk, ziel, sn\)[\s\S]{0,400}sk\.transaktion\(/,
-    'In setAendern muss der Preis VOR der Sperre stehen',
+    /const plan = [\s\S]{0,120}priceForNewEntry\(sk, ziel, sn\)[\s\S]{0,400}sk\.transaktion\(/,
+    'In changeSet muss der Preis VOR der Sperre stehen',
   );
   assert.doesNotMatch(src, /function isToday\(/, 'Die eigene Tagesprüfung gehört entfernt');
 });
 
 test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // Woher dieser Test kommt
-  const src = require('./helpers/sources').setKernQuelle();
+  const src = require('./helpers/sources').setCoreSource();
   const fn = src
-    .slice(src.indexOf('async function setAendern'), src.indexOf("router.put('/:setNumber'"))
+    .slice(src.indexOf('async function changeSet'), src.indexOf("router.put('/:setNumber'"))
     // Kommentare weg: Der Erklärtext oben zitiert den alten Aufruf samt
     // .catch(() => {}) und würde die Prüfung sonst selbst auslösen.
     .replace(/\/\/[^\n]*/g, '');
@@ -422,7 +422,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   );
   assert.doesNotMatch(
     fn,
-    /erfassungenAnMengeAngleichen\([^)]*\)\.catch\(/,
+    /entriesAnQuantityAlign\([^)]*\)\.catch\(/,
     'Ein verschluckter Fehler hinterlässt eine Menge ohne passende Erfassungen',
   );
   assert.doesNotMatch(
@@ -436,7 +436,7 @@ test('eine Mengenänderung läuft unter der Bestandssperre', () => {
   // Die Abfrage steht seit Migration 0036 in db/bestandsmenge.ts; hier …
   assert.match(
     fn,
-    /repo\.setMenge\(s\.db, 'blickfeld', leseFeld/,
+    /repo\.setMenge\(s\.db, 'blickfeld', readField/,
     'Die Ausgangsmenge muss über das Blickfeld summiert werden',
   );
 });

@@ -29,23 +29,23 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { holdsSet } = require('./helpers/bestand');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `stile_${process.pid}`,
   PASS = 'stile-Passwort-1';
 
 const { chrome, warte } = require('./helpers/app-browser');
-const { portVon } = require('./helpers/server');
+const { portOf } = require('./helpers/server');
 
-const freierPort = () =>
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
@@ -109,7 +109,7 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
     t.skip('kein Chrome gefunden');
     return;
   }
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
     await db.get(
@@ -118,8 +118,8 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
       [NAME, `${NAME}@example.org`, await bcrypt.hash(PASS, 4)],
     )
   ).id;
-  await haeltSet(db, uid, '10300-1', 1, { preis: 199 });
-  const [wiederherstellung] = await require('./helpers/verwalter').verwalterMitFaktor(_req, uid);
+  await holdsSet(db, uid, '10300-1', 1, { preis: 199 });
+  const [wiederherstellung] = await require('./helpers/verwalter').adminWithFactor(_req, uid);
   // Mit heutigen Stempeln lädt der Start den Rebrickable-Katalog nicht herunter.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(
@@ -132,7 +132,7 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
     await db.pool.end().catch(() => {});
   });
 
-  const port = await freierPort();
+  const port = await freePort();
   const server = starte(t, process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     env: {
@@ -224,21 +224,21 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
   await bis(`document.getElementById('m-tit').textContent.length > 0`, 'Set-Ansicht offen');
   await warte(800);
   const s = await b.auswerten(`({
-    verstoesse: window.__verstoesse,
+    violations: window.__verstoesse,
     uebrig: [...document.querySelectorAll('[data-stil]')].map(e => e.getAttribute('data-stil')).slice(0, 5),
-    stilGesetzt: document.querySelectorAll('[style]').length,
+    styleSet: document.querySelectorAll('[style]').length,
   })`);
-  const warnungen = b.ereignisse
+  const warnings = b.ereignisse
     .filter(e => e.method === 'Runtime.consoleAPICalled')
     .map(e => e.params.args.map(a => a.value ?? '').join(' '))
     .filter(x => x.includes('[stile]'));
 
-  await t.test('keine CSP-Verstösse', () => assert.deepEqual(s.verstoesse, []));
+  await t.test('keine CSP-Verstösse', () => assert.deepEqual(s.violations, []));
   await t.test('jedes data-stil ist angewendet', () => {
     assert.deepEqual(s.uebrig, []);
-    assert.ok(s.stilGesetzt > 50, `nur ${s.stilGesetzt} Elemente mit Stil`);
+    assert.ok(s.styleSet > 50, `nur ${s.styleSet} Elemente mit Stil`);
   });
-  await t.test('nur freigegebene Werte', () => assert.deepEqual(warnungen, []));
+  await t.test('nur freigegebene Werte', () => assert.deepEqual(warnings, []));
 
   // Zuletzt, weil ein Formular nach draussen ohne form-action die Seite verliesse.
   await t.test('form-action, base-uri und object-src greifen', async () => {

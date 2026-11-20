@@ -5,13 +5,13 @@
  *
  * Gegenproben (16.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  in zeile() die Menge aus Text und Knopfnamen gestrichen → rot: „Konto und Menge“ (je einzeln)
- *   B  ladePapierkorb() ohne Fokus auf den Nachbarn → rot: „Fokus und Toast“ (Fokus auf der Überschrift)
+ *   B  loadTrash() ohne Fokus auf den Nachbarn → rot: „Fokus und Toast“ (Fokus auf der Überschrift)
  *   C  in papierkorbWiederherstellen() das Schliessen des Toasts gestrichen → rot: „Fokus und Toast“
  *      (Rückgängig steht noch)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, sicht, warte } = require('./helpers/oberflaeche');
+const { openUi, sicht, warte } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 const SET = {
@@ -58,7 +58,7 @@ function antworten() {
 }
 
 test('Konto und Menge unterscheiden gleiche Einträge', async () => {
-  const { w, d } = await oeffneOberflaeche(antworten());
+  const { w, d } = await openUi(antworten());
   try {
     await sicht(w, 'daten');
     await warte(() => d.querySelectorAll('#papierkorb-liste .pk-zeile').length === 2);
@@ -77,7 +77,7 @@ test('Konto und Menge unterscheiden gleiche Einträge', async () => {
 });
 
 test('Fokus und Toast nach dem Wiederherstellen im Papierkorb', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche(antworten());
+  const { w, d, aufrufe } = await openUi(antworten());
   try {
     await warte(() => d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn'));
     d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn').click();

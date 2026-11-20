@@ -13,7 +13,7 @@ import { Fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/balanceThrottle';
 import type { VoucherContext } from './context';
 
-export const ABSTAND_SEK = 30;
+export const GAP_SEC = 30;
 
 export const BOT_PROTECTION_PAUSE_MIN = 30;
 
@@ -36,9 +36,7 @@ export async function claimSlot(k: VoucherContext, uid: number): Promise<{ frei:
     await repo.ensureThrottleRow(t.db);
 
     // In SQL: ONE row, ONE lock, ONE clock.
-    const z = (await repo.throttleState(t.db, ABSTAND_SEK)) as
-      | { sperre_sek?: unknown; abstand_sek?: unknown }
-      | undefined;
+    const z = (await repo.throttleState(t.db, GAP_SEC)) as { sperre_sek?: unknown; abstand_sek?: unknown } | undefined;
 
     // NULL (= never) comes back as NaN and means "no remainder".
     const rest = (w: unknown) => {
@@ -89,7 +87,7 @@ export async function checkBalanceThrottled(
   try {
     // Set individually: exactOptionalPropertyTypes distinguishes "not set" from
     // "undefined", and only "not set" makes fetchBalance use the real fetch.
-    const through = { locale: opt.locale || DEFAULT_COUNTRY, abruf: opt.abruf ?? k.fremdquellen.quellen.legoAbruf };
+    const through = { locale: opt.locale || DEFAULT_COUNTRY, abruf: opt.abruf ?? k.fremdquellen.quellen.legoFetch };
     const store = k.faecher.fach<SessionStore>('voucherBalanceSessions', () => new Map());
     const guthaben = await fetchBalance(store, number, pin, through);
     return { art: 'guthaben', guthaben };

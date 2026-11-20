@@ -19,7 +19,7 @@ const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8').re
 /** Im Textknoten maskiert, was dort maskiert gehört. */
 const escHtml = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
-function sprachtexte() {
+function languageTexts() {
   const de = fs.readFileSync(path.join(ROOT, 'public', 'locales', 'de.js'), 'utf8');
   return new Map(
     [...de.matchAll(/^\s*'([^']+)':\s*'((?:[^'\\]|\\.)*)'/gm)].map(m => [m[1], m[2].replace(/\\'/g, "'")]),
@@ -27,7 +27,7 @@ function sprachtexte() {
 }
 
 test('jeder Rückfalltext zeigt, was der Sprachtext sagt', () => {
-  const texte = sprachtexte();
+  const texte = languageTexts();
   const stellen = [...HTML.matchAll(/(<[a-z]+\b[^>]*\bdata-i18n="([^"]+)"[^>]*>)([^<]+)</g)];
   // Selbstbeweis: GEMESSEN sind es über 200. Findet die Ableitung nichts,
   // wäre die Schleife still grün.
@@ -56,7 +56,7 @@ test('jeder Rückfalltext zeigt, was der Sprachtext sagt', () => {
 });
 
 test('kein Element mit data-i18n hat Kind-Elemente', () => {
-  const schlimm = [];
+  const bad = [];
   for (const m of HTML.matchAll(/<([a-z]+)\b([^>]*\bdata-i18n="([^"]+)"[^>]*)>/g)) {
     if (m[2].includes('data-i18n-attr')) continue;
     const tag = m[1];
@@ -79,13 +79,13 @@ test('kein Element mit data-i18n hat Kind-Elemente', () => {
       }
     }
     const inhalt = ende === -1 ? '' : rest.slice(0, ende);
-    if (/<[a-z]/i.test(inhalt)) schlimm.push(`${m[3]}: <${tag}> enthält ${inhalt.match(/<[a-z][^\s>]*/i)[0]}…`);
+    if (/<[a-z]/i.test(inhalt)) bad.push(`${m[3]}: <${tag}> enthält ${inhalt.match(/<[a-z][^\s>]*/i)[0]}…`);
   }
   assert.deepEqual(
-    schlimm,
+    bad,
     [],
     'Diese Elemente tragen `data-i18n` UND Kind-Elemente:\n  ' +
-      schlimm.join('\n  ') +
+      bad.join('\n  ') +
       '\n\n`textContent` ersetzt den GANZEN Inhalt — die Kinder sind beim ersten ' +
       'Übersetzen weg. Den Schlüssel an ein inneres Feld hängen.',
   );

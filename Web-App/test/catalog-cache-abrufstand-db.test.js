@@ -12,7 +12,7 @@
  *      dasselbe (6100-1 heisst „Anderer Name“)
  *   C  das INSERT INTO set_catalog … der Migration entfernt → rot: „das Bild
  *      steht danach in set_catalog“
- *   D  merkeSet() schreibt wieder nur catalog_cache (merkeSetKatalog-Aufruf
+ *   D  rememberSet() schreibt wieder nur catalog_cache (rememberSetCatalog-Aufruf
  *      entfernt) → rot: „ein Abruf landet in rb_sets“
  *   E  setStamm() liest wieder COALESCE(c.image_url, rs.set_img_url) → rot:
  *      „Set-Stamm: das Bild nur aus set_catalog“
@@ -24,10 +24,10 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const MIGRATION = fs.readFileSync(
   path.join(__dirname, '..', 'db/migrations/0108-catalog-cache-nur-abrufstand.sql'),
   'utf8',
@@ -35,7 +35,7 @@ const MIGRATION = fs.readFileSync(
 const SCHEMA = `probe0108_${process.pid}`;
 
 test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const c = await db.pool.connect();
   t.after(async () => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});
@@ -112,7 +112,7 @@ test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
 
   await t.test('ein Abruf landet in rb_sets, und der Zwischenspeicher liest ihn von dort', async () => {
     await db.run(`INSERT INTO rb_themes (id, name) VALUES (158, 'Star Wars') ON CONFLICT DO NOTHING`);
-    await cache.merkeSet(db, {
+    await cache.rememberSet(db, {
       set_number: '4242-1',
       name: 'Abgerufen',
       year: 2021,
@@ -125,7 +125,7 @@ test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
       await db.get(`SELECT name, year, theme_id, num_parts, source FROM rb_sets WHERE set_num = '4242-1'`),
       { name: 'Abgerufen', year: 2021, theme_id: 158, num_parts: 99, source: 'api' },
     );
-    const z = await cache.katalogSetZu(db, '4242-1');
+    const z = await cache.catalogSetTo(db, '4242-1');
     assert.equal(z.name, 'Abgerufen');
     assert.equal(z.theme, 'Star Wars');
     assert.equal(z.image_url, 'https://abruf/4242.jpg');

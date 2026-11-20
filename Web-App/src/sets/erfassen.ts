@@ -1,11 +1,11 @@
 /** Sets erfassen: Web, App, CSV, Wanted-XML und Merkliste unter denselben Regeln. Was das
  * Netz braucht (Katalog, Bild, Marktpreis), hält die Anfrage nicht auf, es läuft als Auftrag. */
-import { rebrickableSetBild } from '../bilder';
-import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
+import { rebrickableSetImage } from '../bilder';
+import { normalisiereSetNummer, possibleSetNumber } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import * as repo from './repository/sets';
-import { versuche, wertOder } from '../infra/ergebnis';
-import type { SetsKontext } from './kontext';
+import { versuche, valueOr } from '../infra/ergebnis';
+import type { SetsContext } from './kontext';
 
 /** Eine Erfassung: eine Zeile in set_acquisitions, der einzige Ort für Kaufpreis und Zustand. */
 export interface Erfassung {
@@ -17,24 +17,24 @@ export interface Erfassung {
   /** Nur mit Kaufpreis: Ein geschätzter Preis ohne Betrag wäre keine Aussage. */
   geschaetzt?: boolean;
   waehrung?: string | null;
-  erfasstAm?: string | null;
+  recordedAt?: string | null;
 }
 
 /** In einer Transaktion mit deren Kontext (`t`) rufen. */
-export async function erfassungBuchen(sk: SetsKontext, e: Erfassung) {
+export async function bookEntry(sk: SetsContext, e: Erfassung) {
   const pp = e.kaufpreis !== null && e.kaufpreis !== undefined && !Number.isNaN(e.kaufpreis) ? e.kaufpreis : null;
   const cond = e.zustand === 'N' || e.zustand === 'U' ? e.zustand : 'N';
-  await sk.bestand.bucheTageserfassung('set', e.konto, [e.setNumber], {
+  await sk.bestand.bookDailyEntry('set', e.konto, [e.setNumber], {
     quantity: e.menge,
     price: pp,
     condition: cond,
     geschaetzt: !!e.geschaetzt,
     currency: e.waehrung ?? null,
-    createdAt: e.erfasstAm ?? null,
+    createdAt: e.recordedAt ?? null,
   });
 }
 
-export interface VorhandenesSet {
+export interface ExistingSet {
   set_number: string;
   owner_user_id: number;
   /** Sonst gehört es einem anderen Konto im Haushalt. */
@@ -43,52 +43,52 @@ export interface VorhandenesSet {
 
 /** Im BLICKFELD, nicht nur im eigenen Konto: Webapp und App sollen dieselbe
  * Eingabe gleich behandeln. Ohne Fang: null hiesse sonst „nicht da“. */
-export async function findeSetImBlickfeld(
-  sk: SetsKontext,
+export async function findSetInScope(
+  sk: SetsContext,
   viewerId: number,
   setNumber: string,
-): Promise<VorhandenesSet | null> {
+): Promise<ExistingSet | null> {
   const sn = normalisiereSetNummer(setNumber);
-  const row = await repo.setImBlickfeld(sk.db, await sk.haushalt.blickfeldIds(viewerId), sn, viewerId);
+  const row = await repo.setInScope(sk.db, await sk.haushalt.scopeIds(viewerId), sn, viewerId);
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }
 
 /** Für „gibt es das schon?“: ohne Treffer die Nummer so, wie sie angelegt würde. */
-export async function setVorhanden(sk: SetsKontext, viewerId: number, setNumber: string) {
-  const treffer = await findeSetImBlickfeld(sk, viewerId, setNumber);
+export async function setPresent(sk: SetsContext, viewerId: number, setNumber: string) {
+  const treffer = await findSetInScope(sk, viewerId, setNumber);
   return { exists: !!treffer, ...(treffer ?? { set_number: normalisiereSetNummer(setNumber) }) };
 }
 
 /** ergaenzen (= neu): angelegt; zweit: ein vorhandenes Set aufgestockt; csv: aus dem CSV-Import. */
-export type NacharbeitArt = 'zweit' | 'neu' | 'csv' | 'ergaenzen';
+export type ReworkKind = 'zweit' | 'neu' | 'csv' | 'ergaenzen';
 
 /** Getippt wird eine Nummer, kein Satz: Die nachsichtige Normalisierung (für CSV) machte aus Text ein Set. */
-const GETIPPTE_NUMMER = /^[A-Za-z0-9]{1,20}(-\d{1,3})?$/;
+const TYPED_NUMBER = /^[A-Za-z0-9]{1,20}(-\d{1,3})?$/;
 
-export interface NeuesSet {
-  anfragender: number;
+export interface NewSet {
+  requester: number;
   /** Wunsch der Anfrage; schreibziel() prüft die Richtung im Haushalt. */
-  besitzerWunsch?: unknown;
+  ownerWish?: unknown;
   setNumber: string;
   menge?: number;
   kaufpreis?: number | null;
   zustand?: string | null;
   lagerort?: string | null;
-  erfasstAm?: string | null;
+  recordedAt?: string | null;
   waehrung?: string | null;
   /** Getippte Eingabe: nur eine Nummer, kein Satz. */
   streng?: boolean;
   /** Bis der Auftrag beginnt; der Strom ergänzt selbst und braucht ihn nur als Rückfall. */
-  ergaenzenNachSekunden?: number;
+  supplementAfterSeconds?: number;
   /** Ein Import bucht die Datei eines Kontos und stockt auf; getippt heisst „im Blickfeld“ exists. */
-  wennVorhanden?: 'melden' | 'aufstocken';
+  ifPresent?: 'melden' | 'aufstocken';
   /** Der CSV-Import fragt Brickset erst in der Nacharbeit ('csv'). */
-  nacharbeit?: NacharbeitArt;
+  nacharbeit?: ReworkKind;
 }
 
-export type SetErfasst =
-  | ({ action: 'exists' } & VorhandenesSet)
+export type SetRecorded =
+  | ({ action: 'exists' } & ExistingSet)
   | { action: 'updated'; set_number: string; besitzer: number }
   | {
       action: 'added';
@@ -101,15 +101,15 @@ export type SetErfasst =
 
 /** Der eine Weg zum Erfassen, ohne Netz und unter der Sperre je Setnummer: Sonst legten zwei
  * Anfragen (auch zweier Konten im Haushalt) das Set zweimal an. Den Katalog holt der Auftrag. */
-export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfasst> {
+export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecorded> {
   const roh = String(e.setNumber ?? '').trim();
   if (!roh) fachfehler('ungueltig', 'set_number_erforderlich');
-  if (e.streng && !GETIPPTE_NUMMER.test(roh)) fachfehler('ungueltig', 'setnummer_ungueltig');
+  if (e.streng && !TYPED_NUMBER.test(roh)) fachfehler('ungueltig', 'setnummer_ungueltig');
   const sn = normalisiereSetNummer(roh);
-  if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  const besitzer = await sk.haushalt.schreibziel(e.anfragender, e.besitzerWunsch);
+  if (!possibleSetNumber(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
+  const besitzer = await sk.haushalt.schreibziel(e.requester, e.ownerWish);
   const zustand = await sk.einstellungen.conditionForPrice(e.zustand ?? null, null, besitzer);
-  const ort = await sk.bestand.lagerortDienst.ortFuerNeuerfassung(besitzer, e.lagerort ?? null);
+  const ort = await sk.bestand.locationService.locationForNewEntry(besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;
   const erfassung = {
     konto: besitzer,
@@ -118,38 +118,38 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
     kaufpreis,
     zustand,
     waehrung: kaufpreis === null ? null : (e.waehrung ?? null),
-    erfasstAm: e.erfasstAm ?? null,
+    recordedAt: e.recordedAt ?? null,
   };
 
   return sk.transaktion(async t => {
-    await repo.sperreSetErfassen(t.db, sn, besitzer);
-    const nacharbeit = (art: NacharbeitArt) =>
+    await repo.addLockSet(t.db, sn, besitzer);
+    const nacharbeit = (art: ReworkKind) =>
       // In derselben Transaktion: Ein angelegtes Set ohne Auftrag bliebe für immer ohne Katalog.
-      t.auftraege.stelleEigenenAuftragEin(
+      t.auftraege.placeOwnJobOne(
         'nacharbeit',
         { set_number: sn, user_id: besitzer, art: e.nacharbeit ?? art },
         {
           userId: besitzer,
           schluessel: `nacharbeit:${besitzer}:${sn}`,
-          maxVersuche: 5,
-          nachSekunden: e.ergaenzenNachSekunden ?? 0,
+          maxAttempts: 5,
+          afterSeconds: e.supplementAfterSeconds ?? 0,
         },
       );
-    if (e.wennVorhanden === 'aufstocken' && (await repo.setZeileDesKontos(t.db, besitzer, sn))) {
-      await erfassungBuchen(t, erfassung);
+    if (e.ifPresent === 'aufstocken' && (await repo.setRowOfAccount(t.db, besitzer, sn))) {
+      await bookEntry(t, erfassung);
       // Nur ein genannter Ort: Die Vorgabe des Kontos verschöbe sonst ein einsortiertes Set.
-      if (ort && e.lagerort) await t.bestand.lagerortDienst.setzeLagerort('set', [besitzer], [sn], ort);
+      if (ort && e.lagerort) await t.bestand.locationService.setLocation('set', [besitzer], [sn], ort);
       await nacharbeit('zweit');
       return { action: 'updated' as const, set_number: sn, besitzer };
     }
-    if (e.wennVorhanden !== 'aufstocken') {
-      const vorhanden = await findeSetImBlickfeld(t, e.anfragender, sn);
+    if (e.ifPresent !== 'aufstocken') {
+      const vorhanden = await findSetInScope(t, e.requester, sn);
       if (vorhanden) return { action: 'exists' as const, ...vorhanden };
     }
-    const katalog = await t.katalog.merkeKatalogPlatzhalter(sn);
-    await t.bestand.legeSetAn(besitzer, sn);
-    await erfassungBuchen(t, erfassung);
-    if (ort) await t.bestand.lagerortDienst.setzeLagerort('set', [besitzer], [sn], ort);
+    const katalog = await t.katalog.rememberCatalogPlaceholder(sn);
+    await t.bestand.putSetAn(besitzer, sn);
+    await bookEntry(t, erfassung);
+    if (ort) await t.bestand.locationService.setLocation('set', [besitzer], [sn], ort);
     await nacharbeit('ergaenzen');
     return {
       action: 'added' as const,
@@ -164,9 +164,9 @@ export async function setErfassen(sk: SetsKontext, e: NeuesSet): Promise<SetErfa
 
 export type Fortschritt = (n: { step: string; set: string }) => void;
 
-/** Rebrickable, dann Brickset für Lücken, dann das Bild. `gestoert`: Rebrickable
+/** Rebrickable, dann Brickset für Lücken, dann das Bild. `disrupted`: Rebrickable
  * hat nicht geantwortet (anders als „kennt die Nummer nicht“). */
-async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, sendProgress: Fortschritt | null) {
+async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, sendProgress: Fortschritt | null) {
   let name: string | null = null,
     year: number | null = null,
     theme: string | null = null,
@@ -174,8 +174,8 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     minifigs: number | null = null,
     imageUrl: string | null = null,
     themeId: number | null = null;
-  const rbErgebnis = await versuche('set-service:setAngaben', sk.katalog.setInfo(sn));
-  const rb = wertOder(rbErgebnis, null);
+  const rbResult = await versuche('set-service:setAngaben', sk.katalog.setInfo(sn));
+  const rb = valueOr(rbResult, null);
   if (rb) {
     name = rb.name;
     year = rb.year;
@@ -184,8 +184,8 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
     imageUrl = rb.image_url;
     themeId = ('theme_id' in rb ? rb.theme_id : null) ?? null;
   }
-  if (mitBrickset) {
-    const bs = wertOder(
+  if (withBrickset) {
+    const bs = valueOr(
       await versuche('set-anlegen:brickset-info', sk.fremdquellen.quellen.brickset.setAngaben(sn)),
       null,
     );
@@ -197,36 +197,36 @@ async function katalogHolen(sk: SetsKontext, sn: string, mitBrickset: boolean, s
       minifigs ??= bs.minifigs;
     }
   }
-  imageUrl ??= rebrickableSetBild(sn);
+  imageUrl ??= rebrickableSetImage(sn);
   if (sendProgress) sendProgress({ step: 'image', set: sn });
   const frist = new Promise<never>((_, rej) => setTimeout(() => rej(new Error('Image timeout')), 15000).unref());
   const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.bilder.setBildLaden(imageUrl, sn), frist]));
-  const lokal = wertOder(bild, null);
-  if (lokal) void versuche('set-anlegen:vorschau', sk.bilder.vorschauErzeugen(lokal));
+  const lokal = valueOr(bild, null);
+  if (lokal) void versuche('set-anlegen:vorschau', sk.bilder.createPreview(lokal));
   // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
-  await sk.katalog.merkeSetKatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
-  return { name, gestoert: !rbErgebnis.ok, bild: !!lokal };
+  await sk.katalog.rememberSetCatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
+  return { name, disrupted: !rbResult.ok, bild: !!lokal };
 }
 
 /** Was setErfassen(sk) offen liess; idempotent, damit Strom und Auftrag sich nicht
  * stören. Wirft, solange Rebrickable gestört ist: Der Auftrag versucht es später. */
-export async function setErgaenzen(
-  sk: SetsKontext,
+export async function setSupplement(
+  sk: SetsContext,
   sn: string,
   konto: number,
   sendProgress: Fortschritt | null = null,
-  mitBrickset = true,
+  withBrickset = true,
 ): Promise<{ name: string | null }> {
-  const stand = await sk.katalog.katalogStand(sn);
+  const stand = await sk.katalog.catalogStatus(sn);
   let name = stand && !stand.platzhalter ? stand.name : null;
   if (!stand || stand.platzhalter || !stand.image_local) {
-    const k = await katalogHolen(sk, sn, mitBrickset, sendProgress);
-    if (k.gestoert && !k.name) throw new Error(`Katalog für ${sn} nicht erreichbar`);
+    const k = await fetchCatalog(sk, sn, withBrickset, sendProgress);
+    if (k.disrupted && !k.name) throw new Error(`Katalog für ${sn} nicht erreichbar`);
     name = k.name ?? name;
   }
-  for (const z of await repo.erfassungenOhnePreisDesSets(sk.db, konto, sn)) {
+  for (const z of await repo.entriesWithoutPriceOfSets(sk.db, konto, sn)) {
     const preis = await sk.finanzen.aktuellerMarktpreis(sn, konto, z.condition || null);
-    if (preis) await sk.bestand.setzeGeschaetztenPreis('set', z.id, preis);
+    if (preis) await sk.bestand.setEstimatedPrice('set', z.id, preis);
   }
   return { name };
 }

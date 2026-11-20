@@ -8,7 +8,7 @@
  * Gegenproben (am 02.11.2026 gemessen):
  *   A  fetchBalance wieder mit globalThis.fetch → rot: alle drei (der
  *      Testserver sieht keine Anfrage, fetch nimmt den Agenten nicht)
- *   B  in legoAbruf die Hostliste um example.org erweitert → rot: „eine
+ *   B  in legoFetch die Hostliste um example.org erweitert → rot: „eine
  *      Umleitung auf einen fremden Host …“ (example.org wird angefragt)
  *   C  in abruf.ts `req.end(o.rumpf)` ohne Rumpf → rot: „Kekse, Token und
  *      Rumpf …“ (die Abfrage kommt ohne Kartennummer an)
@@ -22,17 +22,17 @@ const https = require('node:https');
 const tls = require('node:tls');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { portVon } = require('./helpers/server');
+const { portOf } = require('./helpers/server');
 const G = _req('src/vouchers/balanceLookup.js');
 /** Der Sitzungsvorrat, den sonst das Fach der Gutschein-Dienste hält. */
 const vorrat = new Map();
 const { AbrufFehler } = _req('src/infra/abruf.js');
 // Der echte Abruf, wie ihn die Dienste über ihre Quellen reichen (src/fremdquellen/quellen.ts).
-const { legoAbruf } = require('./helpers/sources').testDienste().fremdquellen.quellen;
+const { legoFetch } = require('./helpers/sources').testServices().fremdquellen.quellen;
 
 const FIX = path.join(__dirname, 'fixtures');
 const cert = fs.readFileSync(path.join(FIX, 'abruf-test.crt'));
-const NUMMER = '6006491234567890123',
+const NUMBER = '6006491234567890123',
   PIN = '4711';
 const TOKEN = [
   Buffer.from('{"alg":"none"}').toString('base64url'),
@@ -107,7 +107,7 @@ class Umlenker extends https.Agent {
 const vorher = https.globalAgent;
 test.before(async () => {
   await new Promise(r => server.listen(0, '127.0.0.1', () => r(null)));
-  port = portVon(server);
+  port = portOf(server);
   https.globalAgent = new Umlenker();
 });
 test.after(() => {
@@ -122,7 +122,7 @@ test.beforeEach(() => {
 
 test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
   modus = 'gut';
-  const g = await G.fetchBalance(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf });
+  const g = await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: legoFetch });
   assert.deepEqual(g, { amount: 12.5, currency: 'CHF', formatted: 'CHF 12.50' });
   assert.deepEqual(
     gesehen.map(a => `${a.methode} ${a.pfad}`),
@@ -136,13 +136,13 @@ test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
   assert.match(abfrage.keks, /sitzung=s1/);
   assert.match(abfrage.keks, new RegExp(`gqauth=${TOKEN.replace(/\./g, '\\.')}`));
   assert.equal(abfrage.auth, TOKEN);
-  assert.deepEqual(JSON.parse(abfrage.rumpf).variables, { cardNumber: NUMMER, pin: PIN });
+  assert.deepEqual(JSON.parse(abfrage.rumpf).variables, { cardNumber: NUMBER, pin: PIN });
 });
 
 test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
   modus = 'umleitung';
   await assert.rejects(
-    G.fetchBalance(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf }),
+    G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: legoFetch }),
     (/** @type {any} */ e) => e instanceof AbrufFehler && e.grund === 'umleitung',
   );
   assert.ok(gesehen.length >= 1, 'der Testserver wurde nicht gefragt');
@@ -155,7 +155,7 @@ test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
 test('eine übergrosse Antwort wird abgebrochen', async () => {
   modus = 'gross';
   await assert.rejects(
-    G.fetchBalance(vorrat, NUMMER, PIN, { locale: 'de-CH', abruf: legoAbruf }),
+    G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: legoFetch }),
     (/** @type {any} */ e) => e instanceof AbrufFehler && e.grund === 'zu-gross',
   );
 });

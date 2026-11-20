@@ -12,11 +12,11 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/oberflaeche');
 
 test('ohne Server: Hinweis und Erneut versuchen', async () => {
   const stand = { weg: true };
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/startup-status': () => {
         if (stand.weg) throw new TypeError('Failed to fetch');
@@ -24,7 +24,7 @@ test('ohne Server: Hinweis und Erneut versuchen', async () => {
       },
       '/v1/auth/me': { loggedIn: false },
     },
-    { angemeldet: false, browserSprache: 'de-DE' },
+    { angemeldet: false, browserLanguage: 'de-DE' },
   );
   try {
     const hinweis = o.d.getElementById('start-offline');

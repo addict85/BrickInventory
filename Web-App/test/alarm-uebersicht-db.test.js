@@ -23,18 +23,18 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, loadTranslations, ohneKommentare, testDaten } = require('./helpers/sources');
-const { katalogSet } = require('./helpers/bestand');
+const { buildAndRequire, loadTranslations, ohneKommentare, testData } = require('./helpers/sources');
+const { catalogSet } = require('./helpers/bestand');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const { alleAlarme, setzeAlarm, loescheAlarm } = {
     ..._req('src/finanzen/preisalarm.js'),
-    ...require('./helpers/sources').testBereich('finanzen').preisalarm,
+    ...require('./helpers/sources').testArea('finanzen').preisalarm,
   };
 
   for (const n of ['alarm_ich', 'alarm_fremd', 'alarm_kind'])
@@ -50,7 +50,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
   // Ein Unterkonto im HAUSHALT. Genau daran ist die erste Fassung gescheitert:
   // Sie verband auf `s.user_id = a.user_id`, also streng das eigene Konto —
   // ein Set des Kindes galt damit als „gibt es nicht", obwohl die
-  // Detailansicht es sehr wohl öffnet (sie fragt über blickfeldIds()).
+  // Detailansicht es sehr wohl öffnet (sie fragt über scopeIds()).
   const kind = await db.get(
     "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id",
     ['alarm_kind'],
@@ -77,7 +77,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
                 ON CONFLICT (user_id, set_number) DO NOTHING`,
     [ich.id],
   );
-  await katalogSet(db, '70002-1', {
+  await catalogSet(db, '70002-1', {
     name: 'Lennox Feuerwehr',
     image_local: '/uploads/70002-1_thumb.jpg',
     image_url: 'https://cdn.example/70002-1.jpg',
@@ -101,7 +101,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
                 ON CONFLICT (user_id, set_number) DO NOTHING`,
     [kind.id],
   );
-  await katalogSet(db, '60000-1', { name: 'Feuerwehreinsatz', image_local: '/uploads/60000-1_thumb.jpg' });
+  await catalogSet(db, '60000-1', { name: 'Feuerwehreinsatz', image_local: '/uploads/60000-1_thumb.jpg' });
   await setzeAlarm(ich.id, '60000-1', 'CHF', { direction: 'unter', threshold: 40, condition: 'N' });
 
   // Dasselbe Set ZWEIMAL im Haushalt — bei mir und beim Kind. Seit die
@@ -294,16 +294,16 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     // „Das Bild in der Android-App ist sichtbar aber die Einträge in den
     // Preisalarme sind nicht klickbar."
     const a = await alleAlarme(ich.id);
-    const vomKind = a.find(x => x.set_number === '60000-1');
-    assert.ok(vomKind, 'Der Alarm auf das Set des Kindes fehlt ganz.');
+    const fromKind = a.find(x => x.set_number === '60000-1');
+    assert.ok(fromKind, 'Der Alarm auf das Set des Kindes fehlt ganz.');
     assert.equal(
-      vomKind.besitzt,
+      fromKind.besitzt,
       true,
       'Ein Set des Haushalts gilt als nicht vorhanden — die Zeile wäre nicht ' +
         'anklickbar, obwohl die Detailansicht es öffnet. Genau das war Marcos Befund.',
     );
     assert.equal(
-      vomKind.image_local,
+      fromKind.image_local,
       '/uploads/60000-1_thumb.jpg',
       'Auch das Bild kommt nicht aus dem Haushalt, sondern nur aus dem Katalog.',
     );

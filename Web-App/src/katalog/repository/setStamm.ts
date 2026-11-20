@@ -1,10 +1,10 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 
 /** Vorhandene Werte bleiben, wo der neue Abruf nichts liefert. Name, Jahr, Thema
  * und Teile gehen nach rb_sets, aber nur in eine Zeile der Erfassung ('api'):
  * Was das Rebrickable-CSV führt, überschreibt kein Einzelabruf. */
-export function merkeSetKatalog(
-  dbh: DbSchnittstelle,
+export function rememberSetCatalog(
+  dbh: DbInterface,
   setNumber: string,
   name: string | null,
   year: number | null,
@@ -41,16 +41,16 @@ const PLATZHALTER_SQL =
 
 /** Ohne Netz angelegt: Der Platzhalter macht das Set lesbar, bis der Auftrag den Katalog holt.
  * Kennt rb_sets das Set schon (CSV), bleibt dessen Zeile. */
-export async function merkeKatalogPlatzhalter(dbh: DbSchnittstelle, setNumber: string) {
+export async function rememberCatalogPlaceholder(dbh: DbInterface, setNumber: string) {
   await dbh.run(
     "INSERT INTO rb_sets (set_num, name, source) VALUES ($1, 'Set ' || $1, 'api') ON CONFLICT (set_num) DO NOTHING",
     [setNumber],
   );
   await dbh.run('INSERT INTO set_catalog (set_number) VALUES ($1) ON CONFLICT (set_number) DO NOTHING', [setNumber]);
-  return katalogStand(dbh, setNumber);
+  return catalogStatus(dbh, setNumber);
 }
 
-export function katalogStand(dbh: DbSchnittstelle, setNumber: string) {
+export function catalogStatus(dbh: DbInterface, setNumber: string) {
   return dbh.get<{ name: string | null; image_local: string | null; minifigs: number | null; platzhalter: boolean }>(
     `SELECT rs.name, c.image_local, c.minifigs, ${PLATZHALTER_SQL} AS platzhalter
        FROM rb_sets rs LEFT JOIN set_catalog c ON c.set_number = rs.set_num

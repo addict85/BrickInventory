@@ -1,14 +1,14 @@
-import { OHNE_RUMPF, ZUSTAND, KENNUNG, TEXT, abfrage, Q, SEITE, SEITEN_ANGABE, type Route } from './grund';
+import { WITHOUT_BODY, ZUSTAND, KENNUNG, TEXT, abfrage, Q, SEITE, PAGES_DETAIL, type Route } from './grund';
 import { z } from 'zod';
 import { eingabe } from '../infra/validate';
 import {
   CsvImportErgebnis,
-  DEGRADIERT,
+  DEGRADED,
   StueckGeaendert,
   ManuellesTeil,
   PartsResponse,
   VerwendendeSetsResponse,
-  InDenPapierkorb,
+  InDenTrash,
 } from './gemeinsam';
 
 export { ManuellesTeil, StueckGeaendert };
@@ -44,10 +44,10 @@ export const BrickColorsResponse = z.looseObject({
 
 export const ManualPartsResponse = z.looseObject({
   success: z.boolean(),
-  ...SEITEN_ANGABE,
+  ...PAGES_DETAIL,
   /** Die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions. */
   parts: z.array(ManuellesTeil),
-  degradiert: DEGRADIERT,
+  degradiert: DEGRADED,
 });
 
 export const PartsCategory = z.looseObject({
@@ -99,7 +99,7 @@ export const BlFarbTabelle = z.looseObject({
   success: z.literal(true),
   source: z.string(),
   map: z.record(z.string(), z.unknown()),
-  degradiert: DEGRADIERT,
+  degradiert: DEGRADED,
 });
 
 export const routen = {
@@ -167,7 +167,7 @@ export const routen = {
   'POST /api/v1/parts': {
     antwort: AddPartResponse,
     eingabe: z.strictObject({
-      part_number: eingabe.artikelnummer('part_number'),
+      part_number: eingabe.itemNumber('part_number'),
       color_id: eingabe.farbe(),
       color_name: eingabe.text(100),
       color_hex: eingabe.farbcode(),
@@ -175,7 +175,7 @@ export const routen = {
       condition: eingabe.zustand(),
       unit_price: eingabe.geld('Stückpreis'),
       part_name: eingabe.text(200),
-      image_url: eingabe.bildUrl(),
+      image_url: eingabe.imageUrl(),
       category_name: eingabe.text(100),
       owner_user_id: KENNUNG.nullable().optional(),
       storage: TEXT().nullable().optional(),
@@ -185,16 +185,16 @@ export const routen = {
   'PUT /api/v1/parts/:partNumber/:colorId': {
     abfrage: abfrage({ owner: Q.konto }),
     eingabe: z.strictObject({
-      quantity: eingabe.mengeOderNichts(0, 100_000).optional(),
-      quantity_delta: eingabe.mengenDelta(),
+      quantity: eingabe.quantityOrNothing(0, 100_000).optional(),
+      quantity_delta: eingabe.quantitiesDelta(),
       unit_price: eingabe.geld('Stückpreis'),
       condition: ZUSTAND.nullable().optional(),
     }),
     antwort: StueckGeaendert,
   },
   'DELETE /api/v1/parts/:partNumber/:colorId': {
-    eingabe: OHNE_RUMPF,
-    antwort: InDenPapierkorb,
+    eingabe: WITHOUT_BODY,
+    antwort: InDenTrash,
     abfrage: abfrage({ owner: Q.konto }),
   },
   'POST /api/v1/parts/import/csv': { formular: true, antwort: CsvImportErgebnis },

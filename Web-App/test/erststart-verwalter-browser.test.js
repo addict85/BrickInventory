@@ -8,9 +8,9 @@
  * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
  *   A  in aktionen.js den Enter-Hörer für Formulare mit `data-submit`
  *      entfernt → rot: „Enter im Passwortfeld bestätigt“
- *   B  in zeigePflichtwechsel das Übernehmen aus #lp entfernt → rot:
+ *   B  in showRequiredSwitch das Übernehmen aus #lp entfernt → rot:
  *      „das Startpasswort reist mit“
- *   C  in zfEinrichten wieder sofort mitPasswortBestaetigen → rot: „Einrichten
+ *   C  in zfEinrichten wieder sofort confirmWithPassword → rot: „Einrichten
  *      ohne dritte Passwortabfrage“
  *   D  das Setzen von alt am QR-Bild entfernt → rot: „QR-Bild mit Namen“
  *   E  zfBestaetigen meldet den Fehler wieder als Toast → rot: „falscher
@@ -23,25 +23,25 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { starteApp, warte } = require('./helpers/app-browser');
+const { startApp, warte } = require('./helpers/app-browser');
 
 const ROOT = path.join(__dirname, '..');
 const ENTER = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 };
 
 test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000 }, async t => {
-  const app = await starteApp(t, { name: `erst_v_${process.pid}` });
+  const app = await startApp(t, { name: `erst_v_${process.pid}` });
   if (app.grund) {
     t.skip(app.grund);
     return;
   }
   const { b, bis, db } = app;
-  const tippe = async text => b.tab('Input.insertText', { text });
+  const tap = async text => b.tab('Input.insertText', { text });
   const enter = async () => {
     await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', text: '\r', ...ENTER });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', ...ENTER });
   };
   const offen = id => `getComputedStyle(document.getElementById('${id}')).display !== 'none'`;
-  const fehlerToasts = `[...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent)`;
+  const errorToasts = `[...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent)`;
 
   await t.test('Enter im Passwortfeld bestätigt', async () => {
     await b.auswerten(`location.hash = '#/konto'; true`);
@@ -50,11 +50,11 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
       `document.getElementById('prof-first').value = 'Erika'; document.getElementById('btn-sav-prof').click(); true`,
     );
     await bis(`${offen('confirm-modal')} && document.activeElement?.id === 'cd-pw'`, 'Passwortdialog mit Fokus');
-    await tippe('app-Passwort-1');
+    await tap('app-Passwort-1');
     await enter();
     // Mit zweitem Faktor folgt der Code im selben Dialog; auch er geht mit Enter.
     await bis(`document.activeElement?.id === 'cd-code'`, 'Enter im Passwortfeld bestätigt', 50);
-    await tippe(app.weitereCodes[0]);
+    await tap(app.furtherCodes[0]);
     await enter();
     await bis(`!(${offen('confirm-modal')})`, 'Enter im Codefeld des Dialogs bestätigt', 50);
     for (
@@ -94,16 +94,16 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
       document.getElementById('btn-login').click(); true`);
     await bis(offen('panel-pflichtwechsel'), 'Pflichtwechsel', 300);
     const z =
-      await b.auswerten(`({ altVerborgen: getComputedStyle(document.getElementById('pflicht-alt-zeile')).display === 'none',
+      await b.auswerten(`({ altHidden: getComputedStyle(document.getElementById('pflicht-alt-zeile')).display === 'none',
       fokus: document.activeElement?.id, regel: document.getElementById('pflicht-regel').textContent,
-      beschrieben: document.getElementById('pflicht-neu').getAttribute('aria-describedby') })`);
-    assert.equal(z.altVerborgen, true, 'das Startpasswort reist mit (Feld „Aktuelles Passwort“ verborgen)');
+      described: document.getElementById('pflicht-neu').getAttribute('aria-describedby') })`);
+    assert.equal(z.altHidden, true, 'das Startpasswort reist mit (Feld „Aktuelles Passwort“ verborgen)');
     assert.equal(z.fokus, 'pflicht-neu', 'Fokus im ersten Feld');
     assert.match(z.regel, /12 Zeichen/, 'Regel als Hilfetext');
-    assert.equal(z.beschrieben, 'pflicht-regel');
-    await tippe(NEU);
+    assert.equal(z.described, 'pflicht-regel');
+    await tap(NEU);
     await b.auswerten(`document.getElementById('pflicht-wdh').focus(); true`);
-    await tippe(NEU);
+    await tap(NEU);
     await enter();
     // Nach dem Neuladen wartet die Seite, falls der Server noch seine Startaufträge einreiht.
     await bis(`!!document.getElementById('zf-start')`, 'Einrichten nach dem Wechsel', 1200);
@@ -126,11 +126,11 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
 
   await t.test('falscher Code am Feld', async () => {
     await b.auswerten(`document.getElementById('zf-code').focus(); true`);
-    await tippe('000000');
+    await tap('000000');
     await enter();
     await bis(`(document.getElementById('zf-fehler')?.textContent || '') !== ''`, 'Enter im Codefeld bestätigt', 50);
     const z = await b.auswerten(
-      `({ ungueltig: document.getElementById('zf-code').getAttribute('aria-invalid'), toasts: ${fehlerToasts} })`,
+      `({ ungueltig: document.getElementById('zf-code').getAttribute('aria-invalid'), toasts: ${errorToasts} })`,
     );
     assert.equal(z.ungueltig, 'true');
     assert.deepEqual(z.toasts, [], 'falscher Code am Feld, nicht als Toast');
@@ -142,10 +142,10 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
     await b.auswerten(
       `document.getElementById('zf-code').value = ''; document.getElementById('zf-code').focus(); true`,
     );
-    await tippe(zf.hotp(zf.fromBase32(geheimnis), zf.timeStep()));
+    await tap(zf.hotp(zf.fromBase32(geheimnis), zf.timeStep()));
     await enter();
     await bis(`!!document.getElementById('zf-codes')`, 'Wiederherstellungscodes');
-    assert.deepEqual(await b.auswerten(fehlerToasts), [], 'kein liegen gebliebener Fehler-Toast');
+    assert.deepEqual(await b.auswerten(errorToasts), [], 'kein liegen gebliebener Fehler-Toast');
     // Über den Codes steht nicht mehr die Aufforderung zum Einrichten.
     assert.match(
       await b.auswerten(`document.getElementById('zfpflicht-hinweis').textContent`),

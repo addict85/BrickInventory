@@ -19,15 +19,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
-const db = testDaten();
+const { holdsSet } = require('./helpers/bestand');
+const db = testData();
 
 test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const USER = `spiegel-${process.pid}`;
   const SN = `31142-${process.pid}`;
@@ -41,7 +41,7 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App', { concur
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    await haeltSet(db, uid, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, uid, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,108.00,'U',1)`,
@@ -51,7 +51,7 @@ test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App', { concur
   };
   // Was die Kachel zeigt: das Aggregat aus den Erfassungen, keine gespiegelte Spalte.
   const kachel = async () =>
-    (await _req('src/sets/lesen.js').zustandsAggregat(require('./helpers/sources').testKontext('sets'), [uid], SN))
+    (await _req('src/sets/lesen.js').zustandsAggregat(require('./helpers/sources').testContext('sets'), [uid], SN))
       .avg_purchase_price;
 
   try {

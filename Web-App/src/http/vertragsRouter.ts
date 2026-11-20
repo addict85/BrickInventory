@@ -3,61 +3,61 @@ import express from 'express';
 import type { z } from 'zod';
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../infra/konfig';
-import { routeZu, type Schluessel, type AntwortRumpf, type Eingabe, type Abfrage } from '../vertrag';
+import { routeZu, type Schluessel, type ResponseBody, type Eingabe, type Abfrage } from '../vertrag';
 import { unbekannteFelder } from '../vertrag/unbekannteFelder';
-import { FLACHE_EINGABE, Fehler, PFAD, type PfadVon, type Route } from '../vertrag/grund';
-import { GROESSTE_ID, idWert } from '../infra/validate';
-import { handleRouteError, sendeFehler } from './httpAntwort';
+import { FLAT_INPUT, Fehler, PATH, type PathOf, type Route } from '../vertrag/grund';
+import { LARGEST_ID, idWert } from '../infra/validate';
+import { handleRouteError, sendError } from './httpAntwort';
 
 /** Der Typ von `res` in einer Route: tsc meldet, wo die Antwort vom Vertrag abweicht. */
-export type Antwort<K extends Schluessel> = [AntwortRumpf<K>] extends [never]
+export type Antwort<K extends Schluessel> = [ResponseBody<K>] extends [never]
   ? Response
-  : Response<AntwortRumpf<K> | z.input<typeof Fehler>>;
+  : Response<ResponseBody<K> | z.input<typeof Fehler>>;
 /** Der Typ von `req` in einer Route: `eingabe`, `abfrage` und `pfad` so, wie der Vertrag sie geprüft hat. */
 export type Anfrage<K extends Schluessel, R extends Request = AuthedRequest> = R & {
   eingabe: Eingabe<K>;
   abfrage: Abfrage<K>;
-  pfad: PfadVon<K>;
+  pfad: PathOf<K>;
 };
 /** Dasselbe ohne requireToken. */
-export type OffeneAnfrage<K extends Schluessel> = Anfrage<K, Request>;
+export type OpenRequest<K extends Schluessel> = Anfrage<K, Request>;
 
 /** Ein Abfragewert ist ein Text: Wiederholt (?a=1&a=2) wird er zur Liste, und
  * `.trim()` oder eine Regex darauf verwechselte den Typ. */
-const ABFRAGE_HOECHSTENS = 4000;
+const QUERY_AT_MOST = 4000;
 
 /** Unmittelbar vor der Route: Sie bekommt Abfrage und Rumpf so, wie das Schema sie umwandelt
  * (req.abfrage, req.eingabe), nie roh. */
-const KENNUNGEN = new Set(['id', 'acqId', 'instrId']);
+const IDS = new Set(['id', 'acqId', 'instrId']);
 
-function eingabePruefen(route: Route, req: Request, res: Response, next: NextFunction): void {
+function validateInput(route: Route, req: Request, res: Response, next: NextFunction): void {
   for (const [name, wert] of Object.entries(req.query ?? {}))
-    if (typeof wert !== 'string' || wert.length > ABFRAGE_HOECHSTENS) {
-      sendeFehler(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: name.slice(0, 40) });
+    if (typeof wert !== 'string' || wert.length > QUERY_AT_MOST) {
+      sendError(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: name.slice(0, 40) });
       return;
     }
   const geprueft = req as unknown as { eingabe: unknown; abfrage: unknown; pfad: Record<string, unknown> };
   geprueft.pfad = Object.create(null) as Record<string, unknown>;
-  // Geschrieben wird nur unter Namen aus PFAD, nie unter einem aus der Anfrage.
-  for (const [name, schema] of Object.entries(PFAD as Record<string, z.ZodType>)) {
+  // Geschrieben wird nur unter Namen aus PATH, nie unter einem aus der Anfrage.
+  for (const [name, schema] of Object.entries(PATH as Record<string, z.ZodType>)) {
     if (!Object.hasOwn(req.params ?? {}, name)) continue;
     const r = schema.safeParse(req.params[name]);
     if (!r.success) {
-      if (KENNUNGEN.has(name)) sendeFehler(req, res, 'ungueltig', 'id_ungueltig');
-      else sendeFehler(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: name });
+      if (IDS.has(name)) sendError(req, res, 'ungueltig', 'id_ungueltig');
+      else sendError(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: name });
       return;
     }
     geprueft.pfad[name] = r.data;
   }
-  const fremd = Object.keys(req.params ?? {}).find(name => !Object.hasOwn(PFAD, name));
+  const fremd = Object.keys(req.params ?? {}).find(name => !Object.hasOwn(PATH, name));
   if (fremd) {
-    sendeFehler(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: fremd.slice(0, 40) });
+    sendError(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: fremd.slice(0, 40) });
     return;
   }
   if (route.abfrage) {
     const q = route.abfrage.safeParse(req.query ?? {});
     if (!q.success) {
-      meldeAbweichung(req, res, q.error);
+      reportDeviation(req, res, q.error);
       return;
     }
     geprueft.abfrage = q.data;
@@ -67,9 +67,9 @@ function eingabePruefen(route: Route, req: Request, res: Response, next: NextFun
     next();
     return;
   }
-  const r = (route.eingabe ?? FLACHE_EINGABE).safeParse(req.body ?? {});
+  const r = (route.eingabe ?? FLAT_INPUT).safeParse(req.body ?? {});
   if (!r.success) {
-    meldeAbweichung(req, res, r.error);
+    reportDeviation(req, res, r.error);
     return;
   }
   geprueft.eingabe = r.data;
@@ -77,7 +77,7 @@ function eingabePruefen(route: Route, req: Request, res: Response, next: NextFun
 }
 
 /** Die Prüfer aus validate.ts melden ihren eigenen Fehler, ein unbekanntes Feld seinen Code. */
-function meldeAbweichung(req: Request, res: Response, fehler: z.ZodError): void {
+function reportDeviation(req: Request, res: Response, fehler: z.ZodError): void {
   const erste = fehler.issues[0];
   const eigener = (erste as { params?: { fehler?: unknown } } | undefined)?.params?.fehler;
   if (eigener) {
@@ -85,25 +85,25 @@ function meldeAbweichung(req: Request, res: Response, fehler: z.ZodError): void 
     return;
   }
   if (erste?.code === 'unrecognized_keys') {
-    sendeFehler(req, res, 'ungueltig', 'feld_unbekannt', {
+    sendError(req, res, 'ungueltig', 'feld_unbekannt', {
       feld: [...(erste.path ?? []), erste.keys[0] ?? ''].join('.').slice(0, 40),
     });
     return;
   }
-  sendeFehler(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: (erste?.path ?? []).join('.').slice(0, 40) || '$' });
+  sendError(req, res, 'ungueltig', 'eingabe_ungueltig', { feld: (erste?.path ?? []).join('.').slice(0, 40) || '$' });
 }
 
 /** Nur in Tests (VERTRAG_PRUEFEN=1): Eine 2xx-Antwort ausserhalb ihres Schemas wird zur 500. Im
  * Betrieb kostete das je Antwort einen Durchlauf über ganze Listen; dort hält tsc den Vertrag. */
-function antwortGegenVertrag(req: Request, res: Response, next: NextFunction): void {
-  if (res.locals.vertragGeprueft) {
+function responseAgainstContract(req: Request, res: Response, next: NextFunction): void {
+  if (res.locals.contractChecked) {
     next();
     return;
   }
-  res.locals.vertragGeprueft = true;
+  res.locals.contractChecked = true;
   const senden = res.json.bind(res);
   res.json = (rumpf: unknown) => {
-    const schluessel = String(res.locals.vertragsSchluessel ?? `${req.method} ${req.baseUrl}${req.route?.path ?? ''}`);
+    const schluessel = String(res.locals.contractKey ?? `${req.method} ${req.baseUrl}${req.route?.path ?? ''}`);
     const route = res.statusCode < 300 && req.route ? routeZu(schluessel) : undefined;
     const fehler: string[] = [];
     const pruefe = (teil: string, schema: import('zod').ZodType | undefined, wert: unknown) => {
@@ -129,7 +129,7 @@ function antwortGegenVertrag(req: Request, res: Response, next: NextFunction): v
       success: false,
       error: `API-Vertrag verletzt: ${schluessel}`,
       code: 'vertrag_verletzt',
-      abweichungen: fehler,
+      deviations: fehler,
     });
   };
   next();
@@ -137,8 +137,8 @@ function antwortGegenVertrag(req: Request, res: Response, next: NextFunction): v
 
 /** Beim Bau des Routers entschieden, nicht je Anfrage: Im Betrieb hängt
  * die Prüfung gar nicht erst in der Kette. */
-export function vertragPruefen(): ((req: Request, res: Response, next: NextFunction) => void) | null {
-  return konfig().vertragPruefen ? antwortGegenVertrag : null;
+export function checkContract(): ((req: Request, res: Response, next: NextFunction) => void) | null {
+  return konfig().checkContract ? responseAgainstContract : null;
 }
 
 /** Middleware, die dem Rest der Kette einen engeren Request zusichert (AuthedRequest hinter requireToken);
@@ -146,21 +146,21 @@ export function vertragPruefen(): ((req: Request, res: Response, next: NextFunct
 export type Waechter<R extends Request> = ((req: Request, res: Response, next: NextFunction) => void) & {
   readonly sichert: (r: R) => R;
 };
-export function waechter<R extends Request>(f: (req: Request, res: Response, next: NextFunction) => void): Waechter<R> {
+export function guard<R extends Request>(f: (req: Request, res: Response, next: NextFunction) => void): Waechter<R> {
   return Object.assign(f, { sichert: (r: R) => r });
 }
 
-type Methode = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+type Method = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 /** Die Schlüssel, deren Pfad unter dem Präfix des Routers liegt: Ein anderer kompiliert nicht. */
-export type SchluesselUnter<P extends string> = Schluessel extends infer K
-  ? K extends `${Methode} ${P}/${string}` | `${Methode} ${P}`
+export type KeyBelow<P extends string> = Schluessel extends infer K
+  ? K extends `${Method} ${P}/${string}` | `${Method} ${P}`
     ? K
     : never
   : never;
 /** Was eine Route zurückgibt, setzt der Router in die Hülle `{ success: true, … }`. Nur
  * Routen, deren Vertrag `success` nennt, haben eine; die übrigen antworten selbst. */
 export type Ergebnis<K extends Schluessel> =
-  AntwortRumpf<K> extends infer R
+  ResponseBody<K> extends infer R
     ? [keyof R] extends [never]
       ? [R] extends [never]
         ? never
@@ -169,32 +169,32 @@ export type Ergebnis<K extends Schluessel> =
         ? Omit<R, 'success'>
         : never
     : never;
-// biome-ignore lint/suspicious/noConfusingVoidType: Eine Route antwortet auch selbst (`return sendeFehler(…)`), und das ist void.
-type Rueckgabe<K extends Schluessel> = Ergebnis<K> | Response | undefined | void;
+// biome-ignore lint/suspicious/noConfusingVoidType: Eine Route antwortet auch selbst (`return sendError(…)`), und das ist void.
+type ReturnValue<K extends Schluessel> = Ergebnis<K> | Response | undefined | void;
 /** Ein Ereignis eines Stroms in derselben Hülle wie die Antwort der Abfrage (Vertrag: `ereignis`). */
-export const inHuelle = <T extends object>(daten: T) => ({ success: true as const, ...daten });
+export const inShell = <T extends object>(daten: T) => ({ success: true as const, ...daten });
 
 export type Handler<K extends Schluessel, R extends Request> = (
   req: Anfrage<K, R>,
   res: Antwort<K>,
-) => Rueckgabe<K> | Promise<Rueckgabe<K>>;
-type Zwischenschritt = (req: Request, res: Response, next: NextFunction) => unknown;
+) => ReturnValue<K> | Promise<ReturnValue<K>>;
+type IntermediateStep = (req: Request, res: Response, next: NextFunction) => unknown;
 
 interface Vertragswege<P extends string> {
   readonly praefix: P;
   /** Registriert die Route des Vertragsschlüssels: Methode, Pfad und Typen kommen aus ihm.
    * Steht ein Wächter vorn, bekommt die Route seinen Request-Typ. */
-  endpunkt<K extends SchluesselUnter<P>, R extends Request>(
+  endpunkt<K extends KeyBelow<P>, R extends Request>(
     schluessel: K,
     w: Waechter<R>,
-    ...schritte: [...Zwischenschritt[], Handler<K, R>]
+    ...schritte: [...IntermediateStep[], Handler<K, R>]
   ): VertragsRouter<P>;
-  endpunkt<K extends SchluesselUnter<P>>(
+  endpunkt<K extends KeyBelow<P>>(
     schluessel: K,
-    ...schritte: [...Zwischenschritt[], Handler<K, Request>]
+    ...schritte: [...IntermediateStep[], Handler<K, Request>]
   ): VertragsRouter<P>;
   /** Hängt einen Router mit gleichem oder längerem Präfix ein. */
-  haengeEin<Q extends `${P}${string}`>(kind: VertragsRouter<Q>): VertragsRouter<P>;
+  attachOne<Q extends `${P}${string}`>(kind: VertragsRouter<Q>): VertragsRouter<P>;
 }
 /** Wie express.Router, aber Routen nur über `endpunkt`: Ein Pfad ohne Vertragsschlüssel kompiliert nicht. */
 export type VertragsRouter<P extends string> = Omit<
@@ -206,23 +206,23 @@ export type VertragsRouter<P extends string> = Omit<
 
 /** Ein Router unter einem anderen Präfix als dem seiner Schlüssel: Seine Routen wären
  * unter einem Pfad erreichbar, den der Vertrag nicht kennt. */
-export class FalschEingehaengt extends Error {
+export class WrongMounted extends Error {
   constructor(praefix: string, basis: string) {
     super(`Vertragsrouter für ${praefix} ist unter ${basis || '/'} eingehängt`);
   }
 }
 
 /** Prüft Eingaben im Betrieb und Antworten in Tests, auch ohne routes/api_v1/index.ts eingehängt. */
-export function vertragsRouter<P extends string>(praefix: P, o: { grosseIds?: boolean } = {}): VertragsRouter<P> {
+export function vertragsRouter<P extends string>(praefix: P, o: { largeIds?: boolean } = {}): VertragsRouter<P> {
   // Wie der Vertrag: Eine andere Schreibung ist eine andere Route (404), nicht dieselbe ohne Eintrag.
   const router = express.Router({ caseSensitive: true });
-  const pruefung = vertragPruefen();
-  if (pruefung) router.use(pruefung);
-  // Eine zu grosse Pfad-ID käme sonst als 500 aus PostgreSQL; Aufträge zählen bigint (grosseIds).
-  const hoechstens = o.grosseIds ? Number.MAX_SAFE_INTEGER : GROESSTE_ID;
+  const check = checkContract();
+  if (check) router.use(check);
+  // Eine zu grosse Pfad-ID käme sonst als 500 aus PostgreSQL; Aufträge zählen bigint (largeIds).
+  const hoechstens = o.largeIds ? Number.MAX_SAFE_INTEGER : LARGEST_ID;
   for (const name of ['id', 'acqId', 'instrId']) {
     router.param(name, (req, res, next, wert) =>
-      idWert(wert, hoechstens) === null ? sendeFehler(req, res, 'ungueltig', 'id_ungueltig') : next(),
+      idWert(wert, hoechstens) === null ? sendError(req, res, 'ungueltig', 'id_ungueltig') : next(),
     );
   }
   const anmelden = (methode: string, pfad: string, schritte: unknown[]) =>
@@ -242,13 +242,13 @@ export function vertragsRouter<P extends string>(praefix: P, o: { grosseIds?: bo
       anmelden(methode, pfad.slice(praefix.length) || '/', [
         ...schritte,
         (req: Request, res: Response, next: NextFunction) => {
-          if (req.baseUrl.toLowerCase() !== praefix.toLowerCase()) throw new FalschEingehaengt(praefix, req.baseUrl);
-          res.locals.vertragsSchluessel = schluessel;
+          if (req.baseUrl.toLowerCase() !== praefix.toLowerCase()) throw new WrongMounted(praefix, req.baseUrl);
+          res.locals.contractKey = schluessel;
           // Hat der Schrittschutz am Eingang (res.locals.schritt gesetzt) diese Route einer anderen
           // Marke zugeordnet als Express, gilt seine Freigabe nicht: zu statt offen.
           if (route.schritt && res.locals.schritt !== undefined && res.locals.schritt !== route.schritt)
-            return sendeFehler(req, res, 'verboten', 'schritt_freigabe_noetig');
-          eingabePruefen(route, req, res, next);
+            return sendError(req, res, 'verboten', 'schritt_freigabe_noetig');
+          validateInput(route, req, res, next);
         },
         async (req: Request, res: Response) => {
           const r = await handler(req, res);
@@ -258,8 +258,8 @@ export function vertragsRouter<P extends string>(praefix: P, o: { grosseIds?: bo
       ]);
       return router;
     },
-    haengeEin(kind: VertragsRouter<string>) {
-      if (!kind.praefix.startsWith(praefix)) throw new FalschEingehaengt(kind.praefix, praefix);
+    attachOne(kind: VertragsRouter<string>) {
+      if (!kind.praefix.startsWith(praefix)) throw new WrongMounted(kind.praefix, praefix);
       const rest = kind.praefix.slice(praefix.length);
       if (rest) router.use(rest, kind);
       else router.use(kind);

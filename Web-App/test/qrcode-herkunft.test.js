@@ -7,7 +7,7 @@
  *   A  package.json "qrcodejs": "^1.0.0" → „exakte Fassung …“ rot
  *   B  ein Byte an public/vendor/qrcode/qrcode.min.js gehängt → „das Skript
  *      erzeugt genau die ausgelieferten Dateien“ rot
- *   C  in kopiereQrcode() die LICENSE nicht kopiert → ebenda rot
+ *   C  in copyQrcode() die LICENSE nicht kopiert → ebenda rot
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

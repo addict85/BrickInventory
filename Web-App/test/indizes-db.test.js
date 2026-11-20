@@ -17,7 +17,7 @@ const assert = require('node:assert/strict');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { zugangOderSkip } = require('./helpers/db');
+const { accessOrSkip } = require('./helpers/db');
 
 /** Spalten und Operatorklassen als normale Arrays (int2vector beginnt bei 0). */
 const INDIZES = `
@@ -33,14 +33,14 @@ const INDIZES = `
     JOIN pg_am am ON am.oid = c.relam`;
 
 test('Indizes', { concurrency: 1 }, async t => {
-  const db = await zugangOderSkip(t, _req);
+  const db = await accessOrSkip(t, _req);
   if (!db) return;
 
   try {
     await t.test('kein Index ist der Anfang eines anderen', async () => {
       const alle = await db.all(`WITH ix AS (${INDIZES}) SELECT COUNT(*)::int AS n FROM ix`);
       assert.ok(alle[0].n > 100, `nur ${alle[0].n} Indizes gefunden — greift die Abfrage?`);
-      const doppel = await db.all(`
+      const double = await db.all(`
         WITH ix AS (${INDIZES})
         SELECT a.tabelle || ': ' || a.name || ' (Anfang von ' || b.name || ')' AS d
           FROM ix a JOIN ix b ON a.indrelid = b.indrelid AND a.indexrelid <> b.indexrelid
@@ -51,7 +51,7 @@ test('Indizes', { concurrency: 1 }, async t => {
            AND a.klassen[1:array_length(a.spalten, 1)] = b.klassen[1:array_length(a.spalten, 1)]
          ORDER BY 1`);
       assert.deepEqual(
-        doppel.map(z => z.d),
+        double.map(z => z.d),
         [],
       );
     });

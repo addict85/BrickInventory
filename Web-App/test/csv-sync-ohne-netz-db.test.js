@@ -21,9 +21,9 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 // Jeder Abruf scheitert sofort — wie ein Rechner ohne Netz.
 const Module = require('node:module');
-const _echtesRequire = Module.prototype.require;
+const _realRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
-  const m = _echtesRequire.call(this, name, ...rest);
+  const m = _realRequire.call(this, name, ...rest);
   if (name.replace(/^node:/, '') === 'https')
     return {
       ...m,
@@ -37,48 +37,48 @@ Module.prototype.require = function (name, ...rest) {
   return m;
 };
 
-const { buildAndRequire, testDaten, testQuellen } = require('./helpers/sources');
+const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Mit `zwischendatei` legt der Download die Datei an und gelingt; den Import danach gibt es hier nicht.
-let zwischendatei = false;
+// Mit `tempFile` legt der Download die Datei an und gelingt; den Import danach gibt es hier nicht.
+let tempFile = false;
 const echt = _req('clients/rebrickableCsv.js');
-testQuellen(null, {
-  ladeKatalogCsv: async (datei, ziel, o) => {
-    if (!zwischendatei) return echt.ladeKatalogCsv(datei, ziel, o);
+testSources(null, {
+  loadCatalogCsv: async (datei, ziel, o) => {
+    if (!tempFile) return echt.loadCatalogCsv(datei, ziel, o);
     fs.mkdirSync(path.dirname(ziel), { recursive: true });
     fs.writeFileSync(ziel, 'id,name\n1,Rot\n');
   },
 });
 
 test('Katalogabgleich ohne Netz', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const vorher = (await db.get(`SELECT value FROM run_state WHERE key='rb_csv_last_sync'`))?.value ?? null;
   await db.run(`DELETE FROM run_state WHERE key IN ('rb_csv_last_sync','startup_status')`);
   const zustand = _req('src/auftraege/startZustand.js');
-  await zustand.meldeStartZustand({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
+  await zustand.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   try {
     await t.test('ohne Netz ist der Server trotzdem bereit', async () => {
       await assert.rejects(
         _req('src/katalog/csvAbgleich.js').run(),
         'der Auftrag soll den Fehler sehen und wiederholen',
       );
-      const stand = await zustand.aktuellerStartZustand();
+      const stand = await zustand.currentStartState();
       assert.equal(stand.ready, true, JSON.stringify(stand));
       const gespeichert = JSON.parse((await db.get(`SELECT value FROM run_state WHERE key='startup_status'`)).value);
       assert.equal(gespeichert.ready, true, 'die anderen Worker lesen den Stand aus der Datenbank');
     });
     await t.test('die Zwischendatei bleibt nach einem Fehlschlag nicht liegen', async () => {
       const tmp = path.join(_req('src/infra/appPaths.js').DATA_DIR, 'colors.csv.tmp');
-      zwischendatei = true;
+      tempFile = true;
       try {
         await assert.rejects(_req('src/katalog/csvAbgleich.js').run());
       } finally {
-        zwischendatei = false;
+        tempFile = false;
       }
       assert.equal(fs.existsSync(tmp), false, `${tmp} liegt noch da`);
     });

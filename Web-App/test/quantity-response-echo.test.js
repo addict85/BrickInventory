@@ -14,19 +14,19 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { openUi, warte } = require('./helpers/oberflaeche');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/bestand');
 
 test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t => {
   // Ohne das Feld fielen beide Clients still auf ihre eigene Annahme zurück —
-  // der Rückfall ist absichtlich lautlos. Die Menge kommt aus setAendern(),
+  // der Rückfall ist absichtlich lautlos. Die Menge kommt aus changeSet(),
   // summiert über das Blickfeld.
-  const db = testDaten();
-  if (!(await datenOderSkip(t, _req))) return;
+  const db = testData();
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `mengenecho-${process.pid}`,
     SN = `${process.pid}5-1`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
@@ -35,7 +35,7 @@ test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t =
     await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  await haeltSet(db, uid, SN, 2);
+  await holdsSet(db, uid, SN, 2);
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const setze = async quantity =>
     (
@@ -53,7 +53,7 @@ test('die Webapp übernimmt die Menge aus der Antwort', async () => {
   // Der Server deckelt das Verringern (Erfassungen anderer Konten im Haushalt): Er schreibt 2, nicht 1.
   // Danach liest das Detail das Set neu; der Server nennt dort dieselbe Menge.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 3 };
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
     '/v1/sets/10294-1': (_url, o) => {
       if (o?.method === 'PUT') SET.quantity = 2;

@@ -11,12 +11,12 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
-const { leseWantedListe } = _req('src/wanted/wantedParser.js');
-const { loeseLokalAuf } = _req('src/wanted/wantedAufloesung.js');
+const db = testData();
+const { readWantedList } = _req('src/wanted/wantedParser.js');
+const { resolveLocalOn } = _req('src/wanted/wantedAufloesung.js');
 const { importiereWantedListe } = _req('src/wanted/wantedListe.js');
 
 test.after(async () => {
@@ -42,7 +42,7 @@ test('1. jeder Posten wird einzeln gelesen, nicht die Datei als Ganzes', () => {
   // einer. Genau diese Form hat in diesem Baum schon zweimal etwas falsch
   // gemacht (siehe readPageByPage in src/vouchers/pdfExport.ts).
   const xml = liste(item('P', '41879', 7), item('P', '973pb4536c01', 36, 2), item('P', 'x126', 95, 14));
-  const r = leseWantedListe(xml);
+  const r = readWantedList(xml);
   assert.equal(r.posten.length, 3, `${r.posten.length} Posten statt 3`);
   assert.deepEqual(
     r.posten.map(p => p.blId),
@@ -63,7 +63,7 @@ test('2. CONDITION=X heisst „egal" und wird nicht zu N', () => {
   // Einträge). „Egal" als N zu lesen wäre eine Entscheidung dieser Datei über
   // etwas, das die Einstellung des Kontos bestimmt — dieselbe Regel wie beim
   // Merklisten-Import.
-  const r = leseWantedListe(
+  const r = readWantedList(
     liste(item('P', '3001', 4, 1, 'X'), item('P', '3002', 4, 1, 'N'), item('P', '3003', 4, 1, 'U')),
   );
   assert.deepEqual(
@@ -75,7 +75,7 @@ test('2. CONDITION=X heisst „egal" und wird nicht zu N', () => {
 test('3. MAXPRICE=-1 ist kein Preis', () => {
   // -1.0000 steht in ALLEN 224 Posten von Marcos Datei. Als Zahl übernommen
   // ergäbe das einen Kaufpreis von minus einem Franken.
-  const r = leseWantedListe(liste(item('P', '3001', 4, 1, 'X', '-1.0000'), item('P', '3002', 4, 1, 'X', '2.5000')));
+  const r = readWantedList(liste(item('P', '3001', 4, 1, 'X', '-1.0000'), item('P', '3002', 4, 1, 'X', '2.5000')));
   assert.equal(r.posten[0].maxPreis, null, 'Aus -1 wurde ein Preis');
   assert.equal(r.posten[1].maxPreis, 2.5);
 });
@@ -84,7 +84,7 @@ test('4. fremde Arten werden gezählt, nicht verschluckt', () => {
   // B (Book), G (Gear), I (Instruction) führt diese Anwendung nicht. Wer eine
   // Liste mit Zubehör hochlädt, soll LESEN, dass davon etwas liegenblieb —
   // eine stille Lücke sieht aus wie ein vollständiger Import.
-  const r = leseWantedListe(
+  const r = readWantedList(
     liste(
       item('P', '3001', 4),
       item('B', '5002', null),
@@ -108,7 +108,7 @@ test('4. fremde Arten werden gezählt, nicht verschluckt', () => {
 
 test('5. ein Posten ohne ITEMID wird gezählt, nicht geraten', () => {
   const xml = liste(item('P', '3001', 4)).replace('<ITEMID>3001</ITEMID>', '');
-  const r = leseWantedListe(xml);
+  const r = readWantedList(xml);
   assert.equal(r.posten.length, 0);
   assert.equal(r.ohneNummer, 1, 'Der Posten ohne Nummer wurde nicht gezählt');
 });
@@ -116,9 +116,9 @@ test('5. ein Posten ohne ITEMID wird gezählt, nicht geraten', () => {
 test('6. Entitäten werden aufgelöst, und & zuletzt', () => {
   // &amp; MUSS zuletzt ersetzt werden: Sonst wird aus „&amp;lt;" erst „&lt;"
   // und dann „<" — eine Zeichenkette, die nie dort stand.
-  const r = leseWantedListe(liste(item('P', 'A&amp;B', 4)));
+  const r = readWantedList(liste(item('P', 'A&amp;B', 4)));
   assert.equal(r.posten[0].blId, 'A&B');
-  const r2 = leseWantedListe(liste(item('P', 'A&amp;lt;B', 4)));
+  const r2 = readWantedList(liste(item('P', 'A&amp;lt;B', 4)));
   assert.equal(r2.posten[0].blId, 'A&lt;B', 'Aus &amp;lt; wurde „<" — die Reihenfolge der Ersetzungen stimmt nicht');
 });
 
@@ -148,7 +148,7 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
   await db.run(`INSERT INTO rb_colors (id, name, bl_color_id) VALUES
                   (4,'Red',5), (15,'White',1)`);
 
-  const posten = leseWantedListe(
+  const posten = readWantedList(
     liste(
       item('P', '4162', 5), // Stufe 1 — Zuordnung
       item('P', '3001', 1), // Stufe 2 — gleich vermerkt
@@ -158,7 +158,7 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
     ),
   ).posten;
 
-  const auf = await loeseLokalAuf(posten);
+  const auf = await resolveLocalOn(posten);
   assert.equal(auf.length, 5);
 
   await t.test('Stufe 1: die eingetragene abweichende Nummer', () => {
@@ -253,14 +253,14 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
   const xml = `<INVENTORY>${item('P', '3001', 5, 10)}${item('P', '3001', 85, 7)}</INVENTORY>`;
 
   /** Ein Anleger, der nur mitschreibt. `action` wie addManualPart. */
-  function zaehler(zweiterLauf = false) {
+  function zaehler(secondRun = false) {
     const gesehen = [];
     return {
       gesehen,
-      anleger: {
+      creator: {
         teil: async (_u, body) => {
           gesehen.push(body);
-          return { action: zweiterLauf ? 'updated' : 'created' };
+          return { action: secondRun ? 'updated' : 'created' };
         },
         figur: async () => ({ action: 'created' }),
         set: async () => ({ action: 'created' }),
@@ -269,7 +269,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
   }
 
   const z1 = zaehler();
-  const bericht = await importiereWantedListe(1, xml, { anleger: z1.anleger });
+  const bericht = await importiereWantedListe(1, xml, { creator: z1.creator });
 
   await t.test('eine offene Farbe wird nicht erfunden', () => {
     assert.equal(
@@ -307,7 +307,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     await importiereWantedListe(
       1,
       liste(item('P', '3001', 5, 2, 'N', '0.8578'), item('P', '3001', 5, 2, 'N', '-1.0000')),
-      { anleger: z.anleger },
+      { creator: z.creator },
     );
     assert.equal(z.gesehen.length, 2, 'Beide Posten müssen beim Anleger ankommen');
     assert.equal(
@@ -327,7 +327,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
 
   await t.test('ein zweiter Lauf stockt auf, statt anzulegen', async () => {
     const z2 = zaehler(true);
-    const b2 = await importiereWantedListe(1, xml, { anleger: z2.anleger });
+    const b2 = await importiereWantedListe(1, xml, { creator: z2.creator });
     assert.equal(
       b2.angelegt,
       0,
@@ -358,7 +358,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     const z = zaehler();
     let gefragt = 0;
     const b = await importiereWantedListe(1, viele, {
-      anleger: z.anleger,
+      creator: z.creator,
       abbruch: async () => {
         gefragt++;
         return true;
@@ -389,7 +389,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     ).join('')}</INVENTORY>`;
     const z = zaehler();
     const b = await importiereWantedListe(1, viele, {
-      anleger: z.anleger,
+      creator: z.creator,
       abbruch: async () => false,
     });
     assert.equal(b.abgebrochen, undefined, 'Nichts wurde abgebrochen');

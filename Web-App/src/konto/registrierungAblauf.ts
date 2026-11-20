@@ -2,38 +2,38 @@
  * antwortet gleich, ob es das Konto gibt oder nicht; die Rückmeldung geht per
  * Mail an die Adresse, nicht an den Anfragenden. */
 import crypto from 'node:crypto';
-import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
+import { logAndContinue, reportAndDeliver } from '../infra/fehler';
 import { mailBasisUrl } from '../infra/basisUrl';
-import { imSystemkontext } from '../infra/kontoKontext';
-import { tokenAbdruck } from './geraeteToken';
-import { rechneWieRegistrierung, registriere } from './konten';
-import { zielGedrosselt } from './zielDrossel';
-import { alsDoppelt } from '../infra/fehlerTexte';
-import type { KontoKontext } from './kontext';
+import { inSystemContext } from '../infra/kontoKontext';
+import { tokenDigest } from './geraeteToken';
+import { computeHowRegistration, register } from './konten';
+import { targetThrottled } from './zielDrossel';
+import { asDuplicate } from '../infra/fehlerTexte';
+import type { AccountContext } from './kontext';
 
-const STUNDE_MS = 60 * 60 * 1000;
-const RUECKSETZ_GUELTIG_MIN = 60,
+const HOUR_MS = 60 * 60 * 1000;
+const RUECKSETZ_VALID_MIN = 60,
   RUECKSETZ_PAUSE_MIN = 15,
-  MINDESTDAUER_MS = 400;
+  MIN_DURATION_MS = 400;
 
 /** Ausnahme: Die Mail geht auch ohne lesbare Einstellung hinaus, dann deutsch.
  * Das Konto des Inhabers ist nicht das der Anfrage (Zeilenschutz). */
-async function mailSprache(k: KontoKontext, uid: number): Promise<string> {
-  const wert = imSystemkontext('registrierung', () => k.einstellungen.userValue(uid, 'language', 'de'));
-  return String(await wert.catch(meldeUndLiefere('registrierung:sprache', 'de')));
+async function mailLanguage(k: AccountContext, uid: number): Promise<string> {
+  const wert = inSystemContext('registrierung', () => k.einstellungen.userValue(uid, 'language', 'de'));
+  return String(await wert.catch(reportAndDeliver('registrierung:sprache', 'de')));
 }
 
 /** Ohne Basisadresse kein Link, also keine Mail. */
-async function versende(mail: (basis: string) => Promise<{ success: boolean }>): Promise<boolean> {
+async function sendOut(mail: (basis: string) => Promise<{ success: boolean }>): Promise<boolean> {
   const basis = mailBasisUrl();
   return basis ? (await mail(basis)).success : false;
 }
 
 /** Dieselbe Mindestdauer für jeden Ausgang: Auch die Zeit verrät keine Adresse. */
-async function mitMindestdauer(arbeit: () => Promise<void>): Promise<void> {
-  const beginn = Date.now();
-  await arbeit();
-  await new Promise(r => setTimeout(r, Math.max(0, MINDESTDAUER_MS - (Date.now() - beginn))));
+async function withMinDuration(work: () => Promise<void>): Promise<void> {
+  const start = Date.now();
+  await work();
+  await new Promise(r => setTimeout(r, Math.max(0, MIN_DURATION_MS - (Date.now() - start))));
 }
 
 export interface Registrierung {
@@ -47,79 +47,79 @@ export interface Registrierung {
 
 /** Vergebene Adresse oder vergebener Name rechnen so lange wie ein neues Konto.
  * @returns ob die Mail hinausging */
-export async function registrierungVersuchen(k: KontoKontext, r: Registrierung): Promise<boolean> {
-  const inhaber = await k.konten.kontoMitEmail(r.email);
+export async function tryRegistration(k: AccountContext, r: Registrierung): Promise<boolean> {
+  const inhaber = await k.konten.accountWithEmail(r.email);
   if (inhaber) {
-    await rechneWieRegistrierung(r.passwort);
-    const sprache = await mailSprache(k, inhaber.id);
-    return versende(() => k.mail.mailRegistrationAttempt(inhaber.email, sprache));
+    await computeHowRegistration(r.passwort);
+    const sprache = await mailLanguage(k, inhaber.id);
+    return sendOut(() => k.mail.mailRegistrationAttempt(inhaber.email, sprache));
   }
-  if (await k.konten.nameVergeben(r.username, 0)) {
-    await rechneWieRegistrierung(r.passwort);
-    return versende(basis => k.mail.mailUsernameTaken(r.email, r.lang, basis));
+  if (await k.konten.nameTaken(r.username, 0)) {
+    await computeHowRegistration(r.passwort);
+    return sendOut(basis => k.mail.mailUsernameTaken(r.email, r.lang, basis));
   }
-  return neuesKonto(k, r);
+  return newAccount(k, r);
 }
 
-async function neuesKonto(k: KontoKontext, r: Registrierung): Promise<boolean> {
+async function newAccount(k: AccountContext, r: Registrierung): Promise<boolean> {
   const token = crypto.randomBytes(32).toString('hex');
   // Nur als SHA-256: Bei einem Datenbank-Leak wäre ein ausstehender Link sonst einlösbar.
-  const neuId = await registriere(k, {
+  const newId = await register(k, {
     username: r.username,
     email: r.email,
     first_name: r.first_name,
     last_name: r.last_name,
     passwort: r.passwort,
-    tokenHash: tokenAbdruck(token),
-    bis: new Date(k.uhr.jetzt() + 24 * STUNDE_MS),
-  }).catch(alsDoppelt('benutzername_oder_email_vergeben'));
-  if (neuId)
-    await imSystemkontext('registrierung', () => k.einstellungen.setUserSetting(neuId, 'language', r.lang)).catch(
-      logAndContinue(`registrierung:sprache ${neuId}`),
+    tokenHash: tokenDigest(token),
+    bis: new Date(k.uhr.jetzt() + 24 * HOUR_MS),
+  }).catch(asDuplicate('benutzername_oder_email_vergeben'));
+  if (newId)
+    await inSystemContext('registrierung', () => k.einstellungen.setUserSetting(newId, 'language', r.lang)).catch(
+      logAndContinue(`registrierung:sprache ${newId}`),
     );
-  const mehrere = (await k.konten.offeneRegistrierungen(r.email)) > 1;
-  return versende(basis => k.mail.mailVerification(r.email, token, basis, r.lang, 'registrierung', mehrere));
+  const mehrere = (await k.konten.openRegistrations(r.email)) > 1;
+  return sendOut(basis => k.mail.mailVerification(r.email, token, basis, r.lang, 'registrierung', mehrere));
 }
 
 /** Über der Grenze still keine Mail: Eine Absage verriete, dass jemand die Adresse bedrängt. */
-export function bestaetigungErneutAnfordern(k: KontoKontext, email: string): Promise<void> {
-  return mitMindestdauer(async () => {
-    const gedrosselt = await zielGedrosselt(k, 'bestaetigung-ziel', email, 3, STUNDE_MS);
+export function confirmationAgainRequest(k: AccountContext, email: string): Promise<void> {
+  return withMinDuration(async () => {
+    const gedrosselt = await targetThrottled(k, 'bestaetigung-ziel', email, 3, HOUR_MS);
     const token = crypto.randomBytes(32).toString('hex');
     const konto = gedrosselt
       ? null
-      : await k.konten.erneuereEmailTokenWennFrei(email, tokenAbdruck(token), 24, RUECKSETZ_PAUSE_MIN);
+      : await k.konten.renewEmailTokenIfFree(email, tokenDigest(token), 24, RUECKSETZ_PAUSE_MIN);
     // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
     if (konto)
-      mailSprache(k, konto.id)
+      mailLanguage(k, konto.id)
         .then(lang => k.mail.mailVerification(konto.email, token, mailBasisUrl()!, lang))
         .catch(logAndContinue('bestaetigung-erneut:mailversand'));
   });
 }
 
 /** Höchstens ein Link je Konto und RUECKSETZ_PAUSE_MIN: Sonst flutet ein Fremder das Postfach. */
-export function ruecksetzLinkAnfordern(kx: KontoKontext, email: string): Promise<void> {
-  return mitMindestdauer(async () => {
-    const gedrosselt = await zielGedrosselt(kx, 'forgot-ziel', email, 3, STUNDE_MS);
-    const user = gedrosselt ? null : await kx.konten.aktivesKontoNachEmail(email);
+export function ruecksetzLinkRequest(kx: AccountContext, email: string): Promise<void> {
+  return withMinDuration(async () => {
+    const gedrosselt = await targetThrottled(kx, 'forgot-ziel', email, 3, HOUR_MS);
+    const user = gedrosselt ? null : await kx.konten.activeAccountAfterEmail(email);
     const token = crypto.randomBytes(32).toString('hex');
     const k = kx.konten;
     if (
       !user ||
-      !(await k.setzeRuecksetzTokenWennFrei(user.id, tokenAbdruck(token), RUECKSETZ_GUELTIG_MIN, RUECKSETZ_PAUSE_MIN))
+      !(await k.setRuecksetzTokenIfFree(user.id, tokenDigest(token), RUECKSETZ_VALID_MIN, RUECKSETZ_PAUSE_MIN))
     )
       return;
-    mailSprache(kx, user.id)
+    mailLanguage(kx, user.id)
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.
       .then(lang => kx.mail.mailPasswordReset(user.email ?? '', token, mailBasisUrl()!, lang))
       .catch(logAndContinue('forgot-password:mailversand'));
   });
 }
 
-export function nameZuBestaetigung(k: KontoKontext, token: string): Promise<string | null> {
-  return k.konten.nameZuEmailToken(tokenAbdruck(token));
+export function nameToConfirmation(k: AccountContext, token: string): Promise<string | null> {
+  return k.konten.nameZuEmailToken(tokenDigest(token));
 }
 
-export function kontoZumRuecksetzLink(k: KontoKontext, token: string) {
-  return k.konten.kontoNachRuecksetzToken(tokenAbdruck(token));
+export function accountToRuecksetzLink(k: AccountContext, token: string) {
+  return k.konten.accountAfterRuecksetzToken(tokenDigest(token));
 }

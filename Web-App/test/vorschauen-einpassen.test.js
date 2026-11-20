@@ -18,7 +18,7 @@ const path = require('node:path');
 const _req = require('./helpers/sources').buildAndRequire();
 const sharp = require('sharp');
 const { DATA_DIR } = _req('src/infra/appPaths.js');
-const { zugeschnitteneVorschauenEinpassen, EINGEPASST_MERKER } = _req('src/bilder/vorschauenEinpassen.js');
+const { fitTailoredPreviews, FITTED_MARKER } = _req('src/bilder/vorschauenEinpassen.js');
 
 const jpeg = (datei, width, height) =>
   sharp({ create: { width, height, channels: 3, background: '#2a6' } })
@@ -45,7 +45,7 @@ test('zugeschnittene Vorschauen werden einmal neu eingepasst', async t => {
   await jpeg(vorschau(quer), 200, 200);
   await jpeg(datei(quadrat), 300, 300);
   await jpeg(vorschau(quadrat), 200, 200);
-  const quadratVorher = fs.statSync(vorschau(quadrat)).mtimeMs;
+  const quadratBefore = fs.statSync(vorschau(quadrat)).mtimeMs;
   await jpeg(path.join(proxy, 'a'.repeat(40)), 400, 300);
   await jpeg(path.join(proxy, `${'a'.repeat(40)}_thumb.jpg`), 200, 200);
   await jpeg(path.join(proxy, 'b'.repeat(40)), 400, 300);
@@ -59,22 +59,22 @@ test('zugeschnittene Vorschauen werden einmal neu eingepasst', async t => {
         zustand.set(s, String(w));
       },
     },
-    uhr: _req('src/infra/uhr.js').systemUhr,
+    uhr: _req('src/infra/uhr.js').systemClock,
   };
   const lokale = [quer, quadrat].map(n => ({ web: `/images/sets/${n}.jpg`, datei: datei(n) }));
 
   await t.test('ersetzt nur zugeschnittene', async () => {
-    assert.equal(await zugeschnitteneVorschauenEinpassen(k, lokale, proxy), 2);
+    assert.equal(await fitTailoredPreviews(k, lokale, proxy), 2);
     assert.deepEqual(await masse(vorschau(quer)), [200, 100], 'eigene Vorschau neu eingepasst');
-    assert.equal(fs.statSync(vorschau(quadrat)).mtimeMs, quadratVorher, 'quadratisches Bild blieb nicht unberührt');
+    assert.equal(fs.statSync(vorschau(quadrat)).mtimeMs, quadratBefore, 'quadratisches Bild blieb nicht unberührt');
     assert.equal(fs.existsSync(path.join(proxy, `${'a'.repeat(40)}_thumb.jpg`)), false, 'Proxy-Vorschau bleibt');
     assert.ok(fs.existsSync(path.join(proxy, `${'b'.repeat(40)}_thumb.jpg`)), 'richtige Proxy-Vorschau gelöscht');
-    assert.ok(zustand.get(EINGEPASST_MERKER), 'Merker fehlt');
+    assert.ok(zustand.get(FITTED_MARKER), 'Merker fehlt');
   });
 
   await t.test('läuft nur einmal', async () => {
     await jpeg(vorschau(quer), 200, 200);
-    assert.equal(await zugeschnitteneVorschauenEinpassen(k, lokale, proxy), null);
+    assert.equal(await fitTailoredPreviews(k, lokale, proxy), null);
     assert.deepEqual(await masse(vorschau(quer)), [200, 200]);
   });
 });

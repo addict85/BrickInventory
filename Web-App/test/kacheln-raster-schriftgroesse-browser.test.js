@@ -30,11 +30,11 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { musterHaushalt } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { patternHousehold } = require('./helpers/bestand');
 
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
-const SCHLIESSEN = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
+const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
 
 /** Name und Beschreibung im Barrierebaum, wie ein Vorleser sie bekommt. */
 async function vorgelesen(b, sel) {
@@ -55,7 +55,7 @@ async function groesse(b, breite, hoehe, telefon) {
 }
 
 async function geh(a, hash, bereit, was) {
-  await a.b.auswerten(SCHLIESSEN);
+  await a.b.auswerten(CLOSE);
   await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
   await a.bis(bereit, was, 200);
   await a.ruhig(5000);
@@ -86,7 +86,7 @@ async function kachelnamen(_t, a, name) {
   assert.match(katalog.beschreibung, /Teile/);
 }
 
-async function merklisteUnbekannt(_t, a) {
+async function wantedUnknown(_t, a) {
   const { b, bis } = a;
   await geh(a, '#/merkliste', `!!document.querySelector('#mk-list .mk-zeile')`, 'Merkliste');
   assert.equal((await vorgelesen(b, '#mk-list .mk-zeile')).name, '10276-1');
@@ -97,11 +97,11 @@ async function merklisteUnbekannt(_t, a) {
   await a.ruhig(5000);
   assert.match(await b.auswerten(text('#mk-m-det')), /Katalog ?Set noch nicht im Katalog — Name, Jahr und Thema/);
   assert.doesNotMatch(await b.auswerten(text('#mk-m-det')), /Jahr —/);
-  const katalogAnfragen = b.ereignisse
+  const catalogRequests = b.ereignisse
     .slice(vorher)
     .filter(e => e.method === 'Network.requestWillBeSent' && /\/catalog\/sets\/10276-1/.test(e.params.request.url));
-  assert.equal(katalogAnfragen.length, 0, 'Anfrage an den Katalog, die mit 404 endet');
-  await b.auswerten(SCHLIESSEN);
+  assert.equal(catalogRequests.length, 0, 'Anfrage an den Katalog, die mit 404 endet');
+  await b.auswerten(CLOSE);
 }
 
 async function kontoangaben(_t, a, name) {
@@ -120,7 +120,7 @@ async function kontoangaben(_t, a, name) {
     nr: getComputedStyle(document.querySelector('#m-untertit .setnr')).fontFamily,
     mono: getComputedStyle(document.documentElement).getPropertyValue('--mono') })`);
   assert.notEqual(schrift.kopf, schrift.nr, 'Konten in Festbreite');
-  await b.auswerten(SCHLIESSEN);
+  await b.auswerten(CLOSE);
 }
 
 async function preiskasten(_t, a) {
@@ -138,10 +138,10 @@ async function preiskasten(_t, a) {
 async function lagerorte(_t, a) {
   const { b } = a;
   await geh(a, '#/lagerorte', `document.querySelectorAll('#storage-list .lager-eingabe').length > 0`, 'Lagerorte');
-  const zellen = await b.auswerten(`[...document.querySelector('#storage-list .lager-raster > div').children]
+  const cells = await b.auswerten(`[...document.querySelector('#storage-list .lager-raster > div').children]
     .map(z => { const r = z.getBoundingClientRect(); return [r.left, r.right, getComputedStyle(z).borderBottomWidth]; })`);
-  for (let i = 1; i < zellen.length; i++)
-    assert.ok(Math.abs(zellen[i][0] - zellen[i - 1][1]) < 1, `Lücke in der Trennlinie: ${JSON.stringify(zellen)}`);
+  for (let i = 1; i < cells.length; i++)
+    assert.ok(Math.abs(cells[i][0] - cells[i - 1][1]) < 1, `Lücke in der Trennlinie: ${JSON.stringify(cells)}`);
   assert.equal(
     await b.auswerten(`document.querySelector('#storage-list .lager-eingabe').getAttribute('aria-label')`),
     'Lagerort umbenennen: Regal',
@@ -176,15 +176,15 @@ async function menueseiten(_t, a) {
   await groesse(b, 320, 700, true);
   try {
     await geh(a, '#/alarme', `!!document.querySelector('#alerts-list .alarm-ue-feld')`, 'Alarme');
-    const lage =
+    const situation =
       await b.auswerten(`(() => { const f = document.querySelector('#alerts-list .alarm-ue-feld').getBoundingClientRect(),
       w = document.querySelector('#alerts-list .alarm-ue-waehrung').getBoundingClientRect();
-      return { feldOben: f.top, feldUnten: f.bottom, wMitte: (w.top + w.bottom) / 2, wLinks: w.left, feldRechts: f.right }; })()`);
+      return { fieldTop: f.top, fieldBottom: f.bottom, wMiddle: (w.top + w.bottom) / 2, wLinks: w.left, fieldRight: f.right }; })()`);
     assert.ok(
-      lage.wMitte > lage.feldOben && lage.wMitte < lage.feldUnten,
-      `EUR nicht neben dem Feld: ${JSON.stringify(lage)}`,
+      situation.wMiddle > situation.fieldTop && situation.wMiddle < situation.fieldBottom,
+      `EUR nicht neben dem Feld: ${JSON.stringify(situation)}`,
     );
-    assert.ok(lage.wLinks >= lage.feldRechts, 'EUR nicht rechts vom Feld');
+    assert.ok(situation.wLinks >= situation.fieldRight, 'EUR nicht rechts vom Feld');
   } finally {
     await groesse(b, 1280, 900, false);
   }
@@ -201,15 +201,15 @@ async function bauliste(_t, a) {
   assert.equal(await b.auswerten(`document.getElementById('rb-hinweis').checkVisibility()`), false, 'Band in Finanzen');
 }
 
-async function grosseSchrift(_t, a) {
+async function largeFont(_t, a) {
   const { b } = a;
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   try {
     await b.auswerten(`document.documentElement.style.fontSize = '32px'; true`);
     await a.ruhig(2000);
     const m = await b.auswerten(`(() => { const r = s => document.querySelector(s).getBoundingClientRect();
-      return { kopf: r('header').bottom, knopf: r('.ubadge-knopf').bottom, knopfOben: r('.ubadge-knopf').top, nav: r('nav').top }; })()`);
-    assert.ok(m.knopf <= m.kopf && m.knopfOben >= 0, `Kontoknopf ragt aus dem Kopf: ${JSON.stringify(m)}`);
+      return { kopf: r('header').bottom, knopf: r('.ubadge-knopf').bottom, buttonTop: r('.ubadge-knopf').top, nav: r('nav').top }; })()`);
+    assert.ok(m.knopf <= m.kopf && m.buttonTop >= 0, `Kontoknopf ragt aus dem Kopf: ${JSON.stringify(m)}`);
     assert.ok(Math.abs(m.nav - m.kopf) < 1, `Reiterleiste nicht unter dem Kopf: ${JSON.stringify(m)}`);
   } finally {
     await b.auswerten(`document.documentElement.style.fontSize = ''; true`);
@@ -233,7 +233,7 @@ async function setDetail(_t, a) {
       assert.ok(l.chart.right <= l.det.left, `Preisverlauf nicht in der linken Spalte: ${JSON.stringify(l)}`);
       assert.ok(l.chart.top >= l.bild.bottom, 'Preisverlauf nicht unter dem Bild');
     } else assert.ok(l.chart.top >= l.letzte.bottom, 'Telefon: Preisverlauf nicht am Ende');
-    await b.auswerten(SCHLIESSEN);
+    await b.auswerten(CLOSE);
   }
   await groesse(b, 1280, 900, false);
 }
@@ -286,10 +286,10 @@ async function telefon(_t, a) {
 
 test('Kachelnamen, Raster, 200 % Schrift, Telefon', { concurrency: 1, timeout: 400_000 }, async t => {
   const name = `r22_${process.pid}`;
-  const a = await starteApp(t, {
+  const a = await startApp(t, {
     name,
     bestand: async (db, uid) => {
-      await musterHaushalt(db, uid);
+      await patternHousehold(db, uid);
       await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal')`, [uid]);
       // Ein Auftrag, damit „Einzelne Aufträge“ als aufklappbare Liste erscheint.
       await db.run(`INSERT INTO jobs (type, due_at) VALUES ('konto_dateien', NOW() + interval '5 hours')`);
@@ -304,13 +304,13 @@ test('Kachelnamen, Raster, 200 % Schrift, Telefon', { concurrency: 1, timeout: 4
   /** @type {[string, (t: import('node:test').TestContext, a: object, name: string) => Promise<void>][]} */
   const pruefungen = [
     ['Kachelnamen', kachelnamen],
-    ['Merkliste: Set nicht im Katalog', merklisteUnbekannt],
+    ['Merkliste: Set nicht im Katalog', wantedUnknown],
     ['Kontoangaben', kontoangaben],
     ['Preiskasten auf einer Höhe', preiskasten],
     ['Lagerorte', lagerorte],
     ['Menüseiten', menueseiten],
     ['Bauliste mit Schlüsselband', bauliste],
-    ['200 % Schrift', grosseSchrift],
+    ['200 % Schrift', largeFont],
     ['Set-Detail nutzt die linke Spalte', setDetail],
     ['Telefon', telefon],
   ];

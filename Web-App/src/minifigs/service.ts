@@ -1,10 +1,10 @@
 import { logAndContinue } from '../infra/fehler';
-import { mitVersion } from '../infra/setNummer';
-import type { KatalogZeile } from './zeilen';
+import { withVersion } from '../infra/setNummer';
+import type { CatalogRow } from './zeilen';
 import type { MinifigsContext } from './context';
-export type { FigurTeil, KatalogZeile } from './zeilen';
+export type { MinifigPart, CatalogRow } from './zeilen';
 
-function catalogParts(k: MinifigsContext, figNumber: string): Promise<KatalogZeile[]> {
+function catalogParts(k: MinifigsContext, figNumber: string): Promise<CatalogRow[]> {
   return k.minifigParts.catalogPartsOfMinifig(figNumber);
 }
 
@@ -13,7 +13,7 @@ function catalogParts(k: MinifigsContext, figNumber: string): Promise<KatalogZei
 export async function partsOfMinifig(kx: MinifigsContext, figNumber: string) {
   // Minifigs carry no version suffix, but a 'fig-' prefix instead.
   // A read error is not "unknown minifig" (not_found): it is rethrown.
-  const invId = await kx.katalog.inventarFuerKandidaten([figNumber, figNumber.replace('fig-', '')]);
+  const invId = await kx.katalog.inventoryForCandidates([figNumber, figNumber.replace('fig-', '')]);
   if (!invId) return { parts: [], source: 'not_found' };
 
   const teile = await kx.minifigParts.inventoryPartsOfMinifig(invId);
@@ -22,8 +22,8 @@ export async function partsOfMinifig(kx: MinifigsContext, figNumber: string) {
   if (!kat.length || kat.some(r => !r.bl_part_number || r.bl_part_number === r.part_number)) {
     const parentSet = await kx.minifigParts.setWithMinifig(figNumber);
     const enrich = parentSet
-      ? kx.katalog.reichereSetFigurenAn(parentSet.set_number)
-      : kx.katalog.reichereSetTeileAn(figNumber);
+      ? kx.katalog.enrichSetMinifigsAn(parentSet.set_number)
+      : kx.katalog.enrichSetPartsAn(figNumber);
     await enrich.catch(logAndContinue('figuren:anreichern'));
     kat = await catalogParts(kx, figNumber);
   }
@@ -38,10 +38,10 @@ export async function partsOfMinifig(kx: MinifigsContext, figNumber: string) {
   });
   setImmediate(() => {
     kx.auftraege
-      .stelleAuftragEin(
+      .placeJobOne(
         'bilder',
-        { set_number: figNumber, nur_bilder: true },
-        { schluessel: `bilder:${mitVersion(figNumber)}:nur`, maxVersuche: 3 },
+        { set_number: figNumber, only_images: true },
+        { schluessel: `bilder:${withVersion(figNumber)}:nur`, maxAttempts: 3 },
       )
       .catch(logAndContinue('figuren:downloadSetImages'));
   });

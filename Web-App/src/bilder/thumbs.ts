@@ -1,17 +1,17 @@
 // sharp rechnet ausserhalb des Event-Loops.
 
-import { meldeFehler, fehlertext, ohneFehlendeDatei } from '../infra/fehler';
+import { reportError, fehlertext, withoutMissingFile } from '../infra/fehler';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
-import { webPfadAufloesen } from '../infra/appPaths';
-import { lesbaresBild } from './imageGuard';
+import { resolveWebPath } from '../infra/appPaths';
+import { readableImage } from './imageGuard';
 
 const THUMB_SIZE = 200;
 
 /** Höchstens THUMB_SIZE je Seite, Seitenverhältnis bleibt: Zugeschnitten fehlten breiten Bildern die Ränder,
  * vergrössert wurden kleine unscharf. Die Kachel passt das Bild selbst ein (object-fit). */
-export function jimpEinpassen(
+export function fitJimp(
   bild: { bitmap: { width: number; height: number }; scaleToFit(o: { w: number; h: number }): unknown },
   groesse: number,
 ) {
@@ -20,9 +20,9 @@ export function jimpEinpassen(
 
 /** Durchsichtige Bilder werden PNG unter demselben Namen (_thumb.jpg, den viele Stellen kennen): Auf Weiss
  * gesetzt standen sie im Dunkelmodus als weisse Fläche da. Ausgeliefert mit dem Typ aus den ersten Bytes. */
-export async function vorschauTyp(datei: string): Promise<'image/png' | 'image/jpeg'> {
+export async function previewType(datei: string): Promise<'image/png' | 'image/jpeg'> {
   const kopf = Buffer.alloc(4);
-  const fd = await fs.promises.open(datei, 'r').catch(ohneFehlendeDatei('vorschau:typ', null));
+  const fd = await fs.promises.open(datei, 'r').catch(withoutMissingFile('vorschau:typ', null));
   if (!fd) return 'image/jpeg';
   try {
     await fd.read(kopf, 0, 4, 0);
@@ -33,55 +33,55 @@ export async function vorschauTyp(datei: string): Promise<'image/png' | 'image/j
 }
 
 /** Jimp-Rückfall für beide Vorschauarten: mit echter Transparenz PNG, sonst JPEG auf Weiss. */
-export async function jimpVorschau(quelle: string, ziel: string, groesse: number): Promise<void> {
+export async function jimpPreview(quelle: string, ziel: string, groesse: number): Promise<void> {
   const { Jimp } = require('jimp');
   const bild = await Jimp.read(quelle);
   const d = bild.bitmap.data as Buffer;
-  let durchsichtig = false;
-  for (let i = 3; i < d.length && !durchsichtig; i += 4) durchsichtig = d[i]! < 255;
-  if (durchsichtig) {
-    jimpEinpassen(bild, groesse);
+  let transparent = false;
+  for (let i = 3; i < d.length && !transparent; i += 4) transparent = d[i]! < 255;
+  if (transparent) {
+    fitJimp(bild, groesse);
     await fs.promises.writeFile(ziel, await bild.getBuffer('image/png'));
     return;
   }
   const bg = new Jimp({ width: bild.bitmap.width, height: bild.bitmap.height, color: 0xffffffff });
   bg.composite(bild, 0, 0);
-  jimpEinpassen(bg, groesse);
+  fitJimp(bg, groesse);
   await fs.promises.writeFile(ziel, await bg.getBuffer('image/jpeg', { quality: 80 }));
 }
 
 /** Erst sharp, Jimp nur bei einem LADEfehler (native Bibliothek fehlt). Ein
  * defektes Bild soll scheitern und gemerkt werden, nicht zweimal gerechnet. */
-async function verkleinern(quelle: string, ziel: string): Promise<void> {
+async function shrink(quelle: string, ziel: string): Promise<void> {
   let sharp: typeof import('sharp') | null = null;
   try {
     sharp = require('sharp');
   } catch (e) {
     // Ausnahme: Ohne native Bibliothek rechnet Jimp; das Bild entsteht trotzdem.
-    meldeFehler('vorschau:sharp nicht verfügbar, nutze Jimp', e);
+    reportError('vorschau:sharp nicht verfügbar, nutze Jimp', e);
   }
 
   if (sharp) {
-    const eingepasst = () => sharp(quelle).resize(THUMB_SIZE, THUMB_SIZE, { fit: 'inside', withoutEnlargement: true });
+    const fitted = () => sharp(quelle).resize(THUMB_SIZE, THUMB_SIZE, { fit: 'inside', withoutEnlargement: true });
     // Ein Alphakanal allein heisst nichts (viele PNG sind ganz deckend); erst echte Transparenz bleibt PNG.
     if (!(await sharp(quelle).stats()).isOpaque) {
-      await eingepasst().png({ compressionLevel: 9 }).toFile(ziel);
+      await fitted().png({ compressionLevel: 9 }).toFile(ziel);
       return;
     }
     // Weisser Grund: Ein Alphakanal würde als JPEG sonst schwarz.
-    await eingepasst().flatten({ background: '#ffffff' }).jpeg({ quality: 80 }).toFile(ziel);
+    await fitted().flatten({ background: '#ffffff' }).jpeg({ quality: 80 }).toFile(ziel);
     return;
   }
 
   // Erst hier geladen: Jimp ist der Rückfall und wird meist nie gebraucht.
-  await jimpVorschau(quelle, ziel, THUMB_SIZE);
+  await jimpPreview(quelle, ziel, THUMB_SIZE);
 }
 
 export async function vorschauErzeugenAus(localPath: string) {
   if (!localPath) return null;
 
   // /images/… zeigt nach data/images/ (Volume), nicht nach public/.
-  const fsPath = webPfadAufloesen(localPath);
+  const fsPath = resolveWebPath(localPath);
   if (!fsPath) return null;
 
   if (!fs.existsSync(fsPath)) return null;
@@ -94,13 +94,13 @@ export async function vorschauErzeugenAus(localPath: string) {
 
   // Abmessungen vor dem Dekodieren prüfen: Eine kleine, riesig aufgelöste Datei
   // legte den Worker mit einem Gigabyte-Bitmap lahm.
-  if (!(await lesbaresBild(fsPath))) return null;
+  if (!(await readableImage(fsPath))) return null;
 
   try {
     // ATOMAR schreiben: Ein Schreibvorgang auf den endgültigen Namen ist für
     // parallele Anfragen sichtbar, bevor er fertig ist.
     const tmpThumb = `${thumbFs}.${process.pid}.${randomUUID()}.tmp.jpg`;
-    await verkleinern(fsPath, tmpThumb);
+    await shrink(fsPath, tmpThumb);
     await fs.promises.rename(tmpThumb, thumbFs);
     return thumbWeb;
   } catch (e) {
@@ -116,7 +116,7 @@ export async function vorschauErzeugenAus(localPath: string) {
         .filter(f => f.startsWith(path.basename(thumbFs)) && f.endsWith('.tmp.jpg'));
       for (const r of reste) fs.unlinkSync(path.join(path.dirname(fsPath), r));
     } catch (e) {
-      meldeFehler('vorschau:reste', e);
+      reportError('vorschau:reste', e);
     }
     return null;
   }

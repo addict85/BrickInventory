@@ -12,7 +12,7 @@ const ORDNER = path.join(__dirname, '..', 'src/finanzen/rechnung');
 /** Die Reihenfolge — wer weiter unten steht, darf nichts weiter oben holen. */
 const SCHICHTEN = ['zustand', 'abfragen', 'preise', 'bewertung', 'gewinnVerlust'];
 
-function importeVon(name) {
+function importsOf(name) {
   const s = fs.readFileSync(path.join(ORDNER, `${name}.ts`), 'utf8');
   // Nur Geschwister in derselben Schicht-Familie: './x'
   return [...s.matchAll(/(?:import|from)\s+['"]\.\/(\w+)['"]/g)].map(m => m[1]);
@@ -38,11 +38,11 @@ test('keine Schicht greift nach oben', () => {
   const fehler = [];
   let kanten = 0;
   SCHICHTEN.forEach((name, hoehe) => {
-    for (const ziel of importeVon(name)) {
-      const zielHoehe = SCHICHTEN.indexOf(ziel);
-      if (zielHoehe < 0) continue; // kein Geschwister der Schicht
+    for (const ziel of importsOf(name)) {
+      const targetHeight = SCHICHTEN.indexOf(ziel);
+      if (targetHeight < 0) continue; // kein Geschwister der Schicht
       kanten++;
-      if (zielHoehe >= hoehe) {
+      if (targetHeight >= hoehe) {
         fehler.push(`${name}.ts holt ${ziel}.ts — das steht gleich hoch oder hoeher`);
       }
     }
@@ -62,17 +62,17 @@ test('keine Schicht greift nach oben', () => {
 test('die Fassade reicht nur durch', () => {
   // src/finanzen/financeCalc.ts ist die Tuer fuer 16 Aufrufstellen. Steht dort wieder
   // Logik, waechst sie zurueck auf 1529 Zeilen.
-  const fassade = fs.readFileSync(path.join(__dirname, '..', 'src/finanzen/financeCalc.ts'), 'utf8');
-  const ohneKommentar = fassade
+  const facade = fs.readFileSync(path.join(__dirname, '..', 'src/finanzen/financeCalc.ts'), 'utf8');
+  const withoutComment = facade
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('\n')
     .filter(z => !/^\s*\/\//.test(z))
     .join('\n')
     .trim();
-  const zeilen = ohneKommentar.split('\n').filter(z => z.trim()).length;
+  const zeilen = withoutComment.split('\n').filter(z => z.trim()).length;
   assert.ok(zeilen <= 29, `Die Fassade hat ${zeilen} Zeilen Code. Sie soll nur weiterreichen.`);
   assert.ok(
-    !/\bfunction\b|\bdb\./.test(ohneKommentar),
+    !/\bfunction\b|\bdb\./.test(withoutComment),
     'In der Fassade steht wieder Logik. Sie gehoert in die Schicht, zu der sie ' +
       'passt — dafuer gibt es src/finanzen/rechnung/.',
   );

@@ -6,15 +6,15 @@
  * Datei rückte.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   K  in startVerbote() den Zweig zu MAIL_KONSOLE_MIT_TOKEN entfernt → rot:
+ *   K  in startBans() den Zweig zu MAIL_KONSOLE_MIT_TOKEN entfernt → rot:
  *      „MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb …“ (Code statt 1: Datenbankfehler)
- *   L  in server.ts die Schleife über startWarnungen() entfernt → rot:
+ *   L  in server.ts die Schleife über startWarnings() entfernt → rot:
  *      „COOKIE_SECURE=0 im Betrieb …“ (keine Warnzeile)
  * Gegenproben N10/N11 (05.11.2026 gemessen, je einzeln):
- *   M  den Zweig zu HSTS_MAX_AGE in startWarnungen() entfernt → rot:
+ *   M  den Zweig zu HSTS_MAX_AGE in startWarnings() entfernt → rot:
  *      „HSTS_MAX_AGE=0 …“
- *   N  dbOhneTls() liefert immer false → rot: „entfernte Datenbank …“
- *   O  (06.11.2026) in dbOhneTls() die Regel für Namen ohne Punkt gestrichen →
+ *   N  dbWithoutTls() liefert immer false → rot: „entfernte Datenbank …“
+ *   O  (06.11.2026) in dbWithoutTls() die Regel für Namen ohne Punkt gestrichen →
  *      rot: „entfernte Datenbank …“ ({"PGHOST":"db-brickinventory"})
  */
 const test = require('node:test');
@@ -24,7 +24,7 @@ const { spawn } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { startWarnungen } = _req('src/infra/konfig.js');
+const { startWarnings } = _req('src/infra/konfig.js');
 
 /** Server starten und auf sein Ende warten — höchstens `ms`, dann gilt er als laufend. */
 function starte(env, ms = 20000) {
@@ -78,14 +78,14 @@ test('COOKIE_SECURE=0 im Betrieb: Warnzeile beim Start', { timeout: 50_000 }, as
 });
 
 test('HSTS_MAX_AGE=0 im Betrieb: genau eine Warnung', () => {
-  const w = startWarnungen({ NODE_ENV: 'production', HSTS_MAX_AGE: '0' });
+  const w = startWarnings({ NODE_ENV: 'production', HSTS_MAX_AGE: '0' });
   assert.equal(w.length, 1, JSON.stringify(w));
   assert.match(w[0], /HSTS_MAX_AGE=0/);
-  assert.deepEqual(startWarnungen({ NODE_ENV: 'production', HSTS_MAX_AGE: '31536000' }), []);
+  assert.deepEqual(startWarnings({ NODE_ENV: 'production', HSTS_MAX_AGE: '31536000' }), []);
 });
 
 test('entfernte Datenbank ohne geprüftes TLS: Warnung', () => {
-  const tls = env => startWarnungen({ NODE_ENV: 'production', ...env }).filter(x => x.startsWith('[datenbank]'));
+  const tls = env => startWarnings({ NODE_ENV: 'production', ...env }).filter(x => x.startsWith('[datenbank]'));
   assert.equal(tls({ PGHOST: 'db.example.org' }).length, 1);
   assert.equal(tls({ DATABASE_URL: 'postgres://u:p@db.example.org/x?sslmode=require' }).length, 1);
   assert.deepEqual(tls({ PGHOST: 'db.example.org', PGSSLMODE: 'verify-full' }), []);

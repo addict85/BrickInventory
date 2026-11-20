@@ -11,18 +11,18 @@ const fs = require('node:fs');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, ohneKommentare, testDaten } = require('./helpers/sources');
-const { haeltSet } = require('./helpers/bestand');
+const { buildAndRequire, ohneKommentare, testData } = require('./helpers/sources');
+const { holdsSet } = require('./helpers/bestand');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { setLesen, setsLesen } = require('./helpers/sources').bereichsSeite('sets');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { readSet, setsLesen } = require('./helpers/sources').areaPage('sets');
 
 test('Anleitungen: der Server sagt, welche selbst hochgeladen ist', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const USER = `anlh-${process.pid}`;
-  // Endet auf "-<Ziffern>", damit mitVersion() nichts anhaengt: shared_
+  // Endet auf "-<Ziffern>", damit withVersion() nichts anhaengt: shared_
   // instructions wird unter der Nummer MIT Versionsanhang gelesen.
   const SN = `70999-${process.pid}`;
 
@@ -31,7 +31,7 @@ test('Anleitungen: der Server sagt, welche selbst hochgeladen ist', { concurrenc
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [USER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
-  await haeltSet(db, uid, SN, 1);
+  await holdsSet(db, uid, SN, 1);
   // Die automatische Suche: kein Konto, Datei unter /data/instructions/.
   await db.run(
     `INSERT INTO shared_instructions (set_number,url,description,local_path)
@@ -47,7 +47,7 @@ test('Anleitungen: der Server sagt, welche selbst hochgeladen ist', { concurrenc
 
   try {
     // ── 1. Detail: jede Zeile traegt ihre Herkunft ─────────────────────────
-    const detail = await setLesen(uid, SN);
+    const detail = await readSet(uid, SN);
     assert.ok(detail, 'Set nicht gefunden');
     assert.equal(
       detail.instructions.length,
@@ -84,10 +84,10 @@ test('Anleitungen: der Server sagt, welche selbst hochgeladen ist', { concurrenc
 
     // ── 3. Liste: dieselbe Markierung, damit die Kachel gleich zaehlt ──────
     const { sets } = await setsLesen(uid, {});
-    const inListe = sets.find(s => s.set_number === SN);
-    assert.ok(inListe, 'Set fehlt in der Galerie');
+    const inList = sets.find(s => s.set_number === SN);
+    assert.ok(inList, 'Set fehlt in der Galerie');
     assert.deepEqual(
-      inListe.instructions.map(i => i.is_manual).sort(),
+      inList.instructions.map(i => i.is_manual).sort(),
       [false, true],
       'Auch die Galerie soll beide Herkuenfte unterscheiden',
     );

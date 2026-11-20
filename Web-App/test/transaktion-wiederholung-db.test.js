@@ -1,6 +1,6 @@
 /**
  * Eine Transaktion, die in einen Deadlock (40P01) oder Serialisierungsfehler
- * (40001) läuft, beginnt mit der Option wiederholeBeiKonflikt bis zu zweimal
+ * (40001) läuft, beginnt mit der Option repeatAtConflict bis zu zweimal
  * neu; ohne Option bleibt der Fehler. Die Verschiebe- und Nachtragswege
  * setzen sie, weil sie Zeilen zweier Konten in wechselnder Reihenfolge sperren.
  *
@@ -8,18 +8,18 @@
  *   A  die Wiederholungsschleife in transaction() entfernt → rot: „ein echter
  *      Deadlock wird mit der Option wiederholt“, „Serialisierungsfehler …“,
  *      „der abgebrochene Anlauf hinterlässt nichts“, dazu die drei Aufrufer
- *   B  40001 aus TX_KONFLIKT entfernt → rot: „Serialisierungsfehler …“ und
+ *   B  40001 aus TX_CONFLICT entfernt → rot: „Serialisierungsfehler …“ und
  *      „der abgebrochene Anlauf hinterlässt nichts“
- *   C  die Option aus verschiebeSet() entfernt → rot: „setVerschieben
- *      wiederholt bei Konflikt“; aus setzeGeschaetztenPreis() → rot:
- *      „setzeGeschaetztenPreis wiederholt bei Konflikt“
+ *   C  die Option aus verschiebeSet() entfernt → rot: „moveSet
+ *      wiederholt bei Konflikt“; aus setEstimatedPrice() → rot:
+ *      „setEstimatedPrice wiederholt bei Konflikt“
  *      (Der Verschiebeweg in changeAcquisition() braucht ein Haushaltskonto und
  *      ist hier nicht abgedeckt; er teilt k.transaktion mit Sperren mit verschiebeSet.)
  *   D  mitInventarSperre() reicht die Option nicht an transaction() → rot:
- *      „mitInventarSperre reicht die Option weiter“, „setVerschieben …“
- *      (14.11.2026, jetzt k.transaktion mit `sperren`: in baueKontext() die Optionen
+ *      „mitInventarSperre reicht die Option weiter“, „moveSet …“
+ *      (14.11.2026, jetzt k.transaktion mit `sperren`: in buildContext() die Optionen
  *      nicht an transaction() gereicht → rot: „k.transaktion mit Sperren …“,
- *      „setVerschieben …“, „setzeGeschaetztenPreis …“)
+ *      „moveSet …“, „setEstimatedPrice …“)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
@@ -29,19 +29,19 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testKontext } = require('./helpers/sources');
+const { buildAndRequire, testData, testContext } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 const TABELLE = `tx_wiederholung_${process.pid}`;
-const MIT = { wiederholeBeiKonflikt: true };
+const MIT = { repeatAtConflict: true };
 
 /** Ein Fehler wie von PostgreSQL gemeldet: nur der Code zählt. */
-const pgFehler = code => Object.assign(new Error(`simuliert ${code}`), { code });
+const pgError = code => Object.assign(new Error(`simuliert ${code}`), { code });
 
 test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run(`CREATE TABLE ${TABELLE} (id int PRIMARY KEY, n int NOT NULL DEFAULT 0)`);
   await db.run(`INSERT INTO ${TABELLE} (id) VALUES (1), (2)`);
   t.after(async () => {
@@ -50,7 +50,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
   });
 
   /** Beide Transaktionen sperren zuerst "ihre" Zeile, dann die der anderen; erst wenn beide die erste halten, geht es weiter. */
-  const kreuzen = o => {
+  const cross = o => {
     let angekommen = 0;
     let versuche = 0;
     /** @type {() => void} */
@@ -75,7 +75,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
 
   await t.test('ein echter Deadlock wird mit der Option wiederholt', async () => {
     await db.run(`UPDATE ${TABELLE} SET n = 0`);
-    const k = kreuzen(MIT);
+    const k = cross(MIT);
     await Promise.all([k.lauf(1, 2), k.lauf(2, 1)]);
     assert.equal(k.versuche(), 3, 'genau ein Gegenspieler wurde abgebrochen und lief neu');
     // Jede Transaktion hat beide Zeilen einmal erhöht; der abgebrochene Anlauf zählt nicht.
@@ -87,7 +87,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
 
   await t.test('ohne die Option bleibt der Deadlock ein Fehler', async () => {
     await db.run(`UPDATE ${TABELLE} SET n = 0`);
-    const k = kreuzen({});
+    const k = cross({});
     const r = await Promise.allSettled([k.lauf(1, 2), k.lauf(2, 1)]);
     const abgelehnt = r.filter(e => e.status === 'rejected');
     assert.equal(abgelehnt.length, 1);
@@ -98,7 +98,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
   await t.test('Serialisierungsfehler wird wiederholt, genau zweimal', async () => {
     let n = 0;
     const r = await db.transaction(async () => {
-      if (++n < 3) throw pgFehler('40001');
+      if (++n < 3) throw pgError('40001');
       return 'fertig';
     }, MIT);
     assert.deepEqual([r, n], ['fertig', 3]);
@@ -107,7 +107,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     await assert.rejects(
       db.transaction(async () => {
         m++;
-        throw pgFehler('40001');
+        throw pgError('40001');
       }, MIT),
       { code: '40001' },
     );
@@ -119,7 +119,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     await assert.rejects(
       db.transaction(async () => {
         n++;
-        throw pgFehler('23505');
+        throw pgError('23505');
       }, MIT),
       { code: '23505' },
     );
@@ -128,7 +128,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     await assert.rejects(
       db.transaction(async () => {
         m++;
-        throw pgFehler('40P01');
+        throw pgError('40P01');
       }),
       { code: '40P01' },
     );
@@ -140,14 +140,14 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     let n = 0;
     await db.transaction(async tx => {
       await tx.run(`UPDATE ${TABELLE} SET n = n + 1 WHERE id = 1`);
-      if (++n === 1) throw pgFehler('40001');
+      if (++n === 1) throw pgError('40001');
     }, MIT);
     assert.equal((await db.get(`SELECT n FROM ${TABELLE} WHERE id = 1`)).n, 1);
   });
 
   // Die Aufrufer: Ein Trigger wirft beim ersten Aufruf einen Deadlock (40P01), den die
   // Sequenz auch nach dem Zurückrollen nicht vergisst; der zweite Anlauf geht durch.
-  const einmalFehler = async (tabelle, ereignis, bedingung) => {
+  const onceError = async (tabelle, ereignis, bedingung) => {
     const name = `tx_einmal_${tabelle}_${process.pid}`;
     await db.run(`DROP SEQUENCE IF EXISTS ${name}`);
     await db.run(`CREATE SEQUENCE ${name}`);
@@ -186,12 +186,12 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
   });
 
   await t.test('k.transaktion mit Sperren reicht die Option weiter', async () => {
-    const k = testKontext('bestand');
+    const k = testContext('bestand');
     const sperren = [{ konto: 1, schluessel: 'x' }];
     let n = 0;
     const r = await k.transaktion(
       async () => {
-        if (++n < 2) throw pgFehler('40P01');
+        if (++n < 2) throw pgError('40P01');
         return 'fertig';
       },
       { ...MIT, sperren },
@@ -202,7 +202,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
       k.transaktion(
         async () => {
           m++;
-          throw pgFehler('40P01');
+          throw pgError('40P01');
         },
         { sperren },
       ),
@@ -211,36 +211,36 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     assert.equal(m, 1);
   });
 
-  await t.test('setVerschieben wiederholt bei Konflikt', async () => {
-    const { setVerschieben } = require('./helpers/sources').bereichsSeite('sets');
-    const { haeltSet, mengeVon } = require('./helpers/bestand');
+  await t.test('moveSet wiederholt bei Konflikt', async () => {
+    const { moveSet } = require('./helpers/sources').areaPage('sets');
+    const { holdsSet, quantityOf } = require('./helpers/bestand');
     const von = await konto('wv_von');
     const nach = await konto('wv_nach');
-    await haeltSet(db, von, '10179-1', 2);
+    await holdsSet(db, von, '10179-1', 2);
     // Verschoben wird nur im Haushalt: nach ist Unterkonto von von.
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [von, nach]);
-    const probe = await einmalFehler('sets', 'INSERT', `NEW.user_id = ${nach}`);
+    const probe = await onceError('sets', 'INSERT', `NEW.user_id = ${nach}`);
     try {
       const ids = (await db.all('SELECT id FROM set_acquisitions WHERE user_id = $1', [von])).map(z => z.id);
-      const r = await setVerschieben(von, '10179-1', von, nach, ids);
+      const r = await moveSet(von, '10179-1', von, nach, ids);
       assert.equal(r.quantity, 2);
       assert.equal(await probe.aufrufe(), 2, 'erster Anlauf scheiterte, zweiter ging durch');
-      assert.equal(await mengeVon(db, nach, '10179-1'), 2);
-      assert.equal(await mengeVon(db, von, '10179-1'), 0);
+      assert.equal(await quantityOf(db, nach, '10179-1'), 2);
+      assert.equal(await quantityOf(db, von, '10179-1'), 0);
     } finally {
       await probe.weg();
     }
   });
 
-  await t.test('setzeGeschaetztenPreis wiederholt bei Konflikt', async () => {
-    const { setzeGeschaetztenPreis } = _req('src/bestand/acquisitions.js');
-    const { haeltSet } = require('./helpers/bestand');
+  await t.test('setEstimatedPrice wiederholt bei Konflikt', async () => {
+    const { setEstimatedPrice } = _req('src/bestand/acquisitions.js');
+    const { holdsSet } = require('./helpers/bestand');
     const u = await konto('wv_preis');
-    await haeltSet(db, u, '10179-1', 1);
+    await holdsSet(db, u, '10179-1', 1);
     const id = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1', [u])).id;
-    const probe = await einmalFehler('set_acquisitions', 'UPDATE', `NEW.user_id = ${u}`);
+    const probe = await onceError('set_acquisitions', 'UPDATE', `NEW.user_id = ${u}`);
     try {
-      assert.equal(await setzeGeschaetztenPreis('set', id, 42), true);
+      assert.equal(await setEstimatedPrice('set', id, 42), true);
       assert.equal(await probe.aufrufe(), 2, 'erster Anlauf scheiterte, zweiter ging durch');
       const z = await db.get('SELECT purchase_price::float AS p, price_estimated FROM set_acquisitions WHERE id = $1', [
         id,

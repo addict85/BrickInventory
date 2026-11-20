@@ -27,13 +27,13 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet, haeltTeil } = require('./helpers/bestand');
-const { alsAnfrage } = _req('src/infra/kontoKontext.js');
-const als = (uid, f) => alsAnfrage({ apiUser: { user_id: uid } }, f);
+const db = testData();
+const { holdsSet, holdsPart } = require('./helpers/bestand');
+const { asRequest } = _req('src/infra/kontoKontext.js');
+const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 
 test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, async t => {
   try {
@@ -63,11 +63,11 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     await db.run('DELETE FROM set_parts WHERE set_number = ANY($1)', [[SA, SB]]);
     await db.pool.end().catch(() => {});
   });
-  await haeltSet(db, a, SA, 1);
-  await haeltTeil(db, a, X, { setNumber: SA, menge: 2, colorId: 4 });
-  await haeltTeil(db, a, Z, { setNumber: SA, menge: 3, colorId: 4 });
-  await haeltSet(db, b, SB, 1);
-  await haeltTeil(db, b, Y, { setNumber: SB, menge: 5, colorId: 1 });
+  await holdsSet(db, a, SA, 1);
+  await holdsPart(db, a, X, { setNumber: SA, menge: 2, colorId: 4 });
+  await holdsPart(db, a, Z, { setNumber: SA, menge: 3, colorId: 4 });
+  await holdsSet(db, b, SB, 1);
+  await holdsPart(db, b, Y, { setNumber: SB, menge: 5, colorId: 1 });
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,'X alt'),($2,'Z'),($3,'Y')
                 ON CONFLICT (part_number) DO UPDATE SET part_name = EXCLUDED.part_name`,
@@ -86,7 +86,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
   const marke = (uid, teil) =>
     db.run(`UPDATE parts_summary SET storage = 'Marke' WHERE user_id = $1 AND part_number = $2`, [uid, teil]);
   /** Ergebnis jetzt gegen einen vollen Neuaufbau desselben Kontos. */
-  const gleichVollemAufbau = async uid => {
+  const equalFullSetup = async uid => {
     const nach = await zeilen(uid);
     await als(uid, () => PS.rebuildNow(uid));
     assert.deepEqual(nach, await zeilen(uid), 'Nachzug und voller Neuaufbau ergeben dieselben Zeilen');
@@ -115,7 +115,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
       'die Gruppe Z in Konto A wurde neu gebaut',
     );
     await db.run(`UPDATE parts_summary SET storage = NULL WHERE storage = 'Marke' AND user_id = ANY($1)`, [[a, b]]);
-    await gleichVollemAufbau(a);
+    await equalFullSetup(a);
   });
 
   await t.test('die Anfrage eines Kontos zieht auch die anderen nach', async () => {
@@ -130,7 +130,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
 
   await t.test('eine neue BrickLink-Zuordnung verschiebt die Gruppe', async () => {
     // W und X teilen sich eine BrickLink-Nummer; die Gruppe heisst nach W.
-    await haeltTeil(db, a, W, { setNumber: SA, menge: 1, colorId: 4 });
+    await holdsPart(db, a, W, { setNumber: SA, menge: 1, colorId: 4 });
     await als(a, () => PS.rebuildNow(a));
     await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part', $1, $3), ('part', $2, $3)`, [
       X,
@@ -156,6 +156,6 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
         [Z, Z, 3],
       ],
     );
-    await gleichVollemAufbau(a);
+    await equalFullSetup(a);
   });
 });

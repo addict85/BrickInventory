@@ -5,19 +5,19 @@
  * höchstens einmal am Tag eine Mail.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  meldeAnmeldeereignis() in fehlversuch() entfernt → rot: „ein unbekannter
+ *   A  reportLoginEvent() in fehlversuch() entfernt → rot: „ein unbekannter
  *      Name …“, „falsches Passwort …“, „ein falscher Code …“
- *   B  die Zeile bei anmeldungErlaubt() entfernt → rot: „die Sperre steht im Protokoll“
- *   C  meldeAnmeldeereignis() in gebremst() (passwortBestaetigung) entfernt →
+ *   B  die Zeile bei loginAllowed() entfernt → rot: „die Sperre steht im Protokoll“
+ *   C  reportLoginEvent() in gebremst() (passwortBestaetigung) entfernt →
  *      rot: „eine falsche Bestätigung …“, „die Zeile landet in app_logs“
  *   D  in fehlversuch() die Mail entfernt → rot: „falsches Passwort …“ (keine
  *      Mail), „die Mail höchstens einmal am Tag“
- *   E  kontoGedrosselt() vor der Mail entfernt → rot: „die Mail höchstens einmal am Tag“
- *   F  in meldeAnmeldeereignis() `name` mitgegeben → rot: „ein unbekannter Name …“
+ *   E  accountThrottled() vor der Mail entfernt → rot: „die Mail höchstens einmal am Tag“
+ *   F  in reportLoginEvent() `name` mitgegeben → rot: „ein unbekannter Name …“
  * Gegenproben Runde 17 (05.11.2026 gemessen, je einzeln):
  *   G  kontoKennung() gibt für unbekannte Namen wieder den Klartext zurück →
  *      rot: „ein unbekannter Name steht nur als HMAC …“ (Teil 1)
- *   H  meldeAnmeldung() in pruefeAnmeldedaten() entfernt → rot: „eine
+ *   H  reportLogin() in checkCredentials() entfernt → rot: „eine
  *      gelungene Anmeldung …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -32,11 +32,11 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
 const mails = [];
-require('./helpers/sources').ersetzeDienste('mail', {
+require('./helpers/sources').replaceServices('mail', {
   mailConfigured: async () => true,
   mailAccountNotice: async (an, _name, art) => {
     mails.push({ an, art });
@@ -44,7 +44,7 @@ require('./helpers/sources').ersetzeDienste('mail', {
   },
 });
 
-const db = S.testDaten();
+const db = S.testData();
 const zf = _req('src/factors/secondFactor.js');
 const protokoll = _req('src/infra/protokoll.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
@@ -53,10 +53,10 @@ const P = process.pid,
   FALSCH = 'Geheim-Falsch-987';
 
 test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `prot_${P}`,
-    FAKTOR = `prot_zf_${P}`;
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, FAKTOR]]);
+    FACTOR = `prot_zf_${P}`;
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, FACTOR]]);
   const konto = async n =>
     (
       await db.get(
@@ -66,33 +66,33 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
       )
     ).id;
   const uid = await konto(NAME),
-    zfId = await konto(FAKTOR);
+    zfId = await konto(FACTOR);
   const g = await zf.beginSetup(zfId);
   assert.ok(await zf.confirmSetup(zfId, zf.hotp(zf.fromBase32(g), zf.timeStep())), 'Vorbedingung: Faktor aktiv');
-  const leereZaehler = () =>
+  const emptyCounter = () =>
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%' OR key LIKE 'sperr-hinweis%' OR key LIKE $1`, [
       `%-bestaetigen|${uid}|%`,
     ]);
-  await leereZaehler();
+  await emptyCounter();
 
   const zeilen = [],
     infos = [];
-  const zurueck = protokoll.installiereProtokoll({
+  const zurueck = protokoll.installLog({
     out: z => infos.push(z),
     err: z => zeilen.push(z),
     jetzt: () => Date.now(),
   });
-  protokoll.protokollInDieDatenbank(db.pool);
+  protokoll.logInDieDatabase(db.pool);
   t.after(async () => {
     zurueck();
-    await leereZaehler();
+    await emptyCounter();
     await db
       .run(`DELETE FROM app_logs WHERE message LIKE $1 OR (message LIKE '%[anmeldung]%' AND message ~ $2)`, [
         `%prot-test-${P}%`,
         `"konto":(${uid}|${zfId})\\M`,
       ])
       .catch(() => {});
-    await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, FAKTOR]]).catch(() => {});
+    await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, FACTOR]]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
 
@@ -107,7 +107,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     ruf('/login', { username, password, ohne_token: true, ...(code ? { code } : {}) });
   /** Die Warnzeilen eines Ereignisses als geparstes JSON. */
   const ereignisse = art => zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === art);
-  const warteAufMails = async n => {
+  const waitOnMails = async n => {
     for (let i = 0; i < 60 && mails.length < n; i++) await new Promise(r => setTimeout(r, 25));
   };
 
@@ -161,7 +161,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
       ereignisse('anmeldung_fehlgeschlagen').map(z => z.kontext.konto),
       [uid, uid, uid, uid, uid],
     );
-    await warteAufMails(1);
+    await waitOnMails(1);
     assert.deepEqual(mails, [{ an: `${NAME}@example.org`, art: 'anmeldung_gebremst' }]);
   });
 
@@ -177,7 +177,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
   await t.test('die Mail höchstens einmal am Tag', async () => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
     for (let i = 0; i < 5; i++) await anmelden(NAME, FALSCH);
-    await warteAufMails(2); // eine zweite Mail käme hier an
+    await waitOnMails(2); // eine zweite Mail käme hier an
     assert.equal(mails.length, 1, JSON.stringify(mails));
   });
 
@@ -185,7 +185,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
     zeilen.length = 0;
     const richtig = zf.hotp(zf.fromBase32(g), zf.timeStep());
-    assert.equal(await anmelden(FAKTOR, PASS, richtig === '000000' ? '000001' : '000000'), 401);
+    assert.equal(await anmelden(FACTOR, PASS, richtig === '000000' ? '000001' : '000000'), 401);
     assert.deepEqual(
       ereignisse('zweiter_faktor_falsch').map(z => z.kontext.konto),
       [zfId],
@@ -202,7 +202,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
 
   await t.test('die Zeile landet in app_logs', async () => {
     console.warn(`prot-test-${P}`);
-    await protokoll.leereProtokoll();
+    await protokoll.emptyLog();
     const r = await db.all(
       `SELECT level, message FROM app_logs WHERE message LIKE '%bestaetigung_fehlgeschlagen%' AND message LIKE $1`,
       [`%"konto":${uid}%`],

@@ -74,13 +74,13 @@ test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
   // Blockkommentare stehen, und einer davon enthielt "app.get('/images/*', …)"
   // als Beispiel. indexOf() landete dadurch im Dateikopf statt an der Route.
   // Die Bildroute (routes/seiten.ts) liefert über src/bilder/http/bildAuslieferung.ts;
-  // die Vorschau stösst originalStattVorschau() dort an.
+  // die Vorschau stösst originalInsteadOfPreview() dort an.
   const src = require('./helpers/sources').ohneKommentare(
     require('node:fs').readFileSync(path.join(__dirname, '..', 'src/bilder/http/bildAuslieferung.ts'), 'utf8'),
   );
-  const start = src.indexOf('function originalStattVorschau(');
+  const start = src.indexOf('function originalInsteadOfPreview(');
   assert.ok(
-    start > 0 && src.indexOf('originalStattVorschau(', start + 10) > 0,
+    start > 0 && src.indexOf('originalInsteadOfPreview(', start + 10) > 0,
     'die Bildroute ruft den Vorschau-Rückfall nicht',
   );
   const block = src.slice(start, start + 4000);

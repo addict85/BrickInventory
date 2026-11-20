@@ -22,8 +22,8 @@ const ROOT = path.join(__dirname, '..');
 const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
 const { warte } = require('./helpers/zeit');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-const { BUENDEL, stelleBuendelSicher } = require('./helpers/buendel');
-stelleBuendelSicher();
+const { BUENDEL, placeBundleSafe } = require('./helpers/buendel');
+placeBundleSafe();
 const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
 
 async function fenster() {
@@ -70,8 +70,8 @@ test('Escape schliesst, und der Fokus kehrt zurück', async () => {
   try {
     const d = w.document,
       modal = d.getElementById('set-modal'),
-      ausloeser = d.getElementById('btn-add');
-    ausloeser.focus();
+      trigger = d.getElementById('btn-add');
+    trigger.focus();
     modal.classList.add('open');
     await takt();
     assert.ok(modal.contains(d.activeElement), 'Der Fokus springt nicht in den Dialog');
@@ -79,7 +79,7 @@ test('Escape schliesst, und der Fokus kehrt zurück', async () => {
     taste(w, 'Escape');
     await takt();
     assert.equal(modal.classList.contains('open'), false, 'Escape schliesst den Dialog nicht');
-    assert.equal(d.activeElement, ausloeser, 'Fokus kehrt nicht zurück');
+    assert.equal(d.activeElement, trigger, 'Fokus kehrt nicht zurück');
   } finally {
     w.close();
   }

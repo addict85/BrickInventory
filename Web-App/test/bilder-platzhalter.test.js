@@ -9,21 +9,21 @@
  *   A  in aktionen.js statt bildPlatzhalter() wieder removeAttribute('src')
  *      → rot: „Galerie: kaputtes Bild wird zum Platzhalter"
  *   B  in bildTag() (bilder.js) das alt weggelassen → rot: „alt an jedem Bild"
- *   C  (03.11.) platzhalterInhalt('set') wieder das Sinnbild statt
+ *   C  (03.11.) placeholderContent('set') wieder das Sinnbild statt
  *      set-placeholder.svg → rot: „Galerie: kaputtes Bild wird zum Platzhalter"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte, takt } = require('./helpers/oberflaeche');
 
-const BILD = '/images/sets/10294-1.jpg';
+const IMAGE = '/images/sets/10294-1.jpg';
 const SETS = [
   {
     set_number: '10294-1',
     name: 'Titanic',
     year: 2021,
     quantity: 1,
-    image_local: BILD,
+    image_local: IMAGE,
     conditions: ['N'],
     instructions: [],
   },
@@ -49,7 +49,7 @@ const FIGUREN = [
     image_local: '/images/figs/fig-000123.png',
   },
 ];
-const SET_TEILE = [
+const SET_PARTS = [
   {
     part_number: '3020',
     part_name: 'Plate 2 x 4',
@@ -61,10 +61,10 @@ const SET_TEILE = [
   },
 ];
 
-const ANTWORTEN = {
+const RESPONSES = {
   '/v1/sets': { success: true, sets: SETS, total: 1, themes: [] },
   '/v1/parts/manual': { success: true, parts: TEILE },
-  '/v1/parts': { success: true, parts: SET_TEILE, total: 1 },
+  '/v1/parts': { success: true, parts: SET_PARTS, total: 1 },
   '/v1/minifigs/manual': { success: true, figs: FIGUREN },
   '/v1/minifigs': { success: true, figs: [{ ...FIGUREN[0], source: 'set', total_quantity: 1 }], total: 1 },
   '/v1/finance/valuation': {
@@ -80,7 +80,7 @@ const ANTWORTEN = {
 const bilder = (d, sel) => [...d.querySelectorAll(`${sel} img`)];
 
 test('alt an jedem Bild und der Platzhalter-Weg an jedem Vorlagenbild', async () => {
-  const { w, d } = await oeffneOberflaeche(ANTWORTEN);
+  const { w, d } = await openUi(RESPONSES);
   try {
     const gesehen = [];
     const pruefe = (name, sel) => {
@@ -123,7 +123,7 @@ test('alt an jedem Bild und der Platzhalter-Weg an jedem Vorlagenbild', async ()
 });
 
 test('Galerie: kaputtes Bild wird zum Platzhalter', async () => {
-  const { w, d } = await oeffneOberflaeche(ANTWORTEN);
+  const { w, d } = await openUi(RESPONSES);
   try {
     await warte(() => d.querySelector('#gallery .sc img'));
     const img = d.querySelector('#gallery .sc img');

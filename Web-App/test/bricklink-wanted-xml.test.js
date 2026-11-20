@@ -30,8 +30,8 @@ const ROOT = path.join(__dirname, '..');
 const modul = () => import(`file://${path.join(ROOT, 'public', 'js', 'bricklink-xml.js')}`);
 
 test('1. keine XML-Deklaration — BrickLink lehnt eine Datei mit ihr ab', async () => {
-  const { baueWantedXml } = await modul();
-  const xml = baueWantedXml([{ type: 'P', part: '3001', color: 5, qty: 10 }]);
+  const { buildWantedXml } = await modul();
+  const xml = buildWantedXml([{ type: 'P', part: '3001', color: 5, qty: 10 }]);
   assert.ok(
     !/<\?xml/i.test(xml),
     `Die Datei beginnt mit einer XML-Deklaration:\n${xml.slice(0, 80)}\n` +
@@ -43,8 +43,8 @@ test('1. keine XML-Deklaration — BrickLink lehnt eine Datei mit ihr ab', async
 });
 
 test('2. die Pflichtfelder stehen da, mit BrickLinks Artencodes', async () => {
-  const { baueWantedXml } = await modul();
-  const xml = baueWantedXml([
+  const { buildWantedXml } = await modul();
+  const xml = buildWantedXml([
     { type: 'P', part: '3001', color: 5, qty: 10 },
     { type: 'M', part: 'cas123', color: null, qty: 1 },
   ]);
@@ -61,8 +61,8 @@ test('3. eine UNBEKANNTE Farbe wird nicht erfunden', async () => {
   // Der Kern des dritten Befunds. `null` heisst „keine BrickLink-Nummer
   // bekannt" und ist etwas anderes als 0: 0 ist bei BrickLink „(Not
   // Applicable)" und bei Rebrickable SCHWARZ.
-  const { baueWantedXml } = await modul();
-  const xml = baueWantedXml([{ type: 'P', part: '3001', color: null, qty: 2 }]);
+  const { buildWantedXml } = await modul();
+  const xml = buildWantedXml([{ type: 'P', part: '3001', color: null, qty: 2 }]);
   assert.ok(!/<COLOR>/.test(xml), `Ohne bekannte Farbe darf kein COLOR dastehen:\n${xml}`);
   assert.ok(
     !/<COLOR>0<\/COLOR>/.test(xml),
@@ -73,13 +73,13 @@ test('3. eine UNBEKANNTE Farbe wird nicht erfunden', async () => {
 });
 
 test('4. Zustand nur, wenn er etwas sagt', async () => {
-  const { baueWantedXml } = await modul();
+  const { buildWantedXml } = await modul();
   assert.ok(
-    !/CONDITION/.test(baueWantedXml([{ type: 'P', part: '3001', color: 5, qty: 1, condition: 'X' }])),
+    !/CONDITION/.test(buildWantedXml([{ type: 'P', part: '3001', color: 5, qty: 1, condition: 'X' }])),
     'X ist BrickLinks Vorgabe („egal"); sie hinzuschreiben ist dasselbe wie ' + 'sie wegzulassen, nur länger.',
   );
   assert.match(
-    baueWantedXml([{ type: 'P', part: '3001', color: 5, qty: 1, condition: 'N' }]),
+    buildWantedXml([{ type: 'P', part: '3001', color: 5, qty: 1, condition: 'N' }]),
     /<CONDITION>N<\/CONDITION>/,
   );
 });
@@ -88,14 +88,14 @@ test('5. Sonderzeichen werden maskiert, und & zuerst', async () => {
   // Teilenummern kommen aus dem Bestand; bei einem manuell erfassten Teil hat
   // sie der Mensch getippt. Ein `&` darin machte sonst die ganze Datei
   // unlesbar — wegen EINES Zeichens in EINER Zeile.
-  const { baueWantedXml } = await modul();
-  const xml = baueWantedXml([{ type: 'P', part: 'x<&"1', color: 5, qty: 1 }]);
+  const { buildWantedXml } = await modul();
+  const xml = buildWantedXml([{ type: 'P', part: 'x<&"1', color: 5, qty: 1 }]);
   assert.match(xml, /<ITEMID>x&lt;&amp;&quot;1<\/ITEMID>/, `Falsch maskiert:\n${xml}`);
   // Die Reihenfolge: Wird & nicht zuerst ersetzt, wird aus `<` erst `&lt;`
   // und daraus `&amp;lt;` — BrickLink zeigte dann wörtlich „&lt;".
   assert.ok(!/&amp;lt;|&amp;quot;/.test(xml), `Doppelt maskiert:\n${xml}`);
   // Auch die Art: Jedes Textfeld geht durch esc(), nicht nur die Nummer.
-  assert.match(baueWantedXml([{ type: 'P<&', part: '1', color: 5, qty: 1 }]), /<ITEMTYPE>P&lt;&amp;<\/ITEMTYPE>/);
+  assert.match(buildWantedXml([{ type: 'P<&', part: '1', color: 5, qty: 1 }]), /<ITEMTYPE>P&lt;&amp;<\/ITEMTYPE>/);
 });
 
 test('5b. esc() kennt alle fünf XML-Entitäten — die Wunschliste hat keinen eigenen Maskierer', async () => {
@@ -104,16 +104,16 @@ test('5b. esc() kennt alle fünf XML-Entitäten — die Wunschliste hat keinen e
 });
 
 test('6. die Menge ist mindestens 1', async () => {
-  const { baueWantedXml } = await modul();
+  const { buildWantedXml } = await modul();
   assert.match(
-    baueWantedXml([{ type: 'P', part: '3001', color: 5, qty: 0 }]),
+    buildWantedXml([{ type: 'P', part: '3001', color: 5, qty: 0 }]),
     /<MINQTY>1<\/MINQTY>/,
     'MINQTY 0 gibt es nicht — BrickLink wiese die Zeile ab.',
   );
 });
 
 test('7. zu grosse Listen werden in Stücke geschnitten, die BrickLink annimmt', async () => {
-  const { baueWantedXml, baueWantedXmlStuecke, BL_UPLOAD_MAX_BYTES } = await modul();
+  const { buildWantedXml, buildWantedXmlPieces, BL_UPLOAD_MAX_BYTES } = await modul();
   // 3000 Posten sind erreichbar: Eine Teileliste aus mehreren grossen Sets
   // kommt leicht dorthin, und jedes fehlende Teil ist eine Zeile.
   const alle = Array.from({ length: 3000 }, (_, i) => ({
@@ -123,11 +123,11 @@ test('7. zu grosse Listen werden in Stücke geschnitten, die BrickLink annimmt',
     qty: (i % 9) + 1,
   }));
   assert.ok(
-    Buffer.byteLength(baueWantedXml(alle)) > BL_UPLOAD_MAX_BYTES,
+    Buffer.byteLength(buildWantedXml(alle)) > BL_UPLOAD_MAX_BYTES,
     'Vorbedingung: die Liste muss über der Grenze liegen, sonst prüft dieser ' + 'Fall die Stückelung nicht.',
   );
 
-  const stuecke = baueWantedXmlStuecke(alle);
+  const stuecke = buildWantedXmlPieces(alle);
   assert.ok(stuecke.length > 1, `Nur ${stuecke.length} Stück bei ${alle.length} Posten`);
   for (const [i, s] of stuecke.entries()) {
     assert.ok(
@@ -155,7 +155,7 @@ test('8. in Bytes gemessen, nicht in Zeichen', async () => {
   // Ein Teilename mit Umlaut wird in UTF-8 zu mehr Bytes als er Zeichen hat.
   // Wer in Zeichen deckelt, liefert Stücke, die BrickLink ablehnt — und zwar
   // nur bei Umlauten, also genau in Marcos Sprache.
-  const { baueWantedXmlStuecke } = await modul();
+  const { buildWantedXmlPieces } = await modul();
   const grenze = 20000;
   const posten = Array.from({ length: 400 }, (_, i) => ({
     type: 'P',
@@ -163,7 +163,7 @@ test('8. in Bytes gemessen, nicht in Zeichen', async () => {
     color: 4,
     qty: 1,
   }));
-  const stuecke = baueWantedXmlStuecke(posten, grenze);
+  const stuecke = buildWantedXmlPieces(posten, grenze);
   assert.ok(stuecke.length > 1, 'Vorbedingung: es muss geschnitten werden');
   for (const [i, s] of stuecke.entries())
     assert.ok(
@@ -176,8 +176,8 @@ test('8. in Bytes gemessen, nicht in Zeichen', async () => {
 test('9. eine leere Liste ergibt eine gültige, leere Datei', async () => {
   // Die Gegenrichtung: Ohne diesen Fall wäre auch ein leeres Array „in
   // Ordnung" — und der Export böte einen Download ohne Inhalt an.
-  const { baueWantedXmlStuecke } = await modul();
-  const stuecke = baueWantedXmlStuecke([]);
+  const { buildWantedXmlPieces } = await modul();
+  const stuecke = buildWantedXmlPieces([]);
   assert.equal(stuecke.length, 1, 'Genau eine Datei, auch wenn sie leer ist');
   assert.match(stuecke[0], /^<INVENTORY>[\s\S]*<\/INVENTORY>\s*$/);
   assert.equal((stuecke[0].match(/<ITEM>/g) || []).length, 0);

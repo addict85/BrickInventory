@@ -23,13 +23,13 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-const ohneHtmlKommentare = require('./helpers/sources').ohneHtmlKommentare;
+const withoutHtmlComments = require('./helpers/sources').withoutHtmlComments;
 const lies = p => fs.readFileSync(p, 'utf8');
 
 /**
- * Die ZUORDNUNG — die einzige Stelle, an der sie steht.
+ * Die MAPPING — die einzige Stelle, an der sie steht.
  */
-const ZUORDNUNG = [
+const MAPPING = [
   {
     web: 'settings.group.profile',
     sinnbild: 'Person',
@@ -83,8 +83,8 @@ const NUR_WEB = {
 };
 
 /** Webapp: Schlüssel → Symbol-ID jedes Menüeintrags, aus dem Markup. */
-function webMenue() {
-  const html = ohneHtmlKommentare(lies(path.join(ROOT, 'public', 'index.html')));
+function webMenu() {
+  const html = withoutHtmlComments(lies(path.join(ROOT, 'public', 'index.html')));
   const auf = html.indexOf('<div class="umenu-pop"');
   // Bis hinter Abmelden: Die Klappe gliedert sich in Gruppen, ihr erstes </div> schliesst nur die erste.
   const zu = html.indexOf('</button>', html.indexOf('id="btn-logout"', auf)) + '</button>'.length;
@@ -96,14 +96,14 @@ function webMenue() {
 }
 
 test('jeder Menüeintrag ist zugeordnet', () => {
-  const web = webMenue();
+  const web = webMenu();
   // Selbstbeweis: Findet die Ableitung nichts, wären die Schleifen still grün.
   assert.equal(web.length, 10, `${web.length} Web-Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
 
-  const webZu = new Set(ZUORDNUNG.map(z => z.web));
-  const offenWeb = web.filter(e => !webZu.has(e.schluessel) && !(e.schluessel in NUR_WEB));
+  const webZu = new Set(MAPPING.map(z => z.web));
+  const openWeb = web.filter(e => !webZu.has(e.schluessel) && !(e.schluessel in NUR_WEB));
   assert.deepEqual(
-    offenWeb.map(e => e.schluessel),
+    openWeb.map(e => e.schluessel),
     [],
     'Diese Web-Einträge sind weder zugeordnet noch als „nur Web" begründet. ' +
       'Ein neuer Eintrag ohne Gegenstück ist eine Entscheidung — sie gehört in die Tabelle.',
@@ -111,9 +111,9 @@ test('jeder Menüeintrag ist zugeordnet', () => {
 });
 
 test('jeder Eintrag trägt sein Sinnbild', () => {
-  const web = new Map(webMenue().map(e => [e.schluessel, e.symbol]));
+  const web = new Map(webMenu().map(e => [e.schluessel, e.symbol]));
   const falsch = [];
-  for (const z of ZUORDNUNG) {
+  for (const z of MAPPING) {
     if (!web.has(z.web)) {
       falsch.push(`${z.web}: fehlt im Web-Menü`);
       continue;
@@ -136,7 +136,7 @@ test('kein Sinnbild steht für zwei Dinge', () => {
     return null;
   };
   const w = doppelt(
-    webMenue().map(e => [e.schluessel, e.symbol]),
+    webMenu().map(e => [e.schluessel, e.symbol]),
     'Webapp',
   );
   assert.deepEqual(

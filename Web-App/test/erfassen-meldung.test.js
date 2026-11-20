@@ -13,10 +13,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, takt, warte } = require('./helpers/oberflaeche');
+const { openUi, takt, warte } = require('./helpers/oberflaeche');
 
-async function erfasse(antwort, sprache = 'de') {
-  const o = await oeffneOberflaeche({ '/v1/sets/add-stream': antwort }, { sprache });
+async function record(antwort, sprache = 'de') {
+  const o = await openUi({ '/v1/sets/add-stream': antwort }, { sprache });
   const { d, w } = o;
   d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
   await takt(20);
@@ -29,7 +29,7 @@ async function erfasse(antwort, sprache = 'de') {
 }
 
 test('ohne Katalogdaten: gespeichert, Rest kommt nach', async () => {
-  const { w, d } = await erfasse({
+  const { w, d } = await record({
     success: true,
     action: 'added',
     set_number: '99071-1',
@@ -46,7 +46,7 @@ test('ohne Katalogdaten: gespeichert, Rest kommt nach', async () => {
 });
 
 test('mit Katalogdaten: hinzugefügt', async () => {
-  const { w, d } = await erfasse({
+  const { w, d } = await record({
     success: true,
     action: 'added',
     set_number: '10294-1',
@@ -61,7 +61,7 @@ test('mit Katalogdaten: hinzugefügt', async () => {
 });
 
 test('aktualisiert', async () => {
-  const { w, d } = await erfasse({
+  const { w, d } = await record({
     success: true,
     action: 'updated',
     set_number: '10294-1',
@@ -76,7 +76,7 @@ test('aktualisiert', async () => {
 });
 
 test('englisch: hinzugefügt', async () => {
-  const { w, d } = await erfasse(
+  const { w, d } = await record(
     { success: true, action: 'added', set_number: '10294-1', name: 'Titanic', katalog_offen: false },
     'en',
   );
@@ -88,7 +88,7 @@ test('englisch: hinzugefügt', async () => {
 });
 
 test('englisch: aktualisiert', async () => {
-  const { w, d } = await erfasse(
+  const { w, d } = await record(
     { success: true, action: 'updated', set_number: '10294-1', name: 'Titanic', katalog_offen: false },
     'en',
   );

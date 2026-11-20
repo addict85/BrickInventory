@@ -14,16 +14,16 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const { haeltSet, katalogSet } = require('./helpers/bestand');
-const db = testDaten();
+const { adminWithFactor } = require('./helpers/verwalter');
+const { holdsSet, catalogSet } = require('./helpers/bestand');
+const db = testData();
 
 test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
@@ -43,14 +43,14 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, a
   await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[MIT, OHNE]]);
   // Der Bestand sagt nur „dieses Konto haelt das Set"; Name und Bildpfad
   // stehen seit Migration 0033 im Katalog.
-  await haeltSet(db, uid, MIT, 1);
-  await katalogSet(db, MIT, { name: 'Mit Bild', image_local: `/images/sets/${MIT}.jpg` });
-  await haeltSet(db, uid, OHNE, 1);
-  await katalogSet(db, OHNE, { name: 'Ohne alles' });
+  await holdsSet(db, uid, MIT, 1);
+  await catalogSet(db, MIT, { name: 'Mit Bild', image_local: `/images/sets/${MIT}.jpg` });
+  await holdsSet(db, uid, OHNE, 1);
+  await catalogSet(db, OHNE, { name: 'Ohne alles' });
   await new Jimp({ width: 500, height: 400, color: 0x0000ffff }).write(original);
   fs.rmSync(vorschau, { force: true });
 
-  await verwalterMitFaktor(_req, uid);
+  await adminWithFactor(_req, uid);
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const frag = async sn => {
     const r = await fetch(`${base}/api/v1/admin/image-diag/${sn}`);

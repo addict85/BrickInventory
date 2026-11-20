@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Client, Pool } from 'pg';
-import { runMigrations, offeneMigrationen } from './migrate';
+import { runMigrations, openMigrations } from './migrate';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { logAndContinue } from '../src/infra/fehler';
 
@@ -14,13 +14,13 @@ export type Erststart = () => Promise<void>;
 // Die älteste Migration, auf der eine bestehende Datenbank aufsetzen darf: db/basis.sql
 // und alle Migrationen danach kennen nur Schemas ab hier. Was älter ist, holt
 // zuerst eine Fassung nach, die die früheren Startstufen noch mitbringt (UPGRADE.md).
-const MINDESTSTAND = '0050-teilezaehler-nur-bestehende-konten.sql';
+const MINIMUM_VERSION = '0050-teilezaehler-nur-bestehende-konten.sql';
 
 /** Eine LEERE Datenbank bekommt db/basis.sql (Abbild der Migrationen), danach
  * nur die jüngeren Migrationen; eine bestehende bleibt unberührt.
  * true, wenn die Basis eingespielt wurde. */
-export async function initSchema(eigeneVerbindung: () => Promise<Client>, erststart?: Erststart): Promise<boolean> {
-  const c = await eigeneVerbindung();
+export async function initSchema(ownConnection: () => Promise<Client>, firstStart?: Erststart): Promise<boolean> {
+  const c = await ownConnection();
   try {
     const leer = !(await c.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
     if (!leer) return false;
@@ -35,7 +35,7 @@ export async function initSchema(eigeneVerbindung: () => Promise<Client>, erstst
   } finally {
     await c.end().catch((r: Error) => console.warn('[schema] Verbindung schliessen:', r.message));
   }
-  if (erststart) await erststart();
+  if (firstStart) await firstStart();
   else console.warn('⚠️  [schema] Leere Datenbank ohne Erststart: kein erstes Konto angelegt.');
   console.log('✅ PostgreSQL schema ready');
   return true;
@@ -60,13 +60,13 @@ export async function initSchemaOnce(
     await client.query('SET statement_timeout = 0');
     await client.query(`SELECT pg_advisory_lock(${LOCKS.SCHEMA_INIT})`);
     await client.query('RESET statement_timeout');
-    if (!(await darfSchemaAendernAuf(client))) return await nurStandPruefen(client, zeitzone, systemPool);
+    if (!(await maySchemaChangeOn(client))) return await checkOnlyStatus(client, zeitzone, systemPool);
     const neu = await initSchema();
-    if (!neu) await pruefeMindeststand(client);
+    if (!neu) await checkMinimumVersion(client);
     // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
     // eben angelegten, leeren Datenbank.
     const applied = await runMigrations(client, { sichern: !neu });
-    await schreibeErfassungsZeitzone(client, zeitzone);
+    await writeEntryTimeZone(client, zeitzone);
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
@@ -83,7 +83,7 @@ export async function initSchemaOnce(
 
 /** Die konfigurierte Zeitzone für den Trigger erfassung_tag() (Migration
  * 0078) — in der Datenbank, damit jede Verbindung denselben Tag rechnet. */
-async function schreibeErfassungsZeitzone(client: import('pg').ClientBase, zeitzone: string): Promise<void> {
+async function writeEntryTimeZone(client: import('pg').ClientBase, zeitzone: string): Promise<void> {
   await client.query(
     `INSERT INTO global_settings (key, value) VALUES ('erfassung_zeitzone', $1)
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
@@ -92,16 +92,16 @@ async function schreibeErfassungsZeitzone(client: import('pg').ClientBase, zeitz
   );
 }
 
-export const DARF_SCHEMA_AENDERN = `SELECT has_schema_privilege('public', 'CREATE') AS d`;
-async function darfSchemaAendernAuf(client: import('pg').ClientBase): Promise<boolean> {
-  return (await client.query<{ d: boolean }>(DARF_SCHEMA_AENDERN)).rows[0]?.d === true;
+export const MAY_SCHEMA_CHANGE = `SELECT has_schema_privilege('public', 'CREATE') AS d`;
+async function maySchemaChangeOn(client: import('pg').ClientBase): Promise<boolean> {
+  return (await client.query<{ d: boolean }>(MAY_SCHEMA_CHANGE)).rows[0]?.d === true;
 }
 
 /** Für die Laufzeitrolle: Ein leeres oder nicht migriertes Schema hält den Start
  * an, statt dass Anfragen auf fehlende Spalten treffen. */
-async function nurStandPruefen(client: import('pg').ClientBase, zeitzone: string, systemPool: Pool): Promise<void> {
+async function checkOnlyStatus(client: import('pg').ClientBase, zeitzone: string, systemPool: Pool): Promise<void> {
   const leer = !(await client.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
-  const offen = leer ? [] : await offeneMigrationen(client);
+  const offen = leer ? [] : await openMigrations(client);
   if (leer || offen.length)
     throw new Error(
       `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${offen.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; ` +
@@ -112,7 +112,7 @@ async function nurStandPruefen(client: import('pg').ClientBase, zeitzone: string
   if (da.rows[0]?.value !== zeitzone) {
     const sys = await systemPool.connect();
     try {
-      await schreibeErfassungsZeitzone(sys, zeitzone);
+      await writeEntryTimeZone(sys, zeitzone);
     } finally {
       sys.release();
     }
@@ -120,17 +120,17 @@ async function nurStandPruefen(client: import('pg').ClientBase, zeitzone: string
   console.log('✅ Schema aktuell (eingespielt vom Dienst migration)');
 }
 
-/** Eine bestehende Datenbank ohne Migration ab MINDESTSTAND hält den Start an,
+/** Eine bestehende Datenbank ohne Migration ab MINIMUM_VERSION hält den Start an,
  * bevor eine Migration sie anfasst: Die jüngeren setzen Tabellen voraus, die
  * dort fehlen, und schrieben sonst ein halbes Schema. */
-async function pruefeMindeststand(client: import('pg').ClientBase): Promise<void> {
+async function checkMinimumVersion(client: import('pg').ClientBase): Promise<void> {
   const { rows } = await client.query(`SELECT to_regclass('public.schema_migrations') IS NOT NULL AS da`);
-  const neuGenug =
+  const newEnough =
     rows[0].da &&
-    (await client.query('SELECT 1 FROM schema_migrations WHERE name >= $1 LIMIT 1', [MINDESTSTAND])).rows.length > 0;
-  if (!neuGenug)
+    (await client.query('SELECT 1 FROM schema_migrations WHERE name >= $1 LIMIT 1', [MINIMUM_VERSION])).rows.length > 0;
+  if (!newEnough)
     throw new Error(
-      `Die Datenbank ist älter als Migration ${MINDESTSTAND}. Zuerst auf eine Fassung vor dem ` +
+      `Die Datenbank ist älter als Migration ${MINIMUM_VERSION}. Zuerst auf eine Fassung vor dem ` +
         'Entfernen der früheren Startstufen aktualisieren, dann auf diese (UPGRADE.md#stichtag-0050).',
     );
 }

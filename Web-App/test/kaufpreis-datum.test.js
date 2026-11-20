@@ -3,12 +3,12 @@
  * Browsers. Nur wenn die von der App abweicht, steht es darunter noch einmal
  * in der Form der App; sonst stünde dasselbe Datum zweimal da.
  *
- * Gegenprobe (07.11.2026): in datumFeld() die Abfrage browserSchreibtDatumWieApp()
+ * Gegenprobe (07.11.2026): in dateField() die Abfrage browserWritesDateHowApp()
  * gestrichen → rot: „deutscher Browser, deutsche App: das Datum steht einmal“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 const erfassungen = {
   '/v1/sets/10294-1/acquisitions': () => ({
@@ -18,8 +18,8 @@ const erfassungen = {
   }),
 };
 
-async function dialog(browserSprache) {
-  const o = await oeffneOberflaeche(erfassungen, { sprache: 'de', browserSprache });
+async function dialog(browserLanguage) {
+  const o = await openUi(erfassungen, { sprache: 'de', browserLanguage });
   const knopf = o.d.createElement('button');
   knopf.dataset.click = 'openAcqModal';
   knopf.dataset.arg = '10294-1';

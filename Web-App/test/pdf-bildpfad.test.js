@@ -13,26 +13,26 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { pdfBildPfad } = _req('src/katalog/pdf/pdfZeichnen.js');
+const { pdfImagePath } = _req('src/katalog/pdf/pdfZeichnen.js');
 const { IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
 
 test('ein Teilebild aus dem Bildordner wird gelesen', () => {
-  assert.equal(pdfBildPfad({ image_local: '/images/parts/3001_4.png' }), path.join(IMAGES_DIR, 'parts', '3001_4.png'));
+  assert.equal(pdfImagePath({ image_local: '/images/parts/3001_4.png' }), path.join(IMAGES_DIR, 'parts', '3001_4.png'));
 });
 
 test('fremde Uploads', () => {
-  assert.equal(pdfBildPfad({ image_local: '/data/uploads/7/anleitung.png' }), null);
-  assert.equal(pdfBildPfad({ image_local: '/data/instructions/x.png' }), null);
+  assert.equal(pdfImagePath({ image_local: '/data/uploads/7/anleitung.png' }), null);
+  assert.equal(pdfImagePath({ image_local: '/data/instructions/x.png' }), null);
 });
 
 test('aus dem Bildordner heraus', () => {
   for (const weg of ['/images/../uploads/7/a.png', '/images/../../package.json', '/images/parts/../../../etc/passwd'])
-    assert.equal(pdfBildPfad({ image_local: weg }), null, weg);
-  assert.ok(!String(pdfBildPfad({ image_local: '/images/sets/a.png' })).startsWith(path.join(DATA_DIR, 'uploads')));
+    assert.equal(pdfImagePath({ image_local: weg }), null, weg);
+  assert.ok(!String(pdfImagePath({ image_local: '/images/sets/a.png' })).startsWith(path.join(DATA_DIR, 'uploads')));
 });
 
 test('fremde Adressen und Unsinn', () => {
-  assert.equal(pdfBildPfad({ image_url: 'https://cdn.example/x.png' }), null);
-  assert.equal(pdfBildPfad({ image_local: '/api/img-proxy?url=%E0%A4%A' }), null, 'kaputte Kodierung');
-  assert.equal(pdfBildPfad({}), null);
+  assert.equal(pdfImagePath({ image_url: 'https://cdn.example/x.png' }), null);
+  assert.equal(pdfImagePath({ image_local: '/api/img-proxy?url=%E0%A4%A' }), null, 'kaputte Kodierung');
+  assert.equal(pdfImagePath({}), null);
 });

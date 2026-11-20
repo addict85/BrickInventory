@@ -4,9 +4,9 @@
  * (wie ein zweiter Prozess) erfährt eine Änderung über NOTIFY.
  *
  * Gegenproben (14.11.2026 gemessen):
- *   A  beiHaushaltsaenderung() wieder in eine Liste des Moduls → rot: „ein Satz
+ *   A  atHouseholdChange() wieder in eine Liste des Moduls → rot: „ein Satz
  *      leert nur seine Abhängigen“ (der Rückruf des anderen Satzes lief mit)
- *   B  horcheAufAenderungen() ohne Leeren (Rückruf leer) → rot: „ein anderer
+ *   B  listenOnChanges() ohne Leeren (Rückruf leer) → rot: „ein anderer
  *      Satz erfährt die Änderung über NOTIFY“ (altes Blickfeld)
  */
 const test = require('node:test');
@@ -14,19 +14,19 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, alsKonto } = require('./helpers/sources');
+const { buildAndRequire, testData, asAccount } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { erzeugeDb, dbKonfigAusUmgebung } = _req('db/database.js');
+const { dataOrSkip } = require('./helpers/db');
+const { createDb, dbKonfigFromEnvironment } = _req('db/database.js');
 const { bis } = require('./helpers/zeit');
 
 test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
-  const db = testDaten();
-  const { baueDienste } = _req('startup/verdrahtung.js');
+  if (!(await dataOrSkip(t, _req))) return;
+  const db = testData();
+  const { buildServices } = _req('startup/verdrahtung.js');
   // Zwei Zugänge wie zwei Prozesse (Web und Jobs).
-  const zugaenge = [erzeugeDb(dbKonfigAusUmgebung()), erzeugeDb(dbKonfigAusUmgebung())];
-  const [a, b] = zugaenge.map(z => baueDienste(z));
+  const zugaenge = [createDb(dbKonfigFromEnvironment()), createDb(dbKonfigFromEnvironment())];
+  const [a, b] = zugaenge.map(z => buildServices(z));
   const namen = [`hhd_h_${process.pid}`, `hhd_u_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const ids = [];
@@ -35,7 +35,7 @@ test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]);
     for (const z of zugaenge) {
-      await z.benachrichtigung.close();
+      await z.notification.close();
       await z.pool.end();
     }
     await db.pool.end().catch(() => {});
@@ -43,19 +43,19 @@ test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
 
   await t.test('ein Satz leert nur seine Abhängigen', () => {
     const gerufen = [];
-    a.haushalt.beiHaushaltsaenderung(() => gerufen.push('a'));
-    b.haushalt.beiHaushaltsaenderung(() => gerufen.push('b'));
-    a.haushalt.meldeHaushaltsaenderung();
+    a.haushalt.atHouseholdChange(() => gerufen.push('a'));
+    b.haushalt.atHouseholdChange(() => gerufen.push('b'));
+    a.haushalt.reportHouseholdChange();
     assert.deepEqual(gerufen, ['a']);
   });
 
   await t.test('ein anderer Satz erfährt die Änderung über NOTIFY', async () => {
-    await b.haushalt.horcheAufAenderungen();
+    await b.haushalt.listenOnChanges();
     // Unter dem Zeilenschutz des Kontos: Fremde Verknüpfungen sieht die Laufzeitrolle nicht (0121).
-    const blickfeld = () => alsKonto(ids[0], () => b.haushalt.blickfeldIds(ids[0]));
+    const blickfeld = () => asAccount(ids[0], () => b.haushalt.scopeIds(ids[0]));
     assert.deepEqual(await blickfeld(), [ids[0]]);
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [ids[0], ids[1]]);
-    a.haushalt.meldeHaushaltsaenderung();
+    a.haushalt.reportHouseholdChange();
     const neu = async () => (await blickfeld()).length === 2;
     assert.ok(await bis(neu, 3000), 'altes Blickfeld: die Änderung kam nicht an');
   });

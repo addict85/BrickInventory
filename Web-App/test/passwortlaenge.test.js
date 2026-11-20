@@ -15,40 +15,40 @@ const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { PASSWORT_MIN_ZEICHEN, passwortZuKurz } = _req('src/konto/anmeldepruefung.js');
+const { PASSWORD_MIN_CHARS, passwordToShort } = _req('src/konto/anmeldepruefung.js');
 
 test('die Regel selbst haelt auch das, was kein String ist', () => {
   // Seit dem 04.11.2026 zwölf statt acht.
-  assert.equal(passwortZuKurz('12345678901'), true);
-  assert.equal(passwortZuKurz('123456789012'), false);
-  assert.equal(passwortZuKurz(''), true);
-  assert.equal(passwortZuKurz(null), true);
-  assert.equal(passwortZuKurz(undefined), true);
+  assert.equal(passwordToShort('12345678901'), true);
+  assert.equal(passwordToShort('123456789012'), false);
+  assert.equal(passwordToShort(''), true);
+  assert.equal(passwordToShort(null), true);
+  assert.equal(passwordToShort(undefined), true);
   // ── Der Fall, den zwei der vier alten Pruefungen durchliessen ─────────────
   // Der Rumpf einer Anfrage kann alles enthalten. `(123456789).length` ist
   // `undefined`, und `undefined < 8` ist FALSCH — ein Passwort als JSON-Zahl
   // kam an `password.length < 8` also vorbei. Nur die zwei Stellen mit
   // `String(password).length` fingen es ab.
-  assert.equal(passwortZuKurz(123), true, 'Eine Zahl hat kein .length — sie darf nicht durchrutschen');
+  assert.equal(passwordToShort(123), true, 'Eine Zahl hat kein .length — sie darf nicht durchrutschen');
   // Die Gegenrichtung, damit die Zeile darueber nicht bloss „alles ist zu
   // kurz" beweist: Aus der Zahl wird ihre Ziffernfolge, und die ist lang
   // genug (`String(123456789012)` hat zwölf Zeichen).
-  assert.equal(passwortZuKurz(123456789012), false);
+  assert.equal(passwordToShort(123456789012), false);
 });
 
 test('Server und Webapp nennen dieselbe Zahl', () => {
   const web = ohneKommentare(read('public/js/formular.js'));
-  const webZahl = /export const PASSWORT_MIN_ZEICHEN = (\d+)/.exec(web);
-  assert.ok(webZahl, 'Die Webapp fuehrt keine Konstante mehr — dann steht die Zahl wieder verstreut');
-  assert.equal(Number(webZahl[1]), PASSWORT_MIN_ZEICHEN, 'Webapp und Server verlangen verschiedene Laengen');
+  const webNumber = /export const PASSWORD_MIN_CHARS = (\d+)/.exec(web);
+  assert.ok(webNumber, 'Die Webapp fuehrt keine Konstante mehr — dann steht die Zahl wieder verstreut');
+  assert.equal(Number(webNumber[1]), PASSWORD_MIN_CHARS, 'Webapp und Server verlangen verschiedene Laengen');
 });
 
 test('die Fehlermeldung nennt dieselbe Zahl wie die Regel', () => {
   // Die Texte können der Konstante nicht folgen; ein Text, der weniger
   // verspricht, als der Server verlangt, führt den Nutzer in eine Absage.
-  const { fehlerText } = _req('src/infra/fehlerTexte.js');
+  const { errorText } = _req('src/infra/fehlerTexte.js');
   for (const sprache of ['de', 'en'])
-    assert.match(fehlerText('passwort_zu_kurz', sprache), new RegExp(`\\b${PASSWORT_MIN_ZEICHEN}\\b`), sprache);
+    assert.match(errorText('passwort_zu_kurz', sprache), new RegExp(`\\b${PASSWORD_MIN_CHARS}\\b`), sprache);
   // Die Webapp füllt die Zahl zur Laufzeit ein: dort ein Platzhalter, keine Zahl.
   const texte = require('./helpers/sources').loadTranslations();
   for (const sprache of ['de', 'en']) {
@@ -64,12 +64,12 @@ test('die Webapp prueft vor dem Absenden', () => {
   const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
   // Anmelden, Registrieren und Zurücksetzen stehen seit dem Umbau in sitzung.js.
   const sitzung = ohneKommentare(read('public/js/sitzung.js'));
-  const webAufrufe =
-    (core.match(/passwortRegelText\(/g) || []).length +
-    (settings.match(/passwortRegelText\(/g) || []).length +
-    (sitzung.match(/passwortRegelText\(/g) || []).length;
+  const webCalls =
+    (core.match(/passwordRuleText\(/g) || []).length +
+    (settings.match(/passwordRuleText\(/g) || []).length +
+    (sitzung.match(/passwordRuleText\(/g) || []).length;
   // Fuenf Stellen setzen in der Webapp ein Passwort: Registrieren,
   // Zuruecksetzen, Aendern, Konto anlegen, Konto-Passwort zuruecksetzen.
   // Dazu die Definition selbst in formular.js.
-  assert.ok(webAufrufe >= 6, `Nur ${webAufrufe} Vorkommen — nicht alle fuenf Formulare pruefen vor dem Absenden`);
+  assert.ok(webCalls >= 6, `Nur ${webCalls} Vorkommen — nicht alle fuenf Formulare pruefen vor dem Absenden`);
 });

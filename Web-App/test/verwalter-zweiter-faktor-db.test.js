@@ -5,14 +5,14 @@
  * Ein gewöhnliches Konto und ein App-Token (Scope `app`) eines Verwalters sind …
  *
  * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  in anmeldungAmEingang die Prüfung zweiterFaktorPflicht gestrichen → rot:
+ *   A  in loginAtInbox die Prüfung zweiterFaktorPflicht gestrichen → rot:
  *      „ohne zweiten Faktor nur dessen Einrichtung“, „… App-Token …“ (der volle
  *      Token kommt durch) und „ein Passkey genügt“
- *   B  /zweiter-faktor/einrichten aus ZUR_EINRICHTUNG gestrichen → rot:
+ *   B  /zweiter-faktor/einrichten aus TO_SETUP gestrichen → rot:
  *      „… die Einrichtung geht, danach alles“
  *   C  zweiterFaktorPflicht() zählt auch Passkeys (hatPasskeys) → rot: „ein
  *      Passkey allein genügt nicht“
- *   D  in angemeldetAntworten `zweiterFaktorPflicht` immer false → rot:
+ *   D  in signedInResponses `zweiterFaktorPflicht` immer false → rot:
  *      „Anmeldung und /auth/me nennen die Pflicht“
  *
  * REQUIRE_DB=1.
@@ -26,13 +26,13 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const zf = _req('src/factors/secondFactor.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { portVon } = require('./helpers/server');
+const { portOf } = require('./helpers/server');
 const PASS = 'Verwalter-Passwort-1';
 
 /** Wie server.ts: Eingang vor den Routen; die Sitzung steht fest. */
@@ -49,16 +49,15 @@ function server(t, sitzung, token) {
   });
   app.use(
     '/api/v1',
-    _req('routes/api_v1/middleware.js').waechterFuer(require('./helpers/sources').testDienste().konto)
-      .anmeldungAmEingang,
+    _req('routes/api_v1/middleware.js').guardFor(require('./helpers/sources').testServices().konto).loginAtInbox,
   );
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
-  app.use('/api/v1/auth', require('./helpers/sources').routerAus(_req, 'routes/auth.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   // Wie startup/app.ts: ein Fehlerweg hinter allem, auch hinter dem Eingang.
-  app.use(_req('src/http/httpAntwort.js').fehlerAntwort);
+  app.use(_req('src/http/httpAntwort.js').errorResponse);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
-  const base = `http://localhost:${portVon(srv)}/api/v1`;
+  const base = `http://localhost:${portOf(srv)}/api/v1`;
   return async (methode, weg, body) => {
     const r = await fetch(base + weg, {
       method: methode,
@@ -97,7 +96,7 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
     ).id;
   const chef = await konto(NAMEN[0], true),
     nutzer = await konto(NAMEN[1], false),
-    mitPk = await konto(NAMEN[2], true);
+    withPk = await konto(NAMEN[2], true);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]).catch(() => {});
     await db.pool.end().catch(() => {});
@@ -127,10 +126,10 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
       (await server(t, { userId: nutzer, username: NAMEN[1], isAdmin: false })('GET', '/settings')).status,
       200,
     );
-    const { tokenAnlegen } = _req('src/konto/geraeteToken.js');
-    const app = server(t, {}, await tokenAnlegen(chef, 'app', false, null, { scope: 'app' }));
+    const { createToken } = _req('src/konto/geraeteToken.js');
+    const app = server(t, {}, await createToken(chef, 'app', false, null, { scope: 'app' }));
     assert.equal((await app('GET', '/settings')).status, 200);
-    const voll = server(t, {}, await tokenAnlegen(chef, 'voll', false, null, { scope: 'voll' }));
+    const voll = server(t, {}, await createToken(chef, 'voll', false, null, { scope: 'voll' }));
     assert.equal((await voll('GET', '/settings')).status, 403);
   });
 
@@ -145,9 +144,9 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
   });
 
   await t.test('ein Passkey allein genügt nicht', async () => {
-    const pk = server(t, { userId: mitPk, username: NAMEN[2], isAdmin: true });
+    const pk = server(t, { userId: withPk, username: NAMEN[2], isAdmin: true });
     await db.run(`INSERT INTO passkeys (user_id, credential_id, public_key) VALUES ($1, $2, '\\x00')`, [
-      mitPk,
+      withPk,
       `pk-${P}`,
     ]);
     assert.equal((await pk('GET', '/settings')).status, 403);

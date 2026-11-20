@@ -1,9 +1,9 @@
 /** Pro Tag, Element, Zustand, Preis und Währung genau EINE Zeile: Gleiche
  * Käufe eines Tages werden zusammengezählt. */
-import { preisSpalte, schluesselSpalten } from '../../db/bestandsmenge';
+import { priceColumn, keyColumns } from '../../db/bestandsmenge';
 import * as repo from './repository/kaufErfassungen';
 import { zustand } from '../infra/validate';
-import type { BestandKontext } from './kontext';
+import type { InventoryContext } from './kontext';
 
 export type AcquisitionKind = 'set' | 'part' | 'fig';
 
@@ -28,8 +28,8 @@ const num = (v: unknown): number | null => {
 
 /** @param keyValues Schlüsselwerte in der Reihenfolge von SHAPES[kind].keys
  * @returns { merged } — true, wenn eine bestehende Zeile aufgestockt wurde */
-export async function kaufAmTagErfassen(
-  k: BestandKontext,
+export async function addPurchaseAtTag(
+  k: InventoryContext,
   kind: AcquisitionKind,
   userId: number,
   keyValues: (string | number)[],
@@ -42,7 +42,7 @@ export async function kaufAmTagErfassen(
 
   // Eine Anweisung statt Lesen-Rechnen-Schreiben: Gleichzeitige Erfassungen
   // addieren sich. Zusammengelegt nur bei gleichem Preis, Herkunft und Währung.
-  const merged = await repo.fuegeErfassungHinzu(k.db, kind, userId, keyValues, {
+  const merged = await repo.addEntryAdd(k.db, kind, userId, keyValues, {
     menge: qty,
     preis: price,
     zustand: cond,
@@ -56,22 +56,22 @@ export async function kaufAmTagErfassen(
 /** Damit eine Bearbeitung nicht am eindeutigen Tagesindex scheitert.
  * @param condition der Zustand, den die Zeile NACH der Bearbeitung hat
  * @returns die kollidierende id, oder null */
-export async function kaufAmSelbenTag(
-  k: BestandKontext,
+export async function purchaseAtSameTag(
+  k: InventoryContext,
   kind: AcquisitionKind,
   userId: number,
   keyValues: unknown[],
   day: string,
   excludeId: number | null,
   condition: string | null = null,
-  merkmale: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {},
+  features: { preis?: unknown; geschaetzt?: boolean; waehrung?: string | null } = {},
 ): Promise<number | null> {
   const cond = zustand(condition);
-  return repo.gleicheErfassungAmTag(k.db, kind, userId, keyValues, day, excludeId ?? -1, {
+  return repo.sameEntryAtTag(k.db, kind, userId, keyValues, day, excludeId ?? -1, {
     zustand: cond,
-    preis: num(merkmale.preis),
-    geschaetzt: !!merkmale.geschaetzt,
-    waehrung: merkmale.waehrung ?? null,
+    preis: num(features.preis),
+    geschaetzt: !!features.geschaetzt,
+    waehrung: features.waehrung ?? null,
   });
 }
 
@@ -104,7 +104,7 @@ export function acquisitionTotals(rows: { quantity?: unknown; purchase_price?: u
   };
 }
 
-type MitPreis = {
+type WithPrice = {
   quantity?: unknown;
   purchase_price?: unknown;
   unit_price?: unknown;
@@ -114,7 +114,7 @@ type MitPreis = {
 
 /** Summe in der Währung des Betrachters, zum Kurs des Kauftags wie in den Finanzen: Sonst stünden
  * 3 × 260,66 USD als Euro darin. Ohne Kurs zählt die Zeile in `ohne_kurs`, nicht in der Summe. */
-export async function erfassungenInKontowaehrung<T extends MitPreis>(k: BestandKontext, rows: T[], betrachter: number) {
+export async function erfassungenInKontowaehrung<T extends WithPrice>(k: InventoryContext, rows: T[], viewer: number) {
   const preise = rows.map(r => {
     const roh = r.purchase_price ?? r.unit_price;
     return roh === null || roh === undefined ? null : Number(roh);
@@ -123,13 +123,13 @@ export async function erfassungenInKontowaehrung<T extends MitPreis>(k: BestandK
     const d = r.created_at ? new Date(String(r.created_at)) : null;
     return d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null;
   });
-  const umgerechnet = await k.kaufErfassungen.inWaehrungDesKontos(
-    betrachter,
+  const umgerechnet = await k.kaufErfassungen.inCurrencyOfAccount(
+    viewer,
     preise,
     rows.map(r => r.currency ?? null),
     tage,
   );
-  const acquisitions = rows.map((r, i) => ({ ...r, preis_konto: umgerechnet.betraege[i] ?? null }));
+  const acquisitions = rows.map((r, i) => ({ ...r, preis_konto: umgerechnet.amounts[i] ?? null }));
   return {
     acquisitions,
     totals: {
@@ -143,26 +143,26 @@ export async function erfassungenInKontowaehrung<T extends MitPreis>(k: BestandK
 /** Gibt es am selben Tag schon eine gleiche Zeile, wandert die Menge dorthin,
  * statt am eindeutigen Index zu scheitern.
  * @returns true, wenn etwas geändert wurde */
-export async function setzeGeschaetztenPreis(
-  kx: BestandKontext,
+export async function setEstimatedPrice(
+  kx: InventoryContext,
   kind: AcquisitionKind,
   id: number,
   preis: number,
 ): Promise<boolean> {
   return kx.transaktion(
     async t => {
-      const z = await repo.erfassungSperren(t.db, kind, id);
-      if (!z || z[preisSpalte(kind)] != null) return false;
-      const keys = schluesselSpalten(kind).map(s => z[s]);
-      const ziel = await kaufAmSelbenTag(t, kind, z.user_id, keys, z.tag, id, z.condition, {
+      const z = await repo.lockEntry(t.db, kind, id);
+      if (!z || z[priceColumn(kind)] != null) return false;
+      const keys = keyColumns(kind).map(s => z[s]);
+      const ziel = await purchaseAtSameTag(t, kind, z.user_id, keys, z.tag, id, z.condition, {
         preis,
         geschaetzt: true,
         waehrung: z.currency,
       });
-      if (ziel) await repo.legeErfassungZusammen(t.db, kind, id, ziel, z.quantity);
-      else await repo.setzePreisGeschaetzt(t.db, kind, id, preis);
+      if (ziel) await repo.putEntryTogether(t.db, kind, id, ziel, z.quantity);
+      else await repo.setPriceEstimated(t.db, kind, id, preis);
       return true;
     },
-    { wiederholeBeiKonflikt: true },
+    { repeatAtConflict: true },
   ); // sperrt die Zeile, dann die Zielzeile: zwei Nachträge können sich kreuzen
 }

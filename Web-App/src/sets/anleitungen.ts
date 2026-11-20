@@ -1,33 +1,39 @@
 /** Anleitungen eines Sets: hochgeladene und automatisch geholte. */
-import { ohneFehlendeDatei } from '../infra/fehler';
+import { withoutMissingFile } from '../infra/fehler';
 import fs from 'node:fs';
 import path from 'node:path';
 import { APP_ROOT, DATA_DIR } from '../infra/appPaths';
-import { anleitungenZusammenlegen } from '../katalog';
-import { findeSetImBlickfeld } from './erfassen';
-import { normalisiereSetNummer, moeglicheSetNummer } from '../infra/setNummer';
-import { fachfehler, nichtGefunden } from '../infra/fehlerTexte';
-import { imSystemkontext } from '../infra/kontoKontext';
+import { mergeInstructions } from '../katalog';
+import { findSetInScope } from './erfassen';
+import { normalisiereSetNummer, possibleSetNumber } from '../infra/setNummer';
+import { fachfehler, notFound } from '../infra/fehlerTexte';
+import { inSystemContext } from '../infra/kontoKontext';
 import * as repo from './repository/setDetail';
-import { versuche, wertOder } from '../infra/ergebnis';
-import type { SetsKontext } from './kontext';
+import { versuche, valueOr } from '../infra/ergebnis';
+import type { SetsContext } from './kontext';
 
-export async function anleitungMerken(sk: SetsKontext, uid: number, sn: string, pfad: string, beschreibung: string) {
-  await repo.fuegeAnleitungEin(sk.db, uid, sn, pfad, beschreibung, pfad);
+export async function rememberInstruction(
+  sk: SetsContext,
+  uid: number,
+  sn: string,
+  pfad: string,
+  beschreibung: string,
+) {
+  await repo.addInstructionOne(sk.db, uid, sn, pfad, beschreibung, pfad);
 }
 
 /** Die Datei bleibt, solange eine andere Zeile auf sie zeigt. */
-export async function anleitungLoeschen(sk: SetsKontext, uid: number, id: number): Promise<void> {
-  const instr = (await repo.anleitungsPfad(sk.db, id, uid)) ?? nichtGefunden();
+export async function anleitungLoeschen(sk: SetsContext, uid: number, id: number): Promise<void> {
+  const instr = (await repo.instructionPath(sk.db, id, uid)) ?? notFound();
   await repo.loescheAnleitung(sk.db, id, uid);
   if (!instr.local_path?.startsWith('/data/uploads/')) return;
   // Weiss die Datenbank nicht, ob noch jemand die Datei braucht, bleibt sie liegen. Die
   // Zeile eines anderen Kontos verbirgt der Zeilenschutz; gefragt wird deshalb im Systemrahmen.
   const pfad = instr.local_path;
-  const rest = wertOder(
+  const rest = valueOr(
     await versuche(
       'sets:anleitung-noch-benutzt',
-      imSystemkontext('geteilte Anleitungsdatei', () => repo.anleitungsdateiBenutzt(sk.db, pfad)),
+      inSystemContext('geteilte Anleitungsdatei', () => repo.instructionFileUsed(sk.db, pfad)),
     ),
     { ok: 1 },
   );
@@ -35,23 +41,23 @@ export async function anleitungLoeschen(sk: SetsKontext, uid: number, id: number
   if (!rest)
     await fs.promises
       .unlink(path.join(APP_ROOT, instr.local_path.slice(1)))
-      .catch(ohneFehlendeDatei('anleitung:datei-loeschen'));
+      .catch(withoutMissingFile('anleitung:datei-loeschen'));
 }
 
 /** Die Anleitungen sind geteilt: Ersetzen darf nur der Verwalter (ein leerer
  * Abruf löschte sie sonst für alle). Andere holen, was fehlt, einmal je Set und Tag. */
-export async function anleitungenNeuLaden(sk: SetsKontext, uid: number, roh: string, verwalter: boolean) {
+export async function loadInstructionsNew(sk: SetsContext, uid: number, roh: string, verwalter: boolean) {
   const sn = normalisiereSetNummer(roh);
-  if (!moeglicheSetNummer(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  if (verwalter) await sk.katalog.loescheAnleitungen(sn);
+  if (!possibleSetNumber(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
+  if (verwalter) await sk.katalog.deleteInstructions(sn);
   else {
-    if (!(await findeSetImBlickfeld(sk, uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
+    if (!(await findSetInScope(sk, uid, sn))) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
     if ((await sk.katalog.anzahlAnleitungen(sn)) > 0) fachfehler('verboten', 'nur_admins');
-    if (!(await sk.katalog.anleitungNeuLadenErlaubt(sn)))
+    if (!(await sk.katalog.instructionNewLoadAllowed(sn)))
       fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: 24 * 60 });
   }
   const auftrag = await sk.katalog.anleitungEinreihen(sn, { jetzt: true });
-  const instructions = anleitungenZusammenlegen(await sk.katalog.anleitungenZuSet(sn), []);
+  const instructions = mergeInstructions(await sk.katalog.instructionsToSet(sn), []);
   return { instructions, auftrag };
 }
 

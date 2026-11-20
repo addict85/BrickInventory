@@ -18,10 +18,10 @@ const test = require('node:test');
 const assert = require('node:assert');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { oeffneOberflaeche, ANMELDUNG, warte } = require('./helpers/oberflaeche');
+const { dataOrSkip } = require('./helpers/db');
+const { openUi, ANMELDUNG, warte } = require('./helpers/oberflaeche');
 
 const U = 990811,
   TEIL = `ph-teil-${process.pid}`,
@@ -29,13 +29,13 @@ const U = 990811,
   FARBE = 4;
 
 test.after(() =>
-  testDaten()
+  testData()
     .pool.end()
     .catch(() => {}),
 );
 
-async function aufbau(t) {
-  const db = await datenOderSkip(t, _req);
+async function setup(t) {
+  const db = await dataOrSkip(t, _req);
   if (!db) return null;
   const weg = async () => {
     for (const tab of ['part_acquisitions', 'minifig_acquisitions', 'parts', 'minifigs'])
@@ -70,7 +70,7 @@ async function aufbau(t) {
 }
 
 test('Teil und Figur ohne Preis im gewählten Zustand übernehmen den anderen und sagen es', async t => {
-  if (!(await aufbau(t))) return;
+  if (!(await setup(t))) return;
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   const teil = await addManualPart(U, { part_number: TEIL, color_id: FARBE, condition: 'N' });
@@ -78,20 +78,16 @@ test('Teil und Figur ohne Preis im gewählten Zustand übernehmen den anderen un
   assert.deepEqual([teil.price_from_condition, fig.price_from_condition], ['U', 'U']);
   const { manualPartPurchase } = _req('src/parts/manualParts.js');
   const r = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'N' });
-  assert.deepEqual([r.effectivePurchasePrice, r.preisAusZustand], [0.9, 'U'], 'der übernommene Preis fehlt');
+  assert.deepEqual([r.effectivePurchasePrice, r.priceFromState], [0.9, 'U'], 'der übernommene Preis fehlt');
   const gleich = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, condition: 'U' });
-  assert.deepEqual(
-    [gleich.effectivePurchasePrice, gleich.preisAusZustand],
-    [0.9, null],
-    'ohne Rückfall keine Herkunft',
-  );
+  assert.deepEqual([gleich.effectivePurchasePrice, gleich.priceFromState], [0.9, null], 'ohne Rückfall keine Herkunft');
 });
 
 test('eine eingetippte Zahl hat keine Herkunft', async t => {
-  if (!(await aufbau(t))) return;
+  if (!(await setup(t))) return;
   const { manualPartPurchase } = _req('src/parts/manualParts.js');
   const r = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, unitPrice: '2.50', condition: 'N' });
-  assert.deepEqual([r.effectivePurchasePrice, r.preisAusZustand, r.geschaetzt], [2.5, null, false]);
+  assert.deepEqual([r.effectivePurchasePrice, r.priceFromState, r.geschaetzt], [2.5, null, false]);
 });
 
 test('die Webapp nennt die Herkunft bei Teil und Figur', async () => {
@@ -100,7 +96,7 @@ test('die Webapp nennt die Herkunft bei Teil und Figur', async () => {
     o.method === 'POST'
       ? { success: true, action: 'added', [`${art}_number`]: `${art}-1`, price_from_condition: 'U' }
       : ANMELDUNG[`/v1/${art === 'part' ? 'parts' : 'minifigs'}`];
-  const o = await oeffneOberflaeche({ '/v1/parts': posten('part'), '/v1/minifigs': posten('fig') });
+  const o = await openUi({ '/v1/parts': posten('part'), '/v1/minifigs': posten('fig') });
   try {
     await o.ruhig();
     for (const [art, nr, knopf, ergebnis] of [

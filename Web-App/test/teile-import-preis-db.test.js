@@ -1,30 +1,30 @@
 /**
  * CSV-Import und Erfassen von Hand müssen dasselbe hinterlassen. Beide laufen
  * wie im Betrieb im Konto: der Import über die echte Kette (testServer) und den
- * Auftrag, das Erfassen im Namen des Kontos (alsKonto).
+ * Auftrag, das Erfassen im Namen des Kontos (asAccount).
  *
  * Gegenprobe (13.11.2026 gemessen): im Worker den Auftrag ohne sein Konto
- * (imNamenDesAuftrags mit alsAnfrage({})) → rot (der Import schlägt fehl).
+ * (inNamesOfJob mit asRequest({})) → rot (der Import schlägt fehl).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, alsKonto } = require('./helpers/sources');
+const { buildAndRequire, testData, asAccount } = require('./helpers/sources');
 const { testServer } = require('./helpers/server');
 const _req = buildAndRequire();
 const { importWorker } = require('./helpers/auftraege');
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   importWorker(t, _req);
 
   const name = `imp_${process.pid}`;
-  const IMPORTIERT = `imp${String(process.pid).slice(-5)}`;
-  const VON_HAND = `hnd${String(process.pid).slice(-5)}`;
+  const IMPORTED = `imp${String(process.pid).slice(-5)}`;
+  const OF_HAND = `hnd${String(process.pid).slice(-5)}`;
   const u = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ($1,'x')
        ON CONFLICT (username) DO UPDATE SET username = EXCLUDED.username RETURNING id`,
@@ -37,7 +37,7 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
   try {
     // part_name steht in der Datei, damit kein Rebrickable-Nachschlag nötig
     // ist. Ein Preis steht NICHT drin — genau darum geht es.
-    const csv = `part_number,part_name,quantity\n${IMPORTIERT},Testteil,3\n`;
+    const csv = `part_number,part_name,quantity\n${IMPORTED},Testteil,3\n`;
     const fd = new FormData();
     fd.append('file', new Blob([csv], { type: 'text/csv' }), 'teile.csv');
     const antwort = await fetch(`${base}/api/v1/parts/import/csv`, { method: 'POST', body: fd });
@@ -47,19 +47,19 @@ test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concur
 
     // Derselbe Fall von Hand, ueber dieselbe Route wie die Webapp.
     const { addManualPart } = _req('src/parts/manualParts.js');
-    await alsKonto(uid, () =>
-      addManualPart(uid, { part_number: VON_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 }),
+    await asAccount(uid, () =>
+      addManualPart(uid, { part_number: OF_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 }),
     );
 
     // Gelesen aus der ERFASSUNG
     const spalten = 'unit_price, condition, quantity';
     const imp = await db.get(`SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
       uid,
-      IMPORTIERT,
+      IMPORTED,
     ]);
     const hand = await db.get(`SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
       uid,
-      VON_HAND,
+      OF_HAND,
     ]);
     assert.ok(imp, 'Zum importierten Teil wurde keine Erfassung angelegt');
     assert.ok(hand, 'Zum von Hand erfassten Teil wurde keine Erfassung angelegt');

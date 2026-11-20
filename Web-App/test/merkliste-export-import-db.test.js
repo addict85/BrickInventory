@@ -5,7 +5,7 @@
  *
  *   a) archive.append für merkliste.csv entfernt → 1, 2, 3 rot; 4, 5, 6 grün
  *   b) created_at im Import weggelassen          → 3 rot (Datum wird heute)
- *   c) schreibzielOderNull im Import entfernt     → 5 rot
+ *   c) writeTargetOrNull im Import entfernt     → 5 rot
  *   d) condition im Export weggelassen           → 2 UND 3 rot
  *
  * Zwei Dinge daran sind nicht so ausgegangen, wie ich sie vorher aufgeschrieben
@@ -16,7 +16,7 @@
  * gefüllte Tabelle — sie fielen also mit, ohne selbst etwas gefunden zu haben.
  * Eine Meldung, die auf den Import zeigt, während der Fehler im Export liegt,
  * ist schlechter als keine. Seitdem bauen 4, 5 und 6 ihre Datei selbst
- * (csvAusPosten) und 4 stellt seine Vorbedingung selbst her. Fall 3 behält die
+ * (csvFromItem) und 4 stellt seine Vorbedingung selbst her. Fall 3 behält die
  * Kopplung — genau sie IST der Rundlauf.
  *
  * Bei (d) hatte ich nur Fall 2 erwartet. Rot wurde auch 3, und das ist richtig:
@@ -32,30 +32,30 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { katalogSet } = require('./helpers/bestand');
+const { catalogSet } = require('./helpers/bestand');
 const { importWorker } = require('./helpers/auftraege');
-const db = testDaten();
+const db = testData();
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-let HAUPT = 0,
+let MAIN = 0,
   KIND = 0,
   FREMD = 0;
 
 /** Die drei Merkposten des Aufbaus — zwei Sets, eines in beiden Zuständen. */
-const POSTEN = [
+const ITEM = [
   { sn: '75192-1', c: 'N', am: '2024-03-01' },
   { sn: '75192-1', c: 'U', am: '2024-05-17' },
   { sn: '10179-1', c: 'N', am: '2025-01-09' },
 ];
 
-async function aufbau() {
+async function setup() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -68,22 +68,22 @@ async function aufbau() {
   await db.run(`INSERT INTO users (username,password_hash)
                 VALUES ('haupt','x'),('kind','x'),('fremd','x')`);
   const id = async n => (await db.get(`SELECT id FROM users WHERE username=$1`, [n])).id;
-  HAUPT = await id('haupt');
+  MAIN = await id('haupt');
   KIND = await id('kind');
   FREMD = await id('fremd');
-  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [HAUPT, KIND]);
-  for (const p of POSTEN) {
-    await katalogSet(db, p.sn, { name: p.sn });
+  await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [MAIN, KIND]);
+  for (const p of ITEM) {
+    await catalogSet(db, p.sn, { name: p.sn });
     await db.run(
       `INSERT INTO wanted (user_id,set_number,condition,created_at)
                   VALUES ($1,$2,$3,$4::timestamptz)`,
-      [HAUPT, p.sn, p.c, p.am],
+      [MAIN, p.sn, p.c, p.am],
     );
   }
 }
 
 /** Eine Datei aus dem ZIP holen — ohne Entpack-Bibliothek. */
-function ausZip(buf, name) {
+function fromZip(buf, name) {
   const zlib = require('node:zlib');
   // Die lokalen Dateikopf-Signaturen durchgehen (PK\003\004). Das genuegt
   // hier: Das Archiv ist unverschluesselt, ohne Zip64 und ohne Spannung, und
@@ -108,18 +108,18 @@ function ausZip(buf, name) {
 }
 
 /**
- * Dieselbe CSV, aus POSTEN gebaut statt aus dem Export geholt: Fälle 4 und 5 fragen nach
+ * Dieselbe CSV, aus ITEM gebaut statt aus dem Export geholt: Fälle 4 und 5 fragen nach
  * dem Import allein und sollen nicht rot werden, wenn der Export bricht. Fall 3 bleibt
  * gekoppelt, er ist der Rundlauf.
  */
-function csvAusPosten() {
-  return 'set_number,condition,created_at\n' + POSTEN.map(p => `${p.sn},${p.c},${p.am}`).join('\n') + '\n';
+function csvFromItem() {
+  return 'set_number,condition,created_at\n' + ITEM.map(p => `${p.sn},${p.c},${p.am}`).join('\n') + '\n';
 }
 
 /** Zeilen einer CSV als Objekte — die Kopfzeile bestimmt die Schluessel. */
-function csvZeilen(text) {
-  const ohneBom = text.replace(/^﻿/, '');
-  const [kopf, ...rest] = ohneBom.trim().split(/\r?\n/);
+function csvRows(text) {
+  const withoutBom = text.replace(/^﻿/, '');
+  const [kopf, ...rest] = withoutBom.trim().split(/\r?\n/);
   const spalten = kopf.split(',').map(s => s.replace(/^"|"$/g, ''));
   return rest
     .filter(z => z.trim())
@@ -136,10 +136,10 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     keineDb(t, e);
     return;
   }
-  await aufbau();
+  await setup();
 
   importWorker(t, _req);
-  const srv = testServer(_req, { sitzung: { userId: HAUPT }, t });
+  const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
 
   let csvText = '';
 
@@ -149,7 +149,7 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     const buf = Buffer.from(await r.arrayBuffer());
     assert.equal(buf.slice(0, 2).toString(), 'PK', 'Das ist kein ZIP-Archiv');
 
-    csvText = ausZip(buf, 'merkliste.csv');
+    csvText = fromZip(buf, 'merkliste.csv');
     assert.ok(
       csvText !== null,
       'merkliste.csv liegt NICHT im Archiv. Marcos Vorgabe war „analog den anderen ' +
@@ -158,18 +158,18 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     // Und die drei bestehenden sind noch da: Ein Export, der die neue Datei
     // mitbringt und eine alte verliert, ist kein Fortschritt.
     for (const n of ['sets.csv', 'teile.csv', 'minifiguren.csv']) {
-      assert.ok(ausZip(buf, n) !== null, `${n} ist aus dem Archiv verschwunden`);
+      assert.ok(fromZip(buf, n) !== null, `${n} ist aus dem Archiv verschwunden`);
     }
   });
 
   await t.test('2. die Datei trägt Nummer, Zustand und Datum jedes Merkpostens', () => {
-    const zeilen = csvZeilen(csvText);
+    const zeilen = csvRows(csvText);
     assert.equal(
       zeilen.length,
-      POSTEN.length,
-      `${zeilen.length} Zeilen statt ${POSTEN.length} — exportiert wird die ganze Liste`,
+      ITEM.length,
+      `${zeilen.length} Zeilen statt ${ITEM.length} — exportiert wird die ganze Liste`,
     );
-    for (const p of POSTEN) {
+    for (const p of ITEM) {
       const z = zeilen.find(x => x.set_number === p.sn && x.condition === p.c);
       assert.ok(
         z,
@@ -193,17 +193,17 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     const r = await fetch(`${srv.base}/api/v1/wanted/import/csv`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, `Der Import antwortete mit ${r.status}: ${JSON.stringify(b)}`);
-    assert.equal(b.added, POSTEN.length, `${b.added} angelegt statt ${POSTEN.length}`);
+    assert.equal(b.added, ITEM.length, `${b.added} angelegt statt ${ITEM.length}`);
     assert.equal(b.errors, 0, `${b.errors} Fehler: ${JSON.stringify(b.results)}`);
 
     const wieder = await db.all(
       `SELECT set_number, condition,
               TO_CHAR(created_at AT TIME ZONE 'UTC','YYYY-MM-DD') AS am
          FROM wanted WHERE user_id=$1 ORDER BY set_number, condition`,
-      [HAUPT],
+      [MAIN],
     );
-    assert.equal(wieder.length, POSTEN.length, 'Nicht alle Merkposten sind zurück');
-    for (const p of POSTEN) {
+    assert.equal(wieder.length, ITEM.length, 'Nicht alle Merkposten sind zurück');
+    for (const p of ITEM) {
       const z = wieder.find(x => x.set_number === p.sn && x.condition === p.c);
       assert.ok(z, `(${p.sn}, ${p.c}) kam nicht zurück`);
       // Der Kern von Punkt 3: Das Datum ist das ALTE, nicht heute. „Auf der
@@ -225,34 +225,30 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     // nur auf der leeren Tabelle funktioniert.
     const einlesen = async () => {
       const fd = new FormData();
-      fd.append('file', new Blob([csvAusPosten()], { type: 'text/csv' }), 'merkliste.csv');
+      fd.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
       const r = await fetch(`${srv.base}/api/v1/wanted/import/csv`, { method: 'POST', body: fd });
       return r.json();
     };
     await db.run('DELETE FROM wanted');
     const erst = await einlesen();
-    assert.equal(
-      erst.added,
-      POSTEN.length,
-      `Vorbedingung: der erste Import legt ${POSTEN.length} an, bekam ${erst.added}`,
-    );
+    assert.equal(erst.added, ITEM.length, `Vorbedingung: der erste Import legt ${ITEM.length} an, bekam ${erst.added}`);
 
     const b = await einlesen();
     assert.equal(b.added, 0, `${b.added} neu angelegt — die Posten gab es schon alle`);
-    assert.equal(b.updated, POSTEN.length, `${b.updated} als bestehend gemeldet statt ${POSTEN.length}`);
+    assert.equal(b.updated, ITEM.length, `${b.updated} als bestehend gemeldet statt ${ITEM.length}`);
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM wanted')).c,
-      POSTEN.length,
+      ITEM.length,
       'Die Liste hat sich verdoppelt — ON CONFLICT greift nicht',
     );
   });
 
   await t.test('5. in ein FREMDES Konto lässt sich nichts importieren', async () => {
-    // schreibzielOderNull prueft die RICHTUNG, nicht bloss die Mitgliedschaft.
+    // writeTargetOrNull prueft die RICHTUNG, nicht bloss die Mitgliedschaft.
     // „fremd" ist kein Unterkonto von „haupt" — ohne diese Pruefung schriebe
     // eine hochgeladene Datei in jedes Konto der Installation.
     const fd = new FormData();
-    fd.append('file', new Blob([csvAusPosten()], { type: 'text/csv' }), 'merkliste.csv');
+    fd.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
     fd.append('owner_user_id', String(FREMD));
     const r = await fetch(`${srv.base}/api/v1/wanted/import/csv`, { method: 'POST', body: fd });
     assert.equal(r.status, 403, `Erwartet 403, bekam ${r.status}`);
@@ -266,13 +262,13 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     // diesen Fall waere die Regel auch erfuellt, wenn JEDER owner_user_id
     // abgelehnt wuerde.
     const fd2 = new FormData();
-    fd2.append('file', new Blob([csvAusPosten()], { type: 'text/csv' }), 'merkliste.csv');
+    fd2.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
     fd2.append('owner_user_id', String(KIND));
     const r2 = await fetch(`${srv.base}/api/v1/wanted/import/csv`, { method: 'POST', body: fd2 });
     assert.equal(r2.status, 200, `Der Import für das Unterkonto antwortete mit ${r2.status}`);
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM wanted WHERE user_id=$1', [KIND])).c,
-      POSTEN.length,
+      ITEM.length,
       'Das Unterkonto hat die Liste nicht bekommen',
     );
   });
@@ -285,16 +281,16 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     await db.run(
       `INSERT INTO user_settings (user_id, key, value) VALUES ($1,'user_default_condition','U')
                   ON CONFLICT (user_id, key) DO UPDATE SET value='U'`,
-      [HAUPT],
+      [MAIN],
     );
-    await db.run('DELETE FROM wanted WHERE user_id=$1', [HAUPT]);
+    await db.run('DELETE FROM wanted WHERE user_id=$1', [MAIN]);
 
     const fd = new FormData();
     fd.append('file', new Blob(['set_number\n21309-1\n'], { type: 'text/csv' }), 'ohne.csv');
     const r = await fetch(`${srv.base}/api/v1/wanted/import/csv`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(b.added, 1, `${b.added} angelegt statt 1: ${JSON.stringify(b.results)}`);
-    const z = await db.get('SELECT condition FROM wanted WHERE user_id=$1 AND set_number=$2', [HAUPT, '21309-1']);
+    const z = await db.get('SELECT condition FROM wanted WHERE user_id=$1 AND set_number=$2', [MAIN, '21309-1']);
     assert.equal(
       z?.condition,
       'U',

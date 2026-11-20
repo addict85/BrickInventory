@@ -4,20 +4,20 @@
  * statt in einem eigenen Feld je Abschnitt; ein falsches Passwort fragt erneut.
  *
  * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  in btn-sav-prof direkt api('PUT', …) ohne mitPasswortBestaetigen → rot:
+ *   A  in btn-sav-prof direkt api('PUT', …) ohne confirmWithPassword → rot:
  *      alle drei Fälle (es öffnet sich kein Dialog)
- *   B  in mitPasswortBestaetigen die Wiederholung bei aktuelles_passwort_falsch
+ *   B  in confirmWithPassword die Wiederholung bei aktuelles_passwort_falsch
  *      entfernt → rot: „falsches Passwort fragt erneut“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, sicht, warte } = require('./helpers/oberflaeche');
+const { openUi, sicht, warte } = require('./helpers/oberflaeche');
 
 const PROFIL = {
   '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
 };
-const putAufrufe = aufrufe => aufrufe.filter(a => a.method === 'PUT' && a.url.endsWith('/v1/auth/profile'));
-const dialogOffen = d => d.getElementById('confirm-modal').style.display === 'flex';
+const putCalls = aufrufe => aufrufe.filter(a => a.method === 'PUT' && a.url.endsWith('/v1/auth/profile'));
+const openDialog = d => d.getElementById('confirm-modal').style.display === 'flex';
 
 async function speichern(w, d) {
   await sicht(w, 'profil');
@@ -29,30 +29,30 @@ async function speichern(w, d) {
   );
   d.getElementById('prof-user').value = 'anna2';
   d.getElementById('btn-sav-prof').click();
-  await warte(() => dialogOffen(d));
+  await warte(() => openDialog(d));
 }
 
 test('ohne Passwort geht keine Anfrage hinaus', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche(PROFIL);
+  const { w, d, aufrufe } = await openUi(PROFIL);
   try {
     await speichern(w, d);
-    assert.deepEqual(putAufrufe(aufrufe), [], 'vor der Bestätigung');
+    assert.deepEqual(putCalls(aufrufe), [], 'vor der Bestätigung');
     d.getElementById('cd-cancel').click();
-    await warte(() => !dialogOffen(d));
-    assert.deepEqual(putAufrufe(aufrufe), [], 'nach Abbrechen');
+    await warte(() => !openDialog(d));
+    assert.deepEqual(putCalls(aufrufe), [], 'nach Abbrechen');
   } finally {
     w.close();
   }
 });
 
 test('mit Passwort geht es mit, auch bei blossem Namenswechsel', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche(PROFIL);
+  const { w, d, aufrufe } = await openUi(PROFIL);
   try {
     await speichern(w, d);
     d.getElementById('cd-pw').value = 'Mein-Passwort-1';
     d.getElementById('cd-confirm').click();
-    await warte(() => putAufrufe(aufrufe).length);
-    const rumpf = JSON.parse(putAufrufe(aufrufe)[0].body);
+    await warte(() => putCalls(aufrufe).length);
+    const rumpf = JSON.parse(putCalls(aufrufe)[0].body);
     assert.equal(rumpf.username, 'anna2');
     assert.equal(rumpf.password_current, 'Mein-Passwort-1');
     assert.equal(d.getElementById('cd-pw').value, '', 'das Passwort bleibt nicht im Feld stehen');
@@ -63,7 +63,7 @@ test('mit Passwort geht es mit, auch bei blossem Namenswechsel', async () => {
 
 test('falsches Passwort fragt erneut', async () => {
   let n = 0;
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     ...PROFIL,
     '/v1/auth/profile': (_url, o) =>
       o?.method === 'PUT' && ++n === 1
@@ -75,12 +75,12 @@ test('falsches Passwort fragt erneut', async () => {
     d.getElementById('cd-pw').value = 'falsch';
     d.getElementById('cd-confirm').click();
     await warte(
-      () => putAufrufe(aufrufe).length === 1 && dialogOffen(d) && /falsch/.test(d.getElementById('cd-msg').textContent),
+      () => putCalls(aufrufe).length === 1 && openDialog(d) && /falsch/.test(d.getElementById('cd-msg').textContent),
     );
     d.getElementById('cd-pw').value = 'richtig';
     d.getElementById('cd-confirm').click();
-    await warte(() => putAufrufe(aufrufe).length === 2);
-    assert.equal(JSON.parse(putAufrufe(aufrufe)[1].body).password_current, 'richtig');
+    await warte(() => putCalls(aufrufe).length === 2);
+    assert.equal(JSON.parse(putCalls(aufrufe)[1].body).password_current, 'richtig');
   } finally {
     w.close();
   }

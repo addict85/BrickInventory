@@ -1,9 +1,9 @@
 /**
  * Protokoll der Verwalteraktionen an fremden Konten (Migration 0049).
  */
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 
-export type VerwalterAktion =
+export type AdminAction =
   | 'konto_angelegt'
   | 'passwort_gesetzt'
   | 'zweiter_faktor_entfernt'
@@ -22,21 +22,21 @@ export type VerwalterAktion =
 
 /** Vor dem Löschen aufrufen — danach ist der Name nicht mehr zu ermitteln. */
 export async function protokolliere(
-  db: DbSchnittstelle,
-  verwalterId: number,
-  zielId: number,
-  aktion: VerwalterAktion,
+  db: DbInterface,
+  adminId: number,
+  targetId: number,
+  aktion: AdminAction,
   einzelheiten: string | null = null,
 ): Promise<void> {
   await db.run(
     `INSERT INTO admin_log (admin_id, target_id, target_name, action, details)
      VALUES ($1, $2, (SELECT username FROM users WHERE id = $2), $3, $4)`,
-    [verwalterId, zielId, aktion, einzelheiten],
+    [adminId, targetId, aktion, einzelheiten],
   );
-  console.log(`[verwaltung] Konto ${verwalterId}: ${aktion} für Konto ${zielId}`);
+  console.log(`[verwaltung] Konto ${adminId}: ${aktion} für Konto ${targetId}`);
 }
 
-export async function letzteEintraege(db: DbSchnittstelle, anzahl = 200) {
+export async function lastEntries(db: DbInterface, anzahl = 200) {
   return db.all<Record<string, unknown>>(
     `SELECT p.id, p.occurred_at, p.action, p.details, p.target_id, p.target_name, p.admin_id, u.username AS verwalter_name
        FROM admin_log p LEFT JOIN users u ON u.id = p.admin_id
@@ -47,6 +47,6 @@ export async function letzteEintraege(db: DbSchnittstelle, anzahl = 200) {
 
 /** UPDATE und DELETE hat keine Rolle der App (0117): Frist (ein Jahr) und Regel stehen fest in
  * der Funktion der Eigentümerin. */
-export async function raeumeProtokollAuf(db: DbSchnittstelle): Promise<number> {
+export async function cleanLogOn(db: DbInterface): Promise<number> {
   return (await db.get<{ n: number }>('SELECT verwaltungsprotokoll_aufraeumen() AS n'))?.n ?? 0;
 }

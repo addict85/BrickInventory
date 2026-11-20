@@ -5,7 +5,7 @@ import type { WantedArt } from './wantedParser';
 import type { Aufloesung, Sicherheit } from './wantedAufloesung';
 
 /** Bild und Name reisen mit, weil die Vorschau sie wie die Teileliste zeigt. */
-export interface PostenErgebnis {
+export interface ItemResult {
   blId: string;
   art: WantedArt;
   blFarbe: number | null;
@@ -31,7 +31,7 @@ export interface PostenErgebnis {
 }
 
 /** Als Schnittstelle: Die Route steckt die echten Funktionen hinein, ein Test Zähler. */
-export interface Anleger {
+export interface Creator {
   teil: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
   figur: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
   set: (
@@ -43,14 +43,19 @@ export interface Anleger {
   ) => Promise<unknown>;
 }
 
-export interface SchreibOptionen {
-  anleger?: Anleger;
+export interface WriteOptions {
+  creator?: Creator;
   /** Hereingegeben, damit diese Funktion bis auf den Anleger schreibfrei bleibt. */
-  merkeNummer?: (art: WantedArt, rbId: string, blId: string, quelle: 'korrigiert' | 'rebrickable') => Promise<unknown>;
+  rememberNumber?: (
+    art: WantedArt,
+    rbId: string,
+    blId: string,
+    quelle: 'korrigiert' | 'rebrickable',
+  ) => Promise<unknown>;
 }
 
 /** Die Berichtszeile eines Postens, vor dem Schreiben. */
-export function berichtsZeile(a: Aufloesung): PostenErgebnis {
+export function reportRow(a: Aufloesung): ItemResult {
   // Eine nicht abbildbare Farbe wird nicht erfunden: color_id 0 ist bei
   // Rebrickable Schwarz, nicht „keine Farbe".
   const grund =
@@ -59,7 +64,7 @@ export function berichtsZeile(a: Aufloesung): PostenErgebnis {
       : a.farbeOffen
         ? `BrickLink-Farbe ${a.posten.blFarbe} ist im Katalog keiner Rebrickable-Farbe zugeordnet`
         : undefined;
-  const grundCode: PostenErgebnis['grundCode'] =
+  const grundCode: ItemResult['grundCode'] =
     a.rbId === null ? 'nummer_unbekannt' : a.farbeOffen ? 'farbe_unbekannt' : undefined;
   return {
     blId: a.posten.blId,
@@ -80,18 +85,18 @@ export function berichtsZeile(a: Aufloesung): PostenErgebnis {
 }
 
 /** Legt einen aufgelösten Posten an. @returns ob er neu ist oder aufgestockt wurde */
-export async function schreibePosten(
+export async function writeItem(
   uid: number,
   a: Aufloesung,
   rbId: string,
-  opt: SchreibOptionen,
+  opt: WriteOptions,
 ): Promise<'angelegt' | 'aufgestockt'> {
-  if (!opt.anleger) throw new Error('Kein Anleger übergeben — siehe Anleger');
+  if (!opt.creator) throw new Error('Kein Anleger übergeben — siehe Anleger');
   let rueckmeldung: unknown;
   if (a.posten.art === 'part') {
     // Der Farbname reist mit: Die Teileliste liest ihn von der Zeile, ohne ihn
     // fällt sie nicht auf den Katalog zurück.
-    rueckmeldung = await opt.anleger.teil(uid, {
+    rueckmeldung = await opt.creator.teil(uid, {
       part_number: rbId,
       color_id: a.rbFarbe ?? 0,
       ...(a.rbFarbName ? { color_name: a.rbFarbName } : {}),
@@ -103,21 +108,21 @@ export async function schreibePosten(
       ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
     });
   } else if (a.posten.art === 'fig') {
-    rueckmeldung = await opt.anleger.figur(uid, {
+    rueckmeldung = await opt.creator.figur(uid, {
       fig_number: rbId,
       quantity: a.posten.menge,
       condition: a.posten.zustand ?? undefined,
       ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
     });
   } else {
-    rueckmeldung = await opt.anleger.set(uid, rbId, a.posten.menge, a.posten.zustand, a.posten.maxPreis);
+    rueckmeldung = await opt.creator.set(uid, rbId, a.posten.menge, a.posten.zustand, a.posten.maxPreis);
   }
   // Auch 'rebrickable' wird gemerkt: blTeilZuRb prüft jeden Treffer gegen die
   // gesuchte BL-Nummer, es ist eine Abbildung, keine Vermutung.
-  if ((a.sicherheit === 'korrigiert' || a.sicherheit === 'rebrickable') && opt.merkeNummer) {
+  if ((a.sicherheit === 'korrigiert' || a.sicherheit === 'rebrickable') && opt.rememberNumber) {
     // Ein Fehlschlag bricht den Import nicht ab: Der Posten steht schon im Bestand.
     await opt
-      .merkeNummer(a.posten.art, rbId, a.posten.blId, a.sicherheit)
+      .rememberNumber(a.posten.art, rbId, a.posten.blId, a.sicherheit)
       .catch(logAndContinue('wanted:nummer-merken'));
   }
   // Der Anleger weiss, ob angelegt oder aufgestockt; ohne die Frage zählte ein

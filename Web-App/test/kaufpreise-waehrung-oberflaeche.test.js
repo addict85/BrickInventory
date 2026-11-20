@@ -12,7 +12,7 @@
  *     drei Erfassen-Dialoge haben ein Datumsfeld, „Anzahl“ heisst Anzahl.
  *
  * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  aktualisiereSumme(sn) in acqSave() entfernt → rot: „Kaufpreis-Dialog:
+ *   A  refreshSum(sn) in acqSave() entfernt → rot: „Kaufpreis-Dialog:
  *      Währung je Zeile, Summe zieht nach“
  *   B  in closeAcqModal das erneute focus() entfernt → rot: „Escape gibt den
  *      Fokus an den Auslöser zurück“
@@ -25,7 +25,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, warte, takt, reiter } = require('./helpers/oberflaeche');
+const { openUi, warte, takt, reiter } = require('./helpers/oberflaeche');
 
 const SN = '10326-1';
 /** Text mit einfachen Leerzeichen: Intl setzt schmale geschützte Leerzeichen vor das Währungszeichen. */
@@ -73,7 +73,7 @@ function antworten(stand) {
   };
 }
 
-async function oeffneSet(o) {
+async function openSet(o) {
   const knopf = o.d.createElement('button');
   knopf.dataset.click = 'openModal';
   knopf.dataset.arg = SN;
@@ -84,9 +84,9 @@ async function oeffneSet(o) {
 
 test('Kaufpreis-Dialog: Währung je Zeile, Summe zieht nach', async () => {
   const stand = { betrag: 1334.58 };
-  const o = await oeffneOberflaeche(antworten(stand), { browserSprache: 'de-DE' });
+  const o = await openUi(antworten(stand), { browserLanguage: 'de-DE' });
   try {
-    await oeffneSet(o);
+    await openSet(o);
     o.d.querySelector('#set-modal [data-click="openAcqModal"]').click();
     await warte(() => o.d.getElementById('acq-preis-2'));
     const zeile = id => text(o.d.getElementById(`acq-row-${id}`).textContent);
@@ -107,12 +107,12 @@ test('Kaufpreis-Dialog: Währung je Zeile, Summe zieht nach', async () => {
 });
 
 test('Escape gibt den Fokus an den Auslöser zurück', async () => {
-  const o = await oeffneOberflaeche(antworten({ betrag: 1334.58 }), { browserSprache: 'de-DE' });
+  const o = await openUi(antworten({ betrag: 1334.58 }), { browserLanguage: 'de-DE' });
   try {
-    await oeffneSet(o);
-    const ausloeser = o.d.querySelector('#set-modal [data-click="openAcqModal"]');
-    ausloeser.focus();
-    ausloeser.click();
+    await openSet(o);
+    const trigger = o.d.querySelector('#set-modal [data-click="openAcqModal"]');
+    trigger.focus();
+    trigger.click();
     await warte(() => o.d.getElementById('acq-modal').classList.contains('open') && o.d.getElementById('acq-preis-1'));
     o.d.dispatchEvent(new o.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     assert.ok(
@@ -125,9 +125,9 @@ test('Escape gibt den Fokus an den Auslöser zurück', async () => {
 });
 
 test('Set-Detail: ein USD-Kauf nennt USD und den umgerechneten Betrag', async () => {
-  const o = await oeffneOberflaeche(antworten({ betrag: 1334.58 }), { browserSprache: 'de-DE' });
+  const o = await openUi(antworten({ betrag: 1334.58 }), { browserLanguage: 'de-DE' });
   try {
-    await oeffneSet(o);
+    await openSet(o);
     await warte(() => /USD/.test(o.d.getElementById('m-acq-summary')?.textContent || ''));
     const inhalt = text(o.d.getElementById('m-acq-summary').textContent);
     assert.match(inhalt, /260,66 USD/);
@@ -149,7 +149,7 @@ test('Finanzen: ≈ und Zahl der Schätzungen', async () => {
     created_at: '2026-11-05T12:00:00Z',
     ...(geschaetzt ? { price_estimated: true } : {}),
   });
-  const o = await oeffneOberflaeche(
+  const o = await openUi(
     {
       '/v1/finance/valuation': {
         success: true,
@@ -204,16 +204,16 @@ test('Finanzen: ≈ und Zahl der Schätzungen', async () => {
         },
       },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     await reiter(o.w, 'finance');
     await warte(() => o.d.querySelectorAll('#fin-tbl tbody tr').length >= 2, 4000);
     const zeilen = [...o.d.querySelectorAll('#fin-tbl tbody tr[data-arg]')];
     const burg = zeilen.find(z => z.dataset.arg === '10305-1');
-    const kaufZelle = burg.querySelectorAll('td.price-cell')[0];
-    assert.match(kaufZelle.textContent, /≈/);
-    assert.match(kaufZelle.querySelector('[title]').getAttribute('title'), /geschätzt/);
+    const purchaseCell = burg.querySelectorAll('td.price-cell')[0];
+    assert.match(purchaseCell.textContent, /≈/);
+    assert.match(purchaseCell.querySelector('[title]').getAttribute('title'), /geschätzt/);
     const titanic = zeilen.find(z => z.dataset.arg === '10294-1');
     assert.doesNotMatch(titanic.textContent, /≈/);
     assert.match(burg.querySelector('.fin-unter').textContent, /Kaufpreis geschätzt/, 'auch in der Telefonzeile');
@@ -225,7 +225,7 @@ test('Finanzen: ≈ und Zahl der Schätzungen', async () => {
 });
 
 test('Set hinzufügen schickt Währung und Datum', async () => {
-  const o = await oeffneOberflaeche({}, { browserSprache: 'de-DE' });
+  const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     o.d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
     await takt(10);
@@ -248,7 +248,7 @@ test('Set hinzufügen schickt Währung und Datum', async () => {
 });
 
 test('Erfassen-Dialoge einheitlich', async () => {
-  const o = await oeffneOberflaeche({}, { browserSprache: 'de-DE' });
+  const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     assert.equal(o.d.getElementById('ap-qty-inline').labels[0].textContent.trim(), 'Anzahl');
     for (const id of ['add-set-modal', 'add-part-modal', 'add-fig-modal']) {

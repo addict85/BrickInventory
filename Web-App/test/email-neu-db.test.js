@@ -7,23 +7,23 @@
  * Gegenproben (04.11.2026 gemessen, je einzeln):
  *   A  PUT /profile schreibt die Adresse wieder sofort nach users.email → rot:
  *      „eine neue Adresse gilt erst nach dem Link“
- *   B  registriereKonto() schreibt die Adresse wieder nach users.email → rot:
+ *   B  registerAccount() schreibt die Adresse wieder nach users.email → rot:
  *      „die ausstehende Adresse belegt nichts“ und „beim Einlösen …“
- *   C  aktivesKontoNachEmail() ohne `AND email_verified` → rot: „Passwort
+ *   C  activeAccountAfterEmail() ohne `AND email_verified` → rot: „Passwort
  *      vergessen nur für bestätigte Adressen“
  *   D  assertLoginAllowed() ohne die Bedingung `registration_pending` → rot: „eine
  *      fremde Registrierung sperrt die Adresse nicht“ (mallory meldet sich an)
- *   E  uebernimmEmailNeu() ohne OHNE_RUECKSETZLINK → rot: „eingelöst gilt die
+ *   E  adoptEmailNew() ohne OHNE_RUECKSETZLINK → rot: „eingelöst gilt die
  *      neue Adresse“ (der Rücksetzlink an die alte Adresse gilt weiter)
  *   F  in 0096 die Bedingung `NOT registration_pending` gestrichen → rot:
  *      „Migration 0096 …“; in 0097 `email = NULL` gestrichen → rot: „Migrationen
  *      0096 und 0097 …“ (auf frischer DB gemessen, sonst greift die Prüfsumme)
- *   G  meldeAusstehendeAdressen() ohne Abfrage (leere Liste) → rot: dieselbe Prüfung
- *   H  erneuereEmailTokenWennFrei() ohne `HAVING COUNT(*) = 1` → rot: „ein neuer
+ *   G  reportPendingAddresses() ohne Abfrage (leere Liste) → rot: dieselbe Prüfung
+ *   H  renewEmailTokenIfFree() ohne `HAVING COUNT(*) = 1` → rot: „ein neuer
  *      Link nur für die einzige offene Registrierung“
  *   I  die Vorschau nennt auch new_email (Name und Adresse) → rot: „die
  *      Vorschau nennt nur den Benutzernamen“
- *   K  die Vorschau ruft verifiziereEmailToken() → rot: „… löst nicht ein“
+ *   K  die Vorschau ruft verifyEmailToken() → rot: „… löst nicht ein“
  *   L  POST /register übergibt `mehrere` nicht → rot: „bei mehreren offenen
  *      Registrierungen trägt die Mail den Hinweis“
  *
@@ -43,10 +43,10 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { mailserverEintragen } = require('./helpers/mail-attrappe');
+const { enterMailServer } = require('./helpers/mail-attrappe');
 
 const post = [];
-require('./helpers/sources').ersetzeDienste('mail', {
+require('./helpers/sources').replaceServices('mail', {
   mailVerification: async (an, token, _b, _l, art, mehrere) => {
     post.push({ an, art: art ?? 'registrierung', token, mehrere: !!mehrere });
     return { success: true, mode: 'smtp' };
@@ -65,12 +65,12 @@ require('./helpers/sources').ersetzeDienste('mail', {
   },
 });
 
-const db = S.testDaten();
+const db = S.testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const P = `en${process.pid}`,
   PASS = 'Passwort-Carol-2026';
 const adr = n => `${n}_${P}@example.org`;
-const ZAEHLER = [
+const COUNTER = [
   'register|%',
   'register-ziel|%',
   'forgot%',
@@ -97,15 +97,15 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
       c.release();
     }
   }
-  const raeumen = async () => {
+  const clean = async () => {
     await db.run('DELETE FROM users WHERE username LIKE $1', [`%_${P}`]);
-    for (const k of ZAEHLER) await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [k]);
+    for (const k of COUNTER) await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [k]);
   };
-  await raeumen();
-  const regVorher = (await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'"))?.value;
+  await clean();
+  const regBefore = (await db.get("SELECT value FROM global_settings WHERE key = 'registration_enabled'"))?.value;
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '1')
                 ON CONFLICT (key) DO UPDATE SET value = '1'`);
-  const mailZurueck = await mailserverEintragen(db);
+  const mailBack = await enterMailServer(db);
   const uid = (
     await db.get(
       `INSERT INTO users (username, email, password_hash, is_active, email_verified)
@@ -114,10 +114,10 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     )
   ).id;
   t.after(async () => {
-    await raeumen();
-    if (regVorher === undefined) await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
-    else await db.run("UPDATE global_settings SET value = $1 WHERE key = 'registration_enabled'", [regVorher]);
-    await mailZurueck();
+    await clean();
+    if (regBefore === undefined) await db.run("DELETE FROM global_settings WHERE key = 'registration_enabled'");
+    else await db.run("UPDATE global_settings SET value = $1 WHERE key = 'registration_enabled'", [regBefore]);
+    await mailBack();
     await db.pool.end().catch(() => {});
   });
 
@@ -132,7 +132,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
   };
   const carol = () => db.get('SELECT email, email_verified, new_email, reset_token FROM users WHERE id = $1', [uid]);
   const konto = name => db.get('SELECT id, email, new_email FROM users WHERE username = $1', [`${name}_${P}`]);
-  const registriere = (name, email) =>
+  const register = (name, email) =>
     ruf('POST', '/register', { username: `${name}_${P}`, email, password: 'Opfer-Passwort-2026!' });
   const linkAn = (an, art = 'adresse') => post.filter(m => m.an === an && m.art === art).at(-1)?.token;
   const anmelden = name =>
@@ -157,7 +157,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
   });
 
   await t.test('die ausstehende Adresse belegt nichts', async () => {
-    const r = await registriere('opfer', adr('opfer'));
+    const r = await register('opfer', adr('opfer'));
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.deepEqual(
       await konto('opfer'),
@@ -195,13 +195,13 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     assert.deepEqual([nochmal.status, nochmal.body.code], [400, 'bestaetigungslink_ungueltig']);
   });
 
-  const bremsenLoesen = () => db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register%' OR key LIKE 'login%'");
+  const unlinkBrakes = () => db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register%' OR key LIKE 'login%'");
   await t.test('eine fremde Registrierung sperrt die Adresse nicht', async () => {
-    await bremsenLoesen();
-    assert.equal((await registriere('mallory1', adr('ziel'))).status, 200);
+    await unlinkBrakes();
+    assert.equal((await register('mallory1', adr('ziel'))).status, 200);
     await db.run("UPDATE users SET created_at = NOW() - INTERVAL '25 hours' WHERE username = $1", [`mallory1_${P}`]);
-    assert.equal((await registriere('mallory2', adr('ziel'))).status, 200);
-    assert.equal((await registriere('ziel', adr('ziel'))).status, 200);
+    assert.equal((await register('mallory2', adr('ziel'))).status, 200);
+    assert.equal((await register('ziel', adr('ziel'))).status, 200);
     assert.deepEqual(await konto('ziel'), { id: (await konto('ziel')).id, email: null, new_email: adr('ziel') });
     assert.ok(
       !post.some(m => m.an === adr('ziel') && m.art === 'versuch'),
@@ -219,35 +219,35 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     );
     assert.equal((await konto('ziel')).email, adr('ziel'));
     assert.equal((await anmelden('ziel')).status, 200);
-    await bremsenLoesen();
-    const spaeter = await registriere('mallory3', adr('ziel'));
+    await unlinkBrakes();
+    const spaeter = await register('mallory3', adr('ziel'));
     assert.equal(spaeter.status, 200);
     assert.equal(await konto('mallory3'), undefined, 'nach der Bestätigung ist die Adresse vergeben');
     assert.equal(post.filter(m => m.an === adr('ziel') && m.art === 'versuch').length, 1);
   });
 
   await t.test('ein neuer Link nur für die einzige offene Registrierung', async () => {
-    await bremsenLoesen();
+    await unlinkBrakes();
     const erneut = async email => {
       const vorher = post.length;
       await ruf('POST', '/bestaetigung-erneut', { email });
       return post.slice(vorher);
     };
-    assert.equal((await registriere('allein', adr('allein'))).status, 200);
+    assert.equal((await register('allein', adr('allein'))).status, 200);
     await db.run("UPDATE users SET new_email_until = NOW() + INTERVAL '1 hour' WHERE username = $1", [`allein_${P}`]);
     assert.deepEqual(
       (await erneut(adr('allein'))).map(m => [m.an, m.art]),
       [[adr('allein'), 'registrierung']],
     );
-    assert.equal((await registriere('doppel', adr('allein'))).status, 200);
+    assert.equal((await register('doppel', adr('allein'))).status, 200);
     await db.run("UPDATE users SET new_email_until = NOW() + INTERVAL '1 hour' WHERE username LIKE $1", [`%_${P}`]);
     assert.deepEqual(await erneut(adr('allein')), [], 'bei zwei offenen Registrierungen ginge ein fremder Link mit');
   });
 
   await t.test('vor dem Einlösen nennt der Link nur sein Konto', async () => {
-    await bremsenLoesen();
-    assert.equal((await registriere('mallory4', adr('zwei'))).status, 200);
-    assert.equal((await registriere('zwei', adr('zwei'))).status, 200);
+    await unlinkBrakes();
+    assert.equal((await register('mallory4', adr('zwei'))).status, 200);
+    assert.equal((await register('zwei', adr('zwei'))).status, 200);
     const [fremd, eigen] = post.filter(m => m.an === adr('zwei'));
     assert.deepEqual(
       [fremd.mehrere, eigen.mehrere],
@@ -390,8 +390,8 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
         adr('h5'),
       ])
     ).id;
-    const { meldeAusstehendeAdressen } = _req('src/konto/konten.js');
-    assert.ok((await meldeAusstehendeAdressen()).includes(h5));
-    assert.ok(!(await meldeAusstehendeAdressen()).includes(uid));
+    const { reportPendingAddresses } = _req('src/konto/konten.js');
+    assert.ok((await reportPendingAddresses()).includes(h5));
+    assert.ok(!(await reportPendingAddresses()).includes(uid));
   });
 });

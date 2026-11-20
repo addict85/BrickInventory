@@ -1,31 +1,23 @@
 import { emit } from './events.js';
-import { detailZeile } from './bausteine.js';
+import { detailRow } from './bausteine.js';
 import { echt, registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { escHex, escJs, rawHex, esc, html, rawHtml, joinHtml } from './escaping.js';
 import { api } from './api.js';
 import { fullUrl, imgUrl } from './bilder.js';
-import { ico, G, aktiverReiter, setzeHtml, fuegeHtmlEin } from './dom.js';
-import { betragFuerFeld } from './format.js';
-import { betragAusFeld, mengeAusFeld, kaufdatumGueltig } from './formular.js';
+import { ico, G, activeTab, setzeHtml, fuegeHtmlEin } from './dom.js';
+import { amountForField } from './format.js';
+import { amountFromField, quantityFromField, purchaseDateValid } from './formular.js';
 import { toast } from './meldungen.js';
-import { deleteManualFig, loadManualFigsTable, manuelleFiguren, updateManualFig } from './minifigs.js';
+import { deleteManualFig, loadManualFigsTable, manualMinifigs, updateManualFig } from './minifigs.js';
 import { loggedInAccount } from './state.js';
-import { lagerortBlock, ladeOrtAuswahl } from './detailfelder.js';
+import { locationBlock, loadLocationSelection } from './detailfelder.js';
 import { confirmDelete } from './rueckfrage.js';
-import { acqSummary, renderManAcqSummary, kurzfassungMan } from './kaufpreis-anzeige.js';
-import { diagrammBreite, priceChartSVG, renderMarketRows } from './diagramme.js';
-import { deleteManualPart, loadManualParts, manuelleTeile, updateManualPart } from './teile.js';
+import { acqSummary, renderManAcqSummary, summaryMan } from './kaufpreis-anzeige.js';
+import { chartWidth, priceChartSVG, renderMarketRows } from './diagramme.js';
+import { deleteManualPart, loadManualParts, manualParts, updateManualPart } from './teile.js';
 import { loadBrickColors } from './teil-erfassen.js';
-import {
-  erfassung,
-  gespeichert,
-  setzeMitFokus,
-  isoTag,
-  datumFeld,
-  gespeichertMarke,
-  zeigeGespeichert,
-} from './erfassung-zustand.js';
+import { erfassung, gespeichert, setWithFocus, isoTag, dateField, savedBrand, showSaved } from './erfassung-zustand.js';
 import { closeAcqModal } from './kauf-dialoge.js';
 /** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} AcquisitionTotals */
 /** @typedef {import('../../frontend-typen/vertrag').Acquisition} Acquisition */
@@ -50,21 +42,21 @@ function manDetailRows(type, id, colorId, item, acqs, ad) {
   // not from a separate loop.
   const totalQty = ad?.totals?.priced_rows !== undefined && acqs.length ? ad.totals.quantity : item.quantity;
   rows.push(
-    detailZeile(
+    detailRow(
       t('detail.qty'),
       html`
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="-1" aria-label="${tRaw('detail.qty_less')}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">−</button>
     <input inputmode="numeric" type="number" id="man-det-qty" min="1" aria-label="${tRaw('detail.qty')}" value="${totalQty}" data-stil="width:4.5em;text-align:center;border:1px solid var(--feldrand);border-radius:6px;padding:2px;font-weight:600" data-change="manQtySave" />
     <button class="btn bs btn-sm" data-click="manQtyChange" data-arg="1" aria-label="${tRaw('detail.qty_more')}" data-stil="font-size:var(--fs-4);padding:2px 8px;line-height:1">+</button>
   `,
-      { wertStil: 'display:flex;align-items:center;gap:6px' },
+      { valueStyle: 'display:flex;align-items:center;gap:6px' },
     ),
   );
 
   // BrickLink number (minifigs only, editable)
   if (type === 'fig') {
     rows.push(
-      detailZeile(
+      detailRow(
         'BrickLink-Nr.',
         html`
       <input type="text" value="${item.bl_fig_number || ''}" placeholder="${tRaw('figs.bl_placeholder')}" aria-label="${tRaw('figs.bl_number')}" data-stil="width:9em;max-width:100%;text-align:right;border:1px solid var(--feldrand);border-radius:6px;padding:2px 6px"
@@ -79,7 +71,7 @@ function manDetailRows(type, id, colorId, item, acqs, ad) {
   if (type === 'part') {
     const swatch = html`<span id="man-farb-punkt" data-stil="display:inline-block;width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.15);vertical-align:middle;flex:0 0 auto" data-farbe="${escHex(item.color_hex, 'var(--s300)')}"></span>`;
     rows.push(
-      detailZeile(
+      detailRow(
         t('parts.color_label'),
         html`${swatch}
       <select id="man-farb-wahl" aria-label="${tRaw('parts.color_label')}" data-stil="max-width:150px;border:1px solid var(--feldrand);border-radius:6px;padding:2px 4px;font-size:var(--fs-2)"
@@ -87,7 +79,7 @@ function manDetailRows(type, id, colorId, item, acqs, ad) {
         data-owner="${item?.user_id ?? ''}">
         <option value="${colorId}">${item.color_name ? colorName(item.color_name) : tRaw('parts.no_color_dash')}</option>
       </select>`,
-        { wertStil: 'display:flex;align-items:center;gap:6px;justify-content:flex-end' },
+        { valueStyle: 'display:flex;align-items:center;gap:6px;justify-content:flex-end' },
       ),
     );
   }
@@ -95,33 +87,33 @@ function manDetailRows(type, id, colorId, item, acqs, ad) {
   // Storage location also in the detail of manually recorded parts and minifigs: the same control and
   // the same save path as for parts from sets, only the address depends on the type. The location list
   // belongs to the owner.
-  ladeOrtAuswahl(item?.user_id != null ? [item.user_id] : []).catch(() => {});
+  loadLocationSelection(item?.user_id != null ? [item.user_id] : []).catch(() => {});
   rows.push(
-    detailZeile(
+    detailRow(
       t('detail.storage'),
-      lagerortBlock(
+      locationBlock(
         'man-storage',
         item?.storage,
         `data-change="speichereTeilLagerort" data-typ="${type === 'fig' ? 'fig' : 'part'}" ` +
           `data-part="${escJs(id)}" data-color="${colorId}" ` +
           `data-owners="${esc(item?.user_id ?? '')}"`,
       ),
-      { wertStil: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' },
+      { valueStyle: 'display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end' },
     ),
   );
 
   // Acquisition summary — compact, like set-detail
   rows.push(
-    detailZeile(
+    detailRow(
       t('detail.purchase_price'),
       html`
       ${renderManAcqSummary(acqs, type, id, colorId)}
       <button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>
     `,
       {
-        zeilenStil: 'align-items:flex-start',
+        rowsStyle: 'align-items:flex-start',
         wertId: 'man-acq-summary',
-        wertStil: 'flex-direction:column;align-items:flex-end;gap:3px',
+        valueStyle: 'flex-direction:column;align-items:flex-end;gap:3px',
       },
     ),
   );
@@ -157,7 +149,7 @@ function loadManPriceHistory(type, id, colorId) {
       setzeHtml(
         el,
         ph?.success
-          ? priceChartSVG(ph, `man-${String(id).replace(/[^a-zA-Z0-9]/g, '')}-${colorId || 0}`, diagrammBreite(el))
+          ? priceChartSVG(ph, `man-${String(id).replace(/[^a-zA-Z0-9]/g, '')}-${colorId || 0}`, chartWidth(el))
           : html`<span data-stil="color:var(--mut);font-size:var(--fs-1)">${tRaw('detail.no_history')}</span>`,
       );
     })
@@ -193,7 +185,7 @@ export async function openManDetail(type, id, colorId) {
       ? figs?.find(f => f.fig_number === id)
       : parts?.find(p => p.part_number === id && (p.color_id || 0) === target.colorId);
 
-  let item = find(manuelleFiguren(), manuelleTeile());
+  let item = find(manualMinifigs(), manualParts());
   // The caches of the parts and minifigs tabs follow their own search, location and account filters;
   // the finance table does not. If the entry is missing it is therefore looked up unfiltered — the
   // tab's cache stays as it is.
@@ -309,7 +301,7 @@ async function speichereTeilFarbe() {
   if (d.bild === null) toast(tRaw('parts.color.saved_no_image'), 'info');
   else toast(tRaw('settings.saved'), 'success');
   await loadManualParts().catch(() => {});
-  if (aktiverReiter() === 'finance') emit('finanzenLaden');
+  if (activeTab() === 'finance') emit('finanzenLaden');
   await openManDetail('part', number, neu);
 }
 
@@ -352,7 +344,7 @@ async function manQtySave() {
     .then(ad2 => {
       const acqs2 = ad2?.acquisitions || [];
       const sumEl = G('man-acq-summary');
-      if (sumEl) setzeHtml(sumEl, kurzfassungMan(acqs2, type, id, colorId));
+      if (sumEl) setzeHtml(sumEl, summaryMan(acqs2, type, id, colorId));
       if (G('acq-modal').classList.contains('open')) renderManAcqBody(type, id, colorId, acqs2, ad2?.totals);
     })
     .catch(() => {});
@@ -368,8 +360,8 @@ function openManAcqModal() {
   const { type, id, colorId } = _manItem;
   const title =
     type === 'fig'
-      ? manuelleFiguren().find(f => f.fig_number === id)?.fig_name || id
-      : manuelleTeile().find(p => p.part_number === id)?.part_name || id;
+      ? manualMinifigs().find(f => f.fig_number === id)?.fig_name || id
+      : manualParts().find(p => p.part_number === id)?.part_name || id;
   G('acq-modal-tit').textContent = tRaw('detail.edit_prices');
   G('acq-modal-sub').textContent = title;
   setzeHtml(
@@ -449,7 +441,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
           data-blur="manAcqSave" ${rawHtml(args)} data-arg5="qty" data-val="1"
           data-keydown="blurOnEnter" />
       </td>
-      <td>${datumFeld(`id="acq-datum-feld-${ai_}" data-change="manAcqSave" ${args} data-arg5="date" data-val="1"`, dateIso, `acq-datum-${ai_}`)}</td>
+      <td>${dateField(`id="acq-datum-feld-${ai_}" data-change="manAcqSave" ${args} data-arg5="date" data-val="1"`, dateIso, `acq-datum-${ai_}`)}</td>
       <td>
         <select class="acq-feld" aria-label="${tRaw('common.condition')}" data-change="manAcqSave" ${rawHtml(args)} data-arg5="cond" data-val="1">
           <option value="N" ${a.condition !== 'U' ? 'selected' : ''}>${tRaw('common.condition_new')}</option>
@@ -457,7 +449,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
         </select>
       </td>
       <td class="zahl">
-        <input class="acq-feld acq-preis" id="acq-preis-${ai_}" type="text" inputmode="decimal" autocomplete="off" value="${betragFuerFeld(a.unit_price)}" aria-label="${tRaw('detail.purchase_price')}"
+        <input class="acq-feld acq-preis" id="acq-preis-${ai_}" type="text" inputmode="decimal" autocomplete="off" value="${amountForField(a.unit_price)}" aria-label="${tRaw('detail.purchase_price')}"
           data-blur="manAcqSave" ${rawHtml(args)} data-arg5="price" data-val="1"
           data-keydown="blurOnEnter" />
       </td>
@@ -471,7 +463,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
           : ''
       }
       <td class="acq-aktion">
-        ${gespeichertMarke(ai_)}
+        ${savedBrand(ai_)}
         <button class="acq-loeschen" data-click="manAcqDelete"${echt()} ${rawHtml(args)}
           title="${tRaw('gallery.delete.title')}" aria-label="${tRaw('gallery.delete.title')}">${ico('loeschen')}</button>
       </td>
@@ -480,7 +472,7 @@ function renderManAcqBody(type, id, colorId, acqs, totals) {
 
   markup = html`${markup}${html`</tbody></table></div>`}`;
   markup = html`${markup}${acqSummary(totals)}`;
-  setzeMitFokus(G('acq-modal-body'), markup);
+  setWithFocus(G('acq-modal-body'), markup);
 }
 
 /**
@@ -500,20 +492,20 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
     /** @type {{ unit_price?: number | null, quantity?: number, date?: string, condition?: string, owner_user_id?: number }} */
     const body = {};
     if (field === 'price') {
-      const preis = betragAusFeld(`acq-preis-${acqId}`);
+      const preis = amountFromField(`acq-preis-${acqId}`);
       if (!preis.ok) return;
       body.unit_price = preis.wert;
     } else if (field === 'qty') {
-      const menge = mengeAusFeld(`acq-menge-${acqId}`);
+      const menge = quantityFromField(`acq-menge-${acqId}`);
       if (!menge.ok) return;
       body.quantity = menge.wert;
     } else if (field === 'date') {
-      if (!kaufdatumGueltig(`acq-datum-feld-${acqId}`)) return;
+      if (!purchaseDateValid(`acq-datum-feld-${acqId}`)) return;
       body.date = value;
     } else if (field === 'owner') {
       // Owner change = moving exactly this acquisition row. A manually recorded item has no content —
       // only quantity and acquisition move (src/sets/setMove.ts, moveManualAcquisition). NO
-      // from_user_id: the server reads the sender from the row itself (umzugsQuelle) — here it was
+      // from_user_id: the server reads the sender from the row itself (moveSource) — here it was
       // the viewer, see acqSave().
       body.owner_user_id = parseInt(value, 10);
     } else body.condition = value;
@@ -523,7 +515,7 @@ async function manAcqSave(type, id, colorId, acqId, field, value) {
       if (field === 'date' || field === 'owner') await loadManAcqModal(type, id, colorId);
       return;
     }
-    zeigeGespeichert(acqId);
+    showSaved(acqId);
     if (field === 'owner') {
       // After this almost nothing on screen still matches: quantities, totals, owner badges. Easier to
       // reload than to update four spots by hand.
@@ -587,7 +579,7 @@ async function manAcqDelete(type, id, colorId, acqId) {
   const acqs = ad?.acquisitions || [];
   // Refresh the summary in the detail dialog
   const sumEl = G('man-acq-summary');
-  if (sumEl) setzeHtml(sumEl, kurzfassungMan(acqs, type, id, colorId));
+  if (sumEl) setzeHtml(sumEl, summaryMan(acqs, type, id, colorId));
   if (!acqs.length) {
     closeAcqModal();
     return;

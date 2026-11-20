@@ -3,7 +3,7 @@
 
 import { KEINE_FARBE } from '../infra/validate';
 import { versuche } from '../infra/ergebnis';
-import type { KatalogKontext } from './kontext';
+import type { CatalogContext } from './kontext';
 
 export { KEINE_FARBE };
 
@@ -15,7 +15,7 @@ export interface Farbe {
 
 /** Nur Farben mit feststehender Rebrickable-ID: Eine falsche ID landete im
  * Bestand und im Preisabruf. */
-const NOTLISTE: Farbe[] = [
+const FALLBACK_LIST: Farbe[] = [
   { id: KEINE_FARBE, name: '[No Color/Any Color]', hex: null },
   { id: 0, name: 'Black', hex: '05131D' },
   { id: 1, name: 'Blue', hex: '0055BF' },
@@ -30,11 +30,11 @@ const NOTLISTE: Farbe[] = [
   { id: 72, name: 'Dark Bluish Gray', hex: '6C6E68' },
 ];
 
-export async function farbliste(k: KatalogKontext): Promise<Farbe[]> {
-  const geladen = await k.katalogStamm.geladeneFarben();
+export async function colorList(k: CatalogContext): Promise<Farbe[]> {
+  const geladen = await k.katalogStamm.loadedColors();
   if (geladen.length) return geladen;
   // Ohne Rebrickable bleibt die eingebaute Notliste; sie ist als solche kurz.
   const abgerufen = await versuche('farben:rebrickable', k.fremdquellen.quellen.getBrickColors());
   if (abgerufen.ok && abgerufen.wert.length) return abgerufen.wert;
-  return NOTLISTE;
+  return FALLBACK_LIST;
 }

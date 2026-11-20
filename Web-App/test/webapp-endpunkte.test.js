@@ -13,7 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { ohneKommentare, routerEinhaengungen, pfadForm, leseLiteral } = require('./helpers/sources');
+const { ohneKommentare, routerEinhaengungen, pathForm, leseLiteral } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
@@ -26,24 +26,24 @@ function form(p) {
 /**
  * Template-Ausdrücke auflösen, dann den Abfrageteil abschneiden.
  */
-function pfadFormV1(roh) {
-  return form(pfadForm(roh));
+function pathFormV1(roh) {
+  return form(pathForm(roh));
 }
 
-function serverRouten() {
+function serverRoutes() {
   const alle = new Set();
-  const sammle = (datei, mount) => {
+  const collect = (datei, mount) => {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
-    for (const m of require('./helpers/sources').routenAusQuelle(src, mount))
+    for (const m of require('./helpers/sources').routesFromSource(src, mount))
       alle.add(`${m[1].toUpperCase()} ${form(mount + '/' + m[2].replace(/^\//, ''))}`);
   };
   // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
   // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
-  for (const r of routerEinhaengungen()) sammle(r.datei, r.mount);
+  for (const r of routerEinhaengungen()) collect(r.datei, r.mount);
   const v1 = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
-    sammle(path.join(v1, f), '/api/v1');
+    collect(path.join(v1, f), '/api/v1');
   }
   // Und die drei, die direkt in server.ts hängen.
   const srv = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
@@ -53,17 +53,17 @@ function serverRouten() {
 }
 
 /** Alle Aufrufe der Webapp: api('VERB', pfad) und fetch(pfad, { method }). */
-function webAufrufe() {
+function webCalls() {
   const out = [];
   for (const datei of fs.readdirSync(JS)) {
     if (!datei.endsWith('.js') || datei === 'app.bundle.js') continue;
     const src = ohneKommentare(fs.readFileSync(path.join(JS, datei), 'utf8'));
-    const zeileVon = i => src.slice(0, i).split('\n').length;
+    const rowOf = i => src.slice(0, i).split('\n').length;
 
-    for (const m of src.matchAll(/\bapi(?:Roh)?\(\s*'(GET|POST|PUT|DELETE)'\s*,\s*/g)) {
+    for (const m of src.matchAll(/\bapi(?:Roh|Raw)?\(\s*'(GET|POST|PUT|DELETE)'\s*,\s*/g)) {
       const lit = leseLiteral(src, m.index + m[0].length);
       if (!lit?.text.startsWith('/')) continue;
-      out.push({ datei, zeile: zeileVon(m.index), verb: m[1], pfad: pfadFormV1('/api' + lit.text) });
+      out.push({ datei, zeile: rowOf(m.index), verb: m[1], pfad: pathFormV1('/api' + lit.text) });
     }
     for (const m of src.matchAll(/fetch\(\s*/g)) {
       const lit = leseLiteral(src, m.index + m[0].length);
@@ -71,15 +71,15 @@ function webAufrufe() {
       // Die Methode steht im zweiten Argument; ohne Angabe ist es GET.
       const rest = src.slice(lit.ende, lit.ende + 300);
       const verb = (rest.match(/method\s*:\s*['"`](\w+)['"`]/)?.[1] ?? 'GET').toUpperCase();
-      out.push({ datei, zeile: zeileVon(m.index), verb, pfad: pfadFormV1(lit.text) });
+      out.push({ datei, zeile: rowOf(m.index), verb, pfad: pathFormV1(lit.text) });
     }
   }
   return out;
 }
 
 test('jede Adresse der Webapp existiert auf dem Server', () => {
-  const server = serverRouten();
-  const aufrufe = webAufrufe();
+  const server = serverRoutes();
+  const aufrufe = webCalls();
 
   // Selbstbeweis in beide Richtungen: Findet eines der Muster nichts, wäre die
   // Fehlerliste leer und der Test grün, ohne etwas geprüft zu haben.
@@ -105,22 +105,22 @@ test('jede Adresse der Webapp existiert auf dem Server', () => {
 /**
  * Und die Gegenrichtung: Was kann nur die Webapp?
  */
-const PAPIERKORB =
+const TRASH =
   'Papierkorb: vorerst nur in der Webapp. Löschen in der App landet trotzdem ' +
   'darin (der Schnappschuss entsteht im Server), zurückholen geht über die ' +
   'Webapp. Eine App-Ansicht ist als Nachzug vorgesehen.';
 
-const ZWEITER_FAKTOR =
+const SECOND_FACTOR =
   'Den zweiten Faktor eines ANDEREN Kontos zurücksetzen gehört zur ' +
   'Nutzerverwaltung, und die steht absichtlich nur in der Webapp ' +
   '(VerwaltungApi.kt, Abschnitt Server-Protokoll).';
 
-const EINRICHTUNG =
+const SETUP =
   'Der Einrichtungs-Assistent richtet den SERVER ein (Startpasswort, ' +
   'Schlüssel der Quellen) — das geschieht am Rechner, bevor jemand die App ' +
   'verbindet; die Schlüssel stehen dort auch in den Einstellungen.';
 
-const ALLES_LOESCHEN =
+const EVERYTHING_DELETE =
   '„Alle meine Daten löschen" steht in der Gefahrenzone der Webapp. Auf dem ' +
   'Telefon gibt es den Knopf absichtlich nicht — ein Fehlgriff dort träfe die ' +
   'ganze Sammlung; einzelne Elemente löscht die App wie bisher.';
@@ -235,7 +235,7 @@ const NUR_WEB = new Map([
       'Marcos Vorgabe vom 15.10. („Bitte auch den Button … in der Android-App ' +
       'einbauen. Das erzeugte PDF soll analog den andere PDFs angezeigt werden") ' +
       'steht der Knopf in GutscheineCard.kt. Sie ruft sie nur nicht ueber ' +
-      'Retrofit: Der PdfViewerScreen bekommt die ADRESSE ' +
+      'Retrofit: Der PdfViewerScreen bekommt die ADDRESS ' +
       '(gutscheinExportAdresse() in ui/GutscheinFeature.kt) und laedt sie mit ' +
       'dem angemeldeten Client der App — genau wie beim einzelnen Gutschein-PDF, ' +
       'zu dem in GutscheineApi.kt steht, warum dort keine Methode liegt. ' +
@@ -288,14 +288,14 @@ const NUR_WEB = new Map([
       'fehlende Figuren in ihre Teile auf, weil man die Figur oft nicht als ' +
       'Ganzes kaufen kann. Mit dem Export entfiel der einzige Aufrufer.',
   ],
-  ['/api/v1/papierkorb', PAPIERKORB],
-  ['/api/v1/papierkorb/:X', PAPIERKORB],
-  ['/api/v1/papierkorb/:X/wiederherstellen', PAPIERKORB],
-  ['/api/v1/auth/users/:X/zweiter-faktor', ZWEITER_FAKTOR],
-  ['/api/v1/settings/einrichtung', EINRICHTUNG],
-  ['/api/v1/settings/einrichtung/fertig', EINRICHTUNG],
-  ['/api/v1/settings/quelle-testen', EINRICHTUNG],
-  ['/api/v1/bestand', ALLES_LOESCHEN],
+  ['/api/v1/papierkorb', TRASH],
+  ['/api/v1/papierkorb/:X', TRASH],
+  ['/api/v1/papierkorb/:X/wiederherstellen', TRASH],
+  ['/api/v1/auth/users/:X/zweiter-faktor', SECOND_FACTOR],
+  ['/api/v1/settings/einrichtung', SETUP],
+  ['/api/v1/settings/einrichtung/fertig', SETUP],
+  ['/api/v1/settings/quelle-testen', SETUP],
+  ['/api/v1/bestand', EVERYTHING_DELETE],
   [
     '/api/v1/auth/konto',
     'Das eigene Konto endgültig löschen (Sicherheitsprüfung Runde 9, H4): mit Passwort und ' +
@@ -315,26 +315,26 @@ const NUR_WEB = new Map([
 
 test('was nur die Webapp kann, hat einen Grund', () => {
   // Die Retrofit-Routen der App (shared/app-schnittstelle.json); `{x}` wird zu `:X`.
-  const appPfade = new Set(
+  const appPaths = new Set(
     require('./helpers/vertrag')
       .appSchnittstelle()
       .routen.map(r => form(r.pfad.replace(/\{[^}]+\}/g, ':X'))),
   );
   // GEMESSEN sind es 94 Adressen.
-  assert.ok(appPfade.size >= 60, `Nur ${appPfade.size} App-Adressen — Muster veraltet?`);
+  assert.ok(appPaths.size >= 60, `Nur ${appPaths.size} App-Adressen — Muster veraltet?`);
 
-  const webPfade = new Set(webAufrufe().map(a => a.pfad));
+  const webPaths = new Set(webCalls().map(a => a.pfad));
   // GEMESSEN sind es 68.
-  assert.ok(webPfade.size >= 50, `Nur ${webPfade.size} Webapp-Adressen — Muster veraltet?`);
+  assert.ok(webPaths.size >= 50, `Nur ${webPaths.size} Webapp-Adressen — Muster veraltet?`);
 
-  const nurWeb = [...webPfade].filter(p => !appPfade.has(p)).sort();
+  const nurWeb = [...webPaths].filter(p => !appPaths.has(p)).sort();
 
-  const unbegruendet = nurWeb.filter(p => !NUR_WEB.has(p));
+  const unjustified = nurWeb.filter(p => !NUR_WEB.has(p));
   assert.deepEqual(
-    unbegruendet,
+    unjustified,
     [],
     'Diese Adressen ruft nur die Webapp auf, und es steht kein Grund dabei:\n  ' +
-      unbegruendet.join('\n  ') +
+      unjustified.join('\n  ') +
       '\nEntweder die App zieht nach — dann sind die beiden Oberflächen wieder ' +
       'gleich viel wert —, oder es gibt einen Grund; der gehört dann in NUR_WEB, ' +
       'damit ihn der Nächste nicht neu herleiten muss.',
@@ -343,7 +343,7 @@ test('was nur die Webapp kann, hat einen Grund', () => {
   // Dieselbe Regel wie bei jeder Ausnahmeliste in diesem Baum: Ein Eintrag,
   // der nichts mehr beschreibt, sieht aus wie eine Entscheidung und ist doch
   // bloss eine Vermutung. Zieht die App eine dieser Adressen nach, muss der
-  // Eintrag WEG — sonst deckt er still die nächste Lücke mit ab.
+  // Eintrag ROUTE — sonst deckt er still die nächste Lücke mit ab.
   const veraltet = [...NUR_WEB.keys()].filter(p => !nurWeb.includes(p)).sort();
   assert.deepEqual(
     veraltet,

@@ -16,12 +16,12 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { ohneKommentare, testDaten } = require('./helpers/sources');
+const { ohneKommentare, testData } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
+const db = testData();
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/bestand');
 
 test('das Löschen fragt genau einmal', () => {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/collection.js'), 'utf8'));
@@ -45,7 +45,7 @@ test('das Löschen fragt genau einmal', () => {
     src.indexOf('export async function reimportParts'),
   );
   assert.equal((fn.match(/confirmDelete\(/g) || []).length, 1, 'delSet() muss GENAU EINE Rückfrage stellen');
-  assert.equal((fn.match(/loeschenMitWahl\(/g) || []).length, 1, 'im Haushalt genau eine Rückfrage mit Wahl');
+  assert.equal((fn.match(/deleteWithChoice\(/g) || []).length, 1, 'im Haushalt genau eine Rückfrage mit Wahl');
   assert.match(fn, /if \(!foreign\)\s*return \(await confirmDelete\(/, 'die beiden Rückfragen schliessen sich aus');
   // Und die Rückfrage muss abbrechen können, ohne dass gelöscht wird.
   assert.match(fn, /\) return false;/, 'Ein „Abbrechen" muss vor dem DELETE herausspringen');
@@ -75,7 +75,7 @@ test('die Mengen-Multiplikation steht an allen Stellen', () => {
 });
 
 test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NUTZER = `dl-${process.pid}`;
   const SN = `76${(process.pid % 900) + 100}-1`;
@@ -98,19 +98,19 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
   );
   // Nur die Bestandszeile: Menge, Preis und Zustand stehen in der Erfassung
   // darunter (Migration 0032 fuer Preis und Zustand, 0036 fuer die Menge).
-  await haeltSet(db, uid, SN, 0);
+  await holdsSet(db, uid, SN, 0);
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,15,'N',1)`,
     [uid, SN],
   );
   // Ein Exemplar enthält 10 Teile und 1 Minifigur.
-  await haeltTeil(db, uid, '3001', { setNumber: SN, menge: 10, colorId: 4 });
-  await haeltFigur(db, uid, 'cty0001', { setNumber: SN, menge: 1 });
+  await holdsPart(db, uid, '3001', { setNumber: SN, menge: 10, colorId: 4 });
+  await holdsMinifig(db, uid, 'cty0001', { setNumber: SN, menge: 1 });
 
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
-  const H = require('./helpers/sources').handlerModul(_req);
+  const H = require('./helpers/sources').handlerModule(_req);
   const setzen = n =>
     fetch(`${base}/api/v1/sets/${SN}`, {
       method: 'PUT',

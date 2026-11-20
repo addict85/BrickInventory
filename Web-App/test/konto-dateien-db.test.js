@@ -8,9 +8,9 @@
  *      und Kartennummer stehen im Klartext auf der Platte“
  *   B  encryptLegacyVoucherFiles() überspringt alles → rot: „der
  *      Altbestand bleibt Klartext“
- *   C  in kontoEntfernen() (src/konto) den Aufruf von loescheKontoDateien() entfernt → rot:
+ *   C  in kontoEntfernen() (src/konto) den Aufruf von deleteAccountFiles() entfernt → rot:
  *      „data/uploads/<id> bleibt nach dem Löschen liegen“
- *   D  GET /vouchers/:id/pdf liefert die Datei wieder roh (liefereDatei) →
+ *   D  GET /vouchers/:id/pdf liefert die Datei wieder roh (deliverFile) →
  *      rot: „das ausgelieferte PDF ist nicht das hochgeladene“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -23,13 +23,13 @@ const PDFKit = require('pdfkit');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const db = testDaten();
+const { adminWithFactor } = require('./helpers/verwalter');
+const db = testData();
 const { DATA_DIR } = _req('src/infra/appPaths.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
@@ -73,9 +73,9 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
     [ADMIN, ZIEL, await bcrypt.hash(ADMIN_PW, 4)],
   );
   const adminId = (await db.get('SELECT id FROM users WHERE username=$1', [ADMIN])).id;
-  const zielId = (await db.get('SELECT id FROM users WHERE username=$1', [ZIEL])).id;
-  const uploads = path.join(DATA_DIR, 'uploads', String(zielId));
-  const vouchers = path.join(DATA_DIR, 'vouchers', String(zielId));
+  const targetId = (await db.get('SELECT id FROM users WHERE username=$1', [ZIEL])).id;
+  const uploads = path.join(DATA_DIR, 'uploads', String(targetId));
+  const vouchers = path.join(DATA_DIR, 'vouchers', String(targetId));
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username IN ($1, $2)', [ADMIN, ZIEL]).catch(() => {});
     fs.rmSync(uploads, { recursive: true, force: true });
@@ -83,8 +83,8 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
     await db.pool.end().catch(() => {});
   });
 
-  const ziel = testServer(_req, { sitzung: { userId: zielId }, t });
-  const codes = await verwalterMitFaktor(_req, adminId);
+  const ziel = testServer(_req, { sitzung: { userId: targetId }, t });
+  const codes = await adminWithFactor(_req, adminId);
   const admin = testServer(_req, { sitzung: { userId: adminId, username: ADMIN, isAdmin: true }, t });
 
   const original = await gutscheinPdf();
@@ -106,11 +106,8 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
     const b = await r.json();
     assert.equal(r.status, 200, JSON.stringify(b));
     const roh = fs.readFileSync(path.join(vouchers, `${b.voucher.id}.pdf`));
-    const vonPlatte = lesbar(roh);
-    assert.ok(
-      vonPlatte.pin !== PIN && vonPlatte.number !== NR,
-      'PIN und Kartennummer stehen im Klartext auf der Platte',
-    );
+    const ofDisk = lesbar(roh);
+    assert.ok(ofDisk.pin !== PIN && ofDisk.number !== NR, 'PIN und Kartennummer stehen im Klartext auf der Platte');
     assert.notEqual(roh.subarray(0, 5).toString('latin1'), '%PDF-');
     const { ticket } = await (
       await fetch(`${ziel.base}/api/v1/vouchers/${b.voucher.id}/pdf-freigabe`, {
@@ -138,7 +135,7 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
   await t.test('Konto löschen entfernt Anleitungen und Gutscheine', async () => {
     fs.mkdirSync(uploads, { recursive: true });
     fs.writeFileSync(path.join(uploads, '10294-1_abc.pdf'), original);
-    const r = await fetch(`${admin.base}${AUTH}/users/${zielId}`, {
+    const r = await fetch(`${admin.base}${AUTH}/users/${targetId}`, {
       method: 'DELETE',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ admin_password: ADMIN_PW, code: codes.shift() }),

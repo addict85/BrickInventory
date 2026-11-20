@@ -31,7 +31,7 @@ const DUMP = path.join(tmp, 'db.sql.gz');
 fs.writeFileSync(DUMP, zlib.gzipSync('SELECT 1;\n--\n-- PostgreSQL database dump complete\n--\n'));
 
 /** Ein Archiv aus einem Arbeitsordner bauen; `bauen(ordner)` legt den Inhalt an. */
-function archiv(name, bauen, tarArgs = ['data']) {
+function archive(name, bauen, tarArgs = ['data']) {
   const ordner = path.join(tmp, `quelle-${name}`);
   fs.mkdirSync(path.join(ordner, 'data'), { recursive: true });
   fs.writeFileSync(path.join(ordner, 'data', 'bild.jpg'), 'x');
@@ -55,20 +55,20 @@ function restore(tar) {
 }
 
 test('ein gutes Archiv kommt bis zur Rückfrage', () => {
-  const r = restore(archiv('gut', o => fs.mkdirSync(path.join(o, 'data', 'anleitungen'))));
+  const r = restore(archive('gut', o => fs.mkdirSync(path.join(o, 'data', 'anleitungen'))));
   assert.match(r.aus, /Archiv geprüft/, r.aus);
   assert.match(r.aus, /Abgebrochen/, r.aus);
 });
 
 const BOESE = {
-  'Verknüpfung nach aussen': () => archiv('link', o => fs.symlinkSync('/etc', path.join(o, 'data', 'aussen'))),
+  'Verknüpfung nach aussen': () => archive('link', o => fs.symlinkSync('/etc', path.join(o, 'data', 'aussen'))),
   'harter Link': () =>
-    archiv('hart', o => fs.linkSync(path.join(o, 'data', 'bild.jpg'), path.join(o, 'data', 'zwilling.jpg'))),
-  'Pfad mit ..': () => archiv('punkte', () => {}, ['--transform', 's,^data/bild.jpg,data/../../boese.jpg,', 'data']),
+    archive('hart', o => fs.linkSync(path.join(o, 'data', 'bild.jpg'), path.join(o, 'data', 'zwilling.jpg'))),
+  'Pfad mit ..': () => archive('punkte', () => {}, ['--transform', 's,^data/bild.jpg,data/../../boese.jpg,', 'data']),
   'absoluter Pfad': () =>
-    archiv('absolut', () => {}, ['-P', '--transform', 's,^data/bild.jpg,/tmp/boese.jpg,', 'data']),
+    archive('absolut', () => {}, ['-P', '--transform', 's,^data/bild.jpg,/tmp/boese.jpg,', 'data']),
   'anderer Ordner': () =>
-    archiv(
+    archive(
       'anderer',
       o => {
         fs.mkdirSync(path.join(o, 'schluessel'));

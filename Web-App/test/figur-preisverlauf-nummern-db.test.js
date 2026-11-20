@@ -8,15 +8,15 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { preisverlaufFigur } = _req('src/finanzen/priceHistory.js');
-const { haeltFigur } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { priceHistoryMinifig } = _req('src/finanzen/priceHistory.js');
+const { holdsMinifig } = require('./helpers/bestand');
 
 test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // minifig_price_history steht bewusst NUR in db/migrations/0003.
   // initSchema() legt sie nicht an; ohne
   // diesen Schritt liefe der Test gegen ein Schema, das es im Betrieb nicht
@@ -33,21 +33,21 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
   const NUTZER = `fig_${p}`;
   const EIGENE = `sw${p}`; // so hat der Benutzer die Figur erfasst
   const BL = `sw${p}bl`; // so kennt BrickLink sie
-  const OHNE_BL = `sw${p}x`; // zweite Figur, ganz ohne BrickLink-Nummer
-  const WAEHRUNG = 'CHF';
+  const WITHOUT_BL = `sw${p}x`; // zweite Figur, ganz ohne BrickLink-Nummer
+  const CURRENCY = 'CHF';
 
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
   // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).
-  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)`, [uid, WAEHRUNG]);
+  await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)`, [uid, CURRENCY]);
 
   try {
     // Die Figur trägt eine ABWEICHENDE BrickLink-Nummer — der Fall, für den
     // es das Feld gibt.
     // Die Nummer steht seit Migration 0037 in bl_mapping — einmal je
     // Figur, ohne Konto. An der Bestandszeile stand sie je Konto.
-    await haeltFigur(db, uid, EIGENE, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsMinifig(db, uid, EIGENE, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('fig',$1,$2)
        ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id`,
@@ -66,15 +66,15 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
        VALUES ($1,'N',$2,9.00,9.00)
        ON CONFLICT (fig_number,condition,currency_code)
        DO UPDATE SET avg_price=9.00, qty_avg_price=9.00`,
-      [BL, WAEHRUNG],
+      [BL, CURRENCY],
     );
     await db.run(
       `INSERT INTO minifig_price_history (fig_number,condition,currency_code,avg_price,qty_avg_price)
        VALUES ($1,'N',$2,9.00,9.00)`,
-      [BL, WAEHRUNG],
+      [BL, CURRENCY],
     );
 
-    const v = await preisverlaufFigur(uid, EIGENE, WAEHRUNG);
+    const v = await priceHistoryMinifig(uid, EIGENE, CURRENCY);
 
     assert.ok(v.by_condition?.N, 'Für den Zustand „N" kam gar keine Zeile zurück, obwohl eine Erfassung existiert');
     assert.equal(
@@ -92,26 +92,26 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
     assert.ok(v.history_new.length >= 1, 'Der Verlauf ist leer — dann bleibt das Diagramm leer, obwohl Punkte da sind');
 
     // Und die andere Hälfte: die EIGENE Nummer darf nicht wegfallen
-    await haeltFigur(db, uid, OHNE_BL, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsMinifig(db, uid, WITHOUT_BL, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)
        VALUES ($1,$2,1,3.00,'N')`,
-      [uid, OHNE_BL],
+      [uid, WITHOUT_BL],
     );
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price,qty_avg_price)
        VALUES ($1,'N',$2,7.00,7.00)
        ON CONFLICT (fig_number,condition,currency_code)
        DO UPDATE SET avg_price=7.00, qty_avg_price=7.00`,
-      [OHNE_BL, WAEHRUNG],
+      [WITHOUT_BL, CURRENCY],
     );
     await db.run(
       `INSERT INTO minifig_price_history (fig_number,condition,currency_code,avg_price,qty_avg_price)
        VALUES ($1,'N',$2,7.00,7.00)`,
-      [OHNE_BL, WAEHRUNG],
+      [WITHOUT_BL, CURRENCY],
     );
 
-    const w = await preisverlaufFigur(uid, OHNE_BL, WAEHRUNG);
+    const w = await priceHistoryMinifig(uid, WITHOUT_BL, CURRENCY);
     assert.ok(w.by_condition?.N, 'Ohne BrickLink-Nummer kam gar keine Zeile zurück');
     assert.equal(
       Number(w.by_condition.N.market_price),
@@ -123,10 +123,10 @@ test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { 
     assert.ok(w.history_new.length >= 1, 'Ohne BrickLink-Nummer bleibt der Verlauf leer');
   } finally {
     await db
-      .run(`DELETE FROM minifig_price_history WHERE fig_number IN ($1,$2,$3)`, [EIGENE, BL, OHNE_BL])
+      .run(`DELETE FROM minifig_price_history WHERE fig_number IN ($1,$2,$3)`, [EIGENE, BL, WITHOUT_BL])
       .catch(() => {});
     await db
-      .run(`DELETE FROM minifig_price_cache   WHERE fig_number IN ($1,$2,$3)`, [EIGENE, BL, OHNE_BL])
+      .run(`DELETE FROM minifig_price_cache   WHERE fig_number IN ($1,$2,$3)`, [EIGENE, BL, WITHOUT_BL])
       .catch(() => {});
     await db.run(`DELETE FROM minifig_acquisitions WHERE user_id=$1`, [uid]).catch(() => {});
     await db.run(`DELETE FROM minifigs WHERE user_id=$1`, [uid]).catch(() => {});

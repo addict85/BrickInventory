@@ -6,23 +6,23 @@
  * hinein, ohne Faktor über „Passwort vergessen“ (das leert die Zähler); er bekommt eine Mail.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in pruefeAnmeldedaten() die Abfrage tagesgrenzeErreicht() abgeschaltet → rot: „über der
+ *   A  in checkCredentials() die Abfrage dailyLimitReached() abgeschaltet → rot: „über der
  *      Grenze: Passwort allein reicht nicht …“ (200 statt 429) und „… mit Code geht es weiter“
- *   B  in anmeldungGescheitert() den Tageszähler nicht erhöht → rot: „der 50. Fehlversuch
+ *   B  in loginFailed() den Tageszähler nicht erhöht → rot: „der 50. Fehlversuch
  *      erreicht die Grenze …“ und „über der Grenze …“
  *   C  die Ausnahme für Code und aktiven Faktor gestrichen → rot: „… mit Code geht es weiter“
- *   D  loescheTagesgrenze() in setzePasswortZurueck() gestrichen → rot: „nach Passwort
+ *   D  deleteDailyLimit() in setPasswordBack() gestrichen → rot: „nach Passwort
  *      vergessen geht das Passwort wieder“
  *
  * Gegenproben zur Trennung bekannter Adressen (15.11.2026 gemessen):
  *   E  in _tagKey() stets `login-tag|${kennung}` geliefert → rot: „der 50. Fehlversuch …“
  *      (der gemeinsame Zähler stieg), die beiden folgenden und „50 Fehlversuche eines
  *      Fremden …“ (429 statt 200)
- *   F  in loescheTagesgrenze() das Löschen mit Präfix gestrichen → rot: „nach Passwort
+ *   F  in deleteDailyLimit() das Löschen mit Präfix gestrichen → rot: „nach Passwort
  *      vergessen …“ (Zähler der bekannten Adresse blieb)
  *
  * Gegenproben zum Freigabelink (16.11.2026 gemessen, je einzeln):
- *   G  in nurNochMitFaktor() freigabeAnbieten() gestrichen → rot: „an einer unbekannten
+ *   G  in onlyStillWithFactor() offerRelease() gestrichen → rot: „an einer unbekannten
  *      Adresse kommt ein Freigabelink …“ (keine Mail)
  *   H  in _tagKey() die Freigabe nicht beachtet → rot: dieselbe Prüfung (429 nach dem Link)
  *   I  in anmeldungFreigeben() die Einmal-Prüfung gestrichen → rot: dieselbe Prüfung (der Link
@@ -36,28 +36,28 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { umgebung, testDaten, buildAndRequire } = require('./helpers/sources');
+const { environment, testData, buildAndRequire } = require('./helpers/sources');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung', APP_BASE_URL: 'http://localhost' });
+environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung', APP_BASE_URL: 'http://localhost' });
 
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
 const { bis } = require('./helpers/zeit');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = testDaten();
+const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test.after(() => db.pool.end().catch(() => {}));
 
 test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const gesendet = mailAttrappe();
-  t.after(await mailserverEintragen(db));
+  t.after(await enterMailServer(db));
   const zf = _req('src/factors/secondFactor.js');
-  const { verschluessele } = _req('src/infra/geheimnis.js');
+  const { encrypt } = _req('src/infra/geheimnis.js');
   const P = process.pid;
   const OHNE = `tg_ohne_${P}`,
     MIT = `tg_mit_${P}`,
@@ -76,7 +76,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
   const secret = zf.base32(crypto.randomBytes(20));
   await db.run('INSERT INTO second_factor (user_id, secret, active) VALUES ($1, $2, true)', [
     id[MIT],
-    verschluessele(secret, zf.secondFactorContext(id[MIT])),
+    encrypt(secret, zf.secondFactorContext(id[MIT])),
   ]);
   /** Ein frischer Code: Derselbe Schritt gilt nur einmal, deshalb vorher zurücksetzen. */
   const code = async () => {
@@ -84,7 +84,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
     return zf.hotp(zf.fromBase32(secret), zf.timeStep());
   };
   const { base } = testServer(_req, { t });
-  const anmelden = async (name, passwort, mitCode) => {
+  const anmelden = async (name, passwort, withCode) => {
     const r = await fetch(`${base}${AUTH}/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -92,7 +92,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
         username: name,
         password: passwort,
         ohne_token: true,
-        ...(mitCode ? { code: mitCode } : {}),
+        ...(withCode ? { code: withCode } : {}),
       }),
     });
     return { status: r.status, body: await r.json().catch(() => null) };
@@ -105,9 +105,9 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
     ]);
     return `login-tag|konto:${id[name]}|${b.key.split('|')[1]}`;
   };
-  const tageszaehler = async (name, hier) =>
+  const dailyCounter = async (name, hier) =>
     (await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [await tagKey(name, hier)]))?.count ?? 0;
-  const setzeZaehler = async (name, n, hier) =>
+  const setCounter = async (name, n, hier) =>
     db.run(
       `INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES ($1, $2, NOW(), NOW())
        ON CONFLICT (key) DO UPDATE SET count = $2, first_at = NOW(), last_at = NOW()`,
@@ -119,12 +119,12 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
   assert.equal((await anmelden(MIT, PASS, await code())).status, 200);
 
   await t.test('der 50. Fehlversuch erreicht die Grenze, der Inhaber bekommt eine Mail', async () => {
-    await setzeZaehler(OHNE, 48, true);
+    await setCounter(OHNE, 48, true);
     assert.equal((await anmelden(OHNE, 'falsch-geraten-1')).status, 401);
-    assert.equal(await tageszaehler(OHNE, true), 49, 'ein Fehlversuch von einer bekannten Adresse zählt');
-    assert.equal(await tageszaehler(OHNE), 0, '… bei dieser Adresse, nicht im gemeinsamen Zähler');
+    assert.equal(await dailyCounter(OHNE, true), 49, 'ein Fehlversuch von einer bekannten Adresse zählt');
+    assert.equal(await dailyCounter(OHNE), 0, '… bei dieser Adresse, nicht im gemeinsamen Zähler');
     assert.equal((await anmelden(OHNE, 'falsch-geraten-2')).status, 401);
-    assert.equal(await tageszaehler(OHNE, true), 50);
+    assert.equal(await dailyCounter(OHNE, true), 50);
     assert.ok(
       await bis(() => gesendet.some(m => m.to === `${OHNE}@example.org` && /50 fehlgeschlagene/.test(m.text)), 10_000),
       'keine Mail an den Inhaber',
@@ -142,7 +142,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
   });
 
   await t.test('… mit Code geht es weiter, ohne nicht', async () => {
-    await setzeZaehler(MIT, 50, true);
+    await setCounter(MIT, 50, true);
     assert.equal((await anmelden(MIT, PASS)).body?.code, 'konto_tagesgrenze');
     const r = await anmelden(MIT, PASS, await code());
     assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -152,7 +152,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
   await t.test('nach Passwort vergessen geht das Passwort wieder', async () => {
     const link = `tg-link-${P}`;
     await db.run(`UPDATE users SET reset_token = $1, reset_token_expires = NOW() + INTERVAL '1 hour' WHERE id = $2`, [
-      _req('src/konto/geraeteToken.js').tokenAbdruck(link),
+      _req('src/konto/geraeteToken.js').tokenDigest(link),
       id[OHNE],
     ]);
     const neu = 'neues-Passwort-nach-Link-17';
@@ -162,13 +162,13 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
       body: JSON.stringify({ token: link, password: neu }),
     });
     assert.equal(r.status, 200, await r.clone().text());
-    assert.deepEqual([await tageszaehler(OHNE), await tageszaehler(OHNE, true)], [0, 0]);
+    assert.deepEqual([await dailyCounter(OHNE), await dailyCounter(OHNE, true)], [0, 0]);
     assert.equal((await anmelden(OHNE, neu)).status, 200);
   });
 
   await t.test('50 Fehlversuche eines Fremden sperren die bekannte Adresse nicht, eine unbekannte schon', async () => {
     const neu = 'neues-Passwort-nach-Link-17';
-    await setzeZaehler(OHNE, 50);
+    await setCounter(OHNE, 50);
     const r = await anmelden(OHNE, neu);
     assert.equal(r.status, 200, JSON.stringify(r.body));
     // Ohne Bekannt-Zeile ist dieselbe Adresse fremd: Dort gilt der gemeinsame Zähler.
@@ -194,14 +194,14 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
       }).then(async r => ({ status: r.status, body: await r.json() }));
     const [token] = links();
     const [uid, ...rest] = token.split('.');
-    const gefaelscht = [String(id[MIT]), ...rest].join('.');
-    assert.equal((await freigeben(gefaelscht)).body.code, 'freigabe_link_ungueltig', 'Signatur');
+    const forged = [String(id[MIT]), ...rest].join('.');
+    assert.equal((await freigeben(forged)).body.code, 'freigabe_link_ungueltig', 'Signatur');
     assert.equal(Number(uid), id[OHNE]);
     const r = await freigeben(token);
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal((await freigeben(token)).body.code, 'freigabe_link_ungueltig', 'nur einmal');
     const a = await anmelden(OHNE, neu);
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    assert.equal(await tageszaehler(OHNE), 50, 'der gemeinsame Zähler bleibt für andere Adressen');
+    assert.equal(await dailyCounter(OHNE), 50, 'der gemeinsame Zähler bleibt für andere Adressen');
   });
 });

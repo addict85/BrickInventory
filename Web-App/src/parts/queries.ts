@@ -1,14 +1,14 @@
 import * as repo from './repository/partsList';
-import { blFarbnummerAus } from '../katalog';
+import { blColorNumberFrom } from '../katalog';
 import { resolveImageLocal } from '../bilder';
-import { type RbSetTeil, ersteBlNummer } from '../fremdquellen';
-import { asIds, type Sicht, type BlickfeldEingabe, type BlickfeldEingabe as Blickfeld } from '../haushalt';
+import { type RbSetTeil, firstBlNumber } from '../fremdquellen';
+import { asIds, type Sicht, type ScopeInput, type ScopeInput as Blickfeld } from '../haushalt';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { summaryFresh } from './summary';
 import { clampPageSize, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand';
-import { meldeFehler, logAndContinue } from '../infra/fehler';
-import { Abstriche } from '../infra/ergebnis';
-import { mitVersion, ohneVersion } from '../infra/setNummer';
+import { reportError, logAndContinue } from '../infra/fehler';
+import { Degradations } from '../infra/ergebnis';
+import { withVersion, withoutVersion } from '../infra/setNummer';
 import type { PartsContext } from './context';
 
 /** With fallback levels (CSV cache, Rebrickable), so a set shows a parts list even
@@ -16,8 +16,8 @@ import type { PartsContext } from './context';
 
 /** Without manual entries — those have their own view. Hex fallback from
  * rb_colors for parts without a value of their own. */
-export async function partColorsQuery(k: PartsContext, userIdWahl: Sicht | Blickfeld) {
-  const userId = await k.haushalt.blickfeldAus(userIdWahl);
+export async function partColorsQuery(k: PartsContext, userIdChoice: Sicht | Blickfeld) {
+  const userId = await k.haushalt.scopeFrom(userIdChoice);
   // asIds(), so older callers with a bare ID keep working.
   const uids = asIds(userId);
   // From the summary (quantities there are already multiplied by the set count);
@@ -32,19 +32,19 @@ function partsFilter(query: Record<string, unknown>): repo.PartsFilter {
     category: text(query.category),
     search: text(query.search),
     spare: query.spare === '0' || query.spare === '1' ? query.spare : null,
-    set_number: query.set_number ? mitVersion(String(query.set_number)) : null,
+    set_number: query.set_number ? withVersion(String(query.set_number)) : null,
     storage: text(query.storage),
     // Manual parts have their own area, not in the set's parts list.
-    ohneManuelle: query.exclude_manual === '1' || query.exclude_manual === true,
+    withoutManual: query.exclude_manual === '1' || query.exclude_manual === true,
   };
 }
 
 // The local CSV catalog first (free), then the Rebrickable API (quota).
-async function partsFallbackSource(k: PartsContext, set_number: string, ab: Abstriche) {
+async function partsFallbackSource(k: PartsContext, set_number: string, ab: Degradations) {
   // Rebrickable knows some sets only without the version suffix.
-  const n = mitVersion(set_number),
-    alt = ohneVersion(n);
-  const invId = await ab.oder('katalog_inventar', k.katalog.neuestesInventar(set_number), null);
+  const n = withVersion(set_number),
+    alt = withoutVersion(n);
+  const invId = await ab.oder('katalog_inventar', k.katalog.newestInventory(set_number), null);
   if (invId) {
     const csvParts = await k.partsList.inventoryAsParts(invId, set_number);
     if (csvParts.length > 0)
@@ -63,13 +63,13 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Abst
   const rbKey = await k.einstellungen.globalValue('rebrickable_api_key');
   if (rbKey) {
     for (const sn of [n, alt]) {
-      const items = await ab.oder('rebrickable_teile', k.katalog.alleSetTeile(sn), []);
+      const items = await ab.oder('rebrickable_teile', k.katalog.allSetParts(sn), []);
       if (!items?.length) continue;
       const rbParts = items
         .filter((it: RbSetTeil) => !it.is_spare && it.part?.part_num)
         .map((it: RbSetTeil) => ({
           part_number: it.part?.part_num ?? '',
-          bl_part_number: ersteBlNummer(it.part?.external_ids) || it.part?.part_num || null,
+          bl_part_number: firstBlNumber(it.part?.external_ids) || it.part?.part_num || null,
           part_name: it.part?.name || it.part?.part_num || null,
           color_id: it.color?.id ?? 0,
           color_name: it.color?.name || '',
@@ -97,9 +97,9 @@ async function partsFallbackSource(k: PartsContext, set_number: string, ab: Abst
 }
 
 /** Same on both paths, otherwise the webapp and the app would paginate differently. */
-function resolvedPageSize(pageSize: unknown, mitSet: boolean): number {
+function resolvedPageSize(pageSize: unknown, withSet: boolean): number {
   if (!pageSize) return UNPAGED_LIMIT;
-  const obergrenze = mitSet ? SET_PARTS_MAX_PAGE_SIZE : MAX_PAGE_SIZE;
+  const obergrenze = withSet ? SET_PARTS_MAX_PAGE_SIZE : MAX_PAGE_SIZE;
   return Math.min(obergrenze, Math.max(1, parseInt(String(pageSize), 10) || 100));
 }
 
@@ -129,13 +129,17 @@ export async function tryPartsSummary(k: PartsContext, userId: Blickfeld, o: Rec
     return { parts: zeilen.map(partAsResponse), total, source: 'summary', page_size: size };
   } catch (e) {
     // A fallback, not an error: as with staleness, the live query takes over.
-    meldeFehler('parts:summary', e);
+    reportError('parts:summary', e);
     return null;
   }
 }
 
-export async function partsQuery(k: PartsContext, userIdWahl: Sicht | Blickfeld, query: Record<string, unknown> = {}) {
-  const userId = await k.haushalt.blickfeldAus(userIdWahl);
+export async function partsQuery(
+  k: PartsContext,
+  userIdChoice: Sicht | Blickfeld,
+  query: Record<string, unknown> = {},
+) {
+  const userId = await k.haushalt.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const filter = partsFilter(query);
   const page = query.page ?? 1;
@@ -143,7 +147,7 @@ export async function partsQuery(k: PartsContext, userIdWahl: Sicht | Blickfeld,
   const withSets = query.with_sets === '1' || query.with_sets === true;
   // Live with a set or storage filter: the summary only knows storage in
   // aggregate, and the filter makes the quantity small anyway.
-  if (filter.ohneManuelle && !filter.set_number && !filter.storage) {
+  if (filter.withoutManual && !filter.set_number && !filter.storage) {
     const summary = await tryPartsSummary(k, uids, { ...query, page, withSets });
     if (summary) return summary;
   }
@@ -156,28 +160,28 @@ export async function partsQuery(k: PartsContext, userIdWahl: Sicht | Blickfeld,
       mitSets: withSets,
       ordnung: repo.partsOrder(query.ordnung),
     }),
-    filter.ohneManuelle ? Promise.resolve([]) : k.partsList.usedManualParts(uids),
+    filter.withoutManual ? Promise.resolve([]) : k.partsList.usedManualParts(uids),
   ]);
   // One "used" acquisition makes the part used; without one, 'N'.
-  const gebrauchtJe = new Set(gebraucht.filter(r => Number(r.any_used) > 0).map(r => `${r.pid}|${r.color_id}`));
+  const usedJe = new Set(gebraucht.filter(r => Number(r.any_used) > 0).map(r => `${r.pid}|${r.color_id}`));
   const parts = zeilen.map(p => ({
     ...partAsResponse(p),
     total_quantity: p.total_quantity,
-    condition: gebrauchtJe.has(`${p.part_number}|${p.color_id}`) ? 'U' : 'N',
+    condition: usedJe.has(`${p.part_number}|${p.color_id}`) ? 'U' : 'N',
     image_url: p.image_url || null,
   }));
 
   // Fetch missing BrickLink numbers in the background; an empty bl_id means "already checked".
   setImmediate(async () => {
     try {
-      if (await k.partsList.hasUnseenBlNumber(uids)) await k.katalog.blNummernNachladen();
+      if (await k.partsList.hasUnseenBlNumber(uids)) await k.katalog.reloadBlNumbers();
     } catch (e) {
-      meldeFehler('parts:bl-numbers-refresh', e);
+      reportError('parts:bl-numbers-refresh', e);
     }
   });
 
   // An empty list after the fallback source fails is not "the set has no parts".
-  const ab = new Abstriche();
+  const ab = new Degradations();
   if (!parts.length && query.set_number) {
     const fallback = await partsFallbackSource(k, String(query.set_number), ab);
     if (fallback) return fallback;
@@ -187,14 +191,14 @@ export async function partsQuery(k: PartsContext, userIdWahl: Sicht | Blickfeld,
 
 /** The category from the own catalog, else from rb_parts: Rebrickable's set-parts
  * response usually has none, the list would otherwise consist of "Unknown". */
-export async function partCategoriesQuery(k: PartsContext, userIdWahl: Sicht | Blickfeld) {
-  const userId = await k.haushalt.blickfeldAus(userIdWahl);
+export async function partCategoriesQuery(k: PartsContext, userIdChoice: Sicht | Blickfeld) {
+  const userId = await k.haushalt.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   return k.partsList.categories(uids, await summaryFresh(k, uids, { strict: true }));
 }
 
-export async function partStatsQuery(k: PartsContext, userIdWahl: Sicht | Blickfeld) {
-  const userId = await k.haushalt.blickfeldAus(userIdWahl);
+export async function partStatsQuery(k: PartsContext, userIdChoice: Sicht | Blickfeld) {
+  const userId = await k.haushalt.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   // From the summary only when it's fresh: the webapp and the app show the same numbers.
   if (await summaryFresh(k, uids, { strict: true })) {
@@ -222,7 +226,7 @@ export async function blColorMapQuery(k: PartsContext) {
   const key = await k.fremdquellen.quellen.getRbKey();
   if (!key) return { map: {}, source: 'empty' };
   // If the fetch breaks off, the table is incomplete; `degradiert` says so.
-  const ab = new Abstriche();
+  const ab = new Degradations();
   // Typed, otherwise TypeScript would see `{}` as empty and `map[c.id] = …` as an error.
   let page = 1,
     map: Record<string, unknown> = {},
@@ -240,7 +244,7 @@ export async function blColorMapQuery(k: PartsContext) {
     if (status !== 200) break;
     const data = JSON.parse(body);
     for (const c of data.results || []) {
-      const blId = blFarbnummerAus(c);
+      const blId = blColorNumberFrom(c);
       if (blId != null) {
         map[c.id] = blId;
         k.katalog.merkeBlFarbnummer(c.id, blId).catch(logAndContinue('parts:merkeBlFarbnummer'));
@@ -256,7 +260,7 @@ export async function blColorMapQuery(k: PartsContext) {
  * @param search filter bar's search text, for both lists. */
 export async function manualPartsList(
   k: PartsContext,
-  userIdWahl: Sicht | Blickfeld,
+  userIdChoice: Sicht | Blickfeld,
   viewerId: number,
   {
     page = 1,
@@ -264,23 +268,23 @@ export async function manualPartsList(
     search = null,
     storage = null,
   }: { page?: unknown; page_size?: unknown; search?: string | null; storage?: string | null } = {},
-  ab = new Abstriche(),
+  ab = new Degradations(),
 ) {
-  const userId = await k.haushalt.blickfeldAus(userIdWahl);
+  const userId = await k.haushalt.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse } : null;
   const rows = await k.partsList.manualParts(uids, { search, storage }, seite);
-  const mitZustand = await k.bestand.setzeManuellenZustand(uids, rows, 'part');
+  const withState = await k.bestand.setzeManuellenZustand(uids, rows, 'part');
   // One query for the whole list; the app reads `avg_price` in the detail view. Without
   // prices the list stays usable; `ab` collects why for `degradiert`.
   const preise = await ab.oder(
     'marktpreise',
-    k.finanzen.marktpreiseAusCacheFuerTeile(mitZustand, viewerId),
+    k.finanzen.marketPricesFromCacheForParts(withState, viewerId),
     new Map<string, number>(),
   );
-  const mitPreis = mitZustand.map(t => ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id}`) ?? null }));
-  return k.haushalt.besitzerAnhaengen(uids, mitPreis);
+  const withPrice = withState.map(t => ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id}`) ?? null }));
+  return k.haushalt.besitzerAnhaengen(uids, withPrice);
 }
 
 // Fills the "Have" column from the stock.
@@ -288,10 +292,10 @@ export const MAX_OWNED_PARTS = 5000;
 
 export async function ownedQuantitiesQuery(
   k: PartsContext,
-  blickfeldWahl: Sicht | BlickfeldEingabe,
+  scopeChoice: Sicht | ScopeInput,
   teile: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
 ): Promise<Record<string, { gesamt: number; lose: number }>> {
-  const uids = await k.haushalt.blickfeldAus(blickfeldWahl);
+  const uids = await k.haushalt.scopeFrom(scopeChoice);
   // Duplicate keys drop out: a list spanning several sets would otherwise ask
   // for the same part multiple times.
   const gesehen = new Set<string>();

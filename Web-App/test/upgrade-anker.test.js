@@ -20,7 +20,7 @@ const WEB = path.join(__dirname, '..');
 const ANKER = new Set(
   [...fs.readFileSync(path.join(WEB, 'UPGRADE.md'), 'utf8').matchAll(/<a id="([\w-]+)"><\/a>/g)].map(m => m[1]),
 );
-const VERWEIS = /UPGRADE\.md#([\w-]+)((?:, #[\w-]+)*)/g;
+const REFERENCE = /UPGRADE\.md#([\w-]+)((?:, #[\w-]+)*)/g;
 
 /** Was Betreiber sehen: Code, Skripte, Konfiguration und Oberflächentexte (nicht Tests, Doku, Erzeugnisse). */
 function dateien() {
@@ -37,11 +37,11 @@ function dateien() {
   return raus;
 }
 
-const verweise = text => [...text.matchAll(VERWEIS)].flatMap(m => [m[1], ...m[2].split(', #').filter(Boolean)]);
+const references = text => [...text.matchAll(REFERENCE)].flatMap(m => [m[1], ...m[2].split(', #').filter(Boolean)]);
 
 test('jeder Verweis trifft einen Anker, keine Abschnittsnummern mehr; die Startmeldung als Superuser zeigt auf einen Anker', () => {
   assert.ok(ANKER.size >= 10, `nur ${ANKER.size} Anker in UPGRADE.md`);
-  assert.deepEqual(verweise('(UPGRADE.md#a, #b-c) und UPGRADE.md#d.'), ['a', 'b-c', 'd'], 'Selbstbeweis');
+  assert.deepEqual(references('(UPGRADE.md#a, #b-c) und UPGRADE.md#d.'), ['a', 'b-c', 'd'], 'Selbstbeweis');
 
   const fehlend = [],
     nummern = [];
@@ -49,7 +49,7 @@ test('jeder Verweis trifft einen Anker, keine Abschnittsnummern mehr; die Startm
   for (const f of dateien()) {
     const text = fs.readFileSync(f, 'utf8');
     const rel = path.relative(WEB, f);
-    for (const a of verweise(text)) {
+    for (const a of references(text)) {
       gefunden++;
       if (!ANKER.has(a)) fehlend.push(`${rel}: #${a}`);
     }
@@ -61,14 +61,14 @@ test('jeder Verweis trifft einen Anker, keine Abschnittsnummern mehr; die Startm
   assert.deepEqual(nummern, [], 'keine Abschnittsnummern mehr');
 
   // Die Meldung, die der Betreiber beim Start wirklich sieht: Superuser ohne Ausweg.
-  quellen.baueDist();
+  quellen.buildDist();
   const lauf = spawnSync(
     process.execPath,
-    ['-e', "require('./dist/startup/datenbank.js').warneBeiSuperuser({ alsSuperuserVerbunden: async () => true })"],
+    ['-e', "require('./dist/startup/datenbank.js').warnAtSuperuser({ asSuperuserConnected: async () => true })"],
     { cwd: WEB, encoding: 'utf8', env: { ...process.env, NODE_ENV: 'production', DB_SUPERUSER_ERLAUBT: '' } },
   );
   assert.equal(lauf.status, 1, lauf.stdout + lauf.stderr);
-  const inMeldung = verweise(lauf.stderr);
-  assert.deepEqual(inMeldung, ['eigene-datenbankrolle', 'superuser-ausnahme'], lauf.stderr);
-  for (const a of inMeldung) assert.ok(ANKER.has(a), `die Startmeldung als Superuser zeigt auf einen Anker: #${a}`);
+  const inMessage = references(lauf.stderr);
+  assert.deepEqual(inMessage, ['eigene-datenbankrolle', 'superuser-ausnahme'], lauf.stderr);
+  for (const a of inMessage) assert.ok(ANKER.has(a), `die Startmeldung als Superuser zeigt auf einen Anker: #${a}`);
 });

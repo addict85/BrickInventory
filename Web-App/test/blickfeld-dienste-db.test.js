@@ -5,9 +5,9 @@
  * nicht nachbauen.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  in blickfeldAus() `blickfeldArt(v.konten)` durch 'all' ersetzt → rot:
+ *   A  in scopeFrom() `scopeKind(v.konten)` durch 'all' ersetzt → rot:
  *      „eine Sicht wählt die Konten im Dienst“
- *   B  in loescheSetFuer() die Kontenwahl übergangen (`gewaehlt = schreibbar`)
+ *   B  in deleteSetFor() die Kontenwahl übergangen (`gewaehlt = writable`)
  *      → rot: „Löschen folgt der Kontenwahl, im Schreibbereich“
  *   C  in schreibziel() ohne fachfehler (null zurück) → rot: „ein Unterkonto
  *      schreibt nicht für sein Hauptkonto“
@@ -22,28 +22,28 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet } = require('./helpers/bestand');
 
 test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const H = {
     ..._req('src/haushalt/regeln.js'),
     ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ...require('./helpers/sources').testArea('haushalt'),
   };
-  const { setsLesen } = require('./helpers/sources').bereichsSeite('sets');
-  const { loescheSetFuer } = require('./helpers/sources').bereichsSeite('sets');
-  const [HAUPT, SUB] = [`haupt_${process.pid}`, `sub_${process.pid}`];
-  await db.run('DELETE FROM users WHERE username = ANY($1)', [[HAUPT, SUB]]);
-  const haupt = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [HAUPT])).id;
+  const { setsLesen } = require('./helpers/sources').areaPage('sets');
+  const { deleteSetFor } = require('./helpers/sources').areaPage('sets');
+  const [MAIN, SUB] = [`haupt_${process.pid}`, `sub_${process.pid}`];
+  await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, SUB]]);
+  const haupt = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [MAIN])).id;
   const sub = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [SUB])).id;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, sub]);
-  H.meldeHaushaltsaenderung();
-  await haeltSet(db, haupt, '10179-1');
-  await haeltSet(db, sub, '75192-1');
+  H.reportHouseholdChange();
+  await holdsSet(db, haupt, '10179-1');
+  await holdsSet(db, sub, '75192-1');
   const nummern = async sicht => (await setsLesen(sicht, {})).sets.map(s => s.set_number).sort();
 
   await t.test('eine Sicht wählt die Konten im Dienst', async () => {
@@ -59,17 +59,17 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
 
   await t.test('Löschen folgt der Kontenwahl, im Schreibbereich', async () => {
     assert.equal(
-      await loescheSetFuer({ nutzer: sub, konten: String(haupt) }, '10179-1'),
+      await deleteSetFor({ nutzer: sub, konten: String(haupt) }, '10179-1'),
       null,
       'das Unterkonto löschte ein Set des Hauptkontos',
     );
     assert.equal(
-      await loescheSetFuer({ nutzer: haupt, konten: 'subs' }, '10179-1'),
+      await deleteSetFor({ nutzer: haupt, konten: 'subs' }, '10179-1'),
       null,
       'mit „Unterkonten“ gewählt traf das Löschen das eigene Set',
     );
     assert.deepEqual(await nummern({ nutzer: haupt, konten: 'own' }), ['10179-1']);
-    assert.ok(await loescheSetFuer({ nutzer: haupt, konten: 'subs' }, '75192-1'));
+    assert.ok(await deleteSetFor({ nutzer: haupt, konten: 'subs' }, '75192-1'));
     assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1']);
   });
 

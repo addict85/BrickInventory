@@ -1,8 +1,8 @@
 /** BL-Nummern der Wanted-Liste auf Rebrickable-Nummern abbilden: zuerst lokal
  * (Zuordnungen, Katalog), dann über Rebrickable, zuletzt die Korrekturen von Hand. */
-import { RebrickableGesperrt } from '../fremdquellen';
-import { meldeFehler } from '../infra/fehler';
-import type { WantedArt, WantedPosten } from './wantedParser';
+import { RebrickableLocked } from '../fremdquellen';
+import { reportError } from '../infra/fehler';
+import type { WantedArt, WantedItem } from './wantedParser';
 import type { WantedContext } from './context';
 
 export type Sicherheit =
@@ -18,7 +18,7 @@ export type Sicherheit =
   | 'korrigiert';
 
 export interface Aufloesung {
-  posten: WantedPosten;
+  posten: WantedItem;
   rbId: string | null;
   rbFarbe: number | null;
   /** Reisen mit, weil die Teileliste den Farbnamen von der Zeile liest. */
@@ -30,9 +30,9 @@ export interface Aufloesung {
 
 /** Ohne fremden Abruf; die drei Stufen bleiben getrennt, weil sie verschieden
  * sicher sind. */
-export async function loeseLokalAuf(
+export async function resolveLocalOn(
   k: WantedContext,
-  posten: WantedPosten[],
+  posten: WantedItem[],
   uid: number | null = null,
 ): Promise<Aufloesung[]> {
   if (!posten.length) return [];
@@ -43,7 +43,7 @@ export async function loeseLokalAuf(
 
   const zuordnung = new Map<string, { rbId: string; sicherheit: Sicherheit }>();
   const eigene = new Set<string>();
-  for (const z of await k.wantedListe.zuordnungen(nummern, uid)) {
+  for (const z of await k.wantedListe.mappings(nummern, uid)) {
     const schluessel = `${z.type}:${z.bl_id ?? z.rb_id}`;
     const stufe: Sicherheit = z.bl_id ? 'zuordnung' : 'gleich_vermerkt';
     const schon = zuordnung.get(schluessel);
@@ -56,11 +56,11 @@ export async function loeseLokalAuf(
 
   const katalog = new Set<string>();
   for (const art of ['part', 'fig', 'set'] as const) {
-    for (const n of await k.wantedListe.nummernImKatalog(art, nummern)) katalog.add(`${art}:${n}`);
+    for (const n of await k.wantedListe.numbersInCatalog(art, nummern)) katalog.add(`${art}:${n}`);
   }
 
   const farbMap = new Map<number, { id: number; name: string | null; hex: string | null }>();
-  for (const z of await k.wantedListe.farbenZuBlFarben(farben)) {
+  for (const z of await k.wantedListe.colorsToBlColors(farben)) {
     farbMap.set(Number(z.bl_color_id), {
       id: Number(z.id),
       name: z.name ?? null,
@@ -94,25 +94,25 @@ export async function loeseLokalAuf(
 }
 
 /** Rebrickable ist der einzige direkte Weg von BL- zu RB-Nummern. */
-export type RebrickableAbbruch = 'kontingent' | 'kein_schluessel' | 'stoerung';
+export type RebrickableAbort = 'kontingent' | 'kein_schluessel' | 'stoerung';
 /** Zwei Phasen, weil die Rebrickable-Abrufe ungleich länger dauern. */
-export type WantedFortschritt = {
+export type WantedProgress = {
   phase: 'rebrickable' | 'schreiben';
   fertig: number;
   gesamt: number;
 };
 
-export async function loeseUeberRebrickableAuf(
+export async function resolveViaRebrickableOn(
   k: WantedContext,
   auf: Aufloesung[],
   grenze = 250,
-  fortschritt?: (stand: WantedFortschritt) => void,
+  fortschritt?: (stand: WantedProgress) => void,
 ): Promise<{
   auf: Aufloesung[];
   gefragt: number;
   gefunden: number;
   filterWirkungslos: boolean;
-  abgebrochen?: RebrickableAbbruch;
+  abgebrochen?: RebrickableAbort;
 }> {
   let gefragt = 0,
     gefunden = 0;
@@ -134,13 +134,13 @@ export async function loeseUeberRebrickableAuf(
     try {
       rbId = await k.fremdquellen.quellen.blTeilZuRb(a.posten.blId);
     } catch (e) {
-      if (!(e instanceof RebrickableGesperrt)) meldeFehler('wanted:rebrickable', e);
-      const abgebrochen = e instanceof RebrickableGesperrt ? e.grund : 'stoerung';
+      if (!(e instanceof RebrickableLocked)) reportError('wanted:rebrickable', e);
+      const abgebrochen = e instanceof RebrickableLocked ? e.grund : 'stoerung';
       return {
         auf: ergebnis,
         gefragt,
         gefunden,
-        filterWirkungslos: k.fremdquellen.quellen.blFilterWirkungslos(),
+        filterWirkungslos: k.fremdquellen.quellen.blFilterIneffective(),
         abgebrochen,
       };
     }
@@ -151,7 +151,7 @@ export async function loeseUeberRebrickableAuf(
     // Nach dem Abruf: „37 von 50" heisst 37 erledigt.
     fortschritt?.({ phase: 'rebrickable', fertig: gefragt, gesamt });
   }
-  return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: k.fremdquellen.quellen.blFilterWirkungslos() };
+  return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: k.fremdquellen.quellen.blFilterIneffective() };
 }
 
 /** Adressiert über den Index: Dieselbe Nummer darf mehrfach in der Liste stehen. */
@@ -172,7 +172,7 @@ export interface Korrektur {
 }
 
 /** Drei Abfragen für die ganze Liste, nicht eine je Posten. */
-export async function beschreibePosten(
+export async function describeItem(
   k: WantedContext,
   auf: Aufloesung[],
 ): Promise<Map<number, { name: string | null; bild: string | null; geraten: boolean }>> {
@@ -193,19 +193,19 @@ export async function beschreibePosten(
 
   if (teile.length) {
     const nummern = [...new Set(teile.map(t => t.nr))];
-    const zeilen = await k.wantedListe.teileBeschreibung(nummern);
-    const nachNummer = new Map(zeilen.map(z => [z.part_number, z]));
-    const paare = teile.filter(t => t.farbe !== null);
+    const zeilen = await k.wantedListe.partsDescription(nummern);
+    const afterNumber = new Map(zeilen.map(z => [z.part_number, z]));
+    const pairs = teile.filter(t => t.farbe !== null);
     const bilder = new Map<string, string>();
-    if (paare.length) {
-      const farbZeilen = await k.wantedListe.teilFarbbilder(
-        paare.map(t => t.nr),
-        paare.map(t => t.farbe as number),
+    if (pairs.length) {
+      const farbRows = await k.wantedListe.partColorImages(
+        pairs.map(t => t.nr),
+        pairs.map(t => t.farbe as number),
       );
-      for (const z of farbZeilen) if (z.bild) bilder.set(`${z.part_number}|${z.color_id}`, z.bild);
+      for (const z of farbRows) if (z.bild) bilder.set(`${z.part_number}|${z.color_id}`, z.bild);
     }
     for (const t of teile) {
-      const z = nachNummer.get(t.nr);
+      const z = afterNumber.get(t.nr);
       const name = z?.name ?? null;
       const bild = bilder.get(`${t.nr}|${t.farbe}`) || z?.bild_allgemein || null;
       // `geraten` nur bei einem Fund: Eine leere Zeile „geraten" zu nennen wäre
@@ -215,7 +215,7 @@ export async function beschreibePosten(
   }
 
   if (figuren.length) {
-    const zeilen = await k.wantedListe.figurenBeschreibung([...new Set(figuren.map(f => f.nr))]);
+    const zeilen = await k.wantedListe.minifigsDescription([...new Set(figuren.map(f => f.nr))]);
     const nach = new Map(zeilen.map(z => [z.fig_number, z]));
     for (const f of figuren) {
       const z = nach.get(f.nr);
@@ -227,7 +227,7 @@ export async function beschreibePosten(
 
   if (sets.length) {
     const nummern = [...new Set(sets.map(x => x.nr))];
-    const zeilen = await k.wantedListe.setsBeschreibung(nummern);
+    const zeilen = await k.wantedListe.setsDescription(nummern);
     const nach = new Map(zeilen.map(z => [z.set_number, z]));
     for (const x of sets) {
       const z = nach.get(x.nr);
@@ -242,7 +242,7 @@ export async function beschreibePosten(
 
 /** Jede Korrektur wird gegen Art und Nummer am Index geprüft, sonst wirkte sie
  * nach Dateiwechsel lautlos auf einen fremden Posten. */
-export function wendeKorrekturenAn(
+export function applyCorrectionsAn(
   auf: Aufloesung[],
   korrekturen: Korrektur[],
 ): { auf: Aufloesung[]; angewandt: number; abgewiesen: Korrektur[] } {
@@ -296,21 +296,21 @@ export function wendeKorrekturenAn(
       }
     }
 
-    const nummerGeaendert = rbId !== a.rbId || rbFarbe !== a.rbFarbe;
-    const postenGeaendert = menge !== a.posten.menge || zustand !== a.posten.zustand || maxPreis !== a.posten.maxPreis;
-    if (!nummerGeaendert && !postenGeaendert) continue; // nichts geändert
+    const numberChanged = rbId !== a.rbId || rbFarbe !== a.rbFarbe;
+    const itemChanged = menge !== a.posten.menge || zustand !== a.posten.zustand || maxPreis !== a.posten.maxPreis;
+    if (!numberChanged && !itemChanged) continue; // nichts geändert
 
     ergebnis[k.index] = {
       ...a,
       rbId,
       rbFarbe,
-      ...(postenGeaendert ? { posten: { ...a.posten, menge, zustand, maxPreis } } : {}),
+      ...(itemChanged ? { posten: { ...a.posten, menge, zustand, maxPreis } } : {}),
       // Der Farbname gehörte zur alten Nummer und wird unten neu geholt.
       rbFarbName: rbFarbe === a.rbFarbe ? a.rbFarbName : null,
       rbFarbHex: rbFarbe === a.rbFarbe ? a.rbFarbHex : null,
       // `korrigiert` nur bei geänderter Nummer: Die Stufe entscheidet, ob die
       // Zuordnung gemerkt wird; eine geänderte Menge sagt nichts über die Nummer.
-      sicherheit: nummerGeaendert ? 'korrigiert' : a.sicherheit,
+      sicherheit: numberChanged ? 'korrigiert' : a.sicherheit,
       farbeOffen: rbId !== null && a.posten.blFarbe !== null && rbFarbe === null,
     };
     angewandt++;
@@ -320,10 +320,10 @@ export function wendeKorrekturenAn(
 
 /** Eine von Hand eingetragene Farbe war in der Auflösung nicht dabei; ohne
  * diesen Schritt ginge sie ohne Namen an den Anleger. */
-export async function farbenNachtragen(k: WantedContext, auf: Aufloesung[]): Promise<Aufloesung[]> {
+export async function backfillColors(k: WantedContext, auf: Aufloesung[]): Promise<Aufloesung[]> {
   const offen = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null).map(a => a.rbFarbe as number);
   if (!offen.length) return auf;
-  const zeilen = await k.wantedListe.farbenZuIds([...new Set(offen)]);
+  const zeilen = await k.wantedListe.colorsToIds([...new Set(offen)]);
   const nach = new Map(zeilen.map(z => [Number(z.id), z]));
   return auf.map(a => {
     if (a.rbFarbe === null || a.rbFarbName !== null) return a;

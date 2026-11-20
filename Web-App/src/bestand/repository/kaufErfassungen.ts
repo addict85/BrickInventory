@@ -1,9 +1,9 @@
-import type { DbSchnittstelle, Zeile } from '../../../db/database';
-import { erfassungsTagSql, ERFASSUNGS_TABELLEN as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
+import type { DbInterface, Zeile } from '../../../db/database';
+import { erfassungsTagSql, ENTRY_TABLES as SHAPES, type ErfassungsArt } from '../../../db/bestandsmenge';
 
 /** Gleiche Käufe eines Tages sind eine Zeile (eindeutiger Index, Migration 0070). */
 
-export type NeueErfassung = {
+export type NewEntry = {
   menge: number;
   preis: number | null;
   zustand: string;
@@ -14,12 +14,12 @@ export type NeueErfassung = {
 
 /** In einer Anweisung gegen den Index, damit gleichzeitige Erfassungen sich
  * addieren. @returns ob aufgestockt */
-export async function fuegeErfassungHinzu(
-  dbh: DbSchnittstelle,
+export async function addEntryAdd(
+  dbh: DbInterface,
   art: ErfassungsArt,
   userId: number,
   schluessel: (string | number)[],
-  e: NeueErfassung,
+  e: NewEntry,
 ): Promise<boolean> {
   const shape = SHAPES[art];
   const cols = [
@@ -53,16 +53,16 @@ export async function fuegeErfassungHinzu(
   return !!row?.merged;
 }
 
-export type Merkmale = { zustand: string; preis: number | null; geschaetzt: boolean; waehrung: string | null };
+export type Features = { zustand: string; preis: number | null; geschaetzt: boolean; waehrung: string | null };
 
-export async function gleicheErfassungAmTag(
-  dbh: DbSchnittstelle,
+export async function sameEntryAtTag(
+  dbh: DbInterface,
   art: ErfassungsArt,
   userId: number,
   schluessel: unknown[],
   tag: string,
   ausser: number,
-  m: Merkmale,
+  m: Features,
 ): Promise<number | null> {
   const shape = SHAPES[art];
   const keyWhere = shape.keys.map((c, i) => `${c} = $${i + 2}`).join(' AND ');
@@ -82,7 +82,7 @@ export async function gleicheErfassungAmTag(
 }
 
 /** Mit dem Tag, wie der Index ihn führt. */
-export function erfassungSperren(tx: DbSchnittstelle, art: ErfassungsArt, id: number) {
+export function lockEntry(tx: DbInterface, art: ErfassungsArt, id: number) {
   return tx.get<Zeile<{ user_id: number; tag: string; condition: string; currency: string | null; quantity: number }>>(
     `SELECT *, (${erfassungsTagSql()})::text AS tag FROM ${SHAPES[art].table} WHERE id = $1 FOR UPDATE`,
     [id],
@@ -90,8 +90,8 @@ export function erfassungSperren(tx: DbSchnittstelle, art: ErfassungsArt, id: nu
 }
 
 /** Menge in eine bestehende Zeile des Kontos zurücklegen (Papierkorb). @returns ob es die Zeile gab */
-export async function stockeErfassungAuf(
-  tx: DbSchnittstelle,
+export async function stallEntryOn(
+  tx: DbInterface,
   art: ErfassungsArt,
   id: number,
   userId: number,
@@ -105,8 +105,8 @@ export async function stockeErfassungAuf(
   return !!r.changes;
 }
 
-export async function legeErfassungZusammen(
-  tx: DbSchnittstelle,
+export async function putEntryTogether(
+  tx: DbInterface,
   art: ErfassungsArt,
   von: number,
   nach: number,
@@ -116,12 +116,7 @@ export async function legeErfassungZusammen(
   await tx.run(`DELETE FROM ${SHAPES[art].table} WHERE id = $1`, [von]);
 }
 
-export async function setzePreisGeschaetzt(
-  tx: DbSchnittstelle,
-  art: ErfassungsArt,
-  id: number,
-  preis: number,
-): Promise<void> {
+export async function setPriceEstimated(tx: DbInterface, art: ErfassungsArt, id: number, preis: number): Promise<void> {
   await tx.run(`UPDATE ${SHAPES[art].table} SET ${SHAPES[art].price} = $1, price_estimated = true WHERE id = $2`, [
     preis,
     id,
@@ -129,20 +124,20 @@ export async function setzePreisGeschaetzt(
 }
 
 /** Beträge in die Währung des Kontos, zum Kurs des Tages (in_waehrung, 0077); ohne Kurs null. */
-export async function inWaehrungDesKontos(
-  db: DbSchnittstelle,
+export async function inCurrencyOfAccount(
+  db: DbInterface,
   uid: number,
-  betraege: (number | null)[],
-  waehrungen: (string | null)[],
+  amounts: (number | null)[],
+  currencies: (string | null)[],
   tage: (string | null)[],
 ) {
   const zeilen = await db.all<{ i: string; k: number | null }>(
     `SELECT t.i, in_waehrung(t.b, COALESCE(t.c, konto_waehrung($1)), konto_waehrung($1), COALESCE(t.d, CURRENT_DATE))::float8 AS k
        FROM unnest($2::numeric[], $3::text[], $4::date[]) WITH ORDINALITY AS t(b, c, d, i)`,
-    [uid, betraege, waehrungen, tage],
+    [uid, amounts, currencies, tage],
   );
   const waehrung = (await db.get<{ w: string }>('SELECT konto_waehrung($1) AS w', [uid]))?.w ?? 'EUR';
-  const aus: (number | null)[] = betraege.map(() => null);
+  const aus: (number | null)[] = amounts.map(() => null);
   for (const z of zeilen) aus[Number(z.i) - 1] = z.k == null ? null : Number(z.k);
-  return { waehrung, betraege: aus };
+  return { waehrung, amounts: aus };
 }

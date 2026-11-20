@@ -1,16 +1,16 @@
-import { sichtVon, waechterFuer } from './middleware';
+import { viewOf, guardFor } from './middleware';
 import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 
-export function baueMiscRouter(d: Pick<Dienste, 'konto' | 'bestand'>) {
-  const { requireToken } = waechterFuer(d.konto);
+export function buildMiscRouter(d: Pick<Dienste, 'konto' | 'bestand'>) {
+  const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/stats', requireToken, async req => {
-    return { stats: await d.bestand.bestandsKennzahlen(sichtVon(req)) };
+    return { stats: await d.bestand.inventoryMetrics(viewOf(req)) };
   });
 
-  const UEBERSICHT = {
+  const OVERVIEW = {
     api: 'Brick Manager API v1',
     version: '1.0',
     auth: 'Bearer token — POST /api/v1/auth/login',
@@ -47,6 +47,6 @@ export function baueMiscRouter(d: Pick<Dienste, 'konto' | 'bestand'>) {
   };
 
   // Hinter requireToken: Die Übersicht verriete sonst die ganze API-Fläche.
-  router.endpunkt('GET /api/v1/', requireToken, (_req, res) => res.json(UEBERSICHT));
+  router.endpunkt('GET /api/v1/', requireToken, (_req, res) => res.json(OVERVIEW));
   return router;
 }

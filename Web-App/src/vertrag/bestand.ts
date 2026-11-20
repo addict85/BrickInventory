@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { eingabe } from '../infra/validate';
-import { type Route, zeit, Erfolg, ganz, bestaetigt, OHNE_RUMPF, KENNUNG, TEXT, ZUSTAND, abfrage, Q } from './grund';
+import { type Route, zeit, Erfolg, ganz, bestaetigt, WITHOUT_BODY, KENNUNG, TEXT, ZUSTAND, abfrage, Q } from './grund';
 /** Ein Konto oder mehrere, durch Komma getrennt (Lagerorte über den Haushalt). */
-const LAGER_KONTEN = z.string().regex(/^[0-9,]{0,200}$/);
-import { DEGRADIERT, Erfassungsantwort } from './gemeinsam';
+const STORAGE_ACCOUNTS = z.string().regex(/^[0-9,]{0,200}$/);
+import { DEGRADED, Erfassungsantwort } from './gemeinsam';
 
 export { Erfassungsantwort };
 
@@ -36,7 +36,7 @@ export const AcquisitionsResponse = z.looseObject({
   owner_user_id: z.number().int().optional(),
   acquisitions: z.array(Acquisition),
   totals: AcquisitionTotals,
-  degradiert: DEGRADIERT,
+  degradiert: DEGRADED,
 });
 
 export const DeleteWithQuantityResponse = z.looseObject({
@@ -114,7 +114,7 @@ export const BestandGeleert = z.looseObject({
 
 /** Der Preis heisst bei Sets purchase_price, sonst unit_price; die App schickt beide. */
 const Erfassungsaenderung = z.strictObject({
-  quantity: eingabe.mengeOderNichts(1, 100_000),
+  quantity: eingabe.quantityOrNothing(1, 100_000),
   purchase_price: eingabe.geld('Kaufpreis'),
   unit_price: eingabe.geld('Stückpreis'),
   condition: ZUSTAND.nullable().optional(),
@@ -145,7 +145,7 @@ export const routen = {
     klein: true,
     antwort: LagerortVorratResponse,
     abfrage: abfrage({
-      owner: LAGER_KONTEN,
+      owner: STORAGE_ACCOUNTS,
       accounts: Q.konten.meta({ deprecated: true, description: 'wird nicht ausgewertet: Die Liste folgt dem Recht' }),
     }),
   },
@@ -155,18 +155,18 @@ export const routen = {
     antwort: LagerortResponse,
   },
   'PUT /api/v1/sets/:setNumber/acquisitions/:acqId': { antwort: Erfassungsantwort, eingabe: Erfassungsaenderung },
-  'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': { eingabe: OHNE_RUMPF, antwort: Erfassungsantwort },
+  'DELETE /api/v1/sets/:setNumber/acquisitions/:acqId': { eingabe: WITHOUT_BODY, antwort: Erfassungsantwort },
   'PUT /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': {
     antwort: Erfassungsantwort,
     eingabe: Erfassungsaenderung,
   },
   'DELETE /api/v1/parts/:partNumber/:colorId/acquisitions/:acqId': {
-    eingabe: OHNE_RUMPF,
+    eingabe: WITHOUT_BODY,
     antwort: DeleteWithQuantityResponse,
   },
   'PUT /api/v1/minifigs/:figNumber/acquisitions/:acqId': { antwort: Erfassungsantwort, eingabe: Erfassungsaenderung },
   'DELETE /api/v1/minifigs/:figNumber/acquisitions/:acqId': {
-    eingabe: OHNE_RUMPF,
+    eingabe: WITHOUT_BODY,
     antwort: DeleteWithQuantityResponse,
   },
   'PUT /api/v1/sets/:setNumber/storage': {
@@ -180,24 +180,24 @@ export const routen = {
   'POST /api/v1/storage/locations': {
     eingabe: z.strictObject({ name: TEXT().optional(), owner: KENNUNG.optional() }),
     antwort: LagerortEintragResponse,
-    abfrage: abfrage({ owner: LAGER_KONTEN }),
+    abfrage: abfrage({ owner: STORAGE_ACCOUNTS }),
   },
   'PUT /api/v1/storage/locations/:id': {
     eingabe: z.strictObject({ name: TEXT().optional(), owner: KENNUNG.optional() }),
     antwort: LagerortEintragResponse,
-    abfrage: abfrage({ owner: LAGER_KONTEN }),
+    abfrage: abfrage({ owner: STORAGE_ACCOUNTS }),
   },
   'DELETE /api/v1/storage/locations/:id': {
-    eingabe: OHNE_RUMPF,
+    eingabe: WITHOUT_BODY,
     antwort: LagerortResponse,
-    abfrage: abfrage({ owner: LAGER_KONTEN }),
+    abfrage: abfrage({ owner: STORAGE_ACCOUNTS }),
   },
   'PUT /api/v1/storage/default': {
     eingabe: z.strictObject({ id: KENNUNG.nullable().optional() }),
     antwort: LagerortVorgabeResponse,
   },
   'GET /api/v1/papierkorb': { klein: true, antwort: Papierkorb },
-  'POST /api/v1/papierkorb/:id/wiederherstellen': { eingabe: OHNE_RUMPF, antwort: Wiederhergestellt },
+  'POST /api/v1/papierkorb/:id/wiederherstellen': { eingabe: WITHOUT_BODY, antwort: Wiederhergestellt },
   'DELETE /api/v1/papierkorb/:id': { antwort: Erfolg, ...bestaetigt() },
   'DELETE /api/v1/papierkorb': { antwort: PapierkorbGeleert, ...bestaetigt() },
   'DELETE /api/v1/bestand': { antwort: BestandGeleert, ...bestaetigt() },

@@ -4,7 +4,7 @@
  * synchron; im Primär-Worker, der auch Anfragen beantwortet, stand sonst jede
  * Anfrage still, solange eine lange Liste gezeichnet wurde.
  *
- * Gegenprobe (am 29.10.2026 gemessen): zeichnePdfImFaden() ruft buildPdf()
+ * Gegenprobe (am 29.10.2026 gemessen): drawPdfInThread() ruft buildPdf()
  * direkt auf → rot: „die Ereignisschleife bleibt frei“ (längste Pause
  * mehrere hundert Millisekunden statt unter 150).
  */
@@ -15,7 +15,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { zeichnePdfImFaden } = _req('src/katalog/pdf/pdfZeichnen.js');
+const { drawPdfInThread } = _req('src/katalog/pdf/pdfZeichnen.js');
 
 test('die Ereignisschleife bleibt frei, während das PDF entsteht', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdf-faden-'));
@@ -30,20 +30,20 @@ test('die Ereignisschleife bleibt frei, während das PDF entsteht', async () => 
     quantity: 1 + (i % 3),
   }));
   let letzte = Date.now(),
-    laengste = 0;
+    longest = 0;
   const uhr = setInterval(() => {
     const j = Date.now();
-    laengste = Math.max(laengste, j - letzte);
+    longest = Math.max(longest, j - letzte);
     letzte = j;
   }, 5);
   try {
-    await zeichnePdfImFaden([{ set_number: '1-1' }], parts, ziel);
+    await drawPdfInThread([{ set_number: '1-1' }], parts, ziel);
   } finally {
     clearInterval(uhr);
   }
   try {
     assert.equal(fs.readFileSync(ziel).subarray(0, 5).toString(), '%PDF-');
-    assert.ok(laengste < 150, `längste Pause der Ereignisschleife: ${laengste} ms`);
+    assert.ok(longest < 150, `längste Pause der Ereignisschleife: ${longest} ms`);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }

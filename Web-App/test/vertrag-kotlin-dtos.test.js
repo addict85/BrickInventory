@@ -10,13 +10,13 @@
  *   B  im Erzeuger leerwert() ohne Zweig für Listen (immer `null`) → rot: „Listen,
  *      Verweise …“, „ein Fachtyp ersetzt …“ und A
  *   C  im Erzeuger anyOf mit null nicht mehr nullbar → rot: „ein Feld mit null-Zweig …“
- *   D  in rumpffeld() die Zeile für Z.NULL_SENDEN gestrichen → rot: „ein freiwilliges
+ *   D  in rumpffeld() die Zeile für Z.NULL_SEND gestrichen → rot: „ein freiwilliges
  *      Rumpffeld geht nur gesetzt hinaus …“
  *   E  in vereine() Pflicht aus der ersten Form übernommen statt aus allen → rot:
  *      „gleichnamige Formen werden eine …“
- *   F  in mitFachtyp() den Fachtyp nicht eingesetzt (String bleibt) → rot: „ein Fachtyp
+ *   F  in withSlotType() den Fachtyp nicht eingesetzt (String bleibt) → rot: „ein Fachtyp
  *      ersetzt den Text …“
- *   G  (15.11.2026) in klasse() `|| ohneLeerwert(t)` gestrichen → rot: „ein Pflichtfeld,
+ *   G  (15.11.2026) in klasse() `|| withoutEmptyValue(t)` gestrichen → rot: „ein Pflichtfeld,
  *      dessen Form keinen Leerwert hat …“ und „die eingecheckten Kotlin-Typen …“
  */
 const test = require('node:test');
@@ -24,7 +24,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const { erzeuge } = require('../scripts/vertrag-kotlin-dtos.js');
+const { create } = require('../scripts/vertrag-kotlin-dtos.js');
 
 test('die eingecheckten Kotlin-Typen sind aus openapi.json erzeugt', () => {
   const r = spawnSync(
@@ -39,23 +39,23 @@ test('die eingecheckten Kotlin-Typen sind aus openapi.json erzeugt', () => {
 
 /** Eine leere Zuordnung, nach Bedarf überschrieben. @param {Record<string, any>} [mehr] */
 const zuordnung = (mehr = {}) => ({
-  AUSLASSEN: new Set(),
-  STRENG: new Set(),
+  OMIT: new Set(),
+  STRICT: new Set(),
   FACHTYPEN: { Zustand: { paket: 'ch.brickinventoryapp.model.fach.Zustand', leer: 'Zustand.NEU' } },
   NAMEN: {},
-  FELDTYPEN: {},
-  VORGABEN: {},
-  EIGENSCHAFTEN: {},
-  KONSTANTEN: {},
+  FIELD_TYPES: {},
+  DEFAULTS: {},
+  PROPERTIES: {},
+  CONSTANTS: {},
   NULLBAR: new Set(),
   PFLICHT: new Set(),
-  NULL_SENDEN: new Set(),
+  NULL_SEND: new Set(),
   ANFRAGEN: {},
   ...mehr,
 });
 
 /** Die Kotlin-Datei aus einem Mini-Vertrag. @param {Record<string, any>} schemas @param {Record<string, any>} [z] @param {any} [paths] */
-const aus = (schemas, z, paths = {}) => erzeuge({ components: { schemas }, paths }, /** @type {any} */ (zuordnung(z)));
+const aus = (schemas, z, paths = {}) => create({ components: { schemas }, paths }, /** @type {any} */ (zuordnung(z)));
 
 test('jedes Antwortfeld hat eine Vorgabe: Leerwert, null nur mit null-Zweig', () => {
   const kt = aus({
@@ -87,7 +87,7 @@ test('ein Pflichtfeld, dessen Form keinen Leerwert hat, bekommt keine Vorgabe', 
         required: ['user'],
       },
     },
-    { STRENG: new Set(['Konto.id']) },
+    { STRICT: new Set(['Konto.id']) },
   );
   assert.match(kt, /val user: Konto,/, 'Konto() gäbe es nicht: Konto hat ein Pflichtfeld ohne Vorgabe');
   assert.match(kt, /val alt: Konto\? = null,/);
@@ -130,7 +130,7 @@ test('ein Fachtyp ersetzt den Text, Liste und Nullbarkeit bleiben', () => {
         required: ['condition', 'conditions'],
       },
     },
-    { FELDTYPEN: { 'Probe.condition': 'Zustand', 'Probe.conditions': 'Zustand' } },
+    { FIELD_TYPES: { 'Probe.condition': 'Zustand', 'Probe.conditions': 'Zustand' } },
   );
   assert.match(kt, /val condition: Zustand = Zustand\.NEU,/);
   assert.match(kt, /val conditions: List<Zustand> = emptyList\(\),/);
@@ -156,8 +156,8 @@ test('gleichnamige Formen werden eine: Felder vereint, Pflicht nur wo alle es ve
     {},
     { ANFRAGEN: { 'POST /a': 'Rumpf', 'PUT /b/{id}': 'Rumpf' } },
     {
-      '/a': { post: { requestBody: rumpfSchema({ x: { type: 'string' }, y: { type: 'string' } }, ['x', 'y']) } },
-      '/b/{nr}': { put: { requestBody: rumpfSchema({ x: { type: 'string' }, y: { type: 'string' } }, ['y']) } },
+      '/a': { post: { requestBody: bodySchema({ x: { type: 'string' }, y: { type: 'string' } }, ['x', 'y']) } },
+      '/b/{nr}': { put: { requestBody: bodySchema({ x: { type: 'string' }, y: { type: 'string' } }, ['y']) } },
     },
   );
   assert.match(rumpf, /val y: String,/, 'y verlangen beide Routen');
@@ -165,7 +165,7 @@ test('gleichnamige Formen werden eine: Felder vereint, Pflicht nur wo alle es ve
 });
 
 /** @param {Record<string, any>} properties @param {string[]} [required] */
-function rumpfSchema(properties, required = []) {
+function bodySchema(properties, required = []) {
   return { content: { 'application/json': { schema: { type: 'object', properties, required } } } };
 }
 
@@ -173,7 +173,7 @@ test('ein freiwilliges Rumpffeld geht nur gesetzt hinaus, ausser es soll null sa
   const paths = {
     '/r': {
       put: {
-        requestBody: rumpfSchema({
+        requestBody: bodySchema({
           menge: { anyOf: [{ type: 'integer' }, { type: 'string' }, { type: 'null' }] },
           lagerort: { type: ['string', 'null'] },
           name: { type: 'string' },
@@ -185,8 +185,8 @@ test('ein freiwilliges Rumpffeld geht nur gesetzt hinaus, ausser es soll null sa
     {},
     {
       ANFRAGEN: { 'PUT /r': 'Aenderung' },
-      FELDTYPEN: { 'Aenderung.menge': 'Int' },
-      NULL_SENDEN: new Set(['Aenderung.lagerort']),
+      FIELD_TYPES: { 'Aenderung.menge': 'Int' },
+      NULL_SEND: new Set(['Aenderung.lagerort']),
       PFLICHT: new Set(['Aenderung.name']),
     },
     paths,

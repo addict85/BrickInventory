@@ -35,12 +35,12 @@ async function schemaText(db) {
   const trigger = await db.all(`
     SELECT tgrelid::regclass::text AS tabelle, pg_get_triggerdef(oid) AS def
       FROM pg_trigger WHERE NOT tgisinternal ORDER BY 1, tgname`);
-  const funktionen = await db.all(`
+  const functions = await db.all(`
     SELECT p.proname AS name, pg_get_functiondef(p.oid) AS def
       FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace AND n.nspname = 'public'
       LEFT JOIN pg_depend d ON d.objid = p.oid AND d.deptype = 'e'
      WHERE d.objid IS NULL ORDER BY 1, 2`);
-  const erweiterungen = await db.all(`SELECT extname FROM pg_extension WHERE extname <> 'plpgsql' ORDER BY 1`);
+  const extensions = await db.all(`SELECT extname FROM pg_extension WHERE extname <> 'plpgsql' ORDER BY 1`);
   const zeilenschutz = await db.all(`
     SELECT c.relname AS tabelle, c.relforcerowsecurity AS zwang FROM pg_class c
      WHERE c.relnamespace = 'public'::regnamespace AND c.relrowsecurity ORDER BY 1`);
@@ -57,7 +57,7 @@ async function schemaText(db) {
     '-- db/basis.sql und db/migrations/. Neu erzeugen mit',
     '-- `npm run build && npm run schema:stand`.',
     '',
-    ...erweiterungen.map(e => `CREATE EXTENSION ${e.extname};`),
+    ...extensions.map(e => `CREATE EXTENSION ${e.extname};`),
   ];
   for (const t of tabellen) {
     const zeilen = von(spalten, t).map(
@@ -78,13 +78,13 @@ async function schemaText(db) {
       ),
     );
   }
-  for (const f of funktionen) teile.push('', `${f.def.trim()};`);
+  for (const f of functions) teile.push('', `${f.def.trim()};`);
   return teile.join('\n').replace(/public\./g, '') + '\n';
 }
 
 const BASIS = path.join(__dirname, '..', 'db/basis.sql');
 /** Startdaten, die eine neue Installation braucht; alles andere bleibt leer. */
-const BASIS_DATEN = [
+const BASE_DATA = [
   'auftrag_exklusiv',
   'auftrags_arten',
   'global_settings',
@@ -114,7 +114,7 @@ function basisText(url) {
   const roh =
     dump(['--schema-only']) +
     '\n' +
-    dump(['--data-only', '--column-inserts', ...BASIS_DATEN.flatMap(t => ['-t', `public.${t}`])]);
+    dump(['--data-only', '--column-inserts', ...BASE_DATA.flatMap(t => ['-t', `public.${t}`])]);
   // Weg damit: psql-Befehle (\restrict), die Leerung des Suchpfads (die Funktionen der Trigger
   // suchen ihre Tabellen ohne Schemaangabe), Versionszeilen und die Überschrift je Objekt.
   const sauber = roh
@@ -143,7 +143,7 @@ function basisText(url) {
 }
 
 /** db/basis.sql aus einer fertig migrierten Datenbank schreiben. @param {string} url */
-function schreibeBasis(url) {
+function writeBase(url) {
   fs.writeFileSync(BASIS, basisText(url));
   console.log(`geschrieben: ${path.relative(process.cwd(), BASIS)}`);
 }
@@ -161,15 +161,15 @@ async function main() {
   const ziel = new URL(basis);
   ziel.pathname = '/' + name;
   process.env.DATABASE_URL = ziel.toString();
-  const dbModul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
-  const db = dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung());
+  const dbModule = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
+  const db = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
   try {
     await db.initSchemaOnce();
     fs.writeFileSync(DATEI, await schemaText(db));
     console.log(`geschrieben: ${path.relative(process.cwd(), DATEI)}`);
     // Das erste Konto legt der Server an, es gehört nicht in die Basis.
     await db.run('DELETE FROM users');
-    schreibeBasis(ziel.toString());
+    writeBase(ziel.toString());
   } finally {
     await db.pool.end().catch(() => {});
     await admin.query(`DROP DATABASE IF EXISTS ${name}`).catch(() => {});
@@ -183,4 +183,4 @@ if (require.main === module)
     process.exit(1);
   });
 
-module.exports = { schemaText, schreibeBasis, basisText, pgDumpVersion, DATEI, BASIS };
+module.exports = { schemaText, writeBase, basisText, pgDumpVersion, DATEI, BASIS };

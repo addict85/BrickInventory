@@ -5,11 +5,11 @@
  * Die Migration läuft in einem eigenen Schema (search_path).
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  rebrickableSetBild() wieder auf img.bricklink.com/ItemImage/SN/0/… →
+ *   A  rebrickableSetImage() wieder auf img.bricklink.com/ItemImage/SN/0/… →
  *      rot: „der Proxy legt die Rückfall-Adresse lokal ab“
  *   B  in 0101 die Zeile für images.brickset.com gestrichen → rot:
  *      „BrickLink und Brickset zeigen danach auf Rebrickable“
- *   C  (15.11.2026, umgekehrt) in setNummerAusBildAdresse() den Unterordner
+ *   C  (15.11.2026, umgekehrt) in setNumberFromImageAddress() den Unterordner
  *      `(?:\/\d{1,12})?` wieder zugelassen → rot: „nur das Hauptbild …“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -21,12 +21,12 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
-const { rebrickableSetBild } = _req('src/bilder/setImages.js');
-const { setNummerAusBildAdresse } = _req('src/bilder/http/bildProxy.js');
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { rebrickableSetImage } = _req('src/bilder/setImages.js');
+const { setNumberFromImageAddress } = _req('src/bilder/http/bildProxy.js');
 const MIGRATION = fs.readFileSync(
   path.join(__dirname, '..', 'db/migrations/0101-setbilder-von-rebrickable.sql'),
   'utf8',
@@ -34,9 +34,9 @@ const MIGRATION = fs.readFileSync(
 const SCHEMA = `probe0101_${process.pid}`;
 
 test('der Proxy legt die Rückfall-Adresse lokal ab', () => {
-  const adresse = rebrickableSetBild('75192');
+  const adresse = rebrickableSetImage('75192');
   assert.equal(adresse, 'https://cdn.rebrickable.com/media/sets/75192-1.jpg');
-  assert.equal(setNummerAusBildAdresse(adresse), '75192-1', 'der Proxy legt die Rückfall-Adresse lokal ab');
+  assert.equal(setNumberFromImageAddress(adresse), '75192-1', 'der Proxy legt die Rückfall-Adresse lokal ab');
 });
 
 test('nur das Hauptbild wird lokal abgelegt, kein Zusatzbild und nichts Fremdes', () => {
@@ -47,11 +47,11 @@ test('nur das Hauptbild wird lokal abgelegt, kein Zusatzbild und nichts Fremdes'
     'https://cdn.rebrickable.com/media/sets/75192-1/119389.jpg?x=1',
     'https://img.bricklink.com/ItemImage/SN/0/75192-1.png',
   ])
-    assert.equal(setNummerAusBildAdresse(fremd), null, fremd);
+    assert.equal(setNumberFromImageAddress(fremd), null, fremd);
 });
 
 test('Migration 0101: Set-Bilder von Rebrickable', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`).catch(() => {});

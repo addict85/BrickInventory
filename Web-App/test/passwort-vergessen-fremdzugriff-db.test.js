@@ -5,11 +5,11 @@
  * normale Passwortwechsel des angemeldeten Inhabers lässt den Haushalt stehen.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in setzePasswortZurueck() fremdzugriffLoesen() durch ein leeres Ergebnis ersetzt → rot:
+ *   A  in setPasswordBack() unlinkForeignAccess() durch ein leeres Ergebnis ersetzt → rot:
  *      „das fremde Hauptkonto sieht …“, „offene Einladungen …“, „die Mail nennt …“
- *   B  in loeseUnterkontoUndEinladungen() `sub_user_id` durch `main_user_id` ersetzt → rot:
+ *   B  in resolveSubAccountAndInvitations() `sub_user_id` durch `main_user_id` ersetzt → rot:
  *      „das fremde Hauptkonto …“, „das eigene Unterkonto bleibt“, „die Mail nennt …“
- *   C  verwirfAusstehendeAdresse() durch null ersetzt → rot: „der ausstehende Adresswechsel
+ *   C  discardPendingAddress() durch null ersetzt → rot: „der ausstehende Adresswechsel
  *      ist verworfen“, „die Mail nennt …“
  *   D  das DELETE auf account_link_invites durch nichts ersetzt → rot: „offene Einladungen …“,
  *      „die Mail nennt …“
@@ -20,26 +20,26 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { umgebung, testDaten, buildAndRequire } = require('./helpers/sources');
+const { environment, testData, buildAndRequire } = require('./helpers/sources');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
+environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
 const { bis } = require('./helpers/zeit');
 const AUTH = require('./helpers/sources').einhaengung('auth');
-const db = testDaten();
+const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test.after(() => db.pool.end().catch(() => {}));
 
 test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const gesendet = mailAttrappe();
-  t.after(await mailserverEintragen(db));
+  t.after(await enterMailServer(db));
   const P = process.pid;
   const namen = [`pv_opfer_${P}`, `pv_fremd_${P}`, `pv_kind_${P}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -69,17 +69,17 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
   );
   const K_ = _req('src/konto/konten.js');
   const H = _req('src/haushalt/haushalt.js');
-  const { imSystemkontext } = _req('src/infra/kontoKontext.js');
-  const hauptkontenVon = () => imSystemkontext('test', () => H.haushaltVon(A)).then(h => h.memberIds.includes(V));
+  const { inSystemContext } = _req('src/infra/kontoKontext.js');
+  const mainAccountsOf = () => inSystemContext('test', () => H.householdOf(A)).then(h => h.memberIds.includes(V));
 
   await t.test('der normale Passwortwechsel lässt den Haushalt stehen', async () => {
     await K_.aendereEigenesPasswort(V, 'zwischen-Passwort-17');
-    assert.equal(await hauptkontenVon(), true);
+    assert.equal(await mainAccountsOf(), true);
   });
 
   const link = `pv-link-${P}`;
   await db.run(`UPDATE users SET reset_token = $1, reset_token_expires = NOW() + INTERVAL '1 hour' WHERE id = $2`, [
-    _req('src/konto/geraeteToken.js').tokenAbdruck(link),
+    _req('src/konto/geraeteToken.js').tokenDigest(link),
     V,
   ]);
   const { base } = testServer(_req, { t });
@@ -92,7 +92,7 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
 
   await t.test('das fremde Hauptkonto sieht den Bestand nicht mehr', async () => {
     assert.equal((await db.all('SELECT 1 FROM account_links WHERE sub_user_id = $1', [V])).length, 0);
-    assert.equal(await hauptkontenVon(), false);
+    assert.equal(await mainAccountsOf(), false);
   });
   await t.test('das eigene Unterkonto bleibt', async () => {
     assert.equal(

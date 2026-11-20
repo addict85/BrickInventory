@@ -6,14 +6,14 @@
  *   A  in routes/api_v1/sets.ts PUT /storage/default mit `success: null` →
  *      rot (31.10.2026): „jeder Schritt antwortet mit 200“ (500 vertrag_verletzt,
  *      Antwort success) und „jede schreibende Route ist geprüft …“
- *   B  einen Schritt aus SCHRITTE entfernt (PUT /api/v1/vouchers/{id}) → rot:
+ *   B  einen Schritt aus STEPS entfernt (PUT /api/v1/vouchers/{id}) → rot:
  *      „jede schreibende Route ist geprüft oder begründet ausgelassen"
- *   C  in AUSGELASSEN einen Pfad ergänzt, den die App nicht kennt → rot:
+ *   C  in OMITTED einen Pfad ergänzt, den die App nicht kennt → rot:
  *      „keine tote Ausnahme"
  *   D  in src/parts/repository/manualParts.ts wieder `NULLIF($1, 0)` ohne ::numeric → rot: „jeder
  *      Schritt antwortet mit 200" (PUT /parts: 500, invalid input syntax for
  *      type integer) und „Stückpreis mit Nachkommastellen"
- *   E  (09.11.2026) in andereZugaengeLoeschen() ohne `$2::text IS NULL OR`
+ *   E  (09.11.2026) in deleteOtherAccesses() ohne `$2::text IS NULL OR`
  *      (NULL IS DISTINCT FROM NULL ist falsch) → rot: „die Schreibantworten …“
  *      (zugaenge 0 statt 1 aus einer Browser-Sitzung)
  *
@@ -30,16 +30,16 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { katalogSet } = require('./helpers/bestand');
+const { catalogSet } = require('./helpers/bestand');
 const { importWorker } = require('./helpers/auftraege');
-const { datenOderSkip } = require('./helpers/db');
-const { routerEinhaengungen, testDaten } = require('./helpers/sources');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { routerEinhaengungen, testData } = require('./helpers/sources');
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
-const { vertragZu, appSchnittstelle } = require('./helpers/vertrag');
-const { mailAttrappe, mailserverEintragen } = require('./helpers/mail-attrappe');
+const { contractTo, appSchnittstelle } = require('./helpers/vertrag');
+const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
 mailAttrappe();
 
 const NAME = `kschreib_${process.pid}`,
@@ -52,7 +52,7 @@ const SET = '99075-1',
   FIGUR = 'ks0001';
 
 /** Routen, die hier nicht laufen dürfen oder können — mit Grund. */
-const AUSGELASSEN = new Map([
+const OMITTED = new Map([
   ['POST /api/v1/admin/trigger-csv-sync', 'startet den Katalogabgleich mit Rebrickable im Netz'],
   ['POST /api/v1/admin/reimport-instructions', 'lädt Anleitungen bei LEGO im Netz'],
   ['POST /api/v1/admin/trigger-price-job', 'fragt BrickLink im Netz'],
@@ -82,7 +82,7 @@ const AUSGELASSEN = new Map([
 ]);
 
 /** Ein PDF mit den übergebenen Zeilen. */
-function pdfMit(zeilen) {
+function pdfWith(zeilen) {
   return new Promise(fertig => {
     const doc = new PDFDocument({ compress: true });
     const stuecke = [];
@@ -102,7 +102,7 @@ function formular(inhalt, typ, name, felder = {}) {
 }
 
 test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   importWorker(t, _req);
 
   // ── Drei Konten: Haupt, Unterkonto, ein drittes für die Einladung ──────
@@ -122,7 +122,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
   const neu = await anlegen(`${NAME}_neu`, false);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, sub]);
 
-  const globaleVorher = await db
+  const globalBefore = await db
     .all(`SELECT key, value FROM global_settings WHERE key = ANY($1)`, [
       [
         'cache_ttl_hours',
@@ -136,16 +136,16 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       ],
     ])
     .catch(() => []);
-  const mailZurueck = await mailserverEintragen(db);
+  const mailBack = await enterMailServer(db);
   t.after(async () => {
-    await mailZurueck();
+    await mailBack();
     await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {});
     for (const tab of ['set_catalog', 'set_parts_catalog', 'set_minifigs_catalog', 'brickset_queue'])
       await db.run(`DELETE FROM ${tab} WHERE set_number = ANY($1)`, [[SET, SET2]]).catch(() => {});
     await db.run('DELETE FROM part_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
     await db.run('DELETE FROM part_color_catalog WHERE part_number = $1', [TEIL]).catch(() => {});
     await db.run('DELETE FROM minifigs_catalog WHERE fig_number = $1', [FIGUR]).catch(() => {});
-    for (const { key, value } of globaleVorher)
+    for (const { key, value } of globalBefore)
       await db.run('UPDATE global_settings SET value = $2 WHERE key = $1', [key, value]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
@@ -164,7 +164,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
 
   // ── Katalog, damit Anlegen ohne Netz geht ──────────────────────────────
   for (const s of [SET, SET2])
-    await katalogSet(db, s, { name: 'Schreibprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 1 });
+    await catalogSet(db, s, { name: 'Schreibprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 1 });
   await db.run(
     `INSERT INTO part_catalog (part_number, part_name, category_name) VALUES ($1, 'Stein 2x2', 'Steine')
                 ON CONFLICT DO NOTHING`,
@@ -208,9 +208,9 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
     req.apiUser = { user_id: als.id, username: als.name, is_admin: als.admin ? 1 : 0 };
     next();
   });
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   for (const r of routerEinhaengungen())
-    app.use(r.mount, require('./helpers/sources').routerAus(_req, `routes/${r.name}.js`));
+    app.use(r.mount, require('./helpers/sources').routerFrom(_req, `routes/${r.name}.js`));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://127.0.0.1:${srv.address().port}`;
@@ -223,7 +223,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
 
   /** @type {{ m: string, p: string, body?: any, form?: () => Promise<FormData>|FormData, q?: string, kopf?: () => object, als?: object, davor?: () => Promise<void>, danach?: (j: any) => Promise<void>|void }[]} */
   /** @type {any[]} */
-  const SCHRITTE = [
+  const STEPS = [
     // ── Anmeldung und Konto ───────────────────────────────────────────────
     {
       m: 'POST',
@@ -242,7 +242,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
         const nonce = 'vertrag' + process.pid + Date.now();
         await db.run(
           `INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '5 minutes')`,
-          [_req('src/konto/geraeteToken.js').tokenAbdruck(nonce), uid],
+          [_req('src/konto/geraeteToken.js').tokenDigest(nonce), uid],
         );
         w.qr = 'bim:' + nonce;
       },
@@ -257,7 +257,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       p: '/api/v1/auth/qr-login/abholen',
       davor: async () => {
         await db.run('UPDATE qr_login_tokens SET confirmed_at = NOW() WHERE token = $1', [
-          _req('src/konto/geraeteToken.js').tokenAbdruck(w.qr.slice(4)),
+          _req('src/konto/geraeteToken.js').tokenDigest(w.qr.slice(4)),
         ]);
       },
       body: () => ({ abholung: w.abholung }),
@@ -338,7 +338,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       m: 'DELETE',
       p: '/api/v1/settings/tokens/{tokenId}',
       davor: async () => {
-        await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Zum Entwerten');
+        await _req('src/konto/geraeteToken.js').createToken(uid, 'Zum Entwerten');
         w.tokenId = (
           await erst(
             `SELECT substring(token, 1, 16) AS t FROM api_tokens WHERE user_id = $1 AND label = 'Zum Entwerten'`,
@@ -353,7 +353,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       p: '/api/v1/settings/sessions/andere-beenden',
       body: { password: PASS, zugaenge: true },
       davor: async () => {
-        await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Anderes Gerät');
+        await _req('src/konto/geraeteToken.js').createToken(uid, 'Anderes Gerät');
       },
       danach: j => {
         assert.equal(j.zugaenge, 1);
@@ -400,7 +400,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       m: 'POST',
       p: '/api/v1/sets/{setNumber}/instructions/upload',
       form: async () =>
-        formular(await pdfMit(['Bauanleitung']), 'application/pdf', 'anleitung.pdf', { description: 'Probe' }),
+        formular(await pdfWith(['Bauanleitung']), 'application/pdf', 'anleitung.pdf', { description: 'Probe' }),
       danach: async () => {
         w.instrId = String(
           (
@@ -426,7 +426,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       p: '/api/v1/parts/{partNumber}/{colorId}',
       body: { quantity: 4, unit_price: 0.25, condition: 'N' },
       danach: async () => {
-        w.teilPreis = (
+        w.partPrice = (
           await erst(
             `SELECT unit_price::float AS p FROM part_acquisitions WHERE user_id = $1 AND part_number = $2
                                     ORDER BY created_at DESC, id DESC LIMIT 1`,
@@ -554,7 +554,7 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       p: '/api/v1/vouchers/pdf',
       form: async () =>
         formular(
-          await pdfMit(['Ihre LEGO-Geschenkkarte im Wert von 25 CHF:', '5045076374450012222', 'PIN: 4711']),
+          await pdfWith(['Ihre LEGO-Geschenkkarte im Wert von 25 CHF:', '5045076374450012222', 'PIN: 4711']),
           'application/pdf',
           'gutschein.pdf',
         ),
@@ -661,8 +661,8 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
         w.id = String(
           await {
             ..._req('src/auftraege/dienst.js'),
-            ...require('./helpers/sources').testBereich('auftraege').auftraege,
-          }.stelleAuftragEin('anleitung', { set_number: SET }, { schluessel: `vertrag:${process.pid}:${Date.now()}` }),
+            ...require('./helpers/sources').testArea('auftraege').auftraege,
+          }.placeJobOne('anleitung', { set_number: SET }, { schluessel: `vertrag:${process.pid}:${Date.now()}` }),
         );
       },
     },
@@ -681,11 +681,11 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
     { m: 'POST', p: '/api/v1/auth/logout' },
   ];
 
-  const abweichungen = [],
+  const deviations = [],
     status = [],
     gelaufen = new Set();
-  const dauer = [];
-  for (const s of SCHRITTE) {
+  const duration = [];
+  for (const s of STEPS) {
     const schluessel = `${s.m} ${s.p}`;
     const start = Date.now();
     if (s.davor) await s.davor();
@@ -723,31 +723,30 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       continue;
     }
     gelaufen.add(schluessel);
-    const vertrag = vertragZu(_req, s.m, s.p);
-    if (!vertrag?.antwort) abweichungen.push(`${schluessel}: kein Vertrag`);
+    const vertrag = contractTo(_req, s.m, s.p);
+    if (!vertrag?.antwort) deviations.push(`${schluessel}: kein Vertrag`);
     else {
       const r = vertrag.antwort.safeParse(json);
-      if (!r.success)
-        abweichungen.push(...r.error.issues.map(i => `${schluessel} $.${i.path.join('.')}: ${i.message}`));
+      if (!r.success) deviations.push(...r.error.issues.map(i => `${schluessel} $.${i.path.join('.')}: ${i.message}`));
     }
     if (s.danach) await s.danach(json);
-    dauer.push([Date.now() - start, schluessel]);
+    duration.push([Date.now() - start, schluessel]);
   }
-  if (process.env.VERTRAG_DAUER) console.error(dauer.sort((a, b) => b[0] - a[0]).slice(0, 5));
+  if (process.env.VERTRAG_DAUER) console.error(duration.sort((a, b) => b[0] - a[0]).slice(0, 5));
 
   await t.test('jeder Schritt antwortet mit 200', () => assert.deepEqual(status, []));
-  await t.test('passt zum Vertrag', () => assert.deepEqual(abweichungen, []));
+  await t.test('passt zum Vertrag', () => assert.deepEqual(deviations, []));
   await t.test('jede schreibende Route ist geprüft oder begründet ausgelassen', () => {
-    const offen = routen.map(r => `${r.methode} ${r.pfad}`).filter(k => !gelaufen.has(k) && !AUSGELASSEN.has(k));
+    const offen = routen.map(r => `${r.methode} ${r.pfad}`).filter(k => !gelaufen.has(k) && !OMITTED.has(k));
     assert.deepEqual(offen, []);
   });
   await t.test('ein Stückpreis mit Nachkommastellen bleibt beim Ändern erhalten', () =>
-    assert.equal(w.teilPreis, 0.25),
+    assert.equal(w.partPrice, 0.25),
   );
   await t.test('keine tote Ausnahme', () => {
     const bekannt = new Set(routen.map(r => `${r.methode} ${r.pfad}`));
     assert.deepEqual(
-      [...AUSGELASSEN.keys()].filter(k => !bekannt.has(k)),
+      [...OMITTED.keys()].filter(k => !bekannt.has(k)),
       [],
     );
   });

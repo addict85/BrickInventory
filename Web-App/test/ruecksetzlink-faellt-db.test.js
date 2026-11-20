@@ -18,16 +18,16 @@ const crypto = require('node:crypto');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const db = testDaten();
-const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testBereich('konto').konten };
-const { tokenAbdruck } = _req('src/konto/geraeteToken.js');
+const db = testData();
+const K = { ..._req('src/konto/konten.js'), ...require('./helpers/sources').testArea('konto').konten };
+const { tokenDigest } = _req('src/konto/geraeteToken.js');
 
 test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const namen = [];
   t.after(async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -35,7 +35,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
   });
   const { base } = testServer(_req, { t });
   /** Ein Konto mit offenem Link; der Wechsel läuft, dann wird der Link eingelöst. */
-  const nachWechsel = async (name, wechsel) => {
+  const afterSwitch = async (name, wechsel) => {
     namen.push(name);
     await db.run('DELETE FROM users WHERE username = $1', [name]);
     const uid = (
@@ -46,7 +46,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
       )
     ).id;
     const token = crypto.randomBytes(32).toString('hex');
-    assert.ok(await K.setzeRuecksetzTokenWennFrei(uid, tokenAbdruck(token), 60, 15));
+    assert.ok(await K.setRuecksetzTokenIfFree(uid, tokenDigest(token), 60, 15));
     await wechsel(uid);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
     const r = await fetch(`${base}/api/v1/auth/reset-password`, {
@@ -59,20 +59,20 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
   const p = process.pid;
 
   await t.test('ohne Wechsel gilt der Link (Vorbedingung)', async () => {
-    assert.deepEqual(await nachWechsel(`link_ohne_${p}`, async () => {}), [200, null]);
+    assert.deepEqual(await afterSwitch(`link_ohne_${p}`, async () => {}), [200, null]);
   });
 
   await t.test('eigenes Passwort, Verwalter-Reset, neue Adresse: der Link fällt', async () => {
     assert.deepEqual(
       [
-        await nachWechsel(`link_eigen_${p}`, uid => K.aendereEigenesPasswort(uid, 'Eigenes-Neu-2026')),
-        await nachWechsel(`link_fremd_${p}`, uid => K.setzeFremdesPasswort(uid, 'Verwalter-Neu-2026')),
-        await nachWechsel(`link_mail_${p}`, async uid => {
-          await K.merkeEmailNeu(uid, `neu_${p}@example.org`, tokenAbdruck(`mail${p}`), new Date(Date.now() + 60_000));
+        await afterSwitch(`link_eigen_${p}`, uid => K.aendereEigenesPasswort(uid, 'Eigenes-Neu-2026')),
+        await afterSwitch(`link_fremd_${p}`, uid => K.setForeignPassword(uid, 'Verwalter-Neu-2026')),
+        await afterSwitch(`link_mail_${p}`, async uid => {
+          await K.rememberEmailNew(uid, `neu_${p}@example.org`, tokenDigest(`mail${p}`), new Date(Date.now() + 60_000));
           assert.equal(
             !!(await require('./helpers/sources')
-              .testBereich('konto')
-              .verifiziereEmailToken(`mail${p}`)
+              .testArea('konto')
+              .verifyEmailToken(`mail${p}`)
               .catch(() => null)),
             true,
           );
@@ -98,7 +98,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
       )
     ).id;
     const token = crypto.randomBytes(32).toString('hex');
-    assert.ok(await K.setzeRuecksetzTokenWennFrei(uid, tokenAbdruck(token), 60, 15));
+    assert.ok(await K.setRuecksetzTokenIfFree(uid, tokenDigest(token), 60, 15));
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'reset-password|%'");
     const setze = password =>
       fetch(`${base}/api/v1/auth/reset-password`, {
@@ -111,7 +111,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
     const sieger = antworten.find(a => a[0] === 200)[2];
     const { password_hash } = await db.get('SELECT password_hash FROM users WHERE id = $1', [uid]);
     assert.ok(
-      await _req('src/konto/passwortHash.js').passwortPasst(sieger, password_hash),
+      await _req('src/konto/passwortHash.js').passwordFits(sieger, password_hash),
       'es gilt das Passwort der Anfrage, die 200 bekam',
     );
   });

@@ -17,7 +17,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { lesbaresBild } = _req('src/bilder/imageGuard.js');
+const { readableImage } = _req('src/bilder/imageGuard.js');
 
 /** Eine Datei mit genau diesem Inhalt, in einem eigenen Verzeichnis. */
 function datei(name, inhalt) {
@@ -30,7 +30,7 @@ function datei(name, inhalt) {
 test('eine LEERE Datei wird abgewiesen', async () => {
   const p = datei('leer.jpg', Buffer.alloc(0));
   assert.equal(
-    await lesbaresBild(p),
+    await readableImage(p),
     false,
     'Eine Datei mit null Bytes ging durch die Schranke. Dahinter scheitert der ' +
       'Verkleinerer mit „unsupported image format" — und zwar bei jedem Takt neu, ' +
@@ -43,7 +43,7 @@ test('eine ABGESCHNITTENE Datei wird abgewiesen', async () => {
   // abgebrochenen Downloads.
   const p = datei('halb.jpg', Buffer.from([0xff, 0xd8, 0xff]));
   assert.equal(
-    await lesbaresBild(p),
+    await readableImage(p),
     false,
     'Ein angefangenes JPEG ging durch — der Dekodierer kann damit nichts anfangen',
   );
@@ -59,7 +59,7 @@ test('ein ECHTES kleines Bild geht weiter durch', async () => {
   assert.equal(gif.length, 42, `Die Probe ist ${gif.length} Byte gross — erwartet 42`);
   const p = datei('eins.gif', gif);
   assert.equal(
-    await lesbaresBild(p),
+    await readableImage(p),
     true,
     'Ein gültiges 1×1-GIF wurde abgewiesen — dann entstehen gar keine ' +
       'Vorschaubilder mehr, und die Schranke ist schlimmer als das Problem',
@@ -67,7 +67,7 @@ test('ein ECHTES kleines Bild geht weiter durch', async () => {
 });
 
 test('eine Datei, die es nicht gibt, wird abgewiesen', async () => {
-  // Das war schon vorher so (der catch unten in lesbaresBild) und bleibt es —
+  // Das war schon vorher so (der catch unten in readableImage) und bleibt es —
   // hier festgehalten, damit die neue Schranke diesen Weg nicht verdeckt.
-  assert.equal(await lesbaresBild('/gibt/es/nicht/x.jpg'), false);
+  assert.equal(await readableImage('/gibt/es/nicht/x.jpg'), false);
 });

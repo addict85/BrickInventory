@@ -4,13 +4,13 @@
  * Die Liste stösst dabei keine Bildarbeit an — das macht der Bild-Job.
  *
  * Gegenproben (am 10.11.2026 gemessen):
- *   A  in katalogSeite() (src/katalog/dienst.ts) resolveImageLocal() weggelassen
+ *   A  in catalogPage() (src/katalog/dienst.ts) resolveImageLocal() weggelassen
  *      → rot: „… die Vorschau hat Vorrang“ (Originalpfad statt _thumb)
  *   B  in katalogSuche.ts c.image_local aus SET_SPALTEN entfernt → rot: „die Liste
  *      nennt das Bild aus set_catalog …“ (undefined)
- *   C  in katalogSeite() je Zeile k.bilder.merkeGebraucht() → rot: „die
+ *   C  in catalogPage() je Zeile k.bilder.rememberUsed() → rot: „die
  *      Liste stösst keine Bildarbeit an“
- *   D  in katalogSet() image_local nur für eigene Sets (`set.owned ? … : null`)
+ *   D  in catalogSet() image_local nur für eigene Sets (`set.owned ? … : null`)
  *      → rot: „auch ein fremdes Konto bekommt die lokale Datei“
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -25,13 +25,13 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 // Eigene Ablage, damit der Test keine Bilder in den Arbeitsbaum legt.
 process.env.APP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'katalog-bilder-'));
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 
 test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `katalog-bild-${process.pid}`,
     FREMD = `katalog-fremd-${process.pid}`;
@@ -56,9 +56,9 @@ test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async t => {
   fs.writeFileSync(path.join(ordner, 'KB_1-1.jpg'), 'JPG');
   fs.writeFileSync(path.join(ordner, 'KB_1-1_thumb.jpg'), 'JPG');
 
-  const notiert = require('./helpers/sources').bildNotizen();
-  const vorgemerkt = notiert.notizen;
-  t.after(notiert.ende);
+  const noted = require('./helpers/sources').imageNotes();
+  const vorgemerkt = noted.notes;
+  t.after(noted.ende);
 
   t.after(async () => {
     await db.run('DELETE FROM rb_sets WHERE set_num = ANY($1)', [[MIT, OHNE]]);
@@ -67,11 +67,11 @@ test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  const { katalogSeite, katalogSet } = _req('src/katalog/dienst.js');
+  const { catalogPage, catalogSet } = _req('src/katalog/dienst.js');
 
   const bilder = async wer =>
     Object.fromEntries(
-      (await katalogSeite(wer, { q: 'KB', themeId: null }, 'num_asc', 1, 60)).sets.map(s => [
+      (await catalogPage(wer, { q: 'KB', themeId: null }, 'num_asc', 1, 60)).sets.map(s => [
         s.set_number,
         s.image_local,
       ]),
@@ -85,7 +85,7 @@ test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async t => {
 
   await t.test('auch ein fremdes Konto bekommt die lokale Datei', async () => {
     assert.equal((await bilder(fremd))[MIT], '/images/sets/KB_1-1_thumb.jpg');
-    assert.equal((await katalogSet(fremd, MIT)).image_local, '/images/sets/KB_1-1_thumb.jpg');
+    assert.equal((await catalogSet(fremd, MIT)).image_local, '/images/sets/KB_1-1_thumb.jpg');
   });
 
   await t.test('die Liste stösst keine Bildarbeit an', () => {
@@ -93,9 +93,9 @@ test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async t => {
   });
 
   await t.test('das Detail nimmt dieselbe Datei und lädt nichts nach', async () => {
-    const set = await katalogSet(uid, MIT);
+    const set = await catalogSet(uid, MIT);
     assert.equal(set.image_local, '/images/sets/KB_1-1_thumb.jpg');
-    const ohne = await katalogSet(uid, OHNE);
+    const ohne = await catalogSet(uid, OHNE);
     assert.equal(ohne.image_local, null, 'ohne Adresse kein Abruf');
     assert.deepEqual(vorgemerkt, []);
   });

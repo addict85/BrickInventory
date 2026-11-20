@@ -15,13 +15,13 @@
  *      „Fremdwährung …“ und „Sprachwechsel …“ (Platzhalter „z. B. 79.99“)
  *   D  einstandZelle() ohne den Zweig für kaufpreis_original → rot:
  *      „Fremdwährung und Kachel …“
- *   E  ladeLagerorte() füllt die Auswahl wieder aus /v1/storage → rot:
+ *   E  loadLocations() füllt die Auswahl wieder aus /v1/storage → rot:
  *      „neuer Lagerort …“
  *   F  der Hörer auf spracheGewechselt in konten-orte.js gestrichen → rot:
  *      „Sprachwechsel …“ (danach auch die zwei folgenden, die Seite bleibt
  *      englisch)
  *   G  data-i18n-aria nicht ausgewertet → rot: dieselben drei
- *   H  meldeTreffer() in renderGallery gestrichen → rot: „Trefferzahl …“
+ *   H  reportHits() in renderGallery gestrichen → rot: „Trefferzahl …“
  *   I  im Set-Detail die Besitzerzeile gestrichen → rot: „Set-Detail nennt …“
  *   K  .knopf-fuellend wieder flex:1 → rot: „Merkposten-Dialog …“ (Text
  *      breiter als der Knopf)
@@ -30,8 +30,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { starteApp, warte } = require('./helpers/app-browser');
-const { musterHaushalt, haeltSet, katalogSet } = require('./helpers/bestand');
+const { startApp, warte } = require('./helpers/app-browser');
+const { patternHousehold, holdsSet, catalogSet } = require('./helpers/bestand');
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
@@ -39,11 +39,11 @@ const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textConten
 test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeout: 300_000 }, async t => {
   const NAME = `r16_${process.pid}`,
     KIND = `${NAME}_kind`;
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: NAME,
     bestand: async (db, uid) => {
-      const kid = await musterHaushalt(db, uid);
-      // Belegt: Vitrine; leer: Regal Keller (musterSammlung). Ein Kauf in ARS mit Marktpreis: Für ARS
+      const kid = await patternHousehold(db, uid);
+      // Belegt: Vitrine; leer: Regal Keller (patternCollection). Ein Kauf in ARS mit Marktpreis: Für ARS
       // veröffentlicht die EZB keinen Kurs, auch nicht in der CI mit Netz.
       const vitrine = (
         await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Vitrine Wohnzimmer') RETURNING id`, [
@@ -51,7 +51,7 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
         ])
       ).id;
       await db.run(`UPDATE sets SET storage_id = $2 WHERE user_id = $1 AND set_number = '10294-1'`, [uid, vitrine]);
-      await katalogSet(db, '10497-1', { name: 'Galaxy Explorer', year: 2022, theme: 'Icons', pieces: 1254 });
+      await catalogSet(db, '10497-1', { name: 'Galaxy Explorer', year: 2022, theme: 'Icons', pieces: 1254 });
       await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10497-1')`, [uid]);
       await db.run(
         `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)
@@ -61,8 +61,8 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
       await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                   VALUES ('10497-1', 'N', 'EUR', 80, 90, 100, 90, 5, NOW()) ON CONFLICT (set_number, condition, currency_code) DO UPDATE SET avg_price = 90`);
       // Nur beim Unterkonto: das Set-Detail soll den Besitzer nennen.
-      await katalogSet(db, '75313-1', { name: 'AT-AT', year: 2021, theme: 'Star Wars', pieces: 6785 });
-      await haeltSet(db, kid, '75313-1', 1, { preis: 700 });
+      await catalogSet(db, '75313-1', { name: 'AT-AT', year: 2021, theme: 'Star Wars', pieces: 6785 });
+      await holdsSet(db, kid, '75313-1', 1, { preis: 700 });
     },
   });
   if (app.grund) {
@@ -80,7 +80,7 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
     await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false });
     await warte(400);
   };
-  const beleg = async name => {
+  const receipt = async name => {
     if (!process.env.BELEG_ORDNER) return;
     const { data } = await b.tab('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
     fs.mkdirSync(process.env.BELEG_ORDNER, { recursive: true });
@@ -105,7 +105,7 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
     for (const w of [683, 820, 1024, 1280]) {
       await groesse(w, w === 683 ? 450 : 900);
       await b.auswerten(`document.querySelector('[data-fin-art="sets"]').scrollIntoView(); true`);
-      await beleg(`finanzen-${w}`);
+      await receipt(`finanzen-${w}`);
       const m = await b.auswerten(`(() => {
         const tw = document.querySelector('[data-fin-art="sets"]'), stand = [...tw.querySelectorAll('thead th')].filter(th => th.getBoundingClientRect().width > 0).pop();
         const wert = [...tw.querySelectorAll('thead th')].find(th => /Marktwert/.test(th.textContent));

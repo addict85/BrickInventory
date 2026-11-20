@@ -1,18 +1,18 @@
 /** The imports other than the set CSV (which continues row-by-row in setCsvImport.ts).
  * The route submits and waits (runImport). */
-import { csvImportBericht } from '../infra/csvExport';
+import { csvImportReport } from '../infra/csvExport';
 import { Fachfehler } from '../infra/fehlerTexte';
 import { z } from 'zod';
-import type { AuftragsZeile, AuftragsKontext, Fortschritt } from '../auftraege';
-import { SetCsvNutzlast } from '../sets';
-import { importiereWantedXml } from './wantedXmlImport';
+import type { JobRow, JobContext, Fortschritt } from '../auftraege';
+import { SetCsvPayload } from '../sets';
+import { importWantedXml } from './wantedXmlImport';
 import type { CollectionContext } from './context';
 
 const KONTO = z.number().int().positive();
 const text = z.string();
 
 /** A correction to the wanted-list preview; the import matches `blId` against the entry. */
-export const WantedKorrektur = z.object({
+export const WantedCorrection = z.object({
   index: z.number().int().min(0),
   blId: z.string().max(64),
   art: z.enum(['part', 'fig', 'set']),
@@ -22,9 +22,9 @@ export const WantedKorrektur = z.object({
   zustand: z.string().max(16).nullish(),
   kaufpreis: z.number().nullish(),
 });
-export const WantedKorrekturen = z.array(WantedKorrektur).max(100_000);
+export const WantedCorrections = z.array(WantedCorrection).max(100_000);
 
-const ImportNutzlastSchema = z.discriminatedUnion('quelle', [
+const ImportPayloadSchema = z.discriminatedUnion('quelle', [
   z.object({ user_id: KONTO, quelle: z.literal('teile_csv'), eingabe: z.object({ text }) }),
   z.object({ user_id: KONTO, quelle: z.literal('figuren_csv'), eingabe: z.object({ text }) }),
   z.object({ user_id: KONTO, quelle: z.literal('merkliste_csv'), eingabe: z.object({ text, owner: KONTO }) }),
@@ -38,76 +38,67 @@ const ImportNutzlastSchema = z.discriminatedUnion('quelle', [
     quelle: z.literal('wanted_xml'),
     eingabe: z.object({
       xml: text,
-      dateiName: z.string().max(200),
+      fileName: z.string().max(200),
       schreiben: z.boolean(),
-      ueberRebrickable: z.boolean(),
-      korrekturen: WantedKorrekturen.optional(),
+      viaRebrickable: z.boolean(),
+      korrekturen: WantedCorrections.optional(),
     }),
   }),
 ]);
-export const CsvImportNutzlast = z.union([ImportNutzlastSchema, SetCsvNutzlast]);
+export const CsvImportPayload = z.union([ImportPayloadSchema, SetCsvPayload]);
 
 declare module '../auftraege/auftraege' {
-  interface AuftragsNutzlasten {
-    csv_import: typeof CsvImportNutzlast;
+  interface JobPayloads {
+    csv_import: typeof CsvImportPayload;
   }
 }
 
-export type ImportQuelle = z.input<typeof ImportNutzlastSchema>['quelle'];
+export type ImportSource = z.input<typeof ImportPayloadSchema>['quelle'];
 /** What the import needs from the source. */
-export type ImportEingabe<Q extends ImportQuelle> = Extract<
-  z.input<typeof ImportNutzlastSchema>,
+export type ImportInput<Q extends ImportSource> = Extract<
+  z.input<typeof ImportPayloadSchema>,
   { quelle: Q }
 >['eingabe'];
 
 /** The route submits and waits; the import runs in the job process. */
-export function runImport<T = Record<string, unknown>, Q extends ImportQuelle = ImportQuelle>(
+export function runImport<T = Record<string, unknown>, Q extends ImportSource = ImportSource>(
   k: CollectionContext,
   uid: number,
   quelle: Q,
-  eingabe: ImportEingabe<Q>,
+  eingabe: ImportInput<Q>,
   o: { fortschritt?: (f: Fortschritt) => void; wartenMs?: number } = {},
 ): Promise<T> {
   // tsc doesn't link Q to the union's branch; it's checked when enqueuing.
-  const nutzlast = { user_id: uid, quelle, eingabe } as z.input<typeof ImportNutzlastSchema>;
-  return k.auftraege.warteAufAuftrag<T, 'csv_import'>('csv_import', nutzlast, { ...o, userId: uid });
+  const nutzlast = { user_id: uid, quelle, eingabe } as z.input<typeof ImportPayloadSchema>;
+  return k.auftraege.waitOnJob<T, 'csv_import'>('csv_import', nutzlast, { ...o, userId: uid });
 }
 
-export type ImportNutzlast = z.output<typeof ImportNutzlastSchema>;
+export type ImportPayload = z.output<typeof ImportPayloadSchema>;
 
-async function resultFrom(
-  kx: CollectionContext,
-  n: ImportNutzlast,
-  k: AuftragsKontext,
-): Promise<Record<string, unknown>> {
+async function resultFrom(kx: CollectionContext, n: ImportPayload, k: JobContext): Promise<Record<string, unknown>> {
   const uid = n.user_id;
   switch (n.quelle) {
     case 'teile_csv':
-      return csvImportBericht(await kx.parts.importPartsCsv(uid, n.eingabe.text));
+      return csvImportReport(await kx.parts.importPartsCsv(uid, n.eingabe.text));
     case 'figuren_csv':
-      return csvImportBericht(await kx.minifigs.importMinifigsCsv(uid, n.eingabe.text));
+      return csvImportReport(await kx.minifigs.importMinifigsCsv(uid, n.eingabe.text));
     case 'merkliste_csv':
-      return csvImportBericht(await kx.wanted.importWantedListCsv(n.eingabe.owner, n.eingabe.text));
+      return csvImportReport(await kx.wanted.importWantedListCsv(n.eingabe.owner, n.eingabe.text));
     case 'alarme_csv':
-      return kx.finanzen.preisalarm.alarmeAusCsv(uid, n.eingabe.waehrung, n.eingabe.text);
+      return kx.finanzen.preisalarm.alertsFromCsv(uid, n.eingabe.waehrung, n.eingabe.text);
     case 'wanted_xml':
-      return importiereWantedXml(kx, uid, n.eingabe, k);
+      return importWantedXml(kx, uid, n.eingabe, k);
   }
 }
 
 /** A business error is a result (the request reports it with a code), not a job failure. */
-async function fuehreImportAus(
-  kx: CollectionContext,
-  n: ImportNutzlast,
-  k: AuftragsKontext,
-  a: AuftragsZeile,
-): Promise<void> {
+async function runImportFrom(kx: CollectionContext, n: ImportPayload, k: JobContext, a: JobRow): Promise<void> {
   try {
-    await kx.auftraege.setzeErgebnis(a.id, await resultFrom(kx, n, k));
+    await kx.auftraege.setResult(a.id, await resultFrom(kx, n, k));
   } catch (e) {
     if (!(e instanceof Fachfehler)) throw e;
-    await kx.auftraege.setzeFachfehler(a.id, e);
+    await kx.auftraege.setSlotError(a.id, e);
   }
 }
 
-export { fuehreImportAus };
+export { runImportFrom };

@@ -7,25 +7,25 @@ import { fmtN } from './format.js';
 
 /**
  * The cards' shared basis from the server; without it (pnl failed) there's no P&L.
- * @typedef {{ bewertet: number, ohneMarkt: number, ohneKauf: number, einstand: number, wert: number, betrag: number,
- *   gesamt?: number, ohneMarktEinstand?: number, ohneKaufWert?: number }} Basis
+ * @typedef {{ bewertet: number, withoutMarket: number, withoutPurchase: number, einstand: number, wert: number, betrag: number,
+ *   gesamt?: number, withoutMarketCost?: number, withoutPurchaseValue?: number }} Basis
  * @param {Partial<import('../../frontend-typen/vertrag').PnlTotals>} pt @param {number} missingPrice
  * @returns {Basis}
  */
-export function basisAus(pt, missingPrice) {
+export function baseFrom(pt, missingPrice) {
   const z = (/** @type {unknown} */ v) => parseFloat(String(v)) || 0;
   if (pt.basis_einstand == null)
-    return { bewertet: 0, ohneMarkt: missingPrice, ohneKauf: 0, einstand: 0, wert: 0, betrag: 0 };
+    return { bewertet: 0, withoutMarket: missingPrice, withoutPurchase: 0, einstand: 0, wert: 0, betrag: 0 };
   return {
     gesamt: pt.positionen || 0,
     bewertet: pt.positionen_bewertet || 0,
-    ohneMarkt: pt.positionen_ohne_marktpreis || 0,
-    ohneKauf: pt.positionen_ohne_kaufpreis || 0,
+    withoutMarket: pt.positionen_ohne_marktpreis || 0,
+    withoutPurchase: pt.positionen_ohne_kaufpreis || 0,
     einstand: z(pt.basis_einstand),
     wert: z(pt.basis_marktwert),
     betrag: z(pt.basis_guv_betrag),
-    ohneMarktEinstand: z(pt.ohne_marktpreis_einstand),
-    ohneKaufWert: z(pt.ohne_kaufpreis_marktwert),
+    withoutMarketCost: z(pt.ohne_marktpreis_einstand),
+    withoutPurchaseValue: z(pt.ohne_kaufpreis_marktwert),
   };
 }
 
@@ -41,23 +41,14 @@ function titleWithHelp(el, title, withHelp) {
  * The tiles above the table. The purchase total is always known; the grand total and P&L only when there
  * are market prices — otherwise the tile says for how many items the price is missing, instead of showing "—".
  */
-/** @param {{ basis: Basis, einstandAlle: number, wertAlle: number, guv: number | null | undefined, cur: string, fremdeWaehrung?: number, geschaetzt?: number, zeilen?: number }} p */
-export function zeigeKennzahlen({
-  basis,
-  einstandAlle,
-  wertAlle,
-  guv,
-  cur,
-  fremdeWaehrung = 0,
-  geschaetzt = 0,
-  zeilen = 0,
-}) {
+/** @param {{ basis: Basis, costAll: number, valueAll: number, guv: number | null | undefined, cur: string, foreignCurrency?: number, geschaetzt?: number, zeilen?: number }} p */
+export function showMetrics({ basis, costAll, valueAll, guv, cur, foreignCurrency = 0, geschaetzt = 0, zeilen = 0 }) {
   G('fin-sum').dataset.geladen = '1';
   G('fin-sum').removeAttribute('aria-busy');
   const hasBasis = basis.bewertet > 0;
-  const purchase = hasBasis ? basis.einstand : einstandAlle;
-  const value = hasBasis ? basis.wert : wertAlle;
-  const partial = hasBasis && Math.abs(einstandAlle - basis.einstand) >= 0.005;
+  const purchase = hasBasis ? basis.einstand : costAll;
+  const value = hasBasis ? basis.wert : valueAll;
+  const partial = hasBasis && Math.abs(costAll - basis.einstand) >= 0.005;
   titleWithHelp(
     G('fin-einstand-titel'),
     tRaw(partial ? 'finance.stat.purchase_basis' : 'finance.stat.purchase'),
@@ -67,14 +58,14 @@ export function zeigeKennzahlen({
   // Purchase prices in another currency are not counted by the server (no exchange rates); their number
   // sits underneath.
   G('fin-einstand-sub').textContent =
-    fremdeWaehrung > 0
-      ? tRaw('finance.fremde_waehrung_n', { n: fremdeWaehrung })
+    foreignCurrency > 0
+      ? tRaw('finance.fremde_waehrung_n', { n: foreignCurrency })
       : partial
-        ? tRaw('finance.stat.purchase_von', { betrag: fmtN(einstandAlle, cur) })
+        ? tRaw('finance.stat.purchase_von', { betrag: fmtN(costAll, cur) })
         : tRaw('finance.stat.purchase_hint');
-  const missing = basis.ohneMarkt > 0 ? tRaw('finance.price_missing_n', { n: basis.ohneMarkt }) : '';
+  const missing = basis.withoutMarket > 0 ? tRaw('finance.price_missing_n', { n: basis.withoutMarket }) : '';
   // If the tile only sums up valued items, it says so; otherwise two "market values" would show different numbers.
-  const valuePartial = hasBasis && Math.abs(wertAlle - basis.wert) >= 0.005;
+  const valuePartial = hasBasis && Math.abs(valueAll - basis.wert) >= 0.005;
   titleWithHelp(
     G('fin-wert-titel'),
     tRaw(valuePartial ? 'finance.stat.value_basis' : 'finance.stat.value'),
@@ -83,7 +74,7 @@ export function zeigeKennzahlen({
   if (value > 0) {
     G('fin-wert').textContent = fmtN(value, cur);
     G('fin-wert-sub').textContent = valuePartial
-      ? tRaw('finance.stat.value_von', { betrag: fmtN(wertAlle, cur) })
+      ? tRaw('finance.stat.value_von', { betrag: fmtN(valueAll, cur) })
       : tRaw('finance.stat.value_hint');
   } else {
     // Without items, no price is missing — then it's simply "—".
@@ -107,12 +98,14 @@ export function zeigeKennzahlen({
   const row = G('fin-basis');
   if (!row) return;
   const parts = [];
-  if (basis.ohneMarkt > 0)
+  if (basis.withoutMarket > 0)
     parts.push(
-      tRaw('finance.basis.ohne_markt', { n: basis.ohneMarkt, betrag: fmtN(basis.ohneMarktEinstand || 0, cur) }),
+      tRaw('finance.basis.ohne_markt', { n: basis.withoutMarket, betrag: fmtN(basis.withoutMarketCost || 0, cur) }),
     );
-  if (basis.ohneKauf > 0)
-    parts.push(tRaw('finance.basis.ohne_kauf', { n: basis.ohneKauf, betrag: fmtN(basis.ohneKaufWert || 0, cur) }));
+  if (basis.withoutPurchase > 0)
+    parts.push(
+      tRaw('finance.basis.ohne_kauf', { n: basis.withoutPurchase, betrag: fmtN(basis.withoutPurchaseValue || 0, cur) }),
+    );
   // Estimated purchase prices count towards the total but aren't paid: that number belongs next to the result.
   if (geschaetzt > 0) parts.push(tRaw('finance.basis.geschaetzt', { n: geschaetzt }));
   if (!hasBasis || !parts.length) {

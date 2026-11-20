@@ -2,7 +2,7 @@
  * Eine Kachel, mehrere Besitzer — welchen Preis und welche G&V zeigt sie?
  *
  * Gegenproben (am 29.10.2026 gemessen):
- *   A  in kachelWerte() bei mehreren Zeilen die letzte statt der gewichteten
+ *   A  in tileValues() bei mehreren Zeilen die letzte statt der gewichteten
  *      nehmen → rot: „nach Menge gewichtet“ (750 statt 142,9)
  *   B  bei einer Zeile pnl_pct vor baseline_pnl_pct → rot: „der Wert des
  *      Servers bleibt“ (1,1 statt 77,7)
@@ -15,8 +15,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { kachelWerte } = _req('src/finanzen/setValue.js');
-const kachel = (zeilen, nr) => kachelWerte(zeilen.map(z => ({ purchase_price: null, pnl_pct: null, ...z }))).get(nr);
+const { tileValues } = _req('src/finanzen/setValue.js');
+const kachel = (zeilen, nr) => tileValues(zeilen.map(z => ({ purchase_price: null, pnl_pct: null, ...z }))).get(nr);
 
 test('mehrere Besitzer: der Kachelpreis wird nach Menge gewichtet', () => {
   // Der gemessene Fall ohne Erfassungszeilen: zwei Konten, ein Set, 600 und 100.

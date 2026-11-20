@@ -12,14 +12,14 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { haeltSet, haeltTeil, haeltFigur, katalogSet } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/bestand');
 
 const N = `<img src=x onerror="window.__xss=1">"'><svg onload="window.__xss=2">`;
 const SPUR = 'XSS-Spur';
 
 /** Was im DOM aus der Nutzlast entstanden wäre, und ob sie als Text dasteht. */
-const PRUEFE = `(() => {
+const CHECK = `(() => {
   const fremd = [...document.querySelectorAll('*')].filter(e =>
       [...e.attributes].some(a => /^on/i.test(a.name)) || (e.tagName === 'IMG' && e.getAttribute('src') === 'x'))
     .map(e => e.outerHTML.slice(0, 100));
@@ -28,7 +28,7 @@ const PRUEFE = `(() => {
 })()`;
 
 test('XSS-Nutzlasten in den Hauptansichten bleiben Text', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `xss_${process.pid}`,
     bestand: async (db, uid) => {
       const ort = (
@@ -41,19 +41,19 @@ test('XSS-Nutzlasten in den Hauptansichten bleiben Text', { concurrency: 1, time
         ['99901-1', 'Set'],
         ['99902-1', 'Wunsch'],
       ])
-        await katalogSet(db, nr, { name: `${SPUR} ${was} ${N}`, theme: `${SPUR} Thema ${N}`, year: 2020, pieces: 100 });
-      await haeltSet(db, uid, '99901-1', 1, { preis: 10 });
+        await catalogSet(db, nr, { name: `${SPUR} ${was} ${N}`, theme: `${SPUR} Thema ${N}`, year: 2020, pieces: 100 });
+      await holdsSet(db, uid, '99901-1', 1, { preis: 10 });
       await db.run('UPDATE sets SET storage_id = $1 WHERE user_id = $2 AND set_number = $3', [ort, uid, '99901-1']);
       await db.run(
         `INSERT INTO part_custom (user_id, part_number, part_name, category_name) VALUES ($1, 'xss1', $2, $3)`,
         [uid, `${SPUR} Teil ${N}`, `${SPUR} Kategorie ${N}`],
       );
-      await haeltTeil(db, uid, 'xss1', { storageId: ort, preis: 1 });
+      await holdsPart(db, uid, 'xss1', { storageId: ort, preis: 1 });
       await db.run(`INSERT INTO minifig_custom (user_id, fig_number, fig_name) VALUES ($1, 'fig-xss1', $2)`, [
         uid,
         `${SPUR} Figur ${N}`,
       ]);
-      await haeltFigur(db, uid, 'fig-xss1', { storageId: ort, preis: 1 });
+      await holdsMinifig(db, uid, 'fig-xss1', { storageId: ort, preis: 1 });
       await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1, '99902-1', 'N')`, [uid]);
     },
   });
@@ -71,7 +71,7 @@ test('XSS-Nutzlasten in den Hauptansichten bleiben Text', { concurrency: 1, time
       await b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
       await bis(bereit ?? `document.body.innerText.includes(${JSON.stringify(SPUR + ' ')})`, `${name}: Daten sichtbar`);
       await ruhig();
-      const r = await b.auswerten(PRUEFE);
+      const r = await b.auswerten(CHECK);
       assert.deepEqual(r.fremd, [], `${name}: Markup aus Daten im DOM`);
       assert.equal(r.xss, null, `${name}: Nutzlast ausgeführt`);
       assert.ok(r.alsText, `${name}: Nutzlast steht nicht als Text da — prüft der Test noch etwas?`);

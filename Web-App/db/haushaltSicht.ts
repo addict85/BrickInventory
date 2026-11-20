@@ -3,7 +3,7 @@
 
 /** Das Konto `konto` und alle Unterkonten darunter, nur abwärts: Über ein geteiltes
  * Unterkonto hinauf erreichte man sonst fremde Hauptkonten. Spalte `id`. */
-export function haushaltAbwaerts(konto: string): string {
+export function householdDown(konto: string): string {
   return `WITH RECURSIVE baum(id) AS (
       SELECT ${konto}::int
       UNION
@@ -18,6 +18,6 @@ export function auchFremdGeteilt(ids: string): string {
 }
 
 /** Eine Zeile, wenn `konto` ein Hauptkonto hat. */
-export function istUnterkonto(konto: string): string {
+export function isSubAccount(konto: string): string {
   return `SELECT 1 FROM account_links WHERE sub_user_id = ${konto} LIMIT 1`;
 }

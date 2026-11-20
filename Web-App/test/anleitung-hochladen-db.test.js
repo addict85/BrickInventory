@@ -3,18 +3,18 @@
  * Platz begrenzt.
  *
  * Gegenproben (am 27.10. gemessen):
- *   A  die Prüfung inhaltPasstZuTyp() im Upload entfernt → rot: „ein Text als
+ *   A  die Prüfung contentFitsToType() im Upload entfernt → rot: „ein Text als
  *      PDF" (200, die Datei lag im Ordner)
  *   B  die Kontingentprüfung entfernt → rot: „über dem Kontingent"
  *   C  die Besitzprüfung entfernt → rot: „für ein Set, das das Konto nicht
  *      hat" (500 aus dem Fremdschlüssel, die Datei lag im Ordner; 28.10.2026)
- *   D  vorDemUpload aus der Route entfernt → rot: „abgewiesen, bevor der
+ *   D  beforeTheUpload aus der Route entfernt → rot: „abgewiesen, bevor der
  *      Inhalt ankommt“ (keine Antwort, solange der Inhalt fehlt) und „für ein
  *      Set, das das Konto nicht hat“ — die Besitzprüfung steht jetzt dort (28.10.2026)
  *   E  (04.11.2026) chmod der Datei im Upload entfernt → rot: „nur für den Dienst
- *      lesbar“ (0644); privaterOrdner() ohne chmod → rot: dieselbe Prüfung
+ *      lesbar“ (0644); privaterFolder() ohne chmod → rot: dieselbe Prüfung
  *      (der schon bestehende Ordner blieb 0755)
- *   F  (14.11.2026) in vorDemUpload die Gesamtgrenze gestrichen → rot: „über der Grenze
+ *   F  (14.11.2026) in beforeTheUpload die Gesamtgrenze gestrichen → rot: „über der Grenze
  *      aller Konten …“ (keine Antwort, solange der Inhalt fehlt); zusätzlich die Prüfung
  *      nach dem Schreiben gestrichen → rot: dieselbe (200, die Datei lag im Ordner)
  *   G  (14.11.2026) in POST /vouchers/pdf die Gesamtgrenze gestrichen → rot: dieselbe
@@ -23,26 +23,26 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-umgebung({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
+environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { katalogSet } = require('./helpers/bestand');
-const { datenOderSkip } = require('./helpers/db');
+const { catalogSet } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { DATA_DIR } = _req('src/infra/appPaths.js');
-const db = testDaten();
+const db = testData();
 const SET = '99073-1',
   NAME = `anl_hoch_${process.pid}`;
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
 
 test('Anleitung hochladen', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -52,15 +52,15 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
       [NAME],
     )
   ).id;
-  await katalogSet(db, SET, { name: 'Hochladeprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
+  await catalogSet(db, SET, { name: 'Hochladeprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SET]);
   const ordner = path.join(DATA_DIR, 'uploads', String(uid));
   // Leer beginnen: Dieselbe Kontonummer gibt es in den Kopien der anderen Testdateien auch.
   fs.rmSync(ordner, { recursive: true, force: true });
-  const altKontingent = process.env.UPLOAD_KONTINGENT_MB;
+  const altQuota = process.env.UPLOAD_KONTINGENT_MB;
   t.after(async () => {
-    if (altKontingent === undefined) umgebung({ UPLOAD_KONTINGENT_MB: undefined });
-    else umgebung({ UPLOAD_KONTINGENT_MB: altKontingent });
+    if (altQuota === undefined) environment({ UPLOAD_KONTINGENT_MB: undefined });
+    else environment({ UPLOAD_KONTINGENT_MB: altQuota });
     fs.rmSync(ordner, { recursive: true, force: true });
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [SET]).catch(() => {});
@@ -106,7 +106,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
   });
 
   await t.test('über dem Kontingent', async () => {
-    umgebung({ UPLOAD_KONTINGENT_MB: String(1 / 1024) }); // 1 KB
+    environment({ UPLOAD_KONTINGENT_MB: String(1 / 1024) }); // 1 KB
     const gross = Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]);
     const vorher = dateien().length;
     const r = await hochladen(gross, 'application/pdf', 'gross.pdf');
@@ -116,8 +116,8 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
   });
 
   await t.test('über der Grenze aller Konten zusammen: 507, nichts abgelegt', async st => {
-    umgebung({ UPLOAD_KONTINGENT_MB: '1000', UPLOAD_GESAMT_MB: String(1 / 1024) }); // zusammen 1 KB
-    st.after(() => umgebung({ UPLOAD_GESAMT_MB: undefined }));
+    environment({ UPLOAD_KONTINGENT_MB: '1000', UPLOAD_GESAMT_MB: String(1 / 1024) }); // zusammen 1 KB
+    st.after(() => environment({ UPLOAD_GESAMT_MB: undefined }));
     const vorher = dateien().length;
     const r = await hochladen(Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]), 'application/pdf', 'gesamt.pdf');
     assert.deepEqual([r.status, r.body.code], [507, 'upload_gesamt_voll'], JSON.stringify(r.body));
@@ -128,7 +128,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
     const g = await fetch(`${base}/api/v1/vouchers/pdf`, { method: 'POST', body: form });
     assert.deepEqual([g.status, (await g.json()).code], [507, 'upload_gesamt_voll'], 'Gutschein-PDF');
     // Schon am Kopf: Antwort, obwohl der Inhalt nie kommt.
-    const vorab = await new Promise((fertig, fehl) => {
+    const upfront = await new Promise((fertig, fehl) => {
       const a = require('node:http').request(
         `${base}/api/v1/sets/${SET}/instructions/upload`,
         { method: 'POST', headers: { 'content-type': 'multipart/form-data; boundary=x', 'content-length': '4096' } },
@@ -145,16 +145,16 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
         fehl(new Error('keine Antwort, solange der Inhalt fehlt'));
       }, 3000);
     });
-    assert.equal(vorab, 507);
+    assert.equal(upfront, 507);
     // Ohne Grenze (Vorgabe 20 GB) geht dasselbe durch.
-    umgebung({ UPLOAD_GESAMT_MB: undefined });
+    environment({ UPLOAD_GESAMT_MB: undefined });
     assert.equal((await hochladen(PDF, 'application/pdf', 'gesamt.pdf')).status, 200);
   });
 
   await t.test('abgewiesen, bevor der Inhalt ankommt', async () => {
     // Nur der Kopf mit 10 MB Content-Length, der Inhalt bleibt aus: Antwortet
     // der Server trotzdem, hat er vor dem Lesen entschieden.
-    umgebung({ UPLOAD_KONTINGENT_MB: '1' });
+    environment({ UPLOAD_KONTINGENT_MB: '1' });
     const http = require('node:http');
     const status = await new Promise((fertig, fehl) => {
       const anfrage = http.request(
@@ -180,7 +180,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
   });
 
   await t.test('für ein Set, das das Konto nicht hat', async () => {
-    umgebung({ UPLOAD_KONTINGENT_MB: undefined });
+    environment({ UPLOAD_KONTINGENT_MB: undefined });
     const vorher = dateien().length;
     const r = await hochladen(PDF, 'application/pdf', 'fremd.pdf', '99074-1');
     assert.equal(r.status, 404, JSON.stringify(r.body));

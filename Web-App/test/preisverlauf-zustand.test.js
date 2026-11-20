@@ -4,7 +4,7 @@
  *
  * Gegenproben (am 30.10.2026 gemessen):
  *   A  in manualPriceHistory() wieder beide Zustände fest gezeichnet
- *      (['N', 'U'] statt zustaendeFuerVerlauf) → rot: „nur Gebraucht wird
+ *      (['N', 'U'] statt statesForHistory) → rot: „nur Gebraucht wird
  *      gezeichnet“
  *   B  history_new auf die gezeichneten Zustände gekürzt → rot: „die
  *      Rohdaten bleiben vollständig“
@@ -14,14 +14,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
 test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurrency: 1 }, async t => {
-  const db = testDaten();
-  if (!(await datenOderSkip(t, _req))) return;
-  const { preisverlaufFigur, zustaendeFuerVerlauf } = _req('src/finanzen/priceHistory.js');
+  const db = testData();
+  if (!(await dataOrSkip(t, _req))) return;
+  const { priceHistoryMinifig, statesForHistory } = _req('src/finanzen/priceHistory.js');
   const NAME = `verlauf-${process.pid}`,
     FN = `fig-vl${process.pid}`;
   const weg = async () => {
@@ -46,7 +46,7 @@ test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurre
     [FN],
   );
 
-  const v = await preisverlaufFigur([uid], FN, 'CHF');
+  const v = await priceHistoryMinifig([uid], FN, 'CHF');
   assert.deepEqual(
     v.chart.values.map(s => s.name),
     ['U'],
@@ -56,5 +56,5 @@ test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurre
   assert.equal(v.history_used.length, 2);
 
   // Ohne jede Erfassung gilt der Rückfall: beide Zustände.
-  assert.deepEqual(zustaendeFuerVerlauf([], ['N', 'U']), ['N', 'U']);
+  assert.deepEqual(statesForHistory([], ['N', 'U']), ['N', 'U']);
 });

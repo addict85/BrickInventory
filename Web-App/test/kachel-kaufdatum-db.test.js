@@ -17,15 +17,15 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const db = testDaten();
-const { haeltSet, erfasse } = require('./helpers/bestand');
-const { datenOderSkip } = require('./helpers/db');
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
+const db = testData();
+const { holdsSet, record } = require('./helpers/bestand');
+const { dataOrSkip } = require('./helpers/db');
+const { openUi, warte } = require('./helpers/oberflaeche');
 
 test('setsLesen liefert den letzten Kauf', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `kaufdatum_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
@@ -33,9 +33,9 @@ test('setsLesen liefert den letzten Kauf', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  await haeltSet(db, uid, '10300-1', 1, { preis: 199, am: '2024-03-02T10:00:00Z' });
-  await erfasse(db, uid, '10300-1', 1, { preis: 210, am: '2025-07-14T10:00:00Z' });
-  const { setsLesen } = require('./helpers/sources').bereichsSeite('sets');
+  await holdsSet(db, uid, '10300-1', 1, { preis: 199, am: '2024-03-02T10:00:00Z' });
+  await record(db, uid, '10300-1', 1, { preis: 210, am: '2025-07-14T10:00:00Z' });
+  const { setsLesen } = require('./helpers/sources').areaPage('sets');
   const { sets } = await setsLesen(uid, {});
   const s = sets.find(x => x.set_number === '10300-1');
   assert.ok(s, 'Set fehlt');
@@ -43,7 +43,7 @@ test('setsLesen liefert den letzten Kauf', { concurrency: 1 }, async t => {
 });
 
 test('die Kachel zeigt das Kaufdatum', async () => {
-  const { w, d } = await oeffneOberflaeche(
+  const { w, d } = await openUi(
     {
       '/v1/sets': {
         success: true,
@@ -61,7 +61,7 @@ test('die Kachel zeigt das Kaufdatum', async () => {
         ],
       },
     },
-    { browserSprache: 'de-DE' },
+    { browserLanguage: 'de-DE' },
   );
   try {
     await warte(() => d.querySelector('.sc .kachel-datum'));

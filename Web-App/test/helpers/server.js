@@ -6,7 +6,7 @@
 
 /** Was express-session an einer Sitzung anbietet. regenerate und destroy leeren dasselbe
  * Objekt, statt ein neues zu setzen: So liest der Test danach in `sitzung`, was die Route schrieb. */
-function alsSitzung(/** @type {Record<string, any>} */ s) {
+function asSession(/** @type {Record<string, any>} */ s) {
   const leeren = (/** @type {Function} [fertig] */ fertig) => {
     for (const k of Object.keys(s)) delete s[k];
     fertig?.();
@@ -31,14 +31,14 @@ function alsSitzung(/** @type {Record<string, any>} */ s) {
  *                                Server im NACHLAUF — auch wenn eine Zusicherung vorher scheitert.
  */
 function testServer(_req, { sitzung = {}, t } = {}) {
-  const { testZugang, testDienste } = require('./sources');
-  const gestellt = alsSitzung(sitzung);
+  const { testAccess, testServices } = require('./sources');
+  const gestellt = asSession(sitzung);
   const app = _req('startup/app.js').baueApp({
-    pool: testZugang().systemWebPool,
+    pool: testAccess().systemWebPool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 'test-sitzungsgeheimnis-lang-genug',
-    dienste: testDienste(),
-    sitzungsSpeicher: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {Function} */ next) => {
+    dienste: testServices(),
+    sessionStorage: (/** @type {any} */ req, /** @type {any} */ _res, /** @type {Function} */ next) => {
       req.session = gestellt;
       next();
     },
@@ -46,7 +46,7 @@ function testServer(_req, { sitzung = {}, t } = {}) {
   const srv = app.listen(0);
   const schliessen = () => new Promise(r => srv.close(r));
   if (t && typeof t.after === 'function') t.after(schliessen);
-  return { app, srv, base: `http://localhost:${portVon(srv)}`, schliessen };
+  return { app, srv, base: `http://localhost:${portOf(srv)}`, schliessen };
 }
 
 /**
@@ -65,20 +65,20 @@ function routerServer(_req, { sitzung = {}, apiNutzer, routen, t }) {
     if (apiNutzer !== undefined) req.apiUser = apiNutzer;
     next();
   });
-  app.use(_req('src/http/kontoMerken.js').merkeAnfrage);
-  for (const [pfad, modul] of Object.entries(routen)) app.use(pfad, require('./sources').routerAus(_req, modul));
+  app.use(_req('src/http/kontoMerken.js').rememberRequest);
+  for (const [pfad, modul] of Object.entries(routen)) app.use(pfad, require('./sources').routerFrom(_req, modul));
   const srv = app.listen(0);
   const schliessen = () => new Promise(r => srv.close(r));
   if (t && typeof t.after === 'function') t.after(schliessen);
-  return { app, srv, base: `http://localhost:${portVon(srv)}`, schliessen };
+  return { app, srv, base: `http://localhost:${portOf(srv)}`, schliessen };
 }
 
 /** Der Port eines lauschenden Servers (net, http, https): address() ist erst danach ein AddressInfo.
  * @param {{ address(): string | import('node:net').AddressInfo | null }} srv @returns {number} */
-function portVon(srv) {
+function portOf(srv) {
   const a = srv.address();
   if (!a || typeof a === 'string') throw new Error('Server lauscht nicht auf einem TCP-Port');
   return a.port;
 }
 
-module.exports = { testServer, routerServer, portVon };
+module.exports = { testServer, routerServer, portOf };

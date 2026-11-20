@@ -25,25 +25,25 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { stempleAssets, dateiStempel } = _req('src/infra/assetStempel.js');
+const { stempleAssets, fileStamp } = _req('src/infra/assetStempel.js');
 
 /** Ein Wegwerf-Verzeichnis mit einer Datei darin. */
-function baue(inhalt) {
+function build(inhalt) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stempel-'));
   fs.writeFileSync(path.join(dir, 'a.css'), inhalt);
   return dir;
 }
 const HTML = '<link rel="stylesheet" href="/a.css?v=alt">';
-const stempelAus = s => (s.match(/\?v=([^"]*)/) || [])[1];
+const stampFrom = s => (s.match(/\?v=([^"]*)/) || [])[1];
 
 test('eine geänderte Datei bekommt eine neue Adresse', () => {
-  const dir = baue('.a{color:red}');
+  const dir = build('.a{color:red}');
   try {
-    const vorher = stempelAus(stempleAssets(HTML, dir));
+    const vorher = stampFrom(stempleAssets(HTML, dir));
     assert.ok(vorher && vorher !== 'alt', `Kein Stempel gesetzt: ${vorher}`);
 
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}');
-    const nachher = stempelAus(stempleAssets(HTML, dir));
+    const nachher = stampFrom(stempleAssets(HTML, dir));
     assert.notEqual(
       nachher,
       vorher,
@@ -57,7 +57,7 @@ test('eine geänderte Datei bekommt eine neue Adresse', () => {
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}/*x*/');
     fs.utimesSync(path.join(dir, 'a.css'), st.atime, st.mtime);
     assert.notEqual(
-      stempelAus(stempleAssets(HTML, dir)),
+      stampFrom(stempleAssets(HTML, dir)),
       nachher,
       'Bei gleicher Änderungszeit, aber anderer Grösse bleibt die Adresse ' +
         'gleich — dann fehlt die Grösse im Stempel.',
@@ -73,11 +73,11 @@ test('eine unveränderte Datei behält ihre Adresse', async () => {
   // Seitenaufruf 223 KB Bündel und sechs Designs.
   //
   // Gegenprobe C, nicht das Nachdenken.
-  const dir = baue('.a{color:red}');
+  const dir = build('.a{color:red}');
   try {
-    const a = stempelAus(stempleAssets(HTML, dir));
+    const a = stampFrom(stempleAssets(HTML, dir));
     await new Promise(r => setTimeout(r, 20));
-    const b = stempelAus(stempleAssets(HTML, dir));
+    const b = stampFrom(stempleAssets(HTML, dir));
     assert.equal(
       a,
       b,
@@ -99,14 +99,14 @@ test('eine fehlende Datei lässt den vorhandenen Wert stehen', () => {
         'fehlende Datei ist ein anderes Problem und darf die Adressen der ' +
         'übrigen nicht verwackeln.',
     );
-    assert.equal(dateiStempel(path.join(dir, 'gibtsnicht.css')), null);
+    assert.equal(fileStamp(path.join(dir, 'gibtsnicht.css')), null);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
 
 test('ein Verweis ohne ?v= bleibt unberührt', () => {
-  const dir = baue('.a{}');
+  const dir = build('.a{}');
   try {
     const roh = '<link href="/a.css"><script src="/b.js"></script>';
     assert.equal(stempleAssets(roh, dir), roh, 'Ein bewusst unversionierter Verweis wurde angefasst.');

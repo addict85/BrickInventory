@@ -5,11 +5,11 @@
  * die nicht mehr passt, scheitert sofort endgültig und mit klarem Text.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  in stelleAuftragEin() pruefeNutzlast() weggelassen → rot: „eine falsche
+ *   A  in placeJobOne() checkPayload() weggelassen → rot: „eine falsche
  *      Nutzlast wird beim Einstellen abgewiesen“ (die Zeile stand in der Tabelle)
  *   B  im Worker a.payload statt der geprüften übergeben → rot: „der Worker
  *      übergibt die geprüfte Nutzlast“ (das Fremdfeld kam an)
- *   C  fehlgeschlagen() ohne sofortEndgueltig → rot: „eine alte Nutzlast
+ *   C  fehlgeschlagen() ohne immediatelyFinal → rot: „eine alte Nutzlast
  *      scheitert sofort endgültig“ (Status offen für den zweiten Versuch)
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
@@ -21,23 +21,23 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
 test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
-  const db = await datenOderSkip(t, _req);
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testBereich('auftraege').auftraege };
-  const { NutzlastUngueltig } = _req('src/auftraege/arten.js');
-  const { erzeugeWorker } = _req('jobs/auftragsWorker.js');
+  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testArea('auftraege').auftraege };
+  const { PayloadInvalid } = _req('src/auftraege/arten.js');
+  const { createWorker } = _req('jobs/auftragsWorker.js');
   await db.run(`DELETE FROM jobs WHERE type = 'brickset'`);
 
   await t.test('eine falsche Nutzlast wird beim Einstellen abgewiesen', async () => {
     await assert.rejects(
-      A.stelleAuftragEin('brickset', { set_numbr: '10179-1' }),
-      (/** @type {any} */ e) => e instanceof NutzlastUngueltig && /brickset.*set_number/.test(e.message),
+      A.placeJobOne('brickset', { set_numbr: '10179-1' }),
+      (/** @type {any} */ e) => e instanceof PayloadInvalid && /brickset.*set_number/.test(e.message),
     );
-    await assert.rejects(A.stelleAuftragEin('gibt-es-nicht', {}), NutzlastUngueltig);
+    await assert.rejects(A.placeJobOne('gibt-es-nicht', {}), PayloadInvalid);
     const n = await db.get(`SELECT COUNT(*)::int AS n FROM jobs WHERE type = 'brickset'`);
     assert.equal(n.n, 0);
   });
@@ -45,11 +45,11 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
   await t.test('der Worker übergibt die geprüfte Nutzlast', async () => {
     // Ein Feld, das ein älterer Stand mitschrieb, erreicht den Bearbeiter nicht.
     await db.run(`INSERT INTO jobs (type, payload, max_attempts) VALUES ('brickset', $1, 3)`, [
-      JSON.stringify({ set_number: '10179-1', versuch: 2, altfeld: 'x' }),
+      JSON.stringify({ set_number: '10179-1', versuch: 2, legacyField: 'x' }),
     ]);
     const gesehen = [];
-    const w = erzeugeWorker(
-      require('./helpers/sources').testDienste().auftraege,
+    const w = createWorker(
+      require('./helpers/sources').testServices().auftraege,
       {
         brickset: {
           ausfuehren: async n => {
@@ -57,9 +57,9 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
           },
         },
       },
-      { fristSek: 60 },
+      { deadlineSec: 60 },
     );
-    assert.equal(await w.verarbeiteEinen(), true);
+    assert.equal(await w.processOne(), true);
     assert.deepEqual(gesehen, [{ set_number: '10179-1', versuch: 2 }]);
   });
 
@@ -70,8 +70,8 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
     );
     let gelaufen = 0,
       aufgegeben = 0;
-    const w = erzeugeWorker(
-      require('./helpers/sources').testDienste().auftraege,
+    const w = createWorker(
+      require('./helpers/sources').testServices().auftraege,
       {
         brickset: {
           ausfuehren: async () => {
@@ -82,9 +82,9 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
           },
         },
       },
-      { fristSek: 60 },
+      { deadlineSec: 60 },
     );
-    assert.equal(await w.verarbeiteEinen(), true);
+    assert.equal(await w.processOne(), true);
     const z = await db.get('SELECT status, attempts, error_message FROM jobs WHERE id = $1', [id]);
     assert.equal(gelaufen, 0, 'der Bearbeiter lief mit einer ungültigen Nutzlast');
     assert.equal(aufgegeben, 0);

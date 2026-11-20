@@ -1,26 +1,26 @@
 // Finances: valuation, profit & loss, and the value development of the collection.
 import { subscribe } from './events.js';
 import {
-  ladeAnzeige,
-  listeLadefehler,
+  loadDisplay,
+  listLoadError,
   condBadges,
   ownerBadges,
-  kontoAnzeige,
+  accountDisplay,
   pnlBadge,
-  geschaetztKauf,
-  zeilenKnopf,
+  estimatedPurchase,
+  rowsButton,
 } from './bausteine.js';
 import { registerActions } from './registry.js';
 import { colorName, t, tRaw } from '../i18n.js';
 import { escJs, esc, html, rawHtml } from './escaping.js';
 import { api } from './api.js';
-import { bildTag, platzhalterInhalt, imgUrl, thumbUrl } from './bilder.js';
-import { leerZustand, meldeTreffer, ico, G, alle, setzeHtml } from './dom.js';
+import { bildTag, placeholderContent, imgUrl, thumbUrl } from './bilder.js';
+import { emptyState, reportHits, ico, G, alle, setzeHtml } from './dom.js';
 import { fmtDatum, fmtGeld, fmtN } from './format.js';
 import { scopeQuery } from './kontofilter.js';
 import { pnlBySet, setFinanceHeaderValue } from './state.js';
 import { hasCurve, loadPortfolioChart, setCostBasis } from './wertkurve.js';
-import { basisAus, zeigeKennzahlen } from './finanz-kennzahlen.js';
+import { baseFrom, showMetrics } from './finanz-kennzahlen.js';
 /** @typedef {import('./finanz-kennzahlen.js').Basis} Basis */
 
 /**
@@ -51,7 +51,7 @@ const VALUE_SKELETON = '<span class="skelett-zeile skelett-wert" aria-hidden="tr
 const METRICS = ['fin-einstand', 'fin-wert', 'fin-total-pnl', 'portfolio-current'];
 
 /** What a table row needs besides its own data.
- * @typedef {{ cur: string, mehrereKonten: boolean, fehlerNeutral: boolean }} RowContext */
+ * @typedef {{ cur: string, severalAccounts: boolean, errorNeutral: boolean }} RowContext */
 /** @typedef {import('../../frontend-typen/vertrag').ValuationSet & { error?: string | null, owners?: { id: number, username: string }[] }} ValuedSet */
 /** @typedef {ValuedSet['acquisitions'][number]} SetAcquisition */
 /** @typedef {import('../../frontend-typen/vertrag').PartsValuationResponse['parts'][number] | import('../../frontend-typen/vertrag').FigsValuationResponse['figs'][number]} ManualItem */
@@ -63,7 +63,7 @@ function owners(it, multiAccount) {
   return multiAccount && it.owners?.length
     ? it.owners.map(
         o =>
-          html`<span class="cond-badge besitzer-badge"><span class="vh">${tRaw('finance.konto')}: </span>${kontoAnzeige(o)}</span>`,
+          html`<span class="cond-badge besitzer-badge"><span class="vh">${tRaw('finance.konto')}: </span>${accountDisplay(o)}</span>`,
       )
     : ownerBadges(it);
 }
@@ -108,7 +108,7 @@ function estimatedMark(it, markup) {
 /** On a phone the purchase price column is missing; the row underneath then says the purchase price is
  * estimated. @param {{ price_estimated?: boolean } | null | undefined} acq */
 function belowEstimated(acq) {
-  return acq?.price_estimated ? html` · ${geschaetztKauf(tRaw('finance.kauf_geschaetzt'))}` : '';
+  return acq?.price_estimated ? html` · ${estimatedPurchase(tRaw('finance.kauf_geschaetzt'))}` : '';
 }
 
 /** On a phone the purchase price column is missing; the row's purchase price then goes under the name.
@@ -150,12 +150,12 @@ function pmRow(it, label, acq, ctx, text) {
           alt: '',
           ph: kind,
         })
-      : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt(kind)}</span>`;
+      : html`<span class="bild-ph" aria-hidden="true">${placeholderContent(kind)}</span>`;
   // The former third parameter onclickAttr was never set by any caller — that branch was dead and would
   // have been blocked by the CSP as an inline handler.
   return html`<tr class="zeiger" ${rawHtml(manArgs(it))}>
     <td class="fin-bild">${img}</td>
-      <td class="fin-name"><span class="fin-name-text">${zeilenKnopf(manTarget(it), rawHtml(label), tRaw('zeile.oeffnen', { name: text, nr: it.fig_number || it.part_number || '' }))}${acq ? html` ${condBadge(acq.condition)}` : ''} ${owners(it, ctx.mehrereKonten)}</span><span class="fin-unter">×${qty}${belowPurchase(purchase, qty, cur)}${belowEstimated(acq)}</span></td>
+      <td class="fin-name"><span class="fin-name-text">${rowsButton(manTarget(it), rawHtml(label), tRaw('zeile.oeffnen', { name: text, nr: it.fig_number || it.part_number || '' }))}${acq ? html` ${condBadge(acq.condition)}` : ''} ${owners(it, ctx.severalAccounts)}</span><span class="fin-unter">×${qty}${belowPurchase(purchase, qty, cur)}${belowEstimated(acq)}</span></td>
     <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
     <td class="fin-detail fin-datum">${acq?.created_at ? fmtDatum(acq.created_at) : ''}</td>
     <td class="fin-detail price-cell zahl">${rawHtml(purchaseCell(purchase, qty, cur, acq))}</td>
@@ -200,7 +200,7 @@ function manualSection(o) {
 // are peer purchases, not a breakdown.
 /** @param {ValuedSet} s @param {SetAcquisition | null} acq @param {RowContext} ctx */
 function setRow(s, acq, ctx) {
-  const { cur, fehlerNeutral } = ctx;
+  const { cur, errorNeutral } = ctx;
   const hasPrice = !s.error;
   const qty = acq ? acq.quantity : s.quantity;
   const purchase = acq ? acq.purchase_price : s.purchase_price;
@@ -213,15 +213,15 @@ function setRow(s, acq, ctx) {
   // The error message lives in the status symbol (tooltip), not in the total: there it broke the
   // column into five lines.
   return html`<tr class="zeiger" data-click="openModal" data-arg="${s.set_number}">
-  <td class="fin-bild">${s.image_local || s.image_url ? bildTag({ src: imgUrl(thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url, true), alt: '', ph: 'set' }) : html`<span class="bild-ph" aria-hidden="true">${platzhalterInhalt('set')}</span>`}</td>
+  <td class="fin-bild">${s.image_local || s.image_url ? bildTag({ src: imgUrl(thumbUrl(s.image_local || s.image_url) || s.image_local || s.image_url, true), alt: '', ph: 'set' }) : html`<span class="bild-ph" aria-hidden="true">${placeholderContent('set')}</span>`}</td>
   <td class="fin-detail"><span class="nummer-klein">${s.set_number}</span></td>
-    <td class="fin-name">${zeilenKnopf({ click: 'openModal', arg: s.set_number }, s.name || '—', tRaw('zeile.oeffnen', { name: s.name || s.set_number, nr: s.set_number }))}${s.year ? html` <span class="fin-jahr">${s.year}</span>` : ''}${acq ? html` ${condBadge(acq.condition)}` : ''} ${owners(s, ctx.mehrereKonten)}<span class="fin-unter">${s.set_number}${s.year ? html` · ${s.year}` : ''} · ×${qty}${belowPurchase(purchase, qty, cur)}${belowEstimated(acq)}</span></td>
+    <td class="fin-name">${rowsButton({ click: 'openModal', arg: s.set_number }, s.name || '—', tRaw('zeile.oeffnen', { name: s.name || s.set_number, nr: s.set_number }))}${s.year ? html` <span class="fin-jahr">${s.year}</span>` : ''}${acq ? html` ${condBadge(acq.condition)}` : ''} ${owners(s, ctx.severalAccounts)}<span class="fin-unter">${s.set_number}${s.year ? html` · ${s.year}` : ''} · ×${qty}${belowPurchase(purchase, qty, cur)}${belowEstimated(acq)}</span></td>
   <td class="fin-detail zahl"><span class="qbadge">×${qty}</span></td>
   <td class="fin-detail fin-datum">${dateSrc ? fmtDatum(dateSrc) : '—'}</td>
   <td class="fin-detail price-cell zahl">${rawHtml(purchaseCell(purchase, qty, cur, acq))}</td>
   <td class="fin-wert zahl price-total">${hasPrice && Number(total) > 0 ? valueWithUnit(Number(total), Number(market), qty, cur) : noMarket()}</td>
   <td class="fin-guv zahl">${pnlBadge(pnl, purchase) || noPnl()}</td>
-    <td class="fin-status">${priceStatusBadge(s, fehlerNeutral)}</td>
+    <td class="fin-status">${priceStatusBadge(s, errorNeutral)}</td>
 </tr>`;
 }
 
@@ -234,7 +234,7 @@ function setsTable(rows, purchase, setsQtyAvg, cur) {
  * per section would have stretched the page on a phone by three boxes showing the same numbers.
  * @param {{ sets: number, parts: number, figs: number, alle: number }} purchase
  * @param {{ sets: number, parts: number, figs: number, alle: number }} value @param {string} cur
- * @param {{ ohneMarkt: number }} basis */
+ * @param {{ withoutMarket: number }} basis */
 function totalsTable(purchase, value, cur, basis) {
   const row = (/** @type {string} */ name, /** @type {number} */ buy, /** @type {number} */ w, note = '') =>
     html`<tr><td class="fin-fuss-name">${rawHtml(name)}</td>${totalCells(buy, w, cur, note)}</tr>`;
@@ -242,16 +242,16 @@ function totalsTable(purchase, value, cur, basis) {
     <div class="tw abstand-o-125">
       <table class="dt dt-summe" aria-label="${tRaw('finance.sum')}">
         <thead><tr><th><span class="vh">${tRaw('finance.bereich')}</span></th><th>${tRaw('finance.col.purchase')}</th><th>${tRaw('finance.grand.value')}</th></tr></thead>
-        <tfoot>${row(tRaw('finance.grand.total'), purchase.alle, value.alle, basis.ohneMarkt > 0 ? tRaw('finance.ohne_n', { n: basis.ohneMarkt }) : '')}</tfoot>
+        <tfoot>${row(tRaw('finance.grand.total'), purchase.alle, value.alle, basis.withoutMarket > 0 ? tRaw('finance.ohne_n', { n: basis.withoutMarket }) : '')}</tfoot>
       </table>
-      ${basis.ohneMarkt > 0 ? html`<p class="fin-fussnote">${tRaw('finance.summe_ohne_markt', { n: basis.ohneMarkt })}</p>` : ''}
+      ${basis.withoutMarket > 0 ? html`<p class="fin-fussnote">${tRaw('finance.summe_ohne_markt', { n: basis.withoutMarket })}</p>` : ''}
     </div>`;
 }
 
 /** Placeholder while loading; an existing table stays put. @returns {boolean} whether a table was already there */
 function financeLoading() {
   const hadTable = !!G('fin-tbl').querySelector('table');
-  if (!hadTable) setzeHtml(G('fin-tbl'), ladeAnzeige(tRaw('finance.fetch_prices')));
+  if (!hadTable) setzeHtml(G('fin-tbl'), loadDisplay(tRaw('finance.fetch_prices')));
   G('fin-sum').hidden = false;
   if (!G('fin-sum').dataset.geladen) {
     G('fin-sum').setAttribute('aria-busy', 'true');
@@ -259,18 +259,18 @@ function financeLoading() {
   }
   // A previous error does not linger while reloading.
   const chart = G('portfolio-chart');
-  if (chart?.querySelector('.fehler-zustand')) setzeHtml(chart, ladeAnzeige(tRaw('common.loading'), { klein: true }));
+  if (chart?.querySelector('.fehler-zustand')) setzeHtml(chart, loadDisplay(tRaw('common.loading'), { klein: true }));
   return hadTable;
 }
 
 /** Load failure: reason and "retry" once, at the top of the chart box; cards with no number are dropped
- * (five "—"s above the message looked like an empty collection). @param {Parameters<typeof listeLadefehler>[1]} d
+ * (five "—"s above the message looked like an empty collection). @param {Parameters<typeof listLoadError>[1]} d
  * @param {boolean} hadTable @returns {boolean} true if it was an error */
 function financeFailed(d, hadTable) {
   const inBox = !hadTable && !hasCurve();
   const target = G(inBox ? 'portfolio-chart' : 'fin-tbl');
   const title = tRaw('finance.fehler_titel');
-  if (!listeLadefehler(target, d, { erneut: 'loadFinance', behalten: hadTable, titel: title })) return false;
+  if (!listLoadError(target, d, { erneut: 'loadFinance', behalten: hadTable, titel: title })) return false;
   if (inBox) {
     setzeHtml(G('fin-tbl'), '');
     // loadPortfolioChart() frees them again as soon as a history is there.
@@ -338,7 +338,7 @@ export async function loadFinance() {
   // The grand total comes from the server (totals.grand_total, computed per row): the rule for what
   // counts should live in one place. The locally computed sum is only a fallback if the pnl request fails.
   const grandTotal = parseFloat(pnlData?.totals?.grand_total || '0') || setsQtyAvg + extra;
-  const basis = basisAus(pt, missingPrice);
+  const basis = baseFrom(pt, missingPrice);
   const value = {
     sets: setsQtyAvg,
     parts: parseFloat(partsVal?.total_value || '0'),
@@ -358,13 +358,13 @@ export async function loadFinance() {
   const empty = !d.sets.length && !partsItems.length && !figsItems.length;
   G('tab-finance')?.classList.toggle('finanzen-leer', empty);
   loadPortfolioChart();
-  zeigeKennzahlen({
+  showMetrics({
     basis,
-    einstandAlle: purchase.alle,
-    wertAlle: grandTotal,
+    costAll: purchase.alle,
+    valueAll: grandTotal,
     guv: totalPnl,
     cur,
-    fremdeWaehrung: pnlData?.totals?.kaufpreise_fremde_waehrung || 0,
+    foreignCurrency: pnlData?.totals?.kaufpreise_fremde_waehrung || 0,
     geschaetzt: allRows.flatMap(z => z.acquisitions || []).filter(a => a.price_estimated).length,
     zeilen: allRows.reduce((n, z) => n + Math.max(1, z.acquisitions?.length || 0), 0),
   });
@@ -372,7 +372,7 @@ export async function loadFinance() {
   if (empty) {
     setzeHtml(
       G('fin-tbl'),
-      leerZustand({
+      emptyState({
         ico: 'finanzen',
         titel: tRaw('finance.empty'),
         text: tRaw('finance.empty_text'),
@@ -384,7 +384,7 @@ export async function loadFinance() {
   // If the price is missing for most sets, that's an outage, not an isolated case: neutral instead of red.
   const errorRows = d.sets.filter(s => s.error).length;
   /** @type {RowContext} */
-  const ctx = { cur, mehrereKonten: multiAccount, fehlerNeutral: errorRows >= 3 && errorRows * 2 >= d.sets.length };
+  const ctx = { cur, severalAccounts: multiAccount, errorNeutral: errorRows >= 3 && errorRows * 2 >= d.sets.length };
   _finState = { sets: d.sets, parts: partsItems, figs: figsItems, purchase, value, setsQtyAvg, cur, basis, ctx };
   renderFinanceTables();
 }
@@ -399,7 +399,7 @@ export async function loadFinance() {
  */
 function purchaseCell(unit, qty, cur, acq) {
   const amount = purchaseAmount(unit, qty, cur, acq);
-  return acq?.price_estimated ? geschaetztKauf(amount) : amount;
+  return acq?.price_estimated ? estimatedPurchase(amount) : amount;
 }
 
 /**
@@ -534,7 +534,7 @@ function renderFinanceTables() {
       cur: st.cur,
     })}${more}${totalsTable(st.purchase, st.value, st.cur, st.basis)}`,
   );
-  if (q) meldeTreffer(tRaw('treffer.eintraege', { n: sets.length + parts.length + figs.length }));
+  if (q) reportHits(tRaw('treffer.eintraege', { n: sets.length + parts.length + figs.length }));
   // The filter survives the redraw; otherwise the chips would show a selection the table no longer has.
   finFilterApply();
   finSentinelBind();

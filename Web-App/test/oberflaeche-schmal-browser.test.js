@@ -5,4 +5,4 @@
  * Gegenprobe (03.11.2026 gemessen): `.lager-sinnbild { min-width: 44px }` in
  * mobile.css entfernt → rot: „Sicht lagerorte“ (Tippziel 42 × 44).
  */
-require('./helpers/oberflaeche-pruefung').pruefeGrosseSchrift('schmal');
+require('./helpers/oberflaeche-pruefung').checkLargeFont('schmal');

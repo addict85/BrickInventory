@@ -29,14 +29,14 @@ const { keineDb } = require('./helpers/db');
 // Der Pfad muss auf das GEBAUTE Modul in dist/ zeigen — dort lädt der Router
 // seine Abhängigkeit, und nur ein Treffer im selben require-Cache-Eintrag
 // ersetzt sie wirksam.
-const { DIST, testDaten } = require('./helpers/sources');
+const { DIST, testData } = require('./helpers/sources');
 const mwPath = require.resolve(path.join(DIST, 'routes/api_v1', 'middleware.js'));
 require.cache[mwPath] = /** @type {any} */ ({
   id: mwPath,
   filename: mwPath,
   loaded: true,
   exports: {
-    waechterFuer: () => ({
+    guardFor: () => ({
       requireToken: (req, _res, next) => {
         req.apiUser = { user_id: 1 };
         next();
@@ -45,7 +45,7 @@ require.cache[mwPath] = /** @type {any} */ ({
   },
 });
 
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
 async function dbReachable() {
@@ -60,7 +60,7 @@ async function dbReachable() {
 /**
  * Stellt das echte Schema wieder her, das seed() durch Attrappen ersetzt.
  */
-async function schemaWiederherstellen() {
+async function restoreSchema() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -139,7 +139,7 @@ test('Katalog-API (Postgres-Integration)', async t => {
   }
   await seed();
   const app = express();
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/catalog.js'));
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/catalog.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}/api/v1`;
   const get = async p => {
@@ -228,6 +228,6 @@ test('Katalog-API (Postgres-Integration)', async t => {
 
   srv.close();
   // REIHENFOLGE: erst das Schema, dann der Pool
-  await schemaWiederherstellen();
+  await restoreSchema();
   await db.pool.end(); // pg-Pool schließen, sonst hält er den Prozess offen
 });

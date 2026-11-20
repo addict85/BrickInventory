@@ -1,7 +1,7 @@
 /** Die einzige Stelle, an der eine fachliche Fehlerart zum HTTP-Status wird. */
-import { Fachfehler, type FehlerArt } from '../infra/fehlerTexte';
+import { Fachfehler, type ErrorKind } from '../infra/fehlerTexte';
 
-export const STATUS_DER_ART: Readonly<Record<FehlerArt, number>> = {
+export const STATUS_THE_KIND: Readonly<Record<ErrorKind, number>> = {
   ungueltig: 400,
   nicht_angemeldet: 401,
   verboten: 403,
@@ -24,8 +24,8 @@ export const STATUS_DER_ART: Readonly<Record<FehlerArt, number>> = {
 
 /** Status eines geworfenen Fehlers: Fachfehler nach Art, Fehler von Express
  * oder Bibliotheken nach ihrem eigenen `status`, alles andere 500. */
-export function statusVon(e: unknown): number {
-  if (e instanceof Fachfehler) return STATUS_DER_ART[e.art] ?? 500;
+export function statusOf(e: unknown): number {
+  if (e instanceof Fachfehler) return STATUS_THE_KIND[e.art] ?? 500;
   const s = (e as { status?: unknown } | null | undefined)?.status;
   return typeof s === 'number' ? s : 500;
 }

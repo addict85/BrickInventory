@@ -6,26 +6,26 @@ import { G, ico, setzeHtml } from './dom.js';
 // Störung nicht die Liste verdeckt.
 
 /** Anzeigedauer je Art in ms. */
-const TOAST_DAUER = { success: 3500, info: 5000, error: 9000 };
+const TOAST_DURATION = { success: 3500, info: 5000, error: 9000 };
 
-/** @type {WeakMap<Element, {schluessel: string, anzahl: number, frist: ReturnType<typeof setTimeout> | null, dauer: number}>} */
+/** @type {WeakMap<Element, {schluessel: string, anzahl: number, frist: ReturnType<typeof setTimeout> | null, duration: number}>} */
 const _toastStand = new WeakMap();
 
 /** Frist (neu) starten; ohne Dauer bleibt die Meldung, bis jemand sie schliesst. @param {HTMLElement} el */
-function starteFrist(el) {
+function startDeadline(el) {
   const stand = _toastStand.get(el);
   if (!stand) return;
   if (stand.frist) clearTimeout(stand.frist);
-  stand.frist = stand.dauer ? setTimeout(() => el.remove(), stand.dauer) : null;
+  stand.frist = stand.duration ? setTimeout(() => el.remove(), stand.duration) : null;
 }
 
 /** Fehlertexte der 401-Antworten: Noch laufende Anfragen scheitern nach dem
  * Ende der Sitzung mit genau diesem Text. Als Toast widerspräche er dem einen
  * Hinweis in der Anmeldekarte; toast() lässt ihn deshalb weg. */
-const _meldungenDerAbgelaufenenSitzung = new Set();
+const _messagesTheExpiredSession = new Set();
 
 /** @param {{text: string, fn: () => unknown, bleibt?: boolean}} [aktion] Knopf in der Meldung, z. B. „Rückgängig";
- *  `bleibt` hält ihn über einen Ansichtswechsel (verwirfToasts).
+ *  `bleibt` hält ihn über einen Ansichtswechsel (discardToasts).
  * @param {string} [details] aufklappbare Ursache unter der Meldung
  * @param {unknown} msg
  * @param {'info' | 'success' | 'error'} [type]
@@ -35,7 +35,7 @@ export function toast(msg, type = 'info', aktion, details) {
   if (
     type === 'error' &&
     !loggedInAccount &&
-    [..._meldungenDerAbgelaufenenSitzung].some(m => String(msg ?? '').startsWith(m))
+    [..._messagesTheExpiredSession].some(m => String(msg ?? '').startsWith(m))
   )
     return null;
   // Dieselbe Meldung noch einmal: zählen statt stapeln, und die Frist beginnt neu.
@@ -43,14 +43,14 @@ export function toast(msg, type = 'info', aktion, details) {
   const gleich = aktion ? null : [...c.children].find(x => _toastStand.get(x)?.schluessel === schluessel);
   if (gleich) {
     const stand =
-      /** @type {{schluessel: string, anzahl: number, frist: ReturnType<typeof setTimeout> | null, dauer: number}} */ (
+      /** @type {{schluessel: string, anzahl: number, frist: ReturnType<typeof setTimeout> | null, duration: number}} */ (
         _toastStand.get(gleich)
       );
     stand.anzahl++;
     const zahl = /** @type {HTMLElement} */ (gleich.querySelector('.toast-anzahl'));
     zahl.textContent = `×${stand.anzahl}`;
     zahl.hidden = false;
-    starteFrist(/** @type {HTMLElement} */ (gleich));
+    startDeadline(/** @type {HTMLElement} */ (gleich));
     return /** @type {HTMLElement} */ (gleich);
   }
   // Ein Erfolg erledigt ältere Fehler: Sie blieben sonst neben der Bestätigung stehen.
@@ -111,8 +111,8 @@ export function toast(msg, type = 'info', aktion, details) {
     el.append(zu);
   }
   c.appendChild(el);
-  _toastStand.set(el, { schluessel, anzahl: 1, frist: null, dauer: bleibt ? 0 : (TOAST_DAUER[type] ?? 4500) });
-  starteFrist(el);
+  _toastStand.set(el, { schluessel, anzahl: 1, frist: null, duration: bleibt ? 0 : (TOAST_DURATION[type] ?? 4500) });
+  startDeadline(el);
   // Solange Maus oder Fokus darauf liegt, läuft die Frist nicht.
   const halt = () => {
     const s = _toastStand.get(el);
@@ -123,9 +123,9 @@ export function toast(msg, type = 'info', aktion, details) {
   };
   el.addEventListener('mouseenter', halt);
   el.addEventListener('focusin', halt);
-  el.addEventListener('mouseleave', () => starteFrist(el));
+  el.addEventListener('mouseleave', () => startDeadline(el));
   el.addEventListener('focusout', e => {
-    if (!el.contains(/** @type {Node | null} */ (e.relatedTarget))) starteFrist(el);
+    if (!el.contains(/** @type {Node | null} */ (e.relatedTarget))) startDeadline(el);
   });
   return el;
 }
@@ -134,18 +134,18 @@ export function toast(msg, type = 'info', aktion, details) {
  * Beim Wechsel der Ansicht: Meldungen gehören zu der Ansicht, in der sie entstanden; nur solche mit Knopf
  * (Rückgängig, Ändern) bleiben bis zur Frist.
  */
-export function verwirfToasts() {
+export function discardToasts() {
   for (const el of [...(G('toasts')?.children || [])])
     if (!(/** @type {HTMLElement} */ (el).hasAttribute('data-bleibt'))) el.remove();
 }
 
 /** Merkt den Text einer 401-Antwort; toast() lässt ihn nach dem Ende der Sitzung weg. @param {string} text */
-export function merkeSitzungsende(text) {
-  _meldungenDerAbgelaufenenSitzung.add(text);
+export function rememberSessionEnd(text) {
+  _messagesTheExpiredSession.add(text);
 }
 
 /** @type {WeakMap<Element, ReturnType<typeof setTimeout>>} */
-const _feldFristen = new WeakMap();
+const _fieldDeadlines = new WeakMap();
 
 /**
  * Die eine Regel fürs Speichern: Einzelne Werte speichern sofort, Formulare mit „Speichern“ — und beide
@@ -166,13 +166,13 @@ export function meldeAmFeld(feld, text = tRaw('feld.gespeichert')) {
     (halter || feld).insertAdjacentElement(halter ? 'beforeend' : 'afterend', neu);
     ort = neu;
   }
-  const stelle = ort;
-  stelle.textContent = text;
-  clearTimeout(_feldFristen.get(stelle));
-  _feldFristen.set(
-    stelle,
+  const place = ort;
+  place.textContent = text;
+  clearTimeout(_fieldDeadlines.get(place));
+  _fieldDeadlines.set(
+    place,
     setTimeout(() => {
-      stelle.textContent = '';
+      place.textContent = '';
     }, 5000),
   );
 }

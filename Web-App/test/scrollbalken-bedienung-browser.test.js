@@ -16,18 +16,18 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { starteApp } = require('./helpers/app-browser');
-const { haeltSet } = require('./helpers/bestand');
+const { startApp } = require('./helpers/app-browser');
+const { holdsSet } = require('./helpers/bestand');
 
 const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
 test('Scrollbalken: sichtbar und bedienbar', { concurrency: 1, timeout: 300_000 }, async t => {
-  const app = await starteApp(t, {
+  const app = await startApp(t, {
     name: `scrollbalken_${process.pid}`,
-    alleDesigns: true,
+    allDesigns: true,
     // Genug Kacheln, dass die Seite höher ist als das Fenster.
     bestand: async (db, uid) => {
-      for (let i = 0; i < 40; i++) await haeltSet(db, uid, `${10000 + i}-1`, 1, { preis: 10 });
+      for (let i = 0; i < 40; i++) await holdsSet(db, uid, `${10000 + i}-1`, 1, { preis: 10 });
     },
   });
   if (app.grund) {
@@ -76,7 +76,7 @@ test('Scrollbalken: sichtbar und bedienbar', { concurrency: 1, timeout: 300_000 
     const g =
       await b.auswerten(`(() => { const r = document.getElementById('app-scrollbar-thumb').getBoundingClientRect();
       return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
-    const maus = (type, y) =>
+    const mouse = (type, y) =>
       b.tab('Input.dispatchMouseEvent', {
         type,
         x: g.x,
@@ -85,13 +85,13 @@ test('Scrollbalken: sichtbar und bedienbar', { concurrency: 1, timeout: 300_000 
         buttons: type === 'mouseReleased' ? 0 : 1,
         clickCount: 1,
       });
-    await maus('mouseMoved', g.y);
-    await maus('mousePressed', g.y);
-    await maus('mouseMoved', g.y + 150);
+    await mouse('mouseMoved', g.y);
+    await mouse('mousePressed', g.y);
+    await mouse('mouseMoved', g.y + 150);
     const waehrend = await b.auswerten(
       `({ y: scrollY, zieht: document.getElementById('app-scrollbar').classList.contains('dragging') })`,
     );
-    await maus('mouseReleased', g.y + 150);
+    await mouse('mouseReleased', g.y + 150);
     const danach = await b.auswerten(`({ zieht: document.getElementById('app-scrollbar').classList.contains('dragging'),
       etikett: getComputedStyle(document.getElementById('app-scrollbar-label')).display })`);
     assert.ok(waehrend.y > 300, `Seite nur um ${waehrend.y} px gerollt`);
@@ -103,10 +103,10 @@ test('Scrollbalken: sichtbar und bedienbar', { concurrency: 1, timeout: 300_000 
   await t.test('Kontrastmodus: die Leiste des Browsers bleibt', async () => {
     const stand = () =>
       b.auswerten(`({ eigen: getComputedStyle(document.getElementById('app-scrollbar')).display,
-      browserLeiste: innerWidth - document.documentElement.clientWidth })`);
+      browserBar: innerWidth - document.documentElement.clientWidth })`);
     const normal = await stand();
     assert.equal(normal.eigen, 'block', 'Vorbedingung: der Eigenbau steht');
-    assert.equal(normal.browserLeiste, 0, 'Vorbedingung: die Leiste des Browsers ist versteckt');
+    assert.equal(normal.browserBar, 0, 'Vorbedingung: die Leiste des Browsers ist versteckt');
     await b.tab('Emulation.setEmulatedMedia', {
       features: [
         { name: 'forced-colors', value: 'active' },
@@ -125,6 +125,6 @@ test('Scrollbalken: sichtbar und bedienbar', { concurrency: 1, timeout: 300_000 
       ],
     });
     assert.equal(kontrast.eigen, 'none', 'der Eigenbau bleibt sichtbar, obwohl das System die Farben setzt');
-    assert.ok(kontrast.browserLeiste > 0, `die Leiste des Browsers fehlt (${kontrast.browserLeiste} px)`);
+    assert.ok(kontrast.browserBar > 0, `die Leiste des Browsers fehlt (${kontrast.browserBar} px)`);
   });
 });

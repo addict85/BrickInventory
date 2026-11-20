@@ -24,12 +24,12 @@ declare const k: any, sk: any, kx: any, db: any;
 export async function a() {
   await k.transaktion(async (t: any) => { await t.db.get('x'); await k.db.get('y'); });
   await k.transaktion(async t => k.konfig);
-  await sk.transaktion(async t => { await kx.haushalt.x(t); }, { wiederholeBeiKonflikt: true });
+  await sk.transaktion(async t => { await kx.haushalt.x(t); }, { repeatAtConflict: true });
   await db.transaction(async function (tx: any) { await db.get('z'); });
   await k.transaktion((t: any) => t.transaktion(async (u: any) => sk.x(u)));
 }
 `;
-const ERLAUBT = `
+const ALLOWED = `
 declare const k: any, sk: any;
 export async function b() {
   await k.transaktion(async (t: any) => { await t.db.get('x'); });
@@ -60,7 +60,7 @@ function probebaum() {
   fs.cpSync(path.join(ROOT, 'biome'), path.join(d, 'biome'), { recursive: true });
   fs.mkdirSync(path.join(d, 'src'));
   fs.writeFileSync(path.join(d, 'src', 'verboten.ts'), VERBOTEN);
-  fs.writeFileSync(path.join(d, 'src', 'erlaubt.ts'), ERLAUBT);
+  fs.writeFileSync(path.join(d, 'src', 'erlaubt.ts'), ALLOWED);
   fs.mkdirSync(path.join(d, 'test'));
   fs.writeFileSync(path.join(d, 'test', 'probe.ts'), VERBOTEN);
   return d;

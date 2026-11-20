@@ -5,9 +5,9 @@
  * die Datenbank.
  *
  * Gegenproben (16.11.2026 gemessen, je einzeln):
- *   A  in horcheAufSitzungsVersion() das verbinde() gestrichen → rot: „eine Erhöhung
+ *   A  in listenOnSessionVersion() das verbinde() gestrichen → rot: „eine Erhöhung
  *      aus einem anderen Prozess gilt sofort“ (die alte Version blieb)
- *   B  in erhoeheSitzungsVersion() melde() gestrichen → rot: „eine Erhöhung hier meldet
+ *   B  in increaseSessionVersion() melde() gestrichen → rot: „eine Erhöhung hier meldet
  *      sich bei den anderen“
  *   C  nutzbar() liefert immer true → rot: „ohne Horch-Verbindung …“
  *
@@ -19,18 +19,18 @@ const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten, testZugang } = require('./helpers/sources');
+const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const sv = _req('src/konto/sitzungsVersion.js');
-const signale = testZugang().benachrichtigung;
+const signals = testAccess().notification;
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
 const { bis } = require('./helpers/zeit');
 
 test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `sv_prozesse_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -43,7 +43,7 @@ test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
   const anderer = new Client({ connectionString: process.env.DATABASE_URL });
   await anderer.connect();
   t.after(async () => {
-    await signale.close();
+    await signals.close();
     await anderer.end().catch(() => {});
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
@@ -52,29 +52,29 @@ test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
   const inDb = async () => (await db.get('SELECT session_version AS v FROM users WHERE id = $1', [uid])).v;
 
   await t.test('ohne Horch-Verbindung gilt nur die Datenbank', async () => {
-    await sv.aktuelleSitzungsVersion(uid);
+    await sv.currentSessionVersion(uid);
     await hoeher();
-    assert.equal(await sv.aktuelleSitzungsVersion(uid), await inDb());
+    assert.equal(await sv.currentSessionVersion(uid), await inDb());
   });
 
-  sv.horcheAufSitzungsVersion();
+  sv.listenOnSessionVersion();
   let bereit = false;
   const fertig = () => {
     bereit = true;
   };
-  signale.listen('sitzung_version', fertig);
+  signals.listen('sitzung_version', fertig);
   await bis(() => bereit, 5000);
-  signale.unlisten('sitzung_version', fertig);
+  signals.unlisten('sitzung_version', fertig);
   assert.ok(bereit, 'die Horch-Verbindung kam nicht zustande');
 
   await t.test('eine Erhöhung aus einem anderen Prozess gilt sofort', async () => {
-    const vorher = await sv.aktuelleSitzungsVersion(uid);
+    const vorher = await sv.currentSessionVersion(uid);
     await hoeher();
-    assert.equal(await sv.aktuelleSitzungsVersion(uid), vorher, 'Vorbedingung: der Zwischenspeicher trägt sie noch');
+    assert.equal(await sv.currentSessionVersion(uid), vorher, 'Vorbedingung: der Zwischenspeicher trägt sie noch');
     await anderer.query("SELECT pg_notify('sitzung_version', 'anderer')");
     const neu = await inDb();
     assert.ok(
-      await bis(async () => (await sv.aktuelleSitzungsVersion(uid)) === neu, 1000),
+      await bis(async () => (await sv.currentSessionVersion(uid)) === neu, 1000),
       'die alte Version gilt im Zwischenspeicher weiter',
     );
   });
@@ -83,7 +83,7 @@ test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
     const gehoert = [];
     anderer.on('notification', m => gehoert.push(m.channel));
     await anderer.query('LISTEN sitzung_version');
-    await _req('src/konto/zugangsende.js').alleSitzungenBeenden(uid);
+    await _req('src/konto/zugangsende.js').endAllSessions(uid);
     await bis(() => gehoert.length > 0, 1000);
     assert.deepEqual(gehoert.slice(0, 1), ['sitzung_version']);
   });

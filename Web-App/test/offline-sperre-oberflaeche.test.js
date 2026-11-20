@@ -4,7 +4,7 @@
  * Verbindung zurück, sind sie wieder frei. Am echten Bündel in jsdom.
  *
  * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  schreibenSperren(true) in zeigeVerbindung entfernt → rot: „offline:
+ *   A  schreibenSperren(true) in showConnection entfernt → rot: „offline:
  *      Hinzufügen gesperrt“
  *   B  MutationObserver nicht gestartet → rot: „neu gezeichnete Knöpfe auch“
  *   C  schreibenSperren(false) beim Zurückkommen entfernt → rot: „online: wieder frei“
@@ -16,10 +16,10 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, takt } = require('./helpers/oberflaeche');
+const { openUi, takt } = require('./helpers/oberflaeche');
 
 test('offline: schreibende Knöpfe gesperrt', async t => {
-  const { w, d } = await oeffneOberflaeche();
+  const { w, d } = await openUi();
   try {
     const hinzu = d.querySelector('#tab-gallery button[data-click="oeffneErfassen"]');
     const filter = d.querySelector('#tab-gallery .filter-knopf');

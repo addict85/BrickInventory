@@ -4,11 +4,11 @@
  * und die Höchstdauer greift hinter der Sitzung.
  *
  * Gegenproben (11.11.2026 gemessen, je einzeln):
- *   A  `ttl: SITZUNG_LEERLAUF_SEK` in startup/app.ts gestrichen → rot: „der
+ *   A  `ttl: SESSION_IDLE_SEC` in startup/app.ts gestrichen → rot: „der
  *      Speicher bekommt die Leerlauffrist“ (connect-pg-simple setzt einen Tag)
- *   B  `app.use(sitzungsHoechstdauer())` in startup/app.ts gestrichen → rot:
+ *   B  `app.use(sessionMaxDuration())` in startup/app.ts gestrichen → rot:
  *      „nach der Höchstdauer ist niemand mehr angemeldet“
- *   C  `maxAge: 3_600_000` in sitzungsKeksOptionen() → rot: „das Cookie …“ (und
+ *   C  `maxAge: 3_600_000` in sessionCookieOptions() → rot: „das Cookie …“ (und
  *      „der Speicher …“: maxAge bestimmt auch dessen Frist)
  */
 const test = require('node:test');
@@ -16,14 +16,14 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const bcrypt = require('bcryptjs');
-const db = testDaten();
+const db = testData();
 
 test('Sitzungsfristen in der echten App', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `sitzapp_${process.pid}`,
     PASS = 'Sitzung-in-der-App-1';
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -44,14 +44,12 @@ test('Sitzungsfristen in der echten App', { concurrency: 1 }, async t => {
     pool: db.systemPool,
     konfig: _req('src/infra/konfig.js').konfig(),
     sitzungsGeheimnis: 'p'.repeat(48),
-    dienste: require('./helpers/sources').testDienste(),
+    dienste: require('./helpers/sources').testServices(),
   });
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
   const basis = `http://localhost:${srv.address().port}`;
-  const SITZUNG_LEERLAUF_SEK = _req('src/konto/sitzungsFrist.js').sitzungLeerlaufSek(
-    _req('src/infra/konfig.js').konfig(),
-  );
+  const SESSION_IDLE_SEC = _req('src/konto/sitzungsFrist.js').sessionIdleSec(_req('src/infra/konfig.js').konfig());
 
   const r = await fetch(`${basis}/api/v1/auth/login`, {
     method: 'POST',
@@ -73,10 +71,7 @@ test('Sitzungsfristen in der echten App', { concurrency: 1 }, async t => {
     assert.equal(await wer(), true, 'Vorbedingung: angemeldet');
     const z = await zeile();
     assert.ok(z, 'keine Sitzung in user_sessions');
-    assert.ok(
-      Math.abs(z.rest - SITZUNG_LEERLAUF_SEK) < 120,
-      `Restlaufzeit ${z.rest} s statt ${SITZUNG_LEERLAUF_SEK} s`,
-    );
+    assert.ok(Math.abs(z.rest - SESSION_IDLE_SEC) < 120, `Restlaufzeit ${z.rest} s statt ${SESSION_IDLE_SEC} s`);
   });
 
   await t.test('das Cookie überlebt den Browser nicht', () => {

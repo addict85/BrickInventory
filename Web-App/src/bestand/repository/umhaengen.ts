@@ -1,11 +1,11 @@
-import type { DbSchnittstelle } from '../../../db/database';
+import type { DbInterface } from '../../../db/database';
 
 export type Art = 'part' | 'fig';
 const TAB = { part: 'parts', fig: 'minifigs' } as const;
 const ERF = { part: 'part_acquisitions', fig: 'minifig_acquisitions' } as const;
 const SCHLUESSEL = { part: 'part_number = $2 AND color_id = $3', fig: 'fig_number = $2' } as const;
 
-export type ManuelleErfassung = {
+export type ManualEntry = {
   id: number;
   quantity: number;
   unit_price: number | null;
@@ -17,30 +17,24 @@ export type ManuelleErfassung = {
 
 /** Unter dem Schlüssel der Anfrage: Sonst buchte das Verschieben die Menge einer fremden
  * Position beim Ziel unter dem Schlüssel der Anfrage. */
-export function manuelleErfassung(
-  tx: DbSchnittstelle,
-  art: Art,
-  id: number,
-  uid: number,
-  schluessel: (string | number)[],
-) {
+export function manualEntry(tx: DbInterface, art: Art, id: number, uid: number, schluessel: (string | number)[]) {
   const bedingung = art === 'part' ? 'part_number = $3 AND color_id = $4' : 'fig_number = $3';
-  return tx.get<ManuelleErfassung>(
+  return tx.get<ManualEntry>(
     `SELECT id, quantity, unit_price, COALESCE(condition,'N') AS condition, created_at, price_estimated, currency
        FROM ${ERF[art]} WHERE id = $1 AND user_id = $2 AND ${bedingung}`,
     [id, uid, ...schluessel],
   );
 }
 
-export function manuelleZeile(tx: DbSchnittstelle, art: Art, uid: number, schluessel: (string | number)[]) {
+export function manualRow(tx: DbInterface, art: Art, uid: number, schluessel: (string | number)[]) {
   return tx.get<{ id: number; part_number?: string; color_id?: number; fig_number?: string }>(
     `SELECT * FROM ${TAB[art]} WHERE user_id = $1 AND ${SCHLUESSEL[art]} AND COALESCE(source,'set') = 'manual'`,
     [uid, ...schluessel],
   );
 }
 
-export async function entferneManuell(
-  tx: DbSchnittstelle,
+export async function removeManual(
+  tx: DbInterface,
   art: Art,
   uid: number,
   schluessel: (string | number)[],

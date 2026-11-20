@@ -13,12 +13,12 @@ test('alle ?v=-Verweise in index.html tragen die Version aus package.json', () =
   assert.ok(/^[\w.-]+$/.test(version || ''), `Unbrauchbare Version: ${version}`);
 
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-  const verweise = [...html.matchAll(/(?:src|href)="([^"]*\?v=([^"&]*))"/g)];
+  const references = [...html.matchAll(/(?:src|href)="([^"]*\?v=([^"&]*))"/g)];
   // Selbstbeweis: Findet das Muster nichts, wäre die Prüfung darunter still
   // grün. GEMESSEN sind es acht.
-  assert.ok(verweise.length >= 5, `Nur ${verweise.length} versionierte Verweise gefunden — Muster veraltet?`);
+  assert.ok(references.length >= 5, `Nur ${references.length} versionierte Verweise gefunden — Muster veraltet?`);
 
-  const falsch = verweise.filter(m => m[2] !== version).map(m => `${m[1]}   (erwartet ?v=${version})`);
+  const falsch = references.filter(m => m[2] !== version).map(m => `${m[1]}   (erwartet ?v=${version})`);
   assert.deepEqual(
     falsch,
     [],

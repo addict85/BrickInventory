@@ -7,7 +7,7 @@ export type WantedArt = 'part' | 'fig' | 'set';
 // gemeldet statt still verworfen.
 const ARTEN: Record<string, WantedArt> = { P: 'part', M: 'fig', S: 'set' };
 
-export interface WantedPosten {
+export interface WantedItem {
   art: WantedArt;
   /** ITEMID — eine BrickLink-Nummer, KEINE Rebrickable-Nummer. */
   blId: string;
@@ -49,16 +49,16 @@ function feld(block: string, name: string): string | null {
     .replace(/&amp;/g, '&');
 }
 
-export interface LeseErgebnis {
-  posten: WantedPosten[];
+export interface ReadResult {
+  posten: WantedItem[];
   fremdeArten: Record<string, number>;
   ohneNummer: number;
 }
 
 /** Wirft NICHT bei fremden Arten oder fehlenden Feldern: Eine zu neun Zehnteln
  * brauchbare Liste soll zu neun Zehnteln ankommen; der Rest steht im Ergebnis. */
-export function leseWantedListe(xml: string): LeseErgebnis {
-  const posten: WantedPosten[] = [];
+export function readWantedList(xml: string): ReadResult {
+  const posten: WantedItem[] = [];
   const fremdeArten: Record<string, number> = {};
   let ohneNummer = 0;
 
@@ -77,22 +77,22 @@ export function leseWantedListe(xml: string): LeseErgebnis {
       continue;
     }
 
-    const farbeRoh = feld(block, 'COLOR');
-    const farbe = farbeRoh === null ? null : parseInt(farbeRoh, 10);
-    const mengeRoh = parseInt(feld(block, 'MINQTY') ?? '1', 10);
-    const zustandRoh = (feld(block, 'CONDITION') ?? '').toUpperCase();
-    const preisRoh = parseFloat(feld(block, 'MAXPRICE') ?? '');
+    const colorRaw = feld(block, 'COLOR');
+    const farbe = colorRaw === null ? null : parseInt(colorRaw, 10);
+    const quantityRaw = parseInt(feld(block, 'MINQTY') ?? '1', 10);
+    const stateRaw = (feld(block, 'CONDITION') ?? '').toUpperCase();
+    const priceRaw = parseFloat(feld(block, 'MAXPRICE') ?? '');
 
     posten.push({
       art,
       blId,
       // Farbe 0 ist bei BrickLink „(Not Applicable)", keine Farbe.
       blFarbe: farbe !== null && Number.isFinite(farbe) && farbe > 0 ? farbe : null,
-      menge: Number.isFinite(mengeRoh) && mengeRoh > 0 ? mengeRoh : 1,
+      menge: Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1,
       // X heisst „egal": null, damit die Einstellung des Kontos entscheidet.
-      zustand: zustandRoh === 'N' || zustandRoh === 'U' ? zustandRoh : null,
+      zustand: stateRaw === 'N' || stateRaw === 'U' ? stateRaw : null,
       // MAXPRICE ist eine Suchgrenze, kein Kaufpreis — -1 heisst „keiner".
-      maxPreis: Number.isFinite(preisRoh) && preisRoh > 0 ? preisRoh : null,
+      maxPreis: Number.isFinite(priceRaw) && priceRaw > 0 ? priceRaw : null,
     });
   }
 

@@ -14,11 +14,11 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, ANMELDUNG, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, ANMELDUNG, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 /** @param {Document} d */
-const etiketten = d =>
+const labels = d =>
   ['bstat-sets', 'bstat-parts', 'bstat-minifigs', 'bstat-instr'].map(id =>
     text(d.getElementById(id)?.parentElement?.querySelector('.bstat-l')),
   );
@@ -31,12 +31,12 @@ const stats = s => ({
 });
 
 test('M1 ein Set ohne Teileliste: Einzahl, Erklärsatz unter der Leiste', async () => {
-  const { w, d } = await oeffneOberflaeche(
+  const { w, d } = await openUi(
     stats({ total_sets: 1, total_quantity: 1, total_parts: 0, total_minifigs: 1, total_instructions: 1 }),
   );
   try {
     await warte(() => text(d.getElementById('bstat-sets')) === '1');
-    assert.deepEqual(etiketten(d), ['Set', 'Teile', 'Minifigur', 'Anleitung']);
+    assert.deepEqual(labels(d), ['Set', 'Teile', 'Minifigur', 'Anleitung']);
     assert.equal(text(d.getElementById('bstat-hinweis')), 'Teileliste für das Set fehlt noch');
     assert.equal(d.querySelector('.bstat-erklaert'), null, 'die Kennzahl selbst wird nicht mehr umgebaut');
   } finally {
@@ -45,12 +45,12 @@ test('M1 ein Set ohne Teileliste: Einzahl, Erklärsatz unter der Leiste', async 
 });
 
 test('M1 mehrere Sets mit Teilen: Mehrzahl, kein Erklärsatz', async () => {
-  const { w, d } = await oeffneOberflaeche(
+  const { w, d } = await openUi(
     stats({ total_sets: 3, total_quantity: 4, total_parts: 120, set_parts: 120, total_minifigs: 2 }),
   );
   try {
     await warte(() => text(d.getElementById('bstat-sets')) === '4');
-    assert.deepEqual(etiketten(d), ['Sets', 'Teile', 'Minifiguren', 'Anleitungen']);
+    assert.deepEqual(labels(d), ['Sets', 'Teile', 'Minifiguren', 'Anleitungen']);
     assert.equal(text(d.getElementById('bstat-hinweis')), '');
   } finally {
     w.close();
@@ -58,7 +58,7 @@ test('M1 mehrere Sets mit Teilen: Mehrzahl, kein Erklärsatz', async () => {
 });
 
 test('M2 leerer Code im zweiten Schritt: Meldung am Feld, keine zweite Anfrage', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche(
+  const { w, d, aufrufe } = await openUi(
     {
       '/v1/auth/login': {
         $status: 401,
@@ -72,12 +72,12 @@ test('M2 leerer Code im zweiten Schritt: Meldung am Feld, keine zweite Anfrage',
   );
   try {
     await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
-    const anmeldungen = () => aufrufe.filter(a => a.url.includes('/v1/auth/login')).length;
+    const logins = () => aufrufe.filter(a => a.url.includes('/v1/auth/login')).length;
     d.getElementById('lu').value = 'anna';
     d.getElementById('lp').value = 'richtig-Passwort-1';
     d.getElementById('btn-login').click();
     await warte(() => d.getElementById('lc-zeile').style.display === '');
-    assert.equal(anmeldungen(), 1);
+    assert.equal(logins(), 1);
     const status = d.getElementById('lc-status');
     assert.equal(status.getAttribute('role'), 'status');
     assert.equal(text(status), 'Passwort stimmt – jetzt den Code eingeben.');
@@ -86,7 +86,7 @@ test('M2 leerer Code im zweiten Schritt: Meldung am Feld, keine zweite Anfrage',
 
     d.getElementById('btn-login').click();
     await takt(50);
-    assert.equal(anmeldungen(), 1, 'leerer Code ging an den Server');
+    assert.equal(logins(), 1, 'leerer Code ging an den Server');
     assert.equal(text(d.getElementById('lc-fehler')), 'Bitte Code eingeben.');
     assert.equal(d.getElementById('lc').getAttribute('aria-invalid'), 'true');
     assert.equal(d.activeElement?.id, 'lc');
@@ -97,7 +97,7 @@ test('M2 leerer Code im zweiten Schritt: Meldung am Feld, keine zweite Anfrage',
     lc.dispatchEvent(new w.Event('input', { bubbles: true }));
     assert.equal(text(d.getElementById('lc-fehler')), '');
     d.getElementById('btn-login').click();
-    await warte(() => anmeldungen() === 2);
+    await warte(() => logins() === 2);
     assert.equal(JSON.parse(aufrufe.filter(a => a.url.includes('/v1/auth/login'))[1].body).code, '123456');
   } finally {
     w.close();
@@ -105,7 +105,7 @@ test('M2 leerer Code im zweiten Schritt: Meldung am Feld, keine zweite Anfrage',
 });
 
 test('M2 erster Schritt ohne Codefeld: Code ist keine Pflicht', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche(
+  const { w, d, aufrufe } = await openUi(
     {
       '/v1/auth/login': {
         $status: 401,
@@ -130,7 +130,7 @@ test('M2 erster Schritt ohne Codefeld: Code ist keine Pflicht', async () => {
 });
 
 test('N6 Passwort ändern: Länge und Wiederholung auf einmal gemeldet', async () => {
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
   try {
@@ -158,7 +158,7 @@ test('N6 Passwort ändern: Länge und Wiederholung auf einmal gemeldet', async (
 });
 
 test('N7 Finanzen: Summe je Bereich unter dem Bereich, unten nur noch die Gesamtsumme', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/finance/valuation': {
       success: true,
       currency: 'EUR',
@@ -206,7 +206,7 @@ test('N7 Finanzen: Summe je Bereich unter dem Bereich, unten nur noch die Gesamt
 });
 
 test('N10 ohne HTTPS: vorab nur „unverschlüsselt“, der Betreiberhinweis erst bei fehlendem Cookie', async () => {
-  const { w, d } = await oeffneOberflaeche(
+  const { w, d } = await openUi(
     {
       '/v1/auth/login': {
         success: true,
@@ -218,9 +218,9 @@ test('N10 ohne HTTPS: vorab nur „unverschlüsselt“, der Betreiberhinweis ers
   );
   try {
     await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
-    const vorab = d.getElementById('login-ohne-https');
-    assert.equal(vorab.hidden, false);
-    assert.equal(text(vorab), 'Verbindung unverschlüsselt: Passwort und Sitzung gehen ungeschützt durchs Netz.');
+    const upfront = d.getElementById('login-ohne-https');
+    assert.equal(upfront.hidden, false);
+    assert.equal(text(upfront), 'Verbindung unverschlüsselt: Passwort und Sitzung gehen ungeschützt durchs Netz.');
     assert.doesNotMatch(text(d.getElementById('login-screen')), /COOKIE_SECURE/);
     d.getElementById('lu').value = 'anna';
     d.getElementById('lp').value = 'richtig-Passwort-1';

@@ -1,13 +1,13 @@
-import type { DbSchnittstelle } from '../../../db/database';
-import type { BestandLesevertrag } from '../lesevertrag';
+import type { DbInterface } from '../../../db/database';
+import type { InventoryReadContract } from '../lesevertrag';
 import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/katalogSicht';
 
 /** Ein Eintrag hält die gelöschten Zeilen aller Tabellen eines Bestands als
  * JSON; Wiederherstellen schreibt sie Spalte für Spalte zurück. */
-export type PapierArt = 'set' | 'teil' | 'figur';
+export type PaperKind = 'set' | 'teil' | 'figur';
 
 /** Die erste Tabelle ist die Stammzeile. */
-const TABELLEN: Record<PapierArt, { tabelle: string; wo: string }[]> = {
+const TABELLEN: Record<PaperKind, { tabelle: string; wo: string }[]> = {
   set: [
     { tabelle: 'sets', wo: 'user_id = $1 AND set_number = $2' },
     { tabelle: 'parts', wo: 'user_id = $1 AND set_number = $2' },
@@ -24,11 +24,11 @@ const TABELLEN: Record<PapierArt, { tabelle: string; wo: string }[]> = {
   ],
 };
 
-export const tabellenDerArt = (art: PapierArt): string[] => TABELLEN[art].map(t => t.tabelle);
+export const tablesTheKind = (art: PaperKind): string[] => TABELLEN[art].map(t => t.tabelle);
 
-export async function bestandsZeilen(
-  tx: DbSchnittstelle,
-  art: PapierArt,
+export async function inventoryRows(
+  tx: DbInterface,
+  art: PaperKind,
   werte: unknown[],
 ): Promise<Record<string, unknown[]>> {
   const zeilen: Record<string, unknown[]> = {};
@@ -42,7 +42,7 @@ export async function bestandsZeilen(
   return zeilen;
 }
 
-const BEZEICHNUNG: Record<PapierArt, string> = {
+const LABEL: Record<PaperKind, string> = {
   set: 'SELECT name AS b FROM rb_sets WHERE set_num = $1 AND $2::int IS NOT NULL',
   teil: `SELECT concat_ws(' · ', ${TEIL.name}, ${TEIL.farbname}) AS b
             FROM (SELECT $1::text AS nr, $2::int AS konto, $3::int AS farbe) x
@@ -54,41 +54,41 @@ const BEZEICHNUNG: Record<PapierArt, string> = {
 
 /** Damit die Liste auch ohne Katalogzeile lesbar bleibt. */
 export async function bezeichnung(
-  tx: DbSchnittstelle,
-  art: PapierArt,
+  tx: DbInterface,
+  art: PaperKind,
   userId: number,
   nummer: string,
-  farbeId: number | null,
+  colorId: number | null,
 ): Promise<string | null> {
   const r = await tx.get<{ b: string | null }>(
-    BEZEICHNUNG[art],
-    art === 'teil' ? [nummer, userId, farbeId] : [nummer, userId],
+    LABEL[art],
+    art === 'teil' ? [nummer, userId, colorId] : [nummer, userId],
   );
   return r?.b || null;
 }
 
-export async function legeEintragAn(
-  tx: DbSchnittstelle,
+export async function putEntryAn(
+  tx: DbInterface,
   userId: number,
-  art: PapierArt,
+  art: PaperKind,
   nummer: string,
-  farbeId: number | null,
+  colorId: number | null,
   name: string | null,
   zeilen: Record<string, unknown[]>,
 ): Promise<number | null> {
   const r = await tx.get<{ id: number }>(
     `INSERT INTO trash (user_id, type, number, color_id, label, rows)
      VALUES ($1, $2, $3, $4, $5, $6::jsonb) RETURNING id`,
-    [userId, art, nummer, farbeId, name, JSON.stringify(zeilen)],
+    [userId, art, nummer, colorId, name, JSON.stringify(zeilen)],
   );
   return r?.id ?? null;
 }
 
 /** Wie die Tabelle sie liefert; `type` prüft die Tabelle per CHECK. */
-export interface PapierkorbZeile {
+export interface TrashRow {
   id: number;
   user_id: number;
-  type: PapierArt;
+  type: PaperKind;
   number: string;
   color_id: number | null;
   label: string | null;
@@ -97,17 +97,17 @@ export interface PapierkorbZeile {
   endgueltig_am: string;
 }
 
-export function eintraege(db: DbSchnittstelle, uids: number[], aufbewahrungTage: number) {
-  return db.all<PapierkorbZeile>(
+export function eintraege(db: DbInterface, uids: number[], retentionDays: number) {
+  return db.all<TrashRow>(
     `SELECT id, user_id, type, number, color_id, label, rows, deleted_at,
             deleted_at + make_interval(days => $2) AS endgueltig_am
        FROM trash WHERE user_id = ANY($1)
       ORDER BY deleted_at DESC, id DESC LIMIT 500`,
-    [uids, aufbewahrungTage],
+    [uids, retentionDays],
   );
 }
 
-export function eintragSperren(tx: DbSchnittstelle, id: number, uids: number[]) {
+export function lockTrashEntry(tx: DbInterface, id: number, uids: number[]) {
   return tx.get<{
     type: string;
     rows: Record<string, Record<string, unknown>[]> | null;
@@ -117,9 +117,9 @@ export function eintragSperren(tx: DbSchnittstelle, id: number, uids: number[]) 
 }
 
 /** Tabellen aus TABELLEN, nur Spalten, die es noch gibt und nicht berechnet sind (eine gelöschte fällt weg). */
-export async function schreibeZurueck(
-  tx: DbSchnittstelle,
-  art: PapierArt,
+export async function writeBack(
+  tx: DbInterface,
+  art: PaperKind,
   zeilen: Record<string, Record<string, unknown>[] | undefined>,
 ): Promise<void> {
   for (const { tabelle } of TABELLEN[art]) {
@@ -145,9 +145,9 @@ export async function schreibeZurueck(
   }
 }
 
-export async function hatSetZeile(
-  tx: DbSchnittstelle,
-  l: BestandLesevertrag,
+export async function hatSetRow(
+  tx: DbInterface,
+  l: InventoryReadContract,
   userId: number,
   nummer: string,
 ): Promise<boolean> {
@@ -157,18 +157,18 @@ export async function hatSetZeile(
   ]));
 }
 
-export async function entferneEintrag(tx: DbSchnittstelle, id: number): Promise<void> {
+export async function removeTrashEntry(tx: DbInterface, id: number): Promise<void> {
   await tx.run('DELETE FROM trash WHERE id = $1', [id]);
 }
 
-export async function entferneEintragDesKontos(db: DbSchnittstelle, id: number, uids: number[]): Promise<number> {
+export async function removeEntryOfAccount(db: DbInterface, id: number, uids: number[]): Promise<number> {
   return (await db.run('DELETE FROM trash WHERE id = $1 AND user_id = ANY($2)', [id, uids])).changes ?? 0;
 }
 
-export async function entferneAlle(db: DbSchnittstelle, uids: number[]): Promise<number> {
+export async function removeAll(db: DbInterface, uids: number[]): Promise<number> {
   return (await db.run('DELETE FROM trash WHERE user_id = ANY($1)', [uids])).changes ?? 0;
 }
 
-export async function entferneAeltere(db: DbSchnittstelle, tage: number): Promise<number> {
+export async function removeOlder(db: DbInterface, tage: number): Promise<number> {
   return (await db.run('DELETE FROM trash WHERE deleted_at < NOW() - make_interval(days => $1)', [tage])).changes ?? 0;
 }

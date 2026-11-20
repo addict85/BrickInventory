@@ -6,20 +6,20 @@
  *     gehört nur zu einer Absage „Adresse nicht bestätigt“.
  *
  * Gegenproben (am 03.11.2026 gemessen):
- *   A  plRenderSets() wieder mit titel/text statt titelKey/textKey → rot:
+ *   A  plRenderSets() wieder mit titel/text statt titleKey/textKey → rot:
  *      „Bauliste in Kontosprache“ („Noch keine Sets …“; 13.11.2026 erneut
- *      gemessen mit titel statt titelKey: „Diese Bauliste ist noch leer“)
+ *      gemessen mit titel statt titleKey: „Diese Bauliste ist noch leer“)
  *   B  in doLogin wieder d.code==='anmeldedaten_ungueltig' → rot: beide
  *      Anmelde-Tests
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { oeffneOberflaeche, reiter, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte, takt } = require('./helpers/oberflaeche');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
 test('Bauliste in Kontosprache', async () => {
-  const { w, d } = await oeffneOberflaeche({
+  const { w, d } = await openUi({
     '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'en', rebrickable_api_key: 'probe' } },
   });
   try {
@@ -35,7 +35,7 @@ test('Bauliste in Kontosprache', async () => {
 });
 
 async function anmelden(antwort) {
-  const o = await oeffneOberflaeche({ '/v1/auth/login': antwort }, { angemeldet: false });
+  const o = await openUi({ '/v1/auth/login': antwort }, { angemeldet: false });
   await warte(() => o.d.getElementById('login-screen').style.display === 'flex');
   o.d.getElementById('lu').value = 'anna';
   o.d.getElementById('lp').value = 'falsch-falsch';
