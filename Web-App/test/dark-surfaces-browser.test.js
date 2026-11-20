@@ -23,7 +23,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
-const { holdsSet, holdsPart } = require('./helpers/bestand');
+const { holdsSet, holdsPart } = require('./helpers/inventory');
 
 const DESIGNS = ['classic', 'brick', 'farbfaecher', 'noppe', 'hochglanz'];
 

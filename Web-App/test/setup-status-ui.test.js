@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/ui');
 
 const ANTWORT = {
   success: true,

@@ -5,12 +5,12 @@
  */
 const fs = require('node:fs');
 const path = require('node:path');
-const { complete } = require('./vertrag-fuellen');
+const { complete } = require('./contract-fill');
 
 const ROOT = path.join(__dirname, '..', '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 // TEST_BUENDEL: das Bündel mit Sourcemap aus test-run.js --abdeckung.
-const { BUENDEL, placeBundleSafe } = require('./buendel');
+const { BUENDEL, placeBundleSafe } = require('./bundle');
 placeBundleSafe();
 const BUNDLE_PATH = process.env.TEST_BUENDEL || BUENDEL;
 const BUNDLE = fs.readFileSync(BUNDLE_PATH, 'utf8');
@@ -166,7 +166,7 @@ const vertrag = () => {
 
 /**
  * Die Antwort, wie der Server sie senden dürfte: Fehlende Pflichtfelder
- * ergänzt das Schema der Route (vertrag-fuellen.js); ein falscher Typ wirft. Eine absichtlich kaputte Antwort trägt
+ * ergänzt das Schema der Route (contract-fill.js); ein falscher Typ wirft. Eine absichtlich kaputte Antwort trägt
  * `$contractViolating: '<Grund>'` und geht unverändert hinaus.
  */
 function checkResponse(methode, url, daten) {

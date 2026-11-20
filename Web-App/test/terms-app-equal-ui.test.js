@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 for (const [sprache, bauliste, neu] of [
   ['de', 'Bauliste', 'Neuware'],

@@ -8,7 +8,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/ui');
 
 const erfassungen = {
   '/v1/sets/10294-1/acquisitions': () => ({

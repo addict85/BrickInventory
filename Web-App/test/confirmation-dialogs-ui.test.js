@@ -21,7 +21,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt, sicht } = require('./helpers/oberflaeche');
+const { openUi, warte, takt, sicht } = require('./helpers/ui');
 
 /** Antwortet ohne Code mit zweiter_faktor_noetig und merkt sich jeden Rumpf. */
 function withFactor(liste, passkey = false) {

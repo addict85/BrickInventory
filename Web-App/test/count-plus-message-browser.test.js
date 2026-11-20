@@ -16,7 +16,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { holdsSet, catalogSet } = require('./helpers/bestand');
+const { holdsSet, catalogSet } = require('./helpers/inventory');
 
 test('Anzahl „+“ meldet das neue Exemplar mit Preis', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {

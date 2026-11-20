@@ -3,7 +3,7 @@
  * Vorgeladen in jede Testdatei (scripts/test-run.js): eine eigene Kopie der Vorlage,
  * damit Dateien parallel laufen, ohne Zeilen, NOTIFY-Kanäle oder Sperren zu teilen.
  * Die App verbindet sich wie im Betrieb als Laufzeitrolle, der Systemrahmen als
- * Systemrolle (in HTTP-Anfragen als Web-Systemrolle), Testdaten schreibt die Eigentümerin (helpers/rollen.js, sources.js);
+ * Systemrolle (in HTTP-Anfragen als Web-Systemrolle), Testdaten schreibt die Eigentümerin (helpers/roles.js, sources.js);
  * Dateien mit der Marke `@superuser` laufen noch als Superuser.
  */
 // Nur im Kind des Test-Runners und nur einmal: Gestartete Server erben die Umgebung samt Marke.
@@ -12,7 +12,7 @@ if (process.env.NODE_TEST_CONTEXT && vorlage && process.env.TEST_DATABASE_URL &&
   const { execFileSync } = require('node:child_process');
   const fs = require('node:fs');
   const path = require('node:path');
-  const { rollen, asRole, asSuperuser } = require('./rollen');
+  const { rollen, asRole, asSuperuser } = require('./roles');
   const werkzeug = path.join(__dirname, 'test-db.js');
   const name = `${vorlage}_${process.pid}`;
   execFileSync(process.execPath, [werkzeug, 'anlegen', name, vorlage], { stdio: 'inherit' });

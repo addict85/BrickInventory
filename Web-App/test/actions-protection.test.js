@@ -24,7 +24,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/ui');
 
 const ROOT = path.join(__dirname, '..');
 const NUTZER = {

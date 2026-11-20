@@ -32,7 +32,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 const freePort = () =>
   new Promise(r => {

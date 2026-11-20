@@ -57,7 +57,7 @@ testImageWorker(null, {
   createPreview: async () => true,
 });
 const { keineDb } = require('./helpers/db');
-const { emptyQueue } = require('./helpers/bildwarteschlange');
+const { emptyQueue } = require('./helpers/image-queue');
 const { portOf } = require('./helpers/server');
 const db = testData();
 const IQ = _req('src/images/imageDemandRun.js');
@@ -103,7 +103,7 @@ test('ein Takt räumt fertige Notizen ab, statt je zwanzig Sekunden zehn', { con
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
@@ -150,7 +150,7 @@ test('das Kontingent gilt für echte Arbeit, nicht für Notizen', { concurrency:
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
 
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
@@ -218,7 +218,7 @@ test('Übersprünge verbrauchen kein Kontingent — Marcos gemischte Warteschlan
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
@@ -260,7 +260,7 @@ test('ein Takt sieht höchstens DURCHGANG_MAX_NOTIZEN Notizen durch', { concurre
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
@@ -289,7 +289,7 @@ test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async t
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
 
   const P = `VF${process.pid}`;
@@ -339,7 +339,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
 
   await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
@@ -425,7 +425,7 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async t
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
   const IM = _req('src/images/imageMisses.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });

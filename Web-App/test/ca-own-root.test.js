@@ -215,7 +215,7 @@ test('eine Wurzel für eine IP-Adresse: nur diese Adresse', t => {
 test('das Startskript wählt eigene CA, acme oder ausdrücklich Caddys CA — sonst startet Caddy nicht', async t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-start-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
-  const caddysRoot = fs.readFileSync(path.join(ROOT, 'test', 'fixtures', 'ca-wurzel-1.crt'), 'utf8');
+  const caddysRoot = fs.readFileSync(path.join(ROOT, 'test', 'fixtures', 'ca-root-1.crt'), 'utf8');
   const lauf = async (withCa, env = {}) => {
     const ort = fs.mkdtempSync(path.join(tmp, 'lauf-'));
     const daten = path.join(ort, 'data/caddy/pki/authorities/local'),

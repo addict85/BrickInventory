@@ -7,7 +7,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -21,7 +21,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/bestand');
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 
 test('das Löschen fragt genau einmal', () => {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/collection.js'), 'utf8'));

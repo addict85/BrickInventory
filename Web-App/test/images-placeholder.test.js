@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte, takt } = require('./helpers/ui');
 
 const IMAGE = '/images/sets/10294-1.jpg';
 const SETS = [

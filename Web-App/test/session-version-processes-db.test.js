@@ -27,7 +27,7 @@ const sv = _req('src/account/sessionVersion.js');
 const signals = testAccess().notification;
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 
 test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

@@ -31,7 +31,7 @@ const { AbrufFehler } = _req('src/infra/fetch.js');
 const { legoFetch } = require('./helpers/sources').testServices().externalSources.quellen;
 
 const FIX = path.join(__dirname, 'fixtures');
-const cert = fs.readFileSync(path.join(FIX, 'abruf-test.crt'));
+const cert = fs.readFileSync(path.join(FIX, 'fetch-test.crt'));
 const NUMBER = '6006491234567890123',
   PIN = '4711';
 const TOKEN = [
@@ -43,7 +43,7 @@ const TOKEN = [
 let modus = 'gut',
   port = 0;
 const gesehen = [];
-const server = https.createServer({ key: fs.readFileSync(path.join(FIX, 'abruf-test.key')), cert }, (req, res) => {
+const server = https.createServer({ key: fs.readFileSync(path.join(FIX, 'fetch-test.key')), cert }, (req, res) => {
   let rumpf = '';
   req.on('data', d => {
     rumpf += d;

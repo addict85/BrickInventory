@@ -34,7 +34,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { CONTRACT, routeForRequest } = _req('src/contract/index.js');
 const { responseIsSecret: antwortIstGeheim } = _req('src/idempotency/http/middleware.js');
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 const freePort = () =>
   new Promise(r => {

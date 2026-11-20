@@ -20,7 +20,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { adminWithFactor } = require('./helpers/verwalter');
+const { adminWithFactor } = require('./helpers/admin');
 const { proxyHinweis, EINE_ADDRESS } = _req('src/http/proxyHint.js');
 
 test('Proxy-Hinweis in der Antwort für Verwalter', { concurrency: 1 }, async t => {

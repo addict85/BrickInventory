@@ -15,7 +15,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 
 const TO_SMALL = `[...document.querySelectorAll('a[href], button, [role=button], [role=tab], select, input:not([type=hidden])')]
   .filter(e => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden')

@@ -19,7 +19,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/bestand');
+const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
 test.after(async () => {

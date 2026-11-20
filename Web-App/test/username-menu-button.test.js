@@ -38,7 +38,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
-const { openUi, ANMELDUNG, sicht, warte } = require('./helpers/oberflaeche');
+const { openUi, ANMELDUNG, sicht, warte } = require('./helpers/ui');
 
 const ROOT = path.join(__dirname, '..');
 /** Die Striche sind seit dem 27.10. ein Symbol der Symbolfamilie statt „☰“. */

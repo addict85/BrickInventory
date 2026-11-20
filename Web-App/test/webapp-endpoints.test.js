@@ -316,7 +316,7 @@ const NUR_WEB = new Map([
 test('was nur die Webapp kann, hat einen Grund', () => {
   // Die Retrofit-Routen der App (shared/app-schnittstelle.json); `{x}` wird zu `:X`.
   const appPaths = new Set(
-    require('./helpers/vertrag')
+    require('./helpers/contract')
       .appSchnittstelle()
       .routen.map(r => form(r.pfad.replace(/\{[^}]+\}/g, ':X'))),
   );

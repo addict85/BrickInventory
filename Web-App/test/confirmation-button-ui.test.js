@@ -15,7 +15,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt, sicht } = require('./helpers/oberflaeche');
+const { openUi, warte, takt, sicht } = require('./helpers/ui');
 
 /** Liest den offenen Dialog, bricht ihn ab und wartet, bis er zu ist. */
 async function liesDialog(d) {

@@ -11,8 +11,8 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
-const { holdsSet, catalogSet } = require('./helpers/bestand');
-const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
+const { holdsSet, catalogSet } = require('./helpers/inventory');
+const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
 mailAttrappe();
 
 test.after(async () => {

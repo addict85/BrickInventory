@@ -10,7 +10,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -20,7 +20,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { holdsSet, quantityOf } = require('./helpers/bestand');
+const { holdsSet, quantityOf } = require('./helpers/inventory');
 
 test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

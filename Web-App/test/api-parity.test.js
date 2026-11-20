@@ -16,7 +16,7 @@ process.env.DATABASE_URL = DB_URL;
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { routerEinhaengungen, testData } = require('./helpers/sources');
-const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/bestand');
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));

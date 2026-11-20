@@ -19,7 +19,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -29,7 +29,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { holdsSet, record, holdsPart, holdsMinifig, catalogSet } = require('./helpers/bestand');
+const { holdsSet, record, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inventory');
 
 const NAME = `geschenk_${process.pid}`;
 const SET = `8${process.pid}1-1`,

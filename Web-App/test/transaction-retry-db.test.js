@@ -23,7 +23,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -213,7 +213,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
 
   await t.test('moveSet wiederholt bei Konflikt', async () => {
     const { moveSet } = require('./helpers/sources').areaPage('sets');
-    const { holdsSet, quantityOf } = require('./helpers/bestand');
+    const { holdsSet, quantityOf } = require('./helpers/inventory');
     const von = await konto('wv_von');
     const nach = await konto('wv_nach');
     await holdsSet(db, von, '10179-1', 2);
@@ -234,7 +234,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
 
   await t.test('setEstimatedPrice wiederholt bei Konflikt', async () => {
     const { setEstimatedPrice } = _req('src/inventory/acquisitions.js');
-    const { holdsSet } = require('./helpers/bestand');
+    const { holdsSet } = require('./helpers/inventory');
     const u = await konto('wv_preis');
     await holdsSet(db, u, '10179-1', 1);
     const id = (await db.get('SELECT id FROM set_acquisitions WHERE user_id = $1', [u])).id;

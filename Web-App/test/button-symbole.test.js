@@ -9,7 +9,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi } = require('./helpers/oberflaeche');
+const { openUi } = require('./helpers/ui');
 
 for (const sprache of ['de', 'en']) {
   test(`kein Knopf beginnt mit einem Plus (${sprache})`, async () => {

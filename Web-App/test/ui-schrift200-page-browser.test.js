@@ -9,4 +9,4 @@
  *   B  main ohne container haupt → rot: „Finanzen“, „Merkliste“, „Einstellungen“,
  *      alle Sichten aus dem Menü (Überlauf)
  */
-require('./helpers/oberflaeche-pruefung').checkLargeFont('seite');
+require('./helpers/ui-check').checkLargeFont('seite');

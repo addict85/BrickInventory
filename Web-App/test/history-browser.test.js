@@ -16,7 +16,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
-const { patternCollection } = require('./helpers/bestand');
+const { patternCollection } = require('./helpers/inventory');
 
 const ZUSTAND = `({ url: location.hash, ansicht: document.querySelector('.tab.active')?.id,
   dialoge: [...document.querySelectorAll('.ovl.open')].map(o => o.id) })`;

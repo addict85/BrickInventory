@@ -7,7 +7,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -18,7 +18,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const { holdsMinifig, holdsSet, holdsPart, haltRow, quantityOf } = require('./helpers/bestand');
+const { holdsMinifig, holdsSet, holdsPart, haltRow, quantityOf } = require('./helpers/inventory');
 
 test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

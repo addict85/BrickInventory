@@ -20,9 +20,9 @@ testImageWorker(null, {
   },
 });
 const { keineDb } = require('./helpers/db');
-const { emptyQueue } = require('./helpers/bildwarteschlange');
+const { emptyQueue } = require('./helpers/image-queue');
 const { testServer } = require('./helpers/server');
-const { adminWithFactor } = require('./helpers/verwalter');
+const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
 const IQ = _req('src/images/imageDemandRun.js');
 const IM = _req('src/images/imageMisses.js');
@@ -43,7 +43,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
   const P = `MR${process.pid}`;
 
@@ -201,7 +201,7 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar', { concurrency
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
 
   const P = `VG${process.pid}`;

@@ -16,7 +16,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -34,7 +34,7 @@ require('./helpers/sources').replaceServices('mail', {
   },
 });
 const { accessOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 const zf = _req('src/factors/secondFactor.js');
 const lim = _req('src/account/loginLimiter.js');
 const { checkCredentials } = _req('src/account/loginCheck.js');

@@ -34,10 +34,10 @@ process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { catalogSet } = require('./helpers/bestand');
+const { catalogSet } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 const freePort = () =>
   new Promise(r => {

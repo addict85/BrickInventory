@@ -10,7 +10,7 @@
  *   C  den Cache-Eintrag der Schätzung nicht mehr geschrieben → rot: „die
  *      Schätzung wird zwischengespeichert“
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

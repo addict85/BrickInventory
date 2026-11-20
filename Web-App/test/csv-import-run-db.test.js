@@ -32,7 +32,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const { warte, bis } = require('./helpers/zeit');
+const { warte, bis } = require('./helpers/time');
 
 test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

@@ -8,4 +8,4 @@
  *      „Teile“, „Minifiguren“, „Import-Menü“ u. a. (brick: Überlauf 5 px)
  *   B  Lagerortfeld nicht über die ganze Zeile → rot: „Sicht lagerorte“ (Tippziel 28 px)
  */
-require('./helpers/oberflaeche-pruefung').checkLargeFont('browser');
+require('./helpers/ui-check').checkLargeFont('browser');

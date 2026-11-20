@@ -9,7 +9,7 @@ const path = require('node:path');
 const { routerEinhaengungen } = require('./helpers/sources');
 
 const ROOT = path.join(__dirname, '..');
-const { appSchnittstelle } = require('./helpers/vertrag');
+const { appSchnittstelle } = require('./helpers/contract');
 
 function ohneKommentare(src) {
   return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');

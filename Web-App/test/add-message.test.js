@@ -13,7 +13,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, takt, warte } = require('./helpers/oberflaeche');
+const { openUi, takt, warte } = require('./helpers/ui');
 
 async function record(antwort, sprache = 'de') {
   const o = await openUi({ '/v1/sets/add-stream': antwort }, { sprache });

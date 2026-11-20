@@ -14,11 +14,11 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { holdsSet, holdsPart } = require('./helpers/bestand');
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { holdsSet, holdsPart } = require('./helpers/inventory');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test';

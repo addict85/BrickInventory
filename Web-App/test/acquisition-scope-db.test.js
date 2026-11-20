@@ -16,7 +16,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 

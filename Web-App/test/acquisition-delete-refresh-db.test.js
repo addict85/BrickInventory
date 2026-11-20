@@ -1,7 +1,7 @@
 /**
  * Eine Erfassung löschen → Preis und Zustand der ANTWORT werden NEU bestimmt.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -11,7 +11,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { holdsSet, quantityOf, haltRow } = require('./helpers/bestand');
+const { holdsSet, quantityOf, haltRow } = require('./helpers/inventory');
 const db = testData();
 
 test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', { concurrency: 1 }, async t => {

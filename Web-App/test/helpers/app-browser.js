@@ -172,7 +172,7 @@ async function startApp(t, opt = {}) {
   // wird mit einem Wiederherstellungscode im Codefeld.
   const verwalter = (await db.get('SELECT is_admin FROM users WHERE id = $1', [uid])).is_admin;
   const [wiederherstellung = '', ...furtherCodes] = verwalter
-    ? await require('./verwalter').adminWithFactor(_req, uid)
+    ? await require('./admin').adminWithFactor(_req, uid)
     : [];
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(

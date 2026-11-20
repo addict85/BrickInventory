@@ -43,7 +43,7 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { enterMailServer } = require('./helpers/mail-attrappe');
+const { enterMailServer } = require('./helpers/mail-fake');
 
 const post = [];
 require('./helpers/sources').replaceServices('mail', {

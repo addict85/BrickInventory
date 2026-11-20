@@ -1,7 +1,7 @@
 /**
  * Der Lagerort muss im DETAIL stehen — und nur in den Konten, die ihn haben.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -13,8 +13,8 @@ const { keineDb } = require('./helpers/db');
 const db = testData();
 // Ein Bestand ist seit Migration 0036 ZWEI Zeilen: eine in `sets` („dieses
 // Konto haelt dieses Set") und eine je Kauf in `set_acquisitions`. holdsSet()
-// legt beide an — siehe test/helpers/bestand.js.
-const { holdsSet, holdsPart, catalogSet } = require('./helpers/bestand');
+// legt beide an — siehe test/helpers/inventory.js.
+const { holdsSet, holdsPart, catalogSet } = require('./helpers/inventory');
 const { testServer } = require('./helpers/server');
 
 test.after(async () => {

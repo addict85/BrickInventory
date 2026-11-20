@@ -38,7 +38,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 
 /** Kleinste Schrift in px über alle Beschriftungen der Diagramme unter `wurzel`. */
 const DIAGRAMMSCHRIFT = wurzel => `(() => {

@@ -14,7 +14,7 @@
  *   j) Verbindung wieder auf `s.user_id = a.user_id` → Schritt 9 rot
  *   k) DISTINCT ON entfernt → Schritt 9 rot (Alarm steht doppelt)
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -24,7 +24,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { buildAndRequire, loadTranslations, ohneKommentare, testData } = require('./helpers/sources');
-const { catalogSet } = require('./helpers/bestand');
+const { catalogSet } = require('./helpers/inventory');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
@@ -226,7 +226,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     const felder = Object.keys(a[0]);
     assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
     // Das Modell der App (shared/app-schnittstelle.json, aus ihrem Quelltext erzeugt).
-    const app = require('./helpers/vertrag').appSchnittstelle().modelle.Preisalarm?.felder ?? [];
+    const app = require('./helpers/contract').appSchnittstelle().modelle.Preisalarm?.felder ?? [];
     assert.ok(app.includes('set_number'), 'Modell Preisalarm nicht gefunden — umbenannt?');
     const fehlen = felder.filter(k => !app.includes(k));
     assert.deepEqual(

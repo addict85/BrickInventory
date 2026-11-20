@@ -18,7 +18,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -30,8 +30,8 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { routerEinhaengungen, testData } = require('./helpers/sources');
-const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/bestand');
-const { contractTo, appSchnittstelle } = require('./helpers/vertrag');
+const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inventory');
+const { contractTo, appSchnittstelle } = require('./helpers/contract');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 

@@ -38,7 +38,7 @@ const loginAtInbox = (...a) =>
     .guardFor(require('./helpers/sources').testServices().account)
     .loginAtInbox(...a);
 const pgNotify = require('./helpers/sources').testAccess().notification;
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 
 const NAME = `fehlversuch_${process.pid}`;
 

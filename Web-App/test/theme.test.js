@@ -87,7 +87,7 @@ test('ein servergesetzter Wert gilt, ohne Abgleich und ohne Sprung', async () =>
 test('applyTheme läuft über den Boot-Helfer (Cache bleibt aktuell)', async t => {
   // Nach der Anmeldung setzt showApp() das Design aus den Einstellungen; ohne
   // den Boot-Helfer bliebe der Cache beim alten Design.
-  const { openUi, ANMELDUNG, warte } = require('./helpers/oberflaeche');
+  const { openUi, ANMELDUNG, warte } = require('./helpers/ui');
   const { w } = await openUi(
     {
       '/v1/settings/raw': {
@@ -217,7 +217,7 @@ test('der Server setzt data-theme selbst, und ein Designwechsel gilt sofort', as
       [name],
     )
   ).id;
-  await require('./helpers/verwalter').adminWithFactor(_req, admin);
+  await require('./helpers/admin').adminWithFactor(_req, admin);
   const vorher = (await db.get(`SELECT value FROM global_settings WHERE key = 'app_theme'`))?.value ?? null;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [admin]).catch(() => {});

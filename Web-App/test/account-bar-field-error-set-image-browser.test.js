@@ -23,7 +23,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { patternHousehold } = require('./helpers/bestand');
+const { patternHousehold } = require('./helpers/inventory');
 
 async function groesse(b, breite, hoehe, telefon) {
   await b.tab('Emulation.setDeviceMetricsOverride', {

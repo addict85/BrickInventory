@@ -12,7 +12,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/ui');
 
 test('Pflichtwechsel mit zweitem Faktor fragt den Code nach', async () => {
   const wechsel = [];

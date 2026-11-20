@@ -39,7 +39,7 @@ Module.prototype.require = function (name, ...rest) {
 const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 
 test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 1 }, async t => {
   const db = testData();

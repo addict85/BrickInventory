@@ -21,7 +21,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { openUi, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/ui');
 const db = testData();
 
 test('Server: leerer Katalog', { concurrency: 1 }, async t => {

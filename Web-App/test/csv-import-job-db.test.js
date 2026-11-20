@@ -40,7 +40,7 @@ const { buildAndRequire, testData, testAccess, asAccount, testSources, testImage
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 
 test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

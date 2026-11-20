@@ -21,7 +21,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt, ANMELDUNG } = require('./helpers/oberflaeche');
+const { openUi, warte, takt, ANMELDUNG } = require('./helpers/ui');
 const Q = require('./helpers/sources');
 
 const SN = '10305-1';

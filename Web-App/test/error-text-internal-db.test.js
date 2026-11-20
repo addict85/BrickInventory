@@ -24,7 +24,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { importWorker } = require('./helpers/auftraege');
+const { importWorker } = require('./helpers/jobs');
 const { testServer } = require('./helpers/server');
 
 const GEHEIM = 'relation "geheime_tabelle" does not exist';

@@ -52,8 +52,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./app-browser');
-const { patternHousehold } = require('./bestand');
-const { AXE_LAUF, LAYOUT, tabCheck } = require('./layout-messung');
+const { patternHousehold } = require('./inventory');
+const { AXE_LAUF, LAYOUT, tabCheck } = require('./layout-measurement');
 
 const DEVICES = { rechner: [1280, 900, false], telefon: [390, 844, true] };
 

@@ -24,7 +24,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -50,8 +50,8 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { adminWithFactor } = require('./helpers/verwalter');
-const { catalogSet } = require('./helpers/bestand');
+const { adminWithFactor } = require('./helpers/admin');
+const { catalogSet } = require('./helpers/inventory');
 
 test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);

@@ -25,7 +25,7 @@ function asRole(url, rolle) {
 /** Läuft die Datei noch als Superuser? Die Marke steht im Kopf der Testdatei
  * (Ratsche in test/roles-separation-db.test.js). @param {string} quelle */
 const asSuperuser = quelle => /^\s*(\*|\/\/)\s*@superuser\b/m.test(quelle);
-/** Ruft die Datei Dienste im Systemrahmen auf (helpers/systemrahmen.js)? @param {string} quelle */
+/** Ruft die Datei Dienste im Systemrahmen auf (helpers/system-frame.js)? @param {string} quelle */
 const imSystemrahmen = quelle => /^require\('\.\/helpers\/systemrahmen'\);/m.test(quelle);
 
 module.exports = { rollen, asRole, asSuperuser, imSystemrahmen };

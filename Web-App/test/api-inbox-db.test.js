@@ -27,7 +27,7 @@ const { buildAndRequire, v1Routes, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 
 /** Absichtlich ohne Anmeldung erreichbar — mit Grund. Wächst die Liste, muss jemand sie begründen. */

@@ -28,7 +28,7 @@ const { sessionMaxDuration } = _req('src/account/sessionDeadline.js');
 const establishSession = (...a) =>
   _req('src/account/http/login.js').establishSession(require('./helpers/sources').testServices().account, ...a);
 
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 
 const LANG = 3_600_000;
 

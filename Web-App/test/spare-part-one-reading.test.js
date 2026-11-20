@@ -1,7 +1,7 @@
 /**
  * Was ein Ersatzteil ist, entscheidet EINE Stelle.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const { after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,7 +13,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { holdsSet, holdsPart } = require('./helpers/bestand');
+const { holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
 after(() => db.pool.end().catch(() => {}));

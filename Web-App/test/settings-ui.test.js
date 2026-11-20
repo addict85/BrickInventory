@@ -22,7 +22,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 // anna ist das angemeldete Konto: Gegen sich selbst gibt es keine Knöpfe.
 const NUTZER = {

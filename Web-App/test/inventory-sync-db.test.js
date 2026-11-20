@@ -1,7 +1,7 @@
 /**
  * „Kann ich das bauen?" — der Abgleich zwischen Teileliste und eigenem Bestand.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -11,7 +11,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
-const { holdsPart } = require('./helpers/bestand');
+const { holdsPart } = require('./helpers/inventory');
 
 const U = {};
 

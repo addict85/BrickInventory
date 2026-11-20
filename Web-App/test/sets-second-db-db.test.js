@@ -38,7 +38,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const ROOT = path.join(__dirname, '..');
-const { testName, cleanRemainder, id } = require('./helpers/testnamen');
+const { testName, cleanRemainder, id } = require('./helpers/test-names');
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();

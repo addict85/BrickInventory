@@ -8,7 +8,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, reiter } = require('./helpers/oberflaeche');
+const { openUi, warte, reiter } = require('./helpers/ui');
 
 test('Untertitel der Kacheln in der Sprache der Oberfläche', async () => {
   const kachel = (sub, sub_teile) => ({ label: 'x', status: 'idle', progress: 0, total: 0, sub, sub_teile });

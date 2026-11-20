@@ -1,9 +1,9 @@
 /**
  * Eine Testdatei, die nach ihren Tests nicht endet, wird rot beendet
- * (test/helpers/auslauf.js), statt den Lauf bis zum Abbruch der CI anzuhalten.
+ * (test/helpers/expiry.js), statt den Lauf bis zum Abbruch der CI anzuhalten.
  *
  * Gegenproben (10.11.2026 gemessen, Node 26):
- *   A  auslauf.js wirkungslos (Bedingung nie wahr) → rot: „ein offener
+ *   A  expiry.js wirkungslos (Bedingung nie wahr) → rot: „ein offener
  *      Server …“ und „ein hängender t.after …“ (das Kind endet nie, ETIMEDOUT)
  *   B  `.unref()` am Zeitgeber nach dem letzten Test gestrichen → rot:
  *      „eine saubere Datei endet sofort …“ (wartet die volle Frist ab)
@@ -15,7 +15,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const EXPIRY = path.join(__dirname, 'helpers', 'auslauf.js');
+const EXPIRY = path.join(__dirname, 'helpers', 'expiry.js');
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'auslauf-'));
 test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
 

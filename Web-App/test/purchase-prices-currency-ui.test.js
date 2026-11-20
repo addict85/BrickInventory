@@ -25,7 +25,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt, reiter } = require('./helpers/oberflaeche');
+const { openUi, warte, takt, reiter } = require('./helpers/ui');
 
 const SN = '10326-1';
 /** Text mit einfachen Leerzeichen: Intl setzt schmale geschützte Leerzeichen vor das Währungszeichen. */

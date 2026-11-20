@@ -28,7 +28,7 @@ function stripModuleSyntax(src) {
   );
 }
 
-const { openUi } = require('./helpers/oberflaeche');
+const { openUi } = require('./helpers/ui');
 
 const SETS = { success: true, sets: [{ set_number: '10294-1', name: 'Titanic', quantity: 1 }], count: 1, total: 1 };
 const setsCalls = aufrufe => aufrufe.filter(a => a.method === 'GET' && /\/api\/v1\/sets\?/.test(a.url)).length;

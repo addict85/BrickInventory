@@ -12,7 +12,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/ui');
 
 const SET = (nr, name, owners) => ({ set_number: nr, name, quantity: 1, conditions: ['N'], instructions: [], owners });
 const ANNA = { id: 1, username: 'anna' },

@@ -32,7 +32,7 @@ process.env.DATABASE_URL = ${JSON.stringify(process.env.DATABASE_URL)};
 const dbModule = require(${JSON.stringify(path.join(ROOT, 'dist/db/database.js'))});
 const db     = dbModule.createDb(dbModule.dbKonfigFromEnvironment());
 const notify = db.notification;
-const { bis } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'zeit.js'))});
+const { bis } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'time.js'))});
 const LISTEN = \`SELECT pid FROM pg_stat_activity WHERE datname = current_database() AND query LIKE 'LISTEN "reconnect_probe"%'\`;
 let empfangen = 0;
 process.on('uncaughtException', e => { console.log('CRASH:' + e.message); process.exit(7); });

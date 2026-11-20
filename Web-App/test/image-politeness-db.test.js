@@ -4,7 +4,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { emptyQueue } = require('./helpers/bildwarteschlange');
+const { emptyQueue } = require('./helpers/image-queue');
 const fs = require('node:fs');
 
 const ROOT = path.join(__dirname, '..');
@@ -44,7 +44,7 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
 
   const P = `TK${process.pid}`;
@@ -108,7 +108,7 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async t => 
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
   const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });

@@ -12,7 +12,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi } = require('./helpers/oberflaeche');
+const { openUi } = require('./helpers/ui');
 
 /** Öffnet die Oberfläche und zeichnet jedes leere src auf, auch das aus dem Markup. */
 async function withObserver(antworten = {}) {

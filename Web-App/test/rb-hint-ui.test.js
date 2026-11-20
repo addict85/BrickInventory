@@ -19,7 +19,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/ui');
 
 const WITHOUT_KEY = {
   '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },

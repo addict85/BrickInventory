@@ -11,7 +11,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 const { testServer } = require('./helpers/server');
-const { holdsSet, catalogSet } = require('./helpers/bestand');
+const { holdsSet, catalogSet } = require('./helpers/inventory');
 
 test.after(async () => {
   await db.pool.end().catch(() => {});

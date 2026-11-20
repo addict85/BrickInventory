@@ -11,7 +11,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -50,7 +50,7 @@ Module.prototype.require = function (name, ...rest) {
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 
 test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);

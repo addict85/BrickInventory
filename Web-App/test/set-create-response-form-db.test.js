@@ -1,7 +1,7 @@
 /**
  * Ein NEU angelegtes Set wird in beiden Erfassungs-Routen gleich beantwortet.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -38,7 +38,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { testData } = require('./helpers/sources');
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
 test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concurrency: 1 }, async t => {
@@ -172,7 +172,7 @@ test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concur
 
     // 5. Die App verlangt nichts, was der Server nicht schickt: die Pflichtfelder ihres
     // Modells (shared/app-schnittstelle.json, aus ihrem Quelltext erzeugt).
-    const model = require('./helpers/vertrag').appSchnittstelle().modelle.AddSetResponse;
+    const model = require('./helpers/contract').appSchnittstelle().modelle.AddSetResponse;
     assert.ok(model && model.felder.length >= 5, 'Modell AddSetResponse nicht gefunden — umbenannt?');
     const zeilen = model.felder.map(name => ({ name, pflicht: model.pflicht.includes(name) }));
 

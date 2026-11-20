@@ -20,9 +20,9 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-const { BUENDEL, placeBundleSafe } = require('./helpers/buendel');
+const { BUENDEL, placeBundleSafe } = require('./helpers/bundle');
 placeBundleSafe();
 const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
 

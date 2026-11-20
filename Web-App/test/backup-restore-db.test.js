@@ -21,11 +21,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { testName, cleanRemainder } = require('./helpers/testnamen');
+const { testName, cleanRemainder } = require('./helpers/test-names');
 const { execFileSync, spawnSync } = require('node:child_process');
 
 /** Ein synchroner Aufruf blockiert die ganze Datei: Wartet psql oder restore.sh auf
- * eine Sperre, kommt auch die Dateifrist aus test/helpers/auslauf.js nie an die Reihe,
+ * eine Sperre, kommt auch die Dateifrist aus test/helpers/expiry.js nie an die Reihe,
  * und der Lauf hängt bis zum Abbruch der CI. Mit Frist wird daraus ein roter Test. */
 const CALL_DEADLINE = 120_000;
 
@@ -34,7 +34,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { ROOT, testData } = require('./helpers/sources');
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb, missingPrecondition } = require('./helpers/db');
-const { holdsSet, holdsPart, quantityOf, subsetOf, catalogSet } = require('./helpers/bestand');
+const { holdsSet, holdsPart, quantityOf, subsetOf, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
 /** pg_dump/psql finden — auf dem PATH oder in einer Distributions-Installation. */

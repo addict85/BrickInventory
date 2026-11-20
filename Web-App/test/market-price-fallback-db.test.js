@@ -11,7 +11,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
-const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/bestand');
+const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inventory');
 
 const NAME = `mengenschnitt_${process.pid}`;
 const SET = `7${process.pid}2-1`,

@@ -13,7 +13,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/ui');
 
 // jsdom kennt keine Passkeys; so sieht die Maske einen Browser, der sie kann.
 const withPasskeys = w => {

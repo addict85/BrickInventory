@@ -17,7 +17,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, sicht, reiter } = require('./helpers/oberflaeche');
+const { openUi, warte, sicht, reiter } = require('./helpers/ui');
 
 const NAME = 'A & B <C>';
 

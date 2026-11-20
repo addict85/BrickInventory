@@ -22,7 +22,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { catalogSet: putCatalogSetAn } = require('./helpers/bestand');
+const { catalogSet: putCatalogSetAn } = require('./helpers/inventory');
 
 const FARBE = 990000 + (process.pid % 9000);
 const TEIL = `lpf${process.pid}`;

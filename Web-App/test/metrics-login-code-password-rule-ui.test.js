@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, ANMELDUNG, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, ANMELDUNG, reiter, sicht, warte, takt } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 /** @param {Document} d */

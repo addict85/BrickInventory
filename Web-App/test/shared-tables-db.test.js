@@ -75,7 +75,7 @@ const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, ohneKommentare, testData, asAccount, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { importWorker } = require('./helpers/auftraege');
+const { importWorker } = require('./helpers/jobs');
 const db = testData();
 const { testServer } = require('./helpers/server');
 

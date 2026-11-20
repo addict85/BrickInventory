@@ -8,7 +8,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/oberflaeche');
+const { openUi, reiter } = require('./helpers/ui');
 
 test('dieselben Ansichtsknöpfe in allen drei Reitern', async () => {
   const { w, d } = await openUi();

@@ -19,7 +19,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { openUi, sicht } = require('./helpers/oberflaeche');
+const { openUi, sicht } = require('./helpers/ui');
 
 /** Der Knopf, wie ihn die geöffnete Sicht „App“ zeigt. */
 async function knopf() {

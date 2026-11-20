@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 // Seit dem 29.10. zeigt eine Liste ihren Ladefehler selbst (fehlerZustand);
 // eine Meldung kommt von einer Handlung — hier „Auf die Merkliste“.

@@ -18,7 +18,7 @@ const { buildAndRequire, testData, asAccount } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { createDb, dbKonfigFromEnvironment } = _req('db/database.js');
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 
 test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

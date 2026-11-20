@@ -88,7 +88,7 @@ function distIsFresh() {
  *  Das Bündel gehört dazu, weil jeder Server mit Oberfläche es ausliefert. */
 function buildDist() {
   if (_built) return;
-  require('./buendel').placeBundleSafe();
+  require('./bundle').placeBundleSafe();
   if (!distIsFresh()) {
     const { execFileSync } = require('node:child_process');
     execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')], {
@@ -243,7 +243,7 @@ function buildAndRequire() {
     return { d, contexts };
   };
   // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
-  // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/eigene-db.js).
+  // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/own-db.js).
   const ownDb = () => (_ownDb ??= ownerAccess(dbModule, testDb, firstStart));
   _dataFactory = ownDb;
   return rel => {

@@ -1,7 +1,7 @@
 /**
  * Manuell erfasste Teile und Figuren tragen ihren Marktpreis mit.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -12,7 +12,7 @@ const _req = buildAndRequire();
 const db = testData();
 const H = handlerModule(_req);
 const MF = _req('src/minifigs/queries.js');
-const { holdsMinifig, holdsPart } = require('./helpers/bestand');
+const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 
 const U = 990701;
 const FIG = 'mp-fig-1',

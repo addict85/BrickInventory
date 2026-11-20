@@ -11,7 +11,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 test('4. und die Webapp löst ihn ein', async () => {
-  const { openUi, warte } = require('./helpers/oberflaeche');
+  const { openUi, warte } = require('./helpers/ui');
   const { w, d, aufrufe } = await openUi(
     {
       '/v1/sets/10294-1': { success: true, set: { set_number: '10294-1', name: 'Titanic', quantity: 1 } },

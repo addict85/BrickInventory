@@ -53,7 +53,7 @@ process.env.BILD_ABRUFE_JE_MINUTE = '3';
 const express = require('express');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { warte: pause, bis } = require('./helpers/zeit');
+const { warte: pause, bis } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 // Ohne Datenbank: Kein Set liegt im Blickfeld, abgelegt wird nichts.
 require('./helpers/sources').replaceServices('images', { setNumberInScope: async () => false });

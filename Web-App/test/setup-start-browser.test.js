@@ -27,7 +27,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 
 const AXE = require('axe-core').source;
 const SCHLUESSEL = ['rebrickable_api_key', 'einrichtung_erledigt'];

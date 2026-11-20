@@ -15,7 +15,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { holdsSet, quantityOf } = require('./helpers/bestand');
+const { holdsSet, quantityOf } = require('./helpers/inventory');
 const db = testData();
 
 test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 }, async t => {

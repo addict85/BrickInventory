@@ -116,7 +116,7 @@ test('jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter', (
 
 test('die Webapp sagt dem Server, welche Sprache sie zeigt', async () => {
   // Ohne diesen Kopf fiele der Server auf Deutsch zurück, und die Tabelle oben wäre wirkungslos.
-  const { openUi } = require('./helpers/oberflaeche');
+  const { openUi } = require('./helpers/ui');
   for (const sprache of ['en', 'de']) {
     const { w, aufrufe } = await openUi({}, { sprache });
     try {

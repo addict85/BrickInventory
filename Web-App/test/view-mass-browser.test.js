@@ -20,7 +20,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
-const { holdsSet, holdsPart } = require('./helpers/bestand');
+const { holdsSet, holdsPart } = require('./helpers/inventory');
 
 /** Kontrast zweier CSS-Farben (rgb[a]) im Browser. */
 const CONTRAST = `(vorne, hinten) => { const f = s => (s.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);

@@ -12,7 +12,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, takt, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, takt, warte } = require('./helpers/ui');
 
 const SET = {
   success: true,

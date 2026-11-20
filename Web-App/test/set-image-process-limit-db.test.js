@@ -2,7 +2,7 @@
  * Set-Bilder über die Prozessgrenze wie in compose.yaml: Der Web-Prozess legt
  * das über /api/v1/img-proxy geholte Bild unter images/sets ab und notiert es,
  * der getrennte Job-Prozess erzeugt Vorschau und image_local. Das CDN ist ein
- * lokaler Server (helpers/cdn-umleitung.js), der wie das echte Abrufe ohne
+ * lokaler Server (helpers/cdn-redirect.js), der wie das echte Abrufe ohne
  * Browser-Kennung mit 403 abweist.
  *
  * Gegenprobe (09.11.2026 gemessen): in passThroughImage()
@@ -35,9 +35,9 @@ process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { catalogSet } = require('./helpers/bestand');
+const { catalogSet } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 const db = testData();
 const sharp = require(path.join(ROOT, 'node_modules', 'sharp'));
 
@@ -131,7 +131,7 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
           DB_SUPERUSER_ERLAUBT: '1',
           APP_BASE_URL_FEHLT_OK: '1',
           CDN_UMLEITUNG_PORT: String(cdnPort),
-          NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${path.join(__dirname, 'helpers', 'cdn-umleitung.js')}`,
+          NODE_OPTIONS: `${process.env.NODE_OPTIONS || ''} --require ${path.join(__dirname, 'helpers', 'cdn-redirect.js')}`,
         },
       })
     );

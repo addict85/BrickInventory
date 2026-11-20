@@ -17,7 +17,7 @@
  *   D  setInterval in watchViaAccess() gestrichen → rot: „ohne Ereignis endet
  *      der Strom im Takt“
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -25,7 +25,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 const bcrypt = require('bcryptjs');
 
 const NAME = `stromzugang_${process.pid}`,

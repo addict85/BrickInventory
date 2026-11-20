@@ -10,7 +10,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -31,7 +31,7 @@ testImageWorker(null, {
   },
 });
 const { dataOrSkip } = require('./helpers/db');
-const { holdsSet, catalogSet } = require('./helpers/bestand');
+const { holdsSet, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
 test('Set-Bilder-Nachlauf: nur Sets mit Bezug, 404 ruht', { concurrency: 1 }, async t => {

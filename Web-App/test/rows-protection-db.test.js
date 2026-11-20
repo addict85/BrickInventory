@@ -72,7 +72,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const q = require('./helpers/sources');
 const _req = q.buildAndRequire();
 const { accessOrSkip, missingPrecondition } = require('./helpers/db');
-const { testName, cleanRemainder, id } = require('./helpers/testnamen');
+const { testName, cleanRemainder, id } = require('./helpers/test-names');
 const { createDb, dbKonfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
 const { inSystemContext, asRequest } = _req('src/infra/accountContext.js');
 

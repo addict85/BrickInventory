@@ -1,5 +1,5 @@
 /**
- * Die Antworten der jsdom-Hilfe (helpers/oberflaeche.js) erfüllen den
+ * Die Antworten der jsdom-Hilfe (helpers/ui.js) erfüllen den
  * zod-Vertrag ihrer Route: die Standardantworten wörtlich, die Antworten
  * eines Tests nach dem Ergänzen fehlender Pflichtfelder.
  *
@@ -16,7 +16,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
-const { ANMELDUNG, SIGNED_OUT, checkResponse, openUi } = require('./helpers/oberflaeche');
+const { ANMELDUNG, SIGNED_OUT, checkResponse, openUi } = require('./helpers/ui');
 const { buildDist } = require('./helpers/sources');
 
 buildDist();
@@ -85,7 +85,7 @@ test('eine falsche Testantwort macht den Test rot', () => {
     datei,
     `
     const test = require('node:test');
-    const { openUi } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'oberflaeche.js'))});
+    const { openUi } = require(${JSON.stringify(path.join(__dirname, 'helpers', 'ui.js'))});
     test('probe', async () => {
       const { w, warte } = await openUi({ '/v1/sets': { success: true, sets: [], count: 'drei' } });
       await w.fetch('/api/v1/sets');

@@ -10,7 +10,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte, ANMELDUNG } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte, ANMELDUNG } = require('./helpers/ui');
 
 const teil = {
   id: 1,

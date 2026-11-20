@@ -13,7 +13,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { patternCollection } = require('./helpers/bestand');
+const { patternCollection } = require('./helpers/inventory');
 
 const felder = `({ lu: document.getElementById('lu').value, lp: document.getElementById('lp').value,
   lc: document.getElementById('lc').value, mask: getComputedStyle(document.getElementById('login-screen')).display,

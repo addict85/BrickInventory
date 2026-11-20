@@ -18,7 +18,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { adminWithFactor } = require('./helpers/verwalter');
+const { adminWithFactor } = require('./helpers/admin');
 
 test('Kontoschalter gehen als true/false hinaus', async t => {
   const db = testData();

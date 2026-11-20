@@ -18,7 +18,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/bestand');
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
 async function erreichbar() {

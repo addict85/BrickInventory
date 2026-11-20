@@ -27,7 +27,7 @@ const sharp = require('sharp');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 const deliverImage = (...a) =>
   _req('src/images/http/imageDelivery.js').deliverImage(require('./helpers/sources').testServices(), ...a);
 

@@ -22,7 +22,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { holdsSet, holdsMinifig, holdsPart, catalogSet } = require('./helpers/bestand');
+const { holdsSet, holdsMinifig, holdsPart, catalogSet } = require('./helpers/inventory');
 
 // Fünf Sets: Menge, Thema und Aufnahmezeit so, dass jede Sortierung eine andere Folge ergibt.
 const SETS = [

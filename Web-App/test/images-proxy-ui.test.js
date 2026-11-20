@@ -21,7 +21,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/oberflaeche');
+const { openUi, reiter } = require('./helpers/ui');
 
 const CDN = 'https://cdn.rebrickable.com/media/parts/elements/300121.jpg';
 const proxy = url => `/api/v1/img-proxy?url=${encodeURIComponent(url)}`;

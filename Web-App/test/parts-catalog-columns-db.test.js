@@ -12,7 +12,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -21,7 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { holdsMinifig, holdsSet, holdsPart, catalogSet } = require('./helpers/bestand');
+const { holdsMinifig, holdsSet, holdsPart, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
 // Dieselbe Begruendung wie in test/sets-without-purchase-price-column-db.test.js: Diese

@@ -16,7 +16,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { checkParameter } = require('./helpers/sources');
-const { openUi, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/ui');
 
 test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
   const h = require('./helpers/sources').handlerQuelle();
@@ -400,7 +400,7 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
   const _req = require('./helpers/sources').buildAndRequire();
   const { holeHttps } = _req('src/infra/fetch.js');
   const { oeffneBild } = _req('clients/imageCdn.js');
-  const { recording } = require('./helpers/https-mitschnitt');
+  const { recording } = require('./helpers/https-recording');
   const hosts = ['cdn.rebrickable.com'];
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
   const aufrufe = await recording(async () => {

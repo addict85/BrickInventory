@@ -25,7 +25,7 @@ const _req = buildAndRequire();
 const db = testData();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 
 test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

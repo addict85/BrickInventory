@@ -12,7 +12,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 const { countryForCurrency } = _req('src/vouchers/balanceLookup.js');
-const { openUi, sicht, warte } = require('./helpers/oberflaeche');
+const { openUi, sicht, warte } = require('./helpers/ui');
 
 test('Server: Land zur Kontowährung', () => {
   assert.deepEqual(['CHF', 'EUR', 'GBP', 'USD', 'JPY'].map(countryForCurrency), [

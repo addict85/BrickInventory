@@ -12,7 +12,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { patternCollection } = require('./helpers/bestand');
+const { patternCollection } = require('./helpers/inventory');
 
 const messen = `(() => {
   const k = document.querySelector('#gallery .sc')?.getBoundingClientRect();

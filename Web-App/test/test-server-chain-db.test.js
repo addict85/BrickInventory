@@ -20,7 +20,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { adminWithFactor } = require('./helpers/verwalter');
+const { adminWithFactor } = require('./helpers/admin');
 
 test('testServer läuft durch die echte Kette', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);

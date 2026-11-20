@@ -30,16 +30,16 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { catalogSet } = require('./helpers/bestand');
-const { importWorker } = require('./helpers/auftraege');
+const { catalogSet } = require('./helpers/inventory');
+const { importWorker } = require('./helpers/jobs');
 const { dataOrSkip } = require('./helpers/db');
 const { routerEinhaengungen, testData } = require('./helpers/sources');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PDFDocument = require('pdfkit');
-const { contractTo, appSchnittstelle } = require('./helpers/vertrag');
-const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
+const { contractTo, appSchnittstelle } = require('./helpers/contract');
+const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
 mailAttrappe();
 
 const NAME = `kschreib_${process.pid}`,

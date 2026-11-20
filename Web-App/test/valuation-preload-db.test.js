@@ -16,7 +16,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -26,7 +26,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { holdsPart, holdsMinifig, holdsSet } = require('./helpers/bestand');
+const { holdsPart, holdsMinifig, holdsSet } = require('./helpers/inventory');
 
 const gesehen = [];
 let count = false;

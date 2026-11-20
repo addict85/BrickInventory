@@ -13,7 +13,7 @@
  *   D  transferAlarm() ohne NOT EXISTS → rot: „Ziel mit eigenem Alarm“
  *      (Primärschlüsselverletzung)
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

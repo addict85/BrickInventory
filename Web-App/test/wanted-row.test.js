@@ -12,16 +12,16 @@
  *   E  in partsList.ts manualParts `NULL::text AS storage` → rot: „die Abfrage
  *      der manuellen Teile …“
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { holdsPart } = require('./helpers/bestand');
+const { holdsPart } = require('./helpers/inventory');
 test.after(() =>
   testData()
     .pool.end()

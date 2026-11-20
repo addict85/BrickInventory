@@ -8,7 +8,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/ui');
 
 test('die übergangenen SMTP-Felder stehen in einer Meldung', async () => {
   const { w, d } = await openUi({

@@ -22,7 +22,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { patternHousehold } = require('./helpers/bestand');
+const { patternHousehold } = require('./helpers/inventory');
 
 /** Zeichnet jedes Bild die Lage der Kopfteile auf, sobald das Startgerüst weg ist. */
 const RECORD = `(() => {

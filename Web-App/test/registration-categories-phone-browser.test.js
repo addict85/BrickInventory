@@ -28,7 +28,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
-const { patternHousehold, holdsPart } = require('./helpers/bestand');
+const { patternHousehold, holdsPart } = require('./helpers/inventory');
 const { buildAndRequire } = require('./helpers/sources');
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;

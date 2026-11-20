@@ -24,7 +24,7 @@
  *      ratschen.test.js „stille Faenge …“ (deckt den gestrichenen Fall „kein
  *      stiller Fehler mehr auf Bestandstabellen“)
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -34,7 +34,7 @@ const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]
 test('die Erfassungsliste wird in BEIDE Richtungen nachgeladen', async t => {
   // Beim Verringern entfernt der Server Erfassungen; nur beim Erhöhen neu zu
   // laden liess gelöschte Einträge im Dialog stehen.
-  const { openUi, reiter } = require('./helpers/oberflaeche');
+  const { openUi, reiter } = require('./helpers/ui');
   const zeile = (id, menge, tag) => ({
     id,
     quantity: menge,
@@ -272,7 +272,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
 });
 
 test('die Finanzen zeigen je Kaufpreis eine Zeile, den Altbestand in einer', async t => {
-  const { openUi, reiter } = require('./helpers/oberflaeche');
+  const { openUi, reiter } = require('./helpers/ui');
   const erfassung = (id, preis) => ({
     id,
     condition: 'N',

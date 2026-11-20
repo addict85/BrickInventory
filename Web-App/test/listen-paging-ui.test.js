@@ -17,7 +17,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/oberflaeche');
+const { openUi, reiter } = require('./helpers/ui');
 
 const abfrage = url => new URL(url, 'http://x').searchParams;
 const set = (nr, name) => ({ set_number: nr, name, quantity: 1 });

@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/ui');
 
 test('Anmeldung: Fehler am Feld', async t => {
   const { w, d } = await openUi(

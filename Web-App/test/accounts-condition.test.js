@@ -7,7 +7,7 @@
  *      Text wirft“, Missing expected exception: setBestand(= 1 OR TRUE)
  *   B  in db/stockQuantity.ts mengeJoin wieder `WHERE a.user_id ${konten}` → rot: dieselbe Prüfung,
  *      Missing expected exception: mengeJoin(= 1 OR TRUE)
- * Den Typ prüft test/typen/konten.typprobe.ts.
+ * Den Typ prüft test/types/accounts.typprobe.ts.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -11,7 +11,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { openUi, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/ui');
 
 test('die Webapp zeigt die Sets als Tabelle mit Bild, Nummer und Name, unter der Beschriftung', async () => {
   const SETS = [

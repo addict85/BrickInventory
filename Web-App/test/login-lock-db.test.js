@@ -51,7 +51,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `sperre_${process.pid}`,
   PASS = 'richtigesPasswort1';
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 
 let UID = null;

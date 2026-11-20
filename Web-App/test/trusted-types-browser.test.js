@@ -18,7 +18,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { patternCollection } = require('./helpers/bestand');
+const { patternCollection } = require('./helpers/inventory');
 
 test('Trusted Types', { timeout: 180_000 }, async t => {
   const app = await startApp(t, { name: `tt_${process.pid}`, bestand: patternCollection });

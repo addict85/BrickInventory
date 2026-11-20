@@ -88,7 +88,7 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
       .jobQueue.signedInKinds()
       .find(a => a.art === 'nacharbeit');
     // Mit Katalog und Bild: Die Nacharbeit fragt dann kein Netz für den Stamm, nur die Schritte danach.
-    await require('./helpers/bestand').catalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });
+    await require('./helpers/inventory').catalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });
     try {
       await nacharbeit.ausfuehren(
         { set_number: SN, user_id: 0, art: 'zweit' },

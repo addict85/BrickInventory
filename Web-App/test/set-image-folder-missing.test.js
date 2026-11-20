@@ -22,8 +22,8 @@ const { setBildHerunterladen } = _req('src/images/setImages.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
 const FIX = path.join(__dirname, 'fixtures');
-const key = fs.readFileSync(path.join(FIX, 'abruf-test.key'));
-const cert = fs.readFileSync(path.join(FIX, 'abruf-test.crt'));
+const key = fs.readFileSync(path.join(FIX, 'fetch-test.key'));
+const cert = fs.readFileSync(path.join(FIX, 'fetch-test.crt'));
 const IMAGE = Buffer.alloc(600, 0xff);
 
 let port = 0;

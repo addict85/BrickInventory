@@ -19,7 +19,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const { holdsSet, quantityOf } = require('./helpers/bestand');
+const { holdsSet, quantityOf } = require('./helpers/inventory');
 
 test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

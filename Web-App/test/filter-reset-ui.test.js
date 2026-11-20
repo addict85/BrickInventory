@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte, takt } = require('./helpers/ui');
 
 const LEER = { '/v1/sets': { success: true, sets: [], total: 0, themes: ['Icons'] } };
 

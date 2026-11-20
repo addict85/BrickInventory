@@ -21,7 +21,7 @@ const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 
 test('Abschalten während einer Belegung', async t => {
   if (!(await dataOrSkip(t, _req))) return;

@@ -17,8 +17,8 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { checkResponse } = require('./helpers/oberflaeche');
-const { warte: takt } = require('./helpers/zeit');
+const { checkResponse } = require('./helpers/ui');
+const { warte: takt } = require('./helpers/time');
 
 const ROOT = path.join(__dirname, '..');
 const SCRIPT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'logviewer.js'), 'utf8');

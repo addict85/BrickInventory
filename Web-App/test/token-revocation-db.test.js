@@ -31,7 +31,7 @@ const db = testData();
 const auth = _req('src/account/deviceToken.js');
 const tokenCache = _req('src/account/tokenCache.js');
 const pgNotify = testAccess().notification;
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 
 test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async t => {
   try {

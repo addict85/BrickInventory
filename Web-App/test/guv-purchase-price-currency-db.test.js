@@ -13,7 +13,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -23,7 +23,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { holdsSet, record, catalogSet } = require('./helpers/bestand');
+const { holdsSet, record, catalogSet } = require('./helpers/inventory');
 
 const NAME = `guvwaehrung_${process.pid}`;
 const NR = { eur: `9${process.pid}1-1`, gemischt: `9${process.pid}2-1`, null: `9${process.pid}3-1` };

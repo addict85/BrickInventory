@@ -33,7 +33,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 const NAME = `stile_${process.pid}`,
@@ -119,7 +119,7 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
     )
   ).id;
   await holdsSet(db, uid, '10300-1', 1, { preis: 199 });
-  const [wiederherstellung] = await require('./helpers/verwalter').adminWithFactor(_req, uid);
+  const [wiederherstellung] = await require('./helpers/admin').adminWithFactor(_req, uid);
   // Mit heutigen Stempeln lädt der Start den Rebrickable-Katalog nicht herunter.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(

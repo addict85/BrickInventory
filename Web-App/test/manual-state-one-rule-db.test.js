@@ -1,7 +1,7 @@
 /**
  * Ein manuell erfasstes Stück hat EINEN Zustand — egal, wer danach fragt.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -17,7 +17,7 @@ const { manualPartsList } = _req('src/parts/queries.js');
 const { readManualMinifigs } = _req('src/minifigs/queries.js');
 const { valueParts, valueMinifigs } = _req('src/finances/financeCalc.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { holdsMinifig, holdsPart } = require('./helpers/bestand');
+const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 
 const NAME = 'zustand_eine_regel';
 
@@ -151,7 +151,7 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand', 
 test('die App holt die manuellen Stücke aus ihrer eigenen Adresse', () => {
   // Was die App ruft, steht in shared/app-schnittstelle.json (aus ihrem Quelltext erzeugt).
   const gerufen = new Set(
-    require('./helpers/vertrag')
+    require('./helpers/contract')
       .appSchnittstelle()
       .routen.map(r => `${r.methode} ${r.pfad}`),
   );

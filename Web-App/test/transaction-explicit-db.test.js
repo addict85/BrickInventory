@@ -37,7 +37,7 @@ const { asRequest, inSystemContext } = require(path.join(__dirname, '..', 'dist'
 const { SystemrahmenInTransaction } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'area.js'));
 
 const PID = 'SELECT pg_backend_pid() AS p';
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 const { LOCKS } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'lockNamespaces.js'));
 
 test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {

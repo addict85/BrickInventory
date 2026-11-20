@@ -11,7 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-const { BUENDEL: BUNDLE, placeBundleSafe } = require('./helpers/buendel');
+const { BUENDEL: BUNDLE, placeBundleSafe } = require('./helpers/bundle');
 const { portOf } = require('./helpers/server');
 placeBundleSafe();
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');

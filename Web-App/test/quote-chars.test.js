@@ -12,7 +12,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/ui');
 
 async function suche(sprache) {
   const o = await openUi({}, { sprache });

@@ -13,7 +13,7 @@
  *      „eine eingetippte Zahl …“ (Herkunft 'U' an einem eigenen Preis)
  *   D  in teil-erfassen.js den Hinweis weggelassen → rot: „die Webapp nennt …“
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert');
 
@@ -21,7 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { openUi, ANMELDUNG, warte } = require('./helpers/oberflaeche');
+const { openUi, ANMELDUNG, warte } = require('./helpers/ui');
 
 const U = 990811,
   TEIL = `ph-teil-${process.pid}`,

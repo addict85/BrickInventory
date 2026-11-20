@@ -15,7 +15,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { patternHousehold } = require('./helpers/bestand');
+const { patternHousehold } = require('./helpers/inventory');
 
 const VIEWS = ['sammlung', 'teile', 'finanzen', 'merkliste', 'bauliste', 'konto', 'gutscheine', 'alarme'];
 

@@ -16,7 +16,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, takt } = require('./helpers/oberflaeche');
+const { openUi, takt } = require('./helpers/ui');
 
 test('offline: schreibende Knöpfe gesperrt', async t => {
   const { w, d } = await openUi();

@@ -38,7 +38,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const net = require('node:net');
@@ -55,9 +55,9 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const auth = _req('src/account/deviceToken.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { bis } = require('./helpers/zeit');
-const { adminWithFactor } = require('./helpers/verwalter');
-const { geraeteSchluessel, signiere, releaseDevice, deposit } = require('./helpers/geraet');
+const { bis } = require('./helpers/time');
+const { adminWithFactor } = require('./helpers/admin');
+const { geraeteSchluessel, signiere, releaseDevice, deposit } = require('./helpers/device');
 const attestation = require('./helpers/attestation');
 const repo = require('./helpers/sources').testArea('devices').geraeteSchluessel;
 const { pairQr } = require('./helpers/qr');
@@ -414,7 +414,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
       'POST /sets/:setNumber/instructions': () =>
         ruf('/sets/10001-1/instructions', { method: 'POST', token: voll, body: {} }),
     };
-    // Seit der Attestation hinterlegt die App den Schlüssel mit Kette (helpers/geraet.js).
+    // Seit der Attestation hinterlegt die App den Schlüssel mit Kette (helpers/device.js).
     const h = await deposit(ruf, voll);
     assert.equal(h.antwort.status, 200, JSON.stringify(h.antwort.body));
     const s = h.schluessel;

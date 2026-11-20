@@ -39,7 +39,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { startApp } = require('./helpers/app-browser');
-const { patternHousehold } = require('./helpers/bestand');
+const { patternHousehold } = require('./helpers/inventory');
 
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
@@ -90,7 +90,7 @@ async function setDetail(_t, a) {
 }
 
 /** Jede Ansicht bei 390 px, alle Klappen offen: Die Seite ist nie breiter als das Fenster. Die allgemeine
- * Prüfung (helpers/oberflaeche-pruefung.js) misst mit geschlossenen „Einzelnen Aufträgen“ und ohne
+ * Prüfung (helpers/ui-check.js) misst mit geschlossenen „Einzelnen Aufträgen“ und ohne
  * gescheiterten Auftrag; so rutschte der Überlauf der Hintergrundarbeiten durch. */
 async function allViews(_t, a) {
   const { b } = a;

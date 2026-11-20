@@ -12,7 +12,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = testData();
 const fc = _req('src/finances/financeCalc.js');
-const { holdsPart } = require('./helpers/bestand');
+const { holdsPart } = require('./helpers/inventory');
 
 const UID = 990101;
 const N = 20; // genug, damit „je Stück" von „einmalig" trennbar ist

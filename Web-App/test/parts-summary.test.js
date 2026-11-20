@@ -1,13 +1,13 @@
 /**
  * Vorberechnete Teile-Zusammenfassung (src/parts/summary.ts).
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { holdsSet, holdsPart } = require('./helpers/bestand');
+const { holdsSet, holdsPart } = require('./helpers/inventory');
 const { keineDb } = require('./helpers/db');
 
 const ROOT = path.join(__dirname, '..');

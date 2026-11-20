@@ -4,7 +4,7 @@
 /**
  * `npm test`: einmal bauen, einmal eine Vorlage-Datenbank aufsetzen (basis.sql
  * und Migrationen), dann die Testdateien parallel — jede mit eigener Kopie der
- * Vorlage (test/helpers/eigene-db.js). Browser-Tests laufen danach einzeln:
+ * Vorlage (test/helpers/own-db.js). Browser-Tests laufen danach einzeln:
  * Mehrere Chromium nebeneinander reissen auf schwachen Rechnern die Fristen.
  */
 const { execFileSync, spawn, spawnSync } = require('node:child_process');
@@ -13,7 +13,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-const { rollen, asRole } = require(path.join(ROOT, 'test', 'helpers', 'rollen.js'));
+const { rollen, asRole } = require(path.join(ROOT, 'test', 'helpers', 'roles.js'));
 const args = process.argv.slice(2);
 const seriell = args.includes('--seriell');
 const abdeckung = args.includes('--abdeckung');
@@ -44,14 +44,14 @@ function deadlineAtLast(/** @type {number} */ grund) {
  */
 function lauf(dateien, n, env, frist = 60_000) {
   if (!dateien.length) return Promise.resolve({ code: 0, frist: [], andere: 0 });
-  // textausgabe.js hält Text aus dem Strom der Berichtsrahmen, auslauf.js
+  // text-output.js hält Text aus dem Strom der Berichtsrahmen, expiry.js
   // beendet ein Kind, das nicht endet (Begründungen dort).
   const preloader = [
     '--require',
-    path.join(ROOT, 'test', 'helpers', 'textausgabe.js'),
+    path.join(ROOT, 'test', 'helpers', 'text-output.js'),
     '--require',
-    path.join(ROOT, 'test', 'helpers', 'auslauf.js'),
-    ...(env.TEST_DB_VORLAGE ? ['--require', path.join(ROOT, 'test', 'helpers', 'eigene-db.js')] : []),
+    path.join(ROOT, 'test', 'helpers', 'expiry.js'),
+    ...(env.TEST_DB_VORLAGE ? ['--require', path.join(ROOT, 'test', 'helpers', 'own-db.js')] : []),
   ];
   const bericht = path.join(os.tmpdir(), `test-lauf-${process.pid}-${Date.now()}.tap`);
   const reporter = process.stdout.isTTY ? 'spec' : 'tap';
@@ -320,7 +320,7 @@ function createRoles(basis, vorlage, r) {
 /**
  * Kopien eines früheren Laufs und (mit `alsoTemplate`) die Vorlage löschen,
  * dazu Datenbanken und Rollen, die Tests unter demselben Stamm angelegt haben
- * (test/helpers/testnamen.js). Rollen danach: Sie können Datenbanken besitzen.
+ * (test/helpers/test-names.js). Rollen danach: Sie können Datenbanken besitzen.
  */
 async function raeumeAuf(
   /** @type {import('pg').Client} */ admin,

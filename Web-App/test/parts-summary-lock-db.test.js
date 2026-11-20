@@ -9,7 +9,7 @@
  *      → rot: Die fremde Zeile ist weg und der Stand steht auf 7.
  *   b) in lockAccount() LOCKS.PARTS_CATALOG statt LOCKS.PARTS_SUMMARY → rot (wie a).
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

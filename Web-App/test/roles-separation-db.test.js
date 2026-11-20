@@ -1,12 +1,12 @@
 /**
- * npm test trennt die Rollen wie im Betrieb (helpers/eigene-db.js): Die App fragt als
+ * npm test trennt die Rollen wie im Betrieb (helpers/own-db.js): Die App fragt als
  * Laufzeitrolle (kein Superuser, kein BYPASSRLS, keine Tabelle gehört ihr), der
  * Systemrahmen als Systemrolle, Testdaten schreibt die Eigentümerin. Nur so zeigt ein
  * gewöhnlicher Test einen fehlenden Systemrahmen. Dateien, die das noch umgehen
- * (Marke superuser im Kopf, helpers/systemrahmen.js geladen), werden weniger, nie mehr.
+ * (Marke superuser im Kopf, helpers/system-frame.js geladen), werden weniger, nie mehr.
  *
  * Gegenproben (am 13.11.2026 gemessen, je einzeln):
- *   A  in helpers/eigene-db.js TEST_DATABASE_URL immer auf den Superuser → rot:
+ *   A  in helpers/own-db.js TEST_DATABASE_URL immer auf den Superuser → rot:
  *      „die App fragt als Laufzeitrolle“
  *   B  die Marke `@superuser` in diese Datei gesetzt → rot (Schranke und Rolle)
  */
@@ -20,7 +20,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const q = require('./helpers/sources');
 const _req = q.buildAndRequire();
 const { accessOrSkip, missingPrecondition } = require('./helpers/db');
-const { asSuperuser, imSystemrahmen } = require('./helpers/rollen');
+const { asSuperuser, imSystemrahmen } = require('./helpers/roles');
 const { createDb, dbKonfigFromEnvironment } = require(path.join(q.DIST, 'db', 'database.js'));
 
 const ROLLE = `SELECT r.rolsuper AS super, r.rolbypassrls AS bypass,

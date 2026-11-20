@@ -25,7 +25,7 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 
 const gesendet = [];
 S.replaceServices('mail', {

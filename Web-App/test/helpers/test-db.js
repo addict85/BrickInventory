@@ -1,13 +1,13 @@
 'use strict';
 /**
  * Datenbanken für den parallelen Testlauf anlegen und löschen, als eigener
- * Prozess: Der Vorlader (eigene-db.js) muss synchron fertig sein, bevor die
+ * Prozess: Der Vorlader (own-db.js) muss synchron fertig sein, bevor die
  * Testdatei ihre erste Zeile ausführt.
  */
 const path = require('node:path');
 const { Client } = require(path.join(__dirname, '..', '..', 'node_modules', 'pg'));
 
-const { rollen } = require('./rollen');
+const { rollen } = require('./roles');
 
 const [, , was, name, vorlage] = process.argv;
 const id = s => `"${String(s).replace(/"/g, '""')}"`;

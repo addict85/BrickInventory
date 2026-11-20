@@ -37,7 +37,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
 const { startApp } = require('./helpers/app-browser');
-const { patternHousehold, catalogSet, holdsSet } = require('./helpers/bestand');
+const { patternHousehold, catalogSet, holdsSet } = require('./helpers/inventory');
 
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;

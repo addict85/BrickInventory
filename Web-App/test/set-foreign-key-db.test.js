@@ -22,7 +22,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { holdsSet, holdsPart, holdsMinifig } = require('./helpers/bestand');
+const { holdsSet, holdsPart, holdsMinifig } = require('./helpers/inventory');
 
 const MIGRATION = path.join(ROOT, 'db/migrations/0058-fremdschluessel-und-pruefungen.sql');
 const SCHLUESSEL = [

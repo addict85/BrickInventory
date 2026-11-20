@@ -19,7 +19,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -55,7 +55,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
   const chef = await put(CHEF, true),
     nutzer = await put(NUTZER, false);
   // Verwalterrechte verlangen einen Code-Generator; jede Bestätigung nimmt einen Wiederherstellungscode.
-  const codes = await require('./helpers/verwalter').adminWithFactor(_req, chef);
+  const codes = await require('./helpers/admin').adminWithFactor(_req, chef);
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");
   t.after(async () => {
     await db.run('DELETE FROM admin_log WHERE target_id = ANY($1)', [[chef, nutzer]]);

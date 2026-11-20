@@ -21,7 +21,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { holdsPart } = require('./helpers/bestand');
+const { holdsPart } = require('./helpers/inventory');
 
 const ALT = (name, quelle) => `
   CREATE OR REPLACE FUNCTION ${name}() RETURNS trigger AS $$

@@ -4,7 +4,7 @@
  * Gegenprobe (durchgeführt): den LEFT JOIN samt Multiplikation zurück auf
  * `SUM(p.quantity)` gesetzt → Schritt 1 wird rot, die anderen bleiben grün.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -15,7 +15,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 const { ownedQuantitiesQuery } = _req('src/parts/queries.js');
-const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/bestand');
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 
 let UID = 0;
 

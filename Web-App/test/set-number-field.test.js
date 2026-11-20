@@ -14,7 +14,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, takt } = require('./helpers/oberflaeche');
+const { openUi, takt } = require('./helpers/ui');
 
 const CORPUS = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', '..', 'shared', 'setnummer-korpus.json'), 'utf8'),

@@ -12,12 +12,12 @@ const path = require('node:path');
 
 const JS = path.join(__dirname, '..', 'public', 'js');
 const COMPONENT = 'components.js';
-const { buildTestbuendel } = require('./helpers/buendel');
+const { buildTestbuendel } = require('./helpers/bundle');
 process.env.TEST_BUENDEL = buildTestbuendel(
   'bausteine',
   "import { detailRow, loadDisplay } from './components.js';\nwindow.__build = { detailRow, loadDisplay };\n",
 );
-const { openUi } = require('./helpers/oberflaeche');
+const { openUi } = require('./helpers/ui');
 
 /** Alle Frontend-Module ausser dem Bündel und dem Baustein selbst. */
 function module_() {

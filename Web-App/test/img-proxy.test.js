@@ -137,7 +137,7 @@ test('der Verbindungs-Pool ist weit genug', async () => {
   // Der Pool steht im Klienten (clients/imageCdn.ts), der Proxy nimmt ihn mit `pool: true`.
   // Gegenprobe (05.11.2026): maxSockets 8 in clients/imageCdn.ts → rot.
   const { oeffneBild } = require('./helpers/sources').buildAndRequire()('clients/imageCdn.js');
-  const { recording } = require('./helpers/https-mitschnitt');
+  const { recording } = require('./helpers/https-recording');
   const url = 'https://cdn.rebrickable.com/media/sets/1-1.jpg';
   const [withPool, withoutPool] = await recording(async () => {
     await oeffneBild(url, { maxBytes: 1000, pool: true }).catch(() => {});

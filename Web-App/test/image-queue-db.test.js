@@ -27,16 +27,16 @@ testImageWorker(null, {
   },
 });
 const { dataOrSkip, keineDb } = require('./helpers/db');
-const { emptyQueue } = require('./helpers/bildwarteschlange');
+const { emptyQueue } = require('./helpers/image-queue');
 const { testServer } = require('./helpers/server');
-const { adminWithFactor } = require('./helpers/verwalter');
+const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
 
 test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
 
   const IQ = _req('src/images/imageDemandRun.js');
@@ -99,7 +99,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
   }
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/bildwarteschlange.js.
+  // und Nachstellung in helpers/image-queue.js.
   await emptyQueue(db);
 
   const NUTZER = `ka-${process.pid}`;

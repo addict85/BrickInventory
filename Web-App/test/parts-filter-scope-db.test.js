@@ -10,7 +10,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { holdsSet, holdsPart } = require('./helpers/bestand');
+const { holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
 test.after(async () => {

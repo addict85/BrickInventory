@@ -30,7 +30,7 @@
  *
  * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
@@ -73,7 +73,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
   // Verwalter brauchen einen Code-Generator: Anmeldung und Bestätigung nehmen je einen
   // Wiederherstellungscode, reichen die zehn nicht, kommen neue.
-  const vorrat = await require('./helpers/verwalter').adminWithFactor(_req, uid);
+  const vorrat = await require('./helpers/admin').adminWithFactor(_req, uid);
   const code = async () => {
     if (!vorrat.length) vorrat.push(...(await _req('src/factors/secondFactor.js').renewCodes(uid)));
     return vorrat.shift();
@@ -160,7 +160,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     const voll = await anmelden({ never_expires: true, scope: 'voll' });
     assert.equal(voll.body.token_info.scope, 'voll');
     // Verwalterrechte eines App-Tokens erst nach der Gerätesperre (step-protection-db.test.js).
-    await require('./helpers/geraet').releaseDevice(ruf, voll.body.token, 'verwaltung');
+    await require('./helpers/device').releaseDevice(ruf, voll.body.token, 'verwaltung');
     assert.equal((await ruf('/admin/cache-ttl', { token: voll.body.token })).status, 200);
     assert.equal((await ruf('/admin/cache-ttl', { cookie: sitzung })).status, 200, 'Die Sitzung behält die Rechte');
   });

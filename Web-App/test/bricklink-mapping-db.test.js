@@ -8,7 +8,7 @@
  * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
  * REQUIRE_DB=1.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -21,7 +21,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
-const { holdsMinifig, holdsPart } = require('./helpers/bestand');
+const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 
 // Dieselbe Begruendung wie in test/set-quantity-from-entries-db.test.js: Diese
 // Datei baut die Datenbank mehrfach von null auf.

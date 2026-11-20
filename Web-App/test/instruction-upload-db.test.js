@@ -32,7 +32,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const _req = require('./helpers/sources').buildAndRequire();
-const { catalogSet } = require('./helpers/bestand');
+const { catalogSet } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { DATA_DIR } = _req('src/infra/appPaths.js');

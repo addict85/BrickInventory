@@ -14,7 +14,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData, asAccount } = require('./helpers/sources');
 const { testServer } = require('./helpers/server');
 const _req = buildAndRequire();
-const { importWorker } = require('./helpers/auftraege');
+const { importWorker } = require('./helpers/jobs');
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 

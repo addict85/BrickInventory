@@ -25,7 +25,7 @@ const assert = require('node:assert/strict');
 const http = require('node:http');
 const path = require('node:path');
 const wt = require('node:worker_threads');
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 

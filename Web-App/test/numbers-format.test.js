@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 const antwort = waehrung => ({
   '/v1/settings/raw': { success: true, settings: { currency: waehrung, language: 'de', rebrickable_api_key: 'probe' } },

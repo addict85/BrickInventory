@@ -113,7 +113,7 @@ const BASIS = new URL(
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 require('./helpers/sources').buildAndRequire();
 
-const { testName, cleanRemainder } = require('./helpers/testnamen');
+const { testName, cleanRemainder } = require('./helpers/test-names');
 const praefix = testName('rolle');
 const ROLLE = `${praefix}_app`.toLowerCase();
 const MIG = `${praefix}_mig`.toLowerCase();

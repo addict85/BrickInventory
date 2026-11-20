@@ -16,7 +16,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 
 /** Sichtbarer Text (ohne .vh), der umbricht oder über die Zelle ragt. */
 const WRAP = `[...document.querySelectorAll('.dt-fin thead th, .dt-summe thead th')].filter(e => e.getClientRects().length).map(th => {

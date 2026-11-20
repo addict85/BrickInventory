@@ -86,7 +86,7 @@ const anmelden = async base => {
   return (r.headers.get('set-cookie') || '').split(';')[0];
 };
 const wer = async (base, keks) => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).uid;
-const { warte: sleep } = require('./helpers/zeit');
+const { warte: sleep } = require('./helpers/time');
 
 /**
  * Aufräumen — und zwar in `after`, nicht am Ende eines Falls.

@@ -7,7 +7,7 @@
  *   B  ergebnis.set(sn, ['N', 'U']) für jedes Set → rot: „ein reines Set kostet nur einen Abruf“
  *   C  den Hinweis beim Erfassen übergangen → rot: „der Zustand einer noch nicht geschriebenen Erfassung zählt“
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -15,7 +15,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { catalogSet } = require('./helpers/bestand');
+const { catalogSet } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
 
 test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {

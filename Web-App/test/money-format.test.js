@@ -11,12 +11,12 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
-const { buildTestbuendel } = require('./helpers/buendel');
+const { buildTestbuendel } = require('./helpers/bundle');
 process.env.TEST_BUENDEL = buildTestbuendel(
   'geldformat',
   "import { fmtN } from './format.js';\nwindow.__fmtN = fmtN;\n",
 );
-const { openUi, ANMELDUNG, warte } = require('./helpers/oberflaeche');
+const { openUi, ANMELDUNG, warte } = require('./helpers/ui');
 
 /**
  * Hat dieser Aufruf ein ZWEITES Argument?

@@ -15,7 +15,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { ROOT } = require('./helpers/sources');
 const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 /** Die Sortierwerte einer Quelle — alles, was wie ein WANTED_SORTS-Schlüssel aussieht. */
 function sortValues(quelle) {

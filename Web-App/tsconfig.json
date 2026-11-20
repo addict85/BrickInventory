@@ -40,7 +40,7 @@
   "include": [
     "server.ts",
     "db/**/*", "src/**/*", "routes/**/*", "jobs/**/*", "scripts/**/*",
-    "types/**/*", "test/typen/**/*"
+    "types/**/*", "test/types/**/*"
   ],
   "exclude": ["node_modules", "public", "data", "dist"]
 }

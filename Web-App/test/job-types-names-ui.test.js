@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/oberflaeche');
+const { openUi, reiter } = require('./helpers/ui');
 const { buildAndRequire } = require('./helpers/sources');
 
 const { DECLARED_KINDS } = buildAndRequire()('startup/wiring.js');

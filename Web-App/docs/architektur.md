@@ -339,7 +339,7 @@ Präfix (`vertragsRouter('/api/v1')`), ein Schlüssel ausserhalb kompiliert nich
 unter fremdem Präfix eingehängt antwortet er 500. Die Route gibt ihr Ergebnis zurück,
 der Router setzt `{ success: true, … }` davor (die App liest `success`); eine Route,
 deren Vertrag kein `success` nennt, antwortet selbst. Die Typprobe steht in
-`test/typen/vertragsRouter.typprobe.ts`.
+`test/types/contractRouter.typprobe.ts`.
 
 ### Namen
 
@@ -408,6 +408,6 @@ explizit in `public/js/main.js` (Importliste), die Schichten in
   die Routentypen kommen aus `frontend-typen/vertrag.d.ts` (aus dem API-Vertrag erzeugt).
 
 Die Schichten prüft `test/frontend-architektur.test.js`, das Verhalten prüfen
-die jsdom-Tests über `test/helpers/oberflaeche.js` (echtes `index.html`,
+die jsdom-Tests über `test/helpers/ui.js` (echtes `index.html`,
 echtes Bündel, Antworten gegen den Vertrag) und die Chrome-Tests über
 `test/helpers/app-browser.js`.

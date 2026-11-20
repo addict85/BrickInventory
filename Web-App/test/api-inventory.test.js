@@ -405,7 +405,7 @@ test('keine verwaisten Klassifikations-Einträge', () => {
 
 /** Jede Adresse, die die Android-App ruft (shared/app-schnittstelle.json). */
 function androidAddresses() {
-  const { routen, adressen } = require('./helpers/vertrag').appSchnittstelle();
+  const { routen, adressen } = require('./helpers/contract').appSchnittstelle();
   const gefunden = new Set(routen.map(r => `${r.methode} ${comparable(r.pfad)}`));
   // Von Hand gebaut: Die Methode steht nicht dabei, also unter allen Verben. Das kann eine
   // Adresse zu viel entlasten, aber keine zu Unrecht anklagen.

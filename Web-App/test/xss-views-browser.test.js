@@ -13,7 +13,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/bestand');
+const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inventory');
 
 const N = `<img src=x onerror="window.__xss=1">"'><svg onload="window.__xss=2">`;
 const SPUR = 'XSS-Spur';

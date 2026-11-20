@@ -18,7 +18,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 const { baseTheMetrics, totalGuvPercent } = _req('src/finances/calculation/profitLoss.js');
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 /** Zahl aus formatiertem Text, gleich welche Trennzeichen die Sprache setzt: „1’863.90“, „1.863,90 €“, „−21,8 %“. */

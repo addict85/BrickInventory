@@ -13,7 +13,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, sicht, warte, ANMELDUNG } = require('./helpers/oberflaeche');
+const { openUi, sicht, warte, ANMELDUNG } = require('./helpers/ui');
 
 const OTPAUTH = 'otpauth://totp/BrickInventory:anna?secret=JBSWY3DPEHPK3PXP&issuer=BrickInventory';
 

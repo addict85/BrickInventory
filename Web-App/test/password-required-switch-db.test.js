@@ -11,7 +11,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -119,7 +119,7 @@ test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, asyn
     const neu = w.cookie ?? cookie;
     // Seit dem 04.11.2026 verlangen Verwalterrechte danach einen Code-Generator.
     assert.equal((await ruf('/settings/tokens', { cookie: neu })).body.code, 'zweiter_faktor_pflicht');
-    await require('./helpers/verwalter').adminWithFactor(_req, uid);
+    await require('./helpers/admin').adminWithFactor(_req, uid);
     assert.equal((await ruf('/settings/tokens', { cookie: neu })).status, 200);
     assert.equal((await ruf('/auth/me', { cookie: neu })).body.user.mustChangePassword, false);
   });

@@ -103,7 +103,7 @@ test('gebaut wird nur noch die neue Adresse', () => {
 /** Erkennen muss die App die alte nicht: Ein gespeicherter Pfad wird nur um die Serveradresse ergänzt. */
 test('die App baut die neue Adresse und nirgends die alte', () => {
   // Von Hand gebaute Adressen der App (shared/app-schnittstelle.json, aus ihrem Quelltext erzeugt).
-  const { adressen } = require('./helpers/vertrag').appSchnittstelle();
+  const { adressen } = require('./helpers/contract').appSchnittstelle();
   assert.ok(adressen.includes(NEU), `Die App baut ${NEU} nicht (gefunden: ${adressen.join(', ')})`);
   assert.deepEqual(
     adressen.filter(a => a === ALT || a.startsWith(`${ALT}?`)),

@@ -32,7 +32,7 @@ const sharp = require('sharp');
 const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 const passThroughImage = (...a) =>
   _req('routes/imgProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
 const { SET_IMG_MAX_BYTES, setBildHerunterladen } = _req('src/images/setImages.js');

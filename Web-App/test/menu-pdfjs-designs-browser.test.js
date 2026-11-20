@@ -25,8 +25,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { startApp } = require('./helpers/app-browser');
-const { patternCollection } = require('./helpers/bestand');
-const { AXE } = require('./helpers/layout-messung');
+const { patternCollection } = require('./helpers/inventory');
+const { AXE } = require('./helpers/layout-measurement');
 
 const PDF =
   '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n' +

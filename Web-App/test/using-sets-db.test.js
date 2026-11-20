@@ -1,7 +1,7 @@
 /**
  * Welche Sets verwenden dieses Teil / diese Figur?
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const { after } = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,7 +11,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { holdsMinifig, holdsSet, holdsPart, catalogSet } = require('./helpers/bestand');
+const { holdsMinifig, holdsSet, holdsPart, catalogSet } = require('./helpers/inventory');
 const db = testData();
 const { usingSets } = _req('src/inventory/shared.js');
 

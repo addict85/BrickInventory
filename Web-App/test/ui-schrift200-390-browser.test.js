@@ -10,4 +10,4 @@
  *   B  referenceLine() ohne Umbruch (eine Zeile, rechtsbündig) → rot: „Finanzen“
  *      (abgeschnitten (Diagramm): „Kaufpreis (nur bewertete …“)
  */
-require('./helpers/oberflaeche-pruefung').checkLargeFont('seite', 390);
+require('./helpers/ui-check').checkLargeFont('seite', 390);

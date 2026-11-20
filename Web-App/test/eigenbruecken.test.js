@@ -179,6 +179,6 @@ test('wer die Bild-Warteschlange abarbeitet, leert sie vorher', () => {
       'einer frueher gelaufenen Datei etwas liegen, arbeitet der Stapel DEREN Zeilen ab ' +
       'und der Test misst etwas anderes, als er glaubt — und zwar nur manchmal, je ' +
       'nachdem, was vorher lief. Abhilfe: `await emptyQueue(db)` nach dem ' +
-      'Schema-Vorbau (helpers/bildwarteschlange.js).',
+      'Schema-Vorbau (helpers/image-queue.js).',
   );
 });

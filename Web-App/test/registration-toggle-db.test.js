@@ -33,7 +33,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
-const { mailAttrappe } = require('./helpers/mail-attrappe');
+const { mailAttrappe } = require('./helpers/mail-fake');
 mailAttrappe();
 const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));

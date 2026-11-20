@@ -15,7 +15,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, takt, warte } = require('./helpers/oberflaeche');
+const { openUi, takt, warte } = require('./helpers/ui');
 
 const errorAt = (d, id) => {
   const e = d.getElementById(id + '-fehler');

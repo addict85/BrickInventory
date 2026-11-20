@@ -34,7 +34,7 @@ environment({ ADMIN_PASSWORD: undefined });
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
-const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
+const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
 mailAttrappe();
 const db = testData();
 const { passwordLack } = _req('src/infra/passwordRule.js');

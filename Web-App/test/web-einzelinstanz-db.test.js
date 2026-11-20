@@ -28,7 +28,7 @@ const { spawn } = require('node:child_process');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 const modul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
 
 const ROOT = path.join(__dirname, '..');

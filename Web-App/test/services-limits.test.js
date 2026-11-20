@@ -1,6 +1,6 @@
 /**
  * Ein Bereich gibt nur seine Dienste heraus, nicht seinen Kontext (Zugang,
- * Transaktion, Repositories, Fächer): Die Probe test/fixtures/dienste-grenzen.ts
+ * Transaktion, Repositories, Fächer): Die Probe test/fixtures/services-limits.ts
  * greift darauf mit @ts-expect-error zu, und tsc muss jeden Zugriff ablehnen.
  *
  * Gegenproben (14.11.2026 gemessen, je einzeln):
@@ -23,7 +23,7 @@ test('die Dienste eines Bereichs zeigen kein Innenleben', () => {
     [
       path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc'),
       '-p',
-      path.join(ROOT, 'test', 'fixtures', 'tsconfig.dienste-grenzen.json'),
+      path.join(ROOT, 'test', 'fixtures', 'tsconfig.services-limits.json'),
     ],
     { cwd: ROOT, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 },
   );

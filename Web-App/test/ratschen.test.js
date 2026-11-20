@@ -140,7 +140,7 @@ function onlyReportedCatches() {
   // „Ausnahme:“ am Fang gestrichen → rot „ohne Ausnahme: …“ (src/mail/transport.ts:155).
   // (15.11.2026) Kaufpreis-Nachtrag sammelt und wirft, Anleitungen eintragen wirft; in
   // instructions.ts das Eintragen wieder in try/catch mit reportError → rot (57 von 56).
-  const { catches, onlyReported } = require('./helpers/faenge');
+  const { catches, onlyReported } = require('./helpers/catches');
   const LIMIT = 56;
   const probe = (/** @type {string} */ q) => catches(q).filter(onlyReported).length;
   assert.equal(
@@ -181,7 +181,7 @@ function silentCatchesTheUi() {
   // (localStorage, abgebrochene Ströme); neue braucht es nicht.
   // Gegenprobe (15.11.2026): in public/js/wanted.js am Alarm beim Merken wieder
   // `.catch(() => null)` → rot (92 stille Fänge, erlaubt sind 91).
-  const { catches, stillImBrowser } = require('./helpers/faenge');
+  const { catches, stillImBrowser } = require('./helpers/catches');
   const LIMIT = 84;
   const probe = (/** @type {string} */ q) => catches(q).filter(stillImBrowser).length;
   assert.equal(probe('a().catch(() => null); try { b(); } catch { /* weg */ } c.catch(() => {});'), 3);
@@ -536,7 +536,7 @@ test('Schreibziele in Routen werden weniger, nie mehr', () => {
 const READS_SOURCE = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
 // Die Hilfen für jsdom und Chrome führen die Oberfläche aus (wie im Prüfbericht arch17-web-b, H1).
 const LEADS_FROM =
-  /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|new Function|vm\.|= import\(|helpers\/(oberflaeche|app-browser)'/;
+  /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|new Function|vm\.|= import\(|helpers\/(ui|app-browser)'/;
 function pureSourceTextTests() {
   return fs
     .readdirSync(__dirname)
@@ -797,9 +797,9 @@ test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weni
   // Gegenproben (13.11.2026): in indexes-db.test.js wieder `_req('db/database.js')` → rot
   // (Fassade); in image-queue-db.test.js `Module.prototype.require = r;` → rot (15 statt 14);
   // in app-chain-db.test.js testServer → routerServer → rot (14 statt 13).
-  // Seit dem 13.11.2026 zählt test/helpers/ mit (helpers/systemrahmen.js, die Definition in
+  // Seit dem 13.11.2026 zählt test/helpers/ mit (helpers/system-frame.js, die Definition in
   // helpers/server.js; je +1 gegenüber der Zählung nur der Testdateien); Gegenprobe:
-  // `Module._load = l;` in helpers/zeit.js → rot (12 statt 11).
+  // `Module._load = l;` in helpers/time.js → rot (12 statt 11).
   assert.ok(USES_FACADE.test("const db = _req('db/database.js');") && !USES_FACADE.test('accessOrSkip(t)'));
   assert.ok(!USES_FACADE.test("const { createDb } = _req('db/database.js');"), 'Exporte bleiben erlaubt');
   assert.ok(FALLBACKS['biegen Module um'].muster.test('Module.prototype.require = function () {}'));
@@ -831,7 +831,7 @@ const READS_ANDROID = /require\(['"]\.\/helpers\/android['"]\)|['"`]Android-App[
 
 test('Web-Tests lesen keinen Android-Quelltext', () => {
   // Gegenprobe: `const k = 'x.kt';` in a11y.test.js → rot (nennt a11y.test.js); dasselbe in
-  // test/helpers/vertrag.js → rot (nennt helpers/vertrag.js).
+  // test/helpers/contract.js → rot (nennt helpers/contract.js).
   const LIMIT = 0;
   for (const probe of ["path.join(ROOT, '..', 'Android-App', 'x')", "'Theme.kt'", "require('./helpers/android')"])
     assert.ok(READS_ANDROID.test(probe), `das Muster greift nicht mehr: ${probe}`);
@@ -900,7 +900,7 @@ function fixedWaitTimes(/** @type {string} */ text) {
 
 test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
   // Eine feste Pause ist unter Last zu kurz und sonst zu lang; gewartet wird auf
-  // eine Bedingung (helpers/zeit.js bis(), ruhig()). Übrig sind Pausen, die zeigen,
+  // eine Bedingung (helpers/time.js bis(), ruhig()). Übrig sind Pausen, die zeigen,
   // dass etwas NICHT geschieht, oder die der geprüfte Code verlangt.
   // Gegenprobe (05.11.2026): `await warte(500);` in history-browser.test.js → rot.
   const LIMIT = 40;
@@ -921,7 +921,7 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
     ist += fixedWaitTimes(text);
     if (text.split('\n').some(z => OWN.test(z))) eigene.push(n);
   }
-  assert.deepEqual(eigene, [], 'eigene Warte-Helfer: test/helpers/zeit.js benutzen');
+  assert.deepEqual(eigene, [], 'eigene Warte-Helfer: test/helpers/time.js benutzen');
   assert.ok(ist <= LIMIT, `${ist} feste Wartezeiten ab 100 ms, erlaubt sind ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ feste Wartezeiten: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });

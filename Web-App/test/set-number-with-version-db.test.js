@@ -18,7 +18,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -30,7 +30,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { holdsPart } = require('./helpers/bestand');
+const { holdsPart } = require('./helpers/inventory');
 const MIG = n => fs.readFileSync(path.join(__dirname, '..', 'db/migrations', n), 'utf8');
 const PID = process.pid;
 

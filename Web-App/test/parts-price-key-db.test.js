@@ -1,7 +1,7 @@
 /**
  * Der Teile-Preis-Cache hat EINEN Schlüsselraum.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -13,7 +13,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { fetchPartPrice } = _req('src/finances/financeCalc.js');
 const { priceHistoryPart } = _req('src/finances/priceHistory.js');
-const { holdsPart } = require('./helpers/bestand');
+const { holdsPart } = require('./helpers/inventory');
 
 test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;

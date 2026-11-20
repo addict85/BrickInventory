@@ -30,7 +30,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/ui');
 
 const RESULTS = [
   { zeile: 2, set_number: '10200-1', success: true, action: 'added', menge: 1 },

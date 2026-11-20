@@ -11,7 +11,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { patternHousehold } = require('./helpers/bestand');
+const { patternHousehold } = require('./helpers/inventory');
 
 test('Merkliste: CSV-Import in das gewählte Konto', { timeout: 120_000 }, async t => {
   const app = await startApp(t, { name: `mkcsv_${process.pid}`, bestand: patternHousehold });

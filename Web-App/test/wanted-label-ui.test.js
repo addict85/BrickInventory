@@ -11,7 +11,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/oberflaeche');
+const { openUi, reiter } = require('./helpers/ui');
 
 const sichtbar = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 

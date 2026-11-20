@@ -1,6 +1,6 @@
 /**
  * Kaufpreis und Zustand landen im Konto des Besitzers, die Menge bewusst im eigenen.
- * Konten, Haushalt und Erfassung legen die Dienste an (helpers/fabrik.js).
+ * Konten, Haushalt und Erfassung legen die Dienste an (helpers/factory.js).
  *
  * Gegenproben: siehe am jeweiligen Teilschritt. Für „die Menge geht bewusst auf das
  * eigene Konto“ (14.11.2026): in setService.ts `const ziel = … ? uid :` durch
@@ -8,7 +8,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen fuer account_links).
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -20,7 +20,7 @@ const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const factory = require('./helpers/fabrik');
+const factory = require('./helpers/factory');
 const db = testData();
 
 test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, async t => {

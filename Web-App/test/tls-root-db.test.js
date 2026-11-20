@@ -45,8 +45,8 @@ const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-const PEM1 = fs.readFileSync(path.join(__dirname, 'fixtures', 'ca-wurzel-1.crt'), 'utf8');
-const PEM2 = fs.readFileSync(path.join(__dirname, 'fixtures', 'ca-wurzel-2.crt'), 'utf8');
+const PEM1 = fs.readFileSync(path.join(__dirname, 'fixtures', 'ca-root-1.crt'), 'utf8');
+const PEM2 = fs.readFileSync(path.join(__dirname, 'fixtures', 'ca-root-2.crt'), 'utf8');
 const FP1 = '6a2+vi4vM1RWOxXv8B8h4GIn8x0V+ELcjAp3DATfCE8=';
 const FP2 = 'N3/8TmZexexJN1wTiG1qcdjYhdQ/Bm3Gds0Om73H7wQ=';
 

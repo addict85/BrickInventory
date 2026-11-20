@@ -450,8 +450,8 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Provenance, Stückliste aus Trivy); compose.yaml nimmt es nur als geprüften
   Digest (`CADDY_IMAGE`, `scripts/image-pruefen.sh`) — `workflow-signature`,
   `image-check`.
-- Der Test-Schlüssel `Web-App/test/fixtures/abruf-test.key` (mit
-  `abruf-test.crt`, selbstsigniert, `CN=abruf-test`, SHA-256
+- Der Test-Schlüssel `Web-App/test/fixtures/fetch-test.key` (mit
+  `fetch-test.crt`, selbstsigniert, `CN=abruf-test`, SHA-256
   `25:B4:03:BD:C0:2F:3B:87:7B:DC:7F:B6:69:4D:C3:AF:FE:79:C1:42:C9:CE:DD:1E:C1:B2:6C:EF:F7:96:B3:BC`)
   steht seit Commit `227229e` öffentlich in der Historie. Er war nie
   produktiv: Nur zwei Tests (`fetch-helper`, `voucher-balance-fetch`)

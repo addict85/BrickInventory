@@ -47,11 +47,11 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer, portOf } = require('./helpers/server');
-const { mailAttrappe, enterMailServer } = require('./helpers/mail-attrappe');
+const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
 const gesendet = mailAttrappe();
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {

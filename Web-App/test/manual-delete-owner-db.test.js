@@ -12,7 +12,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
-const { holdsMinifig, holdsPart, subsetOf } = require('./helpers/bestand');
+const { holdsMinifig, holdsPart, subsetOf } = require('./helpers/inventory');
 
 async function erreichbar() {
   try {
@@ -68,7 +68,7 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async t => {
   };
   // Die Stückzahl kommt seit Migration 0038 aus den Erfassungen, nicht aus
   // der Spalte. subsetOf() traegt dieselbe Fallunterscheidung wie der
-  // Server (test/helpers/bestand.js).
+  // Server (test/helpers/inventory.js).
   const teile = async () => {
     const zeilen = await db.all(`SELECT user_id, color_id FROM parts WHERE part_number='3001' ORDER BY user_id`);
     const raus = [];

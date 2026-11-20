@@ -18,7 +18,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { holdsSet, catalogSet } = require('./helpers/bestand');
+const { holdsSet, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
 test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { concurrency: 1 }, async t => {

@@ -31,7 +31,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { startApp, warte } = require('./helpers/app-browser');
-const { patternHousehold, holdsSet, catalogSet } = require('./helpers/bestand');
+const { patternHousehold, holdsSet, catalogSet } = require('./helpers/inventory');
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;

@@ -15,7 +15,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/ui');
 
 /** Wählt im Alarm-Import eine CSV-Datei, wie es der Dateidialog täte. */
 function chooseAlarmCsv(w) {

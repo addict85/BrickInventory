@@ -15,7 +15,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -54,7 +54,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
       )
     ).id;
   // Verwalter brauchen einen Code-Generator; Anmeldung und Bestätigung nehmen je einen Wiederherstellungscode.
-  const { adminWithFactor } = require('./helpers/verwalter');
+  const { adminWithFactor } = require('./helpers/admin');
   const codes = {
     sv_chef: await adminWithFactor(_req, id.sv_chef),
     sv_second: await adminWithFactor(_req, id.sv_second),

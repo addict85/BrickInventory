@@ -17,7 +17,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, ANMELDUNG, sicht, takt } = require('./helpers/oberflaeche');
+const { openUi, ANMELDUNG, sicht, takt } = require('./helpers/ui');
 
 const KONTO = admin => ({
   '/v1/auth/me': { success: true, loggedIn: true, user: { ...ANMELDUNG['/v1/auth/me'].user, is_admin: admin } },

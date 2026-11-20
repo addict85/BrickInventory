@@ -18,7 +18,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { PassThrough } = require('node:stream');
 const { EventEmitter } = require('node:events');
-const { warte, bis } = require('./helpers/zeit');
+const { warte, bis } = require('./helpers/time');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 

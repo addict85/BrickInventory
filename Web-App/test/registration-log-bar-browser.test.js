@@ -15,7 +15,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
-const { catalogSet, holdsSet } = require('./helpers/bestand');
+const { catalogSet, holdsSet } = require('./helpers/inventory');
 
 const DESIGNS = ['classic', 'brick', 'noppe', 'werkbank', 'hochglanz', 'farbfaecher'];
 const THEMA = 'Star Wars / Ultimate Collector Series';

@@ -15,7 +15,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi } = require('./helpers/oberflaeche');
+const { openUi } = require('./helpers/ui');
 
 const STILE = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
 const SETS = {

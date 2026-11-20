@@ -29,8 +29,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
-const { patternHousehold } = require('./helpers/bestand');
-const { AXE, AXE_LAUF } = require('./helpers/layout-messung');
+const { patternHousehold } = require('./helpers/inventory');
+const { AXE, AXE_LAUF } = require('./helpers/layout-measurement');
 
 const TAB = { key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 };
 const taste = async (b, t) => {

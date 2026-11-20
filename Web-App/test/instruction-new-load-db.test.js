@@ -33,8 +33,8 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { adminWithFactor } = require('./helpers/verwalter');
-const { holdsSet, catalogSet } = require('./helpers/bestand');
+const { adminWithFactor } = require('./helpers/admin');
+const { holdsSet, catalogSet } = require('./helpers/inventory');
 
 // Kein Abruf bei den Quellen: Das Neuladen findet hier nichts.
 const anlPath = require.resolve(path.join(require('./helpers/sources').DIST, 'src/catalog/instructions.js'));

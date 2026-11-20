@@ -27,7 +27,7 @@ const ROOT = path.join(__dirname, '..');
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {

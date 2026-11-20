@@ -27,7 +27,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 // Die Wörterbücher liegen seit der Aufteilung in public/locales/{de,en}.js —
 // index.html lädt nur die aktive Sprache, den Rest holt loadLang() nach.

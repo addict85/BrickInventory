@@ -26,8 +26,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
-const { patternCollection } = require('./helpers/bestand');
-const { LAYOUT } = require('./helpers/layout-messung');
+const { patternCollection } = require('./helpers/inventory');
+const { LAYOUT } = require('./helpers/layout-measurement');
 
 const ESC = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 };
 

@@ -1,4 +1,4 @@
 {
   "extends": "../../tsconfig.json",
-  "include": ["dienste-grenzen.ts"]
+  "include": ["services-limits.ts"]
 }

@@ -3,7 +3,7 @@
  * Testdaten über die Dienste dieser Testdatei (testServices()) statt rohem SQL: Konto,
  * Haushalt und Erfassung entstehen so, wie der Server sie anlegt (Protokoll, Haushaltsregeln,
  * Erfassung samt Bestandszeile). Ändert sich das Schema, folgt die Fabrik dem Dienst.
- * Erst nach buildAndRequire(); im Systemrahmen (helpers/systemrahmen.js) wie jede Testvorbereitung.
+ * Erst nach buildAndRequire(); im Systemrahmen (helpers/system-frame.js) wie jede Testvorbereitung.
  */
 const { testServices } = require('./sources');
 

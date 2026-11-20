@@ -178,7 +178,7 @@ test('ein Patchstand unter der Mindeststufe wird abgewiesen, ohne Mindeststufe j
 });
 
 test('Googles Liste wird gelesen; eine Liste in anderer Form wirft, statt halb zu gelten', () => {
-  const roh = fs.readFileSync(path.join(__dirname, 'fixtures', 'attestation-status-auszug.json'));
+  const roh = fs.readFileSync(path.join(__dirname, 'fixtures', 'attestation-status-excerpt.json'));
   const nummern = W.readRevocationList(roh);
   assert.equal(nummern.length, 5);
   assert.ok(nummern.includes('c35747a084470c3135aeefe2b8d40cd6'));

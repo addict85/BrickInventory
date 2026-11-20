@@ -25,14 +25,14 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { buildTestbuendel } = require('./helpers/buendel');
+const { buildTestbuendel } = require('./helpers/bundle');
 
 process.env.TEST_BUENDEL = buildTestbuendel(
   'aktionen-dispatcher',
   "import { actionNames, registerActions } from './registry.js';\n" +
     'window.__registry = { actionNames, registerActions };\n',
 );
-const { openUi, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, warte, takt } = require('./helpers/ui');
 
 const PUB = path.join(__dirname, '..', 'public');
 

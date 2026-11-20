@@ -30,7 +30,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const BASIS = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { testName, cleanRemainder, id } = require('./helpers/testnamen');
+const { testName, cleanRemainder, id } = require('./helpers/test-names');
 const NAME = testName('schema_basis');
 const ziel = new URL(BASIS);
 ziel.pathname = '/' + NAME;

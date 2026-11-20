@@ -26,10 +26,10 @@ process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
 const ROOT = path.join(__dirname, '..');
 const S = require('./helpers/sources');
-const { catalogSet } = require('./helpers/bestand');
+const { catalogSet } = require('./helpers/inventory');
 const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { mailAttrappe } = require('./helpers/mail-attrappe');
+const { mailAttrappe } = require('./helpers/mail-fake');
 mailAttrappe();
 const db = S.testData();
 const auth = _req('src/account/deviceToken.js');

@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter } = require('./helpers/oberflaeche');
+const { openUi, reiter } = require('./helpers/ui');
 
 // Der CSV-Importstatus wird im Takt abgefragt, nicht vom Filterwechsel: Fällt
 // eine Abfrage in das Fenster, ist sie kein Abruf hinter dem Kontofilter.

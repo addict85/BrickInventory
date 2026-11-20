@@ -1,7 +1,7 @@
 /**
  * Die Guthaben-Abfrage über ihre echte Adresse — Schranke inbegriffen.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

@@ -20,10 +20,10 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData, testSources, testServices, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { bis } = require('./helpers/zeit');
+const { bis } = require('./helpers/time');
 const db = testData();
 
-const EXCERPT = fs.readFileSync(path.join(__dirname, 'fixtures', 'attestation-status-auszug.json'));
+const EXCERPT = fs.readFileSync(path.join(__dirname, 'fixtures', 'attestation-status-excerpt.json'));
 const gespeichert = async () => {
   const z = await db.get("SELECT value FROM run_state WHERE key = 'attestation_widerruf'");
   return z ? JSON.parse(z.value) : null;

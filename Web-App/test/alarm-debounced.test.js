@@ -11,7 +11,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-const { BUENDEL, placeBundleSafe } = require('./helpers/buendel');
+const { BUENDEL, placeBundleSafe } = require('./helpers/bundle');
 placeBundleSafe();
 const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
 const ADMIN = fs.readFileSync(path.join(ROOT, 'public', 'js', 'detail-fields.js'), 'utf8');
@@ -84,7 +84,7 @@ function fenster() {
   return { w, rufe, meldungen, feld: w.document.getElementById('m-alert-val'), schliesse: () => w.close() };
 }
 
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 
 /** „249.90" Zeichen für Zeichen, mit [takt] ms zwischen den Anschlägen. */
 async function tap(f, takt, text = '249.90') {

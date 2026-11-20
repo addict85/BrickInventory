@@ -21,7 +21,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, asAccount, areaPage } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 
 test('ein Dienst fragt nur als das Konto des Zeilenschutzes', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);

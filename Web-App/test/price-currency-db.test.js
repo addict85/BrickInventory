@@ -16,7 +16,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
 test('der currency-Parameter der App übersteuert die Nutzereinstellung NICHT', { concurrency: 1 }, async t => {

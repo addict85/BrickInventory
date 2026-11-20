@@ -29,7 +29,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 // Das gebaute Modul selbst, nicht die Fassade aus buildAndRequire().
 const modul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
 

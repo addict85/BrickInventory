@@ -28,7 +28,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
-const { patternCollection } = require('./helpers/bestand');
+const { patternCollection } = require('./helpers/inventory');
 
 test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
   const app = await startApp(t, { name: `r11_${process.pid}`, bestand: patternCollection, allDesigns: true });

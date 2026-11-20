@@ -37,7 +37,7 @@ const { buildAndRequire, testData, testAccess, asAccount } = require('./helpers/
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { warte, bis } = require('./helpers/zeit');
+const { warte, bis } = require('./helpers/time');
 
 test('Auftragstabelle', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

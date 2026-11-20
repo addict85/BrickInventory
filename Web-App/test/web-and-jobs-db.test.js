@@ -34,7 +34,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 
 function freePort() {
   return new Promise((auf, ab) => {

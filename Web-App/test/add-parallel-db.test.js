@@ -4,7 +4,7 @@
  * Deshalb hier: echte parallele Aufrufe gegen echte Postgres-Verbindungen.
  * Ohne Sperre schlagen die Prüfungen sofort an — nachgewiesen per Gegenprobe.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -15,7 +15,7 @@ const { buildAndRequire, testData, testContext } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 
 test('Erfassen unter Last', { concurrency: 1 }, async t => {
   try {

@@ -19,7 +19,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
-const { holdsSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 
 test('Geringe Höhe: Kopf, Leiste und Band', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {

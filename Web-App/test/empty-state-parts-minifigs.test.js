@@ -2,7 +2,7 @@
  * Teile- und Minifiguren-Reiter: Ein Leerzustand steht nur da, wenn BEIDE
  * Quellen leer sind, und Farbe/Kategorie stehen als Auswahlfelder in der
  * Filterleiste über den Listen. Geprüft am echten Bündel in jsdom mit
- * vorgegebenen Serverantworten (test/helpers/oberflaeche.js).
+ * vorgegebenen Serverantworten (test/helpers/ui.js).
  *
  * Gegenproben (am 28.10. gemessen):
  *   A  in teile.js den alten Leerzustand der Set-Teile wieder unbedingt
@@ -13,7 +13,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 const ROT = {
   part_number: '3001',

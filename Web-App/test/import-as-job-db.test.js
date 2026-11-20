@@ -24,7 +24,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, asAccount } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-const { importWorker } = require('./helpers/auftraege');
+const { importWorker } = require('./helpers/jobs');
 const path = require('node:path');
 
 // Vor dem Laden des Workers: Der Alarm-Import wirft einen Fachfehler.

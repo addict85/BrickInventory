@@ -20,7 +20,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, warte, takt, reiter } = require('./helpers/oberflaeche');
+const { openUi, warte, takt, reiter } = require('./helpers/ui');
 
 function sets(n) {
   return Array.from({ length: n }, (_, i) => {

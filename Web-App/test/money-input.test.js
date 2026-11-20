@@ -20,7 +20,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, sicht, takt, warte } = require('./helpers/oberflaeche');
+const { openUi, sicht, takt, warte } = require('./helpers/ui');
 
 async function setErfassen(o, preis) {
   const { d, w, aufrufe } = o;

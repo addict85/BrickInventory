@@ -24,7 +24,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { openUi, sicht, warte } = require('./helpers/oberflaeche');
+const { openUi, sicht, warte } = require('./helpers/ui');
 
 test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);

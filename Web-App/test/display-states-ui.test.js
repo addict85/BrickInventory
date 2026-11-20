@@ -20,7 +20,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { openUi, reiter, sicht, warte, takt } = require('./helpers/oberflaeche');
+const { openUi, reiter, sicht, warte, takt } = require('./helpers/ui');
 
 test('Kennzahlen ohne k: 1300 Teile stehen als volle Zahl da', async () => {
   const { w, d } = await openUi({

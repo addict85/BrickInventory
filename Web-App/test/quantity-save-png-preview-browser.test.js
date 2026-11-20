@@ -18,7 +18,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const zlib = require('node:zlib');
 const { startApp } = require('./helpers/app-browser');
-const { patternCollection, catalogSet, holdsSet, quantityOf } = require('./helpers/bestand');
+const { patternCollection, catalogSet, holdsSet, quantityOf } = require('./helpers/inventory');
 
 const ROOT = path.join(__dirname, '..');
 const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;

@@ -18,7 +18,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -26,7 +26,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
-const { holdsSet, record, quantityOf } = require('./helpers/bestand');
+const { holdsSet, record, quantityOf } = require('./helpers/inventory');
 
 const kaeufe = (db, uid, sn) =>
   db

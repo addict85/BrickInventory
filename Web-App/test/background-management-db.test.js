@@ -31,7 +31,7 @@ const { buildAndRequire, testData, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { adminWithFactor } = require('./helpers/verwalter');
+const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
 
 test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {

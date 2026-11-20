@@ -9,7 +9,7 @@
  *   B  history_new auf die gezeichneten Zustände gekürzt → rot: „die
  *      Rohdaten bleiben vollständig“
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

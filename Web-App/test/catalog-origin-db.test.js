@@ -15,7 +15,7 @@
  *
  * REQUIRE_DB=1.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 

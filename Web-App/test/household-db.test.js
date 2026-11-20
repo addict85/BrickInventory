@@ -17,7 +17,7 @@
  * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL,
  * Default postgres://tester:test@localhost/cattest. Ohne DB: skip.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -30,7 +30,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
-const { holdsMinifig, holdsSet, holdsPart, quantityOf, catalogSet } = require('./helpers/bestand');
+const { holdsMinifig, holdsSet, holdsPart, quantityOf, catalogSet } = require('./helpers/inventory');
 
 /**
  * Die ECHTE Verschiebe-Route aufrufen — mit injizierter Session, wie in

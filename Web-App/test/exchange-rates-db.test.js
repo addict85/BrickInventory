@@ -16,7 +16,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
@@ -28,7 +28,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { holdsSet, record, holdsPart, catalogSet } = require('./helpers/bestand');
+const { holdsSet, record, holdsPart, catalogSet } = require('./helpers/inventory');
 const { ZipArchive } = require(path.join(__dirname, '..', 'node_modules', 'archiver'));
 const { portOf } = require('./helpers/server');
 

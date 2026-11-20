@@ -13,7 +13,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 /** Feldnamen, deren Summe eine Geschäftsregel wäre. */
 const GELDFELDER =

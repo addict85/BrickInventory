@@ -12,7 +12,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -20,9 +20,9 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = testData();
-const { holdsSet, record } = require('./helpers/bestand');
+const { holdsSet, record } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
-const { openUi, warte } = require('./helpers/oberflaeche');
+const { openUi, warte } = require('./helpers/ui');
 
 test('setsLesen liefert den letzten Kauf', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;

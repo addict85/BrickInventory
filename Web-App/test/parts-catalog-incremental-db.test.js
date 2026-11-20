@@ -31,7 +31,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
-const { holdsSet, holdsPart } = require('./helpers/bestand');
+const { holdsSet, holdsPart } = require('./helpers/inventory');
 const { asRequest } = _req('src/infra/accountContext.js');
 const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 

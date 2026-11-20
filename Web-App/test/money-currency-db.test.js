@@ -19,7 +19,7 @@
  *
  * Voraussetzung: Test-DB via TEST_DATABASE_URL.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -111,7 +111,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
   });
 
   await t.test('nur ein Kaufpreis in EUR: keine G&V statt Tausender-Prozent', async () => {
-    const { holdsPart, holdsMinifig } = require('./helpers/bestand');
+    const { holdsPart, holdsMinifig } = require('./helpers/inventory');
     await holdsPart(db, uid, PART_EUR, { colorId: 5, preis: 1 });
     await holdsPart(db, uid, TEIL_CHF, { colorId: 5, preis: 0.1 });
     await holdsMinifig(db, uid, FIG, { preis: 3 });

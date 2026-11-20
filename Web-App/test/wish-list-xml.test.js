@@ -14,7 +14,7 @@
  */
 const test = require('node:test');
 const assert = require('node:assert');
-const { openUi, reiter, warte } = require('./helpers/oberflaeche');
+const { openUi, reiter, warte } = require('./helpers/ui');
 
 const BOESE = '03:00"><img id="eingeschleust" src="x">';
 
