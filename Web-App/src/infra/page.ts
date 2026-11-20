@@ -1,4 +1,4 @@
-/** Die Abfrage einer geblätterten Liste (Vertrag: SEITE). */
+/** The query of a paged list (contract: SEITE). */
 export interface PagesWish {
   page?: number | undefined;
   page_size?: number | undefined;
@@ -6,8 +6,8 @@ export interface PagesWish {
 
 export const PAGE_AT_MOST = 500;
 
-/** Summen rechnet der Aufrufer über die ganze Liste, damit sie auf jeder Seite
- * gleich sind. Ohne page_size kommt alles: So rufen ältere App-Stände auf. */
+/** The caller computes sums over the whole list so that they are the same on every
+ * page. Without page_size everything comes: that is how older app versions call. */
 export function pageFrom<T>(
   liste: T[],
   w: PagesWish,

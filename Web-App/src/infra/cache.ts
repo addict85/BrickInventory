@@ -1,6 +1,6 @@
-/** Ein begrenzter Speicher mit Frist. Ist er voll, weicht der älteste Eintrag
- * (Einfügereihenfolge der Map): Alles auf einmal zu leeren brächte die volle
- * Last der Neuberechnung ausgerechnet im Moment der höchsten Last. */
+/** A bounded store with expiry. When it is full, the oldest entry gives way
+ * (insertion order of the Map): clearing everything at once would bring the full
+ * load of recomputation precisely at the moment of highest load. */
 export class Zwischenspeicher<K, V> {
   private readonly eintraege = new Map<K, { wert: V; bis: number }>();
 
@@ -19,7 +19,7 @@ export class Zwischenspeicher<K, V> {
     return e.wert;
   }
 
-  /** fristMs gilt nur für diesen Eintrag (z. B. kürzer für einen Fehlschlag). */
+  /** fristMs only applies to this entry (e.g. shorter for a failure). */
   setze(k: K, wert: V, fristMs = this.fristMs): void {
     this.eintraege.delete(k);
     if (this.eintraege.size >= this.max) {
@@ -42,9 +42,9 @@ export class Zwischenspeicher<K, V> {
   }
 }
 
-/** Zustand, den ein Bereich für seinen Zugang hält (Zwischenspeicher aus der
- * Datenbank, Sperrverbindungen): je Fabrik ein Satz, nicht je Prozess. Die
- * Fächer legt der Dienst beim ersten Gebrauch an, der Bereich kennt ihre Typen nicht. */
+/** State an area keeps for its access (caches from the
+ * database, lock connections): one set per factory, not per process. The
+ * service creates the compartments on first use; the area does not know their types. */
 export class Faecher {
   private readonly inhalt = new Map<string, unknown>();
 

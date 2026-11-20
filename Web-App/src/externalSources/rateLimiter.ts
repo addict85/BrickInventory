@@ -1,7 +1,7 @@
 import { systemClock, type Uhr } from '../infra/clock';
 
-/** Rebrickable erlaubt im Mittel einen Aufruf je Sekunde; ein 429 nennt die
- * Wartezeit, und genau so lange wird zurückgehalten. */
+/** Rebrickable allows one call per second on average; a 429 names the
+ * waiting time, and exactly that long is held back. */
 export class RateLimiter {
   maxRequests: number;
   windowMs: number;
@@ -11,8 +11,8 @@ export class RateLimiter {
   takt: Takt | null;
   uhr: Uhr;
 
-  /** @param takt Prozessübergreifender Takt (Tabelle api_takt); ohne ihn
-   *             drosselt die Instanz nur sich selbst. */
+  /** @param takt Cross-process tick (table api_takt); without it
+   *             the instance only throttles itself. */
   constructor(maxRequests: number, windowMs: number, takt: Takt | null = null, uhr: Uhr = systemClock) {
     this.maxRequests = maxRequests;
     this.windowMs = windowMs;
@@ -42,7 +42,7 @@ export class RateLimiter {
       if (!this.queue.length) return;
       this.lastCall = this.uhr.jetzt();
       const resolve = this.queue.shift();
-      // this.queue.length ist zwei Zeilen vorher geprüft; shift() weiss das nicht.
+      // this.queue.length is checked two lines before; shift() does not know that.
       if (resolve) resolve();
       if (this.queue.length) this._schedule();
     }, wait);
@@ -64,8 +64,8 @@ import { kontingentPruefenUndZaehlen, REBRICKABLE_DEFAULT_DAILY } from './apiQuo
 import { versuche } from '../infra/result';
 import type { ForeignSourcesContext } from './context';
 
-/** Ein einziges UPDATE schiebt den Zeitpunkt weiter — zwei Prozesse bekommen
- * nie denselben Platz, ohne dass einer eine Sperre hält, während er wartet. */
+/** A single UPDATE moves the point in time forward — two processes never get
+ * the same slot, without one holding a lock while it waits. */
 export async function waitOnTick(takt: Takt): Promise<void> {
   const { api, gapMs, apiTakt, uhr = systemClock } = takt;
   if (uhr.jetzt() < takt.disruptedUntil) return;
@@ -79,40 +79,40 @@ export async function waitOnTick(takt: Takt): Promise<void> {
   }
 }
 
-/** Ein 429 gilt für alle Prozesse. */
+/** A 429 applies to all processes. */
 function taktAussetzen({ api, apiTakt, disruptedUntil, uhr = systemClock }: Takt, waitMs: number) {
   if (uhr.jetzt() < disruptedUntil) return;
   apiTakt.pushTick(api, waitMs).catch(e => reportError('drossel:takt-aussetzen', e));
 }
 
-/** Ein Aufruf je Sekunde für alle Prozesse zusammen: Die Drosseln ordnen nur im Prozess, den Abstand
- * hält der gemeinsame Takt (Tabelle api_takt). */
+/** One call per second for all processes together: the throttles only order within the process, the spacing
+ * is kept by the shared tick (table api_takt). */
 export interface Takt {
   api: string;
   gapMs: number;
   apiTakt: ForeignSourcesContext['apiTakt'];
-  /** Nach einem Datenbankfehler eine Minute ohne gemeinsamen Takt: Jeder Aufruf liefe
-   * sonst erst in den Verbindungs-Timeout. Die eigene Drossel bleibt. */
+  /** After a database error one minute without a shared tick: otherwise every call would
+   * first run into the connection timeout. The own throttle stays. */
   disruptedUntil: number;
   uhr?: Uhr;
 }
 
-/** Je Satz Dienste einmal (createForeignSources): Vordergrund und Hintergrund teilen den Takt. */
+/** Once per set of services (createForeignSources): foreground and background share the tick. */
 export function throttleRebrickable(apiTakt: Takt['apiTakt'], uhr: Uhr) {
   const takt: Takt = { api: 'rebrickable', gapMs: 1000, apiTakt, disruptedUntil: 0, uhr };
   return { foreground: new RateLimiter(1, 1500, takt, uhr), hintergrund: new RateLimiter(1, 1500, takt, uhr) };
 }
 
-// Gezählt in der Datenbank: Je Prozess gezählt vervielfachte sich das Limit.
+// Counted in the database: counted per process, the limit would multiply.
 export async function consumeRebrickableDaily(k: ForeignSourcesContext): Promise<boolean> {
   const rl = await versuche('takt:kontingentPruefenUndZaehlen', kontingentPruefenUndZaehlen(k, 'rebrickable'));
-  // Im Zweifel durchlassen: Ein überschrittenes Tageskontingent kostet bloss
-  // Aufrufe — umgekehrt als beim Login-Zähler, wo der Rückfall sperrt.
+  // When in doubt let it through: an exceeded daily quota merely costs
+  // calls — the opposite of the login counter, where the fallback locks.
   return rl.ok ? rl.wert.allowed : true;
 }
 
-/** Zwei gleichzeitige Downloads, aber höchstens einer neu je Sekunde: Das CDN
- * verträgt etwas Parallelität, keinen Ansturm. */
+/** Two concurrent downloads, but at most one new one per second: the CDN
+ * tolerates some parallelism, not a rush. */
 export class ConcurrentRateLimiter {
   maxConcurrent: number;
   intervalMs: number;
@@ -164,7 +164,7 @@ export class ConcurrentRateLimiter {
     this.active++;
     this.lastStart = this.uhr.jetzt();
     const resolve = this.queue.shift();
-    // Die Länge ist im Wächter am Methodenanfang geprüft.
+    // The length is checked in the guard at the start of the method.
     if (resolve) resolve();
     if (this.queue.length && this.active < this.maxConcurrent) {
       this._timer = setTimeout(() => {

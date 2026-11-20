@@ -7,8 +7,8 @@ function log(msg: string) {
   console.log(`  [purchase-price-backfill] ${msg}`);
 }
 
-/** Erfassungen ohne Kaufpreis (BrickLink am Tageslimit) bekommen den Marktpreis. Jede Zeile wird
- * versucht; gescheiterte lassen den Schritt am Ende scheitern, damit run() ihn meldet. */
+/** Acquisitions without a purchase price (BrickLink at the daily limit) get the market price. Every row is
+ * attempted; failed ones make the step fail at the end so that run() reports it. */
 async function jeRow<Z>(art: string, rows: Z[], f: (z: Z) => Promise<boolean>): Promise<void> {
   if (!rows.length) return;
   log(`${art} ohne Kaufpreis: ${rows.length}`);
@@ -20,7 +20,7 @@ async function jeRow<Z>(art: string, rows: Z[], f: (z: Z) => Promise<boolean>): 
     } catch (e) {
       fehler.push(e);
     }
-    await warte(1500); // Tageskontingent von BrickLink schonen
+    await warte(1500); // spare BrickLink's daily quota
   }
   log(`${art} nachgetragen: ${done} von ${rows.length}`);
   if (fehler.length) throw new AggregateError(fehler, `${art}: ${fehler.length} von ${rows.length} gescheitert`);
@@ -33,7 +33,7 @@ async function backfillAcquisitions(k: InventoryContext) {
   });
 }
 
-// Dieselbe Lücke wie bei den Sets, für Teile- und Figuren-Erfassungen.
+// The same gap as for the sets, for part and figure acquisitions.
 async function backfillPartsEntries(k: InventoryContext) {
   await jeRow('Teile-Erfassungen', await k.nachtrag.partEntriesWithoutPrice(), async row => {
     const price = await k.finances.currentPartMarketPrice(
@@ -48,7 +48,7 @@ async function backfillPartsEntries(k: InventoryContext) {
 
 async function backfillMinifigsEntries(k: InventoryContext) {
   await jeRow('Figuren-Erfassungen', await k.nachtrag.minifigEntriesWithoutPrice(), async row => {
-    // Die eigene BrickLink-Nummer des Kontos vor der gemeinsamen.
+    // The account's own BrickLink number before the shared one.
     const price = await k.finances.currentMinifigMarketPrice(
       row.fig_number,
       row.user_id,
@@ -59,7 +59,7 @@ async function backfillMinifigsEntries(k: InventoryContext) {
   });
 }
 
-/** Jeder Schritt läuft; danach wirft der Lauf, damit der Auftrag ihn wiederholt und zeigt. */
+/** Every step runs; afterwards the run throws so that the job repeats and shows it. */
 async function run(k: InventoryContext) {
   log('Starte Migration bestehender Elemente ohne Kaufpreis…');
   const schritte: [string, () => Promise<unknown>][] = [

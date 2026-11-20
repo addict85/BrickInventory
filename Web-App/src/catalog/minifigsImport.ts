@@ -3,7 +3,7 @@ import { withVersion } from '../infra/setNumber';
 import { rememberMinifigs, merkeSetFiguren } from './catalogMaintenance';
 import type { CatalogContext } from './context';
 
-// Mit und ohne Versionsanhang fragen, nicht zweimal dieselbe Schreibweise.
+// Ask with and without the version suffix, not twice the same spelling.
 export async function minifigsFromCatalog(k: CatalogContext, setNumber: string) {
   return k.setInhalt.minifigsOfSetkatalogs(withVersion(setNumber)).catch((e: unknown) => {
     logAndContinue('minifiguren:katalog lesen')(e);
@@ -13,8 +13,8 @@ export async function minifigsFromCatalog(k: CatalogContext, setNumber: string) 
 
 export type Figur = { fig_number: string; fig_name: string; quantity: number; image_url: string | null };
 
-/** Die Figuren eines Sets aus Katalog oder Quelle; eine Figur, die mehrfach vorkommt,
- * ist eine Zeile mit der Summe als Katalogmenge. */
+/** A set's figures from the catalog or the source; a figure occurring several times
+ * is one row with the sum as catalog quantity. */
 export async function loadSetMinifigs(
   k: CatalogContext,
   setNumber: string,
@@ -37,11 +37,11 @@ export async function loadSetMinifigs(
       alt ? { ...alt, quantity: alt.quantity + (f.quantity || 1) } : { ...f, quantity: f.quantity || 1 },
     );
   }
-  // Aus dem Katalog sind die Mengen schon zusammengefasst; geschrieben wird nur, was von der Quelle kam.
+  // From the catalog the quantities are already merged; only what came from the source is written.
   return { figuren: [...jeNumber.values()], fromSource: !fromCatalog.length };
 }
 
-/** In der Transaktion des Aufrufers (t.katalog), neben dem Eintrag in den Bestand. */
+/** In the caller's transaction (t.katalog), next to the entry in the inventory. */
 export async function setFigurenMerken(k: CatalogContext, setNumber: string, figs: Figur[], fromSource: boolean) {
   await rememberMinifigs(
     k,

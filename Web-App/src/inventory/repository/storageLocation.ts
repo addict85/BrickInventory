@@ -10,8 +10,8 @@ const BEDINGUNG: Record<StorageTable, (ab: number) => string> = {
   fig: ab => `fig_number = $${ab}`,
 };
 
-/** Über den Namen im Vorrat des EIGENEN Kontos: Im Haushalt kann derselbe Name
- * in zwei Konten mit je eigener ID liegen. */
+/** By name in the stock of the OWN account: in the household the same name can
+ * exist in two accounts with their own ID each. */
 export async function sortLocationTo(
   dbh: DbInterface,
   art: StorageTable,
@@ -61,7 +61,7 @@ export function locationsTheAccounts(db: DbInterface, userIds: number[]) {
   );
 }
 
-/** Ohne Gross/klein eindeutig je Konto; null, wenn es ihn schon gibt. */
+/** Case-insensitively unique per account; null if it already exists. */
 export function addLocationOne(db: DbInterface, userId: number, name: string) {
   return db.get<{ id: number; user_id: number; name: string }>(
     `INSERT INTO storage_locations (user_id, name) VALUES ($1, $2)

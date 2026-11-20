@@ -1,5 +1,5 @@
-/** Ein tieferer Bereich meldet, ein höherer horcht: So kennt der tiefere den höheren nicht.
- * Ein scheiternder Horcher wird protokolliert und hält weder den Melder noch die anderen auf. */
+/** A lower area reports, a higher one listens: that way the lower one does not know the higher one.
+ * A failing listener is logged and holds up neither the reporter nor the others. */
 import crypto from 'node:crypto';
 import { reportError } from './error';
 
@@ -7,7 +7,7 @@ type Listener<A extends unknown[]> = (...a: A) => unknown;
 
 export interface Ereignis<A extends unknown[] = []> {
   horche(f: Listener<A>): () => void;
-  /** Erfüllt sich, wenn alle Horcher fertig sind, mit false, wenn einer scheiterte; wirft nie. */
+  /** Resolves when all listeners are done, with false if one failed; never throws. */
   melde(...a: A): Promise<boolean>;
 }
 
@@ -23,7 +23,7 @@ async function rufe<A extends unknown[]>(name: string, listener: Iterable<Listen
   return r.every(x => x.status === 'fulfilled');
 }
 
-/** Nur in diesem Prozess; der Bereich hält es in einem Fach, damit zwei Zugänge einander nicht hören. */
+/** Only in this process; the area keeps it in a compartment so that two accesses do not hear each other. */
 export function ereignis<A extends unknown[] = []>(name: string): Ereignis<A> {
   const listener = new Set<Listener<A>>();
   return {
@@ -37,7 +37,7 @@ export function ereignis<A extends unknown[] = []>(name: string): Ereignis<A> {
   };
 }
 
-/** Prozessübergreifend über NOTIFY: hier sofort, anderswo nach dem COMMIT des Signalwegs. */
+/** Across processes via NOTIFY: here immediately, elsewhere after the COMMIT of the signal path. */
 export interface ProcessEvent {
   horche(f: () => unknown): () => void;
   melde(ueber: SignalPath): Promise<boolean>;
@@ -46,7 +46,7 @@ export interface ProcessEvent {
 
 export function processEvent(name: string, kanal: string): ProcessEvent {
   const hier = ereignis(name);
-  // Das eigene NOTIFY kommt zurück; hier gilt es schon.
+  // The own NOTIFY comes back; here it already applies.
   const sender = crypto.randomBytes(6).toString('hex');
   return {
     horche: f => hier.horche(f),
@@ -62,7 +62,7 @@ export function processEvent(name: string, kanal: string): ProcessEvent {
   };
 }
 
-/** Nur über NOTIFY, auch für den eigenen Prozess: Ein Wecksignal, das erst nach dem COMMIT gilt. */
+/** Only via NOTIFY, also for the own process: a wake-up signal that only applies after the COMMIT. */
 export interface Signal {
   horche(s: SignalPath, f: (nutzlast?: string) => unknown): () => void;
   melde(ueber: SignalPath, nutzlast?: string): Promise<void>;

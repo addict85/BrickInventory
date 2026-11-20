@@ -1,4 +1,4 @@
-/** Unterscheidet „fehlgeschlagen“ von „leer“: Ein Ersatzwert nach einem Fehler sah aus wie eine leere Antwort. */
+/** Distinguishes "failed" from "empty": a substitute value after an error looked like an empty response. */
 import { fehlertext, reportError, checkFallbackInTransaction } from './error';
 
 export interface Fehlschlag {
@@ -11,7 +11,7 @@ export type Ergebnis<T, F = Fehlschlag> = { ok: true; wert: T } | { ok: false; f
 export const succeeded = <T>(wert: T): Ergebnis<T, never> => ({ ok: true, wert });
 export const gescheitert = <F>(fehler: F): Ergebnis<never, F> => ({ ok: false, fehler });
 
-/** Meldet den Fehler ins Protokoll und gibt ihn als Ergebnis weiter; entscheiden muss der Aufrufer. */
+/** Reports the error to the log and passes it on as a result; the caller has to decide. */
 export async function versuche<T>(kontext: string, work: Promise<T> | (() => Promise<T>)): Promise<Ergebnis<T>> {
   try {
     return succeeded(await (typeof work === 'function' ? work() : work));
@@ -22,8 +22,8 @@ export async function versuche<T>(kontext: string, work: Promise<T> | (() => Pro
   }
 }
 
-/** Sammelt, welche Teile einer Antwort nur Ersatzwerte tragen. Die Antwort nennt
- * sie in `degradiert`, sonst sähe eine 0 nach einem Fehler aus wie eine echte 0. */
+/** Collects which parts of a response carry only substitute values. The response names
+ * them in `degradiert`, otherwise a 0 after an error would look like a real 0. */
 export class Degradations {
   readonly teile: string[] = [];
   async oder<T, E>(teil: string, work: Promise<T> | (() => Promise<T>), ersatz: E): Promise<T | E> {
@@ -36,7 +36,7 @@ export class Degradations {
   }
 }
 
-/** Der Wert oder, nach einem Fehlschlag, der ausdrücklich genannte Ersatz. */
+/** The value or, after a failure, the explicitly named substitute. */
 export function valueOr<T, E>(e: Ergebnis<T, unknown>, ersatz: E): T | E {
   return e.ok ? e.wert : ersatz;
 }

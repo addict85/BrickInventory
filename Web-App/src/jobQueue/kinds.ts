@@ -1,5 +1,5 @@
-/** Die Warteschlange kennt keine Art: Jeder Bereich meldet seine in der Verdrahtung an,
- * mit Nutzlast, Ausführer und Zeitplan (startup/wiring.ts). */
+/** The queue knows no kind: every area registers its own in the wiring,
+ * with payload, executor and schedule (startup/wiring.ts). */
 import type { z } from 'zod';
 import type { JobKind, JobContext, JobRow, Nutzlast, PayloadSchema } from './jobs';
 
@@ -16,10 +16,10 @@ export interface Bearbeiter<A extends JobKind = JobKind> {
 export interface Anmeldung<A extends JobKind = JobKind> extends Bearbeiter<A> {
   art: A;
   nutzlast: PayloadSchema<A>;
-  /** Ohne Konto im Systemrahmen, am Zeilenschutz vorbei; hier steht der Grund. */
+  /** Without an account in the system frame, bypassing row security; the reason is here. */
   kontouebergreifend?: string;
   zeitplan?: Zeitplan;
-  /** Trägt sie Angaben eines Kontos (Dateiinhalt, Teilelisten), bleibt nach dem Erfolg nichts davon stehen. */
+  /** If it carries an account's data (file content, parts lists), nothing of it stays after success. */
   discardPayload?: boolean;
 }
 
@@ -27,7 +27,7 @@ export function auftragsart<A extends JobKind>(a: Anmeldung<A>): Anmeldung {
   return a as unknown as Anmeldung;
 }
 
-/** Wirft schon beim Einstellen, nicht erst Stunden später im Worker. */
+/** Throws already when queuing, not hours later in the worker. */
 export class PayloadInvalid extends Error {}
 
 export class Arten {

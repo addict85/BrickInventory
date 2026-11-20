@@ -1,4 +1,4 @@
-/** Zeilen der Set-Repositories; im Dienst hinge das Repository über seine Typen am Dienst. */
+/** Rows of the set repositories; in the service the repository would depend on the service via its types. */
 export interface SetMaster {
   name: string | null;
   year: number | null;
@@ -7,7 +7,7 @@ export interface SetMaster {
   minifigs?: number | null;
   image_url: string | null;
   image_local: string | null;
-  /** Von setErfassen ohne Katalog angelegt: sagt nur, dass irgendein Konto die Nummer erfasst hat. */
+  /** Created by setErfassen without a catalog: only says that some account captured the number. */
   platzhalter?: boolean;
 }
 export interface ListenTeil {

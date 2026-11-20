@@ -1,5 +1,5 @@
-/** Bei Rebrickable ist 0 Schwarz; eine fehlende Farbe ist deshalb KEINE_FARBE
- * (9999), nie 0, sonst wird aus „keine Angabe" ein schwarzes Teil. */
+/** At Rebrickable 0 is black; a missing color is therefore KEINE_FARBE
+ * (9999), never 0, otherwise "not specified" turns into a black part. */
 
 import { KEINE_FARBE } from '../infra/validate';
 import { versuche } from '../infra/result';
@@ -13,8 +13,8 @@ export interface Farbe {
   hex: string | null;
 }
 
-/** Nur Farben mit feststehender Rebrickable-ID: Eine falsche ID landete im
- * Bestand und im Preisabruf. */
+/** Only colors with a fixed Rebrickable ID: a wrong ID would end up in the
+ * inventory and in the price lookup. */
 const FALLBACK_LIST: Farbe[] = [
   { id: KEINE_FARBE, name: '[No Color/Any Color]', hex: null },
   { id: 0, name: 'Black', hex: '05131D' },
@@ -33,7 +33,7 @@ const FALLBACK_LIST: Farbe[] = [
 export async function colorList(k: CatalogContext): Promise<Farbe[]> {
   const geladen = await k.katalogStamm.loadedColors();
   if (geladen.length) return geladen;
-  // Ohne Rebrickable bleibt die eingebaute Notliste; sie ist als solche kurz.
+  // Without Rebrickable the built-in emergency list remains; as such it is short.
   const abgerufen = await versuche('farben:rebrickable', k.externalSources.quellen.getBrickColors());
   if (abgerufen.ok && abgerufen.wert.length) return abgerufen.wert;
   return FALLBACK_LIST;

@@ -1,4 +1,4 @@
-/** Proben für Verwalter: Bild- und Preisabruf und die Fragen zu einer leeren Kachel. */
+/** Probes for admins: image and price fetch and the questions about an empty tile. */
 import { proxyCacheKey, proxyCachePathFor, imgProxyFailures } from '../images';
 import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../infra/foreignAddresses';
 import { urlOrNull } from '../infra/validate';
@@ -24,13 +24,13 @@ const VARIANTS = [
   { name: 'nackt', headers: {} },
 ];
 
-/** Meldet, was der Proxy davon ausliefern würde — mit und ohne Referer. */
+/** Reports what the proxy would deliver of it — with and without referer. */
 export async function imageProbe(k: ManagementContext, url: string) {
   if (!/^https:\/\//.test(url)) fachfehler('ungueltig', 'url_fehlt_https');
   const adresse = urlOrNull(url);
   if (!adresse) fachfehler('ungueltig', 'url_ungueltig');
-  // Dieselben Hosts wie der Bild-Proxy: Der Abruf läuft aus dem internen Netz;
-  // jede Adresse zuzulassen wäre Server-Side Request Forgery.
+  // The same hosts as the image proxy: the fetch runs from the internal network;
+  // allowing every address would be server-side request forgery.
   if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) fachfehler('verboten', 'host_nicht_erlaubt', { host: adresse.hostname });
 
   const results: Awaited<ReturnType<typeof probeVariant>>[] = [];
@@ -41,13 +41,13 @@ export async function imageProbe(k: ManagementContext, url: string) {
   const cached = await fileSize(path.join(dir, key));
   const thumb = await fileSize(path.join(dir, key + '_thumb.jpg'));
 
-  // Zeigt auf einen Blick, woran Abrufe scheitern, ohne im Log zu suchen.
+  // Shows at a glance why fetches fail, without searching the log.
   const failures = imgProxyFailures;
   const head = await firstBytes(k, url);
   return { url, cache: { original: cached, thumb }, probes: results, proxy_failures: failures, body_check: head };
 }
 
-/** Ohne Umleitungen: Die Probe soll den rohen Status des CDN zeigen. */
+/** Without redirects: the probe should show the CDN's raw status. */
 const fetchWithoutRedirect = (k: ManagementContext, url: string, kopfzeilen: Record<string, string>) =>
   k.externalSources.quellen.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, redirects: 0, kopfzeilen });
 
@@ -81,8 +81,8 @@ async function probeVariant(kx: ManagementContext, url: string, v: { name: strin
       status: a.status,
       content_type: k['content-type'] || null,
       content_length: k['content-length'] || null,
-      // Komprimiert geliefert muss der Proxy die Kopfzeile weiterreichen, sonst hält
-      // der Browser die Bytes für ein JPEG.
+      // When delivered compressed the proxy must pass the header on, otherwise
+      // the browser takes the bytes for a JPEG.
       content_encoding: k['content-encoding'] || null,
       transfer_encoding: k['transfer-encoding'] || null,
       bytes,
@@ -106,7 +106,7 @@ const fileSize = (datei: string) =>
     .then(st => ({ bytes: st.size }))
     .catch(withoutMissingFile('management:stat', null));
 
-/** Durch dieselbe Kette wie der Proxy, aber die ersten Bytes kommen als Hex hierher. */
+/** Through the same chain as the proxy, but the first bytes come here as hex. */
 function firstBytes(k: ManagementContext, url: string) {
   return fetchWithoutRedirect(k, url, {
     'User-Agent': UA,
@@ -133,7 +133,7 @@ function imageKind(b: Buffer): string {
   return b.slice(0, 5).toString().toLowerCase().startsWith('<') ? 'HTML/XML statt Bild' : 'unbekannt';
 }
 
-/** Mit `live` auch die Antwort von BrickLink. */
+/** With `live` also BrickLink's response. */
 export async function priceProbe(k: ManagementContext, uid: number, setNumber: string, live: boolean) {
   const ab = new Degradations();
   const [setRow, acqs, cacheRows, histRows, currRow, ttlRow] = await Promise.all([
@@ -149,7 +149,7 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
     k.settings.globalValue('price_cache_ttl'),
   ]);
 
-  // Dieselbe Regel wie conditionFromAcquisitions(): Eine gebrauchte Erfassung genügt.
+  // The same rule as conditionFromAcquisitions(): one used acquisition is enough.
   const anyUsed = acqs.some(a => a.condition === 'U');
   const chosen = anyUsed ? 'U' : 'N';
 
@@ -172,12 +172,12 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
     price_history_last5: histRows,
   };
 
-  // Dieselbe Währung wie die Bewertung, sonst zeigte die Probe andere Cache-Zeilen.
+  // The same currency as the valuation, otherwise the probe would show other cache rows.
   out.currency = await k.settings.userValue(uid, 'currency', 'EUR');
-  // „BrickLink kennt das Set nicht": Steht sie, liefert fetchPrice still 0.
+  // "BrickLink does not know the set": if it is set, fetchPrice silently delivers 0.
   const katalog = await k.catalog.catalogEntry(setNumber);
   out.katalog = katalog ? { ...katalog, applies_as_unknown: withoutBricklinkPrice(katalog) } : null;
-  // Genau der Aufruf, den Finanzen macht.
+  // Exactly the call that finances makes.
   try {
     out.finances_price = await k.finances.fetchPrice(setNumber, chosen, 'sold', out.currency, out.ttl_hours);
   } catch (e) {
@@ -206,7 +206,7 @@ export async function priceProbe(k: ManagementContext, uid: number, setNumber: s
   return out;
 }
 
-/** Die wiederkehrenden Fragen zu einer leeren Kachel in einer Antwort: Datenbank, Platte, Proxy, Fehlanzeige. */
+/** The recurring questions about an empty tile in one response: database, disk, proxy, negative result. */
 export async function imageDiagnostics(kx: ManagementContext, sn: string) {
   const ab = new Degradations();
   const konten: AccountImageRow = await ab.oder('konten', kx.management.accountImageRows(sn), {
@@ -239,7 +239,7 @@ export async function imageDiagnostics(kx: ManagementContext, sn: string) {
   const merker = await ab.oder('fehlanzeige', kx.management.setImageMiss(sn), null);
   const previewMarker = await ab.oder('fehlanzeige', kx.management.thumbnailImageMiss(safe), null);
 
-  // Eine Diagnose aus Ersatzwerten führte in die Irre: zuerst sagen, was nicht lesbar war.
+  // A diagnosis from substitute values would mislead: say first what was not readable.
   const hinweise: string[] = ab.teile.length ? [`Nicht lesbar, dort stehen Ersatzwerte: ${ab.teile.join(', ')}.`] : [];
   if (!konten.anzahl_konten) hinweise.push('Kein Konto führt dieses Set.');
   if (konten.anzahl_konten && !konten.image_local && !cdnUrl)

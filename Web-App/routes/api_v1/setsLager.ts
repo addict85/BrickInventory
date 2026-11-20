@@ -1,4 +1,4 @@
-/** Lagerorte und Preisalarme der Sets; eigene Pfade, deshalb ohne Rücksicht auf die Reihenfolge in sets.ts. */
+/** Storage locations and price alerts of the sets; paths of their own, hence independent of the order in sets.ts. */
 import { kontoSchranke, viewOf, guardFor } from './middleware';
 import { csvReceive } from '../../src/http/fileUpload';
 import { zustand } from '../../src/infra/validate';
@@ -15,8 +15,8 @@ export function buildSetsStorageRouter(d: Pick<Dienste, 'account' | 'finances' |
     return { storage: ort, changed: n };
   });
 
-  /** Ein Alarm gehört genau EINEM Konto: Wer eine Schwelle setzt, will selbst
-   * benachrichtigt werden. Deshalb `user_id` statt scopeIds() — hier die Regel. */
+  /** An alert belongs to exactly ONE account: whoever sets a threshold wants to be
+   * notified personally. Hence `user_id` instead of scopeIds() — here that is the rule. */
   router.endpunkt('GET /api/v1/sets/:setNumber/alert', requireToken, async req => {
     return { alerts: await d.sets.readSetAlerts(req.apiUser.user_id, req.pfad.setNumber) };
   });
@@ -35,13 +35,13 @@ export function buildSetsStorageRouter(d: Pick<Dienste, 'account' | 'finances' |
     return { removed: n };
   });
 
-  // Abholen statt Schieben; ohne Kontofilter, ein Alarm gehört einem Konto.
+  // Fetch instead of push; without account filter, an alert belongs to one account.
   router.endpunkt('GET /api/v1/alerts/pending', requireToken, async req => {
     const r = await d.finances.preisalarm.triggeredSince(req.apiUser.user_id, req.abfrage.since);
     return { alerts: r.alerts, now: r.now };
   });
 
-  // Was gesetzt ist; ausgelöst: /alerts/pending.
+  // What is set; triggered ones: /alerts/pending.
   router.endpunkt('GET /api/v1/alerts', requireToken, async req => {
     return { alerts: await d.finances.preisalarm.alleAlarme(req.apiUser.user_id) };
   });
@@ -61,10 +61,10 @@ export function buildSetsStorageRouter(d: Pick<Dienste, 'account' | 'finances' |
     return { ...(await d.sets.locationsWithDefault(req.apiUser.user_id, req.abfrage.owner)) };
   });
 
-  /** `{ id: null }` schaltet die Vorgabe ab — ein Endpunkt, weil es eine
-   * Einstellung mit genau einem Wert ist. */
+  /** `{ id: null }` turns the default off — one endpoint, because it is a
+   * setting with exactly one value. */
   router.endpunkt('PUT /api/v1/storage/default', requireToken, async req => {
-    // Fehlt das Feld, meint der Client dasselbe wie null.
+    // If the field is missing, the client means the same as null.
     return { vorgabe: await d.inventory.setDefault(req.apiUser.user_id, req.eingabe.id ?? null) };
   });
 
@@ -86,7 +86,7 @@ export function buildSetsStorageRouter(d: Pick<Dienste, 'account' | 'finances' |
     return {};
   });
 
-  // Spannt Sets und Teile, gehört keiner Familie.
+  // Spans sets and parts, belongs to no family.
   router.endpunkt('GET /api/v1/storage', requireToken, async req => {
     const ids = viewOf(req);
     return { orte: await d.inventory.locationService.lagerorte(ids) };

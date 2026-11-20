@@ -2,15 +2,15 @@ import { reportError } from '../infra/error';
 import { versuche } from '../infra/result';
 import type { ImagesContext } from './context';
 
-/** EINMAL gemerkt, für alle Prozesse; nach einer Woche wird erneut gefragt. */
+/** Remembered ONCE, for all processes; after a week the question is asked again. */
 const AGAIN_CHECK_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Keine Datenbankabfrage je Bild: Ein Schwung Bildanfragen nahm sonst anderen
- * Routen die Verbindungen. Der Speicher wird im Takt aufgefrischt. */
+/** No database query per image: a burst of image requests would otherwise take the connections
+ * from other routes. The memory is refreshed on a tick. */
 const REFRESH_MS = 5 * 60 * 1000;
 
-/** Je Satz Dienste. `reasons` getrennt, weil isKnownMissing() der heisseste Pfad ist;
- * `writeTo` puffert die Tabelle, sonst wäre ein Schwung 404er ein Schwung INSERTs. */
+/** Per set of services. `reasons` separate, because isKnownMissing() is the hottest path;
+ * `writeTo` buffers the table, otherwise a burst of 404s would be a burst of INSERTs. */
 const stand = (k: ImagesContext) =>
   k.faecher.fach('fehlanzeige', () => ({
     vorne: new Map<string, number>(),
@@ -22,7 +22,7 @@ const stand = (k: ImagesContext) =>
 export async function setUpImageGaps(k: ImagesContext): Promise<void> {
   const _ticks = stand(k).takte;
   if (_ticks.length) return;
-  // Prozesslokal: Muss deshalb in JEDEM Arbeitsprozess laufen.
+  // Process-local: must therefore run in EVERY worker process.
   _ticks.push(
     setInterval(() => {
       auffrischen(k).catch(e => reportError('bild-fehlanzeige:auffrischen', e));
@@ -35,13 +35,13 @@ export async function setUpImageGaps(k: ImagesContext): Promise<void> {
   await auffrischen(k);
 }
 
-/** Vor dem Schliessen des Pools: Takte beenden, gemerkte Fehlschläge noch schreiben. */
+/** Before closing the pool: stop ticks, still write the remembered failures. */
 export async function stopNone(k: ImagesContext): Promise<void> {
   for (const t of stand(k).takte.splice(0)) clearInterval(t);
   await schreibePuffer(k);
 }
 
-/** Synchron und ohne Datenbank; höchstens ein Auffrisch-Intervall alt. */
+/** Synchronous and without database; at most one refresh interval old. */
 export function isKnownMissing(k: ImagesContext, key: string): boolean {
   const _front = stand(k).vorne;
   const vorne = _front.get(key);
@@ -52,7 +52,7 @@ export function isKnownMissing(k: ImagesContext, key: string): boolean {
 }
 
 async function auffrischen(k: ImagesContext): Promise<void> {
-  // Nicht lesbar: Der bisherige Stand im Speicher bleibt, bis der nächste Abgleich gelingt.
+  // Not readable: the previous state in memory stays until the next reconciliation succeeds.
   const r = await versuche('bild-fehlanzeige:rows', k.bildFehlschlaege.freshFailures(String(AGAIN_CHECK_MS)));
   if (!r.ok) return;
   const rows = r.wert;
@@ -65,7 +65,7 @@ async function auffrischen(k: ImagesContext): Promise<void> {
   }
 }
 
-/** Sofort im Speicher, in die Tabelle gepuffert (stand().writeTo). */
+/** Immediately in memory, buffered into the table (stand().writeTo). */
 export function rememberMissing(k: ImagesContext, key: string, grund = ''): void {
   const { vorne: _front, reasons: _reasons, writeTo: _writeTo } = stand(k);
   _front.set(key, k.uhr.jetzt());
@@ -77,7 +77,7 @@ export function reasonFor(k: ImagesContext, key: string): string {
   return stand(k).reasons.get(key) || '';
 }
 
-// Der Weg zurück aus der Sperre.
+// The way back out of the block.
 export async function forgetMissing(kx: ImagesContext, keys?: string[]): Promise<number> {
   const r = keys?.length
     ? await kx.bildFehlschlaege.forgetFailures(keys)

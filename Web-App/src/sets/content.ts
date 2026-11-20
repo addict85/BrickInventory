@@ -1,4 +1,4 @@
-/** Stammdaten, Teile- und Figurenliste eines Sets. */
+/** Master data, parts and figure list of a set. */
 import { proxyImageUrl } from '../images';
 import { type RbSetTeil, firstBlNumber } from '../externalSources';
 import { findSetInScope } from './addSet';
@@ -11,13 +11,13 @@ import { versuche, valueOr } from '../infra/result';
 import { importParts } from './setContentImport';
 import type { SetsContext } from './context';
 
-/** Ohne Eintrag null. */
+/** null without an entry. */
 export async function setInfo(sk: SetsContext, setNumber: string): Promise<SetMaster | null> {
   return (await repo.setStamm(sk.db, withVersion(setNumber))) ?? null;
 }
 
-/** Was das fragende Konto über eine Nummer erfahren darf: Ein fremder Platzhalter
- * antwortet wie eine nie erfasste Nummer, sonst verriete er die Erfassung eines anderen. */
+/** What the asking account may learn about a number: a foreign placeholder
+ * answers like a never captured number, otherwise it would reveal another account's acquisition. */
 export async function setInfoForAccount(sk: SetsContext, uid: number, setNumber: string) {
   const n = withVersion(setNumber);
   const stamm = await setInfo(sk, n);
@@ -31,7 +31,7 @@ function catalogOfSets(sk: SetsContext, setNumber: string): Promise<CatalogPart[
   return repo.catalogPartsOfSets(sk.db, withVersion(setNumber));
 }
 
-/** Ungeblättert; die Seitenangaben stehen da, weil die App sie mit der Teileliste des Bestands teilt. */
+/** Unpaged; the page fields are there because the app shares them with the inventory's parts list. */
 const einePage = (n: number) => ({ total: n, page: 1, page_size: n });
 
 export const SOURCE_DISRUPTED = 'quelle_gestoert';
@@ -47,7 +47,7 @@ export async function partListOfSets(sk: SetsContext, setNum: string, anreichern
   }
   if (!teile.length) {
     source = 'api';
-    // Ist Rebrickable gestört, sagt die Antwort das; eine leere Liste hiesse „das Set hat keine Teile“.
+    // If Rebrickable is disrupted, the response says so; an empty list would mean "the set has no parts".
     const mit = await versuche('sets:alleTeileDesSets', sk.catalog.allSetParts(n));
     const rb = mit.ok && mit.wert ? mit : await versuche('sets:alleTeileDesSets', sk.catalog.allSetParts(bare));
     if (!rb.ok) return { parts: [], source: SOURCE_DISRUPTED, error: rb.fehler.grund, ...einePage(0) };
@@ -75,8 +75,8 @@ export async function partListOfSets(sk: SetsContext, setNum: string, anreichern
     remember(await catalogOfSets(sk, setNum));
   }
 
-  // Schlüssel ist die Rebrickable-Nummer samt Farbe: Formvarianten teilen sich oft eine BrickLink-Nummer und
-  // dürfen nicht verschmelzen.
+  // The key is the Rebrickable number including color: mold variants often share a BrickLink number and
+  // must not merge.
   const zeilen = new Map<
     string,
     {
@@ -122,7 +122,7 @@ export async function partListOfSets(sk: SetsContext, setNum: string, anreichern
   return { parts: [...zeilen.values()], source, ...einePage(zeilen.size) };
 }
 
-/** Was nicht aus dem Katalog kam, schreibt ein Nachlauf hinein. */
+/** Whatever did not come from the catalog is written in by a follow-up run. */
 export async function minifigsListOfSets(sk: SetsContext, setNum: string) {
   const n = withVersion(setNum),
     bare = withoutVersion(n);
@@ -137,7 +137,7 @@ export async function minifigsListOfSets(sk: SetsContext, setNum: string) {
     quantity: f.quantity || 1,
     total_quantity: f.quantity || 1,
     image_url: proxyImageUrl(f.image_url),
-    // Dieselbe Form wie eine Figur des Bestands, ohne Zustände und Besitzer.
+    // The same shape as a figure of the inventory, without conditions and owners.
     source: 'set',
     conditions: [] as string[],
     owners: [] as { id: number; username: string }[],
@@ -182,7 +182,7 @@ async function storeSetMinifigs(
   }
 }
 
-/** Nur zu Sets im Blickfeld und gedrosselt: Jeder Import kann Rebrickable-Kontingent kosten. */
+/** Only for sets in scope and throttled: every import can cost Rebrickable quota. */
 export async function importPartsOfSets(sk: SetsContext, uid: number, sn: string): Promise<number> {
   const set = await findSetInScope(sk, uid, sn);
   if (!set) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
@@ -191,7 +191,7 @@ export async function importPartsOfSets(sk: SetsContext, uid: number, sn: string
   return importParts(sk, set.set_number, set.owner_user_id);
 }
 
-/** Die Route kennt den Auftragsweg der Teile nicht; ohne Inventar reichert der Job-Prozess an. */
+/** The route does not know the parts' job path; without an inventory the job process enriches. */
 export function partListWithRework(sk: SetsContext, setNum: string) {
   return partListOfSets(sk, setNum, sn => sk.catalog.enrichSetPartsAn(sn));
 }

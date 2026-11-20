@@ -1,6 +1,6 @@
-/** Der eigene zweite Faktor (src/factors/secondFactor.ts). Einrichten und
- * Abschalten verlangen das Passwort: Wer nur eine offene Sitzung erbeutet,
- * soll das Konto weder aussperren noch den Schutz abbauen. */
+/** The own second factor (src/factors/secondFactor.ts). Setting up and
+ * turning off require the password: whoever only captures an open session
+ * must neither lock out the account nor dismantle the protection. */
 import { guardFor } from '../api_v1/middleware';
 import {
   signedInUserId,
@@ -25,8 +25,8 @@ export function buildSecondFactorRouter(d: Pick<Dienste, 'account' | 'factors'>)
 
   router.endpunkt('POST /api/v1/auth/zweiter-faktor/einrichten', requireLogin, async (req, res) => {
     const uid = signedInUserId(req);
-    // Ohne Passwort nur, wo der Server den Faktor erzwingt (Verwalter direkt nach der
-    // Anmeldung); sonst sperrte eine erbeutete Sitzung den Inhaber aus. Die Absage zählt nicht zur Bremse.
+    // Without password only where the server enforces the factor (administrators right after
+    // login); otherwise a captured session would lock out the owner. The rejection does not count towards the brake.
     const withoutPassword = req.eingabe.password === undefined || req.eingabe.password === '';
     if (withoutPassword) {
       if (!((await zweiterFaktorPflicht(d.account, req)) && consumeGracePeriod(req)))
@@ -38,8 +38,8 @@ export function buildSecondFactorRouter(d: Pick<Dienste, 'account' | 'factors'>)
     return { geheimnis, otpauth: d.factors.otpauthFor(geheimnis, u?.username ?? String(uid)) };
   });
 
-  // Auch mit App-Token (die Android-App richtet so ein): Wer Token und Passwort
-  // hat, könnte ebenso das Passwort wechseln; eine Sitzungspflicht schützte nichts.
+  // Also with an app token (the Android app sets it up that way): whoever has token and password
+  // could just as well change the password; requiring a session would protect nothing.
   router.endpunkt('POST /api/v1/auth/zweiter-faktor/bestaetigen', requireLogin, async req => {
     const uid = signedInUserId(req);
     const codes = await d.account.confirmSetupThrottled(uid, accessOf(req), req.eingabe.code);

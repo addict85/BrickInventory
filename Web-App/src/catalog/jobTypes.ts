@@ -1,4 +1,4 @@
-/** Nicht strikt: Die Nutzlast überlebt Deploys, ein Altfeld soll keinen offenen Auftrag scheitern lassen. */
+/** Not strict: the payload survives deploys, a legacy field should not make an open job fail. */
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../jobQueue';
 import { bricksetJobType } from '../externalSources';
@@ -33,7 +33,7 @@ export const PdfPayload = z.object({
   sets: z.array(z.object({ set_number: z.string(), name: z.string().nullish() })),
   parts: z.array(PdfTeil),
 });
-/** Eingereiht vom Katalog und von den Sets; ausgeführt von den Sets (src/sets/jobTypes.ts). */
+/** Queued by the catalog and by the sets; executed by the sets (src/sets/jobTypes.ts). */
 export const ImagesPayload = z.object({ set_number: SETNR, only_images: z.boolean().optional() });
 const InstructionPayload = z.object({ set_number: SETNR, nur_ausweichquelle: z.boolean().optional() });
 const CatalogSyncPayload = z.object({ onStart: z.boolean().optional() });
@@ -52,7 +52,7 @@ declare module '../jobQueue/jobs' {
 
 export const CATALOG_SYNC_TIME_OF_DAY = { setting: 'job_time_csv_sync', vorgabe: '03:00' } as const;
 
-/** Exklusiv sind Arten, die eine Gegenseite schonen oder Tabellen tauschen. */
+/** Exclusive are kinds that spare a remote side or swap tables. */
 export function catalogJobTypes(k: CatalogContext, importProcess: string): Anmeldung[] {
   return [
     auftragsart({

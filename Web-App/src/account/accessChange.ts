@@ -1,8 +1,8 @@
 import { ereignis } from '../infra/event';
 import { prozessweit } from '../infra/prozessweit';
-/** Offene Ströme prüfen ihren Zugang im Takt; endet ein Zugang in diesem
- * Prozess (Widerruf, Abmelden, neue Sitzungsversion, fremder Widerruf per
- * NOTIFY), sollen sie es sofort merken und nicht erst beim nächsten Takt. */
+/** Open streams check their access on each tick; if an access ends in this
+ * process (revocation, logout, new session version, foreign revocation via
+ * NOTIFY), they should notice immediately and not only at the next tick. */
 const zugangsAenderung = prozessweit('zugangsHoerer', () => ereignis('zugangsAenderung'));
 
 export function atAccessChange(f: () => unknown): () => void {

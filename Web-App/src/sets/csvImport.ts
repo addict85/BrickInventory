@@ -1,4 +1,4 @@
-/** CSV-Import der Sets: Zeilen lesen, Auftrag starten, Stand melden. */
+/** CSV import of the sets: read rows, start the job, report the state. */
 import { beforeThe, fehlertext, publicError } from '../infra/error';
 import { buildJobStatus } from '../jobQueue';
 import { normalisiereSetNummer } from '../infra/setNumber';
@@ -19,14 +19,14 @@ export interface ImportZeile {
   fehler?: { code: 'csv_menge_ungueltig' | 'csv_keine_setnummer'; wert?: string };
 }
 
-/** Aus „x“ eine 1 und aus „-2“ eine 2 zu machen buchte still etwas anderes, als in der Datei steht. */
+/** Turning "x" into a 1 and "-2" into a 2 would silently book something other than what is in the file. */
 function csvMenge(roh: string): number | null {
   const s = roh.trim();
   if (s === '') return 1;
   return /^\d{1,6}$/.test(s) && Number(s) >= 1 ? Number(s) : null;
 }
 
-/** Spaltennamen ohne Gross/klein und BOM. */
+/** Column names without case and BOM. */
 export function setCsvRows(text: string): { rows: ImportZeile[]; uebersprungen: number[] } {
   let gelesen: ReturnType<typeof csvReadIn>;
   try {
@@ -74,14 +74,14 @@ export function setCsvRows(text: string): { rows: ImportZeile[]; uebersprungen: 
       ...(zeile ? { zeile } : {}),
       purchasePrice: preis !== null && !Number.isNaN(preis) ? preis : null,
       condition: ['N', 'U'].includes(zustand) ? zustand : null,
-      // 05.03.2026 ist der 5. März, nicht der 3. Mai.
+      // 05.03.2026 is the 5th of March, not the 3rd of May.
       acquiredAt: csvDatum(row.acquired_at || row.erfassungsdatum || row.datum),
     });
   }
   return { rows, uebersprungen: gelesen.uebersprungen };
 }
 
-/** Der Import erhöht bei vorhandenen Sets die Menge, das Einzel-Erfassen lehnt sie ab: Die Oberfläche fragt. */
+/** For existing sets the import increases the quantity, the single capture rejects it: the UI asks. */
 async function alreadyPresent(sk: SetsContext, userId: number, rows: ImportZeile[]): Promise<string[]> {
   const da = new Set((await repo.setsWithQuantity(sk.db, userId)).map(s => s.set_number));
   const treffer = rows
@@ -91,7 +91,7 @@ async function alreadyPresent(sk: SetsContext, userId: number, rows: ImportZeile
   return [...new Set(treffer)];
 }
 
-/** Ein laufender Import desselben Kontos wird abgebrochen; `checkOnly` liest nur. */
+/** A running import of the same account is aborted; `checkOnly` only reads. */
 export async function startSetCsvImport(sk: SetsContext, userId: number, text: string, checkOnly = false) {
   const { rows, uebersprungen } = setCsvRows(text);
   const vorhanden = await alreadyPresent(sk, userId, rows);
@@ -122,7 +122,7 @@ export async function startSetCsvImport(sk: SetsContext, userId: number, text: s
 }
 
 export async function cancelSetCsvImport(k: SetsContext, userId: number) {
-  // Ohne Fang: Schlägt das Vermerken fehl, liefe der Import weiter, während die Antwort „abgebrochen“ sagte.
+  // No catch: if recording fails, the import would keep running while the response said "aborted".
   await k.jobQueue.jobUpdate(userId, { status: 'cancelled' });
   await k.jobQueue.reportJobStatus(userId);
 }
@@ -133,12 +133,12 @@ export async function csvImportStand(k: SetsContext, uid: number, req: Kopf) {
   return buildJobStatus(await k.jobQueue.jobGet(uid), req);
 }
 
-/** Im offenen Strom gibt es keinen Statuscode mehr: Ein Lesefehler wird zu „kein Import“. */
+/** In the open stream there is no status code any more: a read error becomes "no import". */
 export async function csvImportStatusForStream(k: SetsContext, uid: number, req: Kopf, sprache: Sprache) {
   return buildJobStatus(await k.jobQueue.jobGet(uid), req, sprache);
 }
 
-/** Meldet jeden Stand des CSV-Imports dieses Kontos, aus diesem und aus anderen Prozessen. */
+/** Reports every state of this account's CSV import, from this and from other processes. */
 export function subscribeCsvImportStatus(k: SetsContext, uid: number, melde: () => void): () => void {
   return k.jobQueue.atImportStatus(konto => {
     if (String(konto) === String(uid)) melde();

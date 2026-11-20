@@ -5,22 +5,22 @@ import { fehlertext } from '../infra/error';
 import { Fachfehler, errorText, type ErrorCode } from '../infra/errorTexts';
 import type { SetsContext } from './context';
 
-/** Nach jedem Set steht der Stand in import_status; ein Neustart setzt dort
- * fort. Steht `current` nach einem Absturz noch da, ist ungewiss, ob das Set
- * gebucht wurde — es wird nicht noch einmal gebucht, sondern gemeldet. */
+/** After every set the state is in import_status; a restart continues
+ * there. If `current` is still set after a crash, it is uncertain whether the set
+ * was booked — it is not booked again but reported. */
 const CsvRowSchema = z.object({
   sn: z.string(),
   qty: z.number().int(),
   purchasePrice: z.number().nullable(),
   condition: z.string().nullable(),
   acquiredAt: z.string().nullable(),
-  // Zeile der Datei und, wenn sie schon beim Lesen scheiterte, warum: Das Ergebnis nennt sie dann an ihrem Platz.
+  // Line of the file and, if it already failed while reading, why: the result then names it in its place.
   zeile: z.number().int().optional(),
   fehler: z
     .object({ code: z.enum(['csv_menge_ungueltig', 'csv_keine_setnummer']), wert: z.string().optional() })
     .optional(),
 });
-/** Teil der Art 'csv_import', die die Sammlung anmeldet (src/collection/jobKinds.ts). */
+/** Part of the kind 'csv_import', which the collection registers (src/collection/jobKinds.ts). */
 export const SetCsvPayload = z.object({
   user_id: z.number().int().positive(),
   lauf: z.string().min(1),
@@ -45,8 +45,8 @@ async function importRow(sk: SetsContext, z: CsvRow, userId: number): Promise<Im
   return { ...(await bookRow(sk, z, userId)), ...wo };
 }
 
-/** Ohne Netz (setErfassen); die Frist fängt nur eine klemmende Datenbank. Nach einer
- * Zeitüberschreitung bucht der Versuch womöglich noch, deshalb keine Wiederholung. */
+/** Without network (setErfassen); the deadline only catches a stuck database. After a
+ * timeout the attempt may still book, hence no retry. */
 async function bookRow(sk: SetsContext, z: CsvRow, userId: number): Promise<ImportResult> {
   let alarm: NodeJS.Timeout | undefined;
   try {
@@ -111,7 +111,7 @@ async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): 
   for (let i = results.length; i < rows.length; i++) {
     if (k.beendet) throw new JobInterrupted();
     const z = rows[i]!;
-    // Abgebrochen, abgelöst oder anderswo vergeben: aufhören, ohne in fremde Zeilen zu schreiben.
+    // Aborted, superseded or assigned elsewhere: stop without writing into foreign rows.
     if (!(await k.lebenszeichen()) || !(await sk.jobQueue.jobUpdate(userId, { current: z.sn }, lauf))) return;
     await sk.jobQueue.reportJobStatus(userId);
     results.push(await importRow(sk, z, userId));
@@ -125,7 +125,7 @@ async function runCsvImportFrom(sk: SetsContext, n: CsvPayload, k: JobContext): 
   );
 }
 
-/** Die Statuszeile zeigt den Fehler, statt ewig zu laufen. */
+/** The status line shows the error instead of running forever. */
 async function csvImportGivenUp(k: SetsContext, n: CsvPayload, fehler: string): Promise<void> {
   console.error(`CSV import fatal error: ${fehler}`);
   await k.jobQueue.jobUpdate(Number(n.user_id), { status: 'error', error: fehler, current: null }, String(n.lauf));

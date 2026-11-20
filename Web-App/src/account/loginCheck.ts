@@ -1,4 +1,4 @@
-/** Anmeldedaten prüfen: Passwort, Kontozustand, zweiter Faktor, Bremse. */
+/** Checking credentials: password, account state, second factor, brake. */
 import * as passwortRegel from '../infra/passwordRule';
 import { BcryptOverload } from './bcryptLimit';
 import { needsNewHash, hashePassword, hashePasswordImmediately, passwordFits } from './passwordHash';
@@ -39,8 +39,8 @@ export interface AccountState {
   [k: string]: unknown;
 }
 
-/** Leer zählt wie „nicht da": Der Hash eines leeren Strings ist ein gültiger
- * SHA-256-Wert. */
+/** Empty counts like "not there": the hash of an empty string is a valid
+ * SHA-256 value. */
 export async function verifyEmailToken(
   k: AccountContext,
   token: string | null | undefined,
@@ -57,13 +57,13 @@ export async function verifyEmailToken(
   return { userId: id };
 }
 
-/** Eine Konstante, damit alle Routen, die ein Passwort setzen, dieselbe Länge prüfen. */
+/** A constant, so all routes that set a password check the same length. */
 export const PASSWORD_MIN_CHARS = passwortRegel.PASSWORD_MIN_CHARS;
 export const passwordToShort = passwortRegel.passwordToShort;
 
-/** Nach erfolgreicher Passwortprüfung. Die Absage kommt als CODE, weil die
- * Route weiss, welche Sprache der Anfragende sieht.
- * @returns null = Login erlaubt */
+/** After a successful password check. The rejection comes as a CODE, because the
+ * route knows which language the requester sees.
+ * @returns null = login allowed */
 export function assertLoginAllowed(
   user: AccountState,
 ): { art: ErrorKind; code: ErrorCode; unverified?: boolean } | null {
@@ -73,20 +73,20 @@ export function assertLoginAllowed(
   return null;
 }
 
-/** Für unbekannte Namen: Die Prüfung braucht dann dieselbe Zeit wie bei einem
- * Konto mit aktuellem Hash. */
+/** For unknown names: the check then takes the same time as for an
+ * account with a current hash. */
 const DUMMY_HASH = hashePasswordImmediately('nonexistent-account-placeholder');
 
-/** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/errorKind.ts). */
+/** Domain, not HTTP: the HTTP layer chooses the status (src/http/errorKind.ts). */
 export interface LoginRejection {
   art: ErrorKind;
   code: ErrorCode;
   vars?: Record<string, string | number>;
-  /** Der Client blendet dann „E-Mail erneut senden" ein. */
+  /** The client then shows "Resend email". */
   unverified?: boolean;
-  /** Passwort stimmt, es fehlt (oder scheiterte) der Code des zweiten Faktors. */
+  /** The password is right; the code of the second factor is missing (or failed). */
   zweiterFaktor?: boolean;
-  /** Statt des Codes geht auch eine Passkey-Antwort. */
+  /** Instead of the code a passkey response works too. */
   passkey?: boolean;
 }
 
@@ -115,9 +115,9 @@ function absage(
   };
 }
 
-/** Die einzige Stelle, an der Anmeldedaten geprüft werden: Zwei Fassungen für
- * Webapp und App waren schon einmal auseinandergelaufen.
- * @param username Benutzername ODER E-Mail-Adresse. */
+/** The only place where credentials are checked: two versions for
+ * webapp and app had diverged once already.
+ * @param username username OR email address. */
 export async function checkCredentials(
   k: AccountContext,
   herkunft: Herkunft,
@@ -144,8 +144,8 @@ export async function checkCredentials(
   const withFactor = (passkeyResponse !== undefined && passkeyResponse !== null) || !!String(code ?? '').trim();
   if (await onlyStillWithFactor(k, ip, name, user?.id, withFactor))
     return absage('zu_viele', 'konto_tagesgrenze', undefined, false, true);
-  // Auch ohne Treffer, gegen DUMMY_HASH: gleiche Zeit für unbekannte Namen. Wer sich von
-  // hier zuletzt angemeldet hat, wartet unter Last vorne: Eine Flut fremder Adressen sperrt ihn nicht aus.
+  // Even without a hit, against DUMMY_HASH: the same time for unknown names. Whoever last logged in
+  // from here waits at the front under load: a flood of foreign addresses does not lock them out.
   const priority = await knownLogin(k, ip, name);
   let fitsDasPassword: boolean;
   try {
@@ -155,7 +155,7 @@ export async function checkCredentials(
     await giveLoginSpaceFree(k, ip, name);
     return absage('nicht_verfuegbar', 'server_ausgelastet');
   }
-  // Gesperrt oder unbestätigt wie falsches Passwort: Eine eigene Absage verriete, dass es stimmte.
+  // Locked or unconfirmed like a wrong password: a rejection of its own would reveal that it was right.
   if (!user || !fitsDasPassword || assertLoginAllowed(user)) {
     await fehlversuch(k, 'anmeldung_fehlgeschlagen', ip, name, user?.id);
     return absage('nicht_angemeldet', 'anmeldedaten_ungueltig');
@@ -163,7 +163,7 @@ export async function checkCredentials(
 
   let zugang: LoginMethod = 'passwort';
   if (await k.factors.isActive(user.id)) {
-    // Ein Passkey ersetzt den Code — gebunden an DIESES Konto, dessen Passwort stimmte.
+    // A passkey replaces the code — bound to THIS account, whose password was right.
     const withPasskey = passkeyResponse !== undefined && passkeyResponse !== null;
     zugang = withPasskey ? 'passwort+passkey' : 'passwort+code';
     const hatPasskey = await k.factors.hasPasskeys(user.id);
@@ -172,7 +172,7 @@ export async function checkCredentials(
       return e;
     };
     if (!withPasskey && !String(code ?? '').trim()) {
-      // Das Passwort stimmte; nur der Code fehlt noch — kein Fehlversuch.
+      // The password was right; only the code is still missing — not a failed attempt.
       await giveLoginSpaceFree(k, ip, name);
       return supplemented(absage('nicht_angemeldet', 'zweiter_faktor_noetig', undefined, false, true));
     }
@@ -182,7 +182,7 @@ export async function checkCredentials(
       : await k.factors.checkCode(user.id, code, !onlyFallbackPath);
     if (!gilt) {
       await fehlversuch(k, 'zweiter_faktor_falsch', ip, name, user.id);
-      // Sofort, nicht erst mit der Kontosperre: Wer hier rät, kennt das Passwort.
+      // Immediately, not only with the account lock: whoever guesses here knows the password.
       const erreicht = !withPasskey && (await factorCodeWrong(k, user.id));
       if (erreicht) hintInBackground(k, user.id, 'zweiter_faktor_gesperrt');
       const grund = onlyFallbackPath || erreicht ? 'zweiter_faktor_gesperrt' : 'zweiter_faktor_falsch';
@@ -190,7 +190,7 @@ export async function checkCredentials(
     }
     if (gilt === 'wiederherstellung_alt') await oldCodesReport(k, user.id);
   }
-  // Erst jetzt, nach Passwort und zweitem Faktor: Den Klartext gibt es nur bei einer Anmeldung.
+  // Only now, after password and second factor: the plaintext only exists on a login.
   if (needsNewHash(user.password_hash))
     await k.zugaenge.replacePasswordHash(user.id, user.password_hash, await hashePassword(password));
   await loginSucceeded(k, ip, name);
@@ -198,15 +198,15 @@ export async function checkCredentials(
   return { ok: true, user };
 }
 
-/** Wer sich mit einem Code alter Art anmeldet, erfährt die Frist. Vor der Anmeldung trägt die
- * Anfrage noch kein Konto für den Zeilenschutz, daher der Systemrahmen. */
+/** Whoever logs in with an old-style code learns the deadline. Before login the request
+ * carries no account for row-level security yet, hence the system frame. */
 async function oldCodesReport(k: AccountContext, uid: number): Promise<void> {
   const bis = (await inSystemContext('anmeldung: alte Codes', () => k.factors.status(uid))).alte_codes_bis;
   if (bis) hintInBackground(k, uid, 'alte_codes_ablauf', undefined, { bis });
 }
 
-/** Über der Tagesgrenze nur mit Code oder Passkey und aktivem Faktor. Vor der Passwortprüfung
- * und ohne deren Ergebnis entschieden: Eine eigene Absage danach verriete das Passwort. */
+/** Above the daily limit only with code or passkey and an active factor. Decided before the password check
+ * and without its result: a rejection of its own afterwards would reveal the password. */
 async function onlyStillWithFactor(
   k: AccountContext,
   ip: string,
@@ -222,8 +222,8 @@ async function onlyStillWithFactor(
   return true;
 }
 
-/** Ohne zweiten Faktor bliebe dem Inhaber an einem neuen Ort nur „Passwort vergessen“: ein Link je
- * Adresse und Stunde, höchstens zehn am Tag, damit ein Fremder das Postfach nicht flutet. */
+/** Without a second factor the owner would only have "forgot password" at a new place: one link per
+ * address and hour, at most ten a day, so a stranger does not flood the mailbox. */
 async function offerRelease(k: AccountContext, ip: string, konto: number): Promise<void> {
   if (await k.factors.isActive(konto)) return;
   if ((await countRequest(k, `freigabe-mail|konto:${konto}`, ip, 3_600_000)).count > 1) return;
@@ -231,8 +231,8 @@ async function offerRelease(k: AccountContext, ip: string, konto: number): Promi
   hintInBackground(k, konto, 'anmeldung_freigeben', undefined, { freigabe: releaseToken(k, ip, konto), adresse: ip });
 }
 
-/** Beim Erreichen der Kontosperre erfährt es der Inhaber, höchstens einmal am Tag:
- * Nur er weiss, ob er sich vertippt hat. */
+/** When the account lock is reached, the owner learns about it, at most once a day:
+ * only they know whether they mistyped. */
 async function fehlversuch(
   k: AccountContext,
   ereignis: Anmeldeereignis,

@@ -1,8 +1,8 @@
 /**
- * Referenzkurse der Europäischen Zentralbank: einmal die ganze Reihe als ZIP,
- * danach täglich die Kurse des letzten Arbeitstags. Nur HTTPS, nur der Host
- * der EZB, keine Umleitungen — ein Kurs aus fremder Quelle verfälschte still
- * jede Bewertung.
+ * Reference rates of the European Central Bank: once the whole series as ZIP,
+ * then daily the rates of the last working day. HTTPS only, only the ECB's
+ * host, no redirects — a rate from a foreign source would silently falsify
+ * every valuation.
  */
 import { inflateRawSync } from 'node:zlib';
 import { hostAllowed } from '../src/infra/foreignAddresses';
@@ -12,17 +12,17 @@ export const ECB_HISTORY = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-
 export const ECB_DAILY_RATES = 'https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml';
 export const ALLOWED_RATE_HOSTS = ['www.ecb.europa.eu'] as const;
 
-/** Ein Kurs: so viele Einheiten `waehrung` kostet ein Euro am `tag`. */
+/** One rate: how many units of `waehrung` one euro costs on `tag`. */
 export interface Kurs {
   tag: string;
   waehrung: string;
   je_eur: number;
 }
 
-/** Lädt eine Adresse; im Test ersetzt durch einen lokalen Server. */
+/** Loads an address; replaced by a local server in tests. */
 export type Abruf = (url: string, signal?: AbortSignal) => Promise<Buffer>;
 
-/** Der echte Abruf: lehnt alles ausser HTTPS auf den Host der EZB ab. */
+/** The real fetch: rejects everything except HTTPS to the ECB host. */
 export const ecbFetch: Abruf = async (url, signal) => {
   if (!url.startsWith('https://') || !hostAllowed(url, ALLOWED_RATE_HOSTS))
     throw new Error(`Kursabruf nur von https://${ALLOWED_RATE_HOSTS.join(', ')}: ${url.slice(0, 120)}`);
@@ -40,7 +40,7 @@ export const ecbFetch: Abruf = async (url, signal) => {
 const CURRENCY = /^[A-Z]{3}$/;
 const TAG = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Die Tagesdatei: <Cube time="…"><Cube currency="USD" rate="1.08"/>…</Cube>. */
+/** The daily file: <Cube time="…"><Cube currency="USD" rate="1.08"/>…</Cube>. */
 export function readDailyRates(xml: string): Kurs[] {
   const aus: Kurs[] = [];
   for (const tagBlock of xml.matchAll(/<Cube\s+time=['"](\d{4}-\d{2}-\d{2})['"]\s*>([\s\S]*?)<\/Cube>/g)) {
@@ -52,7 +52,7 @@ export function readDailyRates(xml: string): Kurs[] {
   return aus;
 }
 
-/** Die Historie als CSV: Kopf „Date,USD,JPY,…“, fehlende Werte als „N/A“ oder leer. */
+/** The history as CSV: header "Date,USD,JPY,…", missing values as "N/A" or empty. */
 export function readHistory(csv: string): Kurs[] {
   const zeilen = csv.split(/\r?\n/).filter(z => z.trim());
   const kopf = (zeilen.shift() ?? '').split(',').map(s => s.trim());
@@ -72,10 +72,10 @@ export function readHistory(csv: string): Kurs[] {
 }
 
 /**
- * Die erste Datei eines ZIP-Archivs entpacken. Die EZB legt genau eine CSV
- * hinein; ein eigener kleiner Leser statt eines Pakets, weil nur „gespeichert“
- * und „deflate“ vorkommen. Die Grössen stehen im zentralen Verzeichnis, der
- * lokale Kopf darf sie (Bit 3) auslassen.
+ * Unpack the first file of a ZIP archive. The ECB puts exactly one CSV
+ * in it; a small reader of our own instead of a package, because only "stored"
+ * and "deflate" occur. The sizes are in the central directory; the
+ * local header may omit them (bit 3).
  */
 export function firstZipFile(zip: Buffer): Buffer {
   const ende = zip.lastIndexOf(Buffer.from([0x50, 0x4b, 0x05, 0x06]));

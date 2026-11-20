@@ -1,7 +1,7 @@
 import { fehlertext } from '../infra/error';
 import type { SetsContext } from './context';
 
-/** Katalog und Bestand in einer Transaktion; wirft bei Fehlern, der Auftrag wiederholt dann. */
+/** Catalog and inventory in one transaction; throws on errors, the job then retries. */
 export async function importMinifigs(k: SetsContext, setNumber: string, userId: number): Promise<number> {
   const { figuren, fromSource } = await k.catalog.loadSetMinifigs(setNumber);
   if (!figuren.length) return 0;
@@ -14,7 +14,7 @@ export async function importMinifigs(k: SetsContext, setNumber: string, userId: 
   return figuren.length;
 }
 
-/** In einer Transaktion, damit ein Fehler nie ein Set ohne Teile hinterlässt. */
+/** In one transaction, so that an error never leaves a set without parts. */
 export async function importParts(k: SetsContext, setNumber: string, userId: number): Promise<number> {
   const geladen = await k.catalog.loadSetParts(setNumber);
   if (!geladen) return 0;
@@ -29,7 +29,7 @@ export async function importParts(k: SetsContext, setNumber: string, userId: num
       });
       break;
     } catch (e) {
-      // Die feste Reihenfolge macht Verklemmungen selten, ganz ausschliessen nicht.
+      // The fixed order makes deadlocks rare, but does not rule them out entirely.
       if (!fehlertext(e)?.includes('deadlock') || versuch >= 3) throw e;
       console.warn(`[parts] Deadlock bei ${n}, Versuch ${versuch}/3`);
       await new Promise(r => setTimeout(r, 200 * versuch));

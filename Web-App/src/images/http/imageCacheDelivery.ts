@@ -7,7 +7,7 @@ interface ImageRequest {
   headers?: Record<string, unknown>;
 }
 
-/** Aus dem Platten-Cache, falls vorhanden; true heisst beantwortet. */
+/** From the disk cache, if present; true means answered. */
 export async function deliverFromCache(
   bilder: Pick<ImagesServices, 'cacheTreffer'>,
   opts: {
@@ -25,17 +25,17 @@ export async function deliverFromCache(
   const treffer = await bilder.cacheTreffer(opts);
   if (!treffer) return false;
   res.setHeader('Content-Type', treffer.typ);
-  // Länge mitgeben: Eine chunked-Antwort kann ein Reverse-Proxy puffern.
+  // Pass the length: a reverse proxy may buffer a chunked response.
   if (treffer.groesse !== null) res.setHeader('Content-Length', String(treffer.groesse));
   if (treffer.etag) res.setHeader('ETag', treffer.etag);
   res.setHeader('Cache-Control', 'private, max-age=86400, must-revalidate');
-  // Kennt der Browser die Datei schon, reicht ein leeres 304.
+  // If the browser already knows the file, an empty 304 is enough.
   if (req.fresh) {
     res.status(304).end();
     return true;
   }
-  // Kein rohes pipe(): Die Cache-Pflege kann die Datei zwischen Prüfung und
-  // Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess.
+  // No raw pipe(): cache maintenance can remove the file between check and
+  // opening, and a read stream error without listeners ends the process.
   streamFileToResponse(res, treffer.datei, undefined, req);
   return true;
 }

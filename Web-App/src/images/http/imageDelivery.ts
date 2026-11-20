@@ -1,5 +1,5 @@
-/** EINE angemeldete Route für alle Bilder unter /images/: Eigene Uploads dürfen
- * nicht ohne Anmeldung hinaus, ein fremdes Set-Bild antwortet wie ein fehlendes. */
+/** ONE logged-in route for all images under /images/: own uploads must not
+ * go out without login, a foreign set image answers like a missing one. */
 import fs from 'node:fs';
 import type { Request, Response } from 'express';
 import { userIdTheRequest } from '../../account/http/login';
@@ -12,8 +12,8 @@ import { vorschauErzeugenAus, previewType } from '../thumbs';
 import { IMG_PROXY_PATH } from '../images';
 import type { ImageServices } from './imageProxy';
 
-/** Fehlt die Vorschau, geht sofort das Original hinaus und die Vorschau entsteht
- * nebenher; scheiterte sie beim Erfassen, gäbe es sonst keinen zweiten Anlauf. */
+/** If the preview is missing, the original goes out immediately and the preview is created
+ * on the side; if it failed on capture, there would otherwise be no second chance. */
 async function originalInsteadOfPreview(res: Response, segmente: string[]): Promise<boolean> {
   const rawPath = segmente.join('/');
   if (!/_thumb(\.[^.]+)$/.test(rawPath)) return false;
@@ -43,16 +43,16 @@ export async function deliverImage(d: ImageServices, req: Request, res: Response
   const segmente = pathSegments(req, 'pfad');
   const filePath = safeDataPath('images', segmente);
   if (!filePath || !(await imageReleased(imgUserId, segmente))) return res.status(404).send('Datei nicht gefunden');
-  // private: Die Antwort hängt an einer Anmeldung. max-age=0, damit ein ersetztes Bild sofort gilt.
+  // private: the response depends on a login. max-age=0 so that a replaced image applies immediately.
   res.setHeader('Cache-Control', 'private, max-age=0');
   if (/_thumb\.jpg$/.test(filePath)) res.type(await previewType(filePath));
   sendeDatei(res, filePath, async err => {
     if (!err || res.headersSent) return;
-    // Ein Fehler MIT eigener Zahl (416, 403) ist keine fehlende Datei.
+    // An error WITH its own number (416, 403) is not a missing file.
     const status = (err as { status?: number }).status;
     if (status && status !== 404) return responseOnFileError(res, err);
     if (await originalInsteadOfPreview(res, segmente)) return;
-    // Fehlt die Datei, über den Bild-Proxy zur CDN-Adresse: heilt ohne Aufräumen in der DB.
+    // If the file is missing, via the image proxy to the CDN address: heals without cleanup in the DB.
     const cdn = await d.images.cdnForMissingImage('/images/' + segmente.join('/'));
     if (cdn && !res.headersSent) return res.redirect(302, IMG_PROXY_PATH + '?url=' + encodeURIComponent(cdn));
     responseOnFileError(res, err);

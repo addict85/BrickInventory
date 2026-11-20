@@ -3,7 +3,7 @@ import type { Zeitplan } from './kinds';
 import { wakeWorker, placeJobOne } from './service';
 import type { JobsContext } from './context';
 
-/** Je geplanter Art genau ein offener Auftrag `plan:<art>`: Eine geänderte Uhrzeit verschiebt nur faellig_ab. */
+/** Per scheduled kind exactly one open job `plan:<art>`: a changed time only moves faellig_ab. */
 export const planKey = (art: JobKind) => `plan:${art}`;
 
 function planOf(k: JobsContext, art: JobKind): Zeitplan {
@@ -21,7 +21,7 @@ export function readTimeOfDay(s: string | null | undefined, vorgabe: string): { 
   return h > 23 || min > 59 ? readTimeOfDay(vorgabe, '04:00') : { h, min };
 }
 
-/** In der Zeitzone des Prozesses. */
+/** In the process's time zone. */
 export function nextTimeOfDay(zeit: { h: number; min: number }, jetzt: Date): Date {
   const z = new Date(jetzt);
   z.setHours(zeit.h, zeit.min, 0, 0);
@@ -46,7 +46,7 @@ export async function nextRun(k: JobsContext, art: JobKind, jetzt = k.uhr.datum(
   return new Date(jetzt.getTime() + min * 60_000);
 }
 
-/** Ohne Zeitplan nichts: Der Worker ruft es nach jedem Auftrag. */
+/** Without a schedule nothing: the worker calls it after every job. */
 export async function planeNext<A extends JobKind>(
   k: JobsContext,
   art: A,
@@ -69,7 +69,7 @@ export async function scheduleChanged(k: JobsContext, art: JobKind): Promise<voi
   await wakeWorker(k, art);
 }
 
-/** @returns false, wenn er gerade läuft */
+/** @returns false if it is running right now */
 export async function pullPlanBefore<A extends JobKind>(
   k: JobsContext,
   art: A,

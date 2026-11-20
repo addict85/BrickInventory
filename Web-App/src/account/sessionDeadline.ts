@@ -1,15 +1,15 @@
-// Abmelden nach Stunden Leerlauf.
+// Log out after hours of idleness.
 import { type Konfig, VORGABE } from '../infra/config';
 
 export const IDLE_DEFAULT_MIN = VORGABE.sitzungLeerlaufMin;
 
 export const sessionIdleMs = (k: Pick<Konfig, 'sitzungLeerlaufMin'>) => k.sitzungLeerlaufMin * 60_000;
 
-/** In Sekunden für connect-pg-simple; einmal gerechnet statt an zwei Stellen. */
+/** In seconds for connect-pg-simple; computed once instead of in two places. */
 export const sessionIdleSec = (k: Pick<Konfig, 'sitzungLeerlaufMin'>) => Math.round(sessionIdleMs(k) / 1000);
 
-// Die Leerlauf-Frist gleitet: Wer täglich arbeitet, bliebe sonst für immer
-// angemeldet. Die Höchstdauer zählt ab der Anmeldung.
+// The idle deadline slides: whoever works daily would otherwise stay
+// logged in forever. The maximum duration counts from login.
 export const sessionMaxMs = (k: Pick<Konfig, 'sitzungHoechstStd'>) => k.sitzungHoechstStd * 3_600_000;
 
 export interface Sitzungsfristen {
@@ -18,7 +18,7 @@ export interface Sitzungsfristen {
   adminIdleMs: number;
 }
 
-/** Verwalter nie länger als alle anderen, auch wenn jemand die allgemeinen Fristen kürzer stellt. */
+/** Admins never longer than everyone else, even if someone sets the general deadlines shorter. */
 export const sitzungsfristen = (
   k: Pick<
     Konfig,
@@ -38,8 +38,8 @@ type SessionWithDeadline = {
   destroy(f: (e?: unknown) => void): void;
 };
 
-/** Den Leerlauf von Verwaltern misst die Sitzung selbst (der Speicher kennt eine Frist für alle),
- * höchstens einmal je Minute geschrieben, sonst speicherte jede Anfrage die Sitzung neu. */
+/** The idleness of admins is measured by the session itself (the store knows one deadline for all),
+ * written at most once per minute, otherwise every request would save the session anew. */
 export function sessionMaxDuration(f: Sitzungsfristen) {
   return (req: { session?: SessionWithDeadline }, _res: unknown, next: (e?: unknown) => void) => {
     const s = req.session;

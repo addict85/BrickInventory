@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { type Route, zeit, Erfolg, WITHOUT_BODY } from './base';
 
-/** Die Schritte, die die App hinter ihren Schrittschutz stellt (src/devices/deviceChallenge.ts). */
+/** The steps the app puts behind its step guard (src/devices/deviceChallenge.ts). */
 export const ACTIONS = ['gutschein', 'verwaltung', 'zweiter_faktor'] as const;
 
 export const SchrittChallenge = z.looseObject({
   success: z.literal(true),
   challenge: z.string(),
-  /** Genau diesen Text signiert die App (UTF-8, SHA256withECDSA). */
+  /** Exactly this text is signed by the app (UTF-8, SHA256withECDSA). */
   nachricht: z.string(),
   gueltig_bis: zeit,
 });
@@ -18,15 +18,15 @@ export const SchrittFreigabe = z.looseObject({
   gueltig_bis: zeit,
 });
 
-/** Base64 der Nonce; die App setzt ihre Bytes als Attestation-Challenge ein. */
+/** Base64 of the nonce; the app uses its bytes as the attestation challenge. */
 export const SchluesselNonce = z.looseObject({ success: z.literal(true), nonce: z.string() });
 
 export const routen = {
   'POST /api/v1/geraet/schluessel/nonce': { antwort: SchluesselNonce, geheim: true, eingabe: WITHOUT_BODY },
   'POST /api/v1/geraet/schluessel': {
     antwort: Erfolg,
-    /** `kette`: die Zertifikate des Keystore-Schlüssels (Base64-DER, Blatt zuerst). `oeffentlich`
-     * schicken ältere Apps; ohne Kette weist der Server sie mit `geraeteschluessel_attestation` ab. */
+    /** `kette`: the certificates of the keystore key (Base64 DER, leaf first). `oeffentlich`
+     * is sent by older apps; without a chain the server rejects them with `geraeteschluessel_attestation`. */
     eingabe: z.strictObject({
       oeffentlich: z.string().min(1).max(512).optional(),
       kette: z.array(z.string().min(1).max(8192)).min(1).max(8).optional(),

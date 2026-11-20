@@ -1,4 +1,4 @@
-/** Die öffentliche Seite des Bereichs: Andere importieren nur von hier, der Schnitt darunter bleibt frei. */
+/** The public face of the area: others import only from here, the cut below stays free. */
 export { JobInterrupted, JobMove, checkAbort } from './jobs';
 export type { JobContext, JobRun, JobRow } from './jobs';
 export type { ImportResult } from './importJob';

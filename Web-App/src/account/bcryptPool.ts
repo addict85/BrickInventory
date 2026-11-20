@@ -3,10 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import bcrypt from 'bcryptjs';
 
-/** bcryptjs rechnet in JavaScript; im Hauptthread hielte jede Prüfung alle anderen
- * Anfragen bis zu 100 ms an. Arbeiter entstehen erst bei Bedarf und halten den
- * Prozess nur, solange sie rechnen. Fehlt die Datei (Quelltext statt Build), rechnet
- * der Hauptthread wie bisher. */
+/** bcryptjs computes in JavaScript; in the main thread every check would hold up all other
+ * requests for up to 100 ms. Workers are created only on demand and keep the
+ * process alive only while they compute. If the file is missing (source instead of build), the
+ * main thread computes as before. */
 type Auftrag = { art: 'hash' | 'vergleich'; passwort: string; wert: string | number };
 type Offen = { auftrag: Auftrag; ok: (v: unknown) => void; fehler: (e: Error) => void };
 
@@ -21,7 +21,7 @@ const imHauptthread = (a: Auftrag) =>
   a.art === 'hash' ? bcrypt.hash(a.passwort, Number(a.wert)) : bcrypt.compare(a.passwort, String(a.wert));
 const NO_WORKER = '[bcrypt] Worker-Thread startet nicht, Prüfungen laufen im Hauptthread:';
 
-/** idleMs: Ein untätiger Arbeiter endet danach und gibt seinen Speicher frei. */
+/** idleMs: an idle worker ends after that and frees its memory. */
 export function newPool(groesse: number, datei = path.join(__dirname, 'bcryptWorker.js'), idleMs = 60_000): Pool {
   let hauptthread = !fs.existsSync(datei);
   const frei: Worker[] = [],
@@ -88,7 +88,7 @@ export function newPool(groesse: number, datei = path.join(__dirname, 'bcryptWor
       const l = laufend.get(w);
       laufend.delete(w);
       if (beendet) return;
-      // Startet ein Arbeiter gar nicht, startet auch der nächste nicht.
+      // If a worker does not start at all, the next one will not start either.
       if (!geantwortet) {
         hauptthread = true;
         console.warn(NO_WORKER, grund?.message ?? 'beendet');

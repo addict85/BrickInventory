@@ -1,6 +1,6 @@
-/** Die Fristen des HTTP-Servers an einer Stelle: Die Idempotenz leitet daraus ab,
- * wann eine erste Anfrage als abgebrochen gilt (src/idempotency/service.ts).
- * Fünf Minuten für 50-MB-Uploads; ohne kurzes Prüfintervall griffe die Kopffrist erst nach 45 s. */
+/** The HTTP server's deadlines in one place: idempotency derives from them
+ * when a first request counts as aborted (src/idempotency/service.ts).
+ * Five minutes for 50 MB uploads; without a short check interval the header deadline would only apply after 45 s. */
 export const HTTP_DEADLINES = {
   headersTimeout: 15_000,
   requestTimeout: 300_000,

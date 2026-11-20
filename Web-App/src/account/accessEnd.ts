@@ -1,4 +1,4 @@
-/** Sitzungen und Zugänge eines Kontos beenden, wenn sich an seinem Schutz etwas ändert. */
+/** End sessions and accesses of an account when something about its protection changes. */
 import { increaseSessionVersion, listenOnSessionVersion, forgetSessionVersion } from './sessionVersion';
 import { tokenDigest, ACCESSES_AT_MOST } from './deviceToken';
 import { listenOnTokenRevocation, emptyTokenCache } from './tokenCache';
@@ -6,7 +6,7 @@ import { inSystemContext } from '../infra/accountContext';
 import { imSystemrahmen } from '../infra/area';
 import type { AccountContext } from './context';
 
-/** Token-Zwischenspeicher und Sitzungsversionen dieses Prozesses folgen den Widerrufen der anderen (NOTIFY). */
+/** Token cache and session versions of this process follow the revocations of the others (NOTIFY). */
 export function listenOnRevocation(k: AccountContext): void {
   listenOnTokenRevocation(k);
   listenOnSessionVersion(k);
@@ -16,21 +16,21 @@ export function limitSessions(k: AccountContext, userId: number, eigene: string)
   return k.zugaenge.capSessions(userId, eigene, ACCESSES_AT_MOST - 1);
 }
 
-/** In user_sessions, wo der Session-Store wirklich liegt. */
+/** In user_sessions, where the session store really lives. */
 export async function endAllSessions(k: AccountContext, userId: number): Promise<void> {
   await increaseSessionVersion(k, userId);
   await k.zugaenge.deleteSessionsOfAccount(userId);
 }
 
-/** Eine Transaktion über Zugangsdaten im Systemrahmen (die Anmeldung sucht sie, bevor es
- * ein Konto gibt). In einer laufenden nur, wenn sie selbst im Systemrahmen läuft. */
+/** A transaction over credentials in the system frame (login looks for them before there is
+ * an account). Inside a running one only if that itself runs in the system frame. */
 export function accessTransaction<T>(k: AccountContext, fn: (t: AccountContext) => Promise<T>): Promise<T> {
   return imSystemrahmen(k.db, 'zugangsdaten', () => k.transaktion(fn));
 }
 
-/** Passwort, Zugänge und Passkeys zusammen, im Systemrahmen (auch ohne Anmeldung: Passwort
- * vergessen). Die Zwischenspeicher leeren sich nach dem COMMIT noch einmal, weil eine Anfrage
- * dazwischen den alten Stand wieder aufgenommen haben kann. */
+/** Password, accesses and passkeys together, in the system frame (also without login: forgotten
+ * password). The caches clear once more after the COMMIT, because a request in
+ * between may have picked up the old state again. */
 export async function withAccessEnd<T>(
   k: AccountContext,
   konto: number | ((r: T) => number | null),
@@ -43,8 +43,8 @@ export async function withAccessEnd<T>(
   return r;
 }
 
-/** Alle Sitzungen ausser der eigenen, mit `zugaenge` auch die App-Zugänge ausser dem eigenen.
- * Die neue Version schreibt der Aufrufer in die Sitzung, die bleibt. */
+/** All sessions except the own, with `zugaenge` also the app accesses except the own.
+ * The caller writes the new version into the session that stays. */
 export async function endOther(
   k: AccountContext,
   uid: number,

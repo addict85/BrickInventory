@@ -6,8 +6,8 @@ import { attemptsKeyLock, giveKeyLockFree } from '../../../db/txLock';
 import type { JobKind, Einstellen, JobRow, Belegung, Fortschritt, Pause, JobStatus } from '../jobs';
 import type { Spalten } from '../../../db/rows';
 
-/** Hier nur das SQL; Wecken, Wartezeiten und das Arbeiten im Namen eines Kontos
- * stehen im Dienst. */
+/** Only the SQL here; waking, waiting times and working on behalf of an account
+ * live in the service. */
 type Stand = { s: string } | undefined;
 
 export interface JobListenRow {
@@ -28,7 +28,7 @@ export interface JobListenRow {
   waiting: boolean;
   set_number: string | null;
 }
-/** @returns die Kennung, oder null, wenn derselbe Auftrag schon offen steht */
+/** @returns the identifier, or null if the same job is already open */
 export async function addJobOne(
   db: DbInterface,
   art: JobKind,
@@ -54,12 +54,12 @@ export async function addJobOne(
   return z ? String(z.id) : null;
 }
 
-/** Derselbe Schreibweg ohne Systemrahmen gebunden (src/jobQueue/context.ts). */
+/** The same write path bound without a system frame (src/jobQueue/context.ts). */
 export const addOwnJobOne = addJobOne;
 
-/** Je Schlüssel ein offener Auftrag, der die neuen Einträge der Liste zu seinen dazunimmt:
- * Eine neue Liste ist kein neuer Auftrag. Läuft einer, entsteht daneben höchstens ein
- * offener (eindeutig nur unter 'offen'); doppelte Einträge gibt es nur einmal. */
+/** Per key one open job that adds the list's new entries to its own:
+ * a new list is not a new job. If one is running, at most one open job arises
+ * next to it (unique only under 'offen'); duplicate entries exist only once. */
 export async function addListAn(
   db: DbInterface,
   art: string,
@@ -82,14 +82,14 @@ export async function addListAn(
   return String(z!.id);
 }
 
-/** Zurück nach 'offen', ausser ein neuerer offener Auftrag mit demselben Schlüssel
- * steht schon da: Dann übernimmt der, und dieser endet als 'abgebrochen' — zwei
- * offene mit einem Schlüssel verbietet der Index, das UPDATE scheiterte sonst. */
+/** Back to 'offen', unless a newer open job with the same key
+ * already exists: then that one takes over, and this one ends as 'abgebrochen' — two
+ * open ones with one key are forbidden by the index, the UPDATE would otherwise fail. */
 const OFFEN_ODER_ERSETZT = `CASE WHEN EXISTS (SELECT 1 FROM jobs z WHERE z.dedupe_key = jobs.dedupe_key
                                    AND z.status = 'offen' AND z.id <> jobs.id)
             THEN 'abgebrochen' ELSE 'offen' END`;
 
-/** Entsteht der Zwilling zwischen Prüfung und Schreiben, sieht ihn der zweite Versuch. */
+/** If the twin arises between check and write, the second attempt sees it. */
 async function againAtTwin<T>(f: () => Promise<T>): Promise<T> {
   try {
     return await f();
@@ -98,10 +98,10 @@ async function againAtTwin<T>(f: () => Promise<T>): Promise<T> {
     throw e;
   }
 }
-/** Ein 'laeuft' mit abgelaufener Frist gehört einem verschwundenen Prozess und
- * wird neu vergeben. SKIP LOCKED: Zwei Worker greifen nie dieselbe Zeile; zwei
- * exklusive derselben Art verhindert der Trigger aus Migration 0099.
- * @param ausser Kennungen, die dieser Prozess noch ausführt: nie an sich selbst neu vergeben */
+/** A 'laeuft' with an expired deadline belongs to a vanished process and
+ * is reassigned. SKIP LOCKED: two workers never grab the same row; two
+ * exclusive ones of the same kind are prevented by the trigger from migration 0099.
+ * @param ausser identifiers this process is still executing: never reassign to itself */
 export async function belegeAuftrag(
   db: DbInterface,
   arten: readonly string[],
@@ -129,14 +129,14 @@ export async function belegeAuftrag(
   );
   return z ? asRow(z) : null;
 }
-/** Herausnehmen ist eine Migration: Ein Worker ohne die Art ist sonst ein Test oder ein alter Stand. */
+/** Taking it out is a migration: a worker without the kind is otherwise a test or an old version. */
 export async function rememberExclusive(db: DbInterface, exklusiv: readonly string[]): Promise<void> {
   if (exklusiv.length)
     await db.run('INSERT INTO job_exclusive_locks (type) SELECT unnest($1::text[]) ON CONFLICT DO NOTHING', [
       [...exklusiv],
     ]);
 }
-/** @returns false, wenn der Auftrag nicht mehr diesem Lauf gehört (auch: abgebrochen) */
+/** @returns false if the job no longer belongs to this run (also: aborted) */
 export async function lebenszeichen(db: DbInterface, a: Belegung, deadlineSec: number): Promise<boolean> {
   const r = await db.run(
     `UPDATE jobs SET deadline_at = NOW() + make_interval(secs => $3), updated_at = NOW()
@@ -145,7 +145,7 @@ export async function lebenszeichen(db: DbInterface, a: Belegung, deadlineSec: n
   );
   return (r?.changes ?? 0) > 0;
 }
-/** Nur lesen: Ein Statuswechsel weckt jeden Lauf, schreiben soll dabei keiner. */
+/** Read only: a status change wakes every run; none of them should write while doing so. */
 export async function belongsStill(db: DbInterface, a: Belegung): Promise<boolean> {
   return !!(await db.get<{ ja: number }>(
     `SELECT 1 AS ja FROM jobs WHERE id = $1 AND locked_by = $2 AND status = 'laeuft'`,
@@ -159,7 +159,7 @@ export function writeProgress(db: DbInterface, a: Belegung, f: Fortschritt, dead
     [a.id, a.locked_by, JSON.stringify(f), deadlineSec],
   );
 }
-/** PDF und CSV tragen ganze Listen; erledigt braucht die niemand mehr. */
+/** PDF and CSV carry whole lists; once done, nobody needs them any more. */
 export function setDone(db: DbInterface, a: Belegung, discardPayload: boolean): Promise<Stand> {
   return db.get<{ s: string }>(
     `UPDATE jobs SET status = 'erledigt', locked_by = NULL, error_message = NULL, deadline_at = NULL, updated_at = NOW(),
@@ -185,8 +185,8 @@ export function setFailed(
     ),
   );
 }
-/** Zählt der Versuch nicht, bleibt die Zahl der Versuche, wie sie vor dem Belegen war.
- * `waiting`: Der Auftrag ist nicht gescheitert, die Verwaltung zeigt ihn als wartend. */
+/** If the attempt does not count, the number of attempts stays as it was before claiming.
+ * `waiting`: the job has not failed; admin shows it as waiting. */
 export function setMoved(
   db: DbInterface,
   a: Belegung,
@@ -211,9 +211,9 @@ export async function holdProcessLock(c: Abfrager, prozess: string): Promise<voi
   await c.query('SELECT pg_advisory_lock($1, hashtext($2))', [LOCKS.JOB_PROCESS, prozess]);
 }
 
-/** Belegungen anderer Prozesse, deren Sperre frei ist: Der Prozess lebt nicht mehr
- * (die Sperre endet mit seiner Verbindung). Der Versuch zählt wie nach einer Frist.
- * @returns zurückgegebene Aufträge */
+/** Claims of other processes whose lock is free: the process no longer lives
+ * (the lock ends with its connection). The attempt counts as after a deadline.
+ * @returns returned jobs */
 export async function giveOrphanedBack(c: Abfrager, prozess: string): Promise<number> {
   const { rows } = await c.query<{ p: string }>(
     `SELECT DISTINCT split_part(locked_by, '/', 1) AS p FROM jobs
@@ -239,7 +239,7 @@ export async function giveOrphanedBack(c: Abfrager, prozess: string): Promise<nu
   return n;
 }
 
-/** Der Versuch zählt nicht. */
+/** The attempt does not count. */
 export async function giveBack(db: DbInterface, a: Belegung): Promise<void> {
   await againAtTwin(() =>
     db.run(
@@ -266,7 +266,7 @@ export async function liesPause(db: DbInterface, art: JobKind): Promise<Pause | 
     )) ?? null
   );
 }
-/** `level` zählt wiederholte Drosselungen (Cloudflare). */
+/** `level` counts repeated throttling (Cloudflare). */
 export async function pauseKind(
   db: DbInterface,
   art: JobKind,
@@ -284,7 +284,7 @@ export async function pauseKind(
 export async function deletePause(db: DbInterface, art: JobKind): Promise<void> {
   await db.run('DELETE FROM job_pauses WHERE type = $1', [art]);
 }
-/** Ein laufender hört bei seinem nächsten Lebenszeichen auf. */
+/** A running one stops at its next sign of life. */
 export async function setAborted(db: DbInterface, id: string): Promise<JobRow | null> {
   const z = await db.get<RawRow>(
     `UPDATE jobs SET status = 'abgebrochen', deadline_at = NULL, updated_at = NOW(), waiting = false,
@@ -304,7 +304,7 @@ export async function placeAgainOne(db: DbInterface, id: string): Promise<boolea
   );
   return (r?.changes ?? 0) > 0;
 }
-/** Ein geplanter Termin bleibt. */
+/** A scheduled appointment stays. */
 export async function emptyKind(db: DbInterface, art: JobKind): Promise<number> {
   const r = await db.run(
     `DELETE FROM jobs WHERE type = $1 AND status = 'offen' AND (dedupe_key IS NULL OR dedupe_key NOT LIKE 'plan:%')`,
@@ -326,7 +326,7 @@ export function statusNumbers(db: DbInterface, art: JobKind) {
     [art],
   );
 }
-/** Die Rolle, wie sie jetzt ist, nicht wie beim Einstellen. */
+/** The role as it is now, not as at queuing time. */
 export function accountRole(db: DbInterface, l: JobsReadContract, uid: number) {
   return db.get<{ is_admin: boolean }>(`SELECT is_admin FROM ${l.KONTEN} k WHERE id = $1`, [uid]);
 }
@@ -334,7 +334,7 @@ export const JOB_CHANNEL = 'auftraege';
 export const JOB_STATUS_CHANNEL = 'auftrag_stand';
 export const SPALTEN =
   'id, type, payload, user_id, dedupe_key, status, attempts, max_attempts, locked_by, error_message';
-/** Die Kennung kommt aus der Datenbank nicht immer als Text; nach aussen ist sie es. */
+/** The identifier does not always come from the database as text; to the outside it is. */
 type RawRow = Omit<JobRow, 'id'> & { id: unknown };
 export const asRow = (z: RawRow): JobRow => ({ ...z, id: String(z.id) });
 
@@ -364,7 +364,7 @@ export async function runningKind(db: DbInterface, art: string): Promise<boolean
   return !!(await db.get<Treffer>(`SELECT 1 FROM jobs WHERE type = $1 AND status = 'laeuft'`, [art]));
 }
 
-/** Der höchste Zähler `feld` der Nutzlast unter den wartenden Aufträgen dieses Schlüssels. */
+/** The highest counter `feld` of the payload among the waiting jobs of this key. */
 export async function highestCounter(db: DbInterface, schluessel: string, feld: string): Promise<number> {
   const z = await db.get<{ v: number }>(
     `SELECT COALESCE(MAX((payload->>$2)::int), 0) AS v FROM jobs
@@ -374,7 +374,7 @@ export async function highestCounter(db: DbInterface, schluessel: string, feld: 
   return z?.v ?? 0;
 }
 
-/** Ein schon offener Auftrag desselben Schlüssels wird umgeplant, nicht verdoppelt. */
+/** An already open job with the same key is rescheduled, not duplicated. */
 export async function writeResubmission(
   db: DbInterface,
   art: string,
@@ -403,7 +403,7 @@ export interface WaitingRow {
   created_at: Date | null;
 }
 
-/** Wartende und laufende einer Art, nach Fälligkeit. */
+/** Waiting and running jobs of a kind, by due time. */
 export function waitingTheKind(db: DbInterface, art: string) {
   return db.all<WaitingRow>(
     `SELECT payload, due_at, error_message, created_at FROM jobs
@@ -420,7 +420,7 @@ export function numbersTheKind(db: DbInterface, art: string) {
   );
 }
 
-/** Ohne Nutzlast (ganze Listen) und ohne Konto, denn die Liste sieht der Verwalter. */
+/** Without payload (whole lists) and without account, because the admin sees the list. */
 export function jobList(db: DbInterface, status: string[], art: string | null) {
   return db.all<JobListenRow>(
     `SELECT id::text AS id, type, status, attempts, max_attempts, due_at, deadline_at, started_at, created_at,
@@ -442,7 +442,7 @@ export interface LastStatus {
   error_message: string | null;
   updated_at: Date | null;
 }
-/** Je Art der laufende, sonst der zuletzt beendete, sonst der nächste geplante Auftrag. */
+/** Per kind the running job, otherwise the most recently finished one, otherwise the next scheduled one. */
 export function letzteJeArt(db: DbInterface, arten: readonly JobKind[]) {
   return db.all<LastStatus>(
     `SELECT DISTINCT ON (type) type, status, progress, error_message, updated_at FROM jobs
@@ -471,7 +471,7 @@ export function jobStatus(db: DbInterface, id: string, uid: number) {
   );
 }
 
-/** Was später fällig war, kommt bis `bis` dran. */
+/** Whatever was due later gets its turn by `bis`. */
 export function pullAppointmentsBefore(db: DbInterface, art: string, bis: Date) {
   return db.run(`UPDATE jobs SET due_at = $1 WHERE type = $2 AND status = 'offen' AND due_at > NOW()`, [bis, art]);
 }
@@ -484,7 +484,7 @@ export async function writeResult(
   await db.run('UPDATE jobs SET result = $2 WHERE id = $1', [id, ergebnis === null ? null : JSON.stringify(ergebnis)]);
 }
 
-/** Nur der eigene: Der Schlüssel steht in der Adresse, er allein ist kein Recht. */
+/** Only the own one: the key is in the address, it alone grants no right. */
 export function ownRow(db: DbInterface, art: string, schluessel: string, uid: number) {
   return db.get<{
     status: JobStatus;
@@ -498,7 +498,7 @@ export function ownRow(db: DbInterface, art: string, schluessel: string, uid: nu
   );
 }
 
-/** Ein hängengebliebener zählt nach `deadlineSec` nicht mehr. */
+/** A stuck one no longer counts after `deadlineSec`. */
 export function countRunningRows(db: DbInterface, art: string, uid: number, deadlineSec: number) {
   return db.get<{ n: number }>(
     `SELECT COUNT(*)::int AS n FROM jobs
@@ -516,7 +516,7 @@ export function deleteOwnRow(db: DbInterface, art: string, schluessel: string, u
   ]);
 }
 
-/** Beendete nach Ablauf der Frist; liefert ihre Schlüssel, damit Dateien mitgehen. */
+/** Finished ones after the deadline expires; returns their keys so that files go along. */
 export function deleteEndedRows(db: DbInterface, art: string, deadlineSec: number) {
   return db.all<{ dedupe_key: string }>(
     `DELETE FROM jobs WHERE type = $2 AND status IN ('erledigt', 'fehler', 'abgebrochen')

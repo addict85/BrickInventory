@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 
-/** Die Stückzahl eines manuellen Eintrags ist die Summe seiner Erfassungen. */
+/** The piece count of a manual entry is the sum of its acquisitions. */
 export type ManualKind = 'part' | 'fig';
 const ERF = { part: 'part_acquisitions', fig: 'minifig_acquisitions' } as const;
 const SCHLUESSEL = { part: 'part_number=$2 AND color_id=$3', fig: 'fig_number=$2' } as const;
@@ -18,7 +18,7 @@ export async function sumTheEntries(
   return Number(r?.q ?? 0);
 }
 
-/** Neueste zuerst: Beim Verringern geht das zuletzt Erfasste zuerst. */
+/** Newest first: when reducing, the most recently captured goes first. */
 export function entriesNewestFirst(tx: DbInterface, art: ManualKind, uid: number, schluessel: (string | number)[]) {
   return tx.all<{ id: number; quantity: number }>(
     `SELECT id, quantity FROM ${ERF[art]} WHERE user_id=$1 AND ${SCHLUESSEL[art]} ORDER BY created_at DESC, id DESC`,

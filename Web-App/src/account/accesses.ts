@@ -1,5 +1,5 @@
-/** Die App-Zugänge eines Kontos in den Einstellungen: lesen und einzeln oder
- * alle anderen beenden. Der Token-Cache gälte sonst noch kurz nach. */
+/** The app accesses of an account in the settings: read and end one or
+ * all others. The token cache would otherwise still apply briefly. */
 import { hintInBackground } from './accountNotice';
 import { emptyTokenCache } from './tokenCache';
 import type { AccountContext } from './context';
@@ -8,7 +8,7 @@ export function accessesList(k: AccountContext, uid: number) {
   return k.konten.accessesOfAccount(uid);
 }
 
-/** Einen fremden Zugang erfährt der Inhaber per Mail; den eigenen hat er selbst beendet. */
+/** The owner learns about a foreign access by mail; the own one they ended themselves. */
 export async function endAccess(k: AccountContext, uid: number, kennung: string, ownDevice: boolean): Promise<number> {
   const { anzahl, label } = await k.konten.deleteAccess(uid, kennung);
   if (anzahl) {

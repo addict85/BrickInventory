@@ -13,7 +13,7 @@ export async function setsWithMissingCatalogImages(db: DbInterface): Promise<str
   return rows.map(r => r.set_number);
 }
 
-/** Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten. */
+/** The shared catalog only lists verified addresses: the file applies to all accounts. */
 export async function manualPartsWithoutImage(
   db: DbInterface,
   l: CatalogReadContract,
@@ -40,9 +40,9 @@ export async function minifigsWithoutImage(
   );
 }
 
-/** Seit 0105 führt set_catalog jedes Set des Rebrickable-Katalogs: Geladen wird nur,
- * was ein Konto hält, merkt oder beobachtet. Ein vermerkter 404 ruht eine Woche, sonst
- * belegten dieselben bildlosen Sets bei jedem Start die ersten Plätze. */
+/** Since 0105 set_catalog lists every set of the Rebrickable catalog: only what an account
+ * holds, wishes for or watches is loaded. A recorded 404 rests for a week, otherwise
+ * the same imageless sets would occupy the first places on every start. */
 export async function setImagesWithoutFile(
   db: DbInterface,
   l: CatalogReadContract,
@@ -59,8 +59,8 @@ export async function setImagesWithoutFile(
   );
 }
 
-/** Schreibt nur, was fehlt. Über rb_sets, damit eine fehlende set_catalog-Zeile
- * entsteht, ohne den Fremdschlüssel zu verletzen; ein unbekanntes Set bleibt aussen vor. */
+/** Writes only what is missing. Via rb_sets so that a missing set_catalog row
+ * arises without violating the foreign key; an unknown set stays out. */
 export async function rememberSetImageLocal(
   db: DbInterface,
   setNumber: string,
@@ -115,7 +115,7 @@ export async function minifigImages(
   );
 }
 
-/** Nur Lücken einer Zeile der Erfassung ('api'): Was das Rebrickable-CSV führt, bleibt. */
+/** Only gaps in a capture row ('api'): what the Rebrickable CSV lists stays. */
 export async function fillSetGaps(
   db: DbInterface,
   setNumber: string,
@@ -151,7 +151,7 @@ export async function setsWithoutInstructionFetch(db: DbInterface, l: CatalogRea
   return rows.map(r => r.set_number);
 }
 
-/** Teil- und Figurenbilder der Sets, die noch nicht lokal liegen. */
+/** Part and figure images of the sets that are not yet stored locally. */
 export function missingCatalogImages(db: DbInterface, setNumbers: string[]) {
   return db.get<{ c: string | number }>(
     `SELECT (SELECT COUNT(*) FROM (SELECT DISTINCT part_number, color_id FROM set_parts_catalog
@@ -162,7 +162,7 @@ export function missingCatalogImages(db: DbInterface, setNumbers: string[]) {
   );
 }
 
-/** Die Namen der Sets aus dem Rebrickable-Katalog. */
+/** The names of the sets from the Rebrickable catalog. */
 export function setNames(db: DbInterface, nummern: string[]) {
   return db.all<{ set_num: string; name: string | null }>('SELECT set_num, name FROM rb_sets WHERE set_num = ANY($1)', [
     nummern,

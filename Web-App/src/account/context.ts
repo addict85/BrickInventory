@@ -1,4 +1,4 @@
-/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
+/** What the services get; separate from area.ts so no import cycle arises. */
 import type { Konfig } from '../infra/config';
 import type { Db } from '../../db/database';
 import type { Faecher } from '../infra/cache';
@@ -23,7 +23,7 @@ export interface AccountDependencies {
   uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
-  /** Zustand je Zugang (Token-Cache, Sitzungsversionen); createAccount legt sie an. */
+  /** State per access (token cache, session versions); createAccount creates them. */
   faecher: Faecher;
   einstellungen: SettingsServices;
   jobQueue: JobsServices;
@@ -34,8 +34,8 @@ export interface AccountDependencies {
   factors: FactorsServices;
 }
 
-/** Zugangsdaten liegen unter Zeilenschutz (0112): Den Systemrahmen bekommt nur, wer ohne Konto
- * oder über alle Konten arbeitet; was ein Konto über sich selbst liest, läuft ohne ihn. */
+/** Credentials are under row-level security (0112): only whoever works without an account
+ * or across all accounts gets the system frame; what an account reads about itself runs without it. */
 const WITHOUT_ACCOUNT = 'Anmeldung oder Token-Prüfung: Es gibt noch kein Konto, für das der Zeilenschutz gälte';
 const ALL_ACCOUNTS = 'Aufräumen über alle Konten';
 const FOREIGN_ACCOUNT = 'Verwaltung oder Passwort vergessen: ändert ein Konto, das die Anfrage nicht trägt';
@@ -45,12 +45,12 @@ const ACCESS = 'Passwort, Rechte, Adresse und Sitzungsversion schreibt nur die S
 const ADDRESS = 'Adressen und Links liest nur die Systemrolle (0121)';
 const ALL_NAMES = 'Fremde Konten: Die Laufzeitrolle sieht nur das eigene und den Haushalt (0121)';
 
-/** Der Einrichtungsstand der Startseite: Konten überhaupt, und ob das Startpasswort noch gilt. */
+/** The setup state of the start page: accounts at all, and whether the start password still applies. */
 const einrichtungszugang = (db: Db) => ({
   einrichtung: { accountsStatus: imSystem(db, ALL_NAMES, einrichtung.accountsStatus) },
 });
 
-/** Konten und Protokoll. */
+/** Accounts and log. */
 const kontenzugang = (db: Db) => ({
   konten: {
     accountShort: imSystem(db, ALL_NAMES, konten.accountShort),
@@ -102,7 +102,7 @@ const kontenzugang = (db: Db) => ({
   },
 });
 
-/** Kopplung, Startverwalter und Token. */
+/** Pairing, start administrator and tokens. */
 const sitzungszugang = (db: Db) => ({
   qrKopplung: {
     cleanQrPairingsOn: imSystem(db, ALL_ACCOUNTS, qrKopplung.cleanQrPairingsOn),

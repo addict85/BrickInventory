@@ -1,4 +1,4 @@
-// Beide Pfadpräfixe, ein Existenz-Cache.
+// Both path prefixes, one existence cache.
 
 import fs from 'node:fs';
 import crypto from 'node:crypto';
@@ -6,8 +6,8 @@ import { APP_ROOT, IMAGES_DIR } from '../infra/appPaths';
 import path from 'node:path';
 import { Zwischenspeicher } from '../infra/cache';
 
-// Positive Treffer bleiben gültig (Vorschauen werden nie gelöscht); negative
-// nach 10 Min neu prüfen, damit frisch erzeugte erscheinen.
+// Positive hits stay valid (previews are never deleted); negative ones
+// are rechecked after 10 min so that freshly created ones appear.
 const NEGATIVE_MS = 10 * 60 * 1000;
 const _thumbCache = new Zwischenspeicher<string, boolean>(20000);
 
@@ -28,16 +28,16 @@ export function resolveImageLocal(localPath: string | null | undefined) {
   return exists ? thumbPath : localPath;
 }
 
-// Die Adresse steht so in gespeicherten image_url; die alte Form lebt darum weiter.
+// The address is stored like this in saved image_url values; that is why the old form lives on.
 export const IMG_PROXY_PATH = '/api/v1/img-proxy';
-/** Nur noch für Altbestand und ältere App-Fassungen. */
+/** Only for legacy data and older app versions. */
 export const IMG_PROXY_PATH_LEGACY = '/api/img-proxy';
 
 export function isProxyPath(src: string): boolean {
   return src.startsWith(IMG_PROXY_PATH) || src.startsWith(IMG_PROXY_PATH_LEGACY);
 }
 
-/** Nur Bilder von Rebrickable gehen über den Proxy; ein Teilstring passte auch auf fremde Hosts. */
+/** Only images from Rebrickable go via the proxy; a substring would also match foreign hosts. */
 function isRebrickableImage(url: string): boolean {
   try {
     const h = new URL(url).hostname;
@@ -54,12 +54,12 @@ export function proxyImageUrl(url: string | null | undefined) {
   return url;
 }
 
-// Für Aufrufer ohne gespeicherte image_local-Spalte (Katalog), die die
-// Existenz sonst bei jeder Anfrage neu prüften.
+// For callers without a stored image_local column (catalog), which would
+// otherwise recheck existence on every request.
 const _existsCache = new Zwischenspeicher<string, boolean>(20000);
 
-/** Liefert bei Treffer den Vorschau-bevorzugten Pfad, sonst null.
- * @param publicRelPath z. B. "/images/sets/10283-1.jpg" */
+/** Returns the preview-preferred path on a hit, otherwise null.
+ * @param publicRelPath e.g. "/images/sets/10283-1.jpg" */
 export function imageIfPresent(publicRelPath: string) {
   const hit = _existsCache.hole(publicRelPath);
   if (hit !== undefined) return hit ? resolveImageLocal(publicRelPath) : null;
@@ -72,12 +72,12 @@ export function imageIfPresent(publicRelPath: string) {
   return exists ? resolveImageLocal(publicRelPath) : null;
 }
 
-/** Diese CDNs liefern dasselbe Bild ohne Anfrageteil; dort steht nur ein
- * Zeitstempel. Mit ihm im Schlüssel legte jede Variante eine neue Datei an.
- * www.bricklink.com braucht ihn (getPic.asp?…), dort wird er nur sortiert. */
+/** These CDNs deliver the same image without the query part; it only holds a
+ * timestamp. With it in the key every variant would create a new file.
+ * www.bricklink.com needs it (getPic.asp?…), there it is only sorted. */
 const WITHOUT_REQUEST_PART = ['cdn.rebrickable.com', 'images.brickset.com', 'img.bricklink.com'];
 
-/** Die Adresse, die der Proxy holt und nach der er ablegt; null, wenn unlesbar. */
+/** The address the proxy fetches and stores by; null if unreadable. */
 export function proxyAddress(url: string): string | null {
   let u: URL;
   try {
@@ -98,7 +98,7 @@ export function proxyCacheKey(url: string): string {
     .digest('hex');
 }
 
-// Die Ablageregel des Proxy-Caches an einer Stelle, auch für die Bild-Diagnose.
+// The proxy cache's storage rule in one place, also for the image diagnostics.
 export function proxyCachePathFor(url: string): string | null {
   if (!url) return null;
   return path.join(APP_ROOT, 'data', 'img_proxy_cache', proxyCacheKey(url));

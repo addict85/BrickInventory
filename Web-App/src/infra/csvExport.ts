@@ -1,33 +1,33 @@
-// CSV mit richtigem Quoting, damit ein Export mit dem passenden Import unverändert wieder eingelesen werden kann.
+// CSV with correct quoting, so that an export can be read back unchanged with the matching import.
 import { parse } from 'csv-parse/sync';
 import { errorText, type Sprache } from './errorTexts';
 
-/** Tabulator und Wagenrücklauf gehören dazu: Excel liest sie als Trennzeichen
- * und behandelt das folgende Feld wieder als Formel. Auch nach Leerraum und in
- * voller Breite (＝＋－＠): Manche Programme trimmen oder falten sie. */
+/** Tab and carriage return belong to it: Excel reads them as separators
+ * and treats the following field as a formula again. Also after whitespace and in
+ * full width (＝＋－＠): some programs trim or fold them. */
 const FORMULA_START = /^[\s\u3000]*[=+\-@\uFF1D\uFF0B\uFF0D\uFF20]|^[\t\r\n]/;
-/** Komma, Semikolon (deutsches Excel) und Tabulator trennen Felder, CR und LF Zeilen. */
+/** Comma, semicolon (German Excel) and tab separate fields, CR and LF rows. */
 const MUST_IN_QUOTE = /[",;\t\r\n]/;
 
-// Ein Feld mit = führte Excel beim Öffnen aus.
+// Excel executed a field with = when opening.
 export function defuse(s: string): string {
   if (!FORMULA_START.test(s)) return s;
-  if (/^\s*-?\d+([.,]\d+)?\s*$/.test(s)) return s; // reine Zahl, auch negativ
+  if (/^\s*-?\d+([.,]\d+)?\s*$/.test(s)) return s; // plain number, negative too
   return "'" + s;
 }
 
-// `unknown`: Werte aus geparsten CSV-Zeilen sind nicht zwingend Zeichenketten.
+// `unknown`: values from parsed CSV rows are not necessarily strings.
 export function defusingUndo(v: unknown) {
   if (typeof v !== 'string') return v;
   if (v.length > 1 && v[0] === "'" && FORMULA_START.test(v.slice(1))) return v.slice(1);
   return v;
 }
 
-/** Eine eingelesene Zeile; mit `columns` liefert csv-parse jeden Wert als Text. */
+/** A row read in; with `columns` csv-parse delivers every value as text. */
 export type CsvRow = Record<string, string>;
 
-/** Hinter jedes parse() der Importwege, damit ein eigener Export unverändert
- * wieder eingelesen wird. */
+/** Behind every parse() of the import paths, so that an own export is read back
+ * unchanged. */
 export function csvRowsClean(records: CsvRow[]): CsvRow[] {
   return records.map(row => {
     const out: CsvRow = {};
@@ -51,7 +51,7 @@ export function toCsv(headers: string[], rows: Record<string, unknown>[]) {
   return lines.join('\r\n') + '\r\n';
 }
 
-/** @returns ISO-Datum oder null, wenn nichts Brauchbares drinsteht */
+/** @returns ISO date or null if nothing usable is in it */
 export function csvDatum(raw: unknown) {
   const s = String(raw ?? '').trim();
   if (!s) return null;
@@ -66,7 +66,7 @@ export function csvDatum(raw: unknown) {
     let year = parseInt(m[3] ?? '', 10);
     if ((m[3] ?? '').length === 2) year += year < 70 ? 2000 : 1900;
     if (day < 1 || day > 31 || mon < 1 || mon > 12) return null;
-    // Über ein echtes Datum prüfen: 31.02. gibt es nicht; Date rollt ihn in den Folgemonat, und das fällt hier auf.
+    // Check via a real date: 31.02. does not exist; Date rolls it into the next month, and that is noticed here.
     const probe = new Date(Date.UTC(year, mon - 1, day));
     if (probe.getUTCFullYear() !== year || probe.getUTCMonth() !== mon - 1 || probe.getUTCDate() !== day) return null;
     return `${year}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -74,10 +74,10 @@ export function csvDatum(raw: unknown) {
   return null;
 }
 
-/** Treffen die Prototypenkette statt eines Datenfelds. */
+/** Hit the prototype chain instead of a data field. */
 const DANGEROUS_COLUMNS = new Set(['__proto__', 'constructor', 'prototype']);
 
-/** `zeilen[i]` ist die Zeile der Datei, in der `records[i]` steht: Leerzeilen verschieben sonst die Zählung. */
+/** `zeilen[i]` is the line of the file in which `records[i]` stands: blank lines would otherwise shift the count. */
 export function csvReadIn(csvText: string): {
   records: CsvRow[];
   delimiter: string;
@@ -90,8 +90,8 @@ export function csvReadIn(csvText: string): {
 
   const uebersprungen: number[] = [];
   const records = parse(text, {
-    // Die Kopfzeile filtern: `columns: true` macht aus `__proto__` einen
-    // Schlüssel, der in die Prototypenkette schreibt.
+    // Filter the header row: `columns: true` turns `__proto__` into a
+    // key that writes into the prototype chain.
     columns: (kopf: string[]) =>
       kopf.map(name => {
         const rein = String(name || '').trim();
@@ -100,13 +100,13 @@ export function csvReadIn(csvText: string): {
     skip_empty_lines: true,
     trim: true,
     delimiter,
-    // Krumme Zeilen und verirrte Anführungszeichen überspringen statt alles abzubrechen.
+    // Skip crooked rows and stray quotes instead of aborting everything.
     relax_column_count: true,
     relax_quotes: true,
     info: true,
   }) as { record: CsvRow; info: { lines: number } }[];
 
-  // Zeilen ohne Inhalt gelten als übersprungen — das macht `relax_column_count` aus einer krummen Zeile.
+  // Rows without content count as skipped — that is what `relax_column_count` makes of a crooked row.
   const brauchbar: CsvRow[] = [];
   const zeilen: number[] = [];
   records.forEach(({ record: r, info }) => {
@@ -120,7 +120,7 @@ export function csvReadIn(csvText: string): {
   return { records: brauchbar, delimiter, uebersprungen, zeilen };
 }
 
-/** Höchstens zehn Zeilennummern, sonst wird die Meldung länger als hilfreich. */
+/** At most ten line numbers, otherwise the message gets longer than helpful. */
 export function rowsList(zeilen: number[]): string {
   return zeilen.slice(0, 10).join(', ') + (zeilen.length > 10 ? ', …' : '');
 }
@@ -130,7 +130,7 @@ export function skippedHint(zeilen: number[], sprache: Sprache = 'de'): string |
   return errorText('csv_uebersprungen', sprache, { anzahl: zeilen.length, zeilen: rowsList(zeilen) });
 }
 
-// Die gemeinsamen Spalten einmal gelesen, damit jede Behebung alle Importe trifft.
+// The shared columns read once, so that every fix hits all imports.
 export function csvSharedFields(row: CsvRow): {
   menge: number;
   preis: number | null;
@@ -148,7 +148,7 @@ export function csvSharedFields(row: CsvRow): {
   };
 }
 
-/** `records` bleibt getrennt von `cleaned`: `total` nennt die Zeilen der Datei. */
+/** `records` stays separate from `cleaned`: `total` names the rows of the file. */
 export function csvRowsFromRequest(text: string): {
   records: CsvRow[];
   cleaned: CsvRow[];
@@ -157,14 +157,14 @@ export function csvRowsFromRequest(text: string): {
   const gelesen = csvReadIn(text);
   return {
     records: gelesen.records,
-    // Das Hochkomma vor Formelzeichen setzt der eigene Export; hier kommt es weg.
+    // The apostrophe before formula characters is set by the own export; it is removed here.
     cleaned: csvRowsClean(gelesen.records),
     uebersprungen: gelesen.uebersprungen,
   };
 }
 
-/** An einer Stelle, damit beide Oberflächen dieselben Felder bekommen. */
-/** Was jeder CSV-Import antwortet; `records` zählt nur. */
+/** In one place, so that both UIs get the same fields. */
+/** What every CSV import answers; `records` only counts. */
 export interface ImportRowsResult {
   set_number?: string;
   action?: string;

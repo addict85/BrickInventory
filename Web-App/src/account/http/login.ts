@@ -1,5 +1,5 @@
-/** Hier wird nur aus dem Request gelesen und in die Antwort geschrieben; die
- * Regeln stehen in src/account/loginCheck.ts und loginLimiter.ts. */
+/** Here we only read from the request and write into the response; the
+ * rules live in src/account/loginCheck.ts and loginLimiter.ts. */
 import type { Request, Response, NextFunction } from 'express';
 import { rotationDue, type TokenCheck } from '../deviceToken';
 import type { LoginResult } from '../loginCheck';
@@ -14,15 +14,15 @@ import { STATUS_THE_KIND } from '../../http/errorKind';
 import { versuche } from '../../infra/result';
 import type { AccountServices } from '../area';
 
-/** Bis zur Einrichtung des Faktors geht nur diese (loginAtInbox); die Regel steht in openFactorRequired. */
+/** Until the factor is set up only this works (loginAtInbox); the rule lives in openFactorRequired. */
 export async function zweiterFaktorPflicht(konto: AccountServices, req: Request): Promise<boolean> {
   const uid = nutzerId(req);
   const verwalter = req.session?.userId ? !!req.session.isAdmin : !!req.apiUser?.is_admin;
   return uid !== null && (await konto.openFactorRequired(uid, verwalter));
 }
 
-/** req.ip statt X-Forwarded-For: Express wertet den Kopf nur aus, wenn er von
- * einem vertrauten Proxy kommt. */
+/** req.ip instead of X-Forwarded-For: Express only evaluates the header when it comes from
+ * a trusted proxy. */
 export function adresse(req: Request): string {
   return req.ip || req.socket?.remoteAddress || '?';
 }
@@ -38,8 +38,8 @@ export function anmelden(
   return konto.checkCredentials({ ip: adresse(req) }, username, password, code, passkeyResponse);
 }
 
-/** Neue Session-ID gegen Session-Fixation; sofort speichern, damit die nächste
- * Anfrage die neue ID schon kennt. */
+/** New session id against session fixation; save immediately so the next
+ * request already knows the new id. */
 export async function establishSession(
   konto: AccountServices,
   req: Request,
@@ -51,14 +51,14 @@ export async function establishSession(
     passwordConfirmedAt?: number;
   },
 ): Promise<void> {
-  // Ohne Antwort 0: Im Zweifel meldet der Vergleich der nächsten Anfrage ab.
+  // Without an answer 0: when in doubt, the comparison signs out the next request.
   const sitzungsVersion =
     (await konto.sitzungen
       .versionFromDb(data.userId)
       .catch(reportAndDeliver<number | null>('anmeldung:sitzungsVersion', 0))) ?? 0;
   return new Promise((resolve, reject) => {
     if (!req.session?.regenerate) {
-      // Nur in Tests ohne express-session: Im Betrieb steht die Middleware davor.
+      // Only in tests without express-session: in operation the middleware sits in front.
       if (!req.session) req.session = {} as typeof req.session;
       Object.assign(req.session, data, {
         angemeldetAm: Date.now(),
@@ -80,11 +80,11 @@ export async function establishSession(
   });
 }
 
-/** Gnadenfrist nach einer Passworteingabe; kurz, weil eine in dieser Zeit erbeutete
- * Sitzung sonst den Faktor setzen und das Konto aussperren könnte. */
+/** Grace period after a password entry; short, because a session captured in this time
+ * could otherwise set the factor and lock out the account. */
 export const PASSWORD_GRACE_PERIOD_MS = 5 * 60 * 1000;
 
-/** Nur mit Sitzung, nie mit Token, und nur einmal: Der Aufruf verbraucht die Frist. */
+/** Only with a session, never with a token, and only once: the call consumes the period. */
 export function consumeGracePeriod(req: Request): boolean {
   const s = req.session,
     am = s?.passwordConfirmedAt;
@@ -94,8 +94,8 @@ export function consumeGracePeriod(req: Request): boolean {
   return alter >= 0 && alter < PASSWORD_GRACE_PERIOD_MS;
 }
 
-/** Der ganze Nutzer, nicht nur die Kennung: Sonst wüsste ein Handler nicht, ob
- * es ein Verwalter ist. ?token= zählt nicht, nur der Authorization-Header. */
+/** The whole user, not only the id: otherwise a handler would not know whether
+ * it is an administrator. ?token= does not count, only the Authorization header. */
 export async function userIdTheRequest(konto: AccountServices, req: Request): Promise<number | null> {
   if (req.session?.userId) return req.session.userId;
   const auth = req.headers.authorization || '';
@@ -106,20 +106,20 @@ export async function userIdTheRequest(konto: AccountServices, req: Request): Pr
     .catch(reportAndDeliver<TokenCheck>('auth:nutzerZumToken', { nutzer: null }));
   const user = check.nutzer;
   if (check.grund) req.tokenRejection = check.grund;
-  // Der Hinweis reist mit jeder Antwort; die App tauscht dann von selbst.
+  // The notice travels with every response; the app then swaps by itself.
   if (user && rotationDue(user)) req.res?.setHeader('X-Token-Rotation', 'faellig');
   if (user) req.apiUser = { ...user, is_admin: !!user.is_admin };
   return user ? user.user_id : null;
 }
 
-/** 429 statt 401: Bei 401 darf die App den Zugang verwerfen, und der gilt vielleicht. */
+/** 429 instead of 401: on 401 the app may discard the access, and it may still be valid. */
 export function sendTokenRejection(req: Request, res: Response): void {
   if (req.tokenRejection === 'zu_viele_anfragen') sendError(req, res, 'zu_viele', 'zu_viele_anfragen', { minuten: 1 });
   else sendError(req, res, 'nicht_angemeldet', req.tokenRejection ?? 'nicht_angemeldet');
 }
 
-/** @param opts.timeoutMs Antwortet nach dieser Zeit mit 503: Der Fortschritts-
- *   kanal soll bei voller Datenbank nicht stauen. */
+/** @param opts.timeoutMs Answers with 503 after this time: the progress
+ *   channel should not pile up when the database is full. */
 export function loginOrTokenGuard(konto: AccountServices, opts: { timeoutMs?: number } = {}) {
   return async function requireLoginOrToken(req: Request, res: Response, next: NextFunction) {
     if (req.session?.userId || req.tokenUserId) return next();
@@ -135,7 +135,7 @@ export function loginOrTokenGuard(konto: AccountServices, opts: { timeoutMs?: nu
       uid = null;
     }
     if (timer) clearTimeout(timer);
-    if (res.headersSent) return; // Zeitlimit war schneller
+    if (res.headersSent) return; // the timeout was faster
     if (uid) {
       req.tokenUserId = uid;
       return next();
@@ -144,16 +144,16 @@ export function loginOrTokenGuard(konto: AccountServices, opts: { timeoutMs?: nu
   };
 }
 
-/** Die Rechnung steht in src/http/userId: Auch die Drossel dort braucht sie,
- * und Infra darf keine HTTP-Seite importieren. Hier bleibt der Name für die Routen. */
+/** The computation lives in src/http/userId: the throttle there needs it too,
+ * and infra may not import an HTTP layer. The name stays here for the routes. */
 export { nutzerId, signedInUserId };
 
-/** Sitzung ODER Token: `req.session.username` ist bei Token-Anfragen undefined. */
+/** Session OR token: `req.session.username` is undefined for token requests. */
 export function nutzerName(req: Request): string | null {
   return req.session?.username ?? req.apiUser?.username ?? null;
 }
 
-/** Für Schritte, die nur mit Browser-Sitzung gehen. */
+/** For steps that only work with a browser session. */
 export function perSession(req: Request): boolean {
   return !!req.session?.userId;
 }
@@ -171,8 +171,8 @@ export function ipThrottle(konto: AccountServices, bucket: string, max: number, 
   };
 }
 
-/** Bremsschlüssel des Zugangs: die Sitzung (gehasht, die ID ist ein Geheimnis)
- * oder die Token-Familie; `created_at` erbt jeder Nachfolger beim Tausch. */
+/** Brake key of the access: the session (hashed, the id is a secret)
+ * or the token family; every successor inherits `created_at` on the swap. */
 export function accessOf(req: Request): string {
   if (req.session?.userId)
     return `s:${createHash('sha256')
@@ -197,8 +197,8 @@ function rejections(req: Request, res: Response, absage: ConfirmationRejection):
   });
 }
 
-/** Passwort, bei aktivem zweitem Faktor auch Code oder Passkey; nur für Routen
- * mit `bestaetigung` im Vertrag, die der Wächtertest einzeln prüft. */
+/** Password, with an active second factor also code or passkey; only for routes
+ * with `bestaetigung` in the contract, which the guard test checks individually. */
 export async function confirmWithFactor(
   konto: AccountServices,
   req: Request,
@@ -207,12 +207,12 @@ export async function confirmWithFactor(
   passwort: string | null | undefined,
   codeField = 'code',
 ): Promise<boolean> {
-  // Der Schlüssel, unter dem der Vertragsrouter die Route registriert hat; ein Fehler der
-  // Verdrahtung, kein Fall der Anfrage, darum auch im Betrieb laut.
+  // The key under which the contract router registered the route; an error of the
+  // wiring, not a case of the request, hence loud in operation too.
   const schluessel = String(res.locals.contractKey ?? '');
   if (routeZu(schluessel) && !routeZu(schluessel)?.bestaetigung)
     throw new Error(`${schluessel} bestätigt, ohne \`bestaetigung\` im Vertrag`);
-  // Der geprüfte Rumpf (checkInput): Felder der Bestätigung stehen im Vertrag (bestaetigt()).
+  // The checked body (checkInput): the confirmation fields are in the contract (bestaetigt()).
   const eingabe = (req as Request & { eingabe?: Record<string, unknown> }).eingabe ?? {};
   const faktor = { code: eingabe[codeField], passkey: eingabe.passkey } as Faktor;
   const absage = await konto.checkConfirmation(uid, accessOf(req), passwort, faktor);

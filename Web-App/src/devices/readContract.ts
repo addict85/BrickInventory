@@ -1,4 +1,4 @@
-/** Was die Geräte aus den höheren Zugängen lesen: Ein Schlüssel gilt, solange seine Token-Familie lebt
+/** What the devices read from the higher-level accesses: a key applies as long as its token family lives
  * (db/accessView.ts). */
 export interface DevicesReadContract {
   familieLebt(konto: string, seit: string): string;

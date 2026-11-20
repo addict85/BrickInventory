@@ -1,5 +1,5 @@
-/** Die Fabrik der Bilder. Ihr Zustand (Puffer, Warteschlangen, Zähler) liegt in den Fächern
- * dieses Satzes Dienste, nicht im Modul: Zwei Sätze in einem Prozess teilen nichts. */
+/** The images' factory. Their state (buffers, queues, counters) lives in the compartments
+ * of this set of services, not in the module: two sets in one process share nothing. */
 import type { Db } from '../../db/database';
 import { mit, buildArea, type Inspect } from '../infra/area';
 import { Faecher } from '../infra/cache';
@@ -19,7 +19,7 @@ import { zugang, type ImageWorker, type ImagesDependencies, type ImagesContext }
 
 export type { ImageWorker, ImagesDependencies, ImagesContext } from './context';
 
-/** Ohne `bildwerk` das echte; ein Test gibt seines mit (startup/wiring.ts buildServices). */
+/** Without `bildwerk` the real one; a test passes its own (startup/wiring.ts buildServices). */
 export function createImages(
   a: Omit<ImagesDependencies, 'faecher' | 'bildwerk'> & { bildwerk?: ImageWorker | undefined },
   inspect?: Inspect<ImagesContext>,
@@ -32,7 +32,7 @@ export function createImages(
     { ...a, bildwerk, faecher: new Faecher() },
     (db: Db) => zugang(db, a.lesevertrag),
     (k: ImagesContext) => ({
-      /** Grenzen des Bild-Proxys und des Caches aus der gereichten Konfiguration. */
+      /** Limits of the image proxy and the cache from the passed configuration. */
       imageLimits: () => ({
         cacheMaxBytes: k.konfig.imageCacheMaxMb * 1024 * 1024,
         fetchesJeMinute: k.konfig.imageFetchesJeMinute,
@@ -49,7 +49,7 @@ export function createImages(
       stopImageDemand: mit(k)(bildbedarfLauf.stopImageDemand),
       atSetImageLoaded: mit(k)(imageDemandService.atSetImageLoaded),
       reportSetImageLoaded: mit(k)(imageDemandService.reportSetImageLoaded),
-      // Beim Aufruf nachgeschlagen: Ein Test ersetzt Teile des Bildwerks nach dem Bau.
+      // Looked up at call time: a test replaces parts of the image works after construction.
       setBildLaden: (...a: Parameters<ImageWorker['setBildLaden']>) => k.bildwerk.setBildLaden(...a),
       createPreview: (relPath: string) => k.bildwerk.createPreview(relPath),
       forgetMissing: mit(k)(imageMisses.forgetMissing),

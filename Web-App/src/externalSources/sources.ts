@@ -1,5 +1,5 @@
-/** Der eine Weg zu clients/. Was Schlüssel, Kontingent oder Drossel braucht, entsteht in
- * buildSources() je Zugang; der Rest steht hier als Export. */
+/** The one path to clients/. Whatever needs a key, quota or throttle is created in
+ * buildSources() per access; the rest is here as an export. */
 import type { ClientsAccess } from '../../clients/access';
 import { createBricklink } from '../../clients/bricklink';
 import { createBrickset } from '../../clients/brickset';
@@ -23,8 +23,8 @@ export type { Abruf, Kurs } from '../../clients/ecb';
 export type { RbSetTeil } from '../../clients/rebrickable';
 export type { ClientsAccess } from '../../clients/access';
 
-/** Die Klienten eines Zugangs, flach wie früher die Exporte; `setAngaben` ist der von
- * Brickset, `brickset` die ganze Gruppe für die Anleitungen (getInstructions). */
+/** The clients of an access, flat like the exports used to be; `setAngaben` is the one from
+ * Brickset, `brickset` the whole group for the instructions (getInstructions). */
 export function buildSources(z: ClientsAccess) {
   const rb = createRebrickable(z);
   const bs = createBrickset(z);
@@ -40,7 +40,7 @@ export function buildSources(z: ClientsAccess) {
     brickset: bs,
     productTitle: (ean13: string) => productTitle(rb.httpsGetRobust, ean13),
     loadCatalogCsv,
-    /** Ohne Schlüssel; hier, damit ein Test ihn je Satz Dienste ersetzt (testSources). */
+    /** Without a key; here so that a test replaces it per set of services (testSources). */
     legoFetch,
     revocationListFetch,
     downloadFile,

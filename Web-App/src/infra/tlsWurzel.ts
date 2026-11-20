@@ -4,11 +4,11 @@ import { konfig } from './config';
 import { prozessweit } from './prozessweit';
 
 export interface TlsStand {
-  /** Das Format des QR-Codes. */
+  /** The format of the QR code. */
   fp: string;
-  /** Zum Vorlesen. */
+  /** For reading aloud. */
   fp_hex: string;
-  /** SHA-256 des ganzen Zertifikats: Diesen Wert zeigen Geräte beim Installieren. */
+  /** SHA-256 of the whole certificate: devices show this value when installing. */
   zert_sha256: string;
   subject: string;
   gueltig_bis: string;
@@ -31,13 +31,13 @@ export function tlsStatusFrom(pem: string): TlsStand {
   };
 }
 
-/** Neu gelesen, sobald sich die Datei ändert: Caddy legt sie erst beim ersten
- * Start an, ein Neustart der App soll nicht nötig sein. */
+/** Re-read as soon as the file changes: Caddy only creates it on the first
+ * start, a restart of the app should not be necessary. */
 export async function tlsStand(): Promise<TlsStand | null> {
   const pfad = konfig().caCertificate;
   if (!pfad) return null;
   try {
-    // Stand und Inhalt aus derselben geöffneten Datei: Tauscht Caddy sie dazwischen, passt der Zwischenstand sonst nicht.
+    // State and content from the same opened file: if Caddy swaps it in between, the intermediate state would otherwise not match.
     const datei = await fs.promises.open(pfad, 'r');
     try {
       const st = await datei.stat();

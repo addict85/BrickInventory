@@ -1,4 +1,4 @@
-/** Anleitungen eines Sets: neu laden, hochladen, löschen. */
+/** Instructions of a set: reload, upload, delete. */
 import type express from 'express';
 import path from 'node:path';
 import { pathParam } from '../../src/http/httpResponse';
@@ -21,7 +21,7 @@ import type { Dienste } from '../../src/services';
 
 const uploadQuotaMb = () => Math.round(uploadQuotaBytes() / 1024 / 1024);
 
-/** Besitz und Kontingent VOR dem Schreiben, sonst lägen bis zu 50 MB auf der Platte. */
+/** Ownership and quota BEFORE writing, otherwise up to 50 MB would sit on the disk. */
 const beforeTheUpload =
   (d: Pick<Dienste, 'account' | 'sets'>) =>
   async (req: express.Request, _res: express.Response, next: express.NextFunction) => {
@@ -39,7 +39,7 @@ export function buildSetsInstructionsRouter(d: Pick<Dienste, 'account' | 'sets'>
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('POST /api/v1/sets/:setNumber/instructions', requireToken, async (req, res) => {
-    // Der Verwalter löscht geteilte Anleitungen: derselbe Schrittschutz wie jede Verwalter-Route.
+    // The administrator deletes shared instructions: the same step guard as every administrator route.
     const verwalter = istVerwalter(req);
     if (verwalter && !(await released(d.account, req, res, 'verwaltung'))) return;
     const { instructions, auftrag } = await d.sets.loadInstructionsNew(

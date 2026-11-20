@@ -1,4 +1,4 @@
-/** Als Auftrag, damit ein Fehlschlag wiederholt wird und sichtbar bleibt. */
+/** As a job, so that a failure is retried and stays visible. */
 import type { JobRun } from '../jobQueue';
 import {
   ECB_HISTORY,
@@ -13,7 +13,7 @@ import type { FinancesContext } from './context';
 
 const BLOCK = 5000;
 
-/** Ein vorhandener Tag wird überschrieben: Die EZB korrigiert selten, aber sie tut es. */
+/** An existing day is overwritten: the ECB rarely corrects, but it does. */
 export async function saveRates(kx: FinancesContext, rates: Kurs[]): Promise<number> {
   let n = 0;
   for (let i = 0; i < rates.length; i += BLOCK) {
@@ -41,8 +41,8 @@ export async function reloadRates(
   return { quelle: leer ? 'historie' : 'tag', rates: await saveRates(k, rates) };
 }
 
-/** 15:30 UTC liegt nach der Veröffentlichung der EZB. Je Tag ein eigener
- * Schlüssel: Ein gescheiterter Versuch darf den nächsten Tag nicht sperren. */
+/** 15:30 UTC is after the ECB's publication. One key of its own per
+ * day: a failed attempt must not block the next day. */
 export async function planeKursabruf(
   k: FinancesContext,
   jetzt = k.uhr.datum(),
@@ -63,7 +63,7 @@ export async function planeKursabruf(
   );
 }
 
-/** Erst den nächsten Tag einplanen, dann laden: Scheitert das Laden, steht der Plan schon. */
+/** Schedule the next day first, then load: if loading fails, the schedule is already in place. */
 export async function kursauftrag(
   k: FinancesContext,
   abruf: Abruf = k.externalSources.quellen.ecbFetch,

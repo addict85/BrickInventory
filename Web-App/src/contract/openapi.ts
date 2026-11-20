@@ -1,5 +1,5 @@
-/** docs/openapi.json aus dem Vertrag. Jedes benannte Schema eines Bereichs wird
- * eine Komponente; so steht ein Set einmal in der Datei, nicht in jeder Route. */
+/** docs/openapi.json from the contract. Every named schema of an area becomes
+ * a component; that way a set appears once in the file, not in every route. */
 import { z } from 'zod';
 import { type Route, Fehler, Fehlercode, PATH } from './base';
 import { AREAS } from './index';
@@ -14,7 +14,7 @@ const MIME: Record<NonNullable<Route['art']>, string> = {
 };
 const URI = (id: string) => `#/components/schemas/${id}`;
 
-/** Alle benannten Schemas: Name des Exports → Schema. Ein Name doppelt ist ein Fehler. */
+/** All named schemas: export name → schema. A duplicate name is an error. */
 export function namedSchemas(): Map<string, z.ZodType> {
   const aus = new Map<string, z.ZodType>([
     ['Fehler', Fehler],

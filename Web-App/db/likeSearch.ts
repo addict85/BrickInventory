@@ -1,13 +1,13 @@
-/** Freitextsuche mit LIKE: `%`, `_` und `\` aus der Eingabe gelten wörtlich,
- * sonst fände ein einzelnes `%` jeden Eintrag. ESCAPE steht ausdrücklich da,
- * damit es nicht an standard_conforming_strings hängt. */
+/** Free text search with LIKE: `%`, `_` and `\` from the input are literal,
+ * otherwise a single `%` would find every entry. ESCAPE is spelled out
+ * so it does not depend on standard_conforming_strings. */
 export const LIKE_ESCAPE = ` ESCAPE '\\'`;
 
 export function likeLiteral(text: string): string {
   return text.replace(/[\\%_]/g, z => '\\' + z);
 }
 
-/** Das Muster für „enthält“, mit LIKE_ESCAPE hinter dem Vergleich zu benutzen. */
+/** The pattern for "contains", to be used with LIKE_ESCAPE after the comparison. */
 export function containsPattern(text: string): string {
   return `%${likeLiteral(text)}%`;
 }

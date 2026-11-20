@@ -1,7 +1,7 @@
-/** QR-Anmeldung in drei Schritten: Die Web-Sitzung erzeugt den Code, die App meldet
- * sich damit an und zeigt einen Bestätigungscode, die Web-Sitzung tippt ihn ein.
- * Erst dann holt die App ihren Token ab: Ein abfotografierter QR-Code allein
- * öffnet kein Konto, der Inhaber sieht jedes Gerät, bevor es Zugang bekommt. */
+/** QR login in three steps: the web session creates the code, the app logs
+ * in with it and shows a confirmation code, the web session types it in.
+ * Only then does the app pick up its token: a photographed QR code alone
+ * opens no account, and the owner sees every device before it gets access. */
 import crypto from 'node:crypto';
 import { createToken, tokenDigest, ipArea } from './deviceToken';
 import { APP_MAX_DURATION_DAYS, tokenLabel } from './tokenRequest';
@@ -12,7 +12,7 @@ export type { QrStand } from './repository/qrPairing';
 export const QR_TTL_MS = 5 * 60 * 1000;
 export const QR_FAILED_ATTEMPTS = 3;
 
-/** Über alle Konten: Jede offene Kopplung ist ein Ziel für das öffentliche /qr-login. */
+/** Across all accounts: every open pairing is a target for the public /qr-login. */
 export const OPEN_PAIRINGS_AT_MOST = 500;
 
 export async function create(
@@ -57,8 +57,8 @@ const rowTo = (k: AccountContext, abholung: string | null | undefined) =>
     ? k.qrKopplung.afterPickup(tokenDigest(abholung))
     : Promise.resolve(undefined);
 
-/** Mit [vorschau] nur das Konto: Die App zeigt es und holt den Token erst nach dem Ja.
- * Die Nonce für den Geräteschlüssel entsteht mit dem Token und gilt nur seiner Familie. */
+/** With [vorschau] only the account: the app shows it and picks up the token only after the yes.
+ * The nonce for the device key is created with the token and only applies to its family. */
 export async function holeQrTokenAb(
   k: AccountContext,
   abholung: string | null | undefined,
@@ -80,7 +80,7 @@ export async function holeQrTokenAb(
   return { stand: 'fertig', token, uid: z.user_id, keyNonce };
 }
 
-/** Das Nein der App nach der Vorschau: Die Kopplung ist danach abgelehnt, ein Token entsteht nie. */
+/** The app's no after the preview: the pairing is rejected afterwards, a token is never created. */
 export async function discardPickup(k: AccountContext, abholung: string | null | undefined): Promise<boolean> {
   const z = await rowTo(k, abholung);
   if (z?.stand !== 'bestaetigt' && z?.stand !== 'wartet') return false;
@@ -99,7 +99,7 @@ function codeFits(gespeichert: string | null, eingabe: string | number | null | 
   return crypto.timingSafeEqual(Buffer.from(tokenDigest(digits)), Buffer.from(gespeichert));
 }
 
-/** Nach QR_FAILED_ATTEMPTS falschen Codes ist die Kopplung abgelehnt: Sechs Ziffern hält das lange genug. */
+/** After QR_FAILED_ATTEMPTS wrong codes the pairing is rejected: six digits hold up long enough for that. */
 export async function confirmPairing(
   k: AccountContext,
   kopplung: number,

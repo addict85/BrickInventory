@@ -1,6 +1,6 @@
-/** Ein Ereignisstrom (SSE) für eine Route: Kopfzeilen, Herzschlag, Wache über den
- * Zugang und ein Ende, das alles genau einmal wegräumt. Jeder Strom muss sich
- * beim Herunterfahren abmelden, sonst wartet httpServer.close() auf ihn. */
+/** An event stream (SSE) for a route: headers, heartbeat, a watch over the
+ * access and an end that clears everything exactly once. Every stream must unsubscribe
+ * on shutdown, otherwise httpServer.close() waits for it. */
 import type { Request, Response } from 'express';
 import { registerSse } from '../../http/sseRegistry';
 import { SSE_ACCESS_ENDED, watchViaAccess } from './accessWatch';
@@ -9,14 +9,14 @@ import type { AccountServices } from '../area';
 export interface Strom {
   sende(daten: object): void;
   ende(): void;
-  /** Läuft beim Ende mit, auch wenn es der Client oder die Wache auslöst. */
+  /** Runs along at the end, even if the client or the watch triggers it. */
   atEnd(f: () => void): void;
   readonly zu: boolean;
-  /** Wie sende(), aber bei geschlossenem Strom StromGeschlossen: Die Arbeit dahinter bricht ab. */
+  /** Like sende(), but StromGeschlossen when the stream is closed: the work behind it aborts. */
   sendOrAbortAb(daten: object): void;
 }
 
-/** Der Client ist weg. Ein Abbruch, kein Fehler: Wer ihn fängt, meldet nichts. */
+/** The client is gone. An abort, not an error: whoever catches it reports nothing. */
 export class StromGeschlossen extends Error {
   constructor() {
     super('Strom geschlossen');
@@ -25,9 +25,9 @@ export class StromGeschlossen extends Error {
 }
 
 export interface StreamOptions {
-  /** Dieselbe Nachricht nicht zweimal hintereinander. */
+  /** Not the same message twice in a row. */
   onlyChanges?: boolean;
-  /** Bei Gegendruck schliessen: Ein hängender Client liesse Node unbegrenzt puffern. */
+  /** Close on backpressure: a hanging client would let Node buffer without limit. */
   backpressure?: string;
   heartbeat?: boolean;
 }

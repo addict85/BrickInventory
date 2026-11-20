@@ -9,22 +9,22 @@ import { withoutMissingFile } from '../infra/error';
 import fs from 'node:fs';
 import path from 'node:path';
 
-/** Für jedes Formular mit Datei: Ohne Grenzen nähme multer beliebig viele
- * Felder zu je 1 MB und beliebig viele Dateien in den Speicher. */
+/** For every form with a file: without limits multer would take arbitrarily many
+ * fields of 1 MB each and arbitrarily many files into memory. */
 export const FORM_LIMITS = { files: 1, fields: 20, fieldSize: 64 * 1024, parts: 21, headerPairs: 200 };
 
-/** Gross genug für einen BrickLink-Bestandsexport, klein genug für
- * `memoryStorage`, das die Datei ganz im Speicher hält. */
+/** Large enough for a BrickLink inventory export, small enough for
+ * `memoryStorage`, which keeps the whole file in memory. */
 export const CSV_MAX_BYTES = 15 * 1024 * 1024;
 
-/** memoryStorage: Die Importe zerlegen die Datei sofort und legen sie nie ab. */
+/** memoryStorage: the imports parse the file immediately and never store it. */
 export const csvReceive = multer({
   storage: multer.memoryStorage(),
   limits: { ...FORM_LIMITS, fileSize: CSV_MAX_BYTES },
 });
 
-/** Rund 20 000 Posten; jeder kostet beim Zuordnen Abfragen, die CSV-Grenze wäre
- * ein Vielfaches dessen, was eine echte Liste braucht. */
+/** About 20,000 items; each costs queries when mapping, the CSV limit would be
+ * a multiple of what a real list needs. */
 export const XML_MAX_BYTES = 4 * 1024 * 1024;
 
 export const xmlReceive = multer({
@@ -38,8 +38,8 @@ const KENNUNG: Record<string, Buffer> = {
   'image/png': Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
 };
 
-/** Den MIME-Typ setzt der Absender; ohne diesen Blick läge unter `.pdf`
- * beliebiger Inhalt, den der Server als application/pdf ausliefert. */
+/** The sender sets the MIME type; without this look, arbitrary content could sit
+ * under `.pdf`, which the server would deliver as application/pdf. */
 export async function contentFitsToType(datei: string, mime: string): Promise<boolean> {
   const kennung = Object.hasOwn(KENNUNG, mime) ? KENNUNG[mime] : undefined;
   if (!kennung) return false;
@@ -53,8 +53,8 @@ export async function contentFitsToType(datei: string, mime: string): Promise<bo
   return kopf.equals(kennung);
 }
 
-/** Die Grenze je Datei begrenzt keinen, der hundert Dateien schickt — und alle
- * Konten teilen sich eine Platte. */
+/** The per-file limit does not stop anyone who sends a hundred files — and all
+ * accounts share one disk. */
 export function uploadQuotaBytes(): number {
   return konfig().uploadQuotaMb * 1024 * 1024;
 }
@@ -68,8 +68,8 @@ export async function occupiedSpace(ordner: string): Promise<number> {
   return summe;
 }
 
-/** Hochgeladenes kann privat sein (Rechnungen): nur für den Dienst lesbar, auch
- * wenn der Ordner schon mit lockereren Rechten bestand. */
+/** Uploads can be private (invoices): readable only by the service, even
+ * if the folder already existed with looser permissions. */
 export async function privaterFolder(wurzel: string, name: string): Promise<string> {
   const ordner = path.join(wurzel, name);
   await fs.promises.mkdir(ordner, { recursive: true, mode: 0o700 });
@@ -77,8 +77,8 @@ export async function privaterFolder(wurzel: string, name: string): Promise<stri
   return ordner;
 }
 
-/** Eine Datei in den privaten Ordner eines Kontos: Endung aus dem MIME-Typ, nie
- * aus dem Namen des Clients; der Name zufällig, damit er sich nicht erraten lässt. */
+/** A file into an account's private folder: extension from the MIME type, never
+ * from the client's name; the name random so that it cannot be guessed. */
 export function privaterReceive(o: {
   ordner: (req: Request) => Promise<string>;
   praefix: (req: Request) => string;
@@ -107,12 +107,12 @@ export function privaterReceive(o: {
   });
 }
 
-/** Vor dem Schreiben: Content-Length schliesst die Formularhülle ein, ist also nie kleiner. */
+/** Before writing: Content-Length includes the form envelope, so it is never smaller. */
 export async function quotaSufficesFor(ordner: string, laenge: number): Promise<boolean> {
   return (await occupiedSpace(ordner)) + laenge <= uploadQuotaBytes();
 }
 
-/** Das Kontingent je Konto hält viele Konten nicht auf; diese Grenze gilt für alle zusammen. */
+/** The per-account quota does not stop many accounts; this limit applies to all of them together. */
 const TOTAL_ROOTS = ['uploads', 'vouchers'].map(n => path.join(DATA_DIR, n));
 export const uploadTotalMb = (): number => konfig().uploadTotalMb;
 
@@ -130,7 +130,7 @@ export async function totalSufficesFor(laenge: number): Promise<boolean> {
   return (await totalOccupied()) + laenge <= uploadTotalMb() * 1024 * 1024;
 }
 
-/** Der Pfad kommt aus der Anfrage (multer); was ausserhalb der Ablage läge, fasst der Dienst nicht an. */
+/** The path comes from the request (multer); the service does not touch what would lie outside the storage. */
 export function belowRoot(wurzel: string, datei: string): string {
   const w = path.resolve(wurzel);
   const d = path.resolve(datei);
@@ -138,8 +138,8 @@ export function belowRoot(wurzel: string, datei: string): string {
   return d;
 }
 
-/** Nach dem Schreiben: nur für den Dienst lesbar, Inhalt passt zum Typ, und das
- * Kontingent hält auch ohne Content-Length (chunked). Sonst ist die Datei wieder weg. */
+/** After writing: readable only by the service, content matches the type, and the
+ * quota holds even without Content-Length (chunked). Otherwise the file is gone again. */
 export async function checkReceivedFile(wurzel: string, received: string, mime: string): Promise<void> {
   const datei = belowRoot(wurzel, received);
   await fs.promises.chmod(datei, 0o600);

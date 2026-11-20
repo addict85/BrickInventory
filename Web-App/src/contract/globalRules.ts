@@ -2,10 +2,10 @@ import crypto from 'node:crypto';
 import { eingabe } from '../infra/validate';
 import { fachfehler, type ErrorCode } from '../infra/errorTexts';
 
-/** Dieselbe Liste wie ALLOWED in public/js/theme-boot.js (theme.test.js). */
+/** The same list as ALLOWED in public/js/theme-boot.js (theme.test.js). */
 export const DESIGNS: readonly string[] = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
-/** Ein globaler Wert wird als Text gespeichert, auch wenn er als Zahl kommt. */
+/** A global value is stored as text, even if it comes as a number. */
 const wert = (gueltig: (v: string) => boolean, json: Record<string, unknown>, code: ErrorCode = 'wert_ungueltig') =>
   eingabe.regel((v): string => {
     if ((typeof v !== 'string' && typeof v !== 'number') || !gueltig(String(v))) fachfehler('ungueltig', code);
@@ -18,7 +18,7 @@ const ganzzahl = (min: number, max: number, code?: ErrorCode) =>
     code,
   );
 const text = (max: number) =>
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen herauszufiltern ist der Zweck dieser Stelle.
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: filtering out control characters is the purpose of this spot.
   wert(v => v.length <= max && !/[\u0000-\u001f\u007f]/.test(v), { type: 'string', maxLength: max });
 const auswahl = (werte: readonly string[], code?: ErrorCode) =>
   wert(v => werte.includes(v), { enum: [...werte] }, code);
@@ -28,8 +28,8 @@ const TIME_OF_DAY = wert(v => /^([01]\d|2[0-3]):[0-5]\d$/.test(v), {
   pattern: '^([01]\\d|2[0-3]):[0-5]\\d$',
 });
 
-/** Die eine Regel je globalem Schlüssel: setGlobalSetting, der Vertrag und der
- * Import prüfen dagegen. Ein Schlüssel ohne Regel wird nicht geschrieben. */
+/** The one rule per global key: setGlobalSetting, the contract and the
+ * import check against it. A key without a rule is not written. */
 export const GLOBAL_RULES = {
   bricklink_consumer_key: text(200),
   bricklink_consumer_secret: text(200),
@@ -54,7 +54,7 @@ export const GLOBAL_RULES = {
   smtp_user: text(320),
   smtp_pass: text(500),
   smtp_from: text(320),
-  // Ein unlesbarer Fingerabdruck oder ein kaputtes PEM fiele sonst erst beim Versand auf.
+  // An unreadable fingerprint or a broken PEM would otherwise only be noticed when sending.
   smtp_tls_fingerprint: wert(v => v === '' || /^[0-9A-F]{64}$/.test(v.replace(/[\s:]/g, '').toUpperCase()), {
     type: 'string',
   }),

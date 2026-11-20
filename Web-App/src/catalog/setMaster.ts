@@ -1,4 +1,4 @@
-/** Set-Stammdaten (rb_sets), ihre Ergänzung (set_catalog) und den Abrufspeicher
- * schreibt der Katalog; andere Bereiche rufen nur hierher, mit ihrem eigenen
- * Zugang oder ihrer Transaktion. */
+/** Set master data (rb_sets), its supplement (set_catalog) and the fetch store
+ * are written by the catalog; other areas only call in here, with their own
+ * access or their transaction. */
 export { rememberSetCatalog, rememberCatalogPlaceholder, catalogStatus } from './repository/setMaster';

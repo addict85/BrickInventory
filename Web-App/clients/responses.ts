@@ -1,6 +1,6 @@
-/** Die Felder, die wir aus Rebrickable- und Brickset-Antworten lesen. Offen
- * (looseObject), weil die Dienste mehr liefern; geprüft wird, was wir benutzen,
- * damit eine geänderte Antwort als Fehler auffällt statt als leere Felder. */
+/** The fields we read from Rebrickable and Brickset responses. Open
+ * (looseObject), because the services deliver more; we check what we use,
+ * so a changed response shows up as an error instead of as empty fields. */
 import { z } from 'zod';
 
 const text = z.string().nullable().optional();
@@ -45,11 +45,11 @@ export const RbMinifig = z.looseObject({ set_num: text, name: text, set_img_url:
 export const RbColor = z.looseObject({ id: z.number(), name: text, rgb: text });
 export const RbPartColor = z.looseObject({ part_img_url: text });
 
-/** Eine Seite einer Liste; `next` ist die Adresse der nächsten. */
+/** One page of a list; `next` is the address of the following one. */
 export const rbPage = <T extends z.ZodType>(zeile: T) =>
   z.looseObject({ count: z.number().optional(), next: text, results: z.array(zeile) });
 
-/** Jede Brickset-Antwort; bei `status: 'error'` steht der Grund in `message`. */
+/** Every Brickset response; with `status: 'error'` the reason is in `message`. */
 export const BsResponse = z.looseObject({ status: z.string(), message: text });
 
 export const BsSet = z.looseObject({
@@ -67,7 +67,7 @@ export const BsInstructions = BsResponse.extend({
   instructions: z.array(z.looseObject({ URL: z.string(), description: text })).optional(),
 });
 
-/** Prüft eine Antwort; eine unerwartete Form ist ein Fehler mit dem ersten Befund. */
+/** Checks a response; an unexpected shape is an error with the first finding. */
 export function checkResponse<T extends z.ZodType>(dienst: string, schema: T, daten: unknown): z.output<T> {
   const r = schema.safeParse(daten);
   if (r.success) return r.data;

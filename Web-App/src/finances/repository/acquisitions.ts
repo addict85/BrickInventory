@@ -2,8 +2,8 @@ import type { DbInterface } from '../../../db/database';
 import { kaufpreisSpalten } from '../../../db/geldSql';
 import type { FinancesReadContract } from '../readContract';
 
-/** `id` als zweites Sortierkriterium: Zwei Erfassungen können denselben
- * Zeitstempel tragen. */
+/** `id` as second sort criterion: two acquisitions can carry the same
+ * timestamp. */
 export interface SetEntryRow {
   id: number;
   user_id: number;

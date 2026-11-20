@@ -24,7 +24,7 @@ export const AddMinifigResponse = z.looseObject({
 export const ManualFigsResponse = z.looseObject({
   success: z.boolean(),
   ...PAGES_DETAIL,
-  /** Die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions. */
+  /** The list carries no acquisitions; the detail view loads them via /acquisitions. */
   figs: z.array(ManuelleFigur),
   degradiert: DEGRADED,
 });
@@ -41,7 +41,7 @@ export const MinifigStatsResponse = z.looseObject({
   stats: MinifigStats,
 });
 
-/** Teile einer Figur aus dem Rebrickable-Katalog; `source` sagt, woher. */
+/** A figure's parts from the Rebrickable catalog; `source` says from where. */
 export const FigurTeile = z.looseObject({
   success: z.literal(true),
   source: z.string(),

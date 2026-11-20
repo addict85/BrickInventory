@@ -4,9 +4,9 @@ import path from 'node:path';
 import { newPool } from './bcryptPool';
 import { konfig } from '../infra/config';
 
-/** Jede Passwortprüfung kostet Rechenzeit und Speicher (argon2id, alte bcrypt-Hashes, passwortHash.ts).
- * Die Bremsen je Adresse und Konto helfen nicht gegen viele Adressen; diese Schranke hält die
- * Zahl gleichzeitiger Läufe fest, und wer zu lange warten müsste, bekommt 503. */
+/** Every password check costs computing time and memory (argon2id, old bcrypt hashes, passwordHash.ts).
+ * The brakes per address and account do not help against many addresses; this limit fixes the
+ * number of concurrent runs, and whoever would have to wait too long gets 503. */
 export class BcryptOverload extends Error {
   status = 503;
   code = 'server_ausgelastet' as const;
@@ -16,7 +16,7 @@ export class BcryptOverload extends Error {
 }
 
 export interface Schranke {
-  /** vorrang: vorne in die Schlange und nie wegen ihrer Länge abgewiesen. */
+  /** vorrang: to the front of the queue and never rejected because of its length. */
   mit<T>(work: () => Promise<T>, priority?: boolean): Promise<T>;
   stand(): { laufend: number; wartend: number };
 }
@@ -43,7 +43,7 @@ export function newLimit(gleichzeitig: number, waitingAtMost: number, waitTimeMs
       else queue.push(los);
     });
   };
-  // Der freie Platz geht direkt an den nächsten Wartenden, `laufend` bleibt dann gleich.
+  // The free slot goes directly to the next waiting one, `laufend` then stays the same.
   const frei = () => {
     const naechster = queue.shift();
     if (naechster) naechster();
@@ -62,7 +62,7 @@ export function newLimit(gleichzeitig: number, waitingAtMost: number, waitTimeMs
   };
 }
 
-/** Kerne laut cgroup-Kontingent (v2 cpu.max, v1 cfs_quota), null ohne Kontingent. */
+/** Cores according to the cgroup quota (v2 cpu.max, v1 cfs_quota), null without a quota. */
 export function quotaCores(wurzel = '/sys/fs/cgroup'): number | null {
   const lies = (f: string) => {
     try {
@@ -78,8 +78,8 @@ export function quotaCores(wurzel = '/sys/fs/cgroup'): number | null {
   return quote > 0 && period > 0 ? Math.max(1, Math.ceil(quote / period)) : null;
 }
 
-/** Jeder Arbeiter belegt gut 12 MB; die Kerne des Hosts sagen nichts über das
- * Speicherlimit des Containers. BCRYPT_ARBEITER hebt die Vorgabe von 4 an. */
+/** Every worker takes a good 12 MB; the host's cores say nothing about the
+ * container's memory limit. BCRYPT_ARBEITER raises the default of 4. */
 export function bcryptArbeiter(
   gesetzt = konfig().bcryptArbeiter,
   kerne = os.availableParallelism(),

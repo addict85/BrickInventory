@@ -1,4 +1,4 @@
-// Was Bewertung und Gewinn beide lesen.
+// What valuation and profit both read.
 
 export function zaehle(
   zeilen: Iterable<{ kaufpreis_fremd?: unknown; kaufpreis_umgerechnet?: unknown }>,

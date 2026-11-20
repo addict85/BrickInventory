@@ -1,4 +1,4 @@
-/** SQL, Rebrickable und Aufträge stehen nur hier und darunter, damit die Routen nur Anfrage und Antwort kennen. */
+/** SQL, Rebrickable and jobs only live here and below, so that the routes only know request and response. */
 import { deleteSetRows } from './delete';
 import { toCsv } from '../infra/csvExport';
 import { bookEntry } from './addSet';
@@ -13,16 +13,16 @@ import * as detailRepo from './repository/setDetail';
 import type { SetsContext } from './context';
 export type { CatalogPart, ListenTeil, SetMaster } from './rows';
 
-/** Sets anlegen, ändern und ausgeben — eine Umsetzung für Web und App, damit
- * beide dieselben Regeln für Menge, Kaufpreis und Blickfeld erfüllen. */
+/** Create, change and output sets — one implementation for web and app, so that
+ * both follow the same rules for quantity, purchase price and scope. */
 
-/** Reihenfolge Preis-Cache → BrickLink → Historie; bleibt alles leer, trägt
- * src/inventory/purchasePriceBackfill.ts nach. */
+/** Order price cache → BrickLink → history; if everything stays empty,
+ * src/inventory/purchasePriceBackfill.ts fills it in later. */
 async function priceForNewEntry(sk: SetsContext, userId: number, setNumber: string) {
-  // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
+  // Via the scope: with a bare ID the main account would not find the sub-account's set.
   const blickfeld = valueOr(await versuche('sets:kaufpreis-blickfeld', sk.household.scopeIds(userId)), [userId]);
   const cond = await sk.finances.setState(blickfeld, setNumber);
-  // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
+  // The ACCOUNT's currency: the price is looked up and stored in it.
   const currency = String(await sk.einstellungen.userValue(userId, 'currency', 'EUR'));
   const cached = valueOr(
     await versuche('set-service:cached', sk.finances.marketPriceFromCache(setNumber, currency, cond)),
@@ -35,8 +35,8 @@ async function priceForNewEntry(sk: SetsContext, userId: number, setNumber: stri
       null,
     );
   if (!pp) {
-    // Der Verlauf füllt die Lücke, wenn Cache und BrickLink-Kontingent beim CSV-Import leer ausgehen; sonst
-    // entstünde die Erfassung ohne Kaufpreis.
+    // The history fills the gap when cache and BrickLink quota come up empty during CSV import; otherwise
+    // the acquisition would be created without a purchase price.
     const hist = valueOr(
       await versuche('set-service:hist', sk.finances.marketPriceFromHistory(setNumber, currency, cond)),
       null,
@@ -46,8 +46,8 @@ async function priceForNewEntry(sk: SetsContext, userId: number, setNumber: stri
   return { price: pp, condition: cond, geschaetzt: pp != null, currency };
 }
 
-/** @param pricePlan vorab ermittelt; ohne Angabe wird er hier geholt — dann
- *        darf sk KEINE Transaktion sein, weil ein Netzaufruf darin steckt. */
+/** @param pricePlan determined beforehand; without it, it is fetched here — then
+ *        sk must NOT be a transaction, because a network call is involved. */
 async function entriesAnQuantityAlign(
   sk: SetsContext,
   userId: number,
@@ -55,7 +55,7 @@ async function entriesAnQuantityAlign(
   newTotalQty: number,
   pricePlan: { price: number | null; condition: string; geschaetzt?: boolean; currency?: string } | null = null,
 ) {
-  // Ohne Fang: Mit einer leeren Liste nach einem Lesefehler buchte die Anpassung die ganze Menge neu.
+  // No catch: with an empty list after a read error the adjustment would book the whole quantity anew.
   const rows: { id: number; quantity: number; created_at: Date }[] = await repo.setEntriesNewestFirst(
     sk.db,
     userId,
@@ -67,8 +67,8 @@ async function entriesAnQuantityAlign(
   if (delta > 0) {
     if (rows.length) {
       {
-        // Aufstocken oder neue Tageszeile entscheidet addPurchaseAtTag(), damit die Regel nur einmal
-        // existiert.
+        // Topping up or a new daily row is decided by addPurchaseAtTag(), so that the rule exists
+        // only once.
         const plan = pricePlan ?? (await priceForNewEntry(sk, userId, setNumber));
         await bookEntry(sk, {
           konto: userId,
@@ -107,7 +107,7 @@ async function entriesAnQuantityAlign(
   return entfallen;
 }
 
-/** Was eine Verringerung wegnahm, in der Form der Antwort: Die Oberfläche nennt den Kauf im Rückgängig-Toast. */
+/** What a reduction removed, in the shape of the response: the UI names the purchase in the undo toast. */
 function droppedResponse(zeilen: Record<string, unknown>[]) {
   return zeilen.map(z => ({
     id: Number(z.id),
@@ -120,8 +120,8 @@ function droppedResponse(zeilen: Record<string, unknown>[]) {
   }));
 }
 
-/** Die LETZTE Erfassung, weil der Detail-Dialog genau sie bearbeitet.
- * @param feld  fester Spaltenname, KEINE Eingabe von aussen */
+/** The LAST acquisition, because the detail dialog edits exactly that one.
+ * @param feld  fixed column name, NOT an input from outside */
 async function writeInLastEntry(
   sk: SetsContext,
   feld: 'purchase_price' | 'condition',
@@ -138,40 +138,40 @@ export async function changeSet(
   sn: string,
   body: Eingabe<'PUT /api/v1/sets/:setNumber'>,
 ) {
-  // SCHREIB-Blickfeld statt eigener ID, sonst fände ein Set des Unterkontos keine Zeile.
+  // WRITE scope instead of the own ID, otherwise a set of the sub-account would find no row.
   const _wids = await sk.household.schreibbereich(uid);
-  // Die EIGENE Zeile gewinnt, sonst entschiede die Tabellenreihenfolge.
+  // The OWN row wins, otherwise the table order would decide.
   const existing = await repo.setRowInWriteField(sk.db, _wids, sn, uid);
   if (!existing) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
-  // Ab hier zählt der BESITZER, sonst entstünden Erfassungen im falschen Konto.
+  // From here on the OWNER counts, otherwise acquisitions would arise in the wrong account.
   const ownerId = parseInt(String(existing.user_id), 10);
 
   const hatDelta = body.quantity_delta !== undefined && body.quantity_delta !== null;
   const hasQuantity = hatDelta || (body.quantity !== undefined && body.quantity !== null);
   let papierkorb: number | null = null;
   let entfallen: ReturnType<typeof droppedResponse> = [];
-  // Ein Marktpreis, der nicht kam, oder eine Menge, die sich nicht nachlesen liess, steht in `degradiert`.
+  // A market price that did not come, or a quantity that could not be read back, is listed in `degradiert`.
   const ab = new Degradations();
 
   if (hasQuantity) {
-    // Relativ, damit zwei gleichzeitige „+1" zwei ergeben statt sich zu überschreiben.
+    // Relative, so that two concurrent "+1" yield two instead of overwriting each other.
     const delta = hatDelta ? Number(body.quantity_delta) : null;
     if (delta !== null && (!Number.isInteger(delta) || Math.abs(delta) > 9999))
       fachfehler('ungueltig', 'wert_ungueltig');
-    // Im Haushalt gehört jede Menge einem Konto; ohne Angabe dem eigenen. Ein fremdes nur im Schreibfeld.
+    // In the household every quantity belongs to one account; without a value to the own one. A foreign one only in the write scope.
     const ziel = body.owner_user_id == null ? uid : Number(body.owner_user_id);
     if (!_wids.includes(ziel)) fachfehler('verboten', 'kein_schreibrecht');
     const desiredTotal = delta === null ? inventoryQuantity(body.quantity) : null;
     const readField = await sk.household.scopeIds(uid);
-    // Angezeigt wird der Haushalt, geändert nur das Zielkonto.
+    // The household is displayed, only the target account is changed.
     const eigenesZiel = async (s: SetsContext) => {
       const totalBefore = await repo.setMenge(s.db, 'blickfeld', readField, sn);
       const ownBefore = await repo.setMenge(s.db, 'eines', ziel, sn);
-      // Bei 0 gedeckelt: Exemplare eines anderen Kontos kann ich nicht wegnehmen.
+      // Capped at 0: I cannot take away copies of another account.
       const aenderung = delta ?? Number(desiredTotal) - totalBefore;
       return { ownBefore, eigenZiel: Math.max(0, ownBefore + aenderung) };
     };
-    // Der Marktpreis wird VOR der Sperre geholt (Netzaufruf); massgeblich ist die Rechnung in der Sperre.
+    // The market price is fetched BEFORE the lock (network call); what counts is the calculation within the lock.
     const upfront = await eigenesZiel(sk);
     const plan =
       upfront.eigenZiel > upfront.ownBefore
@@ -181,15 +181,15 @@ export async function changeSet(
       async t => {
         const { ownBefore, eigenZiel } = await eigenesZiel(t);
         if (eigenZiel === ownBefore) return;
-        // Gehörte das Set bisher nur einem anderen Konto, liefe die Anpassung sonst ins Leere.
+        // If the set so far only belonged to another account, the adjustment would otherwise come to nothing.
         if (ownBefore === 0 && eigenZiel > 0) await t.inventory.putSetAn(ziel, sn);
-        // Menge 0 geht durch den Papierkorb, damit ein Tippfehler sich zurückholen lässt.
+        // Quantity 0 goes through the trash, so that a typo can be undone.
         if (eigenZiel === 0) {
           entfallen = droppedResponse(await repo.setEntriesAsJson(t.db, ziel, sn));
           papierkorb = await t.inventory.putInTrash('set', ziel, sn);
           await deleteSetRows(t, [ziel], sn);
         } else {
-          // Auch einzelne Käufe gehen durch den Papierkorb: Sonst verschwände ein Kaufpreis ohne Rückweg.
+          // Individual purchases go through the trash too: otherwise a purchase price would vanish without a way back.
           const weg = await entriesAnQuantityAlign(t, ziel, sn, eigenZiel, plan);
           entfallen = droppedResponse(weg);
           papierkorb = await t.inventory.putPurchasesInTrash(ziel, sn, weg);
@@ -198,25 +198,25 @@ export async function changeSet(
       { sperren: [{ konto: ziel, schluessel: sn }] },
     );
   }
-  // Mit einer Mengenänderung schickt die App alten Preis und Zustand als Echo; angewandt überschrieben sie
-  // den Marktpreis der neuen Erfassung.
+  // With a quantity change the app sends the old price and condition as an echo; applied, they would overwrite
+  // the market price of the new acquisition.
   if (body.purchase_price !== undefined && !hasQuantity) {
     let pp: number | null = body.purchase_price;
     if (pp === null || Number.isNaN(pp)) {
-      // Zustand der LETZTEN Erfassung, sonst käme der Preis für „Neu". Ohne Fang: Nach einem Lesefehler käme
-      // sonst der Neupreis in ein gebrauchtes Set.
+      // Condition of the LAST acquisition, otherwise the price for "new" would come. No catch: after a read error
+      // the new price would otherwise go into a used set.
       const lastCond = await repo.stateNewestSetEntry(sk.db, ownerId, sn);
       pp = await sk.finances.aktuellerMarktpreis(sn, ownerId, lastCond?.condition || null);
     }
     const val = pp !== null && !Number.isNaN(pp) ? pp : null;
     await writeInLastEntry(sk, 'purchase_price', val, ownerId, sn);
   }
-  // null heisst „nicht gesetzt", nicht 'N'.
+  // null means "not set", not 'N'.
   if (body.condition !== undefined && body.condition !== null && !hasQuantity) {
-    // ownerId: Mit dem Aufrufer träfe das UPDATE beim Unterkonto keine Zeile.
+    // ownerId: with the caller the UPDATE would hit no row for the sub-account.
     await writeInLastEntry(sk, 'condition', zustand(body.condition), ownerId, sn);
   }
-  // Geschrieben ist schon; scheitert nur das Nachlesen, sagt die Antwort „unbekannt“ statt 0.
+  // Writing is already done; if only reading back fails, the response says "unknown" instead of 0.
   const nachher = await ab.oder(
     'menge',
     async () => (await repo.setMenge(sk.db, 'blickfeld', await sk.household.scopeIds(uid), sn)) ?? 0,
@@ -244,21 +244,21 @@ export async function rebrickableList(sk: SetsContext, uid: number) {
   return sets.map(s => ({ 'Set Number': s.set_number, Quantity: s.quantity }));
 }
 
-/** Eine Anleitung hängt per Fremdschlüssel am Set. */
+/** An instruction is attached to the set via a foreign key. */
 export async function setBelongsAccount(sk: SetsContext, uid: number, sn: string): Promise<boolean> {
   return !!(await detailRepo.setOfAccount(sk.db, uid, sn));
 }
 
-/** Trifft alle Zeilen des Sets im Schreibbereich: Wer die Kiste packt, packt
- * sie für alle, die darin nachsehen. */
+/** Hits all rows of the set in the write scope: whoever packs the box packs
+ * it for everyone who looks into it. */
 export async function setLocationOfSets(sk: SetsContext, uid: number, sn: string, storage: string | null | undefined) {
   const ort = normalizeLocation(storage);
   const n = await sk.inventory.locationService.setLocation('set', { schreiber: uid }, [normalisiereSetNummer(sn)], ort);
   return { ort, n };
 }
 
-/** Die Liste kann über mehrere Konten spannen, die Vorgabe ist immer die des
- * Anfragenden: Ein geerbter Stern wäre eine Aussage über eine fremde Wohnung. */
+/** The list can span several accounts, the default is always that of the
+ * requester: an inherited star would be a statement about someone else's home. */
 export async function locationsWithDefault(sk: SetsContext, uid: number, owner: string | undefined) {
   const [orte, vorgabe] = await Promise.all([
     sk.inventory.locationsFor(uid, owner),

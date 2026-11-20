@@ -1,10 +1,10 @@
-/** Die Guthabenabfrage bei LEGO: genau ein Host, auch nach einer Umleitung;
- * Zeit und Grösse begrenzt, weil der Abruf Kartennummer und PIN trägt. */
+/** The balance query at LEGO: exactly one host, even after a redirect;
+ * time and size limited, because the request carries card number and PIN. */
 import { holeHttps } from '../src/infra/fetch';
 
 export const ALLOWED_BALANCE_HOSTS = ['www.lego.com'] as const;
 
-/** Die Form von fetch(), damit Tests ihn ersetzen können, ohne lego.com anzufassen. */
+/** The shape of fetch(), so tests can replace it without touching lego.com. */
 export type LegoFetch = (
   url: string,
   init?: Record<string, unknown>,

@@ -1,5 +1,5 @@
-/** Was Sets, Teile und Figuren an den Bestandszeilen ändern: Die Zeilen gehören dem Bestand,
- * die Bereiche darüber rufen diese Dienste in ihrer Transaktion (über t.bestand). */
+/** What sets, parts and figures change on the inventory rows: the rows belong to the inventory,
+ * the areas above call these services in their transaction (via t.bestand). */
 import * as sharedRepo from './repository/shared';
 import * as kaeufe from './repository/purchases';
 import * as setContentRepo from './repository/setContent';
@@ -7,7 +7,7 @@ import type { InventoryContext } from './context';
 
 type Zeile = { id: number; storage_id: number | null };
 
-/** Käufe vor der Zeile (sonst Tagesindex); ein Ziel behält seinen Lagerort („Kiste 3“ soll bleiben). */
+/** Purchases before the row (otherwise the daily index); a target keeps its storage location ("box 3" should stay). */
 export async function recolorPartRow(
   k: InventoryContext,
   uid: number,
@@ -27,7 +27,7 @@ export async function recolorPartRow(
   return { vereint: vereint.changes ?? 0, verschoben: verschoben.changes ?? 0 };
 }
 
-/** Die Teile oder Figuren eines Sets: was der Katalog nennt, und nur das. */
+/** A set's parts or figures: what the catalog names, and only that. */
 export function enterParts(k: InventoryContext, uid: number, sn: string, teile: string[], farben: number[]) {
   return setContentRepo.enterSetParts(k.db, uid, sn, teile, farben);
 }
@@ -40,12 +40,12 @@ export function entfernen(k: InventoryContext, uids: number[], sn: string) {
   return sharedRepo.removeSetContent(k.db, uids, sn);
 }
 
-/** Nur, wenn das Ziel noch keinen Inhalt hat: Sonst zählte die Zusammenfassung ihn doppelt. */
+/** Only if the target has no contents yet: otherwise the summary would count it twice. */
 export function kopieren(k: InventoryContext, tabelle: 'parts' | 'minifigs', sn: string, von: number, nach: number) {
   return sharedRepo.copySetContent(k.db, tabelle, sn, von, nach);
 }
 
-/** Ohne Menge: Sie entsteht aus der Erfassung darunter. */
+/** Without quantity: it arises from the acquisition below. */
 export function putRowAn(k: InventoryContext, art: 'part' | 'fig', uid: number, schluessel: (string | number)[]) {
   return sharedRepo.putManualAn(k.db, art, uid, schluessel);
 }

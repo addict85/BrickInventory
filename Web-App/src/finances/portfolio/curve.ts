@@ -1,13 +1,13 @@
 import type { FinancesContext } from '../context';
 
-/** Ein Punkt der Wertkurve; fullDay ist der genaue Tag eines Monatspunkts. */
+/** A point of the value curve; fullDay is the exact day of a monthly point. */
 export interface CurvesPoint {
   day: string;
   fullDay: string;
   month?: string;
   total: number;
 }
-// Aus dem globalen Preisverlauf, darum stimmt die Kurve auch rückwirkend.
+// From the global price history, which is why the curve is also correct retroactively.
 export async function reconstructCurve(
   kx: FinancesContext,
   opts: {
@@ -23,12 +23,12 @@ export async function reconstructCurve(
   },
 ): Promise<{ rawPoints: CurvesPoint[]; monthResolution: boolean }> {
   const { setNumbers, setQty, placeholders, dateFilter, condition, currency } = opts;
-  // `let`: Bei Verdichtung auf Monate wird bucketExpr unterwegs umgestellt.
+  // `let`: when condensing to months, bucketExpr is switched along the way.
   let bucketExpr = opts.bucketExpr;
   let monthResolution = opts.monthResolution;
   let rawPoints: CurvesPoint[] = [];
 
-  // Postgres rechnet, mit DERSELBEN Regel wie die Bewertung, nicht einer ähnlichen.
+  // Postgres calculates, with THE SAME rule as the valuation, not a similar one.
   {
     const mengen = setNumbers.map(sn => setQty[sn] || 1);
     const mainQuery = (bExpr: string) =>
@@ -42,8 +42,8 @@ export async function reconstructCurve(
       );
 
     let rows = await mainQuery(bucketExpr);
-    // Ein einziger Punkt bei Monatsauflösung → Tage, damit alle vier Zeiträume
-    // dieselbe Veränderung zeigen.
+    // A single point at monthly resolution → days, so that all four periods
+    // show the same change.
     if (monthResolution && rows.length < 2) {
       const dailyRows = await mainQuery("'YYYY-MM-DD'");
       if (dailyRows.length > rows.length) {
@@ -52,7 +52,7 @@ export async function reconstructCurve(
         bucketExpr = "'YYYY-MM-DD'";
       }
     }
-    // Letzte Zuflucht price_cache; eine Zeile je Set, der Umweg über SQL lohnt nicht.
+    // Last resort price_cache; one row per set, the detour via SQL is not worth it.
     if (!rows.length) {
       const roh = await kx.portfolioKurve.cachePricesTheSets(currency, condition, setNumbers, placeholders);
       const buckets: Record<string, { day: string; month: string; sets: Record<string, number> }> = {};
@@ -62,8 +62,8 @@ export async function reconstructCurve(
         const b = buckets[k];
         b.sets[r.set_number] = Number(r.marktpreis);
       }
-      // Jedes Set mit seinem ERSTEN bekannten Preis von Anfang an im Korb, sonst
-      // begänne die Kurve zu tief und meldete den Zuwachs der Sammlung.
+      // Every set with its FIRST known price in the basket from the start, otherwise
+      // the curve would start too low and report the collection's growth.
       const carry: Record<string, number> = {};
       for (const k of Object.keys(buckets).sort().reverse()) Object.assign(carry, buckets[k]?.sets);
       rows = Object.keys(buckets)
@@ -86,8 +86,8 @@ export async function reconstructCurve(
       )
       .filter(p => p.total > 0);
 
-    // Im ersten Monatsbucket steht der Wert am Monatsende; ohne Korrektur begänne
-    // die Jahreskurve höher als die Monatskurve.
+    // The first monthly bucket holds the value at the end of the month; without correction
+    // the yearly curve would start higher than the monthly curve.
     const erster = rawPoints[0];
     if (monthResolution && erster) {
       const firstTag = (rows[0] && 'first_day' in rows[0] && rows[0].first_day) || erster.fullDay;

@@ -1,20 +1,20 @@
-// Die Setnummer aus einem Händlertitel, nicht die erste Zahl darin (Jahr, Teilezahl).
+// The set number from a retailer's title, not the first number in it (year, part count).
 
-/** Die deutschen Formen mit Dativ-Plural: „1250 Steinen" rutschte sonst durch. */
+/** The German forms with dative plural: "1250 Steinen" would otherwise slip through. */
 const QUANTITY_WORD =
   /^\s*(?:x\s*)?(?:pcs?|pieces?|piece|teil(?:e|en)?|stück(?:e|en)?|stueck(?:e|en)?|stein(?:e|en)?|bricks?|parts?|element(?:e|en|s)?)\b/i;
 
-/** Muss mit `QUALITY` in setNumberCandidates() (Kotlin) übereinstimmen. */
+/** Must match `QUALITY` in setNumberCandidates() (Kotlin). */
 export const QUALITY = [5, 4, 6, 7, 3];
 
 function qualityIndex(stellen: number): number {
   const i = QUALITY.indexOf(stellen);
-  // indexOf liefert sonst -1, und die unbekannte Länge gewänne alles.
+  // indexOf would otherwise return -1, and the unknown length would win everything.
   return i < 0 ? QUALITY.length : i;
 }
 
-/** `jahr`: das laufende; eine Zahl darüber hinaus ist kein Erscheinungsjahr.
- * @returns Kandidaten in absteigender Güte; leer, wenn nichts übrig bleibt */
+/** `jahr`: the current one; a number beyond it is not a release year.
+ * @returns candidates in descending quality; empty if nothing remains */
 export function setnummerCandidates(titel: string, jahr: number): string[] {
   if (!titel) return [];
   const yearLimit = jahr + 1;
@@ -22,19 +22,19 @@ export function setnummerCandidates(titel: string, jahr: number): string[] {
   type Candidate = { wert: string; withSuffix: boolean; withHash: boolean; jahr: boolean; quality: number };
   const gefunden: Candidate[] = [];
 
-  // Drei bis sieben Stellen: dreistellige Altsets und siebenstellige
-  // Bestellnummern grosser Sets.
+  // Three to seven digits: three-digit old sets and seven-digit
+  // order numbers of large sets.
   const muster = /(#\s*)?\b(\d{3,7})(-\d{1,2})?\b/g;
   for (let treffer = muster.exec(titel); treffer !== null; treffer = muster.exec(titel)) {
-    // Unter noUncheckedIndexedAccess weiss TypeScript nicht, dass das Muster
-    // treffer[2] garantiert.
+    // Under noUncheckedIndexedAccess TypeScript does not know that the pattern
+    // guarantees treffer[2].
     const digits = treffer[2];
     if (!digits) continue;
     const suffix = treffer[3] ?? '';
     const danach = titel.slice(treffer.index + treffer[0].length);
-    if (QUANTITY_WORD.test(danach)) continue; // Regel 1: Teilezahl
+    if (QUANTITY_WORD.test(danach)) continue; // Rule 1: part count
     const zahl = parseInt(digits, 10);
-    // Mit Variantenzusatz ist es keine Jahreszahl mehr, sondern eine Setnummer.
+    // With a variant suffix it is no longer a year but a set number.
     const jahr = !suffix && digits.length === 4 && zahl >= 1949 && zahl <= yearLimit;
     gefunden.push({
       wert: digits + suffix,
@@ -47,7 +47,7 @@ export function setnummerCandidates(titel: string, jahr: number): string[] {
 
   const eindeutig = gefunden.filter((k, i) => gefunden.findIndex(a => a.wert === k.wert) === i);
 
-  // Array.prototype.sort ist stabil: Bei Gleichstand bleibt die Reihenfolge im Titel.
+  // Array.prototype.sort is stable: on a tie the order in the title stays.
   return eindeutig
     .slice()
     .sort(

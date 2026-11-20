@@ -1,4 +1,4 @@
-/** Wiederholung transienter Fehler einer einzelnen Abfrage ausserhalb einer Transaktion. */
+/** Retrying transient errors of a single query outside a transaction. */
 import { fehlerCode } from '../src/infra/error';
 
 const RETRYABLE_CODES = new Set([
@@ -8,19 +8,19 @@ const RETRYABLE_CODES = new Set([
   '08001', // sqlclient_unable_to_establish_sqlconnection
 ]);
 /**
- * Bricht die Verbindung MITTEN in der Anfrage ab, ist offen, ob sie schon
- * festgeschrieben war. Ein Lesezugriff darf noch einmal, ein Schreibzugriff
- * nicht — sonst steht die Zeile doppelt da.
+ * If the connection drops IN THE MIDDLE of the request, it is unknown whether it
+ * was already committed. A read may run again, a write may
+ * not — otherwise the row would exist twice.
  */
 const ONLY_READING_RETRYABLE = new Set(['08006']);
 
-/** Nur ein reines SELECT gilt als lesend; INSERT … RETURNING über get() nicht. */
+/** Only a plain SELECT counts as reading; INSERT … RETURNING via get() does not. */
 export function isReading(sql: string): boolean {
   const s = sql.replace(/--[^\n]*/g, '').trim();
   return /^(SELECT|WITH)\b/i.test(s) && !/\b(INSERT|UPDATE|DELETE|MERGE)\b|\bFOR\s+(UPDATE|SHARE)\b/i.test(s);
 }
 
-/** Mit Wiederholung bei transienten Fehlern. */
+/** With retry on transient errors. */
 export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boolean, maxRetries = 2): Promise<T> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -28,7 +28,7 @@ export async function queryWithRetry<T>(queryFn: () => Promise<T>, lesend: boole
       return await queryFn();
     } catch (err) {
       lastErr = err;
-      // Ein Fehler ohne Code ist nicht wiederholbar.
+      // An error without a code is not retryable.
       const code = fehlerCode(err) ?? '';
       const retryable = RETRYABLE_CODES.has(code) || (lesend && ONLY_READING_RETRYABLE.has(code));
       if (!retryable || attempt === maxRetries) throw err;

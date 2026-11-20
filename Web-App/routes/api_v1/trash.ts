@@ -1,5 +1,5 @@
-/** Sichtbar ist, was der Aufrufer schreiben darf: das eigene Konto und, als
- * Hauptkonto, die Unterkonten. */
+/** Visible is what the caller may write: the own account and, as
+ * main account, the sub-accounts. */
 import { guardFor } from './middleware';
 import { confirmWithFactor } from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/contractRouter';
@@ -17,14 +17,14 @@ export function buildTrashRouter(d: Pick<Dienste, 'account' | 'inventory' | 'col
     return { ...(await d.inventory.placeAgainHer({ schreiber: req.apiUser.user_id }, req.pfad.id)) };
   });
 
-  // Bestätigt wie /bestand: Sonst leerte ein erbeutetes Token alles Stück für Stück, unumkehrbar.
+  // Confirmed like /bestand: otherwise a captured token would empty everything piece by piece, irreversibly.
   router.endpunkt('DELETE /api/v1/papierkorb/:id', requireToken, async (req, res) => {
     if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     await d.inventory.deleteFinal({ schreiber: req.apiUser.user_id }, req.pfad.id);
     return {};
   });
 
-  // Mit Passwort: Ein erbeutetes App-Token soll nicht die ganze Sammlung wegräumen können.
+  // With password: a captured app token must not be able to clear away the whole collection.
   router.endpunkt('DELETE /api/v1/bestand', requireToken, async (req, res) => {
     if (!(await confirmWithFactor(d.account, req, res, req.apiUser.user_id, req.eingabe.password))) return;
     return { ...(await d.collection.deleteEverythingOwn(req.apiUser.user_id)) };

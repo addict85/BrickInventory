@@ -1,17 +1,17 @@
 /**
- * SQL-Bausteine für Geldbeträge in der Anzeigewährung. Sie stehen in db/,
- * weil Repositories mehrerer Finanz-Abfragen sie einsetzen und kein
- * Repository einen Dienst importieren darf.
+ * SQL building blocks for money amounts in the display currency. They live in db/
+ * because repositories of several finance queries use them and no
+ * repository may import a service.
  */
 
-/** Der Kaufpreis in der Anzeigewährung `w` (SQL-Parameter), fremde Währung
- * zum Kurs des Kauftags oder davor (0077). Ohne Kurs NULL: Der Preis zählt
- * dann als „fremde Währung, nicht eingerechnet“. */
+/** The purchase price in the display currency `w` (SQL parameter), a foreign currency
+ * at the rate of the purchase day or before (0077). Without a rate NULL: the price then
+ * counts as "foreign currency, not included". */
 export function kaufpreisIn(spalte: string, w: string): string {
   return `in_waehrung(${spalte}, currency, ${w}, COALESCE(day, (created_at AT TIME ZONE 'UTC')::date))`;
 }
 
-/** Die drei Spalten jeder Erfassungsabfrage der Bewertung: Preis, fremd, umgerechnet. */
+/** The three columns of every acquisition query of the valuation: price, foreign, converted. */
 export function kaufpreisSpalten(spalte: string, w: string): string {
   const k = kaufpreisIn(spalte, w);
   return `${k} AS ${spalte},
@@ -20,13 +20,13 @@ export function kaufpreisSpalten(spalte: string, w: string): string {
             (currency <> ${w} AND ${k} IS NOT NULL) AS kaufpreis_umgerechnet`;
 }
 
-/** Mengengewichteter Schnitt über die Zeilen, in denen `k` einen Preis hat. */
+/** Quantity-weighted average over the rows in which `k` has a price. */
 export const mittelUeber = (k: string) =>
   `SUM(${k} * quantity) FILTER (WHERE ${k} IS NOT NULL)::numeric / NULLIF(SUM(quantity) FILTER (WHERE ${k} IS NOT NULL), 0)`;
 
-/** Der Marktpreis einer Preiszeile (Alias `t`), dieselbe Regel wie marketPriceFrom()
- * in src/catalog/bricklinkPrices.ts: avg_price, sonst qty_avg_price, 0 ist kein
- * Preis. NULL heisst „kein Preis“, als Filter also `… IS NOT NULL`. */
+/** The market price of a price row (alias `t`), the same rule as marketPriceFrom()
+ * in src/catalog/bricklinkPrices.ts: avg_price, otherwise qty_avg_price, 0 is no
+ * price. NULL means "no price", so as a filter `… IS NOT NULL`. */
 export function marktpreisSql(t = ''): string {
   const p = t ? `${t}.` : '';
   return `(CASE WHEN ${p}avg_price > 0 THEN ${p}avg_price WHEN ${p}qty_avg_price > 0 THEN ${p}qty_avg_price END)`;

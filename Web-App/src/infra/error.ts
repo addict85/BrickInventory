@@ -1,11 +1,11 @@
-// Fachfrei und ohne Express: db/, clients/ und jeder Dienst melden hierüber.
-// Wie ein Fehler zur HTTP-Antwort wird, steht in httpAntwort.ts.
+// Domain-free and without Express: db/, clients/ and every service report via this.
+// How an error becomes an HTTP response is in httpAntwort.ts.
 import { FEHLER, errorText, responseLanguage, type ErrorCode } from './errorTexts';
 import { transactionOfPath } from './accountContext';
 
-/** Ersatz für `.catch(() => {})`: Der Schritt soll die Anfrage nicht scheitern
- * lassen, aber eine Spur hinterlassen.
- * @param kontext kurze Herkunftsangabe, z. B. 'parts:image_local' */
+/** Replacement for `.catch(() => {})`: the step should not make the request fail,
+ * but leave a trace.
+ * @param kontext short origin information, e.g. 'parts:image_local' */
 export function logAndContinue(kontext: string) {
   return (e: unknown) => weiterTrotzFehler(kontext, e);
 }
@@ -20,7 +20,7 @@ function logWarning(kontext: string, e: unknown) {
   console.warn(`[weiter-trotz-fehler] ${kontext}: ${String(roh)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
 }
 
-/** Mit Ersatzwert, wo der Aufrufer weiterrechnet. */
+/** With a substitute value, where the caller keeps computing. */
 export function reportAndDeliver<T>(kontext: string, ersatz: T) {
   return (e: unknown): T => {
     weiterTrotzFehler(kontext, e);
@@ -28,10 +28,10 @@ export function reportAndDeliver<T>(kontext: string, ersatz: T) {
   };
 }
 
-/** PostgreSQL nimmt nach einem Fehler in der Transaktion keinen Befehl mehr an
- * (25P02); ein Ersatzwert verdeckte die Ursache hinter diesem Folgefehler. Ein
- * Datenbankfehler geht deshalb immer weiter, ein anderer nur in Tests; im
- * Betrieb wird er laut gemeldet, weil der Rumpf mit dem Ersatz weiterrechnet. */
+/** After an error in the transaction PostgreSQL accepts no more commands
+ * (25P02); a substitute value would hide the cause behind this follow-up error. A
+ * database error therefore always propagates, another one only in tests; in
+ * production it is reported loudly because the body keeps computing with the substitute. */
 export function checkFallbackInTransaction(kontext: string, e: unknown): void {
   const tx = transactionOfPath();
   if (!tx?.verdirbt(e)) return;
@@ -40,13 +40,13 @@ export function checkFallbackInTransaction(kontext: string, e: unknown): void {
   console.error(`[ersatz-in-transaktion] ${kontext}: ${fehlertext(e)}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
 }
 
-/** Ein Fehler des Servers (pg.DatabaseError) trägt SQLSTATE und Schwere. */
+/** An error of the server (pg.DatabaseError) carries SQLSTATE and severity. */
 export function isDatabaseError(e: unknown): boolean {
   const c = fehlerCode(e);
   return !!c && /^[0-9A-Z]{5}$/.test(c) && typeof (e as { severity?: unknown }).severity === 'string';
 }
 
-/** Eine schon fehlende Datei ist das Ziel, kein Fehler. */
+/** An already missing file is the goal, not an error. */
 export function withoutMissingFile(kontext: string): (e: unknown) => void;
 export function withoutMissingFile<T>(kontext: string, ersatz: T): (e: unknown) => T;
 export function withoutMissingFile<T>(kontext: string, ersatz?: T) {
@@ -56,19 +56,19 @@ export function withoutMissingFile<T>(kontext: string, ersatz?: T) {
   };
 }
 
-/** Nur das Protokoll: Wer meldet und dann selbst entscheidet, liefert keinen Ersatz. */
+/** Only the log: whoever reports and then decides themselves delivers no substitute. */
 export function reportError(kontext: string, e: unknown) {
   logWarning(kontext, e);
 }
 
-// Nicht nur Error fliegt; sonst „Fehler: undefined“.
+// Not only Error gets thrown; otherwise "Error: undefined".
 export function fehlertext(e: unknown): string {
   if (e instanceof Error && e.message) return e.message;
   if (typeof e === 'string' && e) return e;
   const m = e && typeof e === 'object' ? (e as { message?: unknown }).message : undefined;
   if (typeof m === 'string' && m) return m;
   if (e === null || e === undefined) return 'Unbekannter Fehler';
-  // `String([])` ist leer; sonst stünde „Fehler: " mit nichts dahinter.
+  // `String([])` is empty; otherwise "Error: " would stand there with nothing after it.
   return String(e) || 'Unbekannter Fehler';
 }
 
@@ -77,13 +77,13 @@ export function fehlerCode(e: unknown): string | undefined {
   return typeof c === 'string' || typeof c === 'number' ? String(c) : undefined;
 }
 
-/** split() liefert immer ein erstes Element; TypeScript weiss es nicht. */
+/** split() always delivers a first element; TypeScript does not know that. */
 export function beforeThe(s: string, trenner: string): string {
   return s.split(trenner)[0] ?? '';
 }
 
-/** Für Ströme und Sammelberichte ohne Statuscode: Ein Fachfehler nennt Code und
- * Satz, alles andere (SQL, Dateipfade, Fremd-APIs) nur das Protokoll. */
+/** For streams and bulk reports without a status code: a domain error names code and
+ * sentence, everything else (SQL, file paths, third-party APIs) only the log. */
 export function publicError(
   e: unknown,
   kontext: string,

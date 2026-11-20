@@ -1,4 +1,4 @@
-/** Die öffentliche Seite des Bereichs: Andere importieren nur von hier, der Schnitt darunter bleibt frei. */
+/** The public face of the area: others import only from here, the cut below stays free. */
 export { isGuess } from './barcodeSource';
 export { blColorNumberFrom } from './blMapping';
 export { hatPrice, marketPriceFrom } from './bricklinkPrices';

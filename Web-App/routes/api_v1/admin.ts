@@ -1,5 +1,5 @@
-/** /api/v1/admin — jede Route über requireApiAdmin, damit kein Handler die
- * Prüfung vergessen kann. */
+/** /api/v1/admin — every route through requireApiAdmin, so no handler can
+ * forget the check. */
 import { guardFor } from './middleware';
 import { proxyHintStatus } from '../../src/http/proxyHint';
 import { pageFrom } from '../../src/infra/page';
@@ -34,7 +34,7 @@ export function buildAdminRouter(
   });
 
   router.endpunkt('POST /api/v1/admin/trigger-csv-sync', requireApiAdmin, async _req => {
-    // Läuft der Auftrag schon, bleibt es bei dem einen Lauf.
+    // If the job is already running, it stays at that one run.
     await d.management.runCatalogSyncNow();
     return { message: 'CSV-Sync wird gestartet…' };
   });
@@ -47,23 +47,23 @@ export function buildAdminRouter(
     return { ...(await d.management.cacheStats()) };
   });
 
-  // Beantwortet die wiederkehrenden Fragen zu einer leeren Kachel in einer
-  // Antwort: Datenbank, Platte, Proxy, Fehlanzeige.
+  // Answers the recurring questions about an empty tile in one
+  // response: database, disk, proxy, missing marker.
   router.endpunkt('GET /api/v1/admin/image-diag/:setNumber', requireApiAdmin, async req => {
     const sn = req.pfad.setNumber;
 
     return { ...(await d.management.imageDiagnostics(sn)) };
   });
 
-  // Eine Fehlanzeige sperrte ein Bild sieben Tage, ohne Weg zurück.
+  // A missing marker blocked an image for seven days, with no way back.
   router.endpunkt('POST /api/v1/admin/forget-image-misses', requireApiAdmin, async req => {
     const sets = Array.isArray(req.eingabe.set_numbers) ? req.eingabe.set_numbers.map(String) : null;
     const entfernt = await d.management.forgetImageMisses(sets, req.eingabe.thumbs === true);
-    // Die anderen Prozesse frischen den Merker im Fünf-Minuten-Takt aus der Tabelle auf.
+    // The other processes refresh the marker from the table every five minutes.
     return { entfernt, hinweis: 'Greift in allen Arbeitsprozessen binnen fünf Minuten.' };
   });
 
-  // Global (price_cache gilt für alle Konten), darum nur für Verwalter.
+  // Global (price_cache applies to all accounts), hence only for administrators.
   router.endpunkt('POST /api/v1/admin/cache-clear', requireApiAdmin, async req => {
     await d.management.clearCaches(!!req.eingabe.all);
     return { message: req.eingabe.all ? 'Alle Caches geleert' : 'Preis-Cache geleert' };
@@ -111,7 +111,7 @@ export function buildAdminRouter(
     return { enqueued };
   });
 
-  // Eine Adresse für Webapp und App; requireApiAdmin nimmt beide Ausweise.
+  // One address for webapp and app; requireApiAdmin accepts both credentials.
   router.endpunkt('GET /api/v1/admin/job-status', requireApiAdmin, async _req => {
     return { ...(await d.management.priceJobStatus()) };
   });
@@ -120,15 +120,15 @@ export function buildAdminRouter(
     return { started: await d.management.runPriceJobNow() };
   });
 
-  // Füllt den Bildbestand vorab, statt nur beim Blättern.
+  // Fills the image stock in advance instead of only while browsing.
   router.endpunkt('POST /api/v1/admin/catalog-images', requireApiAdmin, async req => {
     return { ...(await d.management.queueCatalogImages(req.eingabe.alle_erneut === true)) };
   });
 
-  // Bilder, die laut image_local da sind, deren Datei aber fehlt.
+  // Images that exist according to image_local, but whose file is missing.
   router.endpunkt('POST /api/v1/admin/redownload-missing-images', requireApiAdmin, async _req => {
-    // Nur das Einstellen wird abgewartet; der Fortschritt erscheint in der
-    // Überwachung unter „Bild-Download (CDN)".
+    // Only the enqueueing is awaited; the progress appears in the
+    // monitoring under "Image download (CDN)".
     await d.management.reloadMissingImages();
     return { started: true };
   });
@@ -161,22 +161,22 @@ export function buildAdminRouter(
     return { ...(await d.management.jobMonitor()), proxy_hinweis: proxyHintStatus(req.app) };
   });
 
-  // Body: { name, time: "HH:MM" } für tägliche Jobs oder { name: 'priceJob',
-  // minutes } für das Intervall. Greift sofort.
+  // Body: { name, time: "HH:MM" } for daily jobs or { name: 'priceJob',
+  // minutes } for the interval. Takes effect immediately.
   router.endpunkt('POST /api/v1/admin/job-schedule', requireApiAdmin, async req => {
     const { name, time, minutes } = req.eingabe || {};
     await d.management.setJobSchedule(name, time, minutes);
     return {};
   });
 
-  /** Fragt eine Bild-URL vom SERVER aus ab (mit, ohne Referer, ohne Kopfzeilen),
-   * um „fehlt", „Hotlink-Schutz" und „nicht erreichbar" zu unterscheiden. POST,
-   * weil eine fremde Seite ein GET samt Lax-Cookie per Link auslösen könnte. */
+  /** Requests an image URL from the SERVER (with, without referer, without headers)
+   * to distinguish "missing", "hotlink protection" and "unreachable". POST,
+   * because a foreign page could trigger a GET with a Lax cookie via a link. */
   router.endpunkt('POST /api/v1/admin/img-probe', requireApiAdmin, async req => {
     return { ...(await d.management.imageProbe(req.eingabe.url ?? '')) };
   });
-  /** Alles, was in die Marktpreis-Anzeige eines Sets einfliesst, auf Wunsch mit
-   * der aktuellen BrickLink-Antwort; POST aus demselben Grund wie oben. */
+  /** Everything that flows into the market price display of a set, optionally with
+   * the current BrickLink response; POST for the same reason as above. */
   router.endpunkt('POST /api/v1/admin/price-probe', requireApiAdmin, async req => {
     const setNumber = (req.eingabe.set ?? '').trim();
     if (!setNumber) fachfehler('ungueltig', 'parameter_set_fehlt');

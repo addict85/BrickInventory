@@ -1,6 +1,6 @@
-/** Die Hostlisten prüfen Namen; wohin ein Name auflöst, bestimmt das DNS. Diese
- * Prüfung sieht die Adresse, mit der wirklich verbunden wird, und die Auflösung
- * geschieht genau einmal: Ein zweites Nachschlagen könnte anders antworten. */
+/** The host lists check names; where a name resolves to is decided by DNS. This
+ * check sees the address that is really connected to, and the resolution
+ * happens exactly once: a second lookup could answer differently. */
 import dns from 'node:dns';
 import fs from 'node:fs';
 import net from 'node:net';
@@ -17,12 +17,12 @@ const liste = (v4: string[], v6: string[]) => {
   return b;
 };
 
-/** Nie ein Ziel: Selbst, Link-Local (Metadatendienste der Clouds), Multicast. */
+/** Never a target: self, link-local (cloud metadata services), multicast. */
 const NIE = liste(['0.0.0.0/8', '169.254.0.0/16', '224.0.0.0/4', '240.0.0.0/4'], ['::/128', 'fe80::/10', 'ff00::/8']);
 const LOOPBACK = liste(['127.0.0.0/8'], ['::1/128']);
-/** Privat, CGNAT, ULA, Site-Local und Dokumentation: Für einen öffentlichen Dienst gibt es dort nichts
- * zu holen, ein Betreiber kann sie aber intern vergeben. 6to4 (samt Relais-Anycast 192.88.99.0/24) und
- * Teredo tragen eine IPv4-Adresse, die ein Relais beliebig ansteuert; beide sind veraltet. */
+/** Private, CGNAT, ULA, site-local and documentation: for a public service there is nothing
+ * to fetch there, but an operator can assign them internally. 6to4 (including relay anycast 192.88.99.0/24) and
+ * Teredo carry an IPv4 address that a relay can target arbitrarily; both are deprecated. */
 const INTERN = liste(
   [
     '10.0.0.0/8',
@@ -39,7 +39,7 @@ const INTERN = liste(
   ['fc00::/7', 'fec0::/10', '64:ff9b:1::/48', '2002::/16', '2001::/32', '2001:db8::/32'],
 );
 
-/** Die acht 16-Bit-Gruppen einer gültigen IPv6-Adresse (Zone und IPv4-Schreibweise am Ende erlaubt). */
+/** The eight 16-bit groups of a valid IPv6 address (zone and IPv4 notation at the end allowed). */
 function gruppen(ip: string): number[] {
   let s = ip.split('%')[0]?.toLowerCase() ?? '';
   const v4 = s.match(/^(.*:)(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
@@ -54,8 +54,8 @@ function gruppen(ip: string): number[] {
   return [...vorn, ...Array(8 - vorn.length - hinten.length).fill(0), ...hinten];
 }
 
-/** ::ffff:a.b.c.d, ::a.b.c.d und 64:ff9b::a.b.c.d erreichen eine IPv4-Adresse: Geprüft wird
- * diese (NAT64 ganz zu sperren bräche DNS64). :: und ::1 sind echte IPv6-Adressen. */
+/** ::ffff:a.b.c.d, ::a.b.c.d and 64:ff9b::a.b.c.d reach an IPv4 address: that one
+ * is checked (blocking NAT64 entirely would break DNS64). :: and ::1 are real IPv6 addresses. */
 export function normalisiert(ip: string): string {
   if (!net.isIPv6(ip)) return ip;
   const g = gruppen(ip);
@@ -69,7 +69,7 @@ export function normalisiert(ip: string): string {
 
 const typ = (ip: string) => (net.isIPv6(ip) ? 'ipv6' : 'ipv4');
 
-/** Für Abrufe öffentlicher Dienste (Rebrickable, LEGO, CDNs). */
+/** For fetches from public services (Rebrickable, LEGO, CDNs). */
 export function publicAddress(roh: string): boolean {
   if (!net.isIP(roh)) return false;
   const ip = normalisiert(roh);
@@ -78,9 +78,9 @@ export function publicAddress(roh: string): boolean {
 
 type Interfaces = ReturnType<typeof os.networkInterfaces>;
 
-/** Für den Mailserver: Der Verwalter darf einen im eigenen Netz wollen. Gesperrt
- * bleiben die Netze des eigenen Containers (Datenbank, Proxy) samt Loopback;
- * ohne Container ist Loopback ein lokaler Mailserver und bleibt erlaubt. */
+/** For the mail server: the admin may want one in the own network. Blocked
+ * stay the networks of the own container (database, proxy) including loopback;
+ * without a container loopback is a local mail server and stays allowed. */
 export function mailServerAddress(roh: string, o: { imContainer?: boolean; interfaces?: Interfaces } = {}): boolean {
   if (!net.isIP(roh)) return false;
   const ip = normalisiert(roh);
@@ -109,7 +109,7 @@ export class TargetLocked extends Error {
 type Adresse = { address: string; family: number };
 type LookupCallback = (err: NodeJS.ErrnoException | null, address: string | Adresse[], family?: number) => void;
 
-/** Als `lookup` für net/tls/https: Gesperrte Adressen fallen heraus, bleibt keine, scheitert die Verbindung. */
+/** As `lookup` for net/tls/https: blocked addresses drop out; if none remains, the connection fails. */
 export function checkingLookup(erlaubt: (ip: string) => boolean) {
   return (host: string, opt: dns.LookupOptions, callback: LookupCallback): void => {
     dns.lookup(host, { ...opt, all: true }, (err, adressen) => {
@@ -123,11 +123,11 @@ export function checkingLookup(erlaubt: (ip: string) => boolean) {
   };
 }
 
-/** Für jeden Abruf nach draussen, den kein eigener Agent mit eigener Auflösung trägt. */
+/** For every fetch to the outside that no own agent with its own resolution carries. */
 export const publicLookup = checkingLookup(publicAddress);
 
-/** Einmal auflösen und eine erlaubte Adresse nennen, IPv4 zuerst: Ohne IPv6-Route
- * liefe die Verbindung sonst bis zur Frist. Für Klienten ohne `lookup` (nodemailer). */
+/** Resolve once and name an allowed address, IPv4 first: without an IPv6 route
+ * the connection would otherwise run until the deadline. For clients without `lookup` (nodemailer). */
 export function resolveOn(host: string, erlaubt: (ip: string) => boolean): Promise<string> {
   if (net.isIP(host)) return erlaubt(host) ? Promise.resolve(host) : Promise.reject(new TargetLocked(host));
   return new Promise((fertig, scheitern) =>

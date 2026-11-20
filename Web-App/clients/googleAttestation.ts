@@ -1,11 +1,11 @@
-/** Googles Widerrufsliste der Attestierungsschlüssel. Nur dieser Host, keine
- * Umleitung: Eine Liste aus fremder Quelle könnte widerrufene Ketten freigeben. */
+/** Google's revocation list of attestation keys. Only this host, no
+ * redirect: a list from a foreign source could release revoked chains. */
 import { holeHttps } from '../src/infra/fetch';
 
 export const REVOCATION_LIST = 'https://android.googleapis.com/attestation/status';
 const HOSTS = ['android.googleapis.com'] as const;
 
-/** Der Körper der Liste; im Test ersetzt über die Fremdquellen des Katalogs. */
+/** The body of the list; replaced in tests through the catalog's external sources. */
 export type RevocationFetch = (signal?: AbortSignal) => Promise<Buffer>;
 
 export const revocationListFetch: RevocationFetch = async signal => {

@@ -1,6 +1,6 @@
-/** Öffentlich, solange die Einrichtung läuft: Die Anmeldeseite prüft damit,
- * was fehlt, bevor es ein Konto gibt. Antworten sind Schalter und das
- * Wurzelzertifikat — beides steht schon unter /ca.crt. */
+/** Public while the setup runs: the login page uses it to check
+ * what is missing before there is an account. The answers are switches and the
+ * root certificate — both are already available under /ca.crt. */
 import { istVerwalter, ipThrottle } from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/contractRouter';
 import type { Dienste } from '../../src/services';

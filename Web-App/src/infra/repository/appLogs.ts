@@ -1,5 +1,5 @@
-/** Die Verbindung kommt vom Protokoll: Es läuft vor der Datenbankschicht an
- * und darf sie nicht importieren. */
+/** The connection comes from the log: it starts before the database layer
+ * and must not import it. */
 export interface Abfrager {
   query(sql: string, werte?: unknown[]): Promise<unknown>;
 }

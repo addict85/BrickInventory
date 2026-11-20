@@ -1,4 +1,4 @@
-/** Alles hier gilt für alle Konten. */
+/** Everything here applies to all accounts. */
 import { setTimeout as warte } from 'node:timers/promises';
 import { newestInventory } from './rbInventory';
 import { withVersion } from '../infra/setNumber';
@@ -17,8 +17,8 @@ import { PART_IMAGES_DIR as IMG_DIR } from '../infra/appPaths';
 import { KEINE_FARBE } from '../infra/validate';
 import type { CatalogContext } from './context';
 async function syncSetCatalog(k: CatalogContext, setNumber: string) {
-  // withVersion(): Sonst ergäbe `alt` denselben Wert wie `n`, und die blanke
-  // Nummer würde nie geprüft.
+  // withVersion(): otherwise `alt` would yield the same value as `n`, and the bare
+  // number would never be checked.
   const n = withVersion(setNumber);
 
   const stand = await k.csvKatalog.catalogImageStatus(n);
@@ -95,7 +95,7 @@ async function syncAllMissing(k: CatalogContext) {
   for (const s of sets) await syncSetCatalog(k, s);
 }
 
-/** Die gewählte Farbe, nicht das oft falschfarbige Standardbild. */
+/** The chosen color, not the often wrongly colored default image. */
 async function backfillPartColorsImages(k: CatalogContext) {
   const rows = await k.csvKatalog.manualColorParts();
   if (!rows.length) return;

@@ -44,7 +44,7 @@ export async function desiredStates(
   );
 }
 
-/** Einmal am Tag. @returns Anzahl neuer Punkte */
+/** Once a day. @returns number of new points */
 export async function writeDailyStatus(db: DbInterface): Promise<number> {
   const r = await db.run(`
     INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, min_price, max_price, recorded_at)

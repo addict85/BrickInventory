@@ -1,5 +1,5 @@
-/** Pro Tag, Element, Zustand, Preis und Währung genau EINE Zeile: Gleiche
- * Käufe eines Tages werden zusammengezählt. */
+/** Exactly ONE row per day, element, condition, price and currency: identical
+ * purchases of one day are added up. */
 import { priceColumn, keyColumns } from '../../db/stockQuantity';
 import * as repo from './repository/purchaseAcquisitions';
 import { zustand } from '../infra/validate';
@@ -9,14 +9,14 @@ export type AcquisitionKind = 'set' | 'part' | 'fig';
 
 export interface AcquisitionInput {
   quantity: number;
-  /** null = nicht erfasst. */
+  /** null = not captured. */
   price?: number | null;
   condition?: string | null;
-  /** Fehlt er, zählt heute. */
+  /** If missing, today counts. */
   createdAt?: string | null;
-  /** Ein eingesetzter Marktpreis, kein bezahlter Betrag. */
+  /** An inserted market price, not a paid amount. */
   geschaetzt?: boolean;
-  /** Fehlt sie, setzt die Datenbank die des Kontos. */
+  /** If missing, the database sets the account's. */
   currency?: string | null;
 }
 
@@ -26,8 +26,8 @@ const num = (v: unknown): number | null => {
   return Number.isFinite(n) ? n : null;
 };
 
-/** @param keyValues Schlüsselwerte in der Reihenfolge von SHAPES[kind].keys
- * @returns { merged } — true, wenn eine bestehende Zeile aufgestockt wurde */
+/** @param keyValues key values in the order of SHAPES[kind].keys
+ * @returns { merged } — true if an existing row was topped up */
 export async function addPurchaseAtTag(
   k: InventoryContext,
   kind: AcquisitionKind,
@@ -40,8 +40,8 @@ export async function addPurchaseAtTag(
   const cond = zustand(input.condition);
   const geschaetzt = price != null && !!input.geschaetzt;
 
-  // Eine Anweisung statt Lesen-Rechnen-Schreiben: Gleichzeitige Erfassungen
-  // addieren sich. Zusammengelegt nur bei gleichem Preis, Herkunft und Währung.
+  // One statement instead of read-compute-write: concurrent acquisitions
+  // add up. Merged only with the same price, origin and currency.
   const merged = await repo.addEntryAdd(k.db, kind, userId, keyValues, {
     menge: qty,
     preis: price,
@@ -53,9 +53,9 @@ export async function addPurchaseAtTag(
   return { merged };
 }
 
-/** Damit eine Bearbeitung nicht am eindeutigen Tagesindex scheitert.
- * @param condition der Zustand, den die Zeile NACH der Bearbeitung hat
- * @returns die kollidierende id, oder null */
+/** So that an edit does not fail on the unique daily index.
+ * @param condition the condition the row has AFTER the edit
+ * @returns the colliding id, or null */
 export async function purchaseAtSameTag(
   k: InventoryContext,
   kind: AcquisitionKind,
@@ -87,8 +87,8 @@ export function acquisitionTotals(rows: { quantity?: unknown; purchase_price?: u
   for (const r of rows || []) {
     const menge = Number(r?.quantity) || 0;
     quantity += menge;
-    // purchase_price oder unit_price je Tabelle — die Rückfallregel EINMAL statt
-    // in jedem Client.
+    // purchase_price or unit_price per table — the fallback rule ONCE instead of
+    // in every client.
     const roh = r?.purchase_price ?? r?.unit_price;
     const preis = roh === null || roh === undefined ? null : Number(roh);
     if (preis !== null && Number.isFinite(preis)) {
@@ -98,7 +98,7 @@ export function acquisitionTotals(rows: { quantity?: unknown; purchase_price?: u
   }
   return {
     quantity,
-    // Gleitkomma liefert sonst 33.980000000000004.
+    // Floating point would otherwise yield 33.980000000000004.
     amount: priced ? Math.round(amount * 100) / 100 : null,
     priced_rows: priced,
   };
@@ -112,8 +112,8 @@ type WithPrice = {
   created_at?: unknown;
 };
 
-/** Summe in der Währung des Betrachters, zum Kurs des Kauftags wie in den Finanzen: Sonst stünden
- * 3 × 260,66 USD als Euro darin. Ohne Kurs zählt die Zeile in `ohne_kurs`, nicht in der Summe. */
+/** Sum in the viewer's currency, at the rate of the purchase day as in the finances: otherwise
+ * 3 × 260.66 USD would show up as euros. Without a rate the row counts in `ohne_kurs`, not in the sum. */
 export async function erfassungenInKontowaehrung<T extends WithPrice>(k: InventoryContext, rows: T[], viewer: number) {
   const preise = rows.map(r => {
     const roh = r.purchase_price ?? r.unit_price;
@@ -140,9 +140,9 @@ export async function erfassungenInKontowaehrung<T extends WithPrice>(k: Invento
   };
 }
 
-/** Gibt es am selben Tag schon eine gleiche Zeile, wandert die Menge dorthin,
- * statt am eindeutigen Index zu scheitern.
- * @returns true, wenn etwas geändert wurde */
+/** If an identical row already exists on the same day, the quantity moves there
+ * instead of failing on the unique index.
+ * @returns true if something was changed */
 export async function setEstimatedPrice(
   kx: InventoryContext,
   kind: AcquisitionKind,
@@ -164,5 +164,5 @@ export async function setEstimatedPrice(
       return true;
     },
     { repeatAtConflict: true },
-  ); // sperrt die Zeile, dann die Zielzeile: zwei Nachträge können sich kreuzen
+  ); // locks the row, then the target row: two amendments can cross
 }

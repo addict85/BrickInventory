@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
 
-/** Teile und Figuren eines Sets im Bestand des Kontos: vorhandene Zeilen behalten Lagerort
- * und Datum, was das Set nicht mehr enthält, geht. Der Katalog liefert die Nummern. */
+/** Parts and figures of a set in the account's inventory: existing rows keep storage location
+ * and date, whatever the set no longer contains goes. The catalog delivers the numbers. */
 function addSetMinifigsOne(tx: DbInterface, userId: number, setNumber: string, nummern: string[]) {
   return tx.run(
     `INSERT INTO minifigs (user_id, set_number, fig_number, source)

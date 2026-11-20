@@ -15,8 +15,8 @@ export type ManualEntry = {
   currency: string;
 };
 
-/** Unter dem Schlüssel der Anfrage: Sonst buchte das Verschieben die Menge einer fremden
- * Position beim Ziel unter dem Schlüssel der Anfrage. */
+/** Under the request's key: otherwise moving would book the quantity of a foreign
+ * position at the target under the request's key. */
 export function manualEntry(tx: DbInterface, art: Art, id: number, uid: number, schluessel: (string | number)[]) {
   const bedingung = art === 'part' ? 'part_number = $3 AND color_id = $4' : 'fig_number = $3';
   return tx.get<ManualEntry>(

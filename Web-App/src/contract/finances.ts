@@ -160,7 +160,7 @@ export const PriceHistoryResponse = z.looseObject({
   condition: z.string().nullable().optional(),
   current: z.unknown().optional(),
   success: z.boolean(),
-  /** Nur beim Set. */
+  /** Only for the set. */
   set_number: z.string().optional(),
   currency: z.string(),
   history_new: z.array(PriceHistoryPoint),
@@ -182,7 +182,7 @@ export const SetPriceResponse = z.looseObject({
   max_price: z.number().nullable(),
   qty_avg_price: z.number().nullable(),
   no_price: z.boolean(),
-  /** Warum kein Preis kam (setPrice); dann ist no_price gesetzt. */
+  /** Why no price came (setPrice); then no_price is set. */
   error: z.string().optional(),
 });
 
@@ -228,7 +228,7 @@ export const ValuationSet = z.looseObject({
   no_price: z.boolean(),
   acquisitions: z.array(ValuationAcquisition),
   mixed: z.boolean(),
-  /** Nur im Haushalt: Jede Zeile ist der Bestand eines Kontos. */
+  /** Only in the household: every row is one account's inventory. */
   owners: z.array(KontoName).optional(),
   error: z.string().nullable().optional(),
 });

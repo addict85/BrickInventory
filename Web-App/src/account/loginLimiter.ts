@@ -1,4 +1,4 @@
-/** Die Adresse kommt als Wert; welche eine Anfrage hat, entscheidet die HTTP-Schicht. */
+/** The address comes as a value; which one a request has is decided by the HTTP layer. */
 import crypto from 'node:crypto';
 import { singleValue } from '../infra/validate';
 import { reportAndDeliver } from '../infra/error';
@@ -10,36 +10,36 @@ import { drosselAdresse } from '../infra/throttleAddress';
 export const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
 
-/** Je Konto über alle Adressen, verdoppelnd: Ein Angreifer rät rund 15 Mal je Viertelstunde,
- * der Inhaber wartet nach einem Vertipper Sekunden statt einer festen Sperre. */
+/** Per account across all addresses, doubling: an attacker guesses about 15 times per quarter hour,
+ * the owner waits seconds after a typo instead of a fixed lock. */
 export function waitTimeSeconds(fehlversuche: number): number {
   if (fehlversuche < MAX_ATTEMPTS) return 0;
   return Math.min(2 ** (fehlversuche - MAX_ATTEMPTS), WINDOW_MS / 1000);
 }
-/** Über ALLE Namen: Die Grenze je Konto liesse sonst Password-Spraying zu. */
+/** Across ALL names: the limit per account would otherwise allow password spraying. */
 export const MAX_JE_ADDRESS = 30;
 const KNOWN_MIN = 30 * 24 * 60;
 const WINDOW_MIN = WINDOW_MS / 60000;
-/** Ein reservierter Platz, dessen Prüfung nie gemeldet wurde, verfällt danach. */
+/** A reserved slot whose check was never reported expires after this. */
 const RUNNING_EXPIRY_S = 60;
 
-// einzelwert(): Kommt der Name doppelt an, liefert Express ein Array.
+// einzelwert(): if the name arrives twice, Express returns an array.
 const _key = (ip: string, name: string) => `login|${drosselAdresse(ip)}|${singleValue(name).toLowerCase()}`;
 const _adressKey = (ip: string) => `login-adresse|${drosselAdresse(ip)}`;
 const _nameKey = (name: string) => `login-name|${singleValue(name).toLowerCase()}`;
-/** Die Bekannt-Zeile lebt 30 Tage und die Tabelle liest die Leserolle: Dort steht
- * nur der HMAC der Adresse; er bleibt für dieselbe Adresse gleich und zählt weiter. */
+/** The known row lives 30 days and the reading role reads the table: it only
+ * holds the HMAC of the address; it stays the same for the same address and keeps counting. */
 function adressDigest(ip: string): string {
   return searchValue('anmeldeadresse', drosselAdresse(ip));
 }
 const _knownKey = (ip: string, name: string) => `login-bekannt|${adressDigest(ip)}|${singleValue(name).toLowerCase()}`;
 const _successKey = (ip: string, kennung: string) => `login-erfolg|${adressDigest(ip)}|${kennung}`;
 
-/** Name und E-Mail eines Kontos zählen gemeinsam, sonst gälte jede Grenze doppelt.
- * Klein schreibt PostgreSQL wie beim Login: JS macht aus „İ" zwei Zeichen. */
+/** Name and email of an account count together, otherwise every limit would apply twice.
+ * Lower-cased by PostgreSQL as on login: JS turns "İ" into two characters. */
 async function kontoKennung(k: AccountContext, username: string): Promise<string> {
-  // Ausnahme: Bei gestörter Datenbank zählt die Drossel im Speicher weiter
-  // (inMemory); ohne Konto dann nach dem Namen, statt die Anmeldung zu sperren.
+  // Exception: with a disrupted database the throttle keeps counting in memory
+  // (inMemory); without an account then by the name, instead of locking the login.
   const z = await k.konten
     .accountToNames(singleValue(username))
     .catch(reportAndDeliver('anmeldung:konto-kennung', null));
@@ -47,19 +47,19 @@ async function kontoKennung(k: AccountContext, username: string): Promise<string
   return `name:${namedDigest(z?.kennung ?? singleValue(username).toLowerCase())}`;
 }
 
-/** Ein unbekannter Name ist oft ein vertipptes Passwort, und die Tabelle liest die
- * Leserolle: nur der HMAC, der für denselben Namen gleich bleibt und weiter zählt. */
+/** An unknown name is often a mistyped password, and the reading role reads the
+ * table: only the HMAC, which stays the same for the same name and keeps counting. */
 function namedDigest(name: string): string {
   return searchValue('anmeldename', name);
 }
 
 export type Sperre = { code: ErrorCode; vars: { minuten: number } };
 
-/** Belegt den Versuch; loginFailed, loginSucceeded oder giveLoginSpaceFree geben ihn frei. */
+/** Occupies the attempt; loginFailed, loginSucceeded or giveLoginSpaceFree release it. */
 export async function loginAllowed(k: AccountContext, ip: string, username: string): Promise<Sperre | null> {
   const kennung = await kontoKennung(k, username);
-  // Bekannt: nur die Sperre je Adresse und Konto. Gesamtsperre und Wartezeit liessen sich sonst
-  // gegen den Inhaber richten, hinter einem Proxy teilen sich alle eine Adresse.
+  // Known: only the lock per address and account. Total lock and waiting time could otherwise
+  // be turned against the owner; behind a proxy everyone shares one address.
   const bekannt = !!(await k.throttle.counterState(_knownKey(ip, kennung), KNOWN_MIN));
   const gesamt = await k.throttle.reserve(
     _adressKey(ip),
@@ -82,7 +82,7 @@ export async function loginAllowed(k: AccountContext, ip: string, username: stri
   let rest = 0;
   const konto = await k.throttle.reserve(_nameKey(kennung), WINDOW_MIN, RUNNING_EXPIRY_S, s => {
     rest = waitTimeSeconds(s.count) - s.sinceLast;
-    // In der Wartezeit-Phase höchstens ein Versuch zugleich je Konto.
+    // In the waiting-time phase at most one attempt at a time per account.
     return rest <= 0 && (s.count < MAX_ATTEMPTS || s.laufend === 0);
   });
   if (!konto.ok) {
@@ -100,7 +100,7 @@ export async function giveLoginSpaceFree(k: AccountContext, ip: string, username
   await k.throttle.releaseSlot(_adressKey(ip));
 }
 
-/** @returns die Fehlversuche des Kontos im Fenster und ob die Tagesgrenze gerade erreicht ist */
+/** @returns the account's failed attempts in the window and whether the daily limit was just reached */
 export async function loginFailed(
   k: AccountContext,
   ip: string,
@@ -114,10 +114,10 @@ export async function loginFailed(
   return { n, dailyLimit: tag === MAX_JE_ACCOUNT_TAG };
 }
 
-/** Eine bekannte Adresse umgeht die Bremse je Konto; wer dort sitzt, riete sonst 480 Mal am Tag.
- * Darüber gilt das Passwort nur mit zweitem Faktor; Passkey und „Passwort vergessen“ bleiben
- * offen, das Zurücksetzen leert den Zähler. Bekannte Adressen zählen je für sich: Sonst
- * sperrte ein Fremder mit 50 Versuchen den Inhaber auch an seinen eigenen Geräten aus. */
+/** A known address bypasses the brake per account; whoever sits there would otherwise guess 480 times a day.
+ * Above that the password only applies with a second factor; passkey and "forgot password" stay
+ * open, resetting clears the counter. Known addresses count separately: otherwise
+ * a stranger with 50 attempts would lock the owner out even on their own devices. */
 export const MAX_JE_ACCOUNT_TAG = 50;
 async function _tagKey(k: AccountContext, ip: string, kennung: string): Promise<string> {
   const eigen =
@@ -126,8 +126,8 @@ async function _tagKey(k: AccountContext, ip: string, kennung: string): Promise<
   return eigen ? `login-tag|${kennung}|${adressDigest(ip)}` : `login-tag|${kennung}`;
 }
 
-/** Über der Tagesgrenze sperrte ein Fremder den Inhaber an jedem neuen Ort aus: Ein signierter, einmal
- * gültiger Link lässt die Adresse der gesperrten Anmeldung einen Tag lang wie eine bekannte zählen. */
+/** Above the daily limit a stranger would lock the owner out at every new place: a signed, single-use
+ * link lets the address of the locked login count like a known one for a day. */
 const _releaseKey = (kennung: string, abdruck: string) => `login-freigabe|${kennung}|${abdruck}`;
 const releaseSignature = (uid: number, abdruck: string, bis: number) =>
   searchValue('anmeldefreigabe', `${uid}|${abdruck}|${bis}`);
@@ -163,8 +163,8 @@ export type Anmeldeereignis =
   | 'bestaetigung_fehlgeschlagen'
   | 'bestaetigung_gesperrt'
   | 'bestaetigung_gebremst';
-/** Eine Warnzeile je Ereignis für Protokoll, app_logs und fail2ban; nie Passwort, Code
- * oder eingegebener Name, denn im Namensfeld landet auch einmal ein Passwort. */
+/** One warning line per event for log, app_logs and fail2ban; never password, code
+ * or entered name, because a password sometimes lands in the name field. */
 export function reportLoginEvent(
   ereignis: Anmeldeereignis,
   angaben: { ip?: string; konto?: number | null; art?: Brake; zugang?: string },
@@ -178,7 +178,7 @@ export function reportLoginEvent(
   });
 }
 
-/** Erst der Erfolg zeigt, ob nach Fehlversuchen jemand hineinkam, und von wo; nie der Name. */
+/** Only the success shows whether someone got in after failed attempts, and from where; never the name. */
 export type LoginMethod = 'passwort' | 'passwort+code' | 'passwort+passkey' | 'passkey' | 'qr';
 export function reportLogin(angaben: { ip?: string | undefined; konto: number; zugang: LoginMethod }): void {
   const { ip, konto, zugang } = angaben;
@@ -194,24 +194,24 @@ export async function loginSucceeded(k: AccountContext, ip: string, username: st
   const kennung = await kontoKennung(k, username);
   await k.throttle.forgetCounter(_key(ip, kennung));
   await k.throttle.forgetCounter(_nameKey(kennung));
-  // Nur freigeben: Ein Erfolg setzt den Zähler der Adresse nach Fehlversuchen gegen andere Konten nicht zurück.
+  // Only release: a success does not reset the address counter after failed attempts against other accounts.
   await k.throttle.releaseSlot(_adressKey(ip));
   await k.throttle.countAttempt(_knownKey(ip, kennung), KNOWN_MIN);
   await k.throttle.countAttempt(_successKey(ip, kennung), WINDOW_MIN);
 }
 
-/** Weiche Grenze: Wer sich öfter anmeldet, verliert nur den Vorrang. Eine harte träfe
- * den Inhaber, und gegen die Last wirken schon Sperren und Schranke. */
+/** Soft limit: whoever logs in more often only loses the priority. A hard one would hit
+ * the owner, and against the load the locks and the limit already work. */
 export const SUCCESSES_WITH_PRIORITY = 30;
 
-/** Diese Adresse hat sich mit diesem Namen zuletzt angemeldet, und nicht zu oft. */
+/** This address last logged in with this name, and not too often. */
 export async function knownLogin(k: AccountContext, ip: string, username: string): Promise<boolean> {
   const kennung = await kontoKennung(k, username);
   if (!(await k.throttle.counterState(_knownKey(ip, kennung), KNOWN_MIN))) return false;
   return ((await k.throttle.counterState(_successKey(ip, kennung), WINDOW_MIN))?.count ?? 0) < SUCCESSES_WITH_PRIORITY;
 }
 
-/** Jeder unbekannte Name legt eine Zeile an; ohne Aufräumen wüchse die Tabelle mit jedem Rateversuch. */
+/** Every unknown name creates a row; without cleanup the table would grow with every guess. */
 export async function cleanLoginCounterOn(k: AccountContext): Promise<number> {
   return k.throttle.cleanUp(KNOWN_MIN);
 }
@@ -225,16 +225,16 @@ export function countRequest(
   return k.throttle.countInWindow(`${bucket}|${drosselAdresse(ip)}`, windowMs / 60000);
 }
 
-/** Je Konto und Zugang: Ein erbeuteter Zugang sperrt nicht die Notbremsen des Inhabers.
- * Codes zählen getrennt und länger; nur ein richtiger Code setzt sie zurück. */
+/** Per account and access: a captured access does not lock the owner's emergency brakes.
+ * Codes count separately and longer; only a correct code resets them. */
 export type Brake = 'passwort' | 'faktor';
 const FACTOR_WINDOW_MIN = 60;
 const _confirmationKey = (art: Brake, uid: number, zugang: string) =>
   `${art === 'faktor' ? 'faktor' : 'passwort'}-bestaetigen|${uid}|${zugang}`;
 const fenster = (art: Brake) => (art === 'faktor' ? FACTOR_WINDOW_MIN : WINDOW_MIN);
 
-/** Über alle Zugänge eines Kontos, damit mehrere erbeutete Zugänge nicht mehrfach raten;
- * gesperrt werden nur Zugänge, die selbst falsch geraten haben. */
+/** Across all accesses of an account, so several captured accesses do not guess several times;
+ * only accesses that guessed wrong themselves get locked. */
 export const MAX_CONFIRMATION_JE_ACCOUNT = 20;
 const ACCOUNT_WINDOW_MIN = 24 * 60;
 const _accountConfirmationKey = (art: Brake, uid: number) =>
@@ -258,7 +258,7 @@ export async function confirmationLocked(
   const minuten = accountFull && r.stand.count < MAX_ATTEMPTS ? konto!.waitMin : r.stand.waitMin;
   return { code: 'zu_viele_fehlversuche', vars: { minuten } };
 }
-/** @returns true, wenn dieser Fehlversuch eine Bremse (Zugang oder Konto) gerade erreicht hat */
+/** @returns true if this failed attempt just reached a brake (access or account) */
 export async function confirmationFailed(k: AccountContext, art: Brake, uid: number, zugang: string): Promise<boolean> {
   const jeAccess = await k.throttle.countAttempt(_confirmationKey(art, uid, zugang), fenster(art));
   const jeAccount = await k.throttle.countAttempt(_accountConfirmationKey(art, uid), ACCOUNT_WINDOW_MIN);
@@ -268,8 +268,8 @@ export async function confirmationSucceeded(k: AccountContext, art: Brake, uid: 
   await k.throttle.forgetCounter(_confirmationKey(art, uid, zugang));
 }
 
-/** Wer das Passwort kennt, riete den Code sonst langsam unter jeder Wartezeit durch;
- * über der Schranke (24 h je Konto) gelten nur Wiederherstellungscode und Passkey. */
+/** Whoever knows the password would otherwise slowly guess the code under every waiting time;
+ * above the limit (24 h per account) only recovery code and passkey apply. */
 export const MAX_FACTOR_LOGIN_JE_ACCOUNT = 20;
 const _factorLoginKey = (uid: number) => `faktor-anmeldung-konto|${uid}`;
 export async function factorCodeLocked(k: AccountContext, uid: number): Promise<boolean> {
@@ -278,7 +278,7 @@ export async function factorCodeLocked(k: AccountContext, uid: number): Promise<
     MAX_FACTOR_LOGIN_JE_ACCOUNT
   );
 }
-/** @returns true, wenn dieser Fehlversuch die Schranke gerade erreicht hat */
+/** @returns true if this failed attempt just reached the limit */
 export async function factorCodeWrong(k: AccountContext, uid: number): Promise<boolean> {
   return (await k.throttle.countAttempt(_factorLoginKey(uid), ACCOUNT_WINDOW_MIN)) === MAX_FACTOR_LOGIN_JE_ACCOUNT;
 }

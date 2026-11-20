@@ -13,7 +13,7 @@ export function appVersion(): string {
     const v = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'version.json'), 'utf8')).version;
     if (v) G.v = String(v);
   } catch (_) {
-    /* ohne Bau (tsx) gibt es die Datei nicht */
+    /* without a build (tsx) the file does not exist */
   }
   G.v ||= 'unbekannt';
   return G.v;

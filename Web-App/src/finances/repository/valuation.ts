@@ -5,7 +5,7 @@ import type { FinancesReadContract } from '../readContract';
 import { blJoin, blNummerSql } from '../../../db/blMappingSql';
 import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/catalogView';
 
-/** Eine Erfassung eines manuellen Teils oder einer Figur, Kaufpreis in der Kontowährung. */
+/** An acquisition of a manual part or a figure, purchase price in the account currency. */
 export interface ManualEntry {
   id: number;
   user_id: number;
@@ -54,7 +54,7 @@ export interface ValuedSet {
   added_at: Date | null;
 }
 
-/** Kaufpreis und Zustand stehen in den Erfassungen. */
+/** Purchase price and condition are stored in the acquisitions. */
 export function setsToValuation(db: DbInterface, l: FinancesReadContract, uids: number[]) {
   return db.all<ValuedSet>(
     `SELECT s.user_id, s.set_number, ${SET.name} AS name, ${SET.jahr} AS year,
@@ -69,7 +69,7 @@ export function setsToValuation(db: DbInterface, l: FinancesReadContract, uids: 
   );
 }
 
-/** Die Nummern tragen den Versionsanhang. */
+/** The numbers carry the version suffix. */
 export function catalogFeatures(db: DbInterface, setNumbers: string[]) {
   return db.all<{ set_number: string; is_gear: boolean; bl_type: string | null; fetched_at: Date | null }>(
     'SELECT set_number, is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = ANY($1)',

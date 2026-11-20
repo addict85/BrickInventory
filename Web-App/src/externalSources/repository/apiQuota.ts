@@ -1,8 +1,8 @@
 import type { DbInterface } from '../../../db/database';
 
-/** Konto 0 ist die Summe. */
+/** Account 0 is the sum. */
 
-/** In einem Schritt, damit gleichzeitige Aufrufe die Grenze nicht gemeinsam überspringen. */
+/** In one step so that concurrent calls do not jump the limit together. */
 export function countApiCall(tx: DbInterface, day: string, apiName: string, id: number, grenze: number) {
   return tx.get<{ count: number }>(
     `

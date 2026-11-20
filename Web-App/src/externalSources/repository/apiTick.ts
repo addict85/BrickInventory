@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 
-/** In einem Schritt, damit zwei Prozesse nie denselben Platz bekommen. */
+/** In one step so that two processes never get the same slot. */
 export function receiptsTick(db: DbInterface, api: string, gapMs: number) {
   return db.get<{ warte_ms: number | string }>(
     `INSERT INTO api_cadence (api, next_at) VALUES ($1, clock_timestamp() + make_interval(secs => $2 / 1000.0))

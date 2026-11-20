@@ -36,7 +36,7 @@ export const Auftrag = z.looseObject({
   progress: AuftragFortschritt.nullable(),
   error_message: z.string().nullable(),
   geplant: z.boolean(),
-  /** Verschoben (Kontingent, Drosselung): wartet bis due_at, `error_message` nennt den Grund. */
+  /** Postponed (quota, throttling): waits until due_at, `error_message` names the reason. */
   waiting: z.boolean(),
   set_number: z.string().nullable(),
 });
@@ -123,7 +123,7 @@ export const CacheStatsResponse = z.looseObject({
   catalog: z.number().int(),
   price_stale: z.number().int(),
   rate_limits: RateLimits.nullable(),
-  /** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen. */
+  /** Parts of the response that carry only substitute values after an error. */
   degradiert: z.array(z.string()).optional(),
 });
 
@@ -217,7 +217,7 @@ export const PreisJobStand = z.looseObject({
   }),
   rate_limit: z.looseObject({ count: ganz, limit: ganz, remaining: ganz, date: z.string().nullable().optional() }),
 });
-/** Die Einträge zeigt die Verwaltung roh an; ihre Felder sind die Spalten von app_logs. */
+/** The admin shows the entries raw; their fields are the columns of app_logs. */
 export const ProtokollEintraege = z.looseObject({
   success: z.literal(true),
   eintraege: z.array(z.record(z.string(), z.unknown())),
@@ -241,7 +241,7 @@ export const BildDiagnose = z.looseObject({
 });
 export const BildMerkerVergessen = z.looseObject({ success: z.literal(true), entfernt: ganz, hinweis: z.string() });
 
-/** Diagnosen für die Verwaltung: Ihre Felder zeigt die Oberfläche roh an. */
+/** Diagnostics for the admin: the UI shows their fields raw. */
 export const Diagnose = z.record(z.string(), z.unknown());
 export const Endpunkte = z.looseObject({
   auth: z.record(z.string(), z.unknown()).optional(),
@@ -250,9 +250,9 @@ export const Endpunkte = z.looseObject({
   endpoints: z.record(z.string(), z.unknown()),
 });
 
-/** Sammelantworten der Verwaltung mit dem, was die einzelne Route dazu sagt. */
+/** The admin's bulk responses with what the individual route says about it. */
 export const VerwaltungMeldung = GenericAdminResponse.extend({ message: z.string() });
-/** Anleitungen neu eingereiht; ohne fehlende sagt `message` warum keine. */
+/** Instructions re-queued; without missing ones, `message` says why none. */
 export const AnleitungenEingereiht = GenericAdminResponse.extend({ enqueued: ganz, message: z.string().optional() });
 export const KatalogBilderEingereiht = GenericAdminResponse.extend({
   queued: ganz,
@@ -268,7 +268,7 @@ export const VerwaltungZustand = GenericAdminResponse.extend({ condition: z.stri
 export const VerwaltungDesign = GenericAdminResponse.extend({ theme: z.string() });
 
 export const routen = {
-  // Die Zeilen eines laufenden Imports: so viele, wie die eine Datei hat.
+  // The rows of a running import: as many as the one file has.
   'GET /api/v1/sets/import/csv/status': { klein: true, antwort: CsvImportStatus },
   'GET /api/v1/sets/import/csv/stream': {
     art: 'strom',

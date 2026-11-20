@@ -1,4 +1,4 @@
-/** Jeder Dienst nimmt den Kontext; Regeln ohne Datenbank stehen in regeln.ts. */
+/** Every service takes the context; rules without a database live in rules.ts. */
 import type { Db } from '../../db/database';
 import { mit, buildArea, type Inspect } from '../infra/area';
 import { Faecher } from '../infra/cache';

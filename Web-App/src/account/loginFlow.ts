@@ -1,6 +1,6 @@
-/** Was nach einer gelungenen Prüfung geschieht: Token ausstellen, Passwort ändern,
- * QR-Zugang anlegen. Die Routen in routes/auth.ts prüfen, rufen und antworten;
- * Sitzung und Keks bleiben dort, weil sie an der Anfrage hängen. */
+/** What happens after a successful check: issue token, change password,
+ * create QR access. The routes in routes/auth.ts check, call and respond;
+ * session and cookie stay there, because they hang on the request. */
 import * as K from './accounts';
 import { createToken, runtimeDays, UNLIMITED } from './deviceToken';
 import { APP_MAX_DURATION_DAYS, tokenDetails, tokenLabel, tokenScope } from './tokenRequest';
@@ -14,11 +14,11 @@ import { versuche, valueOr } from '../infra/result';
 import type { AccountContext } from './context';
 
 export type Angemeldet = { id: number | string; username: string; is_admin: boolean; must_change_password?: boolean };
-/** Wie der Token heissen und gelten soll; beide Anmeldewege prüft der Vertrag. */
+/** What the token should be called and how long it applies; the contract checks both login paths. */
 export type TokenWish = { label?: unknown; never_expires?: boolean | undefined; scope?: string | undefined };
 
-/** Die Antwort nach Passwort oder Passkey. Ohne `withToken` trägt die Sitzung
- * (httpOnly-Keks); ein Token wäre im Browser per Skript auslesbar. */
+/** The response after password or passkey. Without `withToken` the session carries it
+ * (httpOnly cookie); a token would be readable by script in the browser. */
 export async function loginResponse(
   k: AccountContext,
   user: Angemeldet,
@@ -30,7 +30,7 @@ export async function loginResponse(
   let token: string | null = null;
   if (withToken) {
     const dauerhaft = wish.never_expires === true;
-    // Ein Token, den die Datenbank nie sah, liefe im SSE-Kanal in ein 401.
+    // A token the database never saw would run into a 401 in the SSE channel.
     const neu = await versuche(
       'login:token',
       createToken(
@@ -46,11 +46,11 @@ export async function loginResponse(
     if (!token) fachfehler('intern', 'token_nicht_ausgestellt');
     hintInBackground(k, uid, 'token_neu', tokenLabel(wish.label, 'webapp-session'));
   }
-  // Verwalterrechte trägt die Sitzung und ein Token mit Scope `voll`, nicht `app`.
+  // Administrator rights are carried by the session and a token with scope `voll`, not `app`.
   const verwalter = user.is_admin && (!withToken || tokenScope(wish.scope) === 'voll');
   return {
     ...(token ? { token, token_info: await tokenDetails(k, token) } : {}),
-    // Mit gleitender Frist ist nichts unbegrenzt.
+    // With a sliding deadline nothing is unlimited.
     never_expires: false as const,
     user: {
       id: user.id,
@@ -62,7 +62,7 @@ export async function loginResponse(
   };
 }
 
-/** Ein dauerhafter Gerätezugang; die Mail meldet ihn dem Inhaber. */
+/** A permanent device access; the mail reports it to the owner. */
 export async function devicesTokenIssue(
   k: AccountContext,
   uid: number,
@@ -76,8 +76,8 @@ export async function devicesTokenIssue(
   return { token, label: name, token_info: await tokenDetails(k, token) };
 }
 
-/** Ohne Adresse verweigern statt raten: Eine falsche Adresse im QR-Code fiele
- * erst später in einem anderen Netz auf. */
+/** Refuse instead of guessing without an address: a wrong address in the QR code would
+ * only show up later in another network. */
 export async function createQrAccess(k: AccountContext, uid: number, gueltigkeit: unknown) {
   const basis = basisUrl();
   if (!basis) {
@@ -88,7 +88,7 @@ export async function createQrAccess(k: AccountContext, uid: number, gueltigkeit
   if (tage === UNLIMITED) unlimitedOnlyWithTls(basis);
   const { token, kopplung } = await QR.create(k, uid, tage);
   hintInBackground(k, uid, 'qr_zugang_neu');
-  // `fp` nur mit TLS: Die App pinnt damit die Wurzel der internen CA.
+  // `fp` only with TLS: the app pins the root of the internal CA with it.
   const ca = viaTls(basis) ? await tlsStand() : null;
   return {
     token,
@@ -100,7 +100,7 @@ export async function createQrAccess(k: AccountContext, uid: number, gueltigkeit
   };
 }
 
-/** Der Name aus der Tabelle: Mit App-Token gibt es keine Sitzung, die ihn trägt. */
+/** The name from the table: with an app token there is no session that carries it. */
 export async function eigenesPasswortAendern(k: AccountContext, uid: number, neu: string, passkeysWiderrufen: boolean) {
   const konto = await k.konten.accountShort(uid);
   const mangel = passwordLack(neu, konto?.username);

@@ -3,13 +3,13 @@ import { ereignis } from '../infra/event';
 import { Zwischenspeicher } from '../infra/cache';
 import type { ImagesContext } from './context';
 
-/** Daten, keine Warteschlange: je Adresse eine Zeile. Abgearbeitet vom EINEN
- * Auftrag 'bildbedarf', der in Stapeln mit Rücksicht auf das CDN holt. */
+/** Data, not a queue: one row per address. Processed by the ONE
+ * job 'bildbedarf', which fetches in batches with consideration for the CDN. */
 
-/** Zehn Bilder je Durchgang, alle 20 Sekunden: dreissig Anfragen je Minute. */
+/** Ten images per pass, every 20 seconds: thirty requests per minute. */
 export const STAPEL = 10;
 export const TAKT_MS = 20_000;
-/** Was seit Tagen niemand ansah, eilt nicht. */
+/** What nobody has looked at for days is not urgent. */
 export const NOTIZ_GILT_MS = 3 * 24 * 60 * 60 * 1000;
 export const IMAGE_DEMAND_KEY = 'bildbedarf';
 
@@ -19,28 +19,28 @@ export function requestsJeMinute(): number {
 
 const setBildGeladen = (k: ImagesContext) =>
   k.faecher.fach('setBildGeladen', () => ereignis<[setNummer: string, quelle: string | null]>('setBildGeladen'));
-/** Den Eintrag beim Set macht der Katalog (höher); er horcht hier, statt dass die Bilder ihn rufen. */
+/** The entry on the set is made by the catalog (higher); it listens here instead of the images calling it. */
 export function atSetImageLoaded(k: ImagesContext, fn: (setNummer: string, quelle: string | null) => unknown) {
   return setBildGeladen(k).horche(fn);
 }
 
-/** @returns false, wenn ein Horcher scheiterte (er ist protokolliert) */
+/** @returns false if a listener failed (it is logged) */
 export function reportSetImageLoaded(k: ImagesContext, setNummer: string, quelle: string | null = null) {
   return setBildGeladen(k).melde(setNummer, quelle);
 }
 
-/** Steht er schon offen, bleibt es bei einem. */
+/** If one is already open, it stays at one. */
 export async function imageDemandKick(k: ImagesContext): Promise<void> {
   await k.jobQueue.placeJobOne('bildbedarf', {}, { schluessel: IMAGE_DEMAND_KEY, maxAttempts: 3 });
 }
 
-/** Ein INSERT je Bildanfrage leerte bei einer Kachelwand den Pool. Was bei
- * einem Absturz im Puffer liegt, fragt der nächste Aufruf wieder an. */
+/** One INSERT per image request drained the pool with a tile wall. Whatever is in the buffer
+ * during a crash is requested again by the next call. */
 const puffer = (k: ImagesContext) => k.faecher.fach('bildbedarf:puffer', () => new Map<string, string>()); // url → set_number
 const takte = (k: ImagesContext) => k.faecher.fach('bildbedarf:takte', (): NodeJS.Timeout[] => []);
 
-/** Je Set einmal in 15 Minuten, höchstens 5000 gemerkt: Der Bild-Proxy fragt für jede
- * Kachel, und ein Konto mit erfundenen Nummern füllte sonst die Notizen. */
+/** Once per set in 15 minutes, at most 5000 remembered: the image proxy asks for every
+ * tile, and an account with invented numbers would otherwise fill the notes. */
 export function imageOnceReserve(k: ImagesContext, url: string, setNummer: string): void {
   const gemerkt = k.faecher.fach('bildbedarf:vorgemerkt', () => new Zwischenspeicher<string, true>(5000, 15 * 60_000));
   if (gemerkt.hole(setNummer)) return;
@@ -48,7 +48,7 @@ export function imageOnceReserve(k: ImagesContext, url: string, setNummer: strin
   rememberUsed(k, url, setNummer);
 }
 
-/** Hält die Anfrage nie auf. */
+/** Never holds up the request. */
 export function rememberUsed(k: ImagesContext, url: string, setNumber: string | null): void {
   if (!setNumber) return;
   if (puffer(k).size < 500) puffer(k).set(url, setNumber);
@@ -58,14 +58,14 @@ export async function noteImageDemand(k: ImagesContext, urls: string[], sets: (s
   await k.bildbedarf.rememberImageRequests(urls, sets);
 }
 
-/** Geschrieben über den Kontext dessen, der den Takt gestartet hat (setUpImageDemand). */
+/** Written via the context of whoever started the tick (setUpImageDemand). */
 export async function schreibePuffer(k: ImagesContext): Promise<void> {
   const _puffer = puffer(k);
   if (!_puffer.size) return;
   const urls = [..._puffer.keys()];
   const sets = urls.map(u => _puffer.get(u)!);
   _puffer.clear();
-  // Scheitert das Schreiben, geht der Puffer zurück und der Fehler an den Takt: nichts geht verloren.
+  // If writing fails, the buffer goes back and the error to the tick: nothing gets lost.
   try {
     await noteImageDemand(k, urls, sets);
   } catch (e) {
@@ -86,19 +86,19 @@ export async function setUpImageDemand(k: ImagesContext): Promise<void> {
   _ticks[0]?.unref();
 }
 
-/** Vor dem Schliessen des Pools: Was im Puffer liegt, braucht noch eine Verbindung. */
+/** Before closing the pool: whatever is in the buffer still needs a connection. */
 export async function stopImageDemand(k: ImagesContext): Promise<void> {
   for (const t of takte(k).splice(0)) clearInterval(t);
   await schreibePuffer(k);
 }
 
-// Sonst bleiben alte Notizen.
+// Otherwise old notes remain.
 export async function deleteExpired(k: ImagesContext): Promise<number> {
   const r = await k.bildbedarf.deleteOldImageRequests(String(NOTIZ_GILT_MS));
   return r?.changes || 0;
 }
 
-/** Katalogbilder für den Bildbedarf vormerken; liefert, wie viele neu dazukamen. */
+/** Reserve catalog images for the image demand; returns how many were newly added. */
 export async function catalogImagesReserve(k: ImagesContext, urls: string[], sets: string[]): Promise<number> {
   return (await k.bildbedarf.seriesCatalogImagesOne(urls, sets))?.n ?? 0;
 }
@@ -111,7 +111,7 @@ export async function emptyImageDemand(k: ImagesContext): Promise<number> {
   return (await k.bildbedarf.deleteAllImageRequests())?.changes ?? 0;
 }
 
-/** In einem Schritt herausgenommen, damit zwei Läufe nicht dieselben Bilder holen. */
+/** Taken out in one step so that two runs do not fetch the same images. */
 export function nimmBildwuensche(
   k: ImagesContext,
   validMs: number,

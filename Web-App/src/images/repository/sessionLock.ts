@@ -1,5 +1,5 @@
-/** pg_advisory_lock auf eigener, dauerhafter Verbindung: Sie gilt über alle
- * Prozesse und endet mit der Verbindung, falls der Prozess abstürzt. */
+/** pg_advisory_lock on its own, permanent connection: it applies across all
+ * processes and ends with the connection if the process crashes. */
 export type LockConnection = {
   query: (sql: string, werte?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
 };

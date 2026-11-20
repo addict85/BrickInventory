@@ -1,18 +1,18 @@
-/** Jede console-Zeile als JSON-Zeile für Docker und Log-Sammler, daneben nach
- * app_logs für die Verwaltung. Schreibfehler dorthin höchstens einmal je
- * Minute melden. */
+/** Every console line as a JSON line for Docker and log collectors, and additionally into
+ * app_logs for the admin. Report write errors there at most once per
+ * minute. */
 import * as logs from './repository/appLogs';
 import { prozessweit } from './prozessweit';
 
 export { requestContext } from './accountContext';
 import { requestContext } from './accountContext';
 
-/** Kein Leerraum, keine Steuer- oder Anführungszeichen. */
+/** No whitespace, no control characters or quotes. */
 const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
 const K = prozessweit('anfrageKennung', () => ({ sequence: 0 }));
 
-/** Ungefiltert könnte ein Client Zeilenumbrüche oder fremde Kennungen ins
- * Protokoll schreiben und Einträge vortäuschen. */
+/** Unfiltered, a client could write line breaks or foreign identifiers into the
+ * log and fake entries. */
 export function anfrageKennung(roh: unknown): string {
   const wert = typeof roh === 'string' ? roh : '';
   if (ID_RE.test(wert)) return wert;
@@ -30,7 +30,7 @@ const LOG_LEVEL: Record<Stufe | 'log', Stufe> = {
   error: 'error',
 };
 
-/** Im Test ersetzt. */
+/** Replaced in tests. */
 export interface Ausgabe {
   out(zeile: string): void;
   err(zeile: string): void;
@@ -51,7 +51,7 @@ type Abfrager = logs.Abfrager;
 const MAX_TEXT = 4000;
 const REPORT_GAP_MS = 60_000;
 
-/** Grosse Objekte gekappt, bevor sie durch Puffer und DB wandern. */
+/** Large objects truncated before they travel through buffer and DB. */
 function logText(a: unknown): string {
   if (typeof a === 'string') return a;
   if (a instanceof Error) return a.stack || a.message;
@@ -97,7 +97,7 @@ interface Zustand {
 const P = prozessweit('protokoll', () => ({ z: null as Zustand | null }));
 const pidTag = String(process.pid).slice(-4);
 
-/** Felder in fester Reihenfolge. */
+/** Fields in a fixed order. */
 export function jsonRow(stufe: Stufe, args: unknown[], zeit: number, rid?: string): string {
   const { nachricht, kontext } = split(args);
   return JSON.stringify({
@@ -124,7 +124,7 @@ function writeError(anzahl: number, e: unknown): void {
   }
 }
 
-/** Direkt auf stderr, nicht über console — sonst wieder nach app_logs. */
+/** Directly to stderr, not via console — otherwise back into app_logs. */
 export function reportWriteError(): void {
   if (!P.z) return;
   if (P.z.reportTimer) {
@@ -166,8 +166,8 @@ export function logInDieDatabase(pool: Abfrager): void {
   P.z.onRaeumTick.unref();
 }
 
-/** Als Letztes vor dem Schliessen des Pools, damit die Meldungen der übrigen
- * Abschlüsse noch in app_logs landen; danach geht nur noch stdout. */
+/** Last before closing the pool, so that the messages of the other
+ * shutdown steps still land in app_logs; afterwards only stdout works. */
 export async function stopLog(): Promise<void> {
   if (!P.z) return;
   if (P.z.timer) clearTimeout(P.z.timer);
@@ -178,7 +178,7 @@ export async function stopLog(): Promise<void> {
   P.z.pool = null;
 }
 
-/** Gibt eine Funktion zurück, die den alten Zustand wiederherstellt (Tests). */
+/** Returns a function that restores the old state (tests). */
 export function installLog(output: Ausgabe = PROCESS): () => void {
   const alt = { log: console.log, debug: console.debug, info: console.info, warn: console.warn, error: console.error };
   P.z = {
@@ -199,11 +199,11 @@ export function installLog(output: Ausgabe = PROCESS): () => void {
       const rid = requestContext.getStore()?.rid;
       const zeile = jsonRow(stufe, args, P.z.output.jetzt(), rid);
       (stufe === 'warn' || stufe === 'error' ? P.z.output.err : P.z.output.out)(zeile);
-      // app_logs behält das bisherige Textformat; die Protokollansicht liest es so.
+      // app_logs keeps the previous text format; the log view reads it like that.
       const { nachricht, kontext } = split(args);
       const text = `[${pidTag}${rid ? '/' + rid : ''}] ${nachricht}${kontext ? ' ' + logText(kontext) : ''}`;
       P.z.puffer.push({ level: name === 'log' ? 'log' : stufe, message: text.substring(0, MAX_TEXT) });
-      // Ohne Pool wüchse der Puffer unbegrenzt; jede Zeile steht ohnehin auf stdout.
+      // Without a pool the buffer would grow without limit; every line is on stdout anyway.
       if (P.z.puffer.length > 500) P.z.puffer.splice(0, P.z.puffer.length - 500);
       if (P.z.timer) clearTimeout(P.z.timer);
       P.z.timer = setTimeout(() => {

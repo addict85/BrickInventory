@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { eingabe } from '../infra/validate';
 import { type Route, zeit, Erfolg, ganz, bestaetigt, WITHOUT_BODY, KENNUNG, TEXT, ZUSTAND, abfrage, Q } from './base';
-/** Ein Konto oder mehrere, durch Komma getrennt (Lagerorte über den Haushalt). */
+/** One account or several, separated by commas (storage locations via the household). */
 const STORAGE_ACCOUNTS = z.string().regex(/^[0-9,]{0,200}$/);
 import { DEGRADED, Erfassungsantwort } from './shared';
 
@@ -17,13 +17,13 @@ export const Acquisition = z.looseObject({
   owner_user_id: z.number().int(),
   price_estimated: z.boolean(),
   currency: z.string().nullable(),
-  /** Der Preis in der Währung des Kontos (Kurs des Kauftags); null ohne Preis oder ohne Kurs. */
+  /** The price in the account's currency (rate of the purchase day); null without a price or without a rate. */
   preis_konto: z.number().nullable(),
 });
 
 export const AcquisitionTotals = z.looseObject({
   quantity: z.number().int(),
-  /** Summe in `currency`; fremde Währungen umgerechnet, ohne Kurs nicht eingerechnet. Ohne Preis fehlt sie. */
+  /** Sum in `currency`; foreign currencies converted, not included without a rate. Missing without a price. */
   amount: z.number().optional(),
   priced_rows: z.number().int(),
   currency: z.string().optional(),
@@ -32,7 +32,7 @@ export const AcquisitionTotals = z.looseObject({
 
 export const AcquisitionsResponse = z.looseObject({
   success: z.boolean(),
-  /** Das fragende Konto; fehlt, wenn das Lesen scheiterte. */
+  /** The asking account; missing if reading failed. */
   owner_user_id: z.number().int().optional(),
   acquisitions: z.array(Acquisition),
   totals: AcquisitionTotals,
@@ -103,7 +103,7 @@ export const Wiederhergestellt = z.looseObject({
   user_id: ganz,
 });
 export const PapierkorbGeleert = z.looseObject({ success: z.literal(true), entfernt: ganz });
-/** Was „Bestand leeren“ in den Papierkorb gelegt hat, mit den Kennungen zum Zurückholen. */
+/** What "empty inventory" put into the trash, with the identifiers for restoring. */
 export const BestandGeleert = z.looseObject({
   success: z.literal(true),
   sets: ganz,
@@ -112,7 +112,7 @@ export const BestandGeleert = z.looseObject({
   papierkorb: z.array(ganz),
 });
 
-/** Der Preis heisst bei Sets purchase_price, sonst unit_price; die App schickt beide. */
+/** The price is called purchase_price for sets, otherwise unit_price; the app sends both. */
 const Erfassungsaenderung = z.strictObject({
   quantity: eingabe.quantityOrNothing(1, 100_000),
   purchase_price: eingabe.geld('Kaufpreis'),

@@ -1,20 +1,20 @@
 import type { ImagesContext } from './context';
 
-/** Anleitungen liegen unter der Setnummer: Ihr Vorhandensein verrät, was jemand
- * besitzt. Set-, Teile- und Figurenbilder sind Katalog und gehen an jedes
- * angemeldete Konto (Set-Bilder seit 0105: die Katalogsuche zeigt sie für alle). */
+/** Instructions are stored under the set number: their presence reveals what someone
+ * owns. Set, part and figure images are catalog and go to every
+ * logged-in account (set images since 0105: the catalog search shows them for everyone). */
 export const fileMaster = (setNumber: string) => String(setNumber).replace(/[^a-z0-9-]/gi, '_');
 
 type Stand = { nummern: Set<string>; anleitungen: Set<string>; am: number };
-/** Je Satz Dienste; eine Haushaltsänderung leert ihn, weil sie das Blickfeld verschiebt. */
+/** Per set of services; a household change clears it because it shifts the scope. */
 const merker = (k: ImagesContext) =>
   k.faecher.fach('blickfeld', () => {
     const m = new Map<number, Stand>();
     k.household.atHouseholdChange(() => m.clear());
     return m;
   });
-// Ein Treffer gilt eine Minute; eine Absage wird nach zwei Sekunden neu
-// gefragt, damit ein eben erfasstes Set sein Bild sofort zeigt.
+// A hit applies for a minute; a refusal is asked again after two
+// seconds, so that a set just captured shows its image immediately.
 const HITS_MS = 60_000,
   REJECTION_MS = 2_000,
   ACCOUNTS_AT_MOST = 1000;
@@ -41,18 +41,18 @@ async function inScope(k: ImagesContext, uid: number, stamm: string, art: 'numme
   return (await lade(k, uid))[art].has(stamm);
 }
 
-/** Pfad unter /images/: unter sets/ nur Dateien, keine Unterordner. */
+/** Path under /images/: under sets/ only files, no subfolders. */
 export async function imageReleased(_uid: number, segmente: string[]): Promise<boolean> {
   return segmente[0] !== 'sets' || segmente.length === 2;
 }
 
-/** Namen wie src/catalog/instructions.ts sie vergibt: <set>_<n|bdp|brickinstructions>.pdf */
+/** Names as src/catalog/instructions.ts assigns them: <set>_<n|bdp|brickinstructions>.pdf */
 export async function instructionReleased(k: ImagesContext, uid: number, segmente: string[]): Promise<boolean> {
   const m = segmente.length === 1 ? /^(.+)_(\d+|bdp|brickinstructions)\.pdf$/.exec(segmente[0]!) : null;
   return !!m && inScope(k, uid, m[1]!, 'anleitungen');
 }
 
-/** Merkliste und Preisalarm zählen mit: Ein Platzhalter von dort ist kein fremder. */
+/** Wishlist and price alert count as well: a placeholder from there is not a foreign one. */
 export async function setNumberInScope(k: ImagesContext, uid: number, setNumber: string): Promise<boolean> {
   return inScope(k, uid, fileMaster(setNumber), 'nummern');
 }

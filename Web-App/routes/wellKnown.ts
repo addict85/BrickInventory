@@ -1,4 +1,4 @@
-/** Öffentlich: Google holt es, bevor Android der App die Passkeys der Domain gibt. */
+/** Public: Google fetches it before Android gives the app the domain's passkeys. */
 import express from 'express';
 import { assetlinks } from '../src/factors';
 import type { Konfig } from '../src/infra/config';

@@ -1,14 +1,14 @@
-/** Die EINE Stelle, die process.env liest: Ein ungültiger Wert ist ein
- * Startfehler mit Namen und Grund, statt still auf eine Vorgabe zu fallen.
- * Die Liste mit Erklärung steht in .env.example. */
+/** THE one place that reads process.env: an invalid value is a
+ * startup error with name and reason, instead of silently falling back to a default.
+ * The list with explanations is in .env.example. */
 import { proxyVertrauen } from './proxyTrust';
 import { readFileSync } from 'node:fs';
 import { prozessweit } from './prozessweit';
 
 type Umgebung = Record<string, string | undefined>;
 
-/** Docker-Secrets: Steht X_FILE, kommt X aus der Datei statt aus der Umgebung,
- * die `docker inspect` und /proc/<pid>/environ jedem zeigen, der dort hinsieht. */
+/** Docker secrets: if X_FILE is set, X comes from the file instead of from the environment,
+ * which `docker inspect` and /proc/<pid>/environ show to anyone who looks there. */
 export const FILE_VARIABLES = [
   'SESSION_SECRET',
   'PGPASSWORD',
@@ -18,7 +18,7 @@ export const FILE_VARIABLES = [
   'ADMIN_PASSWORD',
 ] as const;
 
-/** Übernimmt jede lesbare X_FILE nach X und streicht X_FILE; ein zweiter Aufruf ändert nichts. */
+/** Transfers every readable X_FILE to X and removes X_FILE; a second call changes nothing. */
 export function secretsFromFiles(env: Umgebung): string[] {
   const fehler: string[] = [];
   for (const name of FILE_VARIABLES) {
@@ -41,35 +41,35 @@ export function secretsFromFiles(env: Umgebung): string[] {
 export interface Konfig {
   production: boolean;
   nodeEnv: string;
-  /** Nur ausdrücklich development oder test: ohne NODE_ENV gelten die Regeln des Betriebs. */
+  /** Only explicitly development or test: without NODE_ENV the production rules apply. */
   entwicklung: boolean;
-  /** Alles ausser development/test: Auch ohne NODE_ENV gelten die Verbote des Betriebs. */
+  /** Everything except development/test: even without NODE_ENV the production prohibitions apply. */
   operation: boolean;
-  /** Ausweg für den Start als Datenbank-Superuser in Produktion (UPGRADE.md). */
+  /** Way out for starting as a database superuser in production (UPGRADE.md). */
   dbSuperuserAllowed: boolean;
   port: number;
   hstsMaxAge: number;
   trustProxy: string | undefined;
-  /** Ein Netz über acht Adressen in TRUST_PROXY ist gewollt (src/infra/proxyTrust.ts). */
+  /** A network spanning more than eight addresses in TRUST_PROXY is intended (src/infra/proxyTrust.ts). */
   proxyNetworkConfirmed: boolean;
   sessionSecret: string | undefined;
-  /** null: nach NODE_ENV (secure nur in Produktion). */
+  /** null: according to NODE_ENV (secure only in production). */
   cookieSecure: boolean | null;
   sitzungLeerlaufMin: number;
   sitzungHoechstStd: number;
-  /** Eine offene Verwaltersitzung ist mehr wert: kürzer, höchstens die allgemeinen Fristen. */
+  /** An open admin session is worth more: shorter, at most the general deadlines. */
   sitzungVerwalterLeerlaufMin: number;
   sitzungVerwalterHoechstStd: number;
   tokenIdleDays: number;
   rolle: Rolle;
-  /** Für einen Hinweis beim Start. */
+  /** For a hint at startup. */
   veraltet: string[];
   pgPoolMax: number | null;
   pgPoolMin: number;
   pgIdleMs: number;
   pgConnMs: number;
   pgStmtMs: number;
-  /** Eine hängende Transaktion hält sonst Advisory- und Zeilensperren unbegrenzt. */
+  /** A hanging transaction would otherwise hold advisory and row locks indefinitely. */
   pgIdleTxMs: number;
   pgSperreMs: number;
   adminPassword: string;
@@ -77,9 +77,9 @@ export interface Konfig {
   appRoot: string | null;
   appVersion: string | null;
   datenSchluessel: string;
-  /** Pfad der Schlüsseldatei; null: <APP_ROOT>/schluessel/datenschluessel. */
+  /** Path of the key file; null: <APP_ROOT>/schluessel/datenschluessel. */
   dataKeyFile: string | null;
-  /** Der vorige Schlüssel während eines Wechsels (DATA_KEY_ALT oder die Datei). */
+  /** The previous key during a rotation (DATA_KEY_ALT or the file). */
   dataKeyAlt: string;
   dataKeyAltFile: string | null;
   entryTimeZone: string;
@@ -92,22 +92,22 @@ export interface Konfig {
   imageFetchesJeMinute: number;
   csvRowDeadlineMs: number;
   jobParallel: number;
-  /** null: nach Kernen und cgroup-Kontingent (src/account/bcryptLimit.ts). */
+  /** null: according to cores and cgroup quota (src/account/bcryptLimit.ts). */
   bcryptArbeiter: number | null;
   jobDeadlineSec: number;
-  /** PEM; null: keine eigene CA. */
+  /** PEM; null: no own CA. */
   caCertificate: string | null;
   hinterTls: boolean;
-  /** Nur in Tests: Antworten gegen den API-Vertrag prüfen (src/http/contractRouter.ts). */
+  /** Only in tests: check responses against the API contract (src/http/contractRouter.ts). */
   checkContract: boolean;
-  /** SHA-256 der Signaturzertifikate der App, 64 Hex-Zeichen in Grossbuchstaben. */
+  /** SHA-256 of the app's signing certificates, 64 hex characters in upper case. */
   androidZertifikate: string[];
   androidPaket: string;
-  /** PEM statt der Google-Wurzeln; nur in Entwicklung und Test (src/devices/attestation). */
+  /** PEM instead of the Google roots; only in development and test (src/devices/attestation). */
   attestationWurzeln: string | null;
-  /** Bis dahin gelten Geräteschlüssel, die vor der Attestation hinterlegt wurden (UPGRADE.md). */
+  /** Until then, device keys registered before the attestation apply (UPGRADE.md). */
   geraeteschluesselAltBis: Date;
-  /** So alt darf Googles Widerrufsliste höchstens sein; älter nimmt der Server keinen Schlüssel an. */
+  /** Google's revocation list may be at most this old; if older, the server accepts no key. */
   attestationRevocationDays: number;
   attestationPatchAtLeast: number | null;
 }
@@ -115,7 +115,7 @@ export interface Konfig {
 export type Rolle = 'web' | 'jobs' | 'beides';
 const ROLES: readonly Rolle[] = ['web', 'jobs', 'beides'];
 
-/** Auch andere Module nennen sie; Höchstdauer eine Woche wie der Browser-Token. */
+/** Other modules name it too; maximum duration one week like the browser token. */
 export const VORGABE = {
   sitzungLeerlaufMin: 240,
   sitzungHoechstStd: 168,
@@ -125,7 +125,7 @@ export const VORGABE = {
   jobDeadlineSec: 300,
 } as const;
 
-/** Die Meldung nennt jede ungültige Variable. */
+/** The message names every invalid variable. */
 export class KonfigFehler extends Error {
   constructor(readonly fehler: string[]) {
     super(`Ungültige Konfiguration:\n  - ${fehler.join('\n  - ')}`);
@@ -133,7 +133,7 @@ export class KonfigFehler extends Error {
   }
 }
 
-/** Jede Variable, die ladeKonfig liest; .env.example nennt sie alle (test/konfig.test.js). */
+/** Every variable ladeKonfig reads; .env.example names them all (test/konfig.test.js). */
 export const VARIABLES = [
   'NODE_ENV',
   'PORT',
@@ -198,10 +198,10 @@ export const VARIABLES = [
   ...FILE_VARIABLES.map(n => `${n}_FILE` as const),
 ] as const;
 
-/** Steht sie noch in einer alten compose.yaml, sagt der Start es. */
+/** If it is still in an old compose.yaml, startup says so. */
 const STALE = ['WEB_WORKERS'] as const;
 
-/** Ohne Angabe beides in einem Prozess: der einfache Start ohne Compose. */
+/** Without a value both in one process: the simple start without Compose. */
 function roleFrom(env: Umgebung, fehler: string[]): Rolle {
   const roh = env.ROLLE?.trim().toLowerCase() || 'beides';
   if ((ROLES as readonly string[]).includes(roh)) return roh as Rolle;
@@ -240,9 +240,9 @@ function schalter(env: Umgebung, name: string, fehler: string[]): boolean | null
   return null;
 }
 
-/** Jeder Signaturschlüssel (eigener, Play App Signing, Debug) ergibt einen anderen
- * Hash; welche Fassung die Nutzer eines Servers haben, weiss nur sein Betreiber.
- * Leer: Der Server nimmt keine Passkey-Antwort einer App an. */
+/** Every signing key (own, Play App Signing, debug) yields a different
+ * hash; which version a server's users have is only known by its operator.
+ * Empty: the server accepts no passkey response from an app. */
 function androidZertifikate(env: Umgebung, fehler: string[]): string[] {
   const roh = env.PASSKEY_ANDROID_ZERTIFIKATE?.trim() || '';
   const liste = roh ? roh.split(/[\s,;]+/).filter(Boolean) : [];
@@ -260,8 +260,8 @@ function androidPaket(env: Umgebung, fehler: string[]): string {
   return 'ch.brickinventoryapp';
 }
 
-/** Eine eigene Wurzel öffnete den Schrittschutz jedem Schlüssel, den sie signiert:
- * darum nur, wo NODE_ENV ausdrücklich development oder test sagt. */
+/** An own root would open the step guard to every key it signs:
+ * hence only where NODE_ENV explicitly says development or test. */
 function attestationWurzeln(env: Umgebung, fehler: string[]): string | null {
   const pem = env.ATTESTATION_WURZELN?.trim() || null;
   if (pem && !developmentEnvironment(env))
@@ -275,7 +275,7 @@ function legacyKeyUntil(env: Umgebung, fehler: string[]): Date {
   const roh = env.GERAETESCHLUESSEL_ALT_BIS?.trim() || LEGACY_KEY_CUTOFF_DATE;
   const d = /^\d{4}-\d{2}-\d{2}$/.test(roh) ? new Date(`${roh}T00:00:00Z`) : new Date(Number.NaN);
   const stichtag = new Date(`${LEGACY_KEY_CUTOFF_DATE}T00:00:00Z`);
-  // Nur früher, nie später: Ein Datum in ferner Zukunft liesse unattestierte Schlüssel auf Dauer gelten.
+  // Only earlier, never later: a date in the distant future would let unattested keys apply permanently.
   if (d.getTime() <= stichtag.getTime()) return d;
   fehler.push(
     Number.isNaN(d.getTime())
@@ -293,7 +293,7 @@ function patchAtLeast(env: Umgebung, fehler: string[]): number | null {
   return null;
 }
 
-/** Sicher genug, um in eine Verbindungsoption eingesetzt zu werden. */
+/** Safe enough to be inserted into a connection option. */
 export function timeZoneValid(name: string): boolean {
   if (!/^[A-Za-z0-9_+\-/]+$/.test(name)) return false;
   try {
@@ -304,8 +304,8 @@ export function timeZoneValid(name: string): boolean {
   }
 }
 
-/** Ausdrücklich gesetzt muss die Zone stimmen; TZ und Prozesszone sind nur
- * Rückfall und fallen bei einem Fremdwert auf UTC. */
+/** If set explicitly, the zone must be correct; TZ and the process zone are only
+ * a fallback and fall back to UTC for a foreign value. */
 function zoneFrom(env: Umgebung, fehler: string[]): string {
   let zone = env.ERFASSUNG_ZEITZONE?.trim() || '';
   if (zone && !timeZoneValid(zone)) {
@@ -320,8 +320,8 @@ function developmentEnvironment(env: Umgebung): boolean {
   return ['development', 'test'].includes(env.NODE_ENV?.trim() ?? '');
 }
 
-/** Wirft KonfigFehler mit allen Fehlern auf einmal. */
-/** Fristen der Browsersitzung; für Verwalter eigene, kürzere (src/account/sessionDeadline.ts). */
+/** Throws KonfigFehler with all errors at once. */
+/** Deadlines of the browser session; for admins separate, shorter ones (src/account/sessionDeadline.ts). */
 function sitzungsKonfig(env: Umgebung, f: string[]) {
   return {
     sitzungLeerlaufMin: ganzzahl(env, 'SESSION_IDLE_MINUTES', VORGABE.sitzungLeerlaufMin, 1, 525_600, f),
@@ -395,7 +395,7 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
     dataKeyAlt,
     dataKeyAltFile: env.DATA_KEY_ALT_FILE?.trim() || null,
     entryTimeZone: zone,
-    // 0 oder weniger schaltet das Beschneiden des Preisverlaufs ab.
+    // 0 or less switches off trimming the price history.
     priceHistoryDays: ganzzahl(env, 'PRICE_HISTORY_KEEP_DAYS', 1095, -1, 36_500, f),
     uploadQuotaMb: zahl(env, 'UPLOAD_KONTINGENT_MB', 2048, f),
     uploadTotalMb: zahl(env, 'UPLOAD_GESAMT_MB', 20_480, f),
@@ -421,29 +421,29 @@ export function ladeKonfig(env: Umgebung = process.env): Konfig {
   return k;
 }
 
-/** Im Betrieb und hinter Caddy (APP_BASE_URL https://). COOKIE_SECURE=0 ist die bewusste
- * Ausnahme für einen Betrieb ohne TLS. */
+/** In production and behind Caddy (APP_BASE_URL https://). COOKIE_SECURE=0 is the deliberate
+ * exception for an operation without TLS. */
 export function cookieSafe(k: Konfig): boolean {
   return k.cookieSecure ?? (k.operation || k.hinterTls);
 }
 
 const K = prozessweit('konfig', () => ({ v: null as Readonly<Konfig> | null }));
 
-/** Beim ersten Aufruf gelesen und eingefroren: konfig() steht im heissen Pfad
- * jeder Anfrage, und der Betrieb ändert seine Umgebung nicht zur Laufzeit.
- * Wer es doch tut (Tests), sagt es ausdrücklich mit setKonfig/readKonfigNew. */
+/** Read on the first call and frozen: konfig() is on the hot path
+ * of every request, and production does not change its environment at runtime.
+ * Whoever does (tests) says so explicitly with setKonfig/readKonfigNew. */
 export function konfig(): Readonly<Konfig> {
   K.v ??= Object.freeze(ladeKonfig(process.env));
   return K.v;
 }
 
-/** Für Tests: einzelne Werte über die gelesene Konfiguration legen; null hebt das auf. */
+/** For tests: lay individual values over the read configuration; null lifts that. */
 export function setKonfig(teil: Partial<Konfig> | null): Readonly<Konfig> {
   K.v = teil ? Object.freeze({ ...ladeKonfig(process.env), ...teil }) : null;
   return konfig();
 }
 
-/** Für Tests und Skripte, die process.env nach dem Start umstellen. */
+/** For tests and scripts that change process.env after startup. */
 export function readKonfigNew(): Readonly<Konfig> {
   return setKonfig(null);
 }
@@ -458,8 +458,8 @@ export function checkKonfigOnStart(): Konfig {
   }
 }
 
-/** Für Server, Worker und Skripte gleich: Eigene Vorgaben verbanden sich
- * ausserhalb von Docker mit einer anderen Datenbank. */
+/** The same for server, worker and scripts: own defaults connected to a different database
+ * outside of Docker. */
 export function databaseConnection(env: NodeJS.ProcessEnv = process.env) {
   secretsFromFiles(env);
   if (env.DATABASE_URL) return { connectionString: env.DATABASE_URL };
@@ -472,8 +472,8 @@ export function databaseConnection(env: NodeJS.ProcessEnv = process.env) {
   };
 }
 
-/** Die Systemrolle (BYPASSRLS) für Arbeit über Kontogrenzen, sonst null: Mit
- * einer einzigen Rolle, der die Tabellen gehören, greift der Zeilenschutz nicht. */
+/** The system role (BYPASSRLS) for work across account boundaries, otherwise null: with
+ * a single role that owns the tables, row security does not apply. */
 export function systemConnection(env: NodeJS.ProcessEnv = process.env, art = 'PGSYSTEM') {
   secretsFromFiles(env);
   const user = env[`${art}_USER`]?.trim();
@@ -489,10 +489,10 @@ export function systemConnection(env: NodeJS.ProcessEnv = process.env, art = 'PG
 
 export const systemWebConnection = (env: NodeJS.ProcessEnv = process.env) => systemConnection(env, 'PGSYSTEM_WEB');
 
-/** Das Beispielpasswort aus compose.yaml; es steht in jedem öffentlichen Klon. */
+/** The example password from compose.yaml; it is in every public clone. */
 export const STANDARD_DB_PASSWORD = 'brickinventory_secret';
 
-/** In Produktion ein Startverbot. */
+/** A startup prohibition in production. */
 export function standardPasswordInUse(env: NodeJS.ProcessEnv = process.env): boolean {
   const v = databaseConnection(env);
   if (!('connectionString' in v)) return v.password === STANDARD_DB_PASSWORD;
@@ -503,8 +503,8 @@ export function standardPasswordInUse(env: NodeJS.ProcessEnv = process.env): boo
   }
 }
 
-/** Ein öffentlich bekanntes Datenbankpasswort oder ein TRUST_PROXY, der Clients
- * ihre Adresse selbst angeben lässt, soll beim Deploy auffallen. */
+/** A publicly known database password or a TRUST_PROXY that lets clients
+ * state their address themselves should stand out on deploy. */
 export function startBans(env: NodeJS.ProcessEnv = process.env): string[] {
   if (developmentEnvironment(env)) return [];
   const reasons: string[] = [];
@@ -519,7 +519,7 @@ export function startBans(env: NodeJS.ProcessEnv = process.env): string[] {
   } catch (e) {
     reasons.push(`[proxy] ${(e as Error).message} Start verweigert.`);
   }
-  // Ohne die Adresse kennt der Host-Filter keinen Namen und nimmt nur IP-Adressen an; wer das will, sagt es.
+  // Without the address the host filter knows no name and accepts only IP addresses; whoever wants that says so.
   if (
     !env.APP_BASE_URL?.trim() &&
     env.ROLLE?.trim().toLowerCase() !== 'jobs' &&
@@ -537,7 +537,7 @@ export function startBans(env: NodeJS.ProcessEnv = process.env): string[] {
   return reasons;
 }
 
-/** Erlaubt, aber laut: Schalter, die im Betrieb eine Schutzschicht abschalten. */
+/** Allowed, but loud: switches that turn off a protection layer in production. */
 export function startWarnings(env: NodeJS.ProcessEnv = process.env): string[] {
   if (developmentEnvironment(env)) return [];
   const w: string[] = [];
@@ -560,9 +560,9 @@ export function startWarnings(env: NodeJS.ProcessEnv = process.env): string[] {
   return w;
 }
 
-/** Klartext nur auf demselben Rechner: Loopback, Socket oder ein Name ohne Punkt.
- * Den vergibt Docker für Dienste und Container im eigenen Netz (`postgres`,
- * `db-brickinventory`); ein Rechner im LAN hat in der Regel einen Namen mit Domain. */
+/** Plaintext only on the same machine: loopback, socket or a name without a dot.
+ * Docker assigns those for services and containers in its own network (`postgres`,
+ * `db-brickinventory`); a machine on the LAN usually has a name with a domain. */
 function dbWithoutTls(env: NodeJS.ProcessEnv): boolean {
   let host = env.PGHOST?.trim() || 'postgres',
     modus = env.PGSSLMODE?.trim() || '';

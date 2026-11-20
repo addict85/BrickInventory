@@ -1,4 +1,4 @@
-/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
+/** What the services receive; separate from area.ts so that no import cycle arises. */
 import type { Konfig } from '../infra/config';
 import type { Uhr } from '../infra/clock';
 import type { Db } from '../../db/database';
@@ -11,12 +11,12 @@ export interface DevicesDependencies {
   konfig: Readonly<Konfig>;
   db: Db;
   uhr: Uhr;
-  /** Der Laufzustand hält die Widerrufsliste der Attestation (katalog/widerrufsliste.ts lädt sie). */
+  /** The run state holds the attestation's revocation list (catalog/revocationList.ts loads it). */
   jobQueue: JobsServices;
   lesevertrag: DevicesReadContract;
 }
 
-/** Schlüssel und Freigaben liegen unter Zeilenschutz; geprüft wird, bevor die Anfrage ein Konto trägt. */
+/** Keys and approvals are under row security; checking happens before the request carries an account. */
 const WITHOUT_ACCOUNT = 'Anmeldung oder Token-Prüfung: Es gibt noch kein Konto, für das der Zeilenschutz gälte';
 
 export const zugang = (db: Db, l: DevicesReadContract) => ({

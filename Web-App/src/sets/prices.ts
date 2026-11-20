@@ -1,4 +1,4 @@
-/** Marktpreis, Preisverlauf und Preisalarm eines Sets. */
+/** Market price, price history and price alert of a set. */
 import type { Sicht } from '../household';
 import { normalisiereSetNummer } from '../infra/setNumber';
 import type { Zustand } from '../infra/validate';
@@ -7,13 +7,13 @@ import * as repo from './repository/setDetail';
 import { versuche } from '../infra/result';
 import type { SetsContext } from './context';
 
-/** Im Zustand des Bestands. null: kein Set im Blickfeld. */
+/** In the inventory's condition. null: no set in scope. */
 export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht | number[], sn: string) {
   const blickfeld = await sk.household.scopeFrom(scopeChoice);
   const set = await repo.setInField(sk.db, sn, blickfeld);
   if (!set) return null;
-  // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung
-  // kannte.
+  // The currency from the setting: the app sent its local start value before it knew
+  // the setting.
   const currency = await currencyOf(sk, uid);
   const guideType = String(await sk.einstellungen.userValue(uid, 'price_guide_type', 'sold'));
   const ttlHours = String(await sk.einstellungen.userValue(uid, 'price_cache_ttl', '24'));
@@ -44,8 +44,8 @@ export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht 
   };
 }
 
-/** Die Währung aus den Einstellungen, nicht aus der Anfrage: Zwei Quellen
- * liefen beim nächsten Wechsel auseinander. */
+/** The currency from the settings, not from the request: two sources
+ * would drift apart at the next change. */
 export async function currencyOf(sk: SetsContext, uid: number): Promise<string> {
   return String(await sk.einstellungen.userValue(uid, 'currency', 'EUR'));
 }

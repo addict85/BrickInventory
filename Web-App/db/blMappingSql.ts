@@ -1,13 +1,13 @@
 /**
- * SQL-Bausteine für die BrickLink-Zuordnung (Migration 0037). Sie stehen in
- * db/, weil Repositories mehrerer Bereiche sie in ihre Abfragen einsetzen und
- * ein Repository keinen Dienst importieren darf.
+ * SQL building blocks for the BrickLink mapping (migration 0037). They live in
+ * db/ because repositories of several areas embed them in their queries and
+ * a repository must not import a service.
  */
 export type BlArt = 'part' | 'fig' | 'set';
 
-/** LEFT JOIN auf die gemeinsame Zuordnung und die eigene des Kontos `konto`
- * (Migration 0094); ohne Konto bleibt die eigene leer. `art` und `konto` sind
- * Spaltennamen oder feste Werte, keine Parameter. */
+/** LEFT JOIN on the shared mapping and the account's own for `konto`
+ * (migration 0094); without an account the own one stays empty. `art` and `konto` are
+ * column names or fixed values, not parameters. */
 export function blJoin(rbSpalte: string, art: BlArt, konto: string | null, alias = 'blz'): string {
   return `LEFT JOIN bl_mapping ${alias}
                ON ${alias}.type = '${art}' AND ${alias}.rb_id = ${rbSpalte}
@@ -15,7 +15,7 @@ export function blJoin(rbSpalte: string, art: BlArt, konto: string | null, alias
                ON ${alias}_e.user_id = ${konto ?? 'NULL'} AND ${alias}_e.type = '${art}' AND ${alias}_e.rb_id = ${rbSpalte}`;
 }
 
-/** Die eigene Nummer des Kontos vor der gemeinsamen, sonst die Rebrickable-Nummer. */
+/** The account's own number before the shared one, otherwise the Rebrickable number. */
 export function blNummerSql(rbSpalte: string, alias = 'blz'): string {
   return `COALESCE(${alias}_e.bl_id, ${alias}.bl_id, ${rbSpalte})`;
 }

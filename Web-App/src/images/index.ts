@@ -1,4 +1,4 @@
-/** Die öffentliche Seite des Bereichs; was Zugang oder Zustand braucht, nur über die Dienste. */
+/** The public face of the area; whatever needs access or state only via the services. */
 export { requestsJeMinute } from './imageDemand';
 export { fileMaster } from './imageScope';
 export { imageExtension, filePart, targetInFolder } from './imageFile';

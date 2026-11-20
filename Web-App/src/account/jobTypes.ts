@@ -1,4 +1,4 @@
-/** Dateien eines gelöschten Kontos, die beim Löschen liegen blieben: Der Auftrag versucht es wieder. */
+/** Files of a deleted account that were left behind on deletion: the job tries again. */
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../jobQueue';
 import { deleteAccountFiles } from './removeAccount';

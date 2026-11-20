@@ -4,40 +4,40 @@ import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
 import { asIds, type Sicht } from '../household';
 import type { InventoryContext } from './context';
 
-// Was Sets, Teile und Figuren gemeinsam brauchen.
+// What sets, parts and figures need in common.
 
-/** Je Anfrage, unabhängig vom Abfrageweg — eine Stelle statt fünf Literale. */
+/** Per request, independent of the query path — one place instead of five literals. */
 export const MAX_PAGE_SIZE = 500;
 
-/** Ohne page_size läge sonst der ganze Bestand in einer Antwort im Speicher. */
+/** Without page_size the whole inventory would otherwise be in memory in one response. */
 export const UNPAGED_LIMIT = 2000;
 
-/** Die Set-Detailansicht der App holt nur Seite 1; die normale Grenze schnitte ab. */
+/** The app's set detail view only fetches page 1; the normal limit would cut it off. */
 export const SET_PARTS_MAX_PAGE_SIZE = 5000;
 
 export function clampPageSize(value: unknown, fallback: number): number {
   return Math.min(MAX_PAGE_SIZE, Math.max(1, parseInt(String(value), 10) || fallback));
 }
 
-/** COUNT(*) ist bigint und kommt als Zeichenkette aus dem Treiber. */
+/** COUNT(*) is bigint and comes from the driver as a string. */
 type Zaehlwert = number | string | null | undefined;
 
-/** DIE Zustandsregel für Sets, manuelle Teile und Figuren: eine gebrauchte
- * Erfassung macht den Eintrag gebraucht. */
+/** THE condition rule for sets, manual parts and figures: one used
+ * acquisition makes the entry used. */
 export function conditionFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert) {
-  // COUNT(*) kommt als Text ("2").
+  // COUNT(*) comes as text ("2").
   const acq = parseInt(String(acqCount ?? ''), 10) || 0;
   const used = parseInt(String(usedCount ?? ''), 10) || 0;
-  // Ein Ausdruck, damit die Regel als EINE Zeile lesbar bleibt.
+  // One expression, so that the rule stays readable as ONE line.
   if (acq > 0) return used > 0 ? 'U' : 'N';
   return 'N';
 }
 
-/** Für die Plaketten: Wer neu und gebraucht hat, soll beides sehen. */
+/** For the badges: whoever has new and used should see both. */
 export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehlwert): ('N' | 'U')[] {
   const acq = parseInt(String(acqCount ?? ''), 10) || 0;
   const used = parseInt(String(usedCount ?? ''), 10) || 0;
-  // Ohne Erfassungen die eine Plakette „Neu".
+  // Without acquisitions the one badge "new".
   if (acq <= 0) return ['N'];
   const out: ('N' | 'U')[] = [];
   if (acq - used > 0) out.push('N');
@@ -45,7 +45,7 @@ export function conditionsFromAcquisitions(acqCount: Zaehlwert, usedCount: Zaehl
   return out.length ? out : ['N'];
 }
 
-// Wie bei Sets: Eine gebrauchte Erfassung macht den Eintrag gebraucht; eine Abfrage je Seite.
+// As for sets: one used acquisition makes the entry used; one query per page.
 type Schluessel = { part_number?: string; color_id?: number | null; fig_number?: string };
 export async function manuellenZustandSetzen<R extends Schluessel>(
   k: InventoryContext,
@@ -53,7 +53,7 @@ export async function manuellenZustandSetzen<R extends Schluessel>(
   rows: R[],
   kind: 'part' | 'fig',
 ) {
-  // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
+  // asIds(), so that older callers with a bare ID keep working.
   const uids = asIds(userId);
   if (!rows?.length) return rows;
 
@@ -74,13 +74,13 @@ export async function manuellenZustandSetzen<R extends Schluessel>(
       conditions: conditionsFromAcquisitions(acqCount, usedCount),
       acq_count: acqCount,
       used_count: usedCount,
-      // Mengengewichtet über die Erfassungen, nicht der zuletzt geschriebene Einzelpreis.
+      // Weighted by quantity over the acquisitions, not the most recently written unit price.
       avg_purchase_price: a?.avg_purchase_price != null ? Number(a.avg_purchase_price) : null,
     };
   });
 }
 
-// Eine Funktion für Teile und Figuren: Nur Tabelle und Schlüssel wechseln.
+// One function for parts and figures: only table and key change.
 export interface VerwendendesSet {
   set_number: string;
   set_name: string | null;
@@ -100,9 +100,9 @@ export interface BestandteilKopf {
   image_local: string | null;
   image_url: string | null;
   is_spare: boolean;
-  /** string_agg: Dasselbe Teil kann in mehreren Kisten liegen; ein Wert verschwiege die anderen. */
+  /** string_agg: the same part can lie in several boxes; one value would conceal the others. */
   storage: string | null;
-  /** Für die Lagerort-Auswahl im Dialog. */
+  /** For the storage location selection in the dialog. */
   owner_ids: number[];
   total_quantity: number;
 }
@@ -130,7 +130,7 @@ export async function usingSets(
     owner_user_id: parseInt(String(r.owner_user_id), 10),
   }));
 
-  // Der Kopf aus denselben Zeilen wie die Liste; das Bild von der ersten mit Bild.
+  // The header from the same rows as the list; the image from the first one with an image.
   const erste = rows[0];
   const withImage = rows.find(r => r.teil_image_local || r.teil_image_url);
   const item: BestandteilKopf | null = erste
@@ -143,7 +143,7 @@ export async function usingSets(
         category_name: erste.category_name ?? null,
         image_local: withImage?.teil_image_local ?? null,
         image_url: withImage?.teil_image_url ?? null,
-        // istErsatzteil(): Aggregate kommen als Zeichenkette, und "0" ist wahr.
+        // istErsatzteil(): aggregates come as strings, and "0" is truthy.
         is_spare: istErsatzteil(erste.is_spare),
         storage: erste.storage ?? null,
         owner_ids: [...new Set(sets.map(s => s.owner_user_id))].filter(Number.isFinite),
@@ -154,8 +154,8 @@ export async function usingSets(
   return { item, sets };
 }
 
-/** Eine Stelle für Löschroute und Aufräumen der Erfassungen; in einer Transaktion über `t`. */
-/** Die Zeile und, gab es sie, ihre Käufe: Die Finanzsummen zählten das Teil sonst weiter. */
+/** One place for the delete route and cleaning up the acquisitions; in a transaction via `t`. */
+/** The row and, if it existed, its purchases: the finance sums would otherwise keep counting the part. */
 export async function deleteManual(
   k: InventoryContext,
   art: 'part' | 'fig',

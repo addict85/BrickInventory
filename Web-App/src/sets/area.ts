@@ -1,4 +1,4 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/area.ts). */
+/** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
 import type { SetsDependencies, SetsContext } from './context';
 import { mit, buildArea, type Inspect } from '../infra/area';
 import * as erfassen from './addSet';

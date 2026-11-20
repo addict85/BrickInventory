@@ -32,7 +32,7 @@ export function accountShort(db: DbInterface, id: number): Promise<AccountShort 
   );
 }
 
-/** Alles ausser dem Passwort-Hash: Den liest die Laufzeitrolle nicht (Migration 0115). */
+/** Everything except the password hash: the runtime role does not read it (migration 0115). */
 const KONTO_SPALTEN = `id, username, email, first_name, last_name, is_admin, is_active, email_verified,
   must_change_password, created_at, session_version, registration_pending, new_email`;
 
@@ -47,7 +47,7 @@ export function profileRow(db: DbInterface, id: number): Promise<Profil | undefi
   );
 }
 
-/** Der Login sucht Name ODER E-Mail ohne Gross/klein — beides muss deshalb über beide Spalten eindeutig sein. */
+/** Login looks up name OR email case-insensitively — so both must be unique across both columns. */
 export async function nameTaken(db: DbInterface, name: string, ausser: number): Promise<boolean> {
   return !!(await db.get<Spalten<'users', 'id'>>(
     'SELECT id FROM users WHERE (LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($1)) AND id != $2',
@@ -55,8 +55,8 @@ export async function nameTaken(db: DbInterface, name: string, ausser: number): 
   ));
 }
 
-/** Die Namen gehen in die Anweisung, nicht als Parameter — deshalb eine feste Liste. Nur
- * diese Spalten darf die Laufzeitrolle schreiben (Migration 0117). */
+/** The names go into the statement, not as parameters — hence a fixed list. Only
+ * these columns may be written by the runtime role (migration 0117). */
 const NAMENSSPALTEN = new Set(['first_name', 'last_name']);
 
 export async function changeNames(db: DbInterface, id: number, felder: Record<string, unknown>): Promise<void> {
@@ -69,12 +69,12 @@ export async function changeNames(db: DbInterface, id: number, felder: Record<st
   );
 }
 
-/** Mit dem Namen meldet man sich an: Den schreibt nur die Systemrolle. */
+/** The name is what you log in with: only the system role writes it. */
 export async function changeUsernames(db: DbInterface, id: number, name: string): Promise<void> {
   await db.run('UPDATE users SET username = $2 WHERE id = $1', [id, name]);
 }
 
-/** Ein Eindringling kann ihn angestossen haben. @returns die verworfene Adresse oder null */
+/** An intruder may have triggered it. @returns the discarded address or null */
 export async function discardPendingAddress(db: DbInterface, id: number): Promise<string | null> {
   const r = await db.get<{ adresse: string }>(
     `UPDATE users u SET ${OHNE_EMAIL_NEU} FROM users alt
@@ -108,8 +108,8 @@ export async function accountToEmailToken(db: DbInterface, hash: string): Promis
   )?.id;
 }
 
-/** Erst hier wird die Adresse vergeben: Was beim Antrag frei war, kann inzwischen belegt sein.
- * In der Transaktion des Aufrufers (FOR UPDATE). @returns false, wenn die Adresse vergeben ist */
+/** Only here is the address assigned: what was free at request time may be taken by now.
+ * In the caller's transaction (FOR UPDATE). @returns false if the address is taken */
 export async function adoptEmailNew(tx: DbInterface, id: number, hash: string): Promise<boolean> {
   const neu = await tx.get<{ new_email: string }>(
     'SELECT new_email FROM users WHERE id = $1 AND new_email_token = $2 FOR UPDATE',
@@ -131,12 +131,12 @@ export async function adoptEmailNew(tx: DbInterface, id: number, hash: string): 
   return true;
 }
 
-/** Auch ein Fehlschlag verbraucht den Link. */
+/** A failure consumes the link as well. */
 export async function discardEmailNew(db: DbInterface, id: number, hash: string): Promise<void> {
   await db.run(`UPDATE users SET ${OHNE_EMAIL_NEU} WHERE id = $1 AND new_email_token = $2`, [id, hash]);
 }
 
-/** Nur der Name: Wer den Link hat, sieht vor dem Einlösen, zu welchem Konto er gehört. */
+/** Only the name: whoever has the link sees before redeeming which account it belongs to. */
 export async function nameZuEmailToken(db: DbInterface, hash: string): Promise<string | null> {
   return (
     (
@@ -159,8 +159,8 @@ export async function openRegistrations(db: DbInterface, email: string): Promise
   );
 }
 
-/** Wie adoptEmailNew, aber ohne Link: Die Adresse kann inzwischen ein anderes Konto haben.
- * In der Transaktion des Aufrufers; ein gleichzeitiger Gewinner meldet sich dort als 23505. */
+/** Like adoptEmailNew, but without a link: the address may belong to another account by now.
+ * In the caller's transaction; a concurrent winner shows up there as 23505. */
 export async function switchRegistrationFree(
   tx: DbInterface,
   id: number,
@@ -186,7 +186,7 @@ export async function switchRegistrationFree(
   return 'ok';
 }
 
-/** Altbestand aus Migration 0096: ausstehend ohne gültigen Link. */
+/** Legacy data from migration 0096: pending without a valid link. */
 export async function pendingWithoutLink(db: DbInterface): Promise<number[]> {
   return (
     await db.all<{ id: number }>(
@@ -215,7 +215,7 @@ export async function activeAdmin(db: DbInterface): Promise<number[]> {
   ).map(z => z.id);
 }
 
-/** Ein vergebenes Passwort kennen Verwalter und Weitergabe: nur bis zum ersten Wechsel. */
+/** An assigned password is known to the admin and whoever passed it on: only until the first change. */
 export async function addAccountOne(
   db: DbInterface,
   username: string,
@@ -231,19 +231,19 @@ export async function addAccountOne(
 
 export const LAST_ADMIN = 'letzter_verwalter' as const;
 
-/** Ein anderer aktiver Verwalter als der in Parameter `$1`. */
+/** Another active admin than the one in parameter `$1`. */
 const ANDERER_VERWALTER = 'EXISTS (SELECT 1 FROM users v WHERE v.is_admin AND v.is_active AND v.id <> $1)';
 
-/** Ohne die Sperre sähen zwei gleichzeitige Entzüge je den anderen noch als Verwalter
- * (READ COMMITTED), und es bliebe keiner. Sie gilt bis zum Ende der Transaktion des
- * Aufrufers; ohne eine endete sie mit der Abfrage und schützte nichts. */
+/** Without the lock, two concurrent revocations would each still see the other as admin
+ * (READ COMMITTED), and none would remain. It holds until the end of the caller's
+ * transaction; without one it would end with the query and protect nothing. */
 async function belowAdminLock<T>(tx: Db, fn: (tx: DbInterface) => Promise<T>): Promise<T> {
   if (!tx.inTransaction()) throw new Error('Die Verwaltersperre gilt nur in einer Transaktion (k.transaktion)');
   await tx.get<unknown>('SELECT pg_advisory_xact_lock($1, 0)', [LOCKS.ADMIN_INVENTORY]);
   return fn(tx);
 }
 
-/** @returns der Zustand vor der Änderung, undefined ohne Konto, oder LAST_ADMIN */
+/** @returns the state before the change, undefined without an account, or LAST_ADMIN */
 export async function setAdmin(
   db: Db,
   id: number,
@@ -261,7 +261,7 @@ export async function setAdmin(
   });
 }
 
-/** @returns der Zustand vor der Änderung, undefined ohne Konto, oder LAST_ADMIN */
+/** @returns the state before the change, undefined without an account, or LAST_ADMIN */
 export async function writeActive(
   db: Db,
   id: number,
@@ -279,11 +279,11 @@ export async function writeActive(
   });
 }
 
-/** Ein noch offener Rücksetzlink fällt mit jedem neuen Passwort: Er stammt aus
- * der Zeit davor und ginge sonst eine Stunde lang weiter. */
+/** A still-open reset link falls with every new password: it dates from
+ * the time before and would otherwise remain valid for another hour. */
 const OHNE_RUECKSETZLINK = 'reset_token = NULL, reset_token_expires = NULL';
 
-/** Ein fremd gesetztes Passwort kennt auch der Verwalter: der Inhaber ersetzt es. */
+/** A password set by someone else is also known to the admin: the owner replaces it. */
 export async function setPasswordHash(db: DbInterface, id: number, hash: string): Promise<boolean> {
   return !!(
     await db.run(
@@ -293,7 +293,7 @@ export async function setPasswordHash(db: DbInterface, id: number, hash: string)
   ).changes;
 }
 
-/** Eigenes Passwort geändert: auch die Aufforderung dazu ist erledigt. */
+/** Own password changed: the request to do so is settled as well. */
 export async function setOwnPassword(db: DbInterface, id: number, hash: string): Promise<void> {
   await db.run(
     `UPDATE users SET password_hash = $1, must_change_password = false, ${OHNE_RUECKSETZLINK} WHERE id = $2`,
@@ -305,13 +305,13 @@ export async function accountExists(db: DbInterface, id: number): Promise<boolea
   return !!(await db.get<Treffer>('SELECT 1 FROM users WHERE id = $1', [id]));
 }
 
-/** Auch aus den Kopien vor Migrationen; den Namen im Protokoll nimmt cleanLogOn(). */
+/** Also from the copies made before migrations; the name in the log is taken by cleanLogOn(). */
 async function deleteTraces(tx: DbInterface, id: number): Promise<void> {
   await removeAccountFromBackups(tx, id);
 }
 
-/** Nie das eigene Konto und nie den letzten aktiven Verwalter.
- * @returns false ohne Konto oder beim eigenen */
+/** Never the own account and never the last active admin.
+ * @returns false without an account or for the own one */
 export async function deleteAccount(db: Db, id: number, eigenes: number | null): Promise<boolean | typeof LAST_ADMIN> {
   return belowAdminLock(db, async tx => {
     if (
@@ -332,7 +332,7 @@ export async function deleteAccount(db: Db, id: number, eigenes: number | null):
   });
 }
 
-/** Das eigene Konto; der letzte aktive Verwalter bleibt. */
+/** The own account; the last active admin stays. */
 export async function deleteOwnAccount(db: Db, id: number): Promise<boolean> {
   return belowAdminLock(db, async tx => {
     if (
@@ -350,8 +350,8 @@ export async function deleteOwnAccount(db: Db, id: number): Promise<boolean> {
   });
 }
 
-/** Registrierungen, deren Adresse nach `tage` Tagen nicht bestätigt ist; in der
- * Transaktion des Aufrufers, damit keine Spur ohne ihr Konto bleibt. */
+/** Registrations whose address is not confirmed after `tage` days; in the
+ * caller's transaction, so no trace remains without its account. */
 export async function deleteOpenRegistrations(tx: DbInterface, tage: number): Promise<number> {
   const weg = await tx.all<{ id: number }>(
     `DELETE FROM users WHERE registration_pending AND NOT email_verified AND NOT is_admin
@@ -366,15 +366,15 @@ export function accountWithEmail(
   db: DbInterface,
   email: string,
 ): Promise<(Omit<AccountShort, 'must_change_password'> & { email: string }) | undefined> {
-  // Die Bedingung auf email schliesst NULL aus.
+  // The condition on email excludes NULL.
   return db.get<Spalten<'users', 'id' | 'username' | 'is_admin'> & { email: string }>(
     'SELECT id, username, is_admin, email FROM users WHERE LOWER(email) = LOWER($1)',
     [email],
   );
 }
 
-/** Ohne RETURNING: Die Kompatschicht hängt an ein INSERT ohne ON CONFLICT
- * selbst `ON CONFLICT DO NOTHING` an, dahinter wäre RETURNING ein Syntaxfehler. */
+/** Without RETURNING: for an INSERT without ON CONFLICT the compat layer appends
+ * `ON CONFLICT DO NOTHING` itself; RETURNING after that would be a syntax error. */
 export async function registerAccount(
   db: DbInterface,
   k: {
@@ -403,9 +403,9 @@ export function activeAccountAfterEmail(db: DbInterface, email: string): Promise
   );
 }
 
-/** Der Zeitpunkt des letzten Links ergibt sich aus seinem Ablauf; die Bedingung
- * im UPDATE lässt auch bei gleichzeitigen Anfragen nur eine durch.
- * @returns false, wenn der letzte Link jünger als `pauseMin` ist */
+/** The time of the last link follows from its expiry; the condition
+ * in the UPDATE lets only one through even with concurrent requests.
+ * @returns false if the last link is younger than `pauseMin` */
 export async function setRuecksetzTokenIfFree(
   db: DbInterface,
   id: number,
@@ -423,8 +423,8 @@ export async function setRuecksetzTokenIfFree(
   ).changes;
 }
 
-/** Wie setRuecksetzTokenIfFree. Nur wenn genau eine offene Registrierung die Adresse
- * nennt: Bei mehreren ginge ein Link zu einem fremd angelegten Konto an ihren Inhaber. */
+/** Like setRuecksetzTokenIfFree. Only if exactly one open registration names the address:
+ * with several, a link to an account created by someone else would go to its owner. */
 export function renewEmailTokenIfFree(
   db: DbInterface,
   email: string,
@@ -453,8 +453,8 @@ export function accountAfterRuecksetzToken(
   );
 }
 
-/** Prüfen und Verbrauchen in einer Anweisung: Zwei gleichzeitige Anfragen mit
- * demselben Link setzen sonst beide ein Passwort. */
+/** Check and consume in one statement: otherwise two concurrent requests with
+ * the same link would both set a password. */
 export function resetSetPasswordAfter(
   db: DbInterface,
   tokenHash: string,
@@ -480,7 +480,7 @@ export interface Zugang {
   rotated_at: Date;
 }
 
-/** Ein getauschter Token in seiner Überlappung zählt nicht mehr als eigenes Gerät. */
+/** A swapped token within its overlap no longer counts as a device of its own. */
 export function accessesOfAccount(db: DbInterface, uid: number): Promise<Zugang[]> {
   return db.all<Zugang>(
     `SELECT token, label, created_at, last_used, hard_expires_at, LEAST(expires_at, hard_expires_at) AS expires_at,
@@ -514,8 +514,8 @@ export function tokenStand(
   );
 }
 
-/** Gleichheit auf der ganzen Kennung, kein Präfix. Ein Vorgänger in seiner
- * Überlappung fällt mit, zählt aber nicht als eigenes Gerät. */
+/** Equality on the whole identifier, no prefix. A predecessor within its
+ * overlap goes too, but does not count as a device of its own. */
 export async function deleteAccess(
   db: DbInterface,
   uid: number,
@@ -530,7 +530,7 @@ export async function deleteAccess(
   return { anzahl: r?.n ?? 0, label: r?.label ?? null };
 }
 
-/** Alle App-Zugänge ausser `eigener` samt dessen Vorgänger und Nachfolger in der Überlappung. */
+/** All app accesses except `eigener`, including its predecessor and successor within the overlap. */
 export async function deleteOtherAccesses(db: DbInterface, uid: number, eigener: string | null): Promise<number> {
   const r = await db.get<{ n: number }>(
     `WITH weg AS (DELETE FROM api_tokens WHERE user_id = $1 AND ($2::text IS NULL OR (token <> $2

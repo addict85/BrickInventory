@@ -1,6 +1,6 @@
-/** `sameSite: strict` hält fremde Websites ab, aber keine Nachbar-Subdomain.
- * Fehlt bei einer Cookie-Sitzung jede Herkunftsangabe, wird abgelehnt;
- * Bearer-Token schickt kein Browser von selbst mit. */
+/** `sameSite: strict` keeps foreign websites out, but not a neighboring subdomain.
+ * If a cookie session lacks any origin information, it is rejected;
+ * no browser sends a bearer token on its own. */
 import type { Request, Response, NextFunction } from 'express';
 import { konfig } from '../infra/config';
 import { carriesSessionCookie } from './sitzungsKeks';
@@ -29,7 +29,7 @@ function ownHosts(req: Request): Set<string> {
 
 export function onlyOwnOrigin(req: Request, res: Response, next: NextFunction) {
   if (READING.has(req.method)) return next();
-  // Mit Cookie entscheidet die Sitzung; ein Bearer-Kopf daneben schaltet nichts ab.
+  // With a cookie the session decides; a bearer header next to it switches nothing off.
   const withSession = carriesSessionCookie(String(req.headers.cookie || ''));
   if (!withSession && String(req.headers.authorization || '').startsWith('Bearer ')) return next();
   const fremd = () => sendError(req, res, 'verboten', 'fremde_herkunft');
@@ -42,7 +42,7 @@ export function onlyOwnOrigin(req: Request, res: Response, next: NextFunction) {
     const host = hostOf(String(quelle));
     return host && ownHosts(req).has(host) ? next() : fremd();
   }
-  // Ein Browser, der nichts meldet, ist nicht prüfbar.
+  // A browser that reports nothing cannot be checked.
   return withSession ? fremd() : next();
 }
 
@@ -50,14 +50,14 @@ const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]']);
 const IP_ADDRESS = /^(\d{1,3}(\.\d{1,3}){3}|\[[0-9a-f:.]+\])$/;
 const FREE = /^\/(ca\.crt|api\/v1\/health(\/live|\/ready)?)$/;
 
-/** Ohne Basis-URL nennt die Absage die Adresse, unter der die Anfrage ankam. */
+/** Without a base URL the refusal names the address the request arrived at. */
 function ownIp(req: Request): string {
   const ip = (req.socket.localAddress ?? '').replace(/^::ffff:/, '');
   return ip.includes(':') ? `[${ip}]` : ip;
 }
 
-/** Nur der Name aus APP_BASE_URL, gegen DNS-Rebinding; ohne sie gar kein Name. Frei: Loopback,
- * IP-Adressen (die Android-App; nur ein Name lässt sich umbiegen), Wurzelzertifikat, Gesundheit. */
+/** Only the name from APP_BASE_URL, against DNS rebinding; without it no name at all. Exempt: loopback,
+ * IP addresses (the Android app; only a name can be redirected), root certificate, health. */
 export function onlyOwnHost(req: Request, res: Response, next: NextFunction) {
   if (FREE.test(req.path)) return next();
   const adresse = konfig().appBaseUrl;

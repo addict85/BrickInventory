@@ -1,8 +1,8 @@
 import { logAndContinue, reportError } from '../infra/error';
 import type { JobsContext } from './context';
 
-/** Den Katalog lädt der Job-Prozess; der Web-Prozess liest den Stand aus
- * laufzustand nach. */
+/** The job process loads the catalog; the web process re-reads the state from
+ * laufzustand. */
 export interface StartState {
   ready: boolean;
   step: string;
@@ -11,7 +11,7 @@ export interface StartState {
   sub?: string | null;
 }
 
-/** Je Satz Dienste: Der Job-Prozess schreibt, der Web-Prozess liest nach, bis bereit. */
+/** Per set of services: the job process writes, the web process re-reads until ready. */
 const gemerkt = (k: JobsContext) =>
   k.faecher.fach<{ stand: StartState }>('startZustand', () => ({
     stand: { ready: false, step: 'Datenbank wird initialisiert...', progress: 0, total: 6 },
@@ -24,7 +24,7 @@ export async function reportStartState(k: JobsContext, s: StartState): Promise<v
     .catch(logAndContinue('start:zustand schreiben'));
 }
 
-/** Gekürzt; Schritt und Unterstand nur angemeldet, sonst sieht jeder, woran der Start hängt. */
+/** Shortened; step and sub-state only when logged in, otherwise everyone sees what startup is stuck on. */
 export function publicStartState(
   s: StartState,
   angemeldet = false,
@@ -38,7 +38,7 @@ export function publicStartState(
   };
 }
 
-/** Bereit bleibt bereit — darum endet das Nachlesen danach. */
+/** Ready stays ready — that is why re-reading ends afterwards. */
 export async function currentStartState(k: JobsContext): Promise<StartState> {
   const g = gemerkt(k);
   if (g.stand.ready) return g.stand;
@@ -46,7 +46,7 @@ export async function currentStartState(k: JobsContext): Promise<StartState> {
     const roh = await k.laufzustand.liesZustand('startup_status');
     if (roh) g.stand = JSON.parse(roh) as StartState;
   } catch (e) {
-    // Ausnahme: Der Gesundheitsweg zeigt dann den letzten bekannten Stand statt eines Fehlers.
+    // Exception: the health path then shows the last known state instead of an error.
     reportError('start:zustand lesen', e);
   }
   return g.stand;

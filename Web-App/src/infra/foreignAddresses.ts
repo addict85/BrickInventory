@@ -1,7 +1,7 @@
-/** Jeder Abruf nach draussen prüft hier Host und Umleitung: Der Server steht
- * im internen Netz. */
+/** Every fetch to the outside checks host and redirect here: the server sits
+ * in the internal network. */
 
-/** Hier statt in einer Route, weil mehrere Schichten sie brauchen. */
+/** Here instead of in a route, because several layers need it. */
 export const ALLOWED_IMAGE_HOSTS = [
   'cdn.rebrickable.com',
   'rebrickable.com',
@@ -10,8 +10,8 @@ export const ALLOWED_IMAGE_HOSTS = [
   'img.bricklink.com',
 ];
 
-// Nur diese Hosts dürfen Dateien auf die Platte liefern. Bei LEGO die, auf denen
-// Anleitungen liegen: Unter *.lego.com stünde jede Unterdomäne, die jemand dort einrichtet.
+// Only these hosts may deliver files to disk. For LEGO the ones that host
+// instructions: *.lego.com would include every subdomain someone sets up there.
 export const ALLOWED_DOWNLOAD_HOSTS = [
   ...ALLOWED_IMAGE_HOSTS,
   'lego.com',
@@ -20,17 +20,17 @@ export const ALLOWED_DOWNLOAD_HOSTS = [
   'bdpinstructions.s3.amazonaws.com',
 ];
 
-/** JSON- und Seitenabrufe: Rebrickable, Anleitungsbilder, EAN-Suche. */
+/** JSON and page fetches: Rebrickable, instruction images, EAN search. */
 export const ALLOWED_API_HOSTS = ['rebrickable.com', 'lego.brickinstructions.com', 'api.upcitemdb.com'];
 
-/** Nur dorthin geht der Rebrickable-Schlüssel: Die anderen Hosts der Liste oben brauchen ihn nicht,
- * und eine Antwort mit `next` auf einen davon bekäme ihn sonst mit. */
+/** The Rebrickable key only goes there: the other hosts of the list above do not need it,
+ * and a response with `next` pointing to one of them would otherwise get it too. */
 export const ALLOWED_REBRICKABLE_HOSTS = ['rebrickable.com'];
 
-/** Exakter Host samt Port (`u.host` lässt den Standardport weg); Subdomains nur
- * bei ausdrücklichem „*."-Eintrag, denn ein S3-Eimer „x.bdpinstructions" gehört
- * nicht dem Eimer „bdpinstructions". „evil@host" und „host:22" sehen erlaubt
- * aus, zielen aber woandershin. Unparsebar heisst: NICHT holen. */
+/** Exact host including port (`u.host` omits the default port); subdomains only
+ * with an explicit "*." entry, because an S3 bucket "x.bdpinstructions" does not
+ * belong to the bucket "bdpinstructions". "evil@host" and "host:22" look allowed
+ * but aim elsewhere. Unparsable means: do NOT fetch. */
 export function hostAllowed(url: string, liste: readonly string[]): boolean {
   let u: URL;
   try {
@@ -49,8 +49,8 @@ export interface Umleitungsziel {
   kopfzeilen: Record<string, string>;
 }
 
-/** @param allowedHosts  gesetzt: der Zielhost wird geprüft. Weggelassen: nicht.
- * @returns null, wenn nicht gefolgt werden darf
+/** @param allowedHosts  set: the target host is checked. Omitted: not.
+ * @returns null if the redirect must not be followed
  */
 export function nextRedirect(
   von: string,
@@ -60,7 +60,7 @@ export function nextRedirect(
 ): Umleitungsziel | null {
   if (!location) return null;
 
-  // Ein Location-Kopf DARF ein blosser Pfad sein (RFC 9110).
+  // A Location header MAY be a bare path (RFC 9110).
   let ziel: URL;
   try {
     ziel = new URL(location, von);
@@ -68,14 +68,14 @@ export function nextRedirect(
     return null;
   }
 
-  // POSITIV auf https geprüft, nicht negativ auf http: Eine Verbotsliste vergisst
-  // irgendwann ein Schema.
+  // Checked POSITIVELY for https, not negatively for http: a deny list forgets
+  // a scheme at some point.
   if (ziel.protocol !== 'https:') return null;
 
   if (allowedHosts && !hostAllowed(ziel.href, allowedHosts)) return null;
 
-  // Bei Hostwechsel fliegt alles raus, was ein Geheimnis trägt. Der HOST zählt,
-  // nicht der Ursprung: :443 → ohne Port wäre sonst ein „Wechsel".
+  // On a host change everything that carries a secret is thrown out. The HOST counts,
+  // not the origin: :443 → without a port would otherwise be a "change".
   let ofHost = '';
   try {
     ofHost = new URL(von).hostname;
@@ -90,8 +90,8 @@ export function nextRedirect(
   return { url: ziel.href, kopfzeilen: gefiltert };
 }
 
-/** Roh eingesetzt verliessen „/", „?" oder „.." den Pfad bei Rebrickable oder
- * S3; Punktsegmente bleiben auch kodiert welche, deshalb werfen sie. */
+/** Inserted raw, "/", "?" or ".." would leave the path at Rebrickable or
+ * S3; dot segments stay dot segments even when encoded, that is why they throw. */
 export function pathSegment(wert: string | number): string {
   const s = String(wert);
   if (!s || /^\.+$/.test(s)) throw new Error(`Ungültiges Pfadsegment: „${s.slice(0, 40)}"`);

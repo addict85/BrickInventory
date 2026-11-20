@@ -6,7 +6,7 @@ export interface CatalogEntry {
   fetched_at?: string | Date | null;
 }
 
-/** Mit Versionsanhang, wie er abgelegt wird. */
+/** With the version suffix, as it is stored. */
 export async function catalogEntryTo(db: DbInterface, nummer: string): Promise<CatalogEntry | null> {
   return (
     (await db.get<CatalogEntry>('SELECT is_gear, bl_type, fetched_at FROM catalog_cache WHERE set_number = $1', [
@@ -15,8 +15,8 @@ export async function catalogEntryTo(db: DbInterface, nummer: string): Promise<C
   );
 }
 
-/** Ein Set, das einer unserer Kataloge wirklich kennt. Eine „kein Preis"-Markierung
- * zählt nicht: Sie entsteht erst durch den Abruf, den diese Prüfung verhindern soll. */
+/** A set that one of our catalogs really knows. A "no price" marker
+ * does not count: it only arises from the fetch this check is meant to prevent. */
 export async function setInCatalog(db: DbInterface, nummer: string): Promise<boolean> {
   const r = await db.get<{ x: number }>(
     `SELECT 1 AS x WHERE EXISTS (SELECT 1 FROM set_catalog WHERE set_number = $1)
@@ -30,7 +30,7 @@ export async function setInCatalog(db: DbInterface, nummer: string): Promise<boo
 
 export type BricklinkArt = 'GEAR' | 'BOOK' | 'NONE';
 
-/** NONE heisst „kein Preis", mit Zeitstempel. */
+/** NONE means "no price", with a timestamp. */
 export async function rememberBricklinkKind(db: DbInterface, nummer: string, art: BricklinkArt): Promise<void> {
   if (art === 'NONE') {
     await db.run(
@@ -57,7 +57,7 @@ export async function emptyCatalogCache(db: DbInterface, nummer: string | null):
   else await db.run('DELETE FROM catalog_cache');
 }
 
-/** Nur die eigenen Zwischenspeicher; die Preise zählt die Finanz (price_cache gehört ihr). */
+/** Only the own caches; prices are counted by finances (price_cache belongs to it). */
 export async function cacheNumbers(db: DbInterface): Promise<{ subsets: number; catalog: number }> {
   const zaehle = async (tabelle: 'subsets_cache' | 'catalog_cache') =>
     parseInt(String((await db.get<{ c: string }>(`SELECT COUNT(*) AS c FROM ${tabelle}`))?.c ?? 0), 10);

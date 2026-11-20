@@ -1,16 +1,16 @@
-/** Der Anbieter. Eine Zeile, absichtlich: So ist er an einer Stelle tauschbar. */
+/** The provider. One line, on purpose: that way it can be swapped in one place. */
 const BASIS = 'https://www.toppreise.ch/produktsuche?q=';
 
-/** Eine SEARCH, keine Produktseite: Die Setnummer ist beim Preisvergleicher
- * kein Schlüssel, und welche Schreibweise er führt, weiss nur er. */
+/** A SEARCH, not a product page: for the price comparison site the set number
+ * is not a key, and which spelling it uses only it knows. */
 export function suchUrl(begriff: string): string {
   const q = String(begriff ?? '').trim();
   if (!q) return '';
   return BASIS + encodeURIComponent(q);
 }
 
-/** Nummer UND Name: „75192-1" allein findet oft nichts. Die Variante „-1" ist
- * eine Rebrickable-Eigenheit und steht auf keiner Verpackung. */
+/** Number AND name: "75192-1" alone often finds nothing. The variant "-1" is
+ * a Rebrickable peculiarity and appears on no packaging. */
 export function forSet(setNumber: string, name?: string | null): string {
   const nummer = String(setNumber ?? '')
     .replace(/-\d+$/, '')

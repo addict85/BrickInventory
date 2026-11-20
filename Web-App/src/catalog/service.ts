@@ -9,8 +9,8 @@ import { Zwischenspeicher } from '../infra/cache';
 import { versuche } from '../infra/result';
 import type { CatalogContext } from './context';
 
-// rb_themes ändert sich höchstens täglich; der Baum wird je Zugang eine
-// Stunde gemerkt, weil jeder Filter ihn braucht.
+// rb_themes changes at most daily; the tree is built once per access
+// and remembered for an hour because every filter needs it.
 type ThemeNode = repo.Thema;
 type ThemeTree = { byId: Map<number, ThemeNode>; children: Map<number, number[]>; pathName: Map<number, string> };
 const THEME_CACHE_TTL = 60 * 60 * 1000;
@@ -30,7 +30,7 @@ async function getThemeTree(k: CatalogContext): Promise<ThemeTree> {
       children.get(r.parent_id)!.push(r.id);
     }
   }
-  // Zyklen-sicher.
+  // Cycle-safe.
   const pathName = new Map<number, string>();
   const resolvePath = (id: number, seen: Set<number>): string => {
     const fertig = pathName.get(id);
@@ -58,7 +58,7 @@ function descendantIds(tree: Awaited<ReturnType<typeof getThemeTree>>, rootId: n
   const seen = new Set<number>();
   while (stack.length) {
     const id = stack.pop();
-    // Der Typ von Array.pop() kennt die Schleifenbedingung nicht.
+    // The type of Array.pop() does not know the loop condition.
     if (id === undefined) break;
     if (seen.has(id)) continue;
     seen.add(id);
@@ -103,7 +103,7 @@ async function choose(k: CatalogContext, f: CatalogFilter): Promise<repo.Catalog
   };
 }
 
-/** NULL-Jahre stehen bei absteigender Sortierung vorn, wie in der Liste. */
+/** NULL years come first in descending order, as in the list. */
 export async function yearDistribution(k: CatalogContext, f: CatalogFilter, absteigend: boolean) {
   return k.katalogSuche.setsJeYearFiltered(await choose(k, { q: f.q, themeId: f.themeId }), absteigend);
 }
@@ -122,7 +122,7 @@ export async function catalogPage(
     k.katalogSuche.catalogRows(await k.household.scopeIds(userId), wahl, sortRaw, limit, (page - 1) * limit),
   ]);
   const tree = await getThemeTree(k);
-  // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
+  // The list triggers no image work; missing images are fetched by the image proxy.
   return {
     total,
     page,
@@ -145,17 +145,17 @@ export async function catalogSet(k: CatalogContext, userId: number, roh: string)
   const invId = await newestInventory(k, n);
   const m = invId ? await k.katalogSuche.minifigsInInventory(invId) : undefined;
   const tree = await getThemeTree(k);
-  // Geprüft wird gegen BrickLink nur hier, auf einer geöffneten Seite.
+  // Checking against BrickLink happens only here, on an opened page.
   let bricklink = await resolveSingle(k, set.set_number);
-  // Scheitert die Prüfung, bleibt der Link als ungeprüft (resolved: false) gekennzeichnet.
+  // If the check fails, the link stays marked as unverified (resolved: false).
   if (!bricklink.resolved) {
     const r = await versuche('katalog:bricklink', resolveViaInterface(k, set.set_number));
     if (r.ok) bricklink = r.wert;
   }
   let image_local = imageIfPresent(set.image_local ?? `/images/sets/${fileMaster(set.set_number)}.jpg`);
-  // Jetzt dauerhaft ablegen; die Vorschau und den Eintrag in set_catalog macht der Bild-Job.
+  // Now store permanently; the preview and the entry in set_catalog are done by the image job.
   if (!image_local && set.image_url) {
-    // Ohne Datei zeigt die Seite image_url; der Bild-Job holt sie nach.
+    // Without a file the page shows image_url; the image job fetches it later.
     const r = await versuche('katalog:setBildHerunterladen', k.images.setBildLaden(set.image_url, set.set_number));
     image_local = r.ok ? r.wert : null;
     if (image_local) k.images.rememberUsed(String(set.image_url || ''), set.set_number);

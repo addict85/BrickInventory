@@ -1,6 +1,6 @@
-/** Hier wird nur aus dem Request gelesen und geantwortet; die Regeln stehen in
- * src/devices/deviceChallenge.ts. Browser-Sitzungen bleiben beim Passwort und
- * zweiten Faktor: Sie haben keinen Keystore. */
+/** Here we only read from the request and answer; the rules live in
+ * src/devices/deviceChallenge.ts. Browser sessions stay with password and
+ * second factor: they have no keystore. */
 import type { Request, Response, NextFunction } from 'express';
 import { familyFrom, type Schrittaktion } from '../../devices';
 import { reportError } from '../../infra/error';
@@ -9,7 +9,7 @@ import { istVerwalter } from './login';
 import type { AccountServices } from '../area';
 import { routeForRequest } from '../../contract';
 
-/** Ein Bearer-Token ohne Sitzung: So fragt die App. Hat die Anfrage beides, gilt die Sitzung (userIdTheRequest). */
+/** A bearer token without a session: that is how the app asks. If the request has both, the session applies (userIdTheRequest). */
 export function isAppToken(req: Request): boolean {
   return !req.session?.userId && (req.headers.authorization ?? '').startsWith('Bearer ');
 }
@@ -26,8 +26,8 @@ export function requireRelease(
   });
 }
 
-/** Wie requireRelease, als Wert: für Routen, die nur für Verwalter mehr tun.
- * Bei `false` ist die Absage schon gesendet. */
+/** Like requireRelease, as a value: for routes that only do more for administrators.
+ * With `false` the rejection has already been sent. */
 export async function released(
   konto: AccountServices,
   req: Request,
@@ -37,7 +37,7 @@ export async function released(
   if (!isAppToken(req)) return true;
   const f = familyFrom(req.apiUser);
   try {
-    // Ohne Familie (kein created_at) gibt es keinen Schlüssel: zu, nicht offen.
+    // Without a family (no created_at) there is no key: closed, not open.
     const p = f ? await konto.pruefeFreigabe(f, aktion) : 'kein_schluessel';
     if (p === 'frei') return true;
     sendError(req, res, 'verboten', p === 'kein_schluessel' ? 'geraeteschluessel_fehlt' : 'schritt_freigabe_noetig');
@@ -48,8 +48,8 @@ export async function released(
   return false;
 }
 
-/** Für Lesewege, die Verwaltern mehr zeigen: Ein App-Token ohne Freigabe
- * sieht dort, was jedes Konto sieht, statt eine Absage zu bekommen. */
+/** For read paths that show administrators more: an app token without release
+ * sees there what every account sees instead of getting a rejection. */
 export async function asAdmin(konto: AccountServices, req: Request): Promise<boolean> {
   if (!istVerwalter(req)) return false;
   if (!isAppToken(req)) return true;
@@ -57,9 +57,9 @@ export async function asAdmin(konto: AccountServices, req: Request): Promise<boo
   return !!f && (await konto.pruefeFreigabe(f, 'verwaltung')) === 'frei';
 }
 
-/** Hinter loginAtInbox, vor dem Lesen des Rumpfs. Welche Schritte geschützt sind, sagt
- * die Marke `schritt` am Vertrag; res.locals.schritt hält fest, was hier freigegeben wurde,
- * damit vertragsRouter an der Route selbst nachsieht (eine zweite Linie, falls die Zuordnung hier fehlgeht). */
+/** Behind loginAtInbox, before reading the body. Which steps are protected is said by
+ * the marker `schritt` on the contract; res.locals.schritt records what was released here,
+ * so vertragsRouter checks at the route itself (a second line, in case the mapping here goes wrong). */
 export function stepChutzAtInbox(konto: AccountServices) {
   return (req: Request, res: Response, next: NextFunction): void => {
     const aktion = routeForRequest(req.method, req.baseUrl + req.path)?.schritt;

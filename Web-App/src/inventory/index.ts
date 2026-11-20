@@ -1,4 +1,4 @@
-/** Die öffentliche Seite des Bereichs; was die Datenbank braucht, ist ein Dienst (`t.bestand`). */
+/** The public face of the area; whatever needs the database is a service (`t.bestand`). */
 
 export {
   MAX_PAGE_SIZE,

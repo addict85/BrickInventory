@@ -1,5 +1,5 @@
-/** Aus einem Zugang entstehen Kontingent, Drosseln und die Klienten, die genau diese bekommen:
- * Zwei Sätze Dienste in einem Prozess teilen weder Schlüssel noch Zwischenstände. */
+/** From an access arise quota, throttles and the clients that receive exactly these:
+ * two sets of services in one process share neither keys nor intermediate states. */
 import { mit, buildContext, type Inspect } from '../infra/area';
 import type { Db } from '../../db/database';
 import * as brickset from './bricksetResubmission';
@@ -10,8 +10,8 @@ import { zugang, type ForeignSourcesDependencies, type ForeignSourcesContext } f
 
 export type { ForeignSourcesDependencies, ForeignSourcesContext } from './context';
 
-/** Gelesen beim Aufruf, nicht beim Bau: Ein Test ersetzt einen Klienten auch, nachdem
- * die Dienste schon stehen (test/helpers/sources.js testSources). */
+/** Read at call time, not at construction: a test replaces a client even after
+ * the services already exist (test/helpers/sources.js testSources). */
 function withFallback(echt: Quellen, ersatz: Partial<Quellen> | undefined): Quellen {
   if (!ersatz) return echt;
   const aus = {} as Quellen;
@@ -39,7 +39,7 @@ export function createForeignSources(a: ForeignSourcesDependencies, inspect?: In
     bricksetForgotten: mit(k)(brickset.bricksetForgotten),
   };
   const dienste = {
-    /** Die Klienten dieses Zugangs; ein Test ersetzt einzelne über `ersatz`. */
+    /** The clients of this access; a test replaces individual ones via `ersatz`. */
     quellen: withFallback(buildSources(clients), a.ersatz),
     drossel,
     quotaStatus: kontingent.quotaStatus,
@@ -47,7 +47,7 @@ export function createForeignSources(a: ForeignSourcesDependencies, inspect?: In
     setQuotaBack: kontingent.setQuotaBack,
     quotaLimit: kontingent.quotaLimit,
     consumeRebrickableDaily: mit(k)(rateLimiter.consumeRebrickableDaily),
-    /** Die Wiedervorlage der Sets, für die Brickset kein Kontingent mehr hatte. */
+    /** The resubmission of the sets for which Brickset had no quota left. */
     brickset: {
       dueAb: mit(k)(brickset.bricksetDueAb),
       jetzt: mit(k)(brickset.bricksetNow),
@@ -56,8 +56,8 @@ export function createForeignSources(a: ForeignSourcesDependencies, inspect?: In
       wartende: mit(k)(brickset.bricksetWaiting),
     },
   };
-  // Klienten rufen nach draussen und gehören nie in eine Transaktion: Ihr Satz bleibt
-  // derselbe, damit Drosseln und Kontingent nicht je Transaktion neu entstehen.
+  // Clients call outside and never belong in a transaction: their set stays
+  // the same so that throttles and quota are not created anew per transaction.
   return Object.assign(dienste, { ueber: (_db: Db) => dienste });
 }
 

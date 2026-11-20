@@ -1,28 +1,28 @@
-/** BrickLink-Wanted-XML lesen: Die Datei trägt BL-Nummern; die Abbildung auf
- * Rebrickable-Nummern macht wantedResolution.ts. */
+/** Read BrickLink wanted XML: the file carries BL numbers; the mapping to
+ * Rebrickable numbers is done by wantedResolution.ts. */
 
 export type WantedArt = 'part' | 'fig' | 'set';
 
-// Nur P, M und S haben einen Platz im Bestand; andere Arten werden gezählt und
-// gemeldet statt still verworfen.
+// Only P, M and S have a place in the inventory; other kinds are counted and
+// reported instead of silently discarded.
 const ARTEN: Record<string, WantedArt> = { P: 'part', M: 'fig', S: 'set' };
 
 export interface WantedItem {
   art: WantedArt;
-  /** ITEMID — eine BrickLink-Nummer, KEINE Rebrickable-Nummer. */
+  /** ITEMID — a BrickLink number, NOT a Rebrickable number. */
   blId: string;
-  /** COLOR als BrickLink-Farbnummer; null bei Sets und farblosen Posten. */
+  /** COLOR as a BrickLink color number; null for sets and colorless items. */
   blFarbe: number | null;
-  /** MINQTY, mindestens 1. */
+  /** MINQTY, at least 1. */
   menge: number;
-  /** CONDITION: N oder U; X („egal") wird zu null. */
+  /** CONDITION: N or U; X ("any") becomes null. */
   zustand: 'N' | 'U' | null;
-  /** MAXPRICE; -1 heisst „kein Höchstpreis" und wird null. */
+  /** MAXPRICE; -1 means "no maximum price" and becomes null. */
   maxPreis: number | null;
 }
 
-/** Zwei Suchen nach festem Text statt `<name>([\s\S]*?)</name>`: Das faule
- * Muster setzt bei offenem Tag an jeder Fundstelle neu an — quadratisch. */
+/** Two searches for fixed text instead of `<name>([\s\S]*?)</name>`: with an open tag the lazy
+ * pattern restarts at every match position — quadratic. */
 function zwischen(text: string, name: string, ab: number): { inhalt: string; ende: number } | null {
   const auf = new RegExp(`<${name}>`, 'gi');
   auf.lastIndex = ab;
@@ -38,8 +38,8 @@ function zwischen(text: string, name: string, ab: number): { inhalt: string; end
 function feld(block: string, name: string): string | null {
   const m = zwischen(block, name, 0);
   if (!m) return null;
-  // Nur die fünf vordefinierten Entitäten; &amp; ZULETZT, sonst würde aus
-  // „&amp;lt;" ein „<".
+  // Only the five predefined entities; &amp; LAST, otherwise
+  // "&amp;lt;" would become a "<".
   return m.inhalt
     .trim()
     .replace(/&lt;/g, '<')
@@ -55,8 +55,8 @@ export interface ReadResult {
   ohneNummer: number;
 }
 
-/** Wirft NICHT bei fremden Arten oder fehlenden Feldern: Eine zu neun Zehnteln
- * brauchbare Liste soll zu neun Zehnteln ankommen; der Rest steht im Ergebnis. */
+/** Does NOT throw for foreign kinds or missing fields: a list that is nine tenths
+ * usable should arrive nine tenths complete; the rest is in the result. */
 export function readWantedList(xml: string): ReadResult {
   const posten: WantedItem[] = [];
   const fremdeArten: Record<string, number> = {};
@@ -86,12 +86,12 @@ export function readWantedList(xml: string): ReadResult {
     posten.push({
       art,
       blId,
-      // Farbe 0 ist bei BrickLink „(Not Applicable)", keine Farbe.
+      // At BrickLink color 0 is "(Not Applicable)", not a color.
       blFarbe: farbe !== null && Number.isFinite(farbe) && farbe > 0 ? farbe : null,
       menge: Number.isFinite(quantityRaw) && quantityRaw > 0 ? quantityRaw : 1,
-      // X heisst „egal": null, damit die Einstellung des Kontos entscheidet.
+      // X means "any": null, so that the account's setting decides.
       zustand: stateRaw === 'N' || stateRaw === 'U' ? stateRaw : null,
-      // MAXPRICE ist eine Suchgrenze, kein Kaufpreis — -1 heisst „keiner".
+      // MAXPRICE is a search limit, not a purchase price — -1 means "none".
       maxPreis: Number.isFinite(priceRaw) && priceRaw > 0 ? priceRaw : null,
     });
   }

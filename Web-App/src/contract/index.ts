@@ -1,6 +1,6 @@
-/** Der API-Vertrag: je Bereich eine Datei, hier zusammengeführt. Aus ihm
- * entstehen docs/openapi.json (npm run vertrag:openapi), die Typen der
- * Routen (src/http/contractRouter.ts) und die Prüfung der Antworten in den Tests. */
+/** The API contract: one file per area, merged here. From it
+ * arise docs/openapi.json (npm run vertrag:openapi), the types of the
+ * routes (src/http/contractRouter.ts) and the response checks in the tests. */
 import type { z } from 'zod';
 import type { Wire, Route } from './base';
 import * as bestand from './inventory';
@@ -53,7 +53,7 @@ export type Schluessel = keyof typeof CONTRACT;
 type Rumpf<K extends Schluessel> = (typeof CONTRACT)[K] extends { antwort: infer S extends z.ZodType }
   ? Wire<z.output<S>>
   : never;
-/** Der Rumpf einer Route, für Dienste, die ihn ganz zusammensetzen. */
+/** The body of a route, for services that compose it entirely. */
 export type ResponseBody<K extends Schluessel> = Rumpf<K>;
 
 type Teil<K extends Schluessel, F extends 'eingabe' | 'abfrage'> = (typeof CONTRACT)[K] extends {
@@ -61,16 +61,16 @@ type Teil<K extends Schluessel, F extends 'eingabe' | 'abfrage'> = (typeof CONTR
 }
   ? z.output<S>
   : Record<never, never>;
-/** Der geprüfte Rumpf (checkInput); ohne Schema leer. */
+/** The checked body (checkInput); empty without a schema. */
 export type Eingabe<K extends Schluessel> = Teil<K, 'eingabe'>;
-/** Die geprüfte Abfrage; ohne Schema leer, ein Lesen dort ist ein Übersetzungsfehler. */
+/** The checked query; empty without a schema, reading there is a translation error. */
 export type Abfrage<K extends Schluessel> = Teil<K, 'abfrage'>;
 
 export function routeZu(schluessel: string): Route | undefined {
   return Object.hasOwn(CONTRACT, schluessel) ? (CONTRACT as Record<string, Route>)[schluessel] : undefined;
 }
 
-/** Wörtliche Abschnitte vor Platzhaltern, wie Express es für diese Pfade hält. */
+/** Literal segments before placeholders, as Express handles these paths. */
 const MUSTER = Object.entries(CONTRACT as Record<string, Route>)
   .map(([k, route]) => {
     const [methode, pfad] = k.split(' ') as [string, string];
@@ -89,12 +89,12 @@ function patternForRequest(methode: string, pfad: string) {
   );
 }
 
-/** Die Vertragsroute zu einer Anfrage, bevor Express sie zugeordnet hat. */
+/** The contract route for a request, before Express has matched it. */
 export function routeForRequest(methode: string, pfad: string): Route | undefined {
   return patternForRequest(methode, pfad)?.route;
 }
 
-/** Ihr Schlüssel: Wer Routen danach einordnet, nennt sie so, wie der Übersetzer sie prüft. */
+/** Its key: whoever classifies routes by it names them the way the translator checks them. */
 export function keyForRequest(methode: string, pfad: string): Schluessel | undefined {
   return patternForRequest(methode, pfad)?.schluessel;
 }

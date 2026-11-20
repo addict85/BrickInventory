@@ -1,5 +1,5 @@
-/** Sicherung der Einstellungen (JSON) und der Bestandsdaten (ZIP mit CSVs), dazu
- * das Einspielen einer Einstellungsdatei. Die Routen reichen nur durch. */
+/** Backup of the settings (JSON) and the inventory data (ZIP with CSVs), plus
+ * importing a settings file. The routes only pass through. */
 import type { Writable } from 'node:stream';
 import { SECRET_KEYS, isMasked, isValidGlobalValue } from '../settings';
 import { DAILY_JOBS } from './timesOfDay';
@@ -9,12 +9,12 @@ import { fachfehler } from '../infra/errorTexts';
 import { KonfigExport } from '../contract/settings';
 import type { ManagementContext } from './context';
 
-/** Mailserver, Registrierung und API-Schlüssel nimmt nur das Formular, mit Passwort. */
+/** Mail server, registration and API keys are only accepted by the form, with password. */
 export const isSensitive = (k: string) =>
   k.startsWith('smtp_') || k === 'registration_enabled' || /api_key$|^bricklink_(consumer|token)/.test(k);
 
-/** Globale Werte nur für Verwalter: Der Import nimmt sie nur von ihnen an, und
- * SMTP-Daten gehen ein Unterkonto nichts an. */
+/** Global values only for admins: the import only accepts them from them, and
+ * SMTP data is none of a sub-account's business. */
 export async function exportConfig(k: ManagementContext, uid: number, verwalter: boolean, name: string | null) {
   return {
     exported_at: k.uhr.datum().toISOString(),
@@ -25,14 +25,14 @@ export async function exportConfig(k: ManagementContext, uid: number, verwalter:
   };
 }
 
-/** Alles im selben Archiv: Die Konfigurationsexporte können Bestandsdaten nicht tragen. */
+/** Everything in the same archive: the configuration exports cannot carry inventory data. */
 export async function dataZip(
   k: ManagementContext,
   uid: number,
   ziel: Writable,
   atError: (e: Error) => void,
 ): Promise<void> {
-  // archiver 8 ist ein ES-Modul; aus CommonJS geht nur require(), kein Import.
+  // archiver 8 is an ES module; from CommonJS only require() works, no import.
   const { ZipArchive } = require('archiver') as { ZipArchive: new (o: object) => ZipArchiveHandle };
   const [setsCsv, partsCsv, figsCsv, merkCsv, alarmCsv] = await Promise.all([
     k.sets.setsAlsCsv(uid),
@@ -80,8 +80,8 @@ const GLOBAL_IMPORT = [
 ].filter(k => !isSensitive(k));
 const ACCOUNT_IMPORT = ['currency', 'user_default_condition'];
 
-/** Eine Importdatei kommt von irgendwoher: Schema (KonfigExport), Regeln je Schlüssel
- * (GLOBAL_RULES) und ohne die heiklen Schlüssel, die eine Bestätigung bräuchten. */
+/** An import file comes from anywhere: schema (KonfigExport), rules per key
+ * (GLOBAL_RULES) and without the sensitive keys that would need a confirmation. */
 export async function importConfig(kx: ManagementContext, uid: number, verwalter: boolean, datei: Buffer) {
   const gelesen = jsonOrNull(datei.toString('utf-8'));
   const geprueft = gelesen ? KonfigExport.safeParse(gelesen.wert) : null;
@@ -94,7 +94,7 @@ export async function importConfig(kx: ManagementContext, uid: number, verwalter
       fachfehler('ungueltig', 'wert_ungueltig');
     const geaendert: string[] = [];
     for (const key of GLOBAL_IMPORT.filter(k => global[k] !== undefined)) {
-      // Maskierte Werte aus älteren Exporten dürfen echte Schlüssel nicht überschreiben.
+      // Masked values from older exports must not overwrite real keys.
       if (SECRET_KEYS.has(key) && isMasked(global[key])) continue;
       if (String(global[key]) !== String((await kx.settings.globalValue(key)) ?? '')) geaendert.push(key);
       await kx.settings.setGlobalValue(key, global[key]);
@@ -108,12 +108,12 @@ export async function importConfig(kx: ManagementContext, uid: number, verwalter
         `Import: ${geaendert.join(', ')}`,
       );
   }
-  // Zentrale Stelle: Eine importierte Währungsänderung stösst den Preis-Job an.
+  // Central place: an imported currency change triggers the price job.
   for (const key of ACCOUNT_IMPORT.filter(k => konto?.[k] !== undefined)) {
     await kx.settings.setUserSetting(uid, key, konto![key]);
     imported++;
   }
-  // Nur Verwalter: Sonst könnte jedes Konto per Ein-Zeilen-Datei den Preis-Cache leeren.
+  // Only admins: otherwise every account could clear the price cache with a one-line file.
   if (verwalter) await rescheduleJobs(kx);
   const note =
     (verwalter ? 'Globale + Benutzer-Einstellungen importiert' : 'Nur Benutzer-Einstellungen importiert') +

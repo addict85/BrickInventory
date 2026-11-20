@@ -1,6 +1,6 @@
-/** Die PREISSCHICHT des Finanzteils: BrickLink, Preis-Cache, Tageskontingent
- * und BL-Nummern. Eigene Datei, weil Bewertung und Gewinnrechnung auf ihr
- * stehen, nicht umgekehrt. */
+/** The PRICE LAYER of the finance part: BrickLink, price cache, daily quota
+ * and BL numbers. A file of its own because valuation and profit calculation stand
+ * on it, not the other way round. */
 
 import type { Preiszeile, SetPreiszeile } from '../repository/priceCache';
 import { type CatalogEntry, hatPrice, marketPriceFrom } from '../../catalog';
@@ -14,32 +14,32 @@ import { versuche } from '../../infra/result';
 import type { FinancesContext } from '../context';
 import type { Uhr } from '../../infra/clock';
 
-/** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
+/** Whose DATA is calculated; whose SETTINGS apply is said by `viewerId`. */
 export type { Blickfeld } from '../../household';
 
 type PriceRow = { avg_price?: unknown; fetched_at?: string | Date | null } | null | undefined;
 
-/** `string | number`, weil die Einstellung als Text aus der Datenbank kommt;
- * das `parseInt(String(…))` der Rechner ist deshalb tragend. */
+/** `string | number` because the setting comes from the database as text;
+ * the calculators' `parseInt(String(…))` is therefore load-bearing. */
 type Stunden = string | number;
 
-/** DIE Zustandsauflösung für ein Set — eine, weil mehrere eigene Fassungen
- * auseinandergelaufen waren. */
+/** THE condition resolution for a set — one, because several versions of their own
+ * had drifted apart. */
 export async function setState(k: FinancesContext, uid: number | number[], setNumber: string): Promise<'N' | 'U'> {
-  // Blickfeld statt nackter ID: Das Set gehört oft einem Unterkonto.
+  // Scope instead of a bare ID: the set often belongs to a sub-account.
   const row = await k.preisCache.setStateCounter(asIds(uid), setNumber);
   return effectiveCondition(row);
 }
 
-// 'U', weil der Gebrauchtpreis dem Wiederverkaufswert der Sammlung entspricht;
-// der andere Zustand dient als Rückfall.
+// 'U', because the used price matches the collection's resale value;
+// the other condition serves as fallback.
 export const DEFAULT_PRICE_CONDITION = 'U';
 
-/** Kürzer als das TTL-Fenster, damit ein Rückfall (sold → stock) überhaupt
- * wieder angefragt wird. */
+/** Shorter than the TTL window so that a fallback (sold → stock) is
+ * requested again at all. */
 const ZERO_PRICE_TTL_HOURS = 6;
 
-/** Die eine Stelle, die „frisch" festlegt. */
+/** The one place that defines "fresh". */
 export function emptyPriceCache(k: FinancesContext): Promise<void> {
   return k.preisCache.deleteAllSetPrices();
 }
@@ -56,9 +56,9 @@ export async function priceFromCache(
 
 export function cacheUsable(row: PriceRow, ttlHours: number, jetzt: number) {
   if (!row) return false;
-  // avg_price ist numeric, und pg liefert numeric als Zeichenkette.
+  // avg_price is numeric, and pg delivers numeric as a string.
   if (hatPrice(row)) return true;
-  // 0-Eintrag: nur kurz vertrauen, danach neu versuchen.
+  // 0 entry: trust only briefly, retry afterwards.
   if (!row.fetched_at) return false;
   const ageH = (jetzt - new Date(row.fetched_at).getTime()) / 3600000;
   return ageH < Math.min(ZERO_PRICE_TTL_HOURS, ttlHours);
@@ -72,7 +72,7 @@ interface PriceFuehrer {
   total_quantity?: unknown;
 }
 
-/** Erst Cache, dann (nur mit Preis) Verlaufspunkt. @returns die gelesenen Zahlen */
+/** Cache first, then (only with a price) history point. @returns the numbers read */
 export async function savePrice(
   k: FinancesContext,
   setNumber: string,
@@ -86,15 +86,15 @@ export async function savePrice(
   const qavg = parseFloat(String(g?.qty_avg_price ?? 0)) || 0;
   const qty = parseInt(String(g?.total_quantity ?? 0), 10) || 0;
 
-  // Auch eine Null wird geschrieben: Sie ist die Auskunft „kein Preis" und hält
-  // den nächsten Abruf zurück; wie lange, entscheidet cacheUsable().
+  // A zero is written as well: it is the information "no price" and holds back
+  // the next fetch; for how long is decided by cacheUsable().
   const preis = { min, avg, max, qavg, qty };
-  // Cache und Verlauf zusammen: Ein Cache ohne seinen Verlaufspunkt hielte den nächsten
-  // Abruf zurück, und die Lücke im Verlauf füllte niemand mehr.
+  // Cache and history together: a cache without its history point would hold back
+  // the next fetch, and nobody would fill the gap in the history any more.
   await k.transaktion(async t => {
     await t.preisCache.rememberSetPrice(setNumber, condition, currency, preis);
-    // Dieselbe Regel wie der Tages-Schnappschuss des Jobs: Ein Verlauf mit zwei
-    // Aufnahmeregeln hätte Lücken.
+    // The same rule as the job's daily snapshot: a history with two
+    // recording rules would have gaps.
     if (hatPrice({ avg_price: avg, qty_avg_price: qavg }))
       await t.preisCache.rememberSetHistory(setNumber, condition, currency, preis);
   });
@@ -109,10 +109,10 @@ export interface PriceData {
   from_cache: boolean;
   condition_used?: string;
   is_fallback?: true;
-  /** Frisch geprüft, aber BrickLink kennt keinen Preis. */
+  /** Freshly checked, but BrickLink knows no price. */
   no_price?: true;
   bl_unbekannt?: true;
-  /** Nicht im Cache: Der Job „preise_nachladen“ holt ihn. */
+  /** Not in the cache: the job "preise_nachladen" fetches it. */
   ausstehend?: true;
   error?: string;
 }
@@ -125,7 +125,7 @@ type CacheRow = {
 };
 const WITHOUT_PRICE = { min_price: 0, avg_price: 0, max_price: 0, qty_avg_price: 0 } as const;
 const numberFrom = (v: unknown) => Number(v) || 0;
-/** avg_price trägt den Marktpreis: Alle Verbraucher lesen es, eine 0 erschiene als „0.00“. */
+/** avg_price carries the market price: all consumers read it, a 0 would appear as "0.00". */
 const fromRow = (z: CacheRow, zusatz: Partial<PriceData> = {}): PriceData => ({
   min_price: numberFrom(z.min_price),
   avg_price: marketPriceFrom(z) ?? 0,
@@ -135,7 +135,7 @@ const fromRow = (z: CacheRow, zusatz: Partial<PriceData> = {}): PriceData => ({
   ...zusatz,
 });
 
-/** Was Set, Teil und Figur unterscheidet; den Ablauf teilen sich alle drei. */
+/** What distinguishes set, part and figure; all three share the flow. */
 interface Preisquelle {
   name: string;
   lies(zustand: string): Promise<CacheRow | null | undefined> | CacheRow | null | undefined;
@@ -143,19 +143,19 @@ interface Preisquelle {
   remember(zustand: string, g: PriceFuehrer | null | undefined): Promise<CacheRow>;
 }
 
-/** null: Der Abruf scheiterte; ob das ein Fehler ist, entscheidet der Ablauf. */
+/** null: the fetch failed; whether that is an error is decided by the flow. */
 async function callAb(q: Preisquelle, zustand: string): Promise<CacheRow | null> {
   try {
     return await q.remember(zustand, await q.frage(zustand));
   } catch (e) {
-    // Ausnahme: fetchPriceWithFallback macht aus null den Rückfall oder einen Fachfehler.
+    // Exception: fetchPriceWithFallback turns null into the fallback or a domain error.
     reportError(`preisabruf:${q.name} ${zustand}`, e);
     return null;
   }
 }
 
-/** „Kein Preis“ ist eine Antwort (no_price); scheitert jeder Abruf ohne frische Antwort im
- * Cache, ist das ein Fehler, damit die Merkliste „nicht geladen“ statt „keiner“ zeigt. */
+/** "No price" is an answer (no_price); if every fetch fails without a fresh answer in the
+ * cache, that is an error, so that the wishlist shows "not loaded" instead of "none". */
 async function fetchPriceWithFallback(
   k: FinancesContext,
   q: Preisquelle,
@@ -182,7 +182,7 @@ async function fetchPriceWithFallback(
   return frei ? fachfehler('nicht_gefunden', 'kein_bricklink_preis') : fachfehler('zu_viele', 'bricklink_tageslimit');
 }
 
-/** Beim Erfassen heisst ein gescheiterter Abruf „keiner“; das erschöpfte Kontingent bleibt ein Fehler. */
+/** On capture a failed fetch means "none"; the exhausted quota stays an error. */
 export async function priceOrNone(abruf: Promise<PriceData>): Promise<PriceData | null> {
   try {
     return await abruf;
@@ -203,8 +203,8 @@ export async function fetchPrice(
   ttlHours: Stunden,
   pre: { catalog: Map<string, CatalogEntry>; cache: Map<string, SetPreiszeile> } | null = null,
 ): Promise<PriceData> {
-  // withVersion() auch beim vorgeladenen Weg: Die Karte kommt aus catalog_cache,
-  // also unter derselben Schreibweise wie die Tabelle.
+  // withVersion() on the preloaded path too: the map comes from catalog_cache,
+  // i.e. under the same spelling as the table.
   const catalogRow = pre?.catalog
     ? pre.catalog.get(withVersion(setNumber)) || null
     : await k.catalog.catalogEntry(setNumber);
@@ -225,8 +225,8 @@ export async function fetchPrice(
   return fetchPriceWithFallback(k, quelle, condition, ttl);
 }
 
-/** Nur der Cache: Eine Liste soll nicht auf BrickLink warten. Rückfall auf den anderen
- * Zustand; sind beide frisch leer, gibt es keinen Preis, fehlt einer, steht er aus. */
+/** Only the cache: a list should not wait for BrickLink. Fallback to the other
+ * condition; if both are freshly empty there is no price, if one is missing it is pending. */
 export function priceFromStock(
   lies: (zustand: 'N' | 'U') => CacheRow | null | undefined,
   zustand: 'N' | 'U',
@@ -277,14 +277,14 @@ export async function parallelLimit<T>(tasks: (() => Promise<T>)[], limit: numbe
   return results;
 }
 
-// Gedächtnis für zwei Übersetzungstabellen, die sich während einer Bewertung
-// nicht ändern; je Teil kostete die Abfrage sonst die meiste Zeit.
+// Memory for two translation tables that do not change during
+// a valuation; per part the query would otherwise cost most of the time.
 const SUPPLEMENT_TTL_MS = 10 * 60 * 1000;
-// Beim Überschreiten wird geleert statt einzeln aufgeräumt: eine Handvoll
-// Nutzer, kleine Tabellen (wie _tokenCache in src/account/tokenCache.ts).
+// When exceeded it is cleared instead of evicted one by one: a handful of
+// users, small tables (like _tokenCache in src/account/tokenCache.ts).
 const SUPPLEMENT_MAX = 5000;
 
-/** Ein `null` (nichts gefunden) wird nicht gemerkt. */
+/** A `null` (nothing found) is not remembered. */
 function nachschlagwerk<S, W>(uhr: Uhr, hole: (schluessel: S) => Promise<W | null>) {
   const karte = new Map<S, { wert: W; zeit: number }>();
   const frage = async (schluessel: S): Promise<W | null> => {
@@ -300,7 +300,7 @@ function nachschlagwerk<S, W>(uhr: Uhr, hole: (schluessel: S) => Promise<W | nul
     karte.set(schluessel, { wert, zeit: jetzt });
     return wert;
   };
-  // Kein Leeren: Die Quelltabellen werden nur ergänzt, ein Treffer bleibt richtig.
+  // No clearing: the source tables are only extended, a hit stays correct.
   frage.kennt = (schluessel: S) => {
     const treffer = karte.get(schluessel);
     return !!treffer && uhr.jetzt() - treffer.zeit < SUPPLEMENT_TTL_MS;
@@ -312,8 +312,8 @@ function nachschlagwerk<S, W>(uhr: Uhr, hole: (schluessel: S) => Promise<W | nul
   return frage;
 }
 
-/** Die ganze Tabelle (rund 200 Zeilen), einmal je Zugang geladen und geteilt: Je Schlüssel
- * bliebe jede unbekannte Farbe eine eigene Abfrage, parallele Bewerter lüden je selbst. */
+/** The whole table (about 200 rows), loaded once per access and shared: per key
+ * every unknown color would remain a query of its own, parallel valuators would each load it themselves. */
 type Farbstand = { karte: Map<number, number> | null; zeit: number; load: Promise<Map<number, number>> | null };
 export async function farbkarte(k: FinancesContext): Promise<Map<number, number>> {
   const st = k.faecher.fach<Farbstand>('farbkarte', () => ({ karte: null, zeit: 0, load: null }));
@@ -324,8 +324,8 @@ export async function farbkarte(k: FinancesContext): Promise<Map<number, number>
     const rows = await k.preisCache.blFarben();
     const karte = new Map<number, number>();
     for (const r of rows) karte.set(Number(r.id), r.bl_color_id);
-    // Eine LEERE Tabelle wird NICHT gemerkt: Vor dem ersten Abgleich ist sie leer,
-    // und zehn Minuten jede Übersetzung zu verweigern hiesse, den Abgleich zu ignorieren.
+    // An EMPTY table is NOT remembered: before the first reconciliation it is empty,
+    // and refusing every translation for ten minutes would mean ignoring the reconciliation.
     if (karte.size) Object.assign(st, { karte, zeit: jetzt });
     return karte;
   })();
@@ -336,8 +336,8 @@ export async function farbkarte(k: FinancesContext): Promise<Map<number, number>
   }
 }
 
-/** KEINE_FARBE ist bei BrickLink 0, Rebrickables 0 ist Schwarz. @returns null, wenn die Karte
- * nicht lesbar ist: Mit der Rebrickable-Farbe käme der Preis eines anderen Teils. */
+/** KEINE_FARBE is 0 at BrickLink, Rebrickable's 0 is black. @returns null if the map
+ * is not readable: with the Rebrickable color the price of another part would come back. */
 export async function resolveBlColorId(k: FinancesContext, rbColorId: number): Promise<number | null> {
   if (rbColorId == null || rbColorId === KEINE_FARBE) return 0;
   const karte = await versuche('preise:farbkarte', farbkarte(k));
@@ -346,32 +346,32 @@ export async function resolveBlColorId(k: FinancesContext, rbColorId: number): P
   return treffer != null ? Number(treffer) : rbColorId;
 }
 
-// Ohne Übersetzung antwortet BrickLink für RB-Nummern mit 404. Eine Quelle
-// (bl_mapping), damit nicht zwei Orte auseinanderlaufen. Je Satz Dienste ein Gedächtnis.
+// Without translation BrickLink answers RB numbers with 404. One source
+// (bl_mapping), so that two places do not drift apart. One memory per set of services.
 const blTeil = (k: FinancesContext) =>
   k.faecher.fach('blTeil', () =>
     nachschlagwerk(k.uhr, (partNumber: string) => k.catalog.blFetchNumber('part', partNumber)),
   );
 
-/** Mit `konto` zuerst dessen eigene Zuordnung (Migration 0094); sie geht am
- * gemeinsamen Gedächtnis vorbei, weil sie nur für dieses Konto gilt. */
+/** With `konto`, that account's own mapping first (migration 0094); it bypasses the
+ * shared memory because it only applies to this account. */
 export async function resolveBlPartNumber(k: FinancesContext, partNumber: string, konto: number | null = null) {
-  // Ohne Fang: Mit der Rebrickable-Nummer käme der Preis eines anderen Teils.
+  // No catch: with the Rebrickable number the price of another part would come back.
   if (konto !== null) return (await k.catalog.blFetchNumber('part', partNumber, konto)) ?? partNumber;
   return (await blTeil(k)(partNumber)) ?? partNumber;
 }
 
-/** In zwei Abfragen, weil das Gedächtnis innerhalb einer Bewertung nicht hilft:
- * Jedes Teil hat eine andere Nummer. */
+/** In two queries, because the memory does not help within a valuation:
+ * every part has a different number. */
 export async function loadBlNumbersBefore(k: FinancesContext, partNumbers: string[]): Promise<void> {
   const offen = [...new Set(partNumbers.filter(Boolean).map(String))].filter(n => !blTeil(k).kennt(n));
   if (!offen.length) return;
-  // Die Abfrage steht in src/catalog/blMapping.ts.
+  // The query lives in src/catalog/blMapping.ts.
   for (const [rb, bl] of await k.catalog.blFetchNumbers('part', offen)) blTeil(k).merken(rb, bl);
 }
 
-/** Sonst fragte jedes Teil je Zustand einzeln. Schlüssel wie in fetchPartPrice:
- * BrickLink-Nummer|BrickLink-Farbe|Zustand. */
+/** Otherwise every part would ask per condition individually. Keys as in fetchPartPrice:
+ * BrickLink number|BrickLink color|condition. */
 export async function ladeTeilepreiseVor(
   k: FinancesContext,
   teile: { partNumber: string; rbColorId: number }[],
@@ -394,7 +394,7 @@ export async function ladeTeilepreiseVor(
   return vorrat;
 }
 
-/** Wie ladeTeilepreiseVor, für Figuren — nur echte BrickLink-Preise. */
+/** Like ladeTeilepreiseVor, for figures — only real BrickLink prices. */
 export async function ladeFigurenpreiseVor(
   k: FinancesContext,
   figuren: string[],
@@ -409,8 +409,8 @@ export async function ladeFigurenpreiseVor(
   return vorrat;
 }
 
-/** Erst Verkäufe, sonst Angebote: Bei Teilen in seltenen Farben ist „kein Verkauf
- * in sechs Monaten“ der Normalfall. */
+/** Sales first, otherwise offers: for parts in rare colors "no sale
+ * in six months" is the normal case. */
 async function questionPriceGuide(
   k: FinancesContext,
   pfad: string,
@@ -430,7 +430,7 @@ async function questionPriceGuide(
 
 type Schreiber = (avg: number, qavg: number) => Promise<unknown>;
 
-/** Auch eine Null wird gemerkt (hält den Abruf zurück); ein Nullpunkt im Verlauf sähe aus wie ein Kurssturz. */
+/** A zero is remembered as well (holds back the fetch); a zero point in the history would look like a price crash. */
 async function rememberWithHistory(
   g: PriceFuehrer | null | undefined,
   ort: string,
@@ -443,8 +443,8 @@ async function rememberWithHistory(
   return zeile;
 }
 
-/** Nummer und Farbe übersetzt für Cache, Abruf und Schreiben, sonst passten sie nicht zueinander.
- * @param vorrat aus ladeTeilepreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
+/** Number and color translated for cache, fetch and writing, otherwise they would not match each other.
+ * @param vorrat from ladeTeilepreiseVor; if a key is missing, there is no fresh entry. */
 export async function fetchPartPrice(
   k: FinancesContext,
   partNumber: string,
@@ -478,8 +478,8 @@ export async function fetchPartPrice(
   return fetchPriceWithFallback(k, quelle, condition, ttl);
 }
 
-/** Wie fetchPartPrice; gelesen werden nur echte BrickLink-Preise, keine Schätzungen.
- * @param vorrat aus ladeFigurenpreiseVor; fehlt ein Schlüssel, gibt es keinen frischen Eintrag. */
+/** Like fetchPartPrice; only real BrickLink prices are read, no estimates.
+ * @param vorrat from ladeFigurenpreiseVor; if a key is missing, there is no fresh entry. */
 export async function fetchMinifigPrice(
   k: FinancesContext,
   figNumber: string,

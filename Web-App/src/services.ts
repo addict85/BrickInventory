@@ -1,5 +1,5 @@
-/** Der Satz Dienste aus startup/wiring.ts, hier, damit routes/ und jobs/ nicht an
- * startup/ hängen, das sie einbindet; Routerfabriken verengen ihn mit Pick<>. */
+/** The set of services from startup/wiring.ts, here so that routes/ and jobs/ do not depend on
+ * startup/, which mounts them; router factories narrow it with Pick<>. */
 import type { JobsServices } from './jobQueue';
 import type { InventoryServices } from './inventory';
 import type { ImagesServices } from './images';
@@ -28,8 +28,8 @@ import * as haushaltSicht from '../db/householdView';
 import * as kontoSicht from '../db/accountView';
 import * as zugangSicht from '../db/accessView';
 
-/** Was tiefere Bereiche aus Tabellen höherer lesen: Jeder nennt in seinem Lesevertrag die Form,
- * die er braucht, und bekommt das SQL von hier über dem Besitzer, nicht per Import (docs/architektur.md). */
+/** What lower areas read from tables of higher ones: each names in its read contract the shape
+ * it needs and gets the SQL from here above the owner, not via import (docs/architektur.md). */
 export const LESEVERTRAG = { ...bestandSicht, ...bestandsmenge, ...haushaltSicht, ...kontoSicht, ...zugangSicht };
 
 export interface Dienste {

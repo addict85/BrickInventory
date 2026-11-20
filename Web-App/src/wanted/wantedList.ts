@@ -1,6 +1,6 @@
-/** Eine BrickLink-Wanted-Liste importieren: lesen (wantedParser), auflösen
- * (wantedAufloesung), schreiben (wantedSchreiber). Die Datei trägt BL-Nummern,
- * der Bestand führt RB-Nummern. */
+/** Import a BrickLink wanted list: read (wantedParser), resolve
+ * (wantedAufloesung), write (wantedSchreiber). The file carries BL numbers,
+ * the inventory lists RB numbers. */
 import { readWantedList, type WantedArt, type WantedItem } from './wantedParser';
 import {
   resolveLocalOn,
@@ -22,21 +22,21 @@ export interface WantedReport {
   ohneNummer: number;
   stufen: Record<string, number>;
   farbeOffen: number;
-  /** Mit BL-Nummern, damit man sie nachsehen kann. */
+  /** With BL numbers, so that they can be looked up. */
   offen: { blId: string; art: WantedArt; blFarbe: number | null }[];
   rebrickable?: { gefragt: number; gefunden: number; filterWirkungslos: boolean; abgebrochen?: RebrickableAbort };
-  /** `abgewiesen`: Korrekturen, deren Posten nicht passte — dann wurde eine andere
-   * Datei gewählt. Sie werden GENANNT, nicht übergangen. */
+  /** `abgewiesen`: corrections whose item did not match — then a different
+   * file was chosen. They are NAMED, not skipped. */
   korrekturen?: { angewandt: number; abgewiesen: Korrektur[] };
   angelegt: number;
   aufgestockt: number;
   fehler: number;
-  /** true = es wurde NICHTS geschrieben. */
+  /** true = NOTHING was written. */
   vorschau: boolean;
-  /** Die Zahlen oben gelten für das, was bis zum Abbruch geschah. */
+  /** The numbers above apply to what happened until the abort. */
   abgebrochen?: boolean;
-  /** Damit die Vorschau zeigt, was angelegt WÜRDE, auch wenn die Datei keinen
-   * Zustand nennt. */
+  /** So that the preview shows what WOULD be created, even if the file names no
+   * condition. */
   standardZustand: 'N' | 'U';
   posten: ItemResult[];
 }
@@ -47,8 +47,8 @@ function countLevels(auf: Aufloesung[]): Record<string, number> {
   return z;
 }
 
-/** Nach dem Auflösen die Korrekturen, weil sie es überstimmen; vor dem Zählen,
- * weil der Bericht sonst Zahlen von vor der Korrektur nennt. */
+/** The corrections after resolving, because they override it; before counting,
+ * because the report would otherwise name numbers from before the correction. */
 async function resolveCompleteOn(kx: WantedContext, posten: WantedItem[], uid: number, opt: WantedOptions) {
   let auf = await resolveLocalOn(kx, posten, uid);
   let rebrickable: WantedReport['rebrickable'];
@@ -75,15 +75,15 @@ export interface WantedOptions extends WriteOptions {
   vorschau?: boolean;
   viaRebrickable?: boolean;
   korrekturen?: Korrektur[];
-  /** Wird SYNCHRON gerufen und darf nichts werfen. */
+  /** Is called SYNCHRONOUSLY and must not throw. */
   fortschritt?: (stand: WantedProgress) => void;
-  /** Der Balken in der Oberfläche trägt ein Kreuz; ohne diese Frage hätte er einen
-   * Abbrechen-Knopf, der lügt. */
+  /** The bar in the UI carries a cross; without this question it would have a
+   * cancel button that lies. */
   abbruch?: () => Promise<boolean>;
 }
 
-/** Vorschau und Ernstfall gehen denselben Weg, damit die Vorschau nichts
- * verspricht, was der Import nicht tut. */
+/** Preview and the real thing take the same path, so that the preview promises
+ * nothing the import does not do. */
 export async function importiereWantedListe(
   k: WantedContext,
   uid: number,
@@ -116,23 +116,23 @@ export async function importiereWantedListe(
   const melde = () => opt.fortschritt?.({ phase: 'schreiben', fertig: seq + 1, gesamt: auf.length });
 
   for (const a of auf) {
-    // Der Takt zählt über ALLE Posten, sonst hinge er daran, wie viele auflösbar waren.
+    // The tick counts over ALL items, otherwise it would depend on how many were resolvable.
     if (opt.abbruch && !opt.vorschau && seq >= 0 && (seq + 1) % 10 === 0) {
       if (await opt.abbruch()) {
         bericht.abgebrochen = true;
         break;
       }
     }
-    // Eigene Bindung: TypeScript verengt `a.rbId` über eine Hilfsvariable nicht.
+    // An own binding: TypeScript does not narrow `a.rbId` via a helper variable.
     const rbId = a.rbId;
     const offen = rbId === null || a.farbeOffen;
     seq++;
     const zeile = reportRow(a);
     if (rbId === null || a.farbeOffen || opt.vorschau) {
-      // In der Vorschau heisst „angelegt" „würde angelegt".
+      // In the preview "created" means "would be created".
       if (offen) zeile.ausgang = 'offen';
       bericht.posten.push(zeile);
-      // Auch ein übersprungener Posten ist erledigt, sonst bliebe der Balken stehen.
+      // A skipped item is done too, otherwise the bar would stand still.
       melde();
       continue;
     }
@@ -148,7 +148,7 @@ export async function importiereWantedListe(
       zeile.grund = e instanceof Error ? e.message : String(e);
     }
     bericht.posten.push(zeile);
-    // Nach Erfolg UND Fehlschlag, sonst bliebe der Balken bei Fehlern stehen.
+    // After success AND failure, otherwise the bar would stand still on errors.
     melde();
   }
 
@@ -156,8 +156,8 @@ export async function importiereWantedListe(
   return bericht;
 }
 
-/** Auch nach dem Schreiben: Der Dialog zeichnet dieselbe Tabelle mit der
- * Antwort neu und zeigte sonst leere Zellen. */
+/** After writing too: the dialog redraws the same table with the
+ * response and would otherwise show empty cells. */
 async function describeRows(k: WantedContext, zeilen: ItemResult[], auf: Aufloesung[]): Promise<void> {
   const beschreibung = await describeItem(k, auf);
   zeilen.forEach((zeile, i) => {

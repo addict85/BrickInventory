@@ -61,7 +61,7 @@ export async function putInvitationAn(db: DbInterface, tokenHash: string, main: 
   ]);
 }
 
-/** Eine gültige Einladung für `sub` belegen; liefert das einladende Konto oder null. */
+/** Claim a valid invitation for `sub`; returns the inviting account or null. */
 export async function receiptsInvitation(db: DbInterface, tokenHash: string, sub: number): Promise<number | null> {
   const r = await db.get<{ main_user_id: number | string }>(
     `UPDATE account_link_invites SET used_at = NOW(), used_by = $2
@@ -84,7 +84,7 @@ export async function giveInvitationFree(db: DbInterface, tokenHash: string): Pr
   await db.run('UPDATE account_link_invites SET used_at = NULL, used_by = NULL WHERE token_hash = $1', [tokenHash]);
 }
 
-/** Verknüpfen und den Hinweis auf eine frühere Trennung derselben Kette löschen. */
+/** Link and delete the note about an earlier separation of the same chain. */
 export async function link(tx: DbInterface, main: number, sub: number): Promise<void> {
   await tx.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [
     main,
@@ -93,7 +93,7 @@ export async function link(tx: DbInterface, main: number, sub: number): Promise<
   await tx.run('DELETE FROM household_former_links WHERE main_user_id = $1 AND sub_user_id = $2', [main, sub]);
 }
 
-/** Verknüpfungen lösen; ohne `main` alle Elternkonten von `sub`. @returns Anzahl */
+/** Unlink; without `main` all parent accounts of `sub`. @returns count */
 export async function separate(db: DbInterface, main: number | null, sub: number): Promise<number> {
   const r =
     main === null
@@ -102,7 +102,7 @@ export async function separate(db: DbInterface, main: number | null, sub: number
   return r.changes ?? 0;
 }
 
-/** Alle Hauptkonten von `sub` lösen und dessen offene Einladungen verwerfen. */
+/** Unlink all main accounts of `sub` and discard its open invitations. */
 export async function resolveSubAccountAndInvitations(
   tx: DbInterface,
   sub: number,
@@ -154,11 +154,11 @@ export async function separateChains(
   return rows.map(g => ({ id: zahl(g.id), username: g.username, via: g.via ?? null }));
 }
 
-/** Feste Liste, damit nie ein Request-Wert in den Namen gerät. */
+/** A fixed list so that a request value never gets into the name. */
 const ERFASSUNGEN = { set: 'setErfassungen', part: 'teilErfassungen', fig: 'figurErfassungen' } as const;
 export type ErfassungsArt = keyof typeof ERFASSUNGEN;
 
-/** Der Besitzer einer Erfassungszeile, oder null, wenn es sie nicht gibt. */
+/** The owner of an acquisition row, or null if it does not exist. */
 export async function ownerTheEntry(
   db: DbInterface,
   l: HouseholdReadContract,

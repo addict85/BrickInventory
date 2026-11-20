@@ -33,7 +33,7 @@ export function partsInInventory(db: DbInterface, l: InventoryReadContract, uids
   );
 }
 
-/** Nur die einzeln erfassten Teile, für die Aufschlüsselung „aus Sets · einzeln“. */
+/** Only the individually captured parts, for the breakdown "from sets · individually". */
 export function partsSingle(db: DbInterface, l: InventoryReadContract, uids: number[]) {
   return db.get<{ t: string | null }>(
     `SELECT SUM(${teilmengeAus('p', 'part')}*${mengeAus('sm', 1)}) AS t

@@ -1,21 +1,21 @@
-// BrickLink-Nummern stehen nur in bl_mapping.
+// BrickLink numbers live only in bl_mapping.
 
 import type { BlArt } from '../../db/blMappingSql';
 import { writeBlNumbers } from './repository/blMapping';
 import type { CatalogContext } from './context';
 
-/** Die Art wird in SQL-Schnipsel EINGESETZT (dort lässt sich kein Wert binden);
- * der Typ verhindert, dass dort je etwas anderes landet. */
+/** The kind is INSERTED into SQL snippets (no value can be bound there);
+ * the type prevents anything else from ever ending up there. */
 export type { BlArt };
-/** In db/, damit Repositories sie einsetzen können. */
+/** In db/ so that repositories can insert them. */
 
-/** Nur für geprüfte Quellen (Rebrickable, BrickLink); gleiche Nummer heisst
- * „keine abweichende". Was ein Konto einträgt, geht an rememberOwnBlNumber. */
+/** Only for verified sources (Rebrickable, BrickLink); the same number means
+ * "no differing one". What an account enters goes to rememberOwnBlNumber. */
 export function rememberBlNumber(k: CatalogContext, art: BlArt, rbId: string, blId: string): Promise<void> {
   return k.blZuordnung.writeBlNumber(art, rbId, blId);
 }
 
-/** Gilt nur für dieses Konto, in allen Lesewegen vor der gemeinsamen Zuordnung. */
+/** Applies only to this account, in all read paths before the shared mapping. */
 export function rememberOwnBlNumber(
   k: CatalogContext,
   uid: number,
@@ -28,7 +28,7 @@ export function rememberOwnBlNumber(
 
 const konten = (k: number | number[] | null | undefined): number[] => (k == null ? [] : Array.isArray(k) ? k : [k]);
 
-/** Je Nummer die letzte Angabe. */
+/** The last entry per number. */
 export async function rememberBlNumbers(
   k: CatalogContext,
   art: BlArt,
@@ -45,14 +45,14 @@ export async function rememberBlNumbers(
   );
 }
 
-/** Damit dasselbe Teil nicht immer wieder abgefragt wird; eine gefundene
- * Zuordnung bleibt stehen. */
+/** So that the same part is not queried again and again; a mapping
+ * once found stays. */
 export function merkeBlNummerUnveraendert(k: CatalogContext, art: BlArt, rbId: string): Promise<void> {
   return k.blZuordnung.noteLookedUp(art, rbId);
 }
 
-/** null für „keine abweichende bekannt" — ohne Zeile und Zeile ohne Wert
- * zusammen. Wer beides trennen muss, fragt blFetchNumber. */
+/** null for "no differing one known" — no row and row without value
+ * together. Whoever must tell them apart asks blFetchNumber. */
 export function blNumberOf(
   k: CatalogContext,
   art: BlArt,
@@ -62,8 +62,8 @@ export function blNumberOf(
   return k.blZuordnung.differingNumber(art, rbId, konten(konto));
 }
 
-/** null nur, wenn noch nie nachgesehen wurde: Das Vorladen der Preise merkt
- * sich keine Fehlschläge und braucht diesen Unterschied. */
+/** null only if it was never looked up: preloading prices does not remember
+ * failures and needs this distinction. */
 export function blFetchNumber(
   k: CatalogContext,
   art: BlArt,
@@ -73,7 +73,7 @@ export function blFetchNumber(
   return k.blZuordnung.effectiveNumber(art, rbId, konten(konto));
 }
 
-// Eine Abfrage für viele Nummern; jede Zeile kommt zurück, damit nichts zweimal gefragt wird.
+// One query for many numbers; every row comes back so that nothing is asked twice.
 export async function blFetchNumbers(
   k: CatalogContext,
   art: BlArt,
@@ -91,7 +91,7 @@ export function merkeBlFarbnummer(k: CatalogContext, colorId: number, blColorId:
   return k.blZuordnung.writeBlColorNumber(colorId, blColorId);
 }
 
-/** Rebrickable liefert `ext_ids` als Liste oder die Liste direkt. */
+/** Rebrickable delivers `ext_ids` as a list or the list directly. */
 type ExterneNumbers = { external_ids?: { BrickLink?: { ext_ids?: number[] } & number[] } } | null | undefined;
 export function blColorNumberFrom(farbe: ExterneNumbers): number | null {
   const id = farbe?.external_ids?.BrickLink?.ext_ids?.[0] ?? farbe?.external_ids?.BrickLink?.[0];

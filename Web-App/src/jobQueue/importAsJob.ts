@@ -1,15 +1,15 @@
-/** Ein Auftrag, auf dessen Ergebnis die Anfrage wartet (etwa ein Import): Bricht der Web-Prozess
- * ab, läuft er weiter, und Fremdabrufe belasten nicht den Prozess, der die Seiten ausliefert. */
+/** A job whose result the request waits for (e.g. an import): if the web process
+ * aborts, it keeps running, and third-party fetches do not burden the process that serves the pages. */
 import { placeJobOne } from './service';
 import type { JobKind, Fortschritt, PayloadInput } from './jobs';
 import { Fachfehler, fachfehler, type ErrorKind, type ErrorCode } from '../infra/errorTexts';
 import type { JobsContext } from './context';
 
-/** So lange wartet die Anfrage; danach läuft der Auftrag im Hintergrund weiter. */
+/** The request waits this long; afterwards the job keeps running in the background. */
 export const IMPORT_WAIT_MS = 10 * 60_000;
 const TAKT_MS = 150;
 
-/** Was der Job ablegt: das Ergebnis, oder der Fachfehler, den die Route meldet. */
+/** What the job stores: the result, or the domain error the route reports. */
 type Abgelegt = {
   ergebnis?: Record<string, unknown>;
   fachfehler?: { code: ErrorCode; art: ErrorKind; vars?: Record<string, string | number> };
@@ -19,14 +19,14 @@ export async function setResult(k: JobsContext, id: string, ergebnis: Record<str
   await k.auftraege.writeResult(id, { ergebnis } satisfies Abgelegt);
 }
 
-/** Ein Fachfehler (falsche Datei, fehlendes Recht) kommt bei der Anfrage mit Code an. */
+/** A domain error (wrong file, missing right) arrives at the request with a code. */
 export async function setSlotError(k: JobsContext, id: string, e: Fachfehler): Promise<void> {
   await k.auftraege.writeResult(id, {
     fachfehler: { code: e.code, art: e.art, ...(e.vars ? { vars: e.vars } : {}) },
   } satisfies Abgelegt);
 }
 
-/** @typeParam T die Antwort, die der Job ablegt; der Vertrag prüft sie im Testlauf. */
+/** @typeParam T the response the job stores; the contract checks it in the test run. */
 export async function waitOnJob<T, A extends JobKind>(
   k: JobsContext,
   art: A,
@@ -34,7 +34,7 @@ export async function waitOnJob<T, A extends JobKind>(
   o: { userId: number; fortschritt?: (f: Fortschritt) => void; wartenMs?: number },
 ): Promise<T> {
   const uid = o.userId;
-  // Ein Versuch: Ein zweiter Lauf legte schon Angelegtes noch einmal an.
+  // One attempt: a second run would create already created items once more.
   const id = await placeJobOne(k, art, nutzlast, { userId: uid, maxAttempts: 1 });
   if (!id) fachfehler('intern', 'interner_fehler');
   const bis = k.uhr.jetzt() + (o.wartenMs ?? IMPORT_WAIT_MS);
@@ -52,7 +52,7 @@ export async function waitOnJob<T, A extends JobKind>(
     if (abgelegt.fachfehler)
       throw new Fachfehler(abgelegt.fachfehler.art ?? 'ungueltig', abgelegt.fachfehler.code, abgelegt.fachfehler.vars);
     if (s?.status === 'erledigt') {
-      // Gelesen ist gelesen: Das Ergebnis trägt Namen und Nummern aus der Datei.
+      // Read is read: the result carries names and numbers from the file.
       await k.auftraege.writeResult(id, null);
       return (abgelegt.ergebnis ?? {}) as T;
     }

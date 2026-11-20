@@ -1,14 +1,14 @@
 import type { DbInterface } from '../../../db/database';
 import type { DevicesReadContract } from '../readContract';
 
-/** Eine Token-Familie: Konto und created_at (auf Millisekunden, wie es über JavaScript reist). */
+/** A token family: account and created_at (to the millisecond, as it travels through JavaScript). */
 export interface Familie {
   uid: number;
   seit: string;
 }
 
-/** Ein unbestätigter Schlüssel (vor der Attestation hinterlegt) gilt nur bis [altBis]. */
-/** Die Familie eines eben ausgestellten Tokens, auf Millisekunden wie familieLebt. */
+/** An unconfirmed key (registered before the attestation) only applies until [altBis]. */
+/** The family of a token just issued, to the millisecond like familieLebt. */
 export async function familyOfTokens(db: DbInterface, l: DevicesReadContract, hash: string): Promise<Familie | null> {
   const z = await db.get<{ uid: number; seit: Date }>(l.tokenFamilySql('$1'), [hash]);
   return z ? { uid: z.uid, seit: new Date(z.seit).toISOString() } : null;
@@ -32,9 +32,9 @@ export async function entryThe(db: DbInterface, f: Familie): Promise<{ public_ke
   );
 }
 
-/** Nur für eine lebende, junge Familie; ein unbestätigter Schlüssel darf dabei einem
- * attestierten weichen. Reste widerrufener Familien fallen weg.
- * @returns ob er jetzt gilt */
+/** Only for a living, young family; an unconfirmed key may give way to an
+ * attested one in the process. Remnants of revoked families are dropped.
+ * @returns whether it applies now */
 export async function putKeyAn(
   db: DbInterface,
   l: DevicesReadContract,
@@ -56,7 +56,7 @@ export async function putKeyAn(
   ));
 }
 
-/** Eine Nonce für die Attestation-Challenge; höchstens [offen] je Familie, nur für eine junge Familie. */
+/** A nonce for the attestation challenge; at most [offen] per family, only for a young family. */
 export async function putNonceAn(
   db: DbInterface,
   l: DevicesReadContract,
@@ -78,7 +78,7 @@ export async function putNonceAn(
   ));
 }
 
-/** Die bei der QR-Abholung ausgegebene Nonce, solange sie gilt. */
+/** The nonce issued at the QR pickup, as long as it is valid. */
 export async function qrNonceThe(db: DbInterface, f: Familie): Promise<{ nonce: string; expires_at: Date } | null> {
   return (
     (await db.get<{ nonce: string; expires_at: Date }>(
@@ -89,7 +89,7 @@ export async function qrNonceThe(db: DbInterface, f: Familie): Promise<{ nonce: 
   );
 }
 
-/** Löschen und Lesen in einem Schritt: Eine Nonce gilt genau einmal und nur für ihre Familie. */
+/** Delete and read in one step: a nonce applies exactly once and only for its family. */
 export async function takeNonce(db: DbInterface, f: Familie, nonce: string): Promise<boolean> {
   return !!(await db.get<{ nonce: string }>(
     `DELETE FROM device_nonces WHERE nonce = $1 AND user_id = $2 AND token_family = $3::timestamptz AND expires_at > NOW()
@@ -98,7 +98,7 @@ export async function takeNonce(db: DbInterface, f: Familie, nonce: string): Pro
   ));
 }
 
-/** Höchstens [offen] gleichzeitig je Familie: Abholen ohne Einlösen füllt die Tabelle nicht. */
+/** At most [offen] at the same time per family: picking up without redeeming does not fill the table. */
 export async function putChallengeAn(
   db: DbInterface,
   f: Familie,
@@ -122,7 +122,7 @@ export async function putChallengeAn(
   return z.expires_at;
 }
 
-/** Löschen und Lesen in einem Schritt: Eine Challenge gilt genau einmal, und nur für ihre Familie. */
+/** Delete and read in one step: a challenge applies exactly once, and only for its family. */
 export async function takeChallenge(db: DbInterface, f: Familie, challenge: string): Promise<string | null> {
   const z = await db.get<{ action: string }>(
     `DELETE FROM step_up_challenges WHERE challenge = $1 AND user_id = $2 AND token_family = $3::timestamptz
@@ -150,7 +150,7 @@ export async function openRelease(
   return z.until_at;
 }
 
-/** Prüfen und Verlängern in einem Schritt, nie über `max_until` hinaus. */
+/** Check and extend in one step, never beyond `max_until`. */
 export async function useRelease(db: DbInterface, f: Familie, action: string, idleS: number): Promise<boolean> {
   return !!(
     await db.run(

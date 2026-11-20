@@ -1,5 +1,5 @@
-/** In eine Schattentabelle schreiben und in einer Transaktion tauschen, damit
- * der Bestand bis dahin lesbar bleibt. */
+/** Write into a shadow table and swap in one transaction so that
+ * the existing data stays readable until then. */
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
@@ -15,7 +15,7 @@ export type Meldung = { type: 'progress'; total: number; pct: number; filename: 
 
 const sp = (c: string[], i: number): string => c[i] ?? '';
 
-// Verdoppeltes " bleibt ein Zeichen.
+// A doubled " remains one character.
 export function csvRow(line: string): string[] {
   const result: string[] = [];
   let cur = '',
@@ -26,7 +26,7 @@ export function csvRow(line: string): string[] {
       if (inQuotes && line[i + 1] === '"') {
         cur += '"';
         i++;
-      } // "" → ein "
+      } // "" → one "
       else inQuotes = !inQuotes;
     } else if (c === ',' && !inQuotes) {
       result.push(cur);
@@ -39,7 +39,7 @@ export function csvRow(line: string): string[] {
   return result;
 }
 
-/** Über den asynchronen Iterator: Er hält das Lesen zwischen den Blöcken an. */
+/** Via the async iterator: it pauses reading between the chunks. */
 async function streamInsert(
   tmpFile: string,
   chunkSize: number,
@@ -90,11 +90,11 @@ interface Tausch {
   konflikt?: repo.Konflikt;
   chunkSize?: number;
   mapRow: (c: string[]) => unknown[];
-  /** Statt des Tauschs; rb_sets gleicht per Upsert ab. */
+  /** Instead of the swap; rb_sets reconciles via upsert. */
   abgleich?: typeof repo.swap;
 }
 
-// Über eine Schattentabelle: Leser sehen bis zum Tausch die alte, nie eine leere Tabelle.
+// Via a shadow table: readers see the old one until the swap, never an empty table.
 async function importiereMitTausch(pool: Db['systemPool'], melde: (m: Meldung) => void, t: Tausch): Promise<number> {
   const schatten = `${t.tabelle}_import`;
   const client = await pool.connect();
@@ -110,7 +110,7 @@ async function importiereMitTausch(pool: Db['systemPool'], melde: (m: Meldung) =
         t.filename,
         melde,
       );
-      // Eine leere Datei ist ein Fehler, kein leerer Katalog.
+      // An empty file is an error, not an empty catalog.
       if (total === 0)
         throw new Error(`${t.filename}: 0 Zeilen gelesen — Tausch abgebrochen, bisheriger Bestand bleibt erhalten`);
       await (t.abgleich ?? repo.swap)(client, t.tabelle, schatten, t.cols);
@@ -125,9 +125,9 @@ async function importiereMitTausch(pool: Db['systemPool'], melde: (m: Meldung) =
   }
 }
 
-/** Der Zugang des Importprozesses, ohne die Fristen des Servers: Der Tausch einer grossen
- * Katalogtabelle dauert länger als eine Anfrage. Der Systemzugang ist auch ohne Systemrolle ein
- * eigener Pool ohne Pipeline, wie zuvor der rohe Pool dieses Prozesses. */
+/** The import process's access, without the server's deadlines: swapping a large
+ * catalog table takes longer than a request. Even without a system role, the system access is a
+ * pool of its own without a pipeline, like this process's raw pool before. */
 export function createImportAccess(): Db {
   return createDb({
     ...dbKonfigFromEnvironment(),
@@ -141,8 +141,8 @@ export function createCatalogImports(
   melde: (m: Meldung) => void,
   l: Pick<CatalogReadContract, 'setZaehlt'>,
 ) {
-  // Der Abgleich von rb_sets fragt, ob irgendein Konto ein Set hält: über Kontogrenzen, also
-  // als Systemrolle; die Laufzeitrolle sähe ohne Konto keine Zeile und löschte es.
+  // Reconciling rb_sets asks whether any account holds a set: across account boundaries, so
+  // as system role; without an account the runtime role would see no row and delete it.
   const pool = db.systemPool;
   const tausch = (t: Tausch) => () => importiereMitTausch(pool, melde, t);
   return {
@@ -150,8 +150,8 @@ export function createCatalogImports(
       tabelle: 'rb_colors',
       filename: 'colors.csv.gz',
       tmp: path.join(DATA_DIR, 'colors.csv.tmp'),
-      // bl_color_id kommt aus der API, nicht aus dem CSV — mitgeschrieben wäre sie
-      // nach jedem Tausch leer.
+      // bl_color_id comes from the API, not from the CSV — if written along, it would be
+      // empty after every swap.
       cols: ['id', 'name', 'rgb', 'is_trans'],
       konflikt: ['id'],
       mapRow: c => [parseInt(sp(c, 0), 10) || 0, sp(c, 1), sp(c, 2), isJa(sp(c, 3))],
@@ -218,7 +218,7 @@ export function createCatalogImports(
       tmp: path.join(DATA_DIR, 'inventory_parts.csv.tmp'),
       cols: ['inventory_id', 'part_num', 'color_id', 'quantity', 'is_spare', 'img_url'],
       chunkSize: 50,
-      // isJa(): eine Lesart für 't', 'True', '1' …
+      // isJa(): one interpretation for 't', 'True', '1' …
       mapRow: c => [
         parseInt(sp(c, 0), 10) || 0,
         sp(c, 1),

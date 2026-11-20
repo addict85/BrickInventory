@@ -16,7 +16,7 @@ export async function loadedColors(db: DbInterface): Promise<{ id: number; name:
   );
 }
 
-// Im gemeinsamen Katalog bleibt der erste geprüfte Wert; COALESCE hält ihn gegen spätere Quellen.
+// The shared catalog keeps the first verified value; COALESCE holds it against later sources.
 export function writePartCatalog(dbh: Schreiber, partNumber: string, name: string | null, kategorie: string | null) {
   return dbh.run(
     `
@@ -73,7 +73,7 @@ export function writeMinifigCatalog(
   );
 }
 
-/** Eigene Angaben: Die neueste Eingabe gilt, ein leeres Feld lässt die alte stehen. */
+/** Own details: the newest input applies, an empty field leaves the old one standing. */
 export function writePartOwn(
   dbh: Schreiber,
   uid: number,
@@ -270,7 +270,7 @@ export function writeMinifigImageLocal(dbh: Schreiber, figNumber: string, imageL
   );
 }
 
-/** Der geprüfte Wert, sonst die eigene Angabe von `fuer`; fremde Eingaben stehen nicht im Katalog. */
+/** The verified value, otherwise `fuer`'s own detail; others' inputs are not in the catalog. */
 export function partFromCatalog(db: DbInterface, partNumber: string, colorId: number | null, fuer: number | null) {
   return db.get<{
     name: string | null;

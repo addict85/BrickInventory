@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
 
-/** Ein Lauf ohne Schreiben seit `minuten` gehört einem verschwundenen Prozess;
- * „running" sperrte sonst jeden weiteren Import. */
+/** A run without writes for `minuten` belongs to a vanished process;
+ * "running" would otherwise block every further import. */
 export async function markOrphaned(db: DbInterface, userId: number, fehler: string, minuten: number): Promise<void> {
   await db.run(
     `UPDATE import_status SET status = 'error', current = NULL, error = $2, updated_at = NOW()
@@ -11,7 +11,7 @@ export async function markOrphaned(db: DbInterface, userId: number, fehler: stri
   );
 }
 
-/** Eine Zeile von import_status; results ist jsonb. */
+/** A row of import_status; results is jsonb. */
 export interface ImportStatusRow {
   user_id: number;
   status: string | null;
@@ -29,8 +29,8 @@ export function importStand(db: DbInterface, userId: number) {
   return db.get<ImportStatusRow>('SELECT * FROM import_status WHERE user_id = $1', [userId]);
 }
 
-/** Die Schlüssel landen als SPALTENNAMEN im Abfragetext, wo keine Bindung
- * hilft — deshalb die Positivliste. */
+/** The keys end up as COLUMN NAMES in the query text, where no binding
+ * helps — hence the allow list. */
 const JOB_COLUMNS = new Set(['status', 'total', 'done', 'current', 'results', 'error', 'started_at', 'run_id']);
 
 function spalten(fields: Record<string, unknown>): string[] {
@@ -53,7 +53,7 @@ export async function writeImportStatus(
   );
 }
 
-/** Nur, solange dieser Lauf eingetragen ist und läuft. */
+/** Only as long as this run is registered and running. */
 export async function changeImportStatus(
   db: DbInterface,
   userId: number,

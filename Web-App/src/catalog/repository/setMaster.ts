@@ -1,8 +1,8 @@
 import type { DbInterface } from '../../../db/database';
 
-/** Vorhandene Werte bleiben, wo der neue Abruf nichts liefert. Name, Jahr, Thema
- * und Teile gehen nach rb_sets, aber nur in eine Zeile der Erfassung ('api'):
- * Was das Rebrickable-CSV führt, überschreibt kein Einzelabruf. */
+/** Existing values stay where the new fetch delivers nothing. Name, year, theme
+ * and parts go to rb_sets, but only into a capture row ('api'):
+ * what the Rebrickable CSV lists is not overwritten by a single fetch. */
 export function rememberSetCatalog(
   dbh: DbInterface,
   setNumber: string,
@@ -15,7 +15,7 @@ export function rememberSetCatalog(
   localImage: string | null,
   themeId: number | null = null,
 ) {
-  // Eine Anweisung: Die set_catalog-Zeile sieht die rb_sets-Zeile aus derselben.
+  // One statement: the set_catalog row sees the rb_sets row from the same one.
   return dbh.run(
     `WITH stamm AS (
                     INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts, source)
@@ -39,8 +39,8 @@ export function rememberSetCatalog(
 const PLATZHALTER_SQL =
   "(rs.name = 'Set ' || rs.set_num AND rs.year IS NULL AND rs.theme_id IS NULL AND rs.num_parts IS NULL)";
 
-/** Ohne Netz angelegt: Der Platzhalter macht das Set lesbar, bis der Auftrag den Katalog holt.
- * Kennt rb_sets das Set schon (CSV), bleibt dessen Zeile. */
+/** Created without network: the placeholder makes the set readable until the job fetches the catalog.
+ * If rb_sets already knows the set (CSV), its row stays. */
 export async function rememberCatalogPlaceholder(dbh: DbInterface, setNumber: string) {
   await dbh.run(
     "INSERT INTO rb_sets (set_num, name, source) VALUES ($1, 'Set ' || $1, 'api') ON CONFLICT (set_num) DO NOTHING",

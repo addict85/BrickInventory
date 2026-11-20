@@ -31,8 +31,8 @@ interface Lauf {
   fertig: Promise<void>;
 }
 
-/** Der Worker hält das Lease selbst: Ein Handler, der nie ein Lebenszeichen
- * gibt, verlöre sonst nach der Frist seine Zeile und liefe doppelt. */
+/** The worker holds the lease itself: a handler that never gives a sign of life
+ * would otherwise lose its row after the deadline and run twice. */
 function holdLease(d: JobsServices, a: JobRow, ac: AbortController, deadlineSec: number): () => void {
   const renew = async () => {
     if (ac.signal.aborted) return;
@@ -52,8 +52,8 @@ function holdLease(d: JobsServices, a: JobRow, ac: AbortController, deadlineSec:
   return () => clearInterval(t);
 }
 
-/** Meldungen eines Laufs nacheinander, sonst überholte ein später Stand einen früheren.
- * Eine gescheiterte Meldung scheitert für ihren Aufrufer, nicht für alle folgenden. */
+/** Reports of a run one after another, otherwise a late state would overtake an earlier one.
+ * A failed report fails for its caller, not for all following ones. */
 function progressChain(d: JobsServices, a: JobRow, ac: AbortController, deadlineSec: number) {
   let kette: Promise<boolean> = Promise.resolve(true);
   return (f: Fortschritt): Promise<boolean> => {
@@ -66,12 +66,12 @@ function progressChain(d: JobsServices, a: JobRow, ac: AbortController, deadline
   };
 }
 
-/** Was nicht mehr läuft, steht sonst bis zum Ablauf der Frist auf 'laeuft'; die Frist heilt auch einen Fehler hier. */
+/** What no longer runs would otherwise stay on 'laeuft' until the deadline; the deadline also heals an error here. */
 async function backInDieTable(d: JobsServices, a: JobRow): Promise<void> {
   await d.giveBack(a).catch(logAndContinue('auftraege:zurückgeben'));
 }
 
-/** Auch nach einem endgültigen Fehler, sonst endete der Zeitplan; ohne Zeitplan nichts. */
+/** Also after a final error, otherwise the schedule would end; without a schedule nothing. */
 async function followUpPlan(d: JobsServices, a: JobRow): Promise<void> {
   await d.planeNext(a.type).catch(logAndContinue(`auftraege:plan ${a.type}`));
 }
@@ -110,7 +110,7 @@ async function runJobFrom(
   const k = contextFor(d, a, ac, deadlineSec, isEnded);
   const letLos = holdLease(d, a, ac, deadlineSec);
   try {
-    // Mehr Versuche als erlaubt: Die früheren stürzten ab, ein weiterer vermutlich auch.
+    // More attempts than allowed: the earlier ones crashed, another one probably would too.
     if (!b || a.attempts > a.max_attempts)
       throw new Error(b ? 'ohne Rückmeldung abgebrochen' : `keine Bearbeitung für ${a.type}`);
     const geprueft = d.checkPayload(a.type, a.payload);
@@ -132,7 +132,7 @@ async function afterError(
   ac: AbortController,
   e: unknown,
 ): Promise<void> {
-  // Nach einem Abbruch zählt der Grund des Signals, nicht die Ausnahme, die er im Handler auslöste.
+  // After an abort the reason of the signal counts, not the exception it caused in the handler.
   const grund: unknown = ac.signal.aborted ? ac.signal.reason : e;
   if (grund instanceof JobLost) {
     console.warn(`[auftraege] ${a.type} #${a.id}: ${grund.message}`);
@@ -157,8 +157,8 @@ async function afterError(
   }
 }
 
-/** Beim Abschalten: alle Läufe unterbrechen, kurz auf sie warten, und was dann noch
- * läuft, zurückgeben — sonst stünde es bis zum Ablauf der Frist auf 'laeuft'. */
+/** On shutdown: interrupt all runs, wait for them briefly, and return whatever is
+ * still running then — otherwise it would stay on 'laeuft' until the deadline. */
 async function interruptRunning(d: JobsServices, laufend: Map<string, Lauf>, wartenMs: number): Promise<Lauf[]> {
   const alle = [...laufend.values()];
   for (const l of alle) if (!l.ac.signal.aborted) l.ac.abort(new JobInterrupted());
@@ -168,11 +168,11 @@ async function interruptRunning(d: JobsServices, laufend: Map<string, Lauf>, war
   return rest;
 }
 
-/** Mehrere Worker teilen sich die Arbeit über SKIP LOCKED; das NOTIFY beim Einstellen weckt früher als der Takt. */
+/** Several workers share the work via SKIP LOCKED; the NOTIFY on enqueueing wakes earlier than the tick. */
 function createWorker(d: JobsServices, editor: Bearbeitertabelle, o: WorkerOptions = {}) {
   const arten = Object.keys(editor);
   const exklusiv = arten.filter(a => editor[a as JobKind]?.exklusiv);
-  // Die Werte reicht der Start (startup/jobsProcess.ts); ohne sie gilt die Vorgabe.
+  // The values are passed by the start (startup/jobsProcess.ts); without them the default applies.
   const parallel = Math.max(1, o.parallel ?? VORGABE.jobParallel);
   const deadlineSec = o.deadlineSec ?? VORGABE.jobDeadlineSec;
   const laufend = new Map<string, Lauf>();
@@ -181,7 +181,7 @@ function createWorker(d: JobsServices, editor: Bearbeitertabelle, o: WorkerOptio
     pumps = false;
   let takt: NodeJS.Timeout | null = null;
   let abmelden: (() => void)[] = [];
-  // Am Ende jeder Runde: Daran hängt das Lebenszeichen (startup/jobsProcess.ts).
+  // At the end of every round: the heartbeat depends on it (startup/jobsProcess.ts).
   let lastRound = 0;
   const exclusiveRemembered = d.rememberExclusive(exklusiv).catch(logAndContinue('auftraege:exklusiv'));
 
@@ -196,7 +196,7 @@ function createWorker(d: JobsServices, editor: Bearbeitertabelle, o: WorkerOptio
     const ac = new AbortController();
     const lauf: Lauf = { a, ac, fertig: Promise.resolve() };
     laufend.set(a.id, lauf);
-    // Kein Rahmen um den Lauf: Die Ausführung setzt ihn je Konto (inNamesOfJob).
+    // No frame around the run: the execution sets it per account (inNamesOfJob).
     lauf.fertig = runJobFrom(d, a, ac, editor[a.type], deadlineSec, () => beendet)
       .catch(logAndContinue(`auftraege:${a.type}`))
       .finally(() => laufend.delete(a.id));
@@ -210,9 +210,9 @@ function createWorker(d: JobsServices, editor: Bearbeitertabelle, o: WorkerOptio
     return true;
   }
 
-  // Die laufende Runde, damit stoppe() auf eine Belegung warten kann, die
-  // gerade in der Datenbank steht: Sie käme sonst nach dem Abschalten an und
-  // bliebe bis zum Ablauf ihrer Frist auf 'laeuft'.
+  // The running round, so stoppe() can wait for a claim that
+  // is currently in the database: it would otherwise arrive after shutdown and
+  // stay on 'laeuft' until its deadline expires.
   let pumpLauf: Promise<void> = Promise.resolve();
 
   function pump(): Promise<void> {
@@ -232,7 +232,7 @@ function createWorker(d: JobsServices, editor: Bearbeitertabelle, o: WorkerOptio
         });
       }
     } catch (e) {
-      // Die Runde endet; der nächste Takt oder ein NOTIFY versucht es wieder.
+      // The round ends; the next tick or a NOTIFY tries again.
       reportError('auftraege:belegen', e);
     } finally {
       pumps = false;

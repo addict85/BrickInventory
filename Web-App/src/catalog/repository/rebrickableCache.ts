@@ -12,7 +12,7 @@ export interface CatalogSet {
   fetched_at?: string | Date | null;
 }
 
-/** Der Abrufstand aus catalog_cache, die Angaben aus rb_sets und set_catalog (0108). */
+/** The fetch state from catalog_cache, the details from rb_sets and set_catalog (0108). */
 export async function catalogSetTo(db: DbInterface, nummer: string): Promise<CatalogSet | undefined> {
   return db.get<CatalogSet>(
     `SELECT cc.set_number, rs.name, NULLIF(rs.year, 0) AS year, rt.name AS theme,
@@ -26,7 +26,7 @@ export async function catalogSetTo(db: DbInterface, nummer: string): Promise<Cat
   );
 }
 
-/** Damit höchstens täglich nachgefragt wird. */
+/** So that a re-query happens at most daily. */
 export async function rememberUnknownSet(db: DbInterface, nummer: string, alsGear: boolean): Promise<void> {
   await db.run(
     `INSERT INTO catalog_cache (set_number, is_gear) VALUES ($1,$2)
@@ -35,7 +35,7 @@ export async function rememberUnknownSet(db: DbInterface, nummer: string, alsGea
   );
 }
 
-/** Angaben in den Katalog, der Abrufstand in catalog_cache. */
+/** Details into the catalog, the fetch state into catalog_cache. */
 export async function rememberSet(
   db: DbInterface,
   s: Omit<CatalogSet, 'is_gear' | 'fetched_at'> & { theme_id: number | null },

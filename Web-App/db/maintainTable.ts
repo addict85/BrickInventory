@@ -1,13 +1,13 @@
 /**
- * Nach einem Masseneinfuegen: Planerstatistik und GIN-Wartelisten auffrischen.
+ * After a bulk insert: refresh planner statistics and GIN pending lists.
  */
 
-/** VACUUM kennt keine Parameter, der Name wird ins SQL eingesetzt — darum
- * geprüft, auch wenn heute jeder Aufrufer ihn aus dem eigenen Quelltext hat. */
+/** VACUUM takes no parameters, the name is inserted into the SQL — hence
+ * checked, even though today every caller has it from its own source. */
 const NAME_ALLOWED = /^[a-z_][a-z0-9_]*$/;
 
-/** `runFrom` darf in keiner Transaktion laufen: VACUUM scheitert dort.
- * true, wenn die Pflege durchgelaufen ist. */
+/** `runFrom` must not run inside a transaction: VACUUM fails there.
+ * true if the maintenance completed. */
 export async function maintainTable(runFrom: (sql: string) => Promise<unknown>, tabelle: string): Promise<boolean> {
   if (!NAME_ALLOWED.test(tabelle)) {
     console.error(`[pflege] "${tabelle}" ist kein einfacher Tabellenname — nichts getan.`);

@@ -1,4 +1,4 @@
-/** Sets in Mengen und im Strom erfassen: CSV-Import samt Fortschritt, Export, Erfassen mit Ergänzung. */
+/** Adding sets in bulk and as a stream: CSV import with progress, export, adding with supplement. */
 import type express from 'express';
 import { publicError } from '../../src/infra/error';
 import { kontoSchranke, guardFor } from './middleware';
@@ -11,9 +11,9 @@ import { loginOrTokenGuard, signedInUserId } from '../../src/account/http/login'
 import { vertragsRouter } from '../../src/http/contractRouter';
 import type { Dienste } from '../../src/services';
 
-/** Das Set ist angelegt; endet der Zugang oder trennt der Client, bricht nur die
- * Ergänzung ab. Der Strom ist offen: Ein Fehler wird zum letzten Ereignis, kein
- * Statuscode mehr. `success` gehört dazu: Die Clients lesen es wie eine Antwort. */
+/** The set is created; if the access ends or the client disconnects, only the
+ * supplement aborts. The stream is open: an error becomes the last event, no
+ * status code anymore. `success` belongs to it: the clients read it like a response. */
 async function supplementInStream(
   dienste: Pick<Dienste, 'account' | 'sets'>,
   strom: Strom,
@@ -43,25 +43,25 @@ export function buildSetsImportRouter(d: Pick<Dienste, 'account' | 'sets'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
-  // ── CSV-Import: Fortschritt als Abfrage und als Strom ───────────────────────
-  // 503 nach 3 s statt zu warten: Die Zustandsrouten hängen an jeder geöffneten
-  // Seite und dürfen bei voller Datenbank nicht stauen.
+  // ── CSV import: progress as a query and as a stream ──────────────────────────
+  // 503 after 3 s instead of waiting: the status routes hang on every open
+  // page and must not pile up when the database is full.
   const stateGuard = loginOrTokenGuard(d.account, { timeoutMs: 3000 });
 
   router.endpunkt('GET /api/v1/sets/import/csv/status', stateGuard, async (req, res) => {
     res.json(await d.sets.csvImportStand(signedInUserId(req), req));
   });
 
-  // Offene Ströme je Konto zählt kontoSchranke('strom') für alle Ströme gemeinsam.
+  // Open streams per account are counted by kontoSchranke('strom') for all streams together.
   router.endpunkt('GET /api/v1/sets/import/csv/stream', stateGuard, kontoSchranke('strom'), async (req, res) => {
     const uid = signedInUserId(req);
     const strom = openStream(d.account, req, res, { onlyChanges: true, backpressure: `csv-import ${uid}` });
-    // EventSource setzt keine Kopfzeilen, die Sprache kommt deshalb als ?sprache=.
+    // EventSource sets no headers, so the language comes as ?sprache=.
     const gewaehlt = (req as express.Request & { abfrage: { sprache?: string } }).abfrage.sprache;
     const sprache = gewaehlt === 'en' || gewaehlt === 'de' ? gewaehlt : responseLanguage(req);
     const sendStatus = async () => strom.sende(await d.sets.csvImportStatusForStream(uid, req, sprache));
-    // Erst anmelden, dann den ersten Stand schicken: Sonst geht ein Ereignis zwischen
-    // Lesen und Anmelden verloren. Andere Worker melden über LISTEN/NOTIFY; der Takt fängt Verpasstes auf.
+    // Subscribe first, then send the first state: otherwise an event between
+    // read and subscribe is lost. Other workers report via LISTEN/NOTIFY; the tick catches anything missed.
     strom.atEnd(d.sets.subscribeCsvImportStatus(uid, sendStatus));
     const takt = setInterval(sendStatus, 120000);
     strom.atEnd(() => clearInterval(takt));
@@ -80,7 +80,7 @@ export function buildSetsImportRouter(d: Pick<Dienste, 'account' | 'sets'>) {
         req.file.buffer.toString('utf-8'),
         req.abfrage.pruefen === true,
       );
-      // Übersprungene Zeilen gehören in die sofortige Antwort; der Import läuft weiter.
+      // Skipped rows belong in the immediate response; the import continues.
       return {
         total,
         gestartet,
@@ -109,8 +109,8 @@ export function buildSetsImportRouter(d: Pick<Dienste, 'account' | 'sets'>) {
   router.endpunkt('POST /api/v1/sets/add-stream', requireToken, kontoSchranke('strom'), async (req, res) => {
     const e = req.eingabe;
     const uid = signedInUserId(req);
-    // Erst anlegen, dann strömen: Ein schon vorhandenes Set antwortet „exists“, es gibt nichts zu verfolgen.
-    // Der Auftrag wartet: Der Strom ergänzt selbst und braucht ihn nur, wenn er abreisst.
+    // Create first, then stream: an already existing set answers "exists", there is nothing to follow.
+    // The job waits: the stream supplements itself and only needs it if it breaks off.
     const r = await d.sets.setErfassen({
       requester: uid,
       ownerWish: e.owner_user_id,

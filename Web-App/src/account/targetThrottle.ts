@@ -2,9 +2,9 @@ import crypto from 'node:crypto';
 import { countRequest } from './loginLimiter';
 import type { AccountContext } from './context';
 
-/** Je ZIELADRESSE, nicht je Absender: Über wechselnde IP-Adressen flutete ein
- * Fremder sonst ein Postfach. Gezählt wird der Hash, damit die Zählertabelle
- * keine Adressen sammelt. */
+/** Per TARGET ADDRESS, not per sender: via changing IP addresses a
+ * stranger could otherwise flood a mailbox. The hash is counted so that the counter table
+ * does not collect addresses. */
 export async function targetThrottled(
   k: AccountContext,
   bucket: string,
@@ -17,7 +17,7 @@ export async function targetThrottled(
   return st.count > max ? { waitMin: st.waitMin } : null;
 }
 
-/** Je angemeldetem Konto, gleich über welche Adresse es fragt. */
+/** Per logged-in account, regardless of which address it asks for. */
 export async function accountThrottled(
   k: AccountContext,
   bucket: string,

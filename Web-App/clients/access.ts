@@ -1,6 +1,6 @@
-// Was ein Klient von der Anwendung braucht, ohne sie zu kennen: Schlüssel,
-// Kontingent, Drossel und die Brickset-Wiedervorlage. Jeder Klient bekommt es
-// bei seiner Erzeugung (src/externalSources); einen Zugang des Prozesses gibt es nicht.
+// What a client needs from the application without knowing it: keys,
+// quota, throttle and the Brickset resubmission. Every client receives it
+// when it is created (src/externalSources); there is no process-wide access.
 
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
 export type KeyName =
@@ -18,11 +18,11 @@ export interface Throttle {
 
 export interface ClientsAccess {
   schluessel(name: KeyName): Promise<string>;
-  /** Zählt einen Aufruf; `allowed: false`, wenn das Tageskontingent erschöpft ist. */
+  /** Counts a call; `allowed: false` once the daily quota is used up. */
   zaehle(api: ApiName): Promise<{ allowed: boolean; count: number; limit: number }>;
   quotaStatus(api: ApiName): Promise<{ count: number; limit: number; remaining: number }>;
   drossel: { foreground: Throttle; hintergrund: Throttle };
-  /** @returns vorgemerkt: false, wenn das Set schon zu oft vorgemerkt war. */
+  /** @returns vorgemerkt: false if the set was already queued too often. */
   bricksetReserve(
     setNumber: string,
     fehler: string,

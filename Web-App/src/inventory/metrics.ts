@@ -1,16 +1,16 @@
 import { asIds, type Sicht } from '../household';
 import type { InventoryContext } from './context';
 
-/** Spannen über alle drei Domänen und gehören deshalb in keine davon. */
+/** Span all three domains and therefore belong to none of them. */
 export async function getStats(k: InventoryContext, userIdChoice: Sicht | number | number[]) {
   const userId = await k.household.scopeFrom(userIdChoice);
-  // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
+  // asIds(), so that older callers with a bare ID keep working.
   const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur, singleRow] = await Promise.all([
-    // COUNT(DISTINCT set_number): Im Haushalt besitzen mehrere Konten dasselbe Set.
+    // COUNT(DISTINCT set_number): in the household several accounts own the same set.
     k.kennzahlen.setNumbers(uids),
     k.kennzahlen.instructionNumbers(uids, uids),
-    // `fehlt = 1` in einer Multiplikation: Ein manuelles Teil ohne Set zählt einfach.
+    // `fehlt = 1` in a multiplication: a manual part without a set simply counts.
     k.kennzahlen.partsInInventory(uids),
     k.kennzahlen.minifigsInInventory(uids),
     k.einstellungen.valueInView(uids, 'currency').then(value => (value === null ? undefined : { value })),
@@ -26,7 +26,7 @@ export async function getStats(k: InventoryContext, userIdChoice: Sicht | number
     total_quantity: Number(setsRow?.total_quantity ?? 0),
     total_pieces: pieces,
     total_parts: pieces,
-    // Dieselbe Zahl zeigt der Teile-Reiter; die Aufschlüsselung macht sie nachvollziehbar.
+    // The parts tab shows the same number; the breakdown makes it traceable.
     set_parts: pieces - einzeln,
     manual_parts: einzeln,
     total_minifigs: Number(minifigsRow?.t ?? 0),

@@ -1,14 +1,14 @@
-/** Je Schritt ein Auftrag 'nachlauf', damit ein Fehler wiederholt wird und in der Verwaltung zu sehen ist. */
+/** One job 'nachlauf' per step, so that an error is retried and visible in the admin. */
 import { type Nutzlast, checkAbort, type JobRun } from '../jobQueue';
 import type { ManagementContext } from './context';
 
-/** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/secret.ts). */
+/** Secrets from the time before encryption (src/infra/secret.ts). */
 async function encryptSecrets(k: ManagementContext): Promise<void> {
   const n = (await k.factors.encryptLegacySecrets()) + (await k.vouchers.encryptLegacyFiles());
   if (n) console.log(`[geheimnis] ${n} Geheimnisse nachträglich verschlüsselt`);
 }
 
-/** Die Schritte des Nachlaufs nach dem Start; die Nutzlast der Art 'nachlauf' kennt genau diese. */
+/** The steps of the follow-up after startup; the payload of the kind 'nachlauf' knows exactly these. */
 export const FOLLOW_UP_STEPS = [
   'geheimnisse',
   'vorschauen',
@@ -19,7 +19,7 @@ export const FOLLOW_UP_STEPS = [
 ] as const;
 type FollowUpStep = (typeof FOLLOW_UP_STEPS)[number];
 
-/** Die Schritte und ihr Abstand zum Start in Sekunden: Beim Start hat der Katalog Vorrang. */
+/** The steps and their distance from startup in seconds: at startup the catalog has priority. */
 const FOLLOWUP_RUNS = {
   geheimnisse: { afterSeconds: 0 },
   vorschauen: { afterSeconds: 0 },

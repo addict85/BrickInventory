@@ -5,23 +5,23 @@ import { startJobWorker } from '../jobs/startJobs';
 import { FOLLOWUP_RUNS, type FollowUpStep } from '../src/management';
 import type { Dienste } from './wiring';
 
-/** Der Healthcheck des Dienstes `jobs` (compose.yaml) sieht auf das Alter dieser Datei. */
+/** The healthcheck of the `jobs` service (compose.yaml) looks at the age of this file. */
 export const HEARTBEAT_FILE = '/tmp/brickinventory-jobs.lebt';
-/** Die Verwaltung sieht am selben Stempel in laufzustand, ob ein Job-Prozess läuft. */
+/** The admin sees from the same stamp in laufzustand whether a job process is running. */
 export const HEARTBEAT_KEY = 'jobs_lebenszeichen';
 const HEARTBEAT_MS = 30_000;
-/** Dreht der Worker so lange keine Runde mehr, bleibt das Lebenszeichen aus. */
+/** If the worker does not complete a round for this long, the sign of life stays out. */
 const STILL_AT_MOST_MS = 2 * HEARTBEAT_MS;
 
-/** Was startJobs startet und stopJobs wieder beendet; der Einstieg hält es. */
+/** What startJobs starts and stopJobs ends again; the entry point holds it. */
 export interface JobsLauf {
   worker: { lastRound(): number; stop(): Promise<void> } | null;
   lebenszeichen: NodeJS.Timeout | null;
 }
 
-/** Nur ein Worker, der seine Runden dreht, gilt als lebendig: Ein Intervall
- * allein meldete auch einen Prozess, dessen Start gescheitert ist. Das Ergebnis
- * endet mit dem Schreiben in die Datenbank, damit ein Test darauf warten kann. */
+/** Only a worker that completes its rounds counts as alive: an interval
+ * alone would also report a process whose startup failed. The result
+ * ends with writing to the database, so that a test can wait for it. */
 export function renewHeartbeat(d: Dienste, worker: JobsLauf['worker']): Promise<void> {
   if (!worker || Date.now() - worker.lastRound() > STILL_AT_MOST_MS) return Promise.resolve();
   fs.writeFile(HEARTBEAT_FILE, String(Date.now()), { mode: 0o600 }, e => {
@@ -30,8 +30,8 @@ export function renewHeartbeat(d: Dienste, worker: JobsLauf['worker']): Promise<
   return d.jobQueue.setzeZustand(HEARTBEAT_KEY, new Date().toISOString()).catch(logAndContinue('jobs:lebenszeichen'));
 }
 
-/** Die Hintergrundarbeit (ROLLE=jobs oder beides) läuft nur über Aufträge; ein
- * zweiter Job-Prozess wäre unschädlich, weil jeder Aufträge mit SKIP LOCKED belegt. */
+/** The background work (ROLLE=jobs or beides) only runs via jobs; a
+ * second job process would be harmless, because each claims jobs with SKIP LOCKED. */
 export async function startJobs(d: Dienste): Promise<JobsLauf> {
   const uebernommen = await d.jobQueue.reportProcessAn();
   if (uebernommen) console.log(`[auftraege] ${uebernommen} Aufträge eines beendeten Prozesses übernommen`);
@@ -58,7 +58,7 @@ export async function startJobs(d: Dienste): Promise<JobsLauf> {
   return { worker, lebenszeichen };
 }
 
-/** Beim Herunterfahren: laufende Aufträge zu Ende führen oder zurückgeben. */
+/** On shutdown: finish running jobs or return them. */
 export async function stopJobs(d: Dienste, lauf: JobsLauf): Promise<void> {
   if (lauf.lebenszeichen) clearInterval(lauf.lebenszeichen);
   lauf.lebenszeichen = null;

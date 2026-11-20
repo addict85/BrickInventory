@@ -1,5 +1,5 @@
-/** Aufträge, die ein Konto selbst angestossen hat und über ihren Schlüssel verfolgt (etwa ein PDF):
- * Gelesen und gelöscht wird nur unter Zeilenschutz und nach Konto gefiltert. */
+/** Jobs an account triggered itself and tracks via their key (e.g. a PDF):
+ * reading and deleting happen only under row security and filtered by account. */
 import type { JobKind } from './jobs';
 import type { JobsContext } from './context';
 
@@ -15,7 +15,7 @@ export async function countRunning(k: JobsContext, art: JobKind, uid: number, de
   return (await k.eigene.countRunningRows(art, uid, deadlineSec))?.n ?? 0;
 }
 
-/** @returns die Schlüssel der gelöschten, damit ihre Dateien mitgehen */
+/** @returns the keys of the deleted ones, so that their files go along */
 export async function deleteEnded(k: JobsContext, art: JobKind, deadlineSec: number): Promise<string[]> {
   return (await k.eigene.deleteEndedRows(art, deadlineSec)).map(r => r.dedupe_key);
 }

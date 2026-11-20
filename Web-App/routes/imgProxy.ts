@@ -1,5 +1,5 @@
-/** Der Bild-Proxy (src/images/http/imageProxy.ts) unter BEIDEN Adressen: Die alte
- * steht in Datenbankzeilen und installierten Apps. */
+/** The image proxy (src/images/http/imageProxy.ts) under BOTH addresses: the old one
+ * is stored in database rows and installed apps. */
 import type { Express, Request, Response } from 'express';
 import { passThroughImage, setNumberFromImageAddress } from '../src/images/http/imageProxy';
 import { guardFor } from './api_v1/middleware';

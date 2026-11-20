@@ -1,11 +1,11 @@
-/** Wie ein neuer Gerätezugang heisst, gilt und was die Antwort über ihn sagt. */
+/** What a new device access is called, how long it applies and what the response says about it. */
 import { tokenDigest, type TokenScope } from './deviceToken';
 import type { AccountContext } from './context';
 
-/** Feste Obergrenze ab Anmeldung; der Tausch erbt sie (putSuccessorAn), die App meldet dann ab. */
+/** Fixed upper bound from login; the swap inherits it (putSuccessorAn), the app then logs out. */
 export const APP_MAX_DURATION_DAYS = 180;
 
-/** Das Label steht in der Geräteliste; ohne Grenze lägen dort beliebig lange Zeilen. */
+/** The label appears in the device list; without a limit it could hold arbitrarily long lines. */
 const LABEL_MAX = 100;
 
 export function tokenLabel(roh: unknown, vorgabe: string): string {
@@ -17,7 +17,7 @@ export function tokenScope(roh: unknown): TokenScope {
   return roh === 'voll' ? 'voll' : 'app';
 }
 
-/** `expires_at` ist die frühere der beiden Fristen, `null` nur bei „unbegrenzt". */
+/** `expires_at` is the earlier of the two deadlines, `null` only for "unlimited". */
 export async function tokenDetails(k: AccountContext, klartext: string) {
   const z = await k.konten.tokenStand(tokenDigest(klartext));
   return z

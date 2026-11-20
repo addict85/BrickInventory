@@ -1,15 +1,15 @@
 import { reportError, logAndContinue } from '../infra/error';
 import { errorText, responseLanguage, type ErrorCode, type Sprache } from '../infra/errorTexts';
 
-/** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen. */
+/** ONE row per account, so that all UIs show the same bar. */
 
 import type { JobsContext } from './context';
 import { signal } from '../infra/event';
-/** Der Stand eines Kontos ist neu geschrieben, in diesem oder einem anderen Prozess; die Nutzlast nennt das Konto. */
+/** An account's state has been rewritten, in this or another process; the payload names the account. */
 const IMPORT_STAND = signal('csv_import_progress');
 
-/** `isWarning` trennt „hat nicht geklappt" von „ist eine Anmerkung"; sonst
- * stünde jede Anmerkung als Fehler da. */
+/** `isWarning` separates "did not work" from "is a note"; otherwise
+ * every note would appear as an error. */
 export type ImportResult = {
   success?: boolean;
   isWarning?: boolean;
@@ -41,7 +41,7 @@ export function buildJobStatus(
   const results = (Array.isArray(job.results) ? job.results : []).map((r: ImportResult) =>
     r.code ? { ...r, error: errorText(r.code as ErrorCode, sprache, r.vars) } : r,
   );
-  // Ein Set, das der Katalog nicht kennt, ist gebucht, aber eine Warnung wert: Grün hiesse „alles bekannt“.
+  // A set the catalog does not know is booked but worth a warning: green would mean "all known".
   const ok = results.filter((r: ImportResult) => r.success && !r.katalog_offen).length;
   const err = results.filter((r: ImportResult) => !r.success && !r.isWarning).length;
   const warn = results.filter(
@@ -62,7 +62,7 @@ export function buildJobStatus(
   };
 }
 
-/** Die Ströme lesen den Stand selbst nach; geht das Signal verloren, holt ihn ihr Nachzieh-Takt. */
+/** The streams re-read the state themselves; if the signal gets lost, their catch-up tick fetches it. */
 export async function emitJobStatus(k: JobsContext, userId: number) {
   await IMPORT_STAND.melde(k.db.notification, String(userId)).catch(logAndContinue('import-auftrag:notify'));
 }
@@ -80,8 +80,8 @@ export async function jobSet(k: JobsContext, userId: number, fields: Record<stri
   await k.importStand.writeImportStatus(userId, fields);
 }
 
-/** Mit `lauf` schreibt nur der Import, dessen Kennung noch eingetragen ist;
- * ein abgelöster Lauf hört an der Rückgabe auf. */
+/** With `lauf` only the import whose identifier is still registered writes;
+ * a superseded run stops at the return. */
 export async function jobUpdate(
   k: JobsContext,
   userId: number,
@@ -93,8 +93,8 @@ export async function jobUpdate(
   return !lauf || n > 0;
 }
 
-/** Nach einem Neustart auch dann, wenn die Zeile als verwaist markiert wurde;
- * abgebrochen oder abgelöst bleibt sie (dann: null). */
+/** After a restart even if the row was marked as orphaned;
+ * aborted or superseded it stays (then: null). */
 export async function setImportFort(
   k: JobsContext,
   userId: number,
@@ -104,19 +104,19 @@ export async function setImportFort(
   return z ? { results: Array.isArray(z.results) ? z.results : [], current: z.current ?? null } : null;
 }
 
-// ── Andere Importe als CSV melden sich hier an, statt selbst in die Tabelle zu schreiben.
+// ── Imports other than CSV register here instead of writing to the table themselves.
 
 const REPORT_GAP_MS = 300;
 
-/** `false`, wenn schon ein Auftrag LÄUFT: Der Balken bleibt bei dem, der zuerst
- * da war; der Import läuft trotzdem. */
+/** `false` if a job is already RUNNING: the bar stays with the one that came
+ * first; the import runs anyway. */
 export async function startJob(
   k: JobsContext,
   userId: number,
   angaben: { total: number; current?: string | null },
 ): Promise<boolean> {
-  // Scheitert das Lesen, wird NICHT gestartet: Einen fremden Import im Zweifel
-  // zu überschreiben ist der teurere Fehler.
+  // If reading fails, nothing is started: overwriting a foreign import when in doubt
+  // is the more expensive mistake.
   const laufend = await jobGet(k, userId).catch(e => {
     reportError('import-auftrag:stand lesen', e);
     return { status: 'running' };
@@ -137,7 +137,7 @@ export async function startJob(
 
 const gemeldet = (k: JobsContext) => k.faecher.fach('importGemeldet', () => new Map<number, number>());
 
-/** Gedrosselt, damit ein schneller Import nicht jede Zeile in die Datenbank schreibt. */
+/** Throttled, so that a fast import does not write every row to the database. */
 export async function reportJob(
   k: JobsContext,
   userId: number,
@@ -156,7 +156,7 @@ export async function reportJob(
   await emitJobStatus(k, userId);
 }
 
-// Ergebnisse je Posten, sonst zeigt der Balken „0 ok“; offen bleibt ein eigener Ausgang (warn).
+// Results per item, otherwise the bar shows "0 ok"; open remains an outcome of its own (warn).
 export async function beendeAuftrag(
   k: JobsContext,
   userId: number,
@@ -178,7 +178,7 @@ export async function beendeAuftrag(
   await emitJobStatus(k, userId);
 }
 
-// Ohne diese Frage hätte der Balken ein Kreuz, das lügt; auch eine fehlende Zeile heisst abgebrochen.
+// Without this question the bar would have a cross that lies; a missing row also means aborted.
 export async function isAborted(k: JobsContext, userId: number): Promise<boolean> {
   const stand = await jobGet(k, userId).catch(e => {
     reportError('import-auftrag:abbruch pruefen', e);
@@ -187,7 +187,7 @@ export async function isAborted(k: JobsContext, userId: number): Promise<boolean
   return stand?.status !== 'running';
 }
 
-/** Weckt, wenn ein Prozess den Stand eines Kontos schrieb; gibt das Abmelden zurück. */
+/** Wakes when a process wrote an account's state; returns the unsubscribe. */
 export function atImportStatus(k: JobsContext, f: (konto?: string) => void): () => void {
   return IMPORT_STAND.horche(k.db.notification, f);
 }

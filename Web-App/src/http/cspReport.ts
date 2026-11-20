@@ -1,7 +1,7 @@
-/** Verstösse gegen die CSP (report-uri und report-to) landen im Protokoll: Eine
- * abgewiesene Trusted-Types-Zuweisung oder ein fremdes Skript fiele sonst nur im
- * Browser auf. Öffentlich, weil der Browser ohne Anmeldung meldet; deshalb klein,
- * gedrosselt und ohne Antwortinhalt. */
+/** Violations of the CSP (report-uri and report-to) end up in the log: a
+ * rejected Trusted Types assignment or a foreign script would otherwise only be noticed in the
+ * browser. Public, because the browser reports without login; hence small,
+ * throttled and without a response body. */
 import express from 'express';
 import type { Request, Response } from 'express';
 import { prozessweit } from '../infra/prozessweit';
@@ -9,7 +9,7 @@ import { drosselAdresse } from '../infra/throttleAddress';
 
 const WINDOW_MS = 60_000;
 const JE_ADDRESS = 10;
-/** Mehr Absender merkt sich die Minute nicht; wer danach kommt, wird verworfen. */
+/** The minute does not remember more senders; whoever comes after that is discarded. */
 const AT_MOST_ADDRESSES = 1000;
 const F = prozessweit('cspBericht', () => ({ seit: Date.now(), gedrosselt: 0, jeAddress: new Map<string, number>() }));
 
@@ -21,7 +21,7 @@ export function cspMessageFree(adresse: string, jetzt = Date.now()): boolean {
     F.gedrosselt = 0;
     F.seit = jetzt;
   }
-  // Je Absender statt gemeinsam, sonst gingen echte Berichte in fremder Flut unter; IPv6 je /64.
+  // Per sender instead of shared, otherwise real reports would drown in a foreign flood; IPv6 per /64.
   const a = drosselAdresse(adresse);
   const n = (_jeAddress.get(a) ?? 0) + 1;
   const frei = n <= JE_ADDRESS && (_jeAddress.has(a) || _jeAddress.size < AT_MOST_ADDRESSES);
@@ -35,7 +35,7 @@ type Violation = { regel: unknown; blockiert: unknown; seite: unknown; probe: un
 const feld = (o: unknown, k: string): unknown =>
   o && typeof o === 'object' ? (o as Record<string, unknown>)[k] : undefined;
 
-/** report-uri schickt { "csp-report": {…} }, report-to eine Liste von { type, body }. */
+/** report-uri sends { "csp-report": {…} }, report-to a list of { type, body }. */
 function violations(daten: unknown): Violation[] {
   return (Array.isArray(daten) ? daten : [daten]).slice(0, 5).flatMap((e: unknown) => {
     const alt = feld(e, 'csp-report');
@@ -62,8 +62,8 @@ function violations(daten: unknown): Violation[] {
   });
 }
 
-/** Was der Browser hier schreibt, hat eine feste Form; alles andere ist kein
- * echter Bericht und käme sonst als Freitext ins Protokoll. */
+/** What the browser writes here has a fixed shape; anything else is not a
+ * real report and would otherwise end up in the log as free text. */
 const DIRECTIVE = /^[a-z][a-z-]{1,39}$/;
 const KEYWORD = /^(inline|eval|wasm-eval|self|data|blob|trusted-types-(sink|policy))$/;
 
@@ -75,7 +75,7 @@ function directive(v: unknown): string | null {
   return DIRECTIVE.test(erstes) ? erstes : null;
 }
 
-/** Nur http(s)/ws(s) und ohne Anfrageteil: Eine Adresse kann einen Rücksetz- oder Bestätigungslink tragen. */
+/** Only http(s)/ws(s) and without the query part: an address can carry a reset or confirmation link. */
 function reportAddress(v: unknown, keyword = false): string {
   const s = String(v ?? '');
   if (keyword && KEYWORD.test(s)) return s;
@@ -88,8 +88,8 @@ function reportAddress(v: unknown, keyword = false): string {
   }
 }
 
-/** Öffnet der Browser ein Rasterbild direkt, stylt er seine eigene Bildansicht inline;
- * unsere CSP am Bild blockiert das. Kein Angriff, keine Zeile. SVG bleibt gemeldet. */
+/** When the browser opens a raster image directly, it styles its own image view inline;
+ * our CSP on the image blocks that. No attack, no row. SVG stays reported. */
 function imageView(seite: unknown): boolean {
   try {
     return /\.(jpe?g|png|gif|webp|avif)$/i.test(new URL(String(seite ?? '')).pathname);
@@ -98,7 +98,7 @@ function imageView(seite: unknown): boolean {
   }
 }
 
-/** Die Probe zeigt, welche Zuweisung Trusted Types abwies; sonst ist sie fremder Text. */
+/** The sample shows which assignment Trusted Types rejected; otherwise it is foreign text. */
 function probe(regel: string, v: unknown): string {
   if (!regel.includes('trusted-types') || typeof v !== 'string') return '';
   return v.replace(/[^\x20-\x7e]/g, ' ').slice(0, 80);
@@ -120,7 +120,7 @@ export function buildCspReportRouter() {
         const regel = directive(v.regel);
         if (!regel || imageView(v.seite)) continue;
         const p = probe(regel, v.probe);
-        // Die Teile sind schon gefiltert; das Ersetzen ist die Form, die CodeQL als Schutz erkennt.
+        // The parts are already filtered; the replacement is the form CodeQL recognizes as protection.
         console.warn(
           `[csp] ${regel} blockierte ${reportAddress(v.blockiert, true)} auf ${reportAddress(v.seite)}${p ? ` (${p})` : ''}`.replace(
             /\n|\r/g,

@@ -1,6 +1,6 @@
-/** Der Stand einer Transaktion: Kontext des Zeilenschutzes, Sicherungspunkte, Nachzügler
- * und Rahmenwechsel. createDb() (database.ts) öffnet sie; wer in ihr fragt, bekommt
- * ihren Griff (`tx`, `tx.db`) ausdrücklich gereicht. */
+/** The state of a transaction: row-level-security context, savepoints, stragglers
+ * and frame switches. createDb() (database.ts) opens it; whoever queries in it gets
+ * its handle (`tx`, `tx.db`) passed explicitly. */
 import type { Pool, PoolClient } from 'pg';
 import type { DbInterface } from './types';
 import {
@@ -11,7 +11,7 @@ import {
   type PathTransaction,
 } from '../src/infra/accountContext';
 
-/** `offen` schützt vor Nachzüglern nach COMMIT; `db` ist der Zugang, der sie öffnete. */
+/** `offen` guards against stragglers after COMMIT; `db` is the access that opened it. */
 export type TxStand = PathTransaction & {
   client: PoolClient;
   offen: boolean;
@@ -21,17 +21,17 @@ export type TxStand = PathTransaction & {
   kontext: string;
 };
 
-/** Die offene Transaktion dieses Aufrufpfads, für die Wachen (UnboundQuery, Ersatzwert). */
+/** The open transaction of this call path, for the guards (UnboundQuery, fallback value). */
 export function runningTx(): TxStand | null {
   const t = transactionOfPath();
   return t && 'client' in t ? (t as TxStand) : null;
 }
 
-/** Für den Zeilenschutz (Migration 0111): wer gerade fragt, nur bis zum Ende
- * der Transaktion. Ein Wert auf Sitzungsebene bliebe an der Pool-Verbindung
- * hängen und gälte in der nächsten Anfrage eines anderen Kontos. Die Konto-ID
- * ist eine geprüfte ganze Zahl und darf deshalb ins SQL. Den Systemrahmen
- * trägt die Rolle der Verbindung (Migration 0112), keine Einstellung. */
+/** For row-level security (migration 0111): who is asking, only until the end
+ * of the transaction. A value at session level would stick to the pool connection
+ * and apply to the next request of another account. The account id
+ * is a checked integer and may therefore go into the SQL. The system frame
+ * is carried by the role of the connection (migration 0112), not a setting. */
 export function contextSql(): string {
   const { system, konto } = rowsContext();
   if (system || konto === null) return '';
@@ -39,7 +39,7 @@ export function contextSql(): string {
 }
 const CONTEXT_EMPTY = "SELECT set_config('app.konto', '', true)";
 
-/** Wechselt das Konto mitten in der Transaktion (asRequest), folgt die Einstellung. */
+/** If the account changes in the middle of the transaction (asRequest), the setting follows. */
 export async function contextSync(stand: TxStand): Promise<void> {
   const soll = contextSql();
   if (soll === stand.kontext) return;
@@ -47,13 +47,13 @@ export async function contextSync(stand: TxStand): Promise<void> {
   stand.kontext = soll;
 }
 
-/** Was der Rumpf einer Transaktion bekommt: ihre Abfragen und `db`, einen ganzen Zugang
- * über ihrer Verbindung, aus dem der Kontext `t` gebaut wird (src/infra/area.ts). */
+/** What the body of a transaction gets: its queries and `db`, a whole access
+ * over its connection, from which the context `t` is built (src/infra/area.ts). */
 export interface TxHandleOf<D> extends DbInterface {
   readonly db: D;
 }
 
-/** Die Abfragen über die Verbindung der Transaktion; `pruefe` wacht über den Rahmen. */
+/** The queries over the transaction's connection; `pruefe` guards the frame. */
 export function txQueries(stand: TxStand, pruefe: () => void): DbInterface {
   const q = async (sql: string, p?: unknown[]) => {
     openStill(stand);
@@ -69,8 +69,8 @@ export function txQueries(stand: TxStand, pruefe: () => void): DbInterface {
   };
 }
 
-/** Läuft vor dem COMMIT jeder äussersten Transaktion dieses Aufrufpfads mit,
- * in ihr: Was er schreibt, gilt genau dann, wenn ihre Wirkung gilt. */
+/** Runs before the COMMIT of every outermost transaction of this call path,
+ * inside it: what it writes takes effect exactly when the transaction's effect does. */
 type CommitCompanion = (tx: DbInterface) => Promise<void>;
 export function commitCompanion(): CommitCompanion | null {
   return (companionOfPath() as CommitCompanion | null) ?? null;
@@ -79,9 +79,9 @@ export function withCommitCompanion<T>(companion: CommitCompanion, work: () => T
   return withCompanion(companion, work);
 }
 
-/** Die Verbindung einer beendeten Transaktion ist schon zurück im Pool: Ein Nachzügler
- * (Promise.all bricht beim ersten Fehler ab, die anderen laufen weiter) verdürbe dort
- * die Transaktion eines Fremden. */
+/** The connection of a finished transaction is already back in the pool: a straggler
+ * (Promise.all aborts on the first error, the others keep running) would spoil
+ * a stranger's transaction there. */
 export class TransactionEnded extends Error {
   constructor() {
     super('Abfrage nach dem Ende ihrer Transaktion (Nachzügler aus Promise.all?)');
@@ -102,9 +102,9 @@ export class BesideTheTransaction extends Error {
   }
 }
 
-/** Eine Abfrage über den ungebundenen Zugang, während in diesem Aufrufpfad eine
- * Transaktion offen ist: Sie gehört entweder in die Transaktion (über `t`) oder
- * vor bzw. hinter sie. Still umgeleitet hiesse, dass der Aufrufort nicht sagt, was gilt. */
+/** A query over the unbound access while a transaction is open in this call path:
+ * it belongs either into the transaction (via `t`) or
+ * before or after it. Silently redirecting would mean the call site does not say what applies. */
 export class UnboundQuery extends Error {
   constructor() {
     super(
@@ -123,11 +123,11 @@ export class ConcurrentSavepoint extends Error {
   }
 }
 
-/** Innerhalb einer Transaktion ein Sicherungspunkt: Scheitert der innere Teil
- * und fängt der Aufrufer das, bleibt die äussere Transaktion benutzbar. Zwei
- * gleichzeitige teilten sich eine Verbindung; das ROLLBACK TO des einen nähme
- * die Arbeit des anderen mit. Deshalb beginnt jeder im innersten offenen, und
- * welcher das ist, sagt der Griff, über den er gerufen wird (`rahmen`). */
+/** Inside a transaction a savepoint: if the inner part fails
+ * and the caller catches that, the outer transaction stays usable. Two
+ * concurrent ones would share a connection; the ROLLBACK TO of one would take
+ * the other's work with it. Hence each begins in the innermost open one, and
+ * which one that is is told by the handle it is called through (`rahmen`). */
 export function innerTransaction<T>(
   stand: TxStand,
   rahmen: string | null,
@@ -139,7 +139,7 @@ export function innerTransaction<T>(
   stand.innerster = name;
   return (async () => {
     const { client } = stand;
-    // ROLLBACK TO nimmt auch ein set_config() aus dem Sicherungspunkt zurück.
+    // ROLLBACK TO also undoes a set_config() from the savepoint.
     const contextBefore = stand.kontext;
     try {
       openStill(stand);
@@ -162,11 +162,11 @@ export function innerTransaction<T>(
   })();
 }
 
-/** Nach ROLLBACK TO SAVEPOINT ist die Transaktion wieder benutzbar: Wer diesen
- * Fehler auffängt und einen Ersatz liefert, verdeckt nichts. */
+/** After ROLLBACK TO SAVEPOINT the transaction is usable again: whoever catches this
+ * error and delivers a replacement hides nothing. */
 const fromSavepointCaught = new WeakSet<object>();
 
-/** Der Stand einer neuen Transaktion; er ist zugleich ihr Wächter gegen Ersatzwerte. */
+/** The state of a new transaction; it is also its guard against fallback values. */
 export function newTxStatus(t: Omit<TxStand, 'verdirbt' | 'offen' | 'innerster' | 'kontext'>): TxStand {
   const stand: TxStand = {
     ...t,

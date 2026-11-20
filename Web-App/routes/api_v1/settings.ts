@@ -1,5 +1,5 @@
-/** /api/v1/settings — ein Router, weil die Reihenfolge vor und nach router.use(requireLogin)
- * hier an einer Stelle entschieden wird; settingsGlobal.ts hängt dahinter. */
+/** /api/v1/settings — one router, because the order before and after router.use(requireLogin)
+ * is decided here in one place; settingsGlobal.ts hangs behind it. */
 import { bearerToken, guardFor } from './middleware';
 import { buildSettingsGlobalRouter } from './settingsGlobal';
 import { userIdTheRequest, confirmWithFactor, perSession } from '../../src/account/http/login';
@@ -17,8 +17,8 @@ export function buildSettingsRouter(
 
   const requireLogin = requireLoginOrToken;
 
-  // Vor router.use(requireLogin): Anmelde- und Startbildschirm brauchen das
-  // Design, und es verrät nichts über Konten.
+  // Before router.use(requireLogin): login and start screen need the
+  // theme, and it reveals nothing about accounts.
   router.endpunkt('GET /api/v1/settings/theme', async (req, res) => {
     const uid = await userIdTheRequest(d.account, req);
     res.set('Cache-Control', 'no-cache');
@@ -26,11 +26,11 @@ export function buildSettingsRouter(
     return { ...(await d.settings.themeFor(uid)) };
   });
 
-  // Vor router.use(requireLogin): Die App verwaltet ihre Zugänge mit Token, nicht mit Sitzung.
+  // Before router.use(requireLogin): the app manages its accesses with a token, not with a session.
   router.endpunkt('GET /api/v1/settings/tokens', requireToken, async req => {
     const eigener = bearerToken(req);
-    // LEAST über beide Fristen: Den Nutzer interessiert der Tag, an dem dieses
-    // Gerät ausgesperrt wird.
+    // LEAST over both deadlines: the user cares about the day on which this
+    // device gets locked out.
     const tokens = await d.account.sitzungen.accessesList(req.apiUser.user_id);
     return {
       tokens: tokens.map(t => ({
@@ -50,9 +50,9 @@ export function buildSettingsRouter(
     };
   });
 
-  /** Die Zeile ist sofort weg, der Token-Cache gilt aber noch kurz nach.
-   * Einen FREMDEN Zugang widerruft nur, wer Passwort und Faktor kennt: Ein
-   * erbeuteter Token soll den Inhaber nicht von seinen Geräten aussperren. */
+  /** The row is gone immediately, but the token cache still applies briefly.
+   * A FOREIGN access is only revoked by whoever knows password and factor: a
+   * captured token should not lock the owner out of their devices. */
   router.endpunkt('DELETE /api/v1/settings/tokens/:tokenId', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     const eigener = bearerToken(req);
@@ -61,8 +61,8 @@ export function buildSettingsRouter(
     return { deleted: await d.account.sitzungen.endAccess(uid, req.pfad.tokenId, ownDevice) };
   });
 
-  // Mit Passwort: Eine erbeutete Sitzung soll den Inhaber nicht aussperren können.
-  // `zugaenge` nimmt die App-Zugänge mit, damit ein Code für alles reicht.
+  // With password: a captured session must not be able to lock out the owner.
+  // `zugaenge` includes the app accesses, so one code is enough for everything.
   router.endpunkt('POST /api/v1/settings/sessions/andere-beenden', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
     if (!(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))) return;
@@ -71,14 +71,14 @@ export function buildSettingsRouter(
       token: bearerToken(req),
       zugaenge: !!req.eingabe.zugaenge,
     });
-    // Nur eine echte Sitzung merkt sich die Version; sonst bekäme die App eine.
+    // Only a real session remembers the version; otherwise the app would get one.
     if (perSession(req)) req.session.sitzungsVersion = version;
     if (sitzungen || zugaenge) d.account.hintInBackground(uid, 'zugaenge_beendet');
     return { deleted: sitzungen, zugaenge };
   });
 
-  /** Ausdrücklich aufgezählt: Die App bekommt nur, was sie liest, keine globalen
-   * oder Verwalterfelder. */
+  /** Listed explicitly: the app only gets what it reads, no global
+   * or administrator fields. */
   const APP_FIELDS = [
     'currency',
     'price_condition',
@@ -97,15 +97,15 @@ export function buildSettingsRouter(
 
   router.endpunkt('GET /api/v1/settings', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    // readSettings(): price_cache_ttl und default_price_condition sind global.
+    // readSettings(): price_cache_ttl and default_price_condition are global.
     const alle = await d.settings.readSettings(uid, false);
     const gespeichert = Object.fromEntries(APP_FIELDS.map(feld => [feld, alle[feld] ?? APP_DEFAULTS[feld] ?? '']));
     return {
       settings: {
         ...(gespeichert as Record<(typeof APP_FIELDS)[number], string>),
-        // Die Regel steht einmal, in src/settings/settings.ts.
+        // The rule stands once, in src/settings/settings.ts.
         effective_condition: await d.settings.userDefaultCondition(uid),
-        // Das wirksame Design des Kontos, nicht die Vorgabe des Verwalters.
+        // The account's effective theme, not the administrator's default.
         app_theme: (await d.settings.themeFor(uid)).theme,
       },
     };
@@ -117,7 +117,7 @@ export function buildSettingsRouter(
     let updated = 0;
     for (const key of allowed) {
       if (req.eingabe[key] !== undefined) {
-        // Zentrale Stelle: Eine ECHTE Währungsänderung stösst den Preis-Job an.
+        // Central place: a REAL currency change triggers the price job.
         await d.settings.setUserSetting(uid, key, req.eingabe[key]);
         updated++;
       }
@@ -125,12 +125,12 @@ export function buildSettingsRouter(
     return { updated };
   });
 
-  // Der GLOBALE Default; den effektiven liefert GET /settings (effective_condition).
+  // The GLOBAL default; the effective one is returned by GET /settings (effective_condition).
   router.endpunkt('GET /api/v1/settings/default-condition', requireToken, async _req => {
     return { condition: await d.settings.globalDefaultCondition() };
   });
 
-  // Der wirksame Wert, für Webapp und App aus einer Route.
+  // The effective value, for webapp and app from one route.
   router.endpunkt('GET /api/v1/settings/user/default-condition', requireToken, async req => {
     return { condition: await d.settings.userDefaultCondition(req.apiUser.user_id) };
   });
@@ -140,13 +140,13 @@ export function buildSettingsRouter(
     if (condition === '') {
       await d.settings.deleteUserSetting(req.apiUser.user_id, 'user_default_condition');
     } else {
-      // setUserSetting(): GENAU EINE Schreibstelle für Benutzereinstellungen.
+      // setUserSetting(): EXACTLY ONE write path for user settings.
       await d.settings.setUserSetting(req.apiUser.user_id, 'user_default_condition', condition);
     }
     return { condition: condition || null };
   });
 
-  // ── Haushalt: Konten verknüpfen (Regeln in src/household/household.ts) ─────────────
+  // ── Household: linking accounts (rules in src/household/household.ts) ───────────
   router.endpunkt('GET /api/v1/settings/household', requireToken, async req => {
     return { ...(await d.household.householdStatus(req.apiUser.user_id)) };
   });
@@ -161,11 +161,11 @@ export function buildSettingsRouter(
     return { ...(await d.household.checkInvitation(req.apiUser.user_id, req.eingabe.code)) };
   });
 
-  // Mit Passwort: Das Hauptkonto schreibt danach den Bestand dieses Kontos; ein
-  // erbeutetes Token allein soll das nicht einrichten können.
+  // With password: the main account then writes this account's inventory; a
+  // captured token alone must not be able to set that up.
   router.endpunkt('POST /api/v1/settings/household/redeem', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
-    // Die Verknüpfung ist ein Zugang zur Sammlung wie ein Passkey: bei aktivem zweitem Faktor nur mit Code.
+    // The link is an access to the collection like a passkey: with an active second factor only with a code.
     if (!(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password, 'faktor_code'))) return;
     return { ...(await d.account.joinHousehold(uid, req.eingabe.code)) };
   });
@@ -182,12 +182,12 @@ export function buildSettingsRouter(
 
   router.use('/settings', requireLogin);
 
-  /** Zum Abgleich von Hand; derselbe Wert steht als `fp` im QR-Code der App. */
+  /** For manual comparison; the same value is `fp` in the app's QR code. */
   router.endpunkt('GET /api/v1/settings/tls', requireToken, async _req => {
     return { ...(await tlsInfo()) };
   });
 
-  // Leer heisst „Vorgabe des Verwalters".
+  // Empty means "the administrator's default".
   router.endpunkt('POST /api/v1/settings/user/theme', requireToken, async req => {
     const uid = req.apiUser.user_id;
     await d.settings.setOwnTheme(uid, req.eingabe.theme);

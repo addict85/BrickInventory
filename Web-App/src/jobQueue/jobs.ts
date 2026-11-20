@@ -1,8 +1,8 @@
 import type { z } from 'zod';
 
-/** Je Art das zod-Schema der Nutzlast. Jeder Bereich ergänzt seine Arten per `declare module`
- * (auftragsarten.ts des Bereichs): Das Einstellen ist geprüft, ohne dass dieser Bereich sie kennt. */
-// biome-ignore lint/suspicious/noEmptyInterface: die Bereiche ergänzen es
+/** Per kind the zod schema of the payload. Every area adds its kinds via `declare module`
+ * (the area's jobKinds.ts): queuing is checked without this area knowing them. */
+// biome-ignore lint/suspicious/noEmptyInterface: the areas extend it
 export interface JobPayloads {}
 export type JobKind = keyof JobPayloads & string;
 export type PayloadSchema<A extends JobKind> = JobPayloads[A] extends z.ZodType ? JobPayloads[A] : never;
@@ -18,13 +18,13 @@ export interface Fortschritt {
   [k: string]: unknown;
 }
 
-/** Was ein Dienst vom laufenden Auftrag braucht: Stand melden, am Signal aufhören. */
+/** What a service needs from the running job: report state, stop at the signal. */
 export interface JobRun {
   readonly signal?: AbortSignal;
   fortschritt?(f: Fortschritt): Promise<boolean>;
 }
 
-/** Wirft den Grund des Abbruchs; zwischen zwei Schritten eines langen Laufs. */
+/** Throws the reason for the abort; between two steps of a long run. */
 export function checkAbort(lauf: JobRun | undefined): void {
   lauf?.signal?.throwIfAborted();
 }
@@ -44,18 +44,18 @@ export interface JobRow {
 
 export interface Einstellen {
   userId?: number | null;
-  /** Steht ein offener Auftrag mit diesem Schlüssel schon da, kommt kein zweiter dazu. */
+  /** If an open job with this key already exists, no second one is added. */
   schluessel?: string;
   maxAttempts?: number;
   afterSeconds?: number;
-  /** Geht afterSeconds vor. */
+  /** Takes precedence over afterSeconds. */
   dueAb?: Date;
   fortschritt?: Fortschritt;
 }
 
 export type Belegung = Pick<JobRow, 'id' | 'locked_by'>;
 
-/** Drosselt eine Gegenseite, wartet die ganze Art, nicht ein Auftrag. */
+/** If a remote side throttles, the whole kind waits, not one job. */
 
 export interface Pause {
   type: string;
@@ -64,19 +64,19 @@ export interface Pause {
   level: number;
 }
 
-/** Was ein Bearbeiter vom Worker bekommt; die Fachdienste kennen nur dies, nicht den Worker. */
+/** What a handler gets from the worker; the domain services only know this, not the worker. */
 export interface JobContext {
-  /** false: Der Auftrag gehört nicht mehr diesem Lauf (abgebrochen, neu vergeben). */
+  /** false: the job no longer belongs to this run (aborted, reassigned). */
   lebenszeichen(): Promise<boolean>;
   fortschritt(f: Fortschritt): Promise<boolean>;
-  /** Abgebrochen, neu vergeben oder der Prozess endet: Abrufe und Schleifen hören auf. */
+  /** Aborted, reassigned or the process ends: fetches and loops stop. */
   readonly signal: AbortSignal;
-  /** Ein langer Auftrag hört an der nächsten sicheren Stelle auf. */
+  /** A long job stops at the next safe point. */
   readonly beendet: boolean;
   readonly versuch: number;
 }
 
-/** Wird zurückgegeben und später fortgesetzt, ohne als gescheitert zu gelten. */
+/** Is returned and continued later without counting as failed. */
 export class JobInterrupted extends Error {
   constructor() {
     super('Auftrag unterbrochen');
@@ -89,8 +89,8 @@ export class JobLost extends Error {
   }
 }
 
-/** Die Gegenseite drosselt oder ein Kontingent ist erschöpft. `zaehlt`
- * entscheidet, ob es als Versuch gilt (und damit irgendwann endet). */
+/** The remote side throttles or a quota is exhausted. `zaehlt`
+ * decides whether it counts as an attempt (and thus ends at some point). */
 export class JobMove extends Error {
   constructor(
     readonly bis: Date,

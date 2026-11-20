@@ -3,8 +3,8 @@ import { sendError } from './httpResponse';
 import { API_MIN_APP } from '../contract/version';
 export { API_VERSION, API_MIN_APP } from '../contract/version';
 
-/** Abgewiesen, bevor die App Antworten falsch liest. Ohne Kopfzeile
- * (Browser, Skripte) gilt nichts davon. */
+/** Rejected before the app misreads responses. Without the header
+ * (browsers, scripts) none of this applies. */
 export function checkAppVersion(req: Request, res: Response, next: NextFunction): void {
   const roh = req.get('X-App-Api');
   const fassung = roh === undefined ? NaN : Number(roh);

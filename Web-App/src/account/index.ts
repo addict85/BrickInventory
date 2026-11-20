@@ -1,4 +1,4 @@
-/** Die öffentliche Seite des Bereichs: Andere importieren nur von hier, der Schnitt darunter bleibt frei. */
+/** The public face of the area: others import only from here, the cut below stays free. */
 export { Angemeldet, TokenWish } from './loginFlow';
 export type { Konto as AccountRow } from './repository/accounts';
 export { OVERLAP_MS, ownAccess, tokenDigest, rotationDue } from './deviceToken';

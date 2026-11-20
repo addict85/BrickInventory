@@ -5,7 +5,7 @@ import { marktpreisSql } from '../../../db/geldSql';
 export type Zustand = 'N' | 'U';
 type Preiszeile = { avg_price: string | null; qty_avg_price: string | null; condition: Zustand };
 
-/** Nur echte Preise über null. */
+/** Only real prices above zero. */
 export function setPriceFromCache(db: DbInterface, setNumber: string, zustand: string, waehrung: string) {
   return db.get<{ marktpreis: string }>(
     `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
@@ -53,7 +53,7 @@ export function partsPricesFromCache(db: DbInterface, nummern: string[], waehrun
   );
 }
 
-/** Wie estimatedMinifigsPrice für viele Figuren in einer Abfrage; Schlüssel `nummer|zustand`. */
+/** Like estimatedMinifigsPrice for many figures in one query; key `nummer|zustand`. */
 export async function estimatedMinifigsPrices(
   db: DbInterface,
   figuren: string[],

@@ -1,4 +1,4 @@
-/** Verschoben wird über die Erfassungen: Die Menge beider Konten folgt daraus beim Lesen. */
+/** Moving happens via the acquisitions: both accounts' quantities follow from that when reading. */
 import { fachfehler } from '../infra/errorTexts';
 import { withVersion } from '../infra/setNumber';
 import * as repo from './repository/move';
@@ -14,8 +14,8 @@ export interface Shift {
   source_emptied: boolean;
 }
 
-/** Nacheinander statt Promise.all: alle Abfragen laufen auf derselben
- * Transaktionsverbindung. */
+/** One after another instead of Promise.all: all queries run on the same
+ * transaction connection. */
 async function copyContents(t: SetsContext, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
   for (const tab of ['parts', 'minifigs'] as const)
@@ -25,8 +25,8 @@ async function copyContents(t: SetsContext, sn: string, fromId: number, toId: nu
   return n;
 }
 
-/** In der Transaktion des Aufrufers (`t`), unter der Sperre des Quellbestands.
- * @param acquisitionIds leer = das ganze Set; sonst nur diese Kaufpreis-Zeilen */
+/** In the caller's transaction (`t`), under the lock of the source inventory.
+ * @param acquisitionIds empty = the whole set; otherwise only these purchase price rows */
 export async function setEntriesReassign(
   t: SetsContext,
   sn: string,
@@ -45,8 +45,8 @@ export async function setEntriesReassign(
   const movingQty = wanted.reduce((s, a) => s + (a.quantity || 1), 0);
   const remaining = Math.max(0, totalQty - movingQty);
 
-  // Stammdaten beschreiben das Set, nicht das Exemplar: Liegt es beim Ziel
-  // schon, genügt das Umhängen der Erfassungen.
+  // Master data describes the set, not the copy: if it already lies with the target,
+  // reassigning the acquisitions is enough.
   const dst = await repo.setRow(t.db, toId, sn);
   if (!dst) await t.inventory.putSetAn(toId, sn, src.added_at);
 
@@ -64,7 +64,7 @@ export async function setEntriesReassign(
 
   const counts = await copyContents(t, sn, fromId, toId);
 
-  // Teilverschiebung: Der Absender behält Exemplare und damit Set und Inhalt.
+  // Partial move: the sender keeps copies and therefore set and contents.
   if (remaining > 0) {
     return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: false };
   }
@@ -73,11 +73,11 @@ export async function setEntriesReassign(
   return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: true };
 }
 
-/** Konto als Kennung aus der Eingabe; schreibziel() prüft es. */
+/** Account as identifier from the input; schreibziel() checks it. */
 type AccountWish = string | number | null | undefined;
 
-/** Der Einstieg: Drei Erfassungen sind drei Käufe, wer alles will, wählt alle Zeilen. Unter der
- * Sperre des Quellbestands, damit kein zweiter Weg dazwischen bucht. */
+/** The entry point: three acquisitions are three purchases; whoever wants everything selects all rows. Under the
+ * lock of the source inventory, so that no second path books in between. */
 export async function moveSet(
   sk: SetsContext,
   uid: number,
@@ -91,7 +91,7 @@ export async function moveSet(
   const fromId = await sk.household.schreibziel(uid, von ?? uid);
   const toId = await sk.household.schreibziel(uid, nach);
   if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
-  // Zwei Verschiebungen in Gegenrichtung sperren die Zeilen beider Konten in umgekehrter Reihenfolge.
+  // Two moves in opposite directions lock the rows of both accounts in reverse order.
   const r = await sk.transaktion(t => setEntriesReassign(t, sn, fromId, toId, erfassungen), {
     sperren: [{ konto: fromId, schluessel: sn }],
     repeatAtConflict: true,

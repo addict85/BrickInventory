@@ -1,4 +1,4 @@
-/** Eine Tür für alle Aufrufstellen, damit die Aufteilung in Schichten sie nicht trifft. */
+/** One door for all call sites, so that splitting into layers does not affect them. */
 export {
   DEFAULT_PRICE_CONDITION,
   savePrice,

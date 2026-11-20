@@ -5,8 +5,8 @@ import * as mengen from './repository/manualQuantities';
 import * as repo from './repository/reassign';
 import type { InventoryContext } from './context';
 
-/** Über den KAUFPREIS, nicht über den Eintrag; was beim Absender bleibt, folgt
- * aus seinen Erfassungen. */
+/** Via the PURCHASE PRICE, not via the entry; what stays with the sender follows
+ * from its acquisitions. */
 export async function manualEntryReassign(
   t: InventoryContext,
   kind: 'part' | 'fig',

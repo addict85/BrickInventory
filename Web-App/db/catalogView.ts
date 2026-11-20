@@ -1,8 +1,8 @@
-/** Katalogangaben, wie ein Konto sie sieht (0093): der geprüfte gemeinsame
- * Wert, sonst die eigene Angabe des Kontos. Eingaben fremder Konten stehen
- * nie im gemeinsamen Katalog und tauchen so in keiner Abfrage auf. */
+/** Catalog details as an account sees them (0093): the checked shared
+ * value, otherwise the account's own detail. Entries of foreign accounts never
+ * appear in the shared catalog and thus show up in no query. */
 
-/** LEFT JOINs pc/pcc (gemeinsam) und te/tfe (eigene Angaben von `konto`). */
+/** LEFT JOINs pc/pcc (shared) and te/tfe (own details of `konto`). */
 export function teilSichtJoin(konto: string, nummer: string, farbe: string): string {
   return `LEFT JOIN part_catalog pc ON pc.part_number = ${nummer}
     LEFT JOIN part_color_catalog pcc ON pcc.part_number = ${nummer} AND pcc.color_id = ${farbe}
@@ -19,7 +19,7 @@ export const TEIL = {
   bildDatei: 'pcc.image_local',
 } as const;
 
-/** LEFT JOINs mc (gemeinsam) und fe (eigene Angaben von `konto`). */
+/** LEFT JOINs mc (shared) and fe (own details of `konto`). */
 export function figurSichtJoin(konto: string, nummer: string): string {
   return `LEFT JOIN minifigs_catalog mc ON mc.fig_number = ${nummer}
     LEFT JOIN minifig_custom fe ON fe.user_id = ${konto} AND fe.fig_number = ${nummer}`;
@@ -31,9 +31,9 @@ export const FIGUR = {
   bildDatei: 'mc.image_local',
 } as const;
 
-/** LEFT JOINs rs/rt: Name, Jahr, Thema und Teilezahl eines Sets stehen nur in
- * rb_sets (0105); set_catalog ergänzt Bild und Figurenzahl. Jahr und Teilezahl 0
- * heissen im Rebrickable-CSV „unbekannt“. */
+/** LEFT JOINs rs/rt: name, year, theme and part count of a set live only in
+ * rb_sets (0105); set_catalog adds image and minifig count. Year and part count 0
+ * mean "unknown" in the Rebrickable CSV. */
 export function setStammJoin(nummer: string): string {
   return `LEFT JOIN rb_sets rs ON rs.set_num = ${nummer}
     LEFT JOIN rb_themes rt ON rt.id = rs.theme_id`;

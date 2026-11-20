@@ -14,7 +14,7 @@ import { setStammJoin, SET } from '../../../db/catalogView';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { lockUntilToEnd } from '../../../db/txLock';
 
-/** Das eigene Konto gewinnt, wenn mehrere Konten das Set halten. */
+/** The own account wins if several accounts hold the set. */
 export function setInScope(db: DbInterface, ids: number[], setNumber: string, viewerId: number) {
   return db.get<{ set_number: string; user_id: number }>(
     `SELECT set_number, user_id FROM sets
@@ -35,7 +35,7 @@ export function setEntriesNewestFirst(dbh: DbInterface, userId: number, setNumbe
   );
 }
 
-/** Die ganze Zeile, für den Papierkorb: Wiederherstellen schreibt sie Spalte für Spalte zurück. */
+/** The whole row, for the trash: restoring writes it back column by column. */
 export async function setEntryAsJson(dbh: DbInterface, id: number) {
   return (
     await dbh.get<{ z: Record<string, unknown> }>('SELECT to_jsonb(t) AS z FROM set_acquisitions t WHERE id = $1', [id])
@@ -55,7 +55,7 @@ export function setRowOfAccount(db: DbInterface, userId: number, setNumber: stri
   return db.get<{ id: number }>('SELECT id FROM sets WHERE user_id = $1 AND set_number = $2', [userId, setNumber]);
 }
 
-/** Je Setnummer, dann wie jede andere Änderung dieses Bestands (db/txLock.ts); bis zum Ende der Transaktion. */
+/** Per set number, then like every other change of this inventory (db/txLock.ts); until the end of the transaction. */
 export async function addLockSet(tx: DbInterface, setNumber: string, besitzer: number) {
   await lockUntilToEnd(tx, LOCKS.SET_ADD, setNumber);
   await lockUntilToEnd(tx, LOCKS.INVENTORY, `${besitzer}|${setNumber}`);
@@ -94,8 +94,8 @@ export async function setMenge(
   return (await dbh.get<{ q: number }>(quantitySumSql(konten), [ids, setNumber]))?.q ?? 0;
 }
 
-// Eine Zeile je Erfassung, damit Kaufpreis, Zustand und Datum beim Re-Import
-// 1:1 zurückkommen.
+// One row per acquisition, so that purchase price, condition and date come back
+// 1:1 on re-import.
 const SETS_CSV_SQL = `
   SELECT s.set_number,
          -- Hier stand CASE WHEN a.id IS NULL THEN s.quantity ELSE a.quantity.
@@ -123,8 +123,8 @@ export function setsForCsv(db: DbInterface, uid: number) {
   return db.all<Record<string, unknown>>(SETS_CSV_SQL, [uid]);
 }
 
-/** Whitelist statt Interpolation: Der Wert kommt aus einem <select> und darf
- * nie ungeprüft in die Abfrage. */
+/** Whitelist instead of interpolation: the value comes from a <select> and must
+ * never go into the query unchecked. */
 const SET_SORTS = {
   added_desc: 's.added_at DESC',
   added_asc: 's.added_at ASC',
@@ -134,17 +134,17 @@ const SET_SORTS = {
   num_desc: 's.set_number DESC',
   year_desc: 's.year DESC NULLS LAST',
   year_asc: 's.year ASC NULLS LAST',
-  // Die Tabelle sortiert nach der Spalte „Gekauft“: dem letzten Kauf, wie ihn Kachel und Zeile zeigen.
+  // The table sorts by the column "bought": the last purchase, as tile and row show it.
   kauf_desc: 'a.letzter_kauf DESC NULLS LAST, s.added_at DESC',
   kauf_asc: 'a.letzter_kauf ASC NULLS LAST, s.added_at DESC',
   price_desc: 'COALESCE(a.max_purchase_price, 0) DESC',
   price_asc: 'COALESCE(a.max_purchase_price, 0) ASC',
-  // quantity kommt aus der Unterabfrage; added_at ordnet gleiche Mengen fest.
+  // quantity comes from the subquery; added_at orders equal quantities deterministically.
   qty_desc: 's.quantity DESC, s.added_at DESC',
   qty_asc: 's.quantity ASC, s.added_at DESC',
 };
 
-/** acq_count und used_count sind ::int, die Preise numeric (Text). */
+/** acq_count and used_count are ::int, the prices numeric (text). */
 export type SetListenRow = {
   set_number: string;
   acq_count: number;
@@ -164,9 +164,9 @@ export type SetFilter = {
   themen: boolean;
 };
 
-/** Die Sets der Konten als Unterabfrage `s`. Im Haushalt ein Set, EINE Zeile,
- * auch wenn zwei Kinder es besitzen: Zwei Zeilen mit demselben Bild lesen sich
- * wie ein Fehler. */
+/** The accounts' sets as subquery `s`. In the household one set, ONE row,
+ * even if two children own it: two rows with the same image read
+ * like an error. */
 function setsSource(uids: number[]): string {
   return uids.length > 1
     ? `(SELECT s.set_number,
@@ -207,8 +207,8 @@ function setsSource(uids: number[]): string {
           ${mengeJoin('s', 'sm', '= ANY($1)')}
          WHERE s.user_id = ANY($1)
          GROUP BY s.set_number) s`
-    : // Unterabfrage nur wegen des Lagerorts: Alles darunter erwartet den NAMEN in
-      // `storage`, die Tabelle trägt die ID.
+    : // Subquery only because of the storage location: everything below expects the NAME in
+      // `storage`, the table carries the ID.
       `(SELECT s.id, s.user_id, s.set_number,
                ${mengeAus('sm', 0)}::int AS quantity,
                s.added_at, s.updated_at, s.storage_id,
@@ -222,8 +222,8 @@ function setsSource(uids: number[]): string {
           ${mengeJoin('s', 'sm', '= ANY($1)')}) s`;
 }
 
-/** Mehrere Konten werden je Set zusammengefasst; der Lagerort beschreibt das
- * Exemplar und wird deshalb aufgezählt statt gewählt. */
+/** Several accounts are merged per set; the storage location describes the
+ * copy and is therefore enumerated instead of chosen. */
 export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
   const SET_COLS = [
     'set_number',
@@ -250,8 +250,8 @@ export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
     params.push(theme);
     where.push(`s.theme = $${params.length}`);
   }
-  // Eigener Filter statt Volltext: „Kiste 3" soll nicht jedes Set mit „Kiste"
-  // im Namen zeigen.
+  // An own filter instead of full text: "box 3" should not show every set with "box"
+  // in its name.
   if (storage) {
     params.push(String(storage));
     where.push(`s.storage = $${params.length}`);
@@ -263,10 +263,10 @@ export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
                  OR LOWER(COALESCE(s.theme,'')) LIKE $${i}${E} OR COALESCE(s.year,0)::text LIKE $${i}${E})`);
   }
   const whereSql = where.length ? where.join(' AND ') : 'TRUE';
-  // fromTable: Ein direkter Zugriff liefert auch geerbte Eigenschaften.
+  // fromTable: direct access also delivers inherited properties.
   const orderSql = fromTable(SET_SORTS, sort, SET_SORTS.added_desc);
 
-  // Ohne page_size unbegrenzt.
+  // Without page_size unlimited.
   const listParams = [...params];
   let limitSql = '';
   if (f.seite) {
@@ -274,9 +274,9 @@ export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
     limitSql = ` LIMIT $${listParams.length - 1} OFFSET $${listParams.length}`;
   }
 
-  // Die Set-Abfrage zuerst: Die Anleitungen brauchen die Setnummern der Seite.
+  // The set query first: the instructions need the page's set numbers.
   const [sets, countRow, themeRows] = await Promise.all([
-    // Ein gruppierter Scan per LEFT JOIN statt drei korrelierter Subqueries je Zeile.
+    // One grouped scan via LEFT JOIN instead of three correlated subqueries per row.
     db.all<Zeile<SetListenRow>>(
       `SELECT ${SET_COLS}${SET_OWNER_COL},
       a.max_purchase_price, a.avg_purchase_price, a.kaufpreis_geschaetzt, a.letzter_kauf,
@@ -308,8 +308,8 @@ export async function setList(db: DbInterface, uids: number[], f: SetFilter) {
     f.seite
       ? db.get<{ c: number }>(`SELECT COUNT(*)::int AS c FROM ${setsFrom} WHERE ${whereSql}`, params)
       : Promise.resolve(null),
-    // Aus ALLEN Sets, sonst schrumpft das Auswahlfeld beim Blättern; nur auf der
-    // ersten Seite.
+    // From ALL sets, otherwise the select field shrinks while paging; only on the
+    // first page.
     f.themen
       ? db.all<{ theme: string }>(
           `SELECT DISTINCT rt.name AS theme
@@ -357,7 +357,7 @@ export function setEntryMetrics(db: DbInterface, uids: number[], setNumber: stri
   );
 }
 
-/** Die eigene Zeile gewinnt. */
+/** The own row wins. */
 export function setDetailRow(db: DbInterface, uids: number[], setNumber: string, eigenes: number | undefined) {
   return db.get<
     Zeile<{ set_number: string; name: string | null; image_local: string | null; owner_ids: number[] | null }>

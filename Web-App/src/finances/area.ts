@@ -1,4 +1,4 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/area.ts). */
+/** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
 import type { Db } from '../../db/database';
 import { mit, buildArea, type Inspect } from '../infra/area';
 import { Faecher } from '../infra/cache';
@@ -18,13 +18,13 @@ import { zugang, type FinancesDependencies, type FinancesContext } from './conte
 export type { FinancesDependencies, FinancesContext } from './context';
 
 export function createFinances(a: Omit<FinancesDependencies, 'faecher'>, inspect?: Inspect<FinancesContext>) {
-  // Der Preis-Cache gilt je Währung: Ein Wechsel verlangt einen vollen Preislauf.
+  // The price cache applies per currency: a change requires a full price run.
   a.einstellungen.onCurrencyChange(() => a.jobQueue.pullPlanBefore('preise'));
   return buildArea(
     { ...a, faecher: new Faecher() },
     (db: Db) => zugang(db, a.lesevertrag),
     (k: FinancesContext) => ({
-      // Die Preisalarme sind Dienste; der Preislauf ruft sie über den Kontext.
+      // The price alerts are services; the price run calls them via the context.
       preisalarm: {
         alarmTransfer: mit(k)(preisalarm.alarmTransfer),
         alertsFromCsv: mit(k)(preisalarm.alertsFromCsv),

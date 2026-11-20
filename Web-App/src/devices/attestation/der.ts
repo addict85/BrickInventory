@@ -1,8 +1,8 @@
-/** Ein DER-Leser nur für das, was die Schlüssel-Attestation braucht: Er wirft
- * bei jedem Formfehler, statt zu raten; ein Angreifer bestimmt die Bytes. */
+/** A DER reader only for what key attestation needs: it throws
+ * on every format error instead of guessing; an attacker determines the bytes. */
 
 export interface Tlv {
-  /** 0 universal, 1 application, 2 kontextspezifisch, 3 privat */
+  /** 0 universal, 1 application, 2 context-specific, 3 private */
   klasse: number;
   nummer: number;
   zusammengesetzt: boolean;
@@ -13,7 +13,7 @@ export class TheError extends Error {}
 
 const HIGHEST_NUMBER = 2 ** 21;
 
-/** Ein Element ab [pos]; `ende` zeigt hinter es. */
+/** An element starting at [pos]; `ende` points behind it. */
 export function liesTlv(b: Buffer, pos = 0): { tlv: Tlv; ende: number } {
   let p = pos;
   const byte = () => {
@@ -43,7 +43,7 @@ export function liesTlv(b: Buffer, pos = 0): { tlv: Tlv; ende: number } {
   return { tlv, ende: p + laenge };
 }
 
-/** Genau ein Element, nichts dahinter. */
+/** Exactly one element, nothing behind it. */
 export function readWhole(b: Buffer): Tlv {
   const { tlv, ende } = liesTlv(b);
   if (ende !== b.length) throw new TheError('DER: Bytes hinter dem Element');
@@ -77,7 +77,7 @@ export function expect(t: Tlv | undefined, nummer: number, klasse = 0): Tlv {
   return t;
 }
 
-/** INTEGER oder ENUMERATED, nicht negativ und klein genug für eine Zahl. */
+/** INTEGER or ENUMERATED, not negative and small enough for a number. */
 export function theNumber(t: Tlv): number {
   if (t.klasse !== 0 || (t.nummer !== UNIVERSAL.INTEGER && t.nummer !== UNIVERSAL.ENUMERATED))
     throw new TheError('DER: keine Zahl');

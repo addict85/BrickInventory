@@ -5,7 +5,7 @@ import type { Tabellen } from '../../../db/rows';
 
 export const PRICE_CACHE_COLS = 'set_number, condition, min_price, avg_price, max_price, qty_avg_price, fetched_at';
 
-/** numeric kommt aus dem Treiber als Text. */
+/** numeric comes from the driver as text. */
 export interface SetPreiszeile {
   set_number: string;
   condition: string;
@@ -15,7 +15,7 @@ export interface SetPreiszeile {
   qty_avg_price: number | null;
   fetched_at: Date | null;
 }
-/** NUMERIC kommt als Zahl an (db/database.ts). */
+/** NUMERIC arrives as a number (db/database.ts). */
 export interface Preiszeile {
   avg_price: number | null;
   qty_avg_price: number | null;
@@ -69,7 +69,7 @@ export interface SetPrice {
   qty: number;
 }
 
-/** Auch eine Antwort ohne Preis: Sie hält den nächsten Abruf zurück. */
+/** Also an answer without a price: it holds back the next fetch. */
 export function rememberSetPrice(db: DbInterface, setNumber: string, condition: string, currency: string, p: SetPrice) {
   return db.run(
     `INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
@@ -114,7 +114,7 @@ export function partsPricesFresh(
   );
 }
 
-/** Nur echte, keine geschätzten. */
+/** Only real ones, no estimated ones. */
 export function minifigsPricesFresh(db: DbInterface, figuren: string[], currency: string, ttlStunden: number) {
   return db.all<Preiszeile & { fig_number: string }>(
     `SELECT fig_number, condition, avg_price, qty_avg_price, fetched_at FROM minifig_price_cache
@@ -184,7 +184,7 @@ export function rememberPartHistory(
   );
 }
 
-/** Ein echter BrickLink-Preis ersetzt eine frühere Schätzung. */
+/** A real BrickLink price replaces an earlier estimate. */
 export function rememberMinifigPrice(
   db: DbInterface,
   figNumber: string,
@@ -216,10 +216,10 @@ export function rememberMinifigHistory(
   );
 }
 
-/** Der Marktpreis (marktpreisSql) ist eine der Preisspalten von price_cache. */
+/** The market price (marktpreisSql) is one of the price columns of price_cache. */
 type Marktpreis = { marktpreis: NonNullable<Tabellen['price_cache']['avg_price']> };
 
-/** Der angefragte Zustand gewinnt, wenn er einen Preis hat. */
+/** The requested condition wins if it has a price. */
 export function marketPriceFromCache(dbh: DbInterface, setNumber: string, currency: string, zustand: string) {
   return dbh.get<Marktpreis>(
     `SELECT ${marktpreisSql()} AS marktpreis FROM price_cache
@@ -229,7 +229,7 @@ export function marketPriceFromCache(dbh: DbInterface, setNumber: string, curren
   );
 }
 
-/** Rückfall, wenn der Cache leer ist (CSV-Import ohne Kontingent). */
+/** Fallback if the cache is empty (CSV import without quota). */
 export function marketPriceFromHistory(dbh: DbInterface, setNumber: string, currency: string, zustand: string) {
   return dbh.get<Marktpreis>(
     `SELECT ${marktpreisSql()} AS marktpreis FROM price_history

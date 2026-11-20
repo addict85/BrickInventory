@@ -1,5 +1,5 @@
-/** Konten, wie Bereiche unter `konto` sie lesen: users gehört dem Konto. Nur Name und Rolle
- * reisen nach unten; Passwort und Schlüssel bleiben beim Besitzer. */
+/** Accounts as areas under `konto` read them: users belongs to the account. Only name and role
+ * travel downwards; password and keys stay with the owner. */
 
-/** Unterabfrage mit den Spalten id, username, is_admin. */
+/** Subquery with the columns id, username, is_admin. */
 export const KONTEN = '(SELECT id, username, is_admin FROM users)';

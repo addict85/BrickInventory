@@ -7,14 +7,14 @@ import { IMAGES_DIR, resolveWebPath } from '../../infra/appPaths';
 import { reportError } from '../../infra/error';
 import type { Nutzlast } from '../../jobQueue';
 
-/** Im worker_thread: pdfkit zeichnet synchron und hielte bei tausenden Zeilen
- * die Ereignisschleife an, die im Prozess „beides" auch Anfragen beantwortet. */
+/** In a worker_thread: pdfkit draws synchronously and with thousands of rows would stall
+ * the event loop, which in the "beides" process also answers requests. */
 
 export type PdfTeil = Nutzlast<'pdf'>['parts'][number];
 export type PdfSet = Nutzlast<'pdf'>['sets'][number];
 
-/** Nur innerhalb des Bildordners: Die Liste kommt vom Client, ein `image_local`
- * wie `/images/../../…` läse sonst fremde Dateien ins PDF. */
+/** Only inside the image folder: the list comes from the client, an `image_local`
+ * like `/images/../../…` would otherwise read foreign files into the PDF. */
 function pdfImagePath(p: PdfTeil): string | null {
   let src = p.image_local || p.image_url || '';
   const m = src.match(/\/api\/img-proxy\?url=(.+)/);
@@ -31,10 +31,10 @@ function pdfImagePath(p: PdfTeil): string | null {
   return voll.startsWith(path.resolve(IMAGES_DIR) + path.sep) ? voll : null;
 }
 
-/** Fehlt ein Bild, steht die Zeile ohne Bild da — das PDF entsteht trotzdem. */
+/** If an image is missing, the row stands without an image — the PDF is created anyway. */
 const withoutImage = (): null => null;
 
-/** Je BrickLink-Nummer und Farbe eine Zeile, nach Farbe gruppiert und nach Nummer sortiert. */
+/** One row per BrickLink number and color, grouped by color and sorted by number. */
 function afterColor(parts: PdfTeil[]) {
   const deduped = new Map<string, PdfTeil & { quantity: number }>();
   for (const p of parts) {
@@ -73,8 +73,8 @@ const PAGE_H = 841.89,
 const COL = { num: 40, name: 200 };
 const START_X = 40;
 
-/** Als Strom, nicht als Puffer: Eine grosse Sammlung ergibt viele Megabyte.
- * Erst die fertige Datei bekommt ihren Namen. */
+/** As a stream, not as a buffer: a large collection results in many megabytes.
+ * Only the finished file gets its name. */
 async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
   const doc = new PDFDocument({ margin: 40, size: 'A4' });
   const teil = `${ziel}.teil`;
@@ -90,7 +90,7 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
   drawHeader(doc, sets, parts);
 
   const { colorOrder, byColor } = afterColor(parts);
-  // Je Farbgruppe vorladen und freigeben: Im Speicher liegt nur eine Gruppe.
+  // Preload and release per color group: only one group is held in memory.
   const bilder = new Map<string, Buffer | null>();
   for (const colorName of colorOrder) {
     const colorParts = byColor.get(colorName) ?? [];
@@ -104,7 +104,7 @@ async function buildPdf(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise
   await fsp.rename(teil, ziel);
 }
 
-/** Seitenzahl unten mittig; der Rand wird dafür kurz aufgehoben, sonst bricht pdfkit um. */
+/** Page number at the bottom center; the margin is lifted briefly for it, otherwise pdfkit wraps. */
 function pagesLead(doc: Doc) {
   let seite = 1;
   const footer = () => {
@@ -204,7 +204,7 @@ function drawPart(doc: Doc, p: Zeile, bilder: Map<string, Buffer | null>, newPag
       doc.image(imgBuf, START_X, rowY, { width: 30, height: 30, fit: [30, 30] });
       imgOffset = 36;
     } catch (e) {
-      // Ausnahme: Ein Bild, das pdfkit nicht lesen kann, fällt weg; die Zeile bleibt.
+      // Exception: an image pdfkit cannot read is dropped; the row stays.
       reportError(`pdf:teilbild ${p.part_number}`, e);
     }
   }
@@ -220,7 +220,7 @@ function drawPart(doc: Doc, p: Zeile, bilder: Map<string, Buffer | null>, newPag
 
 type ThreadJob = { art: 'pdf-zeichnen'; sets: PdfSet[]; parts: PdfTeil[]; ziel: string };
 
-/** Aus den TypeScript-Quellen (tsx) gibt es keine .js-Datei für den Faden; dann wird hier gezeichnet. */
+/** From the TypeScript sources (tsx) there is no .js file for the thread; then drawing happens here. */
 function drawPdfInThread(sets: PdfSet[], parts: PdfTeil[], ziel: string): Promise<void> {
   if (__filename.endsWith('.ts')) return buildPdf(sets, parts, ziel);
   return new Promise((resolve, reject) => {

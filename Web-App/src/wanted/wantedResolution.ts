@@ -1,5 +1,5 @@
-/** BL-Nummern der Wanted-Liste auf Rebrickable-Nummern abbilden: zuerst lokal
- * (Zuordnungen, Katalog), dann über Rebrickable, zuletzt die Korrekturen von Hand. */
+/** Map the wanted list's BL numbers to Rebrickable numbers: first locally
+ * (mappings, catalog), then via Rebrickable, finally the manual corrections. */
 import { RebrickableLocked } from '../externalSources';
 import { reportError } from '../infra/error';
 import type { WantedArt, WantedItem } from './wantedParser';
@@ -8,28 +8,28 @@ import type { WantedContext } from './context';
 export type Sicherheit =
   | 'zuordnung'
   | 'gleich_vermerkt'
-  /** Die Nummer steht so im Rebrickable-Katalog — wahrscheinlich, nicht sicher. */
+  /** The number appears like this in the Rebrickable catalog — probably, not certainly. */
   | 'katalogtreffer'
-  /** Abgebildet UND bestätigt (external_ids.BrickLink); eigene Stufe, damit der
-   * Bericht zeigt, was ein Abruf gekostet hat. */
+  /** Mapped AND confirmed (external_ids.BrickLink); a level of its own, so that the
+   * report shows what a fetch cost. */
   | 'rebrickable'
-  /** Von Hand eingetragen — eigene Stufe, damit der Bericht nicht behauptet, der
-   * Katalog habe geliefert, was jemand getippt hat. */
+  /** Entered by hand — a level of its own, so that the report does not claim the
+   * catalog delivered what someone typed. */
   | 'korrigiert';
 
 export interface Aufloesung {
   posten: WantedItem;
   rbId: string | null;
   rbFarbe: number | null;
-  /** Reisen mit, weil die Teileliste den Farbnamen von der Zeile liest. */
+  /** Travel along, because the parts list reads the color name from the row. */
   rbFarbName: string | null;
   rbFarbHex: string | null;
   sicherheit: Sicherheit | null;
   farbeOffen: boolean;
 }
 
-/** Ohne fremden Abruf; die drei Stufen bleiben getrennt, weil sie verschieden
- * sicher sind. */
+/** Without a third-party fetch; the three levels stay separate because they are differently
+ * certain. */
 export async function resolveLocalOn(
   k: WantedContext,
   posten: WantedItem[],
@@ -37,7 +37,7 @@ export async function resolveLocalOn(
 ): Promise<Aufloesung[]> {
   if (!posten.length) return [];
 
-  // Drei Abfragen für die ganze Liste statt eine je Posten.
+  // Three queries for the whole list instead of one per item.
   const nummern = [...new Set(posten.map(p => p.blId))];
   const farben = [...new Set(posten.map(p => p.blFarbe).filter((f): f is number => f !== null))];
 
@@ -93,9 +93,9 @@ export async function resolveLocalOn(
   });
 }
 
-/** Rebrickable ist der einzige direkte Weg von BL- zu RB-Nummern. */
+/** Rebrickable is the only direct path from BL to RB numbers. */
 export type RebrickableAbort = 'kontingent' | 'kein_schluessel' | 'stoerung';
-/** Zwei Phasen, weil die Rebrickable-Abrufe ungleich länger dauern. */
+/** Two phases, because the Rebrickable fetches take much longer. */
 export type WantedProgress = {
   phase: 'rebrickable' | 'schreiben';
   fertig: number;
@@ -118,8 +118,8 @@ export async function resolveViaRebrickableOn(
     gefunden = 0;
 
   const ergebnis = [...auf];
-  // Genau die Bedingungen der Schleife darunter, sonst zählt der Balken gegen
-  // eine andere Zahl als er füllt.
+  // Exactly the conditions of the loop below, otherwise the bar counts against
+  // a different number than it fills.
   const gesamt = Math.min(grenze, ergebnis.filter(a => a.rbId === null && a.posten.art === 'part').length);
   for (let i = 0; i < ergebnis.length; i++) {
     const a = ergebnis[i]!;
@@ -129,8 +129,8 @@ export async function resolveViaRebrickableOn(
 
     gefragt++;
     let rbId: string | null;
-    // Ein Fehler ausser „unbekannt“ trifft auch alle folgenden Posten; der Bericht
-    // nennt den Grund, statt sie still als „nicht gefunden“ zu zählen.
+    // An error other than "unknown" also affects all following items; the report
+    // names the reason instead of silently counting them as "not found".
     try {
       rbId = await k.externalSources.quellen.blTeilZuRb(a.posten.blId);
     } catch (e) {
@@ -148,37 +148,37 @@ export async function resolveViaRebrickableOn(
       gefunden++;
       ergebnis[i] = { ...a, rbId, sicherheit: 'rebrickable' };
     }
-    // Nach dem Abruf: „37 von 50" heisst 37 erledigt.
+    // After the fetch: "37 of 50" means 37 done.
     fortschritt?.({ phase: 'rebrickable', fertig: gefragt, gesamt });
   }
   return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: k.externalSources.quellen.blFilterIneffective() };
 }
 
-/** Adressiert über den Index: Dieselbe Nummer darf mehrfach in der Liste stehen. */
+/** Addressed via the index: the same number may appear several times in the list. */
 export interface Korrektur {
   index: number;
-  /** Gegenprobe — muss zu dem Posten an [index] passen. */
+  /** Cross-check — must match the item at [index]. */
   blId: string;
   art: WantedArt;
   rbId?: string | null | undefined;
   rbFarbe?: number | null | undefined;
-  /** Die Werte aus der Datei, von Hand geändert, damit ein Vertipper nicht ein
-   * erneutes Einlesen erzwingt. */
+  /** The values from the file, changed by hand, so that a typo does not force
+   * reading the file in again. */
   menge?: number | undefined;
-  /** null heisst „Standard des Kontos". */
+  /** null means "the account's default". */
   zustand?: string | null | undefined;
-  /** null heisst „keiner, hol den Marktpreis". */
+  /** null means "none, fetch the market price". */
   kaufpreis?: number | null | undefined;
 }
 
-/** Drei Abfragen für die ganze Liste, nicht eine je Posten. */
+/** Three queries for the whole list, not one per item. */
 export async function describeItem(
   k: WantedContext,
   auf: Aufloesung[],
 ): Promise<Map<number, { name: string | null; bild: string | null; geraten: boolean }>> {
   const raus = new Map<number, { name: string | null; bild: string | null; geraten: boolean }>();
 
-  // Ohne Rebrickable-Nummer gilt die BrickLink-Nummer als Schlüssel.
+  // Without a Rebrickable number the BrickLink number serves as the key.
   const teile: { i: number; nr: string; farbe: number | null; geraten: boolean }[] = [];
   const figuren: { i: number; nr: string; geraten: boolean }[] = [];
   const sets: { i: number; nr: string; geraten: boolean }[] = [];
@@ -208,8 +208,8 @@ export async function describeItem(
       const z = afterNumber.get(t.nr);
       const name = z?.name ?? null;
       const bild = bilder.get(`${t.nr}|${t.farbe}`) || z?.bild_allgemein || null;
-      // `geraten` nur bei einem Fund: Eine leere Zeile „geraten" zu nennen wäre
-      // eine Behauptung über nichts.
+      // `geraten` only on a find: calling an empty row "guessed" would be
+      // a claim about nothing.
       raus.set(t.i, { name, bild, geraten: t.geraten && !!(name || bild) });
     }
   }
@@ -240,8 +240,8 @@ export async function describeItem(
   return raus;
 }
 
-/** Jede Korrektur wird gegen Art und Nummer am Index geprüft, sonst wirkte sie
- * nach Dateiwechsel lautlos auf einen fremden Posten. */
+/** Every correction is checked against kind and number at the index, otherwise after a file change
+ * it would silently act on a foreign item. */
 export function applyCorrectionsAn(
   auf: Aufloesung[],
   korrekturen: Korrektur[],
@@ -255,13 +255,13 @@ export function applyCorrectionsAn(
       abgewiesen.push(k);
       continue;
     }
-    // `undefined` heisst „nicht angefasst", `null` „ausdrücklich geleert" — sonst
-    // löschte eine Korrektur der Farbe die Nummer mit.
+    // `undefined` means "not touched", `null` "explicitly cleared" — otherwise
+    // a correction of the color would delete the number as well.
     const rbId = k.rbId === undefined ? a.rbId : k.rbId || null;
     const rbFarbe = k.rbFarbe === undefined ? a.rbFarbe : (k.rbFarbe ?? null);
 
-    // Eine unbrauchbare Angabe weist die ganze Korrektur ab statt sie still
-    // zurechtzubiegen: Menge 0 ist ein Vertipper, keine 1.
+    // An unusable value rejects the whole correction instead of silently
+    // bending it into shape: quantity 0 is a typo, not a 1.
     let menge = a.posten.menge;
     if (k.menge !== undefined) {
       const m = Math.trunc(Number(k.menge));
@@ -273,8 +273,8 @@ export function applyCorrectionsAn(
     }
     let zustand = a.posten.zustand;
     if (k.zustand !== undefined) {
-      // null/'' heisst „Standard des Kontos" wie CONDITION=X; alles andere als N/U
-      // ist ein Fehler, nicht „egal".
+      // null/'' means "the account's default" like CONDITION=X; anything other than N/U
+      // is an error, not "any".
       if (k.zustand === null || k.zustand === '') zustand = null;
       else if (k.zustand === 'N' || k.zustand === 'U') zustand = k.zustand;
       else {
@@ -287,7 +287,7 @@ export function applyCorrectionsAn(
       if (k.kaufpreis === null || (k.kaufpreis as unknown) === '') maxPreis = null;
       else {
         const p = Number(k.kaufpreis);
-        // 0 heisst „keiner", wie MAXPRICE beim Leser.
+        // 0 means "none", like MAXPRICE in the reader.
         if (!Number.isFinite(p) || p < 0) {
           abgewiesen.push(k);
           continue;
@@ -298,18 +298,18 @@ export function applyCorrectionsAn(
 
     const numberChanged = rbId !== a.rbId || rbFarbe !== a.rbFarbe;
     const itemChanged = menge !== a.posten.menge || zustand !== a.posten.zustand || maxPreis !== a.posten.maxPreis;
-    if (!numberChanged && !itemChanged) continue; // nichts geändert
+    if (!numberChanged && !itemChanged) continue; // nothing changed
 
     ergebnis[k.index] = {
       ...a,
       rbId,
       rbFarbe,
       ...(itemChanged ? { posten: { ...a.posten, menge, zustand, maxPreis } } : {}),
-      // Der Farbname gehörte zur alten Nummer und wird unten neu geholt.
+      // The color name belonged to the old number and is fetched again below.
       rbFarbName: rbFarbe === a.rbFarbe ? a.rbFarbName : null,
       rbFarbHex: rbFarbe === a.rbFarbe ? a.rbFarbHex : null,
-      // `korrigiert` nur bei geänderter Nummer: Die Stufe entscheidet, ob die
-      // Zuordnung gemerkt wird; eine geänderte Menge sagt nichts über die Nummer.
+      // `korrigiert` only for a changed number: the level decides whether the
+      // mapping is remembered; a changed quantity says nothing about the number.
       sicherheit: numberChanged ? 'korrigiert' : a.sicherheit,
       farbeOffen: rbId !== null && a.posten.blFarbe !== null && rbFarbe === null,
     };
@@ -318,8 +318,8 @@ export function applyCorrectionsAn(
   return { auf: ergebnis, angewandt, abgewiesen };
 }
 
-/** Eine von Hand eingetragene Farbe war in der Auflösung nicht dabei; ohne
- * diesen Schritt ginge sie ohne Namen an den Anleger. */
+/** A color entered by hand was not part of the resolution; without
+ * this step it would go to the creator without a name. */
 export async function backfillColors(k: WantedContext, auf: Aufloesung[]): Promise<Aufloesung[]> {
   const offen = auf.filter(a => a.rbFarbe !== null && a.rbFarbName === null).map(a => a.rbFarbe as number);
   if (!offen.length) return auf;

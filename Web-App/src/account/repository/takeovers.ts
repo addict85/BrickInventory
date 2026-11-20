@@ -20,7 +20,7 @@ export async function terminateAn(db: DbInterface, u: Uebernahme, hours: number,
   return r!.effective_at;
 }
 
-/** Wer die Rolle eben verlor, zählt noch als Verwalter: Sonst entzöge man sie erst und übernähme dann sofort. */
+/** Whoever just lost the role still counts as admin: otherwise one would revoke it first and then take over immediately. */
 export async function adminOrJustBeen(db: DbInterface, ziel: number, hours: number): Promise<boolean> {
   const r = await db.get<{ ja: boolean }>(
     `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1 AND is_admin)
@@ -31,8 +31,8 @@ export async function adminOrJustBeen(db: DbInterface, ziel: number, hours: numb
   return r?.ja === true;
 }
 
-/** Fällig und vom Verwalter, der sie ankündigte, noch getragen. Passwort und Faktor nicht, wenn das
- * Ziel seither deaktiviert wurde oder jetzt wird: Es könnte sich nicht mehr anmelden, um abzubrechen. */
+/** Due and still backed by the admin who announced it. Not password and factor if the
+ * target has been deactivated since or is being deactivated now: it could no longer log in to cancel. */
 export async function takeDue(db: DbInterface): Promise<{ gilt: Uebernahme[]; verworfen: number }> {
   const weg = await db.all<Uebernahme & { gilt: boolean }>(
     `WITH weg AS (DELETE FROM admin_takeovers WHERE effective_at <= NOW() RETURNING *)
@@ -54,7 +54,7 @@ export async function abortTakeoversAb(db: DbInterface, ziel: number): Promise<T
   return r.map(z => z.type);
 }
 
-/** Das Ziel zum Link aus der Mail; der Link gilt einmal, weil der Abbruch die Zeilen löscht. */
+/** The target for the link from the mail; the link works once because cancelling deletes the rows. */
 export async function targetToAbort(db: DbInterface, abortHash: string): Promise<number | null> {
   const r = await db.get<{ target_id: number }>('SELECT target_id FROM admin_takeovers WHERE cancel_hash = $1', [
     abortHash,

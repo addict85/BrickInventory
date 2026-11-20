@@ -1,5 +1,5 @@
 import { fachfehler } from './errorTexts';
-/** Einmal gelesen statt an drei Stellen mit eigener Schreibweise. */
+/** Read once instead of in three places with their own spelling. */
 import { konfig } from './config';
 import { prozessweit } from './prozessweit';
 
@@ -7,7 +7,7 @@ export function basisUrl(): string | null {
   return konfig().appBaseUrl;
 }
 
-// Einmal je Bereich: Aufrufer laufen in Schleifen.
+// Once per area: callers run in loops.
 export function hintWithoutBaseUrl(bereich: string, sequence: string): void {
   const _reported = prozessweit('basisUrlGemeldet', () => new Set<string>());
   if (_reported.has(bereich)) return;
@@ -15,15 +15,15 @@ export function hintWithoutBaseUrl(bereich: string, sequence: string): void {
   console.warn(`⚠️  [${bereich}] APP_BASE_URL ist nicht gesetzt — ${sequence} Siehe README.md.`);
 }
 
-/** Für Links in Mails, nie aus Kopfzeilen: Host oder X-Forwarded-Host liessen
- * sich auf eine fremde Seite lenken — auch ein „Testserver" steht oft im Netz. */
+/** For links in mails, never from headers: Host or X-Forwarded-Host could
+ * be steered to a foreign site — even a "test server" is often on the net. */
 export function mailBasisUrl(): string | null {
   const basis = basisUrl();
   if (!basis) hintWithoutBaseUrl('auth', 'Links in E-Mails werden nicht verschickt.');
   return basis;
 }
 
-/** Erreicht die App den Server verschlüsselt? Nur dann gibt es unbegrenzte Zugänge und ein Pinning der CA. */
+/** Does the app reach the server encrypted? Only then are there unlimited accesses and CA pinning. */
 export function viaTls(basis: string | null): boolean {
   return /^https:\/\//i.test(basis ?? '');
 }

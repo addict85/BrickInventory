@@ -1,6 +1,6 @@
 import type { Zeile, DbInterface } from '../../../db/database';
-/** Tokens stehen nur als SHA-256 in der Tabelle; jede Funktion nimmt den Hash,
- * nie den Klartext. */
+/** Tokens are only stored as SHA-256 in the table; every function takes the hash,
+ * never the plaintext. */
 
 export type TokenScope = 'app' | 'voll';
 
@@ -23,8 +23,8 @@ export type TokenRow = {
   muss_passwort_aendern: boolean;
 };
 
-/** Fristen und Kontozustand in der Abfrage: Ein abgelaufener Token oder einer
- * eines deaktivierten Kontos wird nie geliefert. */
+/** Deadlines and account state in the query: an expired token or one
+ * of a deactivated account is never returned. */
 export function validToken(db: DbInterface, hash: string) {
   return db.get<TokenRow>(
     `
@@ -39,7 +39,7 @@ export function validToken(db: DbInterface, hash: string) {
   );
 }
 
-/** created_at reist beim Tausch über JavaScript und verliert dabei die Mikrosekunden. */
+/** created_at travels through JavaScript on the swap and loses the microseconds. */
 const familie = (spalte: string) => `date_trunc('milliseconds', ${spalte})`;
 
 export async function endOverlap(db: DbInterface, previous_token: string, hash: string): Promise<void> {
@@ -52,8 +52,8 @@ export async function endOverlap(db: DbInterface, previous_token: string, hash: 
   await db.run('UPDATE api_tokens SET previous_token = NULL WHERE token = $1', [hash]);
 }
 
-/** Die WHERE-Klausel lässt höchstens einen Schreibvorgang je Tag durch, auch
- * über mehrere Prozesse. */
+/** The WHERE clause lets at most one write per day through, even
+ * across several processes. */
 export async function touchToken(
   db: DbInterface,
   hash: string,
@@ -79,7 +79,7 @@ export type NewToken = {
   label: string;
   scope: TokenScope;
   bereich: string | null;
-  /** 'kurz' = sieben feste Tage */
+  /** 'kurz' = seven fixed days */
   art: 'unbegrenzt' | 'gleitend' | 'kurz';
   idleDays: number;
   fixedDays: number | null;
@@ -121,7 +121,7 @@ export type SwapSource = {
   replaced_by: string | null;
 };
 
-/** Gesperrt: Zwei Tausche desselben Tokens laufen nacheinander. */
+/** Locked: two swaps of the same token run one after another. */
 export function lockSwapSource(tx: DbInterface, hash: string) {
   return tx.get<SwapSource>(
     `SELECT user_id, label, scope, sliding, never_expires, expires_at, hard_expires_at, created_at, replaced_by
@@ -134,7 +134,7 @@ export function lockSwapSource(tx: DbInterface, hash: string) {
   );
 }
 
-/** Der noch unbenutzte Nachfolger eines Tausches: wann und aus welchem Netz er entstand. */
+/** The still unused successor of a swap: when and from which network it was created. */
 export function unusedSuccessor(tx: DbInterface, successor: string, alt: string) {
   return tx.get<{ alter_s: number; ip_range: string | null }>(
     `SELECT EXTRACT(EPOCH FROM NOW() - rotated_at)::float AS alter_s, ip_range
@@ -143,7 +143,7 @@ export function unusedSuccessor(tx: DbInterface, successor: string, alt: string)
   );
 }
 
-/** Die ganze Familie eines Tokens (gleiches created_at), samt Nachfolger. */
+/** The whole family of a token (same created_at), including successors. */
 export async function deleteFamily(tx: DbInterface, userId: number, seit: Date): Promise<void> {
   await tx.run(
     `DELETE FROM api_tokens WHERE user_id = $1 AND ${familie('created_at')} = ${familie('$2::timestamptz')}`,
@@ -155,7 +155,7 @@ export async function deleteUnusedSuccessor(tx: DbInterface, successor: string, 
   await tx.run('DELETE FROM api_tokens WHERE token = $1 AND previous_token = $2', [successor, alt]);
 }
 
-/** Der Nachfolger erbt Label, Scope und Fristen; die Gleitfrist beginnt neu. */
+/** The successor inherits label, scope and deadlines; the sliding deadline starts again. */
 export function putSuccessorAn(
   tx: DbInterface,
   neu: string,
@@ -198,8 +198,8 @@ export function limitTimePredecessor(tx: DbInterface, alt: string, neu: string, 
   );
 }
 
-/** Ein verbrauchter Token kam wieder: Seine Familie endet samt Nachfolger. Erst nach
- * der Schonfrist, sonst träfe es Anfragen, die noch mit dem alten unterwegs waren. */
+/** A consumed token came back: its family ends including successors. Only after
+ * the grace period, otherwise it would hit requests still in flight with the old one. */
 export function lockFamily(db: DbInterface, hash: string, gracePeriodSec: number) {
   return db.get<{ user_id: number; label: string | null }>(
     `
@@ -234,7 +234,7 @@ export async function deleteTokensOfAccount(
   else await db.run('DELETE FROM api_tokens WHERE user_id = $1', [userId]);
 }
 
-/** Behält die `behalten` zuletzt benutzten neben `eigene`; die übrigen fallen. */
+/** Keeps the `behalten` most recently used besides `eigene`; the others fall. */
 export async function capSessions(db: DbInterface, userId: number, eigene: string, behalten: number): Promise<number> {
   return (
     (
@@ -247,7 +247,7 @@ export async function capSessions(db: DbInterface, userId: number, eigene: strin
   );
 }
 
-/** Zählt nur Tokens ohne Nachfolger: Ein getauschter in seiner Überlappung ist dasselbe Gerät. */
+/** Counts only tokens without a successor: a swapped one in its overlap is the same device. */
 export async function capTokens(db: DbInterface, userId: number, eigener: string, behalten: number): Promise<number> {
   return (
     (
@@ -274,7 +274,7 @@ export async function deleteSessionsOfAccount(
     ]);
 }
 
-/** null: Konto fehlt oder ist gesperrt. */
+/** null: account missing or locked. */
 export async function sitzungsVersion(db: DbInterface, uid: number): Promise<number | null> {
   const r = await db.get<{ v: number | null }>(
     'SELECT CASE WHEN is_active THEN session_version END AS v FROM users WHERE id = $1',
@@ -305,7 +305,7 @@ export async function pullAltzeilenAfter(db: DbInterface, idleDays: number): Pro
   );
 }
 
-/** Beide Fristen in einer Anweisung — eine zweite wäre die Stelle, an der eine Regel fehlt. */
+/** Both deadlines in one statement — a second one would be the place where a rule is missing. */
 export async function deleteExpiredAccesses(db: DbInterface): Promise<number> {
   return (
     (
@@ -318,7 +318,7 @@ export async function deleteExpiredAccesses(db: DbInterface): Promise<number> {
   );
 }
 
-/** NOT never_expires: Eine Zeile ohne Datum ist Altbestand oder die ausdrückliche Wahl „unbegrenzt". */
+/** NOT never_expires: a row without a date is legacy data or the explicit choice "unlimited". */
 export async function deleteUnused(db: DbInterface, idleDays: number): Promise<number> {
   return (
     (
@@ -332,8 +332,8 @@ export async function deleteUnused(db: DbInterface, idleDays: number): Promise<n
   );
 }
 
-/** Zwei Treffer (ein Name gleich der Adresse eines anderen Kontos, nur im
- * Altbestand möglich) heissen „kein Konto": Welches gemeint war, ist nicht zu entscheiden. */
+/** Two hits (a name equal to another account's address, only possible in
+ * legacy data) mean "no account": which one was meant cannot be decided. */
 export async function accountToLogin(db: DbInterface, name: string) {
   const treffer = await db.all<
     Zeile<{
@@ -351,7 +351,7 @@ export async function accountToLogin(db: DbInterface, name: string) {
   return treffer.length === 1 ? treffer[0] : undefined;
 }
 
-/** Nur wenn der alte Hash noch gilt: Ein gleichzeitig geändertes Passwort bleibt stehen. */
+/** Only if the old hash still applies: a password changed concurrently stays. */
 export async function replacePasswordHash(db: DbInterface, id: number, alt: string, neu: string): Promise<void> {
   await db.run('UPDATE users SET password_hash = $3 WHERE id = $1 AND password_hash = $2', [id, alt, neu]);
 }

@@ -45,7 +45,7 @@ export function buildCatalogRouter(d: Pick<Dienste, 'account' | 'catalog'>) {
     return { set };
   });
 
-  // Links für eine ganze Katalogseite aus einer Abfrage, ohne BrickLink-Aufruf.
+  // Links for a whole catalog page from one query, without a BrickLink call.
   router.endpunkt('GET /api/v1/catalog/bricklink', requireToken, async req => {
     const raw = (req.abfrage.sets ?? '').trim();
     if (!raw) {

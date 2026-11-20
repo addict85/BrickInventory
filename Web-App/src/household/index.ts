@@ -1,4 +1,4 @@
-/** Die öffentliche Seite des Bereichs; was die Datenbank braucht, ist ein Dienst. */
+/** The public face of the area; whatever needs the database is a service. */
 
 export {
   HOUSEHOLD_CHANNEL,

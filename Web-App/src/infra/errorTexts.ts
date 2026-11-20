@@ -1,11 +1,11 @@
-/** Die Fehlermeldungen an EINER Stelle, in beiden Sprachen: Die Route kennt
- * die Sprache des Anfragenden, der Dienst nicht. */
+/** The error messages in ONE place, in both languages: the route knows
+ * the requester's language, the service does not. */
 
 export type Sprache = 'de' | 'en';
 
-// Jeder Text einmal, in beiden Sprachen.
+// Every text once, in both languages.
 export const FEHLER = {
-  // ── Anmeldung und Konto ──────────────────────────────────────────────────
+  // ── Login and account ────────────────────────────────────────────────────
   nicht_angemeldet: { de: 'Nicht angemeldet', en: 'Not signed in' },
   auth_fehler: { de: 'Auth-Fehler', en: 'Authentication error' },
   nur_admins: { de: 'Nur für Administratoren', en: 'Administrators only' },
@@ -66,7 +66,7 @@ export const FEHLER = {
     en: 'Please enter a username or an email address.',
   },
 
-  // ── Registrierung und Passwort ───────────────────────────────────────────
+  // ── Registration and password ────────────────────────────────────────────
   registrierung_deaktiviert: { de: 'Registrierung ist deaktiviert.', en: 'Registration is disabled.' },
   registrierung_braucht_mail: {
     de: 'Die Registrierung braucht den E-Mail-Versand: Zuerst unter „E-Mail“ den Mailserver eintragen (und APP_BASE_URL setzen).',
@@ -221,7 +221,7 @@ export const FEHLER = {
     en: 'User not found, or it is your own account',
   },
 
-  // ── Haushalt: verknüpfte Konten ──────────────────────────────────────────
+  // ── Household: linked accounts ───────────────────────────────────────────
   kein_schreibrecht: { de: 'Kein Schreibrecht für dieses Konto.', en: 'No write access to this account.' },
   kein_zugriff_konto: { de: 'Kein Zugriff auf dieses Konto', en: 'No access to this account' },
   einladungscode_ungueltig: { de: 'Ungültiger Einladungscode.', en: 'Invalid invitation code.' },
@@ -250,8 +250,8 @@ export const FEHLER = {
     de: 'Beide Konten müssen dieselbe Währung verwenden (Hauptkonto: {haupt}, dieses Konto: {unter}).',
     en: 'Both accounts must use the same currency (main account: {haupt}, this account: {unter}).',
   },
-  // Die 60 steht ausgeschrieben, weil fachfehler() keine Platzhalter füllt;
-  // test/location-stock-db.test.js prüft die Grenze (60 erlaubt, 61 abgewiesen).
+  // The 60 is written out because fachfehler() fills no placeholders;
+  // test/location-stock-db.test.js checks the limit (60 allowed, 61 rejected).
   lagerort_zu_lang: {
     de: 'Der Lagerort ist zu lang (höchstens 60 Zeichen).',
     en: 'Storage location is too long (at most 60 characters).',
@@ -268,8 +268,8 @@ export const FEHLER = {
     de: 'Diesen Lagerort gibt es nicht (mehr).',
     en: 'That storage location does not exist (any more).',
   },
-  // Eine ABSAGE statt stillen Leerens: Sonst verlöre der Löschende Zuordnungen,
-  // die er nicht im Blick hatte.
+  // A REFUSAL instead of silent clearing: otherwise the deleting user would lose assignments
+  // they did not have in view.
   lagerort_in_benutzung: {
     de: 'In diesem Lagerort liegt noch etwas — erst umräumen, dann löschen.',
     en: 'Something is still stored there — move it out before deleting.',
@@ -292,7 +292,7 @@ export const FEHLER = {
     en: 'Please name the purchases to move (acquisition_ids).',
   },
 
-  // ── Sets, Teile, Minifiguren ─────────────────────────────────────────────
+  // ── Sets, parts, minifigures ─────────────────────────────────────────────
   set_nicht_gefunden: { de: 'Set nicht gefunden', en: 'Set not found' },
   setnummer_ungueltig: {
     de: 'Das ist keine Setnummer (Buchstaben und Ziffern, z. B. 10294).',
@@ -313,8 +313,8 @@ export const FEHLER = {
     de: 'Teil nicht gefunden oder nicht manuell hinzugefügt',
     en: 'Part not found, or not added manually',
   },
-  // Eine ABSAGE statt der 0 aus V.colorId(): Beim Korrigieren wäre das ein
-  // stilles Löschen der Farbe mit „success".
+  // A REFUSAL instead of the 0 from V.colorId(): when correcting, that would be a
+  // silent deletion of the color with "success".
   farbe_erforderlich: { de: 'color_id erforderlich (die neue Farbe)', en: 'color_id is required (the new colour)' },
   minifig_nicht_manuell: {
     de: 'Minifigur nicht gefunden oder nicht manuell hinzugefügt',
@@ -334,7 +334,7 @@ export const FEHLER = {
     en: 'BrickLink API credentials are incomplete.',
   },
 
-  // ── Dateien, Import, Export ──────────────────────────────────────────────
+  // ── Files, import, export ────────────────────────────────────────────────
   keine_datei: { de: 'Keine Datei', en: 'No file' },
   datei_zu_gross: { de: 'Die Datei ist zu gross', en: 'The file is too large' },
   datei_typ_falsch: { de: 'Nur PDF, JPG oder PNG', en: 'PDF, JPG or PNG only' },
@@ -386,7 +386,7 @@ export const FEHLER = {
   feld_kein_wahrheitswert: { de: '{feld} muss true oder false sein', en: '{feld} must be true or false' },
   kein_import_laeuft: { de: 'Kein Import läuft', en: 'No import is running' },
 
-  // ── PDF-Aufträge ─────────────────────────────────────────────────────────
+  // ── PDF jobs ─────────────────────────────────────────────────────────────
   pdf_nicht_fertig: { de: 'PDF noch nicht fertig', en: 'The PDF is not ready yet' },
   pdf_nicht_verfuegbar: { de: 'PDF nicht mehr verfügbar', en: 'The PDF is no longer available' },
   pdf_auftrag_laeuft: {
@@ -405,9 +405,9 @@ export const FEHLER = {
     en: 'This job does not exist or has already finished',
   },
 
-  // ── Gutscheine ───────────────────────────────────────────────────────────
-  // `gutschein_existiert` sieht der Nutzer auch bei richtiger Eingabe; der Text
-  // sagt deshalb WARUM.
+  // ── Vouchers ─────────────────────────────────────────────────────────────
+  // The user sees `gutschein_existiert` even with correct input; the text
+  // therefore says WHY.
   nummer_ungueltig: {
     de: 'Ungültige Gutscheinnummer (nur Ziffern, 4–25 Stellen)',
     en: 'Invalid voucher number (digits only, 4–25 characters)',
@@ -434,7 +434,7 @@ export const FEHLER = {
     en: 'An upload of this kind is already running for this account — please wait until it has finished.',
   },
 
-  // ── Einrichtung ──────────────────────────────────────────────────────────
+  // ── Setup ────────────────────────────────────────────────────────────────
   quelle_unbekannt: { de: 'Unbekannte Quelle', en: 'Unknown source' },
   quelle_test_fehlgeschlagen: { de: 'Verbindung fehlgeschlagen: {grund}', en: 'Connection failed: {grund}' },
   quelle_ohne_schluessel: {
@@ -450,7 +450,7 @@ export const FEHLER = {
     en: '{quelle} rejected the access. Please check the values you entered.',
   },
 
-  // ── Zweiter Faktor ───────────────────────────────────────────────────────
+  // ── Second factor ────────────────────────────────────────────────────────
   zweiter_faktor_noetig: {
     de: 'Bitte den Code aus der Authenticator-App eingeben.',
     en: 'Please enter the code from your authenticator app.',
@@ -472,60 +472,60 @@ export const FEHLER = {
     en: 'Two-factor authentication is not set up.',
   },
 
-  // ── Papierkorb ───────────────────────────────────────────────────────────
+  // ── Trash ────────────────────────────────────────────────────────────────
   papierkorb_schon_vorhanden: {
     de: 'Wurde inzwischen neu angelegt — erst den neuen Eintrag löschen, dann wiederherstellen.',
     en: 'Has been added again since — delete the new entry first, then restore.',
   },
 
-  // `keine_gutscheine` ist eine Auskunft: lieber das lesen als ein leeres PDF.
+  // `keine_gutscheine` is information: better to read that than an empty PDF.
   keine_gutscheine: { de: 'Es sind keine Gutscheine erfasst.', en: 'No vouchers have been added.' },
   pdf_freigabe_noetig: {
     de: 'Das PDF braucht eine frische Bestätigung mit dem Passwort.',
     en: 'The PDF needs a fresh confirmation with your password.',
   },
-  // Getrennt von `gutschein_unvollstaendig`: Dort war es ein PDF ohne Werte —
-  // der Nutzer tut jeweils Verschiedenes.
+  // Separate from `gutschein_unvollstaendig`: there it was a PDF without values —
+  // the user does something different in each case.
   pdf_unlesbar: { de: 'Die Datei liess sich nicht als PDF lesen.', en: 'The file could not be read as a PDF.' },
-  // Der Text sagt, was zu tun ist — sonst sucht der Nutzer den Fehler bei sich.
+  // The text says what to do — otherwise the user looks for the error on their side.
   kein_gutschein_im_pdf: {
     de: 'In diesem PDF war kein Gutschein zu erkennen. ' + 'Bitte den Gutschein von Hand erfassen.',
     en: 'No voucher could be recognised in this PDF. ' + 'Please add the voucher manually.',
   },
 
-  // ── Guthaben-Abfrage bei LEGO ────────────────────────────────────────────
-  // Vier Codes, weil der Nutzer bei jedem etwas anderes tut.
+  // ── Balance lookup at LEGO ───────────────────────────────────────────────
+  // Four codes, because the user does something different for each.
   guthaben_pin_fehlt: {
     de: 'Für die Abfrage braucht es die PIN der Karte.',
     en: 'The card PIN is required for the balance query.',
   },
-  // {sek} statt fester Zahl: Zwei Zahlen für eine Regel laufen auseinander.
+  // {sek} instead of a fixed number: two numbers for one rule drift apart.
   guthaben_abstand: {
     de: 'Es wird höchstens eine Karte alle {sek} Sekunden ' + 'abgefragt. Bitte noch {warten} Sekunden warten.',
     en: 'At most one card is queried every {sek} seconds. ' + 'Please wait another {warten} seconds.',
   },
-  // Sagt, dass es nicht an der Karte liegt und wie lange die Abfrage ruht —
-  // sonst drückt der Nutzer weiter.
+  // Says that it is not the card's fault and how long the lookup rests —
+  // otherwise the user keeps pressing.
   guthaben_botschutz: {
     de: 'LEGO hat die Abfrage abgewiesen (Bot-Schutz). ' + 'Die Abfrage ruht noch {min} Minuten.',
     en: 'LEGO rejected the query (bot protection). ' + 'The query is paused for another {min} minutes.',
   },
-  // {grund} läuft vorher durch verdecke(): keine Kartennummer und PIN darin.
+  // {grund} passes through verdecke() beforehand: no card number and PIN in it.
   guthaben_fehlgeschlagen: {
     de: 'Das Guthaben liess sich nicht abfragen: {grund}',
     en: 'The balance could not be queried: {grund}',
   },
-  // Aus dem Land wird eine Adresse gebaut; was nicht auf der Liste steht, wird
-  // nicht gefragt.
+  // An address is built from the country; whatever is not on the list is
+  // not asked.
   guthaben_land_ungueltig: {
     de: 'Das eingestellte Ausgabeland ist unbekannt. ' + 'Bitte unter Menü → Gutscheine wählen.',
     en: 'The configured card country is unknown. ' + 'Please choose one under Menu → Vouchers.',
   },
 
-  // ── BrickLink-Wanted-Liste ───────────────────────────────────────────────
-  // „keine Wanted-Liste" ist eine andere Auskunft als „0 Posten". Unlesbare
-  // Korrekturen sind eine ABSAGE: Wer sie gemacht hat, merkte ihr Fehlen sonst
-  // erst an den Karten.
+  // ── BrickLink wanted list ────────────────────────────────────────────────
+  // "no wanted list" is different information than "0 items". Unreadable
+  // corrections are a REFUSAL: whoever made them would otherwise only notice their absence
+  // on the cards.
   korrekturen_ungueltig: {
     de: 'Die Korrekturen sind nicht lesbar (kein gültiges JSON-Array).',
     en: 'The corrections could not be read (not a valid JSON array).',
@@ -538,7 +538,7 @@ export const FEHLER = {
   eingabe_ungueltig: { de: 'Ungültige Eingabe im Feld „{feld}“', en: 'Invalid input in field “{feld}”' },
   feld_unbekannt: { de: 'Unbekanntes Feld „{feld}“', en: 'Unknown field “{feld}”' },
 
-  // ── Betrieb und Verwaltung ───────────────────────────────────────────────
+  // ── Operation and administration ─────────────────────────────────────────
   nicht_gefunden: { de: 'Nicht gefunden', en: 'Not found' },
   kaufpreis_nicht_gefunden: { de: 'Kaufpreis nicht gefunden', en: 'Purchase not found' },
   datum_ungueltig: { de: 'Ungültiges Datum', en: 'Invalid date' },
@@ -631,14 +631,14 @@ export const FEHLER = {
 
 export type ErrorCode = keyof typeof FEHLER;
 
-// Aus Accept-Language; ohne Treffer Deutsch.
+// From Accept-Language; without a match German.
 export function responseLanguage(req: { headers?: Record<string, unknown> } | undefined): Sprache {
   const roh = String(req?.headers?.['accept-language'] || '').toLowerCase();
   return roh.startsWith('en') || roh.includes(',en') ? 'en' : 'de';
 }
 
-/** Was schiefging, fachlich gesagt. Welcher HTTP-Status dazu gehört, weiss nur
- * src/http/errorKind.ts: Dienste laufen auch im Job-Prozess und in Skripten. */
+/** What went wrong, in domain terms. Which HTTP status belongs to it is only known by
+ * src/http/errorKind.ts: services also run in the job process and in scripts. */
 export type ErrorKind =
   | 'ungueltig'
   | 'nicht_angemeldet'
@@ -659,10 +659,10 @@ export type ErrorKind =
   | 'falscher_host'
   | 'zu_alt';
 
-/** Art und Code reisen mit, der Satz entsteht erst in der Antwort in der
- * Sprache des Anfragenden. */
+/** Kind and code travel along; the sentence is only created in the response in the
+ * requester's language. */
 export class Fachfehler extends Error {
-  /** `zusatz`: Felder, die die Antwort neben code und error trägt (z. B. `wartenSek`). */
+  /** `zusatz`: fields the response carries next to code and error (e.g. `wartenSek`). */
   constructor(
     readonly art: ErrorKind,
     readonly code: ErrorCode,
@@ -674,8 +674,8 @@ export class Fachfehler extends Error {
   }
 }
 
-/** Zwei gleichzeitige Anlagen (23505) sind eine Nutzereingabe, kein
- * Serverfehler; alles andere geht unverändert weiter. */
+/** Two concurrent creations (23505) are a user input, not a
+ * server error; everything else propagates unchanged. */
 export function asDuplicate(code: ErrorCode): (e: unknown) => never {
   return (e: unknown) => {
     if ((e as { code?: unknown } | null)?.code === '23505') throw new Fachfehler('konflikt', code);
@@ -683,8 +683,8 @@ export function asDuplicate(code: ErrorCode): (e: unknown) => never {
   };
 }
 
-/** Wie asDuplicate, aber mit einem Ergebnis statt einer Absage: Ein gleichzeitiger
- * Gewinner ist dort ein Ausgang des Ablaufs, kein Fehler. */
+/** Like asDuplicate, but with a result instead of a refusal: a concurrent
+ * winner is an outcome of the flow there, not an error. */
 export function duplicateAs<T>(wert: T): (e: unknown) => T {
   return (e: unknown) => {
     if ((e as { code?: unknown } | null)?.code === '23505') return wert;
@@ -692,25 +692,25 @@ export function duplicateAs<T>(wert: T): (e: unknown) => T {
   };
 }
 
-/** Bricht den Dienst mit einem Grund ab, den die Route dem Anfragenden nennt. */
+/** Aborts the service with a reason the route names to the requester. */
 export function fachfehler(art: ErrorKind, code: ErrorCode, vars?: Record<string, string | number>): never {
   throw new Fachfehler(art, code, vars);
 }
 
-/** Ein Lesepfad fand nichts: 404 mit dem Code, der sagt, was fehlt. */
+/** A read path found nothing: 404 with the code that says what is missing. */
 export function notFound(code: ErrorCode = 'nicht_gefunden', vars?: Record<string, string | number>): never {
   throw new Fachfehler('nicht_gefunden', code, vars);
 }
 
-/** Für Rückrufe wie multers fileFilter, die einen Fehler übergeben statt ihn zu werfen. */
+/** For callbacks like multer's fileFilter that pass an error instead of throwing it. */
 export function fileError(art: ErrorKind, code: ErrorCode, vars?: Record<string, string | number>): Error {
   return new Fachfehler(art, code, vars);
 }
 
 export function errorText(code: ErrorCode, sprache: Sprache = 'de', vars?: Record<string, string | number>): string {
   const eintrag = FEHLER[code];
-  // Eine Fehlermeldung darf selbst nicht abstürzen: Ein fehlender Eintrag geht
-  // als Code im Klartext durch und nennt dem Protokoll, was fehlt.
+  // An error message must not crash itself: a missing entry passes through
+  // as a code in plaintext and tells the log what is missing.
   if (!eintrag) {
     console.error(`[fehlerTexte] Unbekannter Fehlercode: ${String(code)}`);
     return String(code);

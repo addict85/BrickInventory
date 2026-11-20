@@ -1,5 +1,5 @@
-/** Jeder Weg, der ein Passwort ändert, beendet danach alle Zugänge — an einer
- * Stelle, damit kein Weg den Schritt vergisst. */
+/** Every path that changes a password ends all accesses afterwards — in one
+ * place, so no path forgets the step. */
 import { hashePassword } from './passwordHash';
 import * as repo from './repository/accounts';
 import { emptyTokenCache } from './tokenCache';
@@ -15,7 +15,7 @@ import { deleteDailyLimit } from './loginLimiter';
 import type { AccountContext } from './context';
 import type { TakeoverKind } from './repository/takeovers';
 
-/** Nur melden, nichts ändern: Welche Adresse gemeint war, weiss nur der Inhaber. */
+/** Only report, change nothing: only the owner knows which address was meant. */
 export async function reportInvalidAddresses(k: AccountContext): Promise<number[]> {
   const ids = (await k.konten.allAddresses()).filter(z => !emailValid(z.email)).map(z => z.id);
   if (ids.length)
@@ -26,7 +26,7 @@ export async function reportInvalidAddresses(k: AccountContext): Promise<number[
   return ids;
 }
 
-/** H5: Eine Adresse aus dem Altbestand, die nie bestätigt wurde, gilt nicht mehr; der Inhaber muss es wissen. */
+/** H5: an address from the legacy stock that was never confirmed no longer counts; the owner must know. */
 export async function reportPendingAddresses(k: AccountContext): Promise<number[]> {
   const ids = await k.konten.pendingWithoutLink();
   if (ids.length)
@@ -40,7 +40,7 @@ export async function reportPendingAddresses(k: AccountContext): Promise<number[
 export async function accountsList(k: AccountContext) {
   const konten = await k.konten.allAccounts();
   const withFactor = await k.factors.activeAmong(konten.map(z => z.id));
-  // Angekündigte Änderungen an Verwaltern (24 h): Die übrigen Verwalter sollen sie sehen, nicht nur per Mail.
+  // Announced changes to administrators (24 h): the other administrators should see them, not only by mail.
   const angekuendigt = new Map<number, { type: TakeoverKind; effective_at: string }[]>();
   for (const a of await k.uebernahmen.announced())
     angekuendigt.set(a.target_id, [
@@ -66,17 +66,17 @@ export function givesAccount(k: AccountContext, id: number): Promise<boolean> {
   return k.konten.accountExists(id);
 }
 
-/** Für Hinweise an Verwalter: Ein gerade gelöschtes Konto heisst wenigstens nach seiner ID. */
+/** For notices to administrators: a just deleted account is at least named by its id. */
 export async function accountDisplayName(k: AccountContext, id: number): Promise<string> {
   return (await k.konten.accountShort(id))?.username ?? String(id);
 }
 
-/** Verwalterrechte trägt das Passwort allein nicht; ein Passkey ersetzt TOTP hier nicht. */
+/** The password alone does not carry administrator rights; a passkey does not replace TOTP here. */
 export async function openFactorRequired(k: AccountContext, uid: number, verwalter: boolean): Promise<boolean> {
   return verwalter && !(await k.factors.isActive(uid));
 }
 
-/** Der Schritt „Konto“ der Einrichtung: Es gibt eines, und ein Verwalter hat das Startpasswort ersetzt. */
+/** The setup step "account": one exists, and an administrator has replaced the start password. */
 export async function accountConfigured(k: AccountContext, verwalter: boolean): Promise<boolean> {
   const s = await k.einrichtung.accountsStatus();
   return s.vorhanden && (!verwalter || !s.startpasswort);
@@ -97,7 +97,7 @@ async function startpasswortDone(k: AccountContext, uid: number): Promise<void> 
   if ((await k.konten.accountShort(uid))?.is_admin) removeStartpasswort();
 }
 
-/** Passwort, Zugänge und Protokolleintrag des Verwalters `durch` zusammen oder gar nicht. */
+/** Password, accesses and log entry of the administrator `durch` together or not at all. */
 export async function setForeignPassword(
   k: AccountContext,
   uid: number,
@@ -113,8 +113,8 @@ export async function setForeignPassword(
   });
 }
 
-/** Auch der gerade benutzte Token fällt. Passkeys nur auf Wunsch: Wer sein
- * Passwort bloss erneuert, soll seine Geräte nicht neu einrichten müssen. */
+/** The token just used falls too. Passkeys only on request: whoever merely
+ * renews the password should not have to set up their devices again. */
 export async function aendereEigenesPasswort(
   k: AccountContext,
   uid: number,
@@ -130,14 +130,14 @@ export async function aendereEigenesPasswort(
   await startpasswortDone(k, uid);
 }
 
-/** Der Link trägt den Token im Klartext; gespeichert ist nur sein Hash. */
+/** The link carries the token in plaintext; only its hash is stored. */
 export function setPasswordPerLink(k: AccountContext, token: string, passwort: string): Promise<number | null> {
   return setPasswordBack(k, tokenDigest(token), passwort);
 }
 
-/** Hier will man einen Eindringling loswerden: Passkeys, Hauptkonten über diesem Konto, offene
- * Einladungen und ein Adresswechsel fallen mit (beim normalen Wechsel nicht: den löst der
- * angemeldete Inhaber aus). @returns das Konto, oder null, wenn der Link schon verbraucht oder abgelaufen ist */
+/** Here one wants to get rid of an intruder: passkeys, main accounts above this account, open
+ * invitations and an address change fall too (not on a normal change: that is triggered by the
+ * signed-in owner). @returns the account, or null if the link is already used or expired */
 export async function setPasswordBack(k: AccountContext, tokenHash: string, passwort: string): Promise<number | null> {
   const hash = await hashe(passwort);
   const r = await withAccessEnd(
@@ -161,20 +161,20 @@ export async function setPasswordBack(k: AccountContext, tokenHash: string, pass
   return r.uid;
 }
 
-/** Dieselbe Rechenzeit wie registriere(): Die Antwortzeit verriete sonst eine vergebene Adresse. */
+/** The same computing time as registriere(): otherwise the response time would reveal a taken address. */
 export async function computeHowRegistration(passwort: string): Promise<void> {
   await hashe(passwort);
 }
 
-/** Länger als jeder Bestätigungslink gilt; danach sind Name und Adresse wieder frei. */
+/** Longer than any confirmation link is valid; after that name and address are free again. */
 export const REGISTRATION_DEADLINE_DAYS = 7;
 export function cleanOpenRegistrationsOn(k: AccountContext): Promise<number> {
   return accessTransaction(k, t => t.konten.deleteOpenRegistrations(REGISTRATION_DEADLINE_DAYS));
 }
 
-/** Konto und Protokolleintrag in einer Transaktion: Ein Konto ohne Eintrag
- * verschwiege, wer es angelegt hat. Gehasht wird vorher, damit bcrypt keine
- * Verbindung hält. @returns die neue ID, oder null, wenn der Name vergeben ist */
+/** Account and log entry in one transaction: an account without an entry
+ * would conceal who created it. Hashing happens before, so bcrypt holds no
+ * connection. @returns the new id, or null if the name is taken */
 export async function putAccountAn(
   k: AccountContext,
   verwalter: number,
@@ -184,7 +184,7 @@ export async function putAccountAn(
 ): Promise<number | null> {
   const hash = await hashe(passwort);
   return accessTransaction(k, async t => {
-    // Auch gegen die Adressen: Die Anmeldung sucht in beiden Spalten.
+    // Also against the addresses: the login searches both columns.
     if (await t.konten.nameTaken(username, 0)) return null;
     const neu = await t.konten.addAccountOne(username, hash, asAdmin);
     if (neu === null) return null;
@@ -217,8 +217,8 @@ export async function register(
   });
 }
 
-/** Erst sperren, dann Zugänge löschen (die Token-Abfrage prüft is_active). Sitzungen
- * fallen über die Sitzungsversion, auch eine wieder geschriebene Zeile. */
+/** Lock first, then delete accesses (the token query checks is_active). Sessions
+ * fall through the session version, even a row written again. */
 export async function setzeAktiv(k: AccountContext, uid: number, soll: boolean): Promise<{ geaendert: boolean }> {
   const r = await accessTransaction(k, t => t.konten.writeActive(uid, soll));
   if (!r) notFound('benutzer_nicht_gefunden');
@@ -227,9 +227,9 @@ export async function setzeAktiv(k: AccountContext, uid: number, soll: boolean):
   return { geaendert: r.vorher !== soll };
 }
 
-/** Ändert sich die Rolle, enden die Browser-Sitzungen: Sie tragen die Rolle
- * seit der Anmeldung. Der Token-Cache wird nur geleert — die App soll die neue
- * Rolle sehen, nicht abgemeldet werden. */
+/** If the role changes, the browser sessions end: they carry the role
+ * since login. The token cache is only cleared — the app should see the new
+ * role, not be signed out. */
 export async function setzeVerwalterRolle(
   k: AccountContext,
   uid: number,

@@ -1,5 +1,5 @@
-/** Startzustand und Gesundheit: ohne Anmeldung (compose.yaml) und vor den
- * übrigen /api/v1-Routen eingehängt, gefragt wird schon während des Starts. */
+/** Startup state and health: without login (compose.yaml) and mounted before the
+ * other /api/v1 routes; asked already during startup. */
 import express from 'express';
 import { versuche, valueOr } from '../src/infra/result';
 import { errorText, responseLanguage } from '../src/infra/errorTexts';
@@ -8,7 +8,7 @@ import { publicStartState } from '../src/jobQueue';
 import type { Dienste } from '../src/services';
 
 export function buildGesundheitRouter(d: Pick<Dienste, 'jobQueue' | 'account' | 'management'>) {
-  // Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
+  // Like the contract: a different spelling is a different route (404).
   const router = express.Router({ caseSensitive: true });
 
   router.get('/startup-status', async (req, res) => {
@@ -19,7 +19,7 @@ export function buildGesundheitRouter(d: Pick<Dienste, 'jobQueue' | 'account' | 
     res.json(publicStartState(await d.jobQueue.currentStartState(), angemeldet));
   });
 
-  // live = Prozess, ready = Datenbank.
+  // live = process, ready = database.
   router.get('/health/live', (_req, res) => {
     res.json({ status: 'ok' });
   });
@@ -32,9 +32,9 @@ export function buildGesundheitRouter(d: Pick<Dienste, 'jobQueue' | 'account' | 
       error: errorText('datenbank_nicht_erreichbar', responseLanguage(req)),
     });
   });
-  // Klemmt die Datenbank, bleibt der Bericht erreichbar — nur ohne Details.
-  // Bewusst ohne Schrittschutz: Die Details tragen nichts Geheimes, und eine
-  // Überwachung fragt mit einem Token ohne Geräteschlüssel.
+  // If the database is stuck, the report stays reachable — only without details.
+  // Deliberately without step guard: the details carry nothing secret, and a
+  // monitoring asks with a token without a device key.
   router.get('/health', async (req, res) => {
     const verwalter =
       !!valueOr(await versuche('health:anmeldung', userIdTheRequest(d.account, req)), null) && istVerwalter(req);

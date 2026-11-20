@@ -3,7 +3,7 @@ import type { FinancesReadContract } from '../readContract';
 import { marktpreisSql } from '../../../db/geldSql';
 import type { Spalten, Tabellen } from '../../../db/rows';
 
-/** Ein Alarm, wie Übersicht und Detail ihn lesen; `besitzt` aus BESITZT. */
+/** An alert as overview and detail read it; `besitzt` from BESITZT. */
 export type AlarmRow = Spalten<
   'price_alerts',
   | 'set_number'
@@ -16,9 +16,9 @@ export type AlarmRow = Spalten<
   | 'last_price'
 > & { besitzt: boolean };
 
-/** Die App macht daran die Zeile anklickbar; $3 ist das Blickfeld. */
-/** Hat das Ziel schon einen Alarm (etwa an einem besessenen Set), gilt seiner;
- * sonst bräche der Primärschlüssel das Umhängen samt Merkposten ab. */
+/** The app makes the row clickable based on this; $3 is the scope. */
+/** If the target already has an alert (e.g. on an owned set), its own applies;
+ * otherwise the primary key would abort moving it together with the wishlist item. */
 export async function transferAlarm(db: DbInterface, zuId: number, ofId: number, sn: string, c: string) {
   await db.run(
     `UPDATE price_alerts SET user_id=$1 WHERE user_id=$2 AND set_number=$3 AND condition=$4

@@ -1,4 +1,4 @@
-/** Was die Aufträge aus dem höheren Konto lesen: Ein Auftrag läuft mit der Rolle seines Kontos (db/accountView.ts). */
+/** What the jobs read from the higher-level account: a job runs with its account's role (db/accountView.ts). */
 export interface JobsReadContract {
   KONTEN: string;
 }

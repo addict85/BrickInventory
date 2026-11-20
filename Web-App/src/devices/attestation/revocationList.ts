@@ -1,5 +1,5 @@
-/** Googles Widerrufsliste: Mit einem erbeuteten Herstellerschlüssel liesse sich sonst jeder Software-Schlüssel
- * attestieren. Der Job-Prozess legt sie in laufzustand ab; eine halbe Liste wäre schlimmer als die alte. */
+/** Google's revocation list: with a stolen manufacturer key any software key could otherwise
+ * be attested. The job process stores it in laufzustand; half a list would be worse than the old one. */
 export const REVOCATION_STATE = 'attestation_widerruf';
 const AT_MOST = 1_000_000;
 const CLOCK_SPIEL_MS = 5 * 60_000;
@@ -24,7 +24,7 @@ export interface SavedList {
   nummern: string[];
 }
 
-/** null: keine Liste oder älter als [atMostDays]; dann nimmt der Server keinen Schlüssel an. */
+/** null: no list or older than [atMostDays]; then the server accepts no key. */
 export function applicableList(wert: string | null, atMostDays: number, jetzt: Date): ReadonlySet<string> | null {
   if (!wert) return null;
   let l: SavedList;

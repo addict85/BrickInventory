@@ -1,5 +1,5 @@
-/** Profil des eigenen Kontos: Name, Benutzername und Adresse. Eine neue Adresse gilt erst
- * nach dem Link; die Mails gehen über den Mailbereich. */
+/** Profile of the own account: name, username and address. A new address only applies
+ * after the link; the mails go through the mail area. */
 import crypto from 'node:crypto';
 import { mailBasisUrl } from '../infra/basisUrl';
 import { fachfehler } from '../infra/errorTexts';
@@ -22,8 +22,8 @@ export function emailBecomesChanged(user: Konto, email: string | null | undefine
   return !!email && email.toLowerCase() !== String(user.email || '').toLowerCase();
 }
 
-/** Nach bestätigtem Passwort. Eine neue Adresse gilt erst nach dem Link; bis
- * dahin gilt die alte, und die neue belegt nichts. */
+/** After a confirmed password. A new address only applies after the link; until
+ * then the old one applies, and the new one occupies nothing. */
 export async function profilAendern(
   k: AccountContext,
   user: Konto,
@@ -32,7 +32,7 @@ export async function profilAendern(
   const nameNew = !!e.username && e.username.toLowerCase() !== String(user.username || '').toLowerCase();
   const emailNeu = emailBecomesChanged(user, e.email);
   if (nameNew || emailNeu) {
-    // Jede Vergabeprüfung verrät, ob es ein Konto gibt; die Registrierung verbirgt das.
+    // Every availability check reveals whether an account exists; registration hides that.
     const zuOft = await accountThrottled(k, 'profil-vergabe', user.id, 10, 60 * 60 * 1000);
     if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
     if (nameNew && e.username && (await k.konten.nameTaken(e.username, user.id)))
@@ -56,10 +56,10 @@ export async function profilAendern(
   return { emailChanged: true, emailSent: await adressMails(k, user, email, token) };
 }
 
-/** Sprache des Kontos, nicht die Vorgabe. Belegt antwortet wie frei, sonst
- * liessen sich Adressen abfragen; der Inhaber bekommt einen Hinweis statt des Links. */
+/** Language of the account, not the default. Taken answers like free, otherwise
+ * addresses could be probed; the owner gets a notice instead of the link. */
 async function adressMails(k: AccountContext, user: Konto, email: string, token: string): Promise<boolean> {
-  // Auch die des Inhabers einer Adresse, eines anderen Kontos: im Systemrahmen.
+  // Also that of the owner of an address, another account: in the system frame.
   const sprache = async (uid: number) =>
     String(
       valueOr(
@@ -89,7 +89,7 @@ async function adressMails(k: AccountContext, user: Konto, email: string, token:
       { success: false },
     ).success;
   }
-  // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
+  // The old address learns about it — if it was not the owner, they notice that way.
   if (user.email)
     await versuche('anmeldung:hinweis-alte-adresse', k.mail.mailEmailChanged(user.email, user.username, email, lang));
   return gesendet;

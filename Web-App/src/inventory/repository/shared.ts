@@ -3,7 +3,7 @@ import { inKontowaehrung, kontowaehrungJoin, teilmengeAus } from '../../../db/st
 import type { InventoryReadContract } from '../readContract';
 import { teilSichtJoin, figurSichtJoin, setStammJoin, TEIL, FIGUR, SET } from '../../../db/catalogView';
 
-/** Kaufpreis mengengewichtet in Kontowährung. */
+/** Purchase price weighted by quantity in the account currency. */
 export function entryMetrics(db: DbInterface, l: InventoryReadContract, art: 'part' | 'fig', uids: number[]) {
   return db.all<{
     part_number?: string;
@@ -32,11 +32,11 @@ export function entryMetrics(db: DbInterface, l: InventoryReadContract, art: 'pa
   );
 }
 
-/** Spalten, über die gesucht werden darf. Siehe usingSets(). */
+/** Columns that may be searched. See usingSets(). */
 const SUCHSPALTEN = new Set(['part_number', 'color_id', 'fig_number']);
 
-/** Figuren haben weder Farbe noch Kategorie; feste NULL, damit beide Zweige
- * dieselbe Form liefern. */
+/** Figures have neither color nor category; fixed NULL, so that both branches
+ * deliver the same shape. */
 const KOPFFELDER = {
   parts: `x.part_number AS nummer, MAX(${TEIL.name}) AS name,
           MAX(x.color_id) AS color_id, MAX(${TEIL.farbname}) AS color_name,
@@ -51,7 +51,7 @@ const KOPFFELDER = {
           false AS is_spare, NULL::text AS storage`,
 } as const;
 
-// Seit 0034 steht die Beschreibung im Katalog; JOINs über den Primärschlüssel ändern die Gruppierung nicht.
+// Since 0034 the description is in the catalog; JOINs over the primary key do not change the grouping.
 const KATALOGJOIN = {
   parts: `${teilSichtJoin('x.user_id', 'x.part_number', 'x.color_id')}
           LEFT JOIN set_parts spc ON spc.set_number  = x.set_number
@@ -64,7 +64,7 @@ const SCHLUESSELSPALTE = { parts: 'x.part_number', minifigs: 'x.fig_number' } as
 
 const ART = { parts: 'part', minifigs: 'fig' } as const;
 
-/** Ein Set, das den Bestandteil enthält, mit den Kopffeldern des Bestandteils. */
+/** A set that contains the component, with the component's header fields. */
 export interface UsageRow {
   set_number: string;
   owner_user_id: number;
@@ -92,8 +92,8 @@ export async function setsWithComponent(
   schluessel: Record<string, string | number>,
 ) {
   const spalten = Object.keys(schluessel);
-  // Die Namen kommen aus Literalen, die Schranke steht trotzdem: Ein Spaltenname
-  // lässt sich nicht als Parameter binden.
+  // The names come from literals, the bound stays anyway: a column name
+  // cannot be bound as a parameter.
   for (const sp of spalten) {
     if (!SUCHSPALTEN.has(sp)) throw new Error(`verwendendeSets: unerlaubte Spalte ${sp}`);
   }
@@ -136,8 +136,8 @@ export async function setsWithComponent(
   );
 }
 
-/** Mit dem Set gehen seine Teile und Figuren. */
-/** Das Set mit Inhalt und Käufen; manuelle Teile und Figuren tragen keine Setnummer und bleiben. */
+/** With the set go its parts and figures. */
+/** The set with contents and purchases; manual parts and figures carry no set number and stay. */
 export async function removeSetContent(tx: DbInterface, uids: number[], setNumber: string): Promise<void> {
   await tx.run('DELETE FROM parts WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
   await tx.run('DELETE FROM minifigs WHERE user_id = ANY($1) AND set_number = $2', [uids, setNumber]);
@@ -153,7 +153,7 @@ export async function putSetAn(tx: DbInterface, uid: number, sn: string, addedAt
   );
 }
 
-/** Nur Schlüssel und Herkunft: Beschreibung und Stückzahl stehen im Katalog. */
+/** Only key and origin: description and piece count are in the catalog. */
 export async function copySetContent(
   tx: DbInterface,
   tabelle: 'parts' | 'minifigs',
@@ -174,7 +174,7 @@ export async function copySetContent(
   return (await tx.run(sql, [nach, von, sn])).changes ?? 0;
 }
 
-/** Ohne Menge: Sie entsteht aus der Erfassung, die gleich mitwandert. */
+/** Without quantity: it arises from the acquisition that moves along right away. */
 export async function putManualAn(
   tx: DbInterface,
   art: 'part' | 'fig',

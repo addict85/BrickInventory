@@ -75,7 +75,7 @@ export const MerkpostenUebernahmeResponse = z.looseObject({
   set_number: z.string().nullable(),
 });
 
-/** Einlesen einer BrickLink-Wanted-List; mit `vorschau` ohne zu speichern. */
+/** Reading in a BrickLink wanted list; with `vorschau` without saving. */
 export const WantedXmlErgebnis = z.looseObject({
   success: z.literal(true),
   vorschau: z.boolean(),

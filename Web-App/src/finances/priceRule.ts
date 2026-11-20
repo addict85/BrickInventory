@@ -1,8 +1,8 @@
 import { moneyInput } from '../infra/geld';
 import type { FinancesContext } from './context';
 
-/** Für Teile und Figuren an einer Stelle; leer heisst „nimm den Marktpreis", nicht „Preis null".
- * @param marktpreis beim Aufrufer, weil Teil und Figur verschiedene Schlüssel haben. */
+/** For parts and figures in one place; empty means "take the market price", not "price zero".
+ * @param marktpreis at the caller, because part and figure have different keys. */
 export async function purchasePriceFromInput(
   k: FinancesContext,
   roh: unknown,
@@ -17,8 +17,8 @@ export async function purchasePriceFromInput(
   return { unitPrice: null, purchasePrice: await marktpreis(zustand) };
 }
 
-/** Ohne Marktpreis steht in der Stammzeile 0, in der Erfassung NULL — für
- * Teile und Figuren gleich. */
+/** Without a market price the master row holds 0, the acquisition NULL — the same for
+ * parts and figures. */
 export async function manuellerKaufpreis(
   k: FinancesContext,
   nutzerId: number,
@@ -26,12 +26,12 @@ export async function manuellerKaufpreis(
   marktpreis: (zustand: string) => Promise<{ preis: number | null; fromState: string | null }>,
 ): Promise<{
   unitPrice: number | null;
-  /** Für die STAMMZEILE — nie null. */
+  /** For the MASTER ROW — never null. */
   kaufpreis: number;
-  /** Für die ERFASSUNG — null, wenn kein Preis bekannt ist. */
+  /** For the ACQUISITION — null if no price is known. */
   erfassungsPreis: number | null;
   zustand: string;
-  /** Nur gesetzt, wenn der Marktpreis aus dem ANDEREN Zustand übernommen wurde. */
+  /** Only set if the market price was adopted from the OTHER condition. */
   priceFromState: string | null;
   geschaetzt: boolean;
 }> {
@@ -39,7 +39,7 @@ export async function manuellerKaufpreis(
 
   const zustand = await k.einstellungen.conditionForPrice(eingabe.condition ?? null, null, nutzerId);
 
-  // Ein eingetippter Preis fragt nicht nach dem Markt — keine Herkunft zu kennzeichnen.
+  // A typed-in price does not ask the market — no origin to mark.
   const markt = unitPrice !== null ? null : await marktpreis(zustand);
   const kaufpreis = unitPrice !== null ? unitPrice : (markt?.preis ?? 0);
   return {
@@ -47,7 +47,7 @@ export async function manuellerKaufpreis(
     kaufpreis,
     erfassungsPreis: kaufpreis > 0 ? kaufpreis : null,
     zustand,
-    // Eine Herkunft ohne Wert wäre ein Hinweis auf etwas, das nirgends steht.
+    // An origin without a value would be a hint at something that is nowhere to be found.
     priceFromState: kaufpreis > 0 && markt?.fromState ? markt.fromState : null,
     geschaetzt: unitPrice === null && kaufpreis > 0,
   };

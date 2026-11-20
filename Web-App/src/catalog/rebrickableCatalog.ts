@@ -1,6 +1,6 @@
 import { Zwischenspeicher } from '../infra/cache';
-/** Erst der eigene Bestand (CSV-Tabellen, Zwischenspeicher), dann der Client:
- * Das Kontingent ist knapp. Der Client fragt nur ab, ablegen tut dieser Dienst. */
+/** First the own data (CSV tables, cache), then the client:
+ * the quota is scarce. The client only queries; storing is done by this service. */
 import type { Quellen } from '../externalSources';
 import { istErsatzteil } from '../infra/validate';
 import { withVersion } from '../infra/setNumber';
@@ -9,7 +9,7 @@ import { newestInventory } from './rbInventory';
 import { versuche } from '../infra/result';
 import type { CatalogContext } from './context';
 
-/** Ein kaputter Eintrag zählt als keiner. */
+/** A broken entry counts as none. */
 function fromCache<T>(json: string | undefined): T | undefined {
   if (!json) return undefined;
   try {
@@ -22,8 +22,8 @@ function fromCache<T>(json: string | undefined): T | undefined {
 export async function setAngaben(k: CatalogContext, setNumber: string) {
   const n = withVersion(setNumber);
   const cached = await k.rebrickableCache.catalogSetTo(n);
-  // "Set <Nummer>" ist ein Platzhalter, kein Name; als Treffer überschrieb er
-  // beim nächsten Erfassen den echten Namen. Nachgefragt wird höchstens täglich.
+  // "Set <number>" is a placeholder, not a name; as a hit it would overwrite
+  // the real name on the next capture. A re-query happens at most daily.
   if (cached?.name && cached.name !== `Set ${n}`) return cached;
   if (cached?.fetched_at && k.uhr.jetzt() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
   const data = await k.externalSources.quellen.holeSet(n);
@@ -31,7 +31,7 @@ export async function setAngaben(k: CatalogContext, setNumber: string) {
     await k.rebrickableCache.rememberUnknownSet(n, !!(await k.externalSources.quellen.getRbKey()));
     return null;
   }
-  // Das Thema ist Beiwerk: Ohne es wird das Set trotzdem gemerkt, die Zeile nennt keins.
+  // The theme is secondary: without it the set is still remembered, the row names none.
   const thema = await versuche('rebrickable:thema', k.externalSources.quellen.getThemeName(data.theme_id ?? 0));
   const theme = thema.ok ? thema.wert : null;
   const row = {
@@ -66,8 +66,8 @@ async function setPartsFromCsv(k: CatalogContext, setNumber: string) {
   }));
 }
 
-/** Eine leere Antwort (404, Abbruch) kurz merken: Sonst kostet jeder
- * wiederholte Import einer unbekannten Nummer erneut Kontingent. */
+/** Briefly remember an empty answer (404, abort): otherwise every
+ * repeated import of an unknown number costs quota again. */
 const LEER_MS = 10 * 60 * 1000;
 const leer = (k: CatalogContext) =>
   k.faecher.fach('rebrickable:leer', () => new Zwischenspeicher<string, true>(5000, LEER_MS));
@@ -82,13 +82,13 @@ export async function alleTeileDesSets(k: CatalogContext, setNumber: string) {
   if (gemerkt) return gemerkt;
   if (leer(k).hole(n)) return [];
   const { teile, verweigert } = await k.externalSources.quellen.holeSetTeile(n);
-  // Eine Absage (403) wird als leere Liste gemerkt, damit nicht jeder Import erneut fragt.
+  // A refusal (403) is remembered as an empty list so that not every import asks again.
   if (teile.length > 0 || verweigert) await k.rebrickableCache.rememberPartList(n, JSON.stringify(teile));
   else leer(k).setze(n, true);
   return teile;
 }
 
-/** Geteilter Zwischenspeicher: Die Daten ändern sich selten, das Kontingent ist knapp. */
+/** Shared cache: the data rarely changes, the quota is scarce. */
 export async function minifigPartsQuery(k: CatalogContext, figNumber: string) {
   const gemerkt = fromCache<NonNullable<Awaited<ReturnType<Quellen['holeFigurTeile']>>>>(
     await k.rebrickableCache.minifigsPartsFromCache(figNumber),
@@ -96,7 +96,7 @@ export async function minifigPartsQuery(k: CatalogContext, figNumber: string) {
   if (gemerkt) return gemerkt;
   const parts = await k.externalSources.quellen.holeFigurTeile(figNumber);
   if (!parts) return [];
-  // Der Zwischenspeicher spart nur den nächsten Abruf; die Teile gelten auch ohne ihn.
+  // The cache only saves the next fetch; the parts apply without it as well.
   await versuche(
     'rebrickable:figurenteile-merken',
     k.rebrickableCache.rememberMinifigsParts(figNumber, JSON.stringify(parts)),

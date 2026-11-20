@@ -1,6 +1,6 @@
 import type { DbInterface } from '../../../db/database';
 
-/** Die Reihenfolge ist die der Abfrage; Figurenbilder stehen nur in minifigs_catalog. */
+/** The order is that of the query; figure images are only in minifigs_catalog. */
 export const CDN_QUERY = `
   SELECT url FROM (
     (SELECT image_url AS url, 1 AS r FROM part_color_catalog

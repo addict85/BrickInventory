@@ -1,4 +1,4 @@
-/** Web-Oberfläche und App lesen dieselbe Antwort. */
+/** Web UI and app read the same response. */
 import type { JobKind } from './jobs';
 import { pullBefore, repeat, abortAb, endPause } from './service';
 import { hatSchedule, planeNext, pullPlanBefore } from './schedule';
@@ -13,8 +13,8 @@ function checkKind(k: JobsContext, art: string): JobKind {
   return art as JobKind;
 }
 
-/** Nutzlasten bleiben draussen: Sie tragen ganze Listen. Ohne Filter nur, was
- * noch ansteht; Gescheiterte zählt die Zusammenfassung je Art. */
+/** Payloads stay outside: they carry whole lists. Without a filter only what
+ * is still pending; the summary counts failed ones per kind. */
 export async function jobsInOverview(
   k: JobsContext,
   filter: { status?: string | undefined; art?: string | undefined } = {},
@@ -42,9 +42,9 @@ export async function jobsInOverview(
   };
 }
 
-/** Bei einer geplanten Art steht danach der nächste reguläre Termin an. */
+/** For a scheduled kind the next regular appointment is pending afterwards. */
 export async function auftragAbbrechen(k: JobsContext, kennung: number) {
-  // Die Antwort nennt die Kennung als Text wie die Übersicht (bigint).
+  // The response names the identifier as text like the overview (bigint).
   const id = String(kennung);
   const a = await abortAb(k, id);
   if (!a) fachfehler('konflikt', 'auftrag_nicht_aenderbar');
@@ -58,7 +58,7 @@ export async function retryJob(k: JobsContext, kennung: number) {
   return { id, status: 'offen' };
 }
 
-/** Geplante Termine bleiben. */
+/** Scheduled appointments stay. */
 export async function emptyJobKind(k: JobsContext, kindRaw: string) {
   const art = checkKind(k, kindRaw);
   return { art, entfernt: await k.auftraege.emptyKind(art) };

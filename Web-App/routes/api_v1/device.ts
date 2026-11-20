@@ -1,5 +1,5 @@
-/** Der Geräteschlüssel der App und die Freigabe heikler Schritte; nur mit
- * App-Token, eine Browser-Sitzung bestätigt mit Passwort und zweitem Faktor. */
+/** The app's device key and the release of sensitive steps; only with an
+ * app token, a browser session confirms with password and second factor. */
 import { guardFor } from './middleware';
 import { familyFrom } from '../../src/devices';
 import { isAppToken } from '../../src/account/http/stepGuard';

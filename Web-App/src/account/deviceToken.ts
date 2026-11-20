@@ -1,4 +1,4 @@
-/** Geräte-Tokens: ausstellen, prüfen, tauschen, widerrufen, aufräumen. */
+/** Device tokens: issue, check, swap, revoke, clean up. */
 import crypto from 'node:crypto';
 import * as V from '../infra/validate';
 import * as repo from './repository/accesses';
@@ -23,7 +23,7 @@ import { versuche } from '../infra/result';
 
 export type { TokenScope, TokenUser };
 
-/** Ob die Kennung (Präfix des gespeicherten Hashs) zum Token der Anfrage gehört. */
+/** Whether the id (prefix of the stored hash) belongs to the token of the request. */
 export function ownAccess(token: string | null, kennung: string): boolean {
   return !!token && tokenDigest(token).startsWith(kennung);
 }
@@ -34,20 +34,20 @@ export function tokenDigest(token: string): string {
 
 const TAG_MS = 86_400_000;
 
-/** Gerätezugänge haben kein festes Ende; diese Frist begrenzt, wie lange ein
- * vergessenes Gerät gilt. */
+/** Device accesses have no fixed end; this deadline limits how long a
+ * forgotten device stays valid. */
 
-/** Ab 30 Tagen meldet jede Antwort die Rotation; ein unbegrenzter Token gilt
- * nach 60 Tagen nur noch für den Tausch — so stirbt eine gestohlene Kopie,
- * sobald das echte Gerät tauscht, und ein Gerät, das nie tauscht, fällt auf. */
+/** From 30 days on every response reports the rotation; an unlimited token only applies
+ * to the swap after 60 days — so a stolen copy dies as soon as the
+ * real device swaps, and a device that never swaps stands out. */
 export const ROTATION_DUE_DAYS = 30;
 export const ROTATION_REQUIRED_DAYS = 60;
-/** Falls die Antwort des Tauschs verloren geht. */
+/** In case the response of the swap gets lost. */
 export const OVERLAP_MS = 5 * 60 * 1000;
-/** So lange nach dem Ende der Überlappung gilt ein alter Token als Nachzügler, nicht als Kopie. */
+/** This long after the end of the overlap an old token counts as a straggler, not as a copy. */
 export const REUSE_GRACE_PERIOD_S = 60;
 
-/** `null` heisst „unbegrenzt", nicht „sofort abgelaufen". */
+/** `null` means "unlimited", not "expired immediately". */
 function deadlineReached(zeitpunkt: string | Date | null | undefined, jetzt: number): boolean {
   return !!zeitpunkt && new Date(zeitpunkt).getTime() <= jetzt;
 }
@@ -63,8 +63,8 @@ export function rotationRequired(u: TokenUser, jetzt = Date.now()): boolean {
   return u.never_expires === true && daysSince(u.rotated_at, jetzt) >= ROTATION_REQUIRED_DAYS;
 }
 
-/** /24 bzw. /48: genug, um ein fremdes Netz zu erkennen; die genaue Adresse
- * wird nicht gespeichert. */
+/** /24 or /48: enough to recognize a foreign network; the exact address
+ * is not stored. */
 export function ipArea(ip: string | null | undefined): string | null {
   if (!ip) return null;
   const v4 = /^(?:::ffff:)?(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/i.exec(ip);
@@ -72,7 +72,7 @@ export function ipArea(ip: string | null | undefined): string | null {
   if (!ip.includes(':')) return null;
   const [kopf = '', rest] = ip.split('::');
   const teile = kopf ? kopf.split(':') : [];
-  // „a::b" hat links weniger als drei Gruppen: die fehlenden sind Nullen.
+  // "a::b" has fewer than three groups on the left: the missing ones are zeros.
   while (teile.length < 3 && rest !== undefined) teile.push('0');
   if (teile.length < 3 || teile.slice(0, 3).some(g => !/^[0-9a-f]{1,4}$/i.test(g))) return null;
   return `${teile
@@ -86,9 +86,9 @@ export interface TokenCheck {
   grund?: 'token_rotation_noetig' | 'zu_viele_anfragen';
 }
 
-/** `zweck: 'rotation'` lässt einen unbegrenzten Token auch nach der
- * Pflichtfrist durch — nur für den Tausch selbst. */
-/** Für den Strom: lebt der Zugang noch? Gefragt wird mit dem Klartext, der Hash bleibt im Konto. */
+/** `zweck: 'rotation'` lets an unlimited token through even after the
+ * mandatory deadline — only for the swap itself. */
+/** For the stream: is the access still alive? Asked with the plaintext; the hash stays in the account. */
 export async function tokenGilt(k: AccountContext, klartext: string): Promise<boolean> {
   return !!(await k.zugaenge.validToken(tokenDigest(klartext)));
 }
@@ -108,7 +108,7 @@ export async function pruefeToken(
   const stand = cacheStand(k);
   const hit = tokenFromCache(k, token, stand, now);
   if (hit) {
-    // Beide Fristen auch hier: Dieser Zweig fragt die Datenbank nicht.
+    // Both deadlines here too: this branch does not query the database.
     if (deadlineReached(hit.user.expires_at, now) || deadlineReached(hit.user.hard_expires_at, now)) {
       forgetEntry(k, token);
       return { nutzer: null };
@@ -117,7 +117,7 @@ export async function pruefeToken(
     return ergebnis(hit.user);
   }
 
-  // Erst nach dem Cache: Wer einen gültigen Token im Cache hat, wird nie gebremst.
+  // Only after the cache: whoever has a valid token in the cache is never slowed down.
   if (toManyFailedAttempts(o.ip)) return { nutzer: null, grund: 'zu_viele_anfragen' };
   const hashed = tokenDigest(token);
   const row: TokenUser | undefined = await k.zugaenge.validToken(hashed);
@@ -126,8 +126,8 @@ export async function pruefeToken(
     if (!(await reportReuse(k, hashed))) await countFailedAttempt(k, o.ip);
     return { nutzer: null };
   }
-  // Verwalterrecht nur mit Scope `voll`, an dieser einen Stelle entschieden,
-  // damit alle Wächter es gleich sehen.
+  // Administrator rights only with scope `voll`, decided at this one place,
+  // so all guards see it the same way.
   row.is_admin = row.konto_is_admin === true && row.scope === 'voll';
   if (row.previous_token) {
     await k.zugaenge.endOverlap(row.previous_token, hashed);
@@ -141,7 +141,7 @@ export async function pruefeToken(
   return ergebnis(row);
 }
 
-/** Ein ersetzter Token kam nach der Schonfrist wieder: Familie sperren, Inhaber benachrichtigen. */
+/** A replaced token came back after the grace period: lock the family, notify the owner. */
 async function reportReuse(k: AccountContext, hash: string): Promise<boolean> {
   const z = await k.zugaenge.lockFamily(hash, REUSE_GRACE_PERIOD_S);
   if (!z) return false;
@@ -159,9 +159,9 @@ export async function nutzerZumToken(
   return (await pruefeToken(k, token, o)).nutzer;
 }
 
-/** Höchstens einmal je Tag und Token, ohne den Anfrageweg aufzuhalten. Die
- * Entscheidung fällt am gelesenen Datensatz, damit sie über mehrere Worker
- * gilt; die WHERE-Klausel fängt den Wettlauf. */
+/** At most once per day and token, without holding up the request path. The
+ * decision is made on the record read, so it holds across several workers;
+ * the WHERE clause catches the race. */
 function _touchLastUsed(k: AccountContext, entry: CacheEntry, ip?: string | null): void {
   const jetzt = k.uhr.jetzt();
   const u = entry.user;
@@ -173,8 +173,8 @@ function _touchLastUsed(k: AccountContext, entry: CacheEntry, ip?: string | null
   void k.zugaenge
     .touchToken(entry.dbKey, k.konfig.tokenIdleDays, ipArea(ip))
     .then(() => {
-      // Den Cache mitziehen, sonst wiese der Treffer-Zweig einen gerade
-      // erneuerten Token am alten Fristende einmal ab.
+      // Update the cache too, otherwise the hit branch would once reject a just
+      // renewed token at the old end of its deadline.
       u.last_used = new Date(jetzt);
       if (deadlineLags || (u.sliding === true && u.expires_at)) u.expires_at = new Date(ziel);
     })
@@ -184,17 +184,17 @@ function _touchLastUsed(k: AccountContext, entry: CacheEntry, ip?: string | null
     });
 }
 
-/** Ohne das löscht ein "%" als tokenId alle Tokens des Nutzers auf einmal. */
+/** Without this a "%" as tokenId deletes all tokens of the user at once. */
 export function escapeLike(s: unknown): string {
   return String(s ?? '').replace(/([%_\\])/g, '\\$1');
 }
 
-/** 0, weil null schon „nichts gewählt, Gleitfrist" heisst und beide mit der
- * Nonce in einem Feld reisen. */
+/** 0, because null already means "nothing chosen, sliding deadline" and both travel with the
+ * nonce in one field. */
 export const UNLIMITED = 0;
 
-/** „unbegrenzt" ist nicht die Vorgabe: Es nimmt die einzige selbsttätige
- * Reissleine für ein verlorenes Gerät weg. */
+/** "unlimited" is not the default: it removes the only automatic
+ * rip cord for a lost device. */
 const TOKEN_RUNTIMES: Record<string, number> = {
   '1m': 30,
   '2m': 60,
@@ -203,29 +203,29 @@ const TOKEN_RUNTIMES: Record<string, number> = {
   unbegrenzt: UNLIMITED,
 };
 
-/** Die Wahlen, die der QR-Dialog anbieten darf. */
+/** The choices the QR dialog may offer. */
 export const RUNTIME_CHOICES: readonly string[] = Object.freeze(Object.keys(TOKEN_RUNTIMES));
 
-/** fromTable statt direktem Zugriff: 'constructor' lieferte sonst eine geerbte Funktion.
- * @returns Tage, oder null für „keine feste Frist" */
+/** fromTable instead of direct access: 'constructor' would otherwise return an inherited function.
+ * @returns days, or null for "no fixed deadline" */
 export function runtimeDays(wahl: unknown): number | null {
   if (wahl === undefined || wahl === null || wahl === '') return null;
   return V.fromTable(TOKEN_RUNTIMES, String(wahl)) ?? null;
 }
 
 export interface TokenOptions {
-  /** Vorgabe `app`: Verwalterrechte gibt es nur auf ausdrücklichen Wunsch. */
+  /** Default `app`: administrator rights only on explicit request. */
   scope?: TokenScope;
   ip?: string | null | undefined;
 }
 
-/** Je Konto und Art (Sitzung, Token): Anmelden darf die Tabellen nicht beliebig füllen.
- * Es fällt der am längsten unbenutzte Zugang. */
+/** Per account and kind (session, token): logging in must not fill the tables arbitrarily.
+ * The access unused for the longest time falls. */
 export const ACCESSES_AT_MOST = 50;
 
-/** @param dauerhaft  true = Gerätezugang mit Gleitfrist; false = sieben feste
- *                   Tage — Benutzung durch einen Angreifer soll ihn nicht verlängern.
- * @param fixedDays  `UNLIMITED` (0) = ohne Ablauf, nur über HTTPS und mit Rotationspflicht. */
+/** @param dauerhaft  true = device access with sliding deadline; false = seven fixed
+ *                   days — use by an attacker should not extend it.
+ * @param fixedDays  `UNLIMITED` (0) = without expiry, only via HTTPS and with mandatory rotation. */
 export async function createToken(
   k: AccountContext,
   userId: number,
@@ -260,17 +260,17 @@ export interface Tausch {
   alt_gueltig_bis: Date;
 }
 
-/** Ein zweiter Tausch so kurz danach ist gleichzeitig (409), keine verlorene Antwort. */
+/** A second swap so shortly after is concurrent (409), not a lost response. */
 export const SWAP_LOCK_S = 30;
 
-/** Der alte gilt danach höchstens OVERLAP_MS. Ein zweiter Tausch ersetzt den unbenutzten
- * Nachfolger nur aus demselben Netz (sonst Kopie: Familie endet) und erst nach SWAP_LOCK_S. */
+/** The old one then applies at most OVERLAP_MS. A second swap replaces the unused
+ * successor only from the same network (otherwise a copy: the family ends) and only after SWAP_LOCK_S. */
 export async function rotateToken(kx: AccountContext, alt: string, ip?: string | null): Promise<Tausch | null> {
   const altHash = tokenDigest(alt);
   const neu = crypto.randomBytes(32).toString('hex');
   const newHash = tokenDigest(neu);
   let kopie: { user_id: number; label: string | null } | null = null;
-  // Der Tausch kommt ohne Sitzung: Der alte Token ist der einzige Ausweis.
+  // The swap comes without a session: the old token is the only credential.
   const ergebnis = await inSystemContext('tokentausch', () =>
     kx.transaktion(async t => {
       const z = await repo.lockSwapSource(t.db, altHash);
@@ -313,15 +313,15 @@ export async function tokenLoeschen(k: AccountContext, token: string): Promise<v
   tokenForgotten(k, token);
 }
 
-/** Ohne Fang: ein Sicherheitsschritt. Scheitert er still, meldet der Aufrufer
- * Erfolg, während die alten Tokens weitergelten. */
+/** No catch: a security step. If it failed silently, the caller would report
+ * success while the old tokens stay valid. */
 export async function revokeAllTokens(k: AccountContext, userId: number): Promise<void> {
   await k.zugaenge.deleteTokensOfAccount(userId);
   emptyTokenCache(k);
 }
 
-/** Altzeilen bekommen zuerst ihre Gleitfrist, damit sie fallen wie neue. Jeder Schritt
- * läuft; scheitert einer, wirft der Lauf danach, und das Aufräumen wiederholt ihn. */
+/** Legacy rows first get their sliding deadline, so they fall like new ones. Every step
+ * runs; if one fails, the run throws afterwards, and the cleanup repeats it. */
 export async function tokensCleanup(k: AccountContext) {
   const ohne: string[] = [];
   const schritt = async (was: string, work: () => Promise<number>) => {

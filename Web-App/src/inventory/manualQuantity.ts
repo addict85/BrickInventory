@@ -1,6 +1,6 @@
-/** Relativ (`quantity_delta`) für Geräte, die offline sammeln: Zwei
- * gleichzeitige „+1" ergeben +2, eine absolute Menge aus altem Stand
- * überschriebe den anderen Zugang. */
+/** Relative (`quantity_delta`) for devices that collect offline: two
+ * concurrent "+1" yield +2, an absolute quantity from an old state
+ * would overwrite the other access. */
 import { inventoryKey } from '../../db/txLock';
 import { inventoryQuantity } from '../infra/validate';
 import { fachfehler } from '../infra/errorTexts';
@@ -10,12 +10,12 @@ import * as repo from './repository/manualQuantities';
 import type { ManualKind } from './repository/manualQuantities';
 import type { InventoryContext } from './context';
 
-/** Ein manueller Eintrag verschwindet nur über Löschen, nie über die Menge. */
+/** A manual entry only disappears via deletion, never via the quantity. */
 const AT_LEAST = 1;
 
 export type Mengenwunsch = { absolut: number } | { delta: number };
 
-/** quantity_delta gewinnt, wenn beides kommt. */
+/** quantity_delta wins if both come. */
 export function mengenwunsch(body: { quantity?: unknown; quantity_delta?: unknown }): Mengenwunsch | null {
   if (body.quantity_delta !== undefined && body.quantity_delta !== null) {
     const delta = Number(body.quantity_delta);
@@ -28,9 +28,9 @@ export function mengenwunsch(body: { quantity?: unknown; quantity_delta?: unknow
 
 const ziel = (w: Mengenwunsch, bisher: number) => ('absolut' in w ? w.absolut : Math.max(AT_LEAST, bisher + w.delta));
 
-/** In der Bestandssperre gerechnet, damit sich Web und App nicht überholen.
- * @param marktpreis wird VOR der Sperre und nur bei steigender Menge gefragt
- * @returns die Menge danach */
+/** Computed within the inventory lock so that web and app do not overtake each other.
+ * @param marktpreis is asked BEFORE the lock and only for an increasing quantity
+ * @returns the quantity afterwards */
 export async function passeManualQuantityAn(
   k: InventoryContext,
   art: ManualKind,

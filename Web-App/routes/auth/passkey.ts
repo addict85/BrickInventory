@@ -1,4 +1,4 @@
-/** Passkeys im eigenen Konto verwalten; angemeldet wird mit ihnen in routes/auth.ts. */
+/** Managing passkeys in the own account; logging in with them happens in routes/auth.ts. */
 import { guardFor } from '../api_v1/middleware';
 import { perSession, signedInUserId, confirmWithFactor } from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/contractRouter';
@@ -19,8 +19,8 @@ export function buildPasskeyRouter(d: Pick<Dienste, 'account' | 'factors'>) {
     return { verfuegbar: !!relyingParty(), passkeys: await d.factors.accountPasskeys(signedInUserId(req)) };
   });
 
-  // Ein neuer Anmeldeweg verlangt Passwort und Browser-Sitzung: Eine erbeutete
-  // Sitzung oder ein Token allein soll keinen dauerhaften Zugang prägen.
+  // A new login method requires password and browser session: a captured
+  // session or a token alone must not mint a permanent access.
   router.endpunkt('POST /api/v1/auth/passkey/registrieren/optionen', requireLoginOrToken, async (req, res) => {
     if (!perSession(req)) fachfehler('verboten', 'nur_mit_sitzung');
     const uid = signedInUserId(req);

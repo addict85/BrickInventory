@@ -19,13 +19,13 @@ export function buildPartsRouter(
 
   router.endpunkt('GET /api/v1/parts', requireToken, async req => {
     const result = await d.parts.readParts(viewOf(req), req.abfrage);
-    // page_size: der TATSÄCHLICH verwendete Wert, nicht der angefragte.
+    // page_size: the value ACTUALLY used, not the one requested.
     return { page: req.abfrage.page ?? 1, ...result };
   });
 
   router.endpunkt('GET /api/v1/parts/categories', requireToken, async req => {
-    // Dasselbe Blickfeld wie die Farbliste, sonst filtern zwei Listen derselben
-    // Ansicht über verschiedene Konten.
+    // The same scope as the color list, otherwise two lists of the same
+    // view would filter over different accounts.
     const uids = viewOf(req);
     return { categories: await d.parts.partCategories(uids) };
   });
@@ -51,28 +51,28 @@ export function buildPartsRouter(
   });
 
   router.endpunkt('POST /api/v1/parts', requireToken, async req => {
-    // writeTargetOrNull prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
-    // nicht bloss die Mitgliedschaft im Blickfeld.
+    // writeTargetOrNull checks the DIRECTION (main account → own sub-account),
+    // not merely the membership in the scope.
     const owner = await d.household.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
     const result = await d.parts.addManualPart(owner, req.eingabe);
     return { ...result };
   });
 
   router.endpunkt('PUT /api/v1/parts/:partNumber/:colorId', requireToken, async req => {
-    // Die Ansicht sagt, wessen Karte gemeint ist; ohne Parameter änderte das
-    // Hauptkonto auf der Karte des Kindes die eigene Zeile.
+    // The view says whose card is meant; without the parameter the main account would
+    // change its own row on the child's card.
     const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-    // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
-    // weiss der Client sie sonst nicht).
+    // With a quantity change the response carries the quantity afterwards (with quantity_delta
+    // the client would not know it otherwise).
     const r = await d.parts.changeManualPart(besitzer, req.pfad.partNumber, req.pfad.colorId, req.eingabe);
     return { ...r };
   });
 
-  // Eigene Adresse: Die Farbe ist schon Teil der Adresse von PUT /parts/:nr/:farbe.
+  // An address of its own: the color is already part of the address of PUT /parts/:nr/:farbe.
   router.endpunkt('PUT /api/v1/parts/:partNumber/:colorId/color', requireToken, async req => {
     const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
-    // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine Farbe",
-    // ein stilles Leeren mit Erfolgsmeldung.
+    // The new color must be present: V.colorId() would turn missing into "no color",
+    // a silent clearing with a success message.
     const neueFarbe = req.eingabe.color_id;
     if (neueFarbe == null || neueFarbe < 0) fachfehler('ungueltig', 'farbe_erforderlich');
     const ergebnis = await d.parts.changePartColor(besitzer, req.pfad.partNumber, req.pfad.colorId, neueFarbe, {
@@ -83,7 +83,7 @@ export function buildPartsRouter(
   });
 
   router.endpunkt('DELETE /api/v1/parts/:partNumber/:colorId', requireToken, async req => {
-    // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
+    // Without the parameter the own account — unchanged for clients that do not know it.
     const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     const geloescht = await d.collection.deletePart(besitzer, req.pfad.partNumber, req.pfad.colorId);
     if (geloescht === null) notFound('teil_nicht_manuell');
@@ -95,15 +95,15 @@ export function buildPartsRouter(
     return { ...result };
   });
 
-  /** Je Teil-Farb-Paar `gesamt` (Blickfeld) und `lose` (nicht in einem Set);
-   * welche Zahl gilt, entscheidet der Mensch. */
+  /** Per part-color pair `gesamt` (scope) and `lose` (not in a set);
+   * which number applies is decided by the human. */
   router.endpunkt('POST /api/v1/parts/owned', requireToken, async req => {
     const teile = req.eingabe.teile ?? [];
     return { bestand: await d.parts.ownedQuantities(viewOf(req), teile) };
   });
 
-  /** Trifft ALLE Zeilen des Teil-Farb-Paares: Wer „Kiste 3" einträgt, meint das
-   * Teil, nicht eine seiner Set-Zeilen. */
+  /** Hits ALL rows of the part-color pair: whoever enters "Box 3" means the
+   * part, not one of its set rows. */
   router.endpunkt('PUT /api/v1/parts/:partNumber/:colorId/storage', requireToken, async req => {
     const ort = normalizeLocation(req.eingabe.storage);
     const n = await d.inventory.locationService.setLocation(
@@ -136,7 +136,7 @@ export function buildPartsRouter(
     return { stats };
   });
 
-  // Dieselbe Umsetzung wie für die Webapp; steht unten, damit feste Pfade vorher greifen.
+  // The same implementation as for the webapp; it sits at the bottom so fixed paths match first.
   router.endpunkt('GET /api/v1/parts/:partNumber/:colorId/price-history', requireToken, async req => {
     const uid = req.apiUser.user_id;
     const currency = await d.settings.userValue(uid, 'currency', 'EUR');
@@ -144,7 +144,7 @@ export function buildPartsRouter(
     return { ...data };
   });
 
-  // Im Blickfeld, damit die Liste zur Teileliste passt, aus der man kommt.
+  // In the scope, so the list fits the part list one comes from.
   router.endpunkt('GET /api/v1/parts/:partNumber/:colorId/sets', requireToken, async req => {
     const uids = viewOf(req);
     const { item, sets } = await d.inventory.usingSets(uids, 'parts', {

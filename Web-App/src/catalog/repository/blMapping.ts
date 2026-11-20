@@ -1,11 +1,11 @@
 import type { DbInterface } from '../../../db/database';
 import type { BlArt } from '../../../db/blMappingSql';
 
-/** NULLIF(bl, rb) ist die EINE Schreibweise für „keine abweichende Nummer";
- * eine zweite Form hiesse zwei Aussagen für dasselbe. */
+/** NULLIF(bl, rb) is THE one spelling for "no differing number";
+ * a second form would mean two statements for the same thing. */
 
-/** Gemeinsam schreiben nur geprüfte Quellen, und ein vorhandener Wert bleibt:
- * Nur eine leere Zeile („nachgesehen") wird gefüllt. */
+/** Only verified sources write shared data, and an existing value stays:
+ * only an empty row ("looked up") is filled. */
 const NUR_LEERE_FUELLEN = `ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id, fetched_at = NOW()
      WHERE bl_mapping.bl_id IS NULL AND EXCLUDED.bl_id IS NOT NULL`;
 
@@ -17,7 +17,7 @@ export async function writeBlNumber(db: DbInterface, art: BlArt, rbId: string, b
   ]);
 }
 
-/** Die Eingabe eines Kontos; die neueste gilt. */
+/** An account's input; the newest applies. */
 export async function writeBlNumberOwn(
   db: DbInterface,
   uid: number,
@@ -46,12 +46,12 @@ export async function writeBlNumbers(
   );
 }
 
-/** DO NOTHING: Die Notiz „nachgesehen" überschreibt keine gefundene Zuordnung. */
+/** DO NOTHING: the note "looked up" does not overwrite a mapping that was found. */
 export async function noteLookedUp(db: DbInterface, art: BlArt, rbId: string): Promise<void> {
   await db.run('INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULL) ON CONFLICT DO NOTHING', [art, rbId]);
 }
 
-/** Die eigene Zeile der Konten `konten` (in deren Reihenfolge) vor der gemeinsamen. */
+/** The own row of the accounts `konten` (in their order) before the shared one. */
 const EIGENE_ZUERST = `(SELECT e.bl_id FROM bl_mapping_custom e
       WHERE e.user_id = ANY($3::int[]) AND e.type = $1 AND e.rb_id = q.rb_id
       ORDER BY array_position($3::int[], e.user_id) LIMIT 1)`;
@@ -72,7 +72,7 @@ export async function differingNumber(
   return z?.bl_id || null;
 }
 
-/** null nur, wenn es keine Zeile gibt (nie nachgesehen). */
+/** null only if there is no row (never looked up). */
 export async function effectiveNumber(
   db: DbInterface,
   art: BlArt,

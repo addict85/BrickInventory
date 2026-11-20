@@ -1,7 +1,7 @@
 import { withVersion } from '../infra/setNumber';
 import type { CatalogContext } from './context';
 
-/** Ein Set steht höchstens einmal offen. @returns die Kennung, oder null, wenn es schon offen steht */
+/** A set is open at most once. @returns the identifier, or null if it is already open */
 export async function anleitungEinreihen(
   k: CatalogContext,
   setNumber: string,

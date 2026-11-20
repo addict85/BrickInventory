@@ -1,4 +1,4 @@
-/** Die Kacheln der Überwachungsseite: Stand je Hintergrundauftrag und Zeitplan. */
+/** The tiles of the monitoring page: state per background job and schedule. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { DAILY_JOBS } from './timesOfDay';
@@ -8,12 +8,12 @@ import { reportError } from '../infra/error';
 import { Degradations } from '../infra/result';
 import type { ManagementContext } from './context';
 
-// Eine Frist für beide Kacheln; drei Minuten bei einem Takt von zwanzig Sekunden.
+// One deadline for both tiles; three minutes at a tick of twenty seconds.
 const JOB_FRESH_MS = 3 * 60_000;
 
 type Tile = Record<string, unknown>;
 
-/** Der Untertitel als Codes: Die Kachel entsteht ohne Anfrage, die Oberfläche übersetzt. `sub` bleibt für die App. */
+/** The subtitle as codes: the tile is created without a request, the UI translates. `sub` stays for the app. */
 type SubPart = { code: string; werte?: Record<string, number | string>; vor?: 'bestand' };
 
 const part = (code: string, werte?: Record<string, number | string>): SubPart => (werte ? { code, werte } : { code });
@@ -22,7 +22,7 @@ type Tiles = Record<string, Tile>;
 
 const count = (ab: Degradations, p: Promise<number>, ort: string) => ab.oder(ort, p, 0);
 
-/** Ein JSON-Stand aus laufzustand; ein beschädigter zählt wie keiner. */
+/** A JSON state from laufzustand; a damaged one counts as none. */
 async function readState<T>(k: ManagementContext, ab: Degradations, schluessel: string): Promise<T | null> {
   const roh = await ab.oder(schluessel, k.jobQueue.liesZustand(schluessel), null);
   try {
@@ -44,7 +44,7 @@ function blIdsTile(alt: Tile, gemappt: number, gesamt: number): Tile | null {
   };
 }
 
-/** Einmal gezählt: offen, erledigt und gescheitert aus derselben Abfrage. */
+/** Counted once: open, done and failed from the same query. */
 async function instructionJobs(k: ManagementContext, ab: Degradations) {
   const z = await ab.oder('anleitungen', k.jobQueue.countKind('anleitung'), null);
   return { offen: z ? z.offen + z.laeuft : 0, erledigt: z?.erledigt ?? 0, fehler: z?.fehler ?? 0 };
@@ -90,13 +90,13 @@ async function bricksetTile(k: ManagementContext, ab: Degradations): Promise<Til
   };
 }
 
-/** „läuft" heisst: hat KÜRZLICH etwas getan (Zeitstempel des Standes). */
+/** "running" means: has done something RECENTLY (timestamp of the state). */
 const isFresh = (k: ManagementContext, zeit: unknown) =>
   typeof zeit === 'number' && k.uhr.jetzt() - zeit < JOB_FRESH_MS;
 
-/** Bestand, Neuladen und Katalog in EINER Kachel, sonst meldete sie „alle gecacht",
- * während der Hintergrund-Job nachlädt. */
-/** Gedeckelt auf die wirklich offenen Bilder: Das heilt einen verwaisten Zähler nach einem Absturz. */
+/** Inventory, reloading and catalog in ONE tile, otherwise it would report "all cached"
+ * while the background job is reloading. */
+/** Capped to the really open images: that heals an orphaned counter after a crash. */
 async function imagesInProgress(k: ManagementContext, ab: Degradations, offen: number): Promise<number> {
   const aktiv = await ab.oder('bilder', imgDlPending(k), 0);
   if (offen === 0 && aktiv > 0) {
@@ -126,7 +126,7 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
     count(ab, k.management.partImagesOpen(), 'bilder'),
     count(ab, k.management.partImagesDone(), 'bilder'),
     count(ab, k.management.setMinifigImagesOpen(), 'bilder'),
-    // Figuren des Bestands legt derselbe Lauf lokal ab; sie gehören in die offene Menge.
+    // Figures of the inventory are stored locally by the same run; they belong to the open set.
     count(ab, k.management.holdingMinifigImagesOpen(), 'bilder'),
     count(ab, k.management.catalogImagesOpen(), 'bilder'),
   ]);
@@ -134,7 +134,7 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
   const job = await ab.oder('bilder', tile(k, 'imgDl'), null);
   const aktiv = await imagesInProgress(k, ab, offen);
   const { reDl, laeuft: reDlRunning, sub: reDlSub } = await redownloadState(k, ab);
-  // „läuft“ heisst: hat kürzlich etwas getan, laut Datenbank.
+  // "running" means: has recently done something, according to the database.
   const letzterLauf = await readState<{ zeit?: number }>(k, ab, 'imgqueue_last_run');
   const sinceRun = letzterLauf?.zeit ? k.uhr.jetzt() - letzterLauf.zeit : null;
   const jobRunning = isFresh(k, letzterLauf?.zeit);
@@ -185,7 +185,7 @@ async function imageTile(k: ManagementContext, ab: Degradations): Promise<Tile> 
           : 'done',
     sub: reDlSub ? `${basisSub} · ${reDlSub}` : basisSub,
     sub_teile: teile,
-    // Mit Warteschlange, sonst stünde der Balken auf 100 %, während Bilder ausstehen.
+    // With the queue, otherwise the bar would stand at 100 % while images are pending.
     progress: fertig,
     total: fertig + offen + openCatalog,
     queue: openCatalog,
@@ -249,9 +249,9 @@ async function zeitplaene(
   return aus;
 }
 
-/** Ergänzt um Zahlen, die nur die Datenbank kennt; je Kachel eine Funktion. */
+/** Extended by numbers only the database knows; one function per tile. */
 export async function jobMonitor(k: ManagementContext) {
-  const jobs: Tiles = await tiles(k); // aus laufzustand: der Job-Prozess schreibt, hier wird gelesen
+  const jobs: Tiles = await tiles(k); // from laufzustand: the job process writes, reading happens here
   const ab = new Degradations();
   const [anleitungen, gemappt, blTotal, rbParts, rbInventory, lastSync] = await Promise.all([
     instructionJobs(k, ab),

@@ -1,4 +1,4 @@
-/** Set zum Barcode: eigener Katalog, Rebrickable, Brickset und EAN-Quellen. */
+/** Set for a barcode: own catalog, Rebrickable, Brickset and EAN sources. */
 import { isGuess, setnummerCandidates } from '../catalog';
 import { resolveImageLocal } from '../images';
 import { RbSet, RbSetMinifig, rbPage } from '../externalSources';
@@ -20,8 +20,8 @@ export interface BarcodeHits {
   source: string;
 }
 
-/** Rebrickable zuerst: Dort stehen Figurenzahl und Bild am verlässlichsten.
- * Jede Antwort sagt, wie sie zustande kam (src/catalog/barcodeSource.ts). */
+/** Rebrickable first: figure count and image are most reliable there.
+ * Every answer says how it came about (src/catalog/barcodeSource.ts). */
 async function barcodeResult(
   sk: SetsContext,
   setNumber: string,
@@ -38,7 +38,7 @@ async function barcodeResult(
         rbPage(RbSetMinifig),
       )
     : null;
-  // Ohne Fang: Eine gestörte Datenbank ist kein „nicht im Katalog“.
+  // No catch: a disrupted database is not "not in the catalog".
   const local = await repo.setCatalog(sk.db, setNumber);
 
   const minifigs = mfData?.count ?? local?.minifigs ?? null;
@@ -61,7 +61,7 @@ async function barcodeResult(
     };
   }
   if (rbData?.set_num) {
-    // In den Katalog wie jeder Abruf; der Treffer gilt auch, wenn das Ablegen scheitert.
+    // Into the catalog like every fetch; the hit applies even if storing fails.
     await versuche(
       'sets:katalog schreiben',
       sk.catalog.rememberSetCatalog(
@@ -100,8 +100,8 @@ async function inCatalog(
   return repo.firstCatalogHits(sk.db, nummern);
 }
 
-/** Reihenfolge: eigener Katalog, EAN über Rebrickable, Brickset und UPCitemdb,
- * dann Bestellnummer — die billigste Quelle zuerst. */
+/** Order: own catalog, EAN via Rebrickable, Brickset and UPCitemdb,
+ * then order number — the cheapest source first. */
 export async function setToBarcode(sk: SetsContext, rawBarcode: string): Promise<BarcodeHits | null> {
   const barcode = rawBarcode.trim();
   const direct = await repo.catalogCacheAfterNumber(sk.db, withVersion(barcode));
@@ -133,8 +133,8 @@ export async function setToBarcode(sk: SetsContext, rawBarcode: string): Promise
       return { ...r, year: r.year || bsEan.year, theme: r.theme || bsEan.theme, pieces: r.pieces || bsEan.pieces };
     }
 
-    // Der Titel ist Händlertext: Erst die Kandidaten, die der Katalog kennt; sonst bleibt der erste als
-    // markierte Vermutung stehen.
+    // The title is retailer text: first the candidates the catalog knows; otherwise the first stays as a
+    // marked guess.
     const titel = await sk.externalSources.quellen.productTitle(ean13);
     if (titel) {
       const kandidaten = setnummerCandidates(titel, sk.uhr.datum().getFullYear());

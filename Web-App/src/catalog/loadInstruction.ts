@@ -1,6 +1,6 @@
-/** Brickset und brickinstructions.com wollen Abstand: Nach einem echten Abruf
- * pausiert die ganze Art 15 Sekunden, nach einer Cloudflare-Sperre 5–20
- * Minuten und dann bis zum nächsten Tag. */
+/** Brickset and brickinstructions.com want spacing: after a real fetch
+ * the whole kind pauses for 15 seconds, after a Cloudflare block for 5–20
+ * minutes and then until the next day. */
 import { withSessionLock } from '../../db/txLock';
 import {
   setAnleitungenLaden,
@@ -15,10 +15,10 @@ import { LOCKS } from '../infra/lockNamespaces';
 import type { CatalogContext } from './context';
 
 const TICK_AFTER_FETCH_MS = 15_000;
-/** Pausen nach der ersten bis vierten Cloudflare-Sperre; danach bis morgen. */
+/** Pauses after the first to fourth Cloudflare block; after that until tomorrow. */
 const CF_PAUSES_MS = [5, 10, 15, 20].map(min => min * 60 * 1000);
 
-/** 00:05: Dann ist das Tageskontingent wieder frei. */
+/** 00:05: by then the daily quota is free again. */
 function nextTag(jetzt: Date): Date {
   const z = new Date(jetzt);
   z.setHours(0, 5, 0, 0);
@@ -26,8 +26,8 @@ function nextTag(jetzt: Date): Date {
   return z;
 }
 
-/** Zwei Job-Prozesse sollen sich den Takt nicht teilen; eigene Verbindung,
- * weil Advisory-Locks an der Sitzung hängen. */
+/** Two job processes should not share the tick; own connection,
+ * because advisory locks are bound to the session. */
 function withLock<T>(k: CatalogContext, lauf: () => Promise<T>): Promise<T> {
   return withSessionLock(k.db, LOCKS.ANLEITUNGS_QUEUE, lauf, () => {
     throw new JobMove(new Date(k.uhr.jetzt() + TICK_AFTER_FETCH_MS), 'Anleitungen laufen in einem anderen Prozess');
@@ -45,7 +45,7 @@ async function reportInstructions(k: CatalogContext, setNumber: string, lauf?: J
   });
 }
 
-/** Eine Drosselung verschiebt den Auftrag, ohne ihn als Versuch zu zählen. */
+/** Throttling postpones the job without counting it as an attempt. */
 async function anleitungLaden(k: CatalogContext, n: Nutzlast<'anleitung'>, lauf?: JobRun): Promise<void> {
   const sn = n.set_number;
   if ((await anzahlAnleitungen(k, sn)) > 0) return;
@@ -55,7 +55,7 @@ async function anleitungLaden(k: CatalogContext, n: Nutzlast<'anleitung'>, lauf?
   }
   await withLock(k, async () => {
     try {
-      // Den Abstand hält die Pause der Art, nicht die Funktion.
+      // The spacing is kept by the kind's pause, not by the function.
       const anzahl = await setAnleitungenLaden(k, sn, true);
       console.log(`[instr-queue] ${sn}: ${anzahl} instructions`);
       if (await k.jobQueue.liesPause('anleitung')) await k.jobQueue.endPause('anleitung');

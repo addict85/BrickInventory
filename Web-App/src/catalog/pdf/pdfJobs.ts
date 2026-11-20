@@ -9,11 +9,11 @@ import type { PayloadInput } from '../../jobQueue';
 import { withVersion } from '../../infra/setNumber';
 import type { CatalogContext } from '../context';
 
-/** Jeder Statuswechsel weckt die Statusströme (atJobStatus) mit diesem Schlüssel. */
+/** Every status change wakes the status streams (atJobStatus) with this key. */
 export const pdfKey = (id: string) => `pdf:${id}`;
 
-/** Die Kennung wird zum Dateinamen, darum alles andere abgewiesen. Die alte
- * Form bleibt gültig, damit Aufträge über ein Update abrufbar bleiben. */
+/** The identifier becomes the file name, so everything else is rejected. The old
+ * form stays valid so that jobs remain retrievable across an update. */
 const JOB_ID_RE = /^\d{10,16}-[a-z0-9]{4,12}$/;
 export function validJobId(id: string): boolean {
   return JOB_ID_RE.test(id);
@@ -33,7 +33,7 @@ export type PdfAuftrag = {
 
 const STATUS: Record<string, PdfAuftrag['status']> = { offen: 'running', laeuft: 'running', erledigt: 'done' };
 
-/** Unter Zeilenschutz und nach Konto gefiltert: Ein fremder Auftrag ist keiner. */
+/** Under row security and filtered by account: a foreign job is no job. */
 export async function readJob(k: CatalogContext, id: string, uid: number): Promise<PdfAuftrag | null> {
   const z = await k.jobQueue.ownJob('pdf', pdfKey(id), uid);
   const { fehlendeBilder, etaSekunden } = z?.progress ?? {};
@@ -48,7 +48,7 @@ export async function readJob(k: CatalogContext, id: string, uid: number): Promi
     : null;
 }
 
-/** `status` zeigt der Oberfläche, wie weit ein noch nicht fertiger Auftrag ist. */
+/** `status` shows the UI how far a not-yet-finished job has progressed. */
 export async function finishedFile(k: CatalogContext, id: string, uid: number): Promise<string> {
   const job = await readJob(k, id, uid);
   if (!job) notFound('job_nicht_gefunden');
@@ -63,10 +63,10 @@ export async function deleteJob(k: CatalogContext, id: string, uid: number): Pro
 }
 
 export const PDF_JOB_TTL = 10 * 60 * 1000;
-/** Je Benutzer: Ein Auftrag lädt hunderte Bilder nach. */
+/** Per user: one job loads hundreds of images. */
 export const MAX_JOBS_PRO_USER = 2;
 
-/** Nicht erratbar, aber sortierbar. */
+/** Not guessable, but sortable. */
 export function newJobId(jetzt: number): string {
   return `${jetzt}-${crypto.randomBytes(6).toString('hex')}`;
 }
@@ -88,7 +88,7 @@ export async function cleanOldPdfJobs(k: CatalogContext) {
   }
 }
 
-/** Daran hängt die Wartezeit (etwa ein Bild je Sekunde). */
+/** The waiting time depends on this (about one image per second). */
 async function fehlendeBilder(
   k: CatalogContext,
   sets: Array<{ set_number?: unknown }>,
@@ -112,7 +112,7 @@ async function fehlendeBilder(
   return fehlend;
 }
 
-/** Laufen schon MAX_JOBS_PRO_USER, gibt es keine Kennung, sondern deren Zahl. */
+/** If MAX_JOBS_PRO_USER are already running, there is no identifier but their count. */
 export async function startPdfJob(
   k: CatalogContext,
   uid: number,
@@ -122,7 +122,7 @@ export async function startPdfJob(
   const laufend = await k.jobQueue.countRunning('pdf', uid, PDF_JOB_TTL / 1000);
   if (laufend >= MAX_JOBS_PRO_USER) return { laufend };
   const jobId = newJobId(k.uhr.jetzt());
-  // Bildangaben des Clients gehen nicht in den Auftrag: Die Bilder kommen aus dem Katalog.
+  // The client's image details do not go into the job: the images come from the catalog.
   const withoutImages = parts.map(p => ({ ...p, image_url: undefined, image_local: undefined }));
   const missingImages = await fehlendeBilder(k, sets, parts);
   await k.jobQueue.placeJobOne(

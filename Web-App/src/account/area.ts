@@ -1,4 +1,4 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/area.ts). */
+/** The area's factory: services as closures over k (buildArea, src/infra/area.ts). */
 import { mit, buildArea, type Inspect } from '../infra/area';
 import { Faecher } from '../infra/cache';
 import * as anmeldepruefung from './loginCheck';
@@ -40,7 +40,7 @@ export function createAccount(a: Omit<AccountDependencies, 'faecher'>, inspect?:
   );
 }
 
-/** Anmeldung, Geräte und Token. */
+/** Login, devices and tokens. */
 function loginAndDevices(k: AccountContext) {
   return {
     verifyEmailToken: mit(k)(anmeldepruefung.verifyEmailToken),
@@ -49,7 +49,7 @@ function loginAndDevices(k: AccountContext) {
     loginResponse: mit(k)(anmeldungAblauf.loginResponse),
     devicesTokenIssue: mit(k)(anmeldungAblauf.devicesTokenIssue),
     createQrAccess: mit(k)(anmeldungAblauf.createQrAccess),
-    // Der Schrittschutz (http/schrittschutz.ts) fragt das Konto, ob die Anfrage darf; die Regel steht in geraete.
+    // The step guard (http/stepGuard.ts) asks the account whether the request may proceed; the rule lives in devices.
     pruefeFreigabe: (...a: Parameters<DevicesServices['pruefeFreigabe']>) => k.devices.pruefeFreigabe(...a),
     pruefeToken: mit(k)(geraeteToken.pruefeToken),
     rotateToken: mit(k)(geraeteToken.rotateToken),
@@ -59,7 +59,7 @@ function loginAndDevices(k: AccountContext) {
   };
 }
 
-/** Konten, Zugänge, Verwaltung und Einstellungen des Kontos. */
+/** Accounts, accesses, administration and settings of the account. */
 function konten(k: AccountContext) {
   return {
     onRaeumSteps: mit(k)(nebenlaeufe.onRaeumSteps),
@@ -104,7 +104,7 @@ function konten(k: AccountContext) {
   };
 }
 
-/** Sitzungen und App-Zugänge des eigenen Kontos. */
+/** Sessions and app accesses of the own account. */
 function sitzungen(k: AccountContext) {
   return {
     accessesList: mit(k)(accessesService.accessesList),
@@ -116,7 +116,7 @@ function sitzungen(k: AccountContext) {
   };
 }
 
-/** Verwalter an fremden Konten: Änderungen, Übernahmen und ihr Protokoll. */
+/** Administrators on foreign accounts: changes, takeovers and their log. */
 function verwaltung(k: AccountContext) {
   return {
     unlockRegistration: mit(k)(verwalterAktionen.unlockRegistration),

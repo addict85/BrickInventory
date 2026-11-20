@@ -12,7 +12,7 @@ import { normalisiereSetNummer, possibleSetNumber } from '../../infra/setNumber'
 import { imagesFromCatalog as readImagesFromCatalog } from '../imageState';
 import type { CatalogContext } from '../context';
 
-/** Erst fehlende Bilder holen, dann im eigenen Faden zeichnen. */
+/** Fetch missing images first, then draw in a thread of its own. */
 export type PdfPayload = Nutzlast<'pdf'>;
 
 const isMinifig = (p: PdfTeil) => !!p.is_fig || String(p.part_number).startsWith('fig-');
@@ -21,7 +21,7 @@ const cdnAddress = (url: string) => {
   return roh ? decodeURIComponent(roh) : url;
 };
 
-/** Nur geprüfte Bildquellen aus dem Katalog (src/catalog/imageState.ts). */
+/** Only verified image sources from the catalog (src/catalog/imageState.ts). */
 export const imagesFromCatalog = (k: CatalogContext, parts: PdfTeil[]) => readImagesFromCatalog(k, parts, isMinifig);
 
 async function minifigsWithoutAddress(k: CatalogContext, parts: PdfTeil[]) {
@@ -39,7 +39,7 @@ async function minifigsWithoutAddress(k: CatalogContext, parts: PdfTeil[]) {
   }
 }
 
-/** Figurenbilder lagen unter zwei Schreibweisen auf der Platte; die gefundene merken. */
+/** Figure images were stored on disk under two spellings; remember the one found. */
 async function minifigsOnTheDisk(k: CatalogContext, parts: PdfTeil[]) {
   for (const p of parts.filter(p => isMinifig(p) && !p.image_local && p.image_url)) {
     const cdn = cdnAddress(p.image_url || '');
@@ -66,7 +66,7 @@ async function createPdf(k: CatalogContext, n: PdfPayload, lauf?: JobRun): Promi
   const ziel = pdfFilePath(jobId);
   if (!ziel) throw new Error(`ungültige Auftragskennung ${jobId}`);
   const setNumbers = [...new Set(sets.map(s => normalisiereSetNummer(s?.set_number ?? '')).filter(possibleSetNumber))];
-  // Warten, falls ein anderer Prozess dieselben Bilder lädt — sonst fehlten sie im PDF.
+  // Wait in case another process is loading the same images — otherwise they would be missing from the PDF.
   for (const sn of setNumbers) {
     checkAbort(lauf);
     await downloadSetImages(k, sn, true).catch(logAndContinue(`pdf:bilder ${sn}`));
@@ -74,7 +74,7 @@ async function createPdf(k: CatalogContext, n: PdfPayload, lauf?: JobRun): Promi
   await imagesFromCatalog(k, parts);
   await minifigsWithoutAddress(k, parts);
   await minifigsOnTheDisk(k, parts);
-  // Was dann noch fehlt (Teil nicht im Set-Katalog, abweichende Farbe), einzeln.
+  // Whatever is still missing then (part not in the set catalog, different color), one by one.
   for (const p of parts.filter(p => !p.image_local && p.image_url)) {
     checkAbort(lauf);
     const figur = isMinifig(p);

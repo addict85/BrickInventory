@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../../db/database';
 
-/** Zwei Zähler in einem Zug: Konten überhaupt, und Verwalter, die noch das
- * Startpasswort aus dem Protokoll tragen. */
+/** Two counters in one go: accounts at all, and admins that still carry the
+ * start password from the log. */
 export async function accountsStatus(db: DbInterface): Promise<{ vorhanden: boolean; startpasswort: boolean }> {
   const r = await db.get<{ anzahl: number; startpasswort: number }>(
     `SELECT COUNT(*)::int AS anzahl,

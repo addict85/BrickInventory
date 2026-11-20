@@ -3,13 +3,13 @@ import type { AccountServices } from '../area';
 import { Fachfehler } from '../../infra/errorTexts';
 import { reportError } from '../../infra/error';
 
-/** Ein Lesefehler ist keine Abmeldung: 503 wie /auth/me, Browser und App versuchen es wieder. */
+/** A read error is not a logout: 503 like /auth/me, browser and app try again. */
 function busy(e: unknown): Fachfehler {
   reportError('sitzung:version', e);
   return new Fachfehler('nicht_verfuegbar', 'server_ausgelastet');
 }
 
-/** regenerate statt destroy: Eine Anmeldung mit dem alten Keks braucht eine leere Sitzung. */
+/** regenerate instead of destroy: a login with the old cookie needs an empty session. */
 export function checkSessionVersion(konto: AccountServices) {
   return async (req: Request, _res: Response, next: NextFunction) => {
     const s = req.session;

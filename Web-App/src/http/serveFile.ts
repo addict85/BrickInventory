@@ -1,38 +1,38 @@
 import path from 'node:path';
 import type { Response } from 'express';
 
-/** Für hochgeladene Dateien: Was nur in den ersten Bytes geprüft ist, läuft so
- * nie als Dokument mit Skripten unter der Herkunft der App, auch inline nicht. */
+/** For uploaded files: what is only checked in the first bytes thus never runs
+ * as a document with scripts under the app's origin, not even inline. */
 export const FOREIGN_FILE_CSP = "sandbox; default-src 'none'";
 
-// Ein Fehler beim Ausliefern bekommt seine eigene Antwort statt pauschal 404.
+// An error while serving gets its own response instead of a blanket 404.
 
 type FileError = Error & { status?: number; statusCode?: number; code?: string };
 
-/** `status` und `statusCode` beide nachsehen, damit ein Fassungswechsel der
- * Bibliothek diese Stelle nicht still unwirksam macht. */
+/** Check both `status` and `statusCode`, so that a version change of the
+ * library does not silently make this place ineffective. */
 function numberFrom(err: unknown): number | null {
   const e = err as FileError | null | undefined;
   const n = e?.status ?? e?.statusCode;
   return typeof n === 'number' && n >= 400 && n <= 599 ? n : null;
 }
 
-/** Ist schon etwas hinaus, hat der Client abgebrochen; eine zweite Antwort
- * wäre nur ein Fehler im Log. */
+/** If something has already gone out, the client aborted; a second response
+ * would only be an error in the log. */
 export function responseOnFileError(res: Response, err: unknown): void {
   if (res.headersSent || res.writableEnded) return;
   const zahl = numberFrom(err);
-  // Ohne eigene Zahl heisst es hier fast immer „die Datei ist nicht da".
+  // Without a number of its own it almost always means "the file is not there" here.
   if (zahl === null || zahl === 404) {
     res.status(404).send('Datei nicht gefunden');
     return;
   }
-  // 416 trägt schon das Content-Range („bytes */<länge>"), das der Client braucht.
+  // 416 already carries the Content-Range ("bytes */<length>") the client needs.
   res.sendStatus(zahl);
 }
 
-/** Mit dem Ordner als `root`: Mit dem ganzen Pfad antwortete jede Datei 404,
- * sobald die Installation unter einem Punkt-Ordner liegt. */
+/** With the folder as `root`: with the whole path every file would answer 404
+ * as soon as the installation lives under a dot folder. */
 export function sendeDatei(res: Response, pfad: string, fertig: (err?: Error) => void): void {
   res.sendFile(path.basename(pfad), { root: path.dirname(pfad) }, fertig);
 }

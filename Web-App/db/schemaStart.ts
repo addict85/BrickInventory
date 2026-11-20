@@ -1,5 +1,5 @@
-/** Erststart und Migrationen beim Start: Basis in eine leere Datenbank, offene
- * Migrationen unter einer Sperre, Prüfungen für die Laufzeitrolle. */
+/** First start and migrations at startup: base into an empty database, open
+ * migrations under a lock, checks for the runtime role. */
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Client, Pool } from 'pg';
@@ -7,25 +7,25 @@ import { runMigrations, openMigrations } from './migrate';
 import { LOCKS } from '../src/infra/lockNamespaces';
 import { logAndContinue } from '../src/infra/error';
 
-/** Was nach dem Einspielen der Basis in eine leere Datenbank geschieht (das erste
- * Konto). Die Datenbankschicht kennt keine Konten; wer den Zugang anlegt, gibt es mit. */
+/** What happens after loading the base into an empty database (the first
+ * account). The database layer knows no accounts; whoever creates the access passes it along. */
 export type Erststart = () => Promise<void>;
 
-// Die älteste Migration, auf der eine bestehende Datenbank aufsetzen darf: db/basis.sql
-// und alle Migrationen danach kennen nur Schemas ab hier. Was älter ist, holt
-// zuerst eine Fassung nach, die die früheren Startstufen noch mitbringt (UPGRADE.md).
+// The oldest migration an existing database may build on: db/basis.sql
+// and all migrations after it only know schemas from here on. Anything older first
+// installs a version that still includes the earlier startup stages (UPGRADE.md).
 const MINIMUM_VERSION = '0050-teilezaehler-nur-bestehende-konten.sql';
 
-/** Eine LEERE Datenbank bekommt db/basis.sql (Abbild der Migrationen), danach
- * nur die jüngeren Migrationen; eine bestehende bleibt unberührt.
- * true, wenn die Basis eingespielt wurde. */
+/** An EMPTY database gets db/basis.sql (an image of the migrations), then
+ * only the newer migrations; an existing one stays untouched.
+ * true if the base was loaded. */
 export async function initSchema(ownConnection: () => Promise<Client>, firstStart?: Erststart): Promise<boolean> {
   const c = await ownConnection();
   try {
     const leer = !(await c.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
     if (!leer) return false;
-    // Eigene Verbindung, weil die Basis Sitzungswerte setzt (SET …), die
-    // sonst an einer Pool-Verbindung hängen blieben.
+    // A connection of its own, because the base sets session values (SET …) that
+    // would otherwise stick to a pool connection.
     await c.query('BEGIN');
     await c.query(fs.readFileSync(path.join(__dirname, 'basis.sql'), 'utf8'));
     await c.query('COMMIT');
@@ -41,11 +41,11 @@ export async function initSchema(ownConnection: () => Promise<Client>, firstStar
   return true;
 }
 
-// Erststart und Migrationen unter einem Advisory-Lock (LOCKS.SCHEMA_INIT):
-// Starten web und jobs zugleich, migriert genau einer; der andere wartet.
-// Die Laufzeitrolle (compose.yaml) darf kein Schema ändern: Sie prüft nur,
-// ob der Dienst migration fertig ist, statt an CREATE zu scheitern.
-/** `systemPool` schreibt die Zeitzone, wenn die Laufzeitrolle nur prüft: global_settings liest sie nur (0117). */
+// First start and migrations under an advisory lock (LOCKS.SCHEMA_INIT):
+// if web and jobs start at once, exactly one migrates; the other waits.
+// The runtime role (compose.yaml) may not change the schema: it only checks
+// whether the migration service is done, instead of failing at CREATE.
+/** `systemPool` writes the time zone when the runtime role only checks: it may only read global_settings (0117). */
 export async function initSchemaOnce(
   pool: Pool,
   initSchema: () => Promise<boolean>,
@@ -54,8 +54,8 @@ export async function initSchemaOnce(
 ): Promise<void> {
   const client = await pool.connect();
   try {
-    // Warten auf den anderen Prozess ist hier gewollt, auch länger als lock_timeout
-    // und statement_timeout: Eine lange Migration dort bräche den Start (57014) ab.
+    // Waiting for the other process is intended here, even longer than lock_timeout
+    // and statement_timeout: a long migration there would abort the start (57014).
     await client.query('SET lock_timeout = 0');
     await client.query('SET statement_timeout = 0');
     await client.query(`SELECT pg_advisory_lock(${LOCKS.SCHEMA_INIT})`);
@@ -63,14 +63,14 @@ export async function initSchemaOnce(
     if (!(await maySchemaChangeOn(client))) return await checkOnlyStatus(client, zeitzone, systemPool);
     const neu = await initSchema();
     if (!neu) await checkMinimumVersion(client);
-    // Vor offenen Migrationen eine Kopie der Nutzerdaten — nicht bei einer
-    // eben angelegten, leeren Datenbank.
+    // Before open migrations a copy of the user data — not for a
+    // freshly created, empty database.
     const applied = await runMigrations(client, { sichern: !neu });
     await writeEntryTimeZone(client, zeitzone);
     if (applied.length) console.log(`✅ ${applied.length} Migration(en) angewandt`);
     else if (!neu) console.log('✅ Schema aktuell — keine offenen Migrationen');
   } finally {
-    // Aufräumen nach dem eigentlichen Ergebnis: Dessen Fehler zählt, nicht einer von hier.
+    // Cleanup after the actual result: its error counts, not one from here.
     for (const sql of [
       `SELECT pg_advisory_unlock(${LOCKS.SCHEMA_INIT})`,
       'RESET lock_timeout',
@@ -81,8 +81,8 @@ export async function initSchemaOnce(
   }
 }
 
-/** Die konfigurierte Zeitzone für den Trigger erfassung_tag() (Migration
- * 0078) — in der Datenbank, damit jede Verbindung denselben Tag rechnet. */
+/** The configured time zone for the trigger erfassung_tag() (migration
+ * 0078) — in the database, so every connection computes the same day. */
 async function writeEntryTimeZone(client: import('pg').ClientBase, zeitzone: string): Promise<void> {
   await client.query(
     `INSERT INTO global_settings (key, value) VALUES ('erfassung_zeitzone', $1)
@@ -97,8 +97,8 @@ async function maySchemaChangeOn(client: import('pg').ClientBase): Promise<boole
   return (await client.query<{ d: boolean }>(MAY_SCHEMA_CHANGE)).rows[0]?.d === true;
 }
 
-/** Für die Laufzeitrolle: Ein leeres oder nicht migriertes Schema hält den Start
- * an, statt dass Anfragen auf fehlende Spalten treffen. */
+/** For the runtime role: an empty or unmigrated schema stops the start
+ * instead of requests hitting missing columns. */
 async function checkOnlyStatus(client: import('pg').ClientBase, zeitzone: string, systemPool: Pool): Promise<void> {
   const leer = !(await client.query("SELECT to_regclass('public.users') AS t")).rows[0].t;
   const offen = leer ? [] : await openMigrations(client);
@@ -107,7 +107,7 @@ async function checkOnlyStatus(client: import('pg').ClientBase, zeitzone: string
       `${leer ? 'Die Datenbank ist leer' : `Migrationen offen: ${offen.join(', ')}`}. Diese Rolle darf das Schema nicht ändern; ` +
         'Grundschema und Migrationen spielt der Dienst migration als Migrationsrolle ein (UPGRADE.md#migrationsrolle).',
     );
-  // Meist hat der Dienst migration denselben Wert schon geschrieben; sonst die Systemrolle.
+  // Usually the migration service has already written the same value; otherwise the system role.
   const da = await client.query("SELECT value FROM global_settings WHERE key = 'erfassung_zeitzone'");
   if (da.rows[0]?.value !== zeitzone) {
     const sys = await systemPool.connect();
@@ -120,9 +120,9 @@ async function checkOnlyStatus(client: import('pg').ClientBase, zeitzone: string
   console.log('✅ Schema aktuell (eingespielt vom Dienst migration)');
 }
 
-/** Eine bestehende Datenbank ohne Migration ab MINIMUM_VERSION hält den Start an,
- * bevor eine Migration sie anfasst: Die jüngeren setzen Tabellen voraus, die
- * dort fehlen, und schrieben sonst ein halbes Schema. */
+/** An existing database without a migration from MINIMUM_VERSION on stops the start
+ * before a migration touches it: the newer ones assume tables that are
+ * missing there and would otherwise write half a schema. */
 async function checkMinimumVersion(client: import('pg').ClientBase): Promise<void> {
   const { rows } = await client.query(`SELECT to_regclass('public.schema_migrations') IS NOT NULL AS da`);
   const newEnough =

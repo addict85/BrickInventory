@@ -1,36 +1,36 @@
-/** Aufgelöste Posten der Wanted-Liste als Berichtszeile und über die Anleger
- * in den Bestand schreiben. */
+/** Write resolved items of the wanted list as report rows and via the creators
+ * into the inventory. */
 import { logAndContinue } from '../infra/error';
 import type { WantedArt } from './wantedParser';
 import type { Aufloesung, Sicherheit } from './wantedResolution';
 
-/** Bild und Name reisen mit, weil die Vorschau sie wie die Teileliste zeigt. */
+/** Image and name travel along, because the preview shows them like the parts list. */
 export interface ItemResult {
   blId: string;
   art: WantedArt;
   blFarbe: number | null;
   menge: number;
   zustand: string | null;
-  /** Je Stück; steht im Bericht, weil die Vorschau ihn änderbar zeigt. */
+  /** Per piece; it is in the report because the preview shows it as editable. */
   maxPreis: number | null;
   rbId: string | null;
   rbFarbe: number | null;
   sicherheit: Sicherheit | null;
   ausgang: 'angelegt' | 'aufgestockt' | 'offen' | 'fehler';
   grund?: string;
-  /** Kennung statt Satz, damit die Oberfläche in der Sprache des Betrachters setzt. */
+  /** Identifier instead of a sentence, so that the UI renders it in the viewer's language. */
   grundCode?: 'nummer_unbekannt' | 'farbe_unbekannt';
-  /** Beschreibung aus dem Katalog — leer, wenn er die Nummer nicht kennt. */
+  /** Description from the catalog — empty if it does not know the number. */
   name?: string | null;
   bild?: string | null;
-  /** Name und Bild unter der BL-Nummer gefunden, nicht über eine Abbildung — die
-   * Oberfläche muss das kennzeichnen. */
+  /** Name and image found under the BL number, not via a mapping — the
+   * UI must mark that. */
   nameGeraten?: boolean;
   farbName?: string | null;
   farbHex?: string | null;
 }
 
-/** Als Schnittstelle: Die Route steckt die echten Funktionen hinein, ein Test Zähler. */
+/** As an interface: the route plugs in the real functions, a test counters. */
 export interface Creator {
   teil: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
   figur: (uid: number, body: Record<string, unknown>) => Promise<unknown>;
@@ -45,7 +45,7 @@ export interface Creator {
 
 export interface WriteOptions {
   creator?: Creator;
-  /** Hereingegeben, damit diese Funktion bis auf den Anleger schreibfrei bleibt. */
+  /** Passed in, so that this function stays write-free except for the creator. */
   rememberNumber?: (
     art: WantedArt,
     rbId: string,
@@ -54,10 +54,10 @@ export interface WriteOptions {
   ) => Promise<unknown>;
 }
 
-/** Die Berichtszeile eines Postens, vor dem Schreiben. */
+/** The report row of an item, before writing. */
 export function reportRow(a: Aufloesung): ItemResult {
-  // Eine nicht abbildbare Farbe wird nicht erfunden: color_id 0 ist bei
-  // Rebrickable Schwarz, nicht „keine Farbe".
+  // A color that cannot be mapped is not invented: color_id 0 is black at
+  // Rebrickable, not "no color".
   const grund =
     a.rbId === null
       ? 'Zu dieser BrickLink-Nummer ist keine Rebrickable-Nummer bekannt'
@@ -84,7 +84,7 @@ export function reportRow(a: Aufloesung): ItemResult {
   };
 }
 
-/** Legt einen aufgelösten Posten an. @returns ob er neu ist oder aufgestockt wurde */
+/** Creates a resolved item. @returns whether it is new or was topped up */
 export async function writeItem(
   uid: number,
   a: Aufloesung,
@@ -94,8 +94,8 @@ export async function writeItem(
   if (!opt.creator) throw new Error('Kein Anleger übergeben — siehe Anleger');
   let rueckmeldung: unknown;
   if (a.posten.art === 'part') {
-    // Der Farbname reist mit: Die Teileliste liest ihn von der Zeile, ohne ihn
-    // fällt sie nicht auf den Katalog zurück.
+    // The color name travels along: the parts list reads it from the row; without it
+    // it does not fall back to the catalog.
     rueckmeldung = await opt.creator.teil(uid, {
       part_number: rbId,
       color_id: a.rbFarbe ?? 0,
@@ -103,8 +103,8 @@ export async function writeItem(
       ...(a.rbFarbHex ? { color_hex: a.rbFarbHex } : {}),
       quantity: a.posten.menge,
       condition: a.posten.zustand ?? undefined,
-      // `undefined` statt `null`: Die Anleger unterscheiden „nichts angegeben"
-      // (Marktpreis) von einer ausdrücklichen Null.
+      // `undefined` instead of `null`: the creators distinguish "nothing specified"
+      // (market price) from an explicit zero.
       ...(a.posten.maxPreis !== null ? { unit_price: a.posten.maxPreis } : {}),
     });
   } else if (a.posten.art === 'fig') {
@@ -117,15 +117,15 @@ export async function writeItem(
   } else {
     rueckmeldung = await opt.creator.set(uid, rbId, a.posten.menge, a.posten.zustand, a.posten.maxPreis);
   }
-  // Auch 'rebrickable' wird gemerkt: blTeilZuRb prüft jeden Treffer gegen die
-  // gesuchte BL-Nummer, es ist eine Abbildung, keine Vermutung.
+  // 'rebrickable' is remembered too: blTeilZuRb checks every hit against the
+  // searched BL number; it is a mapping, not a guess.
   if ((a.sicherheit === 'korrigiert' || a.sicherheit === 'rebrickable') && opt.rememberNumber) {
-    // Ein Fehlschlag bricht den Import nicht ab: Der Posten steht schon im Bestand.
+    // A failure does not abort the import: the item is already in the inventory.
     await opt
       .rememberNumber(a.posten.art, rbId, a.posten.blId, a.sicherheit)
       .catch(logAndContinue('wanted:nummer-merken'));
   }
-  // Der Anleger weiss, ob angelegt oder aufgestockt; ohne die Frage zählte ein
-  // zweiter Import alles als angelegt.
+  // The creator knows whether created or topped up; without the question a
+  // second import would count everything as created.
   return (rueckmeldung as { action?: string } | null | undefined)?.action !== 'updated' ? 'angelegt' : 'aufgestockt';
 }

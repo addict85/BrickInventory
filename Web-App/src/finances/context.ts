@@ -1,4 +1,4 @@
-/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
+/** What the services receive; separate from area.ts so that no import cycle arises. */
 import type { Konfig } from '../infra/config';
 import type { MailServices } from '../mail';
 import type { Db } from '../../db/database';
@@ -37,7 +37,7 @@ export interface FinancesDependencies {
   lesevertrag: FinancesReadContract;
 }
 
-/** Bewertung, Erfassungen, Gewinn und Marktpreise. */
+/** Valuation, acquisitions, profit and market prices. */
 const bestandszugang = (db: Db, l: FinancesReadContract) => ({
   bewertung: {
     manualEntries: withContract(db, l)(bewertung.manualEntries),
@@ -73,7 +73,7 @@ const bestandszugang = (db: Db, l: FinancesReadContract) => ({
   },
 });
 
-/** Alarme, Preiszwischenspeicher, Preislauf und Kurse. */
+/** Alerts, price cache, price run and exchange rates. */
 const preiszugang = (db: Db, l: FinancesReadContract) => ({
   preisalarme: {
     transferAlarm: mit(db)(preisalarme.transferAlarm),

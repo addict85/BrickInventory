@@ -11,21 +11,21 @@ import { zustand } from '../infra/validate';
 import type { FinancesContext } from './context';
 import { checkSet } from './priceAlert';
 
-/** Der Job läuft im Job-Prozess, gelesen wird im Web-Prozess — darum in laufzustand. */
+/** The job runs in the job process, reading happens in the web process — hence in laufzustand. */
 export const PRICE_STATUS = 'preis_job_stand';
 const _log: string[] = [];
 
 const PRICE_JOB_LOCK = LOCKS.PRICE_JOB;
 
-/** Auf einer EIGENEN Verbindung über die ganze Laufzeit: Manuelle Auslöser
- * laufen in anderen Prozessen, `state.running` sieht sie nicht.
- * @returns Freigabefunktion, oder null wenn anderswo bereits ein Lauf läuft */
+/** On an OWN connection for the whole runtime: manual triggers
+ * run in other processes, `state.running` does not see them.
+ * @returns release function, or null if a run is already going on elsewhere */
 async function acquireRunLock(k: FinancesContext): Promise<(() => Promise<void>) | null> {
   let freigabe: (() => Promise<void>) | null;
   try {
     freigabe = await receiptsSessionLock(k.db, PRICE_JOB_LOCK);
   } catch (e) {
-    // Ausnahme: Lieber ohne Sperre laufen als gar nicht; im Prozess schützt die Exklusivität der Art.
+    // Exception: better to run without a lock than not at all; within the process the kind's exclusivity protects.
     log(`Sperre nicht verfügbar (${fehlertext(e)}) — Lauf ohne prozessübergreifenden Schutz`);
     return async () => {};
   }
@@ -41,7 +41,7 @@ function log(msg: string) {
   if (_log.length > 50) _log.length = 50;
 }
 
-// `string | number`: getGlobalSetting() liefert Text, andere Aufrufer eine Zahl.
+// `string | number`: getGlobalSetting() delivers text, other callers a number.
 async function fetchAndCachePrice(
   k: FinancesContext,
   setNumber: string,
@@ -53,7 +53,7 @@ async function fetchAndCachePrice(
   if (withoutBricklinkPrice(await k.catalog.catalogEntry(setNumber))) return 'skipped_gear';
 
   const ttl = Math.max(1, parseInt(String(forceTtlHours ?? ''), 10));
-  // Dieselbe Frisch-Regel wie im Anfrageweg: Auch eine Null-Zeile wird nach sechs Stunden erneut versucht.
+  // The same freshness rule as in the request path: a zero row is retried after six hours as well.
   const vorhanden = await priceFromCache(k, setNumber, condition, currency, ttl);
   if (cacheUsable(vorhanden, ttl, k.uhr.jetzt())) return 'skipped';
 
@@ -70,8 +70,8 @@ async function fetchAndCachePrice(
     return 'error';
   }
 
-  // Auch eine Antwort mit lauter Nullen wird geschrieben: Sie hält den nächsten Lauf zurück, sonst kostete
-  // dasselbe Set jedes Mal zwei Abrufe.
+  // A response with nothing but zeros is written as well: it holds back the next run, otherwise
+  // the same set would cost two fetches every time.
   const p = await savePrice(k, setNumber, condition, currency, g);
 
   if (!hatPrice({ avg_price: p.avg, qty_avg_price: p.qavg })) {
@@ -88,20 +88,20 @@ async function fetchAndCachePrice(
   return 'updated';
 }
 
-/** Zähler und Abbruchgründe eines Laufs, geteilt von allen parallelen Sets. */
+/** Counters and abort reasons of a run, shared by all parallel sets. */
 interface Laufstand {
   updated: number;
   skipped: number;
   errors: number;
   omitted: number;
-  // Ist das Kontingent aufgebraucht, käme jedes weitere Set mit derselben Antwort zurück.
+  // Once the quota is used up, every further set would come back with the same answer.
   limitReached?: boolean;
   notReachable?: boolean;
   current: number;
   total: number;
 }
 
-/** Auch Merkposten: /price-history liest den Cache nur, ohne diesen Lauf bliebe ihr Verlauf leer. */
+/** Wishlist items too: /price-history only reads the cache; without this run their history would stay empty. */
 async function pricePlacesJeAccount(k: FinancesContext): Promise<Map<number, string[]>> {
   const eigene = await k.preisLauf.inventoryPlaces();
   const gewuenschte = await versuche('preis-job:gewuenschte', k.preisLauf.wantedListsPlaces());
@@ -115,7 +115,7 @@ async function pricePlacesJeAccount(k: FinancesContext): Promise<Map<number, str
   return jeAccount;
 }
 
-/** Ein Set in allen Zuständen, die es braucht; das Ergebnis zählt in `st`. */
+/** A set in all conditions it needs; the result counts in `st`. */
 async function refreshSet(
   k: FinancesContext,
   sn: string,
@@ -151,7 +151,7 @@ async function refreshSet(
   return last;
 }
 
-/** 'sold' = tatsächlich erzielte Preise der letzten sechs Monate; fünf Sets parallel. */
+/** 'sold' = prices actually achieved in the last six months; five sets in parallel. */
 async function refreshAccount(
   kx: FinancesContext,
   userId: number,
@@ -162,7 +162,7 @@ async function refreshAccount(
   const currency = await kx.einstellungen.userValue(userId, 'currency', 'EUR');
   const ttlHours = (await kx.einstellungen.globalValue('price_cache_ttl', '24')) || '24';
   const valid = setNumbers.filter(sn => /^[a-zA-Z0-9]+-\d+$/.test(sn));
-  // Drei Abfragen je Konto statt je Set.
+  // Three queries per account instead of per set.
   const states = await statesJeSet(kx, userId, valid);
   const tasks = valid.map(sn => async () => {
     st.current++;
@@ -178,7 +178,7 @@ async function refreshAccount(
   await parallelLimit(tasks, 5);
 }
 
-/** Einmal je Lauf, nicht je Abruf; ein Fehlschlag steht im Stand, ihn zu werfen wiederholte den ganzen Lauf. */
+/** Once per run, not per fetch; a failure is recorded in the state, throwing it would repeat the whole run. */
 async function afterTheRun(k: FinancesContext, auftrag?: JobContext) {
   log('Writing daily price_history snapshot from price_cache...');
   const stand = await versuche('preis-job:tagesstand', k.preisLauf.writeDailyStatus());
@@ -211,7 +211,7 @@ async function reportResult(kx: FinancesContext, st: Laufstand, duration: number
   });
 }
 
-/** Hält ein anderer Prozess die Sperre, wird der Auftrag eine Minute später neu versucht. */
+/** If another process holds the lock, the job is retried one minute later. */
 async function runPriceRefresh(kx: FinancesContext, k?: JobContext) {
   if (!(await kx.einstellungen.globalValue('bricklink_consumer_key', ''))) {
     log('BrickLink credentials not configured, skipping');
@@ -241,12 +241,12 @@ async function runPriceRefresh(kx: FinancesContext, k?: JobContext) {
     await rememberStatus(kx, {});
     throw e;
   } finally {
-    await releaseLock(); // MUSS hier stehen: sonst blockiert ein abgestürzter
+    await releaseLock(); // MUST stay here: otherwise a crashed run blocks the lock
   }
 }
 
-/** Gemischte Sets brauchen beide Preise, reine einen; eine Fassung für Nachtlauf und Erfassen.
- * @param hintCondition Zustand einer Erfassung, die es noch nicht gibt */
+/** Mixed sets need both prices, pure ones one; one version for nightly run and capture.
+ * @param hintCondition condition of an acquisition that does not exist yet */
 async function statesJeSet(
   k: FinancesContext,
   userId: number,
@@ -258,7 +258,7 @@ async function statesJeSet(
 
   type StateRow = { set_number: string; c?: string | null };
   const collect = async (abfrage: Promise<StateRow[]>): Promise<Map<string, Set<string>>> => {
-    // Ohne Fang: Ohne die Zustände fiele jedes Set auf 'N', und der Gebrauchtpreis fehlte still.
+    // No catch: without the conditions every set would fall back to 'N', and the used price would be silently missing.
     const zeilen = await abfrage;
     const m = new Map<string, Set<string>>();
     for (const r of zeilen) {
@@ -272,8 +272,8 @@ async function statesJeSet(
   const gewuenscht = await collect(k.preisLauf.desiredStates(userId, setNumbers));
 
   for (const sn of setNumbers) {
-    // Ohne Erfassung ist der Hinweis die einzige Quelle: Die Erfassung des neuen Sets ist noch nicht
-    // geschrieben (conditionsNeededFor).
+    // Without an acquisition the hint is the only source: the new set's acquisition is not yet
+    // written (conditionsNeededFor).
     const eigene = new Set<string>(erfasst.get(sn) ?? []);
     if (hintCondition === 'U' || hintCondition === 'N') eigene.add(hintCondition);
     for (const c of gewuenscht.get(sn) ?? []) eigene.add(c);
@@ -282,9 +282,9 @@ async function statesJeSet(
   return ergebnis;
 }
 
-/** Beim Erfassen gibt es die Erfassung noch nicht; ohne den Hinweis fiele die
- * Regel auf 'N' zurück.
- * @returns z. B. ['N'], ['U'] oder ['N','U'] */
+/** On capture the acquisition does not exist yet; without the hint the
+ * rule would fall back to 'N'.
+ * @returns e.g. ['N'], ['U'] or ['N','U'] */
 async function conditionsNeededFor(
   k: FinancesContext,
   setNumber: string,
@@ -309,7 +309,7 @@ async function preisFuerSetHolen(
   try {
     const currency = await k.einstellungen.userValue(userId, 'currency', 'EUR');
     const guideType = 'sold';
-    // Alle Zustände, die das Set führt — sonst fehlt bei gemischten Sets eine Hälfte.
+    // All conditions the set has — otherwise one half is missing for mixed sets.
     const conditions = await conditionsNeededFor(k, setNumber, userId, hintCondition);
     log(`Immediate price fetch: ${setNumber} (${conditions.join('+')})`);
     for (const c of conditions) {
@@ -323,7 +323,7 @@ async function preisFuerSetHolen(
     }
     log(`Immediate price done: ${setNumber}`);
   } catch (e) {
-    // Verbindungsfehler lösen sich beim nächsten Versuch.
+    // Connection errors resolve on the next attempt.
     const isConnErr =
       fehlertext(e).includes('timeout') || fehlertext(e).includes('terminated') || fehlertext(e).includes('connect');
     if (!isConnErr) log(`Immediate price failed for ${setNumber}: ${fehlertext(e).substring(0, 80)}`);

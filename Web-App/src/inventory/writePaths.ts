@@ -1,4 +1,4 @@
-/** Sets und Käufe gehören dem Bestand (docs/architektur.md); die Bereiche darüber schreiben hierüber. */
+/** Sets and purchases belong to the inventory (docs/architektur.md); the areas above write via this. */
 import type { ErfassungsArt } from '../../db/stockQuantity';
 import { mit } from '../infra/area';
 import * as erfassungen from './repository/acquisitions';
@@ -14,7 +14,7 @@ export interface EntryChange {
   datum?: string;
 }
 
-/** Nur in den übergebenen Konten: zweite Linie hinter der Prüfung des Aufrufers. */
+/** Only in the passed accounts: a second line behind the caller's check. */
 async function aendere(k: InventoryContext, art: ErfassungsArt, id: number, konten: number[], a: EntryChange) {
   if (a.menge !== undefined) await erfassungen.setEntryQuantity(k.db, art, id, a.menge, konten);
   if (a.preis) await erfassungen.setEntryPrice(k.db, art, id, a.preis.wert, a.preis.geschaetzt, konten);

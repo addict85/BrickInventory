@@ -1,4 +1,4 @@
-/** Fehlende Bilddateien nachladen: Verweise ohne Datei finden, laden oder leeren. */
+/** Reload missing image files: find references without a file, load or clear them. */
 import { fehlertext, logAndContinue, withoutMissingFile } from '../infra/error';
 
 import { checkAbort, type JobRun } from '../jobQueue';
@@ -10,10 +10,10 @@ import { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR, SET_IMAGES_DIR } from '../infra/ap
 import { versuche } from '../infra/result';
 import type { CatalogContext } from './context';
 
-// „Fehlend" = image_local gesetzt, Datei fehlt. Nicht wiederherstellbare
-// Einträge werden geleert, damit die Oberflächen auf die CDN-Adresse zurückfallen.
+// "Missing" = image_local set, file missing. Unrecoverable
+// entries are cleared so that the UIs fall back to the CDN address.
 
-// Für alle drei Bildarten; sonst verwarf der Nachlauf Set- und Figurenbilder.
+// For all three image kinds; otherwise the follow-up discarded set and figure images.
 function _fsPathFromLocal(imageLocal: string) {
   if (!imageLocal) return null;
   const bereiche: Array<[string, string]> = [
@@ -24,15 +24,15 @@ function _fsPathFromLocal(imageLocal: string) {
   for (const [prefix, dir] of bereiche) {
     if (!imageLocal.startsWith(prefix)) continue;
     const file = imageLocal.slice(prefix.length);
-    // Pfadtrenner und .. bleiben verboten: Auch ein Wert aus der Datenbank ist
-    // nicht per se vertrauenswürdig.
+    // Path separators and .. stay forbidden: even a value from the database is
+    // not trustworthy per se.
     if (!file || file.includes('..') || file.includes('/') || file.includes('\\')) return null;
     return path.join(dir, file);
   }
   return null;
 }
 
-// Mit await, sonst ginge der Endstand bei einem Neustart verloren.
+// With await, otherwise the final state would be lost on a restart.
 async function _redlSetStatus(k: CatalogContext, obj: Record<string, unknown>) {
   await k.jobQueue
     .setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: k.uhr.jetzt() }))
@@ -42,7 +42,7 @@ async function _redlSetStatus(k: CatalogContext, obj: Record<string, unknown>) {
 async function redownloadMissingImages(k: CatalogContext, lauf?: JobRun) {
   const lauf_ = k.faecher.fach('bilderNachladen', () => ({ laeuft: false }));
   if (lauf_.laeuft) return { alreadyRunning: true };
-  // Sperre auf EIGENER Verbindung: Advisory-Locks hängen an der Session.
+  // Lock on an OWN connection: advisory locks are bound to the session.
   let lockClient: PoolClient;
   try {
     lockClient = await k.teileAnreicherung.lockConnection();
@@ -121,15 +121,15 @@ const givesFile = (fp: string) =>
     .then(() => true)
     .catch(withoutMissingFile('teile-enrich:access', false));
 
-/** Auch fehlende Vorschauen: Sie entstehen sonst nur beim Erfassen und hätten
- * keinen zweiten Anlauf. */
+/** Missing previews too: otherwise they only arise on capture and would have
+ * no second chance. */
 async function searchMissingFiles(k: CatalogContext) {
   const rows = await k.teileAnreicherung.localImagesWithAddress();
   const missing: MissingImage[] = [];
   const withoutPreview: string[] = [];
   for (const r of rows) {
     const fp = _fsPathFromLocal(r.image_local);
-    if (!fp) continue; // gebündelte /images/ o.ä. überspringen
+    if (!fp) continue; // skip bundled /images/ or similar
     if (!(await givesFile(fp))) {
       missing.push({ image_local: r.image_local, image_url: r.image_url, fp });
       continue;
@@ -139,7 +139,7 @@ async function searchMissingFiles(k: CatalogContext) {
   return { missing, withoutPreview };
 }
 
-/** Vorschauen zuerst: Sie brauchen kein Netz und wirken sofort auf jede Kachelwand. */
+/** Previews first: they need no network and take effect immediately on every tile wall. */
 async function catchUpPreviews(k: CatalogContext, withoutPreview: string[]): Promise<number> {
   let thumbsCreated = 0;
   if (!withoutPreview.length) return 0;
@@ -159,8 +159,8 @@ async function catchUpPreviews(k: CatalogContext, withoutPreview: string[]): Pro
   return thumbsCreated;
 }
 
-/** Neu laden, was eine Adresse hat; sonst den Verweis leeren, damit die Kachel nicht
- * auf eine Datei zeigt, die es nicht gibt. */
+/** Reload what has an address; otherwise clear the reference so that the tile does not
+ * point to a file that does not exist. */
 async function reloadMissing(k: CatalogContext, missing: MissingImage[], lauf?: JobRun) {
   const total = missing.length;
   let done = 0,
@@ -181,7 +181,7 @@ async function reloadMissing(k: CatalogContext, missing: MissingImage[], lauf?: 
       if (!m) break;
       if (await reloadImage(k, m)) redownloaded++;
       else {
-        // Die Liste MUSS zu den Tabellen passen, die die Spalte wirklich haben.
+        // The list MUST match the tables that really have the column.
         for (const tbl of repo.CATALOGS_WITH_IMAGE) {
           await k.teileAnreicherung
             .forgetLocalImage(tbl, m.image_local)
@@ -193,7 +193,7 @@ async function reloadMissing(k: CatalogContext, missing: MissingImage[], lauf?: 
       await flush(false);
     }
   };
-  const CONC = 2; // wie beim normalen Download; der CDN-Limiter drosselt ohnehin
+  const CONC = 2; // as with the normal download; the CDN limiter throttles anyway
   await Promise.all(Array.from({ length: CONC }, () => worker()));
   return { done, redownloaded, cleared };
 }
@@ -203,7 +203,7 @@ async function reloadImage(k: CatalogContext, m: MissingImage): Promise<boolean>
   if (m.image_url) {
     await k.cdnDrossel.acquire();
     try {
-      // Ein Fehler zählt wie ein vergeblicher Abruf; der Zähler nennt beide.
+      // An error counts like a fruitless fetch; the counter names both.
       const r = await versuche('teile-enrich:downloadFile', k.externalSources.quellen.downloadFile(m.image_url, m.fp));
       ok = r.ok && r.wert === true;
     } finally {

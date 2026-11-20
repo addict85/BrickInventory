@@ -1,5 +1,5 @@
-/** Das zufällige Startpasswort des ersten Verwalters steht in einer Datei, die nur der
- * Dienst lesen kann, nicht im Container-Log: Das Log sammeln und behalten oft andere. */
+/** The first admin's random start password is in a file only the
+ * service can read, not in the container log: the log is often collected and kept by others. */
 import { randomBytes } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,8 +9,8 @@ export function startpasswortFile(): string {
   return path.join(DATA_DIR, 'admin-startpasswort.txt');
 }
 
-/** Neu angelegt (O_EXCL) und dann umbenannt: rename ersetzt einen vorbereiteten Symlink,
- * statt ihm zu folgen, und zwei gleichzeitige Erststarts stossen nicht zusammen. */
+/** Created new (O_EXCL) and then renamed: rename replaces a prepared symlink
+ * instead of following it, and two concurrent first starts do not collide. */
 export function writeStartpasswort(name: string, passwort: string): string {
   const datei = startpasswortFile();
   fs.mkdirSync(path.dirname(datei), { recursive: true });

@@ -1,4 +1,4 @@
-/** Anleitungen eines Sets: hochgeladene und automatisch geholte. */
+/** A set's instructions: uploaded and automatically fetched ones. */
 import { withoutMissingFile } from '../infra/error';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,13 +22,13 @@ export async function rememberInstruction(
   await repo.addInstructionOne(sk.db, uid, sn, pfad, beschreibung, pfad);
 }
 
-/** Die Datei bleibt, solange eine andere Zeile auf sie zeigt. */
+/** The file stays as long as another row points to it. */
 export async function anleitungLoeschen(sk: SetsContext, uid: number, id: number): Promise<void> {
   const instr = (await repo.instructionPath(sk.db, id, uid)) ?? notFound();
   await repo.loescheAnleitung(sk.db, id, uid);
   if (!instr.local_path?.startsWith('/data/uploads/')) return;
-  // Weiss die Datenbank nicht, ob noch jemand die Datei braucht, bleibt sie liegen. Die
-  // Zeile eines anderen Kontos verbirgt der Zeilenschutz; gefragt wird deshalb im Systemrahmen.
+  // If the database does not know whether anyone still needs the file, it stays. Another
+  // account's row is hidden by row security; that is why the question is asked in the system frame.
   const pfad = instr.local_path;
   const rest = valueOr(
     await versuche(
@@ -37,15 +37,15 @@ export async function anleitungLoeschen(sk: SetsContext, uid: number, id: number
     ),
     { ok: 1 },
   );
-  // Der Eintrag ist schon weg; eine liegen gebliebene Datei kostet nur Platz.
+  // The entry is already gone; a leftover file only costs space.
   if (!rest)
     await fs.promises
       .unlink(path.join(APP_ROOT, instr.local_path.slice(1)))
       .catch(withoutMissingFile('anleitung:datei-loeschen'));
 }
 
-/** Die Anleitungen sind geteilt: Ersetzen darf nur der Verwalter (ein leerer
- * Abruf löschte sie sonst für alle). Andere holen, was fehlt, einmal je Set und Tag. */
+/** The instructions are shared: only the admin may replace them (an empty
+ * fetch would otherwise delete them for everyone). Others fetch what is missing, once per set and day. */
 export async function loadInstructionsNew(sk: SetsContext, uid: number, roh: string, verwalter: boolean) {
   const sn = normalisiereSetNummer(roh);
   if (!possibleSetNumber(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
@@ -61,5 +61,5 @@ export async function loadInstructionsNew(sk: SetsContext, uid: number, roh: str
   return { instructions, auftrag };
 }
 
-/** Hochgeladene Anleitungen liegen je Konto in einem eigenen Ordner darunter. */
+/** Uploaded instructions live per account in a folder of its own below. */
 export const ANLEITUNGS_WURZEL = path.join(DATA_DIR, 'uploads');

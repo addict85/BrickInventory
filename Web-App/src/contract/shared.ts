@@ -24,7 +24,7 @@ export const BrickLinkRef = z.looseObject({
   resolved: z.boolean(),
 });
 
-/** Eine Zeile im Bericht eines Imports; welche Felder sie trägt, hängt von der Quelle ab. */
+/** A row in an import's report; which fields it carries depends on the source. */
 export const ImportZeile = z.looseObject({
   set_number: z.string().optional(),
   zeile: z.number().int().optional(),
@@ -83,11 +83,11 @@ const PIECE = {
   condition: z.string().nullable(),
   conditions: z.array(z.string()),
   user_id: z.number().int().nullable(),
-  /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
+  /** Only in the household (besitzerAnhaengen); alone there are no owners to name. */
   owners: z.array(KontoName).optional(),
 };
 const VALUED = {
-  /** Die Preisangaben fehlen ohne Erfassung (kein Zustand zu bewerten); ausstehend nur, solange einer fehlt. */
+  /** The price details are missing without an acquisition (no condition to value); ausstehend only while one is missing. */
   ausstehend: z.boolean().optional(),
   from_cache: z.boolean().optional(),
   max_price: z.number().nullable().optional(),
@@ -100,7 +100,7 @@ const VALUED = {
   wert_gesamt: z.number().nullable(),
   acquisitions: z.array(ValuationAcquisition),
 };
-/** Der Bestand (manuelle Listen): Zähler, Lagerort; die Käufe lädt das Detail über /acquisitions. */
+/** The inventory (manual lists): counters, storage location; the detail loads the purchases via /acquisitions. */
 const IN_INVENTORY = {
   acq_count: z.number().int().nullable(),
   used_count: z.number().int().nullable(),
@@ -145,14 +145,14 @@ export const SetAggregate = z.looseObject({
   avg_purchase_price: z.number().nullable(),
 });
 
-/** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen (src/infra/result.ts). */
+/** Parts of the response that carry only substitute values after an error (src/infra/result.ts). */
 export const DEGRADED = z.array(z.string()).optional();
 
-/** Die schlichte Bestätigung; wer mehr sagt, erweitert sie (sonst wurde jedes Feld jeder Route überall freiwillig). */
+/** The plain confirmation; whoever says more extends it (otherwise every field of every route became optional everywhere). */
 export const GenericResponse = z.looseObject({ success: z.boolean() });
 
-/** Eine geänderte oder gelöschte Erfassung. Welche Felder kommen, hängt vom Weg ab (anderes Konto,
- * Menge, Löschen; beim Set das Zustands-Aggregat), deshalb sind sie freiwillig. */
+/** A changed or deleted acquisition. Which fields come depends on the path (other account,
+ * quantity, deletion; for the set the condition aggregate), hence they are optional. */
 export const Erfassungsantwort = GenericResponse.extend({
   new_quantity: z.number().int().optional(),
   from_user_id: z.number().int().optional(),
@@ -166,7 +166,7 @@ export const Erfassungsantwort = GenericResponse.extend({
   minifigs: z.number().int().optional(),
   source_emptied: z.boolean().optional(),
   quantity: z.number().int().nullable().optional(),
-  /** Teile der Antwort, die nach einem Fehler nur Ersatzwerte tragen (etwa `kaufpreis`). */
+  /** Parts of the response that carry only substitute values after an error (e.g. `kaufpreis`). */
   degradiert: z.array(z.string()).optional(),
 });
 
@@ -181,7 +181,7 @@ export const Minifig = z.looseObject({
   fig_number: z.string(),
   condition: z.string().nullable(),
   conditions: z.array(z.string()),
-  /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
+  /** Only in the household (besitzerAnhaengen); alone there are no owners to name. */
   owners: z.array(KontoName).optional(),
   owner_ids: z.array(z.number().int()).optional(),
   avg_purchase_price: z.number().nullable().optional(),
@@ -194,7 +194,7 @@ export const Minifig = z.looseObject({
   set_added_at: zeit.nullable(),
 });
 
-/** Eine Figur aus dem Inhalt eines Sets (minifigsListOfSets): dieselbe Form ohne Bestand. */
+/** A figure from a set's contents (minifigsListOfSets): the same shape without inventory. */
 export const SetMinifig = z.looseObject({
   fig_number: z.string(),
   fig_name: z.string(),
@@ -212,7 +212,7 @@ export const MinifigsResponse = z.looseObject({
   figs: z.array(Minifig),
 });
 
-/** `source` nennt die Herkunft der Liste; `error`, warum die Quelle gestört war. */
+/** `source` names the origin of the list; `error` why the source was disrupted. */
 export const SetFigurenResponse = z.looseObject({
   success: z.boolean(),
   source: z.string(),
@@ -234,12 +234,12 @@ const PART_IN_LIST = {
 
 export const Part = z.looseObject({
   ...PART_IN_LIST,
-  /** Fehlen nur im Rückfall auf Rebrickable (Teile eines Sets, das niemand erfasst hat). */
+  /** Missing only in the fallback to Rebrickable (parts of a set nobody captured). */
   condition: z.string().nullable().optional(),
   storage: z.string().nullable().optional(),
   category_name: z.string().nullable(),
   image_local: z.string().nullable(),
-  /** Nur mit Setfilter: die Sets, aus denen das Teil stammt. */
+  /** Only with a set filter: the sets the part comes from. */
   in_sets: z.string().nullable().optional(),
 });
 
@@ -290,5 +290,5 @@ export const VerwendendeSetsResponse = z.looseObject({
   sets: z.array(VerwendendesSet),
 });
 
-/** Löschen legt in den Papierkorb; die Kennungen holen es zurück. */
+/** Deleting moves into the trash; the identifiers bring it back. */
 export const InDenTrash = GenericResponse.extend({ papierkorb: z.array(z.number().int()) });

@@ -4,17 +4,17 @@ import * as repo from './repository/jobs';
 import { reportError } from '../infra/error';
 import type { JobsContext } from './context';
 
-/** Jede Belegung trägt die Kennung ihres Prozesses. Ein Prozess, der hart endet
- * (Speicher, Stromausfall), gibt nichts zurück; seine Sperre endet aber mit der
- * Verbindung, und der nächste Start übernimmt sofort statt nach der Frist. */
+/** Every claim carries its process's identifier. A process that ends hard
+ * (memory, power failure) returns nothing; its lock, however, ends with the
+ * connection, and the next start takes over immediately instead of after the deadline. */
 export const PROCESS = randomUUID();
 
 export const receiptId = (): string => `${PROCESS}/${randomUUID()}`;
 
-/** Die Sperrverbindung gehört zum Zugang, aus dessen Pool sie stammt. */
+/** The lock connection belongs to the access whose pool it comes from. */
 const sperre = (k: JobsContext) => k.faecher.fach('prozessSperre', () => ({ client: null as PoolClient | null }));
 
-/** @returns übernommene Aufträge toter Prozesse */
+/** @returns jobs taken over from dead processes */
 export async function reportProcessAn(k: JobsContext): Promise<number> {
   const s = sperre(k);
   if (!s.client) {

@@ -1,5 +1,5 @@
-/** Benutzerverwaltung für Verwalter: Jede Änderung verlangt Passwort und
- * zweiten Faktor des Verwalters und steht im Protokoll. */
+/** User management for administrators: every change requires the administrator's password and
+ * second factor and is logged. */
 import { guardFor } from '../api_v1/middleware';
 import { nutzerId, signedInUserId, confirmWithFactor, nutzerName } from '../../src/account/http/login';
 import { passwordLack } from '../../src/infra/passwordRule';
@@ -23,11 +23,11 @@ export function buildUserRouter(d: Pick<Dienste, 'account'>) {
     if (!USERNAME_RE.test(String(username))) fachfehler('ungueltig', 'benutzername_ungueltig');
     const mangel = passwordLack(password, username);
     if (mangel) fachfehler('ungueltig', mangel);
-    // Streng: Die Zeichenkette "false" ist in JavaScript wahr und legte einen
-    // Verwalter an.
+    // Strict: the string "false" is truthy in JavaScript and would create an
+    // administrator.
     const asAdmin = req.eingabe.is_admin ?? req.eingabe.isAdmin ?? false;
-    // Passwort bestätigen und protokollieren — eine erbeutete Sitzung soll keinen
-    // Verwalter anlegen.
+    // Confirm the password and log it — a captured session must not create an
+    // administrator.
     const verwalter = signedInUserId(req);
     if (!(await confirmWithFactor(d.account, req, res, verwalter, req.eingabe.admin_password))) return;
     if ((await d.account.putAccountAn(verwalter, username, password, asAdmin)) === null)
@@ -42,7 +42,7 @@ export function buildUserRouter(d: Pick<Dienste, 'account'>) {
 
   router.endpunkt('PUT /api/v1/auth/users/:id/admin', requireAdmin, async (req, res) => {
     const targetId = req.pfad.id;
-    // Streng: "false" ist in JavaScript wahr und entzöge sonst keine Rechte.
+    // Strict: "false" is truthy in JavaScript and would otherwise revoke no rights.
     const soll = req.eingabe.is_admin;
     if (targetId === nutzerId(req) && !soll) fachfehler('ungueltig', 'eigene_adminrolle');
     if (!(await d.account.givesAccount(targetId))) notFound('benutzer_nicht_gefunden');
@@ -55,8 +55,8 @@ export function buildUserRouter(d: Pick<Dienste, 'account'>) {
         durch: nutzerName(req) ?? '',
       });
 
-    // Sitzungen enden, weil istVerwalter() zuerst das nie nachgeführte
-    // `req.session.isAdmin` fragt; ein Entzug wirkte sonst im offenen Fenster nicht.
+    // Sessions end, because istVerwalter() first asks the never updated
+    // `req.session.isAdmin`; a revocation would otherwise not take effect in the open window.
     return {};
   });
 
@@ -70,7 +70,7 @@ export function buildUserRouter(d: Pick<Dienste, 'account'>) {
     return r.effectiveAb ? { is_active: true, effective_at: r.effectiveAb.toISOString() } : { is_active: soll };
   });
 
-  // Für Registrierungen, deren Bestätigungsmail nie ankam: Der Verwalter bürgt für die Adresse.
+  // For registrations whose confirmation mail never arrived: the administrator vouches for the address.
   router.endpunkt('PUT /api/v1/auth/users/:id/freischalten', requireAdmin, async (req, res) => {
     const targetId = req.pfad.id;
     if (!(await d.account.givesAccount(targetId))) notFound('benutzer_nicht_gefunden');
@@ -79,7 +79,7 @@ export function buildUserRouter(d: Pick<Dienste, 'account'>) {
     return {};
   });
 
-  /** Ohne aktuelles Passwort des Ziels, aber mit dem des Verwalters. */
+  /** Without the target's current password, but with the administrator's. */
   router.endpunkt('PUT /api/v1/auth/users/:id/password', requireAdmin, async (req, res) => {
     const { password } = req.eingabe || {};
     const targetId = req.pfad.id;
@@ -87,8 +87,8 @@ export function buildUserRouter(d: Pick<Dienste, 'account'>) {
     const mangel = passwordLack(password, (await d.account.accountShortOf(targetId))?.username);
     if (mangel) fachfehler('ungueltig', mangel);
 
-    // Mit dem Passwort eines anderen Kontos lässt sich dieses übernehmen —
-    // eine offene Verwaltersitzung allein genügt dafür nicht.
+    // With the password of another account this one can be taken over —
+    // an open administrator session alone is not enough for that.
     if (!(await confirmWithFactor(d.account, req, res, signedInUserId(req), req.eingabe.admin_password))) return;
     const r = await d.account.verwalter.passwordByAdmin(signedInUserId(req), targetId, password ?? '');
     if (!r) notFound('benutzer_nicht_gefunden');
@@ -101,7 +101,7 @@ export function buildUserRouter(d: Pick<Dienste, 'account'>) {
     return wirksam ? { effective_at: wirksam.toISOString() } : {};
   });
 
-  // Notausgang, wenn Telefon UND Wiederherstellungscodes weg sind.
+  // Emergency exit when phone AND recovery codes are gone.
   router.endpunkt('DELETE /api/v1/auth/users/:id/zweiter-faktor', requireAdmin, async (req, res) => {
     const id = req.pfad.id;
     if (id === nutzerId(req)) fachfehler('ungueltig', 'eigener_zweiter_faktor');

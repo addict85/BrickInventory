@@ -1,5 +1,5 @@
-/** POST /settings ohne HTTP. Hier statt in src/settings, weil Mail, Protokoll
- * und Brickset-Warteschlange höhere Stufen sind (test/layers.test.js). */
+/** POST /settings without HTTP. Here instead of in src/settings, because mail, log
+ * and Brickset queue are higher levels (test/layers.test.js). */
 import { SECRET_KEYS, isMasked, isValidGlobalValue } from '../settings';
 import { fachfehler } from '../infra/errorTexts';
 import { inSystemContext } from '../infra/accountContext';
@@ -14,18 +14,18 @@ type SettingsInput = Eingabe<'POST /api/v1/settings'>;
 export interface SaveSettingsOptions {
   uid: number;
   name: string;
-  /** Verwalter, und ein App-Token hat die Freigabe schon (Route). */
+  /** Admin, and an app token already has the approval (route). */
   verwalter: boolean;
-  /** Passwort und Faktor; sendet bei `false` die Absage selbst. */
+  /** Password and factor; on `false` sends the refusal itself. */
   confirm: (passwort: string | null | undefined) => Promise<boolean>;
 }
 
-/** Ob ein Verwalter-Teil vorliegt: Nur dann braucht ein App-Token die Freigabe. */
+/** Whether an admin part is present: only then does an app token need the approval. */
 export const hasGlobalValues = (e: SettingsInput) => GLOBAL_SETTINGS.some(k => e[k] !== undefined);
 
-/** Mailserver, Registrierung und API-Schlüssel nur mit Passwort: Eine erbeutete
- * Verwaltersitzung läse sonst Rücksetz-Mails mit oder öffnete still die Registrierung.
- * Ein erster API-Schlüssel lenkt nichts um; nur der Einrichtungsassistent fragt dafür nicht nach. */
+/** Mail server, registration and API keys only with password: a stolen
+ * admin session would otherwise read reset mails or silently open registration.
+ * A first API key redirects nothing; only the setup wizard does not ask for it. */
 async function sensitiveKeys(k: ManagementContext, e: SettingsInput): Promise<string[]> {
   const sensitive: string[] = [];
   const einrichtung = !(await k.settings.globalValue('einrichtung_erledigt'));
@@ -43,8 +43,8 @@ async function sensitiveKeys(k: ManagementContext, e: SettingsInput): Promise<st
   return sensitive;
 }
 
-/** Eine unverändert zurückgeschickte Maske ist kein neuer Wert, sonst überschriebe
- * jedes Speichern die echten Schlüssel mit Punkten. */
+/** A mask sent back unchanged is not a new value, otherwise every save would
+ * overwrite the real keys with dots. */
 async function writeGlobal(kx: ManagementContext, uid: number, e: SettingsInput): Promise<void> {
   const geaendert: string[] = [];
   for (const key of GLOBAL_SETTINGS) {
@@ -54,13 +54,13 @@ async function writeGlobal(kx: ManagementContext, uid: number, e: SettingsInput)
   }
   if (geaendert.length)
     await kx.account.verwalter.rememberAdminAction(uid, uid, 'einstellungen_geaendert', geaendert.join(', '));
-  // Wer das Mailformular gespeichert hat, hat den Hinweis auf die alte Ausnahme gesehen.
+  // Whoever saved the mail form has seen the hint about the old exception.
   if (GLOBAL_SETTINGS.some(k => k.startsWith('smtp_') && e[k] !== undefined))
     await kx.settings.deleteGlobalValues('smtp_insecure_tls');
 }
 
-/** Alle Schreibvorgänge samt Protokoll in einer Transaktion: Scheitert ein Wert,
- * steht keiner der anderen halb gespeichert da. @returns false nach einer Absage */
+/** All writes including the log in one transaction: if one value fails,
+ * none of the others is left half saved. @returns false after a refusal */
 export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: SaveSettingsOptions): Promise<boolean> {
   const global = o.verwalter && hasGlobalValues(e);
   if (global) {
@@ -77,11 +77,11 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
   if (sensitive.length && !e.admin_password) fachfehler('ungueltig', 'aktuelles_passwort_erforderlich');
   if (sensitive.length && !(await o.confirm(e.admin_password))) return false;
 
-  // Die Währung gilt für den ganzen Haushalt und braucht deshalb den Systemrahmen, der
-  // sich in einer Transaktion nicht betreten lässt: vorher und für sich. Scheitert sie,
-  // ist noch nichts geschrieben; der Preis-Job folgt nur einer echten Änderung.
+  // The currency applies to the whole household and therefore needs the system frame, which
+  // cannot be entered within a transaction: beforehand and on its own. If it fails,
+  // nothing has been written yet; the price job only follows a real change.
   if (e.currency !== undefined) await kx.settings.setUserSetting(o.uid, 'currency', e.currency);
-  // Globale Werte schreibt nur die Systemrolle (0117): dann die ganze Transaktion in ihrem Rahmen.
+  // Global values are only written by the system role (0117): then the whole transaction in its frame.
   const rahmen = <T>(f: () => Promise<T>) => (global ? inSystemContext('globale Einstellungen', f) : f());
   const bricksetAlt = await rahmen(() =>
     kx.transaktion(async t => {
@@ -96,7 +96,7 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
     }),
   );
   if (!global) return true;
-  // Erst nach dem COMMIT: Ein Zwischenspeicher läse vorher noch den alten Wert ein.
+  // Only after the COMMIT: a cache would otherwise still read the old value.
   await kx.settings.notifyGlobalChange();
   if (sensitive.some(k => !k.startsWith('smtp_')))
     kx.account.adminHintInBackground('einstellungen_geaendert', { konto: sensitive.join(', '), durch: o.name });

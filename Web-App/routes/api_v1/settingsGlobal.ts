@@ -1,4 +1,4 @@
-/** Globale Einstellungen, Ein- und Ausfuhr, Einrichtung, Quellen- und SMTP-Test; in settings.ts hinter requireLogin. */
+/** Global settings, import and export, setup, source and SMTP test; in settings.ts behind requireLogin. */
 import multer from 'multer';
 import { FORM_LIMITS } from '../../src/http/fileUpload';
 import { kontoSchranke, guardFor } from './middleware';
@@ -18,7 +18,7 @@ export function buildSettingsGlobalRouter(
 
   router.endpunkt('POST /api/v1/settings', requireToken, async (req, res) => {
     const uid = req.apiUser.user_id;
-    // Globale Werte eines Verwalters gehen wie jede Verwalter-Route über den Schrittschutz.
+    // An administrator's global values go through the step guard like every administrator route.
     const verwalter = istVerwalter(req) && hasGlobalValues(req.eingabe);
     if (verwalter && !(await released(d.account, req, res, 'verwaltung'))) return;
     const fertig = await d.management.saveSettings(req.eingabe, {
@@ -30,7 +30,7 @@ export function buildSettingsGlobalRouter(
     if (fertig) return {};
   });
 
-  // Über readSettings(), damit die Maskierung nicht an der Verpackung vorbeigeht.
+  // Via readSettings(), so the masking does not get bypassed by the packaging.
   router.endpunkt('GET /api/v1/settings/raw', requireToken, async req => {
     return {
       settings: await d.settings.readSettings(req.apiUser.user_id, await asAdmin(d.account, req)),
@@ -70,7 +70,7 @@ export function buildSettingsGlobalRouter(
     importUpload.single('file'),
     async (req, res) => {
       if (!req.file) fachfehler('ungueltig', 'keine_datei');
-      // Als Verwalter schreibt der Import globale Werte und plant die Aufträge neu.
+      // As administrator the import writes global values and reschedules the jobs.
       const verwalter = istVerwalter(req);
       if (verwalter && !(await released(d.account, req, res, 'verwaltung'))) return;
       return { ...(await d.management.importConfig(req.apiUser.user_id, verwalter, req.file.buffer)) };
@@ -79,7 +79,7 @@ export function buildSettingsGlobalRouter(
 
   router.endpunkt('POST /api/v1/settings/smtp-test', requireAdmin, async (req, res) => {
     const uid = req.apiUser.user_id;
-    // Sonst wäre der Mailserver für eine erbeutete Verwaltersitzung ein Relais an jede Adresse.
+    // Otherwise the mail server would be a relay to any address for a captured administrator session.
     const zuOft = await d.account.accountThrottled('smtp-test', uid, 10, 60 * 60 * 1000);
     if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
 
@@ -88,7 +88,7 @@ export function buildSettingsGlobalRouter(
     if (!emailValid(to)) {
       fachfehler('ungueltig', 'keine_ziel_email');
     }
-    // Wie das Ändern der Mail-Einstellungen: an eine fremde Adresse nur mit Passwort.
+    // Like changing the mail settings: to a foreign address only with password.
     if (
       to.toLowerCase() !== eigene.toLowerCase() &&
       !(await confirmWithFactor(d.account, req, res, uid, req.eingabe.password))
@@ -98,8 +98,8 @@ export function buildSettingsGlobalRouter(
     res.json(await d.mail.sendSmtpTest(to));
   });
 
-  // Offen, solange der Verwalter sie nicht abgeschlossen hat UND noch etwas
-  // fehlt — eine eingerichtete Installation sieht den Assistenten nie.
+  // Open as long as the administrator has not completed it AND something
+  // is missing — a configured installation never sees the wizard.
   router.endpunkt('GET /api/v1/settings/einrichtung', requireAdmin, async req => {
     const wert = async (k: string) => !!(await d.settings.globalValue(k));
     const passwort = await d.account.passwordSwitchDue(req.apiUser.user_id);
@@ -123,7 +123,7 @@ export function buildSettingsGlobalRouter(
     return {};
   });
 
-  // Prüft den GESPEICHERTEN Zugang mit einem kleinen Abruf.
+  // Checks the STORED access with a small request.
   router.endpunkt('POST /api/v1/settings/quelle-testen', requireAdmin, async req => {
     const absage = await d.management.checkSource(req.eingabe.quelle);
     if (!absage) return {};

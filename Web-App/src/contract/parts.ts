@@ -45,7 +45,7 @@ export const BrickColorsResponse = z.looseObject({
 export const ManualPartsResponse = z.looseObject({
   success: z.boolean(),
   ...PAGES_DETAIL,
-  /** Die Liste führt keine Erfassungen; die Detailansicht lädt sie über /acquisitions. */
+  /** The list carries no acquisitions; the detail view loads them via /acquisitions. */
   parts: z.array(ManuellesTeil),
   degradiert: DEGRADED,
 });
@@ -94,7 +94,7 @@ export const TeilFarbeResponse = z.looseObject({
   vereint: z.number().int(),
 });
 
-/** BrickLink-Farbe → Rebrickable-Farbe; `source` sagt, woher die Tabelle stammt. */
+/** BrickLink color → Rebrickable color; `source` says where the table comes from. */
 export const BlFarbTabelle = z.looseObject({
   success: z.literal(true),
   source: z.string(),

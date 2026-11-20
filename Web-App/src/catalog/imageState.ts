@@ -9,19 +9,19 @@ import type { CatalogContext } from './context';
 export async function imagesForFollowUp(k: CatalogContext) {
   const [sets, teile, figuren] = await Promise.all([
     k.bildlage.setsWithMissingCatalogImages(),
-    // Der gemeinsame Katalog führt nur geprüfte Adressen: Die Datei gilt für alle Konten.
+    // The shared catalog only lists verified addresses: the file applies to all accounts.
     k.bildlage.manualPartsWithoutImage(),
-    // Alle Figuren, nicht nur manuelle: Sonst lief jede Kachel über den Proxy.
+    // All figures, not only manual ones: otherwise every tile would go through the proxy.
     k.bildlage.minifigsWithoutImage(),
   ]);
   return { sets, teile, figuren };
 }
 
-/** Vorhandenes bleibt. @returns ob Brickset das Set kennt */
+/** Existing data stays. @returns whether Brickset knows the set */
 export async function fillFromBrickset(k: CatalogContext, setNumber: string): Promise<boolean> {
   const info = await k.externalSources.quellen.setAngaben(setNumber);
   if (!info) return false;
-  // Scheitert es, wirft es: Der Auftrag versucht es erneut, statt das Set namenlos zu lassen.
+  // If it fails, it throws: the job tries again instead of leaving the set nameless.
   await k.bildlage.fillSetGaps(setNumber, info);
   return true;
 }
@@ -33,8 +33,8 @@ export type Bildposten = {
   image_local?: string | null | undefined;
 };
 
-/** Nur aus geprüfter Quelle: Die Dateien gelten für alle Konten, ein Bild vom
- * Client landete sonst bei allen anderen. */
+/** Only from a verified source: the files apply to all accounts, an image from the
+ * client would otherwise end up with all the others. */
 export async function imagesFromCatalog<T extends Bildposten>(
   k: CatalogContext,
   posten: T[],
@@ -69,16 +69,16 @@ export async function imagesFromCatalog<T extends Bildposten>(
   }
 }
 
-/** Nicht, wenn ein Abruf wartet oder kürzlich ohne Ergebnis lief — danach
- * wieder, sobald die erledigten Aufträge verfallen. */
+/** Not while a fetch is waiting or recently ran without a result — again
+ * afterwards, as soon as the finished jobs expire. */
 export async function backfillInstructions(k: CatalogContext): Promise<void> {
   const missing = await k.bildlage.setsWithoutInstructionFetch();
   if (missing.length) console.log(`[instr-queue] Enqueueing ${missing.length} sets missing instructions`);
   for (const set_number of missing) await anleitungEinreihen(k, set_number);
 }
 
-/** Die Oberfläche lädt nur über image_local aus images/sets; ohne den Eintrag
- * ginge jedes Set-Bild weiter über den Proxy, obwohl die Datei längst da ist. */
+/** The UI only loads from images/sets via image_local; without the entry
+ * every set image would keep going through the proxy although the file has long been there. */
 export async function enterSetImageLocal(
   k: CatalogContext,
   setNumber: string,
@@ -94,7 +94,7 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
   console.log(`[set-img-bg] Downloading ${missing.length} missing set images…`);
   let gescheitert = 0;
   for (const { set_number, image_url } of missing) {
-    // Nur 404/410 heisst „gibt es nicht“; Drosselung beendet den Lauf, alles andere versucht der nächste.
+    // Only 404/410 means "does not exist"; throttling ends the run, everything else is tried by the next one.
     const info: { status?: number } = {};
     const r = await versuche('nachlauf:setBildHerunterladen', k.images.setBildLaden(image_url, set_number, info));
     const local = r.ok ? r.wert : null;
@@ -104,7 +104,7 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
       console.warn(`[set-img-bg] CDN drosselt (HTTP ${info.status}) — Rest im nächsten Lauf`);
       break;
     }
-    // Ein Fehlschlag zählt im Abschluss; der nächste Lauf findet das Bild wieder ohne Eintrag.
+    // A failure counts in the summary; the next run finds the image without an entry again.
     if (local && !(await versuche(`bilder:set ${set_number}`, k.bildlage.rememberSetImageLocal(set_number, local))).ok)
       gescheitert++;
     if (local && !(await versuche('nachlauf:vorschauErzeugenAus', k.images.createPreview(local))).ok) gescheitert++;
@@ -113,7 +113,7 @@ export async function reloadSetImages(k: CatalogContext): Promise<void> {
   console.log(`[set-img-bg] Done${gescheitert ? `, ${gescheitert} Schritte gescheitert` : ''}`);
 }
 
-/** Asynchron geprüft, damit der Lauf die Ereignisschleife nicht blockiert. */
+/** Checked asynchronously so that the run does not block the event loop. */
 export async function backfillThumbnails(k: CatalogContext): Promise<void> {
   const paths = await k.bildlage.localCatalogImages();
   let generated = 0,

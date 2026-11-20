@@ -2,12 +2,12 @@ import { createWorker, type Bearbeitertabelle, type WorkerOptions } from './jobW
 import type { JobKind } from '../src/jobQueue';
 import type { Dienste } from '../src/services';
 
-/** Was die Bereiche in der Verdrahtung angemeldet haben (startup/wiring.ts), je Art. */
+/** What the areas registered in the wiring (startup/wiring.ts), per kind. */
 const editor = (d: Pick<Dienste, 'jobQueue'>): Bearbeitertabelle =>
   Object.fromEntries(d.jobQueue.signedInKinds().map(a => [a.art, a]));
 
-/** Der Worker gehört dem, der ihn startet (startup/jobsProcess.ts, Testhilfen): Er hält ihn
- * und beendet ihn mit stoppe(); ein Speicher im Modul liesse zwei Starts einander sehen. */
+/** The worker belongs to whoever starts it (startup/jobsProcess.ts, test helpers): it holds it
+ * and ends it with stoppe(); a store in the module would let two starts see each other. */
 function startJobWorker(d: Pick<Dienste, 'jobQueue'>, o: WorkerOptions & { arten?: JobKind[] } = {}) {
   const alle = editor(d);
   const tabelle: Bearbeitertabelle = o.arten ? Object.fromEntries(o.arten.map(a => [a, alle[a]])) : alle;

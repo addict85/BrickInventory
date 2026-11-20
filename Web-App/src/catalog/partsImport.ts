@@ -11,7 +11,7 @@ import { rememberBlNumber, rememberBlNumbers, merkeBlNummerUnveraendert } from '
 import { merkeSetTeile, type SetPartRow } from './catalogMaintenance';
 import type { CatalogContext } from './context';
 
-/** Nach Teil und Farbe sortiert: eine feste Sperrreihenfolge gegen Verklemmungen. */
+/** Sorted by part and color: a fixed lock order against deadlocks. */
 function setPartRows(roh: RbSetTeil[]): SetPartRow[] {
   const zeilen: SetPartRow[] = [];
   for (const t of roh) {
@@ -48,7 +48,7 @@ function setPartRows(roh: RbSetTeil[]): SetPartRow[] {
   );
 }
 
-/** Die Teile eines Sets von Rebrickable, nach Teil und Farbe sortiert; null ohne Teile. */
+/** A set's parts from Rebrickable, sorted by part and color; null without parts. */
 export async function loadSetParts(
   k: CatalogContext,
   setNumber: string,
@@ -60,7 +60,7 @@ export async function loadSetParts(
   return zeilen.length ? { n, zeilen } : null;
 }
 
-/** In der Transaktion des Aufrufers (t.katalog), neben dem Eintrag in den Bestand. */
+/** In the caller's transaction (t.katalog), next to the entry in the inventory. */
 export async function setTeileMerken(k: CatalogContext, n: string, zeilen: SetPartRow[]) {
   await merkeSetTeile(k, n, zeilen, k.db);
   await rememberBlNumbers(
@@ -71,7 +71,7 @@ export async function setTeileMerken(k: CatalogContext, n: string, zeilen: SetPa
   );
 }
 
-/** Fehlt ein Bild, lädt der Bildauftrag es nach. */
+/** If an image is missing, the image job loads it later. */
 export async function enqueueSetPartImages(k: CatalogContext, n: string, zeilen: SetPartRow[]) {
   if (zeilen.some(z => z.imageUrl && !z.imageLocal))
     await k.jobQueue.placeJobOne('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxAttempts: 3 });
@@ -81,7 +81,7 @@ function fetchPage(k: CatalogContext, url: string, rbKey: string): Promise<{ sta
   return k.externalSources.quellen.rebrickableRaw(url, rbKey);
 }
 
-/** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */
+/** An empty bl_id means "looked up" and does not trigger a second reload. */
 export async function reloadBlNumbers(k: CatalogContext, lauf: JobRun = {}) {
   const rbKey = await k.einstellungen.globalValue('rebrickable_api_key');
   if (!rbKey) return;

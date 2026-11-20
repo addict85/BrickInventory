@@ -1,6 +1,6 @@
-/** Die eine Stelle, an der verdrahtet wird: Bereiche und die Klienten
- * (über src/externalSources) entstehen aus einem Datenbankzugang. Der Einstieg (server.ts, Skripte,
- * Testhilfen) hält das Ergebnis und reicht es weiter; einen Prozess-Speicher gibt es nicht. */
+/** THE one place where wiring happens: areas and the clients
+ * (via src/externalSources) arise from one database access. The entry point (server.ts, scripts,
+ * test helpers) holds the result and passes it on; there is no process store. */
 import path from 'node:path';
 import { createJobs, type Anmeldung, type JobKind } from '../src/jobQueue';
 import { dbKonfigFromEnvironment, createDb, type Db } from '../db/database';
@@ -31,26 +31,26 @@ import { LESEVERTRAG, type Dienste } from '../src/services';
 
 export type { Dienste } from '../src/services';
 
-/** Was ein Test statt des Echten gibt: eigenes Bildwerk, eigene Fremdquellen. */
+/** What a test provides instead of the real thing: own image works, own external sources. */
 export interface Components {
   bildwerk?: ImageWorker;
-  /** Ersetzte Klienten (src/externalSources/sources.ts), gelesen beim Aufruf. */
+  /** Replaced clients (src/externalSources/sources.ts), read at call time. */
   quellen?: Partial<Quellen>;
-  /** Nur Testhilfen: Hier legt jede Fabrik ihren Kontext ab (Einblick). */
+  /** Test helpers only: every factory stores its context here (insight). */
   contexts?: Record<string, unknown>;
-  /** Die Konfiguration; ohne Angabe die des Prozesses (src/infra/config.ts). */
+  /** The configuration; without a value that of the process (src/infra/config.ts). */
   konfig?: Readonly<Konfig>;
-  /** Die Zeit der Dienste (k.uhr); ohne Angabe die des Systems. */
+  /** The services' time (k.uhr); without a value that of the system. */
   uhr?: Uhr;
 }
 type Gesetzt = Components & { konfig: Readonly<Konfig>; uhr: Uhr };
 
-// Der Katalog-Import läuft in einem eigenen Prozess; sein Einstieg liegt im Bau unter jobs/.
+// The catalog import runs in a process of its own; its entry point lives in the build under jobs/.
 const IMPORT_PROCESS = path.join(__dirname, '..', 'jobs', 'csvImportWorker.js');
 
-/** Alle Bereiche über einen Zugang, von unten nach oben: Jeder bekommt die Dienste
- * der tieferen, die er braucht, als Teil seines Kontexts. Wer einen höheren braucht,
- * horcht auf ein Ereignis des tieferen (etwa atSetImageLoaded); späte Bindung gibt es nicht. */
+/** All areas over one access, from bottom to top: each gets the services
+ * of the lower ones it needs as part of its context. Whoever needs a higher one
+ * listens to an event of the lower one (e.g. atSetImageLoaded); there is no late binding. */
 export function buildServices(db: Db, components: Components = {}): Dienste {
   const d = buildAreas(db, {
     ...components,
@@ -61,7 +61,7 @@ export function buildServices(db: Db, components: Components = {}): Dienste {
   return d;
 }
 
-/** Jede deklarierte Art (JobPayloads): Der Übersetzer verlangt hier jede, der Start prüft ihre Anmeldung. */
+/** Every declared kind (JobPayloads): the compiler requires each here, startup checks their registration. */
 export const DECLARED_KINDS: Record<JobKind, true> = {
   anleitung: true,
   aufraeumen: true,
@@ -86,7 +86,7 @@ export const DECLARED_KINDS: Record<JobKind, true> = {
 
 export class KindNotSignedIn extends Error {}
 
-/** Jeder Bereich meldet seine Auftragsarten mit Nutzlast und Ausführer; die Warteschlange kennt keine. */
+/** Every area registers its job kinds with payload and executor; the queue knows none. */
 function reportJobTypesAn(d: Dienste): void {
   const arten: Anmeldung[] = [
     ...d.images.auftragsarten(),
@@ -106,7 +106,7 @@ function reportJobTypesAn(d: Dienste): void {
 
 type Show = ReturnType<typeof inspectIn>;
 
-/** Je Bereich ein Rückruf, der seinen Kontext ablegt; ohne Ablage keiner. */
+/** One callback per area that stores its context; without storage none. */
 function inspectIn(contexts: Record<string, unknown> | undefined) {
   return (name: string) =>
     contexts
@@ -116,7 +116,7 @@ function inspectIn(contexts: Record<string, unknown> | undefined) {
       : undefined;
 }
 
-/** Die Bereiche bis zum Katalog: Sie brauchen nur einander und den Zugang. */
+/** The areas up to the catalog: they only need each other and the access. */
 function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Show) {
   const throttle = createThrottle({ db, uhr }, zeige('throttle'));
   const einstellungen = createSettings({ db, uhr, throttle, lesevertrag: LESEVERTRAG }, zeige('settings'));
@@ -143,7 +143,7 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
     { db, uhr, einstellungen, jobQueue, household, externalSources, images, throttle, lesevertrag: LESEVERTRAG },
     zeige('catalog'),
   );
-  // Den Eintrag beim Set macht der Katalog (höher); er horcht auf die Bilder, statt dass sie ihn rufen.
+  // The entry on the set is made by the catalog (higher); it listens to the images instead of them calling it.
   images.atSetImageLoaded((sn, quelle) => catalog.enterSetImageLocal(sn, quelle));
   return {
     throttle,
@@ -234,8 +234,8 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
   return { ...grund, finances, inventory, sets, parts, minifigs, wanted, vouchers, collection, management };
 }
 
-/** Der Zugang des Prozesses samt Erststart, verdrahtet. Der Erststart legt das erste
- * Konto über die Dienste an, die erst nach dem Zugang entstehen. */
+/** The process's access including the first start, wired. The first start creates the first
+ * account via the services that only arise after the access. */
 export function wireProcess(): { db: Db; dienste: Dienste } {
   const fertig: { d: Dienste | null } = { d: null };
   const db = createDb(dbKonfigFromEnvironment(), {

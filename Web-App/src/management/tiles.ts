@@ -1,5 +1,5 @@
-/** Die Kacheln der Verwaltung als Sicht auf auftraege.fortschritt (k.fortschritt()):
- * Ein zweiter Speicher konnte dem ersten widersprechen. */
+/** The admin's tiles as a view on auftraege.fortschritt (k.fortschritt()):
+ * a second store could contradict the first. */
 
 import { logAndContinue } from '../infra/error';
 import { IMAGE_LOAD_COUNTER } from '../catalog';

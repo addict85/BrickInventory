@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { auftragsart, nextTimeOfDay, type Anmeldung, type Bearbeiter } from '../jobQueue';
 import type { ForeignSourcesContext } from './context';
 
-/** Je Set ein Auftrag, fällig zur eingestellten Uhrzeit. `versuch` zählt über
- * Aufträge hinweg: Nach 30 Tagen ohne Kontingent gibt Brickset auf. */
+/** One job per set, due at the configured time of day. `versuch` counts across
+ * jobs: after 30 days without quota Brickset gives up. */
 export const BRICKSET_AT_MOST = 30;
 export const BRICKSET_TIME_OF_DAY = { setting: 'job_time_brickset_retry', vorgabe: '04:00' } as const;
 export const BricksetPayload = z.object({
@@ -17,21 +17,21 @@ declare module '../jobQueue/jobs' {
   }
 }
 
-/** Typ und Anmeldung der Art stehen hier, wo sie eingereiht wird; den Lauf gibt der Katalog, der die Sets kennt. */
+/** The kind's type and registration live here, where it is queued; the run is provided by the catalog, which knows the sets. */
 export function bricksetJobType(ausfuehren: Bearbeiter<'brickset'>['ausfuehren']): Anmeldung {
   return auftragsart({ art: 'brickset', nutzlast: BricksetPayload, ausfuehren, exklusiv: true });
 }
 
 const schluessel = (sn: string) => `brickset:${sn}`;
 
-/** Bald (Störung der Gegenseite) oder zur Tageszeit. */
+/** Soon (disruption on the remote side) or at the time of day. */
 export async function bricksetDueAb(k: ForeignSourcesContext, bald: boolean): Promise<Date> {
   if (bald) return new Date(k.uhr.jetzt() + 30 * 60_000);
   const zeit = await k.jobQueue.dailyTimeOfDay(BRICKSET_TIME_OF_DAY.setting, BRICKSET_TIME_OF_DAY.vorgabe);
   return nextTimeOfDay(zeit, k.uhr.datum());
 }
 
-/** @returns vorgemerkt false, wenn es schon BRICKSET_AT_MOST Mal vorgemerkt war */
+/** @returns vorgemerkt false if it was already queued BRICKSET_AT_MOST times */
 export async function bricksetReserve(k: ForeignSourcesContext, sn: string, fehler: string, bald = false) {
   const r = await k.jobQueue.wiedervorlage.rememberBefore(
     'brickset',
@@ -50,7 +50,7 @@ export function bricksetForgotten(k: ForeignSourcesContext, sn: string): Promise
   return k.jobQueue.wiedervorlage.vergiss(schluessel(sn));
 }
 
-/** Ohne Nummer alle; die Pause der Art (Kontingent erschöpft) endet mit. */
+/** Without a number, all; the kind's pause (quota exhausted) ends as well. */
 export async function bricksetNow(k: ForeignSourcesContext, sn?: string): Promise<void> {
   await k.jobQueue.endPause('brickset');
   await k.jobQueue.wiedervorlage.jetzt('brickset', sn ? schluessel(sn) : undefined);

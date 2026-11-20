@@ -1,4 +1,4 @@
-/** Kaufpreis-Erfassungen; die Regeln stehen in src/collection/acquisitions.ts. */
+/** Purchase price acquisitions; the rules live in src/collection/acquisitions.ts. */
 import { acquisitionTotals } from '../../src/inventory';
 import { Degradations } from '../../src/infra/result';
 import { viewOf, guardFor } from './middleware';
@@ -6,13 +6,13 @@ import type { ErfassungsArt } from '../../src/collection';
 import { vertragsRouter, type Anfrage } from '../../src/http/contractRouter';
 import type { Dienste } from '../../src/services';
 
-/** Ohne bekannten Preis fehlt der Betrag, statt null zu sein: Geld hat im Vertrag einen Typ. */
+/** Without a known price the amount is missing instead of null: money has a type in the contract. */
 function withoutClearAmount<T extends { amount: number | null }>(summe: T) {
   const { amount, ...rest } = summe;
   return amount === null ? rest : { ...rest, amount };
 }
 
-/** Summe in der Kontowährung (src/inventory/acquisitions.ts), in der Form des Vertrags. */
+/** Sum in the account currency (src/inventory/acquisitions.ts), in the shape of the contract. */
 async function inKontowaehrung<T extends Parameters<Dienste['inventory']['erfassungenInKontowaehrung']>[0][number]>(
   d: Pick<Dienste, 'account' | 'inventory' | 'parts' | 'minifigs' | 'collection'>,
   rows: T[],
@@ -23,7 +23,7 @@ async function inKontowaehrung<T extends Parameters<Dienste['inventory']['erfass
 }
 
 type Schluessel = (pfad: Record<string, string | number>) => Array<string | number>;
-/** Was die drei Routen teilen: die Kennung im Pfad und ein Vertragsschema (Erfassungsaenderung). */
+/** What the three routes share: the id in the path and a contract schema (Erfassungsaenderung). */
 type Erfassungsanfrage<E = unknown> = AuthedRequest & {
   pfad: Record<string, string | number> & { acqId: number };
   eingabe: E;
@@ -59,9 +59,9 @@ export function buildAcquisitionsRouter(
 
   router.endpunkt('GET /api/v1/sets/:setNumber/acquisitions', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    // Blickfeld: Im Haushalt gehören die Kaufpreise eines Sets oft mehreren Konten.
-    // Scheitert das Lesen, zeigt die App eine leere Liste statt einer Fehlerseite;
-    // `degradiert` sagt ihr, dass sie nicht wirklich leer ist.
+    // Scope: in a household the purchase prices of a set often belong to several accounts.
+    // If reading fails, the app shows an empty list instead of an error page;
+    // `degradiert` tells it that it is not really empty.
     const ab = new Degradations();
     const rows = await ab.oder(
       'erfassungen',

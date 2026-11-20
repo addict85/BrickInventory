@@ -1,4 +1,4 @@
-/** Aufträge plus Bildbedarf des Katalogs: Die Warteschlange kennt den Katalog nicht. */
+/** Jobs plus the catalog's image demand: the queue does not know the catalog. */
 import type { ManagementContext } from './context';
 
 export async function jobsOverview(
@@ -9,7 +9,7 @@ export async function jobsOverview(
   return { ...uebersicht, bildbedarf };
 }
 
-/** Beim Bildbedarf gehen auch die Notizen. */
+/** For the image demand the notes go too. */
 export async function clearJobType(k: ManagementContext, kindRaw: string) {
   const r = await k.jobQueue.emptyJobKind(kindRaw);
   return r.art === 'bildbedarf' ? { ...r, entfernt: r.entfernt + (await k.images.emptyImageDemand()) } : r;

@@ -1,13 +1,13 @@
-/** Den Lagerort setzen: eigene Datei, weil die Funktion den Kontext nimmt, den
- * kontext.ts erst aus den übrigen Lagerort-Diensten baut. */
+/** Setting the storage location: a file of its own, because the function takes the context that
+ * context.ts only builds from the other storage location services. */
 import * as orte from './repository/storageLocation';
 import type { Schreiber } from '../household';
 import type { LagerArt } from './storageLocation';
 import type { InventoryContext } from './context';
 
-/** Wer schreiben darf, entscheidet src/household/household.ts; diese Funktion
- * bekommt die fertige Menge und fragt nicht nach.
- * @returns wie viele Zeilen betroffen waren (0 = es gibt nichts zu setzen) */
+/** Who may write is decided by src/household/household.ts; this function
+ * gets the finished set and does not ask again.
+ * @returns how many rows were affected (0 = there is nothing to set) */
 export async function setLocation(
   k: InventoryContext,
   art: LagerArt,
@@ -18,7 +18,7 @@ export async function setLocation(
   const schluessel = keyRaw.map(String);
   const ownerIds = await k.household.writeAreaFrom(ownerIdsChoice);
   if (ort === null) return orte.sortLocationTo(k.db, art, ownerIds, null, schluessel);
-  // Ein neuer Name kommt in den Vorrat — vor der Zuordnung, die ihn über die ID findet.
+  // A new name goes into the stock — before the assignment, which finds it via the ID.
   return k.transaktion(async t => {
     const ids = await orte.ownerWithRow(t.db, art, ownerIds, schluessel);
     if (!ids.length) return 0;

@@ -33,13 +33,13 @@ export interface CatalogChoice {
   untilYear?: number | null;
 }
 
-/** Ein Platzhalter der Erfassung ('Set …' ohne Daten) verriete nur, dass jemand die Nummer erfasst hat. */
+/** A capture placeholder ('Set …' without data) would only reveal that someone captured the number. */
 const PLATZHALTER = `(rb.source = 'api' AND rb.name = 'Set ' || rb.set_num
   AND rb.year IS NULL AND rb.theme_id IS NULL AND rb.num_parts IS NULL)`;
 
 function katalogWo(f: CatalogChoice, params: unknown[]): string {
   const where: string[] = [`NOT ${PLATZHALTER}`];
-  // "75192" trifft auch "75192-1".
+  // "75192" also matches "75192-1".
   if (f.q) {
     params.push(containsPattern(f.q));
     where.push(`(rb.set_num ILIKE $${params.length}${E} OR rb.name ILIKE $${params.length}${E})`);
@@ -92,7 +92,7 @@ const SET_SPALTEN = `rb.set_num AS set_number, rb.name, rb.year, rb.theme_id, rb
             c.image_url, c.image_local,
             (b.set_number IS NOT NULL) AS owned, COALESCE(b.menge, 0)::int AS owned_quantity`;
 const BILD_JOIN = 'LEFT JOIN set_catalog c ON c.set_number = rb.set_num';
-/** Besitz über das Blickfeld ($1) wie in Merkliste und Sammlung; eine Zeile je Set, Mengen summiert. */
+/** Ownership via the scope ($1) as in wishlist and collection; one row per set, quantities summed. */
 const besitzJoin = (l: CatalogReadContract) => `LEFT JOIN (SELECT s.set_number, SUM(${mengeAus('sm', 0)})::int AS menge
                     FROM ${l.setBestand('= ANY($1)')} s ${l.mengeJoin('s', 'sm', '= ANY($1)')}
                    GROUP BY s.set_number) b ON b.set_number = rb.set_num`;
@@ -113,7 +113,7 @@ export function catalogRows(
   limit: number,
   offset: number,
 ) {
-  // fromTable: ?sort=constructor darf keine geerbte Eigenschaft liefern.
+  // fromTable: ?sort=constructor must not yield an inherited property.
   const sortSql = fromTable(ORDERS, ordnung, ORDERS.year_desc);
   const params: unknown[] = [konten];
   const wo = katalogWo(f, params);
@@ -142,7 +142,7 @@ export function catalogRow(db: DbInterface, l: CatalogReadContract, konten: numb
 }
 
 export async function catalogEmpty(db: DbInterface): Promise<boolean> {
-  // Zeilen der Erfassung ('api') gibt es auch ohne CSV-Abgleich.
+  // Capture rows ('api') exist even without CSV reconciliation.
   return !(await db.get<{ x: number }>("SELECT 1 AS x FROM rb_sets WHERE source = 'csv' LIMIT 1"));
 }
 

@@ -30,7 +30,7 @@ export const User = z.looseObject({
   is_admin: z.boolean(),
 });
 
-/** Was Anmeldung und Tausch über den neuen Token sagen (tokenDetails). */
+/** What login and swap say about the new token (tokenDetails). */
 export const TokenAngaben = z.looseObject({
   scope: z.string(),
   expires_at: zeit.nullable().optional(),
@@ -40,11 +40,11 @@ export const TokenAngaben = z.looseObject({
   rotation_faellig: z.boolean().optional(),
 });
 
-/** /auth/me weiss zusätzlich, ob der benutzte Token getauscht werden soll. */
+/** /auth/me additionally knows whether the token used should be swapped. */
 export const TokenInfo = TokenAngaben.extend({ rotation_faellig: z.boolean() });
 
-/** Die QR-Anmeldung gibt nur App-Rechte; sie nennt kein is_admin. */
-/** zweiterFaktorPflicht: Verwalterrechte ohne TOTP; bis zur Einrichtung antwortet alles andere 403. */
+/** The QR login only grants app rights; it names no is_admin. */
+/** zweiterFaktorPflicht: admin rights without TOTP; until set up, everything else answers 403. */
 export const AnmeldeNutzer = User.extend({
   is_admin: z.boolean().optional(),
   mustChangePassword: z.boolean().optional(),
@@ -54,7 +54,7 @@ export const AnmeldeNutzer = User.extend({
 export const LoginResponse = z.looseObject({
   success: z.boolean(),
   token: z.string().nullable().optional(),
-  /** Die App liest auch die Absage (zweiter_faktor) in diese Form; dort fehlt das Konto. */
+  /** The app also reads the refusal (zweiter_faktor) into this shape; the account is missing there. */
   user: AnmeldeNutzer.optional(),
   error: z.string().nullable().optional(),
   zweiter_faktor: z.boolean().optional(),
@@ -81,7 +81,7 @@ export const Profil = z.looseObject({
   first_name: z.string().nullable(),
   last_name: z.string().nullable(),
   email_verified: z.boolean(),
-  /** Beantragt, aber noch nicht bestätigt; bis dahin gilt `email`. */
+  /** Requested but not yet confirmed; until then `email` applies. */
   new_email: z.string().nullable(),
 });
 
@@ -142,12 +142,12 @@ export const ZweiterFaktorStand = z.looseObject({
   success: z.boolean(),
   aktiv: z.boolean(),
   codes_uebrig: z.number().int(),
-  /** Offene Codes könnten alter Art sein (vor dem 01.11.2026) und gelten dann nur bis dahin. */
+  /** Open codes could be of the old kind (before 01.11.2026) and then only apply until then. */
   alte_codes_bis: zeit.nullable(),
   error: z.string().nullable().optional(),
 });
 
-/** Die Kontenliste der Verwaltung (nur Web). */
+/** The admin's account list (web only). */
 export const KontoInListe = z.looseObject({
   id: ganz,
   username: z.string(),
@@ -199,13 +199,13 @@ export const PasskeyListe = z.looseObject({
   verfuegbar: z.boolean(),
   passkeys: z.array(Passkey),
 });
-/** Die Optionen gehen unverändert an WebAuthn (navigator.credentials); ihre Form legt @simplewebauthn fest. */
+/** The options go to WebAuthn (navigator.credentials) unchanged; their shape is defined by @simplewebauthn. */
 export const PasskeyOptionen = z.looseObject({ success: z.literal(true), optionen: z.record(z.string(), z.unknown()) });
 export const PasskeyAngelegt = z.looseObject({
   success: z.literal(true),
   passkey: z.looseObject({ id: ganz, name: z.string() }),
 });
-/** Wie die Passwort-Anmeldung: Mit `mit_token` (App) kommt auch der Token. */
+/** Like the password login: with `mit_token` (app) the token comes along too. */
 export const PasskeyAnmeldung = LoginResponse.extend({
   success: z.literal(true),
   user: z.looseObject({
@@ -216,12 +216,12 @@ export const PasskeyAnmeldung = LoginResponse.extend({
     zweiterFaktorPflicht: z.boolean().optional(),
   }),
 });
-/** Anzahl gelöschter Zeilen, wie beim Widerruf eines Tokens. */
+/** Number of deleted rows, as when revoking a token. */
 export const Geloescht = z.looseObject({ success: z.literal(true), deleted: ganz });
-/** `deleted` zählt die Browser-Sitzungen, `zugaenge` die App-Zugänge. */
+/** `deleted` counts the browser sessions, `zugaenge` the app accesses. */
 export const AndereBeendet = Geloescht.extend({ zugaenge: ganz.optional() });
 
-/** Der Scan meldet das Gerät an; den Code zeigt die App, eingetippt wird er im Browser. */
+/** The scan registers the device; the code is shown by the app and typed in the browser. */
 export const QrMeldung = z.looseObject({
   success: z.literal(true),
   wartet: z.literal(true),
@@ -229,8 +229,8 @@ export const QrMeldung = z.looseObject({
   code: z.string(),
   expires_in: ganz,
 });
-/** Erst nur `wartet`, mit `vorschau` nur `username`, sonst eine Anmeldung samt Nonce für die Attestation.
- * Ohne keks_fehlt: Die Abholung gibt immer ein Token, nie eine Sitzung. */
+/** At first only `wartet`, with `vorschau` only `username`, otherwise a login including the nonce for the attestation.
+ * Without keks_fehlt: the pickup always yields a token, never a session. */
 export const QrAbholung = LoginResponse.omit({ keks_fehlt: true }).extend({
   wartet: z.boolean(),
   never_expires: z.boolean().optional(),
@@ -251,19 +251,19 @@ export const ProfilGespeichert = GenericResponse.extend({
   emailSent: z.boolean().optional(),
 });
 
-/** Eingaben der Kontorouten: Typ und Länge; die Regeln (USERNAME_RE, Passwort)
- * prüft weiter die Route. Freitext ist begrenzt, die Spalten sind `text`;
- * `label` fehlt, weil tokenLabel() jeden Wert kürzt oder ersetzt. */
+/** Inputs of the account routes: type and length; the rules (USERNAME_RE, password)
+ * are still checked by the route. Free text is limited, the columns are `text`;
+ * `label` is missing because tokenLabel() shortens or replaces every value. */
 const txt = (n: number) => z.string().max(n).optional();
 const txtLeer = (n: number) => z.string().max(n).nullable().optional();
-/** Bei einem Verwalterkonto: ab wann die Änderung gilt (src/account/adminActions.ts). */
+/** For an admin account: from when the change applies (src/account/adminActions.ts). */
 export const VerwalterWeg = Erfolg.extend({ effective_at: z.string().optional() });
 const PASSWORT = 1024;
 const code = z
   .union([z.string().max(64), z.number()])
   .nullable()
   .optional();
-/** Wie ein Token heissen und gelten soll. `label` nimmt jeden Wert: tokenLabel() kürzt oder ersetzt ihn. */
+/** What a token should be called and how long it applies. `label` accepts any value: tokenLabel() shortens or replaces it. */
 const tokenWunsch = { label: z.unknown().optional(), never_expires: z.boolean().optional(), scope: txt(20) };
 const Credentials = z.strictObject({
   username: txt(254),
@@ -281,7 +281,7 @@ const Registrierung = z.strictObject({
   password: txt(PASSWORT),
   language: txt(10),
 });
-/** `password` nur, damit die Route auf /change-password verweisen kann. */
+/** `password` only so that the route can point to /change-password. */
 const ProfilAenderung = {
   username: txt(64),
   email: txtLeer(254),
@@ -289,7 +289,7 @@ const ProfilAenderung = {
   last_name: txtLeer(100),
   password: txt(PASSWORT),
 };
-/** `password: null` schickt die App mit (ZweiterFaktorAnfrage); einen Wert nimmt die Route nicht. */
+/** The app sends `password: null` along (ZweiterFaktorAnfrage); the route accepts no value. */
 const NurCode = z.strictObject({ code, password: z.null().optional() });
 const adminConfirmed = <F extends z.ZodRawShape = Record<never, z.ZodType>>(felder: F = {} as F) =>
   bestaetigt(felder, 'admin_password');
@@ -356,7 +356,7 @@ export const routen = {
     geheim: true,
     schritt: 'zweiter_faktor',
   },
-  // Bestätigt wird nur der Widerruf eines FREMDEN Zugangs; den eigenen beendet jedes Gerät selbst.
+  // Only revoking a FOREIGN access is confirmed; every device ends its own itself.
   'DELETE /api/v1/settings/tokens/:tokenId': { antwort: TokenWiderruf, ...bestaetigt() },
   'POST /api/v1/auth/token-rotieren': { eingabe: WITHOUT_BODY, antwort: TokenRotation, geheim: true },
   'GET /api/v1/auth/users': { klein: true, antwort: KontenListe },

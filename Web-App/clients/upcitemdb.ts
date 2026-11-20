@@ -1,6 +1,6 @@
 /**
- * UPCitemdb: Produkttitel zu einer EAN (frei, 100 Abfragen am Tag). Der
- * Titel ist Händlertext; welche Zahl darin die Setnummer ist, entscheidet
+ * UPCitemdb: product title for an EAN (free, 100 queries per day). The
+ * title is retailer text; which number in it is the set number is decided by
  * src/catalog/productTitle.ts.
  */
 import type { Rebrickable } from './rebrickable';
@@ -19,7 +19,7 @@ export async function productTitle(
     if (antwort.status !== 200) return null;
     return JSON.parse(antwort.body)?.items?.[0]?.title || null;
   } catch (e) {
-    // Ausnahme: letzte von mehreren Barcode-Quellen; ohne Antwort gilt die EAN als unbekannt.
+    // Exception: the last of several barcode sources; without an answer the EAN counts as unknown.
     return reportAndDeliver('upcitemdb:abruf', null)(e);
   }
 }

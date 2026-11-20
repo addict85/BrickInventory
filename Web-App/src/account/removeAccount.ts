@@ -1,6 +1,6 @@
-/** Ein Konto endgültig entfernen — für den Verwalter und für das eigene Konto
- * derselbe Ablauf. Protokoll, Zeile und Sitzungen fallen in einer Transaktion:
- * Bliebe eine Sitzung übrig, wäre das gelöschte Konto noch angemeldet. */
+/** Remove an account permanently — the same flow for the administrator and for the own
+ * account. Log, row and sessions fall in one transaction:
+ * if a session were left over, the deleted account would still be signed in. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from '../infra/appPaths';
@@ -12,30 +12,30 @@ import { fachfehler, notFound } from '../infra/errorTexts';
 import { inSystemContext } from '../infra/accountContext';
 import type { AccountContext } from './context';
 
-/** @param durch der Verwalter, der löscht; null, wenn das Konto sich selbst löscht */
+/** @param durch the administrator who deletes; null if the account deletes itself */
 export async function kontoEntfernen(k: AccountContext, ziel: number, durch: number | null): Promise<void> {
-  // Immer im Systemrahmen: Sitzungen und die Kopien vor Migrationen sieht nur die Systemrolle.
+  // Always in the system frame: only the system role sees sessions and the copies made before migrations.
   const fremd = durch !== null && durch !== ziel;
   const loeschen = () =>
     k.transaktion(async t => {
-      // Vor dem Löschen: Danach ist der Name für das Protokoll nicht mehr zu ermitteln.
+      // Before deleting: afterwards the name for the log can no longer be determined.
       if (durch !== null && fremd) await t.protokoll.protokolliere(durch, ziel, 'konto_geloescht');
       const weg = durch === null ? await t.konten.deleteOwnAccount(ziel) : await t.konten.deleteAccount(ziel, durch);
       if (weg === repo.LAST_ADMIN || (!weg && durch === null)) fachfehler('konflikt', 'letzter_verwalter');
       if (!weg) notFound('benutzer_nicht_gefunden_oder_eigenes');
-      // user_sessions hat keinen Fremdschlüssel auf users.
+      // user_sessions has no foreign key to users.
       await increaseSessionVersion(t, ziel);
       await t.zugaenge.deleteSessionsOfAccount(ziel);
     });
   await inSystemContext('kontenverwaltung', loeschen);
-  // Nach dem Festschreiben: Caches und Nachbarprozesse sollen das Konto erst vergessen, wenn es weg ist.
+  // After committing: caches and neighbor processes should forget the account only once it is gone.
   emptyTokenCache(k);
   k.household.reportHouseholdChange();
   await removeAccountFiles(k, ziel);
 }
 
-/** Ausgleich statt Fehlschlag: Das Konto ist gelöscht, nur seine Dateien liegen
- * noch da. Ein Auftrag versucht es wieder, bis Platte oder Rechte es zulassen. */
+/** Compensation instead of failure: the account is deleted, only its files are
+ * still there. A job tries again until disk or permissions allow it. */
 export async function removeAccountFiles(k: AccountContext, ziel: number): Promise<'entfernt' | 'eingereiht'> {
   try {
     await deleteAccountFiles(ziel);
@@ -51,7 +51,7 @@ export async function removeAccountFiles(k: AccountContext, ziel: number): Promi
   }
 }
 
-/** Eigene Anleitungen und Gutschein-PDFs gehören zum Konto; liegen blieben sie ohne Besitzer. */
+/** Own instructions and voucher PDFs belong to the account; left behind they would have no owner. */
 export async function deleteAccountFiles(userId: number): Promise<void> {
   if (!Number.isInteger(userId) || userId <= 0) return;
   for (const art of ['uploads', 'vouchers'])

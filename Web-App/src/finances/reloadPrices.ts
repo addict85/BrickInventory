@@ -1,5 +1,5 @@
-/** Preise, die eine Bewertung im Cache nicht fand (src/finances/calculation/valuation.ts):
- * hier im Job-Prozess geholt, mit Kontingent und Abbruch, nicht in der Anfrage. */
+/** Prices that a valuation did not find in the cache (src/finances/calculation/valuation.ts):
+ * fetched here in the job process, with quota and abort, not in the request. */
 import { fetchPrice, fetchPartPrice, fetchMinifigPrice } from './calculation/prices';
 import { estimateMinifigsPrice } from './marketPrice';
 import { checkAbort, JobMove, type JobContext, type Nutzlast } from '../jobQueue';
@@ -15,7 +15,7 @@ async function fetchOne(k: FinancesContext, p: Posten, uid: number, waehrung: st
   else await estimateMinifigsPrice(k, p.nummer, uid, p.zustand);
 }
 
-/** Ist das Tageskontingent erschöpft, wartet der Rest bis morgen; ein einzelner Fehlschlag hält die Liste nicht an. */
+/** If the daily quota is exhausted, the rest waits until tomorrow; a single failure does not stop the list. */
 async function preiseNachladen(kx: FinancesContext, n: Nutzlast<'preise_nachladen'>, k: JobContext): Promise<void> {
   const ttl = (await kx.einstellungen.globalValue('price_cache_ttl', '24')) || '24';
   for (const [i, p] of n.posten.entries()) {

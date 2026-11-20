@@ -1,11 +1,11 @@
-/** Eine Kontobedingung ist nur ein Platzhalter: Ein Wert im SQL-Text wäre eine Einschleusung,
- * die kein Treiber mehr abfängt. Der Typ lässt nur diese Formen zu; die Prüfung hält auch dort,
- * wo ein Wert ohne Typ ankommt. */
+/** An account condition is only a placeholder: a value in the SQL text would be an injection
+ * that no driver catches anymore. The type only admits these forms; the check also holds where
+ * a value arrives without a type. */
 export type Konten = `= $${number}` | `= ANY($${number})`;
 
 const FORM = /^= (?:\$\d+|ANY\(\$\d+\))$/;
 
-/** `spalte konten`, etwa `user_id = ANY($1)`; alles andere wirft. */
+/** `column accounts`, e.g. `user_id = ANY($1)`; everything else throws. */
 export function aufKonten(spalte: string, konten: Konten): string {
   if (!FORM.test(konten)) throw new Error(`Kontobedingung „${konten}“: erlaubt sind = $n und = ANY($n)`);
   return `${spalte} ${konten}`;

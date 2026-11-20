@@ -1,6 +1,6 @@
-/** Nur über HTTPS: Ein Gerät ohne die Wurzel bestätigt die Warnung einmal (HSTS gilt bei einem
- * Zertifikatsfehler nicht), also kein Henne-Ei-Problem und kein Klartextweg zur App. Echt ist die
- * Datei erst nach dem Abgleich des Fingerabdrucks; Name und Kopf sagen es deshalb immer. */
+/** Only via HTTPS: a device without the root confirms the warning once (HSTS does not apply on a
+ * certificate error), so no chicken-and-egg problem and no plaintext path to the app. The file is only
+ * genuine after comparing the fingerprint; name and header therefore always say so. */
 import express from 'express';
 import { tlsStand } from '../src/infra/tlsWurzel';
 

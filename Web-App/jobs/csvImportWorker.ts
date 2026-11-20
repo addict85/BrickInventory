@@ -1,10 +1,10 @@
-/** Eigener Prozess für den Katalog-Import, damit der grosse Heap des Imports
- * den Job-Prozess nicht trifft. Die Arbeit macht src/catalog/csvImport.ts. */
+/** A process of its own for the catalog import, so the import's large heap
+ * does not hit the job process. The work is done by src/catalog/csvImport.ts. */
 import { fehlertext, logAndContinue } from '../src/infra/error';
 import { LESEVERTRAG } from '../src/services';
 import { createImportAccess, createCatalogImports, csvRow } from '../src/catalog';
 
-// Ohne IPC-Kanal nach stderr statt TypeError.
+// Without an IPC channel to stderr instead of a TypeError.
 function post(msg: Record<string, unknown>) {
   if (typeof process.send === 'function') process.send(msg);
   else console.error('[csv-worker] kein IPC-Kanal — Meldung verworfen:', JSON.stringify(msg).slice(0, 200));
@@ -16,7 +16,7 @@ const TASKS = createCatalogImports(db, post, LESEVERTRAG);
 
 type Aufgabe = keyof typeof TASKS;
 
-// Der Fehler ist schon gemeldet; ein zweiter beim Schliessen hält den Ausstieg nicht auf.
+// The error is already reported; a second one while closing does not hold up the exit.
 async function endWithError() {
   await pool.end().catch(logAndContinue('csv-worker:end'));
   process.exit(1);
@@ -24,10 +24,10 @@ async function endWithError() {
 
 process.on('message', async (msg: { task?: string } | null) => {
   const task = String(msg?.task);
-  // Was per IPC ankommt, prüft kein Übersetzer: Ohne diese Prüfung wäre
-  // TASKS['constructor']() ein leerer „Erfolg“, der den Tagesmarker setzt.
+  // What arrives via IPC is checked by no compiler: without this check
+  // TASKS['constructor']() would be an empty "success" that sets the daily marker.
   if (!Object.hasOwn(TASKS, task)) {
-    // Geht ins Serverprotokoll, keine Nutzermeldung — deshalb unübersetzt.
+    // Goes to the server log, not a user message — hence untranslated.
     post({ type: 'error', task, error: `Unbekannte Aufgabe: ${task}` });
     return endWithError();
   }
@@ -43,5 +43,5 @@ process.on('message', async (msg: { task?: string } | null) => {
   }
 });
 
-// Für test/csv-import-db.test.js; der Betrieb geht ausschliesslich über fork().
+// For test/csv-import-db.test.js; in operation it runs exclusively via fork().
 export { TASKS, csvRow };

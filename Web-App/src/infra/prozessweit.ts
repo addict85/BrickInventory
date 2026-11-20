@@ -1,7 +1,7 @@
-/** Zustand, der bewusst dem Prozess gehört und nicht einem Zugang. Alles andere hält
- * ein Bereich in seinen Fächern (cache.ts), damit zwei Zugänge in einem
- * Prozess (Tests, Werkzeuge) einander nichts vorspiegeln. Wer hier etwas ablegt,
- * nennt den Grund in REASONS; die Ratsche in test/ratschen.test.js zählt den Rest. */
+/** State that deliberately belongs to the process and not to an access. Everything else is kept
+ * by an area in its compartments (cache.ts), so that two accesses in one
+ * process (tests, tools) do not deceive each other. Whoever stores something here
+ * names the reason in REASONS; the ratchet in test/ratschen.test.js counts the rest. */
 import { Faecher } from './cache';
 
 export const REASONS = {

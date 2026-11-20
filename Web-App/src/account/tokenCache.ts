@@ -1,20 +1,20 @@
-/** Der Zwischenspeicher geprüfter Geräte-Tokens. Er spart je Anfrage zwei
- * Datenbank-Rundläufe, weil die App beim Öffnen viele Anfragen parallel feuert;
- * gelten darf er nur, solange ein Widerruf ihn sicher erreicht. */
+/** The cache of verified device tokens. It saves two database round trips
+ * per request because the app fires many requests in parallel when opening;
+ * it may only apply as long as a revocation reliably reaches it. */
 import type { TokenScope } from './repository/accesses';
 import { reportAccessChange } from './accessChange';
 import { processEvent } from '../infra/event';
 import type { AccountContext } from './context';
 
-/** Typisiert, weil ein vertippter Feldname `undefined` liefert und das in einer
- * Sicherheitsprüfung still als „nein" durchgeht. */
+/** Typed, because a mistyped field name yields `undefined` and that silently passes
+ * as "no" in a security check. */
 export interface TokenUser {
   user_id: number;
   username: string;
   is_admin?: boolean;
-  /** Die GLEITENDE Frist: „so lange ungenutzt". */
+  /** The SLIDING deadline: "unused for this long". */
   expires_at?: string | Date | null;
-  /** Die FESTE Frist, falls beim QR-Code eine gewählt wurde. `null` = keine. */
+  /** The FIXED deadline, if one was chosen with the QR code. `null` = none. */
   hard_expires_at?: string | Date | null;
   last_used?: string | Date | null;
   sliding?: boolean;
@@ -29,15 +29,15 @@ export interface CacheEntry {
   user: TokenUser;
   cachedAt: number;
   dbKey: string;
-  /** Ein Schreibvorgang läuft schon; ein zweiter wäre derselbe. */
+  /** A write is already running; a second one would be the same. */
   schreibt?: boolean;
 }
 
-/** Obergrenze für einen Eintrag; ein Widerruf leert ihn sofort (NOTIFY). */
+/** Upper bound for an entry; a revocation clears it immediately (NOTIFY). */
 export const TOKEN_TTL_MS = 5 * 1000;
 
-/** Je Zugang: Ein Token gilt nur in der Datenbank, aus der er stammt. `stand` zählt
- * jedes Leeren: Eine Zeile, die vor einem Widerruf gelesen wurde, kommt danach nicht mehr hinein. */
+/** Per access: a token only applies in the database it comes from. `stand` counts
+ * every clearing: a row read before a revocation does not get in afterwards. */
 const speicher = (k: AccountContext) =>
   k.faecher.fach('tokenCache', () => ({ eintraege: new Map<string, CacheEntry>(), stand: 0, verteilt: false }));
 
@@ -57,7 +57,7 @@ function _pruneCache(k: AccountContext) {
   }
 }
 
-/** Der Stand vor dem Lesen, oder null, wenn der Cache gerade nicht gelten darf. */
+/** The state before reading, or null if the cache may not apply right now. */
 export function cacheStand(k: AccountContext): number | null {
   return tokenCacheUsable(k) ? speicher(k).stand : null;
 }
@@ -73,7 +73,7 @@ export function tokenFromCache(
   return hit && jetzt - hit.cachedAt < TOKEN_TTL_MS ? hit : undefined;
 }
 
-/** Nur, wenn seit dem Lesen kein Widerruf kam. */
+/** Only if no revocation came since reading. */
 export function rememberEntry(k: AccountContext, token: string, eintrag: CacheEntry, stand: number | null): void {
   const c = speicher(k);
   if (stand !== null && stand === c.stand) c.eintraege.set(token, eintrag);
@@ -84,7 +84,7 @@ export function forgetEntry(k: AccountContext, token: string): void {
   speicher(k).eintraege.delete(token);
 }
 
-/** Damit der Token sofort ungültig wird, nicht erst nach Ablauf des Caches. */
+/** So that the token becomes invalid immediately, not only after the cache expires. */
 export function tokenForgotten(k: AccountContext, token: string | null | undefined): void {
   if (!token) return;
   const c = speicher(k);
@@ -94,9 +94,9 @@ export function tokenForgotten(k: AccountContext, token: string | null | undefin
   reportRevocation(k);
 }
 
-/** Jeder Web-Prozess hält seinen eigenen Cache; ein Widerruf leert ihn in allen.
- * Ohne stehende Horch-Verbindung käme ein fremder Widerruf nicht an: Dann gilt
- * nur die Datenbank (fail closed). */
+/** Every web process keeps its own cache; a revocation clears it in all of them.
+ * Without a standing listen connection a foreign revocation would not arrive: then
+ * only the database counts (fail closed). */
 const REVOCATION_CHANNEL = 'token_widerrufen';
 const revocation = (k: AccountContext) =>
   k.faecher.fach('tokenWiderruf', () => {
@@ -117,8 +117,8 @@ function reportRevocation(k: AccountContext): void {
   if (speicher(k).verteilt) void revocation(k).melde(k.db.notification);
 }
 
-/** Für Löschungen ohne Klartext (die Token-Verwaltung kennt nur den
- * Hash-Anfang). Den Cache hält nur der Web-Prozess. */
+/** For deletions without plaintext (token management only knows the
+ * hash prefix). Only the web process holds the cache. */
 export function emptyTokenCache(k: AccountContext): void {
   leere(k);
   reportRevocation(k);

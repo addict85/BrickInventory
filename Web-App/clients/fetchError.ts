@@ -1,23 +1,23 @@
 /**
- * Die Zusatzangaben, die die Abruf-Klienten an ihre Fehler haengen.
+ * The extra details the fetch clients attach to their errors.
  */
 type AbrufFehler = Error & {
-  /** Tageskontingent des API-Schluessels erschoepft. */
+  /** Daily quota of the API key exhausted. */
   isQuota?: boolean;
-  /** Voruebergehend — Netzabbruch, Zeitueberschreitung. Ein erneuter Versuch lohnt. */
+  /** Temporary — network drop, timeout. Another attempt is worthwhile. */
   isTransient?: boolean;
-  /** Cloudflare-Sperre (1015). Die Warteschlange muss pausieren, nicht wiederholen. */
+  /** Cloudflare block (1015). The queue must pause, not retry. */
   isCloudflare?: boolean;
-  /** Die Antwort der Gegenstelle, soweit sie lesbar war. */
+  /** The remote side's response, as far as it was readable. */
   detail?: { meta?: { code?: number } } & Record<string, unknown>;
 };
 
-/** Einen gefangenen Wert als Abruf-Fehler lesen; immer ein Error, damit keine
- * Verzweigung darunter erneut prüfen muss, ob überhaupt ein Objekt vorliegt. */
+/** Read a caught value as a fetch error; always an Error, so no branch below
+ * has to check again whether there is an object at all. */
 function asFetchError(e: unknown): AbrufFehler {
   if (e instanceof Error) return e as AbrufFehler;
-  // Kein Error: Wir behalten die Zusatzfelder, falls doch welche da sind, und
-  // geben der Meldung einen Text, mit dem man etwas anfangen kann.
+  // Not an Error: we keep the extra fields in case there are some, and
+  // give the message a text one can work with.
   const roh = (e ?? {}) as Record<string, unknown>;
   const f = new Error(
     typeof e === 'string' && e
@@ -29,9 +29,9 @@ function asFetchError(e: unknown): AbrufFehler {
   if (roh.isQuota) f.isQuota = true;
   if (roh.isTransient) f.isTransient = true;
   if (roh.isCloudflare) f.isCloudflare = true;
-  // NonNullable, weil exactOptionalPropertyTypes zwischen „Feld fehlt" und
-  // „Feld ist undefined" unterscheidet — die Zuweisung darunter passiert nur,
-  // wenn wirklich etwas da ist.
+  // NonNullable, because exactOptionalPropertyTypes distinguishes "field missing" from
+  // "field is undefined" — the assignment below only happens
+  // when something is really there.
   if (roh.detail) f.detail = roh.detail as NonNullable<AbrufFehler['detail']>;
   return f;
 }

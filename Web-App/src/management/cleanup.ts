@@ -1,5 +1,5 @@
-/** Jeder Schritt meldet seinen Fehler und lässt die übrigen laufen; scheitert
- * einer, wiederholt der Worker den ganzen Lauf — alle Schritte vertragen das. */
+/** Every step reports its error and lets the others run; if one
+ * fails, the worker repeats the whole run — all steps tolerate that. */
 import { checkAbort, type JobRun } from '../jobQueue';
 import { fehlertext } from '../infra/error';
 import { cleanOldBackupsOn } from '../../db/migrate';

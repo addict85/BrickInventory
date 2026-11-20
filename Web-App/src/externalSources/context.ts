@@ -1,5 +1,5 @@
-/** Einstellungen für die Schlüssel, Aufträge für die Brickset-Wiedervorlage. Getrennt von
- * bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
+/** Settings for the keys, jobs for the Brickset resubmission. Separate from
+ * area.ts so that a service knows its type without an import cycle. */
 import { mit, type Kontext } from '../infra/area';
 import type { Db } from '../../db/database';
 import type { JobsServices } from '../jobQueue';
@@ -14,7 +14,7 @@ export interface ForeignSourcesDependencies {
   db: Db;
   einstellungen: SettingsServices;
   jobQueue: JobsServices;
-  /** Was ein Test statt der echten Klienten gibt; gelesen beim Aufruf (bereich.ts). */
+  /** What a test provides instead of the real clients; read at call time (area.ts). */
   ersatz?: Partial<Quellen> | undefined;
 }
 

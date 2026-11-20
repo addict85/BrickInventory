@@ -46,7 +46,7 @@ export function buildMiscRouter(d: Pick<Dienste, 'account' | 'inventory'>) {
     },
   };
 
-  // Hinter requireToken: Die Übersicht verriete sonst die ganze API-Fläche.
+  // Behind requireToken: otherwise the overview would reveal the whole API surface.
   router.endpunkt('GET /api/v1/', requireToken, (_req, res) => res.json(OVERVIEW));
   return router;
 }

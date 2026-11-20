@@ -9,14 +9,14 @@ import type { ImagesContext } from './context';
 
 const IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif']);
 
-/** Nur ein Typ aus der Liste, nie der rohe Kopf des CDN: „image/png, text/html“
- * läse ein Browser als HTML. Alles andere wird JPEG, mit nosniff harmlos. */
+/** Only a type from the list, never the CDN's raw header: "image/png, text/html"
+ * would be read as HTML by a browser. Everything else becomes JPEG, harmless with nosniff. */
 export function imageType(roh: string): string {
   const typ = beforeThe(roh, ';').trim().toLowerCase();
   return IMAGE_TYPES.has(typ) ? typ : 'image/jpeg';
 }
 
-/** Was aus dem Platten-Cache ausgeliefert werden kann; gesendet wird in
+/** What can be delivered from the disk cache; sending happens in
  * src/images/http/imageCacheDelivery.ts. */
 export interface CacheHits {
   datei: string;
@@ -25,7 +25,7 @@ export interface CacheHits {
   etag: string | null;
 }
 
-/** null heisst: nicht im Cache, der Aufrufer holt beim CDN. */
+/** null means: not in the cache, the caller fetches from the CDN. */
 export async function cacheTreffer(
   k: ImagesContext,
   opts: {
@@ -42,8 +42,8 @@ export async function cacheTreffer(
     try {
       await fs.promises.access(thumbFile);
       const tst = await fs.promises.stat(thumbFile).catch(withoutMissingFile('bild-cache:stat', null));
-      // Eine leere oder zu kleine Vorschau ist kein Bild (Altbestand, abgebrochener
-      // Lauf): aufs Original zurückfallen und neu verkleinern.
+      // An empty or too small preview is not an image (legacy data, aborted
+      // run): fall back to the original and resize again.
       if (!tst || tst.size < 200) {
         await fs.promises.unlink(thumbFile).catch(withoutMissingFile('bild-cache:unlink'));
         throw new Error('unbrauchbare Vorschau verworfen');
@@ -55,30 +55,30 @@ export async function cacheTreffer(
         etag: `"t-${tst.size}-${Math.floor(tst.mtimeMs)}"`,
       };
     } catch (_) {
-      /* noch nicht erzeugt */
+      /* not created yet */
     }
   }
 
   try {
-    // Async: Der Cache-Treffer ist der heisseste Pfad und soll den Event-Loop
-    // nicht blockieren.
+    // Async: the cache hit is the hottest path and should not block the
+    // event loop.
     await fs.promises.access(cacheFile);
 
     if (wantThumb) {
-      // NICHT auf die Verkleinerung warten: Das Original geht sofort hinaus, sonst
-      // reihten sich bei einer Kachelwand Sekunden Jimp aneinander.
+      // Do NOT wait for the resize: the original goes out immediately, otherwise
+      // seconds of Jimp would line up for a tile wall.
       if (createMay) queueThumb(k, cacheFile, thumbFile);
       else note();
     }
 
-    // Auch aus dem Cache nur Bilder; im Zweifel JPEG — mit nosniff die harmlose
-    // Auslegung.
+    // Only images from the cache too; when in doubt JPEG — with nosniff the harmless
+    // interpretation.
     const ctRaw = await fs.promises
       .readFile(cacheFile + '.ct', 'utf8')
       .catch(withoutMissingFile('bild-cache:typ', 'image/jpeg'));
     const cst = await fs.promises.stat(cacheFile).catch(withoutMissingFile('bild-cache:stat', null));
-    // Der Deckel löscht nach letzter Nutzung; unter noatime merkt sich das
-    // sonst niemand. mtime bleibt, sie steckt im ETag.
+    // The cap deletes by last use; under noatime nobody else remembers
+    // that. mtime stays, it is part of the ETag.
     if (cst && k.uhr.jetzt() - cst.atimeMs > 86_400_000)
       fs.promises.utimes(cacheFile, k.uhr.datum(), cst.mtime).catch(withoutMissingFile('bild-cache:utimes'));
     return {
@@ -88,7 +88,7 @@ export async function cacheTreffer(
       etag: cst ? `"c-${cst.size}-${Math.floor(cst.mtimeMs)}"` : null,
     };
   } catch (_) {
-    /* Cache-Miss oder Fehler — normal weiterladen */
+    /* Cache miss or error — continue loading normally */
   }
 
   return null;
@@ -96,8 +96,8 @@ export async function cacheTreffer(
 
 const CACHE_DIR = () => path.join(APP_ROOT, 'data', 'img_proxy_cache');
 
-/** 30 Tage nicht angefasst → weg; danach, falls der Cache noch über der
- * Grenze liegt, die am längsten unbenutzten Bilder samt .ct und Vorschau. */
+/** Untouched for 30 days → gone; afterwards, if the cache is still above the
+ * limit, the images unused the longest including .ct and preview. */
 export async function cleanImageCacheOn(maxBytes: number, jetzt: number): Promise<number> {
   const cacheDir = CACHE_DIR();
   const files = await fs.promises.readdir(cacheDir).catch(withoutMissingFile('bildcache:lesen', [] as string[]));
@@ -109,7 +109,7 @@ export async function cleanImageCacheOn(maxBytes: number, jetzt: number): Promis
     const p = path.join(cacheDir, f);
     const st = await fs.promises.stat(p).catch(withoutMissingFile('img-cache:stat', null));
     if (!st?.isFile()) continue;
-    // atime UND mtime: Unter noatime bleibt atime auf dem Erstellungszeitpunkt.
+    // atime AND mtime: under noatime atime stays at the creation time.
     if (
       st.atimeMs < cutoff &&
       st.mtimeMs < cutoff &&
@@ -128,8 +128,8 @@ export async function cleanImageCacheOn(maxBytes: number, jetzt: number): Promis
     gruppen.set(f.slice(0, 40), g);
     summe += st.size;
   }
-  // images/sets zählt mit, wird aber nicht geräumt: Die Set-Bilder gelten auf Dauer, der Deckel
-  // gilt für alles, was der Proxy auf die Platte legt.
+  // images/sets counts but is not cleared: the set images apply permanently, the cap
+  // applies to everything the proxy puts on disk.
   for (const f of await fs.promises
     .readdir(SET_IMAGES_DIR)
     .catch(withoutMissingFile('bildcache:sets', [] as string[]))) {
@@ -137,7 +137,7 @@ export async function cleanImageCacheOn(maxBytes: number, jetzt: number): Promis
     if (st?.isFile()) summe += st.size;
   }
   if (summe <= maxBytes) return weg;
-  // Auf 90 % statt knapp unter die Grenze: sonst liefe das gleich wieder an.
+  // Down to 90 % instead of just below the limit: otherwise it would start again right away.
   for (const g of [...gruppen.values()].sort((a, b) => a.zuletzt - b.zuletzt)) {
     if (summe <= maxBytes * 0.9) break;
     for (const d of g.dateien)
@@ -153,8 +153,8 @@ export async function cleanImageCacheOn(maxBytes: number, jetzt: number): Promis
   return weg;
 }
 
-/** Zwischen zwei Tagesläufen kann der Cache schnell wachsen; nach je einem
- * Zehntel der Grenze an neuen Bytes wird deshalb sofort gedeckelt. */
+/** Between two daily runs the cache can grow quickly; after every tenth of the limit
+ * in new bytes it is therefore capped immediately. */
 export function rememberCacheGrowth(bytes: number, max: number): void {
   const z = prozessweit('bildCacheZuwachs', () => ({ bytes: 0, laeuft: false }));
   z.bytes += bytes;

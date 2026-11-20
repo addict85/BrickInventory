@@ -11,9 +11,9 @@ export type EntryInField = {
   tag: string;
 };
 
-/** Nur im Schreib-Blickfeld und nur unter dem Schlüssel aus dem Pfad: Sonst änderte
- * `/parts/A/1/acquisitions/{Erfassung von B}` die Zeile von B, während Sperre und
- * Mengenprüfung auf A liefen. */
+/** Only in the write scope and only under the key from the path: otherwise
+ * `/parts/A/1/acquisitions/{acquisition of B}` would change B's row while lock and
+ * quantity check ran on A. */
 export function entryInWriteField(
   tx: DbInterface,
   art: ErfassungsArt,
@@ -30,7 +30,7 @@ export function entryInWriteField(
   );
 }
 
-/** Schreibend nur in den übergebenen Konten: zweite Linie hinter der Prüfung des Aufrufers. */
+/** Writing only in the passed accounts: a second line behind the caller's check. */
 export async function setEntryQuantity(
   tx: DbInterface,
   art: ErfassungsArt,
@@ -65,7 +65,7 @@ export async function setEntryState(
   await tx.run(`UPDATE ${SHAPES[art].table} SET condition=$1 WHERE id=$2 AND user_id = ANY($3)`, [zustand, id, konten]);
 }
 
-/** Mittag statt Mitternacht: Der Tag bleibt derselbe, in welcher Zeitzone man auch liest. */
+/** Noon instead of midnight: the day stays the same in whatever time zone it is read. */
 export async function setEntryDate(
   tx: DbInterface,
   art: ErfassungsArt,

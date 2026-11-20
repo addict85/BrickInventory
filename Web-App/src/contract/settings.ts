@@ -3,7 +3,7 @@ import { VerwaltungZustand, VerwaltungDesign } from './management';
 import { type Route, Erfolg, ganz, zeit, bestaetigt, WITHOUT_BODY, TEXT, ZUSTAND, EINSTELLUNGEN, SIMPLE } from './base';
 import { GLOBAL_RULES } from './globalRules';
 
-/** Was POST /settings annimmt: global nur vom Verwalter, je Konto von jedem. */
+/** What POST /settings accepts: global only from the admin, per account from everyone. */
 export const GLOBAL_SETTINGS = [
   'bricklink_consumer_key',
   'bricklink_consumer_secret',
@@ -67,7 +67,7 @@ export const StartupStatus = z.looseObject({
   pfad: z.string().nullable().optional(),
   ready: z.boolean(),
   step: z.string().nullable(),
-  // Erledigte Schritte mit Anteil des laufenden (2.37 = Schritt 3 zu 37 %).
+  // Completed steps plus the share of the running one (2.37 = step 3 at 37 %).
   progress: z.number().nonnegative(),
   total: z.number().int(),
   sub: z.string().nullable(),
@@ -79,8 +79,8 @@ export const Einrichtung = z.looseObject({
   passwort_aendern: z.boolean(),
   quellen: z.looseObject({ rebrickable: z.boolean(), bricklink: z.boolean(), brickset: z.boolean() }),
 });
-/** Stand der Ersteinrichtung für die Anmeldeseite: Schalter und das öffentliche
- * Wurzelzertifikat, keine Konten und keine Schlüssel. */
+/** State of the initial setup for the login page: switches and the public
+ * root certificate, no accounts and no keys. */
 export const EinrichtungStand = z.looseObject({
   success: z.literal(true),
   erledigt: z.boolean(),
@@ -97,7 +97,7 @@ export const EinrichtungStand = z.looseObject({
   https: z.boolean(),
   degradiert: DEGRADED,
 });
-/** Die Einstellungen als Text, wie sie gespeichert sind; Geheimnisse maskiert. */
+/** The settings as text, as they are stored; secrets masked. */
 export const RoheEinstellungen = z.looseObject({
   success: z.literal(true),
   settings: z.record(z.string(), z.string()),
@@ -119,7 +119,7 @@ export const Sicherung = z.looseObject({
   global: z.record(z.string(), z.string()),
   user_settings: z.record(z.string(), z.string()),
 });
-/** Die Importdatei: was der Export schreibt, ältere Fassungen eingeschlossen. Werte prüft GLOBAL_RULES. */
+/** The import file: what the export writes, older versions included. Values are checked by GLOBAL_RULES. */
 export const KonfigExport = z.looseObject({
   version: z.string().max(20).optional(),
   exported_at: z.string().max(40).optional(),
@@ -133,17 +133,17 @@ export const SicherungEingespielt = z.looseObject({
   note: z.string(),
   smtp_uebergangen: z.array(z.string()),
 });
-/** Ohne Anmeldung erreichbar (compose.yaml); alles ausser dem Status nur für den Verwalter. */
+/** Reachable without login (compose.yaml); everything except the status only for the admin. */
 export const Gesundheit = z.looseObject({
   status: z.enum(['ok', 'starting']),
   startup: StartupStatus.optional(),
   db_pool: z.record(z.string(), z.unknown()).optional(),
   uptime_seconds: ganz.optional(),
 });
-/** `ready` antwortet 503 in der Form jeder Fehlerantwort, dazu status "unavailable". */
+/** `ready` answers 503 in the shape of every error response, plus status "unavailable". */
 export const Lebenszeichen = z.strictObject({ status: z.literal('ok') });
 
-/** Ergebnis des Versands; bei Erfolg ohne Fehlertext. */
+/** Result of the sending; without error text on success. */
 export const SmtpProbe = z.looseObject({
   mode: z.string().nullable(),
   success: z.boolean(),
@@ -169,7 +169,7 @@ export const routen = {
     eingabe: z.strictObject({ theme: GLOBAL_RULES.app_theme }),
     antwort: VerwaltungDesign,
   },
-  // `klein`: sechs feste Prüfschritte, die nicht mit dem Bestand wachsen.
+  // `klein`: six fixed check steps that do not grow with the inventory.
   'GET /api/v1/einrichtung/stand': { antwort: EinrichtungStand, klein: true },
   'GET /api/v1/settings/einrichtung': { antwort: Einrichtung },
   'POST /api/v1/settings/einrichtung/fertig': { eingabe: WITHOUT_BODY, antwort: Erfolg },

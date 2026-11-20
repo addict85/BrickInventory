@@ -5,7 +5,7 @@ import { pageFrom } from '../../src/infra/page';
 import { vertragsRouter } from '../../src/http/contractRouter';
 import type { Dienste } from '../../src/services';
 
-/** Preisfehler kommen mit Code aus der Bewertung; der Text folgt der Sprache der Anfrage, nicht dem Server. */
+/** Price errors come with a code from the valuation; the text follows the request's language, not the server's. */
 function uebersetzt<T extends { error?: unknown; error_code?: unknown }>(
   zeilen: T[],
   req: Parameters<typeof responseLanguage>[0],
@@ -24,8 +24,8 @@ export function buildFinanceRouter(d: Pick<Dienste, 'account' | 'finances'>) {
 
   router.endpunkt('GET /api/v1/finance/valuation', requireToken, async req => {
     const data = await d.finances.valueSets(req.apiUser.user_id, viewOf(req));
-    // Kein `rate_limit` in der Antwort: Er kostete drei Abfragen je Aufruf und
-    // steht in der Überwachung.
+    // No `rate_limit` in the response: it cost three queries per call and
+    // is shown in the monitoring.
     const { eintraege: sets, ...seite } = pageFrom(uebersetzt(data.sets, req), req.abfrage);
     return { total_value: data.totals.qty_avg, wert_gesamt: Number(data.totals.qty_avg), ...data, sets, ...seite };
   });
@@ -50,8 +50,8 @@ export function buildFinanceRouter(d: Pick<Dienste, 'account' | 'finances'>) {
 
   router.endpunkt('GET /api/v1/finance/portfolio-history', requireToken, async req => {
     const uid = req.apiUser.user_id;
-    // einzelwert(): ?period=a&period=b kommt als Array an und ginge sonst
-    // unverändert in die Antwort zurück.
+    // einzelwert(): ?period=a&period=b arrives as an array and would otherwise go
+    // back into the response unchanged.
     const period = singleValue(req.abfrage.period, 'week');
     return { ...(await d.finances.portfolioVerlauf(uid, viewOf(req), period)) };
   });

@@ -12,7 +12,7 @@ import type { FinancesContext } from '../context';
 
 type PnlSet = Awaited<ReturnType<typeof repo.setsWithEntries>>[number];
 type Erfassung = Awaited<ReturnType<typeof loadSetEntries>>[number];
-/** Je Set: Marktpreis jetzt und zuerst bekannt, Kaufpreis und Menge aus den Erfassungen. */
+/** Per set: market price now and first known, purchase price and quantity from the acquisitions. */
 type MarketValues = {
   preis: Map<string, number>;
   erster: Map<string, number>;
@@ -20,7 +20,7 @@ type MarketValues = {
   menge: Map<string, number>;
 };
 
-/** Das Ausweichen auf den anderen Zustand steckt in valueSet() (priceFor). */
+/** Falling back to the other condition lives in valueSet() (priceFor). */
 function pricesOfSets(sn: string, jeKey: Map<string, { avg_price?: unknown; qty_avg_price?: unknown }>) {
   const aus = new Map<string, number>();
   for (const cond of ['N', 'U']) {
@@ -30,8 +30,8 @@ function pricesOfSets(sn: string, jeKey: Map<string, { avg_price?: unknown; qty_
   return aus;
 }
 
-/** Je Erfassung mit dem Preis IHRES Zustands, erst danach verdichten — dieselbe
- * Rechnung wie im Finanzen-Reiter. Ungerundet; gerundet wird in der Antwort. */
+/** Per acquisition with the price of ITS condition, condensed only afterwards — the same
+ * calculation as in the finances tab. Unrounded; rounding happens in the response. */
 async function setMarketValues(
   k: FinancesContext,
   sets: PnlSet[],
@@ -65,9 +65,9 @@ async function setMarketValues(
   return w;
 }
 
-/** EIN Kostenpfad. Fehlt der Kaufpreis, ist er unbekannt (null), nicht 0 — sonst
- * stünde ein Set ohne Preis als reiner Gewinn da. Ohne Kaufpreis ist der erste
- * bekannte Preis die Basis. */
+/** ONE cost path. If the purchase price is missing, it is unknown (null), not 0 — otherwise
+ * a set without a price would appear as pure profit. Without a purchase price the first
+ * known price is the basis. */
 function pnlSetRow(set: PnlSet, w: MarketValues) {
   const sn = set.set_number;
   const currentPrice = w.preis.get(sn) || 0;
@@ -94,14 +94,14 @@ function pnlSetRow(set: PnlSet, w: MarketValues) {
     pnl_abs: pnlAbs === null ? null : aufRappen(inZehntel4(pnlAbs) ?? 0).toFixed(2),
     pnl_pct: pnlPct?.toFixed(1) ?? null,
     baseline_pnl_pct: baselinePnlPct?.toFixed(1) ?? null,
-    // Die Textfelder bleiben für ältere Clients.
+    // The text fields stay for older clients.
     pnl_betrag: pnlAbs === null ? null : aufRappen(inZehntel4(pnlAbs) ?? 0),
     pnl_prozent: pnlPct === null ? null : Number(pnlPct.toFixed(1)),
     baseline_pnl_prozent: baselinePnlPct === null ? null : Number(baselinePnlPct.toFixed(1)),
   };
 }
 
-/** Teil oder Figur: dieselbe Zeile, nur mit Kauf- und Marktpreis. */
+/** Part or figure: the same row, only with purchase and market price. */
 function itemRow(p: { quantity?: number | null; avg_price?: unknown; purchase_price?: unknown }) {
   const qty = p.quantity || 1;
   const currentPrice = parseFloat(String(p.avg_price || 0));
@@ -116,20 +116,20 @@ function itemRow(p: { quantity?: number | null; avg_price?: unknown; purchase_pr
   };
 }
 
-/** In Zehntausendsteln summiert, erst am Ende auf Rappen gerundet. */
+/** Summed in ten-thousandths, rounded to cents only at the end. */
 const purchaseTotal = (rs: Array<{ purchase_price: number | null; quantity: number }>) =>
   sumFrom(rs.map(r => ({ preis: r.purchase_price || 0, menge: r.quantity || 1 })));
 
 export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
-  // Zwei Grössen: viewerId — wessen EINSTELLUNGEN gelten; ids — WESSEN DATEN
-  // gerechnet werden. Mit dem Filter „Unterkonten" fehlt viewerId in ids.
+  // Two quantities: viewerId — whose SETTINGS apply; ids — WHOSE DATA
+  // is calculated. With the filter "sub-accounts" viewerId is missing from ids.
   const uids = await k.household.scopeFrom(idsChoice);
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
     k.einstellungen.globalValue('price_cache_ttl', '24'),
   ]);
   const sets = await k.gewinnVerlust.setsWithEntries(uids);
-  // Aus den Erfassungen, damit Galerie, Detail und Finanzen dieselben Zahlen zeigen.
+  // From the acquisitions, so that gallery, detail and finances show the same numbers.
   const acqRows = sets.length ? await k.erfassungen.loadSetEntries(uids, currency) : [];
   const jeSet = new Map<string, Erfassung[]>();
   for (const a of acqRows) {
@@ -168,11 +168,11 @@ export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoic
         zaehle(acqRows, 'kaufpreis_umgerechnet') +
         (partsVal.kaufpreise_umgerechnet ?? 0) +
         (figsVal.kaufpreise_umgerechnet ?? 0),
-      // Aus denselben Posten wie pnl_pct: Aus allen gerechnet zählte jeder Posten
-      // ohne Marktpreis als Verlust.
+      // From the same items as pnl_pct: calculated from all of them, every item
+      // without a market price would count as a loss.
       pnl_purchase: comparable.kauf.toFixed(2),
       pnl_current: comparable.markt.toFixed(2),
-      // Sets + manuelle Teile + Minifiguren.
+      // Sets + manual parts + minifigures.
       grand_total: totalCurrent.toFixed(2),
       sets_purchase: purchaseTotal(setResults).toFixed(2),
       parts_purchase: purchaseTotal(partsResults).toFixed(2),
@@ -182,9 +182,9 @@ export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoic
   };
 }
 
-/** Nur über Posten mit Kaufpreis UND Marktpreis: Ein fehlender Marktpreis ist
- * kein Wert 0; mitgezählt ergäbe er −100 %. Ein Geschenk (Kaufpreis 0) zählt mit.
- * @returns null, wenn der Einstand dieser Posten 0 ist */
+/** Only over items with purchase price AND market price: a missing market price is
+ * not a value of 0; counted along it would yield −100 %. A gift (purchase price 0) counts.
+ * @returns null if the cost basis of these items is 0 */
 export function totalGuvPercent(zeilen: GuvRow[]): string | null {
   const { kauf, markt } = comparableSums(zeilen);
   return kauf > 0 ? (((markt - kauf) / kauf) * 100).toFixed(1) : null;
@@ -206,8 +206,8 @@ export function comparableSums(zeilen: GuvRow[]): { kauf: number; markt: number 
   return { kauf, markt };
 }
 
-/** Einstand, Marktwert und G/V der Finanzkarten über dieselben Posten, dazu was fehlt.
- * So gilt immer Einstand + G/V = Marktwert, und die Karte nennt die ausgelassenen Posten. */
+/** Cost basis, market value and P/L of the finance cards over the same items, plus what is missing.
+ * That way cost basis + P/L = market value always holds, and the card names the omitted items. */
 export function baseTheMetrics(zeilen: GuvRow[]) {
   const { kauf, markt } = comparableSums(zeilen);
   let withoutMarket = 0,

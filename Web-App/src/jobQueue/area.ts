@@ -1,4 +1,4 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/area.ts). */
+/** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). */
 import type { Db } from '../../db/database';
 import { mit, buildArea, type Inspect } from '../infra/area';
 import { Faecher } from '../infra/cache';
@@ -16,7 +16,7 @@ import { zugang, type JobsDependencies, type JobsContext } from './context';
 
 export type { JobsDependencies, JobsContext } from './context';
 
-/** Die Arten meldet die Verdrahtung an (reportKindAn); bis dahin nimmt die Warteschlange keine. */
+/** The kinds are registered by the wiring (reportKindAn); until then the queue accepts none. */
 export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspect?: Inspect<JobsContext>) {
   const arten = new Arten();
   return buildArea(
@@ -57,7 +57,7 @@ export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspe
       reportJob: mit(k)(importAuftrag.reportJob),
       beendeAuftrag: mit(k)(importAuftrag.beendeAuftrag),
       isAborted: mit(k)(importAuftrag.isAborted),
-      /** Aufträge, die ein Konto über ihren Schlüssel verfolgt. */
+      /** Jobs that an account tracks via their key. */
       ownJob: mit(k)(eigene.ownJob),
       deleteOwn: mit(k)(eigene.deleteOwn),
       countRunning: mit(k)(eigene.countRunning),
@@ -85,24 +85,24 @@ export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspe
   );
 }
 
-/** Was ohne eigene Regel aus Tabelle und Laufzustand durchgereicht wird. */
+/** What is passed through from table and run state without a rule of its own. */
 function fromTheTable(k: JobsContext) {
   return {
-    // Pacht, Belegen und Zurückgeben für den Worker (jobs/jobWorker.ts).
+    // Lease, claim and return for the worker (jobs/jobWorker.ts).
     lebenszeichen: k.auftraege.lebenszeichen,
     belegeAuftrag: k.auftraege.belegeAuftrag,
     giveBack: k.auftraege.giveBack,
     rememberExclusive: k.auftraege.rememberExclusive,
-    // Pausen einer Art (CDN, Brickset drosseln) und das Aufräumen erledigter.
+    // Pauses of a kind (throttling CDN, Brickset) and cleaning up finished ones.
     pauseKind: k.auftraege.pauseKind,
     liesPause: k.auftraege.liesPause,
     cleanCompletedOn: k.auftraege.cleanCompletedOn,
-    // Marken über Prozessgrenzen (Lebenszeichen, Altbestand, Abgleich); gelesen von der Verwaltung.
+    // Markers across process boundaries (sign of life, legacy data, reconciliation); read by the admin.
     liesZustand: k.laufzustand.liesZustand,
     setzeZustand: k.laufzustand.setzeZustand,
     deleteState: k.laufzustand.deleteState,
     countState: k.laufzustand.countState,
-    // Je Art der laufende, sonst der zuletzt beendete Auftrag: die Kacheln der Verwaltung.
+    // Per kind the running job, otherwise the most recently finished one: the admin's tiles.
     letzteJeArt: k.auftraege.letzteJeArt,
   };
 }

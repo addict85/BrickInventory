@@ -1,16 +1,16 @@
-// Frei erfassbare Katalogfelder vor der Datenbank prüfen: Dort begann Stored XSS.
+// Check freely editable catalog fields before the database: that is where stored XSS began.
 
-/** Das, was Rebrickable und BrickLink tatsächlich vergeben. */
+/** What Rebrickable and BrickLink actually assign. */
 export const ITEM_NUMBER_RE = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/;
 
 import { z } from 'zod';
 import { fachfehler, type ErrorCode } from './errorTexts';
 import { moneyInput } from './geld';
 
-/** Die Spalten sind integer (int4): Ein grösserer Wert endete als 500 in PostgreSQL. */
+/** The columns are integer (int4): a larger value ended as a 500 in PostgreSQL. */
 export const LARGEST_ID = 2 ** 31 - 1;
 
-/** Eine ID aus Pfad, Rumpf oder Abfrage: Ziffern bis `hoechstens`, sonst null. */
+/** An ID from path, body or query: digits up to `hoechstens`, otherwise null. */
 export function idWert(wert: unknown, hoechstens = LARGEST_ID): number | null {
   const roh = typeof wert === 'number' || typeof wert === 'string' ? String(wert).trim() : '';
   if (!/^\d{1,16}$/.test(roh)) return null;
@@ -20,8 +20,8 @@ export function idWert(wert: unknown, hoechstens = LARGEST_ID): number | null {
 
 const ID_FIELD = /^(id|ids)$|_ids?$|[a-z]Ids?$/;
 
-/** Der erste Feldname, der nach ID heisst und eine zu grosse oder krumme Zahl
- * trägt. Andere Werte (Setnummern, leere Angaben) prüft die Route selbst. */
+/** The first field name that is named like an ID and carries a too large or crooked number.
+ * Other values (set numbers, empty values) are checked by the route itself. */
 export function toLargeId(wert: unknown, tiefe = 0): string | null {
   if (tiefe > 6 || wert === null || typeof wert !== 'object') return null;
   for (const [k, v] of Object.entries(wert)) {
@@ -41,7 +41,7 @@ export function toLargeId(wert: unknown, tiefe = 0): string | null {
   return null;
 }
 
-/** null, wenn es keines ist (die Route antwortet dann 400). */
+/** null if it is none (the route then answers 400). */
 export function jsonOrNull(text: string): { wert: unknown } | null {
   try {
     return { wert: JSON.parse(text) };
@@ -58,8 +58,8 @@ export function urlOrNull(text: string): URL | null {
   }
 }
 
-/** Nur eine reine Adresse: nodemailer liest `x<a@b.de>` oder `a@b.de,c` als Liste mit
- * Anzeigenamen, Vergabeprüfung und Zieldrossel zählten dann eine andere Zeichenkette. */
+/** Only a plain address: nodemailer reads `x<a@b.de>` or `a@b.de,c` as a list with
+ * display names; the availability check and target throttle would then count a different string. */
 export const EMAIL_RE = /^[^\s@<>",;:()[\]\\]+@[^\s@<>",;:()[\]\\]+\.[^\s@<>",;:()[\]\\]+$/;
 export function emailValid(v: unknown): v is string {
   return typeof v === 'string' && v.length <= 254 && EMAIL_RE.test(v) && !/\p{Cc}/u.test(v);
@@ -80,18 +80,18 @@ export function numberRequired(value: unknown, field = 'part_number'): string {
   return v;
 }
 
-/** Gekappt statt abgelehnt: Katalognamen sind lang. */
+/** Truncated instead of rejected: catalog names are long. */
 export function optionalText(value: unknown, maxLen = 200): string | null {
   if (value === undefined || value === null) return null;
   const v = String(value)
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen herauszufiltern ist der Zweck dieser Stelle.
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: filtering out control characters is the purpose of this spot.
     .replace(/[\u0000-\u001F\u007F]/g, '')
     .trim();
   return v ? v.slice(0, maxLen) : null;
 }
 
-/** Nur https und ein wohlgeformter Host: "javascript:…", "data:…" und
- * Attribut-Ausbrüche fallen damit raus. */
+/** Only https and a well-formed host: "javascript:…", "data:…" and
+ * attribute breakouts drop out with this. */
 export function optionalImageUrl(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
   const v = String(value).trim();
@@ -112,16 +112,16 @@ export function positiveInt(value: unknown, fallback = 1, max = 1_000_000): numb
   return Math.min(max, Math.max(1, n));
 }
 
-/** Kein Ersatzwert: `parseInt({a:1}) || 0` machte aus einer kaputten Anfrage
- * „Menge 0" und löschte den Bestand. */
+/** No substitute value: `parseInt({a:1}) || 0` turned a broken request into
+ * "quantity 0" and deleted the inventory. */
 export function inventoryQuantity(value: unknown, min = 0, max = 100_000): number {
   const roh = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
   if (!/^\d{1,6}$/.test(roh) || +roh < min || +roh > max) fachfehler('ungueltig', 'wert_ungueltig');
   return +roh;
 }
 
-/** Rebrickables „[No Color/Any Color]". Dort ist 0 Schwarz; eine fehlende Farbe
- * darf deshalb nie zu 0 werden. */
+/** Rebrickable's "[No Color/Any Color]". There 0 is black; a missing color
+ * must therefore never become 0. */
 export const KEINE_FARBE = 9999;
 
 export function colorId(value: unknown): number {
@@ -129,7 +129,7 @@ export function colorId(value: unknown): number {
   return /^\d{1,6}$/.test(roh) ? Number(roh) : KEINE_FARBE;
 }
 
-/** Ungültige Werte werden verworfen, nicht abgelehnt. */
+/** Invalid values are discarded, not rejected. */
 export function optionalHex(value: unknown): string | null {
   const v = String(value ?? '')
     .trim()
@@ -137,11 +137,11 @@ export function optionalHex(value: unknown): string | null {
   return /^[0-9A-Fa-f]{6}$/.test(v) ? v.toUpperCase() : null;
 }
 
-/** Zustand eines Bestands, einer Erfassung oder eines Preises: neu oder gebraucht. */
+/** Condition of an inventory item, an acquisition or a price: new or used. */
 export type Zustand = 'N' | 'U';
 
-/** Die eine Regel für Zustände aus Datenbank, CSV und Eingabe: 'U' (auch klein)
- * ist gebraucht, 'N' neu, alles andere die Vorgabe. */
+/** THE one rule for conditions from database, CSV and input: 'U' (lower case too)
+ * is used, 'N' new, everything else the default. */
 export function zustand(roh: unknown, vorgabe: Zustand = 'N'): Zustand {
   const v = String(roh ?? '')
     .trim()
@@ -149,17 +149,17 @@ export function zustand(roh: unknown, vorgabe: Zustand = 'N'): Zustand {
   return v === 'U' || v === 'N' ? v : vorgabe;
 }
 
-/** null = keine Angabe. */
+/** null = not specified. */
 export function optionalCondition(value: unknown): 'N' | 'U' | null {
   return value === 'N' || value === 'U' ? value : null;
 }
 
-// Eine Milliarde Stück ist Unsinn.
+// A billion pieces is nonsense.
 export function acquisitionQuantity(value: unknown, fallback = 1): number {
   return positiveInt(value, fallback, 10_000);
 }
 
-/** Relativ geänderte Menge (quantity_delta): ganzzahlig, |Δ| ≤ 9999; fehlt sie, null. */
+/** Relatively changed quantity (quantity_delta): integer, |Δ| ≤ 9999; if missing, null. */
 export function quantitiesDelta(value: unknown): number | null {
   if (value === undefined || value === null) return null;
   const roh = typeof value === 'number' || typeof value === 'string' ? String(value).trim() : '';
@@ -167,19 +167,19 @@ export function quantitiesDelta(value: unknown): number | null {
   return Number(roh);
 }
 
-/** Streng: Die Zeichenkette "false" ist in JavaScript wahr. */
+/** Strict: the string "false" is truthy in JavaScript. */
 export function strictBool(value: unknown, feld = 'Wert'): boolean {
   if (value === true || value === 'true' || value === 1 || value === '1') return true;
   if (value === false || value === 'false' || value === 0 || value === '0') return false;
   fachfehler('ungueltig', 'feld_kein_wahrheitswert', { feld });
 }
 
-/** Aggregate kommen als Zeichenkette, und "0" ist in JavaScript wahr. */
+/** Aggregates come as strings, and "0" is truthy in JavaScript. */
 export function istErsatzteil(value: unknown): boolean {
   return isJa(value);
 }
 
-/** Alles Unbekannte ist nein. */
+/** Everything unknown is no. */
 export function isJa(value: unknown): boolean {
   if (value === true || value === 1) return true;
   if (typeof value !== 'string') return false;
@@ -187,15 +187,15 @@ export function isJa(value: unknown): boolean {
   return v === '1' || v === 't' || v === 'true' || v === 'y' || v === 'yes';
 }
 
-/** Express liefert bei doppeltem Parameter ein Array. */
+/** Express delivers an array for a duplicate parameter. */
 export function singleValue(value: unknown, fallback = ''): string {
   if (Array.isArray(value)) return value.length ? String(value[0]) : fallback;
   if (value === undefined || value === null) return fallback;
   return String(value);
 }
 
-/** Nur EIGENE Schlüssel zählen: Ein Wert von aussen wie 'constructor' fände
- * sonst ein geerbtes Mitglied. */
+/** Only OWN keys count: a value from outside like 'constructor' would otherwise
+ * find an inherited member. */
 export function fromTable<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe: T): T;
 export function fromTable<T>(tabelle: Record<string, T>, schluessel: unknown): T | undefined;
 export function fromTable<T>(tabelle: Record<string, T>, schluessel: unknown, vorgabe?: T): T | undefined {
@@ -203,8 +203,8 @@ export function fromTable<T>(tabelle: Record<string, T>, schluessel: unknown, vo
   return Object.hasOwn(tabelle, k) ? tabelle[k] : vorgabe;
 }
 
-/** Dieselben Prüfungen als Eingabeschema für den API-Vertrag: Die Regel gibt es
- * einmal, das JSON-Schema beschreibt sie nur, und die Route bekommt ihr Ergebnis. */
+/** The same checks as an input schema for the API contract: the rule exists
+ * once, the JSON schema only describes it, and the route gets its result. */
 function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, pflicht: true): z.ZodType<T, unknown>;
 function alsSchema<T>(
   pruefe: (v: unknown) => T,
@@ -216,7 +216,7 @@ function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, 
     .unknown()
     .meta(json)
     .transform((v, ctx): T => {
-      // Ein Objekt hiesse für die Prüfer oft „fehlt" und damit Vorgabewert.
+      // For the validators an object would often mean "missing" and thus the default value.
       if (v !== null && typeof v === 'object') {
         ctx.addIssue({ code: 'custom', message: 'kein einfacher Wert' });
         return z.NEVER;
@@ -232,16 +232,16 @@ function alsSchema<T>(pruefe: (v: unknown) => T, json: Record<string, unknown>, 
 }
 
 export const eingabe = {
-  /** Eine eigene Regel mit eigenem Fehlercode; Pflicht. */
+  /** An own rule with its own error code; mandatory. */
   regel: <T>(pruefe: (v: unknown) => T, json: Record<string, unknown>) => alsSchema(pruefe, json, true),
   itemNumber: (feld: string) =>
     alsSchema(v => numberRequired(v, feld), { type: 'string', pattern: ITEM_NUMBER_RE.source }, true),
   text: (max = 200) => alsSchema(v => optionalText(v, max), { type: ['string', 'null'], maxLength: max }),
   imageUrl: () => alsSchema(optionalImageUrl, { type: ['string', 'null'], format: 'uri', pattern: '^https:' }),
-  /** Ohne `pflicht` darf die Menge fehlen oder null sein; dann bleibt sie, wie sie ist. */
+  /** Without `pflicht` the quantity may be missing or null; then it stays as it is. */
   menge: (min = 0, max = 100_000) =>
     alsSchema(v => inventoryQuantity(v, min, max), { type: ['integer', 'string'], minimum: min, maximum: max }, true),
-  /** Fehlt sie oder ist sie null, bleibt die Menge, wie sie ist. */
+  /** If it is missing or null, the quantity stays as it is. */
   quantityOrNothing: (min = 0, max = 100_000) =>
     alsSchema(v => (v == null ? null : inventoryQuantity(v, min, max)), {
       type: ['integer', 'string', 'null'],
@@ -253,8 +253,8 @@ export const eingabe = {
   farbe: () =>
     alsSchema(colorId, { type: ['integer', 'string'], description: `fehlt sie, gilt ${KEINE_FARBE} (keine Farbe)` }),
   farbcode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
-  /** Geld (src/infra/geld.ts). Beschrieben als Zahl; Text mit Punkt oder Komma nimmt der
-   * Server noch an (Formulare), er ist nicht Teil des Vertrags. */
+  /** Money (src/infra/geld.ts). Described as a number; text with a dot or comma is still accepted by the
+   * server (forms), it is not part of the contract. */
   geld: (feld: string, o: { nullbar?: boolean; max?: number; oneCode?: ErrorCode } = {}) =>
     alsSchema(v => moneyInput(v, feld, o.max, o.oneCode), {
       ...(o.nullbar === false ? { type: 'number' } : { anyOf: [{ type: 'number' }, { type: 'null' }] }),
@@ -271,7 +271,7 @@ export const eingabe = {
       { type: ['boolean', 'integer', 'string'], enum: [true, false, 1, 0, 'true', 'false', '1', '0'] },
       true,
     ),
-  /** Darf fehlen; dann ist er nein. */
+  /** May be missing; then it is no. */
   toggleOrNo: (feld: string) =>
     alsSchema(v => strictBool(v, feld), {
       type: ['boolean', 'integer', 'string'],

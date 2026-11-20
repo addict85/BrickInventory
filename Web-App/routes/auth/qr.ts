@@ -1,4 +1,4 @@
-/** Anmelden per QR-Code; die App holt ihren Token, wenn die Web-Sitzung bestätigt (src/account/qrPairing.ts). */
+/** Logging in by QR code; the app picks up its token once the web session confirms (src/account/qrPairing.ts). */
 import { guardFor } from '../api_v1/middleware';
 import { signedInUserId, ipThrottle, confirmWithFactor, perSession } from '../../src/account/http/login';
 import { vertragsRouter } from '../../src/http/contractRouter';
@@ -6,13 +6,13 @@ import { assertLoginAllowed, devicesNameContentValid, reportLogin, QR_TTL_MS } f
 import type { Dienste } from '../../src/services';
 import { fachfehler, notFound } from '../../src/infra/errorTexts';
 
-/** Das Konto muss bei der Meldung und bei der Abholung noch anmelden dürfen. */
+/** The account must still be allowed to log in at the report and at the pickup. */
 async function signInMay(d: Pick<Dienste, 'account'>, uid: number): Promise<boolean> {
   const user = await d.account.accountFullOf(uid);
   return !!user && !assertLoginAllowed(user);
 }
 
-/** Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei. */
+/** No session: it would carry the account's full rights past scope `app`. */
 async function qrPickedUp(
   d: Pick<Dienste, 'account'>,
   user: { id: number; username: string },
@@ -36,19 +36,19 @@ export function buildQrRouter(d: Pick<Dienste, 'account'>) {
   const { requireLoginOrToken: requireLogin } = guardFor(d.account);
   const router = vertragsRouter('/api/v1/auth');
 
-  // Der QR-Code trägt nur eine einmalige Nonce (SHA-256 in qr_login_tokens),
-  // kein Geheimnis des Kontos; den Ablauf beschreibt src/account/qrPairing.ts.
-  // POST, weil die Route eine Nonce anlegt; ein GET liesse sich von fremden Seiten auslösen.
+  // The QR code only carries a one-time nonce (SHA-256 in qr_login_tokens),
+  // no secret of the account; the flow is described in src/account/qrPairing.ts.
+  // POST, because the route creates a nonce; a GET could be triggered from foreign pages.
   router.endpunkt('POST /api/v1/auth/qr-token', requireLogin, async (req, res) => {
-    // Wie /token-create: Ein QR-Code eröffnet einen neuen, langlebigen Geräte-
-    // zugang; nur aus der Sitzung, mit Passwort und zweitem Faktor.
+    // Like /token-create: a QR code opens a new, long-lived device
+    // access; only from the session, with password and second factor.
     if (!perSession(req)) fachfehler('verboten', 'nur_mit_sitzung');
     if (!(await confirmWithFactor(d.account, req, res, signedInUserId(req), req.eingabe.password))) return;
-    // Die Laufzeit wählt die angemeldete Sitzung, nicht das unangemeldete /qr-login.
+    // The lifetime is chosen by the signed-in session, not by the anonymous /qr-login.
     return { ...(await d.account.createQrAccess(signedInUserId(req), req.eingabe.gueltigkeit)) };
   });
 
-  // Gedrosselt, weil der Endpunkt ohne Anmeldung in die Datenbank schreibt.
+  // Throttled, because the endpoint writes to the database without login.
   router.endpunkt('POST /api/v1/auth/qr-login', ipThrottle(d.account, 'qr-login', 30, 60 * 60 * 1000), async req => {
     const { token, label } = req.eingabe;
     if (!token?.startsWith('bim:')) fachfehler('ungueltig', 'token_ungueltig');
@@ -58,8 +58,8 @@ export function buildQrRouter(d: Pick<Dienste, 'account'>) {
     return { wartet: true, abholung: m.abholung, code: m.code, expires_in: QR_TTL_MS / 1000 } as const;
   });
 
-  // Die App fragt alle paar Sekunden, bis die Web-Sitzung bestätigt oder ablehnt.
-  // Mit `vorschau` steht danach nur das Konto in der Antwort; den Token holt das Ja der App.
+  // The app asks every few seconds until the web session confirms or rejects.
+  // With `vorschau` only the account is in the response afterwards; the token comes with the app's yes.
   router.endpunkt(
     'POST /api/v1/auth/qr-login/abholen',
     ipThrottle(d.account, 'qr-abholen', 600, 60 * 60 * 1000),
@@ -76,7 +76,7 @@ export function buildQrRouter(d: Pick<Dienste, 'account'>) {
       if (!user) fachfehler('nicht_angemeldet', 'token_ungueltig');
       if (a.stand === 'bereit') return { wartet: false, vorschau: true, username: user.username } as const;
       reportLogin({ ip: req.ip, konto: user.id, zugang: 'qr' });
-      // Eine Anmeldung wie mit Passwort oder Passkey: Den QR-Code gab es nur mit Passwort und Faktor.
+      // A login like with password or passkey: the QR code was only available with password and factor.
       await d.account.verwalter.cancelTakeovers(user.id);
       res.json(await qrPickedUp(d, user, a.token, a.keyNonce));
     },

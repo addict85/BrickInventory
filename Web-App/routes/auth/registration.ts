@@ -1,5 +1,5 @@
-/** Ohne Anmeldung: Registrierung, E-Mail-Bestätigung und Passwort vergessen.
- * Jede Antwort verrät gleich wenig darüber, ob es ein Konto gibt. */
+/** Without login: registration, email confirmation and forgotten password.
+ * Every response reveals equally little about whether an account exists. */
 import { ipThrottle } from '../../src/account/http/login';
 import { passwordLack } from '../../src/infra/passwordRule';
 import { errorText, responseLanguage, fachfehler } from '../../src/infra/errorTexts';
@@ -9,7 +9,7 @@ import { USERNAME_RE, emailValid, nameValid } from '../../src/account';
 import { relyingParty } from '../../src/factors';
 import type { Dienste } from '../../src/services';
 
-/** Der Grund der ersten Absage, oder null, wenn die Eingabe genügt. */
+/** The reason of the first rejection, or null if the input is sufficient. */
 function registrierungsMangel(e: OpenRequest<'POST /api/v1/auth/register'>['eingabe']) {
   if (!e.username || !e.email || !e.password) return 'registrierung_felder' as const;
   const mangel = passwordLack(e.password, e.username);
@@ -23,7 +23,7 @@ function registrierungsMangel(e: OpenRequest<'POST /api/v1/auth/register'>['eing
 export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | 'account'>) {
   const router = vertragsRouter('/api/v1/auth');
 
-  // Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.
+  // The login form only shows paths this server supports; without mail, registration would end in an account nobody can confirm.
   router.endpunkt('GET /api/v1/auth/registration-status', async (_req, res) => {
     const mail = await d.mail.mailReady();
     res.json({
@@ -40,7 +40,7 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
       fachfehler('verboten', 'registrierung_deaktiviert');
     const mangel = registrierungsMangel(req.eingabe);
     if (mangel || !username || !email || !password) fachfehler('ungueltig', mangel ?? 'registrierung_felder');
-    // Zählt jeden Versuch, ob es die Adresse gibt oder nicht: Die Absage verrät nichts.
+    // Counts every attempt, whether the address exists or not: the rejection reveals nothing.
     const ziel = await d.account.targetThrottled('register-ziel', email, 3, 60 * 60 * 1000);
     if (ziel) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: ziel.waitMin });
     const gesendet = await d.account.tryRegistration({
@@ -56,12 +56,12 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
         ? 'Konto erstellt. Bitte bestätige deine E-Mail-Adresse.'
         : 'Konto erstellt, aber die Bestätigungsmail ging nicht hinaus. Der Verwalter kann das Konto freischalten.',
       email_sent: gesendet,
-      // Die Registrierung verlangt einen Mailserver (oben): Den Link gibt nie die Konsole aus.
+      // Registration requires a mail server (above): the console never prints the link.
       console_mode: false,
     };
   });
 
-  // Wie /forgot-password: gleiche Antwort und Dauer, ob es ein unbestätigtes Konto gibt oder nicht.
+  // Like /forgot-password: same answer and duration whether an unconfirmed account exists or not.
   router.endpunkt(
     'POST /api/v1/auth/bestaetigung-erneut',
     ipThrottle(d.account, 'bestaetigung-erneut', 5, 60 * 60 * 1000),
@@ -103,12 +103,12 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
     async req => {
       const { email } = req.eingabe;
       if (!emailValid(email)) fachfehler('ungueltig', email ? 'email_ungueltig' : 'email_erforderlich');
-      // Vor der Nutzersuche, damit die Absage nichts über die Adresse verrät.
+      // Before the user lookup, so the rejection reveals nothing about the address.
       if (!basisUrl()) {
         hintWithoutBaseUrl('passwort-reset', 'Passwort-vergessen-Mails werden nicht versendet.');
         fachfehler('nicht_verfuegbar', 'passwort_reset_nicht_eingerichtet');
       }
-      // Immer dieselbe Antwort nach derselben Mindestdauer, ob es die Adresse gibt oder nicht.
+      // Always the same answer after the same minimum duration, whether the address exists or not.
       await d.account.ruecksetzLinkRequest(String(email));
       return { message: 'Falls die E-Mail existiert, wurde ein Link gesendet.' };
     },
@@ -124,16 +124,16 @@ export function buildRegistrationRouter(d: Pick<Dienste, 'settings' | 'mail' | '
       if (mangel) fachfehler('ungueltig', mangel);
       const user = await d.account.accountToRuecksetzLink(token);
       if (!user) fachfehler('ungueltig', 'token_ungueltig');
-      // Den Namen kennt erst das Konto hinter dem Token; die Regel gilt wie auf allen anderen Wegen.
+      // Only the account behind the token knows the name; the rule applies as on all other paths.
       const nameMangel = passwordLack(password, user.username);
       if (nameMangel) fachfehler('ungueltig', nameMangel);
-      // Nur die Anfrage, die den Link verbraucht, setzt ihr Passwort.
+      // Only the request that consumes the link sets its password.
       const uid = await d.account.setPasswordPerLink(token, password);
       if (!uid) fachfehler('ungueltig', 'token_ungueltig');
       return { message: 'Passwort erfolgreich geändert.' };
     },
   );
-  // Links aus Mails, ohne Anmeldung: Der Token ist das Recht, die Drossel hält Raten auf.
+  // Links from mails, without login: the token is the right, the throttle stops guessing.
   router.endpunkt(
     'POST /api/v1/auth/uebernahme-abbrechen',
     ipThrottle(d.account, 'uebernahme-abbrechen', 20, 60 * 60 * 1000),

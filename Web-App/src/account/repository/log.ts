@@ -1,5 +1,5 @@
 /**
- * Protokoll der Verwalteraktionen an fremden Konten (Migration 0049).
+ * Log of admin actions on other accounts (migration 0049).
  */
 import type { DbInterface } from '../../../db/database';
 
@@ -20,7 +20,7 @@ export type AdminAction =
   | 'uebernahme_angekuendigt'
   | 'uebernahme_abgebrochen';
 
-/** Vor dem Löschen aufrufen — danach ist der Name nicht mehr zu ermitteln. */
+/** Call before deleting — afterwards the name can no longer be determined. */
 export async function protokolliere(
   db: DbInterface,
   adminId: number,
@@ -45,8 +45,8 @@ export async function lastEntries(db: DbInterface, anzahl = 200) {
   );
 }
 
-/** UPDATE und DELETE hat keine Rolle der App (0117): Frist (ein Jahr) und Regel stehen fest in
- * der Funktion der Eigentümerin. */
+/** No app role has UPDATE and DELETE (0117): the retention period (one year) and the rule are fixed in
+ * the owner's function. */
 export async function cleanLogOn(db: DbInterface): Promise<number> {
   return (await db.get<{ n: number }>('SELECT verwaltungsprotokoll_aufraeumen() AS n'))?.n ?? 0;
 }

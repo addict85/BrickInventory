@@ -5,13 +5,13 @@ import path from 'node:path';
 import { APP_ROOT, DATA_DIR } from './appPaths';
 import { prozessweit } from './prozessweit';
 
-/** Ein Abzug der Datenbank oder von data/ allein gibt die Geheimnisse nicht
- * preis: Der Schlüssel liegt in DATA_KEY oder in einer eigenen Datei
- * ausserhalb des Datenordners (DATA_KEY_FILE, Vorgabe schluessel/). */
-/** v2: AES-256-GCM mit Kontext (AAD); v1 ohne, nur noch zum Umschlüsseln lesbar. */
+/** A dump of the database or of data/ alone does not reveal the secrets:
+ * the key is in DATA_KEY or in a file of its own
+ * outside the data folder (DATA_KEY_FILE, default schluessel/). */
+/** v2: AES-256-GCM with context (AAD); v1 without, only readable for re-encryption. */
 const V1 = 'v1:',
   V2 = 'v2:';
-/** Die Schlüssel, einmal gelesen und abgeleitet. */
+/** The keys, read and derived once. */
 const S = prozessweit('datenSchluessel', () => ({
   geladen: null as Buffer | null,
   alt: undefined as Buffer | null | undefined,
@@ -23,7 +23,7 @@ export function keyFile(): string {
   return konfig().dataKeyFile || path.join(APP_ROOT, 'schluessel', 'datenschluessel');
 }
 
-/** Der Ort älterer Installationen; er liegt mit in jeder Sicherung von data/. */
+/** The location used by older installations; it is part of every backup of data/. */
 export function oldKeyFile(): string {
   return path.join(DATA_DIR, '.datenschluessel');
 }
@@ -50,8 +50,8 @@ function warnAlterLocation(alt: string, neu: string): void {
   );
 }
 
-/** Reihenfolge: DATA_KEY, die eigene Datei, die alte Datei im Datenordner
- * (mit Warnung); fehlt alles, wird die eigene Datei angelegt. */
+/** Order: DATA_KEY, the own file, the old file in the data folder
+ * (with a warning); if everything is missing, the own file is created. */
 export function datenSchluessel(): Buffer {
   if (S.geladen) return S.geladen;
   const env = konfig().datenSchluessel;
@@ -84,8 +84,8 @@ export function datenSchluessel(): Buffer {
   }
   const neu = crypto.randomBytes(32);
   fs.mkdirSync(path.dirname(datei), { recursive: true, mode: 0o700 });
-  // Erst vollständig schreiben, dann verlinken: link() scheitert, wenn ein
-  // zweiter Prozess schneller war, und niemand liest eine halb geschriebene Datei.
+  // Write completely first, then link: link() fails if a
+  // second process was faster, and nobody reads a half-written file.
   const tmp = `${datei}.${process.pid}`;
   fs.writeFileSync(tmp, neu.toString('base64'), { mode: 0o600 });
   let ergebnis: Buffer = neu;
@@ -100,8 +100,8 @@ export function datenSchluessel(): Buffer {
   return ergebnis;
 }
 
-/** Der vorige Schlüssel eines Wechsels: Was nur er öffnet, bleibt lesbar, bis der Start
- * es neu schreibt (scripts/datenschluessel-wechseln.sh). Fehlende Datei: kein Wechsel. */
+/** The previous key of a rotation: what only it opens stays readable until startup
+ * rewrites it (scripts/datenschluessel-wechseln.sh). Missing file: no rotation. */
 export function altKey(): Buffer | null {
   if (S.alt !== undefined) return S.alt;
   const k = konfig();
@@ -126,14 +126,14 @@ function altV2Key(): Buffer | null {
   return S.altV2;
 }
 
-/** Wofür und für welche Zeile ein Geheimtext gilt (AAD in AES-GCM): In eine andere
- * Spalte, ein anderes Konto oder eine andere Zeile kopiert, ist er unlesbar. */
+/** What and which row a ciphertext applies to (AAD in AES-GCM): copied into another
+ * column, another account or another row, it is unreadable. */
 export type Kontext = string & { readonly __context: true };
 export function kontext(zweck: string, ...bezug: (string | number)[]): Kontext {
   return JSON.stringify([zweck, ...bezug.map(String)]) as Kontext;
 }
 
-/** Eigener Teilschlüssel für v2: Derselbe Rohschlüssel dient sonst auch v1 und suchwert(). */
+/** An own subkey for v2: the same raw key otherwise also serves v1 and suchwert(). */
 function v2Key(): Buffer {
   S.v2 ??= Buffer.from(
     crypto.hkdfSync('sha256', datenSchluessel(), Buffer.alloc(0), 'brickinventory/geheimnis/v2', 32),
@@ -141,8 +141,8 @@ function v2Key(): Buffer {
   return S.v2;
 }
 
-/** Die Tag-Länge steht fest: Sonst nähme GCM beim Öffnen auch einen gekürzten Tag
- * an, und 4 Byte liessen sich durchprobieren. */
+/** The tag length is fixed: otherwise GCM would also accept a truncated tag when opening,
+ * and 4 bytes could be brute-forced. */
 const IV = 12,
   TAG = 16;
 
@@ -154,7 +154,7 @@ function seal(schluessel: Buffer, daten: Buffer, aad: Kontext | null): Buffer {
   return Buffer.concat([iv, c.getAuthTag(), inhalt]);
 }
 
-/** null, wenn Schlüssel, Inhalt oder Kontext nicht passen. */
+/** null if key, content or context do not match. */
 function oeffne(schluessel: Buffer, roh: Buffer, aad: Kontext | null): Buffer | null {
   if (roh.length < IV + TAG) return null;
   try {
@@ -182,7 +182,7 @@ export function encrypt(klartext: string | null | undefined, k: Kontext): string
   return V2 + seal(v2Key(), Buffer.from(String(klartext), 'utf8'), k).toString('base64');
 }
 
-/** Nur v2: Klartext und v1 liest allein das Umschlüsseln beim Start (readOldValue). */
+/** Only v2: plaintext and v1 are read only by the re-encryption at startup (readOldValue). */
 export function decrypt(wert: string | null | undefined, k: Kontext): string | null {
   if (wert === null || wert === undefined) return null;
   if (wert === '') return '';
@@ -201,7 +201,7 @@ function withAltKey(roh: Buffer, k: Kontext): Buffer | null {
   return a ? oeffne(a, roh, k) : null;
 }
 
-/** Für das Umschlüsseln: v2, v1 (ohne Kontext) und Klartext von vor der Verschlüsselung. */
+/** For re-encryption: v2, v1 (without context) and plaintext from before the encryption. */
 export function readOldValue(wert: string | null | undefined, k: Kontext): string | null {
   if (wert === null || wert === undefined) return null;
   if (isEncrypted(wert)) return decrypt(wert, k);
@@ -211,7 +211,7 @@ export function readOldValue(wert: string | null | undefined, k: Kontext): strin
   return klar === null ? null : klar.toString('utf8');
 }
 
-/** Der neue Wert; undefined, wenn nichts zu tun ist oder er unlesbar ist (Zeile bleibt). */
+/** The new value; undefined if there is nothing to do or it is unreadable (row stays). */
 export function umschluesseln(wert: string | null | undefined, k: Kontext): string | null | undefined {
   if (!wert) return undefined;
   if (isEncrypted(wert)) {
@@ -224,13 +224,13 @@ export function umschluesseln(wert: string | null | undefined, k: Kontext): stri
   return klar === null ? undefined : encrypt(klar, k);
 }
 
-/** HMAC statt Hash: Kleine Wertebereiche (Kartennummern mit festem Präfix)
- * liessen sich sonst durchprobieren. Ein Schlüssel je Zweck. */
+/** HMAC instead of a hash: small value ranges (card numbers with a fixed prefix)
+ * could otherwise be brute-forced. One key per purpose. */
 export function searchValue(zweck: string, wert: string): string {
   return searchValueWith(datenSchluessel(), zweck, wert);
 }
 
-/** Derselbe Suchwert unter dem vorigen Schlüssel, solange ein Wechsel läuft. */
+/** The same search value under the previous key while a rotation is running. */
 export function searchValueAlt(zweck: string, wert: string): string | null {
   const a = altKey();
   return a ? searchValueWith(a, zweck, wert) : null;
@@ -241,7 +241,7 @@ function searchValueWith(schluessel: Buffer, zweck: string, wert: string): strin
   return crypto.createHmac('sha256', k).update(wert, 'utf8').digest('hex');
 }
 
-/** Ein PDF beginnt nie so. */
+/** A PDF never starts like this. */
 const KOPF1 = Buffer.from('BIENC1\n', 'ascii');
 const KOPF2 = Buffer.from('BIENC2\n', 'ascii');
 const beginsWith = (daten: Buffer, kopf: Buffer) => daten.subarray(0, kopf.length).equals(kopf);
@@ -254,7 +254,7 @@ export function encryptBuffer(daten: Buffer, k: Kontext): Buffer {
   return Buffer.concat([KOPF2, seal(v2Key(), daten, k)]);
 }
 
-/** Nur BIENC2 mit passendem Kontext; sonst null. */
+/** Only BIENC2 with a matching context; otherwise null. */
 export function decryptBuffer(daten: Buffer, k: Kontext): Buffer | null {
   const roh = daten.subarray(KOPF2.length);
   const klar = isEncryptedBuffer(daten) ? (oeffne(v2Key(), roh, k) ?? withAltKey(roh, k)) : null;
@@ -262,7 +262,7 @@ export function decryptBuffer(daten: Buffer, k: Kontext): Buffer | null {
   return klar;
 }
 
-/** Eine BIENC2-Datei, die nur der vorige Schlüssel öffnet, mit dem neuen; sonst undefined. */
+/** A BIENC2 file that only the previous key opens, with the new one; otherwise undefined. */
 export function pufferUmschluesseln(daten: Buffer, k: Kontext): Buffer | undefined {
   if (!isEncryptedBuffer(daten) || !altV2Key()) return undefined;
   const roh = daten.subarray(KOPF2.length);
@@ -271,7 +271,7 @@ export function pufferUmschluesseln(daten: Buffer, k: Kontext): Buffer | undefin
   return klar === null ? undefined : encryptBuffer(klar, k);
 }
 
-/** Für das Umschlüsseln: BIENC2, BIENC1 und unverschlüsselte Dateien. */
+/** For re-encryption: BIENC2, BIENC1 and unencrypted files. */
 export function readOldBuffer(daten: Buffer, k: Kontext): Buffer | null {
   if (isEncryptedBuffer(daten)) return decryptBuffer(daten, k);
   if (!beginsWith(daten, KOPF1)) return daten;

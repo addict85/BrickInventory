@@ -1,7 +1,7 @@
-/** Der Schrittschutz der App, am Server gebunden: Nur ein Keystore-Schlüssel,
- * der erst nach Gerätesperre oder starker Biometrie signiert, öffnet die
- * heiklen Schritte eines App-Tokens. Das belegt seine Attestation; ohne sie
- * hinterlegte ein erbeuteter Token einen Schlüssel ohne Sperre. */
+/** The app's step guard, bound to the server: only a keystore key
+ * that signs only after device unlock or strong biometrics opens the
+ * sensitive steps of an app token. Its attestation proves that; without it
+ * a stolen token would register a key without a lock. */
 import { createPublicKey, randomBytes, verify, X509Certificate, type KeyObject } from 'node:crypto';
 import type { Familie } from './repository/deviceKeys';
 import type { ACTIONS } from '../contract/device';
@@ -16,18 +16,18 @@ export type { Familie };
 
 export type Schrittaktion = (typeof ACTIONS)[number];
 
-/** Nur gleich nach dem Anmelden: Wer später mit einem erbeuteten Token käme,
- * könnte sonst seinen eigenen Schlüssel hinterlegen. */
+/** Only right after logging in: whoever came later with a stolen token
+ * could otherwise register their own key. */
 export const KEY_DEADLINE_S = 10 * 60;
 export const CHALLENGE_FRIST_S = 2 * 60;
 const CHALLENGES_OPEN = 5;
 const NONCES_OPEN = 3;
-/** Die Verwaltung bleibt in der App offen, bis sie in den Hintergrund geht;
- * das Fenster gleitet darum mit, endet aber spätestens nach HOECHSTENS_S. */
+/** Admin stays open in the app until it goes to the background;
+ * the window therefore slides along, but ends after HOECHSTENS_S at the latest. */
 export const RELEASE_IDLE_S = 5 * 60;
 export const RELEASE_AT_MOST_S = 30 * 60;
 
-/** Was die App signiert. Die Aktion steht darin, damit eine Challenge nie für eine andere taugt. */
+/** What the app signs. The action is part of it so that a challenge is never good for another one. */
 export const nachricht = (aktion: Schrittaktion, challenge: string) =>
   `BrickInventory-Schritt/1\n${aktion}\n${challenge}`;
 
@@ -40,7 +40,7 @@ export function familyFrom(
   return Number.isNaN(d.getTime()) ? null : { uid: apiUser.user_id, seit: d.toISOString() };
 }
 
-/** Nur EC P-256 als SPKI (Base64), so wie PublicKey.getEncoded() des Keystores ihn liefert. */
+/** Only EC P-256 as SPKI (Base64), just as the keystore's PublicKey.getEncoded() delivers it. */
 export function readKey(b64: string): KeyObject | null {
   try {
     const k = createPublicKey({ key: Buffer.from(b64, 'base64'), format: 'der', type: 'spki' });
@@ -50,8 +50,8 @@ export function readKey(b64: string): KeyObject | null {
   }
 }
 
-/** Was die App als Attestation-Challenge einsetzt; gilt bis zum Ende von KEY_DEADLINE_S.
- * Eine Familie aus der QR-Kopplung bekommt nur die Nonce ihrer Abholung. */
+/** What the app uses as the attestation challenge; valid until the end of KEY_DEADLINE_S.
+ * A family from QR pairing only gets the nonce of its pickup. */
 export async function newNonce(k: DevicesContext, f: Familie, fromQr = false): Promise<string | null> {
   if (!fromQr) {
     const qr = await k.geraeteSchluessel.qrNonceThe(f);
@@ -66,13 +66,13 @@ export async function newNonce(k: DevicesContext, f: Familie, fromQr = false): P
   return ok ? nonce : null;
 }
 
-/** Nach der QR-Abholung: Die Nonce gilt nur der Familie des neuen Tokens; ohne Familie keine. */
+/** After the QR pickup: the nonce only applies to the new token's family; without a family, none. */
 export async function nonceForQrToken(k: DevicesContext, tokenHash: string): Promise<string | null> {
   const f = await k.geraeteSchluessel.familyOfTokens(tokenHash);
   return f ? newNonce(k, f, true) : null;
 }
 
-/** Je PEM einmal gelesen; der Schlüssel '' steht für die Google-Wurzeln. */
+/** Read once per PEM; the key '' stands for the Google roots. */
 function roots(pem: string): X509Certificate[] {
   const wurzelCache = prozessweit('attestationWurzeln', () => new Map<string, X509Certificate[]>());
   let liste = wurzelCache.get(pem);
@@ -88,13 +88,13 @@ function roots(pem: string): X509Certificate[] {
 
 export type Registrierung = 'neu' | 'gleich';
 
-/** Der Grund gehört ins Protokoll: Die App kann ihn nicht beheben, der Betreiber (Fingerabdruck) schon. */
+/** The reason belongs in the log: the app cannot fix it, the operator (fingerprint) can. */
 function attestationRejected(f: Familie, grund: string): never {
   console.warn(`[geraet] Attestation von Konto ${f.uid} abgewiesen: ${grund}`);
   fachfehler('ungueltig', 'geraeteschluessel_attestation');
 }
 
-/** Die Kette muss die Prüfung bestehen und eine noch offene Nonce dieser Familie tragen. */
+/** The chain must pass the check and carry a still-open nonce of this family. */
 export async function depositKey(kx: DevicesContext, f: Familie, kette: readonly string[]): Promise<Registrierung> {
   const k = kx.konfig;
   const widerrufen = applicableList(
@@ -137,7 +137,7 @@ export async function newChallenge(k: DevicesContext, f: Familie, aktion: Schrit
   return { challenge, nachricht: nachricht(aktion, challenge), gueltig_bis: bis };
 }
 
-/** Die Challenge ist danach verbraucht, auch bei falscher Signatur: Raten kostet je Versuch eine neue. */
+/** The challenge is consumed afterwards, even with a wrong signature: guessing costs a new one per attempt. */
 export async function resolveOne(
   kx: DevicesContext,
   f: Familie,

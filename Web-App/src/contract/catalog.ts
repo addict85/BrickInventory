@@ -74,7 +74,7 @@ export const CatalogYearVerteilungResponse = z.looseObject({
   years: z.array(JahrAnzahl),
 });
 
-/** BrickLink-Verweise je Set-Nummer der Anfrage. */
+/** BrickLink references per set number of the request. */
 export const BricklinkVerweise = z.looseObject({ success: z.literal(true), links: z.record(z.string(), z.unknown()) });
 
 export const routen = {

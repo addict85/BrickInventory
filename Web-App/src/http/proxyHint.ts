@@ -2,21 +2,21 @@ import express from 'express';
 import type { Application, Request, Response, NextFunction } from 'express';
 import { proxyVertrauen, withoutV4Shell, inDockerNetwork, isDockerGateway } from '../infra/proxyTrust';
 
-/** Ab hier gilt „immer dieselbe Client-Adresse“ nicht mehr als Zufall eines
- * einzelnen Nutzers, sondern als Zeichen eines weiteren Proxys vor Caddy. */
+/** From here on "always the same client address" no longer counts as the coincidence of a
+ * single user, but as a sign of a further proxy in front of Caddy. */
 export const EINE_ADDRESS = { anfragen: 300, ms: 60 * 60_000 };
 
 export type ProxyStand =
   | { art: 'gateway' | 'docker_netz'; vars: { ip: string } }
   | { art: 'eine_adresse'; vars: { ip: string; minuten: number; anzahl: number } };
-/** Der Verwalter liest das Protokoll selten; Hintergrundarbeiten zeigt den Hinweis des Hinweisgebers,
- * den startup/app.ts in app.locals ablegt (GET /admin/jobs). */
+/** The admin rarely reads the log; background jobs shows the hint of the hint giver,
+ * which startup/app.ts stores in app.locals (GET /admin/jobs). */
 export function proxyHintStatus(app: Application): ProxyStand | null {
   return (app.locals.proxyHinweis as ReturnType<typeof proxyHinweis> | undefined)?.stand() ?? null;
 }
 
-/** Über das Gateway kommen auch Clients herein; geraten wird deshalb nie zu
- * ihm, sondern zu einer festen Proxy-Adresse. */
+/** Clients come in via the gateway as well; that is why the guess is never
+ * the gateway, but a fixed proxy address. */
 export function proxyHinweis(
   trustProxy: string | undefined,
   warne: (text: string) => void = console.warn,
@@ -29,7 +29,7 @@ export function proxyHinweis(
   } catch {
     vertrauen = false;
   }
-  // Dieselbe Auswertung wie im Server, damit Hinweis und Wirkung übereinstimmen.
+  // The same evaluation as in the server, so that hint and effect match.
   const checker = express();
   checker.set('trust proxy', vertrauen);
   const vertraut = checker.get('trust proxy fn') as (adresse: string, hop: number) => boolean;
@@ -61,8 +61,8 @@ export function proxyHinweis(
   return Object.assign(mw, { stand: () => stand });
 }
 
-/** Steht ein zweiter Proxy vor Caddy, kommt immer dessen Adresse an; gemeldet wird
- * erst nach vielen Anfragen über lange Zeit, damit ein einzelner Nutzer nicht zählt. */
+/** If a second proxy stands in front of Caddy, its address always arrives; a report only
+ * happens after many requests over a long time, so that a single user does not count. */
 function onlyClientAddress(
   aktiv: boolean,
   warne: (text: string) => void,
@@ -74,7 +74,7 @@ function onlyClientAddress(
   let seit = 0;
   let anzahl = 0;
   return (ip: string | undefined, von: string) => {
-    // Ohne ausgewertetes X-Forwarded-For (ausserhalb der Produktion) gibt es nichts zu zählen.
+    // Without an evaluated X-Forwarded-For (outside production) there is nothing to count.
     if (fertig || !ip || ip === von) return;
     if (erste === undefined) {
       erste = ip;

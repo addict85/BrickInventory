@@ -1,6 +1,6 @@
-/** Der eine Weg nach draussen. Ein Wurf aus einem Antwort-Rückruf ist eine
- * uncaughtException und beendet den Server; deshalb ruft nur diese Datei
- * https.get und https.request, und jeder Fehler wird hier zur Ablehnung. */
+/** The one way outside. A throw from a response callback is an
+ * uncaughtException and ends the server; that is why only this file calls
+ * https.get and https.request, and every error becomes a rejection here. */
 import https from 'node:https';
 import { PassThrough, type Readable } from 'node:stream';
 import type { IncomingHttpHeaders, IncomingMessage, ClientRequest } from 'node:http';
@@ -11,7 +11,7 @@ export type FetchReason = 'adresse' | 'umleitung' | 'zu-gross' | 'zeitlimit' | '
 
 export class AbrufFehler extends Error {
   readonly grund: FetchReason;
-  /** Wie in clients/fetchError.ts: ein erneuter Versuch kann gelingen. */
+  /** As in clients/fetchError.ts: a retry can succeed. */
   readonly isTransient: boolean;
   constructor(grund: FetchReason, text: string, ursache?: unknown) {
     super(text, ursache === undefined ? undefined : { cause: ursache });
@@ -22,26 +22,26 @@ export class AbrufFehler extends Error {
 }
 
 export interface FetchOptions {
-  /** Gilt für die erste Adresse und für jeden Sprung. */
+  /** Applies to the first address and to every hop. */
   hosts: readonly string[];
   maxBytes: number;
-  /** Gesamtfrist vom ersten Sprung bis zum letzten Byte. */
+  /** Total deadline from the first hop to the last byte. */
   zeitlimitMs: number;
   kopfzeilen?: Record<string, string>;
   redirects?: number;
-  /** Bringt seine eigene Namensauflösung mit; ohne ihn prüft publicLookup das Ziel. */
+  /** Brings its own name resolution; without it publicLookup checks the target. */
   agent?: https.Agent;
-  /** POST folgt keiner Umleitung: Ein 303 hiesse GET, ein 307 sendete den Rumpf weiter. */
+  /** POST follows no redirect: a 303 would mean GET, a 307 would pass the body on. */
   methode?: 'GET' | 'POST';
   rumpf?: string;
-  /** Ein Auftrag, der abgebrochen wird, beendet auch seinen Abruf samt Körper. */
+  /** A job that gets aborted also ends its fetch including the body. */
   signal?: AbortSignal;
 }
 
 export interface FetchHeader {
   status: number;
   kopf: IncomingHttpHeaders;
-  /** Die Adresse nach allen Umleitungen. */
+  /** The address after all redirects. */
   url: string;
 }
 
@@ -50,13 +50,13 @@ export interface FetchResponse extends FetchHeader {
 }
 
 export interface FetchStream extends FetchHeader {
-  /** Der Körper, begrenzt auf maxBytes; darüber endet er mit AbrufFehler. */
+  /** The body, limited to maxBytes; beyond that it ends with AbrufFehler. */
   strom(): Readable;
   verwerfen(): void;
 }
 
 const REDIRECT = new Set([301, 302, 303, 307, 308]);
-/** Ohne Anfrageteil: Dort stehen API-Schlüssel (Brickset), und Fehlertexte landen im Log. */
+/** Without the query part: API keys are in it (Brickset), and error texts end up in the log. */
 function addressShort(u: string): string {
   try {
     const x = new URL(u);
@@ -66,11 +66,11 @@ function addressShort(u: string): string {
   }
 }
 
-/** Fremder Antworttext fürs Log: einzeilig und kurz, damit er keine Zeilen fälscht. */
+/** Foreign response text for the log: single-line and short so that it does not forge lines. */
 export function excerpt(text: unknown, n = 120): string {
   return (
     String(text ?? '')
-      // biome-ignore lint/suspicious/noControlCharactersInRegex: Steuerzeichen herauszufiltern ist der Zweck dieser Stelle.
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: filtering out control characters is the purpose of this spot.
       .replace(/[\u0000-\u001f\u007f]+/g, ' ')
       .slice(0, n)
   );
@@ -166,7 +166,7 @@ function run(start: string, o: FetchOptions): Promise<Lauf> {
   });
 }
 
-/** Ganze Antwort in den Speicher — für API-Antworten und kleine Bilder. */
+/** Whole response into memory — for API responses and small images. */
 export async function holeHttps(url: string, o: FetchOptions): Promise<FetchResponse> {
   const { antwort: r, url: ende, frist, abbrechen } = await run(url, o);
   return new Promise((fertig, scheitern) => {
@@ -200,7 +200,7 @@ export async function holeHttps(url: string, o: FetchOptions): Promise<FetchResp
   });
 }
 
-/** Nur der Kopf; der Körper als begrenzter Strom — für Dateien und den Bild-Proxy. */
+/** Only the head; the body as a limited stream — for files and the image proxy. */
 export async function openHttps(url: string, o: FetchOptions): Promise<FetchStream> {
   const { antwort: r, url: ende, frist, abbrechen } = await run(url, o);
   return {

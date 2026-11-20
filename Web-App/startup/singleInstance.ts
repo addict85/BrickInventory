@@ -1,8 +1,8 @@
-/** Drossel, PDF-Tickets, Gutschein-Guthaben, Kontoschranke und Token-Zwischenspeicher
- * liegen im Speicher des Web-Prozesses. Ein zweiter auf derselben Datenbank hätte
- * eigene Zähler und Tickets (doppeltes Kontingent, Ticket aus A in B unbekannt).
- * Statt alles nach Postgres zu tragen, hält der Web-Prozess eine Sitzungssperre,
- * solange er lebt; ein zweiter startet nicht. */
+/** Throttle, PDF tickets, voucher balances, account limit and token cache
+ * live in the web process's memory. A second one on the same database would have
+ * its own counters and tickets (double quota, ticket from A unknown in B).
+ * Instead of moving everything to Postgres, the web process holds a session lock
+ * as long as it lives; a second one does not start. */
 import type { Client } from 'pg';
 import type { Db } from '../db/database';
 import { attemptsProcessLock } from '../db/processLock';
@@ -20,14 +20,14 @@ export class SecondWebProcess extends Error {
 }
 
 export interface Wait {
-  /** So lange auf einen gerade endenden Vorgänger warten (Neustart, Deploy). */
+  /** Wait this long for a predecessor that is just ending (restart, deploy). */
   wartenMs?: number;
   taktMs?: number;
-  /** Ging die Sperre verloren und ist nicht zurückzuholen; Vorgabe: Prozess beenden. */
+  /** The lock was lost and cannot be reclaimed; default: end the process. */
   atLoss?: (e: Error) => void;
 }
 
-/** Ein Fehler beim Schliessen ändert nichts mehr; gemeldet wird er trotzdem. */
+/** An error while closing changes nothing any more; it is reported anyway. */
 async function schliesse(c: Client): Promise<void> {
   try {
     await c.end();
@@ -38,7 +38,7 @@ async function schliesse(c: Client): Promise<void> {
 
 async function receiptsLock(db: Db, o: Required<Pick<Wait, 'wartenMs' | 'taktMs'>>): Promise<Client> {
   const c = await db.ownConnection();
-  // Ohne Zuhörer beendete ein Abriss während des Wartens den Prozess ungefragt.
+  // Without a listener, a disconnect while waiting would end the process unasked.
   c.on('error', () => {});
   const ende = Date.now() + o.wartenMs;
   let gemeldet = false;
@@ -57,7 +57,7 @@ async function receiptsLock(db: Db, o: Required<Pick<Wait, 'wartenMs' | 'taktMs'
   }
 }
 
-/** @returns Freigabe (beim Herunterfahren). */
+/** @returns release (on shutdown). */
 export async function holdWebLock(db: Db, o: Wait = {}): Promise<() => Promise<void>> {
   const frist = { wartenMs: o.wartenMs ?? 20_000, taktMs: o.taktMs ?? 1000 };
   const verloren =
@@ -68,9 +68,9 @@ export async function holdWebLock(db: Db, o: Wait = {}): Promise<() => Promise<v
     });
   let client: Client | null = null;
   let frei = false;
-  // Reisst die Verbindung ab (Neustart der Datenbank), ist die Sperre weg: zurückholen,
-  // solange die Datenbank fehlt immer wieder (live bleibt 200), aufgeben erst, wenn
-  // inzwischen ein anderer Web-Prozess sie hält.
+  // If the connection drops (database restart), the lock is gone: reclaim it,
+  // again and again as long as the database is missing (live stays 200); give up only when
+  // another web process holds it in the meantime.
   const retrieve = () => {
     if (frei) return;
     receiptsLock(db, frist).then(hold, (e: unknown) =>

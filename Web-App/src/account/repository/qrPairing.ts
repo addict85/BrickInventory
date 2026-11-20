@@ -21,7 +21,7 @@ export async function cleanQrPairingsOn(db: DbInterface): Promise<void> {
   await db.run(`DELETE FROM qr_login_tokens WHERE expires_at < NOW() - INTERVAL '1 hour'`);
 }
 
-/** @returns null, wenn schon `hoechstens` Kopplungen offen sind */
+/** @returns null if `hoechstens` pairings are already open */
 export async function putQrPairingAn(
   db: DbInterface,
   hash: string,
@@ -40,7 +40,7 @@ export async function putQrPairingAn(
   return z?.id ?? null;
 }
 
-/** Atomar: Nur der erste Scan meldet sein Gerät an; die Frist beginnt neu für die Bestätigung. */
+/** Atomic: only the first scan registers its device; the deadline restarts for the confirmation. */
 export function melde(
   db: DbInterface,
   hash: string,
@@ -62,7 +62,7 @@ export function qrPairingOfAccount(db: DbInterface, id: number, uid: number): Pr
   return db.get<QrRow>(`SELECT ${SPALTEN} FROM qr_login_tokens WHERE id = $1 AND user_id = $2`, [id, uid]);
 }
 
-/** Nur aus „bestätigt": Zwei gleichzeitige Abholungen bekommen nicht zwei Tokens. */
+/** Only from "confirmed": two concurrent pickups do not get two tokens. */
 export async function markPickedUp(db: DbInterface, id: number): Promise<boolean> {
   return !!(
     await db.run(
@@ -83,7 +83,7 @@ export async function markConfirmed(db: DbInterface, id: number): Promise<boolea
   ).changes;
 }
 
-/** @returns die Zahl der Fehlversuche danach */
+/** @returns the number of failed attempts afterwards */
 export async function countQrFailedAttempt(db: DbInterface, id: number): Promise<number> {
   const z = await db.get<{ n: number }>(
     'UPDATE qr_login_tokens SET failed_attempts = failed_attempts + 1 WHERE id = $1 RETURNING failed_attempts AS n',

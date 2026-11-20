@@ -1,8 +1,8 @@
-/** Unbekannte Bearer-Token kosten Datenbankabfragen, bevor apiDrossel ein Konto
- * kennt. Gezählt wird in rate_limit_attempts, damit mehrere Web-Prozesse dieselbe
- * Grenze teilen; geschrieben wird nur beim Fehlversuch, die Sperre selbst merkt sich
- * jeder Prozess, damit ein gültiger Token keine zusätzliche Abfrage kostet.
- * Ersetzte Token einer Familie zählen nicht mit (Wiederverwendungserkennung). */
+/** Unknown bearer tokens cost database queries before apiDrossel knows an
+ * account. Counting happens in rate_limit_attempts so that several web processes share the same
+ * limit; writes only happen on a failed attempt, the lock itself is remembered by
+ * each process so that a valid token costs no additional query.
+ * Replaced tokens of a family do not count (reuse detection). */
 import { drosselAdresse } from '../infra/throttleAddress';
 import { countRequest } from './loginLimiter';
 import { reportError } from '../infra/error';
@@ -13,7 +13,7 @@ export const FAILED_ATTEMPT_WINDOW_MS = 60_000;
 export const FAILED_ATTEMPT_MAX = 60;
 const BUCKET = 'token-fehlversuch';
 
-/** Adresse → Ende der Sperre, nur als Abkürzung: Die Zählung steht in der Datenbank. */
+/** Address → end of the lock, only as a shortcut: the count is in the database. */
 const gesperrt = () => prozessweit('tokenSperre', () => new Map<string, number>());
 
 export async function countFailedAttempt(
@@ -35,7 +35,7 @@ export function toManyFailedAttempts(ip: string | null | undefined, jetzt = Date
   return bis !== undefined && jetzt < bis;
 }
 
-/** Nur die Abkürzung dieses Prozesses; ein anderer Prozess hat seine eigene. */
+/** Only this process's shortcut; another process has its own. */
 export function forgetLockInProcess(): void {
   gesperrt().clear();
 }

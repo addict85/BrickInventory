@@ -1,6 +1,6 @@
-/** Was unter /images/ liegt, kommt vom eigenen Ursprung — eine SVG- oder
- * HTML-Datei liefe mit den Rechten der App. Deshalb bestimmt nie die fremde
- * Adresse allein Dateiname, Endung oder Ziel. */
+/** Whatever lies under /images/ comes from the own origin — an SVG or
+ * HTML file would run with the app's rights. That is why the foreign
+ * address alone never determines file name, extension or target. */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { pipeline } from 'node:stream/promises';
@@ -8,7 +8,7 @@ import path from 'node:path';
 import { AbrufFehler } from '../infra/fetch';
 import type { ImagesContext } from './context';
 
-/** Bewusst ohne SVG. */
+/** Deliberately without SVG. */
 const EXTENSION_TO_TYPE: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
@@ -19,7 +19,7 @@ const EXTENSION_TO_TYPE: Record<string, string> = {
 
 export const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 
-/** Sonst jpg. */
+/** Otherwise jpg. */
 export function imageExtension(adresse: string): string {
   let pfad = '';
   try {
@@ -40,21 +40,21 @@ export function imageTypeAllowed(contentType: string | undefined): boolean {
   return Object.values(EXTENSION_TO_TYPE).includes(typ);
 }
 
-/** @returns null, wenn er einen Pfad bilden könnte — dann wird nicht gespeichert */
+/** @returns null if it could form a path — then nothing is saved */
 export function filePart(wert: unknown): string | null {
   const s = String(wert ?? '');
   return /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(s) && !s.includes('..') ? s : null;
 }
 
-/** Nur, wenn er wirklich direkt im Ordner liegt. */
+/** Only if it really lies directly in the folder. */
 export function targetInFolder(ordner: string, datei: string): string | null {
   const ziel = path.resolve(ordner, datei);
   return path.dirname(ziel) === path.resolve(ordner) ? ziel : null;
 }
 
-/** Erst in eine Zwischendatei, damit ein abgebrochener Download nicht später
- * als „schon vorhanden" gilt.
- * @returns ob das Bild jetzt unter `ziel` liegt */
+/** First into a temporary file, so that an aborted download does not later
+ * count as "already present".
+ * @returns whether the image now lies under `ziel` */
 export async function loadImage(
   k: ImagesContext,
   adresse: string,
@@ -85,8 +85,8 @@ export async function loadImage(
     reportWarning(`kein Bild (${a.kopf['content-type']}): ${adresse.slice(0, 80)}`);
     return false;
   }
-  // Eindeutig je Abruf: Zwei gleichzeitige Downloads schrieben sonst in
-  // dieselbe Zwischendatei.
+  // Unique per fetch: two concurrent downloads would otherwise write into
+  // the same temporary file.
   const zwischen = `${ziel}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.teil`;
   try {
     await pipeline(a.strom(), fs.createWriteStream(zwischen));

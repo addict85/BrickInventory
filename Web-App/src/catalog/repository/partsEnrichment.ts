@@ -23,7 +23,7 @@ export function setPartsCatalog(db: DbInterface, setNumber: string) {
   );
 }
 
-/** Eine Zeile heisst „nachgesehen", auch mit leerer bl_id. */
+/** A row means "looked up", even with an empty bl_id. */
 export function blMappings(db: DbInterface, partNumbers: string[]) {
   return db.all<{ rb_id: string; bl_id: string | null }>(
     `SELECT rb_id, bl_id FROM bl_mapping
@@ -90,15 +90,15 @@ export function localImagesWithAddress(db: DbInterface) {
   );
 }
 
-/** Ein nicht wiederherstellbares Bild wird hier geleert: Die Oberflächen fallen
- * auf die CDN-Adresse zurück. */
+/** An unrecoverable image is cleared here: the UIs fall back
+ * to the CDN address. */
 export const CATALOGS_WITH_IMAGE = ['part_color_catalog', 'minifigs_catalog', 'set_catalog'] as const;
 export function forgetLocalImage(db: DbInterface, katalog: (typeof CATALOGS_WITH_IMAGE)[number], imageLocal: string) {
   return db.run(`UPDATE ${katalog} SET image_local=NULL WHERE image_local=$1`, [imageLocal]);
 }
 
-/** Sperren und Freigeben müssen auf derselben Sitzung laufen; über den Pool
- * landeten sie auf verschiedenen. */
+/** Locking and releasing must run on the same session; via the pool
+ * they would end up on different ones. */
 export function lockConnection(db: Db): Promise<PoolClient> {
   return db.pool.connect();
 }

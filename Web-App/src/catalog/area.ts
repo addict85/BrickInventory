@@ -1,4 +1,4 @@
-/** Die Fabrik des Bereichs: Dienste als Closure über k (buildArea, src/infra/area.ts). Wer eine eigene Sperrverbindung hält, ruft das Repository direkt damit auf. */
+/** The area's factory: services as a closure over k (buildArea, src/infra/area.ts). Whoever holds a lock connection of their own calls the repository directly with it. */
 import type { Db } from '../../db/database';
 import { mit, buildArea, type Inspect } from '../infra/area';
 import { Faecher } from '../infra/cache';
@@ -103,7 +103,7 @@ function catalogServices(k: CatalogContext) {
     enrichSetPartsAn: mit(k)(partsEnrichmentService.enrichSetParts),
     loadSetImages: mit(k)(partsEnrichmentService.downloadSetImages),
     enrichSetMinifigsAn: mit(k)(partsEnrichmentService.enrichSetMinifigs),
-    /** PDF-Aufträge eines Kontos: anstossen, verfolgen, verwerfen; das Aufräumen über alle. */
+    /** PDF jobs of an account: trigger, track, discard; the cleanup across all. */
     pdf: {
       starten: mit(k)(pdfAuftraege.startPdfJob),
       lies: mit(k)(pdfAuftraege.readJob),

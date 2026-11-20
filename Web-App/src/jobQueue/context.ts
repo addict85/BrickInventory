@@ -1,4 +1,4 @@
-/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
+/** What the services receive; separate from area.ts so that no import cycle arises. */
 import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/area';
 import type { JobsReadContract } from './readContract';
@@ -15,13 +15,13 @@ export interface JobsDependencies {
   db: Db;
   faecher: Faecher;
   einstellungen: SettingsServices;
-  /** Die angemeldeten Arten; geteilt über alle Sätze dieses Zugangs. */
+  /** The registered kinds; shared across all sets of this access. */
   arten: Arten;
   lesevertrag: JobsReadContract;
 }
 
-/** Die Warteschlange gehört allen Konten; wer sie abarbeitet oder verwaltet, braucht den Systemrahmen.
- * Was eine Anfrage über ihren eigenen Auftrag liest, läuft unter Zeilenschutz und nach Konto gefiltert. */
+/** The queue belongs to all accounts; whoever processes or manages it needs the system frame.
+ * What a request reads about its own job runs under row security and filtered by account. */
 const WARTESCHLANGE = 'Job-Prozess und Einstellen: Aufträge aller Konten und solche ohne Konto';
 const MANAGEMENT = 'Verwaltung: Übersicht über die Aufträge aller Konten';
 

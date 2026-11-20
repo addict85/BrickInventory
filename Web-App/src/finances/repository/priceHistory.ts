@@ -87,13 +87,13 @@ export function deleteOldHistory(db: DbInterface, tage: string) {
   );
 }
 
-/** Die Tabellen wählt die Art hier, nicht der Aufrufer: So steht im Repository, was es liest. */
+/** The kind chooses the tables here, not the caller: that way the repository states what it reads. */
 const PREISTABELLEN = {
   part: { verlauf: 'part_price_history', cache: 'part_price_cache' },
   fig: { verlauf: 'minifig_price_history', cache: 'minifig_price_cache' },
 } as const;
 
-/** `keySql` ist ein fester Ausdruck der Aufrufer, keine Eingabe. */
+/** `keySql` is a fixed expression of the callers, not an input. */
 export function manualSeries(
   db: DbInterface,
   art: 'part' | 'fig',

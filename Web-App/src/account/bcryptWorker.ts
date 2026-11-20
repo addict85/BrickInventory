@@ -1,4 +1,4 @@
-/** Läuft in einem Worker-Thread (bcryptPool.ts): Hier blockiert bcrypt niemanden. */
+/** Runs in a worker thread (bcryptPool.ts): here bcrypt blocks nobody. */
 import { parentPort } from 'node:worker_threads';
 import bcrypt from 'bcryptjs';
 

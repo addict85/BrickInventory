@@ -1,30 +1,30 @@
-/** Der Aufrufrahmen, der einzige Kanal über AsyncLocalStorage: wer fragt (Zeilenschutz je Transaktion),
- * Merker für die Wachen der Datenbank, Commit-Begleiter, Anfragekennung (docs/architektur.md). */
+/** The call frame, the only channel via AsyncLocalStorage: who asks (row security per transaction),
+ * flags for the database's guards, commit companions, request identifier (docs/architektur.md). */
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-/** Was von einer Anfrage das Konto verrät: Sitzung, Token oder Auftrag im Namen
- * eines Kontos. Bewusst ohne Express, damit Zähler tief unten es lesen können. */
+/** What reveals the account of a request: session, token or a job on behalf
+ * of an account. Deliberately without Express so that counters deep down can read it. */
 export interface AccountSource {
   apiUser?: { user_id?: number; is_admin?: boolean } | undefined;
   session?: { userId?: number; isAdmin?: unknown } | undefined;
   tokenUserId?: number | undefined;
 }
 
-/** Was die Wachen über die offene Transaktion wissen (db/transaction.ts füllt es): Der Wächter
- * gegen Ersatzwerte reist mit ihr im Rahmen, nicht als Zustand des Prozesses. */
+/** What the guards know about the open transaction (db/transaction.ts fills it): the guard
+ * against substitute values travels with it in the frame, not as process state. */
 export interface PathTransaction {
-  /** Lässt dieser Fehler sie verdorben zurück? Ein Sicherungspunkt, der ihn auffing, nicht. */
+  /** Does this error leave it spoiled? A savepoint that caught it does not. */
   verdirbt(e: unknown): boolean;
-  /** In Tests wirft auch ein Fehler ausserhalb der Datenbank, damit die Regel greift. */
+  /** In tests an error outside the database throws as well, so that the rule applies. */
   readonly streng: boolean;
 }
 
 interface Rahmen {
-  /** Gelesen erst beim Fragen: Die Anmeldung setzt das Konto später auf demselben Objekt. */
+  /** Read only when asking: login sets the account later on the same object. */
   quelle: AccountSource | null;
   system: string | null;
   web: boolean;
-  /** Die offene Transaktion dieses Aufrufpfads: nur für Wachen, nie ein Weg zu ihr. */
+  /** The open transaction of this call path: only for guards, never a way to it. */
   transaktion: PathTransaction | null;
   companion: unknown;
   rid: string | null;
@@ -43,18 +43,18 @@ export function currentAccount(): { id: number; verwalter: boolean } | null {
   return { id, verwalter };
 }
 
-/** Arbeit über Kontogrenzen: Abfragen gehen dann über die Systemrolle (BYPASSRLS, Migration 0112).
- * Der Grund steht am Aufruf, auffindbar per `inSystemContext(`. */
+/** Work across account boundaries: queries then go via the system role (BYPASSRLS, migration 0112).
+ * The reason stands at the call, findable via `inSystemContext(`. */
 export function inSystemContext<T>(grund: string, f: () => T): T {
   return withFrame({ system: grund }, f);
 }
 
-/** Im Namen eines Kontos (Auftrag): ohne geerbten Systemrahmen und nicht als HTTP-Anfrage. */
+/** On behalf of an account (job): without an inherited system frame and not as an HTTP request. */
 export function asRequest<T>(quelle: AccountSource, f: () => T): T {
   return withFrame({ system: null, web: false, quelle }, f);
 }
 
-/** Eine HTTP-Anfrage erbt keinen Systemrahmen; ihren eigenen trägt die Web-Systemrolle (db/database.ts). */
+/** An HTTP request inherits no system frame; its own is carried by the web system role (db/database.ts). */
 export function asWebRequest<T>(quelle: AccountSource, f: () => T): T {
   return withFrame({ system: null, web: true, quelle }, f);
 }
@@ -64,7 +64,7 @@ export function rowsContext(): { system: boolean; web: boolean; konto: number | 
   return { system: !!r.system, web: r.web, konto: currentAccount()?.id ?? null };
 }
 
-/** Ein Dienst für ein anderes Konto als das des Zeilenschutzes sähe still weniger; fremde über asRequest. */
+/** A service for an account other than that of the row security would silently see less; others via asRequest. */
 export class ForeignAccount extends Error {
   constructor(uid: number, konto: number) {
     super(`Dienst für Konto ${uid} unter dem Zeilenschutz von Konto ${konto}`);
@@ -73,12 +73,12 @@ export class ForeignAccount extends Error {
 
 export function checkRequester(uid: number): void {
   if (jetzt().system) return;
-  // Ohne Konto im Rahmen (Start, Anmeldung davor) filtert kein Zeilenschutz still mit.
+  // Without an account in the frame (startup, before login) no row security filters silently.
   const konto = currentAccount()?.id;
   if (konto !== undefined && konto !== uid) throw new ForeignAccount(uid, konto);
 }
 
-/** Für die Wachen der Datenbank (db/transaction.ts), den Commit-Begleiter der Idempotenz und das Protokoll. */
+/** For the database's guards (db/transaction.ts), the idempotency's commit companion and the log. */
 export function inTransactionPath<T>(transaktion: PathTransaction, f: () => T): T {
   return withFrame({ transaktion }, f);
 }

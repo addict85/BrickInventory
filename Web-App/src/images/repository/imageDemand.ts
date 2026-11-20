@@ -36,7 +36,7 @@ export function entnimmBildwuensche(db: DbInterface, validMs: string, anzahl: nu
   );
 }
 
-/** Zählt nur, was nicht schon wartete. */
+/** Counts only what was not already waiting. */
 export function seriesCatalogImagesOne(
   db: DbInterface,
   urls: string[],

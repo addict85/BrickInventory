@@ -1,5 +1,5 @@
-/** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
- * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt. */
+/** Asynchronous: the route only enqueues a job; images are fetched and drawn by
+ * the job process in a thread of its own, so the web process stays free. */
 import { reportError, withoutMissingFile } from '../../src/infra/error';
 import { streamFileToResponse } from '../../src/http/httpResponse';
 import { kontoSchranke, guardFor } from './middleware';
@@ -25,11 +25,11 @@ function streamStatus(job: {
   });
 }
 
-/** Der einzige Weg der drei Abrufrouten an einen Auftrag: nur der eigene; ein Lesefehler geht weiter. */
+/** The only way of the three fetch routes to a job: only the own one; a read error goes on. */
 function pdfJobReadFor(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>, id: string, userId: number) {
   return d.catalog.pdf.lies(id, userId);
 }
-/** Die Beugung steht als Platzhalter in der Tabelle, nicht hier. */
+/** The inflection is a placeholder in the table, not here. */
 function runningInflection(anzahl: number, sprache: string) {
   const en = sprache === 'en',
     eins = anzahl === 1;
@@ -42,9 +42,9 @@ function runningInflection(anzahl: number, sprache: string) {
 
 const fertig = (s: string | undefined) => s === 'done' || s === 'error';
 
-/** NOTIFY meldet den Stand, gleich in welchem Prozess der Auftrag läuft; ohne
- * Nutzlast (beim Wiederverbinden) und im Rückfalltakt wird ebenfalls nachgesehen,
- * falls ein Signal während einer Verbindungsstörung verloren ging. */
+/** NOTIFY reports the state, no matter in which process the job runs; without a
+ * payload (on reconnect) and in the fallback tick it also checks,
+ * in case a signal got lost during a connection outage. */
 function sequenceJob(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>, strom: Strom, jobId: string, uid: number) {
   const pruefe = async () => {
     const job = await pdfJobReadFor(d, jobId, uid);
@@ -57,9 +57,9 @@ function sequenceJob(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>, strom
   strom.atEnd(() => clearInterval(rueckfall));
 }
 
-/** streamFileToResponse statt pipe(): Das Aufräumen kann die Datei zwischen Prüfung
- * und Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess.
- * Aufgeräumt wird nur nach vollständiger Auslieferung. */
+/** streamFileToResponse instead of pipe(): the cleanup can remove the file between check
+ * and open, and a read stream error without a listener ends the process.
+ * Cleanup only happens after complete delivery. */
 function deliverAndCleanOn(
   d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>,
   req: Request,
@@ -105,7 +105,7 @@ export function buildPdfRouter(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'accoun
     };
   });
 
-  // SSE statt Polling; der Strom sendet nur bei Änderung.
+  // SSE instead of polling; the stream only sends on change.
   router.endpunkt(
     'GET /api/v1/sets/partslist-pdf/stream/:jobId',
     requireToken,

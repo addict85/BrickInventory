@@ -1,4 +1,4 @@
-/** Einzelne Schritte statt eines Laufs: Ein scheiternder Schritt hält die übrigen nicht auf. */
+/** Individual steps instead of one run: a failing step does not hold up the others. */
 import { tokensCleanup } from './deviceToken';
 import { reportPendingAddresses, reportInvalidAddresses, cleanOpenRegistrationsOn } from './accounts';
 import { cleanLoginCounterOn } from './loginLimiter';
@@ -20,7 +20,7 @@ export function onRaeumSteps(k: AccountContext, takt: 'stuendlich' | 'taeglich')
   ];
 }
 
-/** Nur Hinweise ins Protokoll: Welche Adresse gemeint war, weiss nur der Inhaber. */
+/** Only hints in the log: which address was meant is known only to the owner. */
 export function adressHints(k: AccountContext): Schritt[] {
   return [
     ['start:adressen', () => reportInvalidAddresses(k)],

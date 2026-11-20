@@ -5,14 +5,14 @@ import type { CatalogContext } from './context';
 
 type Schreiber = stamm.Schreiber;
 
-// Die Beschreibung gilt für alle Konten und steht nur im Katalog (Migration 0034).
+// The description applies to all accounts and lives only in the catalog (migration 0034).
 
-/** `null` heisst: aus einer geprüften Quelle, sonst das Konto, das es eingetippt
- * hat. Eingetipptes landet in dessen eigenen Angaben, nie im gemeinsamen Katalog. */
+/** `null` means: from a verified source, otherwise the account that typed it
+ * in. Typed-in data ends up in that account's own details, never in the shared catalog. */
 type Von = number | null;
 
 const leer = (v: string | null | undefined): string | null => (v === undefined || v === null || v === '' ? null : v);
-/** Ein eingetipptes Bild nur von den Hosts, die der Bild-Proxy ohnehin zeigt. */
+/** A typed-in image only from the hosts the image proxy shows anyway. */
 const imageInput = (url: string | null, von: Von): string | null =>
   url !== null && von !== null && !hostAllowed(url, ALLOWED_IMAGE_HOSTS) ? null : url;
 
@@ -25,8 +25,8 @@ export async function rememberPart(
   von: Von = null,
 ) {
   if (!partNumber) return;
-  // 'Unknown' ist das Fehlen einer Kategorie und darf einen späteren, echten Wert
-  // nicht blockieren.
+  // 'Unknown' is the absence of a category and must not block a later, real
+  // value.
   const name = leer(partName);
   const kategorie = leer(categoryName) === 'Unknown' ? null : leer(categoryName);
   if (von !== null) {
@@ -36,7 +36,7 @@ export async function rememberPart(
   await stamm.writePartCatalog(dbh, partNumber, name, kategorie);
 }
 
-/** Je Teil UND Farbe — ein roter Stein sieht anders aus als ein blauer. */
+/** Per part AND color — a red brick looks different from a blue one. */
 export async function rememberPartColor(
   k: CatalogContext,
   partNumber: string,
@@ -49,12 +49,12 @@ export async function rememberPartColor(
   von: Von = null,
 ) {
   if (!partNumber) return;
-  // Ohne Angabe gilt KEINE_FARBE, nie 0 (Schwarz).
+  // Without a value KEINE_FARBE applies, never 0 (black).
   const farbe = readColor(colorId);
   const name = leer(colorName),
     code = leer(colorHex);
   const bild = imageInput(leer(imageUrl), von);
-  // image_local schreibt nur der Server selbst (heruntergeladene Datei).
+  // image_local is only written by the server itself (downloaded file).
   if (von !== null) {
     await stamm.writePartColorOwn(dbh, von, partNumber, farbe, name, code, bild);
     return;
@@ -81,8 +81,8 @@ export async function rememberMinifig(
   await stamm.writeMinifigCatalog(dbh, figNumber, name, bild, imageLocal ?? null);
 }
 
-/** Nur Menge und Ersatzteil-Kennzeichen; Name, Farbe und Bild stehen je Teil
- * in den Katalogen. */
+/** Only quantity and spare-part flag; name, color and image are kept per part
+ * in the catalogs. */
 export async function rememberSetPart(
   k: CatalogContext,
   setNumber: string,
@@ -120,9 +120,9 @@ function jeKey<T>(zeilen: T[], schluessel: (z: T) => string, mix?: (a: T, b: T) 
   return [...m.values()];
 }
 
-/** Drei Anweisungen statt drei je Teil. ON CONFLICT DO UPDATE darf eine Zeile
- * nicht zweimal treffen, darum vorher je Schlüssel zusammengefasst: Die
- * Bauteilmenge zählt; Ersatzteil ist es nur, wenn alle es sind. */
+/** Three statements instead of three per part. ON CONFLICT DO UPDATE must not hit a row
+ * twice, so they are merged per key beforehand: the
+ * part quantity adds up; it is a spare part only if all of them are. */
 export async function merkeSetTeile(k: CatalogContext, setNumber: string, zeilen: SetPartRow[], dbh: Schreiber = k.db) {
   if (!setNumber || !zeilen.length) return;
   const teile = jeKey(zeilen, z => z.partNumber);
@@ -181,8 +181,8 @@ export async function rememberMinifigs(
   );
 }
 
-/** Ohne COALESCE: Nach einem echten Download ist der neue Pfad richtig, der
- * alte kann ins Leere zeigen. */
+/** Without COALESCE: after a real download the new path is correct, the
+ * old one may point nowhere. */
 export async function setPartImageLocal(
   k: CatalogContext,
   partNumber: string,
@@ -213,7 +213,7 @@ export async function merkeSetFiguren(
   );
 }
 
-/** Nur dort, wo noch keine steht. */
+/** Only where none exists yet. */
 export async function rememberMinifigImageAddress(
   k: CatalogContext,
   figNumber: string,
@@ -224,7 +224,7 @@ export async function rememberMinifigImageAddress(
   await stamm.writeMinifigImageAddress(dbh, figNumber, imageUrl);
 }
 
-/** ÜBERSCHREIBEN — wie setPartImageLocal. */
+/** OVERWRITE — like setPartImageLocal. */
 export async function setMinifigImageLocal(
   k: CatalogContext,
   figNumber: string,
@@ -235,20 +235,20 @@ export async function setMinifigImageLocal(
   await stamm.writeMinifigImageLocal(dbh, figNumber, imageLocal);
 }
 
-/** Vor jedem Abruf bei Rebrickable gefragt, damit Bekanntes nichts kostet. */
+/** Asked before every Rebrickable lookup so that known data costs nothing. */
 export interface CatalogPart {
   name: string | null;
   kategorie: string | null;
-  /** Nur als https-URL; ein lokaler Pfad zählt bei `hatImage` mit, nicht hier. */
+  /** Only as an https URL; a local path counts for `hatImage`, not here. */
   bild: string | null;
   hatImage: boolean;
-  /** Die Setlisten führen keine eigenen Bilder; ihre stehen an der Farbe. */
+  /** Set lists carry no images of their own; theirs are attached to the color. */
   bildQuelle: 'farbe' | 'allgemein' | null;
   bildDatei: string | null;
 }
 
-/** `fuer`: Nur dessen eigene Angaben zählen als bekannt, die anderer Konten
- * sieht diese Abfrage nicht. */
+/** `fuer`: only that account's own details count as known; this query does not see
+ * those of other accounts. */
 export async function catalogPart(
   k: CatalogContext,
   partNumber: string,

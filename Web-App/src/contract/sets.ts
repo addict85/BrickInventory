@@ -19,7 +19,7 @@ export const AddSetResponse = z.looseObject({
   set_number: z.string(),
   name: z.string().nullable().optional(),
   katalog_offen: z.boolean().optional(),
-  /** ausstehend: angelegt, Katalog, Bild oder Marktpreis holt noch ein Auftrag. */
+  /** ausstehend: created, a job is still fetching catalog, image or market price. */
   ergaenzung: z.enum(['ausstehend', 'erledigt']).optional(),
   owner_user_id: z.number().int().optional(),
   is_self: z.boolean().optional(),
@@ -119,7 +119,7 @@ export const SetItem = z.looseObject({
   condition: z.string().nullable(),
   storage: z.string().nullable(),
   conditions: z.array(z.string()),
-  /** Nur im Haushalt (besitzerAnhaengen); allein gibt es keine Besitzer zu nennen. */
+  /** Only in the household (besitzerAnhaengen); alone there are no owners to name. */
   owners: z.array(KontoName).optional(),
   max_purchase_price: z.number().nullable(),
   avg_purchase_price: z.number().nullable(),
@@ -135,7 +135,7 @@ export const SetExistsResponse = z.looseObject({
   exists: z.boolean(),
   set_number: z.string(),
   owner_user_id: z.number().int().nullable().optional(),
-  /** Nur, wenn es das Set im Blickfeld gibt. */
+  /** Only if the set exists in the scope. */
   is_self: z.boolean().optional(),
 });
 
@@ -162,11 +162,11 @@ export const SetsResponse = z.looseObject({
   count: z.number().int(),
   sets: z.array(SetItem),
   total: z.number().int(),
-  /** Nur auf der ersten Seite eines geblätterten Abrufs. */
+  /** Only on the first page of a paged fetch. */
   themes: z.array(z.string()).optional(),
 });
 
-/** 202: Geladen wird im Job-Prozess (Auftrag `anleitung`); die Liste ist der Stand vor dem Laden. */
+/** 202: loading happens in the job process (job `anleitung`); the list is the state before loading. */
 export const AnleitungenGeladen = z.looseObject({
   success: z.literal(true),
   count: ganz,
@@ -176,7 +176,7 @@ export const AnleitungenGeladen = z.looseObject({
 export const PdfAuftrag = z.looseObject({ success: z.literal(true), jobId: z.string() });
 
 const textOrNull = (max: number) => z.string().max(max).nullish();
-/** Der Job zeichnet jede Zeile und lädt Bilder nach: Zahl und Grösse begrenzt. */
+/** The job draws every row and loads images: number and size are limited. */
 export const PdfEingabe = z.strictObject({
   sets: z
     .array(z.object({ set_number: z.string().trim().min(1).max(32), name: textOrNull(500) }))
@@ -203,7 +203,7 @@ export const PdfEingabe = z.strictObject({
     .max(5000)
     .optional(),
 });
-/** Der Stand eines PDF-Auftrags; die App fragt ihn ab, bis er fertig ist. */
+/** The state of a PDF job; the app polls it until it is finished. */
 export const PdfStand = z.looseObject({
   success: z.literal(true),
   status: z.string(),
@@ -212,11 +212,11 @@ export const PdfStand = z.looseObject({
   missingImages: z.unknown(),
 });
 
-/** Der Set-Import läuft im Hintergrund; sofort steht fest, wie viele Zeilen und welche Sets schon da sind. */
+/** The set import runs in the background; right away it is known how many rows and which sets already exist. */
 export const SetCsvImportGestartet = z.looseObject({
   success: z.boolean(),
   total: ganz,
-  /** false bei `pruefen`: nur gezählt, nichts gestartet. */
+  /** false for `pruefen`: only counted, nothing started. */
   gestartet: z.boolean(),
   vorhanden: ganz,
   vorhanden_nummern: z.array(z.string()),
@@ -230,9 +230,9 @@ export const AnleitungHochgeladen = GenericResponse.extend({
   instruction: z.looseObject({ url: z.string(), description: z.string().nullable(), local_path: z.string() }),
 });
 
-/** Was eine Verringerung wegnahm; die Oberfläche nennt den Kauf und bietet Rückgängig über `papierkorb`. */
+/** What a reduction removed; the UI names the purchase and offers undo via `papierkorb`. */
 export const MengeGeaendert = GenericResponse.extend({
-  /** null: geschrieben, aber nicht nachgelesen (siehe degradiert). */
+  /** null: written but not read back (see degradiert). */
   quantity: ganz.nullable(),
   papierkorb: z.number().int().optional(),
   degradiert: DEGRADED,
@@ -251,7 +251,7 @@ export const MengeGeaendert = GenericResponse.extend({
     .optional(),
 });
 
-/** Ein neues Set; dieselben Felder für den Strom (add-stream). */
+/** A new set; the same fields for the stream (add-stream). */
 const NewSet = z.strictObject({
   set_number: z.union([z.string().max(64), z.number()]).optional(),
   quantity: eingabe.stueckzahl(),

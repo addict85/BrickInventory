@@ -1,5 +1,5 @@
-/** Der Einstieg in den Bereich: Andere importieren nur von hier, damit die Aufteilung der
- * Dateien darunter frei bleibt. Was Datenbank oder Nacharbeit braucht, entsteht in area.ts. */
+/** The entry point into the area: others import only from here, so that the split into
+ * files below stays free. Whatever needs the database or follow-up work is created in area.ts. */
 
 export { createSets } from './area';
 export type { SetsServices } from './area';

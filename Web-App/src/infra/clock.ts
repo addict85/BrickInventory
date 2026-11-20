@@ -1,15 +1,15 @@
-/** Die Zeit eines Satzes Dienste (`k.uhr`): Fachbereiche fragen sie hier statt `Date.now()`, damit
- * ein Test sie stellen kann, statt zu warten. Die Datenbank hat ihre eigene (`NOW()`). */
+/** The time of a set of services (`k.uhr`): domain areas ask it here instead of `Date.now()`, so that
+ * a test can set it instead of waiting. The database has its own (`NOW()`). */
 export interface Uhr {
-  /** Millisekunden seit 1970, wie Date.now(). */
+  /** Milliseconds since 1970, like Date.now(). */
   jetzt(): number;
-  /** Die Gegenwart als Date. */
+  /** The present as a Date. */
   datum(): Date;
 }
 
 export const systemClock: Uhr = { jetzt: () => Date.now(), datum: () => new Date() };
 
-/** Läuft mit der Systemzeit, lässt sich aber vorstellen: Ein Test springt über eine Frist, statt sie abzuwarten. */
+/** Runs with the system time but can be set ahead: a test jumps over a deadline instead of waiting for it. */
 export interface StellbareClock extends Uhr {
   vor(ms: number): void;
   zurueck(): void;

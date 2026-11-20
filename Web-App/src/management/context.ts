@@ -1,4 +1,4 @@
-/** Was die Dienste bekommen; getrennt von area.ts, damit kein Importzyklus entsteht. */
+/** What the services receive; separate from area.ts so that no import cycle arises. */
 import type { MailServices } from '../mail';
 import type { VoucherServices } from '../vouchers';
 import type { Db } from '../../db/database';
@@ -38,7 +38,7 @@ export interface ManagementDependencies {
 }
 
 export const zugang = (db: Db) => ({
-  // Diagnose und Zählungen gehen über alle Konten; die Routen selbst laufen ohne Systemrahmen.
+  // Diagnostics and counts span all accounts; the routes themselves run without a system frame.
   management: {
     holdingMinifigImagesOpen: imSystem(db, 'management', management.holdingMinifigImagesOpen),
     accountImageRows: imSystem(db, 'management', management.accountImageRows),
@@ -65,7 +65,7 @@ export const zugang = (db: Db) => ({
     pricesInCache: imSystem(db, 'management', management.pricesInCache),
     thumbnailImageMisses: imSystem(db, 'management', management.thumbnailImageMisses),
     mappedParts: imSystem(db, 'management', management.mappedParts),
-    // Die Preisprobe sieht nur den eigenen Bestand des Verwalters: unter dem Zeilenschutz.
+    // The price probe only sees the admin's own inventory: under row security.
     sampleAcquisitions: mit(db)(management.sampleAcquisitions),
     sampleSet: mit(db)(management.sampleSet),
   },

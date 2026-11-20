@@ -12,7 +12,7 @@ import { accountThrottled } from './targetThrottle';
 import { hintInBackground } from './accountNotice';
 import type { AccountContext } from './context';
 
-/** Fachlich, nicht HTTP: Den Status wählt die HTTP-Seite (src/http/errorKind.ts). */
+/** Domain, not HTTP: the HTTP layer chooses the status (src/http/errorKind.ts). */
 export type ConfirmationRejection = {
   art: ErrorKind;
   code: ErrorCode;
@@ -38,7 +38,7 @@ async function gebremst(
   }
   if (!(await check())) {
     reportLoginEvent('bestaetigung_fehlgeschlagen', { konto: uid, art, zugang });
-    // Wer in einer laufenden Sitzung rät, hat einen Zugang erbeutet: Der Inhaber erfährt es (1×/Tag).
+    // Whoever guesses in a running session has captured an access: the owner learns about it (1×/day).
     if (await confirmationFailed(k, art, uid, zugang)) {
       reportLoginEvent('bestaetigung_gebremst', { konto: uid, art, zugang });
       if (!(await accountThrottled(k, 'bestaetigung-hinweis', uid, 1, 86_400_000)))
@@ -50,10 +50,10 @@ async function gebremst(
   return null;
 }
 
-/** Der einzige Weg, ein Passwort in einer laufenden Sitzung zu bestätigen: Bei
- * aktivem zweitem Faktor immer mit Code oder Passkey. Fehlt beides, kommt die
- * Absage vor jeder Prüfung, damit kein Erfolg eine Bremse zurücksetzt.
- * @returns null, wenn alles stimmt */
+/** The only way to confirm a password in a running session: with an
+ * active second factor always with code or passkey. If both are missing, the
+ * rejection comes before any check, so no success resets a brake.
+ * @returns null if everything is right */
 export async function checkConfirmation(
   k: AccountContext,
   uid: number,
@@ -103,7 +103,7 @@ export async function checkConfirmation(
       );
 }
 
-/** Nur der Code, mit der Bremse für Codes. */
+/** Only the code, with the brake for codes. */
 export function checkCodeConfirmation(
   k: AccountContext,
   uid: number,
@@ -120,9 +120,9 @@ export function checkCodeConfirmation(
   );
 }
 
-/** Das Bestätigen der Einrichtung prüft ebenfalls einen Code; ohne Bremse
- * liesse er sich in einer übernommenen Sitzung beliebig oft raten.
- * @returns die Wiederherstellungscodes oder die Absage */
+/** Confirming the setup also checks a code; without a brake
+ * it could be guessed any number of times in a taken-over session.
+ * @returns the recovery codes or the rejection */
 export async function confirmSetupThrottled(
   k: AccountContext,
   uid: number,

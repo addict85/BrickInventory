@@ -1,6 +1,6 @@
-/** Hier fällt die Entscheidung, unter welcher Art (Set, Gear, Buch) gefragt
- * wird; der Katalog merkt sich die Antwort, damit der nächste Abruf gleich
- * richtig fragt. */
+/** This is where the decision is made under which kind (set, gear, book) to
+ * ask; the catalog remembers the answer so that the next lookup asks
+ * correctly right away. */
 import { asFetchError } from '../externalSources';
 import { withVersion, withoutBricklinkPrice, withoutVersion } from '../infra/setNumber';
 import { fachfehler } from '../infra/errorTexts';
@@ -9,8 +9,8 @@ import type { CatalogContext } from './context';
 
 export type PriceRecord = { avg_price?: unknown; qty_avg_price?: unknown } | null | undefined;
 
-/** DIE Marktpreisregel (SQL: marktpreisSql): avg_price, sonst qty_avg_price, 0 ist kein
- * Preis; ein Mengenschnitt belegt Verkäufe. String(): Auch BrickLink-Antworten tragen Text. */
+/** THE market price rule (SQL: marktpreisSql): avg_price, otherwise qty_avg_price, 0 is not a
+ * price; a quantity average proves sales. String(): BrickLink responses carry text, too. */
 export function marketPriceFrom(row: PriceRecord): number | null {
   const avg = parseFloat(String(row?.avg_price ?? ''));
   if (avg > 0) return avg;
@@ -28,18 +28,18 @@ export function setKnownInCatalog(k: CatalogContext, setNumber: string): Promise
   return k.katalogCache.setInCatalog(withVersion(setNumber));
 }
 
-/** Unter der Schreibweise, unter der er abgelegt wird. */
+/** Under the spelling it is stored under. */
 export function catalogEntry(k: CatalogContext, setNumber: string): Promise<CatalogEntry | null> {
   return k.katalogCache.catalogEntryTo(withVersion(setNumber));
 }
 
-/** Nicht gefunden oder ungültig: dann die nächste Art. */
+/** Not found or invalid: then the next kind. */
 const tryNext = (e: unknown) => {
   const c = asFetchError(e).detail?.meta?.code;
   return c === 404 || c === 400;
 };
 
-// Vorgabe 'N': Ohne Zustand wurde sonst der Gebrauchtpreis geholt und gecacht.
+// Default 'N': without a condition the used price used to be fetched and cached.
 async function getPriceGuideRaw(
   k: CatalogContext,
   setNumber: string,
@@ -78,7 +78,7 @@ async function getPriceGuideRaw(
   throw new Error(`${n} nicht auf BrickLink gefunden (Set/Gear/Book) — kein Preis`);
 }
 
-// Erst Verkäufe, sonst Angebote: Selten gehandelte Artikel hätten sonst nie einen Preis.
+// Sales first, otherwise offers: rarely traded items would otherwise never have a price.
 export async function priceGuideQuery(
   k: CatalogContext,
   setNumber: string,
@@ -90,17 +90,17 @@ export async function priceGuideQuery(
   if (hatPrice(first) || guideType !== 'sold') {
     return { ...first, guide_used: guideType };
   }
-  // Kein Verkauf in sechs Monaten → aktuelle Angebote heranziehen.
+  // No sale in six months → use current offers.
   try {
     const alt = await getPriceGuideRaw(k, setNumber, condition, 'stock', currencyCode);
     if (hatPrice(alt)) return { ...alt, guide_used: 'stock', guide_fallback: true };
   } catch (_) {
-    /* Rückfall ist optional — dann bleibt es beim leeren Ergebnis */
+    /* Fallback is optional — then the result stays empty */
   }
   return { ...first, guide_used: guideType };
 }
 
-// Ohne Nummer der ganze Speicher.
+// Without a number, the whole store.
 export async function clearSubsetsCache(k: CatalogContext, sn: string | null = null) {
   await k.katalogCache.emptySubsetsCache(sn ? withVersion(sn) : null);
 }

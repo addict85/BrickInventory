@@ -1,22 +1,22 @@
 /**
- * Die Stückzahl eines Sets — abgeleitet, nicht gespeichert.
+ * The quantity of a set — derived, not stored.
  */
 
-/** `::int`: SUM(INTEGER) ergibt BIGINT, und das liefert der Treiber als
- * Zeichenkette — sonst hinge der JSON-Typ von `quantity` am Zweig. */
+/** `::int`: SUM(INTEGER) yields BIGINT, and the driver returns that as a
+ * string — otherwise the JSON type of `quantity` would depend on the branch. */
 const SUMME = 'SUM(a.quantity)::int';
 
-/** Stückzahl als Unterabfrage in der Spaltenliste. `bezug` ist der Alias
- * einer Zeile mit `user_id` und `set_number` (also `sets`). */
+/** Quantity as a subquery in the column list. `bezug` is the alias
+ * of a row with `user_id` and `set_number` (i.e. `sets`). */
 export function mengeSkalar(bezug: string): string {
   return `COALESCE((SELECT ${SUMME} FROM set_acquisitions a
                      WHERE a.user_id = ${bezug}.user_id
                        AND a.set_number = ${bezug}.set_number), 0)`;
 }
 
-/** Stückzahl als gruppierte JOIN-Quelle (`<alias>.menge`). `konten`, z. B.
- * `= ANY($1)`, filtert schon in der Unterabfrage: Der Planer zieht die
- * Kontobedingung des JOIN nicht hinein und summierte sonst alle Konten. */
+/** Quantity as a grouped JOIN source (`<alias>.menge`). `konten`, e.g.
+ * `= ANY($1)`, already filters in the subquery: the planner does not pull the
+ * account condition of the JOIN inside and would otherwise sum all accounts. */
 export function mengeJoin(bezug: string, alias = 'sm', konten?: Konten): string {
   const filter = konten
     ? `
@@ -29,15 +29,15 @@ export function mengeJoin(bezug: string, alias = 'sm', konten?: Konten): string 
               AND ${alias}.set_number = ${bezug}.set_number`;
 }
 
-/** Die Mengenspalte zu [mengeJoin], nie NULL (NULL machte jedes Produkt
- * NULL). `fehlt`: 0 für eine Stückzahl, 1 für einen Faktor. */
+/** The quantity column for [mengeJoin], never NULL (NULL would make every product
+ * NULL). `fehlt`: 0 for a quantity, 1 for a factor. */
 export function mengeAus(alias = 'sm', fehlt: 0 | 1 = 0): string {
   return `COALESCE(${alias}.menge, ${fehlt})`;
 }
 
 /**
- * Die Stückzahl eines Sets über ein ganzes BLICKFELD, als fertige Abfrage.
- * @param konten 'eines' für eine Konto-ID, 'blickfeld' für eine Liste.
+ * The quantity of a set across a whole SCOPE, as a finished query.
+ * @param konten 'eines' for one account id, 'blickfeld' for a list.
  */
 export function quantitySumSql(konten: 'eines' | 'blickfeld'): string {
   return `SELECT COALESCE(${SUMME}, 0) AS q
@@ -51,11 +51,11 @@ import type { DbInterface } from './database';
 import { aufKonten, type Konten } from './accounts';
 import { colorId } from '../src/infra/validate';
 
-/** Was ein Leser hier können muss, und nicht mehr: `db` oder eine Transaktion. */
+/** What a reader needs to be able to do here, and no more: `db` or a transaction. */
 type Schreiber = Pick<DbInterface, 'get'>;
 
 /**
- * Die Stückzahl EINER Set-Zeile — als Zahl, nicht als SQL-Schnipsel.
+ * The quantity of ONE set row — as a number, not as an SQL snippet.
  */
 export async function quantityOfSets(userId: number, setNumber: string, dbh: Schreiber): Promise<number | null> {
   const zeile = await dbh.get<{ menge: unknown }>(
@@ -66,10 +66,10 @@ export async function quantityOfSets(userId: number, setNumber: string, dbh: Sch
   return zeile ? parseInt(String(zeile.menge), 10) || 0 : null;
 }
 
-// Teile und Figuren haben noch eine Mengenspalte, weil sie zwei Bedeutungen
-// trägt.
+// Parts and minifigs still have a quantity column, because it carries two
+// meanings.
 
-/** Welcher Bestand. Sets stehen hier nicht: ihre Spalte ist seit 0036 weg. */
+/** Which inventory. Sets are not here: their column is gone since 0036. */
 export interface EntryRow {
   id: number;
   quantity: number;
@@ -84,15 +84,15 @@ export interface EntryRow {
 
 export type StockKind = 'part' | 'fig';
 
-/** Je Art: Tabellen, Schluessel und Spaltennamen. Einmal, als Tabelle. */
+/** Per kind: tables, keys and column names. Once, as a table. */
 const ART = {
   part: {
     bestand: 'parts',
     erfassung: 'part_acquisitions',
     katalog: 'set_parts',
     nummer: 'part_number',
-    // Die Farbe gehört in beide Schlüssel; „ohne Angabe“ ist in der
-    // Erfassung 0, in der Bestandszeile womöglich NULL.
+    // The color belongs in both keys; "not specified" is 0 in the
+    // acquisition, possibly NULL in the inventory row.
     farbe: true,
   },
   fig: {
@@ -104,8 +104,8 @@ const ART = {
   },
 } as const;
 
-/** Die JOIN-Quellen `<alias>_e` (Erfassungen) und `<alias>_k` (Katalog) für
- * die Stückzahl der Bestandszeile `bezug`; `konten` wie bei [mengeJoin]. */
+/** The JOIN sources `<alias>_e` (acquisitions) and `<alias>_k` (catalog) for
+ * the quantity of the inventory row `bezug`; `konten` as for [mengeJoin]. */
 export function teilmengeJoin(bezug: string, art: StockKind, alias = 'tm', konten?: Konten): string {
   const a = ART[art];
   const farbErf = a.farbe ? `, x.color_id AS fk` : '';
@@ -128,7 +128,7 @@ export function teilmengeJoin(bezug: string, art: StockKind, alias = 'tm', konte
 }
 
 /**
- * Die Stückzahl der Bestandszeile — die Fallunterscheidung selbst.
+ * The quantity of the inventory row — the case distinction itself.
  */
 export function teilmengeAus(bezug: string, _art: StockKind, alias = 'tm'): string {
   return `CASE WHEN COALESCE(${bezug}.source, 'set') = 'manual'
@@ -137,7 +137,7 @@ export function teilmengeAus(bezug: string, _art: StockKind, alias = 'tm'): stri
 }
 
 /**
- * Die Stückzahl EINER manuellen Position — als Zahl, nicht als Schnipsel.
+ * The quantity of ONE manual item — as a number, not as a snippet.
  */
 export async function quantityThePosition(
   art: StockKind,
@@ -160,28 +160,28 @@ export async function quantityThePosition(
   return zeile ? parseInt(String(zeile.menge), 10) || 0 : null;
 }
 
-/** Der Tag einer Erfassung genau wie im eindeutigen Index (0070): `day`, für
- * ältere Zeilen der UTC-Tag. Ein anderer Ausdruck träfe den Index nicht. */
+/** The day of an acquisition exactly as in the unique index (0070): `day`, for
+ * older rows the UTC day. A different expression would not hit the index. */
 export function erfassungsTagSql(alias = ''): string {
   const a = alias ? `${alias}.` : '';
   return `COALESCE(${a}day, (${a}created_at AT TIME ZONE 'UTC')::date)`;
 }
 
-/** Bedingung: Der Kaufpreis ist in der heutigen Kontowährung erfasst — ein
- * Preis in anderer Währung verfälschte Durchschnitte. Die Währung kommt
- * einmal je Abfrage aus [kontowaehrungJoin]. */
+/** Condition: the purchase price is recorded in today's account currency — a
+ * price in another currency would falsify averages. The currency comes
+ * once per query from [kontowaehrungJoin]. */
 export function inKontowaehrung(tabelle: string, alias = 'kw'): string {
   return `${tabelle}.currency = COALESCE(${alias}.value, 'EUR')`;
 }
 
-/** Die Kontowährung als JOIN-Quelle für [inKontowaehrung]. */
+/** The account currency as a JOIN source for [inKontowaehrung]. */
 export function kontowaehrungJoin(tabelle: string, alias = 'kw'): string {
   return `LEFT JOIN user_settings ${alias}
             ON ${alias}.user_id = ${tabelle}.user_id AND ${alias}.key = 'currency'`;
 }
 
-/** Die drei Erfassungstabellen; der eindeutige Index (Migration 0070) läuft
- * über Konto, Element, Tag, Zustand, Preis, Schätzung und Währung. */
+/** The three acquisition tables; the unique index (migration 0070) covers
+ * account, element, day, condition, price, estimate and currency. */
 export type ErfassungsArt = 'set' | 'part' | 'fig';
 export const ENTRY_TABLES = {
   set: { table: 'set_acquisitions', price: 'purchase_price', keys: ['set_number'] },

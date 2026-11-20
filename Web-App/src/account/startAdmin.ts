@@ -1,6 +1,6 @@
-/** Das erste Konto einer neuen Installation. Es gilt dieselbe Passwortregel wie
- * für jedes andere Konto; ein schwaches ADMIN_PASSWORD wird durch ein zufälliges
- * ersetzt, das beim ersten Login zu ändern ist. */
+/** The first account of a new installation. The same password rule applies as
+ * for every other account; a weak ADMIN_PASSWORD is replaced by a random one
+ * that must be changed at first login. */
 import crypto from 'node:crypto';
 import { passwordLack } from '../infra/passwordRule';
 import { removeStartpasswort, writeStartpasswort } from '../infra/startpasswort';
@@ -17,11 +17,11 @@ export async function putStartAdminAn(k: AccountContext): Promise<void> {
   if (mangel)
     console.warn(`⚠️  [start] ADMIN_PASSWORD wird nicht verwendet (${mangel}); es gilt ein zufälliges Startpasswort.`);
   const fromEnvironment = envPassword !== '' && !mangel;
-  const passwort = fromEnvironment ? envPassword : crypto.randomBytes(15).toString('base64url'); // 20 Zeichen, URL-sicher
-  // Vor dem Anlegen: Ist die Datei nicht schreibbar, bricht der Start ab, statt
-  // ein Konto mit einem Passwort zu hinterlassen, das niemand kennt.
+  const passwort = fromEnvironment ? envPassword : crypto.randomBytes(15).toString('base64url'); // 20 characters, URL-safe
+  // Before creating: if the file is not writable, startup aborts instead of
+  // leaving behind an account with a password nobody knows.
   const datei = fromEnvironment ? null : writeStartpasswort('admin', passwort);
-  // Dieselben Kosten wie jedes Konto: Mit weniger antwortete ein Fehlversuch gegen „admin“ messbar schneller.
+  // Same cost as every account: with less, a failed attempt against "admin" would answer measurably faster.
   const hash = hashePasswordImmediately(passwort);
   await k.startVerwalter.putAdminAn(hash, !fromEnvironment);
   if (!datei) console.log('✅ Erstes Administratorkonto erstellt (Passwort aus ADMIN_PASSWORD).');

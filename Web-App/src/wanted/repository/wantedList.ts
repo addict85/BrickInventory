@@ -2,8 +2,8 @@ import type { DbInterface } from '../../../db/database';
 
 export type Art = 'part' | 'fig' | 'set';
 
-/** Zuordnungen zu BrickLink-Nummern; `bl_id IS NULL` heisst „gleich vermerkt“.
- * Die eigenen des Kontos stehen vorn (`eigen`), damit sie Vorrang haben. */
+/** Mappings to BrickLink numbers; `bl_id IS NULL` means "noted as identical".
+ * The account's own ones come first (`eigen`), so that they take precedence. */
 export function mappings(db: DbInterface, blNummern: string[], uid: number | null = null) {
   return db.all<{ type: Art; rb_id: string; bl_id: string | null; eigen: boolean }>(
     `SELECT type, rb_id, NULLIF(bl_id, rb_id) AS bl_id, true AS eigen FROM bl_mapping_custom
@@ -22,7 +22,7 @@ const KATALOG: Record<Art, string> = {
   set: 'SELECT set_number AS n FROM set_catalog WHERE set_number = ANY($1)',
 };
 
-/** Welche der Nummern der eigene Katalog dieser Art führt. */
+/** Which of the numbers the own catalog of this kind lists. */
 export async function numbersInCatalog(db: DbInterface, art: Art, nummern: string[]): Promise<string[]> {
   return (await db.all<{ n: string }>(KATALOG[art], [nummern])).map(z => z.n);
 }

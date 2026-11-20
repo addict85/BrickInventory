@@ -12,8 +12,8 @@ import type { AccountServices } from '../account';
 import type { Kontext } from '../infra/area';
 import type { Uhr } from '../infra/clock';
 
-/** Was der Bereich von aussen bekommt, damit ein Test ihm einen eigenen Zugang geben kann; dass
- * alle Bereiche denselben nutzen, sichert buildServices (startup/wiring.ts). */
+/** What the area gets from outside, so that a test can give it its own access; that
+ * all areas use the same one is ensured by buildServices (startup/wiring.ts). */
 export interface SetsDependencies {
   uhr: Uhr;
   konfig: Readonly<Konfig>;

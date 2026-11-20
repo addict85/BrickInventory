@@ -1,7 +1,7 @@
-/** Ein Strom (SSE, NDJSON) lebt Minuten, geprüft wurde sein Zugang aber nur am
- * Anfang. Ohne Wache sähe ein abgemeldetes Gerät oder ein widerrufener Token
- * weiter zu. Geprüft wird im Takt und bei jeder Zugangsänderung im Prozess,
- * ohne Zwischenspeicher und ohne Nebenwirkungen (kein last_used, kein Fehlversuch). */
+/** A stream (SSE, NDJSON) lives for minutes, but its access was only checked at the
+ * start. Without a watch, a signed-out device or a revoked token would keep
+ * watching. It is checked on each tick and on every access change in the process,
+ * without cache and without side effects (no last_used, no failed attempt). */
 import type { Request } from 'express';
 import { reportError } from '../../infra/error';
 import type { AccountServices } from '../area';
@@ -21,12 +21,12 @@ function sessionAlive(req: Request): Promise<boolean> {
   );
 }
 
-/** Gilt der Zugang, mit dem die Anfrage kam, jetzt noch? */
+/** Does the access the request came with still apply now? */
 export async function accessAppliesStill(konto: AccountServices, req: Request): Promise<boolean> {
   const s = req.session;
   if (s?.userId) {
     if ((await konto.sitzungen.versionFromDb(s.userId)) !== (s.sitzungsVersion ?? 0)) return false;
-    // Abmelden löscht nur diese eine Sitzung, die Version bleibt.
+    // Logging out only deletes this one session, the version stays.
     return sessionAlive(req);
   }
   const kopf = String(req.headers.authorization || '');
@@ -34,9 +34,9 @@ export async function accessAppliesStill(konto: AccountServices, req: Request): 
   return konto.tokenGilt(kopf.slice(7));
 }
 
-/** `beenden` läuft höchstens einmal, sobald der Zugang nicht mehr gilt. Ein
- * Lesefehler beendet nichts: Der nächste Takt fragt wieder.
- * @returns Abmelden — im Aufräumpfad des Stroms rufen. */
+/** `beenden` runs at most once, as soon as the access no longer applies. A
+ * read error ends nothing: the next tick asks again.
+ * @returns unsubscribe — call it in the stream's cleanup path. */
 export function watchViaAccess(
   konto: AccountServices,
   req: Request,
@@ -70,5 +70,5 @@ export function watchViaAccess(
   return abmelden;
 }
 
-/** Das letzte Ereignis eines SSE-Stroms, dessen Zugang endete. */
+/** The last event of an SSE stream whose access ended. */
 export const SSE_ACCESS_ENDED = 'event: zugang_beendet\ndata: {"reason":"zugang_beendet"}\n\n';

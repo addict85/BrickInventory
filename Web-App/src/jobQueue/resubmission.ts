@@ -1,10 +1,10 @@
-/** Je Schlüssel ein wartender Auftrag, der über Aufträge hinweg mitzählt (`versuch` in der
- * Nutzlast): Wer eine Gegenseite später erneut fragen will, merkt vor, bis die Grenze erreicht ist. */
+/** Per key one waiting job that keeps counting across jobs (`versuch` in the
+ * payload): whoever wants to ask a remote side again later queues until the limit is reached. */
 import type { JobKind, PayloadInput } from './jobs';
 import { wakeWorker, pullBefore } from './service';
 import type { JobsContext } from './context';
 
-/** @returns vorgemerkt false, wenn der Schlüssel schon `hoechstens` Mal vorgemerkt war */
+/** @returns vorgemerkt false if the key was already queued `hoechstens` times */
 export async function rememberBefore<A extends JobKind>(
   k: JobsContext,
   art: A,
@@ -31,7 +31,7 @@ export async function vergiss(k: JobsContext, schluessel: string): Promise<void>
   await k.auftraege.openDelete(schluessel);
 }
 
-/** Fällig ab sofort, ohne Schlüssel die ganze Art; eine Pause der Art bleibt. */
+/** Due right away, without a key the whole kind; a pause of the kind stays. */
 export async function jetzt(k: JobsContext, art: JobKind, schluessel?: string): Promise<number> {
   return pullBefore(k, art, schluessel);
 }

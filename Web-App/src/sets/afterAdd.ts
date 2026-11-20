@@ -1,6 +1,6 @@
-/** Als Auftrag im Job-Prozess: Ein Neustart verliert nichts, und ein
- * gescheiterter Import von Teilen oder Figuren wird wiederholt. Die
- * Anreicherungen danach melden ihren Fehler, ohne den Auftrag scheitern zu lassen. */
+/** As a job in the job process: a restart loses nothing, and a
+ * failed import of parts or figures is retried. The
+ * enrichments afterwards report their error without making the job fail. */
 import { checkAbort, type JobRun } from '../jobQueue';
 import { versuche } from '../infra/result';
 import { setSupplement, type ReworkKind } from './addSet';
@@ -14,18 +14,18 @@ async function pullAfter(
   kindWish: ReworkKind,
   lauf?: JobRun,
 ): Promise<void> {
-  // Jede Art: setErfassen() holt nichts aus dem Netz, Katalog und geschätzter Preis kommen von hier.
-  // Scheitert der Katalog, versucht es der Auftrag noch einmal.
+  // Every kind: setErfassen() fetches nothing from the network, catalog and estimated price come from here.
+  // If the catalog fails, the job tries again.
   await setSupplement(sk, setNumber, userId, null, kindWish !== 'csv');
   checkAbort(lauf);
   const art = kindWish === 'ergaenzen' ? 'neu' : kindWish;
-  // Ein gescheiterter Schritt hält die übrigen nicht auf, steht aber im Stand des Auftrags.
+  // A failed step does not hold up the others, but it is recorded in the job's state.
   const ohne: string[] = [];
   const schritt = async (name: string, work: () => Promise<unknown>) => {
     if (!(await versuche(`nacharbeit:${name} ${setNumber}`, work)).ok) ohne.push(name);
   };
-  // Die Figuren in jedem Zweig: Der Import behält den Lagerort vorhandener
-  // Figuren, und so holt ein Zweiterfassen nach, was beim ersten Mal scheiterte.
+  // The figures in every branch: the import keeps the storage location of existing
+  // figures, and that way a second capture catches up on what failed the first time.
   await importMinifigs(sk, setNumber, userId);
   await importParts(sk, setNumber, userId);
   checkAbort(lauf);
@@ -40,7 +40,7 @@ async function pullAfter(
   checkAbort(lauf);
   await schritt('teile-anreichern', () => sk.catalog.enrichSetPartsAn(setNumber));
   await schritt('figuren-anreichern', () => sk.catalog.enrichSetMinifigsAn(setNumber));
-  // Brickset füllt nur Lücken; der CSV-Import fragt es beim Anlegen nicht.
+  // Brickset only fills gaps; the CSV import does not ask it when creating.
   if (art === 'csv') await schritt('brickset', () => sk.catalog.fillFromBrickset(setNumber));
   checkAbort(lauf);
   await schritt('bilder', () => sk.catalog.loadSetImages(setNumber));

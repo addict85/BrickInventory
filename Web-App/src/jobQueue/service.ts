@@ -1,6 +1,6 @@
-/** Jeder Wechsel, auf den jemand wartet, weckt ihn per NOTIFY: neue Aufträge
- * den Job-Prozess, Statuswechsel den Statusstrom. Geht ein NOTIFY verloren,
- * findet der Worker den Auftrag in seinem Takt. */
+/** Every change someone is waiting for wakes them via NOTIFY: new jobs
+ * the job process, status changes the status stream. If a NOTIFY gets lost,
+ * the worker finds the job on its tick. */
 import { asRequest, inSystemContext } from '../infra/accountContext';
 import * as repo from './repository/jobs';
 import {
@@ -17,9 +17,9 @@ import { logAndContinue } from '../infra/error';
 import { signal } from '../infra/event';
 import type { JobsContext } from './context';
 
-/** Ein neuer oder wieder fälliger Auftrag weckt den Job-Prozess; die Nutzlast nennt die Art. */
+/** A new or again due job wakes the job process; the payload names the kind. */
 export const NEW_JOB = signal(repo.JOB_CHANNEL);
-/** Ein Statuswechsel weckt die Statusströme; die Nutzlast nennt den Schlüssel. */
+/** A status change wakes the status streams; the payload names the key. */
 export const JOB_STATUS = signal(repo.JOB_STATUS_CHANNEL);
 
 export function wakeWorker(k: JobsContext, art: string): Promise<void> {
@@ -30,7 +30,7 @@ async function reportStatus(k: JobsContext, z: { s: string } | undefined): Promi
   if (z) await JOB_STATUS.melde(k.db.notification, z.s);
 }
 
-/** 30 s, verdoppelt je Versuch, höchstens eine Stunde. */
+/** 30 s, doubled per attempt, at most one hour. */
 export function waitTimeSec(versuch: number): number {
   return Math.min(3600, 30 * 2 ** Math.max(0, versuch - 1));
 }
@@ -46,8 +46,8 @@ export async function placeJobOne<A extends JobKind>(
   return id;
 }
 
-/** Ein Auftrag des anfragenden Kontos (oder seines Unterkontos), auch in dessen Transaktion:
- * ohne Systemrahmen, der Zeilenschutz prüft, dass user_id zum Haushalt gehört. */
+/** A job of the requesting account (or its sub-account), also in its transaction:
+ * without a system frame, row security checks that user_id belongs to the household. */
 export async function placeOwnJobOne<A extends JobKind>(
   k: JobsContext,
   art: A,
@@ -59,8 +59,8 @@ export async function placeOwnJobOne<A extends JobKind>(
   return id;
 }
 
-/** Je Schlüssel höchstens ein wartender Auftrag, der die neuen Einträge der Liste `liste` zu
- * seinen nimmt: Jede Meldung ergänzt, statt einen zweiten Auftrag anzulegen. */
+/** Per key at most one waiting job that adds the new entries of the list `liste` to
+ * its own: every report extends instead of creating a second job. */
 export async function supplementListenJob<A extends JobKind>(
   k: JobsContext,
   art: A,
@@ -73,8 +73,8 @@ export async function supplementListenJob<A extends JobKind>(
   return id;
 }
 
-/** Zählt zugleich als Lebenszeichen. erledigt und gesamt sind Zählungen (Vertrag
- * und App: ganzzahlig); ein Bruchteil wie 5,532 von 8 Schritten stand als „5.532 / 8“ da. */
+/** Also counts as a sign of life. erledigt and gesamt are counts (contract
+ * and app: integer); a fraction like 5.532 of 8 steps showed up as "5.532 / 8". */
 export async function setProgress(kx: JobsContext, a: Belegung, f: Fortschritt, deadlineSec: number): Promise<boolean> {
   const stand: Fortschritt = { ...f };
   for (const k of ['erledigt', 'gesamt'] as const) {
@@ -92,7 +92,7 @@ export async function erledigt(k: JobsContext, a: Belegung & Pick<JobRow, 'type'
   return !!z;
 }
 
-/** @returns true, wenn es der letzte Versuch war und der Auftrag jetzt 'fehler' ist */
+/** @returns true if it was the last attempt and the job is now 'fehler' */
 export async function fehlgeschlagen(
   k: JobsContext,
   a: JobRow,
@@ -105,8 +105,8 @@ export async function fehlgeschlagen(
   return final && !!z;
 }
 
-/** Etwa nach einer Drosselung der Gegenseite.
- * @returns true, wenn der Versuch zählte und es der letzte war (dann 'fehler') */
+/** E.g. after throttling by the remote side.
+ * @returns true if the attempt counted and it was the last one (then 'fehler') */
 export async function verschoben(
   k: JobsContext,
   a: JobRow,
@@ -125,7 +125,7 @@ export async function endPause(k: JobsContext, art: JobKind): Promise<void> {
   await wakeWorker(k, art);
 }
 
-/** Ein laufender hört bei seinem nächsten Lebenszeichen auf. */
+/** A running one stops at its next sign of life. */
 export async function abortAb(k: JobsContext, id: string): Promise<JobRow | null> {
   const a = await k.auftraege.setAborted(id);
   if (a) await reportStatus(k, { s: a.dedupe_key ?? a.id });
@@ -144,16 +144,16 @@ export async function pullBefore(k: JobsContext, art: JobKind, schluessel?: stri
   return n;
 }
 
-/** Jeder Status mit Zahl, auch 0. */
+/** Every status with a number, even 0. */
 export async function countKind(k: JobsContext, art: JobKind): Promise<Record<JobStatus, number>> {
   const aus = { offen: 0, laeuft: 0, erledigt: 0, fehler: 0, abgebrochen: 0 };
   for (const z of await k.auftraege.statusNumbers(art)) aus[z.status] = z.n;
   return aus;
 }
 
-/** Ein Auftrag mit Konto läuft wie eine Anfrage dieses Kontos, auch aus einem Systemrahmen
- * heraus: Der Zeilenschutz gilt für ihn wie für das Konto, und ein Import eines Unterkontos
- * zählt auf dessen Anteil am Fremdkontingent. */
+/** A job with an account runs like a request of that account, even from within a system frame:
+ * row security applies to it as to the account, and an import of a sub-account
+ * counts against its share of the third-party quota. */
 export async function inNamesOfJob<T>(
   k: JobsContext,
   a: Pick<JobRow, 'type' | 'user_id'>,
@@ -164,25 +164,25 @@ export async function inNamesOfJob<T>(
   return asRequest({ apiUser: { user_id: a.user_id, is_admin: !!u?.is_admin } }, f);
 }
 
-/** Ein Auftrag ohne Konto: im Systemrahmen nur, wenn seine Art als kontoübergreifend
- * angemeldet ist (Anmeldung.kontouebergreifend), sonst ohne Konto und ohne Systemrahmen. */
+/** A job without an account: in the system frame only if its kind is registered as
+ * cross-account (Anmeldung.kontouebergreifend), otherwise without account and without system frame. */
 export function imAuftragsrahmen<T>(k: JobsContext, a: Pick<JobRow, 'type'>, f: () => Promise<T>): Promise<T> {
   const grund = k.arten.von(a.type)?.kontouebergreifend;
   return grund ? inSystemContext(`auftrag ${a.type}: ${grund}`, f) : asRequest({}, f);
 }
 
-/** Weckt bei jedem Statuswechsel eines Auftrags, auch aus dem Job-Prozess; gibt das Abmelden zurück. */
+/** Wakes on every status change of a job, also from the job process; returns the unsubscribe. */
 export function atJobStatus(k: JobsContext, f: (schluessel?: string) => void): () => void {
   return JOB_STATUS.horche(k.db.notification, f);
 }
 
-/** Weckt, sobald irgendwo ein Auftrag eingestellt wird; gibt das Abmelden zurück. */
+/** Wakes as soon as a job is queued anywhere; returns the unsubscribe. */
 export function atNewJob(k: JobsContext, f: () => void): () => void {
   return NEW_JOB.horche(k.db.notification, f);
 }
 
-/** Ein Abbruch über die Verwaltung meldet sich per NOTIFY: Die betroffenen laufenden Aufträge sehen sofort
- * nach, ob sie ihre Zeile noch halten, statt erst beim nächsten Lebenszeichen. */
+/** An abort via the admin announces itself via NOTIFY: the affected running jobs check immediately
+ * whether they still hold their row, instead of only at the next sign of life. */
 export function checkMembership(
   k: JobsContext,
   runs: Iterable<{ a: JobRow; ac: AbortController }>,

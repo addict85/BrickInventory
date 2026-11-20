@@ -11,7 +11,7 @@ export async function removeInstructions(tx: DbInterface, uid: number, sn: strin
   await tx.run('DELETE FROM instructions WHERE user_id=$1 AND set_number=$2', [uid, sn]);
 }
 
-/** Teile und Figuren kopiert der Bestand (src/inventory/shared.ts). */
+/** Parts and figures are copied by the inventory (src/inventory/shared.ts). */
 export async function copyInstructions(tx: DbInterface, sn: string, von: number, nach: number): Promise<number> {
   return (
     (
@@ -25,7 +25,7 @@ export async function copyInstructions(tx: DbInterface, sn: string, von: number,
   );
 }
 
-/** Spalten ausgeschrieben: Ein Stern verliert still eine gelöschte Spalte. */
+/** Columns written out: a star silently loses a deleted column. */
 export function setRow(tx: DbInterface, uid: number, sn: string) {
   return tx.get<{ id: number; added_at: string }>(
     'SELECT id, user_id, set_number, added_at, updated_at, storage_id FROM sets WHERE user_id=$1 AND set_number=$2',

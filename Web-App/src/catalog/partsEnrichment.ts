@@ -1,6 +1,6 @@
-/** Füllt set_parts_catalog aus der Rebrickable-API, damit die Teileliste eines
- * Sets Namen und Bilder hat. Bilder lädt setBilderLaden.ts im Hintergrund; bis
- * dahin gilt die CDN-Adresse. */
+/** Fills set_parts_catalog from the Rebrickable API so that a set's parts list
+ * has names and images. setBilderLaden.ts loads images in the background; until
+ * then the CDN address applies. */
 import { newestInventory } from './rbInventory';
 import { withVersion } from '../infra/setNumber';
 import { rememberBlNumber } from './blMapping';
@@ -13,7 +13,7 @@ import {
 } from './catalogMaintenance';
 import { parseThrottleWait as ptw } from '../externalSources';
 
-/** Ohne Typparameter leitet TypeScript bei `new Promise` `unknown` ab. */
+/** Without a type parameter TypeScript infers `unknown` for `new Promise`. */
 type JobHttpResult = { status: number; body: string };
 
 import { pathSegment, numbersList } from '../infra/foreignAddresses';
@@ -65,12 +65,12 @@ async function enrichSetParts(k: CatalogContext, setNumber: string) {
   > = {};
   for (const r of catalogRows) catalogMap[`${r.part_number}|${r.color_id}`] = r;
 
-  // Die ZEILE in bl_mapping zählt, nicht ihr Wert: leer heisst „nachgesehen,
-  // keine abweichende Nummer".
+  // The ROW in bl_mapping counts, not its value: empty means "looked up,
+  // no differing number".
   const lookedUp = await k.teileAnreicherung.blMappings(csvParts.map(p => p.part_num));
   const lookedUpSet = new Set(lookedUp.map((r: { rb_id: string }) => r.rb_id));
 
-  // Nur Teile, die noch nie nachgesehen wurden — jeder Abruf kostet Kontingent.
+  // Only parts that were never looked up — every fetch costs quota.
   const missing = csvParts.filter(p => {
     const cat = catalogMap[`${p.part_num}|${p.color_id}`];
     if (!cat) return true; // not in catalog at all
@@ -102,7 +102,7 @@ type ApiTeil = {
   quantity: number;
 };
 
-/** Die Teile des Sets laut Rebrickable, je "part_num|color_id". */
+/** The set's parts according to Rebrickable, per "part_num|color_id". */
 async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promise<Record<string, ApiTeil>> {
   const apiParts: Record<string, ApiTeil> = {};
   let url = `https://rebrickable.com/api/v3/lego/sets/${pathSegment(n)}/parts/?page_size=500&inc_part_details=1`;
@@ -127,8 +127,8 @@ async function fetchApiParts(k: CatalogContext, n: string, rbKey: string): Promi
   return apiParts;
 }
 
-/** Alle Nummern aus der CSV, nicht nur aus der API-Antwort: Die kann
- * unvollständig sein. */
+/** All numbers from the CSV, not only from the API response: that may be
+ * incomplete. */
 async function supplementBlNumbers(
   kx: CatalogContext,
   apiParts: Record<string, ApiTeil>,
@@ -171,9 +171,9 @@ async function rememberPartsOfSets(
     const key = `${p.part_num}|${p.color_id}`;
     const info: Partial<ApiTeil> = apiParts[key] ?? {};
     const blPartNum = info.bl_part_num || blMap[p.part_num] || null;
-    // In die MAPPING: Die Nummer hängt am Teil, nicht an Set, Teil und Farbe.
+    // Into the MAPPING: the number belongs to the part, not to set, part and color.
     if (blPartNum) await rememberBlNumber(k, 'part', p.part_num, blPartNum);
-    // Ohne Rebrickable-Antwort kein Name — die Teilenummer gehört nicht als geprüfter Name in den Katalog.
+    // No name without a Rebrickable response — the part number does not belong in the catalog as a verified name.
     await rememberPart(k, p.part_num, info.part_name);
     await rememberPartColor(k, p.part_num, p.color_id ?? KEINE_FARBE, info.color_name, info.color_hex, info.image_url);
     await rememberSetPart(k, n, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
@@ -216,7 +216,7 @@ async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
   const figNums = figs.map((f: { fig_number: string }) => f.fig_number);
   const invRows = await k.teileAnreicherung.inventoriesTheMinifigs(figNums);
 
-  // Je set_num die höchste Version (erste wegen ORDER BY DESC).
+  // Per set_num the highest version (first because of ORDER BY DESC).
   const invMap: Record<string, number> = {};
   for (const r of invRows) {
     if (!invMap[r.set_num]) invMap[r.set_num] = r.id;
@@ -237,12 +237,12 @@ async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
 
   if (!allPartNums.size) return;
 
-  // bl_mapping: die Nummer, einmal je Teil.
+  // bl_mapping: the number, once per part.
   const rbBlRows = await k.teileAnreicherung.blMappings([...allPartNums]);
   const rbBlMap: Record<string, string> = {};
   for (const r of rbBlRows) rbBlMap[r.rb_id] = r.bl_id ?? '';
 
-  // Nur nie nachgesehene Nummern abfragen.
+  // Only query numbers that were never looked up.
   const needsBl = [...allPartNums].filter(pn => !(String(pn) in rbBlMap));
 
   const apiBlMap: Record<string, string> = {};
@@ -263,7 +263,7 @@ async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
     }
   }
 
-  // Vorrang: API > bl_mapping > eigene Nummer.
+  // Precedence: API > bl_mapping > own number.
   const finalBlMap: Record<string, string> = {};
   for (const pn of allPartNums as Iterable<string>) {
     finalBlMap[pn] = apiBlMap[pn] || rbBlMap[pn] || pn;
@@ -271,13 +271,13 @@ async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
 
   for (const [figNum, { parts }] of Object.entries(figPartsMap)) {
     for (const p of parts) {
-      // Ohne BrickLink-Nummer: Sie steht einmal je Teil in bl_mapping.
+      // Without the BrickLink number: it is stored once per part in bl_mapping.
       await rememberSetPart(k, figNum, p.part_num, p.color_id ?? KEINE_FARBE, p.quantity || 1, false);
     }
   }
 }
 
 export { enrichSetParts, enrichSetMinifigs };
-// Die Bildwege hiessen bisher von hier aus; Bereich, PDF und Nachlauf finden sie weiter.
+// The image paths used to be imported from here; area, PDF and follow-up still find them.
 export { downloadImage, downloadSetImages } from './loadSetImages';
 export { redownloadMissingImages } from './reloadImages';

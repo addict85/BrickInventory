@@ -1,7 +1,7 @@
-// Zuerst: Ein ungültiger Wert beendet den Start mit Meldung, bevor ein Modul ihn liest.
+// First: an invalid value ends the start with a message before any module reads it.
 import { konfig } from './startup/checkConfig';
-// Protokoll zuerst: Ab hier ist jede console-Zeile eine JSON-Zeile und geht
-// nach app_logs, sobald der Pool steht.
+// Logging first: from here on every console line is a JSON line and goes
+// to app_logs as soon as the pool is up.
 import { installLog, logInDieDatabase, emptyLog } from './src/infra/log';
 installLog();
 
@@ -21,29 +21,29 @@ import { closeBufferAndTicks } from './startup/shutdown';
 import { holdWebLock } from './startup/singleInstance';
 import { inSystemContext } from './src/infra/accountContext';
 
-// Nur loggen: Ein abgelehntes Versprechen ist meist ein Nebenläufer ohne catch;
-// Anfragen und Jobs halten ihren Zustand in der Datenbank. Ein Neustart risse
-// dafür alle laufenden Anfragen und Ströme ab (anders als uncaughtException).
+// Only log: a rejected promise is usually a side task without catch;
+// requests and jobs keep their state in the database. A restart would tear
+// down all running requests and streams for it (unlike uncaughtException).
 process.on('unhandledRejection', (reason: unknown) => {
   console.error('[unhandledRejection] Unhandled promise rejection:', fehlertext(reason));
 });
 process.on('uncaughtException', err => {
-  // Der Zustand ist danach ungewiss (halb offene Transaktionen); den Neustart übernimmt Docker.
+  // The state is uncertain afterwards (half-open transactions); Docker takes care of the restart.
   console.error('[uncaughtException] Uncaught exception:', err.stack || err.message);
   void emptyLog();
   setTimeout(() => process.exit(1), 500).unref();
 });
 
-// Die Platzhalter aus compose.yaml/README sind öffentlich: Mit ihnen
-// signierte Sitzungen könnte jeder selbst erzeugen.
+// The placeholders from compose.yaml/README are public: with them
+// anyone could create signed sessions themselves.
 const PLACEHOLDER_SECRETS = [
   'change-me-to-a-long-random-string',
   'hier-langen-zufalls-string-eintragen',
   'brickinventory-manager-dev-secret',
 ];
 
-/** Das Entwicklungsgeheimnis nur bei ausdrücklichem NODE_ENV=development/test;
- * ohne NODE_ENV gelten dieselben Regeln wie in Produktion. */
+/** The development secret only with an explicit NODE_ENV=development/test;
+ * without NODE_ENV the same rules as in production apply. */
 function sitzungsGeheimnis(): string {
   const gesetzt = konfig().sessionSecret?.trim();
   if (konfig().entwicklung) return gesetzt || 'brickinventory-manager-dev-secret';
@@ -62,11 +62,11 @@ function sitzungsGeheimnis(): string {
   return konfig().sessionSecret!;
 }
 
-/** SSE-Ströme zuerst beenden: Sie enden nie von selbst und hielten close() auf.
- * Ohne geordnetes Ende bräche jedes Deploy laufende Antworten ab. */
+/** End SSE streams first: they never end by themselves and would hold up close().
+ * Without an orderly end every deploy would cut running responses off. */
 const SHUTDOWN_TIMEOUT_MS = 8000;
 
-/** Was der Start hält und das Beenden braucht; ein zweites Signal findet `endedBecomes`. */
+/** What the start holds and the shutdown needs; a second signal finds `endedBecomes`. */
 interface Lauf {
   endedBecomes: boolean;
   jobs: JobsLauf | null;
@@ -84,7 +84,7 @@ async function shutdown(
   if (lauf.endedBecomes) return;
   lauf.endedBecomes = true;
   console.log(`[shutdown] ${signal} empfangen — Server wird geordnet beendet`);
-  // Notbremse für eine hängende Verbindung; Exit-Code 0, denn sie ist kein Fehler.
+  // Emergency brake for a hanging connection; exit code 0, because it is not an error.
   const emergencyBrake = setTimeout(() => {
     console.warn('[shutdown] Frist abgelaufen — Beenden wird erzwungen');
     process.exit(0);
@@ -97,7 +97,7 @@ async function shutdown(
       await new Promise<void>(resolve => httpServer.close(() => resolve()));
       console.log('[shutdown] keine offenen HTTP-Verbindungen mehr');
     }
-    // Laufende Aufträge halten sicher an und gehen zurück in die Tabelle.
+    // Running jobs stop safely and go back into the table.
     if (jobs && lauf.jobs) await stopJobs(dienste, lauf.jobs);
     await closeBufferAndTicks(zugang, dienste);
     await webLockFree?.();
@@ -111,7 +111,7 @@ async function shutdown(
   }
 }
 
-/** Ein Prozess je Rolle (ROLLE=web|jobs|beides); initSchemaOnce lässt nur einen migrieren. */
+/** One process per role (ROLLE=web|jobs|beides); initSchemaOnce lets only one migrate. */
 async function starte(): Promise<void> {
   const k = konfig();
   if (k.operation) {
@@ -136,14 +136,14 @@ async function starte(): Promise<void> {
       '❌ [start] APP_BASE_URL fehlt im Betrieb (APP_BASE_URL_FEHLT_OK=1): ' +
         'Der Host-Filter gegen DNS-Rebinding nimmt nur Loopback und IP-Adressen an, jeder Name bekommt 421.',
     );
-  const geheimnis = web ? sitzungsGeheimnis() : ''; // vor der Datenbank: Ein Startverbot soll nicht auf sie warten
+  const geheimnis = web ? sitzungsGeheimnis() : ''; // before the database: a start ban should not wait for it
   console.log(`[start] Prozess ${process.pid}, Rolle ${k.rolle}`);
-  // Datenbankzugang und Verdrahtung entstehen hier, nicht beim Import eines Moduls;
-  // Erfassungen und Einstellungen stossen ihre Nacharbeit in jedem Prozess an.
+  // Database access and wiring are created here, not on import of a module;
+  // acquisitions and settings trigger their follow-up work in every process.
   const { db: zugang, dienste } = wireProcess();
 
   try {
-    // Migrationen, Erststart und Umschlüsselung gehen über alle Konten.
+    // Migrations, first start and re-keying go across all accounts.
     await inSystemContext('start', () => prepareDatabaseBefore(zugang, dienste, { jobs }));
   } catch (e) {
     console.error('❌ Database initialisation failed:', fehlertext(e));
@@ -157,19 +157,19 @@ async function starte(): Promise<void> {
         process.exit(1);
       })
     : null;
-  // Hinweise ins Protokoll: Einer, der scheitert, hält weder den Start noch die übrigen auf.
+  // Hints into the log: one that fails holds up neither the start nor the others.
   const hinweise: [string, () => Promise<unknown>][] = [
     ['start:smtp-altlast', () => dienste.mail.reportSmtpLegacySetting()],
     ...dienste.account.adressHints(),
   ];
   if (web) for (const [wo, hinweis] of hinweise) await hinweis().catch(logAndContinue(wo));
   if (web) dienste.account.listenOnRevocation();
-  // Web und Jobs (auch getrennte Prozesse) leeren ihr Haushaltsgedächtnis auf jede Änderung.
+  // Web and jobs (also separate processes) clear their household memory on every change.
   dienste.household.listenOnChanges();
-  // Ein globaler Wert aus einem anderen Prozess (Nachlauf, zweiter Web-Prozess) leert den Einrichtungsstand.
+  // A global value from another process (follow-up run, second web process) clears the setup state.
   if (web) dienste.settings.listenForGlobalChanges();
 
-  // Erst nach dem Schema Anfragen annehmen: Der Sitzungsspeicher braucht user_sessions.
+  // Accept requests only after the schema: the session store needs user_sessions.
   const httpServer = web
     ? http
         .createServer(
@@ -187,11 +187,11 @@ async function starte(): Promise<void> {
   process.on('SIGINT', () => {
     void shutdown(lauf, 'SIGINT', httpServer, jobs, zugang, dienste, webLockFree);
   });
-  // Ohne Rahmen: Warteschlange und Aufträge betreten ihn selbst (src/jobQueue/context.ts, dienst.ts).
+  // Without frame: queue and jobs enter it themselves (src/jobQueue/context.ts, service.ts).
   if (jobs) lauf.jobs = await startJobs(dienste);
 }
 
-// Ohne Worker weiterzulaufen täuschte einen Dienst vor.
+// Continuing without a worker would fake a service.
 starte().catch((e: unknown) => {
   console.error('❌ [start] Start gescheitert:', fehlertext(e));
   process.exit(1);

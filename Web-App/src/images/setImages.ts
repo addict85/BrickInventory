@@ -5,28 +5,28 @@ import { AbrufFehler } from '../infra/fetch';
 import { IMAGE_HEADERS } from '../externalSources';
 import type { ImagesContext } from './context';
 
-/** Was das Bildwerk braucht; es entsteht vor dem Kontext des Bereichs (bereich.ts). */
+/** What the image works need; it is created before the area's context (area.ts). */
 export type ImageWorkerContext = Pick<ImagesContext, 'konfig' | 'externalSources'>;
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { withVersion } from '../infra/setNumber';
 
-// Set-Bilder vom CDN holen; hier statt im Router, damit die Aufrufer echt importieren.
+// Fetch set images from the CDN; here instead of in the router so that callers import properly.
 
-// Wie im Bild-Proxy; mit 5 MB blieben grosse Set-Bilder ohne lokale Datei.
+// As in the image proxy; with 5 MB large set images would stay without a local file.
 export const SET_IMG_MAX_BYTES = 20 * 1024 * 1024;
 
-/** Dieselbe Browser-Kennung wie der Bild-Proxy: Eine eigene weist das CDN mit 403 ab,
- * und der Bild-Auftrag pausierte dann endlos. IMG_USER_AGENT bleibt als Ausweg. */
+/** The same browser identifier as the image proxy: the CDN rejects an own one with 403,
+ * and the image job would then pause endlessly. IMG_USER_AGENT stays as a way out. */
 export function bildUserAgent(k: Pick<Konfig, 'bildUserAgent'>): string {
   return k.bildUserAgent || String(IMAGE_HEADERS['User-Agent']);
 }
 
-/** Nur Rebrickable-Bilder legt der Proxy samt Vorschau unter images/sets ab. */
+/** Only Rebrickable images are stored by the proxy including preview under images/sets. */
 export function rebrickableSetImage(setNumber: string): string {
   return `https://cdn.rebrickable.com/media/sets/${encodeURIComponent(withVersion(setNumber))}.jpg`;
 }
 
-/** Liegen Bild und Vorschau schon in images/sets, braucht der Bild-Job nichts mehr. */
+/** If image and preview already lie in images/sets, the image job needs nothing more. */
 export async function setImageComplete(setNumber: string): Promise<boolean> {
   const safe = setNumber.replace(/[^a-z0-9-]/gi, '_');
   const da = (datei: string) =>
@@ -64,8 +64,8 @@ export async function setBildHerunterladen(
     .then(
       r => {
         if (r.status === 200) return r.koerper;
-        // „404" und „403 Bot-Erkennung" verlangen verschiedene Massnahmen; ohne
-        // echten Code gilt es in src/images/imageDemandRun.ts als vorübergehend.
+        // "404" and "403 bot detection" require different measures; without
+        // a real code it counts as temporary in src/images/imageDemandRun.ts.
         const notPresent = r.status === 404 || r.status === 410;
         (notPresent ? console.warn : console.error)(`[set-img] ${setNumber}: HTTP ${r.status} vom Bildserver: ${url}`);
         if (info && r.status) info.status = r.status;
@@ -85,15 +85,15 @@ export async function setBildHerunterladen(
         return null;
       },
     );
-  if (!buf) return null; // Grund wurde oben bereits genannt
+  if (!buf) return null; // reason was already named above
   if (buf.length < 100) {
-    // Zu klein für ein Bild — fast immer eine Fehlerseite.
+    // Too small for an image — almost always an error page.
     console.error(`[set-img] ${setNumber}: Antwort zu klein (${buf.length} Bytes) — kein Bild: ${url}`);
     return null;
   }
-  // Erst fertig, dann sichtbar: Der Bild-Proxy liefert sonst eine halbe Datei aus.
+  // Finished first, then visible: the image proxy would otherwise deliver half a file.
   const teil = `${localPath}.${process.pid}.teil`;
-  // Auf einer frischen Installation fehlt der Ordner noch.
+  // On a fresh installation the folder is still missing.
   await fs.promises.mkdir(SET_IMAGES_DIR, { recursive: true });
   await fs.promises.writeFile(teil, buf);
   await fs.promises.rename(teil, localPath);

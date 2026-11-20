@@ -1,6 +1,6 @@
-/** Die Reihenfolge der Router hier ist unkritisch: Kein Pfad-Muster und keine
- * Middleware eines Routers trifft einen Pfad eines anderen (test/api-router-reihenfolge).
- * Innerhalb eines Routers zählt sie (feste Pfade vor `:setNumber` in sets.ts). */
+/** The order of the routers here is not critical: no path pattern and no
+ * middleware of one router hits a path of another (test/api-router-reihenfolge).
+ * Within a router it matters (fixed paths before `:setNumber` in sets.ts). */
 import { buildSetsRouter } from './sets';
 import { buildSetsStorageRouter } from './setsLager';
 import { buildSetsImportRouter } from './setsImport';
@@ -48,23 +48,23 @@ export function buildApiRouter(
 ) {
   const router = vertragsRouter('/api/v1');
 
-  router.attachOne(buildSetupRouter(d)); // /einrichtung/stand (öffentlich, siehe loginAtInbox)
+  router.attachOne(buildSetupRouter(d)); // /einrichtung/stand (public, see loginAtInbox)
   router.attachOne(buildPdfRouter(d)); // /sets/partslist-pdf/*
   router.attachOne(buildSetsRouter(d)); // /sets, /sets/barcode, /sets/:setNumber/*
   router.attachOne(buildSetsStorageRouter(d)); // /storage, /alerts, /sets/:setNumber/{storage,alert}
   router.attachOne(buildSetsImportRouter(d)); // /sets/import/csv/*, /sets/add-stream, /sets/:setNumber/parts
   router.attachOne(buildSetsInstructionsRouter(d)); // /sets/:setNumber/instructions/*
-  router.attachOne(buildAcquisitionsRouter(d)); // Kaufpreis-Erfassungen für Sets/Teile/Figuren
+  router.attachOne(buildAcquisitionsRouter(d)); // purchase price acquisitions for sets/parts/minifigs
   router.attachOne(buildPartsRouter(d));
   router.attachOne(buildMinifigsRouter(d));
   router.attachOne(buildFinanceRouter(d));
-  router.attachOne(buildSettingsRouter(d)); // /settings — Einstellungen, Zugänge, Haushalt
+  router.attachOne(buildSettingsRouter(d)); // /settings — settings, accesses, household
   router.attachOne(buildAdminRouter(d));
-  router.attachOne(buildCatalogRouter(d)); // /catalog/* — Rebrickable-Katalog (Browsen/Suchen)
+  router.attachOne(buildCatalogRouter(d)); // /catalog/* — Rebrickable catalog (browse/search)
   router.attachOne(buildWantedRouter(d)); // /wanted — wanted list (own table, see 0021)
-  router.attachOne(buildVouchersRouter(d)); // /vouchers — Gutscheine (eigene Tabelle, siehe 0026)
-  router.attachOne(buildTrashRouter(d)); // /papierkorb — gelöschte Elemente (siehe 0041)
-  router.attachOne(buildDeviceRouter(d)); // /geraet — Geräteschlüssel und Schrittfreigabe der App (siehe 0103)
-  router.attachOne(buildMiscRouter(d)); // /stats + Endpoint-Übersicht unter /
+  router.attachOne(buildVouchersRouter(d)); // /vouchers — vouchers (own table, see 0026)
+  router.attachOne(buildTrashRouter(d)); // /papierkorb — deleted items (see 0041)
+  router.attachOne(buildDeviceRouter(d)); // /geraet — the app's device key and step release (see 0103)
+  router.attachOne(buildMiscRouter(d)); // /stats + endpoint overview under /
   return router;
 }

@@ -1,5 +1,5 @@
-/** Protokoll der Verwalteraktionen an fremden Konten; gehört zum Konto, weil
- * auch das Löschen eines Kontos es in derselben Transaktion schreibt. */
+/** Log of administrator actions on foreign accounts; belongs to the account, because
+ * deleting an account also writes it in the same transaction. */
 import type { AdminAction } from './repository/log';
 import type { AccountContext } from './context';
 

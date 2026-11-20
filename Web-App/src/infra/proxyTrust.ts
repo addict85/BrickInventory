@@ -1,8 +1,8 @@
 import net from 'node:net';
 
-/** Nur ausdrücklich genannte Adressen: Jeder vertraute Absender kann seine Client-Adresse frei
- * angeben und so die Anmeldesperre umgehen. Ein Netz über acht Adressen nur mit `networkConfirmed`
- * (PROXY_NETZ_BESTAETIGT=1): Darin stehen meist auch Clients. */
+/** Only explicitly named addresses: every trusted sender can state its client address freely
+ * and thus bypass the login lock. A network spanning more than eight addresses only with `networkConfirmed`
+ * (PROXY_NETZ_BESTAETIGT=1): it usually contains clients too. */
 export function proxyVertrauen(
   wert?: string,
   networkConfirmed = false,
@@ -38,7 +38,7 @@ function proxyErrorText(falsch: string[], onlyToWide: boolean): string {
   );
 }
 
-/** Ohne Bestätigung höchstens acht Adressen, mit ihr höchstens /16 bzw. /64. */
+/** Without confirmation at most eight addresses, with it at most /16 or /64. */
 export function proxyEntryValid(eintrag: string, networkConfirmed = false): boolean {
   const [adresse, praefix, rest] = eintrag.split('/');
   if (rest !== undefined || !adresse) return false;

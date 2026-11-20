@@ -1,4 +1,4 @@
-/** Stündlich, der erste 30 s nach dem Start (src/jobQueue/schedule.ts). */
+/** Hourly, the first one 30 s after startup (src/jobQueue/schedule.ts). */
 import { logAndContinue, reportError } from '../infra/error';
 import { setPartImageLocal, setMinifigImageLocal } from './catalogMaintenance';
 import { KEINE_FARBE } from '../infra/validate';
@@ -36,18 +36,18 @@ async function bildNachlauf(kx: CatalogContext, k: JobContext): Promise<void> {
     await tick();
   }
   for (const p of manualParts) {
-    // Ein Fehler lässt das Teil ohne Bild; der nächste Nachlauf versucht es wieder.
+    // An error leaves the part without an image; the next follow-up run tries again.
     const r = await versuche(
       'bild-nachlauf:downloadImage',
       enrich.downloadImage(kx, p.image_url, p.part_number, p.color_id ?? KEINE_FARBE, 'part'),
     );
     const local = r.ok ? r.wert : null;
     if (local) {
-      // Einmal für alle Konten in den Katalog. Ein Schreibfehler bricht den Lauf ab wie bei
-      // den Figuren; der nächste findet die Datei und schreibt nach.
+      // Once into the catalog for all accounts. A write error aborts the run as with
+      // the figures; the next one finds the file and writes it afterwards.
       await setPartImageLocal(kx, p.part_number, p.color_id ?? KEINE_FARBE, local);
-      // Die Vorschau gleich anstossen, sonst bliebe es bis zum nächsten Neustart
-      // bei der Originalgrösse.
+      // Trigger the preview right away, otherwise it would stay at the original size
+      // until the next restart.
       kx.images.createPreview(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
     }
     await tick();
@@ -59,8 +59,8 @@ async function bildNachlauf(kx: CatalogContext, k: JobContext): Promise<void> {
     );
     const local = r.ok ? r.wert : null;
     if (local) {
-      // Eine Zeile: Der Katalog führt die Figur seit Migration 0034 genau einmal. Ein
-      // Schreibfehler bricht den Lauf ab; der nächste findet die Datei und schreibt nach.
+      // One row: since migration 0034 the catalog lists the figure exactly once. A
+      // write error aborts the run; the next one finds the file and writes it afterwards.
       await setMinifigImageLocal(kx, f.fig_number, local);
       kx.images.createPreview(local).catch(logAndContinue('bild-nachlauf:vorschauErzeugenAus'));
     }

@@ -1,4 +1,4 @@
-/** Eigene Datei, damit ein Test die echten Handler einhängen kann. */
+/** A file of its own, so a test can mount the real handlers. */
 import { guardFor } from './api_v1/middleware';
 import { pathSegments } from '../src/http/httpResponse';
 import express, { type Request, type Response } from 'express';
@@ -11,8 +11,8 @@ import type { Dienste } from '../src/services';
 
 type WildcardRequest = Request<{ pfad: string[] }>;
 
-/** Fremd Hochgeladenes (nur die ersten Bytes geprüft) läuft so nie unter der Herkunft
- * der App; der eigene Betrachter lädt per fetch und braucht keine Inline-Anzeige. */
+/** Foreign uploads (only the first bytes checked) thus never run under the app's
+ * origin; the own viewer loads via fetch and needs no inline display. */
 function asAttachment(res: Response, datei: string): void {
   res.setHeader('Content-Security-Policy', FOREIGN_FILE_CSP);
   res.attachment(path.basename(datei));
@@ -22,25 +22,25 @@ export function buildDataFilesRouter(d: Pick<Dienste, 'household' | 'account' | 
   const { inboundLock, requireLoginOrToken } = guardFor(d.account);
   const router = express.Router();
 
-  // Das Hauptkonto sieht die Uploads seiner Unterkonten, nicht umgekehrt. Ein
-  // erstes Segment ohne Benutzer-ID wird abgewiesen.
+  // The main account sees the uploads of its sub-accounts, not the other way round. A
+  // first segment without a user id is rejected.
   router.get('/data/uploads/*pfad', requireLoginOrToken, inboundLock, async (req: WildcardRequest, res: Response) => {
     const userId = signedInUserId(req);
-    // Rechnungen und Gutscheine: nie in einen Zwischenspeicher, auch keine Absage.
+    // Invoices and vouchers: never into a cache, not even a rejection.
     res.setHeader('Cache-Control', 'private, no-store');
     const segments = pathSegments(req, 'pfad');
     const filePath = safeDataPath('uploads', segments);
     if (!filePath || !/^\d+$/.test(segments[0] ?? '')) return res.status(404).send('Datei nicht gefunden');
     const besitzer = Number(segments[0]);
-    // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht. Fremd
-    // antwortet wie fehlend, damit sich nicht ablesen lässt, welche Konten Dateien haben.
+    // Even administrators do not read foreign uploads (invoices, vouchers). Foreign
+    // answers like missing, so one cannot tell which accounts have files.
     if (!(await d.household.seesAccount(userId, besitzer))) return res.status(404).send('Datei nicht gefunden');
     asAttachment(res, filePath);
     deliverFile(res, filePath);
   });
 
-  // Geteilt abgelegt, aber unter der Setnummer: nur zu Sets im eigenen Blickfeld,
-  // sonst dieselbe 404 wie für eine fehlende Datei.
+  // Stored shared, but under the set number: only for sets in the own scope,
+  // otherwise the same 404 as for a missing file.
   router.get(
     '/data/instructions/*pfad',
     requireLoginOrToken,

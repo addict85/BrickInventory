@@ -21,21 +21,21 @@ import {
 import { versuche } from '../infra/result';
 import type { ImagesContext } from './context';
 
-/** Über den Proxy angefragte Bilder im BACKGROUND lokal ablegen, samt
- * Vorschau — damit die Anfrage selbst nie auf das CDN wartet. */
+/** Store images requested via the proxy locally in the BACKGROUND, including
+ * the preview — so that the request itself never waits for the CDN. */
 
-/** Abstand zwischen zwei Arbeitsschritten (siehe STAPEL in src/images/imageDemand.ts). */
+/** Spacing between two work steps (see STAPEL in src/images/imageDemand.ts). */
 const DELAY_MIN_MS = 500;
 const DELAY_MAX_MS = 1000;
 
-/** Deckel je Takt; der Takt zählt echte Arbeit, sonst liefe er über Hunderte
- * schon vorhandener Bilder unendlich langsam. */
+/** Cap per tick; the tick counts real work, otherwise it would run infinitely slowly over hundreds
+ * of already existing images. */
 const DURCHGANG_MAX_NOTIZEN = 500;
 
 const RUN_KEY = 'imgqueue_last_run';
 
-/** Fünf Minuten lassen ein kurzes Limit ablaufen; wichtiger ist, dass
- * überhaupt pausiert wird: Stures Weiterfragen verlängert die Sperre. */
+/** Five minutes let a short limit expire; more important is that
+ * there is a pause at all: stubbornly asking again extends the block. */
 const THROTTLE_PAUSE_MS = 5 * 60 * 1000;
 
 function warte(ms: number): Promise<void> {
@@ -46,8 +46,8 @@ function pause(): number {
   return DELAY_MIN_MS + Math.floor(Math.random() * (DELAY_MAX_MS - DELAY_MIN_MS));
 }
 
-/** Je Satz Dienste statt je Stapel, damit auch der erste Schritt eines Folgestapels
- * Abstand hält. Vor dem ALLERERSTEN Schritt wird nicht gewartet. */
+/** Per set of services instead of per batch, so that the first step of a follow-up batch
+ * also keeps its distance. There is no waiting before the VERY FIRST step. */
 async function pauseBeforeWork(k: ImagesContext): Promise<void> {
   const takt = k.faecher.fach('bildbedarf:letzteArbeit', () => ({ am: 0 }));
   const soll = pause();
@@ -58,38 +58,38 @@ async function pauseBeforeWork(k: ImagesContext): Promise<void> {
   takt.am = k.uhr.jetzt();
 }
 
-/** Ein Fehlschlag wird gemerkt, sonst kostet jede nicht lesbare Datei bei
- * jedem Durchgang einen vergeblichen Lauf. */
+/** A failure is remembered, otherwise every unreadable file would cost a futile run
+ * on every pass. */
 async function createPreview(k: ImagesContext, relPath: string, schluessel: string): Promise<boolean> {
   if (isKnownMissing(k, 'thumb:' + schluessel)) return false;
-  // Auch ein Fehler wird gemerkt: Die Datei käme sonst bei jedem Durchgang wieder.
+  // An error is remembered as well: the file would otherwise come back on every pass.
   const r = await versuche('bild-job:vorschauErzeugenAus', () => k.bildwerk.createPreview(relPath));
   const ok = r.ok && !!r.wert;
   if (!ok) rememberMissing(k, 'thumb:' + schluessel, 'Vorschau konnte nicht erzeugt werden');
   return ok;
 }
 
-/** Mehrere Zähler statt einer Zahl, damit das Log zeigt, welcher Ausgang
- * genommen wurde. */
+/** Several counters instead of one number, so that the log shows which exit
+ * was taken. */
 export type StackResult = {
   geholt: number;
   vorschau: number;
   uebersprungen: number;
   gesamt: number;
-  /** Jeder Weg durch die Schleife erhöht einen Zähler, damit die Summe aufgeht. */
+  /** Every path through the loop increments a counter, so that the sum adds up. */
   notLoaded: number;
   noPreview: number;
   knownMissing: number;
   ohneNummer: number;
   setAside: number;
-  /** Bild liegt da, der Eintrag im Katalog scheiterte: Die Oberfläche geht weiter über den Proxy. */
+  /** The image is there, the entry in the catalog failed: the UI keeps going via the proxy. */
   withoutEntry?: number;
-  /** Downloads und Verkleinerungen, NICHT angefasste Notizen: Der Takt
-   * entscheidet daran, ob er noch einen Stapel nachholt. */
+  /** Downloads and resizes, NOT touched notes: the tick
+   * uses this to decide whether it catches up on another batch. */
   work: number;
 };
 
-/** Eine Stelle, damit kein Zähler beim Ergänzen vergessen wird. */
+/** One place, so that no counter is forgotten when extending. */
 function emptyResult(): StackResult {
   return {
     geholt: 0,
@@ -105,7 +105,7 @@ function emptyResult(): StackResult {
   };
 }
 
-/** Nur was NICHT null ist — sonst geht die eine wichtige Zahl in Nullen unter. */
+/** Only what is NOT zero — otherwise the one important number drowns in zeros. */
 export function meldung(e: StackResult): string {
   const teile = [`${e.geholt} geladen`, `${e.vorschau} Vorschau erzeugt`, `${e.uebersprungen} bereits vorhanden`];
   if (e.notLoaded) teile.push(`${e.notLoaded} Download fehlgeschlagen`);
@@ -117,7 +117,7 @@ export function meldung(e: StackResult): string {
   return `${e.gesamt} bearbeitet: ${teile.join(', ')}`;
 }
 
-/** Auch in der Datenbank, weil die Kachel in einem anderen Prozess liest. */
+/** In the database too, because the tile reads in another process. */
 export const letzterLauf: { zeit: number | null; ergebnis: StackResult | null } = { zeit: null, ergebnis: null };
 
 function rememberRun(k: ImagesContext, erg: StackResult): void {
@@ -125,20 +125,20 @@ function rememberRun(k: ImagesContext, erg: StackResult): void {
   letzterLauf.ergebnis = erg;
 }
 
-/** Einmal je Takt, nicht je Stapel: Die Kachel liest Minuten, und eine SD-Karte schont das. */
+/** Once per tick, not per batch: the tile reads minutes, and that spares an SD card. */
 async function saveRun(k: ImagesContext, erg: StackResult): Promise<void> {
-  // await: Der nächste Takt liest den Stand über einen ANDEREN Prozess; ohne await meldete die Kachel „noch
-  // nicht gelaufen".
+  // await: the next tick reads the state via ANOTHER process; without await the tile would report "not
+  // run yet".
   await k.jobQueue
     .setzeZustand(RUN_KEY, JSON.stringify({ zeit: k.uhr.jetzt(), ergebnis: erg }))
     .catch(e => reportError('bild-job:setzeZustand', e));
 }
 
-/** Ein 404 vom CDN braucht keine Aufmerksamkeit, alles andere schon (somethingToDo). */
+/** A 404 from the CDN needs no attention, everything else does (somethingToDo). */
 type StackStatus = { erg: StackResult; reasons: string[]; somethingToDo: boolean; work: number };
 
-/** Die Datei ist da, höchstens die Vorschau fehlt. Bekannt gescheiterte nicht
- * anfassen: Jedes webp-Bild kostete sonst bei JEDEM Durchgang einen Lauf. */
+/** The file is there, at most the preview is missing. Do not touch known failures:
+ * every webp image would otherwise cost a run on EVERY pass. */
 async function onlyPreview(k: ImagesContext, setNummer: string, vorschau: string, st: StackStatus): Promise<void> {
   if (fs.existsSync(vorschau)) {
     st.erg.uebersprungen++;
@@ -148,7 +148,7 @@ async function onlyPreview(k: ImagesContext, setNummer: string, vorschau: string
     st.erg.knownMissing++;
     return;
   }
-  // Auch hier warten: Eine Verkleinerung kostet mehr als ein Download.
+  // Wait here too: a resize costs more than a download.
   await pauseBeforeWork(k);
   st.work++;
   if (await createPreview(k, `/images/sets/${setNummer}.jpg`, vorschau)) {
@@ -160,7 +160,7 @@ async function onlyPreview(k: ImagesContext, setNummer: string, vorschau: string
   st.reasons.push(`${setNummer}: Vorschau fehlgeschlagen`);
 }
 
-/** @returns true, wenn das CDN drosselt und der Stapel abbricht */
+/** @returns true if the CDN throttles and the batch aborts */
 async function afterFailure(
   k: ImagesContext,
   setNummer: string,
@@ -168,15 +168,15 @@ async function afterFailure(
   st: StackStatus,
 ): Promise<boolean> {
   const status = info.status;
-  // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures Weiterfragen verlängert die Sperre.
+  // Throttling is NOT a negative result: the images exist, and stubbornly asking again extends the block.
   if (status === 403 || status === 429) {
     const bis = new Date(k.uhr.jetzt() + THROTTLE_PAUSE_MS);
     await k.jobQueue.pauseKind('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
     console.error(`[image-queue] CDN drosselt (HTTP ${status}) — Pause bis ${bis.toLocaleTimeString()}`);
     return true;
   }
-  // NUR ein 404/410 heisst „das Bild gibt es nicht"; Zeitüberschreitungen und Netzaussetzer dürfen ein Bild
-  // nicht dauerhaft sperren.
+  // ONLY a 404/410 means "the image does not exist"; timeouts and network dropouts must not
+  // block an image permanently.
   const hartMissing = info.status === 404 || info.status === 410;
   if (hartMissing) rememberMissing(k, 'set:' + setNummer, `HTTP ${status} vom CDN`);
   else st.somethingToDo = true;
@@ -192,7 +192,7 @@ async function afterFailure(
 async function workStack(k: ImagesContext): Promise<StackResult> {
   const erg = emptyResult();
   const pause = await k.jobQueue.liesPause('bildbedarf');
-  if (pause && new Date(pause.until_at).getTime() > k.uhr.jetzt()) return erg; // CDN hat gedrosselt, siehe unten
+  if (pause && new Date(pause.until_at).getTime() > k.uhr.jetzt()) return erg; // CDN has throttled, see below
   const rows = await nimmBildwuensche(k, NOTIZ_GILT_MS, STAPEL);
   if (!rows.length) {
     rememberRun(k, erg);
@@ -205,23 +205,23 @@ async function workStack(k: ImagesContext): Promise<StackResult> {
     if (!r.set_number) {
       erg.ohneNummer++;
       continue;
-    } // ohne Setnummer kein Ablageort
+    } // no storage location without a set number
 
-    // Die Dateiprüfung steht hier und nicht beim Einreihen: 25 000 Dateizugriffe in einer Anfrage blockierten
-    // schwache Hardware.
+    // The file check is here and not at queuing: 25,000 file accesses in one request would block
+    // weak hardware.
     const datei = path.join(SET_IMAGES_DIR, `${r.set_number}.jpg`);
     const vorschau = path.join(SET_IMAGES_DIR, `${r.set_number}_thumb.jpg`);
     if (fs.existsSync(datei)) {
-      // kein zweiter Download
+      // no second download
       await onlyPreview(k, r.set_number, vorschau, st);
       if (!(await reportSetImageLoaded(k, r.set_number, r.url))) erg.withoutEntry = (erg.withoutEntry ?? 0) + 1;
       continue;
     }
 
-    // Bekannt fehlende Bilder nicht erst holen, wie der Knopf „Katalogbilder holen" auch.
+    // Do not fetch images known to be missing, just like the button "fetch catalog images".
     if (isKnownMissing(k, 'set:' + r.set_number)) {
       erg.knownMissing++;
-      // Den Namen nennen: Ohne Setnummer führt kein Weg zu image-diag.
+      // Name it: without a set number there is no way to image-diag.
       st.reasons.push(
         `${r.set_number}: als fehlend bekannt` +
           (reasonFor(k, 'set:' + r.set_number) ? ` (${reasonFor(k, 'set:' + r.set_number)})` : ''),
@@ -229,53 +229,53 @@ async function workStack(k: ImagesContext): Promise<StackResult> {
       continue;
     }
 
-    // Die Pause steht ZWISCHEN zwei Anfragen ans CDN — nicht vor der ersten und nicht für Sets, deren Datei
-    // schon da ist.
+    // The pause stands BETWEEN two requests to the CDN — not before the first and not for sets whose file
+    // is already there.
     await pauseBeforeWork(k);
     st.work++;
 
     const info: { status?: number } = {};
-    // Ein Fehler zählt wie ein vergeblicher Abruf; über die Wiederholung entscheidet afterFailure().
+    // An error counts like a futile fetch; afterFailure() decides about the retry.
     const abruf = await versuche('bild-job:setBildHerunterladen', k.bildwerk.setBildLaden(r.url, r.set_number, info));
     const lokal = abruf.ok ? abruf.wert : null;
     if (!lokal) {
       if (await afterFailure(k, r.set_number, info, st)) {
-        // ALLE unbearbeiteten Notizen zurücklegen: Der Stapel kam per DELETE … RETURNING, der Rest wäre sonst
-        // still verloren.
+        // Put back ALL unprocessed notes: the batch came via DELETE … RETURNING, the rest would otherwise
+        // be lost silently.
         const rest = rows.slice(idx);
         await noteImageDemand(
           k,
           rest.map(x => x.url),
           rest.map(x => x.set_number),
-        ); // Scheitert das Zurücklegen, wirft es: Der Auftrag scheitert sichtbar statt still Notizen zu verlieren.
+        ); // If putting back fails, it throws: the job fails visibly instead of silently losing notes.
         erg.setAside = rest.length;
         break;
       }
       continue;
     }
-    // Die Vorschau entsteht NICHT in setBildHerunterladen(); ohne diesen Aufruf bliebe es bei der grossen
-    // Originaldatei.
+    // The preview is NOT created in setBildHerunterladen(); without this call it would stay at the large
+    // original file.
     await createPreview(k, lokal, vorschau);
-    // Erst der Eintrag lässt die Oberfläche die Datei statt des Proxys laden.
+    // Only the entry makes the UI load the file instead of the proxy.
     if (!(await reportSetImageLoaded(k, r.set_number, r.url))) erg.withoutEntry = (erg.withoutEntry ?? 0) + 1;
     erg.geholt++;
   }
-  // Zurückgelegte Zeilen sind NICHT bearbeitet.
+  // Rows put back are NOT processed.
   erg.gesamt = rows.length - erg.setAside;
   erg.work = st.work;
   const { reasons, somethingToDo } = st;
-  // Bei wenigen Fällen beim Namen: Mit der Setnummer beantwortet GET /api/v1/admin/image-diag/:setNumber die
-  // Frage in einer Antwort.
+  // With few cases by name: with the set number, GET /api/v1/admin/image-diag/:setNumber answers the
+  // question in one response.
   if (reasons.length && reasons.length <= 5) {
     (somethingToDo ? console.error : console.warn)(`[image-queue] ${reasons.join(' · ')}`);
   }
-  // Hier festhalten: Wer den Stapel ausführt, hat gearbeitet, gleich von wo gerufen. In die Datenbank
-  // schreibt erst der Takt.
+  // Record it here: whoever executes the batch has worked, no matter where it was called from. Only the tick
+  // writes to the database.
   rememberRun(k, erg);
   return erg;
 }
 
-/** Der Abbruch hängt an echter Arbeit, nicht an angefassten Notizen. */
+/** The abort depends on real work, not on touched notes. */
 async function tickPass(k: ImagesContext): Promise<StackResult> {
   const summe = emptyResult();
   while (summe.gesamt < DURCHGANG_MAX_NOTIZEN && summe.work < STAPEL) {
@@ -293,12 +293,12 @@ async function tickPass(k: ImagesContext): Promise<StackResult> {
     if (e.withoutEntry) summe.withoutEntry = (summe.withoutEntry ?? 0) + e.withoutEntry;
     if (!e.gesamt) break;
   }
-  // Auch ein Takt, der nichts vorfand, ist ein Lebenszeichen für die Kachel.
+  // Even a tick that found nothing is a sign of life for the tile.
   await saveRun(k, summe);
   return summe;
 }
 
-/** Drosselt das CDN, geht der Auftrag bis zum Ende der Pause zurück in die Tabelle. */
+/** If the CDN throttles, the job goes back into the table until the end of the pause. */
 export async function processImageDemand(kx: ImagesContext, k: JobContext): Promise<void> {
   await schreibePuffer(kx);
   for (;;) {
@@ -309,7 +309,7 @@ export async function processImageDemand(kx: ImagesContext, k: JobContext): Prom
     if (pause && new Date(pause.until_at).getTime() > kx.uhr.jetzt())
       throw new JobMove(new Date(pause.until_at), pause.reason ?? 'CDN drosselt');
     if (!e.gesamt) return;
-    if (!(await k.fortschritt({ text: meldung(e) }))) return; // abgebrochen
+    if (!(await k.fortschritt({ text: meldung(e) }))) return; // aborted
     await warte(TAKT_MS);
   }
 }

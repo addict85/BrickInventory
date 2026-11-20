@@ -1,7 +1,7 @@
 import { buildChart } from '../chartData';
 import type { CurvesPoint } from './curve';
 
-/** Alle Beschriftungen entstehen auf dem Server, damit Webapp und App gleich aussehen. */
+/** All labels are created on the server so that web app and app look the same. */
 export function buildChartData(rawPoints: CurvesPoint[], currency: string, downsampled: boolean, now: Date) {
   function fmtX(point: { day?: string }) {
     const d = (point.day || '').toString();
@@ -35,7 +35,7 @@ export function buildChartData(rawPoints: CurvesPoint[], currency: string, downs
     const value = vMin + frac * (vMax - vMin);
     y_axis.push({ label: fmtY(value), value: parseFloat(value.toFixed(2)), frac });
   }
-  // y_axis[0] = unten, y_axis[4] = oben.
+  // y_axis[0] = bottom, y_axis[4] = top.
 
   const n = rawPoints.length;
   const maxLabels = 7;
@@ -51,7 +51,7 @@ export function buildChartData(rawPoints: CurvesPoint[], currency: string, downs
     let xLabel = '';
     if (labelIdxs.has(i)) {
       if (downsampled) {
-        // Monatsauflösung: erster Punkt mit exaktem Datum, letzter = heute.
+        // Monthly resolution: first point with the exact date, last = today.
         if (i === 0) {
           const fd = (p.fullDay || p.day || '').slice(0, 10);
           xLabel = fd.length === 10 ? fd.slice(8) + '.' + fd.slice(5, 7) : fmtX(p);
@@ -76,8 +76,8 @@ export function buildChartData(rawPoints: CurvesPoint[], currency: string, downs
   const period_change_pct =
     rawPoints.length >= 2 && firstVal > 0 ? parseFloat((((currentVal - firstVal) / firstVal) * 100).toFixed(2)) : null;
 
-  // Eine Linie, weil hier der GESAMTWERT steht; die Trennung nach Zustand gehört
-  // in die Tabelle darunter.
+  // One line, because this shows the TOTAL value; the split by condition belongs
+  // in the table below.
   const chart = buildChart([
     {
       name: 'total',

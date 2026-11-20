@@ -79,7 +79,7 @@ export async function manualColorParts(
   );
 }
 
-/** Überschreibend — das ist der Zweck. */
+/** Overwriting — that is the purpose. */
 export async function replacePartColorsImage(
   db: DbInterface,
   partNumber: string,

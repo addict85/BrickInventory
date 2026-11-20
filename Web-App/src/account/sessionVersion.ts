@@ -1,12 +1,12 @@
-/** Sitzungszeilen zu löschen reicht nicht: Eine laufende Anfrage schreibt ihre
- * Sitzung am Ende per Upsert zurück. Deshalb trägt jede Sitzung die Version
- * des Kontos; wer Zugänge beendet, erhöht sie, und jede Anfrage vergleicht. */
+/** Deleting session rows is not enough: a running request writes its
+ * session back at the end via upsert. Hence every session carries the version
+ * of the account; whoever ends accesses increments it, and every request compares. */
 import { reportAccessChange } from './accessChange';
 import { processEvent } from '../infra/event';
 import type { AccountContext } from './context';
 
 const CACHE_MS = 5_000;
-/** Je Zugang; `stand` zählt jedes Leeren, damit ein älterer Lesestand nicht wieder hineinkommt. */
+/** Per access; `stand` counts every clearing so that an older read state does not get back in. */
 const speicher = (k: AccountContext) =>
   k.faecher.fach('sitzungsVersion', () => ({
     eintraege: new Map<number, { version: number | null; bis: number }>(),
@@ -15,8 +15,8 @@ const speicher = (k: AccountContext) =>
   }));
 const gemerkt = (k: AccountContext) => speicher(k).eintraege;
 
-/** Ein zweiter Web-Prozess hielte die alte Version sonst bis zu fünf Sekunden: Jede Erhöhung
- * meldet sich über NOTIFY. Ohne stehende Horch-Verbindung gilt nur die Datenbank (fail closed). */
+/** A second web process would otherwise keep the old version for up to five seconds: every increment
+ * is announced via NOTIFY. Without a standing listen connection only the database counts (fail closed). */
 const CHANNEL = 'sitzung_version';
 const increased = (k: AccountContext) =>
   k.faecher.fach('sitzungsVersionSignal', () => {
@@ -42,7 +42,7 @@ function reportIncrease(k: AccountContext): void {
   if (speicher(k).verteilt) void increased(k).melde(k.db.notification);
 }
 
-/** null: Konto fehlt oder ist gesperrt. */
+/** null: account missing or locked. */
 export function sessionVersionFromDb(k: AccountContext, uid: number): Promise<number | null> {
   return k.zugaenge.sitzungsVersion(uid);
 }
@@ -57,7 +57,7 @@ export async function currentSessionVersion(k: AccountContext, uid: number): Pro
   return version;
 }
 
-/** Vor dem Löschen der Zeilen aufrufen; liefert die neue Version. */
+/** Call before deleting the rows; returns the new version. */
 export async function increaseSessionVersion(k: AccountContext, uid: number): Promise<number> {
   const version = await k.zugaenge.countSessionVersionHigh(uid);
   forgetAllSessionVersions(k);
@@ -66,8 +66,8 @@ export async function increaseSessionVersion(k: AccountContext, uid: number): Pr
   return version;
 }
 
-/** Nach dem COMMIT einer Transaktion, die die Version erhöht hat: Eine Anfrage
- * dazwischen hätte sonst den alten Stand wieder gemerkt. */
+/** After the COMMIT of a transaction that incremented the version: a request
+ * in between would otherwise have remembered the old state again. */
 export function forgetSessionVersion(k: AccountContext, _uid: number): void {
   forgetAllSessionVersions(k);
   reportAccessChange();

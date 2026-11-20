@@ -3,14 +3,14 @@ import { LIKE_ESCAPE, likeLiteral } from '../../../db/likeSearch';
 import { mengeSkalar } from '../../../db/stockQuantity';
 import type { Spalten } from '../../../db/rows';
 
-/** Die Route spricht db/ nicht selbst an. */
+/** The route does not talk to db/ itself. */
 
 type ImageRow = { image_url: string | null; image_local: string | null };
 export type AccountImageRow = { anzahl_konten: number } & ImageRow;
 type ImageMissRow = { checked_at: Date; reason: string | null };
 type CacheKeyRow = { cache_key: string };
 
-/** COUNT als Zahl: ::int, denn bigint käme als Text an. */
+/** COUNT as a number: ::int, because bigint would arrive as text. */
 async function count(db: DbInterface, sql: string): Promise<number> {
   return (await db.get<{ c: number }>(sql))?.c ?? 0;
 }
@@ -23,7 +23,7 @@ export function stalePrices(db: DbInterface): Promise<number> {
   return count(db, "SELECT COUNT(*)::int AS c FROM price_cache WHERE fetched_at <= NOW() - INTERVAL '24 hours'");
 }
 
-/** Nur die Zahl der Konten (Funktion aus 0119): Welches ein Set führt, geht auch den Verwalter nichts an. */
+/** Only the number of accounts (function from 0119): which one holds a set is none of the admin's business either. */
 export async function accountImageRows(db: DbInterface, sn: string): Promise<AccountImageRow> {
   const z = await db.get<AccountImageRow>(
     `SELECT n.anzahl AS anzahl_konten, CASE WHEN n.anzahl > 0 THEN c.image_local END AS image_local,
@@ -48,7 +48,7 @@ export function setImageMiss(db: DbInterface, sn: string): Promise<ImageMissRow 
   );
 }
 
-/** @param datei der Dateiname ohne Endung, wie ihn die Bildablage bildet */
+/** @param datei the file name without extension, as the image storage forms it */
 export function thumbnailImageMiss(db: DbInterface, datei: string): Promise<ImageMissRow | undefined> {
   return db.get<Spalten<'image_misses', 'checked_at' | 'reason'>>(
     `SELECT checked_at, reason FROM image_misses WHERE cache_key LIKE $1${LIKE_ESCAPE}`,
@@ -68,7 +68,7 @@ export function thumbnailImageMisses(db: DbInterface): Promise<CacheKeyRow[]> {
   );
 }
 
-/** Ein 404 vom CDN bleibt vermerkt: Ein neuer Versuch ändert daran nichts. */
+/** A 404 from the CDN stays recorded: a new attempt changes nothing about it. */
 export function setImageMissesWithout404(db: DbInterface): Promise<CacheKeyRow[]> {
   return db.all<Spalten<'image_misses', 'cache_key'>>(
     `SELECT cache_key FROM image_misses
@@ -110,7 +110,7 @@ export function logSince(
   minuten: number,
 ): Promise<{ id: number; level: string; message: string; logged_at: Date }[]> {
   return db.all<{ id: number; level: string; message: string; logged_at: Date }>(
-    // bigint käme als Text; der Vertrag (und das Protokollfenster) nennt eine Zahl.
+    // bigint would come as text; the contract (and the log window) names a number.
     `SELECT id::float8 AS id, level, message, logged_at
        FROM app_logs
        WHERE logged_at >= NOW() - ($1 || ' minutes')::INTERVAL
@@ -120,7 +120,7 @@ export function logSince(
   );
 }
 
-/** Nur Art 'part': Die Kennzahl stellt nachgesehene Teile der Zahl der Teile gegenüber. */
+/** Only kind 'part': the metric compares looked-up parts with the number of parts. */
 export function mappedParts(db: DbInterface): Promise<number> {
   return count(db, `SELECT COUNT(*)::int AS c FROM bl_mapping WHERE type='part'`);
 }
@@ -155,8 +155,8 @@ export function setMinifigImagesOpen(db: DbInterface): Promise<number> {
   );
 }
 
-/** Das EXISTS hält die Menge bei dem, was der Hintergrundlauf wirklich holt,
- * sonst passt die offene Zahl nicht zum Fortschritt. */
+/** The EXISTS keeps the set at what the background run really fetches,
+ * otherwise the open number would not match the progress. */
 export function holdingMinifigImagesOpen(db: DbInterface): Promise<number> {
   return count(
     db,
@@ -166,7 +166,7 @@ export function holdingMinifigImagesOpen(db: DbInterface): Promise<number> {
   );
 }
 
-/** Die Menge aus den Erfassungen — dieselbe Summe, die die Bewertung sieht. */
+/** The quantity from the acquisitions — the same sum the valuation sees. */
 export function sampleSet(db: DbInterface, uid: number, setNumber: string) {
   return db.get<{ set_number: string; quantity: number }>(
     `SELECT s.set_number, ${mengeSkalar('s')} AS quantity

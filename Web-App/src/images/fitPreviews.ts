@@ -1,5 +1,5 @@
-/** Einmal je Installation: Vorschauen aus der Zeit des quadratischen Zuschnitts neu einpassen. Sie entstehen
- * sonst nie neu, weil eine vorhandene Vorschau als fertig gilt. */
+/** Once per installation: refit previews from the time of the square crop. Otherwise they are
+ * never recreated, because an existing preview counts as finished. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { vorschauErzeugenAus } from './thumbs';
@@ -24,7 +24,7 @@ async function masse(datei: string): Promise<{ width: number; height: number } |
   }
 }
 
-/** So sah nur der alte Zuschnitt aus: genau 200 × 200 zu einem Original, das nicht quadratisch ist. */
+/** Only the old crop looked like this: exactly 200 × 200 for an original that is not square. */
 async function cropped(original: string, vorschau: string): Promise<boolean> {
   const v = await masse(vorschau);
   if (!v || v.width !== OLD_EDGE || v.height !== OLD_EDGE) return false;
@@ -34,8 +34,8 @@ async function cropped(original: string, vorschau: string): Promise<boolean> {
 
 const pause = () => new Promise(r => setTimeout(r, 10));
 
-/** Eigene Bilder bekommen ihre Vorschau neu, im Proxy-Cache wird die alte nur gelöscht; gedrosselt.
- * @returns wie viele Vorschauen ersetzt wurden, oder null, wenn es schon einmal lief */
+/** Own images get their preview anew, in the proxy cache the old one is only deleted; throttled.
+ * @returns how many previews were replaced, or null if it already ran once */
 export async function fitTailoredPreviews(
   k: Pick<ImagesContext, 'jobQueue' | 'uhr'>,
   lokale: { web: string; datei: string }[],

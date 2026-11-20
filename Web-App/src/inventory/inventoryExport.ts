@@ -1,9 +1,9 @@
-/** Hier, damit keine Route eine andere importiert. */
+/** Here, so that no route imports another. */
 import { toCsv } from '../infra/csvExport';
 import type { InventoryContext } from './context';
 
 export async function partsCsv(k: InventoryContext, uid: number) {
-  // Kein Rückfall: Scheitert die Abfrage, soll der Fehler sichtbar werden.
+  // No fallback: if the query fails, the error should become visible.
   const rows = (await k.bestandExport.partsForCsv(uid)).map(r => ({
     ...r,
     unit_price: r.unit_price ?? '',

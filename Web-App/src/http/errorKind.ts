@@ -1,4 +1,4 @@
-/** Die einzige Stelle, an der eine fachliche Fehlerart zum HTTP-Status wird. */
+/** The only place where a domain error kind becomes an HTTP status. */
 import { Fachfehler, type ErrorKind } from '../infra/errorTexts';
 
 export const STATUS_THE_KIND: Readonly<Record<ErrorKind, number>> = {
@@ -22,8 +22,8 @@ export const STATUS_THE_KIND: Readonly<Record<ErrorKind, number>> = {
   zu_alt: 426,
 };
 
-/** Status eines geworfenen Fehlers: Fachfehler nach Art, Fehler von Express
- * oder Bibliotheken nach ihrem eigenen `status`, alles andere 500. */
+/** Status of a thrown error: domain errors by kind, errors from Express
+ * or libraries by their own `status`, everything else 500. */
 export function statusOf(e: unknown): number {
   if (e instanceof Fachfehler) return STATUS_THE_KIND[e.art] ?? 500;
   const s = (e as { status?: unknown } | null | undefined)?.status;

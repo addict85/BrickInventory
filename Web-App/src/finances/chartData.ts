@@ -1,5 +1,5 @@
-/** Eine Form für alle Verlaufs-Endpunkte, damit beide Oberflächen einen
- * Diagrammbauer brauchen. */
+/** One shape for all history endpoints, so that both UIs need one
+ * chart builder. */
 import { marketPriceFrom } from '../catalog';
 
 export interface ChartPoint {
@@ -7,7 +7,7 @@ export interface ChartPoint {
   y: number;
 }
 
-/** Eine Messung: Tag und Preis (Regel: marketPriceFrom). */
+/** One measurement: day and price (rule: marketPriceFrom). */
 export interface Messung {
   recorded_at: unknown;
   avg_price?: number | string | null;
@@ -17,16 +17,16 @@ export interface Messung {
 export interface ChartSeries {
   name: string;
   values: ChartPoint[];
-  /** Index des ersten echten Wertes; davor stehen aufgefüllte Nullen. */
+  /** Index of the first real value; padded zeros come before it. */
   firstRealIndex: number;
 }
 
-/** @param inputs Je Reihe ein Name und die rohen Zeilen (recorded_at, avg_price). */
+/** @param inputs Per series a name and the raw rows (recorded_at, avg_price). */
 export function buildChart(inputs: Array<{ name: string; rows: Messung[] }>) {
   const valueFor = (r: Messung) => marketPriceFrom(r) ?? 0;
 
-  // Nur Tage, an denen eine Reihe einen Wert hat: Die Achse zeigt Messpunkte,
-  // nicht jeden Kalendertag.
+  // Only days on which a series has a value: the axis shows measurement points,
+  // not every calendar day.
   const x = [...new Set(inputs.flatMap(s => (s.rows || []).map(r => String(r.recorded_at))))].sort();
 
   const values: ChartSeries[] = inputs.map(s => {

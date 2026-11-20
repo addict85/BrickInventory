@@ -1,23 +1,23 @@
-/** Was als Benutzername, Anmeldename und Gerätename taugt. */
+/** What is acceptable as username, login name and device name. */
 import * as V from '../infra/validate';
 
 export const USERNAME_RE = /^[A-Za-z0-9_.-]{3,32}$/;
 
-/** Ein Name ist Freitext, aber kein Träger für Adressen oder Zeilenumbrüche:
- * Er steht in Oberflächen und Exporten, wo ein Link wie vom Server aussähe. */
+/** A name is free text, but not a carrier for addresses or line breaks:
+ * it appears in UIs and exports, where a link would look as if from the server. */
 export function nameValid(v: unknown): boolean {
   if (v === undefined || v === null || v === '') return true;
   const s = String(v);
   return s.length <= 100 && !/[\p{Cc}\u2028\u2029]/u.test(s) && !/:\/\/|www\.|https?:/i.test(s);
 }
 
-/** Geräte- und Passkey-Namen stehen wörtlich in den Hinweismails: Ohne Adressen und
- * Anführungszeichen fügt ein Eindringling dort keinen entwarnenden Satz mit Link an. */
+/** Device and passkey names appear literally in the notice mails: without addresses and
+ * quotes an intruder cannot append a reassuring sentence with a link there. */
 export function devicesNameValid(v: unknown): boolean {
   return nameValid(v) && devicesNameContentValid(v);
 }
 
-/** Dieselbe Regel ohne Länge: Token-Labels der Anmeldung werden gekürzt statt abgewiesen. */
+/** The same rule without length: token labels of the login are truncated instead of rejected. */
 export function devicesNameContentValid(v: unknown): boolean {
   if (typeof v !== 'string') return true;
   return (
@@ -31,7 +31,7 @@ export function devicesNameContentValid(v: unknown): boolean {
 export const EMAIL_RE = V.EMAIL_RE,
   emailValid: typeof V.emailValid = V.emailValid;
 
-/** Name ODER E-Mail, weil die Anmeldung in beiden Spalten sucht. */
+/** Name OR email, because the login searches both columns. */
 export function loginNameValid(value: unknown): boolean {
   const v = String(value || '');
   return USERNAME_RE.test(v) || emailValid(v);

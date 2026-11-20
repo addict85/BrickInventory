@@ -1,6 +1,6 @@
 import { fehlertext, reportError } from '../infra/error';
 
-// Eigenes Modul, damit Proxy und Vorschau zählen, ohne über global zu greifen.
+// A module of its own so that proxy and preview count without reaching through global.
 export const imgProxyFailures = {
   timeout: 0,
   error: 0,
@@ -9,8 +9,8 @@ export const imgProxyFailures = {
   lastError: null as string | null,
 };
 
-/** Ein Nebenschritt der Auslieferung scheiterte: Er hält die Antwort nicht auf, steht
- * aber in der Diagnose (Zähler und letzter Fehler), nicht nur im Protokoll. */
+/** A side step of delivery failed: it does not hold up the response, but it
+ * shows in the diagnostics (counter and last error), not only in the log. */
 export function countProxyError(ort: string, e: unknown): void {
   imgProxyFailures.other++;
   imgProxyFailures.lastError = `${ort}: ${fehlertext(e)}`;

@@ -1,5 +1,5 @@
-/** Sets erfassen: Web, App, CSV, Wanted-XML und Merkliste unter denselben Regeln. Was das
- * Netz braucht (Katalog, Bild, Marktpreis), hält die Anfrage nicht auf, es läuft als Auftrag. */
+/** Capturing sets: web, app, CSV, wanted XML and wishlist under the same rules. Whatever needs the
+ * network (catalog, image, market price) does not hold up the request; it runs as a job. */
 import { rebrickableSetImage } from '../images';
 import { normalisiereSetNummer, possibleSetNumber } from '../infra/setNumber';
 import { fachfehler } from '../infra/errorTexts';
@@ -7,20 +7,20 @@ import * as repo from './repository/sets';
 import { versuche, valueOr } from '../infra/result';
 import type { SetsContext } from './context';
 
-/** Eine Erfassung: eine Zeile in set_acquisitions, der einzige Ort für Kaufpreis und Zustand. */
+/** An acquisition: one row in set_acquisitions, the only place for purchase price and condition. */
 export interface Erfassung {
   konto: number;
   setNumber: string;
   menge: number;
   kaufpreis?: number | null;
   zustand?: string | null;
-  /** Nur mit Kaufpreis: Ein geschätzter Preis ohne Betrag wäre keine Aussage. */
+  /** Only with a purchase price: an estimated price without an amount would say nothing. */
   geschaetzt?: boolean;
   waehrung?: string | null;
   recordedAt?: string | null;
 }
 
-/** In einer Transaktion mit deren Kontext (`t`) rufen. */
+/** Call in a transaction with its context (`t`). */
 export async function bookEntry(sk: SetsContext, e: Erfassung) {
   const pp = e.kaufpreis !== null && e.kaufpreis !== undefined && !Number.isNaN(e.kaufpreis) ? e.kaufpreis : null;
   const cond = e.zustand === 'N' || e.zustand === 'U' ? e.zustand : 'N';
@@ -37,12 +37,12 @@ export async function bookEntry(sk: SetsContext, e: Erfassung) {
 export interface ExistingSet {
   set_number: string;
   owner_user_id: number;
-  /** Sonst gehört es einem anderen Konto im Haushalt. */
+  /** Otherwise it belongs to another account in the household. */
   is_self: boolean;
 }
 
-/** Im BLICKFELD, nicht nur im eigenen Konto: Webapp und App sollen dieselbe
- * Eingabe gleich behandeln. Ohne Fang: null hiesse sonst „nicht da“. */
+/** In the SCOPE, not only in the own account: web app and app should treat the same
+ * input the same way. No catch: null would otherwise mean "not there". */
 export async function findSetInScope(
   sk: SetsContext,
   viewerId: number,
@@ -54,21 +54,21 @@ export async function findSetInScope(
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }
 
-/** Für „gibt es das schon?“: ohne Treffer die Nummer so, wie sie angelegt würde. */
+/** For "does this already exist?": without a hit the number as it would be created. */
 export async function setPresent(sk: SetsContext, viewerId: number, setNumber: string) {
   const treffer = await findSetInScope(sk, viewerId, setNumber);
   return { exists: !!treffer, ...(treffer ?? { set_number: normalisiereSetNummer(setNumber) }) };
 }
 
-/** ergaenzen (= neu): angelegt; zweit: ein vorhandenes Set aufgestockt; csv: aus dem CSV-Import. */
+/** ergaenzen (= new): created; zweit: an existing set topped up; csv: from the CSV import. */
 export type ReworkKind = 'zweit' | 'neu' | 'csv' | 'ergaenzen';
 
-/** Getippt wird eine Nummer, kein Satz: Die nachsichtige Normalisierung (für CSV) machte aus Text ein Set. */
+/** A number is typed, not a sentence: the lenient normalization (for CSV) would turn text into a set. */
 const TYPED_NUMBER = /^[A-Za-z0-9]{1,20}(-\d{1,3})?$/;
 
 export interface NewSet {
   requester: number;
-  /** Wunsch der Anfrage; schreibziel() prüft die Richtung im Haushalt. */
+  /** The request's wish; schreibziel() checks the direction in the household. */
   ownerWish?: unknown;
   setNumber: string;
   menge?: number;
@@ -77,13 +77,13 @@ export interface NewSet {
   lagerort?: string | null;
   recordedAt?: string | null;
   waehrung?: string | null;
-  /** Getippte Eingabe: nur eine Nummer, kein Satz. */
+  /** Typed input: only a number, not a sentence. */
   streng?: boolean;
-  /** Bis der Auftrag beginnt; der Strom ergänzt selbst und braucht ihn nur als Rückfall. */
+  /** Until the job starts; the stream completes by itself and only needs it as a fallback. */
   supplementAfterSeconds?: number;
-  /** Ein Import bucht die Datei eines Kontos und stockt auf; getippt heisst „im Blickfeld“ exists. */
+  /** An import books an account's file and tops up; typed means "in scope" exists. */
   ifPresent?: 'melden' | 'aufstocken';
-  /** Der CSV-Import fragt Brickset erst in der Nacharbeit ('csv'). */
+  /** The CSV import only asks Brickset in the follow-up work ('csv'). */
   nacharbeit?: ReworkKind;
 }
 
@@ -99,8 +99,8 @@ export type SetRecorded =
       besitzer: number;
     };
 
-/** Der eine Weg zum Erfassen, ohne Netz und unter der Sperre je Setnummer: Sonst legten zwei
- * Anfragen (auch zweier Konten im Haushalt) das Set zweimal an. Den Katalog holt der Auftrag. */
+/** THE one way to capture, without network and under the lock per set number: otherwise two
+ * requests (even from two accounts in the household) would create the set twice. The job fetches the catalog. */
 export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecorded> {
   const roh = String(e.setNumber ?? '').trim();
   if (!roh) fachfehler('ungueltig', 'set_number_erforderlich');
@@ -124,7 +124,7 @@ export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecord
   return sk.transaktion(async t => {
     await repo.addLockSet(t.db, sn, besitzer);
     const nacharbeit = (art: ReworkKind) =>
-      // In derselben Transaktion: Ein angelegtes Set ohne Auftrag bliebe für immer ohne Katalog.
+      // In the same transaction: a created set without a job would stay without a catalog forever.
       t.jobQueue.placeOwnJobOne(
         'nacharbeit',
         { set_number: sn, user_id: besitzer, art: e.nacharbeit ?? art },
@@ -137,7 +137,7 @@ export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecord
       );
     if (e.ifPresent === 'aufstocken' && (await repo.setRowOfAccount(t.db, besitzer, sn))) {
       await bookEntry(t, erfassung);
-      // Nur ein genannter Ort: Die Vorgabe des Kontos verschöbe sonst ein einsortiertes Set.
+      // Only a named place: the account's default would otherwise move an already sorted set.
       if (ort && e.lagerort) await t.inventory.locationService.setLocation('set', [besitzer], [sn], ort);
       await nacharbeit('zweit');
       return { action: 'updated' as const, set_number: sn, besitzer };
@@ -164,8 +164,8 @@ export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecord
 
 export type Fortschritt = (n: { step: string; set: string }) => void;
 
-/** Rebrickable, dann Brickset für Lücken, dann das Bild. `disrupted`: Rebrickable
- * hat nicht geantwortet (anders als „kennt die Nummer nicht“). */
+/** Rebrickable, then Brickset for gaps, then the image. `disrupted`: Rebrickable
+ * did not answer (unlike "does not know the number"). */
 async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, sendProgress: Fortschritt | null) {
   let name: string | null = null,
     year: number | null = null,
@@ -203,13 +203,13 @@ async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, 
   const bild = await versuche('set-anlegen:bild-laden', Promise.race([sk.images.setBildLaden(imageUrl, sn), frist]));
   const lokal = valueOr(bild, null);
   if (lokal) void versuche('set-anlegen:vorschau', sk.images.createPreview(lokal));
-  // Kein Fang: Der Katalog ist die einzige Stelle mit Name, Jahr und Bild.
+  // No catch: the catalog is the only place with name, year and image.
   await sk.catalog.rememberSetCatalog(sn, name, year, theme || null, pieces, minifigs, imageUrl, lokal, themeId);
   return { name, disrupted: !rbResult.ok, bild: !!lokal };
 }
 
-/** Was setErfassen(sk) offen liess; idempotent, damit Strom und Auftrag sich nicht
- * stören. Wirft, solange Rebrickable gestört ist: Der Auftrag versucht es später. */
+/** What setErfassen(sk) left open; idempotent, so that stream and job do not
+ * disturb each other. Throws as long as Rebrickable is disrupted: the job tries again later. */
 export async function setSupplement(
   sk: SetsContext,
   sn: string,

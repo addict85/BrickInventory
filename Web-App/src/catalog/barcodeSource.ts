@@ -1,4 +1,4 @@
-/** Ob der Mensch bei einem Barcode-Treffer hinsehen muss, hängt am Weg. */
+/** Whether a human has to look at a barcode hit depends on the path. */
 
 export const CHECKED: ReadonlySet<string> = new Set([
   'catalog_cache',

@@ -1,5 +1,5 @@
 /** /api/v1/wanted — the wanted list. The rules sit in src/wanted/; here
- * nur Blickfeld, Schreibrecht und Fehlerübersetzung. */
+ * only scope, write permission and error translation. */
 import type express from 'express';
 import { publicError } from '../../src/infra/error';
 import { kontoSchranke, viewOf, guardFor } from './middleware';
@@ -21,17 +21,17 @@ type WantedXmlReport = Pick<
   'vorschau' | 'gelesen' | 'angelegt' | 'aufgestockt' | 'fehler' | 'posten' | 'offen'
 >;
 
-/** Korrekturen als Feld der Multipart-Anfrage: Bei 224 Posten wäre die Adresse
- * länger als jeder Proxy durchlässt. @returns null, wenn sie ungültig sind */
+/** Corrections as a field of the multipart request: with 224 items the address would be
+ * longer than any proxy lets through. @returns null if they are invalid */
 function correctionsFrom(roh: string | undefined): Korrektur[] | undefined | null {
   if (roh === undefined || roh.trim() === '') return undefined;
   const geparst = WantedCorrections.safeParse(jsonOrNull(roh)?.wert);
   return geparst.success ? geparst.data : null;
 }
 
-/** Die Zwischenstände als NDJSON-Zeilen. Endet der Zugang, endet der Strom; der
- * Auftrag läuft als eigener weiter. Die Kopfzeilen sind hinaus: Ein Fehler kommt
- * als letzte ZEILE, sonst wartet der Client auf einen Bericht, der nie kommt. */
+/** The intermediate states as NDJSON lines. If the access ends, the stream ends; the
+ * job keeps running on its own. The headers are out: an error comes
+ * as the last LINE, otherwise the client waits for a report that never comes. */
 async function importInStream(
   d: Pick<Dienste, 'settings' | 'household' | 'account' | 'wanted' | 'collection'>,
   req: express.Request,
@@ -41,7 +41,7 @@ async function importInStream(
 ) {
   res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
-  // Für Proxys, die ihrerseits puffern (nginx & Verwandte).
+  // For proxies that buffer themselves (nginx & relatives).
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
   const zeile = (o: unknown) => {
@@ -65,11 +65,11 @@ export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'household' | 'a
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
-  // Blickfeld wie überall: Wer ein Geschenk sucht, sieht die Merkposten der Enkel.
+  // Scope as everywhere: whoever looks for a gift sees the grandchildren's wanted items.
   router.endpunkt('GET /api/v1/wanted', requireToken, async req => {
     const ids = viewOf(req);
-    // Die Währung des LESERS; price_cache ist je Währung verschlüsselt, deshalb
-    // gehört sie in die Abfrage.
+    // The READER's currency; price_cache is keyed per currency, so it
+    // belongs in the query.
     const waehrung = await d.settings.userValue(req.apiUser.user_id, 'currency', 'EUR');
     const merkposten = await d.wanted.wantedItemsOf(ids, undefined, waehrung, {
       search: req.abfrage.search,
@@ -80,8 +80,8 @@ export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'household' | 'a
     return { merkposten: eintraege, ...seite };
   });
 
-  /** Alle drei Wege (Katalog, Setnummer, Barcode) landen hier, damit die Regeln
-   * nicht vom Weg abhängen. */
+  /** All three paths (catalog, set number, barcode) end up here, so the rules
+   * do not depend on the path. */
   router.endpunkt('POST /api/v1/wanted', requireToken, async req => {
     const { set_number, condition, owner_user_id } = req.eingabe;
     if (!set_number) fachfehler('ungueltig', 'set_number_erforderlich');
@@ -90,7 +90,7 @@ export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'household' | 'a
     return { war_neu, merkposten };
   });
 
-  // Zwei Kontenprüfungen: heraus aus dem einen UND hinein ins andere Konto.
+  // Two account checks: out of the one AND into the other account.
   router.endpunkt('PUT /api/v1/wanted/:setNumber/:condition/inhaber', requireToken, async req => {
     const von = await d.household.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
     const zu = await d.household.schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
@@ -98,22 +98,22 @@ export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'household' | 'a
     return { ...r, owner_user_id: zu };
   });
 
-  /** Der Zustand steht im Pfad, weil er zum Schlüssel gehört: Dasselbe Set kann
-   * neu UND gebraucht gewünscht sein. */
+  /** The condition is in the path because it belongs to the key: the same set can be
+   * wanted new AND used. */
   router.endpunkt('DELETE /api/v1/wanted/:setNumber/:condition', requireToken, async req => {
     const owner = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
     const weg = await d.wanted.removeWantedItem(owner, req.pfad.setNumber, req.pfad.condition);
     return { geloescht: weg };
   });
 
-  /** BEIDE Zustände, frisch geholt. */
+  /** BOTH conditions, freshly fetched. */
   router.endpunkt('GET /api/v1/wanted/:setNumber/preise', requireToken, async req => {
     const sn = req.pfad.setNumber;
     const preise = await d.wanted.pricesForBothConditions(req.apiUser.user_id, sn);
     return { set_number: sn, ...preise };
   });
 
-  /** Die Regel steht in wanted.ts:fulfillWantedItem(); hier bleibt nur, wer schreiben darf. */
+  /** The rule lives in wanted.ts:fulfillWantedItem(); here only who may write remains. */
   router.endpunkt('POST /api/v1/wanted/:setNumber/:condition/uebernehmen', requireToken, async req => {
     const owner = await d.household.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
     const r = await d.wanted.fulfillWantedItem(
@@ -126,7 +126,7 @@ export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'household' | 'a
     return { ...r };
   });
 
-  /** Das Gegenstück zu wantedListCsv(). */
+  /** The counterpart of wantedListCsv(). */
   router.endpunkt(
     'POST /api/v1/wanted/import/csv',
     requireToken,
@@ -145,10 +145,10 @@ export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'household' | 'a
     },
   );
 
-  /** Die Vorschau ist die VORGABE: Ohne `schreiben=1` wird nichts angelegt, weil
-   * die dritte Sicherheitsstufe der Abbildung nur eine Vermutung ist. Gerechnet
-   * wird im Auftrag (src/collection/wantedXmlImport.ts); mit `strom=1` gehen dessen
-   * Zwischenstände als NDJSON-Zeilen hinaus, ohne als eine JSON-Antwort (App). */
+  /** The preview is the DEFAULT: without `schreiben=1` nothing is created, because
+   * the third confidence level of the mapping is only a guess. The computation happens
+   * in the job (src/collection/wantedXmlImport.ts); with `strom=1` its intermediate
+   * states go out as NDJSON lines instead of one JSON response (app). */
   router.endpunkt(
     'POST /api/v1/wanted-list/import/xml',
     requireToken,
@@ -157,7 +157,7 @@ export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'household' | 'a
     async (req, res) => {
       if (!req.file) fachfehler('ungueltig', 'keine_datei');
       const xml = req.file.buffer.toString('utf-8');
-      // Ohne <INVENTORY> keine Wanted-Liste — eine bessere Auskunft als „0 Posten".
+      // Without <INVENTORY> there is no wanted list — a better answer than "0 items".
       if (!/<INVENTORY[\s>]/i.test(xml)) fachfehler('nicht_verarbeitbar', 'keine_wanted_liste');
       const korrekturen = correctionsFrom(req.eingabe.korrekturen);
       if (korrekturen === null) fachfehler('ungueltig', 'korrekturen_ungueltig');

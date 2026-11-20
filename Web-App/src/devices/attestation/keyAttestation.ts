@@ -1,15 +1,15 @@
-/** Android Key Attestation des Geräteschlüssels: Die Kette beweist, dass der
- * Schlüssel im TEE oder StrongBox entstand, nur nach Gerätesperre signiert und
- * unserer App gehört. Ohne sie könnte ein erbeuteter Token einen Software-Schlüssel
- * hinterlegen und den Schrittschutz ohne Sperre lösen. */
+/** Android key attestation of the device key: the chain proves that the
+ * key was created in the TEE or StrongBox, signs only after device unlock and
+ * belongs to our app. Without it a stolen token could register a software key
+ * and pass the step guard without unlock. */
 import { X509Certificate, type KeyObject } from 'node:crypto';
 import { TheError, expect, kinder, readWhole, type Tlv, UNIVERSAL, theNumber } from './der';
 
-/** 1.3.6.1.4.1.11129.2.1.17 als DER-Inhalt. */
+/** 1.3.6.1.4.1.11129.2.1.17 as DER content. */
 const OID_ATTESTATION = Buffer.from('2b06010401d679020111', 'hex');
 const AT_MOST_LINKS = 8;
 
-/** Tags der AuthorizationList (KeyMint, hardware/interfaces/security/keymint). */
+/** Tags of the AuthorizationList (KeyMint, hardware/interfaces/security/keymint). */
 const TAG = {
   zweck: 1,
   algorithm: 2,
@@ -27,7 +27,7 @@ const PURPOSE_SIGN = 2;
 const ALGORITHM_EC = 3;
 const CURVE_P256 = 1;
 const ORIGIN_CREATED = 0;
-/** PASSWORD | FINGERPRINT: die Gerätesperre oder starke Biometrie. */
+/** PASSWORD | FINGERPRINT: the device lock or strong biometrics. */
 const LOGIN_KINDS = 0b11;
 const BOOT_VERIFIED = 0;
 
@@ -61,7 +61,7 @@ function sicherheit(t: Tlv | undefined): Sicherheit {
   return s;
 }
 
-/** Die KeyDescription aus dem Inhalt der Erweiterung (ohne das umhüllende OCTET STRING). */
+/** The KeyDescription from the extension's content (without the enclosing OCTET STRING). */
 export function readDescription(der: Buffer): Beschreibung {
   const f = kinder(expect(readWhole(der), UNIVERSAL.SEQUENCE));
   if (f.length < 8) throw new TheError('KeyDescription: zu wenige Felder');
@@ -75,7 +75,7 @@ export function readDescription(der: Buffer): Beschreibung {
   };
 }
 
-/** Der Inhalt der Attestation-Erweiterung, null ohne sie. */
+/** The content of the attestation extension, null without it. */
 export function attestationExtension(certificateThe: Buffer): Buffer | null {
   const [tbs] = kinder(expect(readWhole(certificateThe), UNIVERSAL.SEQUENCE));
   const ext = kinder(expect(tbs, UNIVERSAL.SEQUENCE)).find(k => k.klasse === 2 && k.nummer === 3);
@@ -90,7 +90,7 @@ export function attestationExtension(certificateThe: Buffer): Buffer | null {
   return treffer;
 }
 
-/** Paketnamen und SHA-256 der Signaturzertifikate (Hex, gross) aus attestationApplicationId. */
+/** Package names and SHA-256 of the signing certificates (hex, upper case) from attestationApplicationId. */
 export function readAppId(t: Tlv): { packages: string[]; digests: string[] } {
   const [packages, digests] = kinder(expect(readWhole(expect(t, UNIVERSAL.OCTET_STRING).inhalt), UNIVERSAL.SEQUENCE));
   return {
@@ -106,21 +106,21 @@ export function readAppId(t: Tlv): { packages: string[]; digests: string[] } {
 export interface Erwartung {
   roots: readonly X509Certificate[];
   paket: string;
-  /** SHA-256 der Signaturzertifikate, Hex gross; leer nimmt keine App an. */
+  /** SHA-256 of the signing certificates, hex upper case; empty accepts no app. */
   digests: readonly string[];
-  /** Seriennummern aus Googles Widerrufsliste (seriennummer()); Pflicht, damit kein Aufrufer sie vergisst. */
+  /** Serial numbers from Google's revocation list (seriennummer()); mandatory so that no caller forgets them. */
   widerrufen: ReadonlySet<string>;
   patchAtLeast?: number | null;
   jetzt: Date;
 }
 
-/** So schreibt Googles Liste sie: Hex klein, ohne führende Nullen. */
+/** That is how Google's list writes them: hex lower case, without leading zeros. */
 export function seriennummer(c: X509Certificate): string {
   return c.serialNumber.toLowerCase().replace(/^0+(?=.)/, '');
 }
 
-/** Gesperrter Bootloader mit Googles oder des Herstellers Schlüssel: Sonst
- * liesse sich ein KeyMint unterschieben, das jede Sperre bestätigt. */
+/** Locked bootloader with Google's or the manufacturer's key: otherwise
+ * a KeyMint could be slipped in that confirms any lock. */
 function checkBoot(t: Tlv | undefined): string | null {
   if (!t) return 'ohne_root_of_trust';
   const f = kinder(expect(t, UNIVERSAL.SEQUENCE));
@@ -141,10 +141,10 @@ function checkLinks(z: X509Certificate[], roh: Buffer[], e: Erwartung): string |
   const { jetzt } = e;
   for (let i = 0; i < z.length; i++) {
     const c = z[i] as X509Certificate;
-    // Aussteller nur mit CA-Bit (ca prüft auch keyCertSign) und ohne KeyDescription: Sonst
-    // signiert ein gewöhnlicher Keystore-Schlüssel ein Blatt mit erfundener Beschreibung.
+    // Issuers only with the CA bit (ca also checks keyCertSign) and without KeyDescription: otherwise
+    // an ordinary keystore key would sign a leaf with an invented description.
     if (i > 0 && (!c.ca || attestationExtension(roh[i] as Buffer))) return `glied_${i}_kein_aussteller`;
-    // Das Blatt trägt die Gültigkeit, die der Keystore einsetzt (oft 1970–2048), keine echte.
+    // The leaf carries the validity the keystore inserts (often 1970–2048), not a real one.
     if (i > 0 && (new Date(c.validFrom) > jetzt || new Date(c.validTo) < jetzt)) return `glied_${i}_abgelaufen`;
     const aussteller = z[i + 1];
     if (aussteller && (c.issuer !== aussteller.subject || !c.verify(aussteller.publicKey)))
@@ -174,7 +174,7 @@ function checkDescription(b: Beschreibung, e: Erwartung): string | null {
   const boot = checkBoot(hw.get(TAG.rootOfTrust));
   if (boot) return boot;
   if (e.patchAtLeast && (z(TAG.patchstand) ?? 0) < e.patchAtLeast) return 'patchstand_alt';
-  // Die App verlangt die Sperre bei jeder Benutzung (Frist 0, siehe GeraeteSchluessel.kt).
+  // The app requires unlock on every use (timeout 0, see GeraeteSchluessel.kt).
   if (hw.has(TAG.withoutLogin) || !((z(TAG.loginKind) ?? 0) & LOGIN_KINDS)) return 'ohne_sperre';
   if ((z(TAG.loginDeadline) ?? 0) !== 0) return 'sperre_mit_frist';
   const app = b.software.get(TAG.appId) ?? hw.get(TAG.appId);
@@ -185,7 +185,7 @@ function checkDescription(b: Beschreibung, e: Erwartung): string | null {
   return null;
 }
 
-/** Die ganze Prüfung ohne die Nonce: Die vergleicht der Aufrufer mit seiner Datenbank. */
+/** The whole check without the nonce: the caller compares that with its database. */
 export function checkChain(chainB64: readonly string[], e: Erwartung): Pruefung {
   if (!chainB64.length || chainB64.length > AT_MOST_LINKS) return { ok: false, grund: 'kette_laenge' };
   try {

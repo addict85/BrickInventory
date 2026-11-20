@@ -1,7 +1,7 @@
 import { isIPv4, isIPv6 } from 'node:net';
 
-/** IPv6 je /64: Je Adresse gezählt, umginge eine neue Adresse aus dem eigenen Netz jede
- * Bremse. IPv4 in IPv6 zählt als IPv4; alles andere (`konto:7`) bleibt, wie es ist. */
+/** IPv6 per /64: counted per address, a new address from the own network would bypass every
+ * brake. IPv4 in IPv6 counts as IPv4; everything else (`konto:7`) stays as it is. */
 export function drosselAdresse(ip: string): string {
   const v4 = /^(?:::ffff:)?(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(ip);
   if (v4 && isIPv4(v4[1]!)) return v4[1]!;

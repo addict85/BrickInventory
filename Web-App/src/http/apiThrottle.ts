@@ -1,5 +1,5 @@
-/** Ein Budget je Konto für die angemeldete API, gewichtet nach Kosten (PDF, Importe, Katalog), damit
- * ein Konto teure Wege nicht im Takt rufen kann. Gezählt im Prozess: Es gibt genau einen Web-Prozess. */
+/** A budget per account for the logged-in API, weighted by cost (PDF, imports, catalog), so that
+ * an account cannot call expensive paths in rapid succession. Counted in the process: there is exactly one web process. */
 import type { Request, Response, NextFunction } from 'express';
 import { nutzerId } from './userId';
 import { sendError } from './httpResponse';
@@ -7,17 +7,17 @@ import { prozessweit } from '../infra/prozessweit';
 import { keyForRequest, type Schluessel } from '../contract';
 
 export const WINDOW_MS = 5 * 60 * 1000;
-/** Einheiten je Konto und Fenster; ein Leseaufruf zählt 1. */
+/** Units per account and window; a read call counts 1. */
 export const BUDGET = 600;
-/** Auftragsstarts je Konto und Fenster — zusätzlich zum Verbrauch oben. */
+/** Job starts per account and window — in addition to the consumption above. */
 export const JOB_BUDGET = 20;
 
 export const COST = { normal: 1, abruf: 5, preis: 20, auftrag: 25 } as const;
 
-/** Was einen Auftrag, einen Upload oder einen mehrsekündigen Lauf startet.
- * Bewusst aufgezählt statt „alles unter /admin": Eine neue Route soll hier
- * auffallen und nicht still im Normalbudget landen. Vertragsschlüssel statt Pfadmuster:
- * Eingeordnet wird die Route, die Express finden wird, nicht eine Schreibung davon. */
+/** What starts a job, an upload or a run of several seconds.
+ * Deliberately enumerated instead of "everything under /admin": a new route should
+ * stand out here and not silently land in the normal budget. Contract keys instead of path patterns:
+ * what gets classified is the route Express will find, not a spelling of it. */
 const JOBS: ReadonlySet<Schluessel> = new Set<Schluessel>([
   'POST /api/v1/sets/partslist-pdf',
   'POST /api/v1/sets/import/csv',
@@ -32,15 +32,15 @@ const JOBS: ReadonlySet<Schluessel> = new Set<Schluessel>([
   'GET /api/v1/settings/export/data',
 ]);
 
-/** Bis zu vier BrickLink-Aufrufe je Anfrage (zwei Zustände, je ein Rückfall), alle aus
- * dem Tageskontingent, das sich ALLE Konten teilen. */
+/** Up to four BrickLink calls per request (two conditions, one fallback each), all from
+ * the daily quota that ALL accounts share. */
 const PREISABRUF: ReadonlySet<Schluessel> = new Set<Schluessel>([
   'GET /api/v1/wanted/:setNumber/preise',
   'GET /api/v1/sets/:setNumber/price',
 ]);
 
-/** Lösen je Anfrage einen Abruf bei Rebrickable, Brickset, einem Barcode-Dienst oder
- * dem Gutschein-Shop aus. Der Katalog fragt Rebrickable je Suche; das Tageskontingent dort ist endlich. */
+/** Trigger a fetch from Rebrickable, Brickset, a barcode service or
+ * the voucher shop per request. The catalog asks Rebrickable per search; the daily quota there is finite. */
 const FREMDABRUF: ReadonlySet<Schluessel> = new Set<Schluessel>([
   'GET /api/v1/sets/info/:setNumber',
   'GET /api/v1/sets/barcode/:barcode',
@@ -54,7 +54,7 @@ const FREMDABRUF: ReadonlySet<Schluessel> = new Set<Schluessel>([
   'POST /api/v1/vouchers/:id/guthaben',
 ]);
 
-/** @param pfad relativ zu /api/v1, wie apiDrossel ihn dort sieht */
+/** @param pfad relative to /api/v1, as apiDrossel sees it there */
 export function classification(methode: string, pfad: string): { kosten: number; auftrag: boolean } {
   const k = keyForRequest(methode === 'HEAD' ? 'GET' : methode, `/api/v1${pfad}`);
   if (!k) return { kosten: COST.normal, auftrag: false };
@@ -65,16 +65,16 @@ export function classification(methode: string, pfad: string): { kosten: number;
 }
 
 type Stand = { start: number; units: number; auftraege: number };
-/** Je Prozess, nicht je Zugang: Die Drossel schützt diesen Prozess (src/infra/prozessweit.ts). */
+/** Per process, not per access: the throttle protects this process (src/infra/prozessweit.ts). */
 const states = () => prozessweit('apiDrossel', () => new Map<number, Stand>());
 
-/** Nur für Tests: ein Zustand, der nicht vom vorigen Lauf abhängt. */
+/** Only for tests: a state that does not depend on the previous run. */
 export function clearThrottle(): void {
   states().clear();
 }
 
-/** Ein abgelaufenes Fenster beginnt neu; abgewiesene Anfragen zählen nicht mit,
- * sonst verlängerte ein Angriff seine eigene Sperre endlos. */
+/** An expired window starts anew; rejected requests do not count,
+ * otherwise an attack would extend its own lock endlessly. */
 function statusFor(uid: number, jetzt: number): Stand {
   const _states = states();
   let s = _states.get(uid);
@@ -97,8 +97,8 @@ export function checkBudget(uid: number, methode: string, pfad: string, jetzt = 
   return { erlaubt: true as const, kosten, auftrag, restSec, units: s.units, auftraege: s.auftraege };
 }
 
-/** Hinter loginAtInbox: Ohne Konto gibt es nichts zu begrenzen, und die
- * Anmeldung hat ihre eigenen Bremsen (src/account/loginLimiter.ts). */
+/** Behind loginAtInbox: without an account there is nothing to limit, and
+ * login has its own brakes (src/account/loginLimiter.ts). */
 export function apiDrossel(req: Request, res: Response, next: NextFunction): void {
   const uid = nutzerId(req);
   if (uid === null) {

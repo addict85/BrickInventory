@@ -1,6 +1,6 @@
-/** Registrierung, neuer Bestätigungslink und Passwort vergessen. Jeder Weg
- * antwortet gleich, ob es das Konto gibt oder nicht; die Rückmeldung geht per
- * Mail an die Adresse, nicht an den Anfragenden. */
+/** Registration, new confirmation link and forgotten password. Every path
+ * answers the same whether the account exists or not; the feedback goes by
+ * mail to the address, not to the requester. */
 import crypto from 'node:crypto';
 import { logAndContinue, reportAndDeliver } from '../infra/error';
 import { mailBasisUrl } from '../infra/basisUrl';
@@ -16,20 +16,20 @@ const RUECKSETZ_VALID_MIN = 60,
   RUECKSETZ_PAUSE_MIN = 15,
   MIN_DURATION_MS = 400;
 
-/** Ausnahme: Die Mail geht auch ohne lesbare Einstellung hinaus, dann deutsch.
- * Das Konto des Inhabers ist nicht das der Anfrage (Zeilenschutz). */
+/** Exception: the mail goes out even without a readable setting, then in German.
+ * The owner's account is not the request's (row-level security). */
 async function mailLanguage(k: AccountContext, uid: number): Promise<string> {
   const wert = inSystemContext('registrierung', () => k.einstellungen.userValue(uid, 'language', 'de'));
   return String(await wert.catch(reportAndDeliver('registrierung:sprache', 'de')));
 }
 
-/** Ohne Basisadresse kein Link, also keine Mail. */
+/** Without a base address no link, so no mail. */
 async function sendOut(mail: (basis: string) => Promise<{ success: boolean }>): Promise<boolean> {
   const basis = mailBasisUrl();
   return basis ? (await mail(basis)).success : false;
 }
 
-/** Dieselbe Mindestdauer für jeden Ausgang: Auch die Zeit verrät keine Adresse. */
+/** The same minimum duration for every exit: the time does not reveal an address either. */
 async function withMinDuration(work: () => Promise<void>): Promise<void> {
   const start = Date.now();
   await work();
@@ -45,8 +45,8 @@ export interface Registrierung {
   lang: 'de' | 'en';
 }
 
-/** Vergebene Adresse oder vergebener Name rechnen so lange wie ein neues Konto.
- * @returns ob die Mail hinausging */
+/** A taken address or a taken name computes as long as a new account.
+ * @returns whether the mail went out */
 export async function tryRegistration(k: AccountContext, r: Registrierung): Promise<boolean> {
   const inhaber = await k.konten.accountWithEmail(r.email);
   if (inhaber) {
@@ -63,7 +63,7 @@ export async function tryRegistration(k: AccountContext, r: Registrierung): Prom
 
 async function newAccount(k: AccountContext, r: Registrierung): Promise<boolean> {
   const token = crypto.randomBytes(32).toString('hex');
-  // Nur als SHA-256: Bei einem Datenbank-Leak wäre ein ausstehender Link sonst einlösbar.
+  // Only as SHA-256: with a database leak a pending link would otherwise be redeemable.
   const newId = await register(k, {
     username: r.username,
     email: r.email,
@@ -81,7 +81,7 @@ async function newAccount(k: AccountContext, r: Registrierung): Promise<boolean>
   return sendOut(basis => k.mail.mailVerification(r.email, token, basis, r.lang, 'registrierung', mehrere));
 }
 
-/** Über der Grenze still keine Mail: Eine Absage verriete, dass jemand die Adresse bedrängt. */
+/** Above the limit silently no mail: a rejection would reveal that someone is harassing the address. */
 export function confirmationAgainRequest(k: AccountContext, email: string): Promise<void> {
   return withMinDuration(async () => {
     const gedrosselt = await targetThrottled(k, 'bestaetigung-ziel', email, 3, HOUR_MS);
@@ -89,7 +89,7 @@ export function confirmationAgainRequest(k: AccountContext, email: string): Prom
     const konto = gedrosselt
       ? null
       : await k.konten.renewEmailTokenIfFree(email, tokenDigest(token), 24, RUECKSETZ_PAUSE_MIN);
-    // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
+    // Do not await, otherwise the duration of the SMTP send would reveal the address.
     if (konto)
       mailLanguage(k, konto.id)
         .then(lang => k.mail.mailVerification(konto.email, token, mailBasisUrl()!, lang))
@@ -97,7 +97,7 @@ export function confirmationAgainRequest(k: AccountContext, email: string): Prom
   });
 }
 
-/** Höchstens ein Link je Konto und RUECKSETZ_PAUSE_MIN: Sonst flutet ein Fremder das Postfach. */
+/** At most one link per account and RUECKSETZ_PAUSE_MIN: otherwise a stranger floods the mailbox. */
 export function ruecksetzLinkRequest(kx: AccountContext, email: string): Promise<void> {
   return withMinDuration(async () => {
     const gedrosselt = await targetThrottled(kx, 'forgot-ziel', email, 3, HOUR_MS);
@@ -110,7 +110,7 @@ export function ruecksetzLinkRequest(kx: AccountContext, email: string): Promise
     )
       return;
     mailLanguage(kx, user.id)
-      // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.
+      // To the STORED address: the entered one also matches via LOWER() as a Unicode variant.
       .then(lang => kx.mail.mailPasswordReset(user.email ?? '', token, mailBasisUrl()!, lang))
       .catch(logAndContinue('forgot-password:mailversand'));
   });

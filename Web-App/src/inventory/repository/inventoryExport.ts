@@ -3,7 +3,7 @@ import { erfassungsTagSql } from '../../../db/stockQuantity';
 import type { InventoryReadContract } from '../readContract';
 import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/catalogView';
 
-// Eine Zeile je Erfassung in einer Abfrage statt einer je Teil.
+// One row per acquisition in one query instead of one per part.
 const partsCsvSql = (l: InventoryReadContract) => `
   SELECT p.part_number,
          -- Die Menge der ERFASSUNG, ohne Rueckfall auf die Zeile: Migration
@@ -27,8 +27,8 @@ const partsCsvSql = (l: InventoryReadContract) => `
    WHERE p.user_id = $1 AND p.source = 'manual'
    ORDER BY ${TEIL.name} ASC, p.part_number ASC, a.created_at ASC, a.id ASC`;
 
-// Zu einer Erfassung OHNE Preis gehört ein leeres Feld, nicht der Preis der
-// Figuren-Zeile — deshalb `a.id IS NULL` statt COALESCE über die Werte.
+// An acquisition WITHOUT a price gets an empty field, not the price of the
+// figure row — hence `a.id IS NULL` instead of COALESCE over the values.
 const figsCsvSql = (l: InventoryReadContract) => `
   SELECT f.fig_number,
          -- Die BrickLink-Nummer aus der Zuordnung (Migration 0037); hier

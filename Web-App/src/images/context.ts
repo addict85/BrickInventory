@@ -1,5 +1,5 @@
-/** Was die Bilddienste bekommen: Zugang, Fächer, Aufträge, Haushalt, Fremdquellen und das
- * Bildwerk. Getrennt von bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
+/** What the image services receive: access, compartments, jobs, household, external sources and the
+ * image works. Separate from area.ts so that a service knows its type without an import cycle. */
 import type { Konfig } from '../infra/config';
 import { mit, withContract, type Kontext } from '../infra/area';
 import type { ImagesReadContract } from './readContract';
@@ -14,12 +14,12 @@ import * as bildStammCdn from './repository/imageMasterCdn';
 import * as bildbedarf from './repository/imageDemand';
 import type { Uhr } from '../infra/clock';
 
-/** Set-Bild holen und verkleinern über den Kontext statt über den Import: So ersetzt ein
- * Test Netz und sharp an der Verdrahtung (buildServices), statt Module umzubiegen. */
+/** Fetch and shrink the set image via the context instead of the import: that way a
+ * test replaces network and sharp at the wiring (buildServices) instead of bending modules. */
 export interface ImageWorker {
-  /** Lädt das Set-Bild nach images/sets; null, wenn es scheitert (`info.status` nennt den HTTP-Code). */
+  /** Loads the set image into images/sets; null if it fails (`info.status` names the HTTP code). */
   setBildLaden(url: string, setNumber: string, info?: { status?: number }): Promise<string | null>;
-  /** Legt die Vorschau neben das Bild und liefert ihren Pfad; null, wenn es nicht ging. */
+  /** Puts the preview next to the image and returns its path; null if it did not work. */
   createPreview(relPath: string): Promise<string | null>;
 }
 

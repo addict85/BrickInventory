@@ -4,8 +4,8 @@ import { blJoin, blNummerSql } from '../../../db/blMappingSql';
 import type { CatalogPart, ListenTeil, SetMaster } from '../rows';
 import { setStammJoin, SET } from '../../../db/catalogView';
 
-/** Angaben aus rb_sets, Bild und Figuren aus set_catalog (0108). Ein Platzhalter
- * „Set …“ sagt nur, dass irgendein Konto die Nummer erfasst hat. */
+/** Details from rb_sets, image and figures from set_catalog (0108). A placeholder
+ * "Set …" only says that some account captured the number. */
 export function setStamm(db: DbInterface, setNumber: string) {
   return db.get<SetMaster>(
     `SELECT ${SET.name} AS name, ${SET.jahr} AS year, ${SET.thema} AS theme,
@@ -31,7 +31,7 @@ export function setCatalog(db: DbInterface, setNumber: string) {
   );
 }
 
-/** Nummern, nach denen schon gefragt wurde (catalog_cache); der Name steht in rb_sets. */
+/** Numbers that were already asked for (catalog_cache); the name is in rb_sets. */
 export function firstCatalogHits(db: DbInterface, nummern: string[]) {
   return db.get<{ set_number: string; name: string | null }>(
     `SELECT cc.set_number, rs.name FROM catalog_cache cc

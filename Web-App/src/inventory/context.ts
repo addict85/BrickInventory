@@ -1,4 +1,4 @@
-/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
+/** What the services receive; separate from area.ts so that no import cycle arises. */
 import type { Db } from '../../db/database';
 import { mit, withContract, type Kontext } from '../infra/area';
 import type { InventoryReadContract } from './readContract';

@@ -20,9 +20,9 @@ function parameter(art: Art, userId: number, nummer: string, colorId: number | n
   return art === 'teil' ? [userId, nummer, colorId] : [userId, nummer];
 }
 
-/** In der Transaktion des Löschens, VOR den DELETEs: Scheitert das Ablegen,
- * wird auch nicht gelöscht.
- * @returns die id des Eintrags, oder null, wenn es keine Stammzeile gab */
+/** In the deletion's transaction, BEFORE the DELETEs: if storing fails,
+ * nothing is deleted either.
+ * @returns the entry's id, or null if there was no master row */
 export async function putInTrash(
   k: InventoryContext,
   art: Art,
@@ -39,9 +39,9 @@ export async function putInTrash(
   return repo.putEntryAn(k.db, userId, art, nummer, art === 'teil' ? colorId : null, name, zeilen);
 }
 
-/** Einzelne Käufe eines Sets, die eine Mengenverringerung wegnahm: Die Bestandszeile bleibt, darum ein
- * Eintrag ohne `sets`-Zeile. Wiederherstellen legt die Mengen zurück (placePurchasesAgainHer).
- * @param zeilen je Kauf die ganze Zeile, `quantity` = die weggenommene Menge */
+/** Individual purchases of a set that a quantity reduction removed: the inventory row stays, hence an
+ * entry without a `sets` row. Restoring puts the quantities back (placePurchasesAgainHer).
+ * @param zeilen per purchase the whole row, `quantity` = the removed quantity */
 export async function putPurchasesInTrash(
   k: InventoryContext,
   userId: number,
@@ -54,9 +54,9 @@ export async function putPurchasesInTrash(
   return repo.putEntryAn(k.db, userId, 'set', nummer, null, name, { ...leer, set_acquisitions: zeilen });
 }
 
-/** Zurück in die Zeile, aus der die Menge kam; gibt es sie nicht mehr, in eine gleiche Zeile desselben Tages
- * (der eindeutige Index erlaubt keine zweite), sonst als neue Zeile. Ohne Bestandszeile ging das Set
- * inzwischen ganz weg: Dann zuerst dessen Eintrag wiederherstellen. */
+/** Back into the row the quantity came from; if it no longer exists, into an identical row of the same day
+ * (the unique index allows no second one), otherwise as a new row. Without an inventory row the set has
+ * gone entirely in the meantime: then restore its entry first. */
 async function placePurchasesAgainHer(
   tx: DbInterface,
   l: InventoryReadContract,
@@ -104,8 +104,8 @@ export async function listTrash(k: InventoryContext, uidsChoice: Schreiber | num
 
 export type Wiederherstellung = { type: Art; number: string; user_id: number };
 
-/** Gibt es das Element inzwischen wieder, greift ein eindeutiger Index — dann
- * wird nichts verändert und der Eintrag bleibt. */
+/** If the element exists again in the meantime, a unique index applies — then
+ * nothing is changed and the entry stays. */
 export async function placeAgainHer(
   k: InventoryContext,
   uidsChoice: Schreiber | number[],

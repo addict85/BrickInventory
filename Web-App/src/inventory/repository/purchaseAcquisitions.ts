@@ -1,7 +1,7 @@
 import type { DbInterface, Zeile } from '../../../db/database';
 import { erfassungsTagSql, ENTRY_TABLES as SHAPES, type ErfassungsArt } from '../../../db/stockQuantity';
 
-/** Gleiche Käufe eines Tages sind eine Zeile (eindeutiger Index, Migration 0070). */
+/** Identical purchases of one day are one row (unique index, migration 0070). */
 
 export type NewEntry = {
   menge: number;
@@ -12,8 +12,8 @@ export type NewEntry = {
   am: string | null;
 };
 
-/** In einer Anweisung gegen den Index, damit gleichzeitige Erfassungen sich
- * addieren. @returns ob aufgestockt */
+/** In one statement against the index, so that concurrent acquisitions
+ * add up. @returns whether topped up */
 export async function addEntryAdd(
   dbh: DbInterface,
   art: ErfassungsArt,
@@ -81,7 +81,7 @@ export async function sameEntryAtTag(
   return row ? Number(row.id) : null;
 }
 
-/** Mit dem Tag, wie der Index ihn führt. */
+/** With the day, as the index carries it. */
 export function lockEntry(tx: DbInterface, art: ErfassungsArt, id: number) {
   return tx.get<Zeile<{ user_id: number; tag: string; condition: string; currency: string | null; quantity: number }>>(
     `SELECT *, (${erfassungsTagSql()})::text AS tag FROM ${SHAPES[art].table} WHERE id = $1 FOR UPDATE`,
@@ -89,7 +89,7 @@ export function lockEntry(tx: DbInterface, art: ErfassungsArt, id: number) {
   );
 }
 
-/** Menge in eine bestehende Zeile des Kontos zurücklegen (Papierkorb). @returns ob es die Zeile gab */
+/** Put quantity back into an existing row of the account (trash). @returns whether the row existed */
 export async function stallEntryOn(
   tx: DbInterface,
   art: ErfassungsArt,
@@ -123,7 +123,7 @@ export async function setPriceEstimated(tx: DbInterface, art: ErfassungsArt, id:
   ]);
 }
 
-/** Beträge in die Währung des Kontos, zum Kurs des Tages (in_waehrung, 0077); ohne Kurs null. */
+/** Amounts into the account's currency, at the day's rate (in_waehrung, 0077); null without a rate. */
 export async function inCurrencyOfAccount(
   db: DbInterface,
   uid: number,

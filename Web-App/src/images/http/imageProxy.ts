@@ -1,6 +1,6 @@
-/** Bild-Proxy für fremde CDNs: Bilder kommen über den eigenen Server, damit die
- * CSP keine fremden Quellen braucht und jedes Bild nur einmal geholt wird.
- * Den Abruf macht clients/imageCdn.ts; hier stehen Cache, Drossel und Antwort. */
+/** Image proxy for foreign CDNs: images come via the own server so that the
+ * CSP needs no foreign sources and every image is fetched only once.
+ * The fetch is done by clients/imageCdn.ts; cache, throttle and response live here. */
 import path from 'node:path';
 import { APP_ROOT, PUBLIC_DIR, SET_IMAGES_DIR } from '../../infra/appPaths';
 import fs from 'node:fs';
@@ -25,25 +25,25 @@ import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../../infra/foreignAddresses';
 import { onceDecoded, urlOrNull } from '../../infra/validate';
 import type { ImagesServices } from '../area';
 
-/** Was der Proxy von der Anwendung braucht: Katalog (Cache, Vorschau, Vormerken) und Konto (Anmeldung, Takt). */
+/** What the proxy needs from the application: catalog (cache, preview, reservation) and account (login, tick). */
 export interface ImageServices {
   images: ImagesServices;
   account: AccountServices;
 }
-/** 20 MB, weil grosse Set-Bilder sonst nie vollständig im Speicher landeten. */
+/** 20 MB, because large set images would otherwise never land in memory completely. */
 const PROXY_CACHE_MAX_BYTES = 20 * 1024 * 1024;
 
-// Fehlschläge zählt src/images/imgProxyStats.ts, sonst nicht einzugrenzen.
+// Failures are counted by src/images/imgProxyStats.ts, otherwise they cannot be narrowed down.
 
-/** 200 mit Platzhalter statt 404: Den Platzhalter zeigen beide Oberflächen
- * ohnehin, und die Browserkonsole bleibt frei von Fehlzeilen. */
+/** 200 with a placeholder instead of 404: both UIs show the placeholder
+ * anyway, and the browser console stays free of error lines. */
 function sendPlaceholder(res: Response) {
-  // Einmal von Platte: wenige hundert Byte, beim Blättern dutzendfach gebraucht.
+  // Once from disk: a few hundred bytes, needed dozens of times while paging.
   const platzhalter = prozessweit('platzhalterBild', () => {
     try {
       return fs.readFileSync(path.join(PUBLIC_DIR, 'assets', 'set-placeholder.svg'));
     } catch (e) {
-      // Ausnahme: Ohne lesbaren Platzhalter antwortet der Proxy 404; das Bild fehlt ja wirklich.
+      // Exception: without a readable placeholder the proxy answers 404; the image really is missing.
       reportError('bild-proxy:platzhalter', e);
       return Buffer.alloc(0);
     }
@@ -57,9 +57,9 @@ function sendPlaceholder(res: Response) {
   return res.status(200).end(platzhalter);
 }
 
-/** Erst mit Referer, dann ohne; ein 404 wird gemerkt. `ersatz` antwortet statt
- * des Fehlers, wenn es kann (etwa mit der Vorschau aus dem Cache).
- * @returns null, wenn schon geantwortet ist */
+/** First with referer, then without; a 404 is remembered. `ersatz` answers instead of
+ * the error if it can (e.g. with the preview from the cache).
+ * @returns null if already answered */
 async function fromCdn(
   d: ImageServices,
   url: string,
@@ -67,7 +67,7 @@ async function fromCdn(
   res: Response,
   ersatz: () => Promise<boolean> = async () => false,
 ): Promise<FetchStream | null> {
-  // Unkomprimiert: Ein komprimierter Körper ergäbe still eine weisse Fläche.
+  // Uncompressed: a compressed body would silently yield a white area.
   const HEADER_SETS = [
     { ...IMAGE_HEADERS, 'Accept-Language': 'en-US,en;q=0.9', 'Accept-Encoding': 'identity' },
     { ...IMAGE_HEADERS_WITHOUT_REFERER, 'Accept-Encoding': 'identity' },
@@ -78,8 +78,8 @@ async function fromCdn(
   let r: FetchStream;
   try {
     r = await holen(HEADER_SETS[0]);
-    // Einmal ohne Referer nachfassen, BEVOR die Adresse als tot gilt: Der
-    // Hotlink-Schutz antwortet auf einen unpassenden Referer gern mit 404.
+    // Follow up once without referer BEFORE the address counts as dead: the
+    // hotlink protection likes to answer an unsuitable referer with 404.
     if (r.status === 404 || r.status === 403) {
       r.verwerfen();
       r = await holen(HEADER_SETS[1]);
@@ -100,14 +100,14 @@ async function fromCdn(
   }
   if (r.status !== 200) {
     r.verwerfen();
-    // NUR 404 merken: 403 ist bei einer Kachelwand oft nur Drosselung.
+    // Remember ONLY 404: with a tile wall, 403 is often just throttling.
     if (r.status === 404) {
       d.images.rememberMissing(cacheKey);
     }
     if (r.status === 404) imgProxyFailures.notFound++;
     else imgProxyFailures.other++;
     imgProxyFailures.lastError = `HTTP ${r.status} — ${url}`;
-    // 404 ist eine Auskunft, kein Fehler: als `error` verstopfte es das Protokoll.
+    // 404 is information, not an error: as `error` it would clog the log.
     const meldung = `[img-proxy] CDN antwortete ${r.status} (auch ohne Referer): ${url}`;
     if (r.status === 404) console.info(meldung.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
     else console.error(meldung.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
@@ -118,8 +118,8 @@ async function fromCdn(
   return r;
 }
 
-/** Was der Proxy vollständig hat, wird das Set-Bild: Ein zweiter Abruf beim CDN
- * scheiterte, wo der erste ging. Die Vorschau erzeugt der Auftrag bildbedarf. */
+/** What the proxy has completely becomes the set image: a second fetch from the CDN
+ * failed where the first worked. The preview is created by the job bildbedarf. */
 async function storeAsSetImage(d: ImageServices, cacheFile: string, setNummer: string): Promise<void> {
   const ziel = path.join(SET_IMAGES_DIR, `${setNummer.replace(/[^a-z0-9-]/gi, '_')}.jpg`);
   const teil = `${ziel}.${process.pid}-${randomUUID()}.teil`;
@@ -129,7 +129,7 @@ async function storeAsSetImage(d: ImageServices, cacheFile: string, setNummer: s
   rememberCacheGrowth((await fs.promises.stat(ziel)).size, d.images.imageLimits().cacheMaxBytes);
 }
 
-/** Der entpackte Strom geht nebenher in den Cache — erst in .tmp, dann atomar. */
+/** The decompressed stream goes into the cache on the side — first into .tmp, then atomically. */
 function inDenCache(
   d: ImageServices,
   body: Readable,
@@ -150,7 +150,7 @@ function inDenCache(
 ): void {
   const { url, cacheDir, cacheFile, thumbFile, contentType, enc, expected, wantThumb, createMay, note } = o;
   fs.mkdirSync(cacheDir, { recursive: true });
-  // Je ANFRAGE eindeutig: Sonst schrieben gleichzeitige in dieselbe Datei.
+  // Unique per REQUEST: otherwise concurrent ones would write into the same file.
   const tmpFile = `${cacheFile}.tmp-${process.pid}-${randomUUID()}`;
   const ws = fs.createWriteStream(tmpFile);
   let bytes = 0,
@@ -166,7 +166,7 @@ function inDenCache(
       `[img-proxy] ${grund} — weder gecacht noch verkleinert: ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''),
     );
   };
-  // Der entpackte Strom zählt: Auch Komprimiertes darf nicht beliebig wachsen.
+  // The decompressed stream counts: compressed data must not grow arbitrarily either.
   body.on('data', (chunk: Buffer) => {
     bytes += chunk.length;
     if (bytes > PROXY_CACHE_MAX_BYTES) {
@@ -179,12 +179,12 @@ function inDenCache(
     discard(`Abruf abgebrochen (${e.message})`);
     res.destroy();
   });
-  // Der ENTPACKTE Strom geht in den Cache — die Datei ist immer ein echtes Bild.
+  // The DECOMPRESSED stream goes into the cache — the file is always a real image.
   body.pipe(ws);
   ws.on('finish', async () => {
     if (aborted) return;
     try {
-      // Nur vollständig: Eine abgeschnittene ginge dauerhaft mit 200 hinaus.
+      // Only complete: a truncated one would go out with 200 permanently.
       const st = await fs.promises.stat(tmpFile);
       if (!enc && expected > 0 && st.size !== expected) {
         console.error(
@@ -200,7 +200,7 @@ function inDenCache(
       rememberCacheGrowth(st.size, d.images.imageLimits().cacheMaxBytes);
       if (o.setNummer)
         await setImageFromCache(d, url, o.setNummer, cacheFile).catch(e => countProxyError('img-proxy:setbild', e));
-      // Gleich miterzeugen, sonst später für eine ganze Kachelwand auf einmal.
+      // Create it right away, otherwise later for a whole tile wall at once.
       if (wantThumb) {
         if (createMay) d.images.queueThumb(cacheFile, thumbFile);
         else note();
@@ -212,8 +212,8 @@ function inDenCache(
   ws.on('error', () => fs.promises.unlink(tmpFile).catch(withoutMissingFile('bild-proxy:unlink')));
 }
 
-/** Entpacken, auch wenn identity verlangt war: Nicht jedes CDN hält sich daran.
- * Eine falsche Länge lässt den Browser warten; sie wird gezählt. */
+/** Decompress, even if identity was requested: not every CDN sticks to it.
+ * A wrong length makes the browser wait; it is counted. */
 function entpackt(roh: Readable, enc: string, res: Response, url: string, expected: number): Readable {
   let body: Readable = roh;
   if (enc === 'gzip' || enc === 'deflate' || enc === 'br') {
@@ -224,7 +224,7 @@ function entpackt(roh: Readable, enc: string, res: Response, url: string, expect
       else res.destroy();
     });
     body = roh.pipe(dec);
-    // Die angekündigte Länge gilt für den komprimierten Körper.
+    // The announced length applies to the compressed body.
     res.removeHeader('Content-Length');
     console.log(`[img-proxy] entpacke ${enc}: ${url}`.replace(/\r?\n/g, ' ⏎ ').replace(/\n|\r/g, ''));
   }
@@ -252,20 +252,20 @@ const liesDa = (datei: string) =>
     () => false,
   );
 
-/** @returns true, wenn Bild oder Vorschau unter images/sets noch fehlen */
+/** @returns true if image or preview are still missing under images/sets */
 async function setImageMissing(d: ImageServices, setNummer: string, quelle: string): Promise<boolean> {
   if (!(await setImageComplete(setNummer))) return true;
-  // Liegen beide schon da, fehlt oft nur der Eintrag: Danach fragt die Oberfläche nicht
-  // mehr hier. Ohne Warten — ein Schreibfehler darf die Auslieferung nicht aufhalten.
+  // If both are already there, often only the entry is missing: afterwards the UI no longer
+  // asks here. Without waiting — a write error must not hold up delivery.
   void d.images.reportSetImageLoaded(setNummer, quelle).then(ok => {
     if (!ok) countProxyError('img-proxy:setBildLokal', new Error('Eintrag des Set-Bilds gescheitert'));
   });
   return false;
 }
 
-/** Vorgemerkt wird nur, was der Proxy als Bild hat (Cache oder gedrosselter Abruf),
- * und je Set einmal in einer Frist (imageOnceReserve): Sonst füllte ein Konto mit
- * erfundenen Set-Nummern die Notizen des Bild-Auftrags. */
+/** Only what the proxy has as an image (cache or throttled fetch) is reserved,
+ * and once per set within a period (imageOnceReserve): otherwise an account with
+ * invented set numbers would fill the image job's notes. */
 function reserveOnce(d: ImageServices, url: string, setNummer: string): void {
   d.images.imageOnceReserve(url, setNummer);
 }
@@ -290,7 +290,7 @@ function fromSetImages(
   });
 }
 
-/** Aus dem Cache des Proxys nach images/sets, dann vormerken; ohne Cache-Datei nichts. */
+/** From the proxy's cache to images/sets, then reserve; without a cache file nothing. */
 async function setImageFromCache(d: ImageServices, url: string, setNummer: string, cacheFile: string): Promise<void> {
   try {
     await storeAsSetImage(d, cacheFile, setNummer);
@@ -301,40 +301,40 @@ async function setImageFromCache(d: ImageServices, url: string, setNummer: strin
 }
 
 export async function passThroughImage(d: ImageServices, req: Request, res: Response) {
-  // Ohne Login-Pflicht ein offener Proxy (Bandbreite, IP-Verschleierung).
+  // Without mandatory login an open proxy (bandwidth, IP obfuscation).
   const proxyUserId = await userIdTheRequest(d.account, req);
   if (!proxyUserId) return res.status(401).end();
   const ziel = proxyTarget(String(req.query.url || ''));
   if (typeof ziel === 'number') return res.status(ziel).end();
   const url = ziel;
-  // Jedes Bild nur einmal holen; Content-Type liegt daneben (.ct).
+  // Fetch every image only once; Content-Type lies next to it (.ct).
   const cacheDir = path.join(APP_ROOT, 'data', 'img_proxy_cache');
   const cacheKey = proxyCacheKey(url);
   const cacheFile = path.join(cacheDir, cacheKey);
-  // ?thumb=1: Teilebilder gibt es auf dem CDN nicht verkleinert.
+  // ?thumb=1: part images are not available in reduced size on the CDN.
   const wantThumb = req.query.thumb === '1';
-  // gen=0: Die Anfrage rechnet nichts, sie hinterlässt eine Notiz für den
-  // Auftrag 'bildbedarf' — gedrosselt und nur im Job-Prozess.
+  // gen=0: the request computes nothing, it leaves a note for the
+  // job 'bildbedarf' — throttled and only in the job process.
   const createMay = req.query.gen !== '0';
   const setNummer = setNumberFromImageAddress(String(url || ''));
   const thumbFile = cacheFile + '_thumb.jpg';
-  // Ein Set-Bild gehört samt Vorschau nach images/sets; der Bild-Job holt es,
-  // sobald es einmal über den Proxy gefragt war.
+  // A set image including preview belongs in images/sets; the image job fetches it
+  // as soon as it was requested once via the proxy.
   const setMissing = setNummer ? await setImageMissing(d, setNummer, url) : false;
-  // images/sets gilt für alle Konten und hat keinen Deckel: Ablegen und vormerken nur für ein Set
-  // im Blickfeld des Kontos, sonst füllte ein Konto die Platte mit erfundenen Nummern.
+  // images/sets applies to all accounts and has no cap: store and reserve only for a set
+  // in the account's scope, otherwise an account would fill the disk with invented numbers.
   const ablegen = setMissing && !!setNummer && (await d.images.setNumberInScope(proxyUserId, setNummer));
   const note = () => {
     if (ablegen && setNummer) d.images.rememberUsed(String(url), setNummer);
   };
-  // Liegt nur noch die Vorschau im Cache (die Pflege löscht das unbenutzte Original
-  // nach 30 Tagen), holt der Proxy das Original neu: Den Abruf des Bild-Jobs mit
-  // eigener Kennung weist das CDN ab, ohne diesen Weg bekäme das Set nie eine Datei.
+  // If only the preview is left in the cache (maintenance deletes the unused original
+  // after 30 days), the proxy fetches the original anew: the CDN rejects the image job's fetch
+  // with its own identifier; without this path the set would never get a file.
   const originalMissing = ablegen && !(await liesDa(cacheFile));
   if (ablegen && setNummer && !originalMissing) await setImageFromCache(d, url, setNummer, cacheFile);
 
-  // Liegt das Set-Bild samt Vorschau in images/sets, kommt es von dort statt aus
-  // Cache oder CDN: Den Proxy-Cache räumt die Pflege nach 30 Tagen, images/sets nicht.
+  // If the set image including preview lies in images/sets, it comes from there instead of from
+  // cache or CDN: maintenance clears the proxy cache after 30 days, images/sets not.
   if (setNummer && !setMissing && (await fromSetImages(d, req, res, setNummer, wantThumb))) return;
   const fromCache = () =>
     deliverFromCache(d.images, {
@@ -347,15 +347,15 @@ export async function passThroughImage(d: ImageServices, req: Request, res: Resp
       note,
       streamFileToResponse,
     });
-  // Scheitert der neue Abruf, bleibt es bei der Vorschau aus dem Cache.
+  // If the new fetch fails, the preview from the cache stays.
   const ersatz = async () => originalMissing && (await fromCache());
   if (!originalMissing && (await fromCache())) return;
 
-  // Der Merker (eine Stunde) erspart dem CDN die Frage bei jedem Seitenaufruf.
+  // The flag (one hour) spares the CDN the question on every page view.
   if (d.images.isKnownMissing(cacheKey) && (await ersatz())) return;
   if (d.images.isKnownMissing(cacheKey)) return sendPlaceholder(res);
 
-  // Nur Abrufe beim CDN zählen: Jeder füllt Platte und Bandbreite, Treffer nicht.
+  // Only fetches from the CDN count: each one fills disk and bandwidth, hits do not.
   const takt = await d.account.countRequest('bild-abruf', `konto:${proxyUserId}`, 60_000);
   if (takt.count > d.images.imageLimits().fetchesJeMinute) {
     if (await ersatz()) return;
@@ -370,19 +370,19 @@ export async function passThroughImage(d: ImageServices, req: Request, res: Resp
   return forward(d, r, res, { url, cacheDir, cacheFile, thumbFile, wantThumb, createMay, note, setTarget });
 }
 
-/** Die Adresse aus ?url=, oder der Status, mit dem abgewiesen wird. */
+/** The address from ?url=, or the status with which it is rejected. */
 function proxyTarget(roh: string): string | number {
   let url = roh;
   if (!url?.startsWith('https://')) return 400;
-  // Rebrickable liefert manchmal vorkodierte Adressen — einmal dekodieren.
+  // Rebrickable sometimes delivers pre-encoded addresses — decode once.
   const decoded = onceDecoded(url);
   if (decoded.startsWith('https://')) url = decoded;
-  // Nur bekannte Bild-CDNs; eine unlesbare Adresse ist ebenfalls 403.
+  // Only known image CDNs; an unreadable address is 403 as well.
   if (!hostAllowed(url, ALLOWED_IMAGE_HOSTS)) return 403;
   return proxyAddress(url) ?? url;
 }
 
-/** Die Antwort des CDN an den Client und zugleich in den Cache. */
+/** The CDN's response to the client and at the same time into the cache. */
 function forward(
   d: ImageServices,
   r: FetchStream,
@@ -401,8 +401,8 @@ function forward(
   const { url, cacheDir, cacheFile, thumbFile, wantThumb, createMay, note, setTarget } = o;
   const rawType = String(r.kopf['content-type'] || 'image/jpeg');
 
-  // Nur Bilder: Auf den erlaubten CDNs liegen teils Nutzer-Uploads, und ein SVG
-  // oder HTML liefe sonst unter unserer Herkunft.
+  // Images only: the allowed CDNs partly host user uploads, and an SVG
+  // or HTML would otherwise run under our origin.
   const mime = beforeThe(rawType, ';').trim().toLowerCase();
   if (!mime.startsWith('image/') || mime === 'image/svg+xml') {
     r.verwerfen();
@@ -412,17 +412,17 @@ function forward(
     return res.status(415).end();
   }
 
-  // Nur eine vollständige Datei darf in den Cache.
+  // Only a complete file may go into the cache.
   const expected = parseInt(String(r.kopf['content-length'] || '0'), 10) || 0;
   const contentType = imageType(rawType);
   res.setHeader('Content-Type', contentType);
-  // Mit Länge: Eine chunked-Antwort puffert ein Reverse-Proxy womöglich lange.
+  // With length: a reverse proxy might buffer a chunked response for a long time.
   if (expected > 0) res.setHeader('Content-Length', String(expected));
 
   const enc = String(r.kopf['content-encoding'] || '').toLowerCase();
   const roh = r.strom();
   const body = entpackt(roh, enc, res, url, expected);
-  // Kurz: Ungeprüft gestreamt nagelte ein langes max-age Fehler im Browser fest.
+  // Short: streamed unchecked, a long max-age would nail errors in the browser.
   res.setHeader('Cache-Control', 'private, max-age=3600, must-revalidate');
 
   inDenCache(d, body, res, {
@@ -439,7 +439,7 @@ function forward(
     setNummer: setTarget,
   });
 
-  // Abbruch beim Scrollen: Die CDN-Verbindung muss sofort zurück in den Pool.
+  // Abort while scrolling: the CDN connection must go back to the pool immediately.
   res.on('close', () => {
     if (res.writableFinished || !res.destroyed) return;
     console.log(
@@ -453,14 +453,14 @@ function forward(
   body.pipe(res);
 }
 
-/** Das Bild wird unter dieser Nummer für alle Konten abgelegt; deshalb zählt
- * nur der ganze Pfad ohne Anfrageteil, sonst legte `…/parts/x.png?/media/sets/10294-1.jpg`
- * ein fremdes Bild als Set ab. */
+/** The image is stored under this number for all accounts; that is why only
+ * the whole path without the query part counts, otherwise `…/parts/x.png?/media/sets/10294-1.jpg`
+ * would store a foreign image as a set. */
 export function setNumberFromImageAddress(adresse: string): string | null {
   const u = urlOrNull(adresse);
   if (u?.protocol !== 'https:' || u.hostname !== 'cdn.rebrickable.com' || u.search || u.hash) return null;
-  // Nur das Hauptbild: Unter /media/sets/<set>/<n>.jpg liegen Zusatzbilder, das erste gefragte
-  // würde sonst für alle Konten das Set-Bild.
+  // Only the main image: under /media/sets/<set>/<n>.jpg there are additional images; the first one requested
+  // would otherwise become the set image for all accounts.
   const m = /^\/media\/sets\/([A-Za-z0-9-]{1,40})\.jpg$/.exec(u.pathname);
   return m?.[1] ?? null;
 }

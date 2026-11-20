@@ -23,7 +23,7 @@ declare module '../jobQueue/jobs' {
   }
 }
 
-/** Fehlende Preise eines Kontos in einer Währung: höchstens ein wartender Auftrag, der jede neue Meldung aufnimmt. */
+/** Missing prices of an account in one currency: at most one waiting job that picks up every new report. */
 export function rememberPricesBefore(k: FinancesContext, n: PayloadInput<'preise_nachladen'>): Promise<string> {
   return k.jobQueue.supplementListenJob('preise_nachladen', n, {
     schluessel: `preise_nachladen:${n.user_id}:${n.waehrung}`,

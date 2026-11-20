@@ -1,4 +1,4 @@
-/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
+/** What the services receive; separate from area.ts so that no import cycle arises. */
 import type { Db } from '../../db/database';
 import { imSystem, mit, withContract, type Kontext } from '../infra/area';
 import type { HouseholdReadContract } from './readContract';
@@ -10,13 +10,13 @@ import type { Uhr } from '../infra/clock';
 export interface HouseholdDependencies {
   uhr: Uhr;
   db: Db;
-  /** Das Gedächtnis der Haushalte je Zugang; createHousehold legt es an. */
+  /** The households' memory per access; createHousehold creates it. */
   faecher: Faecher;
   einstellungen: SettingsServices;
   lesevertrag: HouseholdReadContract;
 }
 
-// Einladungen sieht nur ihr Konto (0115); wer einlöst, gehört nicht dazu, Aufräumen gilt allen.
+// Invitations are only visible to their account (0115); whoever redeems is not part of it, cleanup applies to all.
 const FOREIGN_INVITATION = 'Einlösen: Die Einladung gehört dem einladenden Konto';
 export const zugang = (db: Db, l: HouseholdReadContract) => ({
   repository: {
@@ -25,7 +25,7 @@ export const zugang = (db: Db, l: HouseholdReadContract) => ({
     isLinked: mit(db)(repository.isLinked),
     accountNames: withContract(db, l)(repository.accountNames),
     accountName: withContract(db, l)(repository.accountName),
-    // Vor dem Beitritt sieht der Eingeladene das einladende Konto nicht (0121).
+    // Before joining, the invitee does not see the inviting account (0121).
     inviterName: mit(l)(imSystem(db, FOREIGN_INVITATION, repository.accountName)),
     cleanInvitationsOn: imSystem(db, 'Abgelaufene Einladungen aller Konten', repository.cleanInvitationsOn),
     putInvitationAn: mit(db)(repository.putInvitationAn),

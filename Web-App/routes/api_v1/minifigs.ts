@@ -18,7 +18,7 @@ export function buildMinifigsRouter(
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('GET /api/v1/minifigs', requireToken, async req => {
-    // Ohne page_size unverändertes Verhalten — die Android-App ruft so auf.
+    // Without page_size unchanged behavior — the Android app calls it that way.
     const r = await d.minifigs.readMinifigs(viewOf(req), req.abfrage);
     return { figs: r.figs, total: r.total };
   });
@@ -30,13 +30,13 @@ export function buildMinifigsRouter(
   });
 
   router.endpunkt('PUT /api/v1/minifigs/:figNumber', requireToken, async req => {
-    // Ohne den Parameter das eigene Konto.
+    // Without the parameter the own account.
     const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     const r = await d.minifigs.updateManualMinifig(besitzer, req.pfad.figNumber, req.eingabe);
     return { ...r };
   });
 
-  // Trifft alle Zeilen der Figur im Schreibbereich: Gemeint ist die Figur, nicht eine Zeile.
+  // Hits all rows of the minifig in the write scope: the minifig is meant, not a row.
   router.endpunkt('PUT /api/v1/minifigs/:figNumber/storage', requireToken, async req => {
     const ort = normalizeLocation(req.eingabe.storage);
     const n = await d.inventory.locationService.setLocation(
@@ -49,7 +49,7 @@ export function buildMinifigsRouter(
   });
 
   router.endpunkt('DELETE /api/v1/minifigs/:figNumber', requireToken, async req => {
-    // Ohne den Parameter das eigene Konto.
+    // Without the parameter the own account.
     const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     const geloescht = await d.collection.deleteMinifig(besitzer, req.pfad.figNumber);
     if (geloescht === null) notFound('minifig_nicht_manuell');
@@ -68,7 +68,7 @@ export function buildMinifigsRouter(
     return { figs, ...seite, ...ab.angabe() };
   });
 
-  /** Dieselbe Gruppierung wie die Liste, damit Kennzahl und Liste übereinstimmen. */
+  /** The same grouping as the list, so metric and list agree. */
   router.endpunkt('GET /api/v1/minifigs/stats', requireToken, async req => {
     const stats = await d.minifigs.minifigStats(viewOf(req));
     return { stats };
@@ -77,7 +77,7 @@ export function buildMinifigsRouter(
   router.endpunkt('GET /api/v1/minifigs/:figNumber/price-history', requireToken, async req => {
     const uid = req.apiUser.user_id;
     const currency = await d.settings.userValue(uid, 'currency', 'EUR');
-    // Blickfeld: Ohne scopeIds() fände sich für eine Figur des Unterkontos keine Erfassung.
+    // Scope: without scopeIds() no acquisition would be found for a minifig of the sub-account.
     const data = await d.finances.priceHistoryMinifig(viewOf(req), req.pfad.figNumber, currency);
     return { ...data };
   });
@@ -101,7 +101,7 @@ export function buildMinifigsRouter(
     },
   );
 
-  // Dieselbe Abfrage wie bei Teilen (src/inventory/shared.ts), im Blickfeld des Haushalts.
+  // The same query as for parts (src/inventory/shared.ts), in the household's scope.
   router.endpunkt('GET /api/v1/minifigs/:figNumber/sets', requireToken, async req => {
     const uids = viewOf(req);
     const { item, sets } = await d.inventory.usingSets(uids, 'minifigs', {

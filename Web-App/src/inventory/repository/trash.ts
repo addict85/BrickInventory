@@ -2,11 +2,11 @@ import type { DbInterface } from '../../../db/database';
 import type { InventoryReadContract } from '../readContract';
 import { teilSichtJoin, figurSichtJoin, TEIL, FIGUR } from '../../../db/catalogView';
 
-/** Ein Eintrag hält die gelöschten Zeilen aller Tabellen eines Bestands als
- * JSON; Wiederherstellen schreibt sie Spalte für Spalte zurück. */
+/** An entry holds the deleted rows of all tables of an inventory item as
+ * JSON; restoring writes them back column by column. */
 export type PaperKind = 'set' | 'teil' | 'figur';
 
-/** Die erste Tabelle ist die Stammzeile. */
+/** The first table is the master row. */
 const TABELLEN: Record<PaperKind, { tabelle: string; wo: string }[]> = {
   set: [
     { tabelle: 'sets', wo: 'user_id = $1 AND set_number = $2' },
@@ -52,7 +52,7 @@ const LABEL: Record<PaperKind, string> = {
             ${figurSichtJoin('x.konto', 'x.nr')}`,
 };
 
-/** Damit die Liste auch ohne Katalogzeile lesbar bleibt. */
+/** So that the list stays readable even without a catalog row. */
 export async function bezeichnung(
   tx: DbInterface,
   art: PaperKind,
@@ -84,7 +84,7 @@ export async function putEntryAn(
   return r?.id ?? null;
 }
 
-/** Wie die Tabelle sie liefert; `type` prüft die Tabelle per CHECK. */
+/** As the table delivers them; the table checks `type` via CHECK. */
 export interface TrashRow {
   id: number;
   user_id: number;
@@ -116,7 +116,7 @@ export function lockTrashEntry(tx: DbInterface, id: number, uids: number[]) {
   }>('SELECT * FROM trash WHERE id = $1 AND user_id = ANY($2) FOR UPDATE', [id, uids]);
 }
 
-/** Tabellen aus TABELLEN, nur Spalten, die es noch gibt und nicht berechnet sind (eine gelöschte fällt weg). */
+/** Tables from TABELLEN, only columns that still exist and are not computed (a deleted one drops out). */
 export async function writeBack(
   tx: DbInterface,
   art: PaperKind,

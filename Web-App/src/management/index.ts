@@ -1,4 +1,4 @@
-/** Die öffentliche Seite des Bereichs: Andere importieren nur von hier, der Schnitt darunter bleibt frei. */
+/** The public face of the area: others import only from here, the cut below stays free. */
 export { isSensitive } from './dataExport';
 export { FOLLOWUP_RUNS } from './startFollowUpRuns';
 export type { FollowUpStep } from './startFollowUpRuns';

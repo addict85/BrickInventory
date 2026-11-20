@@ -1,5 +1,5 @@
-/** requireApiAdmin bündelt Anmeldung und is_admin, damit kein Admin-Endpunkt
- * die Prüfung versehentlich weglässt. */
+/** requireApiAdmin bundles login and is_admin, so no admin endpoint
+ * accidentally omits the check. */
 import { reportError } from '../../src/infra/error';
 import express from 'express';
 import type { Request, Response, NextFunction, RequestHandler } from 'express';
@@ -16,7 +16,7 @@ import { receiptsAccountSpace, type Schranke } from '../../src/http/accountLimit
 import { requireRelease } from '../../src/account/http/stepGuard';
 import type { Sicht } from '../../src/household';
 
-/** Wer fragt und welche Konten er gewählt hat; den Bereich löst der Dienst auf. */
+/** Who is asking and which accounts they chose; the service resolves the scope. */
 export const viewOf = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht => ({
   nutzer: req.apiUser.user_id,
   konten: req.abfrage.accounts,
@@ -30,15 +30,15 @@ export function bearerToken(req: { headers: { authorization?: string | undefined
   return auth.startsWith('Bearer ') ? auth.slice(7) : null;
 }
 
-/** Alles andere verlangt die Anmeldung schon am Eingang: Eine neue Route, die
- * ihren eigenen Schutz vergisst, ist damit zu und nicht offen. */
+/** Everything else requires login right at the entrance: a new route that
+ * forgets its own protection is thereby closed, not open. */
 const PUBLIC: ReadonlyArray<readonly [string, RegExp]> = [
   ['GET', /^\/settings\/theme$/],
-  // Die Anmeldeseite prüft damit, was vor dem ersten Konto noch fehlt.
+  // The login page uses it to check what is still missing before the first account.
   ['GET', /^\/einrichtung\/stand$/],
   ['GET', /^\/auth\/(me|registration-status)$/],
-  // token-rotieren prüft selbst: Ein unbegrenzter Token nach der Pflichtfrist
-  // gilt nur noch dort, und das kann der Eingang nicht wissen.
+  // token-rotieren checks itself: an unlimited token after the mandatory deadline
+  // only applies there, and the entrance cannot know that.
   [
     'POST',
     /^\/auth\/(login|logout|qr-login(?:\/abholen)?|register|forgot-password|reset-password|bestaetigung-erneut|email-bestaetigen(?:\/vorschau)?|token-rotieren|uebernahme-abbrechen|anmeldung-freigeben)$/,
@@ -46,25 +46,25 @@ const PUBLIC: ReadonlyArray<readonly [string, RegExp]> = [
   ['POST', /^\/auth\/passkey\/anmelden(\/optionen)?$/],
 ];
 
-/** Start- oder vom Verwalter vergebenes Passwort: Bis es ersetzt ist, geht nur der Wechsel.
- * Den Geräteschlüssel nimmt der Server nur gleich nach der Anmeldung an, also auch hier. */
+/** Start password or one set by an administrator: until it is replaced, only the change works.
+ * The server only accepts the device key right after login, so here as well. */
 const VOR_DEM_WECHSEL = /^\/(auth\/(change-password|logout)|geraet\/schluessel)$/;
-/** Ein Verwalter ohne zweiten Faktor kommt nur bis zu dessen Einrichtung. */
+/** An administrator without a second factor only gets as far as setting it up. */
 const TO_SETUP: ReadonlyArray<readonly [string, RegExp]> = [
   ['GET', /^\/auth\/(me|zweiter-faktor)$/],
   ['POST', /^\/auth\/(change-password|zweiter-faktor\/(einrichten|bestaetigen))$/],
-  // Die Einrichtung in der App verlangt den Schrittschutz (src/account/http/stepGuard.ts).
+  // Setting it up in the app requires the step guard (src/account/http/stepGuard.ts).
   ['POST', /^\/geraet\/(schluessel|schritt\/(challenge|freigabe))$/],
 ];
 
-/** Die Wächter des Eingangs, gebaut aus den Diensten des Kontos: Der Eingang
- * (startup/app.ts) und jeder Router nehmen dieselben. */
+/** The guards of the entrance, built from the account services: the entrance
+ * (startup/app.ts) and every router take the same ones. */
 export function guardFor(konto: AccountServices) {
   return { ...inboxFor(konto), ...tokenGuardFor(konto), requireLoginOrToken: loginOrTokenGuard(konto) };
 }
 
 function inboxFor(konto: AccountServices) {
-  /** Sitzungen von vor dem Feld fragen einmal die Datenbank und merken es sich. */
+  /** Sessions from before the field ask the database once and remember it. */
   async function switchMust(req: Request): Promise<boolean> {
     if (!req.session?.userId) return req.apiUser?.muss_passwort_aendern === true;
     req.session.mussPasswortAendern ??= await konto.passwordSwitchDue(req.session.userId);
@@ -81,7 +81,7 @@ function inboxFor(konto: AccountServices) {
         ...(req.session.username ? { username: req.session.username } : {}),
       };
     } else {
-      // Ein Lesefehler ist keine ungültige Anmeldung: Ein 401 meldete die App ab.
+      // A read error is not an invalid login: a 401 would sign the app out.
       const uid = await userIdTheRequest(konto, req);
       if (!uid) return sendTokenRejection(req, res);
       req.tokenUserId = uid;
@@ -89,9 +89,9 @@ function inboxFor(konto: AccountServices) {
     return inboundLock(req, res, next);
   }
 
-  /** Die Sperren „Passwortwechsel nötig“ und „2. Faktor Pflicht“ für einen schon
-   * erkannten Nutzer. Auch Dateien und Bild-Proxy hängen davor, weil sie vor dem
-   * Eingang stehen und sonst an beiden Regeln vorbeiliefen. */
+  /** The blocks "password change required" and "second factor mandatory" for an already
+   * recognized user. Files and image proxy hang in front of it too, because they sit before the
+   * entrance and would otherwise slip past both rules. */
   async function inboundLock(req: Request, _res: Response, next: NextFunction) {
     const methode = req.method === 'HEAD' ? 'GET' : req.method;
     if (!(methode === 'POST' && VOR_DEM_WECHSEL.test(req.path)) && (await switchMust(req)))
@@ -106,7 +106,7 @@ function inboxFor(konto: AccountServices) {
 
 function tokenGuardFor(konto: AccountServices) {
   const requireToken = guard<AuthedRequest>((req, _res, next) => {
-    // Schon am Eingang geprüft: kein zweiter Datenbankzugriff.
+    // Already checked at the entrance: no second database access.
     if (req.apiUser) return next();
     if (req.session?.userId) {
       req.apiUser = {
@@ -132,12 +132,12 @@ function tokenGuardFor(konto: AccountServices) {
 
   return {
     requireToken,
-    /** Ohne Systemrahmen: Wer über Konten geht, betritt ihn im Dienst (src/account/context.ts). */
+    /** Without system frame: whoever goes through accounts enters it in the service (src/account/context.ts). */
     requireApiAdmin: guard<AuthedRequest>((req, res, next) => {
       requireToken(req, res, (e?: unknown) => {
         if (e) return next(e);
         if (!req.apiUser?.is_admin) return next(new Fachfehler('verboten', 'nur_admins'));
-        // Hier statt in einer Pfadliste: So kommt keine Verwalter-Route an der Gerätesperre vorbei.
+        // Here instead of in a path list: this way no administrator route gets past the device lock.
         requireRelease(konto, req, res, next, 'verwaltung');
       });
     }),
@@ -150,12 +150,12 @@ const onlyIf =
     soll(req) ? schritt(req, res, next) : next();
 const anonymous = (req: Request) => nutzerId(req) === null;
 
-/** Ohne Konto sind es höchstens 16 KB: Wer dafür länger braucht, hält nur eine
- * Verbindung fest. Angemeldet gilt die Frist des Servers (Uploads). */
+/** Without an account it is at most 16 KB: whoever needs longer for that only holds
+ * a connection. Signed in, the server's deadline applies (uploads). */
 const BODY_DEADLINE_MS = 10_000;
 function bodyDeadline(req: Request, res: Response, next: NextFunction) {
   if (req.complete) return next();
-  // Ausnahme vom Fehlerweg: Die Uhr läuft nach next(), die Kette ist schon weiter.
+  // Exception to the error path: the clock runs after next(), the chain has already moved on.
   const uhr = setTimeout(() => {
     if (req.complete || res.headersSent) return;
     res.setHeader('Connection', 'close');
@@ -166,9 +166,9 @@ function bodyDeadline(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
-/** Hinter loginAtInbox: Ohne Konto (Anmelden, Registrieren, Zurücksetzen)
- * reichen 16 KB, sonst 256 KB, nur der PDF-Auftrag trägt die ganze Teileliste.
- * Pfad-IDs prüft vertragsRouter('/api/v1'), die in Rumpf und Abfrage der letzte Schritt. */
+/** Behind loginAtInbox: without an account (login, registration, reset)
+ * 16 KB suffice, otherwise 256 KB; only the PDF job carries the whole part list.
+ * Path ids are checked by vertragsRouter('/api/v1'), those in body and query by the last step. */
 export const readBody: RequestHandler[] = [
   onlyIf(anonymous, bodyDeadline),
   onlyIf(anonymous, express.json({ limit: '16kb' })),
@@ -179,21 +179,21 @@ export const readBody: RequestHandler[] = [
   (req, _res, next) => {
     if (req.body === undefined) req.body = {};
     next();
-  }, // Express 5: sonst undefined
+  }, // Express 5: otherwise undefined
   (req, _res, next) => {
     if (toLargeId(req.body) || toLargeId(req.query)) fachfehler('ungueltig', 'id_ungueltig');
     next();
   },
 ];
 
-/** Vor dem Empfang des Rumpfs: Am Limit wird die Datei gar nicht erst gelesen. */
+/** Before receiving the body: at the limit the file is not even read. */
 export function kontoSchranke(art: Schranke) {
   return (req: Request, res: Response, next: NextFunction) => {
     const uid = nutzerId(req);
     if (uid === null) return next();
     const frei = receiptsAccountSpace(art, uid);
     if (!frei) fachfehler('zu_viele', art === 'strom' ? 'zu_viele_verbindungen' : 'upload_laeuft');
-    res.once('finish', frei); // ein sofort folgender Upload käme sonst vor 'close' an
+    res.once('finish', frei); // an immediately following upload would otherwise arrive before 'close'
     res.once('close', frei);
     next();
   };

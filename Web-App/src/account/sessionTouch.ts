@@ -1,18 +1,18 @@
-/** Gedrosselt, weil jede Anfrage sonst eine Zeile in user_sessions schriebe. */
+/** Throttled, because otherwise every request would write a row to user_sessions. */
 
-// Höchstens ein Viertel der Leerlauf-Frist, sonst fiele eine arbeitende Sitzung heraus.
+// At most a quarter of the idle deadline, otherwise a working session would drop out.
 export const touchMs = (idleMs: number) => Math.min(5 * 60 * 1000, Math.floor(idleMs / 4));
 
-/** Beim Überlaufen leeren statt einzeln aufräumen: Ein verworfener Eintrag
- * kostet genau ein zusätzliches UPDATE. */
+/** Clear on overflow instead of evicting one by one: a discarded entry
+ * costs exactly one additional UPDATE. */
 const MAX_SESSIONS = 1000;
 
-/** S: die Sitzungsdaten des Speichers; hier nur durchgereicht, daher `never` an der Schranke. */
+/** S: the store's session data; only passed through here, hence `never` at the bound. */
 interface Speicher<S> {
   touch?: (sid: string, sess: S, cb?: (err?: unknown) => void) => void;
 }
 
-// Spart Schreibzugriffe je Anfrage.
+// Saves writes per request.
 export function touchThrottle<T extends Speicher<never>>(speicher: T, frist: number): T {
   const echt = speicher.touch?.bind(speicher);
   if (!echt) return speicher;

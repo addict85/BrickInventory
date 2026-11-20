@@ -1,4 +1,4 @@
-/** Was der Haushalt aus höheren Bereichen liest: Namen der Konten, Besitzer einer Erfassung
+/** What the household reads from higher-level areas: account names, owners of an acquisition
  * (db/accountView.ts, db/inventoryView.ts). */
 export interface HouseholdReadContract {
   KONTEN: string;

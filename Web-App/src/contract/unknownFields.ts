@@ -1,6 +1,6 @@
-/** Felder einer Antwort, die ihr Vertrag nicht nennt. Antworten bleiben offene
- * Objekte (ein neues Feld bricht keine App); in Tests soll aber jedes Feld im
- * Vertrag stehen, sonst kennen OpenAPI und die Typen der Oberfläche es nicht. */
+/** Fields of a response that its contract does not name. Responses stay open
+ * objects (a new field breaks no app); in tests, however, every field should be in the
+ * contract, otherwise OpenAPI and the UI's types do not know it. */
 import type { z } from 'zod';
 
 interface Def {
@@ -22,7 +22,7 @@ interface Def {
 const defOf = (s: z.ZodType): Def => (s as unknown as { _zod: { def: Def } })._zod.def;
 const SHELL = new Set(['optional', 'nullable', 'default', 'prefault', 'readonly', 'catch', 'nonoptional', 'success']);
 
-/** Pfade wie `sets.0.letzter_kauf`; höchstens `grenze`, damit eine lange Liste nicht flutet. */
+/** Paths like `sets.0.letzter_kauf`; at most `grenze` so that a long list does not flood. */
 export function unbekannteFelder(schema: z.ZodType, wert: unknown, grenze = 20): string[] {
   const funde = new Set<string>();
   const lauf = (s: z.ZodType | undefined, w: unknown, pfad: string): void => {
@@ -41,7 +41,7 @@ export function unbekannteFelder(schema: z.ZodType, wert: unknown, grenze = 20):
       return;
     }
     if (d.type === 'intersection') {
-      // Zusammen bekannt ist, was eine der beiden Seiten nennt.
+      // Known together is what either of the two sides names.
       const links = unbekannteFelder(d.left as z.ZodType, w, grenze);
       const rechts = new Set(unbekannteFelder(d.right as z.ZodType, w, grenze));
       for (const p of links) if (rechts.has(p)) funde.add(pfad + p);
@@ -69,7 +69,7 @@ export function unbekannteFelder(schema: z.ZodType, wert: unknown, grenze = 20):
       return;
     }
     if (d.type !== 'object' || typeof w !== 'object' || Array.isArray(w)) return;
-    // looseObject hat catchall unknown: offen, aber im Vertrag nicht beschrieben.
+    // looseObject has catchall unknown: open, but not described in the contract.
     const offen = !d.catchall || defOf(d.catchall).type === 'unknown';
     for (const [k, x] of Object.entries(w as object)) {
       const feld = d.shape?.[k];

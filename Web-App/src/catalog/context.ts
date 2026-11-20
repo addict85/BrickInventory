@@ -1,4 +1,4 @@
-/** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
+/** What the services receive; separate from area.ts so that no import cycle arises. */
 import { mit, withContract, type Kontext } from '../infra/area';
 import type { CatalogReadContract } from './readContract';
 import type { Faecher } from '../infra/cache';
@@ -25,9 +25,9 @@ export interface CatalogDependencies {
   uhr: Uhr;
   db: Db;
   faecher: Faecher;
-  /** Klienten, Kontingent und Drosseln dieses Satzes Dienste (src/externalSources). */
+  /** Clients, quota and throttles of this set of services (src/externalSources). */
   externalSources: ForeignSourcesServices;
-  /** Höchstens zwei Bildabrufe beim CDN zugleich, je Satz Dienste einer. */
+  /** At most two image fetches from the CDN at a time, one per set of services. */
   cdnDrossel: ConcurrentRateLimiter;
   images: ImagesServices;
   einstellungen: SettingsServices;
@@ -37,7 +37,7 @@ export interface CatalogDependencies {
   lesevertrag: CatalogReadContract;
 }
 
-/** Anleitungen, BrickLink-Zuordnung und CSV-Katalog. */
+/** Instructions, BrickLink mapping and CSV catalog. */
 const anleitungszugang = (db: Db, l: CatalogReadContract) => ({
   anleitungen: {
     zaehleAnleitungen: mit(db)(anleitungen.zaehleAnleitungen),
@@ -76,7 +76,7 @@ const anleitungszugang = (db: Db, l: CatalogReadContract) => ({
   },
 });
 
-/** Stamm, Suche, Zwischenspeicher und Inhalt der Sets. */
+/** Master data, search, cache and contents of the sets. */
 const stammzugang = (db: Db, l: CatalogReadContract) => ({
   katalogStamm: {
     inventoryAfterCandidates: mit(db)(katalogStamm.inventoryAfterCandidates),

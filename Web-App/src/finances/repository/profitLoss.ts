@@ -2,8 +2,8 @@ import type { DbInterface } from '../../../db/database';
 import { setStammJoin, SET } from '../../../db/catalogView';
 import type { FinancesReadContract } from '../readContract';
 
-/** Eine Zeile je Set über alle Konten: Die Rechnung fasst die Käufe je
- * Setnummer zusammen; zwei Konten mit demselben Set zählten sonst doppelt. */
+/** One row per set across all accounts: the calculation merges the purchases per
+ * set number; two accounts with the same set would otherwise count twice. */
 export function setsWithEntries(db: DbInterface, l: FinancesReadContract, uids: number[]) {
   return db.all<{
     set_number: string;

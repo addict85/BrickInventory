@@ -3,7 +3,7 @@ import type { DbInterface } from '../../../db/database';
 
 export type NewestField = 'preis' | 'zustand';
 
-/** Das Set wörtlich: Es gibt genau eine Stelle, die die letzte Set-Erfassung beschreibt. */
+/** The set literally: there is exactly one place that describes the last set acquisition. */
 function newestSetEntry(db: DbInterface, feld: NewestField, wert: number | string | null, uid: number, sn: string) {
   const spalte = feld === 'preis' ? 'purchase_price' : 'condition';
   return db.run(
@@ -15,7 +15,7 @@ function newestSetEntry(db: DbInterface, feld: NewestField, wert: number | strin
   );
 }
 
-/** 0 heisst bei Teilen und Figuren „für nichts gekauft“; ohne Preis steht NULL. */
+/** For parts and figures 0 means "bought for nothing"; without a price NULL stands there. */
 export async function setNewest(
   db: DbInterface,
   art: ErfassungsArt,
@@ -51,7 +51,7 @@ export function deleteMinifigEntries(tx: DbInterface, besitzer: number, figNumbe
   return tx.run('DELETE FROM minifig_acquisitions WHERE user_id=$1 AND fig_number=$2', [besitzer, figNumber]);
 }
 
-/** Umfärben: Gleiche Käufe desselben Tags gehen in der neuen Farbe auf (eindeutiger Index). */
+/** Recoloring: identical purchases of the same day merge into the new color (unique index). */
 export function stallSameEntriesOn(tx: DbInterface, uid: number, partNumber: string, alt: number, neu: number) {
   return tx.run(
     `UPDATE part_acquisitions z

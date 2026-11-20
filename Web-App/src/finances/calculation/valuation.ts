@@ -1,6 +1,6 @@
-/** Was der Bestand heute wert ist; steht auf der Preisschicht (preise.ts) und
- * trägt die Gewinnrechnung, nicht umgekehrt. Gelesen wird nur der Preis-Cache:
- * Fehlende Preise holt der Auftrag „preise_nachladen“, nicht die Anfrage. */
+/** What the inventory is worth today; stands on the price layer (prices.ts) and
+ * carries the profit calculation, not the other way round. Only the price cache is read:
+ * missing prices are fetched by the job "preise_nachladen", not by the request. */
 
 import { logAndContinue } from '../../infra/error';
 import type * as repo from '../repository/valuation';
@@ -34,10 +34,10 @@ type Zustand = 'N' | 'U';
 type Posten = Nutzlast<'preise_nachladen'>['posten'][number];
 type MinifigPrice = PriceData & { estimated_from_parts?: true; abdeckung?: number | null };
 
-/** @returns Map key → Erfassungszeilen; key ist `konto|nummer|farbe` bzw. `konto|nummer` */
+/** @returns Map key → acquisition rows; key is `konto|nummer|farbe` or `konto|nummer` */
 async function loadManualAcquisitions(k: FinancesContext, uid: Blickfeld, kind: 'part' | 'fig', waehrung: string) {
-  // Ein Hauptkonto bewertet den ganzen Haushalt; die Währung ist beim
-  // Verknüpfen erzwungen gleich, sonst summierte das zwei Währungen.
+  // A main account values the whole household; the currency is forced to be
+  // the same when linking, otherwise this would sum two currencies.
   const rows = await k.bewertung.manualEntries(kind, asIds(uid), waehrung);
   const out = new Map<string, repo.ManualEntry[]>();
   for (const r of rows) {
@@ -56,7 +56,7 @@ function foreignPurchasePrices(jeEntry: Map<string, Array<{ kaufpreis_fremd?: bo
   return n;
 }
 
-/** Die Bewertung meldet alles, was fehlt; der Auftrag je Konto und Währung nimmt es auf. */
+/** The valuation reports everything that is missing; the job per account and currency picks it up. */
 async function rememberPricesForAccountBefore(
   k: FinancesContext,
   viewerId: number,
@@ -72,7 +72,7 @@ async function rememberPricesForAccountBefore(
 
 type BewertungsSet = Awaited<ReturnType<typeof repo.setsToValuation>>[number];
 type SetEntry = Awaited<ReturnType<typeof loadSetEntries>>[number];
-/** Was jede Zeile braucht: Einstellungen des Betrachters und die vorgeladenen Tabellen. */
+/** What every row needs: the viewer's settings and the preloaded tables. */
 type Bewertungslage = {
   ttl: number;
   jetzt: number;
@@ -81,10 +81,10 @@ type Bewertungslage = {
   withoutAccess: string | null;
 };
 
-/** Eine Zeile der Bewertung: Je Kaufpreis der Preis SEINES Zustands, verdichtet
- * in valueSet(), damit die Bewertungsregel an EINER Stelle bleibt. */
+/** One row of the valuation: per purchase price the price of ITS condition, condensed
+ * in valueSet(), so that the valuation rule stays in ONE place. */
 function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
-  // Ohne Erfassung gilt das Set als neu (effectiveCondition ohne Zähler).
+  // Without an acquisition the set counts as new (effectiveCondition without counters).
   const fallbackCond: Zustand = 'N';
   const needed: Zustand[] = acqs.length ? [...new Set(acqs.map(a => zustand(a.condition)))] : [fallbackCond];
   const preise = new Map<Zustand, PriceData>(
@@ -98,9 +98,9 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
   }
   const valued = valueSet(set.set_number, acqs, preisMap, fallbackCond, set.quantity || 1);
   const rows = valueAcquisitionRows(set.set_number, acqs, preisMap);
-  // Ohne Erfassung kein Kaufpreis, nicht 0: Eine 0 sähe aus wie ein Geschenk.
+  // Without an acquisition no purchase price, not 0: a 0 would look like a gift.
   const purchase = weightedPurchase(rows);
-  // Min/Max müssen zur selben Mengenaufteilung passen wie der Schnitt.
+  // Min/max must match the same quantity split as the average.
   const qty = valued.quantity || 1;
   const weighted = (key: 'min_price' | 'max_price' | 'qty_avg_price') =>
     valued.by_condition
@@ -119,7 +119,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
     image_url: proxyImageUrl(set.image_url),
     added_at: set.added_at,
     quantity: qty,
-    // Nur für Aufrufer, die eine einzelne Angabe erwarten.
+    // Only for callers that expect a single value.
     condition: conditions.includes('U') ? 'U' : 'N',
     conditions,
     mixed: conditions.length > 1,
@@ -128,7 +128,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
     avg_price: unitAvg,
     max_price: weighted('max_price'),
     qty_avg_price: weighted('qty_avg_price'),
-    // Aus dem ungerundeten Stückpreis: 120,3333 × 2 ist 240,67, nicht 240,66.
+    // From the unrounded unit price: 120.3333 × 2 is 240.67, not 240.66.
     total_avg: aufRappen((valued.unit_z ?? 0) * qty).toFixed(2),
     wert_gesamt: aufRappen((valued.unit_z ?? 0) * qty),
     total_qty_avg: aufRappen((inZehntel4(weighted('qty_avg_price')) ?? 0) * qty).toFixed(2),
@@ -137,7 +137,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
     acquisitions: rows,
     from_cache: true,
     is_fallback: onePrice?.is_fallback === true,
-    // Ein ausstehender Preis ist noch keiner; ein Haken hiesse „geladen“.
+    // A pending price is not a price yet; a check mark would mean "loaded".
     no_price: (!!onePrice || ausstehend) && valued.unit_price == null,
     bl_unbekannt: needed.some(c => preise.get(c)?.bl_unbekannt === true),
     preis_ausstehend: ausstehend,
@@ -147,7 +147,7 @@ function bewerteSet(set: BewertungsSet, acqs: SetEntry[], l: Bewertungslage) {
   };
 }
 
-/** Summen aus den Zeilenwerten, gerundet erst am Schluss. */
+/** Sums from the row values, rounded only at the end. */
 function valuationSums(
   zeilen: Array<{ quantity: number; min_price: number; max_price: number; qty_avg_price: number; total_avg: string }>,
 ) {
@@ -170,10 +170,10 @@ function valuationSums(
   };
 }
 
-/** Eine Umsetzung für Sitzungsroute und Token-API. */
+/** One implementation for session route and token API. */
 export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
-  // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
-  // Filter „Unterkonten" fehlt das fragende Konto in ids.
+  // viewerId determines the settings, ids the calculated data: with the
+  // filter "sub-accounts" the asking account is missing from ids.
   const uids = await kx.household.scopeFrom(idsChoice);
   const [currency, ttlHours, guideType] = await Promise.all([
     kx.einstellungen.userValue(viewerId, 'currency', 'EUR'),
@@ -185,7 +185,7 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
     condition: DEFAULT_PRICE_CONDITION,
     guide_type: guideType,
     ttl_hours: ttlHours,
-    // ttl_hours bleibt für ältere Clients Text.
+    // ttl_hours stays text for older clients.
     ttl_stunden: Number(ttlHours) || 24,
   };
   const sets = await kx.bewertung.setsToValuation(uids);
@@ -199,16 +199,16 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
       totals: { min: '0.00', avg: '0.00', max: '0.00', qty_avg: '0.00' },
     };
 
-  // Je eine Abfrage für Katalog, Preiscache und Erfassungen statt einer je Set.
+  // One query each for catalog, price cache and acquisitions instead of one per set.
   const setNumbers = sets.map(s => s.set_number);
   const ttl = Math.max(1, parseInt(ttlHours, 10) || 24);
   const [catRows, cacheRows, acqRows] = await Promise.all([
-    // catalog_cache führt Nummern mit Versionsanhang, price_cache unter der Schreibweise des Aufrufers.
+    // catalog_cache lists numbers with the version suffix, price_cache under the caller's spelling.
     kx.bewertung.catalogFeatures(setNumbers.map(withVersion)),
     kx.preisCache.setPricesFresh(setNumbers, currency, ttl),
     kx.erfassungen.loadSetEntries(uids, currency),
   ]);
-  // Ohne BrickLink-Zugang kann der Auftrag nichts holen: Das steht dann an der Zeile.
+  // Without BrickLink access the job can fetch nothing: that is then shown on the row.
   const withoutAccess = (await kx.einstellungen.globalValue('bricklink_consumer_key'))
     ? null
     : errorText(
@@ -225,7 +225,7 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
       cache: new Map(cacheRows.map(r => [`${r.set_number}|${r.condition}`, r])),
     },
   };
-  // Je Konto und Set: Im Haushalt ist jede Zeile der Bestand EINES Kontos.
+  // Per account and set: in the household every row is the inventory of ONE account.
   const jeAccountAndSet = new Map<string, SetEntry[]>();
   for (const a of acqRows) {
     const k = `${a.user_id}|${a.set_number}`,
@@ -239,7 +239,7 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
   );
   return {
     ...kopf,
-    // Fremde Kaufpreise fehlen in den Summen (keine Kurse); die Zahl sagt, wie viele es sind.
+    // Foreign purchase prices are missing from the sums (no rates); the number says how many there are.
     kaufpreise_fremde_waehrung: zaehle(acqRows, 'kaufpreis_fremd'),
     kaufpreise_umgerechnet: zaehle(acqRows, 'kaufpreis_umgerechnet'),
     sets: results,
@@ -254,7 +254,7 @@ function conditionsOf(acqs: { condition?: string | null }[]): Zustand[] {
   return (['N', 'U'] as const).filter(c => set.has(c));
 }
 
-/** Je vorkommendem Zustand ein Preis; der erste mit Wert trägt die Zusatzangaben der Zeile. */
+/** One price per occurring condition; the first one with a value carries the row's additional details. */
 function pricesJeState<P extends PriceData>(key: string, conds: Zustand[], priceOf: (c: Zustand) => P) {
   const priceMap = new Map<string, number>();
   let priceData: P | null = null;
@@ -268,13 +268,13 @@ function pricesJeState<P extends PriceData>(key: string, conds: Zustand[], price
 }
 
 function valueManual(key: string, acqs: repo.ManualEntry[], priceMap: Map<string, number>, menge: number) {
-  // 'N': Der Rückfall greift nur ohne Erfassungen, und dort gilt „Neu".
+  // 'N': the fallback only applies without acquisitions, and there "new" applies.
   const valued = valueSet(key, acqs, priceMap, 'N', menge);
   const rows = valueAcquisitionRows(key, acqs, priceMap);
   const unitVal = valued.unit_price ?? 0;
   const totalQty = acqs.length ? valued.quantity : menge;
-  // Ein Kaufpreis gilt nur in der Kontowährung; fremde Währung oder „unbekannt"
-  // als 0 trieben die G&V auf Zehntausende Prozent.
+  // A purchase price only counts in the account currency; a foreign currency or "unknown"
+  // as 0 would drive the P&L to tens of thousands of percent.
   const acqPurchase = acqs.length ? weightedPurchase(rows) : null;
   const hasCost = acqPurchase != null;
   const purchasePrice = acqPurchase ?? 0;
@@ -294,13 +294,13 @@ function valueManual(key: string, acqs: repo.ManualEntry[], priceMap: Map<string
   };
 }
 
-/** Summe der Zeilenwerte, gerundet erst am Schluss; als Zahl und (veraltet) als Text. */
+/** Sum of the row values, rounded only at the end; as a number and (deprecated) as text. */
 function gesamt(zeilen: Array<{ total_value: string }>) {
   const z = zeilen.reduce((s, r) => s + (inZehntel4(r.total_value) ?? 0), 0);
   return { wert_gesamt: aufRappen(z), total_value: aufRappen(z).toFixed(2) };
 }
 
-/** Eine Umsetzung für Sitzungsroute und Token-API. */
+/** One implementation for session route and token API. */
 export async function valueMinifigs(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
   const uids = asIds(await k.household.scopeFrom(idsChoice));
   const [currency, ttlHours] = await Promise.all([
@@ -339,8 +339,8 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
   const results = await k.household.besitzerAnhaengen(
     uids,
     manualFigs.map(fig => {
-      // Je vorkommendem Zustand: Ein neu gekauftes Exemplar bekommt den Neupreis,
-      // auch wenn ein anderes gebraucht ist.
+      // Per occurring condition: a copy bought new gets the new price,
+      // even if another one is used.
       const key = fig.fig_number;
       const acqs = acqByFig.get(`${fig.user_id}|${key}`) || [];
       const { priceMap, priceData } = pricesJeState(key, conditionsOf(acqs), (cond): MinifigPrice => {
@@ -349,7 +349,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
           if (p.ausstehend) fehlt.push({ art: 'figur', nummer: fig.bl_fig_number, zustand: cond });
           return p;
         }
-        // Ohne BL-Nummer aus den Teilepreisen geschätzt (der Auftrag rechnet die Schätzung).
+        // Without a BL number estimated from the part prices (the job computes the estimate).
         const s = estimates.get(`${key}|${cond}`);
         if (s)
           return {
@@ -439,10 +439,10 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
       quantity: part.quantity || 1,
       image_url: part.image_url,
       image_local: part.image_local,
-      // Die neueste Erfassung; die Webapp nimmt den Wert nur als Rückfall.
+      // The newest acquisition; the web app only uses the value as a fallback.
       unit_price: acqs.at(-1)?.unit_price ?? null,
       ...priceData,
-      // Nach ...priceData, damit der gewichtete Wert gewinnt.
+      // After ...priceData so that the weighted value wins.
       ...wert,
     };
   });

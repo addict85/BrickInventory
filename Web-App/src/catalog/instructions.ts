@@ -11,16 +11,16 @@ import type { CatalogContext } from './context';
 
 const PDF_START = Buffer.from('%PDF-');
 
-/** Mehrere Quellen, weil keine allein alle Sets führt; aus Bildseiten notfalls
- * ein PDF. */
+/** Several sources, because none alone lists all sets; from image pages a PDF
+ * if need be. */
 
-/** Damit der Takt der Warteschlange nur nach echten Abrufen wartet; je Satz Dienste. */
+/** So that the queue's tick only waits after real fetches; per set of services. */
 const abruf = (k: CatalogContext) => k.faecher.fach('anleitungen:abruf', () => ({ extern: false }));
 export function lastFetchWarExtern(k: CatalogContext): boolean {
   return abruf(k).extern;
 }
 
-// Zählen, lesen, löschen an einer Stelle statt verstreut.
+// Count, read, delete in one place instead of scattered.
 
 export async function anzahlAnleitungen(k: CatalogContext, setNumber: string): Promise<number> {
   const r = await k.anleitungen.zaehleAnleitungen(withVersion(setNumber));
@@ -31,13 +31,13 @@ export async function instructionsToSet(k: CatalogContext, setNumber: string) {
   return k.anleitungen.instructionsOfSets(withVersion(setNumber));
 }
 
-/** Erst die automatisch importierten, dann die selbst hochgeladenen. */
+/** First the automatically imported ones, then the self-uploaded ones. */
 export function mergeInstructions<A extends object, B extends object>(geteilt: A[], eigene: B[]) {
   return [...geteilt.map(i => ({ ...i, is_manual: false })), ...eigene.map(i => ({ ...i, is_manual: true }))];
 }
 
-/** Einmal je Set und Tag für alle: Neuladen löscht für alle und kostet
- * Kontingent. In EINER Anweisung, damit zwei Anfragen nicht beide durchkommen. */
+/** Once per set and day for everyone: reloading deletes for everyone and costs
+ * quota. In ONE statement so that two requests do not both get through. */
 export async function instructionNewLoadAllowed(k: CatalogContext, setNumber: string): Promise<boolean> {
   return k.throttle.oncePerDay(`anleitung-neu|${withVersion(setNumber)}`);
 }
@@ -46,7 +46,7 @@ export async function deleteInstructions(k: CatalogContext, setNumber: string) {
   return k.anleitungen.deleteInstructionsOfSets(withVersion(setNumber));
 }
 
-// Ein Fund für Anlegen und Suchen.
+// One find for creating and searching.
 async function brickinstructionsFund(k: CatalogContext, n: string) {
   const baseNum = pathSegment(withoutVersion(n));
   const folder = String(Math.floor(parseInt(baseNum, 10) / 1000) * 1000).padStart(5, '0');
@@ -85,7 +85,7 @@ export async function scrapeInstructionsFromFallback(k: CatalogContext, setNumbe
       return 1;
     }
   } catch (e) {
-    // Ausnahme: BrickInstructions ist die letzte Quelle; ohne sie bleibt das Set ohne Anleitung (0).
+    // Exception: BrickInstructions is the last source; without it the set stays without instructions (0).
     reportError(`anleitung:brickinstructions ${n}`, e);
   }
   return 0;
@@ -99,13 +99,13 @@ type InstructionSource = {
   brickinstructions_first?: Buffer;
 };
 
-/** @param ownTick Der Aufrufer hält selbst Abstand zwischen zwei Sets;
- *   dann entfallen die Pausen am Ende. */
+/** @param ownTick The caller keeps the spacing between two sets itself;
+ *   then the pauses at the end are dropped. */
 export async function setAnleitungenLaden(k: CatalogContext, setNumber: string, ownTick = false) {
   const n = withVersion(setNumber);
 
-  // Merken, ob ein fremder Server befragt wurde: Der Takt soll nicht an Sets
-  // hängen, die längst eine Anleitung haben.
+  // Remember whether a foreign server was asked: the tick should not depend on sets
+  // that have long had instructions.
   abruf(k).extern = false;
 
   const existing = await anzahlAnleitungen(k, n);
@@ -113,7 +113,7 @@ export async function setAnleitungenLaden(k: CatalogContext, setNumber: string, 
     return existing;
   }
 
-  abruf(k).extern = true; // ab hier wird wirklich gefragt
+  abruf(k).extern = true; // from here on a real request is made
   const { instrList, bricksetSucceededEmpty } = await instructionSources(k, n);
 
   if (!instrList.length && bricksetSucceededEmpty && (await bdpFallback(k, n, ownTick))) return 1;
@@ -130,8 +130,8 @@ export async function setAnleitungenLaden(k: CatalogContext, setNumber: string, 
   return saveInstructions(k, n, instrList);
 }
 
-/** Erst die Rebrickable-Seite, dann Brickset. `bricksetSucceededEmpty`: Brickset hat
- * geantwortet, ohne Anleitung — nur dann lohnen die weiteren Rückfälle. */
+/** First the Rebrickable page, then Brickset. `bricksetSucceededEmpty`: Brickset
+ * answered without instructions — only then are the further fallbacks worthwhile. */
 async function instructionSources(k: CatalogContext, n: string) {
   let instrList: InstructionSource[] = [];
   let bricksetSucceededEmpty = false;
@@ -143,14 +143,14 @@ async function instructionSources(k: CatalogContext, n: string) {
   if (!instrList.length) {
     const bs = await versuche('anleitungen:brickset', k.externalSources.quellen.brickset.getInstructions(n));
     instrList = bs.ok ? bs.wert.instructions || [] : [];
-    // usesFallback false heisst Kontingent erschöpft. Ein Fehler ist keine Antwort —
-    // beides bleibt in der Warteschlange.
+    // usesFallback false means quota exhausted. An error is not an answer —
+    // both stay in the queue.
     bricksetSucceededEmpty = bs.ok && bs.wert.usesFallback && instrList.length === 0;
   }
   return { instrList, bricksetSucceededEmpty };
 }
 
-/** Direkt auf die Platte, kein Puffer für grosse PDFs; die Pause auch nach einem Fehlschlag. */
+/** Straight to disk, no buffer for large PDFs; the pause also after a failure. */
 async function bdpFallback(k: CatalogContext, n: string, ownTick: boolean): Promise<boolean> {
   try {
     const baseNum = withoutVersion(n);
@@ -169,7 +169,7 @@ async function bdpFallback(k: CatalogContext, n: string, ownTick: boolean): Prom
       return true;
     }
   } catch (e) {
-    // Ausnahme: Der BDP-Rückfall ist eine von mehreren Quellen; false lässt die nächste fragen.
+    // Exception: the BDP fallback is one of several sources; false lets the next one be asked.
     reportError(`anleitung:bdp ${n}`, e);
   }
   if (!ownTick) await warte(5000);
@@ -189,13 +189,13 @@ async function brickinstructionsSource(k: CatalogContext, n: string): Promise<In
       brickinstructions_first: fund.firstImage,
     };
   } catch (e) {
-    // Ausnahme: Die Suche zeigt dann die übrigen Quellen; null heisst hier „keine Vorschau“.
+    // Exception: the search then shows the remaining sources; null here means "no preview".
     reportError(`anleitung:brickinstructions-probe ${n}`, e);
     return null;
   }
 }
 
-/** Bildseiten von BrickInstructions werden im Hintergrund zu einem PDF. */
+/** Image pages from BrickInstructions are turned into a PDF in the background. */
 async function saveInstructions(k: CatalogContext, n: string, instrList: InstructionSource[]): Promise<number> {
   const instrDir = INSTRUCTIONS_DIR;
   fs.mkdirSync(instrDir, { recursive: true });

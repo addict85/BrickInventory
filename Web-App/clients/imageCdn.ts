@@ -1,5 +1,5 @@
-/** Bilder von den CDNs (Rebrickable, BrickLink, Brickset, LEGO): Host-Liste,
- * Kopfzeilen und Verbindungspool an einer Stelle statt je Aufrufer. */
+/** Images from the CDNs (Rebrickable, BrickLink, Brickset, LEGO): host list,
+ * headers and connection pool in one place instead of per caller. */
 import https from 'node:https';
 import { openHttps, holeHttps, type FetchStream, type FetchResponse } from '../src/infra/fetch';
 import { ALLOWED_IMAGE_HOSTS } from '../src/infra/foreignAddresses';
@@ -9,20 +9,20 @@ const BROWSER =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const IMAGE_ASSUMPTION = 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8';
 
-/** Ohne Browser-Kennung und Referer weist das Rebrickable-CDN Bildabrufe ab. */
+/** Without a browser identifier and referer the Rebrickable CDN rejects image requests. */
 export const IMAGE_HEADERS: Readonly<Record<string, string>> = {
   'User-Agent': BROWSER,
   Referer: 'https://rebrickable.com/',
   Accept: IMAGE_ASSUMPTION,
 };
-/** Der zweite Satz ohne Referer: Der Hotlink-Schutz antwortet auf einen unpassenden mit 404. */
+/** The second set without referer: the hotlink protection answers an unsuitable one with 404. */
 export const IMAGE_HEADERS_WITHOUT_REFERER: Readonly<Record<string, string>> = {
   'User-Agent': BROWSER,
   Accept: IMAGE_ASSUMPTION,
 };
 
-/** Begrenzt, damit eine Kachelwand nicht beliebig viele TLS-Verbindungen öffnet;
- * IPv4, weil Abrufe ohne IPv6-Route sonst stumm bis zur Frist liefen. */
+/** Limited so a wall of tiles does not open any number of TLS connections;
+ * IPv4, because requests without an IPv6 route would otherwise run silently until the deadline. */
 const POOL = new https.Agent({
   keepAlive: true,
   maxSockets: 32,
@@ -38,7 +38,7 @@ export interface ImageFetch {
   kopfzeilen?: Record<string, string>;
   hosts?: readonly string[];
   redirects?: number;
-  /** Der Bild-Proxy hält Verbindungen offen; Einzelabrufe brauchen das nicht. */
+  /** The image proxy keeps connections open; single requests do not need that. */
   pool?: boolean;
   signal?: AbortSignal;
 }
@@ -53,12 +53,12 @@ const optionen = (o: ImageFetch) => ({
   ...(o.signal ? { signal: o.signal } : {}),
 });
 
-/** Kopf und begrenzter Strom: für den Proxy und Dateien. */
+/** Header and limited stream: for the proxy and files. */
 export function oeffneBild(url: string, o: ImageFetch): Promise<FetchStream> {
   return openHttps(url, optionen(o));
 }
 
-/** Das ganze Bild im Speicher: für kleine Set-Bilder. */
+/** The whole image in memory: for small set images. */
 export function fetchImage(url: string, o: ImageFetch): Promise<FetchResponse> {
   return holeHttps(url, optionen(o));
 }

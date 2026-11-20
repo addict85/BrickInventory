@@ -4,8 +4,8 @@ import { type Nutzlast, checkAbort, type JobRun, JobMove } from '../jobQueue';
 import * as bildlage from './imageState';
 import type { CatalogContext } from './context';
 
-/** Ist das Tageskontingent aufgebraucht, wartet die ganze Art bis zur
- * eingestellten Uhrzeit; der Versuch zählt dann nicht. */
+/** Once the daily quota is used up, the whole kind waits until the
+ * configured time of day; the attempt then does not count. */
 async function bricksetNachlauf(k: CatalogContext, n: Nutzlast<'brickset'>, lauf?: JobRun): Promise<void> {
   const sn = n.set_number;
   try {
@@ -24,7 +24,7 @@ async function bricksetNachlauf(k: CatalogContext, n: Nutzlast<'brickset'>, lauf
   }
 
   checkAbort(lauf);
-  // Ist das Kontingent mittendrin weg, merkt setAngaben das Set selbst erneut vor.
+  // If the quota runs out midway, setAngaben queues the set again itself.
   if (await bildlage.fillFromBrickset(k, sn)) console.log(`[brickset] Retry OK: ${sn}`);
   checkAbort(lauf);
   if ((await anzahlAnleitungen(k, sn)) === 0) {
@@ -36,7 +36,7 @@ async function bricksetNachlauf(k: CatalogContext, n: Nutzlast<'brickset'>, lauf
 const tag = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-/** Im Format der früheren Tabelle, damit die Oberfläche gleich bleibt; die Namen aus dem Katalog. */
+/** In the format of the former table so that the UI stays the same; the names from the catalog. */
 async function bricksetList(k: CatalogContext) {
   const wartend = await k.externalSources.brickset.wartende();
   const namen = new Map(

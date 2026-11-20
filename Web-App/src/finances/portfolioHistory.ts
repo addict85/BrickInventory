@@ -3,7 +3,7 @@ import { buildChartData } from './portfolio/chartData';
 import { reconstructCurve, type CurvesPoint } from './portfolio/curve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
 import type { FinancesContext } from './context';
-/** Je Monat der letzte Punkt; der erste bleibt exakt, damit alle Zeiträume beim selben Start beginnen. */
+/** The last point per month; the first stays exact so that all periods begin at the same start. */
 function onMonths(rawPoints: CurvesPoint[]): CurvesPoint[] {
   const byMonth = new Map<string, CurvesPoint>();
   for (const p of rawPoints) byMonth.set(p.month || p.day.slice(0, 7), p);
@@ -15,7 +15,7 @@ function onMonths(rawPoints: CurvesPoint[]): CurvesPoint[] {
   return monthly;
 }
 
-/** Ein künstlicher Startwert, damit die App eine Linie hat; `messpunkte` sagt der Weboberfläche, dass das kein Verlauf ist. */
+/** An artificial start value so that the app has a line; `messpunkte` tells the web UI that this is no history. */
 function withStartPoint(rawPoints: CurvesPoint[], period: string, purchaseTotal: number, now: Date): CurvesPoint[] {
   const pad = (n: number) => String(n).padStart(2, '0');
   const startDate = new Date(now);
@@ -29,8 +29,8 @@ function withStartPoint(rawPoints: CurvesPoint[], period: string, purchaseTotal:
   return [{ day: startFullDay, fullDay: startFullDay, total: baseVal }, ...rawPoints];
 }
 
-/** `db` und `getSetting` lassen sich hereingeben, damit die Rechnung ohne
- * Datenbank prüfbar bleibt. */
+/** `db` and `getSetting` can be passed in so that the calculation stays testable
+ * without a database. */
 export async function portfolioVerlauf(
   k: FinancesContext,
   viewerId: number,
@@ -40,13 +40,13 @@ export async function portfolioVerlauf(
   getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.einstellungen.userValue,
 ) {
   const ids = await k.household.scopeFrom(idsChoice);
-  // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die
-  // Währung darf dann nicht aus ids[0] kommen.
+  // With the filter "sub-accounts" ids does not contain the asking account; the
+  // currency must then not come from ids[0].
   const uids = Array.isArray(ids) ? ids.map(n => parseInt(String(n), 10)) : [parseInt(String(ids), 10)];
   const currency = await getSetting(viewerId, 'currency', 'EUR');
   const condition = DEFAULT_PRICE_CONDITION;
 
-  // Ein Set, EINE Zeile, auch bei zwei Besitzern — sonst käme es zweimal in die Summe.
+  // One set, ONE row, even with two owners — otherwise it would enter the sum twice.
   const sets = await k.portfolioKurve.setsWithPurchaseTotal(uids);
   if (!sets.length) {
     return { currency, period, points: [], y_axis: [], period_change_pct: null, messpunkte: 0 };
@@ -62,12 +62,12 @@ export async function portfolioVerlauf(
   else if (period === 'month') dateFilter = "AND recorded_at >= NOW() - INTERVAL '30 days'";
   else if (period === 'year') dateFilter = "AND recorded_at >= NOW() - INTERVAL '365 days'";
 
-  // Für Woche und Monat je Tag, für Jahr und Max je MONAT.
+  // For week and month per day, for year and max per MONTH.
   let monthResolution = period === 'year' || period === 'max';
   const bucketExpr = monthResolution ? "'YYYY-MM'" : "'YYYY-MM-DD'";
 
-  // Die Kurve zeigt den HEUTIGEN Bestand über die Zeit: Sonst erschiene jedes
-  // Erfassen als Kurssprung.
+  // The curve shows TODAY's inventory over time: otherwise every
+  // capture would appear as a price jump.
 
   const kurve = await reconstructCurve(k, {
     db,
@@ -84,8 +84,8 @@ export async function portfolioVerlauf(
   monthResolution = kurve.monthResolution;
   const messpunkte = rawPoints.length;
 
-  // Die Beschriftung muss die Verdichtung kennen, sonst bekäme der erste Punkt
-  // ein Monatskürzel und der letzte nicht mehr „heute".
+  // The labeling must know the condensing, otherwise the first point would get
+  // a month abbreviation and the last one would no longer be "today".
   const verdichtet = rawPoints.length > 120;
   if (verdichtet) rawPoints = onMonths(rawPoints);
   const downsampled = monthResolution || verdichtet;

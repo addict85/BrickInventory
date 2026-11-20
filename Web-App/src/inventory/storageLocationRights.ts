@@ -1,11 +1,11 @@
-/** Rechte und Vorgabe der Lagerorte: brauchen Haushalt und Konto, darum über den
- * Kontext; die Orte selbst (lagerort.ts) nehmen nur einen Zugang. */
+/** Rights and default of the storage locations: need household and account, hence via the
+ * context; the places themselves (storageLocation.ts) only take an access. */
 import type { InventoryContext } from './context';
 import * as orte from './repository/storageLocation';
 import { fachfehler } from '../infra/errorTexts';
 import { locationsOf, DEFAULT_KEY, type Lagerort } from './storageLocation';
 
-/** Schnittmenge statt Absage; ohne Ansichtsfilter, denn die Frage ist „darf ich?“. */
+/** Intersection instead of refusal; without a view filter, because the question is "may I?". */
 export async function storageAccounts(
   k: InventoryContext,
   nutzer: number,
@@ -21,7 +21,7 @@ export async function storageAccounts(
   return gewuenscht.filter(id => erlaubt.includes(id));
 }
 
-/** EIN Konto je Schreibaufruf, damit jeder Ort für sich scheitern kann; 403 ohne Recht. */
+/** ONE account per write call, so that every place can fail on its own; 403 without the right. */
 export async function lagerSchreibkonto(
   k: InventoryContext,
   nutzer: number,
@@ -32,13 +32,13 @@ export async function lagerSchreibkonto(
   return konto;
 }
 
-/** Der Vorrat der gewünschten Konten, soweit das Konto sie sehen darf. */
+/** The stock of the requested accounts, as far as the account may see them. */
 export async function locationsFor(k: InventoryContext, nutzer: number, wish: string | undefined): Promise<Lagerort[]> {
   return locationsOf(k, await storageAccounts(k, nutzer, wish, false));
 }
 
-/** `null` löscht sie. Ein fremder Ort wird abgelehnt, nicht ignoriert: Der
- * Stern stünde sonst am falschen Eintrag. */
+/** `null` deletes it. A foreign place is rejected, not ignored: the
+ * star would otherwise be on the wrong entry. */
 export async function setDefault(k: InventoryContext, userId: number, id: number | null): Promise<Lagerort | null> {
   if (id === null) {
     await k.einstellungen.deleteUserSetting(userId, DEFAULT_KEY);
@@ -46,7 +46,7 @@ export async function setDefault(k: InventoryContext, userId: number, id: number
   }
   const ort = await orte.locationOfAccount(k.db, id, userId);
   if (!ort) fachfehler('nicht_gefunden', 'lagerort_unbekannt');
-  // Über die Einstellungen des Kontos: user_settings gehört dorthin.
+  // Via the account's settings: user_settings belongs there.
   await k.einstellungen.setUserSetting(userId, DEFAULT_KEY, String(id));
   return { id: parseInt(String(ort.id), 10), user_id: userId, name: ort.name };
 }

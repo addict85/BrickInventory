@@ -1,5 +1,5 @@
-/** Die öffentliche Seite des Bereichs. Klienten mit Schlüssel und Kontingent gibt es
- * nur über die Dienste (`quellen`), nicht als Import. */
+/** The public face of the area. Clients with key and quota are only available
+ * via the services (`quellen`), not as an import. */
 export {
   IMAGE_HEADERS,
   IMAGE_HEADERS_WITHOUT_REFERER,

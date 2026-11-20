@@ -1,5 +1,5 @@
 /**
- * Schema-Migrationen mit nummerierten Dateien.
+ * Schema migrations with numbered files.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,15 +8,15 @@ import type { ClientBase } from 'pg';
 import { reportError, fehlertext, logAndContinue } from '../src/infra/error';
 import type { DbInterface } from './types';
 
-/** Wie lange eine Migration auf eine Sperre wartet und wie oft sie es versucht. */
+/** How long a migration waits for a lock and how often it tries. */
 export interface Sperrfrist {
   fristMs: number;
   versuche: number;
 }
 
-/** Hält ein anderer Prozess eine Tabelle (Web-Prozess mitten in einer Anfrage,
- * offene psql-Sitzung), hinge der Dienst migration ohne Frist still. Mit Frist
- * nennt er den Grund, versucht es erneut und gibt nach den Versuchen auf. */
+/** If another process holds a table (web process in the middle of a request,
+ * open psql session), the migration service would hang silently without a deadline. With a deadline
+ * it names the reason, tries again and gives up after the attempts. */
 export const LOCK_PERIOD: Sperrfrist = { fristMs: 30_000, versuche: 3 };
 
 async function withLockPeriod<T>(was: string, frist: Sperrfrist, work: () => Promise<T>): Promise<T> {
@@ -34,7 +34,7 @@ async function withLockPeriod<T>(was: string, frist: Sperrfrist, work: () => Pro
   }
 }
 
-/** Alle noch nicht angewandten Migrationen; `client` ist eine eigene Verbindung, nicht der Pool. */
+/** All migrations not yet applied; `client` is a connection of its own, not the pool. */
 async function runMigrations(
   client: ClientBase,
   { sichern = false, sperre = LOCK_PERIOD }: { sichern?: boolean; sperre?: Sperrfrist } = {},
@@ -49,8 +49,8 @@ async function runMigrations(
   const dir = path.join(__dirname, 'migrations');
   if (!fs.existsSync(dir)) return [];
 
-  // Lexikografisch sortieren — deshalb die vierstellige Nummer im Dateinamen.
-  // Lücken (0002, 0028) sind gewollt: Eine entfallene Migration gibt ihre Nummer nicht weiter.
+  // Sort lexicographically — hence the four-digit number in the file name.
+  // Gaps (0002, 0028) are intended: a dropped migration does not pass its number on.
   const files = fs
     .readdirSync(dir)
     .filter(f => f.endsWith('.sql'))
@@ -67,13 +67,13 @@ async function runMigrations(
   const applied: string[] = [];
   for (const file of offen) {
     const sql = fs.readFileSync(path.join(dir, file), 'utf8');
-    // Eine Transaktion je Datei: entweder ganz oder gar nicht.
+    // One transaction per file: all or nothing.
     try {
       await withLockPeriod(`Migration ${file}`, sperre, async () => {
         await client.query('BEGIN');
         try {
-          // Die 30 s des Pools gelten für Anfragen, nicht für den Umbau einer
-          // grossen Tabelle; ein Abbruch mittendrin hiesse Neustart in Schleife.
+          // The pool's 30 s apply to requests, not to rebuilding a
+          // large table; an abort in the middle would mean a restart loop.
           await client.query('SET LOCAL statement_timeout = 0');
           await client.query(`SET LOCAL lock_timeout = ${Math.trunc(sperre.fristMs)}`);
           await client.query(sql);
@@ -88,9 +88,9 @@ async function runMigrations(
         }
       });
     } catch (e) {
-      // Bewusst weiterwerfen: Der Start bricht ab. Ein Server, der auf einem
-      // halb migrierten Schema weiterläuft, produziert Folgefehler, die
-      // niemand mehr auf diese Stelle zurückführt.
+      // Rethrow on purpose: startup aborts. A server that keeps running on a
+      // half-migrated schema produces follow-up errors that
+      // nobody traces back to this place anymore.
       throw new Error(`Migration ${file} fehlgeschlagen: ${(e as Error).message}`);
     }
     applied.push(file);
@@ -104,14 +104,14 @@ interface Applied {
   pruefsumme: string | null;
 }
 
-/** SHA-256 des Inhalts; Zeilenenden zählen nicht (ein Windows-Checkout ist dieselbe Migration). */
+/** SHA-256 of the content; line endings do not count (a Windows checkout is the same migration). */
 function pruefsumme(sql: string): string {
   return crypto.createHash('sha256').update(sql.replace(/\r\n/g, '\n')).digest('hex');
 }
 
-/** Eine angewandte Migration darf sich nicht ändern, sonst gäbe es zwei
- * Schemas unter einem Namen. Fehlt die Summe (ältere Zeile), wird sie
- * einmal nachgetragen. */
+/** An applied migration must not change, otherwise there would be two
+ * schemas under one name. If the sum is missing (older row), it is
+ * filled in once. */
 async function checkApplied(client: ClientBase, dir: string, rows: Applied[]): Promise<void> {
   const geaendert: string[] = [];
   for (const r of rows) {
@@ -130,8 +130,8 @@ async function checkApplied(client: ClientBase, dir: string, rows: Applied[]): P
 }
 
 const SICHERUNGEN_BEHALTEN = 3;
-/** Länger braucht niemand eine Kopie, um ein misslungenes Update zurückzunehmen;
- * danach wäre sie nur ein Ort, an dem gelöschte Konten weiterleben. */
+/** Nobody needs a copy longer than this to undo a failed update;
+ * after that it would only be a place where deleted accounts live on. */
 export const BACKUP_DEADLINE_DAYS = 30;
 const SICHERUNG_SCHEMA = '^vor_migration_[0-9]{17}$';
 
@@ -141,10 +141,10 @@ const viaClient = (c: ClientBase): Abfrager => ({
   run: async (q: string, p?: unknown[]) => ({ changes: (await c.query(q, p)).rowCount ?? 0 }),
 });
 
-/** Kopien älter als `tage` (Datum steht im Schemanamen, UTC). Die Laufzeitrolle
- * besitzt sie nicht und darf sie nicht löschen; sie leert sie, damit kein
- * gelöschtes Konto darin weiterlebt, und der nächste Lauf des Dienstes
- * migration räumt das leere Schema weg. @returns gelöschte oder geleerte Schemas */
+/** Copies older than `tage` (the date is in the schema name, UTC). The runtime role
+ * does not own them and may not drop them; it empties them so no
+ * deleted account lives on in them, and the next run of the migration
+ * service removes the empty schema. @returns dropped or emptied schemas */
 export async function cleanOldBackupsOn(c: Abfrager, tage = BACKUP_DEADLINE_DAYS): Promise<number> {
   const rows = await c.all<{ nspname: string; eigen: boolean }>(
     `
@@ -171,7 +171,7 @@ export async function cleanOldBackupsOn(c: Abfrager, tage = BACKUP_DEADLINE_DAYS
   return n;
 }
 
-/** Migrationsdateien, die in schema_migrations fehlen; ohne die Tabelle alle. */
+/** Migration files missing from schema_migrations; without the table all of them. */
 export async function openMigrations(client: ClientBase): Promise<string[]> {
   const dir = path.join(__dirname, 'migrations');
   const dateien = fs.existsSync(dir)
@@ -187,17 +187,17 @@ export async function openMigrations(client: ClientBase): Promise<string[]> {
   return dateien.filter(f => !fertig.has(f));
 }
 
-/** Ein gelöschtes Konto auch aus den Kopien, in der Transaktion des Löschens, damit keine Kopie
- * das Konto überlebt. Über die Funktion der Eigentümerin (Migration 0119): Die Web-Systemrolle
- * darf die Kopien selbst nicht lesen. */
+/** A deleted account also from the copies, in the deleting transaction, so no copy
+ * outlives the account. Through the owner's function (migration 0119): the web system role
+ * may not read the copies itself. */
 export async function removeAccountFromBackups(c: Abfrager, uid: number): Promise<number> {
   return (await c.all<{ n: number }>('SELECT konto_aus_sicherungen_loeschen($1) AS n', [uid]))[0]?.n ?? 0;
 }
 
-/** Vor offenen Migrationen die Nutzerdaten (users, Tabellen mit user_id oder
- * Fremdschlüssel auf users) in ein eigenes Schema kopieren: Der Container hat
- * kein pg_dump, und eine umformende Migration ist ohne Kopie nicht
- * umkehrbar. Drei Sicherungen bleiben; Wiederherstellen steht im README. */
+/** Before open migrations, copy the user data (users, tables with user_id or
+ * a foreign key to users) into a schema of its own: the container has
+ * no pg_dump, and a transforming migration cannot be undone without a copy.
+ * Three backups are kept; restoring is described in the README. */
 async function secureUserData(client: ClientBase, offen: string[], sperre = LOCK_PERIOD): Promise<string> {
   const schema = `vor_migration_${new Date().toISOString().replace(/\D/g, '').slice(0, 17)}`;
   const { rows } = await client.query<{ name: string }>(`
@@ -222,7 +222,7 @@ async function secureUserData(client: ClientBase, offen: string[], sperre = LOCK
         for (const { name } of rows) {
           const t = client.escapeIdentifier(name);
           await client.query(`CREATE TABLE ${schema}.${t} AS TABLE public.${t}`);
-          // Die Kopie trägt keine Policy des Originals: ohne Policy sieht die Laufzeitrolle keine Zeile.
+          // The copy carries no policy of the original: without a policy the runtime role sees no row.
           await client.query(`ALTER TABLE ${schema}.${t} ENABLE ROW LEVEL SECURITY`);
         }
         await client.query(`COMMENT ON SCHEMA ${schema} IS ${client.escapeLiteral(`vor ${offen.join(', ')}`)}`);

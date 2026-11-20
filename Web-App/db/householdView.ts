@@ -1,8 +1,8 @@
-/** Der Haushalt, wie ihn Bereiche unter `haushalt` lesen: account_links gehört dem Haushalt,
- * die Form des Baums steht nur hier, nicht in jedem Leser neu. */
+/** The household as areas under `haushalt` read it: account_links belongs to the household;
+ * the shape of the tree lives only here, not again in every reader. */
 
-/** Das Konto `konto` und alle Unterkonten darunter, nur abwärts: Über ein geteiltes
- * Unterkonto hinauf erreichte man sonst fremde Hauptkonten. Spalte `id`. */
+/** The account `konto` and all sub-accounts below it, downwards only: going up through a shared
+ * sub-account would otherwise reach foreign main accounts. Column `id`. */
 export function householdDown(konto: string): string {
   return `WITH RECURSIVE baum(id) AS (
       SELECT ${konto}::int
@@ -11,13 +11,13 @@ export function householdDown(konto: string): string {
     SELECT id FROM baum`;
 }
 
-/** Unterkonten aus `ids`, die auch an einem Hauptkonto ausserhalb hängen; Spalten `id`, `haupt`. */
+/** Sub-accounts from `ids` that also hang on a main account outside; columns `id`, `haupt`. */
 export function auchFremdGeteilt(ids: string): string {
   return `SELECT l.sub_user_id AS id, l.main_user_id AS haupt FROM account_links l
      WHERE l.sub_user_id = ANY(${ids}::int[]) AND NOT l.main_user_id = ANY(${ids}::int[])`;
 }
 
-/** Eine Zeile, wenn `konto` ein Hauptkonto hat. */
+/** One row if `konto` has a main account. */
 export function isSubAccount(konto: string): string {
   return `SELECT 1 FROM account_links WHERE sub_user_id = ${konto} LIMIT 1`;
 }

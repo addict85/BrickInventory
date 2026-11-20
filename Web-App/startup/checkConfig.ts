@@ -1,7 +1,7 @@
 /**
- * Als erster Import von server.ts: prüft die ganze Konfiguration, bevor ein
- * anderes Modul beim Laden einen Wert liest. Ein Fehler beendet den Start mit
- * einer Meldung je Variable statt mit einem Stacktrace aus irgendeinem Modul.
+ * As the first import of server.ts: checks the whole configuration before any
+ * other module reads a value while loading. An error ends the startup with
+ * one message per variable instead of a stack trace from some module.
  */
 import { checkKonfigOnStart, konfig } from '../src/infra/config';
 

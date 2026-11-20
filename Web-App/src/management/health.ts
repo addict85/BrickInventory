@@ -1,5 +1,5 @@
-/** Was compose.yaml und die Überwachung ohne Anmeldung fragen: anonym nur der
- * Status, der Verwalter sieht Startzustand und Verbindungen. */
+/** What compose.yaml and monitoring ask without login: anonymously only the
+ * status, the admin sees startup state and connections. */
 import type { ManagementContext } from './context';
 
 export async function healthReport(k: ManagementContext, verwalter: boolean) {

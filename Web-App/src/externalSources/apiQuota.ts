@@ -8,12 +8,12 @@ export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
 export const REBRICKABLE_DEFAULT_DAILY = 25000;
 const DEFAULTS: Record<ApiName, number> = { bricklink: 4000, rebrickable: REBRICKABLE_DEFAULT_DAILY, brickset: 100 };
 
-/** Je Konto (ausser Verwaltern): Sonst verbrauchte ein Unterkonto das
- * Kontingent aller. */
+/** Per account (except admins): otherwise a sub-account would use up
+ * everyone's quota. */
 export const SHARE_JE_ACCOUNT = 0.25;
 
-/** Alle Nicht-Verwalter zusammen; die andere Hälfte bleibt Verwaltern und dem
- * Hintergrund. Gezählt in der Zeile `konto = -1`. */
+/** All non-admins together; the other half stays with the admins and the
+ * background. Counted in the row `konto = -1`. */
 export const SHARE_ALL_ACCOUNTS = 0.5;
 const ALL_ACCOUNTS = -1;
 
@@ -26,8 +26,8 @@ export async function limitTheSource(k: ForeignSourcesContext, apiName: ApiName)
 const limitJeAccount = (limit: number) => Math.max(1, Math.ceil(limit * SHARE_JE_ACCOUNT));
 const limitAllAccounts = (limit: number) => Math.max(1, Math.ceil(limit * SHARE_ALL_ACCOUNTS));
 
-/** Atomar: Das Upsert erhöht nur unter der Grenze, und scheitert die Grenze des
- * Kontos, fällt auch die Gesamtzählung zurück. */
+/** Atomic: the upsert only increments below the limit, and if the account's limit
+ * fails, the total count falls back as well. */
 export async function kontingentPruefenUndZaehlen(k: ForeignSourcesContext, apiName: ApiName, _default?: number) {
   const limit = await limitTheSource(k, apiName);
   const tag = heute(k);
@@ -61,8 +61,8 @@ export async function kontingentUebersicht(k: ForeignSourcesContext, apiName: Ap
   return { count, limit, remaining: Math.max(0, limit - count), date: tag };
 }
 
-/** Zählt NICHT: Die Aufrufer fragen vorher, damit ein erschöpftes Kontingent
- * als solches gemeldet wird statt als Abruffehler. */
+/** Does NOT count: the callers ask beforehand so that an exhausted quota
+ * is reported as such instead of as a fetch error. */
 export async function quotaFree(kx: ForeignSourcesContext, apiName: ApiName) {
   const s = await kontingentUebersicht(kx, apiName);
   const konto = currentAccount();

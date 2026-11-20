@@ -1,26 +1,26 @@
-/** Je Erfassung mit dem Preis ihres Zustands, weil gemischte Bestände sonst
- * einen falschen Durchschnitt bekämen. */
+/** Per acquisition with the price of its condition, because mixed inventories would otherwise
+ * get a wrong average. */
 import { inZehntel4, aufRappen, alsText } from '../infra/geld';
 import { zustand } from '../infra/validate';
 import type { FinancesContext } from './context';
 
 export interface SetValue {
   unit_price: number | null;
-  /** Ungerundet, in Zehntausendsteln: Summen rechnen damit, nicht mit dem gerundeten. */
+  /** Unrounded, in ten-thousandths: sums are calculated with this, not with the rounded one. */
   unit_z: number | null;
   total: number | null;
   quantity: number;
   by_condition: { condition: 'N' | 'U'; quantity: number; unit_price: number | null }[];
 }
 
-/** `"0.00"` aus NUMERIC ergibt 0, nicht truthy. */
+/** `"0.00"` from NUMERIC yields 0, not truthy. */
 function num(v: unknown): number {
   const n = parseFloat(String(v));
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
-/** In EINER Abfrage für viele Sets.
- * @returns Map "setNumber|condition" → Marktpreis */
+/** In ONE query for many sets.
+ * @returns Map "setNumber|condition" → market price */
 export async function loadConditionPrices(
   k: FinancesContext,
   setNumbers: string[],
@@ -51,8 +51,8 @@ function priceFor(prices: Map<string, number>, setNumber: string, cond: string):
   return other || null;
 }
 
-/** @param acquisitions Leer = keine Erfassungen; dann zählt fallbackCondition
- *        mit fallbackQuantity. */
+/** @param acquisitions Empty = no acquisitions; then fallbackCondition counts
+ *        with fallbackQuantity. */
 export function valueSet(
   setNumber: string,
   acquisitions: { quantity: number; condition?: string | null }[],
@@ -86,12 +86,12 @@ export function valueSet(
     }
   }
 
-  // Kein Zustand hat einen Preis → kein Wert, nicht 0: Eine 0 sähe in den
-  // Summen aus wie ein bekannter Wert.
+  // No condition has a price → no value, not 0: a 0 would look in the
+  // sums like a known value.
   if (priced === 0) return { unit_price: null, unit_z: null, total: null, quantity, by_condition };
 
-  // Über die BEPREISTEN Stück, damit ein fehlender Preis den Stückpreis nicht
-  // nach unten zieht. Gerundet wird erst hier.
+  // Over the PRICED pieces, so that a missing price does not pull the unit price
+  // down. Rounding happens only here.
   return {
     unit_price: aufRappen(totalZ / priced),
     unit_z: totalZ / priced,
@@ -101,7 +101,7 @@ export function valueSet(
   };
 }
 
-/** Für Listen loadConditionPrices() + valueSet(), damit es bei einer Abfrage bleibt. */
+/** For lists loadConditionPrices() + valueSet(), so that it stays at one query. */
 export async function getSetValue(
   k: FinancesContext,
   userId: number,
@@ -113,11 +113,11 @@ export async function getSetValue(
   return valueSet(setNumber, acqs, prices, 'N', 1);
 }
 
-// Jede Erfassung mit dem Marktpreis IHRES Zustands — für die Finanztabelle.
+// Every acquisition with the market price of ITS condition — for the finance table.
 
-/** Die eine Regel für Sets, Teile, Figuren, Kachel und Verlauf. null bei
- * Kaufpreis 0: Gegen ein Geschenk gibt es keine Prozentzahl (gegen 0,01
- * stand dort „+327.600 %"). */
+/** The one rule for sets, parts, figures, tile and history. null for a
+ * purchase price of 0: against a gift there is no percentage (against 0.01
+ * it showed "+327,600 %"). */
 export function developmentPercent(kauf: number | null | undefined, markt: number | null | undefined): number | null {
   if (kauf == null || !(kauf > 0) || markt == null || !(markt > 0)) return null;
   return ((markt - kauf) / kauf) * 100;
@@ -136,7 +136,7 @@ export interface AcquisitionValueRow {
   id: number;
   condition: 'N' | 'U';
   quantity: number;
-  /** null = kein Kaufpreis erfasst. 0 = erfasst und geschenkt — nicht dasselbe. */
+  /** null = no purchase price captured. 0 = captured and gifted — not the same. */
   purchase_price: number | null;
   avg_price: number | null;
   total_avg: string | null;
@@ -144,13 +144,13 @@ export interface AcquisitionValueRow {
   pnl_pct: string | null;
   pnl_prozent: number | null;
   created_at: Date | string | null;
-  /** Ein Kaufpreis in fremder Währung ohne Kurs: Er zählt nicht mit, steht aber da. */
+  /** A purchase price in a foreign currency without a rate: it does not count, but it is shown. */
   kaufpreis_original?: number;
   kaufpreis_waehrung?: string;
   price_estimated?: true;
 }
 
-/** Was eine Erfassung für ihren Wert mitbringt; purchase_price bei Sets, unit_price sonst. */
+/** What an acquisition brings for its value; purchase_price for sets, unit_price otherwise. */
 export interface EntryForValue {
   id: number;
   condition?: string | null;
@@ -164,7 +164,7 @@ export interface EntryForValue {
   price_estimated?: boolean | null;
 }
 
-/** @param prices Map "setNumber|condition" → Marktpreis (loadConditionPrices) */
+/** @param prices Map "setNumber|condition" → market price (loadConditionPrices) */
 export function valueAcquisitionRows(
   setNumber: string,
   acquisitions: EntryForValue[],
@@ -173,8 +173,8 @@ export function valueAcquisitionRows(
   return (acquisitions || []).map(a => {
     const condition: 'N' | 'U' = a.condition === 'U' ? 'U' : 'N';
     const quantity = Math.max(1, parseInt(String(a.quantity), 10) || 1);
-    // purchase_price (Sets) und unit_price (manuell) sind dieselbe Grösse unter
-    // zwei Namen; beide lesen erspart je eine Fassung dieser Funktion.
+    // purchase_price (sets) and unit_price (manual) are the same quantity under
+    // two names; reading both saves one version of this function each.
     const raw = a.purchase_price ?? a.unit_price;
     const purchase = raw === null || raw === undefined ? null : parseFloat(String(raw)) || 0;
     const unit = priceFor(prices, setNumber, condition);
@@ -197,8 +197,8 @@ export function valueAcquisitionRows(
   });
 }
 
-/** Nur über Zeilen MIT Kaufpreis: Eine Erfassung ohne Preis zöge den Schnitt
- * sonst gegen null. */
+/** Only over rows WITH a purchase price: an acquisition without a price would otherwise pull
+ * the average towards zero. */
 export function weightedPurchase(rows: AcquisitionValueRow[]): number | null {
   const withCost = (rows || []).filter(r => r.purchase_price != null);
   const qty = withCost.reduce((s, r) => s + r.quantity, 0);
@@ -222,8 +222,8 @@ export interface TileSource {
   baseline_pnl_pct: string | null;
 }
 
-/** Im Haushalt zählt der nach Menge gewichtete Basispreis: „Irgendeine Zeile"
- * ergäbe je nach Reihenfolge eine andere Prozentzahl. */
+/** In the household the base price weighted by quantity counts: "any row"
+ * would yield a different percentage depending on the order. */
 export function tileValues(zeilen: TileSource[]): Map<string, TileValue> {
   const jeSet = new Map<string, TileSource[]>();
   for (const z of zeilen) jeSet.set(z.set_number, [...(jeSet.get(z.set_number) || []), z]);
