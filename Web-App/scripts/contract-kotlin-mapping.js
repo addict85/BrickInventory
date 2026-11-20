@@ -1,12 +1,12 @@
 'use strict';
 
 /**
- * Was der Vertrag nicht sagt, die Kotlin-Typen der App aber brauchen: Namen
- * für Formen ohne sprechenden Namen, Fachtypen statt Text, die Rümpfe der
- * Anfragen. Gelesen von contract-kotlin-dtos.js.
+ * What the contract does not say but the app's Kotlin types need: names
+ * for shapes without a telling name, domain types instead of text, the bodies of the
+ * requests. Read by contract-kotlin-dtos.js.
  */
 
-/** Fachtypen aus core-model: Paket, Leerwert, wahlweise ein eigener Serializer (dann immer nullbar). */
+/** Domain types from core-model: package, empty value, optionally an own serializer (then always nullable). */
 /** @type {Record<string, { paket: string, leer: string, serializer?: string }>} */
 const FACHTYPEN = {
   Zustand: {
@@ -32,7 +32,7 @@ const FACHTYPEN = {
   },
 };
 
-/** Rohname (Schema oder `<Eltern><Feld>`) → Kotlin-Name. Gleicher Name heisst eine Form. */
+/** Raw name (schema or `<Parent><Field>`) → Kotlin name. The same name means one shape. */
 /** @type {Record<string, string>} */
 const NAMEN = {
   AnmeldeNutzer: 'User',
@@ -103,7 +103,7 @@ const NAMEN = {
   PdfAuftragAnfragePartsEintrag: 'PdfAuftragTeil',
 };
 
-/** `<Klasse>.<json>` → Fachtyp; der Typ ersetzt den Text, Liste und Nullbarkeit bleiben. */
+/** `<Class>.<json>` → domain type; the type replaces the text, list and nullability stay. */
 /** @type {Record<string, string>} */
 const FIELD_TYPES = {
   'JobStatus.status': 'Laufstatus',
@@ -202,7 +202,7 @@ const FIELD_TYPES = {
   'PasskeyAnmeldungAnfrage.label': 'String',
 };
 
-/** `<Klasse>.<json>` → Kotlin-Ausdruck als Vorgabe statt des Leerwerts. */
+/** `<Class>.<json>` → Kotlin expression as the default instead of the empty value. */
 /** @type {Record<string, string>} */
 const DEFAULTS = {
   'CacheTtlResponse.ttl': '"24"',
@@ -266,9 +266,9 @@ const DEFAULTS = {
 };
 
 /**
- * Pflichtfelder einer Antwort ohne Leerwert: Fehlt eines, scheitert das Lesen, statt
- * still eine Null zu zeigen. Alle übrigen Felder lesen sich bei Fehlen als Leerwert
- * (älterer Server, abgelegte ältere Antwort).
+ * Required fields of a response without an empty value: if one is missing, reading fails instead of
+ * silently showing a zero. All other fields read as the empty value when missing
+ * (older server, stored older response).
  */
 const STRICT = new Set([
   'Acquisition.id',
@@ -400,7 +400,7 @@ const STRICT = new Set([
   'ZweiterFaktorStand.success',
 ]);
 
-/** `<Klasse>.<json>` → Name der Eigenschaft, wo der JSON-Name nichts sagt. */
+/** `<Class>.<json>` → name of the property, where the JSON name says nothing. */
 /** @type {Record<string, string>} */
 const PROPERTIES = {
   'ConditionValuation.pnl_prozent': 'pnlPct',
@@ -411,14 +411,14 @@ const PROPERTIES = {
   'CurrentByCondition.U': 'used',
 };
 
-/** Konstanten aus core-model, die eine Vorgabe nennen darf. */
+/** Constants from core-model that a default may name. */
 /** @type {Record<string, string>} */
 const CONSTANTS = {
   KEINE_FARBE: 'ch.brickinventoryapp.model.domain.KEINE_FARBE',
   TOKEN_SCOPE_APP: 'ch.brickinventoryapp.model.domain.TOKEN_SCOPE_APP',
 };
 
-/** Antwortfelder, die fehlen dürfen und dann null statt leer sind. */
+/** Response fields that may be missing and are then null instead of empty. */
 const NULLBAR = new Set([
   'QrMeldung.abholung',
   'QrMeldung.code',
@@ -445,7 +445,7 @@ const NULLBAR = new Set([
   'PartsStats.manual_parts',
 ]);
 
-/** Rumpffelder, die die App immer schickt, nie null: Der Vertrag lässt sie für ältere Clients offen. */
+/** Body fields the app always sends, never null: the contract leaves them optional for older clients. */
 const PFLICHT = new Set([
   'GeraeteSchluesselAnfrage.kette',
   'MerkpostenRequest.condition',
@@ -496,8 +496,8 @@ const PFLICHT = new Set([
 ]);
 
 /**
- * Freiwillige Rumpffelder, die als null hinausgehen statt wegzufallen: Dort heisst
- * null beim Server „leeren“, Weglassen „unverändert“.
+ * Optional body fields that go out as null instead of being dropped: there null means
+ * "clear" for the server, omitting means "unchanged".
  */
 const NULL_SEND = new Set([
   'AndereBeendenAnfrage.password',
@@ -556,10 +556,10 @@ const NULL_SEND = new Set([
   'LagerortVorgabeRequest.id',
 ]);
 
-/** Schemas, die die App selbst führt: Fehlercode trägt Kennung und Rückfall für Unbekanntes. */
+/** Schemas the app keeps itself: Fehlercode carries an identifier and a fallback for the unknown. */
 const OMIT = new Set(['Fehlercode']);
 
-/** `<METHODE> <pfad>` → Name des Rumpfs, den die App schickt. */
+/** `<METHOD> <path>` → name of the body the app sends. */
 /** @type {Record<string, string>} */
 const ANFRAGEN = {
   'POST /api/v1/minifigs': 'AddMinifigRequest',

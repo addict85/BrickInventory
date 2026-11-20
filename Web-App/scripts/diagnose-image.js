@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Bild-Diagnose für EIN Set — wo bricht die Kette?
+ * Image diagnostics for ONE set — where does the chain break?
  */
 const path = require('node:path');
 const fs = require('node:fs');
@@ -29,8 +29,8 @@ function hole(url) {
       {
         timeout: 10000,
         headers: {
-          // Dieselben Kopfzeilen wie der Bild-Proxy — sonst misst man die
-          // Bot-Erkennung des CDN statt der Verfügbarkeit des Bildes.
+          // The same headers as the image proxy — otherwise one measures the
+          // CDN's bot detection instead of the image's availability.
           'User-Agent':
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
           Referer: 'https://rebrickable.com/',
@@ -56,11 +56,11 @@ function hole(url) {
 (async () => {
   console.log(`\n═══ Bild-Diagnose für ${setNumber} ═══\n`);
 
-  // ── 1. Die Zeilen der Konten ──────────────────────────────────────────────
+  // ── 1. The accounts' rows ───────────────────────────────────────────────────
   //
-  // Seit Migration 0033 stehen die Bildfelder im Katalog, und alle Zeilen
-  // tragen damit denselben Wert — was die Diagnose unten als Punkt 2 ohnehin
-  // schon sagte. Die Liste hier beantwortet weiter „welche Konten fuehren das
+  // Since migration 0033 the image fields are in the catalog, and all rows
+  // thus carry the same value — which the diagnostics below already said as point 2
+  // anyway. The list here still answers "which accounts hold the
   // Set?".
   const rows = await db.all(
     `SELECT s.user_id, u.username, c.image_url, c.image_local
@@ -78,7 +78,7 @@ function hole(url) {
     zeile('image_local', r.image_local || '∅ leer');
   }
 
-  // ── 2. Der gemeinsame Katalog ─────────────────────────────────────────────
+  // ── 2. The shared catalog ───────────────────────────────────────────────────
   const cat = await db.get(
     `SELECT rs.name, c.image_url, c.image_local
        FROM set_catalog c JOIN rb_sets rs ON rs.set_num = c.set_number WHERE c.set_number = $1`,
@@ -92,7 +92,7 @@ function hole(url) {
     zeile('image_local', cat.image_local || '∅ leer');
   }
 
-  // ── 3. Was die API daraus macht ───────────────────────────────────────────
+  // ── 3. What the API makes of it ─────────────────────────────────────────────
   const effective = rows[0]?.image_url || cat?.image_url || null;
   const lokal = rows[0]?.image_local || cat?.image_local || null;
   console.log('\n3. Was die API ausliefert (COALESCE seither):');
@@ -102,7 +102,7 @@ function hole(url) {
     console.log('   ⚠️  BEIDE leer — die Clients haben nichts anzuzeigen. Das ist die Ursache.');
   }
 
-  // ── 4. Liegen die Dateien wirklich da? ────────────────────────────────────
+  // ── 4. Are the files really there? ──────────────────────────────────────────
   console.log('\n4. Dateien auf der Platte:');
   if (!lokal) console.log('   (keine lokale Adresse hinterlegt)');
   else {
@@ -122,7 +122,7 @@ function hole(url) {
     console.log('   das Original aus — das ist KEIN Fehler.');
   }
 
-  // ── 5. Antwortet das CDN? ─────────────────────────────────────────────────
+  // ── 5. Does the CDN answer? ─────────────────────────────────────────────────
   console.log('\n5. Erreichbarkeit der CDN-Adresse:');
   if (!effective || effective.startsWith('/')) console.log('   (keine externe Adresse zu prüfen)');
   else {

@@ -39,7 +39,7 @@ export const ganz = z.number().int();
 
 /** A duplicate field from the time before unified money: stays for older apps, dropped with API version 3. */
 export const veraltet = <T extends z.ZodType>(s: T, statt: string) =>
-  s.meta({ deprecated: true, description: `veraltet, entfällt mit API-Version 3; stattdessen ${statt}` });
+  s.meta({ deprecated: true, description: `deprecated, dropped with API version 3; use ${statt} instead` });
 /** Percent as text ("12.3"); the number is in pnl_prozent. */
 export const PERCENT_TEXT = veraltet(z.string().nullable().optional(), 'pnl_prozent');
 

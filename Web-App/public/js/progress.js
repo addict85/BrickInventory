@@ -1,5 +1,5 @@
-// Der Importbalken im Seitenkopf ist ein geschlossener Gegenstand: Nach aussen zählen gibCheckOnLoad() und
-// resetGive(), der Rest ist Innenleben.
+// The import bar in the page header is a closed subject: to the outside gibCheckOnLoad() and
+// resetGive() count, the rest is internals.
 import { html } from './escaping.js';
 import { registerActions } from './registry.js';
 import { apiRaw, api, apiData, strom } from './api.js';
@@ -12,22 +12,22 @@ import { loggedInAccount } from './state.js';
 
 // ── Global CSV Import Progress Bar ───────────────────────────────────────────
 /** @type {ReturnType<typeof setInterval> | null} */
-let _gibTimer = null; // Polling-Fallback-Timer (nur wenn SSE scheitert)
+let _gibTimer = null; // Polling fallback timer (only if SSE fails)
 /**
- * Ein Eintrag im Ergebnis eines Imports. `results` nennt der Vertrag nicht (CsvImportStatus ist offen); so
- * schreibt ihn src/sets/csvImportLauf.ts.
+ * An entry in an import's result. The contract does not name `results` (CsvImportStatus is open); this is how
+ * src/sets/csvImportLauf.ts writes it.
  * @typedef {{ set_number?: string, zeile?: number, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, menge?: number, katalog_offen?: boolean }} ImportResult
  * @typedef {import('../../frontend-types/contract').CsvImportStatus & { results?: ImportResult[] }} ImportStand
  */
 /** @type {{ schliesse: () => void } | null} */
-let _gibSse = null; // aktiver Strom (SSE), falls verfügbar
+let _gibSse = null; // active stream (SSE), if available
 let _gibLastCount = 0;
 
-// Rendert einen Import-Status ins UI. Quelle (SSE oder Polling) ist egal.
+// Renders an import status into the UI. The source (SSE or polling) does not matter.
 /**
- * „2 ok, 1 Fehler“: Zahl und Wort aus einem Schlüssel, damit die Einzahl stimmt („1 Errors“).
+ * "2 ok, 1 error": number and word from one key, so that the singular is right ("1 Errors").
  * @param {{ ok?: number | null, warn?: number | null, err?: number | null }} s
- * @param {string} [warnKey] eigene Bezeichnung der Warnungen
+ * @param {string} [warnKey] own label for the warnings
  */
 export function importCounter(s, warnKey = 'csv.warnings_n') {
   return [
@@ -49,7 +49,7 @@ function gibApplyStatus(s) {
   const total = s.total || 0;
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
 
-  // Kopfleiste nachführen
+  // update the header bar
   const _gibEl = G('global-import-bar');
   if (_gibEl) {
     if (running) _gibEl.style.display = 'flex';
@@ -59,7 +59,7 @@ function gibApplyStatus(s) {
       : importCounter(s);
   }
 
-  // Überlagerung nachführen, solange sie offen ist (auch im zweiten Fenster oder nach Minimieren)
+  // Update the overlay while it is open (also in the second window or after minimizing)
   const overlayOpen = G('progress-overlay')?.classList.contains('open');
   if (overlayOpen) {
     G('prog-title-txt').textContent = tRaw('csv.import_title');
@@ -77,7 +77,7 @@ function gibApplyStatus(s) {
     }
   }
 
-  // Detailbereich nachführen
+  // update the detail area
   setzeHtml(
     G('gib-stats'),
     html`${Number(s.ok) || 0} ${ico('ok')} · ${Number(s.warn) || 0} ${ico('warnung')} · ${Number(s.err) || 0} ${ico('fehler')}`,
@@ -96,8 +96,8 @@ function gibApplyStatus(s) {
     tRaw('csv.errors_n', { n: s.err || 0 }),
   ].join(' · ');
 
-  // Neue Protokollzeilen anhängen — nur wenn die CSV-Abfrageschleife sie nicht schon schreibt (_csvPollActive = true
-  // heisst: dieses Fenster hat den Import gestartet, die Schleife schreibt das Protokoll)
+  // Append new log lines — only if the CSV polling loop does not already write them (_csvPollActive = true
+  // means: this window started the import, the loop writes the log)
   if (!_csvPollActive && s.results && s.results.length > _gibLastCount) {
     s.results.slice(_gibLastCount).forEach(r => {
       const z = logRow(r);
@@ -108,7 +108,7 @@ function gibApplyStatus(s) {
 
   if (!running) {
     rememberLastImport(s);
-    // Import fertig: nur die Kopfleiste ausblenden, die Überlagerung nie selbst schliessen
+    // Import finished: only hide the header bar, never close the overlay by itself
     setTimeout(() => {
       G('global-import-bar').style.display = 'none';
       G('import-detail-panel').classList.remove('open');
@@ -120,7 +120,7 @@ function gibApplyStatus(s) {
   }
 }
 
-// Polling-Fallback: einmalig den Status holen und rendern.
+// Polling fallback: fetch the status once and render it.
 async function gibPoll() {
   try {
     const s = await apiData('GET', '/v1/sets/import/csv/status');
@@ -136,38 +136,38 @@ function gibToggle() {
     hideProgress();
   } else if (overlay) {
     // Opening from header bar click — initialize overlay in CSV mode so gibPoll() can write into it (needed
-    // wenn dies ein zweites Browserfenster ist)
+    // if this is a second browser window)
     if (!_csvPollActive) {
       showProgress(tRaw('csv.import_title'), true);
       // Immediately fill with whatever gibPoll already knows
       gibPoll();
     } else {
-      // Dieses Fenster führt die Importschleife schon — nur wieder zeigen
+      // This window already runs the import loop — only show it again
       overlay.classList.add('open');
     }
   }
 }
 
 /**
- * Eine Zeile fürs Import-Protokoll, oder null: Eine Zeile ohne Setnummer sagt nichts (sie erschien 322-mal
- * als „undefined – aktualisiert“). Eine Fassung für beide Protokolle, damit die Schranke nicht an einer
- * Stelle fehlt.
+ * A line for the import log, or null: a line without a set number says nothing (it appeared 322 times
+ * as "undefined – updated"). One version for both logs, so that the guard is not missing in one
+ * place.
  * @param {ImportResult | null | undefined} r
  * @param {string} [warnExtra]
  */
 export function logRow(r, warnExtra = '') {
   if (!r?.set_number && !r?.zeile) return null;
-  // Mit Zeilennummer findet man die Stelle in der Datei; eine Zeile ohne Setnummer hat sonst keinen Namen.
+  // With the line number one finds the spot in the file; a line without a set number otherwise has no name.
   const wo = (r.zeile ? tRaw('csv.zeile', { n: r.zeile }) + (r.set_number ? ' · ' : '') : '') + (r.set_number || '');
   if (r.success) {
-    // Ein bekanntes Set bekommt ein weiteres Exemplar; „aktualisiert“ verschwieg das.
+    // A known set gets another copy; "updated" concealed that.
     const was =
       r.action === 'added'
         ? tRaw('common.added')
         : r.menge
           ? tRaw('csv.log_mehr', { n: r.menge })
           : tRaw('common.updated');
-    // Gebucht, aber dem Katalog unbekannt: gelb statt grün, sonst sähe ein Tippfehler wie ein Erfolg aus.
+    // Booked, but unknown to the catalog: yellow instead of green, otherwise a typo would look like a success.
     if (r.katalog_offen)
       return {
         ok: false,
@@ -176,10 +176,10 @@ export function logRow(r, warnExtra = '') {
       };
     return { ok: true, art: /** @type {const} */ ('ok'), text: wo + ' – ' + was };
   }
-  // `warnExtra` nur fuer den CSV-Import: Dort heisst eine Anmerkung
-  // „Zeitueberschreitung, wird erneut versucht". Beim Wanted-Listen-Import heisst sie „offen, keine
-  // Rebrickable-Nummer" — derselbe Satz waere dort schlicht falsch. Der Zusatz kommt deshalb vom Aufrufer und
-  // nicht von hier.
+  // `warnExtra` only for the CSV import: there a note means
+  // "timeout, will be retried". In the wanted list import it means "open, no
+  // Rebrickable number" — the same sentence would simply be wrong there. The addition therefore comes from the caller and
+  // not from here.
   if (r.isWarning) {
     return {
       ok: false,
@@ -195,7 +195,7 @@ export function logRow(r, warnExtra = '') {
  * @param {'ok' | 'warn' | 'er'} art
  */
 function gibAddLog(text, art) {
-  // In das CSV-Protokoll der Überlagerung UND in das Detailprotokoll schreiben
+  // Write into the overlay's CSV log AND into the detail log
   for (const logId of ['csv-log', 'gib-log']) {
     const log = G(logId);
     if (!log) continue;
@@ -207,21 +207,21 @@ function gibAddLog(text, art) {
   }
 }
 
-// Startet die Live-Überwachung: bevorzugt SSE, mit automatischem Fallback auf Polling, falls der Browser kein
-// EventSource kann oder der Stream scheitert.
+// Starts the live monitoring: preferably SSE, with automatic fallback to polling if the browser cannot do
+// EventSource or the stream fails.
 export function gibStart() {
-  if (_gibSse || _gibTimer) return; // läuft bereits
+  if (_gibSse || _gibTimer) return; // already running
   _gibLastCount = 0;
   G('gib-log').replaceChildren();
   G('global-import-bar').style.display = 'flex';
   G('gib-text').textContent = tRaw('csv.running_text');
   G('gib-fill').style.width = '0%';
 
-  // Kein Token in der Adresse: EventSource schickt mit withCredentials das Sitzungscookie, und ein ?token=
-  // stünde im Proxy-Protokoll und im Verlauf.
+  // No token in the address: with withCredentials EventSource sends the session cookie, and a ?token=
+  // would appear in the proxy log and in the history.
   const s = strom(`/v1/sets/import/csv/stream?sprache=${encodeURIComponent(LANG)}`, {
     ereignis: gibApplyStatus,
-    // Verbindung verloren/abgelehnt → auf Polling zurückfallen, solange noch kein Rückfall läuft.
+    // Connection lost/rejected → fall back to polling as long as no fallback is running yet.
     fehler: () => {
       if (_gibSse === s) _gibSse = null;
       if (!_gibTimer) {
@@ -234,7 +234,7 @@ export function gibStart() {
     _gibSse = s;
     return;
   }
-  // Kein EventSource verfügbar → Polling
+  // No EventSource available → polling
   _gibTimer = setInterval(gibPoll, 1500);
   gibPoll();
 }
@@ -250,7 +250,7 @@ function gibStop() {
   }
 }
 
-// Beim Laden mit dem Abfragen beginnen (findet einen Import aus jedem Fenster)
+// Start polling on load (finds an import from any window)
 export async function gibCheckOnLoad() {
   if (_gibCheckTimer) return;
   let failures = 0;
@@ -261,20 +261,20 @@ export async function gibCheckOnLoad() {
       _gibCheckTimer = null;
       return;
     }
-    // Ohne Anmeldung gibt es nichts zu prüfen; im verborgenen Tab zählte jede Abfrage gegen das Budget.
+    // Without login there is nothing to check; in a hidden tab every query counted against the budget.
     if (!loggedInAccount || document.hidden) return;
     try {
       const r = await apiRaw('GET', '/v1/sets/import/csv/status');
 
-      // Antwort erst prüfen, dann parsen. Steht ein Reverse-Proxy oder Tunnel davor, liefert der bei Neustart
-      // oder Aussetzer eine HTML-Fehlerseite — r.json() warf dann "Unexpected token '<'". Das ist kein Fehler
-      // der App, soll aber auch keinen Stacktrace in der Konsole erzeugen.
+      // Check the response first, then parse. If a reverse proxy or tunnel stands in front, it delivers an HTML error page
+      // on restart or dropout — r.json() then threw "Unexpected token '<'". That is not an error
+      // of the app, but it should not produce a stack trace in the console either.
       const ct = r.headers.get('content-type') || '';
       if (!r.ok || !ct.includes('application/json')) {
         if (++failures === 3)
           console.warn('[gibCheck] Antwort ist kein JSON (Status ' + r.status + ') — Abfrage pausiert');
-        // Nach mehreren Fehlschlägen langsamer weiterversuchen statt im Drei-Sekunden-Takt gegen eine Wand zu
-        // laufen.
+        // After several failures keep retrying more slowly instead of running against a wall in a three-second
+        // tick.
         if (failures >= 3 && _gibCheckTimer) {
           clearInterval(_gibCheckTimer);
           _gibCheckTimer = setInterval(doCheck, 30000);
@@ -294,20 +294,20 @@ export async function gibCheckOnLoad() {
     }
   }
   doCheck();
-  // Alle 10 s: Ein Import aus einem anderen Fenster erscheint etwas später, der eigene startet den Balken selbst.
+  // Every 10 s: an import from another window appears somewhat later, the own one starts the bar itself.
   _gibCheckTimer = setInterval(doCheck, 10000);
 }
 /** @type {number | null} */
 let _gibCheckTimer = null;
 
-/** Das Ergebnis des letzten abgeschlossenen Imports, solange es höchstens einen Tag alt ist. */
+/** The result of the last completed import, as long as it is at most one day old. */
 /** @type {ImportStand | null} */
 let _lastImport = null;
 const LAST_IMPORT_MS = 24 * 3600_000;
 
 /**
- * Ein Eintrag im Import-Menü führt nach dem Neuladen zur Ergebnisliste zurück; der Server hält sie in
- * import_stand, nur der Weg dorthin fehlte.
+ * An entry in the import menu leads back to the result list after reloading; the server keeps it in
+ * import_stand, only the way there was missing.
  * @param {ImportStand | null | undefined} s
  */
 function rememberLastImport(s) {
@@ -321,7 +321,7 @@ function rememberLastImport(s) {
     G('letzter-import-text').textContent = tRaw('csv.letzter_import', { zaehler: importCounter(_lastImport) });
 }
 
-/** Öffnet den Fortschrittsdialog mit dem gespeicherten Ergebnis. */
+/** Opens the progress dialog with the stored result. */
 function zeigeLetztenImport() {
   const s = _lastImport;
   if (!s) return;
@@ -337,7 +337,7 @@ function zeigeLetztenImport() {
   showImportCompletion();
 }
 
-/** Fertig: „Schliessen“ statt „Minimieren“ — ein beendeter Import läuft nicht im Hintergrund weiter. */
+/** Finished: "close" instead of "minimize" — a finished import does not keep running in the background. */
 export function showImportCompletion() {
   const zu = G('btn-close-import');
   if (zu) zu.style.display = '';
@@ -346,8 +346,8 @@ export function showImportCompletion() {
   if (klein) klein.hidden = true;
 }
 /**
- * Setzt den Balken auf „nichts läuft“. Eine Funktion statt Zeilen beim Abmelden: Wer von aussen zurücksetzt,
- * müsste sonst das Innenleben dieser Datei kennen und bei jeder neuen Variable mitdenken.
+ * Sets the bar to "nothing running". A function instead of lines at logout: whoever resets from outside
+ * would otherwise have to know the internals of this file and keep every new variable in mind.
  */
 export function resetGive() {
   const balken = G('global-import-bar');
@@ -362,8 +362,8 @@ export function resetGive() {
   if (log) log.replaceChildren();
 }
 
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
-// Der Handler gehört zu dem Modul, das ihn umsetzt.
+// ── Register handlers with the dispatcher (see js/registry.js) ─────────────
+// The handler belongs to the module that implements it.
 registerActions({
   gibToggle,
   hideProgress,
@@ -383,8 +383,8 @@ export function showProgress(title, csvMode) {
   G('csv-log').style.display = csvMode ? 'block' : 'none';
   G('csv-log').replaceChildren();
   G('prog-steps').style.display = csvMode ? 'none' : '';
-  // Der Hintergrund-Hinweis gilt nur fürs Erfassen eines einzelnen Sets. Beim CSV-Import ist die Schrittliste
-  // ohnehin ausgeblendet, dort zeigt das Protokoll (`csv-log`) je Zeile ein echtes Ergebnis.
+  // The background hint only applies to capturing a single set. In the CSV import the step list is
+  // hidden anyway, there the log (`csv-log`) shows a real result per row.
   if (G('prog-hint')) G('prog-hint').style.display = csvMode ? 'none' : '';
   ['ps-meta', 'ps-image'].forEach(id => {
     const el = G(id);
@@ -402,15 +402,15 @@ export function showProgress(title, csvMode) {
 export function hideProgress() {
   G('progress-overlay').classList.remove('open');
   G('prog-steps').style.display = '';
-  // Beim Minimieren die Kopfleiste zeigen, wenn ein Import läuft
+  // When minimizing, show the header bar if an import is running
   if ((_gibTimer || _gibSse) && loggedInAccount) {
     G('global-import-bar').style.display = 'flex';
   }
 }
 
-// `extra` fiel weg: Es schrieb in ein `.step-count`-Feld, das nur die
-// entfernten Teile-/Teilbilder-Schritte hatten. Ohne diese Schritte gibt es kein Element mehr, in das es
-// hätte schreiben können.
+// `extra` was dropped: it wrote into a `.step-count` field that only the
+// removed parts/part image steps had. Without these steps there is no element left it
+// could have written into.
 /**
  * @param {string} stepId
  * @param {string} state
@@ -444,12 +444,12 @@ export function addCsvLog(text, art) {
   d.scrollTop = d.scrollHeight;
 }
 
-/** Ein Ereignis des Stroms beim Erfassen; `step` sagt, welche Felder es trägt.
+/** An event of the stream when capturing; `step` says which fields it carries.
  * @typedef {{ step?: string, set?: string, set_number?: string, action?: string, error?: string, [feld: string]: unknown }} SseEvent */
 
-// SSE-Ereignisse beim Erfassen eines Sets. Gewartet wird nur auf Set-Daten und Bild; Anleitungen, Teile und
-// Preis laufen danach im Hintergrund, und ein Balken für Arbeit, auf die niemand wartet, wäre eine
-// Behauptung.
+// SSE events when capturing a set. Only set data and image are waited for; instructions, parts and
+// price run in the background afterwards, and a bar for work nobody is waiting for would be a
+// claim.
 /**
  * @param {SseEvent} ev
  * @param {string} singleSetName
@@ -483,7 +483,7 @@ export function handleSseEvent(ev, singleSetName) {
 
 // ── CSV import polling state ─────────────────────────────────────────────────
 let _csvPollActive = false;
-/** Läuft der CSV-Import aus diesem Fenster (dann zeigt dessen Schleife das Protokoll)? */
+/** Is the CSV import running from this window (then its loop shows the log)? */
 export function csvPollActive() {
   return _csvPollActive;
 }
@@ -492,7 +492,7 @@ export function setCsvPollActive(v) {
   _csvPollActive = v;
 }
 
-/** Der laufende Ereignisstrom (Set erfassen) — damit „Abbrechen" ihn beenden kann. */
+/** The running event stream (capture set) — so that "cancel" can end it. */
 /** @type {AbortController | null} */
 let _activeAbort = null;
 
@@ -512,7 +512,7 @@ function cancelImport() {
   emit('setsGeaendert');
 }
 
-/** Abbrechbarer Ereignisstrom (POST mit JSON-Körper); ein Abbruch endet ohne Fehler.
+/** Cancelable event stream (POST with JSON body); a cancel ends without an error.
  * @param {string} path @param {object} body @param {(ev: SseEvent) => void} onEvent
  * @returns {Promise<void>} */
 export function streamRequest(path, body, onEvent) {
@@ -532,9 +532,9 @@ export function streamRequest(path, body, onEvent) {
  * @param {AbortSignal} signal
  */
 async function readSSE(res, onEvent, signal) {
-  // Antwortet der Server mit JSON statt einem Strom, ist die Sache entschieden (etwa: Set schon im
-  // Blickfeld). Die Antwort geht als ein Ereignis durch; sonst wartete die Anzeige auf eine data:-Zeile, die
-  // nie kommt.
+  // If the server answers with JSON instead of a stream, the matter is decided (e.g.: set already in
+  // scope). The response goes through as one event; otherwise the display would wait for a data: line that
+  // never comes.
   if ((res.headers.get('content-type') || '').includes('application/json')) {
     const daten = await res.json().catch(() => null);
     if (daten) onEvent({ step: daten.success === false ? 'error' : 'done', ...daten });

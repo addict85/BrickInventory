@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
- * Streicht die Verweise „ aus den Kommentaren unter Web-App/. Das Archiv
- * ist nicht mehr im Baum (CLAUDE.md); ein Verweis zeigte ins Leere. Idempotent: Ein zweiter Lauf ändert
- * nichts, deshalb lässt es sich nach jedem Zusammenführen erneut anwenden.
+ * Removes the rationale references from the comments under Web-App/. The archive
+ * is no longer in the tree (CLAUDE.md); a reference pointed nowhere. Idempotent: a second run changes
+ * nothing, which is why it can be applied again after every merge.
  *
- * Aufruf: node scripts/remove-rationales.js [--pruefen] [wurzel]
- *   --pruefen: nur nennen, Exit 1 bei Funden; wurzel: Vorgabe ist Web-App/
+ * Call: node scripts/remove-rationales.js [--pruefen] [root]
+ *   --pruefen: only name them, exit 1 on findings; root: default is Web-App/
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
 const WEB = path.resolve(__dirname, '..');
-// Zusammengesetzt, damit weder dieses Skript noch sein Test sich selbst als Fund zählen.
+// Assembled, so that neither this script nor its test counts itself as a finding.
 const ZIEL = ['docs', 'begruendungen'].join('/');
 const PATH = `${ZIEL.replace('/', '\\/')}\\/[^\\s*]+`;
 const REFERENCE = new RegExp(`[ \\t]*Ausführlich:[ \\t]*${PATH}`);
@@ -22,8 +22,8 @@ const ENDUNG = /\.(?:ts|js|cjs|mjs|html|css|sh)$/;
 const EMPTY_ROW = /^\s*(?:\/\/|\*|\/\*\*?\s*\*\/|<!--\s*-->)\s*$/;
 
 /**
- * Hängt einen Kommentarschluss (`*\/`, `-->`) an die letzte Inhaltszeile, wenn die Zeile dadurch nicht über
- * die 120 Zeichen von biome.json wächst; sonst bleibt er allein auf seiner Zeile.
+ * Appends a comment end (`*\/`, `-->`) to the last content line if the line does not grow beyond
+ * biome.json's 120 characters as a result; otherwise it stays alone on its line.
  * @param {string[]} aus
  * @param {string} rest
  * @param {string} indent
@@ -42,7 +42,7 @@ function schliessen(aus, rest, indent) {
 }
 
 /**
- * Entfernt jeden Verweis aus einem Quelltext; Kommentare ohne übrigen Inhalt verschwinden ganz.
+ * Removes every reference from a source text; comments without remaining content disappear entirely.
  * @param {string} text
  * @returns {string}
  */
@@ -51,7 +51,7 @@ function removeReferences(text) {
   const zeilen = text.replace(WRAP, '').split('\n');
   /** @type {string[]} */
   const aus = [];
-  // Stand der Verweis allein zwischen zwei Leerzeilen, fällt eine davon mit weg.
+  // If the reference stood alone between two blank lines, one of them goes along.
   let emptyBefore = false;
   for (const z of zeilen) {
     if (!REFERENCE.test(z)) {
@@ -68,14 +68,14 @@ function removeReferences(text) {
       continue;
     }
     if (EMPTY_ROW.test(neu)) {
-      // Eine Leerzeile des Kommentars direkt davor stünde jetzt am Ende des Blocks.
+      // A blank line of the comment directly before it would now stand at the end of the block.
       if (/^\s*\/\/$/.test(neu) && /^\s*\/\/$/.test(aus[aus.length - 1] ?? '')) aus.pop();
       emptyBefore = (aus[aus.length - 1] ?? '').trim() === '';
       continue;
     }
     aus.push(neu);
   }
-  // Was der Verweis allein füllte, bleibt sonst als leerer Block oder leere Schlusszeile stehen.
+  // Whatever the reference alone filled would otherwise remain as an empty block or empty final line.
   return aus
     .join('\n')
     .replace(/^[ \t]*\/\*\*?[ \t]*\n[ \t]*\*\/[ \t]*\n/gm, '')

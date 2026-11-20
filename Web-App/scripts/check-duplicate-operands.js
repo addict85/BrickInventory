@@ -1,26 +1,26 @@
 'use strict';
 /**
- * Derselbe Operand zweimal — der Tippfehler, der sich am besten versteckt.
+ * The same operand twice — the typo that hides best.
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Stellen, an denen die Wiederholung Absicht ist. Jede mit Grund. */
+/** Places where the repetition is intended. Each with a reason. */
 const ALLOWED = new Map([
   ['test/rate-limit.test.js:l.tryConsume()', 'Der Aufruf ZÄHLT hoch — dreimal hintereinander ist genau der Punkt'],
 ]);
 
-/** Leerraum entfernen, aber nicht in Zeichenketten oder Regex-Literalen. */
+/** Remove whitespace, but not in strings or regex literals. */
 /** @param {string} t */
 function tight(t) {
   let out = '',
     grenze = null;
   for (let i = 0; i < t.length; i++) {
-    // `const c = t[i]` waere unter noUncheckedIndexedAccess `string|undefined`.
-    // charAt() gibt bei einem Index ausserhalb '' zurueck — hier unerreichbar,
-    // aber der Typ sagt es, ohne dass ein `!` noetig wird.
+    // `const c = t[i]` would be `string|undefined` under noUncheckedIndexedAccess.
+    // charAt() returns '' for an index outside — unreachable here,
+    // but the type says so without a `!` being necessary.
     const c = t.charAt(i);
     if (grenze) {
       out += c;
@@ -36,7 +36,7 @@ function tight(t) {
   return out;
 }
 
-/** Ausdruck links von Position i, klammerbalanciert. */
+/** Expression left of position i, bracket-balanced. */
 /** @param {string} s @param {number} i */
 function links(s, i) {
   let j = i - 1,
@@ -54,7 +54,7 @@ function links(s, i) {
   return s.slice(j + 1, i);
 }
 
-/** Ausdruck rechts von Position i. */
+/** Expression right of position i. */
 /** @param {string} s @param {number} i */
 function rechts(s, i) {
   let j = i,
@@ -95,7 +95,7 @@ function dateien(wurzel, extensions, aus) {
   return out;
 }
 
-// Nur die Webapp: Kotlin-Quelltext gehört in die Android-Suite, nicht in diese.
+// Only the web app: Kotlin source belongs in the Android suite, not in this one.
 const quellen = dateien(ROOT, ['.ts', '.js'], ['node_modules', `${path.sep}dist`, 'app.bundle', 'vendor', '.d.ts']);
 if (quellen.length < 300) {
   console.error(
@@ -115,7 +115,7 @@ for (const p of quellen) {
     const t = z.trim();
     if (!t || t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) continue;
 
-    // A) derselbe Operand beidseits von || bzw. &&
+    // A) the same operand on both sides of || or &&
     for (const m of z.matchAll(/\|\||&&/g)) {
       geprueft++;
       const l = tight(links(z, m.index));
@@ -127,7 +127,7 @@ for (const p of quellen) {
       }
     }
 
-    // B) dieselbe Spalte zweimal in einer SELECT-Liste
+    // B) the same column twice in a SELECT list
     const sel = z.match(/SELECT\s+([A-Za-z_][\w\s,.]{4,200}?)\s+FROM\b/i);
     if (sel) {
       geprueft++;

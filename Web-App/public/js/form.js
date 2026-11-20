@@ -4,35 +4,35 @@ import { toast } from './messages.js';
 import { readAmount } from './format.js';
 import { todayIso } from './components.js';
 
-// Formulare: Meldungen am Feld, Passwortregeln, Beträge aus Eingaben. Eine Fassung für alle Dialoge, damit
-// Vorleser und Markierung überall gleich reagieren.
+// Forms: messages at the field, password rules, amounts from inputs. One version for all dialogs, so that
+// screen readers and highlighting react the same everywhere.
 
 /**
- * Mindestlänge eines Passworts. Der Server setzt sie durch, der Browser sagt sie vorher;
- * test/password-length.test.js hält Server, Web und App gleich.
+ * Minimum length of a password. The server enforces it, the browser says it beforehand;
+ * test/password-length.test.js keeps server, web and app the same.
  */
 export const PASSWORD_MIN_CHARS = 12;
 
 /**
- * Die Webapp prüfte die Länge an keiner der fünf Stellen, die ein Passwort setzen, und lief in den
- * Serverfehler, wo die App den Knopf gar nicht erst freigibt. Hier wird vorher gefragt.
+ * The web app checked the length at none of the five places that set a password, and ran into the
+ * server error where the app does not even enable the button. Here it is asked beforehand.
  * @param {unknown} p
  */
 export function passwordToShort(p) {
   return String(p ?? '').length < PASSWORD_MIN_CHARS;
 }
 
-/** Die Meldung dazu — an fuenf Stellen dieselbe. */
+/** The matching message — the same in five places. */
 export function passwordToShortText() {
   return tRaw('settings.password.too_short', { n: PASSWORD_MIN_CHARS });
 }
 
-/** Dieselbe Grenze wie PASSWORD_MAX_CHARS im Server (src/infra/passwordRule.ts). */
+/** The same limit as PASSWORD_MAX_CHARS in the server (src/infra/passwordRule.ts). */
 export const PASSWORD_MAX_CHARS = 1024;
 
 /**
- * Was der Browser vor dem Absenden prüfen kann, als Meldung, sonst null. Die Liste häufiger Passwörter kennt
- * nur der Server; seine Meldung kommt zurück.
+ * What the browser can check before submitting, as a message, otherwise null. Only the server knows the list of
+ * common passwords; its message comes back.
  * @param {string} p
  */
 export function passwordRuleText(p) {
@@ -42,24 +42,24 @@ export function passwordRuleText(p) {
 }
 
 /**
- * Sieht die Eingabe aus wie eine Setnummer? Ziffern, davor höchstens ein Buchstaben-Präfix echter Nummern
- * (llca30, comcon001), dahinter ein Versionsanhang (-1). Der Server prüft selbst; hier geht es darum, dass
- * „abc“ gar nicht erst als Set „abc-1“ angelegt wird.
+ * Does the input look like a set number? Digits, before them at most a letter prefix of real numbers
+ * (llca30, comcon001), after them a version suffix (-1). The server checks itself; here the point is that
+ * "abc" is not even created as set "abc-1".
  * @param {string} eingabe
  */
 export function isSetnummer(eingabe) {
   return /^[A-Za-z]{0,12}\d{1,8}[A-Za-z0-9]{0,8}(-\d{1,3})?$/.test(String(eingabe ?? '').trim());
 }
 
-/** Legt ein Element seine Kinder nebeneinander (Flex-Zeile oder Raster)? @param {Element} el */
+/** Does an element lay out its children side by side (flex row or grid)? @param {Element} el */
 function nebeneinander(el) {
   const s = getComputedStyle(el);
   return /grid$/.test(s.display) || (/flex$/.test(s.display) && !s.flexDirection.startsWith('column'));
 }
 
 /**
- * Die Geschwister, die mit `kind` auf derselben Linie seiner Flex-Zeile stehen (ohne Meldungen). Am Telefon
- * brechen dieselben Zeilen untereinander um; dann steht das Feld allein.
+ * The siblings that stand with `kind` on the same line of its flex row (without messages). On the phone
+ * the same rows wrap below each other; then the field stands alone.
  * @param {Element} kind
  */
 function linesNeighbors(kind) {
@@ -71,7 +71,7 @@ function linesNeighbors(kind) {
   });
 }
 
-/** Eine Zelle in einem Raster aus Feldgruppen, die alle oben bündig auf ihrer Linie stehen? @param {Element} zelle */
+/** A cell in a grid of field groups that all stand top-aligned on their line? @param {Element} zelle */
 function feldzelle(zelle) {
   const raster = zelle.parentElement;
   if (!raster || !/grid$/.test(getComputedStyle(raster).display)) return false;
@@ -85,9 +85,9 @@ function feldzelle(zelle) {
 }
 
 /**
- * Stellt die Meldung unter die Formularzeile, nicht in sie: In einer Flex-Zeile schob sie sonst den Knopf
- * daneben zur Seite oder hob die Nachbarn aus der Flucht. Steht das Feld allein auf seiner Linie, bleibt
- * sie direkt darunter.
+ * Puts the message below the form row, not into it: in a flex row it would otherwise push the button
+ * next to it aside or lift the neighbors out of alignment. If the field stands alone on its line, it stays
+ * directly below it.
  * @param {HTMLElement} feld @param {HTMLElement} meldung
  */
 function errorPlace(feld, meldung) {
@@ -95,9 +95,9 @@ function errorPlace(feld, meldung) {
   let anker = feld.closest('.preis-mit-waehrung, .geheim-feld') ?? feld;
   let gruppe = anker.parentElement?.closest('.fg') ?? null;
   if (gruppe && !gruppe.contains(anker)) gruppe = null;
-  // Im Raster ist die Feldgruppe selbst die Zelle: Die Meldung bleibt in ihrer Spalte unter dem Feld. Hinter der
-  // Zeile stand sie sonst links unter beiden Spalten, auch für das rechte Feld. Nur neben anderen Feldern, oben
-  // bündig; einen unten bündigen Knopf daneben schöbe die wachsende Zelle nach unten.
+  // In the grid the field group itself is the cell: the message stays in its column below the field. Behind the
+  // row it otherwise stood at the left below both columns, even for the right field. Only next to other fields, top
+  // aligned; a bottom-aligned button next to it would be pushed down by the growing cell.
   if (gruppe && feldzelle(gruppe)) {
     if (anker.nextElementSibling !== meldung) anker.insertAdjacentElement('afterend', meldung);
     return;
@@ -107,8 +107,8 @@ function errorPlace(feld, meldung) {
   while (kind.parentElement && nebeneinander(kind.parentElement)) {
     const neighbors = linesNeighbors(kind);
     if (!neighbors.length) break;
-    // Umbrechende Zeile oder Raster: als eigene Linie hinter die letzten Nachbarn (.feld-fehler spannt über alle
-    // Spalten), die Linien darunter rücken nur nach unten.
+    // Wrapping row or grid: as a line of its own behind the last neighbors (.feld-fehler spans all
+    // columns), the lines below only move down.
     const s = getComputedStyle(kind.parentElement);
     if (/grid$/.test(s.display) || s.flexWrap !== 'nowrap') {
       anker = [kind, ...neighbors].reduce((x, y) => (x.compareDocumentPosition(y) & 4 ? y : x));
@@ -121,8 +121,8 @@ function errorPlace(feld, meldung) {
 }
 
 /**
- * Eine Fehlermeldung direkt am Feld (leerer Text räumt sie weg). Vorleser hören sie über role="alert" und
- * finden sie über aria-describedby.
+ * An error message directly at the field (empty text clears it). Screen readers hear it via role="alert" and
+ * find it via aria-describedby.
  * @param {string} id
  * @param {string} text
  */
@@ -136,7 +136,7 @@ export function feldFehler(id, text) {
     el.id = id + '-fehler';
     el.className = 'feld-fehler';
     el.setAttribute('role', 'alert');
-    // In der Tabelle eine eigene Zeile (in der Zelle schob sie Spalten aus dem Bild).
+    // In the table a row of its own (in the cell it pushed columns out of view).
     const zeile = feld.closest('td')?.parentElement;
     if (zeile instanceof HTMLTableRowElement) {
       const tr = document.createElement('tr');
@@ -149,13 +149,13 @@ export function feldFehler(id, text) {
     }
     feld.addEventListener('input', () => feldFehler(id, ''));
   }
-  // Auch eine leere Meldung kommt ins Dokument: Sonst legte jeder Aufruf eine neue an, samt Zuhörer.
+  // An empty message goes into the document too: otherwise every call would create a new one, including a listener.
   if ((text || !el.isConnected) && !el.closest('tr.feld-fehler-zeile')) errorPlace(feld, el);
   el.textContent = text || '';
   el.hidden = !text;
   const errorRow = el.closest('tr.feld-fehler-zeile');
   if (errorRow instanceof HTMLElement) errorRow.hidden = !text;
-  // Die eigene Kennung ergänzen und wieder nehmen: Ein vorhandener Hinweis (Passwortregel) bleibt verknüpft.
+  // Add and remove the own identifier: an existing hint (password rule) stays linked.
   const ids = new Set((feld.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean));
   if (text) {
     ids.add(el.id);
@@ -170,11 +170,11 @@ export function feldFehler(id, text) {
 }
 
 /**
- * Eine Absage des Servers: Gehört ihr Code zu einem Feld des Formulars, steht die Meldung dort (wie
- * feldFehler), sonst als Toast.
- * @param {object | null | undefined} d Antwort von api()
- * @param {Record<string, string>} felder Fehlercode → Feld-ID
- * @param {string} ersatz Text, wenn die Antwort keinen hat
+ * A refusal from the server: if its code belongs to a field of the form, the message stands there (like
+ * feldFehler), otherwise as a toast.
+ * @param {object | null | undefined} d response of api()
+ * @param {Record<string, string>} felder error code → field ID
+ * @param {string} ersatz text if the response has none
  */
 export function responseError(d, felder, ersatz) {
   const a = /** @type {{ code?: string, error?: string | null }} */ (d ?? {});
@@ -184,7 +184,7 @@ export function responseError(d, felder, ersatz) {
 }
 
 /**
- * Prüft das Setnummer-Feld vor dem Absenden; meldet am Feld und sagt, ob es weitergeht.
+ * Checks the set number field before submitting; reports at the field and says whether to continue.
  * @param {string} id
  * @param {string} wert
  */
@@ -202,12 +202,12 @@ export function setnummerFieldValid(id, wert) {
   return true;
 }
 
-/** Obergrenze der Stückzahl je Erfassung; dieselbe wie `eingabe.stueckzahl()` im Server (src/infra/validate.ts). */
+/** Upper bound of the piece count per acquisition; the same as `eingabe.stueckzahl()` in the server (src/infra/validate.ts). */
 export const QUANTITY_MAX = 10_000;
 
 /**
- * Liest ein Anzahlfeld: Nur eine ganze Zahl von 1 bis QUANTITY_MAX geht hinaus. Alles andere (leer, 0, 1,5,
- * negativ, zu gross) meldet das Feld, statt stillschweigend zu 1 zu werden oder erst als Toast zurückzukommen.
+ * Reads a quantity field: only a whole number from 1 to QUANTITY_MAX goes out. Everything else (empty, 0, 1.5,
+ * negative, too large) is reported at the field instead of silently becoming 1 or only coming back as a toast.
  * @param {string} id
  * @returns {{ ok: boolean, wert: number }}
  */
@@ -223,8 +223,8 @@ export function quantityFromField(id) {
 }
 
 /**
- * Prüft ein Kaufdatum: Leer ist erlaubt, ein Tag nach heute nicht. Das Feld bekommt dasselbe als `max`,
- * damit die Auswahl des Browsers gar keine Zukunft anbietet; getippt geht sie trotzdem.
+ * Checks a purchase date: empty is allowed, a day after today is not. The field gets the same as `max`,
+ * so that the browser's picker does not offer any future at all; typed in it still works.
  * @param {string} id
  * @returns {boolean}
  */
@@ -242,10 +242,10 @@ export function purchaseDateValid(id) {
 }
 
 /**
- * Liest ein Geldfeld; ist der Inhalt keine Zahl (oder negativ), steht die Meldung am Feld und `ok` ist false
- * — gesendet wird dann nichts.
- * @param {string|HTMLInputElement} feld  ID oder Element
- * @param {string} [negativ] Schlüssel der Meldung für einen negativen Betrag (Vorgabe: Kaufpreis)
+ * Reads a money field; if the content is not a number (or negative), the message stands at the field and `ok` is false
+ * — then nothing is sent.
+ * @param {string|HTMLInputElement} feld  ID or element
+ * @param {string} [negativ] key of the message for a negative amount (default: purchase price)
  * @returns {{ ok: boolean, wert: number|null }}
  */
 export function amountFromField(feld, negativ = 'common.amount_negative') {
@@ -254,7 +254,7 @@ export function amountFromField(feld, negativ = 'common.amount_negative') {
   const roh = el.value.trim();
   const wert = readAmount(roh);
   if (wert !== null && !(wert >= 0)) {
-    // „-5“ ist lesbar, nur nicht erlaubt: „ist kein Betrag“ führte dort in die Irre.
+    // "-5" is readable, just not allowed: "is not an amount" was misleading there.
     const minus = /^[-−]/.test(roh) && Number.isFinite(readAmount(roh.slice(1)));
     const meldung = minus ? tRaw(negativ) : tRaw('common.amount_invalid', { wert: roh });
     if (el.id) feldFehler(el.id, meldung);
@@ -265,14 +265,14 @@ export function amountFromField(feld, negativ = 'common.amount_negative') {
   return { ok: true, wert };
 }
 
-// ── FORMULARE ─────────────────────────────────────────────────────────────
+// ── FORMS ─────────────────────────────────────────────────────────────────
 /**
- * Fehler eines Formulars an die betroffenen Felder binden: aria-invalid markiert das Feld, aria-describedby
- * lässt Vorleser die Meldung beim Feld nennen, und der Fokus springt in das erste, damit man gleich
- * korrigiert. Ohne Text verschwinden Meldung und Markierungen.
- * @param {HTMLElement} box  das Meldungsfeld (role=alert)
+ * Bind a form's errors to the affected fields: aria-invalid marks the field, aria-describedby
+ * lets screen readers announce the message at the field, and the focus jumps into the first one so that one corrects
+ * right away. Without text, message and markings disappear.
+ * @param {HTMLElement} box  the message field (role=alert)
  * @param {string} text
- * @param {string[]} [felder] IDs der betroffenen Felder
+ * @param {string[]} [felder] IDs of the affected fields
  */
 export function formError(box, text, felder = []) {
   box.textContent = text;
@@ -298,15 +298,15 @@ function fieldValid(f, boxId) {
   else f.removeAttribute('aria-describedby');
 }
 
-// Wer im markierten Feld tippt, korrigiert: Die Markierung geht, die Meldung bleibt stehen.
+// Whoever types in the marked field is correcting: the marking goes, the message stays.
 if (typeof document !== 'undefined')
   document.addEventListener('input', ev => {
     const f = ev.target instanceof Element ? ev.target : null;
     if (f?.getAttribute('aria-invalid') === 'true') f.removeAttribute('aria-invalid');
   });
 
-// Ein Feld mit maxlength schnitt beim Tippen still ab („…Weihnachtss“). Mit data-zaehler steht ab zehn Zeichen
-// vor der Grenze darunter, wie viele es sind, und an der Grenze, dass nicht mehr geht.
+// A field with maxlength silently cut off while typing ("…Weihnachtss"). With data-zaehler, from ten characters
+// before the limit it says below how many there are, and at the limit that no more fit.
 if (typeof document !== 'undefined')
   document.addEventListener('input', ev => {
     const f = ev.target instanceof HTMLInputElement && ev.target.hasAttribute('data-zaehler') ? ev.target : null;

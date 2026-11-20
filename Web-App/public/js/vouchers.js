@@ -10,31 +10,31 @@ import { accountCurrency, settingsSnapshot } from './state.js';
 import { html, joinHtml } from './escaping.js';
 import { bestaetigeMitPasswort, withSecondFactor } from './confirm-prompt.js';
 
-// Gutscheine (LEGO-Geschenkkarten) stehen direkt im Profil statt in einem eigenen Reiter: Sie sollen schnell
-// erreichbar sein, und wie in der App erfassen, ändern und anzeigen.
+// Vouchers (LEGO gift cards) stand directly in the profile instead of in a tab of their own: they should be quickly
+// reachable and, as in the app, be captured, changed and shown.
 
-/** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
+/** The most recently loaded list — for the buttons that point to a row. */
 /** @type {import('../../frontend-types/contract').Gutschein[]} */
 let _vouchers = [];
-/** Die zuletzt geladenen Gutscheine, zum Lesen für die Guthabenabfrage. */
+/** The most recently loaded vouchers, for reading by the balance lookup. */
 export const gutscheine = () => _vouchers;
 
-/** Die id des Gutscheins, der gerade bearbeitet wird; null = neuer Eintrag. */
+/** The id of the voucher currently being edited; null = new entry. */
 /** @type {number | string | null} */
 let _edited = null;
 
 /** @param {string} id */
 const el = (/** @type {string} */ id) => /** @type {Feld} */ (document.getElementById(id));
 
-// Die Handler nehmen die id als ERSTES Argument und kein Ereignis: Der Verteiler in actions.js reicht
-// `data-arg`, `data-arg2` … in dieser Reihenfolge durch und haengt das Ereignis ZULETZT an. Ein `(ev, id)`
-// waere also still verdreht — die id landete in `ev`.
+// The handlers take the id as the FIRST argument and no event: the dispatcher in actions.js passes
+// `data-arg`, `data-arg2` … through in this order and appends the event LAST. An `(ev, id)`
+// would therefore be silently swapped — the id would land in `ev`.
 
-/** Eingeblendete PINs: auch nach dem Abruf nur auf Wunsch, gegen die Schulter daneben. */
+/** Revealed PINs: even after fetching only on request, against the shoulder next to you. */
 const _visible = new Set();
 
-/** Nummer und PIN im Klartext je id: Die Liste des Servers trägt nur die Maske,
- * den Klartext gibt es bestätigt und protokolliert, einmal je Gutschein und Seite. */
+/** Number and PIN in plaintext per id: the server's list only carries the mask,
+ * the plaintext is given confirmed and logged, once per voucher and page. */
 const _plaintext = new Map();
 
 /**
@@ -59,16 +59,16 @@ async function fetchPlaintext(id) {
 }
 
 /**
- * Das Kopieren-Symbol — zwei Blaetter, wie ueberall sonst auch.
+ * The copy icon — two sheets, as everywhere else.
  *
- * Inline und nicht als Schriftzeichen: Ein Emoji sieht auf jedem System anders aus und faellt bei manchen
- * Schriften ganz aus. `currentColor` laesst es die Farbe des Knopfes annehmen, also auch im Dunkelmodus.
+ * Inline and not as a font character: an emoji looks different on every system and is missing entirely with some
+ * fonts. `currentColor` lets it adopt the button's color, i.e. also in dark mode.
  */
 const COPY_ICON_SVG = html`<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13"
   height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`;
 
-/** „6123-4567-8901“ und „612345678901“ → „6123 4567 8901“. */
+/** "6123-4567-8901" and "612345678901" → "6123 4567 8901". */
 /** @param {unknown} roh */
 export function groupNumber(roh) {
   return String(roh ?? '')
@@ -76,7 +76,7 @@ export function groupNumber(roh) {
     .replace(/(\d{4})(?=\d)/g, '$1 ');
 }
 
-/** Die Währung der Karten des Ausgabelandes; ohne Land die des Kontos. */
+/** The currency of the issuing country's cards; without a country that of the account. */
 /** @type {Record<string, string>} */
 const LAND_CURRENCY = {
   'de-CH': 'CHF',
@@ -88,7 +88,7 @@ const LAND_CURRENCY = {
   'en-GB': 'GBP',
   'en-US': 'USD',
 };
-/** Ohne gespeichertes Ausgabeland das Land zur Kontowährung (wie landFuerWaehrung im Server). */
+/** Without a stored issuing country, the country of the account currency (like landFuerWaehrung in the server). */
 /** @type {Record<string, string>} */
 export const LAND_TO_CURRENCY = { CHF: 'de-CH', EUR: 'de-DE', GBP: 'en-GB', USD: 'en-US' };
 export function landCurrency() {
@@ -96,7 +96,7 @@ export function landCurrency() {
   return LAND_CURRENCY[land] || accountCurrency;
 }
 
-/** Vorschlag im Formular und der Satz darunter, wenn die gewählte Währung abweicht. */
+/** Suggestion in the form and the sentence below it if the chosen currency differs. */
 function waehrungPruefen() {
   const feld = G('v-currency'),
     hinweis = el('v-currency-hinweis');
@@ -110,9 +110,9 @@ function waehrungPruefen() {
 function zeile(g) {
   const k = _plaintext.get(g.id);
   const openPin = _visible.has(g.id) && !!k;
-  // Die Nummer in Vierergruppen: 19 Ziffern am Stück sind beim Abtippen an der Kasse nicht zu lesen, und
-  // genau dafür ist sie da. Erst die eigenen Trenner weg, sonst zählen sie mit („6123 -456 7-89“). Kopiert
-  // wird trotzdem die ROHE Nummer — mit Leerzeichen nimmt sie kein Bezahlfeld an.
+  // The number in groups of four: 19 digits in one go cannot be read when typing them at the checkout, and
+  // that is exactly what it is for. First remove the own separators, otherwise they count ("6123 -456 7-89"). Still the
+  // RAW number is copied — with spaces no payment field accepts it.
   const nummer = groupNumber(k ? k.number : g.number);
   return html`
     <div class="voucher-row" data-id="${g.id}">
@@ -164,7 +164,7 @@ function zeile(g) {
     </div>`;
 }
 
-/** Die Liste laden und zeichnen. */
+/** Load and draw the list. */
 export async function ladeGutscheine() {
   const liste = el('vouchers-list');
   if (!liste) return;
@@ -186,13 +186,13 @@ export async function ladeGutscheine() {
       ? joinHtml(_vouchers.map(zeile))
       : html`<div class="voucher-leer" data-i18n="vouchers.empty">${tRaw('vouchers.empty')}</div>`,
   );
-  // Summe, „alle abfragen“ und Export haben ohne Gutscheine nichts zu tun.
+  // Sum, "query all" and export have nothing to do without vouchers.
   document.querySelectorAll('[data-nur-mit-gutscheinen]').forEach(e => {
     /** @type {HTMLElement} */ (e).hidden = !_vouchers.length;
   });
 
-  // Die Summe je Währung: Gemischte zusammenzuzählen sähe richtig aus und wäre falsch; ganz ohne Wert stand
-  // nur die Beschriftung „Summe“ da.
+  // The sum per currency: adding up mixed ones would look right and be wrong; with no value at all only
+  // the label "sum" stood there.
   const sumEl = el('vouchers-total');
   if (sumEl) {
     /** @type {Map<string, number>} */
@@ -227,7 +227,7 @@ export function gutscheinBearbeiten(id) {
   const g = _vouchers.find(x => String(x.id) === String(id));
   if (!g) return;
   _edited = g.id;
-  // Ohne Abruf trägt das Formular die Maske; der Server lässt sie als „unverändert“ stehen.
+  // Without a fetch the form carries the mask; the server leaves it standing as "unchanged".
   const k = _plaintext.get(g.id);
   el('v-number').value = k ? k.number : g.number;
   el('v-pin').value = (k ? k.pin : g.pin) || '';
@@ -236,8 +236,8 @@ export function gutscheinBearbeiten(id) {
   if (cur) cur.value = g.currency;
   el('vouchers-form-title').textContent = tRaw('vouchers.edit');
   el('v-cancel').style.display = '';
-  // Die Datei bleibt, wie sie ist: Ein Gutschein bekommt sein PDF beim Anlegen. Es nachträglich auszutauschen
-  // wäre ein eigener Vorgang und beantwortet keine Frage, die jemand hat.
+  // The file stays as it is: a voucher gets its PDF when created. Replacing it afterwards
+  // would be a process of its own and answers no question anyone has.
   const pdfRow = el('v-pdf').parentElement;
   if (pdfRow) pdfRow.style.display = 'none';
   el('v-number').focus();
@@ -249,7 +249,7 @@ export function gutscheinAbbrechen() {
   if (pdfRow) pdfRow.style.display = '';
 }
 
-/** Fehlercodes des Servers → Feld im Formular (Meldung am Feld statt Toast). */
+/** Server error codes → field in the form (message at the field instead of a toast). */
 const VOUCHER_FIELDS = {
   nummer_ungueltig: 'v-number',
   gutschein_existiert: 'v-number',
@@ -259,15 +259,15 @@ const VOUCHER_FIELDS = {
 };
 
 /**
- * Speichern, ein Knopf für beide Wege: Liegt eine Datei im Feld, liest der Server sie, und ausgefüllte Felder
- * gewinnen. So kann man ein PDF hochladen und den Betrag selbst ergänzen, wenn es ihn nicht hergibt.
+ * Save, one button for both paths: if a file is in the field, the server reads it, and filled-in fields
+ * win. That way one can upload a PDF and add the amount oneself if it does not yield it.
  */
 export async function gutscheinSpeichern() {
   const number = el('v-number').value.trim();
   const pin = el('v-pin').value.trim();
   const betrag = amountFromField('v-amount', 'common.betrag_negativ');
   const datei = el('v-pdf')?.files?.[0] || null;
-  // Alle Lücken auf einmal: Der Server meldete sie eine nach der anderen. Ein PDF kann Nummer und Betrag liefern.
+  // All gaps at once: the server reported them one after the other. A PDF can deliver number and amount.
   const leer = datei ? [] : [!number && 'v-number', betrag.ok && betrag.wert === null && 'v-amount'];
   const fehlt = /** @type {string[]} */ (leer.filter(Boolean));
   for (const id of fehlt) feldFehler(id, tRaw('vouchers.pflicht_fehlt'));
@@ -294,11 +294,11 @@ export async function gutscheinSpeichern() {
   }
 
   if (datei) {
-    // FormData statt api(): Der Helfer schickt JSON. Eine Datei geht nur als multipart, und `Content-Type`
-    // setzt der Browser dabei selbst (samt boundary) — ihn hier zu setzen, zerbricht die Anfrage.
+    // FormData instead of api(): the helper sends JSON. A file only goes as multipart, and the browser sets `Content-Type`
+    // itself in the process (including boundary) — setting it here breaks the request.
     const form = new FormData();
     form.append('file', datei);
-    // Nur ausgefüllte Felder mitschicken: Ein leeres Feld würde das aus dem PDF Gelesene überschreiben — mit
+    // Only send filled-in fields: an empty field would overwrite what was read from the PDF — with
     // nichts.
     if (number) form.append('number', number);
     if (pin) form.append('pin', pin);
@@ -314,9 +314,9 @@ export async function gutscheinSpeichern() {
     }
 
     if (r.status === 422) {
-      // Das PDF gab nicht genug her. Was gelesen WURDE, wird eingetragen — der Nutzer ergänzt den Rest und
-      // drückt noch einmal, mit derselben Datei. Das ist der Unterschied zwischen „hat nicht geklappt" und
-      // „hier fehlt noch der Betrag".
+      // The PDF did not yield enough. What WAS read is filled in — the user adds the rest and
+      // presses once more, with the same file. That is the difference between "did not work" and
+      // "the amount is still missing here".
       const g = d?.gelesen || {};
       if (g.number && !number) el('v-number').value = g.number;
       if (g.pin && !pin) el('v-pin').value = g.pin;
@@ -330,8 +330,8 @@ export async function gutscheinSpeichern() {
       return;
     }
 
-    // Ob ein PDF einen oder mehrere Gutscheine ergab, entscheidet der Server; `mehrere` sagt es. Dann
-    // dieselbe Meldung wie bei CSV-Importen, damit niemand bei drei Gutscheinen „gespeichert“ liest und rät.
+    // Whether a PDF yielded one or several vouchers is decided by the server; `mehrere` says so. Then
+    // the same message as for CSV imports, so that nobody reads "saved" for three vouchers and guesses.
     if (d.mehrere) {
       toast(
         tRaw('import.summary', { added: d.mehrere.added, updated: d.mehrere.updated, errors: d.mehrere.errors }),
@@ -372,7 +372,7 @@ export async function gutscheinLoeschen(id) {
     toast(d?.error || tRaw('vouchers.delete_error'), 'error');
     return;
   }
-  // Rückgängig legt die Karte neu an: nur mit abgerufenem Klartext und ohne PDF, das verloren ginge.
+  // Undo creates the card anew: only with fetched plaintext and without a PDF, which would get lost.
   const k = _plaintext.get(g.id);
   _plaintext.delete(g.id);
   toast(
@@ -412,8 +412,8 @@ export async function gutscheinPinUmschalten(id) {
 }
 
 /**
- * Das PDF im Betrachter der Anleitungen, wie in der Android-App: Er kann anzeigen und herunterladen, zwei
- * eigene Knöpfe dafür wären doppelt.
+ * The PDF in the instructions' viewer, as in the Android app: it can display and download, two
+ * buttons of its own for that would be duplicates.
  */
 /** @param {string} id */
 export async function gutscheinPdfOeffnen(id) {
@@ -433,7 +433,7 @@ export async function gutscheinPdfOeffnen(id) {
 }
 
 /**
- * Bestätigung, dann ein Ticket für genau einen Abruf des PDFs (60 s).
+ * Confirmation, then a ticket for exactly one fetch of the PDF (60 s).
  * @param {string} pfad
  */
 async function pdfFreigabe(pfad) {
@@ -449,13 +449,13 @@ async function pdfFreigabe(pfad) {
     if (d) toast(d.error || tRaw('settings.error'), 'error');
     return null;
   }
-  // Nach der Frist gilt das Ticket nicht mehr; ein hängender Abruf bricht dann ab.
+  // After the deadline the ticket no longer applies; a hanging fetch then aborts.
   return { ticket: d.ticket, frist: AbortSignal.timeout(d.gueltig_sek * 1000) };
 }
 
 /**
- * Nummer oder PIN kopieren, roh statt gruppiert: Die Leerzeichen sind eine Lesehilfe an der Kasse, ein
- * Bezahlfeld nimmt sie nicht an. navigator.clipboard braucht HTTPS, daher der Rückfall.
+ * Copy number or PIN, raw instead of grouped: the spaces are a reading aid at the checkout, a
+ * payment field does not accept them. navigator.clipboard needs HTTPS, hence the fallback.
  */
 /** @param {string} id @param {string} feld */
 export async function gutscheinKopieren(id, feld) {
@@ -478,8 +478,8 @@ export async function gutscheinKopieren(id, feld) {
     try {
       const feldchen = document.createElement('textarea');
       feldchen.value = wert;
-      // Ausserhalb des Bildes statt `display:none`: Ein verstecktes Element lässt sich nicht markieren, und
-      // ohne Markierung kopiert execCommand nichts.
+      // Outside the view instead of `display:none`: a hidden element cannot be selected, and
+      // without a selection execCommand copies nothing.
       feldchen.style.cssText = 'position:fixed;top:-1000px;opacity:0';
       document.body.appendChild(feldchen);
       feldchen.select();
@@ -496,8 +496,8 @@ export async function gutscheinKopieren(id, feld) {
 }
 
 /**
- * Alle Gutscheine als ein PDF, per fetch statt Link: Die Kopfzeile X-Gutschein-Befunde sagt, wo der Betrag
- * nicht ersetzt werden konnte — ein <a href> würfe genau diese Auskunft weg.
+ * All vouchers as one PDF, via fetch instead of a link: the header X-Gutschein-Befunde says where the amount
+ * could not be replaced — an <a href> would throw away exactly this information.
  */
 async function gutscheineExportieren() {
   const f = await pdfFreigabe('/v1/vouchers/export/pdf-freigabe');
@@ -519,11 +519,11 @@ async function gutscheineExportieren() {
       const kopf = r.headers.get('X-Gutschein-Befunde');
       if (kopf) befunde = JSON.parse(atob(kopf));
     } catch {
-      /* ohne Befunde ist das PDF trotzdem gut */
+      /* without findings the PDF is fine anyway */
     }
 
-    // Herunterladen über ein kurzlebiges Objekt-URL: Der Name kommt aus dem Content-Disposition, falls er
-    // lesbar ist, sonst aus dem Datum.
+    // Download via a short-lived object URL: the name comes from the Content-Disposition if it
+    // is readable, otherwise from the date.
     const name =
       (r.headers.get('Content-Disposition') || '').match(/filename="([^"]+)"/)?.[1] ||
       `brickinventory-gutscheine-${new Date().toISOString().slice(0, 10)}.pdf`;
@@ -536,15 +536,15 @@ async function gutscheineExportieren() {
     a.remove();
     URL.revokeObjectURL(url);
 
-    // Die Befunde: 'unveraendert' heisst jetzt genau eines — es hätte ersetzt werden sollen und ging nicht.
-    // „Stimmte schon" ist eine eigene Art und kein offener Punkt mehr.
+    // The findings: 'unveraendert' now means exactly one thing — it should have been replaced and could not be.
+    // "Was already right" is a kind of its own and no longer an open item.
     const offen = befunde.filter(b => b.art === 'unveraendert' && b.grund);
     if (!offen.length) {
       toast(tRaw('vouchers.export_done', { n: befunde.length }), 'success');
     } else {
-      // tRaw statt t(), weil ein Toast reiner Text ist: t() maskiert, und aus 9'325 würde sichtbar
-      // „9&#39;325“. Die Nummern stehen in der Meldung, damit man weiss, welche Karte auf Papier den alten
-      // Betrag trägt.
+      // tRaw instead of t(), because a toast is plain text: t() escapes, and 9'325 would visibly become
+      // "9&#39;325". The numbers are in the message, so that one knows which card on paper carries the old
+      // amount.
       toast(
         tRaw('vouchers.export_done', { n: befunde.length }) +
           ' — ' +
@@ -560,11 +560,11 @@ async function gutscheineExportieren() {
 }
 
 /**
- * Das Ausgabeland speichern — eine globale Einstellung.
+ * Save the issuing country — a global setting.
  *
- * Eigener Weg und nicht der große Speichern-Knopf der Einstellungsseite: Das Feld steht in der
- * Gutschein-Rubrik, und wer dort etwas wählt, erwartet, dass es gilt. Der Server nimmt den Wert nur von einem
- * Verwalter an — deshalb ist das Feld für alle anderen gar nicht sichtbar (`admin-only` in index.html).
+ * A path of its own and not the big save button of the settings page: the field stands in the
+ * voucher section, and whoever chooses something there expects it to apply. The server only accepts the value from an
+ * admin — that is why the field is not even visible for everyone else (`admin-only` in index.html).
  */
 export async function gutscheinLandSpeichern() {
   const feld = el('gutschein-land');
@@ -581,7 +581,7 @@ export async function gutscheinLandSpeichern() {
   toast(d?.success ? tRaw('settings.saved') : d?.error || tRaw('settings.error'), d?.success ? 'success' : 'error');
 }
 
-/** Der Name der gewählten Datei neben dem Knopf — das native Feld zeigte ihn selbst. @this {HTMLInputElement | undefined} */
+/** The name of the chosen file next to the button — the native field showed it itself. @this {HTMLInputElement | undefined} */
 function gutscheinDateiGewaehlt() {
   const name = el('v-pdf-name');
   if (!name) return;
@@ -589,7 +589,7 @@ function gutscheinDateiGewaehlt() {
   name.textContent = datei ? datei.name : tRaw('vouchers.pdf_none');
 }
 
-/** Unter dem Ausgabeland: in welcher Währung dessen Karten lauten. */
+/** Below the issuing country: in which currency its cards are denominated. */
 function showLandCurrency() {
   const z = el('gutschein-land-waehrung');
   if (z) z.textContent = tRaw('vouchers.land_waehrung', { w: landCurrency() });
@@ -610,7 +610,7 @@ registerActions({
   gutscheinLandSpeichern,
 });
 
-// „Mehr“ klappt zu, sobald daneben getippt, darin gewählt oder Escape gedrückt wird.
+// "More" collapses as soon as someone taps next to it, chooses inside it or presses Escape.
 if (typeof document !== 'undefined') {
   document.addEventListener('click', ev => {
     const ziel = ev.target instanceof Element ? ev.target : null;

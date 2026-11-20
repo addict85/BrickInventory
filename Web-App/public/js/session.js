@@ -1,6 +1,6 @@
-// Anmeldung, Abmeldung und der Aufbau der Anwendung danach. Das Modul steht ganz oben im Importgraphen: Es
-// darf jede Ansicht starten oder leeren, und keine Ansicht importiert es. Die API-Hülle meldet ein
-// Sitzungsende nur als Ereignis; reagiert wird hier.
+// Login, logout and building the application afterwards. The module stands at the very top of the import graph: it
+// may start or clear every view, and no view imports it. The API wrapper only reports a
+// session end as an event; the reaction happens here.
 import { registerActions } from './registry.js';
 import { html } from './escaping.js';
 import { subscribe, emit } from './events.js';
@@ -26,12 +26,12 @@ import { loadHouseholdMembers } from './account-locations.js';
 import { withSecondFactor } from './confirm-prompt.js';
 import { showOpenAlerts } from './detail-fields.js';
 
-/** Startet die Anwendung. Aufruf ausschliesslich aus js/main.js, nach der Auswertung aller Module. */
+/** Starts the application. Called exclusively from js/main.js, after all modules have been evaluated. */
 export function startApp() {
   bindGlobalErrorHandlers();
   bindTabs();
   plRenderSets();
-  // Eigener Scrollbalken; der des Browsers ist per CSS ausgeblendet.
+  // Own scroll bar; the browser's one is hidden via CSS.
   initScrollbar();
   checkAuth();
 }
@@ -39,30 +39,30 @@ export function startApp() {
 subscribe('passwortWechselNoetig', () => showRequiredSwitch());
 subscribe('zweiterFaktorPflicht', () => showSecondRequired());
 
-/** Konto der abgelaufenen Sitzung: Meldet sich ein anderes an, lädt die Seite neu statt dessen Stand zu zeigen. */
+/** Account of the expired session: if another one logs in, the page reloads instead of showing its state. */
 let _expiredAccount = /** @type {number | null} */ (null);
 /**
- * Ein 401 heisst: Die Sitzung ist nicht mehr gültig. Statt eines Hinweises je Klick über alten Daten geht es
- * zurück zur Anmeldung mit „Sitzung abgelaufen“ — wie in der Android-App.
+ * A 401 means: the session is no longer valid. Instead of one hint per click above old data it goes
+ * back to the login with "session expired" — as in the Android app.
  */
 subscribe('sitzungBeendet', path => {
   if (path.startsWith('/v1/auth/me') || path.startsWith('/v1/auth/login')) return;
-  if (!loggedInAccount) return; // war nie angemeldet — nichts zu beenden
+  if (!loggedInAccount) return; // was never logged in — nothing to end
   _expiredAccount = loggedInAccount.id;
   setAccount(null);
-  // Gleich nach der Anmeldung schon ohne Sitzung, auf einer Seite ohne HTTPS: Das Secure-Cookie fehlt.
-  // „Abgelaufen“ schickte den Betreiber in eine Schleife aus erneuten Anmeldungen.
+  // Already without a session right after login, on a page without HTTPS: the Secure cookie is missing.
+  // "Expired" sent the operator into a loop of repeated logins.
   const withoutCookie = Date.now() - _signedInUm < 60_000 && !_cookieSet && withoutHttps();
   showLogin({ abgelaufen: true, hinweis: withoutCookie ? tRaw('auth.cookie_fehlt') : undefined });
 });
-/** Zeitpunkt der letzten Anmeldung per Formular (für den Fall oben). */
+/** Time of the last login via the form (for the case above). */
 let _signedInUm = 0;
-/** Der Server hat bestätigt, dass er das Cookie gesetzt hat (keks_fehlt: false); dann ist ein 401 echt. */
+/** The server has confirmed that it set the cookie (keks_fehlt: false); then a 401 is real. */
 let _cookieSet = false;
-/** http://localhost gilt dem Browser als sicherer Kontext, trägt aber kein Secure-Cookie vom Server. */
+/** http://localhost counts as a secure context for the browser, but carries no Secure cookie from the server. */
 const withoutHttps = () => window.isSecureContext === false || location.protocol === 'http:';
-// Vorab nur der Satz für jeden Nutzer; was der Betreiber tun muss (COOKIE_SECURE), sagt auth.cookie_fehlt
-// erst, wenn das Cookie wirklich fehlt.
+// Up front only the sentence for every user; what the operator has to do (COOKIE_SECURE) is said by auth.cookie_fehlt
+// only when the cookie is really missing.
 const _withoutHttpsHint = G('login-ohne-https');
 if (_withoutHttpsHint) _withoutHttpsHint.hidden = !withoutHttps();
 
@@ -78,8 +78,8 @@ let _verifySignedIn = false;
 
 /**
  * @param {string} name
- * @param {boolean} [fokus] Nach einem Klick auf einen Wechsel-Link: Der Link verschwindet mit seinem Feld, und
- *   ohne neues Ziel stünde der Fokus auf BODY — Tastatur und Vorleser fingen oben wieder an.
+ * @param {boolean} [fokus] After a click on a switch link: the link disappears with its field, and
+ *   without a new target the focus would stand on BODY — keyboard and screen reader would start at the top again.
  */
 function showPanel(name, fokus = false) {
   ['login', 'register', 'forgot', 'reset', 'verify', 'maillink', 'pflichtwechsel', 'zweitpflicht'].forEach(p => {
@@ -96,24 +96,24 @@ function showPanel(name, fokus = false) {
   /** @type {HTMLElement | undefined} */ (feld)?.focus();
 }
 
-// Mit dem Startpasswort lässt der Server nur den Wechsel zu (403 passwort_wechsel_noetig); die Anwendung käme
-// sonst mit lauter Fehlern hoch.
+// With the start password the server only allows the change (403 passwort_wechsel_noetig); the application would
+// otherwise come up with nothing but errors.
 
 function showRequiredSwitch() {
   G('login-screen').style.display = 'flex';
   removeStartupScaffold();
   G('app').style.display = 'none';
   showPanel('pflichtwechsel');
-  // Das Startpasswort wurde eben getippt und reist aus dem Anmeldefeld mit, statt ein zweites Mal gefragt zu
-  // werden. Nach einem Neuladen fehlt es; dann steht das Feld da.
+  // The start password was just typed and travels along from the login field, instead of being asked a second
+  // time. After a reload it is missing; then the field stands there.
   const eben = G('lp').value;
   G('pflicht-alt').value = eben;
   G('lp').value = '';
   G('pflicht-alt-zeile').hidden = !!eben;
   G(eben ? 'pflicht-neu' : 'pflicht-alt').focus();
 }
-// Verwalter ohne zweiten Faktor: Der Server lässt nur dessen Einrichtung zu (403 zweiter_faktor_pflicht);
-// js/second-factor.js zeichnet sie in das Feld.
+// Admin without a second factor: the server only allows its setup (403 zweiter_faktor_pflicht);
+// js/second-factor.js draws it into the field.
 function showSecondRequired() {
   G('login-screen').style.display = 'flex';
   removeStartupScaffold();
@@ -148,7 +148,7 @@ G('btn-pflicht')?.addEventListener('click', async () => {
   );
   if (!d) return;
   if (!d.success) {
-    // Stimmt das mitgenommene Passwort nicht, muss das Feld wieder her.
+    // If the password taken along is wrong, the field must come back.
     const altWrong = d.code === 'aktuelles_passwort_falsch';
     if (altWrong) G('pflicht-alt-zeile').hidden = false;
     formError(err, d.error || tRaw('settings.error'), [altWrong ? 'pflicht-alt' : 'pflicht-neu']);
@@ -157,11 +157,11 @@ G('btn-pflicht')?.addEventListener('click', async () => {
   location.reload();
 });
 
-// Der Token der Mail steht im Fragment (#token=), das kein Browser sendet: in keinem Protokoll, keinem Referer.
+// The mail's token is in the fragment (#token=), which no browser sends: in no log, no referer.
 (() => {
   const params = new URLSearchParams(location.search);
   const token = new URLSearchParams(location.hash.slice(1)).get('token') || params.get('token');
-  // Der Link aus der Mail bestätigt nichts von selbst; erst der Knopf (POST).
+  // The link from the mail confirms nothing by itself; only the button (POST) does.
   if (token && location.pathname === '/verify') {
     _verifyToken = token;
     showPanel('verify');
@@ -171,7 +171,7 @@ G('btn-pflicht')?.addEventListener('click', async () => {
   } else if (token && acceptMailLink(token, location.pathname)) showPanel('maillink');
   if (token) history.replaceState({}, '', location.pathname);
 })();
-// Ein weiterer Link im selben Tab ändert nur das Fragment: neu laden, sonst bliebe der alte Token.
+// Another link in the same tab only changes the fragment: reload, otherwise the old token would stay.
 addEventListener('hashchange', () => /[#&]token=/.test(location.hash) && location.reload());
 
 G('link-register')?.addEventListener('click', e => {
@@ -208,9 +208,9 @@ G('btn-register')?.addEventListener('click', async () => {
     );
     return;
   }
-  // Reihenfolge: zu kurz VOR ungleich — dieselbe wie in der App (LoginScreen.kt). Deren Kommentar behauptete
-  // schon vorher „dieselben drei Pruefungen wie im Web-Formular, und in derselben Reihenfolge"; wahr war
-  // daran bis hierher weder das eine noch das andere, weil die Webapp die Laenge gar nicht prueft.
+  // Order: too short BEFORE unequal — the same as in the app (LoginScreen.kt). Its comment already claimed
+  // before "the same three checks as in the web form, and in the same order"; neither was
+  // true until now, because the web app did not check the length at all.
   const regel = passwordRuleText(p);
   if (regel) {
     formError(err, regel, ['reg-pass']);
@@ -328,26 +328,26 @@ G('btn-reset')?.addEventListener('click', async () => {
 // ── AUTH ──────────────────────────────────────────────
 
 export async function checkAuth() {
-  // Sprache (aus localStorage oder Browser-Sprache) sofort anwenden, damit auch der Login-/Registrierungs-
-  // und Startup-Screen VOR dem Login übersetzt sind (bisher lief applyLang erst nach dem Login in showApp).
+  // Apply the language (from localStorage or browser language) immediately, so that the login/registration
+  // and startup screens are translated BEFORE login too (so far applyLang only ran after login in showApp).
   applyLang(LANG, false);
   await waitForStartup();
   const { d, waitSec } = await checkSession();
-  // Die Anmeldemaske ist schon bedienbar, während diese Frage läuft. Wer sich inzwischen angemeldet hat,
-  // bekäme sonst von der späten Antwort „nein“ die Maske zurück, obwohl die Sitzung gilt.
+  // The login mask is already usable while this question runs. Whoever has logged in meanwhile
+  // would otherwise get the mask back from the late answer "no", although the session is valid.
   if (loggedInAccount) return;
-  // Nur ein ausdrückliches „nicht angemeldet“ führt zur Maske. Drosselung, Serverfehler oder kein Netz
-  // sagen nichts über die Sitzung; die Maske legte sonst nahe, sie sei weg.
+  // Only an explicit "not logged in" leads to the mask. Throttling, server errors or no network
+  // say nothing about the session; the mask would otherwise suggest it is gone.
   if (typeof d.loggedIn !== 'boolean') {
     sessionUnresolved(d, waitSec, checkAuth);
     return;
   }
   showOffline(false);
-  // Der Nutzer steht unter `user` mit `is_admin`, wie in der Login-Antwort; loggedInAccount behält isAdmin, id und
-  // username. Auch angemeldet (neue Adresse im Profil) wird erst bestätigt, dann öffnet die Anwendung.
+  // The user is under `user` with `is_admin`, as in the login response; loggedInAccount keeps isAdmin, id and
+  // username. Even when logged in (new address in the profile) confirmation comes first, then the application opens.
   _verifySignedIn = !!d.loggedIn;
   if (_verifyToken) showConfirmationTarget(!!d.loggedIn);
-  // Angemeldet heisst: `user` ist da; der Vertrag lässt es offen, weil /auth/me auch abgemeldet antwortet.
+  // Logged in means: `user` is there; the contract leaves it optional because /auth/me also answers when logged out.
   if (d.loggedIn && !_verifyToken && !openMailLink()) {
     setAccount(
       /** @type {import('./state.js').Account} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
@@ -365,8 +365,8 @@ export async function checkAuth() {
   }
 }
 /**
- * Vor dem Einlösen nennt der Server das Konto des Links, und der Knopf nennt es noch einmal: Wer von zwei
- * gleichen Mails die eines fremden Kontos öffnet, sieht dessen Namen, bevor er dessen Adresse bestätigt.
+ * Before redeeming, the server names the link's account, and the button names it once more: whoever opens the
+ * one of a foreign account from two identical mails sees its name before confirming its address.
  * @param {boolean} angemeldet
  */
 async function showConfirmationTarget(angemeldet) {
@@ -379,7 +379,7 @@ async function showConfirmationTarget(angemeldet) {
   const u = p?.success ? p.user : null;
   if (!v?.success) {
     formError(G('verify-err'), v?.error || tRaw('settings.error'));
-    // Angemeldet trotzdem sagen, was für das eigene Konto wartet; bestätigen lässt sich der Link nicht.
+    // When logged in still say what is waiting for the own account; the link cannot be confirmed.
     if (u) {
       el.textContent = u.new_email
         ? tRaw('verify.ausstehend', { email: u.new_email, konto: u.username })
@@ -400,8 +400,8 @@ async function showConfirmationTarget(angemeldet) {
   if (u) confirmationSignedIn(u.new_email);
 }
 /**
- * Angemeldet führt die Seite zurück in die Sammlung; wartet nichts, ist „Bestätigen“ nicht mehr der
- * nahegelegte Schritt.
+ * When logged in the page leads back into the collection; if nothing is waiting, "confirm" is no longer the
+ * suggested step.
  * @type {string | null}
  */
 let _verifyEmail = null;
@@ -418,23 +418,23 @@ function confirmationSignedIn(email) {
   G('btn-verify')?.classList.toggle('bp', !!email);
   G('btn-verify')?.classList.toggle('bs', !email);
 }
-/** Ohne Neuladen in die App, damit die Rückmeldung stehen bleibt. */
+/** Into the app without reloading, so that the feedback stays. */
 async function confirmedSignedIn() {
   history.replaceState({}, '', '/');
   await checkAuth();
   toast(_verifyEmail ? tRaw('verify.bestaetigt', { email: _verifyEmail }) : tRaw('verify.bestaetigt_kurz'), 'success');
 }
 /**
- * @param {{ abgelaufen?: boolean, hinweis?: string }} [o] abgelaufen: Der Name bleibt stehen, damit
- *   man sich gleich wieder anmelden kann; Passwort und Code nie — sonst genügt
- *   dem Nächsten am Gerät ein Druck auf „Anmelden“.
+ * @param {{ abgelaufen?: boolean, hinweis?: string }} [o] abgelaufen: the name stays, so that
+ *   one can log in again right away; password and code never — otherwise a press on "log in"
+ *   would be enough for the next person at the device.
  */
 function showLogin(o = {}) {
   G('lp').value = '';
   G('lc').value = '';
   G('lc-zeile').style.display = 'none';
   G('lc-status').textContent = '';
-  // Ein angezeigtes Passwort bleibt nicht für die nächste Anmeldung sichtbar.
+  // A shown password does not stay visible for the next login.
   if (G('lp').type !== 'password') {
     G('lp').type = 'password';
     const k = document.querySelector('[data-click="geheimUmschalten"][data-arg="lp"]');
@@ -448,14 +448,14 @@ function showLogin(o = {}) {
     hinweis.textContent = o.abgelaufen ? o.hinweis || tRaw('auth.session_expired') : '';
   }
   formError(G('lerr'), '');
-  // Der Fortschrittsbalken gehört js/progress.js — dort steht auch, was „zurücksetzen“ für ihn bedeutet
-  // (Anzeige aus, beide Abfragen gestoppt, Protokoll geleert). Hier stand früher sein Innenleben
-  // ausgeschrieben.
+  // The progress bar belongs to js/progress.js — that is also where it says what "reset" means for it
+  // (display off, both polls stopped, log cleared). Its internals used to be written out
+  // here.
   resetGive();
   sessionStorage.removeItem('webToken');
   emptyCache();
-  // Clear sensitive data from all tabs before hiding Das Diagramm nur leeren, nicht seinen Abschnitt: Der
-  // trägt Kopf und Zeitraumwahl, die nach der nächsten Anmeldung sonst fehlten.
+  // Clear sensitive data from all tabs before hiding. Only clear the chart, not its section: it
+  // carries header and period choice, which would otherwise be missing after the next login.
   ['fin-tbl', 'portfolio-chart', 'portfolio-pnl', 'gallery-grid', 'parts-main', 'monitor-content'].forEach(id => {
     const el = G(id);
     if (el) el.replaceChildren();
@@ -479,22 +479,22 @@ function showLogin(o = {}) {
   showPanel('login');
   checkRegistrationEnabled();
 }
-/** Zähler der Abfragen nach den Anmeldewegen. Abmelden und abgelaufene Sitzung
- * fragen beide; kommt die ältere Antwort zuletzt an, gilt sie nicht mehr. */
+/** Counter of the queries for the login methods. Logout and expired session
+ * both ask; if the older answer arrives last, it no longer counts. */
 let _loginMethodsRun = 0;
 async function checkRegistrationEnabled() {
-  // Derselbe Anlass wie die Anmeldewege: Wer die Anmeldeseite zeigt, soll wissen, ob die
-  // Ersteinrichtung noch offen ist — beim Start wie nach dem Abmelden.
+  // The same occasion as the login methods: whoever shows the login page should know whether the
+  // initial setup is still open — at startup as after logout.
   setupCheckButtonRefresh();
   const lauf = ++_loginMethodsRun;
-  // Steht erst wieder, wenn die jüngste Antwort eingetragen ist (Browser-Tests warten darauf).
+  // Only stands again once the most recent answer is entered (browser tests wait for it).
   delete G('login-screen').dataset.anmeldewege;
   try {
     const d = await api('GET', '/v1/auth/registration-status');
     if (lauf !== _loginMethodsRun || d.success === false) return;
     const wrap = G('link-register-wrap');
     if (wrap) wrap.style.display = d.enabled ? '' : 'none';
-    // Nur Wege anbieten, die der Server kann; fehlt die Angabe (älterer Server), bleibt alles wie es war.
+    // Only offer methods the server supports; if the information is missing (older server), everything stays as it was.
     if (d.passkey === false && G('btn-passkey')) G('btn-passkey').hidden = true;
     if (G('link-forgot')) G('link-forgot').hidden = d.passwort_vergessen === false;
     if (G('forgot-verwalter')) G('forgot-verwalter').hidden = d.passwort_vergessen !== false;
@@ -512,15 +512,15 @@ function showApp() {
   G('app').style.display = 'block';
   showUsernames();
   initDefaultCondition();
-  // Kontoauswahl beim Erfassen — bleibt verborgen, wenn es nichts zu wählen gibt.
+  // Account selection when capturing — stays hidden if there is nothing to choose.
   const haushalt = loadHouseholdMembers();
-  // Ausgeloeste Preisalarme seit dem letzten Besuch — das Gegenstueck zum stuendlichen Abruf der Android-App.
+  // Price alerts fired since the last visit — the counterpart to the Android app's hourly fetch.
   showOpenAlerts();
-  // Einrichtungs-Assistent für eine frische Installation (nur Verwalter).
+  // Setup wizard for a fresh installation (admins only).
   if (loggedInAccount?.isAdmin) checkSetup();
-  // ?set=<nummer> öffnet das Set direkt (Knopf der Preisalarm-Mail). Hier und nicht beim Laden, weil erst
-  // hier eine Sitzung besteht. Geöffnet wird über die Adresse #/set/…: routeOnStart() unten schliesst jeden
-  // Dialog, den die Adresse nicht nennt. Der Parameter fällt weg, damit F5 nicht erneut einen Link einlöst.
+  // ?set=<number> opens the set directly (button of the price alert mail). Here and not on load, because only
+  // here a session exists. Opening happens via the address #/set/…: routeOnStart() below closes every
+  // dialog the address does not name. The parameter is dropped, so that F5 does not redeem a link again.
   const setFromLink = new URLSearchParams(location.search).get('set');
   if (setFromLink) history.replaceState({}, '', `${location.pathname}#/set/${encodeURIComponent(setFromLink)}`);
   // Apply saved language immediately (from localStorage) so static elements translate before server responds
@@ -532,9 +532,9 @@ function showApp() {
       setSettingsSnapshot(d.settings);
       setAccountCurrency(d.settings.currency || 'EUR');
       applyTheme(d.settings.app_theme);
-      // Die Sprache des Servers gewinnt (ausdrückliche Wahl); localStorage mitziehen
+      // The server's language wins (explicit choice); update localStorage too
       const srvLang = d.settings.language;
-      // Auch eine noch nicht geladene Sprache: applyLang lädt sie nach.
+      // Also a language not loaded yet: applyLang loads it.
       if (srvLang === 'de' || srvLang === 'en') {
         if (srvLang !== LANG) applyLang(srvLang, false);
         localStorage.setItem('bim_lang', srvLang);
@@ -542,9 +542,9 @@ function showApp() {
     }
     _updateLangSelect();
   });
-  // Der Reiter „Einstellungen" traegt seit dem 16.10. nur noch, was ein Verwalter setzt (Marcos Vorgabe) — er
-  // wird deshalb wie das Monitoring erst hier eingeblendet. Fuer alle anderen waere er leer, und ein leerer
-  // Reiter ist schlimmer als keiner: Man klickt ihn an und sucht.
+  // Since 16.10. the "settings" tab only carries what an admin sets (Marco's requirement) — it
+  // is therefore, like monitoring, only shown here. For everyone else it would be empty, and an empty
+  // tab is worse than none: one clicks it and searches.
   if (loggedInAccount?.isAdmin) {
     const ns = G('ntab-settings');
     if (ns) ns.style.display = '';
@@ -580,18 +580,18 @@ function showApp() {
     G('btn-sav-rb').disabled = true;
     G('btn-sav-bs').disabled = true;
   }
-  // Ohne Rebrickable-Schlüssel öffnet trotzdem die Sammlung: Ein Sprung in die Einstellungen bei jeder
-  // Anmeldung nimmt dem Verwalter seine Startseite. Ein Band weist einmal je Sitzung darauf hin. Erst die
-  // Einstellungen, dann Beträge: Sonst stünden die Preise kurz in der Vorgabewährung und sprängen dann um
-  // (UI-Prüfung 6, N12).
+  // Without a Rebrickable key the collection opens anyway: a jump into the settings on every
+  // login takes the admin's start page away. A banner points it out once per session. First the
+  // settings, then amounts: otherwise the prices would briefly stand in the default currency and then jump
+  // (UI check 6, N12).
   const bandDecided = einstellungen
     .catch(() => {})
     .finally(() => {
       if (loggedInAccount?.isAdmin) showRbHint();
       emit('sammlungLaden');
     });
-  // Das Gerüst deckt die App, bis Band und Kontofilter feststehen: Sonst rutschte der Kopf beim Laden um das
-  // Band nach unten und das Suchfeld schrumpfte um die Kontoauswahl. Antwortet der Server nicht, nach 2,5 s.
+  // The skeleton covers the app until banner and account filter are settled: otherwise the header slid down by the
+  // banner while loading and the search field shrank by the account selection. If the server does not answer, after 2.5 s.
   Promise.race([Promise.allSettled([bandDecided, haushalt]), new Promise(r => setTimeout(r, 2500))]).then(
     removeStartupScaffold,
   );
@@ -612,11 +612,11 @@ for (const id of ['lu', 'lp', 'lc'])
     }
   });
 async function doLogin() {
-  // Leere Pflichtfelder meldet das Feld selbst, wie in den übrigen Formularen; die Sammelmeldung oben bleibt
-  // für das, was erst der Server weiss (falsche Anmeldedaten, Sperre).
+  // Empty required fields are reported by the field itself, as in the other forms; the summary message at the top stays
+  // for what only the server knows (wrong credentials, lock).
   formError(G('lerr'), '');
-  // Steht das Codefeld da, ist der Code Pflicht: Ohne ihn kam vom Server nur ein stilles 401, das obendrein
-  // gegen die Anmeldedrossel zählte.
+  // If the code field stands there, the code is required: without it the server only returned a silent 401, which moreover
+  // counted against the login throttle.
   /** @type {[string, string][]} */
   const pflicht =
     G('lc-zeile').style.display === 'none' ? LOGIN_REQUIRED : [...LOGIN_REQUIRED, ['lc', 'login.code_leer']];
@@ -636,14 +636,14 @@ async function doLogin() {
     ...(code ? { code } : {}),
   });
   frei();
-  // Zweiter Faktor verlangt: Codefeld zeigen und dort weitermachen.
+  // Second factor required: show the code field and continue there.
   if (d.zweiter_faktor) {
     G('lc-zeile').style.display = '';
     G('lc').value = '';
-    // Der Fokus springt ins neue Feld; ohne den Satz wüsste man nicht, ob das Passwort gestimmt hat.
+    // The focus jumps into the new field; without the sentence one would not know whether the password was right.
     G('lc-status').textContent = code ? '' : tRaw('login.code_jetzt');
     G('lc').focus();
-    // Hat das Konto Passkeys, geht einer statt des Codes (js/passkeys.js).
+    // If the account has passkeys, one works instead of the code (js/passkeys.js).
     G('lc-passkey').hidden = !d.passkey;
     formError(G('lerr'), code ? d.error || '' : '', code ? ['lc'] : []);
     return;
@@ -652,7 +652,7 @@ async function doLogin() {
   G('lc').value = '';
   G('lc-status').textContent = '';
   if (d.success && d.keks_fehlt) {
-    // Der Server hat das Cookie gar nicht gesetzt: Die App zu öffnen hiesse, gleich wieder „abgelaufen“.
+    // The server did not set the cookie at all: opening the app would mean "expired" again right away.
     showLogin({ abgelaufen: true, hinweis: tRaw('auth.cookie_fehlt') });
     return;
   }
@@ -664,8 +664,8 @@ async function doLogin() {
     setAccount(
       /** @type {import('./state.js').Account} */ ({ ...d, ...(d.user || {}), isAdmin: d.user?.is_admin === true }),
     );
-    // Jede Anmeldung beginnt mit „Alle Konten" — VOR showApp(), damit die Auswahlfelder gleich mit dem
-    // zurückgesetzten Wert entstehen.
+    // Every login starts with "all accounts" — BEFORE showApp(), so that the select fields are created right away with the
+    // reset value.
     resetScopeModes();
     formError(G('lerr'), '');
     G('login-hinweis').hidden = true;
@@ -674,7 +674,7 @@ async function doLogin() {
     openApp();
   } else {
     const err = d.error || tRaw('settings.error');
-    // Beide gefüllt (siehe oben): Meist stimmt das Passwort nicht, also dorthin.
+    // Both filled (see above): usually the password is wrong, so go there.
     formError(G('lerr'), err, ['lp', 'lu']);
     if (d.unverified || d.code === 'email_nicht_bestaetigt') {
       setzeHtml(
@@ -685,23 +685,23 @@ async function doLogin() {
   }
 }
 G('btn-logout').onclick = async () => {
-  // Ein Token aus einer älteren Anmeldung wird mit entwertet.
+  // A token from an older login is invalidated along with it.
   const _wt = sessionStorage.getItem('webToken');
-  // Zuerst abgemeldet: Laufende Anfragen, die jetzt mit 401 enden, melden kein „Sitzung abgelaufen“.
+  // Logged out first: running requests that now end with 401 do not report "session expired".
   setAccount(null);
   await apiRaw('POST', '/v1/auth/logout', {
     headers: _wt ? { Authorization: 'Bearer ' + _wt } : {},
   }).catch(() => {});
   sessionStorage.removeItem('webToken');
-  // Neu laden statt aufräumen: Listen, Dialoge, Titel und Sprache des vorigen Kontos blieben sonst im Dokument
-  // stehen. Die Anmeldemaske spricht dann wieder die Sprache des Browsers.
+  // Reload instead of cleaning up: lists, dialogs, title and language of the previous account would otherwise stay in the document.
+  // The login mask then speaks the browser's language again.
   localStorage.removeItem('bim_lang');
   showLogin();
   if (navigator.onLine !== false) location.replace('/');
   else addEventListener('online', () => location.replace('/'), { once: true });
 };
 
-// Ohne Auskunft über das Konto: Der Server antwortet für jede Adresse gleich.
+// Without information about the account: the server answers the same for every address.
 async function bestaetigungErneut() {
   const email = G('lu').value.trim();
   if (!email.includes('@')) {
@@ -713,7 +713,7 @@ async function bestaetigungErneut() {
   toast(d.message || d.error || tRaw('settings.error'), d.success ? 'success' : 'error');
 }
 /**
- * Leerzustände führen zum Feld, in das der erste Eintrag gehört.
+ * Empty states lead to the field the first entry belongs in.
  * @param {string} id
  */
 function feldFokussieren(id) {

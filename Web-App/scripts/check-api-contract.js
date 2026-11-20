@@ -2,10 +2,10 @@
 'use strict';
 
 /**
- * API-Vertrag gegen einen laufenden Server: jede GET-Route des Vertrags
- * (src/contract/) ohne Platzhalter gegen ihr Schema. Die vollständige
- * Prüfung mit Bestand steht in test/contract-read-db.test.js; dieses Skript
- * ist für einen echten Bestand (nach `npm run build`).
+ * API contract against a running server: every GET route of the contract
+ * (src/contract/) without placeholders against its schema. The complete
+ * check with inventory is in test/contract-read-db.test.js; this script
+ * is for a real inventory (after `npm run build`).
  */
 const path = require('node:path');
 const { CONTRACT } = require(path.join(__dirname, '..', 'dist', 'src', 'contract', 'index.js'));

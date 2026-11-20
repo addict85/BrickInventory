@@ -1,16 +1,16 @@
-// In ES-Modulen liegen Funktionen nicht auf window; data-click="name" findet seinen Handler deshalb hier. Ein
-// Tippfehler im Namen fällt so im Test auf statt erst beim Klicken.
+// In ES modules functions do not live on window; data-click="name" therefore finds its handler here. A
+// typo in the name is thus noticed in the test instead of only when clicking.
 import { html } from './escaping.js';
 
-/** name → Funktion. Wird von den einzelnen Modulen gefüllt. */
+/** name → function. Filled by the individual modules. */
 const _actions = new Map();
 
 /**
- * Handler anmelden.
+ * Register handlers.
  *
- * Aufruf am Ende jedes Moduls mit einem Objektliteral aus den eigenen Handlern: `registerActions({
- * loadGallery, openModal })`. Die Kurzschreibweise sorgt dafür, dass Schlüssel und Funktionsname nicht
- * auseinanderlaufen können.
+ * Called at the end of each module with an object literal of its own handlers: `registerActions({
+ * loadGallery, openModal })`. The shorthand notation ensures that key and function name cannot
+ * drift apart.
  *
  * @param {Record<string, Function>} map
  */
@@ -25,9 +25,9 @@ export function registerActions(map) {
   }
 }
 
-/** Nur angemeldete Handler, kein Rückfall auf window: Sonst wäre jede globale
- * Funktion (open, close, print …) aus eingeschleustem Markup aufrufbar. Der
- * Log-Betrachter im Popup löst seine Handler selbst auf (js/logviewer.js).
+/** Only registered handlers, no fallback to window: otherwise every global
+ * function (open, close, print …) would be callable from injected markup. The
+ * log viewer in the popup resolves its handlers itself (js/logviewer.js).
  * @param {string} name
  * @returns {Function|null} */
 export function resolveAction(name) {
@@ -35,8 +35,8 @@ export function resolveAction(name) {
   return typeof fn === 'function' ? fn : null;
 }
 
-// Zufallsmarke je Seitenladung. Gefährliche Aktionen laufen nur von Elementen, die beim Laden schon im Markup
-// standen oder deren Vorlage echt() trägt; eingeschleustes HTML kennt die Marke nicht.
+// Random marker per page load. Dangerous actions only run from elements that were already in the markup at load
+// or whose template carries echt(); injected HTML does not know the marker.
 const _brand =
   typeof crypto !== 'undefined' && crypto.getRandomValues
     ? [...crypto.getRandomValues(new Uint8Array(12))].map(b => b.toString(16).padStart(2, '0')).join('')
@@ -46,17 +46,17 @@ if (typeof document !== 'undefined')
   for (const el of document.querySelectorAll('[data-click],[data-change],[data-input],[data-blur],[data-keydown]'))
     _ofStart.add(el);
 
-/** Attribut für Vorlagen, die eine gefährliche Aktion auslösen. */
+/** Attribute for templates that trigger a dangerous action. */
 export function echt() {
   return html` data-echt="${_brand}"`;
 }
 
-/** @param {Element} el  das Element mit dem data-*-Attribut */
+/** @param {Element} el  the element with the data-* attribute */
 export function isTrusted(el) {
   return _ofStart.has(el) || el.getAttribute('data-echt') === _brand;
 }
 
-/** Alle angemeldeten Namen — für Tests und die Fehlersuche. */
+/** All registered names — for tests and debugging. */
 export function actionNames() {
   return [..._actions.keys()].sort();
 }

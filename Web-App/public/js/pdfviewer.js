@@ -1,4 +1,4 @@
-// Der PDF-Betrachter ist eine eigene Datei: Er hängt nur an G und esc und wird über openPdfViewer() gerufen.
+// The PDF viewer is a file of its own: it only depends on G and esc and is called via openPdfViewer().
 import { registerActions } from './registry.js';
 import { G, setzeHtml } from './dom.js';
 import { tRaw } from '../i18n.js';
@@ -14,29 +14,29 @@ const _pdfRenderTasks = new Map();
 
 // ── Zoom ─────────────────────────────────────────────────────────────────────
 //
-// `_pdfZoom` ist der Faktor auf die Grundgrösse, und die Grundgrösse ist
-// „Seite füllt die Breite" (_pdfBaseScale). 1 ist deshalb der untere Anschlag: weiter hinaus gibt es nichts
-// zu sehen, die Breite ist schon ganz da. Dieselbe Untergrenze hat der Bildzoom der App
+// `_pdfZoom` is the factor on the base size, and the base size is
+// "page fills the width" (_pdfBaseScale). 1 is therefore the lower stop: further out there is nothing
+// to see, the width is already fully there. The app's image zoom has the same lower limit
 // (ZoomableImageDialog.kt).
 const PDF_ZOOM_MIN = 1;
 const PDF_ZOOM_MAX = 5;
-const PDF_ZOOM_STEP = 1.25; // ein Druck auf + bzw. −
+const PDF_ZOOM_STEP = 1.25; // one press on + or −
 
-// Obergrenze der Leinwand in Pixeln der Fläche. Der Riegel ist der Speicher, nicht die Grenze des Browsers
-// (16384 je Seite): 16 MPixel sind rund 60 MB und reichen für jede Zoomstufe, die man lesen will.
+// Upper bound of the canvas in pixels of area. The bar is memory, not the browser's limit
+// (16384 per side): 16 MPixel are about 60 MB and suffice for every zoom level one wants to read.
 const PDF_CANVAS_MAX_PX = 16e6;
 
 let _pdfZoom = 1;
-let _pdfBaseScale = 1; // Faktor „Seite füllt die Breite"
+let _pdfBaseScale = 1; // factor "page fills the width"
 let _pdfPageW = 0,
-  _pdfPageH = 0; // Seitengrösse bei scale 1, aus PDF.js
-// Zählt jede Zoom-Änderung. Ein Render, der über eine Änderung hinweg läuft, hängt seine Leinwand sonst in
-// einen Platzhalter, der inzwischen eine andere Grösse hat — die Seite wäre verzerrt. Siehe _renderPdfPage.
+  _pdfPageH = 0; // page size at scale 1, from PDF.js
+// Counts every zoom change. A render that runs across a change would otherwise hang its canvas into
+// a placeholder that has a different size by now — the page would be distorted. See _renderPdfPage.
 let _pdfZoomGen = 0;
 
 /**
- * PDF.js (rund 400 KB) erst beim ersten PDF laden, nicht bei jedem Seitenaufruf. Die Adresse steht als inertes
- * <script> in einem <template> in index.html: So trägt sie den Stempel des Servers wie jedes andere Asset.
+ * Load PDF.js (about 400 KB) only on the first PDF, not on every page view. The address stands as an inert
+ * <script> in a <template> in index.html: that way it carries the server's stamp like every other asset.
  * @returns {Promise<PdfJs | undefined>}
  */
 async function ladePdfjs() {
@@ -53,8 +53,8 @@ async function ladePdfjs() {
   return window.pdfjsLib;
 }
 
-/** @param {{ daten?: ArrayBuffer, fileName?: string }} [opt] schon geladene Bytes (Gutschein-PDF mit
- * Einmal-Ticket: ein zweiter Abruf schlüge fehl), `url` dient dann nur dem Download.
+/** @param {{ daten?: ArrayBuffer, fileName?: string }} [opt] already loaded bytes (voucher PDF with
+ * a one-time ticket: a second fetch would fail), `url` then only serves the download.
  * @param {string} url @param {string} title */
 export async function openPdfViewer(url, title, opt = {}) {
   const modal = G('pdf-viewer-modal');
@@ -96,13 +96,13 @@ export async function openPdfViewer(url, title, opt = {}) {
         ? { data: new Uint8Array(opt.daten), isEvalSupported: false, enableScripting: false }
         : {
             url,
-            disableAutoFetch: true, // nicht die ganze Datei vorab laden
+            disableAutoFetch: true, // do not load the whole file up front
             disableStream: false,
-            disableRange: false, // Byte-Range-Requests nutzen
+            disableRange: false, // use byte range requests
             rangeChunkSize: 262144, // 256 KB
-            withCredentials: true, // Session-Cookie (same-origin) mitsenden
-            // Ein PDF kommt auch von fremden Quellen: kein eval für Schriften (ab PDF.js 5 ohnehin entfallen, die
-            // CSP verbietet es) und kein Skript im PDF.
+            withCredentials: true, // send the session cookie (same-origin) along
+            // A PDF also comes from foreign sources: no eval for fonts (dropped anyway from PDF.js 5, the
+            // CSP forbids it) and no script in the PDF.
             isEvalSupported: false,
             enableScripting: false,
           },
@@ -121,7 +121,7 @@ export async function openPdfViewer(url, title, opt = {}) {
   }
 }
 
-/** Platzhaltergrösse beim aktuellen Zoom, in CSS-Pixeln. */
+/** Placeholder size at the current zoom, in CSS pixels. */
 function _pdfMasse() {
   return {
     w: Math.round(_pdfPageW * _pdfBaseScale * _pdfZoom),
@@ -130,8 +130,8 @@ function _pdfMasse() {
 }
 
 /**
- * Einen Platzhalter auf die Zoomgrösse bringen. margin:0 auto statt nur align-items:center: Bei einer Seite
- * breiter als der Behälter läge der linke Rand sonst im Negativen und wäre nicht mehr erreichbar.
+ * Bring a placeholder to the zoom size. margin:0 auto instead of just align-items:center: with a page
+ * wider than the container the left edge would otherwise be negative and no longer reachable.
  * @param {HTMLElement} ph
  */
 function _pdfMassPlaceholder(ph) {
@@ -153,7 +153,7 @@ async function _renderPdfLazy(pdf, container) {
     const ph = document.createElement('div');
     ph.className = 'pdf-page-ph';
     ph.dataset.page = String(n);
-    // Die Seite ist ein Bild ohne Textebene; ihr Name sagt Vorlesern wenigstens, wo sie sind.
+    // The page is an image without a text layer; its name at least tells screen readers where they are.
     ph.setAttribute('role', 'img');
     ph.setAttribute('aria-label', tRaw('pdf.seite_von', { n, m: pdf.numPages }));
     ph.style.cssText = 'background:var(--s200);box-shadow:0 1px 5px rgba(0,0,0,.35);flex-shrink:0;margin:0 auto';
@@ -175,7 +175,7 @@ async function _renderPdfLazy(pdf, container) {
   _pdfObserveAll(container);
 }
 
-/** Alle Platzhalter (neu) beobachten. */
+/** Observe all placeholders (anew). */
 /** @param {HTMLElement | null} container */
 function _pdfObserveAll(container) {
   const observer = _pdfObserver;
@@ -193,8 +193,8 @@ async function _renderPdfPage(pdf, n, ph) {
   try {
     const page = await pdf.getPage(n);
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    // Der Riegel wirkt auf die FLÄCHE, nicht auf eine Seitenlänge: eine querformatige Seite hat dieselbe
-    // Pixelzahl wie eine hochformatige, nur anders verteilt.
+    // The bar acts on the AREA, not on a side length: a landscape page has the same
+    // pixel count as a portrait one, only distributed differently.
     let scale = _pdfBaseScale * _pdfZoom * dpr;
     const flaeche = _pdfPageW * scale * (_pdfPageH * scale);
     if (flaeche > PDF_CANVAS_MAX_PX) scale *= Math.sqrt(PDF_CANVAS_MAX_PX / flaeche);
@@ -204,13 +204,13 @@ async function _renderPdfPage(pdf, n, ph) {
     canvas.height = Math.round(vp.height);
     canvas.style.cssText = 'width:100%;height:100%;display:block';
     canvas.setAttribute('aria-hidden', 'true');
-    // Die Seite bleibt weiss, auch wenn der Platzhalter dahinter im dunklen Design gedämpft ist.
+    // The page stays white, even if the placeholder behind it is dimmed in the dark theme.
     const task = page.render({ canvasContext: canvas.getContext('2d'), viewport: vp, background: '#fff' });
     _pdfRenderTasks.set(n, task);
     await task.promise;
     _pdfRenderTasks.delete(n);
-    // Zwischenzeitlich gezoomt: Diese Leinwand hat die alte Auflösung. Einmal eingehängt, bräche der neue
-    // Durchlauf oben ab (Leinwand schon da), und die Seite bliebe grob bis zum nächsten Zoom.
+    // Zoomed in the meantime: this canvas has the old resolution. Once hung in, the new pass
+    // would abort above (canvas already there), and the page would stay coarse until the next zoom.
     if (gen !== _pdfZoomGen) {
       canvas.width = 0;
       canvas.height = 0;
@@ -220,7 +220,7 @@ async function _renderPdfPage(pdf, n, ph) {
     ph.replaceChildren();
     ph.appendChild(canvas);
   } catch {
-    /* Render abgebrochen (Scroll) o.ä. */
+    /* render aborted (scroll) or similar */
   }
   ph.dataset.rendering = '0';
 }
@@ -242,21 +242,21 @@ function _unloadPdfPage(n, ph) {
     canvas.width = 0;
     canvas.height = 0;
     ph.replaceChildren();
-  } // Speicher freigeben
+  } // release memory
   ph.dataset.rendering = '0';
 }
 
 /**
- * Zoom setzen und dabei einen Punkt stehen lassen.
+ * Set the zoom and keep one point in place.
  *
- * @param {number} neu Gewünschter Faktor; wird auf [MIN, MAX] begrenzt.
- * @param {number|null} ankerX Punkt im Sichtfeld, der stehen bleiben soll, in
- *        CSS-Pixeln ab linker Behälterkante. null = Mitte des Sichtfelds.
- * @param {number|null} ankerY wie ankerX, senkrecht.
+ * @param {number} neu desired factor; clamped to [MIN, MAX].
+ * @param {number|null} ankerX point in the viewport that should stay in place, in
+ *        CSS pixels from the left container edge. null = center of the viewport.
+ * @param {number|null} ankerY like ankerX, vertically.
  *
- * Ohne Anker springt die Anzeige beim Zoomen auf eine andere Seite: wer bei
- * Seite 12 hineinzoomt, landet bei Seite 40, weil derselbe scrollTop in einem
- * viermal so hohen Dokument viermal weniger weit kommt.
+ * Without an anchor the display jumps to another page when zooming: whoever zooms in at
+ * page 12 lands at page 40, because the same scrollTop gets four times less far in a
+ * document four times as tall.
  */
 function _pdfSetZoom(neu, ankerX, ankerY) {
   const container = G('pdf-viewer-pages');
@@ -267,15 +267,15 @@ function _pdfSetZoom(neu, ankerX, ankerY) {
 
   const ax = ankerX == null ? container.clientWidth / 2 : ankerX;
   const ay = ankerY == null ? container.clientHeight / 2 : ankerY;
-  // Lage des Ankers im Dokument, in Einheiten von Zoom 1.
+  // Position of the anchor in the document, in units of zoom 1.
   const dokX = (container.scrollLeft + ax) / alt;
   const dokY = (container.scrollTop + ay) / alt;
 
   _pdfZoom = ziel;
   _pdfZoomGen++;
 
-  // Erst alle Leinwände weg, dann die Platzhalter neu bemessen: eine Leinwand mit width:100% würde sonst kurz
-  // verzerrt dastehen.
+  // First remove all canvases, then resize the placeholders: a canvas with width:100% would otherwise briefly
+  // stand distorted.
   /** @type {NodeListOf<HTMLElement>} */ (container.querySelectorAll('.pdf-page-ph')).forEach(ph => {
     _unloadPdfPage(parseInt(ph.dataset.page ?? '', 10), ph);
     _pdfMassPlaceholder(ph);
@@ -284,9 +284,9 @@ function _pdfSetZoom(neu, ankerX, ankerY) {
   container.scrollLeft = dokX * ziel - ax;
   container.scrollTop = dokY * ziel - ay;
 
-  // Der Beobachter meldet sich NICHT von selbst, wenn ein beobachtetes Element nur die Grösse ändert und
-  // weiter sichtbar bleibt — die sichtbaren Seiten blieben leer. observe() liefert aber immer einen ersten
-  // Rückruf, also neu anmelden. (disconnect() davor, sonst doppelte Anmeldung.)
+  // The observer does NOT report by itself when an observed element only changes size and
+  // stays visible — the visible pages would stay empty. observe() however always delivers a first
+  // callback, so register anew. (disconnect() before, otherwise double registration.)
   if (_pdfObserver) {
     _pdfObserver.disconnect();
     _pdfObserveAll(container);
@@ -294,18 +294,18 @@ function _pdfSetZoom(neu, ankerX, ankerY) {
   _pdfShowFactor();
 }
 
-/** Den Faktor als Prozentzahl anzeigen — nicht als Farbe oder Balken. */
+/** Show the factor as a percentage — not as a color or bar. */
 function _pdfShowFactor() {
   const el = G('pdf-viewer-zoom');
-  // Der Name beginnt mit der sichtbaren Zahl (WCAG 2.5.3): Sprachsteuerung trifft den Knopf mit „100 %“.
+  // The name starts with the visible number (WCAG 2.5.3): voice control hits the button with "100 %".
   if (el) {
     el.textContent = Math.round(_pdfZoom * 100) + '%';
     el.setAttribute('aria-label', tRaw('pdf.zoom_reset_n', { p: el.textContent }));
   }
   const minus = G('pdf-viewer-zoom-out'),
     plus = G('pdf-viewer-zoom-in');
-  // Am Anschlag abschalten. `disabled` ist für Screenreader und Tastatur verbindlich; die Ausgrauung ist nur
-  // die Begleitung davon, nicht das Signal.
+  // Disable at the stop. `disabled` is binding for screen readers and keyboard; the greying out is only
+  // its accompaniment, not the signal.
   if (minus) minus.disabled = _pdfZoom <= PDF_ZOOM_MIN + 1e-4;
   if (plus) plus.disabled = _pdfZoom >= PDF_ZOOM_MAX - 1e-4;
 }
@@ -321,8 +321,8 @@ function pdfZoomReset() {
 }
 
 /**
- * Strg/⌘ + Rad zoomt das PDF statt der ganzen Oberfläche; ohne Zusatztaste rollt das Rad weiter, weil man
- * durch Anleitungen vor allem blättert. Der Zeiger ist der Anker.
+ * Ctrl/⌘ + wheel zooms the PDF instead of the whole UI; without a modifier key the wheel keeps scrolling, because one
+ * mostly pages through instructions. The pointer is the anchor.
  */
 /** @param {WheelEvent} ev */
 function _pdfRad(ev) {
@@ -331,18 +331,18 @@ function _pdfRad(ev) {
   const container = G('pdf-viewer-pages');
   if (!container) return;
   const r = container.getBoundingClientRect();
-  // deltaY ist je nach Gerät Pixel, Zeilen oder Seiten — nur das Vorzeichen ist überall verlässlich, der
-  // Betrag nicht. Deshalb ein fester Schritt.
+  // Depending on the device deltaY is pixels, lines or pages — only the sign is reliable everywhere, the
+  // magnitude is not. Hence a fixed step.
   const f = ev.deltaY < 0 ? PDF_ZOOM_STEP : 1 / PDF_ZOOM_STEP;
   _pdfSetZoom(_pdfZoom * f, ev.clientX - r.left, ev.clientY - r.top);
 }
 
-/** Tastatur: + / − / 0, solange das PDF-Fenster offen ist. */
+/** Keyboard: + / − / 0, while the PDF window is open. */
 /** @param {KeyboardEvent} ev */
 function _pdfTaste(ev) {
   const modal = G('pdf-viewer-modal');
   if (modal?.style.display !== 'flex') return;
-  // In einem Eingabefeld hat + eine andere Bedeutung.
+  // In an input field + has a different meaning.
   const a = /** @type {HTMLElement | null} */ (document.activeElement);
   if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)) return;
   if (ev.key === '+' || ev.key === '=') {
@@ -357,11 +357,11 @@ function _pdfTaste(ev) {
   }
 }
 
-// ── Zwei-Finger-Geste ────────────────────────────────────────────────────────
+// ── Two-finger gesture ──────────────────────────────────────────────────────
 //
-// Der Browser kann selbst zoomen (die Seite hat kein user-scalable=no), aber er zoomt das Sichtfeld:
-// Kopfzeile und Knöpfe werden mitgross, und das Bild wird weich, weil die Leinwand dieselbe bleibt. Hier wird
-// stattdessen die SEITE gezoomt und neu gerendert, deshalb fängt der Betrachter die Geste ab.
+// The browser can zoom by itself (the page has no user-scalable=no), but it zooms the viewport:
+// header and buttons grow along, and the image becomes soft because the canvas stays the same. Here
+// the PAGE is zoomed and re-rendered instead, which is why the viewer intercepts the gesture.
 let _pdfPinchGap = 0,
   _pdfPinchZoom = 1;
 
@@ -390,7 +390,7 @@ function _pdfTouchMove(ev) {
   if (!container) return;
   const r = container.getBoundingClientRect();
   const jetzt = _pdfGap(ev.touches[0], ev.touches[1]);
-  // Anker ist die Mitte zwischen den Fingern — der Punkt, den beide umfassen.
+  // The anchor is the middle between the fingers — the point both enclose.
   const mx = (ev.touches[0].clientX + ev.touches[1].clientX) / 2 - r.left;
   const my = (ev.touches[0].clientY + ev.touches[1].clientY) / 2 - r.top;
   _pdfSetZoom(_pdfPinchZoom * (jetzt / _pdfPinchGap), mx, my);
@@ -402,8 +402,8 @@ function _pdfTouchEnd(ev) {
 }
 
 /**
- * Zuhörer einmal am Behälter anmelden, nicht bei jedem openPdfViewer(): Sonst zoomte nach zehn PDFs ein
- * Raddreh zehnfach. passive:false, damit preventDefault() greift und der Browser nicht mitzoomt.
+ * Register listeners on the container once, not on every openPdfViewer(): otherwise after ten PDFs one
+ * wheel turn would zoom tenfold. passive:false, so that preventDefault() applies and the browser does not zoom along.
  */
 function _pdfAttachListenerOne() {
   const container = G('pdf-viewer-pages');
@@ -447,8 +447,8 @@ function closePdfViewer() {
   document.body.style.overflow = '';
 }
 
-// Drucken: nativen Viewer in neuem Tab öffnen (druckt zuverlässig alle Seiten, ohne für den Druck das ganze
-// PDF im Speicher rendern zu müssen).
+// Printing: open the native viewer in a new tab (prints all pages reliably, without having to render the whole
+// PDF in memory for printing).
 function printPdfViewer() {
   if (_pdfCurrentUrl) {
     try {
@@ -457,5 +457,5 @@ function printPdfViewer() {
   }
 }
 
-// Die Knöpfe im PDF-Fenster melden sich hier an: Der Handler gehört zu dem Modul, das ihn umsetzt.
+// The buttons in the PDF window register here: the handler belongs to the module that implements it.
 registerActions({ closePdfViewer, printPdfViewer, pdfZoomIn, pdfZoomOut, pdfZoomReset });

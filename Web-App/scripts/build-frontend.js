@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * Bündelt und minifiziert das Frontend.
+ * Bundles and minifies the frontend.
  */
 
 const { execFileSync } = require('node:child_process');
@@ -12,36 +12,36 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const PUBLIC = path.join(ROOT, 'public');
 /**
- * Fassung für den npx-Rückfall.
+ * Version for the npx fallback.
  *
- * Massgeblich ist die devDependency in package.json — sie wird benutzt, sobald
- * `npm ci` gelaufen ist. Dieser Wert greift nur, wenn jemand das Skript ohne
- * Installation aufruft, und sollte deshalb mit package.json übereinstimmen
- * (test/build-tooling.test.js prüft das).
+ * What counts is the devDependency in package.json — it is used as soon as
+ * `npm ci` has run. This value only applies when someone calls the script without
+ * installation, and should therefore match package.json
+ * (test/build-tooling.test.js checks that).
  */
 const ESBUILD_VERSION = '0.28.2';
 
-/** Einstiegspunkt — importiert alle Teile in der bisherigen Reihenfolge. */
+/** Entry point — imports all parts in the previous order. */
 const ENTRY = 'js/main.js';
 const OUT_REL = 'js/app.bundle.js';
 
 /**
- * Dateien unter public/js/, die NICHT über den Einstiegspunkt laufen.
- * Jede andere .js dort muss von js/main.js importiert werden — sonst wird sie
- * nie ausgeliefert, und das fällt erst im Browser auf.
+ * Files under public/js/ that do NOT go through the entry point.
+ * Every other .js there must be imported by js/main.js — otherwise it is
+ * never delivered, and that is only noticed in the browser.
  */
 const STANDALONE = new Set([
-  'theme-boot.js', // klassisches Skript im <head>, vor dem ersten Paint
-  'pdfjs-boot.js', // eigenes ES-Modul mit type="module"
-  'logviewer.js', // wird zur Laufzeit ins Popup nachgeladen
-  'main.js', // der Einstiegspunkt selbst
+  'theme-boot.js', // classic script in the <head>, before the first paint
+  'pdfjs-boot.js', // own ES module with type="module"
+  'logviewer.js', // is loaded into the popup at runtime
+  'main.js', // the entry point itself
   path.basename(OUT_REL),
 ]);
 
 /**
- * Schichten der Oberfläche. Der Dateiname sagt, was ein Modul tut, nicht wo es
- * liegt; die Schicht steht deshalb hier, und test/frontend-architektur.test.js
- * prüft, dass Kern und Bausteine keine Ansicht importieren. Alles übrige ist Ansicht.
+ * Layers of the UI. The file name says what a module does, not where it
+ * lives; the layer is therefore listed here, and test/frontend-architektur.test.js
+ * checks that core and building blocks import no view. Everything else is a view.
  */
 const KERN = [
   'styles.js',
@@ -69,7 +69,7 @@ const BAUSTEINE = [
   'confirm-prompt.js',
   'crosshair.js',
   'charts.js',
-  // Von mehreren Ansichten geteilt, ohne selbst Ansicht zu sein (kein Reiter, kein eigener Bildschirm).
+  // Shared by several views without being a view itself (no tab, no screen of its own).
   'account-filter.js',
   'purchase-price-display.js',
   'scrollbar.js',
@@ -79,25 +79,25 @@ const BAUSTEINE = [
   'account-locations.js',
   'trash.js',
   'metrics.js',
-  // Die Tafel für Links aus Mails vor der Anmeldung; die Anmeldemaske (sitzung.js) zeigt sie.
+  // The panel for links from mails before login; the login mask (session.js) shows it.
   'mail-link.js',
 ];
 
-/** Ausserhalb der App-Module: Einstieg, Bündel und die eigenständigen Skripte ohne Bündelbezug. */
+/** Outside the app modules: entry point, bundle and the standalone scripts without relation to the bundle. */
 const NO_APP_MODULE = new Set(['main.js', path.basename(OUT_REL), 'logviewer.js', 'pdfjs-boot.js']);
 
-/** Ob ein Dateiname unter public/js ein Modul der Oberfläche ist (Kern, Bausteine, Ansichten). */
+/** Whether a file name under public/js is a module of the UI (core, building blocks, views). */
 const isAppModule = (/** @type {string} */ f) => f.endsWith('.js') && !NO_APP_MODULE.has(f);
 
-/** Die Module der Oberfläche unter public/js, sortiert. */
+/** The UI modules under public/js, sorted. */
 function appModule() {
   return fs.readdirSync(path.join(PUBLIC, 'js')).filter(isAppModule).sort();
 }
 
 /**
- * Prüft, dass jede Datei entweder im Modulgraphen hängt oder bewusst
- * ausgenommen ist, und dass die Schichtlisten nur Dateien nennen, die es gibt.
- * Eine neu angelegte .js, die niemand importiert, würde sonst stillschweigend fehlen.
+ * Checks that every file either hangs in the module graph or is deliberately
+ * excluded, and that the layer lists only name files that exist.
+ * A newly created .js that nobody imports would otherwise silently be missing.
  */
 function checkComplete() {
   const fehlend = [...KERN, ...BAUSTEINE].filter(f => !fs.existsSync(path.join(PUBLIC, 'js', f)));
@@ -117,10 +117,10 @@ function checkComplete() {
 }
 
 /**
- * Alle Stilwerte, die so im Quelltext stehen: data-stil="…" im Markup und die
- * stil-Parameter der Bausteine (bausteine.js). js/styles.js wendet nur
- * diese an — ein eingeschleustes data-stil mit anderem Wert bleibt wirkungslos.
- * Werte mit `${…}` zählen nicht; die setzt der Aufrufer zur Laufzeit selbst.
+ * All style values that stand like this in the source: data-stil="…" in the markup and the
+ * stil parameters of the building blocks (components.js). js/styles.js only applies
+ * these — an injected data-stil with a different value stays ineffective.
+ * Values with `${…}` do not count; the caller sets those itself at runtime.
  */
 function allowedStyles() {
   const dateien = [
@@ -145,14 +145,14 @@ function allowedStyles() {
   return [...werte].sort();
 }
 
-/** Bündelt nach `outAbs` (Auslieferung, test-run.js). */
+/** Bundles to `outAbs` (delivery, test-run.js). */
 /**
  * @param {string} outAbs
- * @param {{ quellkarte?: boolean }} [opt]  quellkarte: Sourcemap eingebettet, nur für die
- *   Abdeckungsmessung (test-run.js --abdeckung); das ausgelieferte Bündel bleibt ohne.
+ * @param {{ quellkarte?: boolean }} [opt]  quellkarte: source map embedded, only for the
+ *   coverage measurement (test-run.js --abdeckung); the delivered bundle stays without.
  */
 function buildBundle(outAbs, opt = {}) {
-  // Lokales esbuild statt npx — siehe die Begründung in scripts/build-ts.js.
+  // Local esbuild instead of npx — see the reasoning in scripts/build-ts.js.
   const local = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
   const [cmd, prefix] = fs.existsSync(local) ? [local, []] : ['npx', ['--yes', `esbuild@${ESBUILD_VERSION}`]];
   execFileSync(
@@ -172,7 +172,7 @@ function buildBundle(outAbs, opt = {}) {
   );
 }
 
-/** Neueste Änderung an allem, woraus das Bündel entsteht (auch index.html: data-stil-Werte). */
+/** Most recent change to everything the bundle is built from (also index.html: data-stil values). */
 function newestSource() {
   const dateien = [
     ...fs
@@ -188,8 +188,8 @@ function newestSource() {
 }
 
 /**
- * Das Bündel liegt nicht in git; wer es liest, ruft dies auf. Über Zwischendatei
- * und rename, damit parallele Leser nie ein halbes sehen. true, wenn gebaut wurde.
+ * The bundle is not in git; whoever reads it calls this. Via a temporary file
+ * and rename, so that parallel readers never see half of one. true if a build happened.
  * @param {string} [outAbs]
  */
 function placeBundleSafe(outAbs = path.join(PUBLIC, OUT_REL)) {
@@ -211,7 +211,7 @@ function main() {
     return;
   }
 
-  // --outfile=…: nur bündeln, an einen anderen Ort (test/bundle-built.test.js).
+  // --outfile=…: only bundle, to a different place (test/bundle-built.test.js).
   const ziel = process.argv.find(a => a.startsWith('--outfile='))?.slice('--outfile='.length);
   if (ziel) {
     buildBundle(path.resolve(ziel));

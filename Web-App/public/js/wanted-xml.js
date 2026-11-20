@@ -15,7 +15,7 @@ import { loadBrickColors } from './part-add.js';
 
 /**
  * The server's report (WantedXmlErgebnis). The contract does not yet name the per-item fields the table
- * shows, so src/merkliste writes them here.
+ * shows, so src/wanted writes them here.
  * @typedef {import('../../frontend-types/contract').WantedXmlErgebnis['posten'][number] & {
  *   bild?: string | null, blFarbe?: number | null, farbHex?: string | null, farbName?: string | null,
  *   grund?: string | null, grundCode?: string | null, maxPreis?: number | null, name?: string | null,

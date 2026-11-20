@@ -122,7 +122,7 @@ const Erfassungsaenderung = z.strictObject({
   owner_user_id: KENNUNG.nullable().optional(),
   from_user_id: KENNUNG.nullable()
     .optional()
-    .meta({ deprecated: true, description: 'wird nicht ausgewertet: Der Besitzer kommt aus der Zeile' }),
+    .meta({ deprecated: true, description: 'not evaluated: the owner comes from the row' }),
 });
 
 export const routen = {
@@ -146,7 +146,7 @@ export const routen = {
     antwort: LagerortVorratResponse,
     abfrage: abfrage({
       owner: STORAGE_ACCOUNTS,
-      accounts: Q.konten.meta({ deprecated: true, description: 'wird nicht ausgewertet: Die Liste folgt dem Recht' }),
+      accounts: Q.konten.meta({ deprecated: true, description: 'not evaluated: the list follows the permission' }),
     }),
   },
   'GET /api/v1/storage': { klein: true, antwort: LagerorteResponse, abfrage: abfrage({ accounts: Q.konten }) },

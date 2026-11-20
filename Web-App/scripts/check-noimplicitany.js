@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * noImplicitAny — gestaffelt, mit einer Liste, die nur kürzer werden darf.
+ * noImplicitAny — staggered, with a list that may only get shorter.
  */
 
 const { execFileSync } = require('node:child_process');
@@ -10,15 +10,15 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 /**
- * Dateien, die `noImplicitAny` noch NICHT bestehen.
+ * Files that do NOT pass `noImplicitAny` yet.
  */
-// Der Typ steht hier, seit die Liste LEER ist: `new Set([])` ergibt sonst
-// Set<never>, und dieses Skript faellt durch seine eigene Pruefung. Genau die
-// Sorte Stelle, die es ueberall sonst gemeldet hat.
+// The type is here since the list is EMPTY: `new Set([])` otherwise yields
+// Set<never>, and this script fails its own check. Exactly the
+// kind of place it reported everywhere else.
 /** @type {Set<string>} */
 const OFFEN = new Set([]);
 
-/** tsc mit noImplicitAny laufen lassen und die Meldungen je Datei sammeln. */
+/** Run tsc with noImplicitAny and collect the messages per file. */
 function messagesJeFile() {
   let output = '';
   try {
@@ -28,11 +28,11 @@ function messagesJeFile() {
       { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
     );
   } catch (e) {
-    // execFileSync haengt stdout/stderr an den geworfenen Fehler — genau die
-    // brauchen wir hier, denn tsc meldet seine Funde ueber die Ausgabe und
-    // beendet sich dabei mit einem Fehlercode. Der Cast benennt das; ein
-    // `unknown` liesse sich sonst nicht auslesen, und ein `any` am
-    // catch-Parameter waere wieder die Tuer, die dieser Schalter schliesst.
+    // execFileSync attaches stdout/stderr to the thrown error — exactly what
+    // we need here, because tsc reports its findings via the output and
+    // exits with an error code in doing so. The cast names that; an
+    // `unknown` could not be read otherwise, and an `any` on the
+    // catch parameter would be the door again that this switch closes.
     const p = /** @type {{ stdout?: unknown, stderr?: unknown }} */ (e);
     output = String(p.stdout || '') + String(p.stderr || '');
   }
@@ -48,11 +48,11 @@ function messagesJeFile() {
 }
 
 /**
- * Steht `noImplicitAny` in tsconfig.json wirklich auf true?
+ * Is `noImplicitAny` in tsconfig.json really set to true?
  *
- * Gelesen als TEXT und nicht per require(): tsconfig.json trägt Kommentare
- * (JSONC), JSON.parse scheitert daran. Ein Muster reicht hier — geprüft wird
- * eine einzelne, eindeutige Zeile, nicht die Struktur der Datei.
+ * Read as TEXT and not via require(): tsconfig.json carries comments
+ * (JSONC), JSON.parse fails on them. A pattern is enough here — what is checked is
+ * a single, unambiguous line, not the structure of the file.
  */
 function toggleIsAn() {
   const roh = require('node:fs').readFileSync(path.join(ROOT, 'tsconfig.json'), 'utf8');

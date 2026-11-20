@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 /**
- * Pfadverweise in Code-Kommentaren, README.md und docs/ auflösen; tote melden.
- * Ein Kommentar, der auf eine verschwundene Datei zeigt, schickt den Leser ins
- * Leere. Aufruf: node scripts/check-references.js [Web-App-Verzeichnis]
- * Ausgabe je totem Verweis `datei:zeile pfad`, Exit-Code 1, wenn es welche gibt.
+ * Resolve path references in code comments, README.md and docs/; report dead ones.
+ * A comment pointing to a vanished file sends the reader into
+ * nothing. Call: node scripts/check-references.js [Web-App directory]
+ * Output per dead reference `file:line path`, exit code 1 if there are any.
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
 const OUTER_BEFORE = new Set(['node_modules', 'dist', 'coverage', 'data', '.git', 'vendor', 'test']);
 const EXTENSIONS = 'ts|js|sql|html|css|json|md|sh|ya?ml|kt|kts|xml|txt';
-// Frühere Ordner: Ein Verweis darauf ist sicher tot, würde ohne den Ordner aber nicht als Pfad erkannt.
+// Former folders: a reference to them is surely dead, but without the folder it would not be recognized as a path.
 const EARLIER = ['utils', 'handlers'];
 
 /** @param {string} web */
@@ -52,7 +52,7 @@ function pruefe(web) {
   /** @type {string[]} */
   const tot = [];
   let gesehen = 0;
-  /** @param {string} datei @param {(z: string) => string} teil Der zu prüfende Teil einer Zeile */
+  /** @param {string} datei @param {(z: string) => string} teil the part of a line to check */
   const lies = (datei, teil) =>
     fs
       .readFileSync(datei, 'utf8')
@@ -69,8 +69,8 @@ function pruefe(web) {
   return { tot, gesehen, dateien: quellen.length + doku.length };
 }
 
-/** Nur der Kommentarteil: eine Kommentarzeile ganz, sonst was hinter ` // ` steht
- * (das Leerzeichen davor hält `https://` heraus). */
+/** Only the comment part: a comment line entirely, otherwise what stands behind ` // `
+ * (the space before it keeps `https://` out). */
 function commentJs(/** @type {string} */ z) {
   const t = z.trim();
   if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return t;

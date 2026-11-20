@@ -182,7 +182,9 @@ function silentCatchesTheUi() {
   // Gegenprobe (15.11.2026): in public/js/wanted.js am Alarm beim Merken wieder
   // `.catch(() => null)` → rot (92 stille Fänge, erlaubt sind 91).
   const { catches, stillImBrowser } = require('./helpers/catches');
-  const LIMIT = 84;
+  // 85 since public/js/format.js no longer has a raw quote in a regex: the mask read the catch in
+  // browserWritesDateHowApp() as part of a string before; it is not new.
+  const LIMIT = 85;
   const probe = (/** @type {string} */ q) => catches(q).filter(stillImBrowser).length;
   assert.equal(probe('a().catch(() => null); try { b(); } catch { /* weg */ } c.catch(() => {});'), 3);
   assert.equal(probe('a().catch(e => toast(e.message, "error")); try { b(); } catch (e) { showError(e); }'), 0);

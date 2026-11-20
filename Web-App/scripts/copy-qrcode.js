@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * QRCode.js kommt aus der npm-Abhängigkeit qrcodejs (exakte Fassung in
- * package.json), damit npm audit und Dependabot es sehen. Dieses Skript legt
- * Skript und Lizenz nach public/vendor/qrcode/; build-frontend.js ruft es.
+ * QRCode.js comes from the npm dependency qrcodejs (exact version in
+ * package.json), so that npm audit and Dependabot see it. This script puts
+ * script and license into public/vendor/qrcode/; build-frontend.js calls it.
  *
- *   node scripts/copy-qrcode.js [Zielwurzel]
+ *   node scripts/copy-qrcode.js [target root]
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -12,7 +12,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const DATEIEN = ['qrcode.min.js', 'LICENSE'];
 
-/** @returns die kopierte Fassung, oder null ohne installiertes qrcodejs */
+/** @returns the copied version, or null without an installed qrcodejs */
 function copyQrcode(ziel = ROOT, quelle = ROOT) {
   const paket = path.join(quelle, 'node_modules', 'qrcodejs');
   if (!fs.existsSync(path.join(paket, 'package.json'))) return null;

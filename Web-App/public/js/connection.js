@@ -2,12 +2,12 @@ import { tRaw } from '../i18n.js';
 import { toast } from './messages.js';
 import { fmtDatum } from './format.js';
 
-// Verbindungsband und Sperre der schreibenden Knöpfe ohne Netz. Die API-Hülle meldet hier jede Antwort und
-// jeden Netzfehler; die Ansichten wissen davon nichts.
+// Connection banner and locking of writing buttons without network. The API wrapper reports every response and
+// every network error here; the views know nothing about it.
 
-// ── Verbindung ──────────────────────────────────────────────────────────────
-// Ohne Netz zeigt die Seite weiter den letzten Stand. Das Band sagt, dass es einer ist und von wann — sonst
-// hält man alte Zahlen für aktuell.
+// ── Connection ──────────────────────────────────────────────────────────────
+// Without network the page keeps showing the last state. The banner says that it is one and from when — otherwise
+// one takes old numbers for current ones.
 /** @type {Date | null} */
 let _lastResponse = null;
 
@@ -21,7 +21,7 @@ export function showConnection(erreichbar) {
   if (erreichbar) {
     if (_offline) toast(tRaw('net.back'), 'success');
     if (_offline) schreibenSperren(false);
-    // Was ohne Netz nicht laden konnte, lädt jetzt von selbst.
+    // Whatever could not load without network now loads by itself.
     if (_offline)
       document.querySelectorAll('.tab.active .fehler-zustand [data-lesend]').forEach(k => {
         /** @type {HTMLElement} */ (k).click();
@@ -43,16 +43,16 @@ export function showConnection(erreichbar) {
   schreibenSperren(true);
 }
 
-// Ohne Verbindung scheitert jede Änderung. Statt erst nach dem Klick eine Meldung zu zeigen, sind die
-// schreibenden Bedienelemente gesperrt und nennen per aria-describedby das Band als Grund. Ob ein Knopf
-// schreibt, entscheidet seine Aktion, nicht ihr Name: Ein Wort im Namen verfehlte Handler wie revokeToken.
-// Jede angemeldete Aktion steht in genau einer der beiden Listen (test/offline-rating-ui.test.js).
+// Without a connection every change fails. Instead of showing a message only after the click, the
+// writing controls are locked and name the banner as the reason via aria-describedby. Whether a button
+// writes is decided by its action, not by its name: a word in the name missed handlers like revokeToken.
+// Every registered action is in exactly one of the two lists (test/offline-rating-ui.test.js).
 const SERVED = 'button, input[type=file], .import-menue > summary, [data-click]';
 
 /**
- * Handler, die per POST/PUT/PATCH/DELETE Serverzustand ändern (auch über einen anderen Handler), dazu die
- * Öffner von Formularen, die nur speichern können (Erfassen, Bearbeiten, Übernehmen): Offline ausgefüllt,
- * wäre die Eingabe verloren.
+ * Handlers that change server state via POST/PUT/PATCH/DELETE (also via another handler), plus the
+ * openers of forms that can only save (capture, edit, adopt): filled in offline,
+ * the input would be lost.
  */
 export const WRITING_ACTIONS = new Set([
   'acqDelete',
@@ -165,8 +165,8 @@ export const WRITING_ACTIONS = new Set([
   'zfZuruecksetzen',
 ]);
 
-// Lesen, Prüfen ohne Speichern (Quelle testen, Vorschau, Klartext) und alles nur Lokale bleibt offline frei.
-// einrichtungWeiter meldet erst im letzten Schritt „fertig“; davor blättert es nur.
+// Reading, checking without saving (test source, preview, plaintext) and everything purely local stays free offline.
+// einrichtungWeiter only reports "done" in the last step; before that it only pages.
 export const READING_ACTIONS = new Set([
   'ansichtWaehlen',
   'benutzerMenue',
@@ -279,8 +279,8 @@ export const READING_ACTIONS = new Set([
   'zfSchluesselKopieren',
 ]);
 
-// Datei-Wahl und Import-Menü führen immer zu einem Hochladen; Knöpfe ohne data-click (per id verdrahtet)
-// tragen data-schreibend im Markup. Die Anmeldung braucht offline keine Sperre, sie zeigt ihren eigenen Fehler.
+// File choice and import menu always lead to an upload; buttons without data-click (wired by id)
+// carry data-schreibend in the markup. Login needs no lock offline, it shows its own error.
 const ALWAYS_WRITING = 'input[type=file], .import-menue > summary, [data-schreibend]';
 
 const NOT_LOCK = '#login-screen, .toast';
@@ -318,8 +318,8 @@ function knowsDisabled(k) {
   return k instanceof HTMLButtonElement || k instanceof HTMLInputElement;
 }
 
-// <summary> und das Löschkreuz der Kacheln (<span>) kennen kein disabled: Klick und Tastatur lösten sie sonst
-// trotzdem aus. Abgefangen wird vor der Ereignis-Delegation in actions.js.
+// <summary> and the tiles' delete cross (<span>) know no disabled: click and keyboard would otherwise still
+// trigger them. Intercepted before the event delegation in actions.js.
 if (typeof document !== 'undefined')
   document.addEventListener(
     'click',
@@ -364,7 +364,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('online', () => showConnection(true));
 }
 
-/** Eine Antwort kam an: Zeitpunkt merken (für „Stand von …“) und das Band abräumen. */
+/** A response arrived: remember the time (for "state of …") and clear the banner. */
 export function receiveResponse() {
   _lastResponse = new Date();
   showConnection(true);

@@ -364,7 +364,7 @@ export const routen = {
     antwort: Erfolg,
     ...adminConfirmed({
       is_admin: eingabe.toggleOrNo('is_admin'),
-      isAdmin: eingabe.toggleOrNo('isAdmin').meta({ deprecated: true, description: 'früherer Name von is_admin' }),
+      isAdmin: eingabe.toggleOrNo('isAdmin').meta({ deprecated: true, description: 'former name of is_admin' }),
       username: z.string().max(64).optional(),
       password: z.string().max(PASSWORT).optional(),
     }),

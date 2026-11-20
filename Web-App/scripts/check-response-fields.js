@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Kein Antwortfeld ohne Verbraucher.
+ * No response field without a consumer.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -8,11 +8,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 /**
- * Schlüssel, die absichtlich kein Client liest. Jeder mit Grund — die Liste
- * darf nur KÜRZER werden.
+ * Keys that deliberately no client reads. Each with a reason — the list
+ * may only get SHORTER.
  */
 const ALLOWED = new Map([
-  // Diagnose-Endpunkte: für Betreiber und curl, nicht für die Oberfläche.
+  // Diagnostic endpoints: for operators and curl, not for the UI.
   ['body_check', 'Selbstprüfung /v1/admin'],
   ['datenbank', 'Selbstprüfung'],
   ['db_pool', 'Verbindungspool im Gesundheitsbericht'],
@@ -21,9 +21,9 @@ const ALLOWED = new Map([
   ['merker', 'Selbstprüfung'],
   ['hinweis', 'Selbstprüfung'],
   ['rate_limit', 'nur noch im Admin-Bericht, nicht mehr in der Bewertung'],
-  // Export-Datei: gelesen wird sie vom Import DIESES Servers, nicht von einem Client.
+  // Export file: it is read by the import of THIS server, not by a client.
   ['tokens', 'Einstellungs-Export'],
-  // Antworten, die der Browser als Ganzes weiterverarbeitet oder ignoriert.
+  // Responses the browser processes or ignores as a whole.
   ['email_sent', 'Registrierung: Ablauf hängt nicht daran'],
   ['userId', 'Anmeldeantwort; die Oberfläche liest die Sitzung, nicht das Feld'],
   ['never_expires', 'API-Token-Verwaltung, nur Webapp-Formular'],
@@ -31,12 +31,12 @@ const ALLOWED = new Map([
   ['token_last_used', 'API-Token-Verwaltung'],
   ['instruction', 'Einzelanleitung; die Liste kommt über instructions'],
   ['missingImages', 'PDF-Job: die Oberfläche zeigt etaSeconds, nicht die Zahl'],
-  // Bis 14.11.2026 verdeckt, weil die Prüfung jedes Wort im Kotlin-Quelltext als Leser zählte.
+  // Hidden until 14.11.2026, because the check counted every word in the Kotlin source as a reader.
   ['blickfeld', 'Haushaltsstand: die Clients lesen parents und sub_accounts'],
   ['geloescht', 'Merkposten löschen: die Clients laden die Liste danach neu'],
 ]);
 
-/** Technische Umschläge, die in fast jeder Antwort stehen. */
+/** Technical envelopes that stand in almost every response. */
 const FRAME = new Set(['success', 'error', 'message', 'ok', 'status', 'data', 'code', 'detail']);
 
 /** @param {string} wurzel @param {string[]} extensions @param {string[]} aus */
@@ -63,9 +63,9 @@ function dateien(wurzel, extensions, aus) {
 }
 
 /**
- * Schlüssel der obersten Ebene aus allen res.json({…}) einer Quelle — und aus
- * `return { success: true, … }`: So geben die Dienste unter src/ die
- * Antwort zurück, die eine Route unverändert weiterreicht.
+ * Top-level keys from all res.json({…}) of a source — and from
+ * `return { success: true, … }`: that is how the services under src/ return the
+ * response a route passes on unchanged.
  */
 /** @param {string} s @param {RegExp} [re] */
 function responseKey(s, re = /res\.json\(\s*\{|return\s*\{(?=\s*success:\s*true)/g) {
@@ -79,7 +79,7 @@ function responseKey(s, re = /res\.json\(\s*\{|return\s*\{(?=\s*success:\s*true)
       else if (c === ')' || c === '}' || c === ']') tiefe--;
       i++;
     }
-    // Verschachteltes ausblenden — dort stehen fremde Objektformen.
+    // Hide nested ones — foreign object shapes stand there.
     let layer = 0;
     let oben = '';
     for (const c of s.slice(re.lastIndex, i - 1)) {
@@ -104,7 +104,7 @@ if (quellen.length < 40) {
 const woher = new Map();
 /** @type {[string, string][]} */
 const texte = quellen.map(p => [path.relative(ROOT, p), fs.readFileSync(p, 'utf8')]);
-// Routen antworten mit `{ success: true, ...(await dienst(…)) }`: Die Felder stehen im return des Dienstes.
+// Routes answer with `{ success: true, ...(await dienst(…)) }`: the fields are in the service's return.
 const spread = new Set(texte.flatMap(([, s]) => [...s.matchAll(/\.\.\.\(await (?:\w+\.)*(\w+)\(/g)].map(m => m[1])));
 for (const [rel, s] of texte) {
   const rumpfe = [...s.matchAll(/function (\w+)\s*[(<]/g)]
@@ -116,7 +116,7 @@ for (const [rel, s] of texte) {
         if (s[i] === '{') tiefe++;
         else if (s[i] === '}' && --tiefe === 0) break;
       }
-      // Nur die return-Anweisungen des Rumpfs selbst, nicht innerer Funktionen.
+      // Only the return statements of the body itself, not of inner functions.
       const rumpf = s.slice(anfang, i);
       let tiefe = 0,
         oben = '';
@@ -127,8 +127,8 @@ for (const [rel, s] of texte) {
       }
       return oben;
     });
-  // Eine Route unter routes/ gibt den Rumpf zurück; der Vertragsrouter setzt ihn in die Hülle.
-  // Hilfsfunktionen stehen vor dem ersten Endpunkt; gezählt wird ab dort.
+  // A route under routes/ returns the body; the contract router puts it into the envelope.
+  // Helper functions stand before the first endpoint; counting starts from there.
   const ab = s.indexOf('.endpunkt(');
   const eigen =
     rel.startsWith(`routes${path.sep}`) && ab >= 0
@@ -146,7 +146,7 @@ if (consumer.length < 40) {
   );
   process.exit(1);
 }
-// Was die App liest, steht in shared/app-schnittstelle.json (aus ihren Modellen erzeugt).
+// What the app reads is in shared/app-schnittstelle.json (generated from its models).
 const appFields = JSON.parse(
   fs.readFileSync(path.join(ROOT, '..', 'shared', 'app-schnittstelle.json'), 'utf8'),
 ).antwortfelder;
@@ -163,7 +163,7 @@ for (const [k, filesList] of [...woher].sort()) {
     fehler.push(`${k}  (${[...new Set(filesList)].slice(0, 2).join(', ')})`);
   }
 }
-// Eine Erlaubnis, die niemand mehr braucht, ist eine, die niemand mehr prüft.
+// A permission nobody needs any more is one nobody checks any more.
 const tot = [...ALLOWED.keys()].filter(k => !woher.has(k));
 
 if (fehler.length || tot.length) {

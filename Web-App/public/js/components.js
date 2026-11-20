@@ -1,5 +1,5 @@
-// Bausteine für Ansichten (Detailzeile, Ladeanzeige, Leer- und Fehlerzustand) an einer Stelle: Was überall
-// gleich aussehen soll, stand vorher fünfzehnmal als eigene HTML-Zeichenkette in vier Modulen.
+// Building blocks for views (detail row, loading indicator, empty and error state) in one place: what should look
+// the same everywhere used to be its own HTML string fifteen times in four modules.
 import { api } from './api.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtBig, fmtPct, isGift } from './format.js';
@@ -10,22 +10,22 @@ import { esc, html, rawHtml } from './escaping.js';
 import { loggedInAccount, accountCurrency } from './state.js';
 
 /**
- * Eine Zeile „Label — Wert" in einer Detailansicht.
+ * A row "label — value" in a detail view.
  *
- * @param {string | import('./escaping.js').SafeHtml} label     Beschriftung links. Wird NICHT escaped: Alle
- *                           Aufrufer geben hier eine Übersetzung t(...), und
- *                           die ist bereits sicher. Ein escape hier würde die
- *                           Sonderzeichen der Übersetzungen zerstören.
- * @param {import('./escaping.js').Markup | string} wert      Inhalt rechts. Wird NICHT escaped — viele
- *                           Aufrufer geben absichtlich Markup mit (Eingabe-
- *                           felder, Farbpunkte, Knöpfe). Wer Nutzertext
- *                           einsetzt, escaped ihn selbst mit esc().
+ * @param {string | import('./escaping.js').SafeHtml} label     Label on the left. NOT escaped: all
+ *                           callers pass a translation t(...) here, and
+ *                           that is already safe. Escaping here would destroy the
+ *                           special characters of the translations.
+ * @param {import('./escaping.js').Markup | string} wert      Content on the right. NOT escaped — many
+ *                           callers deliberately pass markup (input
+ *                           fields, color dots, buttons). Whoever inserts user text
+ *                           escapes it themselves with esc().
  * @param {object} [o]
- * @param {string} [o.valueStyle]  zusätzlicher Stil (data-stil) am Wert-Element
- * @param {string} [o.rowsStyle] zusätzlicher Stil (data-stil) an der Zeile
- * @param {string} [o.wertId]    id am Wert-Element, für späteres Nachfüllen
- * @param {string} [o.klasse]    zusätzliche Klasse an der Zeile
- * @param {boolean} [o.paar]     als dt/dd, für Zeilen in einem <dl>: Vorleser nennen Name und Wert als Paar
+ * @param {string} [o.valueStyle]  additional style (data-stil) on the value element
+ * @param {string} [o.rowsStyle] additional style (data-stil) on the row
+ * @param {string} [o.wertId]    id on the value element, for filling it later
+ * @param {string} [o.klasse]    additional class on the row
+ * @param {boolean} [o.paar]     as dt/dd, for rows in a <dl>: screen readers announce name and value as a pair
  */
 export function detailRow(label, wert, o = {}) {
   const zStyle = o.rowsStyle ? ` data-stil="${o.rowsStyle}"` : '';
@@ -41,15 +41,15 @@ export function detailRow(label, wert, o = {}) {
 }
 
 /**
- * Die Ladeanzeige — Kringel und Text, wie sie fünf Stellen bauten.
+ * The loading indicator — spinner and text, as five places built it.
  *
- * @param {string} text bereits übersetzter Text
- * @param {{ stil?: string, klein?: boolean }} [o]  klein: eine Fläche, etwa für das Diagramm
+ * @param {string} text already translated text
+ * @param {{ stil?: string, klein?: boolean }} [o]  klein: an area, e.g. for the chart
  */
 export function loadDisplay(text, o = {}) {
   const stil = o.stil ? ` data-stil="${o.stil}"` : '';
-  // Ohne Text nur der Kringel — so macht es die Teile-Zusammenfassung, wo daneben schon steht, worauf
-  // gewartet wird.
+  // Without text only the spinner — that is how the parts summary does it, where it already says next to it what is
+  // being waited for.
   const inhalt = o.klein
     ? '<div class="skelett-flaeche"></div>'
     : '<div class="skelett-zeile"></div><div class="skelett-zeile"></div><div class="skelett-zeile kurz"></div>';
@@ -57,10 +57,10 @@ export function loadDisplay(text, o = {}) {
 }
 
 /**
- * Platzhalterkacheln in der Form des Inhalts, solange er lädt: Die Seite springt danach nicht, und man sieht,
- * was kommt. Der Text ist für Vorleseprogramme.
+ * Placeholder tiles in the shape of the content while it loads: the page does not jump afterwards, and one sees
+ * what is coming. The text is for screen readers.
  * @param {number} anzahl
- * @param {string} text bereits übersetzt
+ * @param {string} text already translated
  * @param {'set'|'teil'} [art]
  */
 export function skeletonTiles(anzahl, text, art = 'set') {
@@ -70,9 +70,9 @@ export function skeletonTiles(anzahl, text, art = 'set') {
 }
 
 /**
- * Platzhalterzeilen für Listen und Detailansichten (Merkliste, Set-Detail), wie skeletonTiles für Raster.
+ * Placeholder rows for lists and detail views (wishlist, set detail), like skeletonTiles for grids.
  * @param {number} anzahl
- * @param {string} text bereits übersetzt
+ * @param {string} text already translated
  */
 export function skeletonRows(anzahl, text) {
   const zeile =
@@ -81,10 +81,10 @@ export function skeletonRows(anzahl, text) {
 }
 
 /**
- * Ein Wert, der fehlen darf — sonst steht in der Zeile ein leeres Feld.
+ * A value that may be missing — otherwise an empty field stands in the row.
  *
- * Die Aufrufer schrieben dafür `${x || '—'}` oder `${x ?? '–'}`, mit zwei verschiedenen Strichen. Hier ist es
- * einer.
+ * The callers wrote `${x || '—'}` or `${x ?? '–'}` for this, with two different dashes. Here it is
+ * one.
  * @param {unknown} wert
  */
 export function orStroke(wert) {
@@ -92,7 +92,7 @@ export function orStroke(wert) {
 }
 
 /**
- * Wie [orStroke], aber der Wert kommt vom Nutzer und wird escaped.
+ * Like [orStroke], but the value comes from the user and is escaped.
  * @param {string} wert
  */
 export function textOrStroke(wert) {
@@ -100,9 +100,9 @@ export function textOrStroke(wert) {
 }
 
 /**
- * Fehlerzustand einer Liste: Grund und „Erneut versuchen“. Eine leere Liste an dieser Stelle läse sich als
- * „nichts erfasst“, obwohl nur der Server nicht geantwortet hat.
- * @param {{ grund?: string, erneut: string, arg?: string, titel?: string, details?: string }} o  erneut: Name der Ladefunktion (data-click)
+ * Error state of a list: reason and "try again". An empty list at this place would read as
+ * "nothing captured", although only the server did not answer.
+ * @param {{ grund?: string, erneut: string, arg?: string, titel?: string, details?: string }} o  erneut: name of the load function (data-click)
  */
 export function fehlerZustand(o) {
   const arg = o.arg ? ` data-arg="${esc(o.arg)}"` : '';
@@ -113,13 +113,13 @@ export function fehlerZustand(o) {
 }
 
 /**
- * Hat das Laden einer Liste versagt? Dann bleibt eine schon gezeigte Liste stehen (mit Meldung), sonst zeigt
- * `ziel` den Fehlerzustand.
+ * Did loading a list fail? Then a list already shown stays (with a message), otherwise
+ * `ziel` shows the error state.
  * @param {HTMLElement|null} ziel
  * @template D
- * @param {D} d          Antwort von api() — null zählt als Fehler
+ * @param {D} d          response of api() — null counts as an error
  * @param {{ erneut: string, arg?: string, behalten?: boolean, titel?: string }} o
- * @returns {d is Extract<D, { success: false }>} true, wenn es ein Fehler war und der Aufrufer aufhören soll
+ * @returns {d is Extract<D, { success: false }>} true if it was an error and the caller should stop
  */
 export function listLoadError(ziel, d, o) {
   const a =
@@ -127,14 +127,14 @@ export function listLoadError(ziel, d, o) {
       d
     );
   if (a && a.success !== false) return false;
-  // Die abgelaufene Sitzung meldet die Anmeldekarte; „Erneut versuchen“ hülfe dort nicht.
+  // The expired session is reported by the login card; "try again" would not help there.
   if (a?.status === 401) return true;
   const { grund, details } = clearerReason(a);
   const nochmal = () => {
     const f = resolveAction(o.erneut);
     if (f) o.arg !== undefined ? f(o.arg) : f();
   };
-  // „Der letzte Stand bleibt“ nur, wenn einer dasteht: Über einem Fehlerzustand widerspräche der Toast der Liste.
+  // "The last state stays" only if there is one: above an error state the toast would contradict the list.
   const alterStand = o.behalten && !ziel?.querySelector('.fehler-zustand, .lade-geruest, .skelett-raster');
   const gedrosselt = a?.status === 429;
   if (alterStand)
@@ -149,10 +149,10 @@ export function listLoadError(ziel, d, o) {
 }
 
 /**
- * Ein Serverfehler (5xx) sagt dem Laien nichts. Gezeigt wird, was er tun kann; der Rohtext steht unter
- * „Details“ für die Meldung an den Verwalter. Der Verwalter selbst bekommt den Weg zum Protokoll. 4xx-Texte
- * schreibt der Server selbst verständlich.
- * @param {{ networkError?: boolean, status?: number, error?: unknown, waitSec?: unknown } | null | undefined} d Antwort von api()
+ * A server error (5xx) tells a layperson nothing. What is shown is what they can do; the raw text is under
+ * "details" for the report to the admin. The admin themselves gets the way to the log. 4xx texts
+ * are written understandably by the server itself.
+ * @param {{ networkError?: boolean, status?: number, error?: unknown, waitSec?: unknown } | null | undefined} d response of api()
  * @returns {{ grund: string, details?: string }}
  */
 export function clearerReason(d) {
@@ -168,7 +168,7 @@ export function clearerReason(d) {
 }
 
 /**
- * „144 aus Sets · 250 einzeln“ — leer, solange nur eine der beiden Quellen etwas hat.
+ * "144 from sets · 250 individually" — empty as long as only one of the two sources has something.
  * @param {number} fromSets
  * @param {number} einzeln
  */
@@ -178,21 +178,21 @@ export function partsBreakdown(fromSets, einzeln) {
 }
 
 /**
- * Der Tastaturweg einer anklickbaren Tabellenzeile: ein echter Knopf in einer Zelle. Die Zeile selbst bleibt
- * für die Maus anklickbar, nimmt aber keinen Fokus mehr; eine fokussierbare <tr> nannte Vorlesern weder
- * Rolle noch Ziel.
+ * The keyboard path of a clickable table row: a real button in a cell. The row itself stays
+ * clickable for the mouse but no longer takes focus; a focusable <tr> told screen readers neither
+ * role nor target.
  * @param {{ click: string, arg?: string | number, arg2?: string | number, arg3?: string | number }} ziel
- * @param {import('./escaping.js').Markup | string} sichtbar  Inhalt der Zelle
- * @param {string} name  Name des Knopfs; enthält den sichtbaren Text
- * Inhalt in einem <span>: Im Flex-Knopf fiele sonst der Abstand in „Brick 2 x 4 (Schwarz)“ weg.
+ * @param {import('./escaping.js').Markup | string} sichtbar  content of the cell
+ * @param {string} name  name of the button; contains the visible text
+ * Content in a <span>: in the flex button the space in "Brick 2 x 4 (Schwarz)" would otherwise disappear.
  */
 export function rowsButton(ziel, sichtbar, name) {
   return html`<button type="button" class="zeile-oeffnen" data-click="${ziel.click}"${ziel.arg !== undefined ? html` data-arg="${ziel.arg}"` : ''}${ziel.arg2 !== undefined ? html` data-arg2="${ziel.arg2}"` : ''}${ziel.arg3 !== undefined ? html` data-arg3="${ziel.arg3}"` : ''} aria-label="${name}"><span>${sichtbar}</span></button>`;
 }
 
 let _tileNr = 0;
-/** Name einer Kachel nur aus Nummer und Name, der Rest als Beschreibung: ein aria-label verfehlte „Label in
- * Name“. @param {number} [teile] beschreibende Elemente; `k.teil(i)` gibt id und aria-hidden */
+/** A tile's name only from number and name, the rest as description: an aria-label missed "label in
+ * name". @param {number} [teile] describing elements; `k.teil(i)` gives id and aria-hidden */
 export function kachelName(teile = 1) {
   const id = `kachel-${++_tileNr}`;
   const ids = Array.from({ length: teile }, (_, i) => `${id}-${i + 1}`);
@@ -202,16 +202,16 @@ export function kachelName(teile = 1) {
   };
 }
 
-/** „≈“ vor einem Kaufpreis, der ein eingesetzter Marktpreis ist; sonst läse er sich wie bezahlt.
- * @param {string | import('./escaping.js').SafeHtml} markup schon maskiertes Markup */
+/** "≈" before a purchase price that is an inserted market price; otherwise it would read as paid.
+ * @param {string | import('./escaping.js').SafeHtml} markup already escaped markup */
 export function estimatedPurchase(markup) {
   const hinweis = tRaw('acq.geschaetzt');
   return html`<span class="kauf-geschaetzt" title="${hinweis}"><span role="img" aria-label="${hinweis}">≈</span> ${rawHtml(String(markup))}</span>`;
 }
 
 /**
- * G&V-Plakette. Bei Kaufpreis 0 „Geschenk“ statt einer Prozentzahl: Gegen 0 gerechnet stünde dort „+327.600
- * %“, und das sagt nichts.
+ * P&L badge. For a purchase price of 0 "gift" instead of a percentage: computed against 0 it would say "+327,600
+ * %", and that says nothing.
  * @param {number | string | null | undefined} pct
  * @param {unknown} [kauf]
  */
@@ -224,8 +224,8 @@ export function pnlBadge(pct, kauf) {
 }
 
 /**
- * Ein Konto, überall gleich benannt: der Name, beim eigenen mit „(ich)“. Set-Detail, Kacheln, Finanzen und
- * Merkliste nannten dasselbe Konto sonst „ich“, „ux22“ und „ux22 (ich)“.
+ * An account, named the same everywhere: the name, for the own one with "(me)". Set detail, tiles, finances and
+ * wishlist otherwise called the same account "me", "ux22" and "ux22 (me)".
  * @param {{ id: number, username: string }} o
  */
 export function accountDisplay(o) {
@@ -233,8 +233,8 @@ export function accountDisplay(o) {
 }
 
 /**
- * Besitzer-Plaketten nur, wenn ein ANDERES Konto mit drinsteckt: Im Haushalt verhindern sie, dass man das
- * falsche Exemplar verschiebt; der eigene Name auf jeder Kachel wäre nur Rauschen.
+ * Owner badges only if ANOTHER account is involved: in the household they prevent moving the
+ * wrong copy; the own name on every tile would only be noise.
  * @param {{ owners?: { id: number, username: string }[] } | null | undefined} item
  */
 export function ownerBadges(item) {
@@ -244,8 +244,8 @@ export function ownerBadges(item) {
 }
 
 /**
- * Eine Plakette je erfasstem Zustand, aus `conditions` vom Server: Das Aggregat `condition` zeigte bei neu
- * und gebraucht nur „gebraucht“, und die Neu-Erfassung war unsichtbar, obwohl sie mitbewertet wird.
+ * One badge per captured condition, from `conditions` from the server: the aggregate `condition` showed only
+ * "used" for new and used, and the new acquisition was invisible although it is valued too.
  * @param {{ conditions?: string[] | null, condition?: string | null } | null | undefined} item
  */
 export function condBadges(item) {
@@ -258,8 +258,8 @@ export function condBadges(item) {
   )}`;
 }
 
-/** Erfassen-Dialoge der Sammlung: set, part, fig — gleich aufgebaut (Erstfokus: data-erstfokus). */
-// Ohne data-arg reicht der Dispatcher das Ereignis als erstes Argument.
+/** Capture dialogs of the collection: set, part, fig — built the same way (initial focus: data-erstfokus). */
+// Without data-arg the dispatcher passes the event as the first argument.
 const addDialog = (/** @type {unknown} */ art) => G(`add-${typeof art === 'string' ? art : 'set'}-modal`);
 
 /**
@@ -267,7 +267,7 @@ const addDialog = (/** @type {unknown} */ art) => G(`add-${typeof art === 'strin
  */
 export function oeffneErfassen(art) {
   const dialog = addDialog(art);
-  // Das Kaufdatum steht auf heute und die Währung auf der des Kontos, solange niemand etwas anderes wählt.
+  // The purchase date is today and the currency that of the account, as long as nobody chooses otherwise.
   dialog?.querySelectorAll('input[data-heute]').forEach(f => {
     if (f instanceof HTMLInputElement) {
       f.max = todayIso();
@@ -280,7 +280,7 @@ export function oeffneErfassen(art) {
   dialog?.classList.add('open');
 }
 
-/** Heute als JJJJ-MM-TT im Kalender des Geräts. */
+/** Today as YYYY-MM-DD in the device's calendar. */
 export function todayIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -292,19 +292,19 @@ export function todayIso() {
 export function schliesseErfassen(art) {
   const dialog = addDialog(art);
   dialog?.classList.remove('open');
-  // Geschlossen ist verworfen: Ein Preis von vorhin hinge sonst still am nächsten Set, das jemand eintippt.
+  // Closed means discarded: a price from before would otherwise silently stick to the next set someone types in.
   dialog?.querySelector('form')?.reset();
 }
 
 /**
- * Gewählte CSV-Datei hochladen und das Ergebnis melden — eine Fassung für Teile, Figuren, Merkliste und
- * Alarme. Übersprungene Zeilen und Zusatz-hinweise stehen überall in der Meldung, sonst sähe ein lückenhafter
- * Import aus wie ein vollständiger.
+ * Upload the chosen CSV file and report the result — one version for parts, figures, wishlist and
+ * alerts. Skipped rows and additional hints are in the message everywhere, otherwise a patchy
+ * import would look like a complete one.
  * @typedef {{ success: boolean, error?: string, added?: number, updated?: number, errors?: number,
  *   skipped?: number, skipped_hint?: string, [feld: string]: unknown }} CsvResult
  * @param {{ feld: string, pfad: string, felder?: Record<string, string>,
  *           zeige?: (laeuft: boolean) => void, hinweise?: (d: CsvResult) => unknown[] }} o
- * @returns {Promise<CsvResult | null>} die Antwort bei Erfolg, sonst null
+ * @returns {Promise<CsvResult | null>} the response on success, otherwise null
  */
 export async function uploadCsv(o) {
   const fi = G(o.feld);

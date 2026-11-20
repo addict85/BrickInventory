@@ -3,15 +3,15 @@ import { emit } from './events.js';
 import { rememberSessionEnd } from './messages.js';
 import { receiveResponse, showConnection } from './connection.js';
 
-// Die Hülle um die eigene API. Jeder Aufruf geht hierüber, damit Sprache, Verbindungsband, Sitzungsende und
-// Zwischenspeicher für alle gleich gelten.
+// The wrapper around the own API. Every call goes through here, so that language, connection banner, session end and
+// cache apply the same way for all.
 
 /**
- * Jeder Weg zur eigenen API läuft hierüber: Sprache, Verbindungsband und das Ende der Sitzung (401) gelten
- * dann auch für Uploads, Downloads und Ströme. Wirft nur bei Netzfehler oder Abbruch; den Status prüft der
- * Aufrufer.
+ * Every path to the own API runs through here: language, connection banner and the end of the session (401) then
+ * apply to uploads, downloads and streams too. Only throws on a network error or abort; the caller checks
+ * the status.
  * @param {string} method
- * @param {string} path  ohne `/api`, z. B. `/v1/sets`
+ * @param {string} path  without `/api`, e.g. `/v1/sets`
  * @param {{ body?: FormData | object | null, signal?: AbortSignal, headers?: Record<string, string>, cache?: RequestCache }} [o]
  * @returns {Promise<Response>}
  */
@@ -43,9 +43,9 @@ export async function apiRaw(method, path, o = {}) {
 }
 
 /**
- * JSON einer Antwort, deren Felder unverändert bleiben sollen (etwa ein eigenes
- * `status`, das api() mit dem HTTP-Status überschriebe). null bei Netzfehler,
- * Fehlerstatus oder einer Antwort, die kein JSON ist.
+ * JSON of a response whose fields should stay unchanged (e.g. an own
+ * `status` that api() would overwrite with the HTTP status). null on a network error,
+ * error status or a response that is not JSON.
  * @template {string} M
  * @template {string} P
  * @param {M} method @param {P} path
@@ -61,10 +61,10 @@ export async function apiData(method, path) {
 }
 
 /**
- * Aufruf der eigenen API mit JSON-Antwort. Liefert immer ein Objekt, nie eine Ausnahme: Jeder Fehlschlag
- * (Netz, Proxy-Fehlerseite, Status ohne `success`) kommt als `{ success: false, error, status }`, wie vom
- * Server. Den Typ der Antwort liefert der Vertrag (frontend-types/api.d.ts), wenn der Pfad als Literal oder
- * Vorlage dasteht. FormData geht als Upload, alles andere als JSON.
+ * Call of the own API with a JSON response. Always delivers an object, never an exception: every failure
+ * (network, proxy error page, status without `success`) comes as `{ success: false, error, status }`, as from the
+ * server. The response type is delivered by the contract (frontend-types/api.d.ts) if the path is written as a literal or
+ * template. FormData goes as an upload, everything else as JSON.
  * @template {string} M
  * @template {string} P
  * @param {M} method
@@ -114,11 +114,11 @@ export async function api(method, path, body, o = {}) {
 }
 
 /**
- * Ein Ereignisstrom der eigenen API: EventSource mit dem Sitzungscookie, jedes Ereignis als Objekt nach dem
- * Vertrag (`Strom` in frontend-types/contract.d.ts). Ohne EventSource null; dann fragt der Aufrufer ab.
- * Bricht der Strom ab, ist er geschlossen, und `fehler` entscheidet über den Rückfall.
+ * An event stream of the own API: EventSource with the session cookie, every event as an object according to the
+ * contract (`Strom` in frontend-types/contract.d.ts). Without EventSource null; then the caller polls.
+ * If the stream breaks off, it is closed, and `fehler` decides about the fallback.
  * @template {string} P
- * @param {P} path  ohne `/api`, z. B. `/v1/sets/import/csv/stream`
+ * @param {P} path  without `/api`, e.g. `/v1/sets/import/csv/stream`
  * @param {{ ereignis: (e: import('../../frontend-types/api').StromEreignis<P>) => void, fehler: () => void }} o
  * @returns {{ schliesse: () => void } | null}
  */
@@ -150,8 +150,8 @@ export function strom(path, o) {
 }
 
 /**
- * Meldetext für eine Ausnahme aus fetch(). Der Browser sagt „Failed to fetch“ oder „NetworkError…“; der
- * Nutzer soll lesen, was es heisst.
+ * Message text for an exception from fetch(). The browser says "Failed to fetch" or "NetworkError…"; the
+ * user should read what it means.
  * @param {unknown} e
  */
 export function errorMessage(e) {
@@ -164,9 +164,9 @@ export function errorMessage(e) {
   return text || tRaw('common.unknown_error');
 }
 
-// ── Zwischenspeicher für Lesezugriffe ──────────────────────────────────────
-// Ohne Netz zeigen Listen den zuletzt geladenen Stand dieses Tabs statt eines Fehlers. sessionStorage: nur
-// dieser Tab, weg beim Abmelden (emptyCache).
+// ── Cache for read accesses ─────────────────────────────────────────────────
+// Without network, lists show this tab's last loaded state instead of an error. sessionStorage: only
+// this tab, gone on logout (emptyCache).
 const ZS = 'bim_api:';
 
 const ZS_PATHS = /^\/v1\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/sets\?)/;
@@ -178,7 +178,7 @@ function inCache(pfad, daten) {
     const s = JSON.stringify(daten);
     if (s.length < 400_000) sessionStorage.setItem(ZS + pfad, s);
   } catch (_) {
-    /* voll oder gesperrt: dann ohne */
+    /* full or blocked: then without */
   }
 }
 
@@ -196,6 +196,6 @@ export function emptyCache() {
   try {
     for (const k of Object.keys(sessionStorage)) if (k.startsWith(ZS)) sessionStorage.removeItem(k);
   } catch (_) {
-    /* ohne Speicher nichts zu leeren */
+    /* without storage there is nothing to clear */
   }
 }

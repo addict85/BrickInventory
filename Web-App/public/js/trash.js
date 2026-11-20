@@ -8,16 +8,16 @@ import { html, joinHtml } from './escaping.js';
 import { bestaetigeMitPasswort, withSecondFactor } from './confirm-prompt.js';
 import { emit } from './events.js';
 
-// ═══ Papierkorb (Einstellungen → Daten) ═════════════════════════════════════
-// Der Server legt beim Löschen einen Schnappschuss ab (src/inventory/trash.ts); hier wird er angezeigt,
-// zurückgeholt oder endgültig entfernt.
+// ═══ Trash (settings → data) ═══════════════════════════════════════════════
+// The server stores a snapshot on deletion (src/inventory/trash.ts); here it is shown,
+// restored or removed permanently.
 
 const ICON = { set: 'set', teil: 'teil', figur: 'figur' };
 
 /**
- * Gleiche Sets zweier Konten sahen gleich aus; Konto und Menge unterscheiden sie, auch im Namen der Knöpfe.
+ * Identical sets of two accounts looked the same; account and quantity distinguish them, also in the buttons' names.
  * @param {import('../../frontend-types/contract').PapierkorbEintrag} e
- * @param {Map<number, string>} konten Name je Konto, leer ohne Haushalt
+ * @param {Map<number, string>} konten name per account, empty without a household
  */
 function zeile(e, konten) {
   const frist = fmtDatum(e.endgueltig_am);
@@ -35,7 +35,7 @@ function zeile(e, konten) {
   </div>`;
 }
 
-/** Name je Konto, nur im Haushalt: Mit einem Konto wäre der Name auf jeder Zeile derselbe. */
+/** Name per account, only in the household: with one account the name would be the same on every row. */
 async function accountsNames() {
   const d = await api('GET', '/v1/sets/household-members');
   const m = d?.success ? d.members : [];
@@ -44,7 +44,7 @@ async function accountsNames() {
   );
 }
 
-/** @param {string} [focusAfter] Kennung des eben entfernten Eintrags: Der Fokus geht auf seinen Nachbarn. */
+/** @param {string} [focusAfter] identifier of the entry just removed: the focus goes to its neighbor. */
 export async function loadTrash(focusAfter) {
   const liste = G('papierkorb-liste');
   if (!liste) return;
@@ -73,7 +73,7 @@ export async function loadTrash(focusAfter) {
   )?.focus();
 }
 
-/** Alles nachladen, was ein Wiederherstellen verändert haben kann. */
+/** Reload everything a restore may have changed. */
 function loadInventoryNew() {
   emit('bestandGeaendert');
 }
@@ -93,7 +93,7 @@ async function wiederherstellen(ids) {
 /** @param {string} id */
 export async function papierkorbWiederherstellen(id) {
   if (!(await wiederherstellen([id]))) return;
-  // Das „Rückgängig“ desselben Löschens hätte nichts mehr zurückzuholen.
+  // The "undo" of the same deletion would have nothing left to restore.
   for (const t of document.querySelectorAll('#toasts [data-papierkorb]'))
     if (t.getAttribute('data-papierkorb')?.split(',').includes(String(id))) t.remove();
   toast(tRaw('trash.restored'), 'success');
@@ -101,7 +101,7 @@ export async function papierkorbWiederherstellen(id) {
   await loadTrash(String(id));
 }
 
-// Endgültig heisst unumkehrbar: Der Server verlangt dafür das Passwort (und den zweiten Faktor).
+// Permanently means irreversibly: the server requires the password for it (and the second factor).
 /** @param {string} id */
 export async function papierkorbEndgueltig(id) {
   const password = await bestaetigeMitPasswort(tRaw('trash.delete_final'), tRaw('common.delete_text'), 'loeschen', {
@@ -134,9 +134,9 @@ export async function papierkorbLeeren() {
 }
 
 /**
- * Der Fokus geht auf den zurückgeholten Eintrag, sobald die neu geladene Liste ihn zeigt, statt auf die
- * Überschrift. Die Liste zeichnet sich danach noch einmal (Preise, zweites Laden): Bis zur Frist holt er den
- * Fokus zurück, solange er nur auf Seite oder Überschrift gefallen ist, nicht wenn jemand weitergegangen ist.
+ * The focus goes to the restored entry as soon as the reloaded list shows it, instead of to the
+ * heading. The list redraws once more afterwards (prices, second load): until the deadline it takes the
+ * focus back as long as it only fell onto the page or heading, not if someone has moved on.
  * @param {string} sel
  */
 function focusIfDa(sel) {
@@ -152,11 +152,11 @@ function focusIfDa(sel) {
 }
 
 /**
- * Die Erfolgsmeldung nach dem Löschen, mit „Rückgängig".
+ * The success message after deleting, with "undo".
  * @param {string} meldung
- * @param {{papierkorb?: number[]}} antwort die Antwort des DELETE
- * @param {() => unknown} [nachher] was danach neu zu zeichnen ist, etwa das offene Set-Detail
- * @param {string} [fokus] Selektor des Eintrags, der nach dem Zurückholen den Fokus bekommt
+ * @param {{papierkorb?: number[]}} antwort the response of the DELETE
+ * @param {() => unknown} [nachher] what to redraw afterwards, e.g. the open set detail
+ * @param {string} [fokus] selector of the entry that gets the focus after restoring
  */
 export function deletedWithUndo(meldung, antwort, nachher, fokus) {
   const ids = antwort?.papierkorb || [];

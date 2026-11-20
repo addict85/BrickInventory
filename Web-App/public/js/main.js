@@ -1,6 +1,6 @@
-// Einstiegspunkt des Bündels und die explizite Ladereihenfolge: Kern, Bausteine, Ansichten (Schichten in
-// scripts/build-frontend.js). Jede Datei unter js/ steht hier, weil das Bündel-Skript die Vollständigkeit am
-// Einstieg prüft. Der Importgraph ist kreisfrei (test/frontend-architektur.test.js).
+// Entry point of the bundle and the explicit load order: core, building blocks, views (layers in
+// scripts/build-frontend.js). Every file under js/ is listed here, because the bundle script checks completeness at the
+// entry point. The import graph is cycle-free (test/frontend-architektur.test.js).
 
 // Kern
 import './styles.js';
@@ -11,7 +11,7 @@ import './state.js';
 import './load-guard.js';
 import '../i18n.js';
 
-// Bausteine
+// Building blocks
 import './dom.js';
 import './format.js';
 import './messages.js';
@@ -28,7 +28,7 @@ import './confirm-prompt.js';
 import './crosshair.js';
 import './charts.js';
 
-// Ansichten
+// Views
 import './detail-fields.js';
 import './account-locations.js';
 import './sets-table.js';
@@ -79,6 +79,6 @@ import './mail-link.js';
 import './session.js';
 import './setup-status.js';
 
-// Gestartet wird erst nach der Auswertung aller Module.
+// Startup happens only after all modules have been evaluated.
 import { startApp } from './session.js';
 startApp();

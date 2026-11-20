@@ -1,11 +1,11 @@
 import { emit } from './js/events.js';
 import { SafeHtml } from './js/escaping.js';
 
-// Minimales Übersetzungs-System: t('key', {name}) liefert den Text. Die Sprache wird im localStorage gemerkt,
-// damit beim nächsten Laden nichts verzögert. Nur die aktive Sprache wird ausgeliefert.
+// Minimal translation system: t('key', {name}) delivers the text. The language is remembered in localStorage
+// so that nothing is delayed on the next load. Only the active language is delivered.
 
 /**
- * Wörterbuch der geladenen Sprachen. Mindestens eine ist beim Start da; die zweite kommt per loadLang() dazu.
+ * Dictionary of the loaded languages. At least one is there at startup; the second one is added via loadLang().
  * @type {Record<string, Record<string,string>>}
  */
 export const I18N = {};
@@ -13,9 +13,9 @@ if (window.I18N_DE) I18N.de = window.I18N_DE;
 if (window.I18N_EN) I18N.en = window.I18N_EN;
 
 /**
- * Eine Sprachdatei nachladen, bevor neu übersetzt wird: Sonst stünden eine halbe Sekunde lang Schlüsselnamen
- * da. Scheitert es, bleibt die bisherige Sprache — der Aufrufer prüft I18N[lang].
- * @param {string} lang 'de' oder 'en'
+ * Load a language file before retranslating: otherwise key names would stand there for half a second.
+ * If it fails, the previous language stays — the caller checks I18N[lang].
+ * @param {string} lang 'de' or 'en'
  * @returns {Promise<void>}
  */
 function loadLang(lang) {
@@ -28,7 +28,7 @@ function loadLang(lang) {
       if (dict) I18N[lang] = dict;
       resolve();
     };
-    s.onerror = () => resolve(); // Fehler: bisherige Sprache behalten
+    s.onerror = () => resolve(); // Error: keep the previous language
     document.head.appendChild(s);
   });
 }
@@ -40,7 +40,7 @@ export let LANG = localStorage.getItem('bim_lang') || _browserLang;
 /**
  * Translate a key. Supports {placeholder} substitution. Falls back to the key itself if not found.
  */
-/** Währung des Kontos; ohne passende Browserregion bestimmt sie das Zahlenformat. */
+/** The account's currency; without a matching browser region it determines the number format. */
 let _currency = 'EUR';
 /** @param {string | null | undefined} cur */
 export function setNumbersCurrency(cur) {
@@ -54,9 +54,9 @@ export function setNumbersCurrency(cur) {
 }
 
 /**
- * Zahlen- und Datumsformat: die Landesform des Browsers, wenn sie zur Sprache passt (de-DE
- * 1.097,93, de-CH 1’097.93). Sonst bei Deutsch die Form zur Kontowährung: CHF schreibt
- * Schweizer, alles andere deutsches Format; ein Browser ohne Region („de“) ist kein Hinweis auf die Schweiz.
+ * Number and date format: the browser's regional form if it matches the language (de-DE
+ * 1.097,93, de-CH 1’097.93). Otherwise for German the form matching the account currency: CHF writes
+ * Swiss, everything else German format; a browser without a region ("de") is no hint at Switzerland.
  */
 export function locale() {
   const browser = (typeof navigator !== 'undefined' && navigator.language) || '';
@@ -67,10 +67,10 @@ export function locale() {
 }
 
 /**
- * HTML-Sonderzeichen maskieren — Zwilling von esc() aus js/escaping.js.
+ * Escape HTML special characters — twin of esc() from js/escaping.js.
  *
- * Bewusst hier dupliziert und nicht importiert: i18n.js wird VOR den Kernmodulen geladen (siehe
- * Skript-Reihenfolge in index.html), esc() existiert zum Zeitpunkt der ersten t()-Aufrufe also noch nicht.
+ * Deliberately duplicated here and not imported: i18n.js is loaded BEFORE the core modules (see the
+ * script order in index.html), so esc() does not exist yet at the time of the first t() calls.
  * @param {unknown} v
  * @returns {string}
  */
@@ -84,8 +84,8 @@ function _i18nEsc(v) {
 }
 
 /**
- * Mehrzahl nach den Regeln der Sprache: Ist {n} oder {count} eine Zahl und gibt es „schlüssel_one“ (bzw.
- * _few, _many …), gilt diese Form. Feste Formen wie „{n} Typen“ ergaben sonst „1 Typen“.
+ * Plural according to the language's rules: if {n} or {count} is a number and "key_one" (or
+ * _few, _many …) exists, that form applies. Fixed forms like "{n} Typen" otherwise yielded "1 Typen".
  * @param {Record<string,string>} dict
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
@@ -98,20 +98,20 @@ function pluralKey(dict, key, vars) {
 }
 
 /**
- * Übersetzten Text als Markup holen: Die Werte werden maskiert und das Ergebnis ist SafeHtml, damit tsc
- * meldet, wenn es in textContent, toast() oder einen Dialogtext geriete — dort stünde sonst „&amp;“. Für
- * reinen Text gibt es tRaw().
+ * Get translated text as markup: the values are escaped and the result is SafeHtml, so that tsc
+ * reports when it ends up in textContent, toast() or a dialog text — there it would show "&amp;". For
+ * plain text there is tRaw().
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
  * @returns {SafeHtml}
  */
 export function t(key, vars) {
-  // Beide können fehlen (nur eine Sprachdatei geladen) — {} als letzte Stufe, dann greift der Rückfall auf
-  // den Schlüssel selbst.
+  // Both may be missing (only one language file loaded) — {} as the last level, then the fallback to
+  // the key itself applies.
   const dict = I18N[LANG] || I18N.de || I18N.en || {};
-  // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird nur locales/en.js geladen. Der
-  // Rückfall greift deshalb nur, wenn Deutsch tatsächlich da ist; sonst bleibt der Schlüssel selbst als
-  // letzte Stufe.
+  // I18N['de'] is NOT guaranteed to exist — with the English UI only locales/en.js is loaded. The
+  // fallback therefore only applies if German is actually there; otherwise the key itself stays as
+  // the last level.
   const k = pluralKey(dict, key, vars);
   let str = dict[k] || I18N.de?.[k] || key;
   if (vars) {
@@ -123,22 +123,22 @@ export function t(key, vars) {
 }
 
 /**
- * Wie t(), aber OHNE Maskierung der Variablen.
+ * Like t(), but WITHOUT escaping the variables.
  *
- * Für reinen Text: textContent, Attribute per setAttribute, toast() und Dialogtexte. In html`` wird das
- * Ergebnis dort maskiert.
+ * For plain text: textContent, attributes via setAttribute, toast() and dialog texts. In html`` the
+ * result is escaped there.
  *
  * @param {string} key
  * @param {Record<string, unknown>} [vars]
  * @returns {string}
  */
 export function tRaw(key, vars) {
-  // Beide können fehlen (nur eine Sprachdatei geladen) — {} als letzte Stufe, dann greift der Rückfall auf
-  // den Schlüssel selbst.
+  // Both may be missing (only one language file loaded) — {} as the last level, then the fallback to
+  // the key itself applies.
   const dict = I18N[LANG] || I18N.de || I18N.en || {};
-  // I18N['de'] ist NICHT garantiert vorhanden — bei englischer Oberfläche wird nur locales/en.js geladen. Der
-  // Rückfall greift deshalb nur, wenn Deutsch tatsächlich da ist; sonst bleibt der Schlüssel selbst als
-  // letzte Stufe.
+  // I18N['de'] is NOT guaranteed to exist — with the English UI only locales/en.js is loaded. The
+  // fallback therefore only applies if German is actually there; otherwise the key itself stays as
+  // the last level.
   const k = pluralKey(dict, key, vars);
   let str = dict[k] || I18N.de?.[k] || key;
   if (vars) {
@@ -149,18 +149,18 @@ export function tRaw(key, vars) {
   return str;
 }
 
-// Die zuletzt angewendete Sprache. checkAuth() und showApp() rufen applyLang() beim Start mit demselben Wert
-// auf; ohne diese Sperre lief die Neuübersetzung samt Neuaufbau der aktiven Liste zweimal.
+// The most recently applied language. checkAuth() and showApp() call applyLang() at startup with the same value;
+// without this guard the retranslation including the rebuild of the active list ran twice.
 /** @type {string | null} */
 let _langApplied = null;
 
 /**
- * Farbnamen nur in der Anzeige übersetzen: Daten und BrickLink-Abfragen brauchen die englischen Namen. Ein
- * Wortschatz statt einer Liste aller Farben, damit auch neue Rebrickable-Farben lesbar werden.
+ * Translate color names only in the display: data and BrickLink queries need the English names. A
+ * vocabulary instead of a list of all colors, so that new Rebrickable colors become readable too.
  */
 /** @type {Record<string, string>} */
 const COLOR_WORDS_DE = {
-  // Modifikatoren
+  // Modifiers
   dark: 'Dunkel',
   light: 'Hell',
   medium: 'Mittel',
@@ -188,7 +188,7 @@ const COLOR_WORDS_DE = {
   dark2: 'Dunkeln',
   fabuland: 'Fabuland',
   modulex: 'Modulex',
-  // Grundfarben
+  // Base colors
   red: 'Rot',
   blue: 'Blau',
   green: 'Grün',
@@ -234,7 +234,7 @@ const COLOR_WORDS_DE = {
   colour: 'Farbe',
 };
 
-/** Wörter, die im Deutschen mit dem folgenden zusammengeschrieben werden. */
+/** Words that are written together with the following one in German. */
 const COLOR_PREFIX_DE = new Set([
   'Dunkel',
   'Hell',
@@ -256,7 +256,7 @@ const COLOR_PREFIX_DE = new Set([
 ]);
 
 /**
- * Farbname in der Sprache der Oberfläche; ohne Namen ein leerer Text.
+ * Color name in the UI language; without a name an empty text.
  * @param {string | null | undefined} en
  * @returns {string}
  */
@@ -264,7 +264,7 @@ export function colorName(en) {
   if (!en) return '';
   if (LANG !== 'de') return en;
 
-  // Bindestriche bleiben erhalten („Trans-Clear" → „Trans-Klar").
+  // Hyphens are kept ("Trans-Clear" → "Trans-Klar").
   const parts = String(en).split(/(\s+|-)/);
   const out = [];
   for (const tok of parts) {
@@ -277,11 +277,11 @@ export function colorName(en) {
       continue;
     }
     const de = COLOR_WORDS_DE[tok.toLowerCase()];
-    out.push(de === undefined ? tok : de); // unbekannt: englisch lassen
+    out.push(de === undefined ? tok : de); // unknown: leave it English
   }
 
-  // Bekannte Modifikatoren ans nächste Wort hängen („Dunkelbläulichgrau“), unbekannte Wörter getrennt lassen.
-  // Entschieden am vorigen Token, nicht am Zusammengesetzten — sonst bräche die Kette nach dem zweiten Glied
+  // Attach known modifiers to the next word ("Dunkelbläulichgrau"), leave unknown words separate.
+  // Decided on the previous token, not on the compound — otherwise the chain would break after the second link
   // ab.
   let res = '';
   let joinNext = false;
@@ -301,18 +301,18 @@ export function colorName(en) {
   return res.replace(/\s{2,}/g, ' ').trim();
 }
 
-/** Ein Element mit data-i18n neu schreiben. @param {HTMLElement} el */
+/** Rewrite an element with data-i18n. @param {HTMLElement} el */
 function writeI18n(el) {
   const key = el.dataset.i18n;
   const attr = el.dataset.i18nAttr; // optional: 'placeholder', 'title', etc.
-  // optional: data-i18n-vars='{"n":"4000"}' für parametrisierte statische Texte
+  // optional: data-i18n-vars='{"n":"4000"}' for parameterized static texts
   let vars;
   if (el.dataset.i18nVars) {
     try {
       vars = JSON.parse(el.dataset.i18nVars);
     } catch (_) {}
   }
-  // data-i18n-betrag: ein Beispielbetrag im Zahlenformat der Oberfläche („z. B. 79,99“).
+  // data-i18n-betrag: an example amount in the UI's number format ("e.g. 79.99").
   if (el.dataset.i18nBetrag)
     vars = {
       ...vars,
@@ -323,7 +323,7 @@ function writeI18n(el) {
   const val = tRaw(key ?? '', vars);
   if (attr) el.setAttribute(attr, val);
   else if (el.dataset.ico) {
-    // Symbol vor dem Text: data-ico nennt es, der Text bleibt übersetzbar.
+    // Icon before the text: data-ico names it, the text stays translatable.
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'ico');
     svg.setAttribute('aria-hidden', 'true');
@@ -338,13 +338,13 @@ function writeI18n(el) {
 }
 
 /**
- * Sprache anwenden und alle statisch übersetzten Stellen neu schreiben.
- * @param {string} lang 'de' oder 'en'
- * @param {boolean} persist auch am Konto speichern
+ * Apply the language and rewrite all statically translated places.
+ * @param {string} lang 'de' or 'en'
+ * @param {boolean} persist also save it on the account
  */
 export function applyLang(lang, persist) {
-  // Sprache noch nicht geladen: nachladen und erneut anlaufen. Ein stilles return hiesse, der Klick auf
-  // Englisch tut nichts. Synchron, damit die rund zwanzig Aufrufstellen bleiben, wie sie sind.
+  // Language not loaded yet: load it and start over. A silent return would mean that clicking
+  // English does nothing. Synchronous, so that the roughly twenty call sites stay as they are.
   if (!I18N[lang]) {
     loadLang(lang).then(() => {
       if (I18N[lang]) applyLang(lang, persist);
@@ -363,7 +363,7 @@ export function applyLang(lang, persist) {
   // Re-render all elements that carry a data-i18n attribute
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-i18n]')).forEach(writeI18n);
 
-  // Ein zweites Attribut je Element, meist der Name eines Feldes neben seinem Platzhalter.
+  // A second attribute per element, usually the name of a field next to its placeholder.
   /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('[data-i18n-aria]')).forEach(el => {
     el.setAttribute('aria-label', tRaw(el.dataset.i18nAria ?? ''));
   });
@@ -378,18 +378,18 @@ export function applyLang(lang, persist) {
   const sel = /** @type {HTMLSelectElement | null} */ (document.getElementById('lang-select'));
   if (sel) sel.value = lang;
 
-  // Speichern (konto.js) und das Neuladen des offenen Reiters (navigation.js) hören auf dieses
-  // Ereignis: Die Übersetzung selbst kennt keine Ansicht.
+  // Saving (account.js) and reloading the open tab (navigation.js) listen to this
+  // event: the translation itself knows no view.
   emit('spracheGewechselt', { sprache: lang, speichern: !!persist, realSwitch: !!isRealSwitch });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Aktive Sprache setzen, ohne die volle Neuübersetzung von applyLang().
+ * Set the active language without the full retranslation of applyLang().
  *
- * Braucht sitzung.js beim Start, um den in localStorage gespeicherten Wert zu übernehmen, bevor die
- * Oberfläche steht. Importierte Bindungen sind in ES-Modulen schreibgeschützt, deshalb dieser Weg statt `LANG
+ * session.js needs this at startup to adopt the value stored in localStorage before the
+ * UI is in place. Imported bindings are read-only in ES modules, hence this path instead of `LANG
  * = …`.
  *
  * @param {string} lang

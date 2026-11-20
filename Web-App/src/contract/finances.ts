@@ -257,7 +257,7 @@ export const routen = {
       accounts: Q.konten,
       currency: Q.text(8).meta({
         deprecated: true,
-        description: 'wird nicht ausgewertet: Es gilt die Währung des Kontos',
+        description: 'not evaluated: the account currency applies',
       }),
     }),
   },

@@ -299,7 +299,7 @@ async function revokeOtherTokens() {
 }
 
 // ── Register handlers with the dispatcher (see js/registry.js) ──────────────
-// Names below are registry-exposed (index.html/verbindung.js/tests) — kept unchanged.
+// Names below are registry-exposed (index.html/connection.js/tests) — kept unchanged.
 registerActions({
   loadTokens,
   qrKopplungAblehnen,

@@ -164,7 +164,7 @@ async function loescheLagerort(id, name) {
   await ladeLagerortVerwaltung();
 }
 
-// Names below are registry-exposed (index.html/verbindung.js/tests) — kept unchanged.
+// Names below are registry-exposed (index.html/connection.js/tests) — kept unchanged.
 registerActions({
   legeLagerortAn,
   lagerortTaste,

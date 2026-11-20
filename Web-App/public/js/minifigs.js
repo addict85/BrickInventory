@@ -1,5 +1,5 @@
-// Der Reiter Minifiguren: Figuren aus Sets und manuell erfasste Figuren, dazu die gemeinsamen Hilfen für
-// manuelle Tabellen und CSV-Status.
+// The minifigures tab: figures from sets and manually captured figures, plus the shared helpers for
+// manual tables and CSV status.
 import { loadGuard } from './load-guard.js';
 import { subscribe, emit } from './events.js';
 import { echt, registerActions } from './registry.js';
@@ -43,14 +43,14 @@ import { confirmDelete } from './confirm-prompt.js';
  */
 /** @type {Figur[]} */
 let allFigsCache = [];
-/** Die zuletzt geladenen Figuren aus Sets (nur lesen). */
+/** The most recently loaded figures from sets (read only). */
 export function allMinifigs() {
   return allFigsCache;
 }
 
-// ── Endlos-Scroll der Minifiguren ──────────────────────────────────────────
-// Wie in Galerie, Katalog und Teileansicht. Suche und Quellenfilter gehen an den Server: Clientseitig über
-// allFigsCache zu filtern würde mit seitenweisem Laden nur die geladene Seite durchsuchen.
+// ── Infinite scroll of the minifigures ──────────────────────────────────────
+// As in gallery, catalog and parts view. Search and source filter go to the server: filtering on the client over
+// allFigsCache would only search the loaded page with page-wise loading.
 const FIG_PAGE_SIZE = 60;
 const figurenLaden = loadGuard();
 let _figPage = 1,
@@ -63,8 +63,8 @@ function figParams(page) {
   const p = new URLSearchParams();
   p.set('page', String(page));
   p.set('page_size', String(FIG_PAGE_SIZE));
-  // Fest 'set': Manuell erfasste Figuren haben oben eine eigene Sektion. Der Ausschluss gehört auf den Server
-  // — clientseitig gefiltert könnte eine ganze Seite wegfallen und die Liste bliebe scheinbar leer.
+  // Fixed 'set': manually captured figures have a section of their own at the top. The exclusion belongs on the server
+  // — filtered on the client a whole page could drop out and the list would seem empty.
   p.set('source', 'set');
   const q = G('fig-search')?.value?.trim();
   if (q) p.set('search', q);
@@ -89,7 +89,7 @@ async function loadMinifigsMore() {
     if (allFigsCache.length >= (_figTotal || 0)) _figDone = true;
     appendFigs(batch);
   } catch (_) {
-    /* stumm — der Sentinel versucht es beim nächsten Scrollen */
+    /* silent — the sentinel tries again on the next scroll */
   } finally {
     if (figurenLaden.isCurrent(gen)) _figLoadingMore = false;
   }
@@ -127,7 +127,7 @@ export async function loadMinifigs() {
   _figPage = 1;
   _figDone = false;
   _figLoadingMore = false;
-  // Ein alter Fehlerzustand weicht dem Gerüst, solange neu geladen wird (wie in der Merkliste).
+  // An old error state gives way to the skeleton while reloading (as in the wishlist).
   const liste = G('figs-list');
   if (liste?.querySelector('.fehler-zustand')) setzeHtml(liste, skeletonTiles(8, tRaw('common.loading')));
   const d = await figurenLaden.whenCurrent(api('GET', `/v1/minifigs?${figParams(1)}`));
@@ -141,14 +141,14 @@ export async function loadMinifigs() {
   renderFigs(allFigsCache);
   loadManualFigsTable();
 
-  // Kennzahlen mit dem Filter des Reiters: Sonst zeigte die Kachel im Haushalt die eigenen Zahlen, während
-  // die Liste darunter alle Konten zeigte.
+  // Metrics with the tab's filter: otherwise the tile in the household would show the own numbers while
+  // the list below showed all accounts.
   const s = await api('GET', `/v1/minifigs/stats${scopeQuery('minifigs')}`);
   if (s.success) {
     G('mf-unique').textContent = String(s.stats.types);
     G('mf-total').textContent = String(s.stats.total_quantity);
   }
-  // Manual valuation — mit dem Filter des Minifiguren-Reiters, damit die Wertangabe zur Liste darüber passt.
+  // Manual valuation — with the minifigures tab's filter, so that the value matches the list above.
   const v = await api('GET', `/v1/finance/minifigs-valuation${scopeQuery('minifigs')}`);
   if (v.success && parseFloat(v.total_value) > 0) {
     G('mf-val').textContent = fmtN(v.total_value, v.currency || accountCurrency);
@@ -158,8 +158,8 @@ export async function loadMinifigs() {
 }
 
 /**
- * Suche und Quelle filtert der Server; hier wird neu geladen, sonst durchsuchte der Filter nur die geladene
- * Seite. Beide Listen, weil die manuellen Figuren unter derselben Filterleiste stehen.
+ * The server filters search and source; here a reload happens, otherwise the filter would only search the loaded
+ * page. Both lists, because the manual figures stand under the same filter bar.
  */
 function filterFigs() {
   loadMinifigs();
@@ -167,13 +167,13 @@ function filterFigs() {
 }
 
 /**
- * Hängt eine nachgeladene Seite an, statt die Liste neu zu bauen: Ein Ersetzen per innerHTML brach die
- * laufenden Bildanfragen ab, und Kacheln, deren Bild nie über eine Runde hinauskam, blieben leer.
+ * Appends a page loaded later instead of rebuilding the list: replacing via innerHTML aborted the
+ * running image requests, and tiles whose image never got past one round stayed empty.
  */
 /** @param {Figur[]} batch */
 function appendFigs(batch) {
   const el = G('figs-list');
-  // Die Seite losgelöst rendern, damit die bestehende Liste unangetastet bleibt.
+  // Render the page detached, so that the existing list stays untouched.
   const tmp = document.createElement('div');
   renderFigs(batch, tmp);
 
@@ -184,7 +184,7 @@ function appendFigs(batch) {
     return;
   }
 
-  // Kachelansicht: an das letzte Raster anhängen, sonst neue Gruppen übernehmen.
+  // Tile view: append to the last grid, otherwise adopt new groups.
   const lastGrid = [...el.querySelectorAll('.parts-grid, .man-grid, .figs-grid, .sgrid')].pop();
   const newTiles = tmp.querySelectorAll('.parts-grid > *, .man-grid > *, .figs-grid > *, .sgrid > *');
   if (lastGrid && newTiles.length) {
@@ -192,15 +192,15 @@ function appendFigs(batch) {
     return;
   }
 
-  // Struktur passt nicht (z. B. vorher leerer Zustand) → einmalig neu bauen.
+  // The structure does not fit (e.g. empty state before) → rebuild once.
   renderFigs(allFigsCache);
 }
 
 /**
  * @param {(Figur | ManuelleFigur)[]} list
- * @param {HTMLElement} [target] Zielcontainer. Vorgabe ist #figs-list.
- *        Wird ein anderer übergeben, kann eine Seite losgelöst gerendert und
- *        anschliessend angehängt werden — siehe appendFigs().
+ * @param {HTMLElement} [target] target container. Default is #figs-list.
+ *        If another one is passed, a page can be rendered detached and
+ *        appended afterwards — see appendFigs().
  */
 export function renderFigs(list, target) {
   const el = target || G('figs-list');
@@ -215,8 +215,8 @@ export function renderFigs(list, target) {
   if (!target) reconcileMinifigsEmpty();
 
   if (tablesView('figs-view')) {
-    // Ohne „Quelle“ und Papierkorb: Diese Liste lädt nur source=set, beide Spalten wären in jeder Zeile
-    // gleich bzw. leer. Manuelle Figuren haben ihren eigenen Bereich mit editierbaren Karten.
+    // Without "source" and trash: this list only loads source=set, both columns would be the same or empty
+    // in every row. Manual figures have their own area with editable cards.
     setzeHtml(
       el,
       html`<div class="tw"><table class="dt" aria-label="${tRaw('nav.minifigs')}">
@@ -227,8 +227,8 @@ export function renderFigs(list, target) {
         const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
         const dateVal = /** @type {string | null} */ (f.set_added_at || null);
         const erfasst = dateVal ? fmtDatum(dateVal) : '—';
-        // Anklickbar wie die Kachel darunter — dieselbe Handlung in beiden Ansichten (Marcos Detail-Dialog
-        // fuer automatisch erfasste Figuren).
+        // Clickable like the tile below — the same action in both views (Marco's detail dialog
+        // for automatically captured figures).
         return html`<tr data-stil="cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
           <td>${imgSrc ? bildTag({ src: imgSrc, alt: '', klasse: 'bild-klein', ph: 'figur' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${placeholderContent('figur')}</span>`}</td>
           <td>${rowsButton(
@@ -250,7 +250,7 @@ export function renderFigs(list, target) {
     return;
   }
 
-  // Grid view: group by source (Set / Manuell)
+  // Grid view: group by source (Set / Manual)
   /** @type {Record<string, (Figur | ManuelleFigur)[]>} */
   const groups = {};
   for (const f of list) {
@@ -272,16 +272,16 @@ export function renderFigs(list, target) {
           const imgSrc = imgUrl(thumbUrl(f.image_local || f.image_url) || f.image_local || f.image_url || '', true);
           const dateVal = /** @type {string | null} */ (f.set_added_at || null);
           const erfasst = dateVal ? fmtDatum(dateVal) : '';
-          // Papierkorb oben rechts, wie auf der Set-Kachel: .ca setzt top:6px;right:6px und blendet ihn beim
-          // Ueberfahren ein (styles.css). Marcos Vorgabe vom 24.09., zweiter Teil: „analog den Kacheln bei
-          // den Sets. Dies aber nur in der webapp."
+          // Trash at the top right, as on the set tile: .ca sets top:6px;right:6px and fades it in on
+          // hover (styles.css). Marco's requirement from 24.09., second part: "like the tiles for
+          // the sets. But only in the web app."
           const delBtn =
             f.source === 'manual'
               ? `<div class="ca"><span class="delbtn" data-click="deleteManualFigStop"${echt()} aria-hidden="true" data-arg="${esc(f.fig_number)}" data-arg2="${f.user_id || ''}" data-taste="${esc(tRaw('kachel.entf'))}" title="${esc(tRaw('figs.delete'))}">${TRASH_ICON_SVG}</span></div>`
               : '';
-          // Zustand nur bei manuell erfassten Figuren — aus Sets haben sie keinen eigenen. Die
-          // Besitzer-Plakette dagegen immer: „Wem gehört das?“ stellt sich bei der Figur aus dem Set eines
-          // Kindes genauso.
+          // Condition only for manually captured figures — those from sets have none of their own. The
+          // owner badge on the other hand always: "whom does this belong to?" arises just the same for the figure from a
+          // child's set.
           const condBadge =
             f.source === 'manual'
               ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${condBadges(f)}</div>`
@@ -289,10 +289,10 @@ export function renderFigs(list, target) {
           const besitzer = ownerBadges(f)
             ? `<div data-stil="display:flex;gap:3px;justify-content:center;flex-wrap:wrap;margin-top:3px">${ownerBadges(f)}</div>`
             : '';
-          // Manuell erfasste Figuren haben ihren eigenen Dialog (Kaufpreise, Menge aenderbar); die aus Sets
-          // den neuen ohne Preis und ohne Mengenaenderung. Die Kachel entscheidet nach der Quelle, damit
-          // BEIDE Faelle richtig sind — auch wenn diese Liste heute nur
-          // `source=set` laedt.
+          // Manually captured figures have their own dialog (purchase prices, quantity editable); those from sets
+          // the new one without price and without quantity change. The tile decides by the source, so that
+          // BOTH cases are right — even if this list today only
+          // loads `source=set`.
           const k = kachelName();
           return html`<div class="part-card" tabindex="0" role="button"${k.attr}${f.source === 'manual' ? html` aria-keyshortcuts="Delete"` : ''} data-stil="position:relative;cursor:pointer" data-click="${f.source === 'manual' ? 'openManDetail' : 'openSetItemDetail'}" data-arg="fig" data-arg2="${f.fig_number}" data-arg3="0">
             ${rawHtml(delBtn)}
@@ -313,7 +313,7 @@ export function renderFigs(list, target) {
   );
 }
 
-/** @param {string} figNumber @param {number|string} [owner] siehe deleteManualPart */
+/** @param {string} figNumber @param {number|string} [owner] see deleteManualPart */
 export async function deleteManualFig(figNumber, owner) {
   if (!(await confirmDelete(tRaw('figs.delete.title'), tRaw('gallery.delete.text', { name: figNumber }), 'figur')))
     return false;
@@ -339,7 +339,7 @@ export async function deleteManualFig(figNumber, owner) {
 
 /** @type {ManuelleFigur[]} */
 let manualFigsCache = [];
-/** Die zuletzt geladenen manuell erfassten Figuren (nur lesen). */
+/** The most recently loaded manually captured figures (read only). */
 export function manualMinifigs() {
   return manualFigsCache;
 }
@@ -351,13 +351,13 @@ export async function loadManualFigsTable() {
 }
 
 /** @type {boolean | null} */
-let _setMinifigsEmpty = null; // null: noch nicht geladen
+let _setMinifigsEmpty = null; // null: not loaded yet
 /** @type {boolean | null} */
 let _manualMinifigsEmpty = null;
 
 /**
- * Wie bei den Teilen (reconcilePartsEmpty in parts.js): ein Leerzustand für den Reiter, und nur wenn beide
- * Listen leer sind.
+ * As for the parts (reconcilePartsEmpty in parts.js): one empty state for the tab, and only if both
+ * lists are empty.
  */
 function reconcileMinifigsEmpty() {
   const box = G('manual-figs-box');
@@ -391,7 +391,7 @@ function reconcileMinifigsEmpty() {
   );
 }
 
-/** Die Suche leeren (Knopf im Leerzustand). */
+/** Clear the search (button in the empty state). */
 export function resetMinifigsFilter() {
   const el = G('fig-search');
   if (el) el.value = '';
@@ -420,9 +420,9 @@ export function renderManualFigsTable() {
       const img = imgSrc
         ? bildTag({ src: imgSrc, alt: '', klasse: 'man-tile-img', ph: 'figur' })
         : `<span class="bild-ph man-tile-img" aria-hidden="true">${placeholderContent('figur')}</span>`;
-      // Mengengewichteter Kaufpreis über die Erfassungen (Server rechnet ihn). unit_price ist der zuletzt
-      // geschriebene Einzelwert der Stammzeile — bei zwei Erfassungen zu verschiedenen Preisen stimmte er
-      // nicht.
+      // Quantity-weighted purchase price over the acquisitions (the server computes it). unit_price is the most recently
+      // written single value of the master row — with two acquisitions at different prices it was
+      // wrong.
       const figPrice = f.avg_purchase_price ?? f.unit_price ?? f.purchase_price;
       const priceStr = figPrice != null ? esc(tRaw('finance.je', { preis: fmtN(figPrice, accountCurrency) })) : '—';
       const condBadge = condBadges(f);
@@ -444,7 +444,7 @@ export function renderManualFigsTable() {
   );
 }
 
-/** @param {string} figNumber @param {object} body @param {number | string} [owner] Besitzer der Karte — siehe deleteManualPart. */
+/** @param {string} figNumber @param {object} body @param {number | string} [owner] owner of the card — see deleteManualPart. */
 export async function updateManualFig(figNumber, body, owner) {
   const d = await api(
     'PUT',
@@ -460,10 +460,10 @@ export async function updateManualFig(figNumber, body, owner) {
 }
 
 /**
- * Hinweis, wenn der Kaufpreis aus dem anderen Zustand stammt: BrickLink führt oft nur einen. Übernehmen und
- * kennzeichnen, damit der Rückfall weder unsichtbar ist noch das Feld leer bleibt. Ein Helfer für Teile und
- * Figuren.
- * @param {string | null | undefined} zustand 'N' | 'U' | null — null heisst „nichts zu sagen".
+ * Hint when the purchase price comes from the other condition: BrickLink often lists only one. Adopt and
+ * mark it, so that the fallback is neither invisible nor leaves the field empty. One helper for parts and
+ * figures.
+ * @param {string | null | undefined} zustand 'N' | 'U' | null — null means "nothing to say".
  */
 export function priceOriginHint(zustand) {
   if (zustand !== 'N' && zustand !== 'U') return '';
@@ -505,7 +505,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     res.textContent =
       `${d.fig_number} ${d.action === 'added' ? t('common.added') : t('common.updated')}` +
       (hintF ? ` — ${hintF}` : '');
-    // Der Dialog schliesst; das Ergebnis samt Preishinweis kommt als Meldung.
+    // The dialog closes; the result including the price hint comes as a message.
     schliesseErfassen('fig');
     toast(res.textContent.replace(/^\u2705\s*/, ''), 'success');
     G('af-num-inline').value = '';
@@ -515,8 +515,8 @@ G('btn-add-fig')?.addEventListener('click', async () => {
     G('af-date').value = '';
     emptyLocationField('af-storage');
     loadMinifigs();
-    // Mit Hinweis laenger stehen lassen: Drei Sekunden reichen fuer ein Haekchen, nicht fuer einen Satz, den
-    // man lesen soll.
+    // With a hint leave it standing longer: three seconds are enough for a check mark, not for a sentence one
+    // is supposed to read.
     setTimeout(
       () => {
         res.textContent = '';
@@ -529,7 +529,7 @@ G('btn-add-fig')?.addEventListener('click', async () => {
   }
 });
 
-// Persistente Status-/Hinweiszeile für den CSV-Import (Teile & Minifiguren)
+// Persistent status/hint line for the CSV import (parts & minifigures)
 /**
  * @param {string} elId
  * @param {string} state
@@ -574,17 +574,17 @@ G('btn-fig-csv-template').onclick = e => {
 };
 
 /**
- * Abfrageteil der manuellen Listen: Kontofilter UND Suchtext. scopeQuery() allein liess die Suche an den
- * manuellen Kacheln vorbeilaufen, obwohl die Filterleiste über beiden Listen steht. Gefiltert wird am Server.
- * @param {string} view     Name des Blickfelds ('parts' | 'minifigs')
- * @param {string} searchId  ID des Suchfelds der Filterleiste
+ * Query part of the manual lists: account filter AND search text. scopeQuery() alone let the search pass the
+ * manual tiles by, although the filter bar stands above both lists. Filtering happens on the server.
+ * @param {string} view     name of the scope ('parts' | 'minifigs')
+ * @param {string} searchId  ID of the filter bar's search field
  */
 export function manualQuery(view, searchId) {
   const p = new URLSearchParams();
   addScopeParam(p, view);
-  // Der Lagerortfilter steht in derselben Leiste und gehoert damit zum gleichen Versprechen. Es gibt ihn nur
-  // fuer Galerie und Teile (LAGER_VIEWS in account-filter.js); fuer 'minifigs' haengt addLagerParam nichts an, und
-  // deshalb kennt getManualMinifigs ihn auch nicht.
+  // The storage location filter stands in the same bar and thus belongs to the same promise. It only exists
+  // for gallery and parts (LAGER_VIEWS in account-filter.js); for 'minifigs' addLagerParam appends nothing, and
+  // that is why getManualMinifigs does not know it either.
   addLagerParam(p, view);
   const q = G(searchId)?.value?.trim();
   if (q) p.set('search', q);
@@ -593,9 +593,9 @@ export function manualQuery(view, searchId) {
 }
 
 /**
- * Die manuell erfassten Posten als Tabelle: Der Ansichtsumschalter steht über beiden Listen und muss für
- * beide gelten. Eine Funktion für Teile und Figuren, damit die zwei Tabellen nicht auseinanderlaufen.
- * @param {(ManuellesTeil | ManuelleFigur)[]} posten  Die Einträge aus dem jeweiligen Cache.
+ * The manually captured items as a table: the view switch stands above both lists and must apply to
+ * both. One function for parts and figures, so that the two tables do not drift apart.
+ * @param {(ManuellesTeil | ManuelleFigur)[]} posten  the entries from the respective cache.
  * @param {'part'|'fig'} art
  */
 export function manualTable(posten, art) {
@@ -619,8 +619,8 @@ export function manualTable(posten, art) {
     const preis = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
     const loeschKlick = isPart ? 'deleteManualPartStop' : 'deleteManualFigStop';
     const loeschTitle = tRaw(isPart ? 'parts.delete.title' : 'figs.delete');
-    // Beim Teil traegt der Papierkorb (Nummer, Farbe, Besitzer), bei der Figur (Nummer, Besitzer) — dieselbe
-    // Reihenfolge wie auf den Kacheln.
+    // For the part the trash carries (number, color, owner), for the figure (number, owner) — the same
+    // order as on the tiles.
     const loeschArgs = isPart
       ? `data-arg="${esc(nummer)}" data-arg2="${p.color_id || 0}" data-arg3="${p.user_id || ''}"`
       : `data-arg="${esc(nummer)}" data-arg2="${p.user_id || ''}"`;
@@ -644,7 +644,7 @@ export function manualTable(posten, art) {
 }
 
 /**
- * Steht der Umschalter des Reiters auf „Tabelle"?
+ * Is the tab's switch set to "table"?
  * @param {string} id
  */
 export function tablesView(id) {
@@ -656,7 +656,7 @@ subscribe('bestandGeaendert', () => {
   loadManualFigsTable();
 });
 
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
+// ── Register handlers with the dispatcher (see js/registry.js) ─────────────
 registerActions({
   loadMinifigs,
   deleteManualFig,

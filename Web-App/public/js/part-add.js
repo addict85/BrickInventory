@@ -10,9 +10,9 @@ import { csvImportStatus, priceOriginHint } from './minifigs.js';
 import { emptyLocationField, selectedOwner, selectedStorage } from './account-locations.js';
 import { loadManualParts } from './parts.js';
 
-// Ein Teil von Hand erfassen: Formular oben im Teile-Reiter, Farbauswahl und CSV-Import.
+// Capture a part by hand: form at the top of the parts tab, color selection and CSV import.
 /** @typedef {import('../../frontend-types/contract').BrickColor} Steinfarbe */
-// Inline add-part form (zuoberst im Teile-Tab)
+// Inline add-part form (at the very top of the parts tab)
 /** @type {Steinfarbe[]} */
 let _brickColors = [];
 
@@ -37,9 +37,9 @@ function updateColorDot() {
 function renderColorDropdown() {
   const sel = G('ap-color-select');
   if (!sel) return;
-  // data-name bleibt der englische Rebrickable-Name — er wird beim Speichern als parts.color_name übernommen
-  // und für BrickLink-Abgleiche gebraucht. Übersetzt wird nur der sichtbare Text, mit derselben Funktion wie
-  // die Farbanzeige und der Filter im Teile-Reiter.
+  // data-name stays the English Rebrickable name — it is adopted as parts.color_name when saving
+  // and needed for BrickLink reconciliations. Only the visible text is translated, with the same function as
+  // the color display and the filter in the parts tab.
   setzeHtml(
     sel,
     html`${html`<option value="">${tRaw('parts.no_color_dash')}</option>`}${_brickColors.map(c => html`<option value="${c.id}" data-name="${(c.name || '').replace(/"/g, '&quot;')}" data-hex="${rawHex(c.hex)}">${colorName(c.name)}</option>`)}`,
@@ -55,8 +55,8 @@ G('btn-add-part')?.addEventListener('click', async () => {
     return;
   }
   const colorSel = G('ap-color-select');
-  // „Keine Farbe“ ist null, nicht 0: 0 ist bei Rebrickable Schwarz. Mit 0 für beides suchte der Server für
-  // schwarze Teile kein Farbbild und zeigte das allgemeine, meist weisse.
+  // "No color" is null, not 0: 0 is black at Rebrickable. With 0 for both, the server looked for
+  // no color image for black parts and showed the generic one, mostly white.
   const rawColor = colorSel?.value ?? '';
   const colorId = String(rawColor).trim() === '' ? null : parseInt(rawColor, 10) || 0;
   const colorOpt = colorSel?.options[colorSel.selectedIndex];
@@ -100,7 +100,7 @@ G('btn-add-part')?.addEventListener('click', async () => {
     emptyLocationField('ap-storage');
     if (colorSel) colorSel.selectedIndex = 0;
     loadManualParts();
-    // Siehe die Figuren-Erfassung darueber: ein Satz braucht laenger als ein Haekchen.
+    // See the figure capture above: a sentence takes longer than a check mark.
     setTimeout(
       () => {
         res.textContent = '';
@@ -133,7 +133,7 @@ G('btn-csv-template').onclick = e => {
   a.click();
 };
 
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
+// ── Register handlers with the dispatcher (see js/registry.js) ─────────────
 registerActions({
   importPartsCsv,
   updateColorDot,

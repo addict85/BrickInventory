@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Typprüfung der Tests (tsconfig.test.json, checkJs ohne strict) als Ratsche:
- * rot erst, wenn die Zahl der Meldungen über "testtypen" in
- * scripts/lint-schranken.json steigt. LINT_SCHRANKEN=<datei> für den Test.
+ * Type check of the tests (tsconfig.test.json, checkJs without strict) as a ratchet:
+ * red only when the number of messages rises above "testtypen" in
+ * scripts/lint-schranken.json. LINT_SCHRANKEN=<file> for the test.
  */
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');

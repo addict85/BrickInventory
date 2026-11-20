@@ -1,16 +1,16 @@
-// ── Eigener Scrollbalken für die ganze Anwendung ────────────────────────────
+// ── Own scroll bar for the whole application ────────────────────────────────
 //
-// ── Warum eigene Datei ───────────────────────────────────────
+// ── Why a file of its own ─────────────────────────────────────
 //
-// Braucht von aussen nur G() — den Rest macht er selbst.
+// From the outside it only needs G() — it does the rest itself.
 import { html } from './escaping.js';
 import { G, setzeHtml } from './dom.js';
 
-// Ein eigener Scrollbalken für die ganze Seite, fest am rechten Rand, statt eines Scrollkastens im Katalog:
-// Dort sass der Balken mitten im Fenster, und das Nachladen mass gegen den Kasten statt gegen das Fenster.
+// An own scroll bar for the whole page, fixed at the right edge, instead of a scroll box in the catalog:
+// there the bar sat in the middle of the window, and loading more measured against the box instead of the window.
 
 /**
- * Wer beim Ziehen ein Etikett zeigen will, setzt hier eine Funktion.
+ * Whoever wants to show a label while dragging sets a function here.
  * @type {(() => string | null | undefined) | null}
  */
 let scrollLabelFn = null;
@@ -24,13 +24,13 @@ function _scrollableArea() {
   return Math.max(0, doc.scrollHeight - window.innerHeight);
 }
 
-/** Griffgrösse und -lage aus dem Rollzustand — wie bei einem echten Balken. */
+/** Handle size and position from the scroll state — as with a real bar. */
 export function drawScrollbar() {
   const bar = G('app-scrollbar'),
     thumb = G('app-scrollbar-thumb');
   if (!bar || !thumb) return;
   const rollbar = _scrollableArea();
-  // Passt alles ins Fenster, gibt es nichts zu rollen — dann auch keinen Balken.
+  // If everything fits into the window, there is nothing to scroll — then no bar either.
   if (rollbar < 8) {
     bar.style.display = 'none';
     return;
@@ -46,8 +46,8 @@ export function drawScrollbar() {
 }
 
 /**
- * Das Balken-Element aus JavaScript erzeugen: app.bundle.js läuft, sobald der Parser es erreicht, und ein
- * <div> dahinter im Markup gab es beim Start noch nicht — der Balken fehlte still.
+ * Create the bar element from JavaScript: app.bundle.js runs as soon as the parser reaches it, and a
+ * <div> behind it in the markup did not exist yet at startup — the bar was silently missing.
  */
 function _createScrollbar() {
   /** @type {HTMLElement} */
@@ -70,9 +70,9 @@ export function initScrollbar() {
   let ziehen = false,
     griffOffset = 0;
 
-  // Gedrosselt über requestAnimationFrame: Ein Scroll-Ereignis feuert dutzende Male je Sekunde, und
-  // drawScrollbar() LIEST Layout (scrollHeight). Ungedrosselt erzwingt das je Ereignis eine
-  // Neuberechnung — die Seite fühlt sich dann zäh an, obwohl der Server längst geantwortet hat.
+  // Throttled via requestAnimationFrame: a scroll event fires dozens of times per second, and
+  // drawScrollbar() READS layout (scrollHeight). Unthrottled that forces a recalculation per event
+  // — the page then feels sluggish, although the server answered long ago.
   let angefordert = false;
   const retrace = () => {
     if (angefordert) return;
@@ -84,8 +84,8 @@ export function initScrollbar() {
   };
   window.addEventListener('scroll', retrace, { passive: true });
   window.addEventListener('resize', retrace, { passive: true });
-  // Die Seitenhöhe ändert sich beim Nachladen von Kacheln, ohne dass gerollt wird — ohne diese Beobachtung
-  // bliebe der Griff auf seiner alten Grösse.
+  // The page height changes when loading more tiles without scrolling — without this observation
+  // the handle would stay at its old size.
   if (typeof ResizeObserver !== 'undefined') {
     new ResizeObserver(retrace).observe(document.body);
   }
@@ -106,7 +106,7 @@ export function initScrollbar() {
   const start = (/** @type {MouseEvent | TouchEvent} */ ev) => {
     const y = 'touches' in ev ? ev.touches[0].clientY : ev.clientY;
     const tr = thumb.getBoundingClientRect();
-    // Neben den Griff getippt: erst dorthin springen, dann greifen — wie bei einem gewöhnlichen Scrollbalken.
+    // Tapped next to the handle: first jump there, then grab — as with an ordinary scroll bar.
     griffOffset = y >= tr.top && y <= tr.bottom ? y - tr.top : thumb.offsetHeight / 2;
     ziehen = true;
     bar.classList.add('dragging');
@@ -122,8 +122,8 @@ export function initScrollbar() {
     if (!ziehen) return;
     ziehen = false;
     bar.classList.remove('dragging');
-    // Die inline gesetzte Sichtbarkeit wieder wegnehmen: Sie schlägt die CSS-Regel für .dragging, und das
-    // Jahresetikett blieb nach dem Loslassen in jedem Reiter stehen.
+    // Remove the inline visibility again: it beats the CSS rule for .dragging, and the
+    // year label stayed in every tab after letting go.
     if (label) label.style.display = '';
   };
 

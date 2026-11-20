@@ -5,29 +5,29 @@ import { G, setzeHtml } from './dom.js';
 import { toast } from './messages.js';
 import { esc, html, rawHtml, joinHtml } from './escaping.js';
 import { confirmDelete, bestaetigeMitPasswort, withSecondFactor } from './confirm-prompt.js';
-// Einstellungen, Abschnitt Haushalt: Einladen, Beitreten, Trennen. Ein Konto sieht danach die Bestände der
-// verknüpften Konten; die Regeln dazu stehen im Server (src/household).
+// Settings, section household: invite, join, unlink. An account then sees the inventories of the
+// linked accounts; the rules for it live in the server (src/household).
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HAUSHALT — Konten verknüpfen
+// HOUSEHOLD — link accounts
 // ═══════════════════════════════════════════════════════════════════════════
 /**
- * Einladen und Beitreten brauchen beide Seiten: das Hauptkonto erzeugt, das andere löst ein. Je nach Rolle
- * steht nur einer der Kästen da — ein Knopf, den der Server immer ablehnt, ist schlimmer als keiner.
+ * Inviting and joining need both sides: the main account creates, the other redeems. Depending on the role
+ * only one of the boxes stands there — a button the server always rejects is worse than none.
  */
 export async function loadHousehold() {
   const [d, zf] = await Promise.all([api('GET', '/v1/settings/household'), api('GET', '/v1/auth/zweiter-faktor')]);
   if (!d?.success) return;
   renderHousehold(d);
-  // Mit zweitem Faktor verlangt der Server beim Einlösen auch den Code.
+  // With a second factor the server also requires the code when redeeming.
   const faktor = G('household-redeem-faktor');
   if (faktor) faktor.style.display = zf?.aktiv ? '' : 'none';
 }
 
 /**
- * Die Haushaltskarte: Elternkonten und Unterkonten sind zwei unabhängige Abschnitte, weil ein Konto beides
- * zugleich sein kann. Darunter der Hinweis auf Konten, die nur über eine Kette sichtbar waren und es nicht
- * mehr sind.
+ * The household card: parent accounts and sub-accounts are two independent sections, because an account can be both
+ * at the same time. Below, the hint about accounts that were only visible via a chain and no longer
+ * are.
  * @param {import('../../frontend-types/contract').HouseholdStatusResponse} d
  */
 function renderHousehold(d) {
@@ -36,9 +36,9 @@ function renderHousehold(d) {
   const redeemEl = G('household-redeem-box');
   if (!stateEl) return;
 
-  // Ein Raster auf der Liste, die Zeilen als display:contents: So stehen alle Namen und alle Knöpfe in
-  // denselben zwei Spalten. Namen und alle Knöpfe in denselben zwei Spalten; das Sinnbild macht die Namen als
-  // Konten kenntlich.
+  // A grid on the list, the rows as display:contents: that way all names and all buttons stand in
+  // the same two columns. Names and all buttons in the same two columns; the icon marks the names as
+  // accounts.
   const liste = (
     /** @type {{ id: number, username?: string | null, via?: string | null }[]} */ eintraege,
     /** @type {(a: { id: number, username?: string | null, via?: string | null }) => string} */ aktion,
@@ -84,8 +84,8 @@ function renderHousehold(d) {
   }
   setzeHtml(stateEl, joinHtml(teile));
 
-  // Einladen und Einlösen darf jedes Konto: Ein Konto kann mehrere Elternkonten haben, und jedes braucht
-  // seine eigene Einladung.
+  // Every account may invite and redeem: an account can have several parent accounts, and each needs
+  // its own invitation.
   if (inviteEl) inviteEl.style.display = '';
   if (redeemEl) redeemEl.style.display = '';
 }
@@ -105,8 +105,8 @@ export async function createHouseholdInvite() {
 export async function copyHouseholdInvite() {
   const el = G('household-invite-code');
   if (!el?.value) return;
-  // Zwischenablage kann fehlschlagen (kein HTTPS, Berechtigung verweigert) — dann markieren statt die Aktion
-  // still verpuffen zu lassen.
+  // The clipboard can fail (no HTTPS, permission denied) — then select instead of letting the action
+  // fizzle silently.
   try {
     await navigator.clipboard.writeText(el.value);
     toast(tRaw('household.invite_copied'), 'success');
@@ -122,14 +122,14 @@ export async function redeemHouseholdInvite() {
     toast(tRaw('household.redeem_empty'), 'error');
     return;
   }
-  // Erst den Code auflösen: Wer zustimmt, soll wissen, wem er Zugriff gibt.
+  // Resolve the code first: whoever agrees should know whom they are giving access.
   const p = await api('POST', '/v1/settings/household/redeem/pruefen', { code });
   if (!p.success) {
     toast(p.error || t('settings.error'), 'error');
     return;
   }
   const name = p.inviter.username;
-  // Das Hauptkonto sieht und ändert danach die eigene Sammlung — deshalb mit Passwort.
+  // The main account then sees and changes the own collection — hence with password.
   const password = await bestaetigeMitPasswort(
     tRaw('household.redeem_frage', { name }),
     tRaw('household.redeem_confirm_text', { name }),
@@ -153,7 +153,7 @@ export async function redeemHouseholdInvite() {
   }
   G('household-redeem-code').value = '';
   if (G('household-redeem-faktor-code')) G('household-redeem-faktor-code').value = '';
-  // tRaw + roher Name: Der Toast setzt Text, keine HTML — mit esc() stünde dort "Marco &amp; Co" statt "Marco
+  // tRaw + raw name: the toast sets text, no HTML — with esc() it would say "Marco &amp; Co" instead of "Marco
   // & Co".
   const verknuepft = /** @type {{ linked_to?: { username?: string } }} */ (d).linked_to;
   toast(tRaw('household.redeem_ok', { name: verknuepft?.username || '' }), 'success');

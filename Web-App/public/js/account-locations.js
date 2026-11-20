@@ -1,5 +1,5 @@
-// Konto- und Lagerortfelder: Haushaltsmitglieder, Kontofilter und die Lagerortfelder der Erfassungswege. Eine
-// gemeinsame Quelle, damit alle Formulare dieselbe Liste zeigen.
+// Account and storage location fields: household members, account filter and the storage location fields of the capture paths. One
+// shared source, so that all forms show the same list.
 import { api } from './api.js';
 import { G, setzeHtml } from './dom.js';
 import { SCOPE_VIEWS, scopeMode, setScopeMode } from './account-filter.js';
@@ -10,16 +10,16 @@ import { subscribe } from './events.js';
 /** @typedef {import('../../frontend-types/contract').HouseholdMember} HouseholdMember */
 
 /**
- * Kontofilter je Ansicht sichtbar machen und mit dem gespeicherten Wert füllen.
+ * Make the account filter per view visible and fill it with the stored value.
  *
- * Bleibt verborgen, solange das Konto keine Unterkonten hat: Ein Filter mit genau einer möglichen Antwort ist
- * keine Wahl, sondern eine Frage, die sich nicht stellt.
+ * Stays hidden as long as the account has no sub-accounts: a filter with exactly one possible answer is
+ * not a choice but a question that does not arise.
  * @param {HouseholdMember[]} members
  */
 export function initScopeSelects(members) {
   const isMain = members.length > 1;
-  // Alle, Eigene, dann jedes Unterkonto namentlich. „Unterkonten“ als Sammelposten fügte nichts hinzu; der
-  // Server versteht accounts=subs weiter für ältere Apps.
+  // All, own, then every sub-account by name. "Sub-accounts" as a collective item added nothing; the
+  // server still understands accounts=subs for older apps.
   const subs = members.filter(m => !m.is_self);
   const opts = [
     html`<option value="all">${tRaw('household.scope_all')}</option>`,
@@ -35,8 +35,8 @@ export function initScopeSelects(members) {
       continue;
     }
     setzeHtml(el, rawHtml(opts));
-    // Gespeicherte Wahl kann auf ein inzwischen entkoppeltes Konto zeigen — dann auf „Alle" zurückfallen
-    // statt eine leere Auswahl zu zeigen.
+    // A stored choice may point to an account that has since been unlinked — then fall back to "all"
+    // instead of showing an empty selection.
     const saved = scopeMode(view);
     el.value = [...el.options].some(o => o.value === saved) ? saved : 'all';
     if (el.value !== saved) setScopeMode(view, el.value);
@@ -45,13 +45,13 @@ export function initScopeSelects(members) {
 
   for (const view of ['gallery', 'parts', 'minifigs']) collectionSubtitle(view);
 
-  // Der Schalter „Unterkonten einbeziehen“ der Teileliste folgt derselben Regel: ohne Unterkonten nicht zu
-  // sehen. Er steht hier, weil isMain hier aus derselben Antwort feststeht.
+  // The parts list's switch "include sub-accounts" follows the same rule: invisible without sub-accounts.
+  // It lives here because isMain is determined here from the same response.
   const subsBox = G('pl-bestand-subs-box');
   if (subsBox) {
     subsBox.style.display = isMain ? 'inline-flex' : 'none';
-    // Kein Haken, wenn es nichts einzubeziehen gibt: Sonst bliebe die Wahl beim Entkoppeln des letzten
-    // Unterkontos unsichtbar gesetzt stehen und wirkte weiter.
+    // No check mark if there is nothing to include: otherwise the choice would stay set invisibly when the last
+    // sub-account is unlinked and would keep having an effect.
     if (!isMain) {
       const cb = G('pl-bestand-subs');
       if (cb) cb.checked = false;
@@ -59,8 +59,8 @@ export function initScopeSelects(members) {
   }
 }
 
-/** Untertitel je Kopf der Sammlung: Mit „Alle Konten“ zählt die Seite fremden Bestand mit, „deiner Sammlung“
- * stimmte dann nicht. Der Titel selbst bleibt fest, damit der Kopf beim Laden nicht umspringt.
+/** Subtitle per header of the collection: with "all accounts" the page counts foreign inventory too, "your collection"
+ * would then not be right. The title itself stays fixed so that the header does not jump while loading.
  * @param {string} view */
 export function collectionSubtitle(view) {
   const el = G(view + '-unter'),
@@ -74,45 +74,45 @@ export function collectionSubtitle(view) {
 }
 
 /**
- * Die Konten des Haushalts, wie sie zuletzt geladen wurden.
+ * The household's accounts, as they were last loaded.
  *
- * Gemerkt, weil nicht jede Auswahl in index.html steht: Das Detail der Merkliste baut seine Zeilen beim
- * Oeffnen und braucht die Liste dann — lange nach loadHouseholdMembers(). Ein zweiter Abruf waere ein zweiter
- * Stand derselben Antwort.
+ * Remembered because not every selection is in index.html: the wishlist's detail builds its rows when
+ * opening and needs the list then — long after loadHouseholdMembers(). A second fetch would be a second
+ * state of the same response.
  * @type {HouseholdMember[]}
  */
 let _haushalt = [];
 
-/** Die gemerkten Konten. Leer, solange noch keine Antwort da war. */
+/** The remembered accounts. Empty as long as no response has arrived yet. */
 export function householdAccounts() {
   return _haushalt;
 }
 
 /**
- * Kontoauswahl beim Erfassen, nur im Haushalt: Bei einem Konto ohne Verknüpfung liefert der Server genau
- * einen Eintrag, und eine Auswahl mit einer Möglichkeit bleibt verborgen.
+ * Account selection when capturing, only in the household: for an account without links the server delivers exactly
+ * one entry, and a selection with one option stays hidden.
  */
 export async function loadHouseholdMembers() {
   const d = await api('GET', '/v1/sets/household-members');
   const members = d?.members || [];
   _haushalt = members;
-  // Dieselbe Antwort entscheidet über den Kontofilter: mehr als ein Konto heisst Hauptkonto mit Unterkonten.
+  // The same response decides about the account filter: more than one account means a main account with sub-accounts.
   initScopeSelects(members);
-  // Die Lagerorte in EINEM Zug: Sie fuellen die Auswahlfelder der Filter UND die gemeinsame <datalist> der
-  // Eingabefelder. Zwei Aufrufe waeren zwei Staende derselben Liste.
+  // The storage locations in ONE go: they fill the select fields of the filters AND the shared <datalist> of the
+  // input fields. Two calls would be two states of the same list.
   const orte = loadLocations(members.map(m => m.id)).catch(() => {});
-  // Die Vorgabe fuer die Erfassungsfelder (Marcos Stern) — eigener Abruf, Begruendung bei
+  // The default for the capture fields (Marco's star) — a fetch of its own, reasoning at
   // loadLocationDefault().
   loadLocationDefault().catch(() => {});
   drawAccountSelection(members);
   drawLocationFields();
-  // Erst mit den Orten steht die Filterzeile fest (Lagerortauswahl); der Start wartet darauf.
+  // Only with the places is the filter row settled (storage location selection); startup waits for it.
   await orte;
 }
 
 /**
- * Alle fünf Erfassungswege (Set, Teil, Figur, Katalog, Merkliste) bekommen dieselbe Kontoauswahl: Etwas für
- * ein Kind zu erfassen soll überall gleich gehen. Eine getroffene Wahl bleibt beim Neuzeichnen.
+ * All five capture paths (set, part, figure, catalog, wishlist) get the same account selection: capturing something for
+ * a child should work the same everywhere. A choice that was made stays when redrawing.
  * @param {HouseholdMember[]} members
  */
 function drawAccountSelection(members) {
@@ -137,8 +137,8 @@ function drawAccountSelection(members) {
   }
 }
 
-// Erzeugte Auswahlfelder tragen Texte der Sprache, in der sie gebaut wurden; beim Wechsel neu zeichnen, die
-// Wahl bleibt. Die Lagerorte zieht loadLocations() samt Vorrat und Filtern nach.
+// Generated select fields carry texts in the language they were built in; redraw them on a change, the
+// choice stays. loadLocations() updates the storage locations including stock and filters.
 subscribe('spracheGewechselt', () => {
   if (!_haushalt.length) return;
   initScopeSelects(_haushalt);
@@ -147,23 +147,23 @@ subscribe('spracheGewechselt', () => {
 });
 
 /**
- * Die Lagerortfelder der fünf Erfassungswege, einmal aus locationBlock() gezeichnet statt fünfmal im HTML.
- * Zusammen mit der Kontoauswahl, weil beide warten, bis der Haushalt geladen ist.
+ * The storage location fields of the five capture paths, drawn once from locationBlock() instead of five times in the HTML.
+ * Together with the account selection, because both wait until the household is loaded.
  */
 export const ERFASSUNGS_ORTFELDER = ['add-storage', 'ap-storage', 'af-storage', 'cat-m-storage', 'mk-take-storage'];
 
 /**
- * Der Lagerort, der beim Erfassen schon dastehen soll — Marcos Stern.
+ * The storage location that should already be there when capturing — Marco's star.
  *
- * „Weiter möchte ich ein Lagerort in den Einstellungen als Default setzen
- *  können. Der soll dann bei einer Neuerfassung bereits vorausgewählt sein."
+ * "Furthermore I would like to be able to set a storage location as default in the settings.
+ *  It should then already be preselected for a new capture."
  *
- * Leer heisst: keine Vorgabe, die Felder stehen auf „—" wie bisher.
+ * Empty means: no default, the fields stand at "—" as before.
  */
 let _locationDefault = '';
 
 /**
- * Ein Lagerortfeld eines Erfassungswegs neu zeichnen.
+ * Redraw a storage location field of a capture path.
  * @param {string} id
  * @param {string} wert
  */
@@ -171,10 +171,10 @@ function drawLocationField(id, wert) {
   const slot = G(`${id}-slot`);
   if (!slot) return;
   setzeHtml(slot, locationBlock(id, wert));
-  // Die sichtbare Beschriftung steht im HTML, die beiden Bedienelemente entstehen hier — ein `for=` darauf
-  // waere im Quelltext ein Verweis ins Leere (test/a11y.test.js meldet genau das, zu Recht). aria-labelledby
-  // stellt die Verbindung zur Laufzeit her, und zwar fuer BEIDE: Auswahl und Textfeld tragen denselben Namen,
-  // weil sie dasselbe Feld sind.
+  // The visible label is in the HTML, the two controls are created here — a `for=` pointing at them
+  // would be a dangling reference in the source (test/a11y.test.js reports exactly that, rightly). aria-labelledby
+  // establishes the connection at runtime, and that for BOTH: select and text field carry the same name,
+  // because they are the same field.
   for (const el of slot.children) el.setAttribute('aria-labelledby', `${id}-label`);
   slot.dataset.gezeichnet = '1';
 }
@@ -182,15 +182,15 @@ function drawLocationField(id, wert) {
 export function drawLocationFields() {
   for (const id of ERFASSUNGS_ORTFELDER) {
     const slot = G(`${id}-slot`);
-    // Nur einmal: Ein zweiter Durchlauf wuerfe eine bereits getroffene Wahl weg.
+    // Only once: a second pass would throw away a choice already made.
     if (!slot || slot.dataset.gezeichnet === '1') continue;
     drawLocationField(id, _locationDefault);
   }
 }
 
 /**
- * Die Vorgabe steht beim Vorrat (/v1/storage/locations), nicht bei den belegten Orten. Nachgezogen wird nur
- * ein noch leeres Feld: Wer inzwischen selbst gewählt hat, behält seine Wahl.
+ * The default lives with the stock (/v1/storage/locations), not with the occupied places. Only a still empty
+ * field is filled in afterwards: whoever has chosen by themselves in the meantime keeps their choice.
  */
 export async function loadLocationDefault() {
   const d = await api('GET', '/v1/storage/locations');
@@ -203,8 +203,8 @@ export async function loadLocationDefault() {
 }
 
 /**
- * Den Anfangszustand herstellen: Ein Ort von vorhin sähe wie eine Vorgabe aus. Gibt es eine Vorgabe, steht
- * sie da; gezeichnet statt gesetzt, damit Auswahl und Textfeld dasselbe sagen.
+ * Establish the initial state: a place from before would look like a default. If there is a default, it
+ * stands there; drawn instead of set, so that select and text field say the same thing.
  * @param {string} id
  */
 export function emptyLocationField(id) {
@@ -212,8 +212,8 @@ export function emptyLocationField(id) {
     drawLocationField(id, _locationDefault);
     return;
   }
-  // Ohne Slot gibt es das zusammengesetzte Feld nicht; dann bleibt es beim alten Weg. Heute hat jeder der
-  // fuenf Erfassungswege einen (public/ index.html), aber ein Formular ohne Slot soll hier nicht abstuerzen.
+  // Without a slot the composite field does not exist; then the old path stays. Today each of the
+  // five capture paths has one (public/ index.html), but a form without a slot should not crash here.
   const feld = G(id),
     sel = G(`${id}-sel`);
   if (feld) {
@@ -224,8 +224,8 @@ export function emptyLocationField(id) {
 }
 
 /**
- * Der gewählte Lagerort, `''` wenn keiner dasteht — nie undefined: Ein geleertes Feld heisst „kein Ort“, ein
- * fehlender Schlüssel „Vorgabe nehmen“, und der Server setzt die Vorgabe nur im zweiten Fall ein.
+ * The chosen storage location, `''` if none is there — never undefined: a cleared field means "no place", a
+ * missing key "take the default", and the server only inserts the default in the second case.
  * @param {string} id
  */
 export function selectedStorage(id) {
@@ -233,7 +233,7 @@ export function selectedStorage(id) {
 }
 
 /**
- * Gewähltes Zielkonto eines Formulars — undefined, solange es keines gibt.
+ * A form's chosen target account — undefined as long as there is none.
  * @param {string} selectId
  */
 export function selectedOwner(selectId) {

@@ -1,5 +1,5 @@
-// Wie Kaufpreise dastehen: Summenzeile, Währung, Umrechnung und Schätzung, in Dialog und Detail gleich.
-// Eigene Datei, weil Set-Detail, Kaufpreis-Dialog und Detail manueller Einträge dieselben Bausteine nutzen.
+// How purchase prices are shown: sum row, currency, conversion and estimate, the same in dialog and detail.
+// A file of its own, because set detail, purchase price dialog and detail of manual entries use the same building blocks.
 import { tRaw } from '../i18n.js';
 import { esc, html } from './escaping.js';
 import { ico } from './dom.js';
@@ -9,11 +9,11 @@ import { accountCurrency } from './state.js';
 /** @typedef {import('../../frontend-types/contract').Acquisition} Erfassung */
 
 /**
- * Summenzeile unter einer Erfassungsliste.
+ * Sum row below an acquisition list.
  *
- * Die Zahlen kommen fertig vom Server (`totals`); hier wird nur gezeichnet.
- * `amount === null` heisst „kein Kaufpreis erfasst" — das ist etwas anderes
- * als ein Betrag von null, und deshalb entscheidet der Server das und nicht diese Funktion.
+ * The numbers come ready-made from the server (`totals`); here they are only drawn.
+ * `amount === null` means "no purchase price captured" — that is something different
+ * from an amount of zero, and that is why the server decides it and not this function.
  *
  * @param {Erfassungssumme | null | undefined} totals
  */
@@ -26,7 +26,7 @@ export function acqSummary(totals) {
   </div>`;
 }
 
-/** Die Summe in der Währung des Kontos; fremde Käufe hat der Server zum Kurs des Kauftags umgerechnet.
+/** The sum in the account's currency; the server converted foreign purchases at the rate of the purchase day.
  * @param {Erfassungssumme | null | undefined} totals */
 export function sumsText(totals) {
   return totals?.amount != null ? fmtN(totals.amount, totals.currency || accountCurrency) : '—';
@@ -38,7 +38,7 @@ function sumsHint(totals) {
 }
 
 /**
- * „≈ 241,23 €“ neben einem Kauf in fremder Währung: Die Summe rechnet mit diesem Betrag.
+ * "≈ 241,23 €" next to a purchase in a foreign currency: the sum computes with this amount.
  * @param {Erfassung} a @param {Erfassungssumme | null | undefined} totals
  */
 export function convertedText(a, totals) {
@@ -48,16 +48,16 @@ export function convertedText(a, totals) {
 }
 
 /**
- * Preis einer Erfassung in ihrer eigenen Währung. Ein Marktpreis, den der Server eingesetzt hat, ist kein
- * bezahlter Betrag und trägt deshalb „≈“.
- * Ein Kauf in fremder Währung trägt den ISO-Code („79,99 USD“, „$“ wäre auch CAD oder AUD) und den Betrag,
- * mit dem Summen und Finanzen rechnen („≈ 74,06 €“, Kurs des Kauftags).
+ * Price of an acquisition in its own currency. A market price the server inserted is not a
+ * paid amount and therefore carries "≈".
+ * A purchase in a foreign currency carries the ISO code ("79,99 USD", "$" could also be CAD or AUD) and the amount
+ * that sums and finances compute with ("≈ 74,06 €", rate of the purchase day).
  * @param {{ currency?: string | null, price_estimated?: boolean, preis_konto?: number | null }} a
  * @param {number | null | undefined} betrag
  */
 export function erfassungsPreis(a, betrag) {
   if (betrag == null) return '';
-  // 0 heisst geschenkt; Kachel, Tabelle und Finanzen sagen es so, nicht „0,00 €“.
+  // 0 means gifted; tile, table and finances say it like that, not "0,00 €".
   if (isGift(betrag) && !a.price_estimated) return html`<strong>${tRaw('finance.gift')}</strong>`;
   const fremd = !!a.currency && a.currency !== accountCurrency;
   const zahl = fremd
@@ -69,7 +69,7 @@ export function erfassungsPreis(a, betrag) {
 }
 
 /**
- * Erklärt das „≈“, sobald eine Zeile einen geschätzten Preis trägt.
+ * Explains the "≈" as soon as a row carries an estimated price.
  * @param {Erfassung[]} acqs
  */
 function legendEstimated(acqs) {
@@ -100,7 +100,7 @@ export function renderAcquisitionSummary(acqs, _sn) {
   })}${legendEstimated(acqs)}`;
 }
 
-// Kurzübersicht für Teile und Figuren (mit unit_price statt purchase_price)
+// Short overview for parts and figures (with unit_price instead of purchase_price)
 /**
  * @param {Erfassung[] | null | undefined} acqs
  * @param {string} _type
@@ -125,13 +125,13 @@ export function renderManAcqSummary(acqs, _type, _id, _colorId) {
   })}${legendEstimated(acqs)}`;
 }
 
-/** Kurzfassung im Set-Detail samt Knopf zum Kaufpreis-Dialog.
+/** Short version in the set detail including the button to the purchase price dialog.
  * @param {Erfassung[] | null | undefined} acqs @param {string} sn */
 export function summary(acqs, sn) {
   return html`${renderAcquisitionSummary(acqs, sn)}${html`<button class="btn bs btn-sm" data-click="openAcqModal" data-arg="${sn}" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`;
 }
 
-/** Dasselbe für ein manuell erfasstes Teil oder eine Figur.
+/** The same for a manually captured part or a figure.
  * @param {Erfassung[] | null | undefined} acqs @param {string} type @param {string} id @param {number} colorId */
 export function summaryMan(acqs, type, id, colorId) {
   return html`${renderManAcqSummary(acqs, type, id, colorId)}${html`<button class="btn bs btn-sm" data-click="openManAcqModal" data-stil="margin-top:4px;font-size:var(--fs-1);padding:2px 10px">${ico('bearbeiten')} ${tRaw('detail.edit_prices')}</button>`}`;

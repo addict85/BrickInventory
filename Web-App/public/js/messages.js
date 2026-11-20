@@ -2,16 +2,16 @@ import { tRaw } from '../i18n.js';
 import { loggedInAccount } from './state.js';
 import { G, ico, setzeHtml } from './dom.js';
 
-// Toasts: kurze Meldungen unten im Bild. Gleiche Meldungen zählen statt zu stapeln, damit eine wiederholte
-// Störung nicht die Liste verdeckt.
+// Toasts: short messages at the bottom of the screen. Identical messages count instead of stacking, so that a repeated
+// disruption does not cover the list.
 
-/** Anzeigedauer je Art in ms. */
+/** Display duration per kind in ms. */
 const TOAST_DURATION = { success: 3500, info: 5000, error: 9000 };
 
 /** @type {WeakMap<Element, {schluessel: string, anzahl: number, frist: ReturnType<typeof setTimeout> | null, duration: number}>} */
 const _toastStand = new WeakMap();
 
-/** Frist (neu) starten; ohne Dauer bleibt die Meldung, bis jemand sie schliesst. @param {HTMLElement} el */
+/** (Re)start the deadline; without a duration the message stays until someone closes it. @param {HTMLElement} el */
 function startDeadline(el) {
   const stand = _toastStand.get(el);
   if (!stand) return;
@@ -19,14 +19,14 @@ function startDeadline(el) {
   stand.frist = stand.duration ? setTimeout(() => el.remove(), stand.duration) : null;
 }
 
-/** Fehlertexte der 401-Antworten: Noch laufende Anfragen scheitern nach dem
- * Ende der Sitzung mit genau diesem Text. Als Toast widerspräche er dem einen
- * Hinweis in der Anmeldekarte; toast() lässt ihn deshalb weg. */
+/** Error texts of the 401 responses: requests still running fail after the
+ * end of the session with exactly this text. As a toast it would contradict the one
+ * hint in the login card; toast() therefore leaves it out. */
 const _messagesTheExpiredSession = new Set();
 
-/** @param {{text: string, fn: () => unknown, bleibt?: boolean}} [aktion] Knopf in der Meldung, z. B. „Rückgängig";
- *  `bleibt` hält ihn über einen Ansichtswechsel (discardToasts).
- * @param {string} [details] aufklappbare Ursache unter der Meldung
+/** @param {{text: string, fn: () => unknown, bleibt?: boolean}} [aktion] button in the message, e.g. "undo";
+ *  `bleibt` keeps it across a view switch (discardToasts).
+ * @param {string} [details] expandable cause below the message
  * @param {unknown} msg
  * @param {'info' | 'success' | 'error'} [type]
  */
@@ -38,7 +38,7 @@ export function toast(msg, type = 'info', aktion, details) {
     [..._messagesTheExpiredSession].some(m => String(msg ?? '').startsWith(m))
   )
     return null;
-  // Dieselbe Meldung noch einmal: zählen statt stapeln, und die Frist beginnt neu.
+  // The same message once more: count instead of stacking, and the deadline starts anew.
   const schluessel = `${type}|${String(msg ?? '')}`;
   const gleich = aktion ? null : [...c.children].find(x => _toastStand.get(x)?.schluessel === schluessel);
   if (gleich) {
@@ -53,12 +53,12 @@ export function toast(msg, type = 'info', aktion, details) {
     startDeadline(/** @type {HTMLElement} */ (gleich));
     return /** @type {HTMLElement} */ (gleich);
   }
-  // Ein Erfolg erledigt ältere Fehler: Sie blieben sonst neben der Bestätigung stehen.
+  // A success settles older errors: they would otherwise stay next to the confirmation.
   if (type === 'success') for (const alt of [...c.children]) if (alt.classList.contains('error')) alt.remove();
   const el = document.createElement('div');
   el.className = `toast ${type}`;
   if (type === 'error') el.setAttribute('role', 'alert');
-  // textContent statt innerHTML: msg enthält regelmässig Server-Fehlermeldungen und Set-/Teilenummern aus
+  // textContent instead of innerHTML: msg regularly contains server error messages and set/part numbers from
   // Nutzereingaben.
   const icon = document.createElement('span');
   icon.className = 'toast-ico';
@@ -70,7 +70,7 @@ export function toast(msg, type = 'info', aktion, details) {
   anzahl.className = 'toast-anzahl';
   anzahl.hidden = true;
   el.append(icon, text, anzahl);
-  // Die Ursache aufklappbar: Sieben Zeilen Meldung verdeckten am Telefon die Liste.
+  // The cause expandable: seven lines of message covered the list on the phone.
   if (details) {
     const mehr = document.createElement('details');
     mehr.className = 'toast-details';
@@ -93,13 +93,13 @@ export function toast(msg, type = 'info', aktion, details) {
     el.append(knopf);
     if (aktion.bleibt) el.dataset.bleibt = '';
   }
-  // Ein Fehler will gelesen werden, eine Bestätigung nur gesehen; mit Knopf muss man ihn auch treffen. Ein
-  // Klick auf die Meldung räumt sie weg, damit sie keine Karte verdeckt.
+  // An error wants to be read, a confirmation only seen; with a button one also has to hit it. A
+  // click on the message clears it, so that it does not cover a card.
   el.addEventListener('click', e => {
     if (e.target === el || !(/** @type {Element} */ (e.target).closest('button, details'))) el.remove();
   });
-  // Fehler und Meldungen mit Knopf laufen nicht ab (WCAG 2.2.1): Wer per Tastatur zum Knopf will oder langsam
-  // liest, verlor sie nach 9 s. Sie schliessen über ihr ✕, einen Klick oder den Wechsel der Ansicht.
+  // Errors and messages with a button do not expire (WCAG 2.2.1): whoever wants to reach the button by keyboard or reads slowly
+  // lost them after 9 s. They close via their ✕, a click or switching the view.
   const bleibt = type === 'error' || !!aktion;
   if (bleibt) {
     const zu = document.createElement('button');
@@ -113,7 +113,7 @@ export function toast(msg, type = 'info', aktion, details) {
   c.appendChild(el);
   _toastStand.set(el, { schluessel, anzahl: 1, frist: null, duration: bleibt ? 0 : (TOAST_DURATION[type] ?? 4500) });
   startDeadline(el);
-  // Solange Maus oder Fokus darauf liegt, läuft die Frist nicht.
+  // As long as the mouse or focus is on it, the deadline does not run.
   const halt = () => {
     const s = _toastStand.get(el);
     if (s?.frist) {
@@ -131,15 +131,15 @@ export function toast(msg, type = 'info', aktion, details) {
 }
 
 /**
- * Beim Wechsel der Ansicht: Meldungen gehören zu der Ansicht, in der sie entstanden; nur solche mit Knopf
- * (Rückgängig, Ändern) bleiben bis zur Frist.
+ * On switching the view: messages belong to the view in which they arose; only those with a button
+ * (undo, change) stay until the deadline.
  */
 export function discardToasts() {
   for (const el of [...(G('toasts')?.children || [])])
     if (!(/** @type {HTMLElement} */ (el).hasAttribute('data-bleibt'))) el.remove();
 }
 
-/** Merkt den Text einer 401-Antwort; toast() lässt ihn nach dem Ende der Sitzung weg. @param {string} text */
+/** Remembers the text of a 401 response; toast() leaves it out after the end of the session. @param {string} text */
 export function rememberSessionEnd(text) {
   _messagesTheExpiredSession.add(text);
 }
@@ -148,11 +148,11 @@ export function rememberSessionEnd(text) {
 const _fieldDeadlines = new WeakMap();
 
 /**
- * Die eine Regel fürs Speichern: Einzelne Werte speichern sofort, Formulare mit „Speichern“ — und beide
- * bestätigen an der Stelle, an der geändert wurde („Gespeichert ✓“, vorgelesen). Ein Toast am Bildrand
- * lag weit weg vom Feld, und beim Autosave kam oft gar keiner.
- * @param {Element | null | undefined} feld das Feld oder der Knopf; ein Vorfahr mit data-rueckmeldung
- *   bestimmt den Ort, sonst steht die Meldung direkt dahinter
+ * THE one rule for saving: single values save immediately, forms with "save" — and both
+ * confirm at the place where something was changed ("saved ✓", read aloud). A toast at the screen edge
+ * was far away from the field, and with autosave often none came at all.
+ * @param {Element | null | undefined} feld the field or the button; an ancestor with data-rueckmeldung
+ *   determines the place, otherwise the message stands directly behind it
  * @param {string} [text]
  */
 export function meldeAmFeld(feld, text = tRaw('feld.gespeichert')) {

@@ -4,23 +4,23 @@ import { html, rawHtml } from './escaping.js';
 import { ico, G, setzeHtml } from './dom.js';
 import { fmtDatum, browserWritesDateHowApp } from './format.js';
 
-// Was der Kaufpreis-Dialog des Sets und der Dialog manueller Einträge teilen: dasselbe Fenster (#acq-modal),
-// dieselbe Haushaltsliste und dieselben Tabellenbausteine.
+// What the set's purchase price dialog and the dialog of manual entries share: the same window (#acq-modal),
+// the same household list and the same table building blocks.
 /** @typedef {import('../../frontend-types/contract').HouseholdMember} Konto */
 
-/** Wessen Erfassungen im Dialog stehen und wohin das Schliessen zurückführt. */
+/** Whose acquisitions are in the dialog and where closing leads back to. */
 export const erfassung = {
   /** @type {string | null} */ sn: null,
   /** @type {number | null} */ besitzer: null,
   /** @type {Konto[]} */ mitglieder: [],
-  /** Rückkehr aus dem Dialog eines manuellen Eintrags; null heisst „zurück zum Set“.
+  /** Return from the dialog of a manual entry; null means "back to the set".
    * @type {(() => void) | null} */
   zurueck: null,
 };
 
 /**
- * Neu zeichnen, ohne den Fokus zu verlieren: Das Speichern beim Verlassen eines Feldes zeichnet die Tabelle
- * neu, wenn Tab schon im nächsten Feld steht — der Fokus fiel dann auf <body>, und die Tastatur war draussen.
+ * Redraw without losing focus: saving on leaving a field redraws the table
+ * when Tab is already in the next field — the focus then fell onto <body>, and the keyboard was out.
  * @param {HTMLElement} ziel
  * @param {import('./escaping.js').Markup} markup
  */
@@ -32,7 +32,7 @@ export function setWithFocus(ziel, markup) {
 }
 
 /**
- * JJJJ-MM-TT im lokalen Kalender für <input type="date">.
+ * YYYY-MM-DD in the local calendar for <input type="date">.
  * @param {string | null | undefined} v
  */
 export function isoTag(v) {
@@ -43,8 +43,8 @@ export function isoTag(v) {
 }
 
 /**
- * Datumsfeld mit dem Datum daneben in der Sprache der Oberfläche: Das Feld selbst zeigt die Form des Browsers
- * („06/01/2026“), nicht die der App. Schreibt der Browser schon wie die App, entfällt die Zeile.
+ * Date field with the date next to it in the UI language: the field itself shows the browser's form
+ * ("06/01/2026"), not the app's. If the browser already writes like the app, the line is dropped.
  * @param {string} attrs
  * @param {string} iso
  * @param {string} textId
@@ -55,7 +55,7 @@ export function dateField(attrs, iso, textId) {
       ${text ? html`aria-describedby="${textId}"` : ''} ${rawHtml(attrs)} />${text ? html`<span class="acq-datum-text" id="${textId}">${text}</span>` : ''}</span>`;
 }
 
-/** Zeilen, deren letzte Änderung gespeichert ist; die Marke übersteht das Neuzeichnen. */
+/** Rows whose last change is saved; the marker survives redrawing. */
 export const gespeichert = new Set();
 /** @param {number | string} id */
 export function savedBrand(id) {

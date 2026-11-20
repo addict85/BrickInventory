@@ -127,7 +127,7 @@ class QuelltextRatscheTest {
     /** Die Kotlin-Dateien unter src/main aller Module, ohne die aus den Design-Tokens erzeugten. */
     private fun productionFiles(): List<File> = Quellen.module.flatMap { m ->
         File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
-    }.filterNot { "ERZEUGT aus shared/design-tokens.json" in it.readText() }
+    }.filterNot { "GENERATED from shared/design-tokens.json" in it.readText() }
 
     private fun isComment(t: String) = t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")
 

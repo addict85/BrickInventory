@@ -2,17 +2,17 @@
 'use strict';
 
 /**
- * Schreibt die Kotlin-Typen der App (core-contract, Paket vertrag) aus
- * docs/openapi.json, ohne Netz und ohne Gradle: Antworten aus den Schemas,
- * Rümpfe aus den Anfragen der Routen, die die App schickt. Namen und Fachtypen
- * stehen in contract-kotlin-mapping.js. Eingecheckt; mit --pruefen nur
- * vergleichen (Rückgabe 1 bei Abweichung). Aufruf: npm run vertrag:kotlin
+ * Writes the app's Kotlin types (core-contract, package vertrag) from
+ * docs/openapi.json, without network and without Gradle: responses from the schemas,
+ * bodies from the requests of the routes the app sends. Names and domain types
+ * are in contract-kotlin-mapping.js. Checked in; with --pruefen only
+ * compare (return 1 on a deviation). Call: npm run vertrag:kotlin
  */
 const fs = require('node:fs');
 const path = require('node:path');
 const STANDARD = require('./contract-kotlin-mapping.js');
 
-/** Die Zuordnung des laufenden Aufrufs; Tests geben eine kleine eigene mit. */
+/** The mapping of the running call; tests pass a small one of their own. */
 let Z = STANDARD;
 
 const ROOT = path.join(__dirname, '..');
@@ -62,7 +62,7 @@ const KEYWORDS = new Set([
   'while',
 ]);
 
-/** Ein Schema-Name als Kotlin-Klassenname: Wortteile gross, ohne Unterstriche. @param {string} n */
+/** A schema name as a Kotlin class name: word parts capitalized, without underscores. @param {string} n */
 const className = n =>
   n
     .split(/[^A-Za-z0-9]+/)
@@ -70,7 +70,7 @@ const className = n =>
     .map(t => t.charAt(0).toUpperCase() + t.slice(1))
     .join('');
 
-/** Ein JSON-Feldname als Kotlin-Eigenschaft (snake_case → camelCase). @param {string} n */
+/** A JSON field name as a Kotlin property (snake_case → camelCase). @param {string} n */
 function property(n) {
   const teile = n.split(/[^A-Za-z0-9]+/).filter(Boolean);
   let e = teile.map((t, i) => (i === 0 ? t.charAt(0).toLowerCase() : t.charAt(0).toUpperCase()) + t.slice(1)).join('');
@@ -78,7 +78,7 @@ function property(n) {
   return KEYWORDS.has(e) ? `\`${e}\`` : e;
 }
 
-/** Ein Aufzählungswert als Konstante. @param {string} w */
+/** An enumeration value as a constant. @param {string} w */
 const constant = w => {
   const k = w
     .replace(/[^A-Za-z0-9]+/g, '_')
@@ -99,8 +99,8 @@ const constant = w => {
 const grund = (name, nullbar = false) => ({ art: 'grund', name, nullbar });
 
 /**
- * Der Typ eines Schemas; verschachtelte Objekte werden als eigene Form [neben]
- * gesammelt, unter dem Rohnamen `<Eltern><Feld>` bzw. `…Eintrag`.
+ * The type of a schema; nested objects are collected as a shape of their own [neben],
+ * under the raw name `<Parent><Field>` or `…Eintrag`.
  * @param {any} s @param {string} vorschlag @param {(name: string, s: any) => void} neben @returns {Typ}
  */
 function typ(s, vorschlag, neben) {
@@ -148,7 +148,7 @@ function typ(s, vorschlag, neben) {
     }
     return grund('JsonObject');
   }
-  // Ganze Zahlen sind Zähler, Kennungen und Mengen: Int wie in den Ansichten.
+  // Whole numbers are counters, identifiers and quantities: Int as in the views.
   if (s.type === 'integer') return grund('Int');
   return grund(baseType(s.type));
 }
@@ -174,8 +174,8 @@ function kotlin(t) {
 }
 
 /**
- * Sammelt alle Formen: die Schemas unter components und die Rümpfe der
- * Anfragen aus Z.ANFRAGEN. Namen sind noch roh (vor Z.NAMEN).
+ * Collects all shapes: the schemas under components and the bodies of the
+ * requests from Z.ANFRAGEN. Names are still raw (before Z.NAMEN).
  * @param {any} dok @returns {Form[]}
  */
 function collect(dok) {
@@ -226,24 +226,24 @@ function umbenannt(t) {
   return t;
 }
 
-/** Ein Fachtyp an die Stelle des innersten String setzen (Liste bleibt Liste). @param {Typ} t @param {string} fach @returns {Typ} */
+/** Put a domain type in the place of the innermost String (a list stays a list). @param {Typ} t @param {string} fach @returns {Typ} */
 function withSlotType(t, fach) {
   if (t.art === 'liste') return { ...t, element: withSlotType(t.element, fach) };
-  // Mit eigenem Serializer liest sich Unbekanntes als null: dann ist das Feld immer nullbar.
+  // With an own serializer something unknown reads as null: then the field is always nullable.
   if (t.art === 'grund' && t.name === 'String')
     return {
       ...t,
       name: fach,
       nullbar: t.nullbar || !!Z.FACHTYPEN[fach]?.serializer,
     };
-  // Ein offenes Schema ({} oder Text|Zahl) bekommt den Typ, den die App schickt.
+  // An open schema ({} or text|number) gets the type the app sends.
   if (t.art === 'grund' && t.name === 'JsonElement') return { ...t, name: fach };
   throw new Error(`Fachtyp ${fach} nur an Stelle eines String (${kotlin(t)})`);
 }
 
 /**
- * Formen gleichen Endnamens zu einer: Felder vereint, Pflicht nur, wo alle es
- * verlangen, nullbar, wo eine es erlaubt; derselbe Name heisst derselbe Typ.
+ * Shapes with the same final name become one: fields merged, required only where all of them
+ * require it, nullable where one allows it; the same name means the same type.
  * @param {Form[]} shapes @returns {Map<string, Form>}
  */
 function unite(shapes) {
@@ -300,8 +300,8 @@ function unite(shapes) {
 }
 
 /**
- * Der Leerwert eines Antwortfelds. Jedes Feld hat einen: Ein älterer Server,
- * dem ein neues Feld fehlt, und eine abgelegte ältere Antwort bleiben lesbar.
+ * The empty value of a response field. Every field has one: an older server
+ * lacking a new field, and a stored older response, stay readable.
  * @param {Typ} t @returns {string}
  */
 function emptyValue(t) {
@@ -324,9 +324,9 @@ function emptyValue(t) {
 }
 
 /**
- * Ein Rumpffeld: Pflichtfelder ohne Vorgabe (der Aufrufer nennt sie), freiwillige
- * gehen nur hinaus, wenn sie gesetzt sind — encodeDefaults schickte sonst null,
- * und der Server läse „löschen“ statt „unverändert“ (Ausnahmen: Z.NULL_SEND).
+ * A body field: required fields without a default (the caller names them), optional ones
+ * only go out if they are set — encodeDefaults would otherwise send null,
+ * and the server would read "delete" instead of "unchanged" (exceptions: Z.NULL_SEND).
  * @param {string} name @param {string} schluessel @param {Feld} f @param {string | undefined} vorgabe
  */
 function rumpffeld(name, schluessel, f, vorgabe) {
@@ -340,8 +340,8 @@ function rumpffeld(name, schluessel, f, vorgabe) {
 }
 
 /**
- * Ein Antwortfeld, das fehlen darf, liest sich als Leerwert, ausser es steht in
- * Z.NULLBAR: dort heisst „fehlt“ etwas anderes als „leer“.
+ * A response field that may be missing reads as the empty value, unless it is in
+ * Z.NULLBAR: there "missing" means something different from "empty".
  * @param {string} klasse @param {Feld} f @returns {Typ}
  */
 function antworttyp(klasse, f) {
@@ -350,9 +350,9 @@ function antworttyp(klasse, f) {
   return withoutEmptyValue || Z.NULLBAR.has(`${klasse}.${f.json}`) ? { ...f.typ, nullbar: true } : f.typ;
 }
 
-/** Antwortformen mit Pflichtfeldern: Sie haben keinen Leerwert `Form()`. */
+/** Response shapes with required fields: they have no empty value `Form()`. */
 let STRICT = new Set();
-/** Ein Pflichtfeld einer solchen Form bekommt keine Vorgabe; der Aufrufer nennt es. @param {Typ} t */
+/** A required field of such a shape gets no default; the caller names it. @param {Typ} t */
 const withoutEmptyValue = t => t.art === 'klasse' && !t.nullbar && STRICT.has(t.name);
 
 /** @param {Form} f @returns {string} */
@@ -380,7 +380,7 @@ function klasse(f) {
 }
 
 /**
- * Die Kotlin-Datei aus dem OpenAPI-Dokument.
+ * The Kotlin file from the OpenAPI document.
  * @param {any} dok @param {typeof STANDARD} [zuordnung] @returns {string}
  */
 function create(dok, zuordnung = STANDARD) {
@@ -413,8 +413,8 @@ function datei(dok) {
   for (const [n, paket] of Object.entries(Z.CONSTANTS)) if (new RegExp(`= ${n}\\b`).test(rumpf)) importe.push(paket);
   const optIn = /@EncodeDefault/.test(rumpf) ? '@file:OptIn(ExperimentalSerializationApi::class)\n' : '';
   return (
-    '// Erzeugt aus Web-App/docs/openapi.json durch Web-App/scripts/contract-kotlin-dtos.js.\n' +
-    '// Nicht von Hand ändern: npm run vertrag:kotlin (im Ordner Web-App).\n' +
+    '// Generated from Web-App/docs/openapi.json by Web-App/scripts/contract-kotlin-dtos.js.\n' +
+    '// Do not edit by hand: npm run vertrag:kotlin (in the Web-App folder).\n' +
     '@file:Suppress("ConstructorParameterNaming", "MatchingDeclarationName", "LongParameterList")\n' +
     optIn +
     '\npackage ch.brickinventoryapp.contract\n\n' +
@@ -430,7 +430,7 @@ function datei(dok) {
 
 if (require.main === module) {
   const soll = create(JSON.parse(fs.readFileSync(QUELLE, 'utf8')));
-  // --pruefen schreibt nicht, es meldet nur eine Abweichung (Test und CI).
+  // --pruefen does not write, it only reports a deviation (test and CI).
   if (process.argv.includes('--pruefen')) {
     const ist = fs.existsSync(ZIEL) ? fs.readFileSync(ZIEL, 'utf8') : '';
     if (ist !== soll) {

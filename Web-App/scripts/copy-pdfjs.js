@@ -2,12 +2,12 @@
 'use strict';
 
 /**
- * PDF.js kommt aus der npm-Abhängigkeit pdfjs-dist (exakte Fassung in
- * package.json), damit npm audit und Dependabot es sehen. Dieses Skript legt die
- * beiden Dateien nach public/vendor/pdfjs/ und zieht die Fassung im
- * Cache-Brecher von public/js/pdfjs-boot.js nach; build-frontend.js ruft es.
+ * PDF.js comes from the npm dependency pdfjs-dist (exact version in
+ * package.json), so that npm audit and Dependabot see it. This script puts the
+ * two files into public/vendor/pdfjs/ and updates the version in the
+ * cache buster of public/js/pdfjs-boot.js; build-frontend.js calls it.
  *
- *   node scripts/copy-pdfjs.js [Zielwurzel]
+ *   node scripts/copy-pdfjs.js [target root]
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -15,7 +15,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const DATEIEN = ['pdf.min.mjs', 'pdf.worker.min.mjs'];
 
-/** @returns die kopierte Fassung, oder null ohne installiertes pdfjs-dist */
+/** @returns the copied version, or null without an installed pdfjs-dist */
 function copyPdfjs(ziel = ROOT, quelle = ROOT) {
   const paket = path.join(quelle, 'node_modules', 'pdfjs-dist');
   if (!fs.existsSync(path.join(paket, 'package.json'))) return null;

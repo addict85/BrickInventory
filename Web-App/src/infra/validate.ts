@@ -251,7 +251,7 @@ export const eingabe = {
   stueckzahl: () =>
     alsSchema(v => acquisitionQuantity(v), { type: ['integer', 'string'], minimum: 1, maximum: 10_000 }),
   farbe: () =>
-    alsSchema(colorId, { type: ['integer', 'string'], description: `fehlt sie, gilt ${KEINE_FARBE} (keine Farbe)` }),
+    alsSchema(colorId, { type: ['integer', 'string'], description: `if missing, ${KEINE_FARBE} (no color) applies` }),
   farbcode: () => alsSchema(optionalHex, { type: ['string', 'null'], pattern: '^#?[0-9A-Fa-f]{6}$' }),
   /** Money (src/infra/geld.ts). Described as a number; text with a dot or comma is still accepted by the
    * server (forms), it is not part of the contract. */
@@ -260,7 +260,7 @@ export const eingabe = {
       ...(o.nullbar === false ? { type: 'number' } : { anyOf: [{ type: 'number' }, { type: 'null' }] }),
       minimum: 0,
       maximum: o.max ?? 1_000_000,
-      description: 'Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag',
+      description: 'Amount as a number, at most four decimal places; null or empty: no amount',
     }),
   quantitiesDelta: () =>
     alsSchema(quantitiesDelta, { anyOf: [{ type: 'integer', minimum: -9999, maximum: 9999 }, { type: 'null' }] }),

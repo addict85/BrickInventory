@@ -2,10 +2,10 @@
 'use strict';
 
 /**
- * Typprüfung der Oberfläche: tsc über tsconfig.frontend.json (ES-Module) und
- * tsconfig.frontend-skripte.json (die zwei klassischen Skripte). Beide müssen
- * 0 Meldungen haben. `--json` gibt die Meldungen je Lauf maschinenlesbar aus
- * (für test/browser-names.test.js).
+ * Type check of the UI: tsc over tsconfig.frontend.json (ES modules) and
+ * tsconfig.frontend-skripte.json (the two classic scripts). Both must
+ * have 0 messages. `--json` outputs the messages per run machine-readably
+ * (for test/browser-names.test.js).
  *
  *   npm run typecheck:frontend
  */
@@ -16,7 +16,7 @@ const ROOT = path.resolve(__dirname, '..');
 const TSC = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
 const RUNS = ['tsconfig.frontend.json', 'tsconfig.frontend-skripte.json'];
 
-/** @param {string} config @param {string[]} [extra] @returns {string[]} die Meldungen */
+/** @param {string} config @param {string[]} [extra] @returns {string[]} the messages */
 function pruefe(config, extra = []) {
   const r = spawnSync(TSC, ['-p', path.join(ROOT, config), ...extra], { cwd: ROOT, encoding: 'utf8' });
   if (r.status === null) throw new Error(`tsc lief nicht: ${r.error?.message}`);

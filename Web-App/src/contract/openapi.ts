@@ -50,8 +50,8 @@ function komponenten() {
 
 function erfolg(r: Route, benannt: Map<z.ZodType, string>) {
   const ref = (s: z.ZodType) => ({ schema: { $ref: URI(benannt.get(s) ?? '') } });
-  if (r.antwort) return { description: 'Erfolg', content: { 'application/json': ref(r.antwort) } };
-  return { description: 'Erfolg', content: { [MIME[r.art ?? 'datei']]: r.ereignis ? ref(r.ereignis) : {} } };
+  if (r.antwort) return { description: 'Success', content: { 'application/json': ref(r.antwort) } };
+  return { description: 'Success', content: { [MIME[r.art ?? 'datei']]: r.ereignis ? ref(r.ereignis) : {} } };
 }
 
 export function openapi(): Record<string, unknown> {
@@ -92,7 +92,7 @@ export function openapi(): Record<string, unknown> {
         ...(parameters.length ? { parameters } : {}),
         responses: {
           200: ok,
-          default: { description: 'Fehler', content: { 'application/json': { schema: { $ref: URI('Fehler') } } } },
+          default: { description: 'Error', content: { 'application/json': { schema: { $ref: URI('Fehler') } } } },
         },
       };
       const rumpf = r.eingabe ? z.toJSONSchema(r.eingabe, { io: 'input', unrepresentable: 'any' }) : undefined;
@@ -125,7 +125,7 @@ export function openapi(): Record<string, unknown> {
     info: {
       title: 'BrickInventory API',
       version: String(API_VERSION),
-      description: 'Erzeugt aus src/contract/ (npm run vertrag:openapi). Nicht von Hand ändern.',
+      description: 'Generated from src/contract/ (npm run vertrag:openapi). Do not edit by hand.',
     },
     paths: sortiert(paths),
     components: { schemas: sortiert(schemas) },

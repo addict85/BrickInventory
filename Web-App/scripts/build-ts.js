@@ -2,9 +2,9 @@
 'use strict';
 
 /**
- * Transpiliert alle .ts-Dateien nach .js — je Datei, KEIN Bundle, damit die
- * CommonJS-Modulgrenzen bleiben. Für `npm run build` und den Docker-Build;
- * public/ bleibt reines JavaScript.
+ * Transpiles all .ts files to .js — per file, NO bundle, so that the
+ * CommonJS module boundaries stay. For `npm run build` and the Docker build;
+ * public/ stays plain JavaScript.
  */
 
 const { execFileSync } = require('node:child_process');
@@ -12,21 +12,21 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..');
-// Ein fehlender Ordner hier fehlt in dist/, und jeder Import darauf läuft beim Start ins Leere.
+// A folder missing here is missing in dist/, and every import of it runs into nothing at startup.
 const SRC_DIRS = ['db', 'src', 'routes', 'jobs', 'clients', 'startup'];
 /**
- * Fassung für den npx-Rückfall.
+ * Version for the npx fallback.
  *
- * Massgeblich ist die devDependency in package.json — sie wird benutzt, sobald
- * `npm ci` gelaufen ist. Dieser Wert greift nur, wenn jemand das Skript ohne
- * Installation aufruft, und sollte deshalb mit package.json übereinstimmen
- * (test/build-tooling.test.js prüft das).
+ * What counts is the devDependency in package.json — it is used as soon as
+ * `npm ci` has run. This value only applies when someone calls the script without
+ * installation, and should therefore match package.json
+ * (test/build-tooling.test.js checks that).
  */
 const ESBUILD_VERSION = '0.28.2';
 
 const outdirArg = process.argv.indexOf('--outdir');
-// `--outdir` ohne Wert dahinter ist ein Bedienfehler und ergibt jetzt null
-// statt eines Absturzes in path.resolve().
+// `--outdir` without a value after it is an operating error and now yields null
+// instead of a crash in path.resolve().
 const targetArg = outdirArg !== -1 ? process.argv[outdirArg + 1] : undefined;
 const OUTDIR = targetArg ? path.resolve(targetArg) : null;
 
@@ -35,7 +35,7 @@ function walkTs(dir, out) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const abs = path.join(dir, entry.name);
     if (entry.isDirectory()) {
-      // node_modules o. Ä. gibt es in den SRC_DIRS nicht, aber sicher ist sicher
+      // node_modules or similar does not exist in SRC_DIRS, but better safe than sorry
       if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
       walkTs(abs, out);
     } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.d.ts')) {
@@ -51,14 +51,14 @@ function collectTsFiles() {
   for (const dir of SRC_DIRS) {
     const abs = path.join(ROOT, dir);
     if (!fs.existsSync(abs)) continue;
-    // rekursiv, damit Unterordner wie routes/api_v1/ mit erfasst werden
+    // recursively, so that subfolders like routes/api_v1/ are included
     walkTs(abs, files);
   }
   return files;
 }
 
-/** Pfad zum esbuild-Programm: lokal aus node_modules/.bin, weil npx je Aufruf
- * Startzeit kostet; npx nur ohne Installation. */
+/** Path to the esbuild program: local from node_modules/.bin, because npx costs startup time
+ * per call; npx only without installation. */
 function esbuildCmd() {
   const local = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild');
   if (fs.existsSync(local)) return { cmd: local, prefix: [] };
@@ -75,9 +75,9 @@ const { cmd, prefix } = esbuildCmd();
 const via = cmd === 'npx' ? `npx esbuild@${ESBUILD_VERSION}` : 'lokalem esbuild';
 console.log(`[build-ts] Transpiliere ${files.length} Datei(en) mit ${via}${OUTDIR ? ` → ${OUTDIR}` : ' (in-place)'}`);
 
-// EIN esbuild-Aufruf für alle Dateien: Jeder Prozessstart kostet, auf schwacher
-// Hardware genug für die Zeitgrenze der Tests. --outbase erhält die Ordner,
-// ohne --bundle bleibt jede Datei ein eigenes Modul.
+// ONE esbuild call for all files: every process start costs, on weak
+// hardware enough for the tests' time limit. --outbase keeps the folders,
+// without --bundle every file stays a module of its own.
 const outDir = OUTDIR || ROOT;
 fs.mkdirSync(outDir, { recursive: true });
 execFileSync(
@@ -94,8 +94,8 @@ execFileSync(
   { stdio: ['ignore', 'ignore', 'inherit'] },
 );
 
-// Nicht-TypeScript-Dateien mitkopieren: Das Laufzeit-Image übernimmt nur dist/,
-// ohne die .sql-Migrationen meldete runMigrations() still „nichts zu tun".
+// Copy non-TypeScript files along: the runtime image only takes dist/,
+// without the .sql migrations runMigrations() silently reported "nothing to do".
 const ASSET_EXT = ['.sql', '.txt'];
 /** @param {string} dir @param {string} out */
 function copyAssets(dir, out) {
@@ -116,13 +116,13 @@ function copyAssets(dir, out) {
   }
   return n;
 }
-// Wegräumen, was es in der Quelle nicht mehr gibt: Eine Migration von einem
-// anderen Zweig bliebe sonst in dist/ und liefe mit. Gelöscht wird nur, was
-// die Umkehrung von copyAssets() als quellenlos ausweist.
+// Clear away what no longer exists in the source: a migration from another
+// branch would otherwise stay in dist/ and run along. Only what the inversion
+// of copyAssets() identifies as sourceless is deleted.
 /**
- * Verwaiste Abbilder entfernen.
- * @param {string} out Wurzel des Bauziels
- * @returns {string[]} die entfernten Pfade, relativ zu ROOT
+ * Remove orphaned copies.
+ * @param {string} out root of the build target
+ * @returns {string[]} the removed paths, relative to ROOT
  */
 function removeOrphaned(out) {
   /** @type {string[]} */
@@ -137,7 +137,7 @@ function removeOrphaned(out) {
         continue;
       }
       if (!ASSET_EXT.includes(path.extname(entry.name))) continue;
-      // Umkehrung von copyAssets(): dst = out + (abs - ROOT)
+      // Inversion of copyAssets(): dst = out + (abs - ROOT)
       const quelle = path.join(ROOT, path.relative(out, abs));
       if (!fs.existsSync(quelle)) {
         fs.unlinkSync(abs);
@@ -152,13 +152,13 @@ function removeOrphaned(out) {
 if (OUTDIR) {
   let assets = 0;
   for (const dir of SRC_DIRS) assets += copyAssets(path.join(ROOT, dir), OUTDIR);
-  // tsconfig prüft auch die Skripte (noImplicitAny).
+  // tsconfig also checks the scripts (noImplicitAny).
   /** @type {string[]} */
   const weg = removeOrphaned(OUTDIR);
   console.log(`[build-ts] ${assets} Nicht-TS-Datei(en) mitkopiert (${ASSET_EXT.join(', ')})`);
-  // Namentlich ins Bauprotokoll, damit nichts still verschwindet.
+  // By name into the build log, so that nothing disappears silently.
   if (weg.length) console.log(`[build-ts] ${weg.length} verwaiste Datei(en) entfernt: ${weg.join(', ')}`);
-  // Die Version gehört zum Bau, nicht in den Arbeitsbaum (scripts/version.js).
+  // The version belongs to the build, not into the working tree (scripts/version.js).
   const { buildVersion, schreibe } = require('./version');
   const version = buildVersion();
   schreibe(OUTDIR, version);

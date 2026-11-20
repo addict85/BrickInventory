@@ -1,6 +1,6 @@
-// Felder, die mehrere Detail-Dialoge teilen: Lagerort (Auswahl mit neuem Eintrag), Preisalarm und das
-// Schliessen des Set-Dialogs. Liegt unter den Ansichten, damit Set-Detail, Merkliste und Teile-Detail sie
-// gleich nutzen.
+// Fields shared by several detail dialogs: storage location (select with new entry), price alert and
+// closing the set dialog. Lives below the views, so that set detail, wishlist and part detail use them
+// the same way.
 import { registerActions } from './registry.js';
 import { html, rawHtml } from './escaping.js';
 import { api } from './api.js';
@@ -13,12 +13,12 @@ import { scopeQuery, LAGER_VIEWS, lagerModus, setLagerModus } from './account-fi
 import { tRaw } from '../i18n.js';
 
 /**
- * Lagerort eines Sets speichern.
+ * Save a set's storage location.
  *
- * ── Warum beim Verlassen des Feldes und nicht auf Tastendruck ──────────────
+ * ── Why on leaving the field and not on key press ───────────────────────────
  *
- * Wie die Menge daneben (`autosaveSet`): Ein Lagerort wird getippt, nicht gewählt. Ein Speichern je Zeichen
- * erzeugte sechs Anfragen für „Kiste 3" und hinterliesse dabei fünf Zwischenstände in der Datenbank.
+ * Like the quantity next to it (`autosaveSet`): a storage location is typed, not chosen. Saving per character
+ * produced six requests for "Kiste 3" and left five intermediate states in the database along the way.
  * @param {string} sn
  */
 export async function speichereSetLagerort(sn) {
@@ -29,8 +29,8 @@ export async function speichereSetLagerort(sn) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  // Die Liste im Hintergrund trägt den Ort ebenfalls — ohne Nachziehen zeigte die Kachel den alten, bis
-  // jemand neu lädt.
+  // The list in the background carries the place as well — without updating it the tile showed the old one until
+  // someone reloads.
   const eintrag = (gallerySets || []).find(x => x.set_number === sn);
   if (eintrag) eintrag.storage = d.storage ?? null;
   if (openSet && openSet.set_number === sn) openSet.storage = d.storage ?? null;
@@ -39,8 +39,8 @@ export async function speichereSetLagerort(sn) {
 }
 
 /**
- * Welcher Alarmblock gemeint ist: 'm' (Set) oder 'mk-m' (Merkposten). Eine Modulvariable statt Parameter,
- * weil der Dispatcher nur die Setnummer reicht; offen ist ohnehin immer nur ein Dialog.
+ * Which alert block is meant: 'm' (set) or 'mk-m' (wishlist item). A module variable instead of a parameter,
+ * because the dispatcher only passes the set number; only one dialog is ever open anyway.
  */
 let _alarmField = 'm';
 
@@ -54,18 +54,18 @@ export function setAlarmField(praefix) {
 const alarmId = (/** @type {string} */ teil) => `${_alarmField}-alert-${teil}`;
 
 /**
- * Der Alarmblock — EINMAL formuliert, von beiden Dialogen benutzt.
+ * The alert block — formulated ONCE, used by both dialogs.
  *
- * Das Merkposten-Detail zeigt denselben Alarm: Es ist derselbe Eintrag in price_alerts, am selben Schlüssel.
- * Eine zweite Maske dafür wäre die nächste Stelle, an der eine Regel nur an einem der beiden Wege nachgezogen
- * wird — das ist in diesem Baum schon mehrfach passiert.
+ * The wishlist item detail shows the same alert: it is the same entry in price_alerts, with the same key.
+ * A second form for it would be the next place where a rule is only updated on one of the two paths
+ * — that has already happened several times in this tree.
  * @param {string} sn
- * @param {string} [zustand] Zustand des Bestands: Ein gebrauchtes Set sucht meist gebraucht.
+ * @param {string} [zustand] condition of the inventory: a used set is mostly looked for used.
  */
 export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
   const p = praefix === 'mk-m' ? 'mk-m' : 'm';
-  // Das Aussehen steht in styles.css unter .alarm-feld, nicht hier: Die feste Hoehe im style-Attribut hat den
-  // gewaehlten Eintrag auf sechs Pixel zusammengeschnitten (im Browser gemessen, Begruendung dort).
+  // The look is in styles.css under .alarm-feld, not here: the fixed height in the style attribute cut the
+  // chosen entry down to six pixels (measured in the browser, reasoning there).
   return html`
       <select id="${p}-alert-cond" class="alarm-feld" aria-label="${tRaw('detail.alert')}: ${tRaw('common.condition')}" data-change="wechsleAlarmZustand" data-arg="${sn}">
         <option value="N"${zustand !== 'U' ? ' selected' : ''}>${tRaw('common.condition_new')}</option>
@@ -85,8 +85,8 @@ export function alarmBlock(sn, praefix = 'm', zustand = 'N') {
 }
 
 /**
- * „Neuer Ort“ wird an einem Attribut erkannt, nicht an einem abgemachten Wert: Jeden ausgedachten Wert kann
- * jemand als Lagerort eintippen.
+ * "New place" is recognized by an attribute, not by an agreed value: any invented value can be
+ * typed in as a storage location by someone.
  */
 const LOCATION_NEW_BRAND = html`data-neu="1"`;
 
@@ -97,10 +97,10 @@ const isNewEntry = (/** @type {Pick<HTMLSelectElement, 'selectedOptions'> | null
 let _locations = [];
 
 /**
- * Den Vorrat merken und bereits gezeichnete Auswahlfelder nachziehen.
+ * Remember the stock and update already drawn select fields.
  *
- * Die Orte kommen ueber das Netz, der Dialog steht aber schon. Ohne das Nachziehen zeigte die erste Anzeige
- * eine leere Auswahl — und genau dann schaut man hin.
+ * The places come over the network, but the dialog is already there. Without updating, the first display showed
+ * an empty selection — and that is exactly when one looks.
  * @param {unknown[] | null | undefined} namen
  */
 export function setLocationStock(namen) {
@@ -108,8 +108,8 @@ export function setLocationStock(namen) {
   for (const sel of /** @type {NodeListOf<HTMLSelectElement>} */ (
     document.querySelectorAll('select[data-ortauswahl]')
   )) {
-    // Steht die Auswahl gerade auf „neuer Ort", soll sie dort stehen bleiben — sonst spraenge sie jemandem
-    // beim Tippen unter der Hand weg.
+    // If the selection is currently at "new place", it should stay there — otherwise it would jump away from someone
+    // while typing.
     const warNew = isNewEntry(sel);
     const vorher = sel.value;
     setzeHtml(sel, locationOptions(vorher));
@@ -125,22 +125,22 @@ function locationOptions(wert) {
   const bekannt = _locations.includes(wert);
   return [
     html`<option value="">${tRaw('detail.storage_none')}</option>`,
-    // Ein Ort, den der Vorrat (noch) nicht kennt — etwa weil er gerade erst eingetippt wurde —, muss trotzdem
-    // dastehen, sonst spraenge die Anzeige auf „—" zurueck.
+    // A place the stock does not know (yet) — e.g. because it was only just typed in — must still
+    // be there, otherwise the display would jump back to "—".
     ...(wert && !bekannt ? [html`<option value="${wert}" selected>${wert}</option>`] : []),
     ..._locations.map(o => html`<option value="${o}"${o === wert ? ' selected' : ''}>${o}</option>`),
-    // IMMER zuletzt: setLocationStock() greift ihn ueber options.length - 1 ab.
+    // ALWAYS last: setLocationStock() picks it up via options.length - 1.
     html`<option value="" ${LOCATION_NEW_BRAND}>${tRaw('detail.storage_new')}</option>`,
   ];
 }
 
 /**
- * Der Lagerort als Auswahl, die auch Neues annimmt: Eine datalist sah wie ein Textfeld aus und klappte nicht
- * auf. Gespeichert wird weiter über das Textfeld, damit die Speicherregel nur einmal existiert.
- * @param {string} id  Kennung des Textfeldes (m-storage, setitem-storage); die
- *   Auswahl bekommt dieselbe mit dem Zusatz "-sel".
- * @param {string | null | undefined} wert  Aktueller Lagerort, oder leer.
- * @param {string} [attrs]  Weitere Attribute fürs Textfeld (data-change, data-part, …).
+ * The storage location as a selection that also accepts new values: a datalist looked like a text field and did not
+ * open. Saving still goes via the text field, so that the saving rule exists only once.
+ * @param {string} id  identifier of the text field (m-storage, setitem-storage); the
+ *   selection gets the same one with the suffix "-sel".
+ * @param {string | null | undefined} wert  current storage location, or empty.
+ * @param {string} [attrs]  further attributes for the text field (data-change, data-part, …).
  */
 export function locationBlock(id, wert, attrs = '') {
   const ort = String(wert || '');
@@ -154,15 +154,15 @@ export function locationBlock(id, wert, attrs = '') {
 }
 
 /**
- * Aus der Liste gewaehlt — oder „neuer Ort".
- * @param {string} id Kennung des Textfeldes; die Auswahl heisst id + "-sel".
+ * Chosen from the list — or "new place".
+ * @param {string} id identifier of the text field; the selection is called id + "-sel".
  */
 export function lagerortGewaehlt(id) {
   const sel = G(`${id}-sel`),
     feld = G(id);
   if (!sel || !feld) return;
   if (isNewEntry(sel)) {
-    // Leeren, zeigen, Fokus: Wer „neuer Ort" waehlt, will tippen — nicht erst den alten Namen wegloeschen.
+    // Clear, show, focus: whoever chooses "new place" wants to type — not delete the old name first.
     feld.value = '';
     feld.style.display = '';
     feld.focus();
@@ -170,15 +170,15 @@ export function lagerortGewaehlt(id) {
   }
   feld.style.display = 'none';
   feld.value = sel.value;
-  // Das change-Ereignis von Hand: Ein programmatisch gesetzter Wert loest keines aus. Ueber die
-  // Ereignis-Delegation (actions.js) landet es bei genau dem Handler, der auch eine Eingabe von Hand
-  // speichert.
+  // The change event by hand: a programmatically set value triggers none. Via the
+  // event delegation (actions.js) it lands at exactly the handler that also saves an input made by
+  // hand.
   feld.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
 /**
- * Ein neuer Ort ist fertig getippt. Gespeichert hat schon das change-Ereignis des Feldes; hier zieht nur die
- * Auswahl daneben nach. `this` ist das Feld (der Dispatcher ruft mit dem Element als Empfänger).
+ * A new place has been typed completely. The field's change event has already saved; here only the
+ * selection next to it is updated. `this` is the field (the dispatcher calls with the element as receiver).
  * @this {HTMLInputElement}
  */
 export function lagerortGetippt() {
@@ -192,15 +192,15 @@ export function lagerortGetippt() {
 }
 
 /**
- * Für welchen Zustand der Alarm gilt: Neu und gebraucht liegen oft weit auseinander, und wer gebraucht sucht,
- * soll darauf warten können. Der Server hat den Zustand im Schlüssel.
+ * Which condition the alert applies to: new and used are often far apart, and whoever looks for used
+ * should be able to wait for that. The server has the condition in the key.
  */
 function alarmState() {
   return G(alarmId('cond'))?.value === 'U' ? 'U' : 'N';
 }
 
 /**
- * Preisalarm des offenen Sets laden und anzeigen.
+ * Load and show the price alert of the open set.
  * @param {string} sn
  */
 export async function ladeAlarm(sn) {
@@ -208,7 +208,7 @@ export async function ladeAlarm(sn) {
   const dir = G(alarmId('dir')),
     val = G(alarmId('val'));
   if (!dir || !val) return;
-  // Gibt es nur einen Alarm für den anderen Zustand, steht die Auswahl auf ihm: Sonst sähe es aus, als fehle er.
+  // If there is only an alert for the other condition, the selection is set to it: otherwise it would look as if it were missing.
   const alle = d?.alerts || [];
   const wahl = G(alarmId('cond'));
   if (wahl && alle.length && !alle.some(x => x.condition === alarmState()))
@@ -220,22 +220,22 @@ export async function ladeAlarm(sn) {
 }
 
 /**
- * Nur den Merker nachführen, nie das Eingabefeld: Während getippt wird, schriebe die Serverantwort sonst ein
- * eben getipptes Zeichen wieder weg.
+ * Only update the flag, never the input field: while typing, the server response would otherwise erase a
+ * character just typed.
  * @param {import('../../frontend-types/contract').Preisalarm | undefined} a
  */
 function showAlarmMarker(a) {
   const st = G(alarmId('state'));
   if (!st) return;
-  // Der Merker sagt, ob schon gemeldet wurde. Ihn zu zeigen ist der Unterschied zwischen „der Alarm steht"
-  // und „der Alarm hat gefeuert" — sonst fragt man sich, warum keine Mail mehr kommt.
+  // The flag says whether a notification was already sent. Showing it is the difference between "the alert is set"
+  // and "the alert has fired" — otherwise one wonders why no more mail comes.
   st.textContent = !a ? '' : a.triggered ? tRaw('detail.alert_fired') : tRaw('detail.alert_armed');
   st.className = a ? `alarm-stand alarm-marke alarm-marke-${a.triggered ? 'aus' : 'an'}` : 'alarm-stand';
 }
 
 /**
- * Auf den anderen Zustand umschalten lädt nur und speichert nicht: Ein Wechsel ist eine Frage, keine Eingabe.
- * Eine laufende Ruhezeit fällt weg, damit die alte Schwelle nicht beim neuen Zustand landet.
+ * Switching to the other condition only loads and does not save: a change is a question, not an input.
+ * A running quiet period is dropped, so that the old threshold does not end up at the new condition.
  * @param {string} sn
  */
 export function wechsleAlarmZustand(sn) {
@@ -245,10 +245,10 @@ export function wechsleAlarmZustand(sn) {
 }
 
 /**
- * Wie lange Ruhe herrschen muss, bevor beim Tippen gespeichert wird.
+ * How long it must be quiet before saving while typing.
  *
- * Dieselbe Zahl wie in der App (Alarmeingabe.RUHE_MS) — laufen die beiden auseinander, verhält sich dasselbe
- * Feld an zwei Stellen verschieden, ohne dass es jemandem auffiele.
+ * The same number as in the app (Alarmeingabe.RUHE_MS) — if the two drift apart, the same
+ * field behaves differently in two places without anyone noticing.
  */
 const ALARM_REST = 800;
 
@@ -258,8 +258,8 @@ const ALARM_REST = 800;
 let _alarmRest = null;
 
 /**
- * Beim Tippen speichern, entprellt: Wer tippt und das Fenster schliesst, ohne woanders hinzuklicken, verlor
- * die Eingabe. Die Werte werden jetzt kopiert, weil das Feld beim Ablauf der Ruhezeit schon weg sein kann.
+ * Save while typing, debounced: whoever types and closes the window without clicking elsewhere lost
+ * the input. The values are now copied, because the field may already be gone when the quiet period ends.
  * @param {string} sn
  */
 export function alarmGetippt(sn) {
@@ -276,11 +276,11 @@ export function alarmGetippt(sn) {
 }
 
 /**
- * Preisalarm speichern oder löschen — SOFORT.
+ * Save or delete the price alert — IMMEDIATELY.
  *
- * Für die Richtung: Sie wird gewählt, nicht getippt, und eine Ruhezeit auf eine einzelne Wahl wäre nur eine
- * Verzögerung ohne Gewinn. Eine noch laufende Ruhezeit wird dabei verworfen, damit nicht kurz darauf die alte
- * Richtung hinterherkommt.
+ * For the direction: it is chosen, not typed, and a quiet period on a single choice would only be a
+ * delay without gain. A still running quiet period is discarded, so that the old
+ * direction does not follow shortly afterwards.
  * @param {string} sn
  */
 export function speichereAlarm(sn) {
@@ -293,15 +293,15 @@ export function speichereAlarm(sn) {
 }
 
 /**
- * Der eine Weg zum Server. Ein leeres Feld löscht den Alarm, keine Schwelle 0: Das Feld zu leeren ist die
- * natürliche Geste. Die Ruhezeit verhindert, dass auf dem Weg zu „249“ eine Schwelle bei 2 entsteht.
+ * THE one path to the server. An empty field deletes the alert, not a threshold of 0: clearing the field is the
+ * natural gesture. The quiet period prevents a threshold at 2 from arising on the way to "249".
  * @param {string} sn
  * @param {string} richtung
  * @param {string} roh
  */
 async function sendAlarm(sn, richtung, roh) {
   const zahl = readAmount(roh);
-  // „abc“ oder „0“ ist kein Wunsch zu löschen, sondern ein Tippfehler: dieselbe Meldung wie auf #/alarme.
+  // "abc" or "0" is not a wish to delete but a typo: the same message as on #/alarme.
   if (roh !== '' && !(zahl != null && zahl > 0)) {
     feldFehler(alarmId('val'), tRaw('alerts.new_preis_fehlt'));
     return;
@@ -319,14 +319,14 @@ async function sendAlarm(sn, richtung, roh) {
     toast(d?.error || tRaw('settings.error'), 'error');
     return;
   }
-  // Nur den Merker, nicht das Feld — die Begründung steht an showAlarmMarker().
+  // Only the flag, not the field — the reasoning is at showAlarmMarker().
   showAlarmMarker(loeschen ? undefined : (d.alert ?? undefined));
   meldeAmFeld(G(alarmId('state')));
 }
 
 /**
- * Beim Öffnen zeigen, welche Alarme seit dem letzten Besuch ausgelöst haben — das Gegenstück zur stündlichen
- * Abfrage der App. Die Marke kommt vom Server (keine eigene Uhr) und gilt je Konto.
+ * On opening, show which alerts have fired since the last visit — the counterpart to the app's hourly
+ * query. The marker comes from the server (no own clock) and applies per account.
  */
 export async function showOpenAlerts() {
   if (!loggedInAccount?.id) return;
@@ -339,19 +339,19 @@ export async function showOpenAlerts() {
   const d = await api('GET', `/v1/alerts/pending${marke ? '?since=' + encodeURIComponent(marke) : ''}`).catch(
     () => null,
   );
-  // Ohne `now` keine neue Marke — und ohne neue Marke lieber gar nichts speichern als eine falsche.
+  // Without `now` no new marker — and without a new marker better save nothing at all than a wrong one.
   if (!d?.success || !d.now) return;
   try {
     localStorage.setItem(schluessel, String(d.now));
   } catch (_) {}
-  // Erster Besuch: nur merken, nichts melden. Sonst schlaegt ein frisch angemeldetes Konto mit Schwellen auf,
-  // die vor Wochen gerissen sind.
+  // First visit: only remember, report nothing. Otherwise a freshly logged-in account would be hit with thresholds
+  // that were crossed weeks ago.
   if (!marke) return;
   const unter = tRaw('detail.alert_below'),
     ueber = tRaw('detail.alert_above');
   for (const a of d.alerts || []) {
     const richtung = a.direction === 'unter' ? unter : ueber;
-    // Beträge wie überall in der Oberfläche („712,40 €“), in der Währung des Alarms.
+    // Amounts as everywhere in the UI ("712,40 €"), in the alert's currency.
     const schwelle = fmtN(a.threshold, a.currency_code);
     const txt =
       a.last_price == null
@@ -362,8 +362,8 @@ export async function showOpenAlerts() {
 }
 
 /**
- * Die Ortsauswahl im Detail ist der Vorrat des BESITZERS: Beim Set des Enkels stehen die Regale des Enkels
- * zur Wahl. Eine datalist erlaubt Auswählen und Neues tippen zugleich.
+ * The place selection in the detail is the OWNER's stock: for the grandchild's set the grandchild's shelves are
+ * up for choice. A datalist allows choosing and typing something new at the same time.
  * @param {({ id: number } | number)[] | null | undefined} besitzer
  */
 export async function loadLocationSelection(besitzer) {
@@ -379,17 +379,17 @@ export async function loadLocationSelection(besitzer) {
     dl,
     (d.orte || []).map(o => html`<option value="${o.name}"></option>`),
   );
-  // Dieselbe Liste speist das Auswahlfeld im Detail (locationBlock).
+  // The same list feeds the select field in the detail (locationBlock).
   setLocationStock((d.orte || []).map(o => o.name));
 }
 
-/** Die Konten, deren Lagerorte beim Erfassen zur Wahl stehen; gesetzt vom Laden des Haushalts. @type {number[]} */
+/** The accounts whose storage locations are up for choice when capturing; set by loading the household. @type {number[]} */
 let _stockAccounts = [];
 
 /**
- * Zur Wahl steht der ganze Vorrat (/v1/storage/locations), auch ein neuer, leerer Ort; die Filter zeigen nur
- * belegte Orte (/v1/storage), weil ein leerer Ort dort nichts fände.
- * @param {number[]} [konten] Haushaltskonten; ohne Angabe die zuletzt genannten
+ * The whole stock is up for choice (/v1/storage/locations), even a new, empty place; the filters only show
+ * occupied places (/v1/storage), because an empty place would find nothing there.
+ * @param {number[]} [konten] household accounts; without a value the most recently named ones
  */
 export async function loadLocations(konten) {
   if (konten) _stockAccounts = konten;
@@ -412,9 +412,9 @@ export async function loadLocations(konten) {
 }
 
 /**
- * Das Mengenfeld im Set-Detail samt „−“: Bei einem Exemplar wäre „−“ Löschen; der Knopf bleibt erreichbar
- * und sagt, wo das geht. Hier, weil auch der Kaufpreis-Dialog die Menge nachführt.
- * @param {number} [menge] neuer Wert; ohne ihn nur den Knopf nach dem Feld richten
+ * The quantity field in the set detail including "−": for one copy "−" would be deletion; the button stays reachable
+ * and says where that is done. Here, because the purchase price dialog updates the quantity too.
+ * @param {number} [menge] new value; without it only align the button with the field
  */
 export function setQuantitiesField(menge) {
   const feld = G('m-qty'),
@@ -429,8 +429,8 @@ export function setQuantitiesField(menge) {
   else minus.removeAttribute('aria-describedby');
 }
 
-// Hier und nicht im Set-Detail: Auch der Kaufpreis-Dialog schliesst ihn, und der liegt im Importgraphen
-// darunter.
+// Here and not in the set detail: the purchase price dialog closes it too, and that one lies below in the import
+// graph.
 export function closeModal() {
   G('set-modal').classList.remove('open');
   setOpenSet(null);
@@ -447,12 +447,12 @@ registerActions({
 });
 
 /**
- * Die Lagerort-Filter füllen. Ohne Orte bleiben sie verborgen: Eine Wahl mit nur „Alle“ beantwortet nichts —
- * dieselbe Regel wie beim Kontofilter.
+ * Fill the storage location filters. Without places they stay hidden: a choice with only "all" answers nothing —
+ * the same rule as for the account filter.
  * @param {import('../../frontend-types/contract').Lagerort[]} orte
  */
 export function initStorageSelects(orte) {
-  // Lange Namen gekürzt: Ein Auswahlfeld ist so breit wie seine längste Option; der volle Name steht im title.
+  // Long names shortened: a select field is as wide as its longest option; the full name is in the title.
   const kurz = (/** @type {string} */ s) => (s.length > 32 ? s.slice(0, 30) + '…' : s);
   const opts = [
     html`<option value="">${tRaw('filter.storage_all')}</option>`,
@@ -468,8 +468,8 @@ export function initStorageSelects(orte) {
       continue;
     }
     setzeHtml(el, rawHtml(opts));
-    // Zeigt die gespeicherte Wahl auf einen inzwischen leeren Ort, steht hier sonst eine leere Beschriftung
-    // über einer gefilterten Liste — dieselbe Falle wie beim Kontofilter.
+    // If the stored choice points to a place that has since become empty, an empty label would otherwise stand here
+    // above a filtered list — the same trap as with the account filter.
     const gespeichert = lagerModus(view);
     el.value = [...el.options].some(o => o.value === gespeichert) ? gespeichert : '';
     if (el.value !== gespeichert) setLagerModus(view, el.value);

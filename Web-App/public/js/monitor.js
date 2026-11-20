@@ -1,4 +1,4 @@
-// Beide Seiten der Überwachung beieinander: die Liste der Dienste und das Protokollfenster.
+// Both sides of the monitoring together: the list of services and the log window.
 import { echt, registerActions } from './registry.js';
 import { asHtml, escHtmlAttr, esc, html, rawHtml } from './escaping.js';
 import { api, apiData } from './api.js';
@@ -10,12 +10,12 @@ import { LANG, locale, t, tRaw } from '../i18n.js';
 /** @typedef {import('../../frontend-types/contract').Auftrag} Auftrag */
 /** @typedef {import('../../frontend-types/contract').JobStatus} JobStatus */
 
-/** Zeitgeber der Jobliste, solange der Reiter offen ist. @type {ReturnType<typeof setTimeout> | null} */
+/** Timer of the job list while the tab is open. @type {ReturnType<typeof setTimeout> | null} */
 let _monitorTimer = null;
-/** Zählt die Läufe: Eine Antwort nach dem Anhalten plant keine neue Runde. */
+/** Counts the runs: a response after stopping schedules no new round. */
 let _monitorLauf = 0;
 
-// Was logviewer.js zur Laufzeit schreibt, etwa die wechselnde Beschriftung des Auto-Knopfes.
+// What logviewer.js writes at runtime, e.g. the changing label of the auto button.
 const WINDOW_TEXTS = ['common.loading', 'common.network_error', 'log.none_found', 'log.entries', 'toast.error'].concat(
   ['log.auto', 'log.stop', 'log.stufe.info', 'log.stufe.warn', 'log.stufe.error', 'log.mehr_zeilen'],
   ['log.mehr_zeilen_one'],
@@ -38,7 +38,7 @@ function openLogViewer() {
   }
   const base = window.location.origin;
 
-  // Die Zeitspannen als Daten: Die Beschriftung steht einmal da, in der Sprache des Nutzers.
+  // The time spans as data: the label stands there once, in the user's language.
   const spans = [15, 30, 60, 360, 1440, 2880]
     .map(min => {
       const text =
@@ -47,7 +47,7 @@ function openLogViewer() {
     })
     .join('');
 
-  // Das Fenster folgt Design und Hell/Dunkel der App; werkbank ist ohne Variante dunkel.
+  // The window follows the app's theme and light/dark; werkbank is dark without a variant.
   const wurzel = document.documentElement;
   const design = wurzel.getAttribute('data-theme') || '';
   const dunkel = wurzel.hasAttribute('data-dunkel') || design === 'werkbank';
@@ -117,11 +117,11 @@ function openLogViewer() {
   win.document.close();
 }
 
-/** Je Code des Servers ein ausgeschriebener Schlüssel: So prüft test/i18n-calls.test.js, dass es ihn gibt. */
+/** One spelled-out key per server code: that way test/i18n-calls.test.js checks that it exists. */
 /** @type {Record<string, (w?: Record<string, string | number>) => string>} */
 const SUB_TEXTS = {
   teil_gemappt: w => tRaw('monitor.sub.teil_gemappt', w),
-  // Bei 0 sagte die Mehrzahlform „Alle 0 …“.
+  // At 0 the plural form said "all 0 …".
   all_mapped: w => tRaw(Number(w?.n) === 0 ? 'monitor.sub.nichts_zuzuordnen' : 'monitor.sub.all_mapped', w),
   ausstehend: w => tRaw('monitor.sub.ausstehend', w),
   all_done: w => tRaw('monitor.sub.all_done', w),
@@ -143,8 +143,8 @@ const SUB_TEXTS = {
 };
 
 /**
- * Untertitel aus den Codes des Servers (src/management/service.ts); die Sätze stehen nur in den Sprachdateien.
- * Ein unbekannter Code (neuerer Server) fällt auf den Text des Servers zurück.
+ * Subtitle from the server's codes (src/management/service.ts); the sentences are only in the language files.
+ * An unknown code (newer server) falls back to the server's text.
  * @param {{ code: string, werte?: Record<string, string | number>, vor?: string }[]} teile @param {string} sub
  */
 function subFromCodes(teile, sub) {
@@ -159,7 +159,7 @@ function subFromCodes(teile, sub) {
   return stuecke.includes(null) ? translateJobSub(sub) : stuecke.join(' · ');
 }
 
-/** Job-Untertitel des Servers in der Nutzersprache: Die Jobs kennen sie nicht. @param {string} sub */
+/** The server's job subtitle in the user's language: the jobs do not know it. @param {string} sub */
 function translateJobSub(sub) {
   if (!sub) return '';
   let m;
@@ -175,10 +175,10 @@ function translateJobSub(sub) {
   m = sub.match(/^(\d+) aktualisiert, (\d+) Fehler — ([\d.]+)s$/);
   if (m) return tRaw('monitor.sub.updated_errors', { upd: m[1], err: m[2], sec: m[3] });
   if (sub === 'Starte\u2026' || sub === 'Starte...') return tRaw('monitor.starting');
-  return sub; // unbekannt: unverändert
+  return sub; // unknown: unchanged
 }
 
-// Speichert den Zeitplan eines Dienstes. payload = {time:"HH:MM"} oder {minutes:n}; bestätigt am Feld.
+// Saves a service's schedule. payload = {time:"HH:MM"} or {minutes:n}; confirmed at the field.
 /**
  * @param {string} name
  * @param {{ time?: string, minutes?: number }} payload
@@ -190,9 +190,9 @@ export async function saveJobSchedule(name, payload, feld) {
   else toast(d?.error || t('settings.error'), 'error');
 }
 
-// Die Zeitpläne stehen in den Einstellungen (Feld); hier, unter „Hintergrundarbeiten“, nur als Text mit
-// Link dorthin: Beobachten und Einstellen an einem Ort waren drei Speicherwege nebeneinander.
-// Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt die Form des Browsers („03:00 AM“).
+// The schedules are in the settings (field); here, under "background jobs", only as text with a
+// link there: observing and configuring in one place were three save paths side by side.
+// The time as a text field in 24 h form: <input type="time"> shows the browser's form ("03:00 AM").
 /** @param {Record<string, import('../../frontend-types/contract').JobSchedule> | null | undefined} schedules @param {string} k */
 const schedInput = (schedules, k) => {
   const sc = schedules?.[k];
@@ -218,7 +218,7 @@ const schedText = (schedules, k) => {
   return html`<span class="mon-plan">${wann}</span> <a class="zu-sicht" href="#/einstellungen/hintergrund">${tRaw('monitor.sched.aendern')}</a>`;
 };
 
-/** Die Zeitpläne als Felder in Einstellungen › Hintergrundarbeiten. */
+/** The schedules as fields in settings › background jobs. */
 export async function loadSchedules() {
   const el = G('einst-zeitplaene');
   if (!el) return;
@@ -233,7 +233,7 @@ export async function loadSchedules() {
     </table></div>`,
   );
 }
-/** Strichsymbole aus dem Sprite wie überall sonst; farbige Bildchen wirkten neben ihnen wie Emojis. */
+/** Line icons from the sprite as everywhere else; colored pictures looked like emojis next to them. */
 const JOB_SYMBOL = /** @type {Record<string, string>} */ ({
   csvImport: 'import',
   blIds: 'link',
@@ -257,7 +257,7 @@ const statusIcon = (/** @type {string} */ s, /** @type {JobStatus} */ j) => {
   if (s === 'idle' && j.total > 0 && j.progress < j.total) return ico('warnung');
   return ico('pause');
 };
-/** Nur bei laufender Arbeit: Ein stehender Balken las sich wie ein hängender Lauf. */
+/** Only with running work: a standing bar read like a hanging run. */
 const bar = (/** @type {number} */ v, /** @type {number} */ gesamt) => {
   if (!gesamt) return '';
   const pct = Math.min(100, Math.round((v / gesamt) * 100));
@@ -287,7 +287,7 @@ const aktionen = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
 const serviceName = (/** @type {string} */ k, /** @type {JobStatus} */ j) =>
   tRaw('monitor.job.' + k) !== 'monitor.job.' + k ? tRaw('monitor.job.' + k) : j.label || k;
 
-/** Feste Schlüssel statt zusammengesetzter (test/i18n-calls.test.js); Text wie im Protokoll (src/http/proxyHint.ts). */
+/** Fixed keys instead of composed ones (test/i18n-calls.test.js); text as in the log (src/http/proxyHint.ts). */
 const PROXY_HINT = {
   gateway: 'monitor.proxy.gateway',
   docker_netz: 'monitor.proxy.docker_netz',
@@ -299,7 +299,7 @@ export async function loadMonitor() {
   if (!el) return;
   stopMonitor();
   const lauf = ++_monitorLauf;
-  // Ruhig alle 15 s, solange etwas läuft alle 5 s; ein gescheiterter Abruf plant die nächste Runde trotzdem.
+  // Calm every 15 s, every 5 s while something is running; a failed fetch still schedules the next round.
   const runde = async () => {
     const aktiv = await render();
     if (lauf !== _monitorLauf) return;
@@ -309,7 +309,7 @@ export async function loadMonitor() {
     const d = await apiData('GET', '/v1/admin/jobs');
     if (!d?.success) return false;
     const { jobs, schedules } = d;
-    // db und lastRun nennt der Vertrag nicht (JobsResponse); der Server schickt sie mit.
+    // The contract does not name db and lastRun (JobsResponse); the server sends them along.
     const dbStats =
       /** @type {{ csvCache: { lastSync?: string, parts?: number, inventoryParts?: number }, blMapping: { mapped?: number, total?: number } }} */ (
         d.db
@@ -365,7 +365,7 @@ export async function loadMonitor() {
 }
 
 /**
- * Namen der Auftragsarten und Status — ausgeschrieben, damit jeder Schlüssel prüfbar im Wörterbuch steht.
+ * Names of the job kinds and statuses — spelled out, so that every key stands checkably in the dictionary.
  * @type {Record<string, () => string>}
  */
 const KIND_NAMES = {
@@ -396,10 +396,10 @@ const STATUSNAMEN = {
   fehler: () => tRaw('monitor.auftraege.fehler'),
   abgebrochen: () => tRaw('monitor.auftraege.abgebrochen'),
 };
-/** Der Name einer Auftragsart in der Oberflächensprache, fertig maskiert; unbekannte bleiben, wie sie sind. */
+/** The name of a job kind in the UI language, already escaped; unknown ones stay as they are. */
 const artName = (/** @type {string} */ art) => (Object.hasOwn(KIND_NAMES, art) ? KIND_NAMES[art]() : art);
 
-/** Eine Serverfehlermeldung in einem Satz ohne Netzwerkwissen; das Original bleibt zur Fehlersuche aufklappbar.
+/** A server error message in one sentence without networking knowledge; the original stays expandable for debugging.
  * @param {unknown} text */
 export function errorShort(text) {
   const s = String(text || '');
@@ -417,12 +417,12 @@ function fehlerKasten(text) {
   return html`<details class="fehler-kasten"><summary>${ico('warnung')} ${errorShort(text)}</summary><code>${text}</code></details>`;
 }
 
-// Sieben gleiche „Jetzt starten“ sind für Vorleser ununterscheidbar: Der Name nennt die Art mit.
+// Seven identical "start now" are indistinguishable for screen readers: the name names the kind too.
 const knopf = (/** @type {string} */ aktion, /** @type {string} */ arg, /** @type {string} */ text, wofuer = '') =>
   html`<button class="btn bs btn-sm" type="button" data-click="${aktion}"${echt()} data-arg="${arg}"${wofuer ? html` aria-label="${text}: ${wofuer}"` : ''}>${text}</button>`;
 const statusName = (/** @type {string} */ s) => (Object.hasOwn(STATUSNAMEN, s) ? STATUSNAMEN[s]() : s);
-/** Eine Zeile der einzelnen Aufträge. Steht eine Art mehrfach offen, nennt die Rolle am Namen, welcher Eintrag
- * Wiederholung und welcher regulärer Lauf ist. @param {Auftrag} a @param {Set<string>} mehrfach */
+/** A row of the individual jobs. If a kind is open several times, the role at the name says which entry
+ * is a retry and which is the regular run. @param {Auftrag} a @param {Set<string>} mehrfach */
 const jobRow = (a, mehrfach) => {
   const offen = a.status === 'offen' || a.status === 'laeuft';
   const rolle =
@@ -434,7 +434,7 @@ const jobRow = (a, mehrfach) => {
           ? tRaw('monitor.auftraege.wiederholung')
           : '';
   const zeit = fmtDatum(a.status === 'laeuft' ? a.started_at : a.due_at, 'wann');
-  // Verschoben ist nicht gescheitert: Das sagt der Server (wartet), nicht der Text des Grundes.
+  // Postponed is not failed: the server says so (wartet), not the text of the reason.
   const wartet = a.status === 'offen' && a.waiting && !!a.due_at && new Date(a.due_at) > new Date();
   const wann = wartet
     ? t('monitor.auftraege.wartet_bis', { zeit })
@@ -469,8 +469,8 @@ const jobRow = (a, mehrfach) => {
   </tr>`;
 };
 
-/** Die Karte „Hintergrundarbeiten“: je Art die Zahlen mit „Jetzt“ und „Leeren“, darunter die einzelnen
- * laufenden, wartenden und gescheiterten Aufträge (GET /api/v1/admin/auftraege). */
+/** The card "background jobs": per kind the numbers with "now" and "clear", below the individual
+ * running, waiting and failed jobs (GET /api/v1/admin/auftraege). */
 async function showJobs() {
   const el = G('auftraege-karte');
   if (!el) return;
@@ -485,7 +485,7 @@ async function showJobs() {
     zahl[z.type] ||= {};
     zahl[z.type][z.status] = z.anzahl;
   }
-  // Der nächste Lauf je Art: der früheste wartende Auftrag dieser Art.
+  // The next run per kind: the earliest waiting job of that kind.
   /** @type {Record<string, string>} */
   const naechster = {};
   for (const a of d.auftraege)
@@ -539,7 +539,7 @@ async function showJobs() {
     }`,
   );
 }
-/** Einzelne Aufträge: am Telefon zu, sonst offen; ein Klick gilt bis zum Neuladen. @type {boolean | null} */
+/** Individual jobs: collapsed on the phone, otherwise open; a click applies until reloading. @type {boolean | null} */
 let _openSingle = null;
 const openSingle = () => _openSingle ?? !(typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches);
 if (typeof document !== 'undefined')
@@ -574,7 +574,7 @@ async function auftragsArtLeeren(art) {
   await showJobs();
 }
 
-/** Beim Verlassen des Reiters: die Abfrage anhalten. @returns {boolean} ob sie lief */
+/** When leaving the tab: stop polling. @returns {boolean} whether it was running */
 export function stopMonitor() {
   _monitorLauf++;
   if (!_monitorTimer) return false;
@@ -583,7 +583,7 @@ export function stopMonitor() {
   return true;
 }
 
-// ── Handler beim Dispatcher anmelden (js/registry.js); er gehört zu dem Modul, das ihn umsetzt. ──
+// ── Register handlers with the dispatcher (js/registry.js); it belongs to the module that implements it. ──
 registerActions({
   openLogViewer,
   auftragAbbrechen,

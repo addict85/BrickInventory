@@ -1,5 +1,5 @@
-// Der Reiter Teile: Teile aus Sets (seitenweise) und die manuell erfassten Teile samt Erfassen, Farbwahl und
-// CSV-Import — beide Listen teilen Filter und Leerzustand.
+// The parts tab: parts from sets (page by page) and the manually captured parts including capture, color choice and
+// CSV import — both lists share filter and empty state.
 import { subscribe, emit } from './events.js';
 import {
   loadDisplay,
@@ -46,8 +46,8 @@ let partsCats = [];
 let activeColor = null;
 /** @type {string | null} */
 let activeCat = null;
-// Kategorie-ID (part_cat_id) -> Klartextname via geladenem partsCats-Mapping. Ohne Namen ist eine bare ID
-// unbekannt; ein eingetragener Name bleibt stehen, wie im Teiledetail.
+// Category ID (part_cat_id) -> plain name via the loaded partsCats mapping. Without a name a bare ID is
+// unknown; an entered name stays, as in the part detail.
 const katName = (/** @type {unknown} */ cn, /** @type {string | null | undefined} */ label) =>
   label || (cn == null || cn === '' || /^\d+$/.test(String(cn)) ? tRaw('common.unknown') : String(cn));
 /** @param {unknown} cn */
@@ -61,7 +61,7 @@ export async function loadParts() {
   await Promise.all([loadPartsStats(), loadPartsFilters()]);
   await loadPartsData();
 }
-/** Platzhalter einer Kennzahl, solange sie lädt — „—“ hiesse „kein Wert“. */
+/** Placeholder of a metric while it loads — "—" would mean "no value". */
 const VALUE_SKELETON = '<span class="skelett-zeile skelett-wert" aria-hidden="true"></span>';
 
 async function loadPartsStats() {
@@ -80,7 +80,7 @@ async function loadPartsStats() {
   G('ps-total').dataset.geladen = '1';
   const s = d.stats;
   if (!s) return;
-  // Wie die Kachel der Sammlung: Teile aus Sets und einzeln erfasste zusammen.
+  // Like the collection's tile: parts from sets and individually captured ones together.
   const einzeln = s.manual_parts || 0;
   G('ps-total').textContent = fmtBig((s.total_parts || 0) + einzeln);
   G('ps-total-sub').textContent = partsBreakdown(s.total_parts || 0, einzeln);
@@ -99,9 +99,9 @@ async function loadPartsFilters() {
 }
 
 /**
- * Farbe und Kategorie als Auswahlfelder in der Filterleiste. Sie gelten wie Suche und Konto für BEIDE Listen;
- * die manuellen Teile bringen ihre Farben und Kategorien deshalb mit ein. Ohne Auswahl bleibt ein Feld
- * verborgen.
+ * Color and category as select fields in the filter bar. Like search and account they apply to BOTH lists;
+ * the manual parts therefore contribute their colors and categories too. Without a choice a field stays
+ * hidden.
  */
 export function drawPartsFilter() {
   const farben = new Map(
@@ -129,7 +129,7 @@ export function drawPartsFilter() {
 function fillFilter(id, alle, eintraege, gewaehlt) {
   const el = G(id);
   if (!el) return;
-  // Eine gewählte Farbe bleibt auswählbar, auch wenn ein anderer Filter sie gerade ausblendet.
+  // A chosen color stays selectable, even if another filter currently hides it.
   if (gewaehlt && !eintraege.has(gewaehlt)) eintraege.set(gewaehlt, gewaehlt);
   setzeHtml(
     el,
@@ -151,7 +151,7 @@ function setCatFilter() {
 }
 
 /**
- * Passt ein manuell erfasstes Teil zu Farbe und Kategorie der Filterleiste?
+ * Does a manually captured part match color and category of the filter bar?
  * @param {{ color_name?: string | null, category_name?: unknown }} p
  */
 export function partFitsToFilter(p) {
@@ -161,23 +161,23 @@ export function partFitsToFilter(p) {
 }
 
 /** @type {boolean | null} */
-let _setPartsEmpty = null; // null: noch nicht geladen
+let _setPartsEmpty = null; // null: not loaded yet
 /**
  * @type {boolean | null}
  */
 let _manualEmpty = null;
 
 /**
- * Ein Leerzustand für den ganzen Reiter: Er steht nur da, wenn weder manuell erfasste Teile noch Teile aus
- * Sets zu sehen sind. Eine leere Teilliste verschwindet stumm, solange die andere etwas zeigt.
+ * One empty state for the whole tab: it only stands there if neither manually captured parts nor parts from
+ * sets are visible. An empty parts list disappears silently as long as the other one shows something.
  * @param {boolean} [manualEmpty]
  */
 export function reconcilePartsEmpty(manualEmpty) {
   if (manualEmpty !== undefined) _manualEmpty = manualEmpty;
   G('tab-parts')?.classList.remove('sammlung-leer');
   const box = G('manual-parts-box');
-  // Erst sichtbar, wenn die Liste geladen ist und etwas zeigt: Vorher stand die leere Box „Manuell erfasste
-  // Teile“ über dem Skelett.
+  // Only visible once the list is loaded and shows something: before, the empty box "manually captured
+  // parts" stood above the skeleton.
   if (box) box.style.display = _manualEmpty === false ? '' : 'none';
   if (_setPartsEmpty !== true) return;
   const main = G('parts-main');
@@ -188,7 +188,7 @@ export function reconcilePartsEmpty(manualEmpty) {
   const q = G('parts-search')?.value.trim() || '';
   const gefiltert = !!(activeColor || activeCat || q || G('parts-spare')?.value);
   G('tab-parts')?.classList.toggle('sammlung-leer', !gefiltert);
-  // Wie in allen Listen: „Noch keine …“ ohne Filter, sonst „Keine Treffer“.
+  // As in all lists: "no … yet" without a filter, otherwise "no hits".
   if (gefiltert) reportHits(q ? tRaw('common.no_hits', { query: q }) : tRaw('parts.no_filter_match'));
   setzeHtml(
     main,
@@ -207,7 +207,7 @@ export function reconcilePartsEmpty(manualEmpty) {
   );
 }
 
-/** Suche, Ersatzteil-, Farb- und Kategoriefilter leeren (Knopf im Leerzustand). */
+/** Clear search, spare part, color and category filters (button in the empty state). */
 export function resetPartsFilter() {
   activeColor = null;
   activeCat = null;
@@ -218,22 +218,22 @@ export function resetPartsFilter() {
   partsFilterChanged();
 }
 
-// Seitenweise mit Endlos-Scroll statt der ganzen Wand auf einmal: Alle Teil/Farb-Kombinationen waren 20 MB
-// und zehntausende Knoten je Tabwechsel. Eine Farbe kann über die Seitengrenze laufen; _partsLastColor hängt
-// die neue Seite deshalb an die letzte Gruppe an statt eine zweite Überschrift.
+// Page by page with infinite scroll instead of the whole wall at once: all part/color combinations were 20 MB
+// and tens of thousands of nodes per tab switch. A color can run across the page boundary; _partsLastColor therefore appends
+// the new page to the last group instead of a second heading.
 
 const PARTS_PAGE_SIZE = 100;
-let _partsPage = 0; // zuletzt geladene Seite
-let _partsTotal = 0; // Gesamtzahl der Gruppen laut Server
-let _partsShown = 0; // bereits gerenderte Gruppen
+let _partsPage = 0; // most recently loaded page
+let _partsTotal = 0; // total number of groups according to the server
+let _partsShown = 0; // groups already rendered
 const teileLaden = loadGuard();
 let _partsLoading = false;
 let _partsDone = false;
 /** @type {string | null} */
-let _partsLastColor = null; // Farbe der zuletzt gerenderten Gruppe
+let _partsLastColor = null; // color of the most recently rendered group
 
 /**
- * Filter- und Modusparameter für eine Seitenabfrage.
+ * Filter and mode parameters for a page query.
  * @param {number} page
  */
 function partsParams(page) {
@@ -246,10 +246,10 @@ function partsParams(page) {
   if (spare !== '') p.set('spare', spare);
   const ordnung = G('parts-ordnung').value;
   if (ordnung !== 'farbe') p.set('ordnung', ordnung);
-  // Manuell erfasste Teile haben ihren eigenen Bereich oben — hier nur Set-Teile.
+  // Manually captured parts have their own area at the top — here only set parts.
   p.set('exclude_manual', '1');
-  // in_sets ist serverseitig Opt-in (kostet bei 380 Sets rund 155 ms und 2 MB). Nur die Tabellenansicht hat
-  // eine Spalte dafür, die Kachel nicht.
+  // in_sets is opt-in on the server (costs about 155 ms and 2 MB at 380 sets). Only the table view has
+  // a column for it, the tile does not.
   if (tablesView('parts-view')) p.set('with_sets', '1');
   p.set('page', String(page));
   p.set('page_size', String(PARTS_PAGE_SIZE));
@@ -258,7 +258,7 @@ function partsParams(page) {
   return p;
 }
 
-/** Vollständiger Neuaufbau — bei jedem Filter-, Such- oder Moduswechsel. */
+/** Complete rebuild — on every filter, search or mode change. */
 async function loadPartsData() {
   teileLaden.start();
   _partsPage = 0;
@@ -275,7 +275,7 @@ async function loadPartsData() {
 }
 
 /**
- * Nächste Seite holen und anhängen.
+ * Fetch and append the next page.
  * @param {boolean} isFirst
  */
 async function loadPartsPage(isFirst) {
@@ -311,23 +311,23 @@ async function loadPartsPage(isFirst) {
     reconcilePartsEmpty();
     preparePartsShell();
   }
-  // Wie in der Sammlung: Eine Suche sagt Vorlesern, wie viele Einträge sie fand.
+  // As in the collection: a search tells screen readers how many entries it found.
   if (isFirst && (activeColor || activeCat || G('parts-search')?.value.trim() || G('parts-spare')?.value))
     reportHits(tRaw('treffer.eintraege', { n: _partsTotal || parts.length }));
   appendParts(parts);
 
   _partsShown += parts.length;
-  // Fertig, wenn alles da ist oder der Server weniger als eine volle Seite liefert.
+  // Done when everything is there or the server delivers less than a full page.
   if (parts.length < PARTS_PAGE_SIZE || (_partsTotal && _partsShown >= _partsTotal)) _partsDone = true;
   updatePartsSentinel();
   _partsLoading = false;
 
-  // Füllt die erste Seite den Bildschirm nicht aus, gäbe es kein Scroll-Ereignis und der Sentinel bliebe für
-  // immer sichtbar. Dann direkt nachlegen.
+  // If the first page does not fill the screen, there would be no scroll event and the sentinel would stay
+  // visible forever. Then load more directly.
   if (!_partsDone && isFirst) requestAnimationFrame(maybeLoadMoreParts);
 }
 
-/** Grundgerüst je nach Ansichtsmodus anlegen (einmal pro Neuaufbau). */
+/** Create the basic skeleton depending on the view mode (once per rebuild). */
 function preparePartsShell() {
   const main = G('parts-main');
   if (tablesView('parts-view')) {
@@ -338,14 +338,14 @@ function preparePartsShell() {
   } else {
     setzeHtml(main, html`<div class="parts-list"></div>`);
   }
-  // parts-list und parts-body sind Kinder von #parts-main und werden bei jedem Neuaufbau ersetzt — deshalb
-  // Klassen statt IDs. Der Sentinel steht dagegen statisch in index.html (wie cat-sentinel) und überlebt den
+  // parts-list and parts-body are children of #parts-main and are replaced on every rebuild — hence
+  // classes instead of IDs. The sentinel on the other hand stands statically in index.html (like cat-sentinel) and survives the
   // Moduswechsel.
   bindPartsSentinel();
 }
 
 /**
- * Eine Seite an die bestehende Darstellung anhängen.
+ * Append a page to the existing display.
  * @param {PartRow[]} parts
  */
 function appendParts(parts) {
@@ -360,19 +360,19 @@ function appendParts(parts) {
 
   const list = G('parts-main').querySelector('.parts-list');
   if (!list) return;
-  // Ungruppiert: dasselbe Raster ohne Farbkacheln, die Reihenfolge kommt vom Server.
+  // Ungrouped: the same grid without color tiles, the order comes from the server.
   if (G('parts-ordnung').value !== 'farbe') {
     fuegeHtmlEin(list, 'beforeend', parts.map(partsCard));
     if (typeof observeLazyImages === 'function') observeLazyImages(list);
     return;
   }
 
-  // Nach Farbe gruppieren — der Server liefert bereits farbsortiert.
+  // Group by color — the server already delivers sorted by color.
   /** @type {{ color: string, hex: string | null | undefined, parts: PartRow[] }[]} */
   const groups = [];
   for (const p of parts) {
-    // Gruppiert wird über den ENGLISCHEN Namen — er ist der stabile Schlüssel aus der Datenbank. Übersetzt
-    // wird erst die Überschrift beim Zeichnen.
+    // Grouping happens via the ENGLISH name — it is the stable key from the database. Only the heading
+    // is translated when drawing.
     const key = p.color_name || '';
     const last = groups[groups.length - 1];
     if (last && last.color === key) last.parts.push(p);
@@ -381,8 +381,8 @@ function appendParts(parts) {
 
   let markup = html``;
   for (const g of groups) {
-    // Setzt die Gruppe die letzte der vorigen Seite fort? Dann in deren Raster einhängen statt eine zweite
-    // Überschrift derselben Farbe zu erzeugen.
+    // Does the group continue the last one of the previous page? Then hook into its grid instead of creating a second
+    // heading of the same color.
     if (g.color === _partsLastColor) {
       const lastGrid = list.querySelector('.parts-group:last-child .parts-grid');
       if (lastGrid) {
@@ -410,8 +410,8 @@ function appendParts(parts) {
 }
 
 /**
- * Zähler in der Gruppenüberschrift hochsetzen. Ohne das stünde dort die Anzahl der Karten aus der ERSTEN
- * Seite, obwohl die Gruppe inzwischen weitergewachsen ist.
+ * Increase the counter in the group heading. Without that it would show the number of cards from the FIRST
+ * page, although the group has grown further in the meantime.
  * @param {HTMLElement | null | undefined} groupEl
  * @param {number} add
  */
@@ -424,27 +424,27 @@ function bumpGroupCount(groupEl, add) {
 }
 
 /**
- * Ersatzteil-Plakette. `p.is_spare` genügt, weil der Server die vier Schreibweisen in istErsatzteil() zu
- * einem echten Wahrheitswert macht — die Zeichenkette "0" wäre in JavaScript wahr.
+ * Spare part badge. `p.is_spare` is enough, because the server turns the four spellings into a real boolean in
+ * istErsatzteil() — the string "0" would be truthy in JavaScript.
  * @param {{ is_spare?: boolean | null }} p
  */
 function sparePartBadge(p) {
   return p.is_spare ? html`<span class="spare-tag">${t('parts.spare_tag')}</span>` : '';
 }
 
-/** Alternativtext eines Teilbilds: Name und Farbe, wie sie auf der Kachel stehen. */
+/** Alternative text of a part image: name and color, as they stand on the tile. */
 
 /** @param {PartRow} p */
 function partsCard(p) {
   const k = kachelName();
-  // data-orig speist den Zoom (actions.js, openImageLightboxFromEl): ÜBER den Server-Proxy in voller
-  // Auflösung (imgUrl(fullUrl(...), false)), nicht mehr die rohe CDN-Adresse direkt im Browser. Anders als
-  // bei Sets bewusst so — auf Nutzerwunsch soll auch das Detailbild der Teile über das Backend laufen, nicht
-  // am Server vorbei direkt zum CDN.
+  // data-orig feeds the zoom (actions.js, openImageLightboxFromEl): VIA the server proxy in full
+  // resolution (imgUrl(fullUrl(...), false)), no longer the raw CDN address directly in the browser. Unlike
+  // for sets deliberately so — at the user's request the parts' detail image should also go through the backend, not
+  // bypass the server directly to the CDN.
   const rawSrc = p.image_local || p.image_url || '';
-  // Die Kachel oeffnet den Detail-Dialog (Marcos Wunsch). Bis hierher war sie tot: Anders als bei manuell
-  // erfassten Teilen gab es zu einem Teil aus einem Set nichts zu sehen — kein Bild in voller Groesse, keine
-  // Angabe, aus welchem Set es stammt.
+  // The tile opens the detail dialog (Marco's wish). Until now it was dead: unlike manually
+  // captured parts, there was nothing to see for a part from a set — no image in full size, no
+  // information about which set it comes from.
   return html`<div class="part-card" data-stil="cursor:pointer" tabindex="0" role="button"${k.attr} data-click="openSetItemDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}">
     ${rawSrc ? bildTag({ src: imgUrl(thumbUrl(rawSrc) || rawSrc, true), alt: '', klasse: 'part-img', fade: true, orig: imgUrl(fullUrl(rawSrc), false), ph: 'teil' }) : html`<span class="bild-ph part-img" aria-hidden="true">${placeholderContent('teil')}</span>`}
     <div class="part-num" title="${p.part_number}">${p.bl_part_number || p.part_number}</div>
@@ -459,8 +459,8 @@ function partsCard(p) {
 
 /** @param {PartRow} p */
 function partsTableRow(p) {
-  // Dieselbe Handlung wie auf der Kachel — eine Ansicht darf nicht koennen, was die andere nicht kann. Genau
-  // daran ist in diesem Projekt schon mehrfach etwas auseinandergelaufen.
+  // The same action as on the tile — one view must not be able to do what the other cannot. Exactly
+  // there things have already drifted apart several times in this project.
   return html`<tr data-stil="cursor:pointer" data-click="openSetItemDetail" data-arg="part" data-arg2="${p.part_number}" data-arg3="${p.color_id || 0}">
     <td>${p.image_local || p.image_url ? bildTag({ src: imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url, true), alt: '', klasse: 'bild-klein', ph: 'teil' }) : html`<span class="bild-ph bild-klein" aria-hidden="true">${placeholderContent('teil')}</span>`}</td>
     <td>${rowsButton(
@@ -476,7 +476,7 @@ function partsTableRow(p) {
   </tr>`;
 }
 
-/** Ladehinweis bzw. Abschlusszeile unter der Liste. */
+/** Loading hint or final row below the list. */
 function updatePartsSentinel() {
   const s = G('parts-sentinel');
   if (!s) return;
@@ -492,7 +492,7 @@ function updatePartsSentinel() {
   }
 }
 
-/** Ohne IntersectionObserver hängt der Lauscher am Fenster, einmal je Seite. */
+/** Without IntersectionObserver the listener hangs on the window, once per page. */
 let scrollBound = false;
 /** @type {IntersectionObserver | null} */
 let _partsIO = null;
@@ -505,11 +505,11 @@ function bindPartsSentinel() {
       entries => {
         if (entries.some(e => e.isIntersecting)) maybeLoadMoreParts();
       },
-      { rootMargin: '600px' }, // Vorlauf, damit vor dem Sichtbarwerden geladen wird
+      { rootMargin: '600px' }, // Lead time, so that loading happens before becoming visible
     );
     _partsIO.observe(s);
   } else if (!scrollBound) {
-    // Fallback für Browser ohne IntersectionObserver
+    // Fallback for browsers without IntersectionObserver
     scrollBound = true;
     window.addEventListener(
       'scroll',
@@ -524,15 +524,15 @@ function bindPartsSentinel() {
 
 function maybeLoadMoreParts() {
   if (_partsDone || _partsLoading) return;
-  // Nur laden, wenn der Teile-Tab auch sichtbar ist.
+  // Only load if the parts tab is actually visible.
   const tab = G('tab-parts');
   if (tab && !tab.classList.contains('active')) return;
   loadPartsPage(false);
 }
 
 /**
- * Der Suchtext gilt für BEIDE Listen des Reiters: Die Filterleiste steht über den manuellen Teilen, also
- * müssen sie mitfiltern. Eine Entprellung für beide, damit keine Liste vergessen werden kann.
+ * The search text applies to BOTH lists of the tab: the filter bar stands above the manual parts, so
+ * they must filter along. One debounce for both, so that no list can be forgotten.
  */
 function partsFilterChanged() {
   loadPartsData();
@@ -543,26 +543,26 @@ G('parts-search').addEventListener('input', () => {
   G('parts-search')._t = setTimeout(partsFilterChanged, 350);
 });
 G('parts-spare').addEventListener('change', loadPartsData);
-// Die Reihenfolge ist eine Vorliebe, kein Filter: Sie bleibt im Browser stehen.
+// The order is a preference, not a filter: it stays in the browser.
 const PARTS_ORDER_KEY = 'bim_teile_ordnung';
 try {
   const gemerkt = localStorage.getItem(PARTS_ORDER_KEY);
   if (gemerkt && [...G('parts-ordnung').querySelectorAll('option')].some(o => o.value === gemerkt))
     G('parts-ordnung').value = gemerkt;
 } catch (_) {
-  /* ohne Speicher gilt die Vorgabe */
+  /* without storage the default applies */
 }
 G('parts-ordnung').addEventListener('change', () => {
   try {
     localStorage.setItem(PARTS_ORDER_KEY, G('parts-ordnung').value);
   } catch (_) {
-    /* nur Komfort */
+    /* convenience only */
   }
   loadPartsData();
 });
 /**
- * Der Ansichtsumschalter gilt für beide Listen. Die Set-Teile laden neu (Tabelle braucht with_sets=1), die
- * manuellen werden nur neu gezeichnet: Sie haben die Daten schon, ein zweiter Abruf wäre nur Wartezeit.
+ * The view switch applies to both lists. The set parts reload (the table needs with_sets=1), the
+ * manual ones are only redrawn: they already have the data, a second fetch would only be waiting time.
  */
 function partsViewChanged() {
   loadPartsData();
@@ -576,7 +576,7 @@ atPhoneSwitch(() => {
 // ── MANUAL PARTS ─────────────────────────────────────────────────────────────
 /** @type {ManuellesTeil[]} */
 let manualPartsCache = [];
-/** Die zuletzt geladenen manuell erfassten Teile (nur lesen). */
+/** The most recently loaded manually captured parts (read only). */
 export function manualParts() {
   return manualPartsCache;
 }
@@ -584,8 +584,8 @@ export function manualParts() {
 export async function loadManualParts() {
   const [d, v] = await Promise.all([
     api('GET', `/v1/parts/manual${manualQuery('parts', 'parts-search')}`),
-    // Derselbe Filter wie die Liste darüber: Sonst stünden Zähler und Menge aus dem einen Blickfeld neben
-    // einer Summe aus einem anderen.
+    // The same filter as the list above: otherwise counter and quantity from one scope would stand next to
+    // a sum from another.
     api('GET', `/v1/finance/parts-valuation${scopeQuery('parts')}`),
   ]);
   if (!d.success) return;
@@ -618,7 +618,7 @@ export function renderManualParts() {
     el,
     html`<div class="man-grid">
     ${teile.map(p => {
-      // Vorschau über den Server-Proxy wie überall: nie das CDN-Bild in voller Auflösung in der Kachel.
+      // Preview via the server proxy as everywhere: never the CDN image in full resolution in the tile.
       const imgSrc = imgUrl(thumbUrl(p.image_local || p.image_url) || p.image_local || p.image_url || '', true);
       const img = imgSrc
         ? bildTag({ src: imgSrc, alt: '', klasse: 'man-tile-img', ph: 'teil' })
@@ -626,9 +626,9 @@ export function renderManualParts() {
       const colorRow = p.color_name
         ? `<div class="man-tile-color">${p.color_hex ? `<span class="man-tile-swatch" data-farbe="${escHex(p.color_hex, 'var(--s300)')}"></span>` : ''}${esc(colorName(p.color_name))}</div>`
         : '';
-      // Wie bei den Minifiguren: mengengewichtet über die Erfassungen.
+      // As for the minifigures: weighted by quantity over the acquisitions.
       const partPrice = p.avg_purchase_price ?? p.unit_price ?? p.purchase_price;
-      // Stückpreis wie in den Finanzen mit „je“; neben „×{n}“ läse sich der blanke Betrag als Summe.
+      // Unit price as in the finances with "each"; next to "×{n}" the bare amount would read as a sum.
       const priceStr = partPrice != null ? esc(tRaw('finance.je', { preis: fmtN(partPrice, accountCurrency) })) : '—';
       const condBadge = condBadges(p);
       const k = kachelName();
@@ -651,7 +651,7 @@ export function renderManualParts() {
 }
 
 /**
- * @param {number | string} [owner] Besitzer der Karte — siehe deleteManualPart.
+ * @param {number | string} [owner] owner of the card — see deleteManualPart.
  * @param {string} partNumber
  * @param {number} colorId
  * @param {object} body
@@ -672,11 +672,11 @@ export async function updateManualPart(partNumber, colorId, body, owner) {
 /**
  * @param {string} partNumber
  * @param {number} colorId
- * @param {number|string} [owner]  Besitzer der KARTE. Im Haushalt zeigt der
- *   manuelle Bereich die Einträge aller Konten mit Plakette und Papierkorb;
- *   ohne diese Angabe löschte der Server immer die Zeile des Aufrufers —
- *   geklickt war die fremde Karte, weg war die eigene, und die Antwort sagte
- *   „success". Begründung und Messung in src/household/household.ts.
+ * @param {number|string} [owner]  owner of the CARD. In the household the
+ *   manual area shows the entries of all accounts with badge and trash;
+ *   without this value the server always deleted the caller's row —
+ *   the foreign card was clicked, the own one was gone, and the response said
+ *   "success". Reasoning and measurement in src/household/household.ts.
  */
 export async function deleteManualPart(partNumber, colorId, owner) {
   if (!(await confirmDelete(tRaw('parts.delete.title'), tRaw('gallery.delete.text', { name: partNumber }), 'teil')))
@@ -706,7 +706,7 @@ subscribe('bestandGeaendert', () => {
 });
 subscribe('teileLaden', () => loadParts());
 
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
+// ── Register handlers with the dispatcher (see js/registry.js) ─────────────
 registerActions({
   loadParts,
   setCatFilter,

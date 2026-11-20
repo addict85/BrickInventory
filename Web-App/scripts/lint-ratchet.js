@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Lint und Format als Ratsche: Biome (biome.json) findet im Bestand Hunderte
- * Stellen, die erst nach und nach aufgeräumt werden. Rot ist nur, was die
- * Zahl über die Schranke in scripts/lint-schranken.json hebt; sinkt sie, nennt
- * das Skript die neue Zahl zum Nachziehen.
+ * Lint and format as a ratchet: Biome (biome.json) finds hundreds of places in the
+ * existing code that are only cleaned up bit by bit. Red is only what raises the
+ * number above the limit in scripts/lint-schranken.json; if it drops, the
+ * script names the new number to update.
  */
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
@@ -19,7 +19,7 @@ const limitsFile = process.env.LINT_SCHRANKEN || path.join(__dirname, 'lint-schr
 const limit = JSON.parse(fs.readFileSync(limitsFile, 'utf8'))[art];
 
 const biome = path.join(ROOT, 'node_modules', '@biomejs', 'biome', 'bin', 'biome');
-// LINT_WURZEL: ein anderer Baum mit eigener biome.json, für den Test mit absichtlichen Funden.
+// LINT_WURZEL: another tree with its own biome.json, for the test with deliberate findings.
 const r = spawnSync(process.execPath, [biome, art, '--reporter=json', '--max-diagnostics=none', '.'], {
   cwd: process.env.LINT_WURZEL || ROOT,
   encoding: 'utf8',
@@ -34,7 +34,7 @@ try {
   process.exit(2);
 }
 
-// Eigene Regeln (biome/*.grit) melden als „plugin“; sie zählen wie jede andere Lint-Regel.
+// Own rules (biome/*.grit) report as "plugin"; they count like any other lint rule.
 const isLint = (/** @type {{ category: string }} */ d) => d.category.startsWith('lint/') || d.category === 'plugin';
 const funde = bericht.diagnostics.filter(d => (art === 'lint' ? isLint(d) : d.category === 'format'));
 const fremd = bericht.diagnostics.filter(d => !isLint(d) && d.category !== 'format');

@@ -1,4 +1,4 @@
-// Der Katalog: Sets suchen, Details zeigen und in die Sammlung übernehmen.
+// The catalog: search sets, show details and add them to the collection.
 import { emit } from './events.js';
 import { detailRow, kachelName, loadDisplay, listLoadError } from './components.js';
 import { registerActions } from './registry.js';
@@ -15,15 +15,15 @@ import { esc, html, joinHtml } from './escaping.js';
 import { handleSseEvent, hideProgress, showProgress, streamDone, streamRequest } from './progress.js';
 import { emptyLocationField, selectedOwner, selectedStorage } from './account-locations.js';
 
-// Datenquelle ist /api/v1/catalog/* (lokale rb_*-Tabellen aus dem täglichen CSV-Sync) — serverseitig
-// paginiert, da der Katalog ~25k Sets umfasst.
+// The data source is /api/v1/catalog/* (local rb_* tables from the daily CSV sync) — paginated
+// on the server side, since the catalog comprises ~25k sets.
 
 const _catState = { page: 1, q: '', theme: '', yearFrom: '', yearTo: '', sort: 'year_desc' };
-// _catItems hält die geladenen Sets für In-Place-Updates (owned-Badge nach Galerie-Aufnahme).
+// _catItems holds the loaded sets for in-place updates (owned badge after adding to the gallery).
 const loadCatalog = loadGuard();
-// Fensterladen statt Endlos-Scroll: Die Jahresleiste springt mitten in die Liste, und eine angehängte Liste
-// hätte darüber und darunter nichts. Ein Block je Seite; geladen wird, was ins Bild kommt, Platzhalter halten
-// die Höhe frei.
+// Windowed loading instead of infinite scroll: the year bar jumps into the middle of the list, and an appended list
+// would have nothing above and below. One block per page; what comes into view is loaded, placeholders keep
+// the height free.
 const CAT_LIMIT = 60;
 let _catTotal = 0;
 let _catPageCount = 0;
@@ -32,14 +32,14 @@ let _catLoadingPages = new Set();
 let _catScrollBound = false;
 /** @type {import('../../frontend-types/contract').CatalogSetItem[]} */
 let _catItems = [];
-/** Datenbereich aus /catalog/meta. @type {number | null} */
+/** Data range from /catalog/meta. @type {number | null} */
 let _catYearMin = null;
 /** @type {number | null} */
 let _catYearMax = null;
 let _catMetaLoaded = false;
-/** Das Set im Detail-Dialog. @type {import('../../frontend-types/contract').CatalogSetDetail | null} */
+/** The set in the detail dialog. @type {import('../../frontend-types/contract').CatalogSetDetail | null} */
 let _catCurSet = null;
-/** Jahr → Zahl der Sets (Etikett am Jahresregler). @type {Record<number, number>} */
+/** Year → number of sets (label on the year slider). @type {Record<number, number>} */
 let _catYearCounts = {};
 
 export function initCatalog() {
@@ -49,7 +49,7 @@ export function initCatalog() {
     loadCatalogMeta();
     loadCatalogSets();
   } else {
-    // Tab erneut geöffnet: aktuelle Seite neu laden, damit owned-Badges nach Galerie-Änderungen stimmen.
+    // Tab opened again: reload the current page, so that owned badges are correct after gallery changes.
     loadCatalogSets();
   }
 }
@@ -74,8 +74,8 @@ function _bindCatalogControls() {
     _catState.page = 1;
     loadCatalogSets();
   });
-  // Jahr-Dropdowns (Präzisionswahl) -> gehen durch den zentralen Setter. Das geänderte Feld gewinnt: die
-  // andere Grenze wird bei Bedarf mitgezogen (gleiches Verhalten wie das Klemmen der Slider-Griffe).
+  // Year dropdowns (precise choice) -> go through the central setter. The changed field wins: the
+  // other bound is pulled along if needed (same behavior as clamping the slider handles).
   G('cat-year-from').addEventListener('change', () => {
     const from = G('cat-year-from').value;
     let to = _catState.yearTo;
@@ -88,9 +88,9 @@ function _bindCatalogControls() {
     if (to && from && parseInt(to, 10) < parseInt(from, 10)) from = to;
     setCatalogYearRange(from, to);
   });
-  // Der Von-Bis-Schieber ist entfallen — gefiltert wird über die beiden Auswahlfelder oben, gesprungen über
-  // die Leiste am rechten Rand. Auch der Sentinel des Endlos-Scrolls ist weg: Geladen wird die Seite, die
-  // gerade ins Bild kommt (siehe _observePages).
+  // The from-to slider is gone — filtering happens via the two select fields at the top, jumping via
+  // the bar on the right edge. The infinite scroll's sentinel is gone too: the page that just comes into view
+  // is loaded (see _observePages).
   G('cat-modal').addEventListener('click', e => {
     if (e.target === e.currentTarget) closeCatModal();
   });
@@ -100,14 +100,14 @@ function _bindCatalogControls() {
 async function loadCatalogMeta() {
   const d = await api('GET', '/v1/catalog/meta');
   if (!d.success) return;
-  // Themen-Dropdown: Pfadnamen ("Star Wars › UCS") mit Set-Zahl
+  // Theme dropdown: path names ("Star Wars › UCS") with set count
   const themeEl = G('cat-theme');
   const cur = themeEl.value;
   setzeHtml(
     themeEl,
     html`${html`<option value="">${tRaw('catalog.filter.all_themes')}</option>`}${(d.themes || []).map(th => html`<option value="${th.id}"${String(th.id) === cur ? ' selected' : ''}>${th.name} (${th.set_count})</option>`)}`,
   );
-  // Jahr-Dropdowns (Von/Bis): absteigend von max bis min
+  // Year dropdowns (from/to): descending from max to min
   const { year_min: von, year_max: bis } = d;
   if (von && bis) {
     const mk = (
@@ -116,7 +116,7 @@ async function loadCatalogMeta() {
       /** @type {string} */ yearKey,
       /** @type {string} */ cur,
     ) => {
-      // „ab 2015“ statt nur „2015“: Gewählt steht sonst eine Zahl im Feld, die nicht sagt, welche Grenze sie ist.
+      // "from 2015" instead of just "2015": otherwise the field shows a number when chosen that does not say which bound it is.
       let opts = html`<option value="">${tRaw(placeholderKey)}</option>`;
       for (let y = bis; y >= von; y--) {
         opts = html`${opts}${html`<option value="${y}"${String(y) === cur ? ' selected' : ''}>${tRaw(yearKey, { jahr: y })}</option>`}`;
@@ -126,7 +126,7 @@ async function loadCatalogMeta() {
     mk(G('cat-year-from'), 'catalog.filter.year_from', 'catalog.filter.ab_jahr', _catState.yearFrom);
     mk(G('cat-year-to'), 'catalog.filter.year_to', 'catalog.filter.bis_jahr', _catState.yearTo);
   }
-  // Von-Bis-Slider initialisieren
+  // Initialize the from-to slider
   _catYearCounts = {};
   for (const yc of d.year_counts || []) _catYearCounts[yc.year] = yc.n;
   _catYearMin = d.year_min || null;
@@ -134,7 +134,7 @@ async function loadCatalogMeta() {
   _initYearRail();
 }
 
-/** Suche, Thema und Jahre leeren; die Sortierung bleibt. */
+/** Clear search, theme and years; the sorting stays. */
 export function resetCatalog() {
   G('cat-search').value = '';
   G('cat-theme').value = '';
@@ -144,14 +144,14 @@ export function resetCatalog() {
 }
 
 /**
- * Zentrale Stelle für Jahresbereichs-Änderungen — hält Dropdowns, Slider und Badge synchron.
+ * Central place for year range changes — keeps dropdowns, slider and badge in sync.
  * @param {string} from
  * @param {string} to
  */
 function setCatalogYearRange(from, to) {
   from = from ? String(from) : '';
   to = to ? String(to) : '';
-  // Von > Bis (über die Dropdowns möglich) -> tauschen
+  // From > to (possible via the dropdowns) -> swap
   if (from && to && parseInt(from, 10) > parseInt(to, 10)) {
     const tmp = from;
     from = to;
@@ -164,7 +164,7 @@ function setCatalogYearRange(from, to) {
   loadCatalogSets();
 }
 
-/** Die beiden Auswahlfelder auf den Zustand ziehen. */
+/** Pull the two select fields to the state. */
 function _syncYearUI() {
   G('cat-year-from').value = _catState.yearFrom || '';
   G('cat-year-to').value = _catState.yearTo || '';
@@ -186,10 +186,10 @@ function _catQuery(page) {
 }
 
 /**
- * Liste neu aufbauen: erste Seite laden, den Rest als Platzhalter-Blöcke.
+ * Rebuild the list: load the first page, the rest as placeholder blocks.
  *
- * Ein Block je Seite über das GANZE Ergebnis — nur so kann die Jahres-Leiste irgendwohin springen, statt zu
- * filtern.
+ * One block per page over the WHOLE result — only that way can the year bar jump somewhere instead of
+ * filtering.
  */
 async function loadCatalogSets() {
   loadCatalog.start();
@@ -213,7 +213,7 @@ async function loadCatalogSets() {
   );
 
   if (!_catItems.length) {
-    // Ohne Filter heisst „leer": der Katalog ist noch nicht abgeglichen.
+    // Without a filter "empty" means: the catalog has not been reconciled yet.
     const gefiltert = !!(_catState.q || _catState.theme || _catState.yearFrom || _catState.yearTo);
     const ohneSchluessel = !gefiltert && !String(settingsSnapshot?.rebrickable_api_key || '').trim();
     const leerText = gefiltert
@@ -243,15 +243,15 @@ async function loadCatalogSets() {
     return;
   }
 
-  // Ein Block je Seite. Der erste ist gefüllt, die übrigen halten nur Platz.
+  // One block per page. The first one is filled, the others only hold space.
   const bloecke = [];
   for (let seite = 1; seite <= _catPageCount; seite++) {
     const anzahl = seite === _catPageCount ? _catTotal - (seite - 1) * CAT_LIMIT : CAT_LIMIT;
     bloecke.push(
       seite === 1
         ? html`<div class="sgrid cat-page" data-page="1">${joinHtml(_catItems.map(catCard))}</div>`
-        : // Ungeladene Seiten sind EIN leerer Block statt 60 Platzhalterkacheln: Bei 25 000 Sets wären das 25 000
-          // Elemente. Die Höhe kommt aus der gemessenen ersten Seite, weil die Spaltenzahl am Fenster hängt.
+        : // Unloaded pages are ONE empty block instead of 60 placeholder tiles: with 25,000 sets that would be 25,000
+          // elements. The height comes from the measured first page, because the number of columns depends on the window.
           html`<div class="cat-page cat-page-ph" data-page="${seite}" data-anzahl="${anzahl}"></div>`,
     );
   }
@@ -264,17 +264,17 @@ async function loadCatalogSets() {
 }
 
 /**
- * Die Höhe der leeren Blöcke aus der ERSTEN, echten Seite ableiten.
+ * Derive the height of the empty blocks from the FIRST, real page.
  *
- * Gemessen statt gerechnet: Wie viele Kacheln nebeneinander passen, entscheidet die Fensterbreite; jede
- * Schätzung läge bei einem anderen Fenster daneben. Und eine falsche Höhe ist hier teuer — die Liste springt
- * beim Nachladen, und man verliert die Stelle, an der man gerade war.
+ * Measured instead of computed: how many tiles fit side by side is decided by the window width; every
+ * estimate would be off for another window. And a wrong height is expensive here — the list jumps
+ * when loading more, and one loses the spot one was just at.
  */
 function _setPlaceholderHeight() {
   const erste = eins('#catalog-grid .cat-page[data-page="1"]');
   if (!erste) return;
   const hoehe = erste.offsetHeight;
-  if (hoehe < 10) return; // noch nicht gezeichnet
+  if (hoehe < 10) return; // not drawn yet
   const proTile = hoehe / Math.max(1, _catItems.length);
   for (const el of alle('#catalog-grid .cat-page-ph')) {
     const anzahl = parseInt(el.dataset.anzahl ?? '', 10) || CAT_LIMIT;
@@ -283,12 +283,12 @@ function _setPlaceholderHeight() {
 }
 
 /**
- * Die Lage der Seitenblöcke einmal messen, dann aus dem Gedächtnis: getBoundingClientRect je Block und Bild
- * erzwang über 400 Layouts, und das Ziehen am Balken legte die CPU auf 100 %.
+ * Measure the position of the page blocks once, then from memory: getBoundingClientRect per block and image
+ * forced over 400 layouts, and dragging the bar pushed the CPU to 100 %.
  */
 /** @type {{ seite: number, oben: number, unten: number }[]} */
 let _catBlockStates = [];
-// Jahre mit ihrer Anzahl, in der Reihenfolge der Liste — die Grundlage für das Etikett am Scrollbalken (siehe
+// Years with their count, in the order of the list — the basis for the label on the scroll bar (see
 // _yearAnPosition).
 /** @type {import('../../frontend-types/contract').JahrAnzahl[]} */
 let _catYearDistribution = [];
@@ -306,8 +306,8 @@ function _measureBlocks() {
 }
 
 /**
- * Erst laden, wenn das Rollen ruht (150 ms): Ein Zug über die ganze Leiste forderte sonst hunderte Seiten an,
- * von denen nur die letzte angesehen wird. Beim normalen Scrollen merkt man die Pause nicht.
+ * Only load once scrolling rests (150 ms): one drag across the whole bar would otherwise request hundreds of pages,
+ * of which only the last one is looked at. During normal scrolling one does not notice the pause.
  */
 /** @type {number | null} */
 let _catLadeTimer = null;
@@ -328,11 +328,11 @@ function _loadVisiblePages(sofort) {
 }
 
 /**
- * Auf Rollen und Fenstergrösse hören.
+ * Listen to scrolling and window size.
  *
- * Der frühere IntersectionObserver ist entfallen: Er war ein zweiter Weg zum selben Ziel, meldete nur
- * ÄNDERUNGEN der Sichtbarkeit (weshalb bei grossen Blöcken nichts nachkam) und feuerte zusätzlich zu dieser
- * Rechnung. Ein Weg, der immer greift, ist besser als zwei, die sich ergänzen sollen.
+ * The former IntersectionObserver is gone: it was a second path to the same goal, only reported
+ * CHANGES of visibility (which is why nothing came for large blocks) and fired in addition to this
+ * calculation. One path that always applies is better than two that are supposed to complement each other.
  */
 function _observePages() {
   _measureBlocks();
@@ -342,7 +342,7 @@ function _observePages() {
     const atMovement = () => {
       if (angefordert) return;
       angefordert = true;
-      // Über requestAnimationFrame gedrosselt: Ein Scroll-Ereignis feuert dutzende Male je Sekunde.
+      // Throttled via requestAnimationFrame: a scroll event fires dozens of times per second.
       requestAnimationFrame(() => {
         angefordert = false;
         _loadVisiblePages();
@@ -358,15 +358,15 @@ function _observePages() {
       { passive: true },
     );
   }
-  // Was schon im Bild steht, sofort — darauf wartet der Nutzer.
+  // What is already in view, immediately — that is what the user is waiting for.
   _loadVisiblePages(true);
 }
 
 /**
- * Eine Seite nachladen und ihren Block füllen.
+ * Load a page and fill its block.
  *
- * Bereits geladene oder gerade ladende Seiten werden übersprungen — ohne diese Prüfung löste jeder
- * Scroll-Schritt denselben Abruf mehrfach aus.
+ * Pages already loaded or currently loading are skipped — without this check every
+ * scroll step triggered the same fetch several times.
  * @param {number} seite
  */
 export async function loadPage(seite) {
@@ -386,7 +386,7 @@ export async function loadPage(seite) {
     setzeHtml(block, joinHtml(d.sets.map(catCard)));
     _catLoadedPages.add(seite);
     _catItems = _catItems.concat(d.sets);
-    // Die Blockhöhen haben sich geändert — neu messen, dann nachsehen, was jetzt zusätzlich im Bild steht.
+    // The block heights have changed — measure again, then check what is now additionally in view.
     _measureBlocks();
     _loadVisiblePages();
   } finally {
@@ -396,8 +396,8 @@ export async function loadPage(seite) {
 
 /** @param {import('../../frontend-types/contract').CatalogSetItem} s */
 function catCard(s) {
-  // Vorschau über den Server wie bei Sets, Teilen und Figuren: kleiner als die volle CDN-Auflösung, und schon
-  // heruntergeladene Bilder (image_local) sparen den Weg zum CDN ganz.
+  // Preview via the server as for sets, parts and figures: smaller than the full CDN resolution, and already
+  // downloaded images (image_local) save the way to the CDN entirely.
   const src = s.image_local || s.image_url;
   const img = src
     ? bildTag({ src: imgUrl(thumbUrl(src), 'nur'), alt: '', fade: true, ph: 'set' })
@@ -406,10 +406,10 @@ function catCard(s) {
   const ownedBadge = s.owned
     ? html`<span class="ibadge besitz-badge">${ico('ok')}${tRaw('catalog.owned_badge')}${s.owned_quantity > 1 ? html`${' ×'}${s.owned_quantity}` : ''}</span>`
     : '';
-  // Der Thementon fuer das Design "farbfaecher" (themes/farbfaecher.css liest ihn als --faecher-ton). Immer
-  // gesetzt, nicht nur bei aktivem Design: Die Variable kostet nichts, und eine Abfrage des aktiven Designs
-  // hier waere eine zweite Stelle, die es kennen muss. Ohne Thema-Nummer bleibt sie weg — dann zeigt der
-  // Streifen nichts statt etwas Falsches.
+  // The theme tone for the design "farbfaecher" (themes/farbfaecher.css reads it as --faecher-ton). Always
+  // set, not only with the design active: the variable costs nothing, and a query of the active design
+  // here would be a second place that has to know it. Without a theme number it stays away — then the
+  // stripe shows nothing instead of something wrong.
   const thema = s.theme_id;
   const ton = thema != null && Number.isInteger(thema) ? html` data-faecher="${((thema % 12) + 12) % 12}"` : '';
   const k = kachelName();
@@ -443,8 +443,8 @@ async function openCatModal(setNumber) {
   G('cat-m-tit').textContent = s.name || s.set_number;
   G('cat-m-sub').textContent = s.set_number;
   emptyLocationField('cat-m-storage');
-  // Die volle Auflösung im Detail direkt vom CDN, nicht über den Proxy: Für ein einmaliges grosses Bild ist
-  // das schneller und entlastet den Server; der Proxy lohnt sich nur für die vielen kleinen Vorschauen.
+  // The full resolution in the detail directly from the CDN, not via the proxy: for a one-off large image
+  // that is faster and relieves the server; the proxy only pays off for the many small previews.
   const detailSrc = s.image_local || s.image_url;
   setDialogbild(G('cat-m-img'), detailSrc ? fullUrl(detailSrc) : PLACEHOLDER_SET, PLACEHOLDER_SET);
   /** @type {[string, string | number][]} */
@@ -459,9 +459,9 @@ async function openCatModal(setNumber) {
     G('cat-m-det'),
     rows.map(([k, v]) => detailRow(k, esc(String(v)))),
   );
-  // Der Kauf-Link kommt fertig vom Server (bricklinkLink.ts): Aus der Rebrickable-Nummer gebaut, war er für
-  // Gear, Bücher und Sammelfiguren falsch. Ist der Artikel nicht eindeutig, zeigt er auf die Suche — nie
-  // ausblenden.
+  // The purchase link comes ready-made from the server (bricklinkLink.ts): built from the Rebrickable number, it was
+  // wrong for gear, books and collectible figures. If the item is not unambiguous, it points to the search — never
+  // hide it.
   const bl = s.bricklink;
   const blBtn = G('cat-m-bricklink');
   blBtn.style.display = '';
@@ -473,12 +473,12 @@ async function openCatModal(setNumber) {
       : bl && bl.type !== 'SET'
         ? `BrickLink: ${bl.type} ${bl.number}`
         : '';
-  // Button-Zustand: bereits im Besitz → Beschriftung "erneut aufnehmen"
+  // Button state: already owned → label "add again"
   G('cat-m-add').textContent = s.owned ? tRaw('catalog.add_again') : tRaw('catalog.add_to_gallery');
   G('cat-m-qty').value = '1';
   G('cat-m-price').value = '';
-  // Die Setnummer hängt am Modal: Der Merklisten-Knopf liegt in einem anderen Modul, und das Modal weiss
-  // ohnehin, was es zeigt. Ein Export von _catCurSet wäre ein zweiter Weg zum selben Zustand.
+  // The set number is attached to the modal: the wishlist button lives in another module, and the modal knows
+  // what it shows anyway. An export of _catCurSet would be a second path to the same state.
   G('cat-modal').dataset.setNumber = s.set_number;
   G('cat-modal').classList.add('open');
 }
@@ -488,7 +488,7 @@ function closeCatModal() {
   _catCurSet = null;
 }
 
-// ── In Galerie aufnehmen — nutzt den bestehenden add-stream-SSE-Flow ─────────
+// ── Add to gallery — uses the existing add-stream SSE flow ───────────────────
 async function addCatalogSetToGallery() {
   if (!_catCurSet) return;
   const num = _catCurSet.set_number;
@@ -498,14 +498,14 @@ async function addCatalogSetToGallery() {
   const qty = menge.wert;
   const purchase_price = preis.wert;
   const condition = G('cat-m-cond').value || 'N';
-  // Konto mitschicken (Marcos Fund): Der Katalog-Dialog war der VIERTE Erfassungsweg — Galerie-Formular,
-  // manuelles Teil und manuelle Minifigur fragen das Konto längst ab, hier fehlte es. Folge: Ein aus dem
-  // Katalog aufgenommenes Set landete immer beim eigenen Konto, ohne dass man es merkte. Genau das Muster,
-  // das dieses Projekt durchzieht.
+  // Send the account along (Marco's find): the catalog dialog was the FOURTH capture path — gallery form,
+  // manual part and manual minifigure have long asked for the account, here it was missing. Consequence: a set
+  // added from the catalog always ended up in the own account without anyone noticing. Exactly the pattern
+  // that runs through this project.
   const owner_user_id = selectedOwner('cat-m-owner');
-  // VOR dem Schliessen lesen: closeCatModal() raeumt den Dialog, danach steht im Feld nichts mehr. Marcos
-  // Befund vom 24.09. („aus dem Katalog in die Galerie — Lagerort nicht setzbar") waere sonst nur halb
-  // behoben.
+  // Read BEFORE closing: closeCatModal() clears the dialog, afterwards the field is empty. Marco's
+  // finding from 24.09. ("from the catalog into the gallery — storage location cannot be set") would otherwise only be half
+  // fixed.
   const storage = selectedStorage('cat-m-storage');
   closeCatModal();
   showProgress(tRaw('gallery.adding_set', { num }), false);
@@ -526,7 +526,7 @@ async function addCatalogSetToGallery() {
               'success',
             );
             setLastImportAt(Date.now());
-            _patchCatalogOwned(num, qty); // owned-Badge in-place (kein Reload: Scroll-Position bleibt)
+            _patchCatalogOwned(num, qty); // owned badge in place (no reload: the scroll position stays)
             emit('sammlungLaden');
           }, 800);
         } else if (ev.step === 'error') {
@@ -547,8 +547,8 @@ async function addCatalogSetToGallery() {
 }
 
 /**
- * owned-Badge eines Sets in der geladenen Liste aktualisieren, ohne die Liste neu zu laden (Infinite Scroll:
- * Scroll-Position bleibt erhalten).
+ * Update a set's owned badge in the loaded list without reloading the list (infinite scroll:
+ * the scroll position is kept).
  * @param {string} setNumber
  * @param {number} qty
  */
@@ -566,20 +566,20 @@ function _patchCatalogOwned(setNumber, qty) {
   }
 }
 
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
+// ── Register handlers with the dispatcher (see js/registry.js) ─────────────
 registerActions({
   loadCatalogSets,
   closeCatModal,
   openCatModal,
 });
 
-// Den Balken zeichnet die Anwendung (#app-scrollbar); der Katalog liefert nur das Jahr daneben. Gelesen aus
-// der obersten sichtbaren Kachel — geschätzt wird nur, wo noch nichts geladen ist.
+// The application draws the bar (#app-scrollbar); the catalog only supplies the year next to it. Read from
+// the topmost visible tile — estimated only where nothing is loaded yet.
 function _yearAnPosition() {
   const grid = G('catalog-grid');
   if (!grid) return null;
-  // Erste Wahl: die oberste SICHTBARE Kachel. Sobald die Seite geladen ist, ist das die Wahrheit und keine
-  // Rechnung.
+  // First choice: the topmost VISIBLE tile. As soon as the page is loaded, that is the truth and not a
+  // calculation.
   for (const karte of alle('.sc:not(.cat-page-ph)', grid)) {
     const r = karte.getBoundingClientRect();
     if (r.bottom >= 0) {
@@ -588,8 +588,8 @@ function _yearAnPosition() {
       break;
     }
   }
-  // Zweite Wahl: über die tatsächliche Verteilung der Jahre rechnen. Linear auf 1949–2027 umgerechnet stand
-  // bei neun Zehnteln „1965“, weil der Katalog fast ganz aus den letzten Jahrzehnten stammt.
+  // Second choice: compute via the actual distribution of the years. Converted linearly to 1949–2027 it showed
+  // "1965" at nine tenths, because the catalog stems almost entirely from the last decades.
   if (!_catYearDistribution.length || !_catTotal) return null;
   const doc = document.documentElement;
   const rollbar = Math.max(1, doc.scrollHeight - window.innerHeight);
@@ -603,10 +603,10 @@ function _yearAnPosition() {
 }
 
 /**
- * Die Jahresverteilung zu den aktuellen Filtern holen.
+ * Fetch the year distribution for the current filters.
  *
- * Vom SERVER, weil nur er die Filter kennt: Eine Verteilung über den ganzen Katalog läge bei gesetztem Thema
- * oder Suchtext genauso daneben wie die frühere lineare Schätzung. Einmal je Listenaufbau, nicht beim Rollen.
+ * From the SERVER, because only it knows the filters: a distribution over the whole catalog would be just as wrong
+ * with a theme or search text set as the former linear estimate. Once per list build, not while scrolling.
  */
 async function _loadYearDistribution() {
   const p = new URLSearchParams();
@@ -621,17 +621,17 @@ async function _loadYearDistribution() {
   if (d?.success) _catYearDistribution = (d.years || []).filter(y => y.year);
   else _yearDistributionFor = '';
 }
-/** Filter der geladenen Jahresverteilung: Beim Wiederbetreten des Reiters ändert sie sich nicht. */
+/** Filter of the loaded year distribution: it does not change when re-entering the tab. */
 let _yearDistributionFor = '';
 
-/** Beim Betreten des Reiters das Etikett anmelden, beim Verlassen abmelden. */
+/** Register the label when entering the tab, unregister it when leaving. */
 function _initYearRail() {
   const sensible =
     _catYearMin &&
     _catYearMax &&
     _catYearMax > _catYearMin &&
     (_catState.sort === 'year_desc' || _catState.sort === 'year_asc');
-  // Bei „Name A–Z" liegen die Jahre verstreut — ein Jahr im Etikett wäre dort ohne Aussage.
+  // With "name A–Z" the years are scattered — a year in the label would say nothing there.
   setScrollLabel(
     sensible
       ? () => {

@@ -1,12 +1,12 @@
-// Der Kontofilter je Ansicht ist eine eigene Datei: Er hängt an keinem anderen Modul, nur am localStorage,
-// und hat mit dem Kern nichts zu tun.
+// The account filter per view is a file of its own: it depends on no other module, only on localStorage,
+// and has nothing to do with the core.
 /**
- * Der Kontofilter gilt je Ansicht: Wer in der Galerie den Haushalt sieht, will in den Finanzen vielleicht nur
- * die eigenen Zahlen. Gefiltert wird am Server (accounts=), sonst stimmten Gesamtzahl und Bewertung nicht.
+ * The account filter applies per view: whoever sees the household in the gallery may want only
+ * their own numbers in the finances. Filtering happens on the server (accounts=), otherwise total and valuation would not match.
  */
-// 'merkliste' steht seit dem 24.09. mit darin (Marcos Vorgabe: „In der Merkliste noch einen Filter analog den
-// Sets einbauen inkl. Inhaber"). Der Server verstand `accounts=` auf /v1/wanted schon immer — scopeIds() gilt
-// dort wie ueberall —, nur schickte es keine der beiden Oberflaechen. Es fehlte also allein die Wahl.
+// 'merkliste' has been included since 24.09. (Marco's requirement: "Add a filter to the wishlist like for the
+// sets, including owner"). The server always understood `accounts=` on /v1/wanted — scopeIds() applies
+// there as everywhere —, only neither of the two UIs sent it. So only the choice was missing.
 export const SCOPE_VIEWS = ['gallery', 'parts', 'minifigs', 'finance', 'merkliste'];
 
 /**
@@ -25,37 +25,37 @@ export function setScopeMode(view, mode) {
 }
 
 /**
- * Kontofilter bei jeder Anmeldung zurücksetzen: Er liegt im localStorage und überlebte sonst Ab- und Anmelden
- * — wer zuletzt auf ein Konto gefiltert hatte, sah danach nur dessen Sets und hielt den Rest für verloren.
+ * Reset the account filter on every login: it lives in localStorage and would otherwise survive logging out and in
+ * — whoever had last filtered on one account then saw only its sets and thought the rest was lost.
  */
 export function resetScopeModes() {
   for (const view of SCOPE_VIEWS) localStorage.removeItem('bim_scope_' + view);
-  // Der Lagerortfilter hängt an derselben Begründung und wird deshalb hier mit zurückgesetzt — nicht in einem
-  // zweiten Aufruf, den jemand vergisst.
+  // The storage location filter rests on the same reasoning and is therefore reset here as well — not in a
+  // second call that someone forgets.
   resetLagerModi();
 }
 
-/** `accounts=` an eine URLSearchParams hängen — nur wenn nötig. */
+/** Append `accounts=` to a URLSearchParams — only if needed. */
 /** @param {URLSearchParams} p @param {string} view */
 export function addScopeParam(p, view) {
   const m = scopeMode(view);
-  // 'all' ist die Vorgabe des Servers; weglassen hält die Adressen kurz und die Antworten cachebar.
+  // 'all' is the server's default; omitting it keeps the addresses short and the responses cacheable.
   if (m && m !== 'all') p.set('accounts', m);
   return p;
 }
 
 /**
- * Fertiges Suffix für Aufrufe ohne URLSearchParams (Finanzen).
+ * Finished suffix for calls without URLSearchParams (finances).
  * @param {string} view
  */
 export function scopeQuery(view) {
   const m = scopeMode(view);
   return m && m !== 'all' ? `?accounts=${m}` : '';
 }
-// Der Lagerortfilter steht hier, weil er derselbe Gegenstand ist wie der Kontofilter: eine Wahl je Ansicht,
-// am Server gefiltert, beim Anmelden zurückgesetzt — aus denselben Gründen.
+// The storage location filter lives here because it is the same subject as the account filter: one choice per view,
+// filtered on the server, reset at login — for the same reasons.
 
-/** Ansichten mit einem Lagerortfilter. Sets und Teile — nur die haben einen. */
+/** Views with a storage location filter. Sets and parts — only those have one. */
 export const LAGER_VIEWS = ['gallery', 'parts'];
 
 /**
@@ -74,17 +74,17 @@ export function setLagerModus(view, wert) {
   else localStorage.removeItem('bim_lager_' + view);
 }
 
-/** Beim Anmelden zurücksetzen — dieselbe Begründung wie bei resetScopeModes(). */
+/** Reset at login — the same reasoning as for resetScopeModes(). */
 export function resetLagerModi() {
   for (const view of LAGER_VIEWS) localStorage.removeItem('bim_lager_' + view);
 }
 
 /**
- * `storage=` anhängen — nur wenn gefiltert wird.
+ * Append `storage=` — only if filtering.
  *
- * Kein Sonderwert für „ohne Lagerort": Wer danach sucht, sucht in Wahrheit „was muss ich noch einräumen", und
- * das ist eine andere Frage als „wo liegt X". Sie bekäme eine eigene Antwort, keinen Eintrag in diesem
- * Filter.
+ * No special value for "without storage location": whoever searches for that is really asking "what do I still have to put away", and
+ * that is a different question than "where is X". It would get an answer of its own, not an entry in this
+ * filter.
  */
 /** @param {URLSearchParams} p @param {string} view */
 export function addLagerParam(p, view) {
@@ -94,7 +94,7 @@ export function addLagerParam(p, view) {
 }
 
 /**
- * Fertiges Suffix für Aufrufe ohne URLSearchParams.
+ * Finished suffix for calls without URLSearchParams.
  * @param {string} view
  */
 export function lagerQuery(view, trenner = '&') {

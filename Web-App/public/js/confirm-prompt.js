@@ -1,12 +1,12 @@
-// Rückfragen vor heiklen Schritten: Bestätigen, eigenes Passwort, zweiter Faktor. Eine Ebene über dem Kern,
-// damit jede Ansicht sie nutzen kann, ohne eine andere Ansicht zu importieren.
+// Questions before sensitive steps: confirm, own password, second factor. One level above the core,
+// so that every view can use them without importing another view.
 import { api } from './api.js';
 import { G, ico, setzeHtml } from './dom.js';
 import { html } from './escaping.js';
 import { tRaw } from '../i18n.js';
 
 /**
- * Ohne `knopf` heisst der Hauptknopf rot „Löschen“; wer etwas anderes bestätigt, nennt sein Verb.
+ * Without `knopf` the main button is red "delete"; whoever confirms something else names their verb.
  * @param {string} title
  * @param {string} msg
  * @param {string} [icon]
@@ -17,17 +17,17 @@ export function confirmDelete(title, msg, icon, knopf = null) {
 }
 
 /**
- * Löschen mit Auswahl, etwa welche Konten eines Haushalts; die erste Möglichkeit ist vorgewählt.
+ * Delete with a choice, e.g. which accounts of a household; the first option is preselected.
  * @param {string} title @param {string} msg @param {{ wert: string, text: string }[]} wahl
- * @returns {Promise<string | null>} der gewählte Wert, null bei Abbruch
+ * @returns {Promise<string | null>} the chosen value, null on cancel
  */
 export function deleteWithChoice(title, msg, wahl) {
   return /** @type {Promise<string | null>} */ (openDialog(title, msg, 'loeschen', false, false, false, { wahl }));
 }
 
 /**
- * Wie confirmDelete, verlangt aber das eigene Passwort — für Verwalteraktionen an fremden Konten. Liefert das
- * Passwort oder null (abgebrochen).
+ * Like confirmDelete, but requires the own password — for admin actions on other accounts. Returns the
+ * password or null (cancelled).
  * @param {string} title
  * @param {string} msg
  * @param {string} icon
@@ -39,11 +39,11 @@ export function bestaetigeMitPasswort(title, msg, icon, knopf) {
   return openDialog(title, msg, icon, true, false, false, { feld: 'confirm.admin_password', ...knopf });
 }
 
-/** Bei aktivem zweitem Faktor verlangt der Server für heikle Änderungen den
- * Code (zweiter_faktor_noetig); dann einmal fragen und mit `code` wiederholen.
+/** With an active second factor the server requires the code for sensitive changes
+ * (zweiter_faktor_noetig); then ask once and repeat with `code`.
  * @template T
  * @param {(zusatz: { code?: string, passkey?: object }) => Promise<T>} ruf
- * @returns {Promise<T | null>} die Antwort, oder null, wenn der Dialog abgebrochen wurde */
+ * @returns {Promise<T | null>} the response, or null if the dialog was cancelled */
 export async function withSecondFactor(ruf) {
   const d = await ruf({});
   const a = /** @type {{ code?: unknown, passkey?: unknown } | null | undefined} */ (d);
@@ -64,29 +64,29 @@ export async function withSecondFactor(ruf) {
   return passkey ? ruf({ passkey }) : null;
 }
 /**
- * Nur einen Code abfragen, ohne Passwort (neue Wiederherstellungscodes).
- * @param {string} titel @param {string} text @returns {Promise<string | null>} der Code, oder null bei Abbruch
+ * Only ask for a code, without password (new recovery codes).
+ * @param {string} titel @param {string} text @returns {Promise<string | null>} the code, or null on cancel
  */
 export async function questionCode(titel, text) {
   const code = await openDialog(titel, text, 'schloss', false, true, false, CONFIRM);
   return typeof code === 'string' ? code.trim() : null;
 }
 /**
- * Hauptknopf des Rückfragedialogs: Text, Art (bp blau, bd rot), Feldbeschriftung.
- * withCode: Passwort und Code in einem Dialog, statt zwei nacheinander.
+ * Main button of the question dialog: text, kind (bp blue, bd red), field label.
+ * withCode: password and code in one dialog instead of two one after another.
  * @typedef {{ knopf?: string, art?: string, feld?: string, werte?: Record<string, unknown>, fehler?: boolean, wahl?: { wert: string, text: string }[], withCode?: boolean }} Knopf
  */
-/** Ein Bestätigen ist kein Löschen: Knopf in der Hauptfarbe statt rot. @type {Knopf} */
+/** A confirmation is not a deletion: button in the main color instead of red. @type {Knopf} */
 const CONFIRM = { knopf: 'common.confirm', art: 'bp', feld: 'settings.password.current' };
 
 /**
- * Eine Kontoänderung mit dem eigenen Passwort bestätigen — einmal beim Speichern im Dialog statt je Abschnitt
- * ein Feld „Aktuelles Passwort“, das wie ein Fehler aussah. Bei falschem Passwort fragt der Dialog erneut.
+ * Confirm an account change with the own password — once when saving in the dialog instead of a field
+ * "current password" per section, which looked like an error. With a wrong password the dialog asks again.
  * @param {string} titel
  * @template T
  * @param {(passwort: string, zusatz: { code?: string, passkey?: object }) => Promise<T>} ruf
- * @param {string} [erklaerung] sagt, was bestätigt wird (statt nur „bitte Passwort“)
- * @param {Knopf} [knopf] Hauptknopf; mit `withCode` fragt derselbe Dialog den Code mit
+ * @param {string} [erklaerung] says what is being confirmed (instead of just "password please")
+ * @param {Knopf} [knopf] main button; with `withCode` the same dialog asks for the code too
  */
 export async function confirmWithPassword(titel, ruf, erklaerung = tRaw('konto.passwort_bestaetigen'), knopf = {}) {
   let text = erklaerung,
@@ -105,8 +105,8 @@ export async function confirmWithPassword(titel, ruf, erklaerung = tRaw('konto.p
   return null;
 }
 
-/** Erst ohne Passwort; nur wenn der Server es für diese Änderung verlangt, wird nachgefragt.
- * @returns die Antwort, oder null bei Abbruch
+/** First without password; only if the server requires it for this change is it asked for.
+ * @returns the response, or null on cancel
  * @param {string} titel
  * @param {Record<string, unknown>} werte
  */
@@ -118,8 +118,8 @@ export async function saveSettings(titel, werte) {
   );
 }
 
-/** passkeys.js meldet sich hier an, wenn der Browser Passkeys kann: Ein
- * Import in die Gegenrichtung liesse den Kern eine Ansicht laden.
+/** passkeys.js registers here if the browser supports passkeys: an
+ * import in the opposite direction would make the core load a view.
  * @type {(() => Promise<object | null>) | null} */
 let fetchPasskey = null;
 
@@ -136,7 +136,7 @@ const WITH_PASSKEY = Symbol('passkey');
  * @param {string} msg
  * @param {string | undefined} icon
  * @param {boolean} withPassword
- * @param {{ code: string } | null} [ablage] nimmt den Code auf, wenn Passwort und Code zusammen gefragt werden
+ * @param {{ code: string } | null} [ablage] receives the code if password and code are asked together
  */
 function openDialog(
   title,

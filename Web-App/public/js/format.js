@@ -1,11 +1,11 @@
 import { LANG, locale, tRaw } from '../i18n.js';
 import { accountCurrency } from './state.js';
 
-// Zahlen, Beträge und Daten in der Schreibweise der Oberflächensprache, eine Fassung für alle Ansichten.
+// Numbers, amounts and dates in the notation of the UI language, one version for all views.
 
 /**
- * Ein Geldbetrag in der Währung des Nutzers. Ohne Angabe gilt die eingestellte Währung, nicht fest EUR: Sonst
- * stand bei Franken still „EUR“ da. test/money-format.test.js hält fest, dass kein Aufruf sie weglässt.
+ * A money amount in the user's currency. Without a value the configured currency applies, not a fixed EUR: otherwise
+ * "EUR" silently stood there for francs. test/money-format.test.js ensures that no call omits it.
  * @param {number | string | null | undefined} v
  * @param {string} [cur]
  */
@@ -19,7 +19,7 @@ export function fmtN(v, cur) {
 }
 
 /**
- * Betrag mit ISO-Code statt Zeichen („260,66 USD“): für fremde Währungen, deren Zeichen mehrdeutig ist.
+ * Amount with ISO code instead of symbol ("260,66 USD"): for foreign currencies whose symbol is ambiguous.
  * @param {unknown} v @param {string} cur
  */
 export function fmtGeldCode(v, cur) {
@@ -33,7 +33,7 @@ export function fmtGeldCode(v, cur) {
 }
 
 /**
- * Ein erfasster Kaufpreis von 0 ist ein Geschenk; fehlt er (null), ist er unbekannt.
+ * A captured purchase price of 0 is a gift; if it is missing (null), it is unknown.
  * @param {unknown} kauf
  */
 export function isGift(kauf) {
@@ -41,7 +41,7 @@ export function isGift(kauf) {
 }
 
 /**
- * Betrag, bei dem 0 ein Wert ist (Kaufpreis): „0,00 €“ statt „—“.
+ * Amount for which 0 is a value (purchase price): "0,00 €" instead of "—".
  * @param {number | string | null | undefined} v
  * @param {string} [cur]
  */
@@ -57,16 +57,16 @@ export function fmtGeld(v, cur) {
 }
 
 /**
- * Ein Betrag aus einem Eingabefeld. Komma und Punkt sind beide Dezimalzeichen, Leerzeichen und ' sind
- * Tausendertrenner; ein einzelnes Trennzeichen mit genau drei Ziffern danach gilt als Tausender, wenn die
- * Sprache es so schreibt („1.234“ de-DE). Leer → null; keine Zahl → NaN, damit der Aufrufer am Feld meldet,
- * statt „149,95“ still zu 149 zu kürzen.
+ * An amount from an input field. Comma and dot are both decimal separators, spaces and ' are
+ * thousands separators; a single separator with exactly three digits after it counts as thousands if the
+ * language writes it that way ("1.234" de-DE). Empty → null; not a number → NaN, so that the caller reports at the field
+ * instead of silently cutting "149,95" to 149.
  * @param {unknown} roh
  * @returns {number|null}
  */
 export function readAmount(roh) {
   const s = String(roh ?? '')
-    .replace(/[\s  '’]/g, '')
+    .replace(/[\s  \x27’]/g, '')
     .replace(/^[€$£]|[€$£]$/g, '');
   if (!s) return null;
   if (!/^[\d.,]*\d[\d.,]*$/.test(s)) return NaN;
@@ -88,7 +88,7 @@ export function readAmount(roh) {
 }
 
 /**
- * Ein Betrag für ein Eingabefeld in der Schreibweise der Sprache („129,99“ de-DE), ohne Tausender.
+ * An amount for an input field in the language's notation ("129,99" de-DE), without thousands.
  * @param {number | string | null | undefined} v
  */
 export function amountForField(v) {
@@ -101,9 +101,9 @@ export function amountForField(v) {
 }
 
 /**
- * Prozent in der Form der Oberfläche (de-DE „+51,1 %“, en-GB „+51.1%“), damit sie neben den Beträgen aus
- * fmtN() nicht in einer zweiten Schreibweise steht.
- * @param {number|string} v  Prozentwert (51.1, nicht 0.511)
+ * Percent in the UI's form (de-DE "+51,1 %", en-GB "+51.1%"), so that it does not stand in a second notation next to the amounts from
+ * fmtN().
+ * @param {number|string} v  percentage value (51.1, not 0.511)
  * @param {{sign?: boolean, stellen?: number}} [o]
  */
 export function fmtPct(v, o = {}) {
@@ -119,8 +119,8 @@ export function fmtPct(v, o = {}) {
 }
 
 /**
- * Anzahl in der Sprache der Oberfläche, erst ab einer Million kurz („1,2 Mio.“). Darunter in allen Sprachen
- * genau: en zeigte „10.8K“, wo de „10.828“ stand.
+ * Count in the UI language, abbreviated only from one million ("1,2 Mio."). Below that exact in all languages:
+ * en showed "10.8K" where de showed "10.828".
  * @param {number | string | null | undefined} n
  */
 export function fmtBig(n) {
@@ -130,9 +130,9 @@ export function fmtBig(n) {
 }
 
 /**
- * Ein <input type="date"> zeigt das Datum in der Sprache des Browsers. Ist die dieselbe wie die der App,
- * braucht es keine zweite Schreibweise daneben.
- * @param {string} iso  JJJJ-MM-TT
+ * An <input type="date"> shows the date in the browser's language. If that is the same as the app's,
+ * no second notation is needed next to it.
+ * @param {string} iso  YYYY-MM-DD
  */
 export function browserWritesDateHowApp(iso) {
   if (!iso) return true;
@@ -147,11 +147,11 @@ export function browserWritesDateHowApp(iso) {
 }
 
 /**
- * Ein Datum überall gleich: „05.01.2024“ (de), „5 Jan 2024“ (en). Vorher stand je Stelle toLocaleDateString()
- * („5.1.2024“) neben eigenen Formen.
+ * A date the same everywhere: "05.01.2024" (de), "5 Jan 2024" (en). Before, every place had toLocaleDateString()
+ * ("5.1.2024") next to its own forms.
  * @param {string|number|Date|null|undefined} v
- * @param {'tag'|'zeit'|'tagzeit'|'lang'|'wann'} [art]  lang: „1. Juni 2026“; wann: „10:03“ heute, sonst
- *   „morgen 10:03“, „gestern 10:03“ oder Datum mit Uhrzeit
+ * @param {'tag'|'zeit'|'tagzeit'|'lang'|'wann'} [art]  lang: "1. Juni 2026"; wann: "10:03" today, otherwise
+ *   "tomorrow 10:03", "yesterday 10:03" or date with time
  * @returns {string}
  */
 export function fmtDatum(v, art = 'tag') {
@@ -159,7 +159,7 @@ export function fmtDatum(v, art = 'tag') {
   const d =
     v instanceof Date ? v : new Date(typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + 'T00:00:00' : v);
   if (Number.isNaN(d.getTime())) return '';
-  // Eine Uhrzeit allein las sich als heute, auch wenn der Lauf erst morgen oder vor drei Tagen war.
+  // A time alone read as today, even if the run was only tomorrow or three days ago.
   if (art === 'wann') {
     const tage = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86_400_000);
     const zeit = fmtDatum(d, 'zeit');
@@ -168,8 +168,8 @@ export function fmtDatum(v, art = 'tag') {
     if (tage === -1) return tRaw('zeit.gestern', { zeit });
     return fmtDatum(d, 'tagzeit');
   }
-  // Englisch mit Monatsnamen: „03/11/2026“ liest sich in den USA als 11. März. Deutsch immer 24 Stunden, auch
-  // bei einem Browser mit 12-h-Vorgabe.
+  // English with month names: "03/11/2026" reads as 11 March in the USA. German always 24 hours, even
+  // with a browser defaulting to 12 h.
   const tag =
     LANG === 'en'
       ? { day: 'numeric', month: 'short', year: 'numeric' }

@@ -1,13 +1,13 @@
-// ── Übersetzungen: Deutsch ────────────────────────────────────────────────
+// ── Translations: German ──────────────────────────────────────────────────
 //
-// Aus public/i18n.js herausgelöst. Vorher lagen beide Sprachen in EINER Datei
-// und wanderten damit vollständig ins Frontend-Bündel — rund 70 KB, von denen
-// jeder Nutzer die Hälfte nie braucht. Jetzt lädt index.html nur die aktive
-// Sprache; der Wechsel holt die andere bei Bedarf nach (siehe loadLang() in
+// Split out of public/i18n.js. Before, both languages lived in ONE file
+// and thus went completely into the frontend bundle — about 70 KB, half of which
+// every user never needs. Now index.html only loads the active
+// language; switching fetches the other one when needed (see loadLang() in
 // i18n.js).
 //
-// Die Datei setzt window.I18N_DE und wird als klassisches Skript geladen —
-// kein Modul, weil der Rest des Frontends ebenfalls klassisch ist.
+// The file sets window.I18N_DE and is loaded as a classic script —
+// not a module, because the rest of the frontend is classic as well.
 window.I18N_DE = {
   // Auth
   'login.submit': 'Anmelden',
@@ -24,7 +24,7 @@ window.I18N_DE = {
   'nav.gallery': 'Sammlung',
   'nav.catalog': 'Katalog',
 
-  // Katalog
+  // Catalog
   'catalog.title': 'Katalog',
   'catalog.search': 'Setnummer / Name…',
   'catalog.search_aria': 'Katalog nach Setnummer oder Name durchsuchen',
@@ -309,7 +309,7 @@ window.I18N_DE = {
 
   'gallery.template': 'Vorlage',
   'parts.add.price_placeholder': 'Leer = Marktpreis',
-  // ── Nachtrag: zuvor hartkodierte dynamische UI-Texte ──
+  // ── Addendum: dynamic UI texts that used to be hard-coded ──
   'common.filter': 'Filter',
   'common.pfad': 'Pfad',
   'common.more_actions': 'Weitere Aktionen',
@@ -335,9 +335,9 @@ window.I18N_DE = {
   'common.added_cap': 'Hinzugefügt',
   'common.updated_cap': 'Aktualisiert',
   'common.delete_title': 'Löschen?',
-  // Vorlesetexte fuer Knoepfe, die nur ein Symbol tragen.
-  // common.close stand hier schon einmal und ist als tot entfernt worden —
-  // damals zu Recht: Es rief ihn niemand. Jetzt gibt es einen Aufrufer.
+  // Texts read aloud for buttons that only carry an icon.
+  // common.close stood here once before and was removed as dead —
+  // rightly at the time: nobody called it. Now there is a caller.
   'auth.resend_mail': 'Bestätigungslink erneut senden',
   'auth.resend_need_email': 'Bitte oben die E-Mail-Adresse statt des Benutzernamens eingeben.',
   'common.close': 'Schliessen',
@@ -410,7 +410,7 @@ window.I18N_DE = {
   'settings.smtp.hint':
     'Für Registrierungsbestätigungen und Passwort-Rücksetzungen. Ohne SMTP-Konfiguration werden Links in der Server-Konsole ausgegeben.',
   'settings.export_rb': 'Sets für Rebrickable exportieren',
-  // ── Angemeldete Geraete (Token-Verwaltung) ───────────────────────────────
+  // ── Logged-in devices (token management) ─────────────────────────────────
   'tokens.title': 'Angemeldete Geräte',
   'tokens.hint':
     'Jede Anmeldung — im Browser, in der App oder per QR-Code — stellt einen Zugang aus. Ein verlorenes oder verkauftes Gerät sperrst du hier aus, ohne dein Passwort zu ändern.',
@@ -782,9 +782,9 @@ window.I18N_DE = {
   'instr.choose_file': 'Datei wählen',
   'instr.badge_manual': 'Manuell',
   'csv.import_title': 'CSV-Import',
-  // „Elemente" und nicht „Sets": Derselbe Balken traegt seit dem 20.10.
-  // auch den Wanted-Listen-Import, und der legt Teile und Minifiguren an.
-  // Marcos Befund vom 21.10.: „steht unten x/y Sets anstelle 'Elementen'".
+  // "Elemente" and not "Sets": since 20.10. the same bar also carries
+  // the wanted list import, and that one creates parts and minifigures.
+  // Marco's finding from 21.10.: "it says x/y sets at the bottom instead of 'elements'".
   'csv.items_progress': '{done} / {total} Elemente',
   'gallery.loading': 'Lade Sets…',
   'log.reload': '↻ Neu laden',
@@ -941,12 +941,12 @@ window.I18N_DE = {
   'wanted.keep': '— unverändert —',
   'wanted.rb_id_ph': 'Rebrickable-Nr.',
   'wanted.col_outcome': 'Ergebnis',
-  // Steht unter der Zustandsplakette, wenn die Datei fuer diesen Posten
-  // keinen Zustand nennt (CONDITION=X oder gar nichts) — dann wird der
-  // Standard des Kontos angelegt, und die Vorschau sagt es dazu.
+  // Stands below the condition badge if the file names no condition for this
+  // item (CONDITION=X or nothing at all) — then the
+  // account's default is created, and the preview says so.
   'wanted.cond_default': 'Standard aus Menü → Konto',
-  // Die erste Wahl der Zustandsspalte in der Vorschau. Kein leerer Eintrag:
-  // „Standard" ist eine Aussage und keine Lücke — dieselbe wie CONDITION=X.
+  // The first choice of the condition column in the preview. No empty entry:
+  // "default" is a statement and not a gap — the same as CONDITION=X.
   'wanted.cond_default_opt': '— Standard —',
   'wanted.price_ph': 'Marktpreis',
   'wanted.col_rb_id': 'Rebrickable-Nr. eintragen',
@@ -976,10 +976,10 @@ window.I18N_DE = {
   'parts.new_section': 'Neues Teil erfassen',
   'parts.num_label': 'Teilenummer *',
   'parts.color_label': 'Farbe',
-  // ── Vorlesetexte (aria-label) der Auswahlfelder ──────────────────────────
-  // Diese neun standen als data-i18n im HTML und fehlten in
-  // BEIDEN Woerterbuechern. t() faellt auf den SCHLUESSEL zurueck — der
-  // Bildschirmleser las danach „catalog.year_from" vor, in beiden Sprachen.
+  // ── Texts read aloud (aria-label) of the select fields ───────────────────
+  // These nine stood as data-i18n in the HTML and were missing from
+  // BOTH dictionaries. t() falls back to the KEY — the
+  // screen reader then read out "catalog.year_from", in both languages.
   'import.csv_file': 'CSV-Datei',
   'import.menu': 'Importieren',
   'import.csv_read': 'CSV-Datei einlesen',
@@ -1015,8 +1015,8 @@ window.I18N_DE = {
   'parts.filter.color': 'Nach Farbe filtern',
   'parts.filter.category': 'Nach Kategorie filtern',
   'parts.spare_tag': 'Ersatzteil',
-  // Detail-Dialog fuer Teile und Figuren AUS SETS (Marcos Wunsch): kein
-  // Marktpreis, Anzahl nicht aenderbar, dafuer die verwendenden Sets.
+  // Detail dialog for parts and figures FROM SETS (Marco's wish): no
+  // market price, quantity not changeable, instead the sets using them.
   'setitem.used_in': 'Verwendet in',
   'setitem.used_in_none': 'In keinem Set gefunden',
   'setitem.total_qty': 'Gesamtmenge',
@@ -1329,7 +1329,7 @@ window.I18N_DE = {
   'price.from_other_condition_used':
     'Kaufpreis aus dem Marktpreis „Gebraucht“ übernommen — für „Neuware“ führt BrickLink keinen Preis.',
 
-  // ── Gutscheine (LEGO-Geschenkkarten im eigenen Profil) ─────────────────────
+  // ── Vouchers (LEGO gift cards in the own profile) ────────────────────────────
   'vouchers.meine': 'Meine Gutscheine',
   'vouchers.group': 'Gutscheine',
   'vouchers.add': 'Gutschein hinzufügen',
@@ -1522,7 +1522,7 @@ window.I18N_DE = {
   'vouchers.delete_confirm': 'Gutschein {nummer} wirklich löschen? Das hinterlegte PDF wird mit gelöscht.',
   'vouchers.pdf_incomplete': 'Aus dem PDF liessen sich nicht alle Werte lesen. Bitte ergänzen und erneut speichern.',
 
-  // ── Guthaben bei LEGO abfragen ────────────────────────────────────────────
+  // ── Query balance at LEGO ─────────────────────────────────────────────────
   'vouchers.country': 'Ausgabeland',
   'vouchers.fuer_alle': 'für alle Konten',
   'vouchers.country_hint': 'Eine Karte gilt nur im Shop ihres Ausgabelandes. Die Einstellung gilt für alle Konten.',

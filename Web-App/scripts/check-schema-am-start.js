@@ -1,13 +1,13 @@
 'use strict';
 /**
- * Das Schema steht an EINER Stelle — nicht im Anfragepfad.
+ * The schema stands in ONE place — not in the request path.
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Der Anfragepfad — hier wird geprüft. */
+/** The request path — this is where checking happens. */
 const ANFRAGEPFAD = [
   'routes' + path.sep,
   path.join('src', 'sets', 'read.ts'),
@@ -18,7 +18,7 @@ const ANFRAGEPFAD = [
   path.join('src', 'inventory', 'metrics.ts'),
 ];
 
-/** Schema-Anweisungen. Nur in echtem SQL, nicht in Prosa. */
+/** Schema statements. Only in real SQL, not in prose. */
 const MUSTER = /\b(CREATE\s+TABLE|CREATE\s+(?:UNIQUE\s+)?INDEX|ALTER\s+TABLE)\b/i;
 
 /** @param {string} quelle */
@@ -55,7 +55,7 @@ for (const teil of ANFRAGEPFAD) {
   else dateien.push(verz);
 }
 
-// Untergrenze: Findet der Dateilauf zu wenig, wäre die Prüfung still grün.
+// Lower bound: if the file walk finds too little, the check would be silently green.
 if (dateien.length < 20) {
   console.error(`ROT — nur ${dateien.length} Dateien im Anfragepfad gefunden.`);
   console.error('Das ist zu wenig; vermutlich stimmt der Pfad nicht mehr.');
@@ -72,7 +72,7 @@ for (const datei of dateien) {
   });
 }
 
-// Der Selbstbeweis, und warum er JEDEN Teil einzeln prüft
+// The self-proof, and why it checks EVERY part individually
 const migVerz = path.join(ROOT, 'db/migrations');
 const bekannt = ohneKommentare(
   fs
@@ -103,11 +103,11 @@ if (treffer.length) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Regel 2 — jede Tabelle und jeder Index wird an GENAU EINER Stelle angelegt
+// Rule 2 — every table and every index is created in EXACTLY ONE place
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Absichtlich doppelt, mit Grund. Die Liste darf nur KÜRZER werden.
+ * Deliberately duplicated, with a reason. The list may only get SHORTER.
  * @type {Map<string, string>}
  */
 const DUPLICATE_ALLOWED = new Map([]);
@@ -125,8 +125,8 @@ function collectAll(verz, raus) {
   for (const eintrag of fs.readdirSync(verz, { withFileTypes: true })) {
     const p = path.join(verz, eintrag.name);
     if (eintrag.isDirectory()) collectAll(p, raus);
-    // schema-stand.sql und basis.sql sind erzeugte Abbilder, keine Quellen —
-    // sie nennen jede Tabelle ein zweites Mal, und zwar mit Absicht.
+    // schema-stand.sql and basis.sql are generated copies, not sources —
+    // they name every table a second time, and deliberately so.
     else if (/\.(ts|js|sql)$/.test(eintrag.name) && !['schema-stand.sql', 'basis.sql'].includes(eintrag.name))
       raus.push(p);
   }
@@ -145,9 +145,9 @@ for (const datei of allSources) {
   const text = ohneKommentare(fs.readFileSync(datei, 'utf8'));
   const re = /CREATE\s+(?:TABLE|(?:UNIQUE\s+)?INDEX)(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)/gi;
   for (const m of text.matchAll(re)) {
-    // m[1] ist unter noUncheckedIndexedAccess moeglicherweise undefined —
-    // die Gruppe ist im Muster zwar nicht optional, aber das weiss der
-    // Typpruefer nicht. Ein leerer Name faellt hier still durch statt zu werfen.
+    // m[1] is possibly undefined under noUncheckedIndexedAccess —
+    // the group is not optional in the pattern, but the type checker
+    // does not know that. An empty name silently falls through here instead of throwing.
     const name = (m[1] || '').toLowerCase();
     if (!name) continue;
     const wo = angelegt.get(name) || [];
@@ -156,8 +156,8 @@ for (const datei of allSources) {
   }
 }
 
-// Selbstbeweis: Eine bekannte Tabelle MUSS gefunden werden. Sonst ist das
-// Muster veraltet und "nichts doppelt" bedeutet nichts.
+// Self-proof: a known table MUST be found. Otherwise the
+// pattern is outdated and "nothing duplicated" means nothing.
 if (!angelegt.has('price_alerts')) {
   console.error('ROT — price_alerts wird nirgends angelegt gefunden. Das Muster ist veraltet;');
   console.error('ein leeres Ergebnis unten waere dann wertlos.');

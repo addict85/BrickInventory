@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Abdeckung aus den V8-Dateien eines Testlaufs (test-run.js --abdeckung):
- * Server aus dist/, Oberfläche über die Sourcemap des Mess-Bündels bis in
- * public/js/. Eigene Auswertung statt `c8 report`: c8 verwarf die Funktionen
- * der Oberfläche beim Umschreiben der Sourcemap-Pfade (alles 100 %, 0 Funktionen).
+ * Coverage from the V8 files of a test run (test-run.js --abdeckung):
+ * server from dist/, UI via the source map of the measurement bundle down into
+ * public/js/. An own evaluation instead of `c8 report`: c8 discarded the UI's functions
+ * when rewriting the source map paths (everything 100 %, 0 functions).
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -11,7 +11,7 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 const ZIEL = path.join(ROOT, 'coverage');
 const BUENDEL = path.join(ROOT, 'dist', 'abdeckung', 'app.bundle.js');
-/** Bereiche der Schranken: Präfix relativ zu ROOT. */
+/** Areas of the limits: prefix relative to ROOT. */
 const AREAS = {
   gesamt: '',
   server: 'dist/',
@@ -23,7 +23,7 @@ const AREAS = {
 const nm = (/** @type {string} */ p) => require(path.join(ROOT, 'node_modules', p));
 
 const DIST = path.join(ROOT, 'dist') + path.sep;
-/** Nur Server (dist/) und das Mess-Bündel zählen; node_modules, jsdom und Node selbst nicht. */
+/** Only the server (dist/) and the measurement bundle count; node_modules, jsdom and Node itself do not. */
 const relevant = (/** @type {{ url: string }} */ s) => {
   if (!s.url.startsWith('file://')) return false;
   const p = new URL(s.url).pathname;
@@ -31,9 +31,9 @@ const relevant = (/** @type {{ url: string }} */ s) => {
 };
 
 /**
- * Schreibt fertige V8-Dateien gefiltert zurück: Ein Prozess mit jsdom hinterlässt
- * sonst einige MB, ein ganzer Lauf mehrere GB. Halb geschriebene Dateien bleiben
- * für den nächsten Durchgang liegen.
+ * Writes finished V8 files back filtered: a process with jsdom otherwise leaves
+ * several MB, a whole run several GB. Half-written files stay
+ * for the next pass.
  * @param {string} v8 @param {Set<string>} erledigt
  */
 function compact(v8, erledigt = new Set()) {
@@ -65,7 +65,7 @@ async function bericht(v8 = path.join(ZIEL, 'v8'), ziel = ZIEL) {
   const karte = libCoverage.createCoverageMap({});
   for (const script of mergeProcessCovs(gemessen).result) {
     const datei = new URL(script.url).pathname;
-    // Quellen der Sourcemap ausserhalb von public/js (esbuild-Hilfen) zählen nicht.
+    // Sources of the source map outside of public/js (esbuild helpers) do not count.
     const umw = v2i(
       datei,
       datei === BUENDEL ? 0 : undefined,
@@ -85,7 +85,7 @@ async function bericht(v8 = path.join(ZIEL, 'v8'), ziel = ZIEL) {
   return bereiche;
 }
 
-/** Zeilenabdeckung je Bereich in Prozent, eine Nachkommastelle. */
+/** Line coverage per area in percent, one decimal place. */
 function zusammenfassung(/** @type {any} */ karte) {
   /** @type {Record<string, { gedeckt: number, gesamt: number }>} */
   const summe = Object.fromEntries(Object.keys(AREAS).map(k => [k, { gedeckt: 0, gesamt: 0 }]));
@@ -104,7 +104,7 @@ function zusammenfassung(/** @type {any} */ karte) {
   );
 }
 
-/** Rot, wenn ein Bereich unter seine Schranke fällt; nennt Bereiche, deren Schranke nachgezogen werden kann. */
+/** Red if an area falls below its limit; names areas whose limit can be raised. */
 function pruefen(
   /** @type {Record<string, number>} */ ist,
   limitsFile = path.join(__dirname, 'abdeckung-schranken.json'),

@@ -1,5 +1,5 @@
-// Preisverlauf, Wertentwicklung und Marktpreiszeilen als SVG/HTML. Reine Darstellung ohne Abrufe; Set-Detail,
-// Merkliste, Teile-Detail und Finanzen zeichnen damit dieselben Achsen und dasselbe Fadenkreuz.
+// Price history, value development and market price rows as SVG/HTML. Pure rendering without fetches; set detail,
+// wishlist, part detail and finances draw the same axes and the same crosshair with it.
 import { accountCurrency } from './state.js';
 import { G, setzeHtml } from './dom.js';
 import { fmtDatum, fmtN } from './format.js';
@@ -9,8 +9,8 @@ import { html, rawHtml, joinHtml } from './escaping.js';
 import { crosshairParts } from './crosshair.js';
 
 /**
- * Marktpreis und Entwicklung je Zustand. Der Server liefert nur Zustände mit Erfassung; nach jedem Speichern
- * neu geladen, erscheint eine neue Zeile so von selbst.
+ * Market price and development per condition. The server only delivers conditions with an acquisition; reloaded after every save,
+ * a new row thus appears by itself.
  * @param {{ by_condition?: import('../../frontend-types/contract').PriceByCondition }} ph
  */
 export function renderMarketRows(ph, targetId = 'm-market-rows') {
@@ -19,7 +19,7 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
   const LABEL = { N: t('common.condition_new'), U: t('common.condition_used') };
   /** @type {('N' | 'U')[]} */
   const STATES = ['N', 'U'];
-  // Im Set-Dialog stehen Wert und Gewinn als Kopf oben: Sie sind, was man dort sucht.
+  // In the set dialog value and profit are at the top as a header: they are what one looks for there.
   if (el.dataset.kopf) {
     const teile = STATES.flatMap(c => {
       const d = ph?.by_condition?.[c];
@@ -58,8 +58,8 @@ export function renderMarketRows(ph, targetId = 'm-market-rows') {
 }
 
 /**
- * Breite des Diagramms in Pixeln: Die viewBox bekommt die Breite des Behälters, damit eine Schrift von 12
- * Einheiten auch am Telefon 12 px groß ist (vorher 700 Einheiten auf 390 px, also rund 5 px). Ohne Layout
+ * Width of the chart in pixels: the viewBox gets the width of the container, so that a font of 12
+ * units is also 12 px on the phone (before: 700 units on 390 px, i.e. about 5 px). Without layout
  * (jsdom) 700.
  * @param {Element|null} el
  */
@@ -69,8 +69,8 @@ export function chartWidth(el, ersatz = 700) {
 }
 
 /**
- * Die Schriftvergrösserung der Seite (200 % → 2). Schrift und Ränder der Diagramme wachsen damit; die Breite
- * bleibt die des Behälters, sonst schrumpfte das ganze Bild, statt der Schrift mehr Platz zu geben.
+ * The page's font enlargement (200 % → 2). Font and margins of the charts grow with it; the width
+ * stays that of the container, otherwise the whole picture would shrink instead of giving the font more room.
  */
 export function fontFactor() {
   const wurzel =
@@ -81,7 +81,7 @@ export function fontFactor() {
 }
 
 /**
- * Platz links für die Beträge der y-Achse: so breit wie der längste, nicht fest.
+ * Room on the left for the amounts of the y axis: as wide as the longest one, not fixed.
  * @param {Split} teilung
  * @param {string} cur
  * @param {number} fs
@@ -93,9 +93,9 @@ function axesEdge(teilung, cur, fs) {
 }
 
 /**
- * Linker Rand und Lage der Achsenbeträge. Bliebe neben ihnen weniger als gut die Hälfte für die Kurve
- * (Telefon, grosse Schrift), stehen die Beträge innen über ihren Rasterlinien: Sonst blieben bei 320 px und
- * 200 % 15 px Kurve.
+ * Left margin and position of the axis amounts. If less than a good half remained next to them for the curve
+ * (phone, large font), the amounts stand inside above their grid lines: otherwise at 320 px and
+ * 200 % 15 px of curve would remain.
  * @param {Split} teilung
  * @param {string} cur
  * @param {number} fs
@@ -108,14 +108,14 @@ function axesSituation(teilung, cur, fs, W, rechts) {
   return { innen, links: innen ? Math.round(fs * 0.5) : rand };
 }
 
-// ── Achsen der Diagramme ─────────────────────────────────────────────────────
-// Werte in Schritten von 1, 2 oder 5 mal einer Zehnerpotenz (4'219 / 4'441 liest niemand), die Zeit als echte
-// Achse statt nach Index — sonst stünde ein Monat so breit da wie ein Tag.
+// ── Chart axes ──────────────────────────────────────────────────────────────
+// Values in steps of 1, 2 or 5 times a power of ten (nobody reads 4'219 / 4'441), time as a real
+// axis instead of by index — otherwise a month would be as wide as a day.
 
-/** Achsenteilung: erster und letzter Strich, dazwischen alle Werte. @typedef {{ von: number, bis: number, werte: number[] }} Split */
+/** Axis division: first and last tick, all values in between. @typedef {{ von: number, bis: number, werte: number[] }} Split */
 
 /**
- * Teilung nach 1-2-5 über [min, max] mit höchstens etwa `ziel` Strichen.
+ * Division by 1-2-5 over [min, max] with at most about `ziel` ticks.
  * @param {number} min @param {number} max @param {number} [ziel]
  * @returns {Split}
  */
@@ -136,7 +136,7 @@ export function niceSplit(min, max, ziel = 5) {
 }
 
 /**
- * Zeitpunkt aus „YYYY-MM-DD“, „YYYY-MM“, „YYYY-MM-DD HH“ oder ISO; sonst NaN.
+ * Point in time from "YYYY-MM-DD", "YYYY-MM", "YYYY-MM-DD HH" or ISO; otherwise NaN.
  * @param {string} s
  */
 export function zeitpunkt(s) {
@@ -149,10 +149,10 @@ export function zeitpunkt(s) {
 }
 
 /**
- * Striche einer Zeitachse mit einheitlicher Beschriftung: Stunden an einem Tag, Tage bis drei Monate, darüber
- * Monate („Nov. 2025“). Tage auf Deutsch in Ziffern wie jedes Datum im Text („13.09.“ zu „13.09.2026“);
- * „13. Sept.“ daneben las sich wie ein zweites Format. Englisch mit Monatsnamen wie fmtDatum.
- * @param {number} von @param {number} bis  Millisekunden
+ * Ticks of a time axis with uniform labels: hours within a day, days up to three months, beyond that
+ * months ("Nov. 2025"). Days in German as digits like every date in the text ("13.09." for "13.09.2026");
+ * "13. Sept." next to it read like a second format. English with month names like fmtDatum.
+ * @param {number} von @param {number} bis  milliseconds
  * @param {number} maxStrokes
  * @returns {{ t: number, text: string }[]}
  */
@@ -184,7 +184,7 @@ export function timeSplit(von, bis, maxStrokes) {
     while (d.getMonth() % n) d.setMonth(d.getMonth() + 1);
     for (; d.getTime() <= bis; d.setMonth(d.getMonth() + n)) raus.push({ t: d.getTime(), text: f.format(d) });
   }
-  // Passt auch der grösste Schritt nicht (schmales Telefon), nur jeden k-ten Strich.
+  // If even the largest step does not fit (narrow phone), only every k-th tick.
   if (raus.length > max) {
     const k = Math.ceil(raus.length / max);
     return raus.filter((_, i) => i % k === 0);
@@ -193,7 +193,7 @@ export function timeSplit(von, bis, maxStrokes) {
 }
 
 /**
- * Eine Beschriftung am Rand endet bzw. beginnt dort, statt halb hinauszuragen.
+ * A label at the edge ends or begins there instead of sticking out halfway.
  * @param {number} x
  * @param {number} rechts
  */
@@ -202,7 +202,7 @@ function randAnker(x, rechts, f = 1) {
 }
 
 /**
- * Zeitachse: Striche, deren Beschriftung die vorige berühren würde, entfallen (schmal und grosse Schrift).
+ * Time axis: ticks whose label would touch the previous one are dropped (narrow and large font).
  * @param {{ x: number, text: string }[]} striche
  * @param {number} y
  * @param {number} rechts
@@ -221,18 +221,18 @@ function xLabel(striche, y, rechts, f, fs) {
   });
 }
 
-// ── Gemeinsame Teile der beiden Diagramme ───────────────────────────────────
-// Preisverlauf und Wertdiagramm teilen Achsen, Einstand-Linie und Fadenkreuz, damit dieselbe Grösse in beiden
-// gleich aussieht und gleich bedient wird.
+// ── Shared parts of the two charts ──────────────────────────────────────────
+// Price history and value chart share axes, cost basis line and crosshair, so that the same quantity looks
+// the same in both and is operated the same way.
 
 /**
- * Betrag an der y-Achse: mit Währung, Nachkommastellen nur bei Schritten unter 1.
+ * Amount on the y axis: with currency, decimal places only for steps below 1.
  * @param {number} v
  * @param {number} schritt
  * @param {string} cur
  */
 export function axesAmount(v, schritt, cur, kurz = false) {
-  // Bei grosser Schrift Tausender kurz: „2 600 €“ nahm am Telefon die halbe Breite.
+  // With a large font thousands are abbreviated: "2 600 €" took half the width on the phone.
   if (kurz && schritt >= 100 && Math.abs(v) >= 1000) {
     const zeichen =
       new Intl.NumberFormat(locale(), { style: 'currency', currency: cur || accountCurrency || 'EUR' })
@@ -253,8 +253,8 @@ export function axesAmount(v, schritt, cur, kurz = false) {
 }
 
 /**
- * Gitter und Beschriftung der y-Achse. Beginnt sie nicht bei 0, trägt sie unten einen Achsenbruch: Sonst läse
- * man eine Bewegung von 5 % als Verdopplung.
+ * Grid and labels of the y axis. If it does not start at 0, it carries an axis break at the bottom: otherwise
+ * a movement of 5 % would read as a doubling.
  * @param {Split} teilung
  * @param {number} min
  * @param {(v: number) => number} yOf
@@ -282,8 +282,8 @@ function yAxis(teilung, min, yOf, links, rechts, oben, unten, cur, f = 1, innen 
 }
 
 /**
- * Die Beträge innen (axesSituation): nur unterste und oberste Linie, nach der Kurve gezeichnet und mit Rand in
- * der Kartenfarbe; keiner dort, wo die Beschriftung einer Bezugslinie steht (`avoid`, y-Werte).
+ * The amounts inside (axesSituation): only the lowest and highest line, drawn after the curve and with a border in
+ * the card color; none where the label of a reference line stands (`avoid`, y values).
  * @param {Split} teilung
  * @param {number} min
  * @param {(v: number) => number} yOf
@@ -306,8 +306,8 @@ function yAmountsInner(teilung, min, yOf, links, cur, f, avoid = []) {
 }
 
 /**
- * Zeilen für eine Beschriftung in `platz` px. 0,68 em je Zeichen: Mit 0,62 passte „Kaufpreis 205,00 €“
- * rechnerisch in eine Zeile und wurde links abgeschnitten.
+ * Lines for a label in `platz` px. 0.68 em per character: with 0.62 "Kaufpreis 205,00 €"
+ * fit into one line by calculation and was cut off on the left.
  * @param {string} text @param {number} platz @param {number} f
  */
 function umbrechen(text, platz, f) {
@@ -323,8 +323,8 @@ function umbrechen(text, platz, f) {
 }
 
 /**
- * Beschriftungen von Bezugslinien, die im Bild umbrächen, stehen unter dem Diagramm: Mehrzeilig lagen sie
- * über Kurve und Endpunkt. `hoehe` ist der Platz, den das Diagramm dafür unten anfügt.
+ * Labels of reference lines that would wrap inside the picture stand below the chart: multi-line they lay
+ * over the curve and end point. `hoehe` is the room the chart adds at the bottom for them.
  * @param {{ text: string, farbe: string }[]} eintraege @param {number} W @param {number} f
  */
 function referenceLegend(eintraege, W, f) {
@@ -335,7 +335,7 @@ function referenceLegend(eintraege, W, f) {
     y += zeilen.length * 14 * f + 4 * f;
     return { e, zeilen, oben };
   });
-  /** @param {number} start Oberkante des Bereichs */
+  /** @param {number} start top edge of the area */
   const svg = start =>
     teile.map(({ e, zeilen, oben }) => {
       const b = start + oben + 12 * f,
@@ -347,12 +347,12 @@ function referenceLegend(eintraege, W, f) {
   return { hoehe: teile.length ? y + 6 * f : 0, svg };
 }
 
-/** Passt die Beschriftung einer Bezugslinie in eine Zeile über der Fläche? @param {string} text @param {number} links @param {number} rechts @param {number} f */
+/** Does the label of a reference line fit into one line above the area? @param {string} text @param {number} links @param {number} rechts @param {number} f */
 const imBild = (text, links, rechts, f) => umbrechen(text, rechts - links - 8, f).length === 1;
 
 /**
- * Waagrechte, gestrichelte Bezugslinie (Einstand, Kaufpreis) mit Beschriftung am rechten Ende. `endY` ist
- * die Höhe der Kurve dort: Läge die Schrift auf ihr, steht sie auf der anderen Seite der Linie.
+ * Horizontal, dashed reference line (cost basis, purchase price) with a label at the right end. `endY` is
+ * the height of the curve there: if the text would lie on it, it stands on the other side of the line.
  * @param {number} wert
  * @param {(v: number) => number} yOf
  * @param {number} links
@@ -376,9 +376,9 @@ function referenceLine(
   if (!text) return html`<g class="einstand-linie">${linie}</g>`;
   const zeilen = umbrechen(text, rechts - links - 8, f);
   const hoehe = 14 * f * (zeilen.length - 1);
-  // Über der Linie, ausser die Kurve endet dort oder oben ist kein Platz (Linie am oberen Rand).
-  const topNoSpace = y - 6 * f - hoehe - 12 * f < 0; // 12 px je Faktor: die Oberlänge der Schrift
-  // Darunter nur, wenn es dort Platz hat: Zwei Zeilen am unteren Rand liefen sonst aus dem Diagramm.
+  // Above the line, unless the curve ends there or there is no room at the top (line at the top edge).
+  const topNoSpace = y - 6 * f - hoehe - 12 * f < 0; // 12 px per factor: the ascender of the font
+  // Below only if there is room there: two lines at the bottom edge would otherwise run out of the chart.
   const darunter =
     (endY != null && endY < y && y - endY < 26 * f + hoehe && y + 16 * f + hoehe + 4 * f <= unten) || topNoSpace;
   const erste = darunter ? y + 16 * f : y - 6 * f - hoehe;
@@ -388,19 +388,19 @@ function referenceLine(
       paint-order="stroke" stroke="var(--sur)" stroke-width="4" stroke-linejoin="round">${tspans}</text></g>`;
 }
 
-/** Antwort von /v1/…/price-history, soweit die Diagramme sie lesen.
+/** Response of /v1/…/price-history, as far as the charts read it.
  * @typedef {Partial<Pick<import('../../frontend-types/contract').PriceHistoryResponse, 'chart' | 'history_new' | 'history_used' | 'by_condition'>> | null | undefined} Preisdaten */
 
 /**
- * Die Reihen des Preisverlaufs je Zustand, aus den Diagrammdaten des Servers (src/finances/chartData.ts). Vor
- * firstRealIndex stehen aufgefüllte Nullen; der Kaufpreis am Kauftag ist kein Marktpreis und steht als Punkt
- * da.
+ * The series of the price history per condition, from the server's chart data (src/finances/chartData.ts). Before
+ * firstRealIndex there are padded zeros; the purchase price on the purchase day is not a market price and stands as a point
+ * there.
  * @param {Preisdaten} data @returns {{ key: string, name: string, color: string, pts: { x: string, y: number }[], kauf: number, purchaseTag: string | null }[]}
  */
 function priceRows(data) {
   /** @type {Record<string, string>} */
   const NAMES = { N: tRaw('common.condition_new'), U: tRaw('common.condition_used') };
-  // Farben aus dem Design; var() greift in inline-SVG auch in stroke und stop-color.
+  // Colors from the theme; var() also works in inline SVG in stroke and stop-color.
   /** @type {Record<string, string>} */
   const COLORS = { N: 'var(--chart-new)', U: 'var(--chart-used)' };
   const purchaseDays = (/** @type {string} */ k) =>
@@ -425,8 +425,8 @@ function priceRows(data) {
 }
 
 /**
- * Eine Reihe als Linie mit Verlaufsfläche; ein einzelner Punkt als Kreis.
- * `gid` ist je Diagramm eindeutig, sonst nähme ein zweites SVG den ersten Verlauf.
+ * A series as a line with a gradient area; a single point as a circle.
+ * `gid` is unique per chart, otherwise a second SVG would take the first gradient.
  * @param {{ color: string, pts: { x: string, y: number }[] }} sd @param {string} gid
  * @param {(d: string) => number} xOf @param {(v: number) => number} yOf @param {number} unten @param {number} f
  */
@@ -445,19 +445,19 @@ function priceLine(sd, gid, xOf, yOf, unten, f) {
       <polyline points="${pts.join(' ')}" fill="none" stroke="${sd.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
 }
 
-/** Kennungen der Verläufe im SVG; ein Zähler genügt, sie müssen nur auf der Seite eindeutig sein. */
+/** Identifiers of the gradients in the SVG; a counter is enough, they only need to be unique on the page. */
 let _nextId = 0;
 
 /**
- * Preisverlauf mit zwei Linien (neu und gebraucht) auf gemeinsamer Skala. Die x-Position kommt vom Datum,
- * nicht vom Index: Gebrauchtpreise setzen oft später ein, und gestreckte Reihen zeigten einen Vergleich, den
- * es nicht gibt.
+ * Price history with two lines (new and used) on a common scale. The x position comes from the date,
+ * not from the index: used prices often start later, and stretched series would show a comparison that
+ * does not exist.
  * @param {Preisdaten} data
- *   Antwort von /v1/sets/:nummer/price-history
- * @param {string} [uid]  Kürzel für die Verlaufs-IDs im SVG
+ *   Response of /v1/sets/:nummer/price-history
+ * @param {string} [uid]  abbreviation for the gradient IDs in the SVG
  * @param {number} [breite]
- * @param {Set<string>} [mittel] Zustände, deren Kaufpreis das Mittel mehrerer Käufe ist („Ø Kaufpreis“)
- * @returns {import('./escaping.js').SafeHtml} SVG-Markup oder ein Hinweistext
+ * @param {Set<string>} [mittel] conditions whose purchase price is the average of several purchases ("Ø purchase price")
+ * @returns {import('./escaping.js').SafeHtml} SVG markup or a hint text
  */
 export function priceChartSVG(data, uid = `p${++_nextId}`, breite = 700, mittel = new Set()) {
   const axis = data?.chart?.x || [];
@@ -468,7 +468,7 @@ export function priceChartSVG(data, uid = `p${++_nextId}`, breite = 700, mittel 
   }
 
   const toTime = zeitpunkt;
-  // Die Achse beginnt beim ersten Marktpreis; ein früherer Kauf steht als Punkt am linken Rand.
+  // The axis starts at the first market price; an earlier purchase stands as a point at the left edge.
   const firstPoint = series.flatMap(sd => sd.pts.map(p => p.x)).sort((a, b) => toTime(a) - toTime(b))[0];
   const first = toTime(firstPoint) < toTime(axis[axis.length - 1]) ? firstPoint : axis[0],
     last = axis[axis.length - 1];
@@ -544,14 +544,14 @@ export function priceChartSVG(data, uid = `p${++_nextId}`, breite = 700, mittel 
   );
   const legend = series.map(
     (sd, i) =>
-      // Ab dem linken Rand statt ab der Achse: Bei grosser Schrift ist der Achsenrand so breit, dass „Neuware“ sonst rechts abbricht.
+      // From the left edge instead of from the axis: with a large font the axis margin is so wide that "Neuware" would otherwise break off on the right.
       html`<g transform="translate(${4 + i * Math.min(120 * f, (W - 8) / series.length)}, ${hCurve - 6 * f})">
        <line x1="0" y1="${-4 * f}" x2="${16 * f}" y2="${-4 * f}" stroke="${sd.color}" stroke-width="2.5" stroke-linecap="round"/>
        <text x="${22 * f}" y="0" font-size="${fs}" fill="var(--txt)" font-family="inherit">${sd.name}</text>
      </g>`,
   );
 
-  // Fadenkreuz: je Tag der Achse die Werte aller Reihen, die dort einen Punkt haben.
+  // Crosshair: per day of the axis the values of all series that have a point there.
   const tage = [...new Set(series.flatMap(sd => sd.pts.map(p => p.x)))].sort((a, b) => toTime(a) - toTime(b));
   const punkte = tage.map(tag => {
     const werte = series.map(sd => sd.pts.find(p => p.x === tag)?.y ?? null);
@@ -618,9 +618,9 @@ export function priceChartSVG(data, uid = `p${++_nextId}`, breite = 700, mittel 
 
 /**
  * @param {{ day: string, total: number, zeit?: number }[]} data
- *   `zeit` (ms) setzt die Punkte auf eine echte Zeitachse; fehlt sie, nach Index.
- * @param {number} [einstand] Summe der Kaufpreise; > 0 zeichnet die Einstand-Linie.
- * @param {string} [costText] Name der Einstand-Linie
+ *   `zeit` (ms) puts the points on a real time axis; if missing, by index.
+ * @param {number} [einstand] sum of the purchase prices; > 0 draws the cost basis line.
+ * @param {string} [costText] name of the cost basis line
  * @param {string} _period
  */
 export function portfolioChartSVG(
@@ -653,7 +653,7 @@ export function portfolioChartSVG(
     t: situation.innen ? 24 * f : 14 * f,
     b: 32 * f,
   };
-  // Schmal nur „Kaufpreis“: Der Zusatz („nur bewertete Posten“) steht in der Kennzahl darunter.
+  // Narrow, only "Kaufpreis": the addition ("only valued items") is in the metric below.
   const referenceText = withCost
     ? `${W < 560 ? tRaw('finance.chart.kaufpreis') : costText} ${fmtN(einstand, cur)}`
     : '';
@@ -695,7 +695,7 @@ export function portfolioChartSVG(
   const pts = vals.map((v, i) => `${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(' ');
   const area = `${px(0).toFixed(1)},${unten} ${pts} ${px(n - 1).toFixed(1)},${unten}`;
 
-  // Je Beschriftung rund 70 px, damit sie sich am Telefon nicht überlappen.
+  // About 70 px per label, so that they do not overlap on the phone.
   /** @type {import('./escaping.js').Markup} */
   let xLabels = html``;
   if (withTime) {
@@ -764,7 +764,7 @@ export function portfolioChartSVG(
 </svg>`;
 }
 
-/** Leerzustand des Wertdiagramms (auch aus portfolioChartSVG). */
+/** Empty state of the value chart (also from portfolioChartSVG). */
 export function diagrammLeer() {
   return html`<div class="diagramm-leer" role="status"><strong>${tRaw('finance.chart.too_few_title')}</strong><span>${tRaw('finance.chart.too_few_text')}</span></div>`;
 }

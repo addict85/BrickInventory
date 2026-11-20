@@ -14,13 +14,13 @@ import { acqSummary, sumsText, convertedText, summary } from './purchase-price-d
 export { erfassungsPreis, renderAcquisitionSummary } from './purchase-price-display.js';
 import { renderMarketRows } from './charts.js';
 import { erfassung, gespeichert, setWithFocus, isoTag, dateField, savedBrand, showSaved } from './entry-state.js';
-// Kaufpreis-Modal und Detailfenster für manuelle Einträge: Beides ist Erfassung, keine Administration, und
-// gehört deshalb nicht nach admin.js.
+// Purchase price modal and detail window for manual entries: both are capture, not administration, and
+// therefore do not belong in admin.js.
 /** @typedef {import('../../frontend-types/contract').HouseholdMember} Konto */
 /** @typedef {import('../../frontend-types/contract').AcquisitionTotals} Erfassungssumme */
 /** @typedef {import('../../frontend-types/contract').Acquisition} Erfassung */
 
-// ── KAUFPREIS-MODAL ─────────────────────────────────────────────────────────
+// ── PURCHASE PRICE MODAL ────────────────────────────────────────────────────
 /**
  * @param {string} sn
  */
@@ -39,12 +39,12 @@ export function openAcqModal(sn) {
   loadAcqModal(sn);
 }
 
-// Ein Klick auf den Hintergrund schliesst über closeAcqModal(), die einzige Fassung mit der Rückkehr-Logik
-// für Set und manuellen Eintrag.
+// A click on the background closes via closeAcqModal(), the only version with the return logic
+// for set and manual entry.
 G('acq-modal').addEventListener('click', e => e.target === e.currentTarget && closeAcqModal());
 
 /**
- * Summe nach jedem Speichern nachziehen: Sie stand bis zum erneuten Öffnen auf dem alten Wert.
+ * Update the sum after every save: until reopening it stayed at the old value.
  * @param {string} sn
  */
 async function refreshSum(sn) {
@@ -70,7 +70,7 @@ async function refreshSum(sn) {
  */
 async function loadAcqModal(sn) {
   const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
-  // Ein Lesefehler ist keine leere Liste: Sonst stünde „—“ da, als gäbe es keine Erfassung.
+  // A read error is not an empty list: otherwise "—" would stand there as if there were no acquisition.
   if (!ad.success) {
     toast(ad.error || tRaw('settings.error'), 'error');
     return;
@@ -150,9 +150,9 @@ export function renderAcqModalBody(sn, acqs, totals) {
 
   markup = html`${markup}${html`</tbody></table></div>`}`;
 
-  // Summenzeile: Der Server rechnet sie (acquisitionTotals in src/inventory/acquisitions.ts) und liefert sie
-  // als `totals` mit. Vorher stand die Rechnung hier und noch dreimal woanders — zweimal in dieser Datei,
-  // zweimal in der App, und mit verschiedenen Preisfeldern.
+  // Sum row: the server computes it (acquisitionTotals in src/inventory/acquisitions.ts) and delivers it
+  // as `totals`. Before, the calculation stood here and three more times elsewhere — twice in this file,
+  // twice in the app, and with different price fields.
   markup = html`${markup}${acqSummary(totals)}`;
 
   setWithFocus(G('acq-modal-body'), markup);
@@ -179,8 +179,8 @@ async function acqSave(sn, id, field, value) {
     if (!purchaseDateValid(`acq-datum-feld-${id}`)) return;
     body.date = value;
   } else if (field === 'owner') {
-    // Eigentümerwechsel verschiebt genau diese Kaufpreis-Zeile, ohne from_user_id: Den Absender kennt der
-    // Server aus der Zeile. Mit dem Betrachter als Absender fand er Zeilen von Unterkonten nicht (404).
+    // An owner change moves exactly this purchase price row, without from_user_id: the server knows the
+    // sender from the row. With the viewer as sender it did not find rows of sub-accounts (404).
     body.owner_user_id = parseInt(value, 10);
   } else {
     body.condition = value;
@@ -192,8 +192,8 @@ async function acqSave(sn, id, field, value) {
       loadAcqModal(sn);
       return;
     }
-    // Nach einem Wechsel stimmt fast alles auf dem Schirm nicht mehr: Mengen, Summen, Besitzer-Plaketten.
-    // Lieber neu laden als vier Stellen einzeln nachziehen.
+    // After a change almost everything on the screen is wrong: quantities, sums, owner badges.
+    // Better reload than update four places individually.
     toast(
       tRaw(d.source_emptied ? 'household.move_ok' : 'household.owner_moved', {
         parts: d.parts ?? 0,
@@ -201,19 +201,19 @@ async function acqSave(sn, id, field, value) {
       }),
       'success',
     );
-    // restore: Ohne das landet der Nutzer nach dem Wechsel wieder bei Seite 1; so bleiben Position und
-    // geladene Tiefe erhalten.
+    // restore: without it the user lands at page 1 again after the change; that way position and
+    // loaded depth are kept.
     closeAcqModal();
     closeModal();
     emit('sammlungLaden', { restore: true });
     return;
   }
-  // Der Server liefert das neu berechnete Zustands-Aggregat mit — direkt in die Galerie-Liste schreiben,
-  // damit die Kachel ohne Neuladen stimmt.
+  // The server delivers the recomputed condition aggregate along — write it directly into the gallery list,
+  // so that the tile is right without reloading.
   emit('setAggregat', d.set);
   if (!d.success) {
     toast(d.error || t('settings.error'), 'error');
-    if (field === 'date') loadAcqModal(sn); // abgelehnte Eingabe auf gespeicherten Wert zurücksetzen
+    if (field === 'date') loadAcqModal(sn); // reset rejected input to the stored value
     return;
   }
   showSaved(id);
@@ -222,21 +222,21 @@ async function acqSave(sn, id, field, value) {
     if (f && f !== document.activeElement) f.value = amountForField(body.purchase_price);
   }
   refreshSum(sn);
-  // Marktpreis-Zeilen neu holen.
+  // fetch the market price rows anew.
   //
-  // Wird erstmals ein Kaufpreis in einem Zustand erfasst, entsteht dafür eine NEUE Zeile (der Server liefert
-  // by_condition nur für Zustände mit Erfassung). Ohne dieses Nachladen erschiene sie erst beim nächsten
-  // Öffnen des Dialogs.
+  // If a purchase price is captured in a condition for the first time, a NEW row arises for it (the server delivers
+  // by_condition only for conditions with an acquisition). Without this reload it would only appear on the next
+  // opening of the dialog.
   api('GET', `/v1/sets/${sn}/price-history`)
     .then(renderMarketRows)
     .catch(() => {});
 
-  // Galerie und Finanzen mitziehen: Kaufpreis und Menge wirken auf die Kachel und die Auswertung, die sonst
-  // bis zum Neuladen alt blieben. restore, damit der Wechsel nicht die gescrollte Tiefe kostet.
+  // Pull gallery and finances along: purchase price and quantity affect the tile and the evaluation, which would otherwise
+  // stay old until reloading. restore, so that the change does not cost the scrolled depth.
   emit('sammlungLaden', { restore: true });
   emit('finanzenLaden');
 
-  // Datum geändert → Reihenfolge/Summary neu laden
+  // Date changed → reload order/summary
   if (field === 'date') {
     loadAcqModal(sn);
     api('GET', `/v1/sets/${sn}/acquisitions`)
@@ -249,13 +249,13 @@ async function acqSave(sn, id, field, value) {
       .catch(() => {});
     return;
   }
-  // War der Preis leer, hat der Server den Marktpreis geholt; neu laden, um ihn zu zeigen
+  // If the price was empty, the server fetched the market price; reload to show it
   if (field === 'price' && (value === '' || value === null)) {
     loadAcqModal(sn);
     return;
   }
-  // Zusammenfassung im Detail-Dialog nachziehen. Das Zustands-Aggregat kommt inzwischen aus der PUT-Antwort
-  // (applySetAggregate oben) — hier wird nur noch die Erfassungsliste neu gerendert.
+  // Update the summary in the detail dialog. The condition aggregate now comes from the PUT response
+  // (applySetAggregate above) — here only the acquisition list is re-rendered.
   if (field === 'cond') {
     api('GET', `/v1/sets/${sn}/acquisitions`)
       .then(ad => {
@@ -265,10 +265,10 @@ async function acqSave(sn, id, field, value) {
       })
       .catch(() => {});
   }
-  // Menge geändert: ganzen Dialog neu laden (Zusammenfassung, Menge im Set-Detail)
+  // Quantity changed: reload the whole dialog (summary, quantity in the set detail)
   if (field === 'qty') {
     loadAcqModal(sn);
-    // Auch die Zusammenfassung im Set-Detail auffrischen
+    // Refresh the summary in the set detail too
     api('GET', `/v1/sets/${sn}/acquisitions`)
       .then(ad => {
         if (ad.success && openSet?.set_number === sn) {
@@ -292,14 +292,14 @@ async function acqDelete(sn, id) {
     toast(tRaw('settings.error'), 'error');
     return;
   }
-  // openSet und das Mengenfeld im Set-Detail nachführen
+  // update openSet and the quantity field in the set detail
   if (openSet?.set_number === sn) {
     openSet.quantity = /** @type {number} */ (d.new_quantity);
     setQuantitiesField(openSet.quantity);
   }
-  // Erfassungsdialog neu laden
+  // reload the acquisition dialog
   const ad = await api('GET', `/v1/sets/${sn}/acquisitions`);
-  // Nur eine leere Liste schliesst den Dialog, nicht ein Fehler beim Nachladen.
+  // Only an empty list closes the dialog, not an error while reloading.
   if (!ad.success) {
     toast(ad.error || tRaw('settings.error'), 'error');
     return;
@@ -309,11 +309,11 @@ async function acqDelete(sn, id) {
     return;
   }
   renderAcqModalBody(sn, ad.acquisitions, ad.totals);
-  // Kurzübersicht im Set-Detail auffrischen
+  // refresh the short overview in the set detail
   const dvEl = G('m-acq-summary');
   if (dvEl) setzeHtml(dvEl, summary(ad.acquisitions, sn));
-  // Wie in acqSave(): Eine gelöschte Erfassung verändert Bestand und Wert — und lässt eine Zustands-Zeile
-  // verschwinden, wenn es die letzte war.
+  // As in acqSave(): a deleted acquisition changes inventory and value — and makes a condition row
+  // disappear if it was the last one.
   api('GET', `/v1/sets/${sn}/price-history`)
     .then(renderMarketRows)
     .catch(() => {});
@@ -334,8 +334,8 @@ export function closeAcqModal() {
       .then(ad => {
         if (!ad?.success) return;
         const sumEl = G('m-acq-summary');
-        // Der Neuaufbau ersetzt den Knopf, auf den die Dialogverwaltung den Fokus zurückgab; ohne das stünde
-        // er danach auf der Dialogfläche.
+        // The rebuild replaces the button the dialog management returned the focus to; without this it would
+        // afterwards be on the dialog surface.
         const aktiv = document.activeElement;
         const hadFocus =
           !aktiv || aktiv === document.body || !!sumEl?.contains(aktiv) || aktiv.matches('#set-modal > .modal');
@@ -354,7 +354,7 @@ export function closeAcqModal() {
   }
 }
 
-// ── Handler beim Dispatcher anmelden (siehe js/registry.js) ──────────────
+// ── Register handlers with the dispatcher (see js/registry.js) ─────────────
 registerActions({
   acqDelete,
   acqSave,

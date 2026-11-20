@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * `global_settings` wird über src/settings/settings.ts angefasst, nicht direkt.
+ * `global_settings` is touched via src/settings/settings.ts, not directly.
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Dauerhaft erlaubt, mit Grund. */
+/** Permanently allowed, with a reason. */
 const ALLOWED = new Map([
   ['db/schemaStart.ts', 'legt die Tabelle an und migriert sie'],
   ['db/rows.ts', 'erzeugte Zeilentypen aller Tabellen, kein Zugriff'],
@@ -17,8 +17,8 @@ const ALLOWED = new Map([
 ]);
 
 /**
- * Der Rest-Bestand. Diese Zahlen duerfen nur SINKEN.
- * Wer eine Datei leerraeumt, streicht ihre Zeile.
+ * The remaining stock. These numbers may only DECREASE.
+ * Whoever clears a file removes its line.
  */
 const OFFEN = new Map([]);
 
@@ -63,7 +63,7 @@ for (const [datei, n] of gefunden) {
     fehler.push(`MEHR: ${datei} hat ${n} statt ${erlaubt}. Die Liste darf nur kürzer werden.`);
   }
 }
-// Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand prüft.
+// A line nobody needs any more is a permission nobody checks.
 for (const [datei, n] of OFFEN) {
   const ist = gefunden.get(datei) ?? 0;
   if (ist === 0) fehler.push(`ERLEDIGT: ${datei} — Zeile aus OFFEN streichen.`);

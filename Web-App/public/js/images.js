@@ -1,13 +1,13 @@
 import { html, safeUrl, rawHtml } from './escaping.js';
 import { ico, setzeHtml } from './dom.js';
 
-// Bildadressen und Platzhalter. Fremde Bilder gehen nur über den Proxy des Servers; was nicht lädt, zeigt den
-// Platzhalter seiner Art statt des Browsersymbols.
+// Image addresses and placeholders. Foreign images only go via the server's proxy; whatever does not load shows the
+// placeholder of its kind instead of the browser icon.
 
 /**
- * Ein Vorschaubild aus einer Vorlage. Lädt es nicht, setzt actions.js den Platzhalter seiner Art (`ph`) an
- * seine Stelle — dasselbe Bild wie für einen Eintrag ganz ohne Bild, statt des Browser-Symbols für kaputte
- * Bilder.
+ * A preview image from a template. If it does not load, actions.js puts the placeholder of its kind (`ph`) in
+ * its place — the same image as for an entry without any image, instead of the browser icon for broken
+ * images.
  * @param {{ src: string, alt: string, ph?: 'set'|'teil'|'figur', klasse?: string,
  *           orig?: string, stil?: string, fade?: boolean, extra?: string }} o
  */
@@ -16,20 +16,19 @@ export function bildTag(o) {
 }
 
 /**
- * Der Platzhalter einer Art: das Set-Bild oder das Symbol in einer getönten Fläche.
+ * The placeholder of a kind: the set image or the icon in a tinted area.
  * @param {string} art
  */
 export function placeholderContent(art) {
-  // Dasselbe dezente Symbol wie bei Teilen und Figuren; das rote Logo füllte ohne Bilder jede Karte gleich.
-  // Sets nehmen die Datei: Sie sieht in jedem Design gleich aus (UI-Prüfung 6, M3).
+  // The same subtle icon as for parts and figures; the red logo filled every card the same way without images.
+  // Sets take the file: it looks the same in every theme (UI check 6, M3).
   if (art === 'set') return html`<img src="/assets/set-placeholder.svg" alt="" aria-hidden="true">`;
   return ico(art === 'figur' ? 'figur' : 'teil');
 }
 
 /**
- * Zeigt den Platzhalter, solange ein Bild noch einmal versucht wird; das Bild bleibt verborgen daneben und
- * ersetzt ihn, sobald es doch lädt. Ohne das stand während des zweiten Versuchs das Symbol des Browsers in
- * der Kachel.
+ * Shows the placeholder while an image is retried; the image stays hidden next to it and
+ * replaces it as soon as it does load. Without that, the browser's icon stood in the tile during the second attempt.
  * @param {HTMLImageElement} img
  */
 export function imageProvisional(img) {
@@ -37,12 +36,12 @@ export function imageProvisional(img) {
   bildPlatzhalter(img, true);
   img.hidden = true;
   img.style.display = 'none';
-  // Verborgen lädt ein lazy-Bild nie; der zweite Versuch soll aber laufen.
+  // Hidden, a lazy image never loads; but the second attempt should run.
   img.setAttribute('loading', 'eager');
 }
 
 /**
- * Das Bild hat doch geladen: vorläufigen Platzhalter entfernen.
+ * The image did load after all: remove the temporary placeholder.
  * @param {HTMLImageElement} img
  */
 export function imageLoaded(img) {
@@ -54,7 +53,7 @@ export function imageLoaded(img) {
 }
 
 /**
- * Ersetzt ein Bild, das nicht lädt, durch seinen Platzhalter in derselben Grösse.
+ * Replaces an image that does not load with its placeholder of the same size.
  * @param {HTMLImageElement} img
  */
 export function bildPlatzhalter(img, vorlaeufig = false) {
@@ -70,7 +69,7 @@ export function bildPlatzhalter(img, vorlaeufig = false) {
   ph.setAttribute('aria-label', img.getAttribute('alt') || '');
   if (!img.getAttribute('alt')) ph.setAttribute('aria-hidden', 'true');
   const cs = getComputedStyle(img);
-  // In der Kachel füllt der Platzhalter die Bildfläche; ein kaputtes Bild misst nur sein Symbol.
+  // In the tile the placeholder fills the image area; a broken image only measures its icon.
   if (!img.closest('.sci'))
     for (const k of /** @type {const} */ (['width', 'height', 'borderRadius', 'margin']))
       if (cs[k] && cs[k] !== 'auto') ph.style[k] = cs[k];
@@ -84,15 +83,15 @@ export function bildPlatzhalter(img, vorlaeufig = false) {
 }
 
 /**
- * Der Bild-Proxy liegt unter /api/v1. Ältere image_url aus der Datenbank tragen noch die alte Adresse;
- * erkannt werden beide, gebaut wird nur die neue.
+ * The image proxy lives under /api/v1. Older image_url values from the database still carry the old address;
+ * both are recognized, only the new one is built.
  */
 const IMG_PROXY = '/api/v1/img-proxy';
 
 const IMG_PROXY_LEGACY = '/api/img-proxy';
 
 /**
- * Traegt diese Adresse eine der beiden Proxy-Formen?
+ * Does this address carry one of the two proxy forms?
  * @param {string} src
  */
 function isProxyPath(src) {
@@ -100,11 +99,11 @@ function isProxyPath(src) {
 }
 
 /**
- * Adressen auf den eigenen Server auf ihren Pfad kürzen: imgEl.src liefert die absolute Adresse, und der
- * Proxy lehnt sich selbst als Ziel zu Recht ab (offene Weiterleitung). Ohne das brach der Zoom mit
+ * Shorten addresses pointing to the own server to their path: imgEl.src delivers the absolute address, and the
+ * proxy rightly rejects itself as a target (open redirect). Without that, the zoom broke with
  * 403.
  * @param {string} src
- * @returns {string} Pfad, wenn die Adresse auf den eigenen Ursprung zeigt, sonst unverändert
+ * @returns {string} path if the address points to the own origin, otherwise unchanged
  */
 function stripOwnOrigin(src) {
   if (typeof location === 'undefined' || !location.origin) return src;
@@ -115,8 +114,8 @@ function stripOwnOrigin(src) {
 export const PLACEHOLDER_SET = '/assets/set-placeholder.svg';
 
 /**
- * Ein festes Dialogbild neu belegen. Die Merker der Fehlerbehandlung (actions.js) hängen am Element und
- * blieben vom letzten Öffnen stehen: Beim zweiten Mal gab es dann keinen Platzhalter, nur ein kaputtes Bild.
+ * Reassign a fixed dialog image. The flags of the error handling (actions.js) are attached to the element and
+ * would stay from the last opening: the second time there was then no placeholder, only a broken image.
  * @param {HTMLElement} el @param {string} src @param {string} [orig]
  */
 export function setDialogbild(el, src, orig) {
@@ -130,13 +129,13 @@ export function setDialogbild(el, src, orig) {
 }
 
 /**
- * Ein Platzhalter vergrössert nichts: Er ist dann kein Knopf und kein Tab-Halt.
+ * A placeholder enlarges nothing: it is then neither a button nor a tab stop.
  * @param {HTMLImageElement} img
  */
 export function zoomStand(img) {
   if (!img.classList.contains('zoombar')) return;
   const leer = !img.getAttribute('src') || img.getAttribute('src') === PLACEHOLDER_SET;
-  // Die Dialogbilder liegen in einem echten Knopf (Tastatur, Vorleser); gesperrt ist er kein Tab-Halt.
+  // The dialog images lie in a real button (keyboard, screen reader); disabled it is no tab stop.
   const knopf = img.parentElement;
   if (knopf instanceof HTMLButtonElement && knopf.classList.contains('zoom-knopf')) {
     knopf.disabled = leer;
@@ -145,7 +144,7 @@ export function zoomStand(img) {
     else knopf.dataset.click = knopf.dataset.zoomKlick || '';
     return;
   }
-  // Auch der Klick ruht: Eine Maus-Klickfläche ohne Tab-Halt wäre nur für die Maus da.
+  // The click rests too: a mouse click area without a tab stop would only be there for the mouse.
   if (leer) {
     img.removeAttribute('role');
     img.tabIndex = -1;
@@ -163,29 +162,29 @@ export function zoomStand(img) {
 }
 
 /**
- * Die Adresse, unter der ein Bild geladen wird. `thumb` wirkt nur bei Bildern über den Proxy; bei lokalen
- * Dateien entscheidet der Server (image_local ist schon die richtige Adresse, siehe thumbUrl()).
+ * The address under which an image is loaded. `thumb` only has an effect for images via the proxy; for local
+ * files the server decides (image_local is already the right address, see thumbUrl()).
  * @param {string | null | undefined} src
- * @param {boolean | 'nur'} [thumb]  'nur': nur die verkleinerte Fassung, nie das Original nachladen
+ * @param {boolean | 'nur'} [thumb]  'nur': only the reduced version, never load the original afterwards
  */
 export function imgUrl(src, thumb) {
   if (!src) return '';
   src = stripOwnOrigin(src);
 
-  // Lokale Datei oder schon über den Proxy: unverändert. Fremde Adressen lädt der Browser nie direkt — nur
-  // der Proxy setzt die Kopfzeilen gegen den Hotlink-Schutz und hält den Cache.
+  // Local file or already via the proxy: unchanged. The browser never loads foreign addresses directly — only
+  // the proxy sets the headers against hotlink protection and keeps the cache.
   if (src.startsWith('/data/') || src.startsWith('/images/') || isProxyPath(src)) {
     return src;
   }
-  // Sonstige relative Pfade (z. B. /assets/…) unverändert.
+  // Other relative paths (e.g. /assets/…) unchanged.
   if (src.startsWith('/')) return src;
 
-  // Alles Absolute geht über den Proxy — unabhängig vom Host. Welche Hosts zulässig sind, entscheidet
-  // ausschliesslich der Server (isAllowedImageHost in routes/imgProxy.ts); ein zweiter, abweichender
-  // Allowlist-Test im Client wäre nur eine weitere Stelle, die man vergisst mitzupflegen.
+  // Everything absolute goes via the proxy — regardless of the host. Which hosts are allowed is decided
+  // exclusively by the server (ALLOWED_IMAGE_HOSTS in src/infra/foreignAddresses.ts); a second, diverging
+  // allowlist test in the client would only be another place one forgets to maintain.
   if (/^https?:\/\//.test(src)) {
-    // Vorschauen entstehen im Proxy. `thumb` 'nur' nutzt eine vorhandene, rechnet aber keine neue: für den
-    // Katalog mit 25 000 fremden Sets, an denen man vorbeiscrollt. Der eigene Bestand bekommt die Vorschau
+    // Previews are created in the proxy. `thumb` 'nur' uses an existing one but computes no new one: for the
+    // catalog with 25,000 foreign sets one scrolls past. The own inventory gets the preview
     // (true).
     const tp = thumb === 'nur' ? '&thumb=1&gen=0' : thumb ? '&thumb=1' : '';
     return IMG_PROXY + '?url=' + encodeURIComponent(src) + tp;
@@ -194,10 +193,10 @@ export function imgUrl(src, thumb) {
 }
 
 /**
- * Gegenstück zu thumbUrl(): liefert die volle Auflösung.
+ * Counterpart to thumbUrl(): delivers the full resolution.
  *
- * Nötig, weil manche Sets image_local direkt auf die _thumb-Datei zeigen (der Server kann das so abgelegt
- * haben) — und weil Detailansicht und Zoom die grosse Fassung zeigen sollen, nicht die Kachelgrösse.
+ * Needed because some sets have image_local pointing directly at the _thumb file (the server may have stored it
+ * like that) — and because the detail view and zoom should show the large version, not the tile size.
  * @param {string | null | undefined} src
  * @returns {string}
  */
@@ -205,15 +204,15 @@ export function fullUrl(src) {
   if (!src) return '';
   src = stripOwnOrigin(src);
   if (isProxyPath(src)) return src.replace(/&thumb=1\b/, '').replace(/&gen=0\b/, '');
-  // Absolute Adresse (CDN) auch hier über den Proxy — vorher wurde sie unverändert zurückgegeben, sodass
-  // Detailansicht und Zoom direkt beim CDN luden. Siehe die Begründung in imgUrl().
+  // Absolute address (CDN) via the proxy here too — before it was returned unchanged, so that
+  // detail view and zoom loaded directly from the CDN. See the reasoning in imgUrl().
   if (/^https?:\/\//.test(src)) return IMG_PROXY + '?url=' + encodeURIComponent(src);
   return src.replace(/_thumb(\.[^.?]+)(\?|$)/, '$1$2');
 }
 
 /**
- * Lokale Bildadressen bleiben, wie der Server sie liefert: Er weiss, ob es die Vorschau gibt. Eine selbst
- * gebaute _thumb-Adresse lud Bilder, die nicht existierten, auch nach dem Neuladen nicht (gleich in der App).
+ * Local image addresses stay as the server delivers them: it knows whether the preview exists. A self-built
+ * _thumb address loaded images that did not exist, not even after reloading (same in the app).
  * @template {string | null | undefined} T
  * @param {T} src
  * @returns {T}
@@ -222,12 +221,12 @@ export function thumbUrl(src) {
   return src;
 }
 
-/** Einer für alle Bilder der Seite. @type {IntersectionObserver | null} */
+/** One for all images of the page. @type {IntersectionObserver | null} */
 let imageObserver = null;
 
 /**
- * Blendet Bilder beim Sichtbarwerden ein und markiert schon geladene sofort: Nach innerHTML starten alle
- * <img> bei opacity 0, und bis der Beobachter antwortet, stand sonst eine kurz weisse Kachelwand da.
+ * Fades images in when they become visible and marks already loaded ones immediately: after innerHTML all
+ * <img> start at opacity 0, and until the observer answers, a briefly white tile wall would otherwise stand there.
  * @param {ParentNode} [root]
  */
 export function observeLazyImages(root) {
@@ -235,7 +234,7 @@ export function observeLazyImages(root) {
     (root || document).querySelectorAll('img[loading=lazy]:not(.observed)')
   );
   if (!imgs.length) return;
-  // Synchron, VOR dem nächsten Paint
+  // Synchronous, BEFORE the next paint
   imgs.forEach(img => {
     if (img.complete && img.naturalWidth > 0) img.classList.add('loaded');
   });

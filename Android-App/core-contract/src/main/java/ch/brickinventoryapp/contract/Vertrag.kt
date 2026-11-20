@@ -1,5 +1,5 @@
-// Erzeugt aus Web-App/docs/openapi.json durch Web-App/scripts/contract-kotlin-dtos.js.
-// Nicht von Hand ändern: npm run vertrag:kotlin (im Ordner Web-App).
+// Generated from Web-App/docs/openapi.json by Web-App/scripts/contract-kotlin-dtos.js.
+// Do not edit by hand: npm run vertrag:kotlin (in the Web-App folder).
 @file:Suppress("ConstructorParameterNaming", "MatchingDeclarationName", "LongParameterList")
 @file:OptIn(ExperimentalSerializationApi::class)
 

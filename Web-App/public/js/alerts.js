@@ -194,7 +194,7 @@ async function importAlarmeCsv() {
   if (d) await ladeAlarmUebersicht();
 }
 
-// Names below are registry-exposed (index.html/verbindung.js/tests) — kept unchanged.
+// Names below are registry-exposed (index.html/connection.js/tests) — kept unchanged.
 registerActions({
   legeAlarmAn,
   aendereAlarmSchwelle,
