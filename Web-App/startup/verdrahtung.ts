@@ -6,7 +6,7 @@ import { erzeugeAuftraege, type Anmeldung, type AuftragsArt } from '../src/auftr
 import { dbKonfigAusUmgebung, erzeugeDb, type Db } from '../db/database';
 import { erzeugeSets } from '../src/sets';
 import { erzeugeHaushalt } from '../src/haushalt';
-import { erzeugeMail } from '../src/mail';
+import { createMail } from '../src/mail';
 import { createIdempotency } from '../src/idempotency';
 import { erzeugeBestand } from '../src/bestand';
 import { createParts } from '../src/parts';
@@ -116,7 +116,7 @@ function einblickIn(kontexte: Record<string, unknown> | undefined) {
 function baueGrund(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige: Zeige) {
   const throttle = createThrottle({ db, uhr }, zeige('throttle'));
   const einstellungen = createSettings({ db, uhr, throttle, lesevertrag: LESEVERTRAG }, zeige('settings'));
-  const mail = erzeugeMail({ uhr, einstellungen, konfig }, zeige('mail'));
+  const mail = createMail({ uhr, einstellungen, konfig }, zeige('mail'));
   const auftraege = erzeugeAuftraege({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('auftraege'));
   const haushalt = erzeugeHaushalt({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('haushalt'));
   const geraete = erzeugeGeraete({ db, uhr, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('geraete'));

@@ -170,7 +170,7 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
     const r = await sende(a);
     assert.equal(r.zugestellt, false);
     assert.match(r.error, /Zertifikat \(PEM\) oder seinen SHA-256-Fingerabdruck/);
-    assert.equal(await mailer.meldeSmtpAltlast(), true);
+    assert.equal(await mailer.reportSmtpLegacySetting(), true);
     assert.equal((await mailer.testSmtp()).code, 'smtp_zertifikat');
   });
 
@@ -224,7 +224,7 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
     );
     assert.equal(gespeichert.smtp_tls_fingerprint, richtig.fp);
     assert.equal(gespeichert.smtp_insecure_tls, undefined);
-    assert.equal(await mailer.meldeSmtpAltlast(), false);
+    assert.equal(await mailer.reportSmtpLegacySetting(), false);
     assert.deepEqual(await sende(a), { zugestellt: true, error: null });
   });
 });

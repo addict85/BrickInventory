@@ -2,7 +2,7 @@
  * E-Mails im Design der Webapp.
  *
  * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  brick.primary in src/mail/vorlage.ts auf '#2563eb' → rot: „je Design
+ *   A  brick.primary in src/mail/template.ts auf '#2563eb' → rot: „je Design
  *      eine Palette …“ (passt nicht zu --b600 in tokens.css)
  *   B  in emailTemplate wieder `#2563eb` statt `${theme.primary}` → rot:
  *      „Vorlage, Knopf und Infobox zeichnen im übergebenen Design“
@@ -15,14 +15,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-// Palette und Gerüst stehen in vorlage.ts, die Mailtexte in mailer.ts.
+// Palette und Gerüst stehen in template.ts, die Mailtexte in mailer.ts.
 const SRC =
-  fs.readFileSync(path.join(ROOT, 'src/mail/vorlage.ts'), 'utf8') +
+  fs.readFileSync(path.join(ROOT, 'src/mail/template.ts'), 'utf8') +
   '\n' +
   fs.readFileSync(path.join(ROOT, 'src/mail/mailer.ts'), 'utf8');
 
 test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
-  assert.match(SRC, /async function mailDesign\(k: MailKontext\)/, 'Loader fehlt');
+  assert.match(SRC, /async function mailTheme\(k: MailContext\)/, 'Loader fehlt');
   // Früher stand hier die SQL-Anweisung selbst. Seit alle Zugriffe auf
   // global_settings über src/settings/settings.ts laufen, prüft der Test den Weg
   // dorthin — die Aussage ist dieselbe: Das Design ist eine GLOBALE
@@ -40,7 +40,7 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   // Punkte davor.
   assert.match(
     SRC,
-    /import type \{ MailKontext \} from '\.\/kontext'/,
+    /import type \{ MailContext \} from '\.\/context'/,
     'und zwar über die zentrale Fassung, nicht über eine eigene Abfrage',
   );
   // Bei jedem Zweifel classic — eine E-Mail darf nie am Design scheitern
@@ -53,14 +53,14 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
   // Beide Versandfunktionen müssen es laden
   for (const fn of ['sendVerificationMail', 'sendPasswordResetMail']) {
     const body = SRC.slice(SRC.indexOf(`async function ${fn}(`), SRC.indexOf(`async function ${fn}(`) + 1500);
-    assert.match(body, /const theme = await mailDesign\(k\);/, `${fn} lädt das Design nicht`);
+    assert.match(body, /const theme = await mailTheme\(k\);/, `${fn} lädt das Design nicht`);
   }
 });
 
 const _req = require('./helpers/sources').buildAndRequire();
 
 test('je Design eine Palette mit der Primärfarbe der Webapp', () => {
-  const { MAIL_THEMES } = _req('src/mail/vorlage.js');
+  const { MAIL_THEMES } = _req('src/mail/template.js');
   assert.deepEqual(Object.keys(MAIL_THEMES).sort(), ['brick', 'classic']);
   // --b600 je Design aus tokens.css: Die Mail soll aussehen wie die Webapp.
   const tokens = fs.readFileSync(path.join(ROOT, 'public', 'tokens.css'), 'utf8');
@@ -70,7 +70,7 @@ test('je Design eine Palette mit der Primärfarbe der Webapp', () => {
 });
 
 test('Vorlage, Knopf und Infobox zeichnen im übergebenen Design', () => {
-  const { MAIL_THEMES, emailTemplate, emailBtn, infoBox } = _req('src/mail/vorlage.js');
+  const { MAIL_THEMES, emailTemplate, emailBtn, infoBox } = _req('src/mail/template.js');
   const { classic, brick } = MAIL_THEMES;
   for (const [name, bau] of /** @type {[string, (theme: string | undefined) => string][]} */ ([
     ['emailTemplate', th => emailTemplate('Titel', 'Vorschau', '<p>x</p>', th)],

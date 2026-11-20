@@ -127,6 +127,7 @@ test('Dienstschlüssel sind deutsch, werden weniger, nie mehr, und jeder hat ein
     'vouchers',
     'factors',
     'management',
+    'mail',
   ]);
   const SCHRANKE_ENGLISCH = 0;
   const englisch = schluessel.filter(

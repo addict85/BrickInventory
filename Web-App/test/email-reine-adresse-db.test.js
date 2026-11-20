@@ -9,7 +9,7 @@
  *   A  EMAIL_RE wieder /^[^\s@]+@[^\s@]+\.[^\s@]+$/ → rot: „Registrierung
  *      nimmt nur reine Adressen“, „Passwort vergessen und Bestätigung …“,
  *      „das Profil …“ (200 statt 400), „Bestandsdaten werden gemeldet“
- *   B  die Prüfung einzigerEmpfaenger() in sendMail() entfernt → rot: „der
+ *   B  die Prüfung isSingleRecipient() in sendMail() entfernt → rot: „der
  *      Versand lehnt eine gespeicherte Liste ab“
  *   C  `envelope` in sendMail() entfernt → rot: „der Umschlag nennt genau die
  *      eine Adresse“

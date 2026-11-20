@@ -1,5 +1,5 @@
 /**
- * Registrierung gibt es nur mit Mailversand (mailBereit: Mailserver und
+ * Registrierung gibt es nur mit Mailversand (mailReady: Mailserver und
  * APP_BASE_URL). Für Tests, die registrieren: ein eingetragener Mailserver,
  * dessen Transport nichts verschickt; die Mails sammelt `gesendet`.
  * Der Mailer baut den Transport erst beim Versand, deshalb greift das auch

@@ -171,7 +171,7 @@ function nurGemeldeteFaenge() {
   if (treffer.length < SCHRANKE)
     console.log(`  ℹ nur gemeldete Fänge: ${treffer.length} (Schranke ${SCHRANKE}) — Schranke nachziehen`);
   assert.deepEqual(
-    treffer.filter(x => /\bconsole\./.test(x.rumpf) && !/Ausnahme:/.test(x.roh)).map(x => x.wo),
+    treffer.filter(x => /\bconsole\./.test(x.rumpf) && !/Ausnahme:|Exception:/.test(x.roh)).map(x => x.wo),
     [],
     'ohne Ausnahme: direkt in die Konsole statt meldeFehler',
   );
@@ -1337,6 +1337,7 @@ const ENGLISCH_UMGESTELLT = [
   'src/factors',
   'src/settings',
   'src/management',
+  'src/mail',
 ];
 const nichtUmgestellt = (/** @type {string} */ f) => {
   const rel = path.relative(WEB, f).replace(/\\/g, '/');

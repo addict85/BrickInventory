@@ -52,8 +52,8 @@ async function mitFaktor(uid) {
 }
 const mails = [];
 S.ersetzeDienste('mail', {
-  mailEingerichtet: async () => true,
-  mailKontoHinweis: async (an, _name, type, o) => {
+  mailConfigured: async () => true,
+  mailAccountNotice: async (an, _name, type, o) => {
     mails.push({ an, type, ...o });
     return { success: true };
   },

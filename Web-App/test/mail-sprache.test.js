@@ -11,7 +11,7 @@
  *   e) in /forgot-password `String(lang ?? 'de')` → `'de'` → Schritt 3 rot
  *      (die Mail an das englische Konto ist deutsch); ebenso in
  *      /bestaetigung-erneut
- *   f) baueAlarmMail ohne emailTemplate (html = text) → Schritt 4 rot
+ *   f) buildAlertMail ohne emailTemplate (html = text) → Schritt 4 rot
  */
 const test = require('node:test');
 const { umgebung } = require('./helpers/sources');
@@ -35,7 +35,7 @@ function rumpf(quelle, kopf) {
 test('1. jede Mail-Funktion nimmt die Sprache entgegen', () => {
   // Gefunden wird über den NAMEN, nicht über eine Liste: Eine vierte Mail
   // soll von dieser Regel erfasst werden, ohne dass jemand sie hier einträgt.
-  const namen = [...MAILER.matchAll(/async function (send\w*Mail|baue\w*Mail)\s*\(/g)]
+  const namen = [...MAILER.matchAll(/async function (send\w*Mail|build\w*Mail)\s*\(/g)]
     .map(m => m[1])
     .filter(n => n !== 'sendMail'); // der Versand selbst formuliert nichts
   assert.ok(namen.length >= 3, `Nur ${namen.length} Mail-Funktionen gefunden (gemessen waren es 3) — umbenannt?`);
@@ -45,7 +45,7 @@ test('1. jede Mail-Funktion nimmt die Sprache entgegen', () => {
     const liste = kopf.slice(0, kopf.indexOf(')') + 1);
     // Zwei zulässige Formen, und beide kommen vor: `lang = 'de'` direkt in der
     // Liste (die beiden send*-Funktionen) oder ein benannter Typ, der das Feld
-    // trägt (baueAlarmMail nimmt ein Datenobjekt, weil es neun Werte sind).
+    // trägt (buildAlertMail nimmt ein Datenobjekt, weil es neun Werte sind).
     // Nur auf die Zeichenkette „lang" in der Liste zu prüfen, hätte die zweite
     // Form fälschlich gemeldet — was sie beim ersten Lauf auch tat.
     const typ = (liste.match(/:\s*(\w+)\s*,?\s*\)/) || [])[1];
@@ -68,7 +68,7 @@ test('2. und beherrscht beide Sprachen wirklich', () => {
   for (const [n, kopf] of [
     ['sendVerificationMail', 'async function sendVerificationMail('],
     ['sendPasswordResetMail', 'async function sendPasswordResetMail('],
-    ['baueAlarmMail', 'async function baueAlarmMail('],
+    ['buildAlertMail', 'async function buildAlertMail('],
   ]) {
     const body = rumpf(MAILER, kopf);
     assert.match(body, /lang (?:!==|===) 'en'/, `${n}() verzweigt nicht nach der Sprache.`);
@@ -158,17 +158,17 @@ test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', async t => {
   const _req = require('./helpers/sources').buildAndRequire();
   const db = await require('./helpers/db').datenOderSkip(t, _req);
   if (!db) return;
-  const { baueAlarmMail, emailTemplate } = _req('src/mail/mailer.js');
-  const mail = await baueAlarmMail({
+  const { buildAlertMail, emailTemplate } = _req('src/mail/mailer.js');
+  const mail = await buildAlertMail({
     lang: 'en',
     username: 'anna',
     setNumber: '10294-1',
     setName: 'Titanic',
     condition: 'N',
-    richtung: 'unter',
-    preis: 600,
-    schwelle: 650,
-    waehrung: 'EUR',
+    direction: 'unter',
+    price: 600,
+    threshold: 650,
+    currency: 'EUR',
   });
   // Klartext für Programme, die nur ihn zeigen, und HTML aus der gemeinsamen Vorlage.
   assert.match(mail.text, /^Hi anna,/);

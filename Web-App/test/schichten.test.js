@@ -580,7 +580,7 @@ function routenOhneFachablauf() {
   // forgetTheme importiert oder einen Bereich als Namensraum, baut den Ablauf selbst.
   // Gegenproben (14.11.2026): `import { tokenAbdruck } from '../../src/konto'` in
   // routes/api_v1/settings.ts → rot; `import * as sets from '../../src/sets'` in
-  // routes/api_v1/sets.ts → rot; `import { erzeugeMail } from '../../src/mail'` in
+  // routes/api_v1/sets.ts → rot; `import { createMail } from '../../src/mail'` in
   // routes/auth/registrierung.ts → rot.
   /** @type {[RegExp, string][]} */
   const MUSTER = [

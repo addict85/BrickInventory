@@ -11,7 +11,7 @@
  *   C  zielGedrosselt() in POST /register entfernt → rot: „je Zieladresse
  *      höchstens drei Registrierungen“ (200 statt 429)
  *   D  sendMail() gibt wieder den Text an die alte URL-Suche in
- *      linkFuerKonsole() → rot: „die Konsole zeigt den echten Link“
+ *      linkForConsole() → rot: „die Konsole zeigt den echten Link“
  *   E  zielGedrosselt() in /forgot-password entfernt → rot: „der vierte
  *      Rücksetzlink an dieselbe Adresse bleibt aus“
  *   F  sendVerificationMail() übergeht `mehrere` → rot: „die zweite Mail

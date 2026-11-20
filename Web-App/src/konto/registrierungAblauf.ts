@@ -52,11 +52,11 @@ export async function registrierungVersuchen(k: KontoKontext, r: Registrierung):
   if (inhaber) {
     await rechneWieRegistrierung(r.passwort);
     const sprache = await mailSprache(k, inhaber.id);
-    return versende(() => k.mail.mailRegistrierungsVersuch(inhaber.email, sprache));
+    return versende(() => k.mail.mailRegistrationAttempt(inhaber.email, sprache));
   }
   if (await k.konten.nameVergeben(r.username, 0)) {
     await rechneWieRegistrierung(r.passwort);
-    return versende(basis => k.mail.mailBenutzernameVergeben(r.email, r.lang, basis));
+    return versende(basis => k.mail.mailUsernameTaken(r.email, r.lang, basis));
   }
   return neuesKonto(k, r);
 }
@@ -78,7 +78,7 @@ async function neuesKonto(k: KontoKontext, r: Registrierung): Promise<boolean> {
       logAndContinue(`registrierung:sprache ${neuId}`),
     );
   const mehrere = (await k.konten.offeneRegistrierungen(r.email)) > 1;
-  return versende(basis => k.mail.mailBestaetigung(r.email, token, basis, r.lang, 'registrierung', mehrere));
+  return versende(basis => k.mail.mailVerification(r.email, token, basis, r.lang, 'registrierung', mehrere));
 }
 
 /** Über der Grenze still keine Mail: Eine Absage verriete, dass jemand die Adresse bedrängt. */
@@ -92,7 +92,7 @@ export function bestaetigungErneutAnfordern(k: KontoKontext, email: string): Pro
     // Nicht awaiten, sonst verriete die Dauer des SMTP-Versands die Adresse.
     if (konto)
       mailSprache(k, konto.id)
-        .then(lang => k.mail.mailBestaetigung(konto.email, token, mailBasisUrl()!, lang))
+        .then(lang => k.mail.mailVerification(konto.email, token, mailBasisUrl()!, lang))
         .catch(logAndContinue('bestaetigung-erneut:mailversand'));
   });
 }
@@ -111,7 +111,7 @@ export function ruecksetzLinkAnfordern(kx: KontoKontext, email: string): Promise
       return;
     mailSprache(kx, user.id)
       // An die GESPEICHERTE Adresse: Die eingegebene passt per LOWER() auch als Unicode-Variante.
-      .then(lang => kx.mail.mailPasswortZuruecksetzen(user.email ?? '', token, mailBasisUrl()!, lang))
+      .then(lang => kx.mail.mailPasswordReset(user.email ?? '', token, mailBasisUrl()!, lang))
       .catch(logAndContinue('forgot-password:mailversand'));
   });
 }

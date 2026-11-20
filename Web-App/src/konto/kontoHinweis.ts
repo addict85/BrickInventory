@@ -1,6 +1,6 @@
 /** Der Inhaber erfährt per Mail, wenn sich an seinen Zugängen etwas ändert:
  * Ein Eindringling, der Passwort oder Passkey setzt, bliebe sonst unbemerkt. */
-import type { Geloest, KontoHinweis } from '../mail';
+import type { ResetSideEffects, AccountNotice } from '../mail';
 import { logAndContinue, meldeUndLiefere } from '../infra/fehler';
 import { imSystemkontext } from '../infra/kontoKontext';
 import type { KontoKontext } from './kontext';
@@ -11,7 +11,7 @@ type Angaben = {
   durch?: string | undefined;
   was?: string | undefined;
   bis?: string | undefined;
-  geloest?: Geloest | undefined;
+  geloest?: ResetSideEffects | undefined;
   abbruch?: string | undefined;
   freigabe?: string | undefined;
   adresse?: string | undefined;
@@ -22,7 +22,7 @@ type Angaben = {
 export function meldeKontoaenderung(
   k: KontoKontext,
   uid: number,
-  art: KontoHinweis,
+  art: AccountNotice,
   angaben: Angaben = {},
 ): Promise<boolean> {
   return imSystemkontext('kontohinweis', () => meldeKontoaenderungFuer(k, uid, art, angaben));
@@ -31,15 +31,15 @@ export function meldeKontoaenderung(
 async function meldeKontoaenderungFuer(
   kx: KontoKontext,
   uid: number,
-  art: KontoHinweis,
+  art: AccountNotice,
   angaben: Angaben,
 ): Promise<boolean> {
-  if (!(await kx.mail.mailEingerichtet())) return false;
+  if (!(await kx.mail.mailConfigured())) return false;
   const k = await kx.konten.profilZeile(uid);
   if (!k?.email) return false;
   const lang = String(await kx.einstellungen.userValue(uid, 'language', 'de'));
   const haushalt = (await kx.haushalt.haushaltsStand(uid)).parents.map(p => p.username);
-  const r = await kx.mail.mailKontoHinweis(k.email, k.username, art, {
+  const r = await kx.mail.mailAccountNotice(k.email, k.username, art, {
     lang,
     haushalt,
     ...(angaben.name ? { passkey: angaben.name } : {}),
@@ -59,7 +59,7 @@ async function meldeKontoaenderungFuer(
 export function hinweisNebenher(
   k: KontoKontext,
   uid: number,
-  art: KontoHinweis,
+  art: AccountNotice,
   name?: string,
   angaben: Angaben = {},
 ): void {
@@ -69,7 +69,7 @@ export function hinweisNebenher(
 }
 
 /** An alle Verwalter: Keiner soll unbemerkt einen Verwalter ernennen oder Schutz abbauen. */
-export function verwalterHinweisNebenher(k: KontoKontext, art: KontoHinweis, angaben: Angaben): void {
+export function verwalterHinweisNebenher(k: KontoKontext, art: AccountNotice, angaben: Angaben): void {
   k.konten
     .aktiveVerwalter()
     .then(ids => Promise.all(ids.map(id => meldeKontoaenderung(k, id, art, angaben))))
@@ -86,7 +86,7 @@ export async function haushaltBeitreten(k: KontoKontext, uid: number, code: stri
       .userValue(uid, 'language', 'de')
       .catch(meldeUndLiefere('einstellungen:sprache', 'de'));
     void k.mail
-      .mailHaushaltVerknuepft(ich.email, ich.username, r.linked_to.username, String(sprache ?? 'de'))
+      .mailHouseholdLinked(ich.email, ich.username, r.linked_to.username, String(sprache ?? 'de'))
       .catch(logAndContinue('haushalt:hinweismail'));
   }
   return r;

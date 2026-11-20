@@ -14,8 +14,8 @@
  *      „der Import übergeht die Registrierung"
  *   D  (02.11.) passkey/passwort_vergessen fest true → rot: „Anmeldewege
  *      nur, wenn der Server sie kann" (ohne APP_BASE_URL true); nur
- *      basisUrl() ohne mailEingerichtet() → rot (ohne SMTP true)
- *   F  (04.11.) registration-status und /register ohne mailBereit() → rot:
+ *      basisUrl() ohne mailConfigured() → rot (ohne SMTP true)
+ *   F  (04.11.) registration-status und /register ohne mailReady() → rot:
  *      „ohne Mailversand bleibt sie zu …“; ebenso die Prüfung beim Einschalten
  *      in POST /settings entfernt
  *   G  (04.11.) schalteRegistrierungFrei() lässt registration_pending stehen oder

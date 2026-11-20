@@ -159,7 +159,7 @@ async function starte(): Promise<void> {
     : null;
   // Hinweise ins Protokoll: Einer, der scheitert, hält weder den Start noch die übrigen auf.
   const hinweise: [string, () => Promise<unknown>][] = [
-    ['start:smtp-altlast', () => dienste.mail.meldeSmtpAltlast()],
+    ['start:smtp-altlast', () => dienste.mail.reportSmtpLegacySetting()],
     ...dienste.konto.adressHinweise(),
   ];
   if (web) for (const [wo, hinweis] of hinweise) await hinweis().catch(logAndContinue(wo));

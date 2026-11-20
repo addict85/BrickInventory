@@ -1,5 +1,5 @@
 /** Was die Dienste bekommen; getrennt von area.ts, damit kein Importzyklus entsteht. */
-import type { MailDienste } from '../mail';
+import type { MailServices } from '../mail';
 import type { VoucherServices } from '../vouchers';
 import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
@@ -34,7 +34,7 @@ export interface ManagementDependencies {
   sets: SetsDienste;
   wanted: WantedServices;
   vouchers: VoucherServices;
-  mail: MailDienste;
+  mail: MailServices;
 }
 
 export const zugang = (db: Db) => ({

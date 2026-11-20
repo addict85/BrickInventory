@@ -47,19 +47,19 @@ const { mailserverEintragen } = require('./helpers/mail-attrappe');
 
 const post = [];
 require('./helpers/sources').ersetzeDienste('mail', {
-  mailBestaetigung: async (an, token, _b, _l, art, mehrere) => {
+  mailVerification: async (an, token, _b, _l, art, mehrere) => {
     post.push({ an, art: art ?? 'registrierung', token, mehrere: !!mehrere });
     return { success: true, mode: 'smtp' };
   },
-  mailEmailGeaendert: async (an, _n, neu) => {
+  mailEmailChanged: async (an, _n, neu) => {
     post.push({ an, art: 'hinweis', neu });
     return { success: true };
   },
-  mailRegistrierungsVersuch: async an => {
+  mailRegistrationAttempt: async an => {
     post.push({ an, art: 'versuch' });
     return { success: true, mode: 'smtp' };
   },
-  mailPasswortZuruecksetzen: async an => {
+  mailPasswordReset: async an => {
     post.push({ an, art: 'reset' });
     return { success: true };
   },

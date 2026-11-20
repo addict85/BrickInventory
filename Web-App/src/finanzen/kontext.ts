@@ -1,6 +1,6 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Konfig } from '../infra/konfig';
-import type { MailDienste } from '../mail';
+import type { MailServices } from '../mail';
 import type { Db } from '../../db/database';
 import { mit, mitVertrag, type Kontext } from '../infra/bereich';
 import type { FinanzenLesevertrag } from './lesevertrag';
@@ -33,7 +33,7 @@ export interface FinanzenAbhaengigkeiten {
   katalog: KatalogDienste;
   fremdquellen: FremdquellenDienste;
   faecher: Faecher;
-  mail: MailDienste;
+  mail: MailServices;
   lesevertrag: FinanzenLesevertrag;
 }
 

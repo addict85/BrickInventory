@@ -15,7 +15,7 @@ import type { HaushaltDienste } from './haushalt';
 import type { IdempotencyServices } from './idempotency';
 import type { KatalogDienste } from './katalog';
 import type { KontoDienste } from './konto';
-import type { MailDienste } from './mail';
+import type { MailServices } from './mail';
 import type { ProfileServices } from './profile';
 import type { WantedServices } from './wanted';
 import type { CollectionServices } from './collection';
@@ -35,7 +35,7 @@ export const LESEVERTRAG = { ...bestandSicht, ...bestandsmenge, ...haushaltSicht
 export interface Dienste {
   throttle: ThrottleServices;
   settings: SettingsServices;
-  mail: MailDienste;
+  mail: MailServices;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
   geraete: GeraeteDienste;

@@ -9,7 +9,7 @@ import { emailGueltig } from '../infra/validate';
 import { entferneStartpasswort } from '../infra/startpasswort';
 import { verwalterAktionMerken } from './verwalterProtokoll';
 import { alsDoppelt, fachfehler, nichtGefunden } from '../infra/fehlerTexte';
-import type { Geloest } from '../mail';
+import type { ResetSideEffects } from '../mail';
 import { hinweisNebenher } from './kontoHinweis';
 import { loescheTagesgrenze } from './loginLimiter';
 import type { KontoKontext } from './kontext';
@@ -146,7 +146,7 @@ export async function setzePasswortZurueck(
   const hash = await hashe(passwort);
   const r = await mitZugangsende(
     k,
-    (e: { uid: number; geloest: Geloest } | null) => e?.uid ?? null,
+    (e: { uid: number; geloest: ResetSideEffects } | null) => e?.uid ?? null,
     async t => {
       const uid = (await t.konten.setzePasswortNachRuecksetzen(tokenHash, hash))?.id;
       if (!uid) return null;

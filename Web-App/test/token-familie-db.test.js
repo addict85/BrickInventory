@@ -32,8 +32,8 @@ const { datenOderSkip } = require('./helpers/db');
 
 const gesendet = [];
 require('./helpers/sources').ersetzeDienste('mail', {
-  mailEingerichtet: async () => true,
-  mailKontoHinweis: async (an, _name, art, o) => {
+  mailConfigured: async () => true,
+  mailAccountNotice: async (an, _name, art, o) => {
     gesendet.push({ an, art, name: o.passkey });
     return { success: true };
   },

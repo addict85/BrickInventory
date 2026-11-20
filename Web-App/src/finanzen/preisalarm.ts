@@ -2,7 +2,7 @@
  * eine Schwelle damit zu vergleichen. Ein Alarm gehört EINEM Konto. */
 import { meldeFehler, fehlertext } from '../infra/fehler';
 import { fachfehler } from '../infra/fehlerTexte';
-import type { MailDienste } from '../mail';
+import type { MailServices } from '../mail';
 import { toCsv, csvZeilenAusAnfrage, uebersprungenHinweis } from '../infra/csvExport';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import * as repo from './repository/preisalarme';
@@ -55,11 +55,11 @@ export async function setzeAlarm(
   k: FinanzenKontext,
   userId: number,
   setNumber: string,
-  waehrung: string,
+  currency: string,
   eingabe: AlarmEingabe,
 ): Promise<Preisalarm> {
   const { direction, threshold, condition } = pruefeEingabe(eingabe.direction, eingabe.threshold, eingabe.condition);
-  await repo.schreibeAlarm(k.db, userId, setNumber, condition, direction, threshold, waehrung);
+  await repo.schreibeAlarm(k.db, userId, setNumber, condition, direction, threshold, currency);
   const alarme = await alarmeFuer(k, userId, setNumber);
   return alarme.find(a => a.condition === condition)!;
 }
@@ -132,13 +132,13 @@ export async function ausgeloesteSeit(k: FinanzenKontext, userId: number, seit: 
 
 /** Eigene Funktion: die einzige Stelle, an der „unter" und „über" etwas
  * bedeuten — und an der ein Vorzeichenfehler entsteht. So ist sie prüfbar. */
-export function reisst(richtung: Richtung, preis: number, schwelle: number): boolean {
-  return richtung === 'unter' ? preis < schwelle : preis > schwelle;
+export function reisst(direction: Richtung, price: number, threshold: number): boolean {
+  return direction === 'unter' ? price < threshold : price > threshold;
 }
 
 /** Gemeldet wird der ÜBERGANG, nicht der Zustand. Der Versand kommt als Parameter,
  * damit ein Test ihn ersetzen kann, ohne das Modul umzubiegen. */
-export type AlarmPost = Pick<MailDienste, 'baueAlarmMail' | 'sendeMail'>;
+export type AlarmPost = Pick<MailServices, 'buildAlertMail' | 'sendMail'>;
 
 export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: AlarmPost): Promise<number> {
   const alarme = await repo.alleAktivenAlarme(k.db, setNumber);
@@ -149,11 +149,11 @@ export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: Ala
       meldeFehler('preisalarm:preis-lesen', e);
       return null;
     });
-    const preis = preisZeile?.marktpreis ?? null;
+    const price = preisZeile?.marktpreis ?? null;
     // Kein Preis in DIESER Währung: Der Alarm bleibt, der Merker auch.
-    if (preis == null || !(preis > 0)) continue;
+    if (price == null || !(price > 0)) continue;
 
-    const jetzt = reisst(a.direction as Richtung, preis, a.threshold);
+    const jetzt = reisst(a.direction as Richtung, price, a.threshold);
 
     if (!jetzt) {
       // Zurück auf die andere Seite — der nächste Übergang meldet wieder.
@@ -168,7 +168,7 @@ export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: Ala
 
     if (a.email) {
       try {
-        await verschicke(k, post, a, preis, a.threshold);
+        await verschicke(k, post, a, price, a.threshold);
         verschickt++;
       } catch (e) {
         // Merker NICHT setzen — beim nächsten Lauf erneut versuchen.
@@ -177,7 +177,7 @@ export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: Ala
       }
     }
     await repo
-      .loeseAlarmAus(k.db, a.user_id, a.set_number, a.condition, preis)
+      .loeseAlarmAus(k.db, a.user_id, a.set_number, a.condition, price)
       // Ungesetzt meldet der nächste Lauf dieselbe Schwelle noch einmal — lästig,
       // aber besser als stumm.
       .catch(e => meldeFehler('preisalarm:merker-setzen', e));
@@ -187,22 +187,22 @@ export async function pruefeSet(k: FinanzenKontext, setNumber: string, post: Ala
 
 /** Getrennt, damit pruefeSet() über das WANN entscheidet, nicht über das WIE. */
 type AktiverAlarm = Awaited<ReturnType<typeof repo.alleAktivenAlarme>>[number];
-async function verschicke(k: FinanzenKontext, post: AlarmPost, a: AktiverAlarm, preis: number, schwelle: number) {
+async function verschicke(k: FinanzenKontext, post: AlarmPost, a: AktiverAlarm, price: number, threshold: number) {
   // Der Alarm geht auch ohne Namen hinaus; die Mail nennt dann nur die Setnummer.
   const gelesen = await versuche('preisalarm:name', repo.setNameAusStamm(k.db, a.set_number));
   const name = gelesen.ok ? gelesen.wert : null;
-  const mail = await post.baueAlarmMail({
+  const mail = await post.buildAlertMail({
     username: a.username,
     lang: a.sprache,
     setNumber: a.set_number,
     setName: name?.name ?? null,
     condition: a.condition,
-    richtung: a.direction as Richtung,
-    schwelle,
-    preis,
-    waehrung: a.currency_code,
+    direction: a.direction as Richtung,
+    threshold,
+    price,
+    currency: a.currency_code,
   });
-  await post.sendeMail({ to: a.email!, ...mail });
+  await post.sendMail({ to: a.email!, ...mail });
 }
 
 /** Eigene Datei statt Spalten an sets.csv: Ein Alarm braucht das Set nicht zu besitzen. */
@@ -218,7 +218,7 @@ export async function preisalarmeAlsCsv(k: FinanzenKontext, uid: number): Promis
 
 /** Schwellen gelten in der Kontowährung; eine andere in der Datei wird
  * genannt statt still umgerechnet — Kurse gibt es keine. */
-export async function alarmeAusCsv(k: FinanzenKontext, uid: number, waehrung: string, text: string) {
+export async function alarmeAusCsv(k: FinanzenKontext, uid: number, currency: string, text: string) {
   const { records, bereinigt, uebersprungen } = csvZeilenAusAnfrage(text);
   let added = 0,
     updated = 0,
@@ -231,12 +231,12 @@ export async function alarmeAusCsv(k: FinanzenKontext, uid: number, waehrung: st
     const sn = normalisiereSetNummer(roh);
     // Vor dem Schreiben fragen: setzeAlarm() legt an oder ändert, ohne es zu sagen.
     const schon = await alarmeFuer(k, uid, sn);
-    const dateiWaehrung = String(row.currency_code || row.waehrung || '')
+    const dateiWaehrung = String(row.currency_code || row.currency || '')
       .trim()
       .toUpperCase();
-    const abweichend = dateiWaehrung !== '' && dateiWaehrung !== waehrung.toUpperCase();
+    const abweichend = dateiWaehrung !== '' && dateiWaehrung !== currency.toUpperCase();
     try {
-      const alarm = await setzeAlarm(k, uid, sn, waehrung, {
+      const alarm = await setzeAlarm(k, uid, sn, currency, {
         // Both the new English header and an older export's German one are accepted on import.
         direction: String(row.direction || row.richtung || row.Richtung || '')
           .trim()
@@ -256,7 +256,7 @@ export async function alarmeAusCsv(k: FinanzenKontext, uid: number, waehrung: st
         set_number: sn,
         condition: alarm.condition,
         action: war ? 'updated' : 'added',
-        ...(abweichend ? { waehrung_angepasst: true, waehrung_datei: dateiWaehrung, waehrung_konto: waehrung } : {}),
+        ...(abweichend ? { waehrung_angepasst: true, waehrung_datei: dateiWaehrung, waehrung_konto: currency } : {}),
       });
     } catch (e) {
       errors++;
@@ -274,8 +274,8 @@ export async function alarmeAusCsv(k: FinanzenKontext, uid: number, waehrung: st
     ...(fremdeWaehrung
       ? {
           waehrung_hinweis:
-            `${fremdeWaehrung} Alarm(e) standen in einer anderen Währung als ${waehrung}. ` +
-            `Die Schwellen wurden unverändert übernommen und gelten jetzt in ${waehrung} — ` +
+            `${fremdeWaehrung} Alarm(e) standen in einer anderen Währung als ${currency}. ` +
+            `Die Schwellen wurden unverändert übernommen und gelten jetzt in ${currency} — ` +
             'die Zahlen bitte nachsehen.',
         }
       : {}),

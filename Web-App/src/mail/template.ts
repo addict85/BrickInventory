@@ -1,10 +1,10 @@
-// Das Gerüst jeder Mail: Paletten, Kopf und Fuss, Knopf, Hinweiskasten.
-// Die Texte stehen in mailer.ts, der Versand in transport.ts.
+// The skeleton of every mail: palettes, header and footer, button, info box.
+// The texts live in mailer.ts, sending in transport.ts.
 
-import type { MailKontext } from './kontext';
+import type { MailContext } from './context';
 import { ausTabelle } from '../infra/validate';
 
-/** `unknown`: Hier laufen Werte aus Datenbank und Formularen hinein. */
+/** `unknown`: values from the database and from forms flow in here. */
 export function esc(s: unknown) {
   return String(s || '')
     .replace(/&/g, '&amp;')
@@ -12,7 +12,7 @@ export function esc(s: unknown) {
     .replace(/>/g, '&gt;');
 }
 
-// Das Logo als HTML-Tabellen: Outlook und Gmail rendern kein SVG.
+// The logo as HTML tables: Outlook and Gmail do not render SVG.
 const LOGO_HTML = `
 <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:0 auto 18px">
   <tr><td>
@@ -64,8 +64,8 @@ const LOGO_HTML = `
   </td></tr>
 </table>`;
 
-/** ABGELEITET aus MAIL_THEMES.classic: Eine zweite Aufzählung der Felder
- * veraltete beim nächsten neuen Feld still. */
+/** DERIVED from MAIL_THEMES.classic: a second list of the fields
+ * would silently go stale with the next new field. */
 export type MailTheme = typeof MAIL_THEMES.classic;
 
 export const MAIL_THEMES = {
@@ -81,7 +81,7 @@ export const MAIL_THEMES = {
     studs: false,
   },
   brick: {
-    primary: '#3d5a80', // --b600 aus themes/brick.css
+    primary: '#3d5a80', // --b600 from themes/brick.css
     primaryD: '#2f4763', // --b700
     bg: '#c9d5e2', // --bg
     surface: '#ffffff',
@@ -89,17 +89,17 @@ export const MAIL_THEMES = {
     muted: '#5b7290',
     border: '#b7cbe0', // --b200
     radius: '14px', // --rad
-    studs: true, // Noppenleiste über dem Kopfbereich
+    studs: true, // stud strip above the header
   },
 };
 
-/** Bei jedem Zweifel `classic`: Eine Mail soll nie am Design scheitern. */
-export async function mailDesign(k: MailKontext) {
+/** When in doubt `classic`: a mail must never fail because of the theme. */
+export async function mailTheme(k: MailContext) {
   try {
-    const gespeichert = await k.einstellungen.globalValue('app_theme');
-    // ausTabelle: Ein Wert aus der Datenbank wie 'constructor' fände sonst ein
-    // geerbtes Mitglied, und der Rückfall griffe nie.
-    return ausTabelle(MAIL_THEMES, gespeichert, MAIL_THEMES.classic);
+    const stored = await k.einstellungen.globalValue('app_theme');
+    // ausTabelle: a database value such as 'constructor' would otherwise find an
+    // inherited member, and the fallback would never apply.
+    return ausTabelle(MAIL_THEMES, stored, MAIL_THEMES.classic);
   } catch (_) {
     return MAIL_THEMES.classic;
   }
@@ -180,7 +180,7 @@ export function emailTemplate(
 </html>`;
 }
 
-// Tabellen statt flex: Outlook kennt kein flex.
+// Tables instead of flex: Outlook does not know flex.
 export function emailBtn(url: string, text: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:28px auto 12px">
@@ -204,7 +204,7 @@ export function emailBtn(url: string, text: string, theme: MailTheme = MAIL_THEM
   </p>`;
 }
 
-// Farben aus dem Theme statt fest blau.
+// Colours from the theme instead of a fixed blue.
 export function infoBox(text: string, theme: MailTheme = MAIL_THEMES.classic) {
   return `<table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom:20px">
     <tr>

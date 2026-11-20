@@ -69,7 +69,7 @@ export async function saveSettings(kx: ManagementContext, e: SettingsInput, o: S
     if (
       String(e.registration_enabled) === '1' &&
       (await kx.settings.globalValue('registration_enabled')) !== '1' &&
-      !(await kx.mail.mailBereit(e))
+      !(await kx.mail.mailReady(e))
     )
       fachfehler('ungueltig', 'registrierung_braucht_mail');
   }

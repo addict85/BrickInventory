@@ -93,7 +93,7 @@ export function baueSettingsGlobalRouter(d: Pick<Dienste, 'settings' | 'mail' | 
     )
       return;
 
-    res.json(await d.mail.sendeSmtpTest(to));
+    res.json(await d.mail.sendSmtpTest(to));
   });
 
   // Offen, solange der Verwalter sie nicht abgeschlossen hat UND noch etwas

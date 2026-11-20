@@ -34,8 +34,8 @@ const { routerServer } = require('./helpers/server');
 
 // Keine echten Mails: vor dem Laden von routes/auth ersetzen.
 require('./helpers/sources').ersetzeDienste('mail', {
-  mailEmailGeaendert: async () => ({ success: true }),
-  mailBestaetigung: async () => ({ success: true }),
+  mailEmailChanged: async () => ({ success: true }),
+  mailVerification: async () => ({ success: true }),
 });
 
 const db = S.testDaten();

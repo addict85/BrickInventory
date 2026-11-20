@@ -29,8 +29,8 @@ const { bis } = require('./helpers/zeit');
 
 const gesendet = [];
 S.ersetzeDienste('mail', {
-  mailEingerichtet: async () => true,
-  mailKontoHinweis: async (_an, _name, type, o) => {
+  mailConfigured: async () => true,
+  mailAccountNotice: async (_an, _name, type, o) => {
     gesendet.push({ type, bis: o.bis });
     return { success: true };
   },

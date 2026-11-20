@@ -79,18 +79,18 @@ async function adressMails(k: KontoKontext, user: Konto, email: string, token: s
       gesendet = wertOder(
         await versuche(
           'anmeldung:versuchsmail',
-          k.mail.mailRegistrierungsVersuch(inhaber.email, await sprache(inhaber.id), 'adresse'),
+          k.mail.mailRegistrationAttempt(inhaber.email, await sprache(inhaber.id), 'adresse'),
         ),
         { success: false },
       ).success;
   } else if (basis) {
     gesendet = wertOder(
-      await versuche('anmeldung:bestaetigungsmail', k.mail.mailBestaetigung(email, token, basis, lang, 'adresse')),
+      await versuche('anmeldung:bestaetigungsmail', k.mail.mailVerification(email, token, basis, lang, 'adresse')),
       { success: false },
     ).success;
   }
   // Die alte Adresse erfährt davon — war es nicht der Inhaber, merkt er es so.
   if (user.email)
-    await versuche('anmeldung:hinweis-alte-adresse', k.mail.mailEmailGeaendert(user.email, user.username, email, lang));
+    await versuche('anmeldung:hinweis-alte-adresse', k.mail.mailEmailChanged(user.email, user.username, email, lang));
   return gesendet;
 }

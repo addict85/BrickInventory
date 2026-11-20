@@ -10,7 +10,7 @@
  *      der Inhaber erfährt es“
  * Gegenprobe (01.11.2026 gemessen): Code-Pflicht in der Route entfernt → rot:
  *   „mit zweitem Faktor braucht es auch den Code“
- * Gegenprobe (01.11.2026 gemessen): maskiereAdresse() im Konsolenweg des Mailers
+ * Gegenprobe (01.11.2026 gemessen): maskAddress() im Konsolenweg des Mailers
  *   umgangen → rot: „mit Passwort verknüpft, und der Inhaber erfährt es“
  * Gegenprobe (04.11.2026 gemessen): kontoGedrosselt() aus redeem/pruefen
  *   entfernt → rot: „die Prüfung eines Codes ist je Konto gebremst“ (200 statt 429)

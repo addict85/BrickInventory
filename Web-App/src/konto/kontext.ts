@@ -13,7 +13,7 @@ import * as zugaenge from './repository/zugaenge';
 import type { SettingsServices } from '../settings';
 import type { HaushaltDienste } from '../haushalt';
 import type { AuftraegeDienste } from '../auftraege';
-import type { MailDienste } from '../mail';
+import type { MailServices } from '../mail';
 import type { ThrottleServices } from '../throttle';
 import type { GeraeteDienste } from '../geraete';
 import type { FactorsServices } from '../factors';
@@ -28,7 +28,7 @@ export interface KontoAbhaengigkeiten {
   einstellungen: SettingsServices;
   auftraege: AuftraegeDienste;
   haushalt: HaushaltDienste;
-  mail: MailDienste;
+  mail: MailServices;
   throttle: ThrottleServices;
   geraete: GeraeteDienste;
   factors: FactorsServices;

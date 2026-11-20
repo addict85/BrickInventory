@@ -34,7 +34,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
-// Die Registrierung lässt sich nur mit Mailversand einschalten (mailBereit: Mailserver und Adresse).
+// Die Registrierung lässt sich nur mit Mailversand einschalten (mailReady: Mailserver und Adresse).
 process.env.APP_BASE_URL = 'https://inventar.example.org';
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -43,8 +43,8 @@ const _req = S.buildAndRequire();
 const { datenOderSkip } = require('./helpers/db');
 const mails = [];
 require('./helpers/sources').ersetzeDienste('mail', {
-  mailEingerichtet: async () => true,
-  mailKontoHinweis: async (an, _n, art, o) => {
+  mailConfigured: async () => true,
+  mailAccountNotice: async (an, _n, art, o) => {
     mails.push({ an, art, konto: o.konto });
     return { success: true };
   },

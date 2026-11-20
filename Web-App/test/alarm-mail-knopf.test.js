@@ -19,10 +19,10 @@ const DATEN = {
   setNumber: '10179-1',
   setName: 'Millennium Falcon',
   condition: 'N',
-  richtung: 'unter',
-  schwelle: 200,
-  preis: 180,
-  waehrung: 'CHF',
+  direction: 'unter',
+  threshold: 200,
+  price: 180,
+  currency: 'CHF',
 };
 
 /** console.warn einsammeln, statt den Testlauf zuzumuellen. */
@@ -46,7 +46,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
 
   await t.test('1. mit APP_BASE_URL trägt die Mail den Link', async () => {
     umgebung({ APP_BASE_URL: 'https://lego.example.test/' });
-    const m = await mailer.baueAlarmMail(DATEN);
+    const m = await mailer.buildAlertMail(DATEN);
     // Der abschliessende Schrägstrich der Variablen darf sich nicht verdoppeln.
     assert.match(
       m.html,
@@ -65,7 +65,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
     umgebung({ APP_BASE_URL: undefined });
     let m;
     const gesammelt = await warnungenVon(async () => {
-      m = await mailer.baueAlarmMail(DATEN);
+      m = await mailer.buildAlertMail(DATEN);
     });
 
     assert.ok(!/\?set=/.test(m.html), 'Ohne bekannte Adresse steht trotzdem ein Link in der Mail.');
@@ -90,7 +90,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
     // mehr kommen.
     umgebung({ APP_BASE_URL: undefined });
     const gesammelt = await warnungenVon(async () => {
-      for (let i = 0; i < 3; i++) await mailer.baueAlarmMail(DATEN);
+      for (let i = 0; i < 3; i++) await mailer.buildAlertMail(DATEN);
     });
     const treffer = gesammelt.filter(z => z.includes('APP_BASE_URL')).length;
     assert.equal(treffer, 0, `Der Hinweis wiederholt sich (${treffer}-mal bei drei Mails).`);
@@ -104,7 +104,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
   //   b) Kacheln ungleich (44/12/40) -> rot: „Die Breiten ergeben 96 %"
   await t.test('4. die beiden Kacheln lassen in der Mitte Platz', async () => {
     umgebung({ APP_BASE_URL: 'https://lego.example.org' });
-    const m = await mailer.baueAlarmMail(DATEN);
+    const m = await mailer.buildAlertMail(DATEN);
     const breiten = [...m.html.matchAll(/<td width="(\d+)%"/g)].map(t => Number(t[1]));
     assert.equal(
       breiten.length,

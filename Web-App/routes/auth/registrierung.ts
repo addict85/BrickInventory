@@ -25,7 +25,7 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'settings' | 'mail' | '
 
   // Die Anmeldemaske zeigt nur Wege, die dieser Server auch kann; ohne Mail endete die Registrierung in einem Konto, das niemand bestätigen kann.
   router.endpunkt('GET /api/v1/auth/registration-status', async (_req, res) => {
-    const mail = await d.mail.mailBereit();
+    const mail = await d.mail.mailReady();
     res.json({
       enabled: mail && (await d.settings.registrationOpen()),
       passkey: !!relyingParty(),
@@ -36,7 +36,7 @@ export function baueRegistrierungRouter(d: Pick<Dienste, 'settings' | 'mail' | '
 
   router.endpunkt('POST /api/v1/auth/register', ipThrottle(d.konto, 'register', 5, 60 * 60 * 1000), async req => {
     const { username, email, first_name, last_name, password, language } = req.eingabe;
-    if (!(await d.settings.registrationOpen()) || !(await d.mail.mailBereit()))
+    if (!(await d.settings.registrationOpen()) || !(await d.mail.mailReady()))
       fachfehler('verboten', 'registrierung_deaktiviert');
     const mangel = registrierungsMangel(req.eingabe);
     if (mangel || !username || !email || !password) fachfehler('ungueltig', mangel ?? 'registrierung_felder');

@@ -5,7 +5,7 @@ import type { Kontext } from '../infra/bereich';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { SettingsServices } from '../settings';
 import type { KontoDienste } from '../konto';
-import type { MailDienste } from '../mail';
+import type { MailServices } from '../mail';
 import type { Uhr } from '../infra/uhr';
 
 export interface ProfileDependencies {
@@ -15,7 +15,7 @@ export interface ProfileDependencies {
   faecher: Faecher;
   einstellungen: SettingsServices;
   konto: KontoDienste;
-  mail: MailDienste;
+  mail: MailServices;
 }
 
 /** The profile has no tables of its own: it reads and writes through account and settings. */

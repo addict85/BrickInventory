@@ -1,44 +1,44 @@
-// Der Versand: SMTP-Verbindung, Absender, Konsolenausgabe ohne Mailserver.
-// Gerüst und Texte der Mails: vorlage.ts und mailer.ts.
+// Sending: SMTP connection, sender address, console output without a mail server.
+// Skeleton and texts of the mails: template.ts and mailer.ts.
 
 import nodemailer from 'nodemailer';
 import tls from 'node:tls';
 import type { PeerCertificate } from 'node:tls';
-import type { MailKontext } from './kontext';
+import type { MailContext } from './context';
 import addressparser from 'nodemailer/lib/addressparser';
 import { emailGueltig } from '../infra/validate';
 import { fehlertext } from '../infra/fehler';
 import { loeseAuf, mailserverAdresse } from '../infra/zielAdresse';
-const einstellung = (k: MailKontext, key: string) => k.einstellungen.globalValue(key, '');
+const setting = (k: MailContext, key: string) => k.einstellungen.globalValue(key, '');
 
-function normiereFingerabdruck(wert: unknown): string {
-  return String(wert ?? '')
+function normalizeFingerprint(value: unknown): string {
+  return String(value ?? '')
     .replace(/[\s:]/g, '')
     .toUpperCase();
 }
 
-/** Die Prüfung bleibt an: Ein selbst signiertes Zertifikat kommt als PEM herein; ein
- * Fingerabdruck nagelt genau eines fest und ersetzt den Abgleich des Hostnamens. */
-async function getTransporter(k: MailKontext) {
-  const host = await einstellung(k, 'smtp_host');
-  const port = parseInt((await einstellung(k, 'smtp_port')) || '587', 10);
-  const user = await einstellung(k, 'smtp_user');
-  const pass = await einstellung(k, 'smtp_pass');
-  const secure = (await einstellung(k, 'smtp_secure')) === '1';
-  const ca = (await einstellung(k, 'smtp_tls_ca')).trim();
-  const fp = normiereFingerabdruck(await einstellung(k, 'smtp_tls_fingerprint'));
+/** Verification stays on: a self-signed certificate comes in as PEM; a
+ * fingerprint pins exactly one and replaces the hostname check. */
+async function getTransporter(k: MailContext) {
+  const host = await setting(k, 'smtp_host');
+  const port = parseInt((await setting(k, 'smtp_port')) || '587', 10);
+  const user = await setting(k, 'smtp_user');
+  const pass = await setting(k, 'smtp_pass');
+  const secure = (await setting(k, 'smtp_secure')) === '1';
+  const ca = (await setting(k, 'smtp_tls_ca')).trim();
+  const fp = normalizeFingerprint(await setting(k, 'smtp_tls_fingerprint'));
   if (!host || !user) return null;
-  // Aufgelöst und geprüft wird hier, verbunden mit genau dieser Adresse; der Name bleibt für SNI und Zertifikat.
+  // Resolved and checked here, then connected to exactly this address; the name stays for SNI and the certificate.
   const adresse = await loeseAuf(host, ip => mailserverAdresse(ip));
-  const pruefeGegenstelle = (name: string, zert: PeerCertificate) => {
-    if (!fp) return tls.checkServerIdentity(name, zert);
-    if (normiereFingerabdruck(zert.fingerprint256) === fp) return undefined;
-    return Object.assign(new Error(`Fingerabdruck ${zert.fingerprint256} ist nicht der eingetragene`), {
+  const checkPeer = (name: string, cert: PeerCertificate) => {
+    if (!fp) return tls.checkServerIdentity(name, cert);
+    if (normalizeFingerprint(cert.fingerprint256) === fp) return undefined;
+    return Object.assign(new Error(`Fingerabdruck ${cert.fingerprint256} ist nicht der eingetragene`), {
       code: 'SMTP_FINGERABDRUCK',
     });
   };
-  // requireTLS: Ohne STARTTLS in der EHLO-Antwort fiele nodemailer sonst auf
-  // Klartext zurück und schickte Passwort und Rücksetzlinks lesbar durchs Netz.
+  // requireTLS: without STARTTLS in the EHLO reply nodemailer would otherwise fall back
+  // to plain text and send password and reset links readable across the network.
   return nodemailer.createTransport({
     host: adresse,
     ...(adresse !== host ? { servername: host } : {}),
@@ -49,7 +49,7 @@ async function getTransporter(k: MailKontext) {
     tls: {
       rejectUnauthorized: true,
       minVersion: 'TLSv1.2',
-      checkServerIdentity: pruefeGegenstelle,
+      checkServerIdentity: checkPeer,
       ...(ca ? { ca } : {}),
     },
     connectionTimeout: 10000,
@@ -58,7 +58,7 @@ async function getTransporter(k: MailKontext) {
   });
 }
 
-const ZERTIFIKATSFEHLER = new Set([
+const CERTIFICATE_ERRORS = new Set([
   'SMTP_FINGERABDRUCK',
   'DEPTH_ZERO_SELF_SIGNED_CERT',
   'SELF_SIGNED_CERT_IN_CHAIN',
@@ -68,26 +68,26 @@ const ZERTIFIKATSFEHLER = new Set([
   'ERR_TLS_CERT_ALTNAME_INVALID',
 ]);
 
-/** Ein Zertifikatsfehler sagt dem Verwalter, was er eintragen muss, statt nur den Code. */
-function smtpFehlertext(e: unknown): { text: string; zertifikat: boolean } {
+/** A certificate error tells the administrator what to enter, instead of just the code. */
+function smtpErrorText(e: unknown): { text: string; certificate: boolean } {
   const code = String((e as { code?: unknown; cause?: { code?: unknown } })?.code ?? '');
-  const ursache = String((e as { cause?: { code?: unknown } })?.cause?.code ?? '');
-  const zertifikat =
-    ZERTIFIKATSFEHLER.has(code) || ZERTIFIKATSFEHLER.has(ursache) || /certificate|Fingerabdruck/i.test(fehlertext(e));
-  const ohneStarttls = code === 'ETLS' && /upgrading connection with STARTTLS/.test(fehlertext(e));
+  const cause = String((e as { cause?: { code?: unknown } })?.cause?.code ?? '');
+  const certificate =
+    CERTIFICATE_ERRORS.has(code) || CERTIFICATE_ERRORS.has(cause) || /certificate|Fingerabdruck/i.test(fehlertext(e));
+  const noStarttls = code === 'ETLS' && /upgrading connection with STARTTLS/.test(fehlertext(e));
   return {
-    zertifikat,
-    text: zertifikat
+    certificate,
+    text: certificate
       ? `Zertifikat des Mailservers nicht bestätigt (${fehlertext(e)}). Unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder seinen SHA-256-Fingerabdruck eintragen.`
-      : ohneStarttls
+      : noStarttls
         ? 'Der Mailserver bietet kein STARTTLS an; unverschlüsselt wird nichts gesendet. Port 465 mit „SSL/TLS" wählen oder STARTTLS am Mailserver einschalten.'
         : fehlertext(e),
   };
 }
 
-/** Wer die entfallene Ausnahme „Zertifikat nicht prüfen" gesetzt hatte, erfährt es beim Start. */
-export async function meldeSmtpAltlast(k: MailKontext): Promise<boolean> {
-  if ((await einstellung(k, 'smtp_insecure_tls')) !== '1') return false;
+/** Whoever had set the dropped exception "do not verify certificate" learns about it at startup. */
+export async function reportSmtpLegacySetting(k: MailContext): Promise<boolean> {
+  if ((await setting(k, 'smtp_insecure_tls')) !== '1') return false;
   console.warn(
     '⚠️  [mailer] smtp_insecure_tls wird nicht mehr ausgewertet: Das Zertifikat des Mailservers wird jetzt geprüft. ' +
       'Für ein selbst signiertes Zertifikat unter Menü → Einstellungen → E-Mail das Zertifikat (PEM) oder den SHA-256-Fingerabdruck eintragen.',
@@ -95,44 +95,44 @@ export async function meldeSmtpAltlast(k: MailKontext): Promise<boolean> {
   return true;
 }
 
-async function getFrom(k: MailKontext) {
-  return (await einstellung(k, 'smtp_from')) || 'BrickInventory Manager <noreply@brickinventory.local>';
+async function getFrom(k: MailContext) {
+  return (await setting(k, 'smtp_from')) || 'BrickInventory Manager <noreply@brickinventory.local>';
 }
 
-/** Ohne Token, ausser mit MAIL_KONSOLE_MIT_TOKEN=1: Die Konsole landet in
- * app_logs, und ein Reset-Link ist ein Zugang zum Konto. NODE_ENV taugt dafür
- * nicht — „development" steht schnell auf einem echten Server. Der Link kommt
- * vom Absender, nicht aus dem Text: Dort kann eine Eingabe eine fremde URL vorschieben. */
-export function linkFuerKonsole(link: string | undefined, schalter: string | undefined): string | null {
+/** No token unless MAIL_KONSOLE_MIT_TOKEN=1: the console ends up in
+ * app_logs, and a reset link grants access to the account. NODE_ENV is not good
+ * enough — "development" is quickly set on a real server. The link comes from
+ * the sender, not from the text: there, an input could slip in a foreign URL. */
+export function linkForConsole(link: string | undefined, flag: string | undefined): string | null {
   const url = link && /^https?:\/\/\S+$/.test(link) ? link : null;
   if (!url) return null;
-  return schalter === '1' ? url : url.replace(/([?&#]token=)[^&#\s]+/g, '$1…');
+  return flag === '1' ? url : url.replace(/([?&#]token=)[^&#\s]+/g, '$1…');
 }
 
-/** Die Konsole landet in app_logs, das jeder Verwalter liest; voll nur mit dem Entwicklerschalter wie die Links. */
-export function maskiereAdresse(adresse: string, voll: boolean): string {
-  if (voll) return adresse;
+/** The console ends up in app_logs, which every administrator reads; in full only with the developer flag, like the links. */
+export function maskAddress(adresse: string, full: boolean): string {
+  if (full) return adresse;
   const at = adresse.lastIndexOf('@');
   return at < 1 ? '…' : `${adresse[0]}…${adresse.slice(at)}`;
 }
 
-/** Die Zeichenkette muss für nodemailer genau diese eine Adresse sein, sonst
- * ginge die Mail an eine andere als die geprüfte (Anzeigename, Liste). */
-export function einzigerEmpfaenger(to: string): boolean {
-  const liste = emailGueltig(to) ? addressparser(to, { flatten: true }) : [];
-  return liste.length === 1 && liste[0]!.address === to && !liste[0]!.name;
+/** For nodemailer the string must be exactly this one address, otherwise the
+ * mail would go to a different one than the checked one (display name, list). */
+export function isSingleRecipient(to: string): boolean {
+  const list = emailGueltig(to) ? addressparser(to, { flatten: true }) : [];
+  return list.length === 1 && list[0]!.address === to && !list[0]!.name;
 }
 
-/** Ohne SMTP auf der Konsole; `html` und `text` optional, weil die Konsole
- * nur `text` liest. */
+/** Without SMTP to the console; `html` and `text` optional because the console
+ * only reads `text`. */
 export async function sendMail(
-  k: MailKontext,
+  k: MailContext,
   {
     to,
     subject,
     html,
     text,
-    link: echterLink,
+    link: realLink,
   }: {
     to: string;
     subject: string;
@@ -141,9 +141,9 @@ export async function sendMail(
     link?: string;
   },
 ) {
-  if (!einzigerEmpfaenger(to)) {
+  if (!isSingleRecipient(to)) {
     console.warn(
-      `📧 Empfänger abgelehnt (${maskiereAdresse(to, k.konfig.mailKonsoleMitToken)}): keine einzelne reine Adresse`,
+      `📧 Empfänger abgelehnt (${maskAddress(to, k.konfig.mailKonsoleMitToken)}): keine einzelne reine Adresse`,
     );
     return { success: false, error: 'empfaenger_ungueltig', mode: 'smtp' };
   }
@@ -151,50 +151,50 @@ export async function sendMail(
   try {
     transporter = await getTransporter(k);
   } catch (e) {
-    // Ausnahme: Die Antwort trägt den Fehlschlag (success: false); den Text ohne Zugangsdaten nennt smtpFehlertext.
-    console.error(`📧 SMTP Fehler (${maskiereAdresse(to, k.konfig.mailKonsoleMitToken)}):`, smtpFehlertext(e).text);
-    return { success: false, error: smtpFehlertext(e).text, mode: 'smtp' };
+    // Exception: the response carries the failure (success: false); smtpErrorText gives the text without credentials.
+    console.error(`📧 SMTP Fehler (${maskAddress(to, k.konfig.mailKonsoleMitToken)}):`, smtpErrorText(e).text);
+    return { success: false, error: smtpErrorText(e).text, mode: 'smtp' };
   }
   const from = await getFrom(k);
   if (!transporter) {
-    const link = linkFuerKonsole(echterLink, k.konfig.mailKonsoleMitToken ? '1' : undefined);
+    const link = linkForConsole(realLink, k.konfig.mailKonsoleMitToken ? '1' : undefined);
     console.log('\n══════════════════════════════════════════════════');
     console.log('📧  E-Mail (SMTP nicht konfiguriert):');
-    console.log(`    An:      ${maskiereAdresse(to, k.konfig.mailKonsoleMitToken)}`);
+    console.log(`    An:      ${maskAddress(to, k.konfig.mailKonsoleMitToken)}`);
     console.log(`    Betreff: ${subject}`);
     if (link) console.log(`    Link:    ${link}`);
     console.log('══════════════════════════════════════════════════\n');
     return { success: true, mode: 'console' };
   }
   try {
-    const absender = addressparser(from, { flatten: true })[0]?.address;
+    const sender = addressparser(from, { flatten: true })[0]?.address;
     const info = await transporter.sendMail({
       from,
       to,
       subject,
       text,
       html,
-      ...(absender ? { envelope: { from: absender, to: [to] } } : {}),
+      ...(sender ? { envelope: { from: sender, to: [to] } } : {}),
     });
-    console.log(`📧 E-Mail gesendet an ${maskiereAdresse(to, k.konfig.mailKonsoleMitToken)}: ${info.messageId}`);
+    console.log(`📧 E-Mail gesendet an ${maskAddress(to, k.konfig.mailKonsoleMitToken)}: ${info.messageId}`);
     return { success: true, mode: 'smtp', messageId: info.messageId };
   } catch (e) {
-    const { text } = smtpFehlertext(e);
-    console.error(`📧 SMTP Fehler (${maskiereAdresse(to, k.konfig.mailKonsoleMitToken)}):`, text);
+    const { text } = smtpErrorText(e);
+    console.error(`📧 SMTP Fehler (${maskAddress(to, k.konfig.mailKonsoleMitToken)}):`, text);
     return { success: false, error: text, mode: 'smtp' };
   }
 }
 
-export async function testSmtp(k: MailKontext) {
+export async function testSmtp(k: MailContext) {
   try {
     const transporter = await getTransporter(k);
-    // Code statt Satz: testSmtp() kennt den Anfragenden nicht.
+    // A code instead of a sentence: testSmtp() does not know who is asking.
     if (!transporter) return { success: false as const, code: 'smtp_nicht_konfiguriert' as const };
     await transporter.verify();
     return { success: true as const, message: 'SMTP-Verbindung erfolgreich' };
   } catch (e) {
-    const { text, zertifikat } = smtpFehlertext(e);
-    return zertifikat
+    const { text, certificate } = smtpErrorText(e);
+    return certificate
       ? { success: false as const, code: 'smtp_zertifikat' as const, vars: { grund: fehlertext(e) } }
       : { success: false as const, code: 'smtp_fehler' as const, vars: { grund: text } };
   }

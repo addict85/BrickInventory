@@ -37,8 +37,8 @@ const { testServer } = require('./helpers/server');
 
 const mails = [];
 require('./helpers/sources').ersetzeDienste('mail', {
-  mailEingerichtet: async () => true,
-  mailKontoHinweis: async (an, _name, art) => {
+  mailConfigured: async () => true,
+  mailAccountNotice: async (an, _name, art) => {
     mails.push({ an, art });
     return { success: true };
   },
