@@ -1,9 +1,9 @@
 import type { DbInterface, Treffer } from '../../../db/database';
-import type { JobsReadContract } from '../lesevertrag';
+import type { JobsReadContract } from '../readContract';
 import { randomUUID } from 'node:crypto';
 import { LOCKS } from '../../infra/lockNamespaces';
 import { attemptsKeyLock, giveKeyLockFree } from '../../../db/txLock';
-import type { JobKind, Einstellen, JobRow, Belegung, Fortschritt, Pause, JobStatus } from '../auftraege';
+import type { JobKind, Einstellen, JobRow, Belegung, Fortschritt, Pause, JobStatus } from '../jobs';
 import type { Spalten } from '../../../db/zeilen';
 
 /** Hier nur das SQL; Wecken, Wartezeiten und das Arbeiten im Namen eines Kontos
@@ -54,7 +54,7 @@ export async function addJobOne(
   return z ? String(z.id) : null;
 }
 
-/** Derselbe Schreibweg ohne Systemrahmen gebunden (src/auftraege/kontext.ts). */
+/** Derselbe Schreibweg ohne Systemrahmen gebunden (src/jobQueue/context.ts). */
 export const addOwnJobOne = addJobOne;
 
 /** Je Schlüssel ein offener Auftrag, der die neuen Einträge der Liste zu seinen dazunimmt:

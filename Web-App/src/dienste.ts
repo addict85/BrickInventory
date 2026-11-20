@@ -1,6 +1,6 @@
 /** Der Satz Dienste aus startup/verdrahtung.ts, hier, damit routes/ und jobs/ nicht an
  * startup/ hängen, das sie einbindet; Routerfabriken verengen ihn mit Pick<>. */
-import type { JobsServices } from './auftraege';
+import type { JobsServices } from './jobQueue';
 import type { InventoryServices } from './inventory';
 import type { ImagesServices } from './images';
 import type { ThrottleServices } from './throttle';
@@ -36,7 +36,7 @@ export interface Dienste {
   throttle: ThrottleServices;
   settings: SettingsServices;
   mail: MailServices;
-  auftraege: JobsServices;
+  jobQueue: JobsServices;
   household: HouseholdServices;
   devices: DevicesServices;
   factors: FactorsServices;

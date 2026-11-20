@@ -1,8 +1,8 @@
 /** Je Schlüssel ein wartender Auftrag, der über Aufträge hinweg mitzählt (`versuch` in der
  * Nutzlast): Wer eine Gegenseite später erneut fragen will, merkt vor, bis die Grenze erreicht ist. */
-import type { JobKind, PayloadInput } from './auftraege';
-import { wakeWorker, pullBefore } from './dienst';
-import type { JobsContext } from './kontext';
+import type { JobKind, PayloadInput } from './jobs';
+import { wakeWorker, pullBefore } from './service';
+import type { JobsContext } from './context';
 
 /** @returns vorgemerkt false, wenn der Schlüssel schon `hoechstens` Mal vorgemerkt war */
 export async function rememberBefore<A extends JobKind>(

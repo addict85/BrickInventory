@@ -2,7 +2,7 @@
  * bereich.ts, damit ein Dienst seinen Typ ohne Importzyklus kennt. */
 import { mit, type Kontext } from '../infra/bereich';
 import type { Db } from '../../db/database';
-import type { JobsServices } from '../auftraege';
+import type { JobsServices } from '../jobQueue';
 import type { SettingsServices } from '../settings';
 import * as apiKontingent from './repository/apiQuota';
 import * as apiTakt from './repository/apiTick';
@@ -13,7 +13,7 @@ export interface ForeignSourcesDependencies {
   uhr: Uhr;
   db: Db;
   einstellungen: SettingsServices;
-  auftraege: JobsServices;
+  jobQueue: JobsServices;
   /** Was ein Test statt der echten Klienten gibt; gelesen beim Aufruf (bereich.ts). */
   ersatz?: Partial<Quellen> | undefined;
 }

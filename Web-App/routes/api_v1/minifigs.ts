@@ -11,7 +11,7 @@ import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 export function buildMinifigsRouter(
   d: Pick<
     Dienste,
-    'settings' | 'auftraege' | 'household' | 'account' | 'finances' | 'inventory' | 'minifigs' | 'collection'
+    'settings' | 'jobQueue' | 'household' | 'account' | 'finances' | 'inventory' | 'minifigs' | 'collection'
   >,
 ) {
   const { requireToken } = guardFor(d.account);

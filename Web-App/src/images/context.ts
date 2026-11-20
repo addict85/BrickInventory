@@ -5,7 +5,7 @@ import { mit, withContract, type Kontext } from '../infra/bereich';
 import type { ImagesReadContract } from './readContract';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { Db } from '../../db/database';
-import type { JobsServices } from '../auftraege';
+import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { HouseholdServices } from '../household';
 import * as bildBlickfeld from './repository/imageScope';
@@ -30,7 +30,7 @@ export interface ImagesDependencies {
   faecher: Faecher;
   bildwerk: ImageWorker;
   externalSources: ForeignSourcesServices;
-  auftraege: JobsServices;
+  jobQueue: JobsServices;
   household: HouseholdServices;
   lesevertrag: ImagesReadContract;
 }

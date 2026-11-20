@@ -8,7 +8,7 @@ import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
 export function buildAdminRouter(
-  d: Pick<Dienste, 'settings' | 'auftraege' | 'catalog' | 'account' | 'externalSources' | 'management'>,
+  d: Pick<Dienste, 'settings' | 'jobQueue' | 'catalog' | 'account' | 'externalSources' | 'management'>,
 ) {
   const { requireApiAdmin } = guardFor(d.account);
   const router = vertragsRouter('/api/v1', { largeIds: true });
@@ -18,15 +18,15 @@ export function buildAdminRouter(
   });
 
   router.endpunkt('POST /api/v1/admin/auftraege/:id/abbrechen', requireApiAdmin, async req => {
-    return { ...(await d.auftraege.auftragAbbrechen(req.pfad.id)) };
+    return { ...(await d.jobQueue.auftragAbbrechen(req.pfad.id)) };
   });
 
   router.endpunkt('POST /api/v1/admin/auftraege/:id/wiederholen', requireApiAdmin, async req => {
-    return { ...(await d.auftraege.retryJob(req.pfad.id)) };
+    return { ...(await d.jobQueue.retryJob(req.pfad.id)) };
   });
 
   router.endpunkt('POST /api/v1/admin/auftraege/art/:art/jetzt', requireApiAdmin, async req => {
-    return { ...(await d.auftraege.auftragsArtJetzt(req.pfad.art)) };
+    return { ...(await d.jobQueue.auftragsArtJetzt(req.pfad.art)) };
   });
 
   router.endpunkt('DELETE /api/v1/admin/auftraege/art/:art', requireApiAdmin, async req => {

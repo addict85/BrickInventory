@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../auftraege';
+import { auftragsart, type Anmeldung } from '../jobQueue';
 import { cleanup, cleanupDaily } from './cleanup';
 import { FOLLOW_UP_STEPS, runFollowUp } from './startFollowUpRuns';
 import type { ManagementContext } from './context';
@@ -7,7 +7,7 @@ import type { ManagementContext } from './context';
 const EMPTY = z.object({});
 const FollowUpPayload = z.object({ schritt: z.enum(FOLLOW_UP_STEPS) });
 
-declare module '../auftraege/auftraege' {
+declare module '../jobQueue/jobs' {
   interface JobPayloads {
     nachlauf: typeof FollowUpPayload;
     aufraeumen: typeof EMPTY;

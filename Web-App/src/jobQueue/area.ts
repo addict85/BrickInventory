@@ -2,19 +2,19 @@
 import type { Db } from '../../db/database';
 import { mit, buildArea, type Inspect } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
-import { Arten, type Anmeldung } from './arten';
-import * as dienst from './dienst';
-import * as eigene from './eigene';
-import * as hintergrund from './hintergrund';
-import * as importAlsAuftrag from './importAlsAuftrag';
-import * as importAuftrag from './importAuftrag';
-import * as prozess from './prozess';
-import * as startZustand from './startZustand';
-import * as wiedervorlage from './wiedervorlage';
-import * as zeitplan from './zeitplan';
-import { zugang, type JobsDependencies, type JobsContext } from './kontext';
+import { Arten, type Anmeldung } from './kinds';
+import * as dienst from './service';
+import * as eigene from './own';
+import * as hintergrund from './background';
+import * as importAlsAuftrag from './importAsJob';
+import * as importAuftrag from './importJob';
+import * as prozess from './process';
+import * as startZustand from './startState';
+import * as wiedervorlage from './resubmission';
+import * as zeitplan from './schedule';
+import { zugang, type JobsDependencies, type JobsContext } from './context';
 
-export type { JobsDependencies, JobsContext } from './kontext';
+export type { JobsDependencies, JobsContext } from './context';
 
 /** Die Arten meldet die Verdrahtung an (reportKindAn); bis dahin nimmt die Warteschlange keine. */
 export function createJobs(a: Omit<JobsDependencies, 'faecher' | 'arten'>, inspect?: Inspect<JobsContext>) {

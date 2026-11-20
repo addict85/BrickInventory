@@ -8,8 +8,8 @@ export async function anleitungEinreihen(
   o: { nurAusweichquelle?: boolean; jetzt?: boolean } = {},
 ): Promise<string | null> {
   const n = withVersion(setNumber);
-  if (o.jetzt) await k.auftraege.wiedervorlage.jetzt('anleitung', `anleitung:${n}`);
-  return k.auftraege.placeJobOne(
+  if (o.jetzt) await k.jobQueue.wiedervorlage.jetzt('anleitung', `anleitung:${n}`);
+  return k.jobQueue.placeJobOne(
     'anleitung',
     { set_number: n, ...(o.nurAusweichquelle ? { nur_ausweichquelle: true } : {}) },
     { schluessel: `anleitung:${n}`, maxAttempts: 3 },

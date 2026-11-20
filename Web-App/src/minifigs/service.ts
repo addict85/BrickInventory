@@ -37,7 +37,7 @@ export async function partsOfMinifig(kx: MinifigsContext, figNumber: string) {
     };
   });
   setImmediate(() => {
-    kx.auftraege
+    kx.jobQueue
       .placeJobOne(
         'bilder',
         { set_number: figNumber, only_images: true },

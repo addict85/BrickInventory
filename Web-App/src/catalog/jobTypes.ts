@@ -1,6 +1,6 @@
 /** Nicht strikt: Die Nutzlast überlebt Deploys, ein Altfeld soll keinen offenen Auftrag scheitern lassen. */
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../auftraege';
+import { auftragsart, type Anmeldung } from '../jobQueue';
 import { bricksetJobType } from '../externalSources';
 import * as anleitungLaden from './loadInstruction';
 import * as bildNachlauf from './imageFollowUp';
@@ -38,7 +38,7 @@ export const ImagesPayload = z.object({ set_number: SETNR, only_images: z.boolea
 const InstructionPayload = z.object({ set_number: SETNR, nur_ausweichquelle: z.boolean().optional() });
 const CatalogSyncPayload = z.object({ onStart: z.boolean().optional() });
 
-declare module '../auftraege/auftraege' {
+declare module '../jobQueue/jobs' {
   interface JobPayloads {
     pdf: typeof PdfPayload;
     bilder: typeof ImagesPayload;

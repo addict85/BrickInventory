@@ -85,7 +85,7 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
     // Über die angemeldete Art, wie der Worker sie ausführt.
     const nacharbeit = require('./helpers/sources')
       .testServices()
-      .auftraege.signedInKinds()
+      .jobQueue.signedInKinds()
       .find(a => a.art === 'nacharbeit');
     // Mit Katalog und Bild: Die Nacharbeit fragt dann kein Netz für den Stamm, nur die Schritte danach.
     await require('./helpers/bestand').catalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });

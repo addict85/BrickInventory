@@ -1,5 +1,5 @@
 import { logAndContinue, reportError } from '../infra/fehler';
-import type { JobsContext } from './kontext';
+import type { JobsContext } from './context';
 
 /** Den Katalog lädt der Job-Prozess; der Web-Prozess liest den Stand aus
  * laufzustand nach. */

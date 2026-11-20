@@ -2,7 +2,7 @@
  * den Job-Prozess, Statuswechsel den Statusstrom. Geht ein NOTIFY verloren,
  * findet der Worker den Auftrag in seinem Takt. */
 import { asRequest, inSystemContext } from '../infra/kontoKontext';
-import * as repo from './repository/auftraege';
+import * as repo from './repository/jobs';
 import {
   JobLost,
   type JobKind,
@@ -12,10 +12,10 @@ import {
   type Einstellen,
   type Fortschritt,
   type PayloadInput,
-} from './auftraege';
+} from './jobs';
 import { logAndContinue } from '../infra/fehler';
 import { signal } from '../infra/ereignis';
-import type { JobsContext } from './kontext';
+import type { JobsContext } from './context';
 
 /** Ein neuer oder wieder fälliger Auftrag weckt den Job-Prozess; die Nutzlast nennt die Art. */
 export const NEW_JOB = signal(repo.JOB_CHANNEL);

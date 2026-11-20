@@ -50,10 +50,10 @@ test('Hintergrundarbeiten in der Verwaltung', { concurrency: 1 }, async t => {
     )
   ).id;
   await db.run('DELETE FROM jobs');
-  const Z = _req('src/auftraege/zeitplan.js');
-  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
-    ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testArea('auftraege').auftraege,
+  const Z = _req('src/jobQueue/schedule.js');
+  const A = Object.assign({}, _req('src/jobQueue/jobs.js'), {
+    ..._req('src/jobQueue/service.js'),
+    ...require('./helpers/sources').testArea('jobQueue').auftraege,
   });
   t.after(async () => {
     await db.run('DELETE FROM jobs');

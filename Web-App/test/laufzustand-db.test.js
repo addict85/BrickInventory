@@ -74,7 +74,7 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t =
   });
 
   const jm = _req('src/management/tiles.js');
-  const { auftraege } = require('./helpers/sources').testServices();
+  const { jobQueue: auftraege } = require('./helpers/sources').testServices();
   const imgDlAdd = n => auftraege.countState('imgdl_pending_count', n);
 
   await t.test('die Kacheln lesen den Stand aus der Auftragstabelle', async () => {

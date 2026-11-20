@@ -1,5 +1,5 @@
 /**
- * Jeder Import läuft als Auftrag im Job-Prozess (src/auftraege/importAlsAuftrag.ts):
+ * Jeder Import läuft als Auftrag im Job-Prozess (src/jobQueue/importAsJob.ts):
  * Die Anfrage reicht ein und waiting; ohne Job-Prozess bleibt der Auftrag offen.
  *
  * Gegenproben (05.11.2026 gemessen):

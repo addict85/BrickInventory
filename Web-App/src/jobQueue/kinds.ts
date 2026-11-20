@@ -1,7 +1,7 @@
 /** Die Warteschlange kennt keine Art: Jeder Bereich meldet seine in der Verdrahtung an,
  * mit Nutzlast, Ausführer und Zeitplan (startup/verdrahtung.ts). */
 import type { z } from 'zod';
-import type { JobKind, JobContext, JobRow, Nutzlast, PayloadSchema } from './auftraege';
+import type { JobKind, JobContext, JobRow, Nutzlast, PayloadSchema } from './jobs';
 
 export type Zeitplan =
   | { taeglich: { setting: string; vorgabe: string } }

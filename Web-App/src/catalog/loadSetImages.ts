@@ -18,7 +18,7 @@ import type { CatalogContext } from './context';
 export const IMAGE_LOAD_COUNTER = 'imgdl_pending_count';
 async function imageLoadCounter(k: CatalogContext, delta: number): Promise<void> {
   const d = Math.round(Number(delta) || 0);
-  if (d) await k.auftraege.countState(IMAGE_LOAD_COUNTER, d).catch(logAndContinue('teile-enrich:imgDlAdd'));
+  if (d) await k.jobQueue.countState(IMAGE_LOAD_COUNTER, d).catch(logAndContinue('teile-enrich:imgDlAdd'));
 }
 
 /** @param kind Bestimmt Zielverzeichnis und Web-Pfad. */

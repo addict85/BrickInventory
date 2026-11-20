@@ -25,7 +25,7 @@ import { zaehle } from './queries';
 import type { loadSetEntries } from '../repository/acquisitions';
 import { KEINE_FARBE, zustand } from '../../infra/validate';
 import { aufRappen, inZehntel4 } from '../../infra/geld';
-import type { Nutzlast } from '../../auftraege';
+import type { Nutzlast } from '../../jobQueue';
 import { PRICE_ITEM_AT_MOST, rememberPricesBefore } from '../priceItems';
 import { errorText } from '../../infra/fehlerTexte';
 import type { FinancesContext } from '../context';

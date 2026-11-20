@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Importe laufen als Auftrag im Job-Prozess (src/auftraege/importAlsAuftrag.ts);
+ * Importe laufen als Auftrag im Job-Prozess (src/jobQueue/importAsJob.ts);
  * im Test arbeitet sie ein Worker in diesem Prozess ab, sonst wartete die
  * Anfrage vergeblich.
  *

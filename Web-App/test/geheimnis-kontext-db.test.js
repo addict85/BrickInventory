@@ -206,7 +206,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     fs.writeFileSync(pdf, Buffer.concat([Buffer.from('BIENC1\n'), roh1(PDF)]));
 
     // Ein Altbestand trägt die Marke der Umschlüsselung noch nicht (die Testvorlage schon).
-    await require('./helpers/sources').testArea('auftraege').laufzustand.deleteState('altbestand_v2');
+    await require('./helpers/sources').testArea('jobQueue').laufzustand.deleteState('altbestand_v2');
     await _req('startup/datenbank.js').prepareDatabaseBefore(testAccess(), require('./helpers/sources').testServices());
 
     const v = await db.get('SELECT number, pin FROM vouchers WHERE id = $1', [id]);

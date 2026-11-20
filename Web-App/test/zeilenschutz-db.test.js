@@ -220,14 +220,14 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   await t.test('ein Auftrag läuft im Systemrahmen nur, wenn seine Art kontoübergreifend ist', async st => {
     const leeren = () => su.run("DELETE FROM jobs WHERE type IN ('wechselkurse', 'nacharbeit', 'preise')");
     st.after(leeren);
-    const A_ = _req('src/auftraege/dienst.js');
+    const A_ = _req('src/jobQueue/service.js');
     const { createWorker } = _req('jobs/auftragsWorker.js');
     await leeren();
     const gesehen = {};
     const see = name => async () => {
       gesehen[name] = ids(await allSets());
     };
-    const w = createWorker(require('./helpers/sources').testServices().auftraege, {
+    const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
       wechselkurse: { ausfuehren: see('ohne Marke') },
       nacharbeit: {
         ausfuehren: async () => {

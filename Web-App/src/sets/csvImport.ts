@@ -1,6 +1,6 @@
 /** CSV-Import der Sets: Zeilen lesen, Auftrag starten, Stand melden. */
 import { beforeThe, fehlertext, publicError } from '../infra/fehler';
-import { buildJobStatus } from '../auftraege';
+import { buildJobStatus } from '../jobQueue';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import { csvReadIn, defusingUndo, csvDatum, rowsList } from '../infra/csvExport';
 import { fachfehler, type Sprache } from '../infra/fehlerTexte';
@@ -96,10 +96,10 @@ export async function startSetCsvImport(sk: SetsContext, userId: number, text: s
   const { rows, uebersprungen } = setCsvRows(text);
   const vorhanden = await alreadyPresent(sk, userId, rows);
   if (checkOnly) return { total: rows.length, uebersprungen, vorhanden, gestartet: false };
-  const laufend = await sk.auftraege.jobGet(userId);
-  if (laufend && laufend.status === 'running') await sk.auftraege.jobUpdate(userId, { status: 'cancelled' });
+  const laufend = await sk.jobQueue.jobGet(userId);
+  if (laufend && laufend.status === 'running') await sk.jobQueue.jobUpdate(userId, { status: 'cancelled' });
   const lauf = randomUUID();
-  await sk.auftraege.jobSet(userId, {
+  await sk.jobQueue.jobSet(userId, {
     status: 'running',
     total: rows.length,
     done: 0,
@@ -109,38 +109,38 @@ export async function startSetCsvImport(sk: SetsContext, userId: number, text: s
     run_id: lauf,
   });
   try {
-    await sk.auftraege.placeJobOne('csv_import', { user_id: userId, lauf, rows }, { userId, maxAttempts: 3 });
+    await sk.jobQueue.placeJobOne('csv_import', { user_id: userId, lauf, rows }, { userId, maxAttempts: 3 });
   } catch (e) {
     await versuche(
       'csv-import:fehler vermerken',
-      sk.auftraege.jobUpdate(userId, { status: 'error', error: publicError(e, 'csv-import:einstellen').error }, lauf),
+      sk.jobQueue.jobUpdate(userId, { status: 'error', error: publicError(e, 'csv-import:einstellen').error }, lauf),
     );
     throw e;
   }
-  await sk.auftraege.reportJobStatus(userId);
+  await sk.jobQueue.reportJobStatus(userId);
   return { total: rows.length, uebersprungen, vorhanden, gestartet: true };
 }
 
 export async function cancelSetCsvImport(k: SetsContext, userId: number) {
   // Ohne Fang: Schlägt das Vermerken fehl, liefe der Import weiter, während die Antwort „abgebrochen“ sagte.
-  await k.auftraege.jobUpdate(userId, { status: 'cancelled' });
-  await k.auftraege.reportJobStatus(userId);
+  await k.jobQueue.jobUpdate(userId, { status: 'cancelled' });
+  await k.jobQueue.reportJobStatus(userId);
 }
 
 type Kopf = { headers?: Record<string, unknown> };
 
 export async function csvImportStand(k: SetsContext, uid: number, req: Kopf) {
-  return buildJobStatus(await k.auftraege.jobGet(uid), req);
+  return buildJobStatus(await k.jobQueue.jobGet(uid), req);
 }
 
 /** Im offenen Strom gibt es keinen Statuscode mehr: Ein Lesefehler wird zu „kein Import“. */
 export async function csvImportStatusForStream(k: SetsContext, uid: number, req: Kopf, sprache: Sprache) {
-  return buildJobStatus(await k.auftraege.jobGet(uid), req, sprache);
+  return buildJobStatus(await k.jobQueue.jobGet(uid), req, sprache);
 }
 
 /** Meldet jeden Stand des CSV-Imports dieses Kontos, aus diesem und aus anderen Prozessen. */
 export function subscribeCsvImportStatus(k: SetsContext, uid: number, melde: () => void): () => void {
-  return k.auftraege.atImportStatus(konto => {
+  return k.jobQueue.atImportStatus(konto => {
     if (String(konto) === String(uid)) melde();
   });
 }

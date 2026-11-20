@@ -1,6 +1,6 @@
 import { setAnleitungenLaden, anzahlAnleitungen } from './instructions';
 import { logAndContinue, reportError } from '../infra/fehler';
-import { type Nutzlast, checkAbort, type JobRun, JobMove } from '../auftraege';
+import { type Nutzlast, checkAbort, type JobRun, JobMove } from '../jobQueue';
 import * as bildlage from './imageState';
 import type { CatalogContext } from './context';
 
@@ -15,7 +15,7 @@ async function bricksetNachlauf(k: CatalogContext, n: Nutzlast<'brickset'>, lauf
     ]);
     if (Math.max(0, limit - (status.count || 0)) <= 0) {
       const bis = await k.externalSources.brickset.dueAb(false);
-      await k.auftraege.pauseKind('brickset', bis, 'Brickset-Tageskontingent erschöpft');
+      await k.jobQueue.pauseKind('brickset', bis, 'Brickset-Tageskontingent erschöpft');
       throw new JobMove(bis, 'Brickset-Tageskontingent erschöpft');
     }
   } catch (e) {
@@ -30,7 +30,7 @@ async function bricksetNachlauf(k: CatalogContext, n: Nutzlast<'brickset'>, lauf
   if ((await anzahlAnleitungen(k, sn)) === 0) {
     await setAnleitungenLaden(k, sn).catch(logAndContinue('brickset-retry:setAnleitungenLaden'));
   }
-  await k.auftraege.pauseKind('brickset', new Date(k.uhr.jetzt() + 1000), 'Abstand zwischen zwei Abrufen');
+  await k.jobQueue.pauseKind('brickset', new Date(k.uhr.jetzt() + 1000), 'Abstand zwischen zwei Abrufen');
 }
 
 const tag = (d: Date) =>

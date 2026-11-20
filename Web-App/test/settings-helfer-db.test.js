@@ -1,6 +1,6 @@
 /**
  * Die Schreib-/Löschwege in src/settings/settings.ts und der Auslöser in
- * src/auftraege/repository/laufzustand.ts (seit Migration 0063 dort) gegen eine echte Datenbank.
+ * src/jobQueue/repository/runState.ts (seit Migration 0063 dort) gegen eine echte Datenbank.
  *
  * Gegenproben (durchgeführt):
  *   a) `if (keys.length === 0) return;` in deleteGlobalValues entfernt und den
@@ -26,7 +26,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { getGlobalSetting, setGlobalSetting, deleteGlobalValues } = _req('src/settings/settings.js');
-const { setzeZustand, liesZustand, deleteState } = require('./helpers/sources').testArea('auftraege').laufzustand;
+const { setzeZustand, liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
 
 test('globale Einstellungen: schreiben, auslösen, löschen', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;

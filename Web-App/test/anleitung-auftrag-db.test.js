@@ -51,9 +51,9 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     return;
   }
   const Q = _req('src/catalog/loadInstruction.js');
-  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
-    ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testArea('auftraege').auftraege,
+  const A = Object.assign({}, _req('src/jobQueue/jobs.js'), {
+    ..._req('src/jobQueue/service.js'),
+    ...require('./helpers/sources').testArea('jobQueue').auftraege,
   });
   const { JobMove } = _req('jobs/auftragsWorker.js');
   const pause = () => A.liesPause('anleitung');
@@ -124,7 +124,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     const E = _req('src/catalog/instructionJob.js');
     await E.anleitungEinreihen('10005');
     await E.anleitungEinreihen('10005-1');
-    const z = await require('./helpers/sources').testServices().auftraege.countKind('anleitung');
+    const z = await require('./helpers/sources').testServices().jobQueue.countKind('anleitung');
     assert.equal(z.offen + z.laeuft, 1, 'dasselbe Set (mit und ohne Version) zweimal eingereiht');
   });
 });

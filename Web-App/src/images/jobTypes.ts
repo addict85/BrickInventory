@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../auftraege';
+import { auftragsart, type Anmeldung } from '../jobQueue';
 import { processImageDemand } from './imageDemandRun';
 import type { ImagesContext } from './context';
 
 const LEER = z.object({});
 
-declare module '../auftraege/auftraege' {
+declare module '../jobQueue/jobs' {
   interface JobPayloads {
     bildbedarf: typeof LEER;
   }

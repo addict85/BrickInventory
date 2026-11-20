@@ -1,6 +1,6 @@
 /** Der Wanted-XML-Import als Auftrag: Er legt Teile, Figuren und Sets an und
  * fragt auf Wunsch Rebrickable — beides gehört nicht in den Web-Prozess. */
-import type { Nutzlast, JobContext } from '../auftraege';
+import type { Nutzlast, JobContext } from '../jobQueue';
 import { logAndContinue } from '../infra/fehler';
 import type { CollectionContext } from './context';
 
@@ -24,19 +24,19 @@ async function importWantedXml(
   };
   // Erst die Kette abwarten, dann schliessen: Sonst stünde der Balken anderswo noch auf „läuft".
   const closeBar = async (
-    angaben: Parameters<CollectionContext['auftraege']['beendeAuftrag']>[1],
-    zeilen?: Parameters<CollectionContext['auftraege']['beendeAuftrag']>[2],
+    angaben: Parameters<CollectionContext['jobQueue']['beendeAuftrag']>[1],
+    zeilen?: Parameters<CollectionContext['jobQueue']['beendeAuftrag']>[2],
   ) => {
     await kette;
     if (jobRunning)
-      await kx.auftraege.beendeAuftrag(uid, angaben, zeilen).catch(logAndContinue('wanted-import:auftrag-ende'));
+      await kx.jobQueue.beendeAuftrag(uid, angaben, zeilen).catch(logAndContinue('wanted-import:auftrag-ende'));
   };
   let zuletzt = 0,
     lastPhase = '';
   const anDenBar = (stand: { fertig: number; gesamt: number }, unbedingt = false) => {
     if (!jobRunning) return;
     danach('wanted-import:auftrag', () =>
-      kx.auftraege.reportJob(uid, { done: stand.fertig, total: stand.gesamt }, unbedingt),
+      kx.jobQueue.reportJob(uid, { done: stand.fertig, total: stand.gesamt }, unbedingt),
     );
   };
   try {
@@ -63,12 +63,12 @@ async function importWantedXml(
         if (e.schreiben && !jobRequested && stand.phase === 'schreiben') {
           jobRequested = true;
           danach('wanted-import:auftrag', async () => {
-            jobRunning = await kx.auftraege.startJob(uid, { total: stand.gesamt, current: e.fileName });
+            jobRunning = await kx.jobQueue.startJob(uid, { total: stand.gesamt, current: e.fileName });
           });
         }
         anDenBar(stand);
       },
-      ...(e.schreiben ? { abbruch: async () => jobRunning && (await kx.auftraege.isAborted(uid)) } : {}),
+      ...(e.schreiben ? { abbruch: async () => jobRunning && (await kx.jobQueue.isAborted(uid)) } : {}),
       creator: {
         teil: (u, body) => kx.parts.addManualPart(u, body),
         figur: (u, body) => kx.minifigs.addManualMinifig(u, body),

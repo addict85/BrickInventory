@@ -5,7 +5,7 @@ import type { Faecher } from '../infra/zwischenspeicher';
 import type { ThrottleServices } from '../throttle';
 import type { Db } from '../../db/database';
 import type { ConcurrentRateLimiter, ForeignSourcesServices } from '../externalSources';
-import type { JobsServices } from '../auftraege';
+import type { JobsServices } from '../jobQueue';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { ImagesServices } from '../images';
@@ -31,7 +31,7 @@ export interface CatalogDependencies {
   cdnDrossel: ConcurrentRateLimiter;
   images: ImagesServices;
   einstellungen: SettingsServices;
-  auftraege: JobsServices;
+  jobQueue: JobsServices;
   household: HouseholdServices;
   throttle: ThrottleServices;
   lesevertrag: CatalogReadContract;

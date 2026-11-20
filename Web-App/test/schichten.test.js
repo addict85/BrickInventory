@@ -137,7 +137,7 @@ test('keine Route importiert eine andere Routendatei', () => {
 });
 
 test('kein Zustand auf global', () => {
-  // Was Prozesse teilen, steht in einem Modul (src/auftraege/startZustand.ts) und
+  // Was Prozesse teilen, steht in einem Modul (src/jobQueue/startState.ts) und
   // ist über den Import zu finden. Gegenprobe (29.10.2026): eine Zeile
   // `global.startupStatus = …` in server.ts → rot.
   const treffer = [];
@@ -164,7 +164,7 @@ test('kein Zustand auf global', () => {
 });
 
 test('src/ und clients/ importieren nichts aus jobs/', () => {
-  // Was src/ an Hintergrundarbeit anstösst, stellt es als Auftrag ein (src/auftraege);
+  // Was src/ an Hintergrundarbeit anstösst, stellt es als Auftrag ein (src/jobQueue);
   // die Ausführung setzt startup/verdrahtung.ts ein.
   // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in wanted.ts → rot.
   const treffer = [];
@@ -210,10 +210,10 @@ test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () =
         .map(z => `${d} -> ${z}`),
     ),
     [],
-    'jobs/ erreicht die Datenbank nur über src/auftraege und die Fachdienste',
+    'jobs/ erreicht die Datenbank nur über src/jobQueue und die Fachdienste',
   );
   const fremd = resolvedImports(KERN).filter(
-    z => z.startsWith('src/') && !['auftraege', 'infra'].includes(areaOf(`${z}/`)),
+    z => z.startsWith('src/') && !['jobQueue', 'infra'].includes(areaOf(`${z}/`)),
   );
   assert.deepEqual(fremd, [], 'Der Worker kennt keine Fachbereiche, nur Aufträge');
   const zuLang = dateien.filter(d => d !== KERN && codeRows(d) > 80).map(d => `${d} (${codeRows(d)})`);
@@ -266,7 +266,7 @@ test('keine Route führt SQL aus oder importiert aus db/', () => {
 });
 
 test('keine Route importiert aus jobs/ oder clients/', () => {
-  // Jobs steuert eine Route über die Dienste von src/auftraege und die Auftragstabelle,
+  // Jobs steuert eine Route über die Dienste von src/jobQueue und die Auftragstabelle,
   // fremde Dienste erreicht sie über einen Dienst in src/<bereich>/.
   // Gegenprobe (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
   // in admin.ts und `import { getSetByEan } from '../../clients/brickset'` in
@@ -935,7 +935,7 @@ const LEVELS = [
   ['src/throttle'],
   ['src/settings'],
   ['src/mail'],
-  ['src/auftraege'],
+  ['src/jobQueue'],
   ['src/externalSources'],
   ['src/household', 'src/devices', 'src/factors'],
   ['src/account'],
@@ -1040,17 +1040,17 @@ test('docs/architektur.md nennt die Rangfolge der Bereiche wie LEVELS', () => {
 
 test('die Warteschlange kennt keine Fachbereiche und Nutzlastformen, Ereignisse laufen über ereignis.ts', () => {
   // Gegenproben (15.11.2026): `import type { CatalogServices } from '../katalog'` in
-  // src/auftraege/dienst.ts → rot (Kante src/auftraege → src/catalog); `const P = z.object({})` in
-  // src/auftraege/arten.ts → rot (Nutzlastform); `'brickset'` zurück in src/auftraege/dienst.ts → rot.
+  // src/jobQueue/service.ts → rot (Kante src/jobQueue → src/catalog); `const P = z.object({})` in
+  // src/jobQueue/kinds.ts → rot (Nutzlastform); `'brickset'` zurück in src/jobQueue/service.ts → rot.
   const ALLOWED = new Set(['src/infra', 'src/settings', 'db']);
   const fremd = areaEdges()
-    .filter(k => k.von === 'src/auftraege' && !ALLOWED.has(k.nach))
+    .filter(k => k.von === 'src/jobQueue' && !ALLOWED.has(k.nach))
     .map(k => `${k.d} -> ${k.ziel}`);
-  assert.deepEqual(fremd, [], 'src/auftraege importiert einen Fachbereich');
+  assert.deepEqual(fremd, [], 'src/jobQueue importiert einen Fachbereich');
 
-  const dateien = tsBelow('src/auftraege');
+  const dateien = tsBelow('src/jobQueue');
   const shapes = dateien.filter(d => /\bz\.(?:object|enum|array|union|discriminatedUnion)\(/.test(sourceText(d)));
-  assert.deepEqual(shapes, [], 'Nutzlastform in src/auftraege: in den Bereich, der die Art anmeldet');
+  assert.deepEqual(shapes, [], 'Nutzlastform in src/jobQueue: in den Bereich, der die Art anmeldet');
 
   // Die Arten stehen dort, wo die Bereiche ihre Nutzlast melden (declare module … JobPayloads).
   const arten = tsBelow('src')
@@ -1060,12 +1060,12 @@ test('die Warteschlange kennt keine Fachbereiche und Nutzlastformen, Ereignisse 
   const literale = dateien.flatMap(d =>
     [...sourceText(d).matchAll(/['"`](\w+)['"`]/g)].filter(m => arten.includes(m[1])).map(m => `${d}: ${m[1]}`),
   );
-  assert.deepEqual(literale, [], 'src/auftraege nennt eine Auftragsart');
+  assert.deepEqual(literale, [], 'src/jobQueue nennt eine Auftragsart');
 
   // Ereignisse laufen über src/infra/ereignis.ts, nicht über eigene Horcher.
   // Gegenproben (15.11.2026): in src/settings/userSetting.ts wieder
   // `fach('currencyChange', () => new Set<() => void>())` → rot (eigene Horcher);
-  // in src/auftraege/importAuftrag.ts wieder `k.db.notification.listen('csv_import_progress', f)`
+  // in src/jobQueue/importJob.ts wieder `k.db.notification.listen('csv_import_progress', f)`
   // → rot (NOTIFY von Hand); `new EventEmitter()` zurück in importAuftrag.ts → rot.
   const EREIGNIS = 'src/infra/ereignis.ts';
   const alle = tsBelow('src', 'routes', 'jobs').filter(d => d !== EREIGNIS);

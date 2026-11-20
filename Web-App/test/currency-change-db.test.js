@@ -24,7 +24,7 @@ test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speicher
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   // Beobachtet wird der Termin des geplanten Auftrags 'preise'.
-  const Z = _req('src/auftraege/zeitplan.js');
+  const Z = _req('src/jobQueue/schedule.js');
   await db.run(`DELETE FROM jobs WHERE type = 'preise'`);
   await Z.planeNext('preise');
   const spaeter = () =>

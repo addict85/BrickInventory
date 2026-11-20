@@ -125,7 +125,7 @@ export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecord
     await repo.addLockSet(t.db, sn, besitzer);
     const nacharbeit = (art: ReworkKind) =>
       // In derselben Transaktion: Ein angelegtes Set ohne Auftrag bliebe für immer ohne Katalog.
-      t.auftraege.placeOwnJobOne(
+      t.jobQueue.placeOwnJobOne(
         'nacharbeit',
         { set_number: sn, user_id: besitzer, art: e.nacharbeit ?? art },
         {

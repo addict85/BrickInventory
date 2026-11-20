@@ -6,7 +6,7 @@ import * as manualParts from './repository/manualParts';
 import * as partsList from './repository/partsList';
 import * as summary from './repository/summary';
 import * as partColor from './repository/partColor';
-import type { JobsServices } from '../auftraege';
+import type { JobsServices } from '../jobQueue';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../catalog';
@@ -21,7 +21,7 @@ export interface PartsDependencies {
   /** State per access (rebuilding the parts summary); createParts sets it up. */
   faecher: Faecher;
   einstellungen: SettingsServices;
-  auftraege: JobsServices;
+  jobQueue: JobsServices;
   household: HouseholdServices;
   catalog: CatalogServices;
   externalSources: ForeignSourcesServices;

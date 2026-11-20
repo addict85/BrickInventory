@@ -2,7 +2,7 @@ import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { MINIFIG_IMAGES_DIR } from '../../infra/appPaths';
 import { logAndContinue, reportError } from '../../infra/fehler';
-import { type Nutzlast, checkAbort, type JobRun } from '../../auftraege';
+import { type Nutzlast, checkAbort, type JobRun } from '../../jobQueue';
 import { pdfFilePath } from './pdfJobs';
 import { downloadImage, downloadSetImages } from '../partsEnrichment';
 import { drawPdfInThread, type PdfTeil } from './pdfDrawing';

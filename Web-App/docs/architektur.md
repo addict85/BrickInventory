@@ -62,7 +62,7 @@ Absicht, solange es nur von unten gebraucht wird:
 - `jobs/` führt Aufträge aus: Pacht, Wiederholung und Abbruch im Worker, je Art
   ein Aufruf in der Bearbeitertabelle. Was ein Auftrag tut, steht in
   `src/<bereich>/` (Preislauf in `finanzen`, Bildbedarf in `bilder` …); die
-  Fehlerarten des Laufs (`AuftragVerschieben` …) kommen aus `src/auftraege`.
+  Fehlerarten des Laufs (`AuftragVerschieben` …) kommen aus `src/jobQueue`.
 - Jeder Bereich hat eine Fabrik (`erzeugeX` in `bereich.ts`) und einen Kontext
   (`kontext.ts`): gebundene Repositories, die Dienste tieferer Bereiche, die
   Konfiguration (`k.konfig`) und die Arbeitseinheit. Ein Dienst nimmt den Kontext
@@ -229,7 +229,7 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 5 | `src/throttle` |
 | 6 | `src/settings` |
 | 7 | `src/mail` |
-| 8 | `src/auftraege` |
+| 8 | `src/jobQueue` |
 | 9 | `src/externalSources` |
 | 10 | `src/household`, `src/devices`, `src/factors` |
 | 11 | `src/account` |
@@ -298,7 +298,7 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 | `src/infra` | `app_logs` |
 | `src/throttle` | `rate_limit_attempts` |
 | `src/settings` | `global_settings`, `user_settings` |
-| `src/auftraege` | `jobs`, `job_exclusive_locks`, `job_pauses`, `job_types`, `import_status`, `run_state` |
+| `src/jobQueue` | `jobs`, `job_exclusive_locks`, `job_pauses`, `job_types`, `import_status`, `run_state` |
 | `src/externalSources` | `api_calls`, `api_cadence` |
 | `src/household` | `account_link_invites`, `account_links`, `household_former_links` |
 | `src/devices` | `device_nonces`, `device_keys`, `step_up_challenges`, `step_up_approvals` |

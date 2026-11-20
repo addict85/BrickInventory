@@ -11,7 +11,7 @@ import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 export function buildPartsRouter(
   d: Pick<
     Dienste,
-    'settings' | 'auftraege' | 'household' | 'account' | 'catalog' | 'finances' | 'inventory' | 'parts' | 'collection'
+    'settings' | 'jobQueue' | 'household' | 'account' | 'catalog' | 'finances' | 'inventory' | 'parts' | 'collection'
   >,
 ) {
   const { requireToken } = guardFor(d.account);

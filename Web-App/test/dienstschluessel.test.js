@@ -63,7 +63,7 @@ const JE_AREA = {
   throttle: 10,
   settings: 22,
   mail: 13,
-  auftraege: 65,
+  jobQueue: 65,
   household: 20,
   devices: 6,
   factors: 18,
@@ -144,18 +144,18 @@ test('service keys become fewer, never more, and each has a caller', () => {
 
 /** Dienste, die ein Repository roh weiterreichen, mit Grund; die Liste wird kürzer, nie länger. */
 const RAW_ALLOWED = {
-  'auftraege.belegeAuftrag': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
-  'auftraege.giveBack': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
-  'auftraege.lebenszeichen': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
-  'auftraege.rememberExclusive': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
-  'auftraege.letzteJeArt': 'Kacheln der Verwaltung: je Art die letzte Zeile, so wie sie steht',
-  'auftraege.cleanCompletedOn': 'Aufräumlauf: Frist und Regel stehen in der Abfrage',
-  'auftraege.liesPause': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
-  'auftraege.pauseKind': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
-  'auftraege.liesZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
-  'auftraege.deleteState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
-  'auftraege.setzeZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
-  'auftraege.countState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'jobQueue.belegeAuftrag': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.giveBack': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.lebenszeichen': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.rememberExclusive': 'Pacht des Workers (jobs/auftragsWorker.ts): die Regel steht im SQL der Warteschlange',
+  'jobQueue.letzteJeArt': 'Kacheln der Verwaltung: je Art die letzte Zeile, so wie sie steht',
+  'jobQueue.cleanCompletedOn': 'Aufräumlauf: Frist und Regel stehen in der Abfrage',
+  'jobQueue.liesPause': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
+  'jobQueue.pauseKind': 'Pause einer Art (CDN, Brickset): Frist und Grund setzt der Aufrufer',
+  'jobQueue.liesZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'jobQueue.deleteState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'jobQueue.setzeZustand': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
+  'jobQueue.countState': 'Marke über Prozessgrenzen: Schlüssel und Wert ohne eigene Regel',
   'throttle.hourlyState': 'Guthabenschranke: prüft und zählt in der Transaktion von src/vouchers',
   'throttle.countHour': 'Guthabenschranke: prüft und zählt in der Transaktion von src/vouchers',
   'sets.setsOfAccount': 'Setnummern eines Kontos für das Löschen der Sammlung (src/collection), ohne Regel davor',
@@ -222,10 +222,7 @@ test('kein Dienstschlüssel reicht ein Repository roh weiter', () => {
     }
     for (const s of boundRepositories(b, leavesOfArea, q)) roh.add(s);
   }
-  assert.ok(
-    roh.has('auftraege.liesZustand') && roh.has('catalog.catalogStatus'),
-    'Selbstbeweis: beide Formen gefunden',
-  );
+  assert.ok(roh.has('jobQueue.liesZustand') && roh.has('catalog.catalogStatus'), 'Selbstbeweis: beide Formen gefunden');
   assert.deepEqual(
     [...roh].sort(),
     Object.keys(RAW_ALLOWED).sort(),

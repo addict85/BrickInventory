@@ -1,7 +1,7 @@
 /** Fehlende Bilddateien nachladen: Verweise ohne Datei finden, laden oder leeren. */
 import { fehlertext, logAndContinue, withoutMissingFile } from '../infra/fehler';
 
-import { checkAbort, type JobRun } from '../auftraege';
+import { checkAbort, type JobRun } from '../jobQueue';
 import * as repo from './repository/partsEnrichment';
 import fs from 'node:fs';
 import type { PoolClient } from 'pg';
@@ -34,7 +34,7 @@ function _fsPathFromLocal(imageLocal: string) {
 
 // Mit await, sonst ginge der Endstand bei einem Neustart verloren.
 async function _redlSetStatus(k: CatalogContext, obj: Record<string, unknown>) {
-  await k.auftraege
+  await k.jobQueue
     .setzeZustand('imgredl_status', JSON.stringify({ ...obj, at: k.uhr.jetzt() }))
     .catch(logAndContinue('teile-enrich:setzeZustand'));
 }

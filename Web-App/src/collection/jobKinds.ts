@@ -1,4 +1,4 @@
-import { auftragsart, type Anmeldung } from '../auftraege';
+import { auftragsart, type Anmeldung } from '../jobQueue';
 import { CsvImportPayload, runImportFrom } from './importJobs';
 import type { CollectionContext } from './context';
 

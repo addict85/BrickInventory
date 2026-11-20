@@ -11,11 +11,11 @@ import {
   JobMove,
   PayloadInvalid,
   type Nutzlast,
-} from '../src/auftraege';
+} from '../src/jobQueue';
 import { fehlertext, logAndContinue, reportError } from '../src/infra/fehler';
 import { VORGABE } from '../src/infra/konfig';
 
-export type { Bearbeiter } from '../src/auftraege';
+export type { Bearbeiter } from '../src/jobQueue';
 
 export interface WorkerOptions {
   parallel?: number;

@@ -17,7 +17,7 @@ const { DECLARED_KINDS } = _req('startup/verdrahtung.js');
 
 test('angemeldet ist genau, was deklariert ist', () => {
   const angemeldet = testServices()
-    .auftraege.signedInKinds()
+    .jobQueue.signedInKinds()
     .map(a => a.art)
     .sort();
   assert.ok(angemeldet.length > 15, `nur ${angemeldet.length} Arten angemeldet — greift die Verdrahtung noch?`);
@@ -26,7 +26,7 @@ test('angemeldet ist genau, was deklariert ist', () => {
 
 test('die Wiedervorlage von Brickset meldet ihre Art mit Nutzlast an, den Lauf gibt der Katalog', async () => {
   const brickset = testServices()
-    .auftraege.signedInKinds()
+    .jobQueue.signedInKinds()
     .find(a => a.art === 'brickset');
   assert.ok(brickset?.exklusiv, 'brickset ist exklusiv angemeldet');
   assert.equal(brickset.nutzlast.safeParse({ set_number: '10001-1', versuch: 2 }).success, true);

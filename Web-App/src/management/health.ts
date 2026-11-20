@@ -3,7 +3,7 @@
 import type { ManagementContext } from './context';
 
 export async function healthReport(k: ManagementContext, verwalter: boolean) {
-  const start = await k.auftraege.currentStartState();
+  const start = await k.jobQueue.currentStartState();
   return {
     status: start.ready ? ('ok' as const) : ('starting' as const),
     ...(verwalter

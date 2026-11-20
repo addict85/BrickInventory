@@ -5,7 +5,7 @@ import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import * as management from './repository/management';
 import type { SettingsServices } from '../settings';
-import type { JobsServices } from '../auftraege';
+import type { JobsServices } from '../jobQueue';
 import type { AccountServices } from '../account';
 import type { FactorsServices } from '../factors';
 import type { IdempotencyServices } from '../idempotency';
@@ -22,7 +22,7 @@ export interface ManagementDependencies {
   uhr: Uhr;
   db: Db;
   settings: SettingsServices;
-  auftraege: JobsServices;
+  jobQueue: JobsServices;
   account: AccountServices;
   factors: FactorsServices;
   idempotency: IdempotencyServices;

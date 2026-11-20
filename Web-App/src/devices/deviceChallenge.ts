@@ -98,7 +98,7 @@ function attestationRejected(f: Familie, grund: string): never {
 export async function depositKey(kx: DevicesContext, f: Familie, kette: readonly string[]): Promise<Registrierung> {
   const k = kx.konfig;
   const widerrufen = applicableList(
-    await kx.auftraege.liesZustand(REVOCATION_STATE),
+    await kx.jobQueue.liesZustand(REVOCATION_STATE),
     k.attestationRevocationDays,
     kx.uhr.datum(),
   );

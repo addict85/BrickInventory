@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../auftraege';
+import { auftragsart, type Anmeldung } from '../jobQueue';
 import { PricesReload } from './priceItems';
 import { preiseNachladen } from './reloadPrices';
 import { runPriceRefresh } from './priceRun';
@@ -8,7 +8,7 @@ import type { FinancesContext } from './context';
 
 const LEER = z.object({});
 
-declare module '../auftraege/auftraege' {
+declare module '../jobQueue/jobs' {
   interface JobPayloads {
     wechselkurse: typeof LEER;
     preise: typeof LEER;

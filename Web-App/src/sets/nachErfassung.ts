@@ -1,7 +1,7 @@
 /** Als Auftrag im Job-Prozess: Ein Neustart verliert nichts, und ein
  * gescheiterter Import von Teilen oder Figuren wird wiederholt. Die
  * Anreicherungen danach melden ihren Fehler, ohne den Auftrag scheitern zu lassen. */
-import { checkAbort, type JobRun } from '../auftraege';
+import { checkAbort, type JobRun } from '../jobQueue';
 import { versuche } from '../infra/ergebnis';
 import { setSupplement, type ReworkKind } from './erfassen';
 import { importMinifigs, importParts } from './setInhaltImport';

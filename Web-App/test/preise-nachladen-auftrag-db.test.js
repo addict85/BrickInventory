@@ -1,5 +1,5 @@
 /**
- * „Fehlende Preise holen“ (src/auftraege/dienst.ts rememberPricesBefore): Je Konto und
+ * „Fehlende Preise holen“ (src/jobQueue/service.ts rememberPricesBefore): Je Konto und
  * Währung steht höchstens ein Auftrag offen, der neue Posten aufnimmt — auch bei
  * gleichzeitigen Bewertungen. Läuft einer, kommt höchstens ein Folgeauftrag dazu,
  * und der laufende kann trotzdem zurück (verschoben, gescheitert, unterbrochen),
@@ -40,10 +40,10 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
   const NAME = `pna-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
-  const D_ = _req('src/auftraege/dienst.js');
+  const D_ = _req('src/jobQueue/service.js');
   const { rememberPricesBefore } = _req('src/finances/priceItems.js');
   const D = { ...D_, rememberPricesBefore: n => asAccount(uid, () => rememberPricesBefore(n)) };
-  const repo = require('./helpers/sources').testArea('auftraege').auftraege;
+  const repo = require('./helpers/sources').testArea('jobQueue').auftraege;
   const { createWorker } = _req('jobs/auftragsWorker.js');
   const leeren = () => db.run(`DELETE FROM jobs WHERE type = 'preise_nachladen'`);
   const zeilen = () =>
@@ -56,7 +56,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     await leeren();
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await require('./helpers/sources')
-      .testArea('auftraege')
+      .testArea('jobQueue')
       .db.notification.close()
       .catch(() => {});
     await db.pool.end().catch(() => {});
@@ -160,7 +160,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     const id = await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(1)] });
     const stand = () => db.get('SELECT progress FROM jobs WHERE id = $1', [id]).then(r => r.progress);
     const gesehen = [];
-    const w = createWorker(require('./helpers/sources').testServices().auftraege, {
+    const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
       preise_nachladen: {
         ausfuehren: async (_n, k) => {
           await k.fortschritt({ erledigt: 5.532, gesamt: 8 });

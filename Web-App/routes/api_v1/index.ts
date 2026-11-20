@@ -27,7 +27,7 @@ export function buildApiRouter(
     Dienste,
     | 'settings'
     | 'mail'
-    | 'auftraege'
+    | 'jobQueue'
     | 'household'
     | 'devices'
     | 'account'

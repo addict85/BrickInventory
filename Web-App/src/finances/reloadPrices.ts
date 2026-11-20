@@ -2,7 +2,7 @@
  * hier im Job-Prozess geholt, mit Kontingent und Abbruch, nicht in der Anfrage. */
 import { fetchPrice, fetchPartPrice, fetchMinifigPrice } from './calculation/prices';
 import { estimateMinifigsPrice } from './marketPrice';
-import { checkAbort, JobMove, type JobContext, type Nutzlast } from '../auftraege';
+import { checkAbort, JobMove, type JobContext, type Nutzlast } from '../jobQueue';
 import { reportError } from '../infra/fehler';
 import type { FinancesContext } from './context';
 

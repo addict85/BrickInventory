@@ -54,7 +54,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
   if (!db) return;
   const A = Object.assign(
     {},
-    { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testArea('auftraege').auftraege },
+    { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').auftraege },
   );
   const { createWorker } = _req('jobs/auftragsWorker.js');
   t.after(async () => {
@@ -75,12 +75,12 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
         },
       },
     };
-    const w = createWorker(require('./helpers/sources').testServices().auftraege, editor, {
+    const w = createWorker(require('./helpers/sources').testServices().jobQueue, editor, {
       parallel: 2,
       deadlineSec: 1,
       taktMs: 300,
     });
-    const w2 = createWorker(require('./helpers/sources').testServices().auftraege, editor, {
+    const w2 = createWorker(require('./helpers/sources').testServices().jobQueue, editor, {
       parallel: 2,
       deadlineSec: 1,
       taktMs: 300,
@@ -141,7 +141,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
     await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
     const EDITOR = _req('jobs/auftraegeStarten.js').editor(require('./helpers/sources').testServices());
     const w = createWorker(
-      require('./helpers/sources').testServices().auftraege,
+      require('./helpers/sources').testServices().jobQueue,
       { csv_sync: EDITOR.csv_sync },
       { deadlineSec: 60, taktMs: 100 },
     );

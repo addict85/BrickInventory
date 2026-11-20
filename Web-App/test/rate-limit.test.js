@@ -222,7 +222,7 @@ test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () 
     'Ohne Freigabe im finally sperrt ein Absturz den Job bis zum Neustart',
   );
 
-  // Der manuelle Anstoss zieht nur den geplanten Auftrag vor (src/auftraege/zeitplan.ts);
+  // Der manuelle Anstoss zieht nur den geplanten Auftrag vor (src/jobQueue/schedule.ts);
   // läuft er schon, meldet pullPlanBefore false statt eines zweiten Laufs.
 
   // Und die Aufrufer müssen das Ergebnis abwarten.

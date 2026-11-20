@@ -2436,7 +2436,7 @@ Daten, keine Bezeichner, und bleiben unverändert.
   anspricht (nicht über die mitgelieferte Oberfläche oder die Android-App, die beide
   mit diesem Update mitgehen), muss die Feldnamen anpassen.
 - **Was diese Phase bewusst nicht anfasst:** `db/zeilen.ts`, `src/contract/*.ts` und die
-  übrigen Verzeichnisse mit deutschen Datei- und Verzeichnisnamen (`src/auftraege/`,
+  übrigen Verzeichnisse mit deutschen Datei- und Verzeichnisnamen (`src/jobQueue/`,
   `src/finances/`, `src/catalog/`, `src/account/`, `src/verwaltung/`, `src/inventory/`, …) bleiben
   in dieser Phase unbenannt; das ist Phase 2 (Web-Server) vorbehalten. Android-seitig ist nur
   `Vertrag.kt` (per Generator) auf die neuen Feldnamen gebracht; die übrigen Kotlin-Quellen,

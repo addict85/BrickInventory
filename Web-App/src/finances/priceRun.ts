@@ -1,6 +1,6 @@
 import { savePrice, cacheUsable, priceFromCache, parallelLimit } from './financeCalc';
 import { reportError, fehlertext, logAndContinue } from '../infra/fehler';
-import { JobMove, type JobContext } from '../auftraege';
+import { JobMove, type JobContext } from '../jobQueue';
 import { withoutBricklinkPrice } from '../infra/setNummer';
 import { hatPrice } from '../catalog';
 import { BricklinkNotReachable } from '../externalSources';
@@ -331,11 +331,11 @@ async function preisFuerSetHolen(
 }
 
 async function rememberStatus(k: FinancesContext, neu: Record<string, unknown>): Promise<void> {
-  const alt = await k.auftraege.liesZustand(PRICE_STATUS).then(
+  const alt = await k.jobQueue.liesZustand(PRICE_STATUS).then(
     r => (r ? JSON.parse(r) : {}),
     () => ({}),
   );
-  await k.auftraege
+  await k.jobQueue
     .setzeZustand(PRICE_STATUS, JSON.stringify({ ...alt, ...neu, log: _log.slice(0, 15) }))
     .catch(logAndContinue('preis-job:stand'));
 }

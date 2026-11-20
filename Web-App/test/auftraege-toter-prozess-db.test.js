@@ -23,7 +23,7 @@ const db = testData();
 
 test('Aufträge toter Job-Prozesse', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  const prozess = _req('src/auftraege/prozess.js');
+  const prozess = _req('src/jobQueue/process.js');
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
   const alive = await db.pool.connect();
   t.after(async () => {

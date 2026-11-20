@@ -187,7 +187,7 @@ async function starte(): Promise<void> {
   process.on('SIGINT', () => {
     void shutdown(lauf, 'SIGINT', httpServer, jobs, zugang, dienste, webLockFree);
   });
-  // Ohne Rahmen: Warteschlange und Aufträge betreten ihn selbst (src/auftraege/kontext.ts, dienst.ts).
+  // Ohne Rahmen: Warteschlange und Aufträge betreten ihn selbst (src/jobQueue/context.ts, dienst.ts).
   if (jobs) lauf.jobs = await startJobs(dienste);
 }
 

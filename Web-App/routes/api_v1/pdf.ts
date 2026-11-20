@@ -26,7 +26,7 @@ function streamStatus(job: {
 }
 
 /** Der einzige Weg der drei Abrufrouten an einen Auftrag: nur der eigene; ein Lesefehler geht weiter. */
-function pdfJobReadFor(d: Pick<Dienste, 'auftraege' | 'catalog' | 'account'>, id: string, userId: number) {
+function pdfJobReadFor(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>, id: string, userId: number) {
   return d.catalog.pdf.lies(id, userId);
 }
 /** Die Beugung steht als Platzhalter in der Tabelle, nicht hier. */
@@ -45,14 +45,14 @@ const fertig = (s: string | undefined) => s === 'done' || s === 'error';
 /** NOTIFY meldet den Stand, gleich in welchem Prozess der Auftrag läuft; ohne
  * Nutzlast (beim Wiederverbinden) und im Rückfalltakt wird ebenfalls nachgesehen,
  * falls ein Signal während einer Verbindungsstörung verloren ging. */
-function sequenceJob(d: Pick<Dienste, 'auftraege' | 'catalog' | 'account'>, strom: Strom, jobId: string, uid: number) {
+function sequenceJob(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>, strom: Strom, jobId: string, uid: number) {
   const pruefe = async () => {
     const job = await pdfJobReadFor(d, jobId, uid);
     if (strom.zu) return;
     if (job) strom.sende(streamStatus(job));
     if (!job || fertig(job.status)) strom.ende();
   };
-  strom.atEnd(d.auftraege.atJobStatus(nutzlast => (!nutzlast || nutzlast === pdfKey(jobId) ? pruefe() : undefined)));
+  strom.atEnd(d.jobQueue.atJobStatus(nutzlast => (!nutzlast || nutzlast === pdfKey(jobId) ? pruefe() : undefined)));
   const rueckfall = setInterval(pruefe, 15000);
   strom.atEnd(() => clearInterval(rueckfall));
 }
@@ -61,7 +61,7 @@ function sequenceJob(d: Pick<Dienste, 'auftraege' | 'catalog' | 'account'>, stro
  * und Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess.
  * Aufgeräumt wird nur nach vollständiger Auslieferung. */
 function deliverAndCleanOn(
-  d: Pick<Dienste, 'auftraege' | 'catalog' | 'account'>,
+  d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>,
   req: Request,
   res: Response,
   jobId: string,
@@ -77,7 +77,7 @@ function deliverAndCleanOn(
   streamFileToResponse(res, pdfPath, aufraeumen, req);
 }
 
-export function buildPdfRouter(d: Pick<Dienste, 'auftraege' | 'catalog' | 'account'>) {
+export function buildPdfRouter(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>) {
   const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 

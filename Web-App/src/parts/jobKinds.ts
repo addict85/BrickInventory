@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../auftraege';
+import { auftragsart, type Anmeldung } from '../jobQueue';
 import { runCatalogFollowUp } from './summary';
 import type { PartsContext } from './context';
 
 const LEER = z.object({});
 
-declare module '../auftraege/auftraege' {
+declare module '../jobQueue/jobs' {
   interface JobPayloads {
     katalog_nachzug: typeof LEER;
   }

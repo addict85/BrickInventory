@@ -19,7 +19,7 @@ import * as wechselkurse from './repository/exchangeRates';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../catalog';
-import type { JobsServices } from '../auftraege';
+import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { Uhr } from '../infra/uhr';
 
@@ -28,7 +28,7 @@ export interface FinancesDependencies {
   konfig: Readonly<Konfig>;
   db: Db;
   einstellungen: SettingsServices;
-  auftraege: JobsServices;
+  jobQueue: JobsServices;
   household: HouseholdServices;
   catalog: CatalogServices;
   externalSources: ForeignSourcesServices;

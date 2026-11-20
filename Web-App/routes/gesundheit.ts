@@ -4,10 +4,10 @@ import express from 'express';
 import { versuche, valueOr } from '../src/infra/ergebnis';
 import { errorText, responseLanguage } from '../src/infra/fehlerTexte';
 import { userIdTheRequest, istVerwalter } from '../src/account/http/login';
-import { publicStartState } from '../src/auftraege';
+import { publicStartState } from '../src/jobQueue';
 import type { Dienste } from '../src/dienste';
 
-export function buildGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'account' | 'management'>) {
+export function buildGesundheitRouter(d: Pick<Dienste, 'jobQueue' | 'account' | 'management'>) {
   // Wie der Vertrag: eine andere Schreibung ist eine andere Route (404).
   const router = express.Router({ caseSensitive: true });
 
@@ -16,7 +16,7 @@ export function buildGesundheitRouter(d: Pick<Dienste, 'auftraege' | 'account' |
     res.set('Pragma', 'no-cache');
     res.set('Expires', '0');
     const angemeldet = !!valueOr(await versuche('startup-status:anmeldung', userIdTheRequest(d.account, req)), null);
-    res.json(publicStartState(await d.auftraege.currentStartState(), angemeldet));
+    res.json(publicStartState(await d.jobQueue.currentStartState(), angemeldet));
   });
 
   // live = Prozess, ready = Datenbank.

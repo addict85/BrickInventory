@@ -225,8 +225,8 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
   // Hintergrundarbeiten: ein Auftrag mit Fortschritt und eine Pause, damit
   // /admin/jobs keine leeren Listen liefert.
   const auftrag = await {
-    ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testArea('auftraege').auftraege,
+    ..._req('src/jobQueue/service.js'),
+    ...require('./helpers/sources').testArea('jobQueue').auftraege,
   }.placeJobOne('anleitung', { set_number: SET }, { schluessel: `vertrag-get:${process.pid}` });
   await db.run(`UPDATE jobs SET progress = '{"erledigt":1,"gesamt":3,"text":"Seiten"}'::jsonb WHERE id = $1`, [
     auftrag,

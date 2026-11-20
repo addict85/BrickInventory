@@ -1,6 +1,6 @@
 /** Jeder Schritt meldet seinen Fehler und lässt die übrigen laufen; scheitert
  * einer, wiederholt der Worker den ganzen Lauf — alle Schritte vertragen das. */
-import { checkAbort, type JobRun } from '../auftraege';
+import { checkAbort, type JobRun } from '../jobQueue';
 import { fehlertext } from '../infra/fehler';
 import { cleanOldBackupsOn } from '../../db/migrate';
 import type { ManagementContext } from './context';
@@ -27,7 +27,7 @@ function cleanup(k: ManagementContext, lauf?: JobRun): Promise<void> {
       ...k.account.onRaeumSteps('stuendlich'),
       ['Papierkorb', k.inventory.cleanTrashOn],
       ['PDF-Aufträge', k.catalog.pdf.raeumeAuf],
-      ['alte Aufträge', k.auftraege.cleanCompletedOn],
+      ['alte Aufträge', k.jobQueue.cleanCompletedOn],
       ['verfallene Bildwünsche', k.images.deleteExpired],
       ['Idempotenzschlüssel', k.idempotency.cleanupIdempotency],
     ],

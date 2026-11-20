@@ -3,7 +3,7 @@ import path from 'node:path';
 import { reportError } from '../infra/fehler';
 import { reasonFor, isKnownMissing, rememberMissing } from './imageMisses';
 import { SET_IMAGES_DIR } from '../infra/appPaths';
-import { JobInterrupted, JobMove, type JobContext } from '../auftraege';
+import { JobInterrupted, JobMove, type JobContext } from '../jobQueue';
 import {
   STAPEL,
   TAKT_MS,
@@ -129,7 +129,7 @@ function rememberRun(k: ImagesContext, erg: StackResult): void {
 async function saveRun(k: ImagesContext, erg: StackResult): Promise<void> {
   // await: Der nächste Takt liest den Stand über einen ANDEREN Prozess; ohne await meldete die Kachel „noch
   // nicht gelaufen".
-  await k.auftraege
+  await k.jobQueue
     .setzeZustand(RUN_KEY, JSON.stringify({ zeit: k.uhr.jetzt(), ergebnis: erg }))
     .catch(e => reportError('bild-job:setzeZustand', e));
 }
@@ -171,7 +171,7 @@ async function afterFailure(
   // Eine Drosselung ist KEINE Fehlanzeige: Die Bilder gibt es, und stures Weiterfragen verlängert die Sperre.
   if (status === 403 || status === 429) {
     const bis = new Date(k.uhr.jetzt() + THROTTLE_PAUSE_MS);
-    await k.auftraege.pauseKind('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
+    await k.jobQueue.pauseKind('bildbedarf', bis, `CDN drosselt (HTTP ${status})`);
     console.error(`[image-queue] CDN drosselt (HTTP ${status}) — Pause bis ${bis.toLocaleTimeString()}`);
     return true;
   }
@@ -191,7 +191,7 @@ async function afterFailure(
 
 async function workStack(k: ImagesContext): Promise<StackResult> {
   const erg = emptyResult();
-  const pause = await k.auftraege.liesPause('bildbedarf');
+  const pause = await k.jobQueue.liesPause('bildbedarf');
   if (pause && new Date(pause.until_at).getTime() > k.uhr.jetzt()) return erg; // CDN hat gedrosselt, siehe unten
   const rows = await nimmBildwuensche(k, NOTIZ_GILT_MS, STAPEL);
   if (!rows.length) {
@@ -305,7 +305,7 @@ export async function processImageDemand(kx: ImagesContext, k: JobContext): Prom
     if (k.beendet) throw new JobInterrupted();
     const e = await tickPass(kx);
     if (e.gesamt || e.setAside) console.log(`[image-queue] ${meldung(e)}`);
-    const pause = await kx.auftraege.liesPause('bildbedarf');
+    const pause = await kx.jobQueue.liesPause('bildbedarf');
     if (pause && new Date(pause.until_at).getTime() > kx.uhr.jetzt())
       throw new JobMove(new Date(pause.until_at), pause.reason ?? 'CDN drosselt');
     if (!e.gesamt) return;

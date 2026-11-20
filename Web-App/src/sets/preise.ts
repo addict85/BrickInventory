@@ -68,7 +68,7 @@ export function deleteAlarmOfSets(sk: SetsContext, uid: number, sn: string, cond
 }
 
 export async function startAlarmCsvImport(sk: SetsContext, uid: number, text: string) {
-  return sk.auftraege.waitOnJob<CsvImportReport, 'csv_import'>(
+  return sk.jobQueue.waitOnJob<CsvImportReport, 'csv_import'>(
     'csv_import',
     { user_id: uid, quelle: 'alarme_csv', eingabe: { waehrung: await currencyOf(sk, uid), text } },
     { userId: uid },

@@ -12,7 +12,7 @@ import * as uebernahmen from './repository/takeovers';
 import * as zugaenge from './repository/accesses';
 import type { SettingsServices } from '../settings';
 import type { HouseholdServices } from '../household';
-import type { JobsServices } from '../auftraege';
+import type { JobsServices } from '../jobQueue';
 import type { MailServices } from '../mail';
 import type { ThrottleServices } from '../throttle';
 import type { DevicesServices } from '../devices';
@@ -26,7 +26,7 @@ export interface AccountDependencies {
   /** Zustand je Zugang (Token-Cache, Sitzungsversionen); createAccount legt sie an. */
   faecher: Faecher;
   einstellungen: SettingsServices;
-  auftraege: JobsServices;
+  jobQueue: JobsServices;
   household: HouseholdServices;
   mail: MailServices;
   throttle: ThrottleServices;

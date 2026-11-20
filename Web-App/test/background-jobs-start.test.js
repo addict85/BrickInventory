@@ -70,7 +70,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
   await t.test('jede geplante Art hat einen Termin', () => {
     for (const { art } of require('./helpers/sources')
       .testServices()
-      .auftraege.signedInKinds()
+      .jobQueue.signedInKinds()
       .filter(a => a.zeitplan))
       assert.ok(plan(art), `kein Termin für ${art}; da sind: ${zeilen.map(z => z.dedupe_key).join(', ')}`);
     assert.ok(
@@ -103,7 +103,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
 
   await t.test('das Lebenszeichen folgt dem Worker', async () => {
     const jp = _req('startup/jobsProzess.js');
-    const { liesZustand, deleteState } = require('./helpers/sources').testArea('auftraege').laufzustand;
+    const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
     for (let i = 0; i < 50 && !(await liesZustand(jp.HEARTBEAT_KEY)); i++) await warte(20);
     assert.ok(await liesZustand(jp.HEARTBEAT_KEY), 'nach dem Start fehlt das Lebenszeichen');
     for (const lauf of runs) await jp.stopJobs(require('./helpers/sources').testServices(), lauf);

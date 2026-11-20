@@ -1,5 +1,5 @@
 /**
- * Die Nutzlast eines Auftrags hat je Art ein Schema (src/auftraege/arten.ts):
+ * Die Nutzlast eines Auftrags hat je Art ein Schema (src/jobQueue/kinds.ts):
  * Beim Einstellen wird eine falsche abgewiesen, und der Worker übergibt nur
  * eine geprüfte. Eine Nutzlast, die ein früherer Stand geschrieben hat und
  * die nicht mehr passt, scheitert sofort endgültig und mit klarem Text.
@@ -27,8 +27,8 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  const A = { ..._req('src/auftraege/dienst.js'), ...require('./helpers/sources').testArea('auftraege').auftraege };
-  const { PayloadInvalid } = _req('src/auftraege/arten.js');
+  const A = { ..._req('src/jobQueue/service.js'), ...require('./helpers/sources').testArea('jobQueue').auftraege };
+  const { PayloadInvalid } = _req('src/jobQueue/kinds.js');
   const { createWorker } = _req('jobs/auftragsWorker.js');
   await db.run(`DELETE FROM jobs WHERE type = 'brickset'`);
 
@@ -49,7 +49,7 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
     ]);
     const gesehen = [];
     const w = createWorker(
-      require('./helpers/sources').testServices().auftraege,
+      require('./helpers/sources').testServices().jobQueue,
       {
         brickset: {
           ausfuehren: async n => {
@@ -71,7 +71,7 @@ test('Nutzlasten der Aufträge', { concurrency: 1 }, async t => {
     let gelaufen = 0,
       aufgegeben = 0;
     const w = createWorker(
-      require('./helpers/sources').testServices().auftraege,
+      require('./helpers/sources').testServices().jobQueue,
       {
         brickset: {
           ausfuehren: async () => {

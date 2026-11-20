@@ -42,7 +42,7 @@ export async function removeAccountFiles(k: AccountContext, ziel: number): Promi
     return 'entfernt';
   } catch (e) {
     reportError(`konto:dateien ${ziel}`, e);
-    await k.auftraege.placeJobOne(
+    await k.jobQueue.placeJobOne(
       'konto_dateien',
       { user_id: ziel },
       { schluessel: `konto_dateien:${ziel}`, maxAttempts: 10, afterSeconds: 60 },

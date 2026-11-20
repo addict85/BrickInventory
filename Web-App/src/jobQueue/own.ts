@@ -1,7 +1,7 @@
 /** Aufträge, die ein Konto selbst angestossen hat und über ihren Schlüssel verfolgt (etwa ein PDF):
  * Gelesen und gelöscht wird nur unter Zeilenschutz und nach Konto gefiltert. */
-import type { JobKind } from './auftraege';
-import type { JobsContext } from './kontext';
+import type { JobKind } from './jobs';
+import type { JobsContext } from './context';
 
 export function ownJob(k: JobsContext, art: JobKind, schluessel: string, uid: number) {
   return k.eigene.ownRow(art, schluessel, uid);

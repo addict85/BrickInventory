@@ -3,7 +3,7 @@ import { errorText, responseLanguage, type ErrorCode, type Sprache } from '../in
 
 /** EINE Zeile je Konto, damit alle Oberflächen denselben Balken zeigen. */
 
-import type { JobsContext } from './kontext';
+import type { JobsContext } from './context';
 import { signal } from '../infra/ereignis';
 /** Der Stand eines Kontos ist neu geschrieben, in diesem oder einem anderen Prozess; die Nutzlast nennt das Konto. */
 const IMPORT_STAND = signal('csv_import_progress');

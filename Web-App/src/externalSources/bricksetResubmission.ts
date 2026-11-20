@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { auftragsart, nextTimeOfDay, type Anmeldung, type Bearbeiter } from '../auftraege';
+import { auftragsart, nextTimeOfDay, type Anmeldung, type Bearbeiter } from '../jobQueue';
 import type { ForeignSourcesContext } from './context';
 
 /** Je Set ein Auftrag, fällig zur eingestellten Uhrzeit. `versuch` zählt über
@@ -11,7 +11,7 @@ export const BricksetPayload = z.object({
   versuch: z.number().int().optional(),
 });
 
-declare module '../auftraege/auftraege' {
+declare module '../jobQueue/jobs' {
   interface JobPayloads {
     brickset: typeof BricksetPayload;
   }
@@ -27,13 +27,13 @@ const schluessel = (sn: string) => `brickset:${sn}`;
 /** Bald (Störung der Gegenseite) oder zur Tageszeit. */
 export async function bricksetDueAb(k: ForeignSourcesContext, bald: boolean): Promise<Date> {
   if (bald) return new Date(k.uhr.jetzt() + 30 * 60_000);
-  const zeit = await k.auftraege.dailyTimeOfDay(BRICKSET_TIME_OF_DAY.setting, BRICKSET_TIME_OF_DAY.vorgabe);
+  const zeit = await k.jobQueue.dailyTimeOfDay(BRICKSET_TIME_OF_DAY.setting, BRICKSET_TIME_OF_DAY.vorgabe);
   return nextTimeOfDay(zeit, k.uhr.datum());
 }
 
 /** @returns vorgemerkt false, wenn es schon BRICKSET_AT_MOST Mal vorgemerkt war */
 export async function bricksetReserve(k: ForeignSourcesContext, sn: string, fehler: string, bald = false) {
-  const r = await k.auftraege.wiedervorlage.rememberBefore(
+  const r = await k.jobQueue.wiedervorlage.rememberBefore(
     'brickset',
     schluessel(sn),
     versuch => ({ set_number: sn, versuch }),
@@ -47,25 +47,25 @@ export async function bricksetReserve(k: ForeignSourcesContext, sn: string, fehl
 }
 
 export function bricksetForgotten(k: ForeignSourcesContext, sn: string): Promise<void> {
-  return k.auftraege.wiedervorlage.vergiss(schluessel(sn));
+  return k.jobQueue.wiedervorlage.vergiss(schluessel(sn));
 }
 
 /** Ohne Nummer alle; die Pause der Art (Kontingent erschöpft) endet mit. */
 export async function bricksetNow(k: ForeignSourcesContext, sn?: string): Promise<void> {
-  await k.auftraege.endPause('brickset');
-  await k.auftraege.wiedervorlage.jetzt('brickset', sn ? schluessel(sn) : undefined);
+  await k.jobQueue.endPause('brickset');
+  await k.jobQueue.wiedervorlage.jetzt('brickset', sn ? schluessel(sn) : undefined);
 }
 
 export function bricksetPrefer(k: ForeignSourcesContext, bis: Date): Promise<void> {
-  return k.auftraege.wiedervorlage.prefer('brickset', bis);
+  return k.jobQueue.wiedervorlage.prefer('brickset', bis);
 }
 
 export function bricksetNumbers(k: ForeignSourcesContext) {
-  return k.auftraege.wiedervorlage.zahlen('brickset');
+  return k.jobQueue.wiedervorlage.zahlen('brickset');
 }
 
 export async function bricksetWaiting(k: ForeignSourcesContext) {
-  return (await k.auftraege.wiedervorlage.wartende('brickset')).map(z => {
+  return (await k.jobQueue.wiedervorlage.wartende('brickset')).map(z => {
     const n = BricksetPayload.safeParse(z.payload);
     return {
       set_number: n.success ? n.data.set_number : '',

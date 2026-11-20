@@ -10,7 +10,7 @@ import {
 } from './instructions';
 import { fehlertext } from '../infra/fehler';
 import { asFetchError } from '../externalSources';
-import { type Nutzlast, type JobRun, JobMove } from '../auftraege';
+import { type Nutzlast, type JobRun, JobMove } from '../jobQueue';
 import { LOCKS } from '../infra/lockNamespaces';
 import type { CatalogContext } from './context';
 
@@ -35,7 +35,7 @@ function withLock<T>(k: CatalogContext, lauf: () => Promise<T>): Promise<T> {
 }
 
 async function reportInstructions(k: CatalogContext, setNumber: string, lauf?: JobRun): Promise<void> {
-  const z = await k.auftraege.countKind('anleitung');
+  const z = await k.jobQueue.countKind('anleitung');
   const offen = z.offen + z.laeuft,
     gesamt = offen + z.erledigt + z.fehler;
   await lauf?.fortschritt?.({
@@ -58,9 +58,9 @@ async function anleitungLaden(k: CatalogContext, n: Nutzlast<'anleitung'>, lauf?
       // Den Abstand hält die Pause der Art, nicht die Funktion.
       const anzahl = await setAnleitungenLaden(k, sn, true);
       console.log(`[instr-queue] ${sn}: ${anzahl} instructions`);
-      if (await k.auftraege.liesPause('anleitung')) await k.auftraege.endPause('anleitung');
+      if (await k.jobQueue.liesPause('anleitung')) await k.jobQueue.endPause('anleitung');
       if (lastFetchWarExtern(k))
-        await k.auftraege.pauseKind(
+        await k.jobQueue.pauseKind(
           'anleitung',
           new Date(k.uhr.jetzt() + TICK_AFTER_FETCH_MS),
           'Abstand zwischen zwei Abrufen',
@@ -70,21 +70,21 @@ async function anleitungLaden(k: CatalogContext, n: Nutzlast<'anleitung'>, lauf?
       const f = asFetchError(e);
       const msg = fehlertext(e) || '';
       if (f.isCloudflare || msg.includes('1015')) {
-        const stufe = (await k.auftraege.liesPause('anleitung'))?.level ?? 0;
+        const stufe = (await k.jobQueue.liesPause('anleitung'))?.level ?? 0;
         const bis =
           stufe < CF_PAUSES_MS.length ? new Date(k.uhr.jetzt() + CF_PAUSES_MS[stufe]!) : nextTag(k.uhr.datum());
         const grund =
           stufe < CF_PAUSES_MS.length
             ? `Cloudflare-Sperre: ${Math.round(CF_PAUSES_MS[stufe]! / 60000)} min warten (Versuch ${stufe + 1})`
             : 'Cloudflare-Sperre: bis morgen pausiert';
-        await k.auftraege.pauseKind('anleitung', bis, grund, stufe < CF_PAUSES_MS.length ? stufe + 1 : 0);
+        await k.jobQueue.pauseKind('anleitung', bis, grund, stufe < CF_PAUSES_MS.length ? stufe + 1 : 0);
         await lauf?.fortschritt?.({ text: grund });
         console.log(`[instr-queue] ${grund}`);
         throw new JobMove(bis, grund);
       }
       if (msg.includes('Tageslimit') || msg.includes('rate limit') || msg.includes('429')) {
         const bis = nextTag(k.uhr.datum());
-        await k.auftraege.pauseKind('anleitung', bis, 'Tageskontingent erschöpft');
+        await k.jobQueue.pauseKind('anleitung', bis, 'Tageskontingent erschöpft');
         throw new JobMove(bis, 'Tageskontingent erschöpft');
       }
       throw e;

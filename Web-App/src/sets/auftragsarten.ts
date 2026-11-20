@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { auftragsart, type Anmeldung } from '../auftraege';
+import { auftragsart, type Anmeldung } from '../jobQueue';
 import { ImagesPayload } from '../catalog';
 import * as nachErfassung from './nachErfassung';
 import type { SetsContext } from './kontext';
@@ -13,7 +13,7 @@ const ReworkPayload = z.object({
   art: z.enum(['zweit', 'neu', 'csv', 'ergaenzen']).optional(),
 });
 
-declare module '../auftraege/auftraege' {
+declare module '../jobQueue/jobs' {
   interface JobPayloads {
     nacharbeit: typeof ReworkPayload;
   }

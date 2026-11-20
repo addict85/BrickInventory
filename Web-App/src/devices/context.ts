@@ -4,7 +4,7 @@ import type { Uhr } from '../infra/uhr';
 import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
 import type { DevicesReadContract } from './readContract';
-import type { JobsServices } from '../auftraege';
+import type { JobsServices } from '../jobQueue';
 import * as geraeteSchluessel from './repository/deviceKeys';
 
 export interface DevicesDependencies {
@@ -12,7 +12,7 @@ export interface DevicesDependencies {
   db: Db;
   uhr: Uhr;
   /** Der Laufzustand hält die Widerrufsliste der Attestation (katalog/widerrufsliste.ts lädt sie). */
-  auftraege: JobsServices;
+  jobQueue: JobsServices;
   lesevertrag: DevicesReadContract;
 }
 

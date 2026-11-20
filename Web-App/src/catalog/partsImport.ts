@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { JobRun } from '../auftraege';
+import type { JobRun } from '../jobQueue';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
 import { type RbSetTeil, firstBlNumber, parseThrottleWait } from '../externalSources';
@@ -74,7 +74,7 @@ export async function setTeileMerken(k: CatalogContext, n: string, zeilen: SetPa
 /** Fehlt ein Bild, lädt der Bildauftrag es nach. */
 export async function enqueueSetPartImages(k: CatalogContext, n: string, zeilen: SetPartRow[]) {
   if (zeilen.some(z => z.imageUrl && !z.imageLocal))
-    await k.auftraege.placeJobOne('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxAttempts: 3 });
+    await k.jobQueue.placeJobOne('bilder', { set_number: n }, { schluessel: `bilder:${n}`, maxAttempts: 3 });
 }
 
 function fetchPage(k: CatalogContext, url: string, rbKey: string): Promise<{ status: number; body: string }> {

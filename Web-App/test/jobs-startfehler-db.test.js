@@ -33,7 +33,7 @@ const Module = require('node:module');
 const echt = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echt.apply(this, arguments);
-  if (typeof name === 'string' && /(?:auftraege[/\\\\]|^\\.\\/)zeitplan(\\.js)?$/.test(name))
+  if (typeof name === 'string' && /(?:jobQueue[/\\\\]|^\\.\\/)schedule(\\.js)?$/.test(name))
     return { ...m, planeAll: async () => { throw new Error('Testfehler: planeAll'); } };
   return m;
 };`;
@@ -41,7 +41,7 @@ Module.prototype.require = function (name) {
 test('ein gescheiterter Start des Job-Prozesses beendet ihn', { concurrency: 1, timeout: 90_000 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const { liesZustand, deleteState } = require('./helpers/sources').testArea('auftraege').laufzustand;
+  const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
   const { HEARTBEAT_KEY } = _req('startup/jobsProzess.js');
   await deleteState(HEARTBEAT_KEY);
   t.after(() => db.pool.end().catch(() => {}));

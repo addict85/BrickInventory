@@ -115,7 +115,7 @@ export async function priceJobStatus(k: ManagementContext) {
     log?: unknown;
   } = {};
   try {
-    letzter = JSON.parse((await k.auftraege.liesZustand('preis_job_stand')) ?? '{}');
+    letzter = JSON.parse((await k.jobQueue.liesZustand('preis_job_stand')) ?? '{}');
   } catch (e) {
     reportError('management:preis-stand', e);
   }
@@ -141,13 +141,13 @@ export async function priceJobStatus(k: ManagementContext) {
 }
 
 /** false, wenn er schon läuft. */
-export const runPriceJobNow = (k: ManagementContext) => k.auftraege.pullPlanBefore('preise');
+export const runPriceJobNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('preise');
 /** Stellt nur den Auftrag ein; scheitert das, erfährt es der Verwalter statt des Protokolls. */
 export async function reloadMissingImages(k: ManagementContext): Promise<void> {
-  await k.auftraege.placeJobOne('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxAttempts: 2 });
+  await k.jobQueue.placeJobOne('bilder_neu_laden', {}, { schluessel: 'bilder_neu_laden', maxAttempts: 2 });
 }
 
-export const runCatalogSyncNow = (k: ManagementContext) => k.auftraege.pullPlanBefore('csv_sync');
+export const runCatalogSyncNow = (k: ManagementContext) => k.jobQueue.pullPlanBefore('csv_sync');
 
 /** Auch über das Tageskontingent hinweg. */
 export async function retryBrickset(k: ManagementContext, sn: string) {
@@ -187,8 +187,8 @@ export async function setJobSchedule(
 }
 
 export async function rescheduleJobs(k: ManagementContext) {
-  await k.auftraege.scheduleChanged('csv_sync');
-  await k.auftraege.scheduleChanged('preise');
+  await k.jobQueue.scheduleChanged('csv_sync');
+  await k.jobQueue.scheduleChanged('preise');
   await k.externalSources.brickset.prefer(await k.externalSources.brickset.dueAb(false));
 }
 

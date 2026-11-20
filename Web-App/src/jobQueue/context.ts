@@ -1,14 +1,14 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
-import type { JobsReadContract } from './lesevertrag';
+import type { JobsReadContract } from './readContract';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { SettingsServices } from '../settings';
-import * as auftraege from './repository/auftraege';
-import * as importStand from './repository/importStand';
-import * as laufzustand from './repository/laufzustand';
+import * as auftraege from './repository/jobs';
+import * as importStand from './repository/importStatus';
+import * as laufzustand from './repository/runState';
 import type { Uhr } from '../infra/uhr';
-import type { Arten } from './arten';
+import type { Arten } from './kinds';
 
 export interface JobsDependencies {
   uhr: Uhr;

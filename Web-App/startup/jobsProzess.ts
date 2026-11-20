@@ -27,24 +27,24 @@ export function renewHeartbeat(d: Dienste, worker: JobsLauf['worker']): Promise<
   fs.writeFile(HEARTBEAT_FILE, String(Date.now()), { mode: 0o600 }, e => {
     if (e) reportError('jobs:lebenszeichen', e);
   });
-  return d.auftraege.setzeZustand(HEARTBEAT_KEY, new Date().toISOString()).catch(logAndContinue('jobs:lebenszeichen'));
+  return d.jobQueue.setzeZustand(HEARTBEAT_KEY, new Date().toISOString()).catch(logAndContinue('jobs:lebenszeichen'));
 }
 
 /** Die Hintergrundarbeit (ROLLE=jobs oder beides) läuft nur über Aufträge; ein
  * zweiter Job-Prozess wäre unschädlich, weil jeder Aufträge mit SKIP LOCKED belegt. */
 export async function startJobs(d: Dienste): Promise<JobsLauf> {
-  const uebernommen = await d.auftraege.reportProcessAn();
+  const uebernommen = await d.jobQueue.reportProcessAn();
   if (uebernommen) console.log(`[auftraege] ${uebernommen} Aufträge eines beendeten Prozesses übernommen`);
-  await d.auftraege.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
-  await d.auftraege.planeAll();
-  await d.auftraege.pullPlanBefore('csv_sync', 0, { onStart: true });
-  await d.auftraege.pullPlanBefore('aufraeumen', 0);
-  await d.auftraege.pullPlanBefore('preise', 30);
-  await d.auftraege.pullPlanBefore('bild_nachlauf', 30);
-  await d.auftraege.pullPlanBefore('aufraeumen_taeglich', 60);
-  await d.auftraege.pullPlanBefore('widerrufsliste', 0);
+  await d.jobQueue.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
+  await d.jobQueue.planeAll();
+  await d.jobQueue.pullPlanBefore('csv_sync', 0, { onStart: true });
+  await d.jobQueue.pullPlanBefore('aufraeumen', 0);
+  await d.jobQueue.pullPlanBefore('preise', 30);
+  await d.jobQueue.pullPlanBefore('bild_nachlauf', 30);
+  await d.jobQueue.pullPlanBefore('aufraeumen_taeglich', 60);
+  await d.jobQueue.pullPlanBefore('widerrufsliste', 0);
   for (const [schritt, { afterSeconds }] of Object.entries(FOLLOWUP_RUNS) as [FollowUpStep, { afterSeconds: number }][])
-    await d.auftraege.placeJobOne(
+    await d.jobQueue.placeJobOne(
       'nachlauf',
       { schritt },
       { schluessel: `nachlauf:${schritt}`, afterSeconds, maxAttempts: 3 },
@@ -65,5 +65,5 @@ export async function stopJobs(d: Dienste, lauf: JobsLauf): Promise<void> {
   const worker = lauf.worker;
   lauf.worker = null;
   await worker?.stop().catch(logAndContinue('shutdown:auftraege'));
-  d.auftraege.reportProcessAb();
+  d.jobQueue.reportProcessAb();
 }

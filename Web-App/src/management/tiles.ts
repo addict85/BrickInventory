@@ -3,10 +3,10 @@
 
 import { logAndContinue } from '../infra/fehler';
 import { IMAGE_LOAD_COUNTER } from '../catalog';
-import type { JobKind } from '../auftraege';
+import type { JobKind } from '../jobQueue';
 import type { ManagementContext } from './context';
 
-type LastStatus = Awaited<ReturnType<ManagementContext['auftraege']['letzteJeArt']>>[number];
+type LastStatus = Awaited<ReturnType<ManagementContext['jobQueue']['letzteJeArt']>>[number];
 
 export interface Tile {
   label: string;
@@ -53,7 +53,7 @@ function asTile(k: { label: string; total: number }, z: LastStatus | undefined):
 }
 
 export async function tiles(kx: ManagementContext): Promise<Record<string, Tile>> {
-  const zeilen = await kx.auftraege.letzteJeArt(Object.values(TILES).map(k => k.art));
+  const zeilen = await kx.jobQueue.letzteJeArt(Object.values(TILES).map(k => k.art));
   const je = new Map(zeilen.map(z => [z.type, z]));
   const aus: Record<string, Tile> = { ...WITHOUT_JOB };
   for (const [name, k] of Object.entries(TILES)) aus[name] = asTile(k, je.get(k.art));
@@ -68,10 +68,10 @@ export async function tile(k: ManagementContext, name: string): Promise<Tile | n
 }
 
 export async function imgDlPending(k: ManagementContext) {
-  const n = parseInt((await k.auftraege.liesZustand(IMAGE_LOAD_COUNTER)) || '0', 10);
+  const n = parseInt((await k.jobQueue.liesZustand(IMAGE_LOAD_COUNTER)) || '0', 10);
   return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
 export async function imgDlReset(k: ManagementContext) {
-  await k.auftraege.setzeZustand(IMAGE_LOAD_COUNTER, 0).catch(logAndContinue('job-monitor:setzeZustand'));
+  await k.jobQueue.setzeZustand(IMAGE_LOAD_COUNTER, 0).catch(logAndContinue('job-monitor:setzeZustand'));
 }

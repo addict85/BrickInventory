@@ -1,5 +1,5 @@
 /** Je Schritt ein Auftrag 'nachlauf', damit ein Fehler wiederholt wird und in der Verwaltung zu sehen ist. */
-import { type Nutzlast, checkAbort, type JobRun } from '../auftraege';
+import { type Nutzlast, checkAbort, type JobRun } from '../jobQueue';
 import type { ManagementContext } from './context';
 
 /** Geheimnisse aus der Zeit vor der Verschlüsselung (src/infra/geheimnis.ts). */

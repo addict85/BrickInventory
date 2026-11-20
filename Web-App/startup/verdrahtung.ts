@@ -2,7 +2,7 @@
  * (über src/externalSources) entstehen aus einem Datenbankzugang. Der Einstieg (server.ts, Skripte,
  * Testhilfen) hält das Ergebnis und reicht es weiter; einen Prozess-Speicher gibt es nicht. */
 import path from 'node:path';
-import { createJobs, type Anmeldung, type JobKind } from '../src/auftraege';
+import { createJobs, type Anmeldung, type JobKind } from '../src/jobQueue';
 import { dbKonfigFromEnvironment, createDb, type Db } from '../db/database';
 import { createSets } from '../src/sets';
 import { createHousehold } from '../src/household';
@@ -98,8 +98,8 @@ function reportJobTypesAn(d: Dienste): void {
     ...d.parts.jobKinds(),
     ...d.management.jobTypes(),
   ];
-  for (const a of arten) d.auftraege.reportKindAn(a);
-  const angemeldet = new Set(d.auftraege.signedInKinds().map(a => a.art));
+  for (const a of arten) d.jobQueue.reportKindAn(a);
+  const angemeldet = new Set(d.jobQueue.signedInKinds().map(a => a.art));
   const fehlt = Object.keys(DECLARED_KINDS).filter(a => !angemeldet.has(a as JobKind));
   if (fehlt.length) throw new KindNotSignedIn(`Auftragsart ohne Anmeldung: ${fehlt.join(', ')}`);
 }
@@ -121,26 +121,26 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
   const throttle = createThrottle({ db, uhr }, zeige('throttle'));
   const einstellungen = createSettings({ db, uhr, throttle, lesevertrag: LESEVERTRAG }, zeige('settings'));
   const mail = createMail({ uhr, einstellungen, konfig }, zeige('mail'));
-  const auftraege = createJobs({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('auftraege'));
+  const jobQueue = createJobs({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('jobQueue'));
   const household = createHousehold({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('household'));
-  const devices = createDevices({ db, uhr, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('devices'));
+  const devices = createDevices({ db, uhr, konfig, jobQueue, lesevertrag: LESEVERTRAG }, zeige('devices'));
   const factors = createFactors({ db, uhr, konfig, einstellungen }, zeige('factors'));
   const account = createAccount(
-    { db, uhr, konfig, einstellungen, auftraege, household, mail, throttle, devices, factors },
+    { db, uhr, konfig, einstellungen, jobQueue, household, mail, throttle, devices, factors },
     zeige('account'),
   );
   const profile = createProfile({ db, uhr, konfig, einstellungen, account, mail }, zeige('profile'));
   const idempotency = createIdempotency({ db, uhr }, zeige('idempotency'));
   const externalSources = createForeignSources(
-    { db, uhr, einstellungen, auftraege, ersatz: quellen },
+    { db, uhr, einstellungen, jobQueue, ersatz: quellen },
     zeige('externalSources'),
   );
   const images = createImages(
-    { db, uhr, konfig, auftraege, household, externalSources, bildwerk, lesevertrag: LESEVERTRAG },
+    { db, uhr, konfig, jobQueue, household, externalSources, bildwerk, lesevertrag: LESEVERTRAG },
     zeige('images'),
   );
   const catalog = createCatalog(
-    { db, uhr, einstellungen, auftraege, household, externalSources, images, throttle, lesevertrag: LESEVERTRAG },
+    { db, uhr, einstellungen, jobQueue, household, externalSources, images, throttle, lesevertrag: LESEVERTRAG },
     zeige('catalog'),
   );
   // Den Eintrag beim Set macht der Katalog (höher); er horcht auf die Bilder, statt dass sie ihn rufen.
@@ -149,7 +149,7 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
     throttle,
     settings: einstellungen,
     mail,
-    auftraege,
+    jobQueue,
     household,
     devices,
     factors,
@@ -165,11 +165,11 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
 function buildAreas(db: Db, components: Gesetzt): Dienste {
   const zeige = inspectIn(components.contexts);
   const grund = buildReason(db, components, zeige);
-  const { throttle, settings: einstellungen, mail, auftraege, household, factors } = grund;
+  const { throttle, settings: einstellungen, mail, jobQueue, household, factors } = grund;
   const { account, idempotency, externalSources, images, catalog } = grund;
   const { konfig, uhr } = components;
   const finances = createFinances(
-    { db, uhr, konfig, einstellungen, auftraege, household, catalog, externalSources, mail, lesevertrag: LESEVERTRAG },
+    { db, uhr, konfig, einstellungen, jobQueue, household, catalog, externalSources, mail, lesevertrag: LESEVERTRAG },
     zeige('finances'),
   );
   const inventory = createInventory(
@@ -186,7 +186,7 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
       images,
       finances,
       household,
-      auftraege,
+      jobQueue,
       inventory,
       einstellungen,
       account,
@@ -194,11 +194,11 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
     zeige('sets'),
   );
   const parts = createParts(
-    { db, uhr, einstellungen, auftraege, household, catalog, externalSources, finances, inventory },
+    { db, uhr, einstellungen, jobQueue, household, catalog, externalSources, finances, inventory },
     zeige('parts'),
   );
   const minifigs = createMinifigs(
-    { db, uhr, einstellungen, household, catalog, externalSources, auftraege, finances, inventory },
+    { db, uhr, einstellungen, household, catalog, externalSources, jobQueue, finances, inventory },
     zeige('minifigs'),
   );
   const wanted = createWanted(
@@ -207,7 +207,7 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
   );
   const vouchers = createVouchers({ db, uhr, einstellungen, account, externalSources, throttle }, zeige('vouchers'));
   const collection = createCollection(
-    { db, uhr, household, auftraege, catalog, finances, inventory, sets, parts, minifigs, wanted },
+    { db, uhr, household, jobQueue, catalog, finances, inventory, sets, parts, minifigs, wanted },
     zeige('collection'),
   );
   const management = createManagement(
@@ -215,7 +215,7 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
       db,
       uhr,
       settings: einstellungen,
-      auftraege,
+      jobQueue,
       factors,
       account,
       idempotency,

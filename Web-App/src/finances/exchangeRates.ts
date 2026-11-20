@@ -1,5 +1,5 @@
 /** Als Auftrag, damit ein Fehlschlag wiederholt wird und sichtbar bleibt. */
-import type { JobRun } from '../auftraege';
+import type { JobRun } from '../jobQueue';
 import {
   ECB_HISTORY,
   ECB_DAILY_RATES,
@@ -52,7 +52,7 @@ export async function planeKursabruf(
     Date.UTC(jetzt.getUTCFullYear(), jetzt.getUTCMonth(), jetzt.getUTCDate() + (morgen ? 1 : 0), 15, 30),
   );
   const sek = Math.max(0, Math.round((ziel.getTime() - jetzt.getTime()) / 1000));
-  return k.auftraege.placeJobOne(
+  return k.jobQueue.placeJobOne(
     'wechselkurse',
     {},
     {

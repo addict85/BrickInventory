@@ -15,13 +15,13 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.inventory.manuelleMengen,
     // @ts-expect-error
-    d.auftraege.db,
+    d.jobQueue.db,
     // @ts-expect-error
-    d.auftraege.auftraege,
+    d.jobQueue.auftraege,
     // @ts-expect-error
-    d.auftraege.laufzustand,
+    d.jobQueue.laufzustand,
     // @ts-expect-error
-    d.auftraege.faecher,
+    d.jobQueue.faecher,
     // @ts-expect-error
     d.settings.repository,
     // @ts-expect-error
@@ -64,7 +64,7 @@ export function probe(d: Dienste): unknown[] {
     d.idempotency.db,
     // Die ausdrücklichen Dienste dagegen stehen da.
     d.inventory.locationService.lagerorte,
-    d.auftraege.liesZustand,
+    d.jobQueue.liesZustand,
     d.account.verwalter.rememberAdminAction,
   ];
 }

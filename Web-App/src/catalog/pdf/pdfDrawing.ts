@@ -5,7 +5,7 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 import PDFDocument from 'pdfkit';
 import { IMAGES_DIR, resolveWebPath } from '../../infra/appPaths';
 import { reportError } from '../../infra/fehler';
-import type { Nutzlast } from '../../auftraege';
+import type { Nutzlast } from '../../jobQueue';
 
 /** Im worker_thread: pdfkit zeichnet synchron und hielte bei tausenden Zeilen
  * die Ereignisschleife an, die im Prozess „beides" auch Anfragen beantwortet. */

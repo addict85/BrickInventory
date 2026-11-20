@@ -1,7 +1,7 @@
-import type { JobKind, PayloadInput } from './auftraege';
-import type { Zeitplan } from './arten';
-import { wakeWorker, placeJobOne } from './dienst';
-import type { JobsContext } from './kontext';
+import type { JobKind, PayloadInput } from './jobs';
+import type { Zeitplan } from './kinds';
+import { wakeWorker, placeJobOne } from './service';
+import type { JobsContext } from './context';
 
 /** Je geplanter Art genau ein offener Auftrag `plan:<art>`: Eine geänderte Uhrzeit verschiebt nur faellig_ab. */
 export const planKey = (art: JobKind) => `plan:${art}`;

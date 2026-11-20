@@ -73,13 +73,13 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
     );
     const uid = (await db.get("SELECT id FROM users WHERE username = 'kontingent_kind'")).id;
     const { createWorker } = _req('jobs/auftragsWorker.js');
-    const { placeJobOne } = Object.assign({}, _req('src/auftraege/auftraege.js'), {
-      ..._req('src/auftraege/dienst.js'),
-      ...require('./helpers/sources').testArea('auftraege').auftraege,
+    const { placeJobOne } = Object.assign({}, _req('src/jobQueue/jobs.js'), {
+      ..._req('src/jobQueue/service.js'),
+      ...require('./helpers/sources').testArea('jobQueue').auftraege,
     });
     const results = [];
     const w = createWorker(
-      require('./helpers/sources').testServices().auftraege,
+      require('./helpers/sources').testServices().jobQueue,
       {
         wechselkurse: {
           ausfuehren: async () => {

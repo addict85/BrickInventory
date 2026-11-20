@@ -31,7 +31,7 @@ export function reportSetImageLoaded(k: ImagesContext, setNummer: string, quelle
 
 /** Steht er schon offen, bleibt es bei einem. */
 export async function imageDemandKick(k: ImagesContext): Promise<void> {
-  await k.auftraege.placeJobOne('bildbedarf', {}, { schluessel: IMAGE_DEMAND_KEY, maxAttempts: 3 });
+  await k.jobQueue.placeJobOne('bildbedarf', {}, { schluessel: IMAGE_DEMAND_KEY, maxAttempts: 3 });
 }
 
 /** Ein INSERT je Bildanfrage leerte bei einer Kachelwand den Pool. Was bei

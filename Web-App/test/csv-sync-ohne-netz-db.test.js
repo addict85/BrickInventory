@@ -59,7 +59,7 @@ test('Katalogabgleich ohne Netz', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const vorher = (await db.get(`SELECT value FROM run_state WHERE key='rb_csv_last_sync'`))?.value ?? null;
   await db.run(`DELETE FROM run_state WHERE key IN ('rb_csv_last_sync','startup_status')`);
-  const zustand = _req('src/auftraege/startZustand.js');
+  const zustand = _req('src/jobQueue/startState.js');
   await zustand.reportStartState({ ready: false, step: 'CSV wird geladen...', progress: 0, total: 6 });
   try {
     await t.test('ohne Netz ist der Server trotzdem bereit', async () => {

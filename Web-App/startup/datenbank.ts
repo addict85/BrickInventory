@@ -28,7 +28,7 @@ export const LEGACY_STOCK_BRAND = 'altbestand_v2';
  * liest nur v2, und eine Gutscheinzeile ohne nummer_suche entginge der
  * Doppelprüfung. @returns null, wenn die Marke schon steht */
 export async function legacyStockUpgrade(d: Dienste): Promise<{ umgeschluesselt: number; prints: number } | null> {
-  if (await d.auftraege.liesZustand(LEGACY_STOCK_BRAND)) return null;
+  if (await d.jobQueue.liesZustand(LEGACY_STOCK_BRAND)) return null;
   const n =
     (await d.vouchers.reencryptNumbers()) +
     (await d.vouchers.reencryptCopies()) +
@@ -38,7 +38,7 @@ export async function legacyStockUpgrade(d: Dienste): Promise<{ umgeschluesselt:
   if (n) console.log(`[geheimnis] ${n} Geheimnisse auf v2 (mit Kontext) umgeschlüsselt`);
   const alt = await d.idempotency.deleteOldFingerprints();
   if (alt) console.log(`[idempotenz] ${alt} Einträge mit altem Fingerabdruck (SHA-256 des Rumpfs) gelöscht`);
-  await d.auftraege.setzeZustand(LEGACY_STOCK_BRAND, new Date().toISOString());
+  await d.jobQueue.setzeZustand(LEGACY_STOCK_BRAND, new Date().toISOString());
   return { umgeschluesselt: n, prints: alt };
 }
 
@@ -64,7 +64,7 @@ export async function keySwitch(d: Dienste): Promise<number | null> {
 /** Der Web-Prozess allein darf Gutscheine nicht anfassen (Web-Systemrolle): Er wartet,
  * bis der Dienst jobs den Altbestand umgestellt hat, statt alte Zeilen zu lesen. */
 export async function waitOnLegacyStock(d: Dienste, takt = 2000): Promise<void> {
-  for (let n = 0; !(await d.auftraege.liesZustand(LEGACY_STOCK_BRAND)); n++) {
+  for (let n = 0; !(await d.jobQueue.liesZustand(LEGACY_STOCK_BRAND)); n++) {
     if (n % 15 === 0) console.log('[geheimnis] warte, bis der Dienst jobs die Geheimnisse auf v2 umgestellt hat');
     await new Promise(r => setTimeout(r, takt));
   }

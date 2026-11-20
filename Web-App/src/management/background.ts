@@ -5,12 +5,12 @@ export async function jobsOverview(
   k: ManagementContext,
   filter: { status?: string | undefined; art?: string | undefined } = {},
 ) {
-  const [uebersicht, bildbedarf] = await Promise.all([k.auftraege.jobsInOverview(filter), k.images.openImageDemand()]);
+  const [uebersicht, bildbedarf] = await Promise.all([k.jobQueue.jobsInOverview(filter), k.images.openImageDemand()]);
   return { ...uebersicht, bildbedarf };
 }
 
 /** Beim Bildbedarf gehen auch die Notizen. */
 export async function clearJobType(k: ManagementContext, kindRaw: string) {
-  const r = await k.auftraege.emptyJobKind(kindRaw);
+  const r = await k.jobQueue.emptyJobKind(kindRaw);
   return r.art === 'bildbedarf' ? { ...r, entfernt: r.entfernt + (await k.images.emptyImageDemand()) } : r;
 }

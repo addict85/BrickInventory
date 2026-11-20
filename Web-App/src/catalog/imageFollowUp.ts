@@ -1,9 +1,9 @@
-/** Stündlich, der erste 30 s nach dem Start (src/auftraege/zeitplan.ts). */
+/** Stündlich, der erste 30 s nach dem Start (src/jobQueue/schedule.ts). */
 import { logAndContinue, reportError } from '../infra/fehler';
 import { setPartImageLocal, setMinifigImageLocal } from './catalogMaintenance';
 import { KEINE_FARBE } from '../infra/validate';
 import * as enrich from './partsEnrichment';
-import { JobInterrupted, type JobContext } from '../auftraege';
+import { JobInterrupted, type JobContext } from '../jobQueue';
 import { versuche } from '../infra/ergebnis';
 import { imagesForFollowUp } from './imageState';
 import type { CatalogContext } from './context';

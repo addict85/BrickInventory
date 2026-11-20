@@ -112,7 +112,7 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
   await t.test('job_types kennt genau die angemeldeten Arten', async () => {
     const angemeldet = require('./helpers/sources')
       .testServices()
-      .auftraege.signedInKinds()
+      .jobQueue.signedInKinds()
       .map(a => a.art);
     const inDb = (await db.all('SELECT type FROM job_types ORDER BY type')).map(z => z.type);
     assert.ok(angemeldet.length > 15, `nur ${angemeldet.length} Arten angemeldet`);

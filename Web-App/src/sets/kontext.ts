@@ -1,6 +1,6 @@
 import type { Konfig } from '../infra/konfig';
 import type { Db } from '../../db/database';
-import type { JobsServices } from '../auftraege';
+import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { ImagesServices } from '../images';
 import type { InventoryServices } from '../inventory';
@@ -23,7 +23,7 @@ export interface SetsDependencies {
   catalog: CatalogServices;
   finances: FinancesServices;
   household: HouseholdServices;
-  auftraege: JobsServices;
+  jobQueue: JobsServices;
   inventory: InventoryServices;
   einstellungen: SettingsServices;
   account: AccountServices;

@@ -117,7 +117,7 @@ export async function partListOfSets(sk: SetsContext, setNum: string, anreichern
   }
   await versuche(
     `sets:bilder einstellen ${setNum}`,
-    sk.auftraege.placeJobOne('bilder', { set_number: setNum }, { schluessel: `bilder:${n}`, maxAttempts: 3 }),
+    sk.jobQueue.placeJobOne('bilder', { set_number: setNum }, { schluessel: `bilder:${n}`, maxAttempts: 3 }),
   );
   return { parts: [...zeilen.values()], source, ...einePage(zeilen.size) };
 }

@@ -77,11 +77,11 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   };
   const a = await konto(`csvauftrag-a-${process.pid}`);
   const b = await konto(`csvauftrag-b-${process.pid}`);
-  const { placeJobOne } = Object.assign({}, _req('src/auftraege/auftraege.js'), {
-    ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testArea('auftraege').auftraege,
+  const { placeJobOne } = Object.assign({}, _req('src/jobQueue/jobs.js'), {
+    ..._req('src/jobQueue/service.js'),
+    ...require('./helpers/sources').testArea('jobQueue').auftraege,
   });
-  const { jobSet } = _req('src/auftraege/importAuftrag.js');
+  const { jobSet } = _req('src/jobQueue/importJob.js');
   const worker = _req('jobs/auftraegeStarten.js').startJobWorker(require('./helpers/sources').testServices(), {
     arten: ['csv_import'],
     taktMs: 50,

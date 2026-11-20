@@ -6,7 +6,7 @@
  * das notify() entfernt → rot: „der Statusstrom meldet das Ende sofort“
  * (erst der 15-Sekunden-Rückfall hätte es gemeldet). Seit der Status im
  * Auftrag steht (Migration 0083) am 30.10.2026 wiederholt: in erledigt()
- * (src/auftraege/auftraege.ts) reportStatus() entfernt → rot: derselbe Test.
+ * (src/jobQueue/jobs.ts) reportStatus() entfernt → rot: derselbe Test.
  *
  * Gegenproben zur Teileliste (am 02.11.2026 gemessen), je rot: „die
  * Teileliste wird geprüft …“: `eingabe: PdfEingabe` aus dem Vertrag
@@ -179,9 +179,9 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       const zeile = await db.get(`SELECT id FROM jobs WHERE dedupe_key = $1`, [jobs.pdfKey(job)]);
       setTimeout(
         () =>
-          Object.assign({}, _req('src/auftraege/auftraege.js'), {
-            ..._req('src/auftraege/dienst.js'),
-            ...require('./helpers/sources').testArea('auftraege').auftraege,
+          Object.assign({}, _req('src/jobQueue/jobs.js'), {
+            ..._req('src/jobQueue/service.js'),
+            ...require('./helpers/sources').testArea('jobQueue').auftraege,
           }).erledigt({ id: String(zeile.id), locked_by: 'test', type: 'pdf' }),
         300,
       );

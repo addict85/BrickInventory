@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
-import * as repo from './repository/auftraege';
+import * as repo from './repository/jobs';
 import { reportError } from '../infra/fehler';
-import type { JobsContext } from './kontext';
+import type { JobsContext } from './context';
 
 /** Jede Belegung trägt die Kennung ihres Prozesses. Ein Prozess, der hart endet
  * (Speicher, Stromausfall), gibt nichts zurück; seine Sperre endet aber mit der

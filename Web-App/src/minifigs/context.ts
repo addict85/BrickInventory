@@ -9,7 +9,7 @@ import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../catalog';
 import type { FinancesServices } from '../finances';
 import type { InventoryServices } from '../inventory';
-import type { JobsServices } from '../auftraege';
+import type { JobsServices } from '../jobQueue';
 import type { ForeignSourcesServices } from '../externalSources';
 import type { Uhr } from '../infra/uhr';
 
@@ -22,7 +22,7 @@ export interface MinifigsDependencies {
   finances: FinancesServices;
   inventory: InventoryServices;
   externalSources: ForeignSourcesServices;
-  auftraege: JobsServices;
+  jobQueue: JobsServices;
 }
 
 export const access = (db: Db) => ({

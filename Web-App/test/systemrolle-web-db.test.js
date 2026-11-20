@@ -214,7 +214,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.ok(await db.get(`SELECT 1 FROM jobs WHERE type = 'katalog_nachzug' AND status = 'offen'`));
     const followUp = quellen
       .testServices()
-      .auftraege.signedInKinds()
+      .jobQueue.signedInKinds()
       .find(a => a.art === 'katalog_nachzug');
     await inSystemContext('Test', () => followUp.ausfuehren({}, {}));
     assert.equal(await offen(), 0, 'der Auftrag leert sie');

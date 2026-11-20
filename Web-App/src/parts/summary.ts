@@ -85,7 +85,7 @@ export async function summaryFresh(
  * as a job, because the web system role can't reach other accounts' stock; until then, stale BL numbers. */
 async function catalogFollowUpOnce(k: PartsContext) {
   if (rowsContext().web) {
-    await k.auftraege.placeJobOne('katalog_nachzug', {}, { schluessel: 'katalog_nachzug' });
+    await k.jobQueue.placeJobOne('katalog_nachzug', {}, { schluessel: 'katalog_nachzug' });
     return { konten: 0, gruppen: 0 };
   }
   const z = state(k);

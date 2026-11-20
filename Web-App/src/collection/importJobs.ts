@@ -3,7 +3,7 @@
 import { csvImportReport } from '../infra/csvExport';
 import { Fachfehler } from '../infra/fehlerTexte';
 import { z } from 'zod';
-import type { JobRow, JobContext, Fortschritt } from '../auftraege';
+import type { JobRow, JobContext, Fortschritt } from '../jobQueue';
 import { SetCsvPayload } from '../sets';
 import { importWantedXml } from './wantedXmlImport';
 import type { CollectionContext } from './context';
@@ -47,7 +47,7 @@ const ImportPayloadSchema = z.discriminatedUnion('quelle', [
 ]);
 export const CsvImportPayload = z.union([ImportPayloadSchema, SetCsvPayload]);
 
-declare module '../auftraege/auftraege' {
+declare module '../jobQueue/jobs' {
   interface JobPayloads {
     csv_import: typeof CsvImportPayload;
   }
@@ -70,7 +70,7 @@ export function runImport<T = Record<string, unknown>, Q extends ImportSource = 
 ): Promise<T> {
   // tsc doesn't link Q to the union's branch; it's checked when enqueuing.
   const nutzlast = { user_id: uid, quelle, eingabe } as z.input<typeof ImportPayloadSchema>;
-  return k.auftraege.waitOnJob<T, 'csv_import'>('csv_import', nutzlast, { ...o, userId: uid });
+  return k.jobQueue.waitOnJob<T, 'csv_import'>('csv_import', nutzlast, { ...o, userId: uid });
 }
 
 export type ImportPayload = z.output<typeof ImportPayloadSchema>;
@@ -94,10 +94,10 @@ async function resultFrom(kx: CollectionContext, n: ImportPayload, k: JobContext
 /** A business error is a result (the request reports it with a code), not a job failure. */
 async function runImportFrom(kx: CollectionContext, n: ImportPayload, k: JobContext, a: JobRow): Promise<void> {
   try {
-    await kx.auftraege.setResult(a.id, await resultFrom(kx, n, k));
+    await kx.jobQueue.setResult(a.id, await resultFrom(kx, n, k));
   } catch (e) {
     if (!(e instanceof Fachfehler)) throw e;
-    await kx.auftraege.setSlotError(a.id, e);
+    await kx.jobQueue.setSlotError(a.id, e);
   }
 }
 

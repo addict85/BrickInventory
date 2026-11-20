@@ -387,7 +387,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Caddy setzt je Anfrage eine neue: `src/infra/protokoll.ts` — `protokoll`.
 - Fremdkontingent: je Nicht-Verwalter ein Viertel, alle zusammen die Hälfte;
   Aufträge zählen beim Konto, das sie eingestellt hat:
-  `src/externalSources/apiQuota.ts`, `src/auftraege/auftraege.ts` — `api-kontingent-konto-db`.
+  `src/externalSources/apiQuota.ts`, `src/jobQueue/jobs.ts` — `api-kontingent-konto-db`.
 - Je Zieladresse (gehasht): Registrierung 3/h (429), „Passwort vergessen“ 3/h
   (still keine Mail): `src/account/targetThrottle.ts` — `mail-fremder-text-db`.
 - Prüfung eines Haushaltscodes (`redeem/pruefen`) 30/h je Konto —

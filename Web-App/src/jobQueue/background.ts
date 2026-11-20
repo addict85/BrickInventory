@@ -1,9 +1,9 @@
 /** Web-Oberfläche und App lesen dieselbe Antwort. */
-import type { JobKind } from './auftraege';
-import { pullBefore, repeat, abortAb, endPause } from './dienst';
-import { hatSchedule, planeNext, pullPlanBefore } from './zeitplan';
+import type { JobKind } from './jobs';
+import { pullBefore, repeat, abortAb, endPause } from './service';
+import { hatSchedule, planeNext, pullPlanBefore } from './schedule';
 import { fachfehler } from '../infra/fehlerTexte';
-import type { JobsContext } from './kontext';
+import type { JobsContext } from './context';
 
 const HEARTBEAT_APPLIES_SEC = 120;
 const STATUS = ['offen', 'laeuft', 'fehler', 'abgebrochen', 'erledigt'] as const;

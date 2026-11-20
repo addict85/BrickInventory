@@ -53,7 +53,7 @@ test('zugeschnittene Vorschauen werden einmal neu eingepasst', async t => {
 
   const zustand = new Map();
   const k = {
-    auftraege: {
+    jobQueue: {
       liesZustand: async s => zustand.get(s) ?? null,
       setzeZustand: async (s, w) => {
         zustand.set(s, String(w));

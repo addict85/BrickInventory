@@ -660,8 +660,8 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
       davor: async () => {
         w.id = String(
           await {
-            ..._req('src/auftraege/dienst.js'),
-            ...require('./helpers/sources').testArea('auftraege').auftraege,
+            ..._req('src/jobQueue/service.js'),
+            ...require('./helpers/sources').testArea('jobQueue').auftraege,
           }.placeJobOne('anleitung', { set_number: SET }, { schluessel: `vertrag:${process.pid}:${Date.now()}` }),
         );
       },

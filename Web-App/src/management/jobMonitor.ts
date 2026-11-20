@@ -24,7 +24,7 @@ const count = (ab: Degradations, p: Promise<number>, ort: string) => ab.oder(ort
 
 /** Ein JSON-Stand aus laufzustand; ein beschädigter zählt wie keiner. */
 async function readState<T>(k: ManagementContext, ab: Degradations, schluessel: string): Promise<T | null> {
-  const roh = await ab.oder(schluessel, k.auftraege.liesZustand(schluessel), null);
+  const roh = await ab.oder(schluessel, k.jobQueue.liesZustand(schluessel), null);
   try {
     return roh ? (JSON.parse(roh) as T) : null;
   } catch {
@@ -46,7 +46,7 @@ function blIdsTile(alt: Tile, gemappt: number, gesamt: number): Tile | null {
 
 /** Einmal gezählt: offen, erledigt und gescheitert aus derselben Abfrage. */
 async function instructionJobs(k: ManagementContext, ab: Degradations) {
-  const z = await ab.oder('anleitungen', k.auftraege.countKind('anleitung'), null);
+  const z = await ab.oder('anleitungen', k.jobQueue.countKind('anleitung'), null);
   return { offen: z ? z.offen + z.laeuft : 0, erledigt: z?.erledigt ?? 0, fehler: z?.fehler ?? 0 };
 }
 
@@ -259,7 +259,7 @@ export async function jobMonitor(k: ManagementContext) {
     count(ab, k.management.bricklinkParts(), 'bl_mapping'),
     count(ab, k.management.rbParts(), 'katalog'),
     count(ab, k.management.rbInventoryParts(), 'katalog'),
-    k.auftraege.liesZustand('rb_csv_last_sync'),
+    k.jobQueue.liesZustand('rb_csv_last_sync'),
   ]);
   const blIds = blIdsTile(jobs.blIds ?? {}, gemappt, blTotal);
   if (blIds) jobs.blIds = blIds;

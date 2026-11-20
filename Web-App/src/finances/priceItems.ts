@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { PayloadInput } from '../auftraege';
+import type { PayloadInput } from '../jobQueue';
 import type { FinancesContext } from './context';
 
 const SETNR = z.string().min(1).max(64);
@@ -17,7 +17,7 @@ export const PricesReload = z.object({
   posten: z.array(PriceItem).max(PRICE_ITEM_AT_MOST),
 });
 
-declare module '../auftraege/auftraege' {
+declare module '../jobQueue/jobs' {
   interface JobPayloads {
     preise_nachladen: typeof PricesReload;
   }
@@ -25,7 +25,7 @@ declare module '../auftraege/auftraege' {
 
 /** Fehlende Preise eines Kontos in einer Währung: höchstens ein wartender Auftrag, der jede neue Meldung aufnimmt. */
 export function rememberPricesBefore(k: FinancesContext, n: PayloadInput<'preise_nachladen'>): Promise<string> {
-  return k.auftraege.supplementListenJob('preise_nachladen', n, {
+  return k.jobQueue.supplementListenJob('preise_nachladen', n, {
     schluessel: `preise_nachladen:${n.user_id}:${n.waehrung}`,
     liste: 'posten',
     hoechstens: PRICE_ITEM_AT_MOST,

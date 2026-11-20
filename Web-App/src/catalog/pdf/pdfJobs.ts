@@ -5,7 +5,7 @@ import fsp from 'node:fs/promises';
 import { PDF_JOB_DIR } from '../../infra/appPaths';
 import { reportError, withoutMissingFile } from '../../infra/fehler';
 import { Fachfehler, fachfehler, notFound } from '../../infra/fehlerTexte';
-import type { PayloadInput } from '../../auftraege';
+import type { PayloadInput } from '../../jobQueue';
 import { withVersion } from '../../infra/setNummer';
 import type { CatalogContext } from '../context';
 
@@ -35,7 +35,7 @@ const STATUS: Record<string, PdfAuftrag['status']> = { offen: 'running', laeuft:
 
 /** Unter Zeilenschutz und nach Konto gefiltert: Ein fremder Auftrag ist keiner. */
 export async function readJob(k: CatalogContext, id: string, uid: number): Promise<PdfAuftrag | null> {
-  const z = await k.auftraege.ownJob('pdf', pdfKey(id), uid);
+  const z = await k.jobQueue.ownJob('pdf', pdfKey(id), uid);
   const { fehlendeBilder, etaSekunden } = z?.progress ?? {};
   return z
     ? {
@@ -59,7 +59,7 @@ export async function finishedFile(k: CatalogContext, id: string, uid: number): 
 }
 
 export async function deleteJob(k: CatalogContext, id: string, uid: number): Promise<void> {
-  await k.auftraege.deleteOwn('pdf', pdfKey(id), uid);
+  await k.jobQueue.deleteOwn('pdf', pdfKey(id), uid);
 }
 
 export const PDF_JOB_TTL = 10 * 60 * 1000;
@@ -72,7 +72,7 @@ export function newJobId(jetzt: number): string {
 }
 
 export async function cleanOldPdfJobs(k: CatalogContext) {
-  for (const schluessel of await k.auftraege.deleteEnded('pdf', PDF_JOB_TTL / 1000)) {
+  for (const schluessel of await k.jobQueue.deleteEnded('pdf', PDF_JOB_TTL / 1000)) {
     const datei = pdfFilePath(schluessel.slice('pdf:'.length));
     if (datei) await fsp.unlink(datei).catch(withoutMissingFile('pdf:datei loeschen'));
   }
@@ -119,13 +119,13 @@ export async function startPdfJob(
   sets: PayloadInput<'pdf'>['sets'],
   parts: PayloadInput<'pdf'>['parts'],
 ): Promise<{ jobId: string } | { laufend: number }> {
-  const laufend = await k.auftraege.countRunning('pdf', uid, PDF_JOB_TTL / 1000);
+  const laufend = await k.jobQueue.countRunning('pdf', uid, PDF_JOB_TTL / 1000);
   if (laufend >= MAX_JOBS_PRO_USER) return { laufend };
   const jobId = newJobId(k.uhr.jetzt());
   // Bildangaben des Clients gehen nicht in den Auftrag: Die Bilder kommen aus dem Katalog.
   const withoutImages = parts.map(p => ({ ...p, image_url: undefined, image_local: undefined }));
   const missingImages = await fehlendeBilder(k, sets, parts);
-  await k.auftraege.placeJobOne(
+  await k.jobQueue.placeJobOne(
     'pdf',
     { job_id: jobId, user_id: uid, sets, parts: withoutImages },
     {

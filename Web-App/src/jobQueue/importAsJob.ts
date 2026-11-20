@@ -1,9 +1,9 @@
 /** Ein Auftrag, auf dessen Ergebnis die Anfrage wartet (etwa ein Import): Bricht der Web-Prozess
  * ab, läuft er weiter, und Fremdabrufe belasten nicht den Prozess, der die Seiten ausliefert. */
-import { placeJobOne } from './dienst';
-import type { JobKind, Fortschritt, PayloadInput } from './auftraege';
+import { placeJobOne } from './service';
+import type { JobKind, Fortschritt, PayloadInput } from './jobs';
 import { Fachfehler, fachfehler, type ErrorKind, type ErrorCode } from '../infra/fehlerTexte';
-import type { JobsContext } from './kontext';
+import type { JobsContext } from './context';
 
 /** So lange wartet die Anfrage; danach läuft der Auftrag im Hintergrund weiter. */
 export const IMPORT_WAIT_MS = 10 * 60_000;

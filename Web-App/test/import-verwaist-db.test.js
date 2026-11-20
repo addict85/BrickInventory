@@ -18,7 +18,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const { jobGet, startJob, ORPHANED_MIN } = _req('src/auftraege/importAuftrag.js');
+const { jobGet, startJob, ORPHANED_MIN } = _req('src/jobQueue/importJob.js');
 
 const NAME = `verwaist_${process.pid}`;
 

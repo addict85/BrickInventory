@@ -1,5 +1,5 @@
 /**
- * Die Auftragstabelle (Migration 0066, src/auftraege/auftraege.ts, jobs/auftragsWorker.ts):
+ * Die Auftragstabelle (Migration 0066, src/jobQueue/jobs.ts, jobs/auftragsWorker.ts):
  * Ein Auftrag überlebt das Ende seines Prozesses, ein Fehler wird wiederholt
  * und endet nach dem letzten Versuch als 'fehler', und zwei Worker führen
  * nie denselben Auftrag aus.
@@ -41,9 +41,9 @@ const { warte, bis } = require('./helpers/zeit');
 
 test('Auftragstabelle', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  const A = Object.assign({}, _req('src/auftraege/auftraege.js'), {
-    ..._req('src/auftraege/dienst.js'),
-    ...require('./helpers/sources').testArea('auftraege').auftraege,
+  const A = Object.assign({}, _req('src/jobQueue/jobs.js'), {
+    ..._req('src/jobQueue/service.js'),
+    ...require('./helpers/sources').testArea('jobQueue').auftraege,
   });
   const { createWorker } = _req('jobs/auftragsWorker.js');
   // Nur Zeilen dieses Tests: eine eigene Art, die kein anderer Worker kennt.
@@ -54,7 +54,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
   for (const type of [ART, `${ART}-ex`]) {
     require('./helpers/sources')
       .testServices()
-      .auftraege.reportKindAn({ art: type, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
+      .jobQueue.reportKindAn({ art: type, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
     await db.run('INSERT INTO job_types (type) VALUES ($1) ON CONFLICT DO NOTHING', [type]);
   }
   const leeren = () => db.run(`DELETE FROM jobs WHERE payload->>'marke' = $1`, [MARKE]);
@@ -70,7 +70,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       assert.equal(tot.id, id);
       const erledigt = [];
       const w = createWorker(
-        require('./helpers/sources').testServices().auftraege,
+        require('./helpers/sources').testServices().jobQueue,
         {
           [ART]: {
             ausfuehren: async n => {
@@ -92,7 +92,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       await leeren();
       let mal = 0;
       const aufgegeben = [];
-      const w = createWorker(require('./helpers/sources').testServices().auftraege, {
+      const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
         [ART]: {
           ausfuehren: async n => {
             mal++;
@@ -143,11 +143,11 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
           },
         },
       };
-      const w1 = createWorker(require('./helpers/sources').testServices().auftraege, editor, {
+      const w1 = createWorker(require('./helpers/sources').testServices().jobQueue, editor, {
         parallel: 4,
         taktMs: 20,
       });
-      const w2 = createWorker(require('./helpers/sources').testServices().auftraege, editor, {
+      const w2 = createWorker(require('./helpers/sources').testServices().jobQueue, editor, {
         parallel: 4,
         taktMs: 20,
       });
@@ -178,7 +178,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       let gleichzeitig = 0,
         hoechstens = 0;
       const w = createWorker(
-        require('./helpers/sources').testServices().auftraege,
+        require('./helpers/sources').testServices().jobQueue,
         {
           [EX]: {
             exklusiv: true,
@@ -208,7 +208,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       await leeren();
       const { JobMove } = _req('jobs/auftragsWorker.js');
       let zaehlt = false;
-      const w = createWorker(require('./helpers/sources').testServices().auftraege, {
+      const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
         [ART]: {
           ausfuehren: async () => {
             throw new JobMove(new Date(Date.now() + 3_600_000), 'gedrosselt', zaehlt);
@@ -241,7 +241,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       const afterAbort = new Promise(r => {
         abgebrochen = () => r(null);
       });
-      const w = createWorker(require('./helpers/sources').testServices().auftraege, {
+      const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
         [ART]: {
           ausfuehren: async (_n, k) => {
             laeuft();
@@ -263,7 +263,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
     });
 
     await t.test('nach einem geplanten Lauf steht der nächste an', async () => {
-      const Z = _req('src/auftraege/zeitplan.js');
+      const Z = _req('src/jobQueue/schedule.js');
       await db.run(`DELETE FROM jobs WHERE type = 'aufraeumen'`);
       await Z.planeAll();
       await Z.planeAll();
@@ -272,7 +272,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       assert.ok(new Date(plans[0].due_at) > new Date(Date.now() + 55 * 60_000), 'stündlich heisst in einer Stunde');
       assert.equal(await Z.pullPlanBefore('aufraeumen'), true);
       let lief = 0;
-      const w = createWorker(require('./helpers/sources').testServices().auftraege, {
+      const w = createWorker(require('./helpers/sources').testServices().jobQueue, {
         aufraeumen: {
           ausfuehren: async () => {
             lief++;
