@@ -19,7 +19,7 @@ on:
       - 'shared/**'
       # FarbeDeutschTest gleicht die Farbnamen mit der Webapp ab.
       - 'Web-App/public/i18n.js'
-      - 'Web-App/src/vertrag/**'
+      - 'Web-App/src/contract/**'
       - 'Web-App/scripts/generate-design-tokens.js'
       - 'Web-App/scripts/vertrag-kotlin-dtos.js'
       - 'Web-App/scripts/vertrag-kotlin-zuordnung.js'
@@ -32,7 +32,7 @@ on:
       - 'shared/**'
       # FarbeDeutschTest gleicht die Farbnamen mit der Webapp ab.
       - 'Web-App/public/i18n.js'
-      - 'Web-App/src/vertrag/**'
+      - 'Web-App/src/contract/**'
       - 'Web-App/scripts/generate-design-tokens.js'
       - 'Web-App/scripts/vertrag-kotlin-dtos.js'
       - 'Web-App/scripts/vertrag-kotlin-zuordnung.js'

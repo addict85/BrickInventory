@@ -110,11 +110,11 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Anmeldewege (Passwort, Passkey, QR, Registrierung, Rücksetzen) nehmen an
   Caddy Rümpfe bis 16 KB an und gehen ohne Verbindungsgrenze an die App: Die
   Zahl gleichzeitiger Passwortprüfungen begrenzt die Schranke des Servers
-  (`src/konto/bcryptSchranke.ts`, Vorrang bekannter Anmeldungen, sonst 503),
+  (`src/account/bcryptLimit.ts`, Vorrang bekannter Anmeldungen, sonst 503),
   die Raten je Adresse und Konto zählt der Server — `caddy-anmeldebremse`,
   `bcrypt-schranke-db`.
 - Passwörter als argon2id (19 MiB, 2 Durchläufe, OWASP-Vorgabe:
-  `src/konto/passwortHash.ts`); ein alter bcrypt-Hash gilt, bis die nächste
+  `src/account/passwordHash.ts`); ein alter bcrypt-Hash gilt, bis die nächste
   Anmeldung ihn ersetzt — `passwort-argon2-db`. bcrypt rechnet dafür in
   höchstens 4 Worker-Threads (weniger bei kleinerem cgroup-Kontingent, mehr
   mit `BCRYPT_ARBEITER`); untätige enden nach 60 s — `bcrypt-pool`.
@@ -143,8 +143,8 @@ handelte der Prozess für jede gerade aktive Sitzung.
   einer erbeuteten Sitzung sperren weder „andere beenden“ noch den
   Passwortwechsel des Inhabers. Falsche Codes zählen in einem eigenen Zähler
   (5 je Stunde), den nur ein richtiger Code löscht; ein richtiges Passwort
-  setzt ihn nicht zurück: `src/konto/passwortBestaetigung.ts`,
-  `src/konto/loginLimiter.ts` — `bestaetigung-bremsen-db`.
+  setzt ihn nicht zurück: `src/account/passwordConfirmation.ts`,
+  `src/account/loginLimiter.ts` — `bestaetigung-bremsen-db`.
 - Kein Passwort-Orakel für gesperrte und unbestätigte Konten: Sie bekommen bei
   richtigem Passwort dieselbe 401 `anmeldedaten_ungueltig` wie bei falschem
   (gezählt als Fehlversuch). Einen neuen Bestätigungslink gibt
@@ -154,10 +154,10 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `zweiter_faktor_noetig` (ohne Fehlversuch), ein falsches mit
   `anmeldedaten_ungueltig` — die Absage verrät also, dass das Passwort stimmte.
   Weiter kommt man damit nicht: Nach 20 falschen Codes in 24 Stunden gelten nur
-  noch Wiederherstellungscode und Passkey, und der Inhaber erfährt es per Mail (`src/konto/anmeldepruefung.ts`) —
+  noch Wiederherstellungscode und Passkey, und der Inhaber erfährt es per Mail (`src/account/loginCheck.ts`) —
   `zweiter-faktor-db`.
 - Sperre je Adresse und je Konto mit wachsender Wartezeit:
-  `src/konto/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
+  `src/account/loginLimiter.ts` — `anmeldesperre-db`, `ip-drossel-parallel-db`.
 - Tagesgrenze: Nach 50 Fehlversuchen in 24 Stunden gilt das Passwort nur noch
   mit zweitem Faktor. Unbekannte Adressen zählen gemeinsam, jede bekannte
   Adresse (dort zuletzt erfolgreich angemeldet, 30 Tage) für sich; ein Fremder
@@ -165,10 +165,10 @@ handelte der Prozess für jede gerade aktive Sitzung.
   alle Zähler. Ohne zweiten Faktor bekommt der Inhaber für einen gesperrten neuen
   Ort einen signierten, einmal gültigen Link, der diese Adresse einen Tag lang wie
   eine bekannte zählen lässt (je Adresse eine Mail pro Stunde, zehn am Tag):
-  `src/konto/loginLimiter.ts` — `anmeldung-tagesgrenze-db`.
+  `src/account/loginLimiter.ts` — `anmeldung-tagesgrenze-db`.
 - Sitzung: `httpOnly`, `sameSite=strict`, `secure` hinter TLS, Leerlauf- und
-  Höchstdauer, neue Sitzungs-ID beim Anmelden: `src/konto/sitzungsFrist.ts`,
-  `src/konto/zugangsende.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `sitzung-app-db`, `auth-sessions-db`.
+  Höchstdauer, neue Sitzungs-ID beim Anmelden: `src/account/sessionDeadline.ts`,
+  `src/account/accessEnd.ts` — `sitzung-leerlauf-db`, `sitzung-hoechstdauer`, `sitzung-app-db`, `auth-sessions-db`.
 - Passwortwechsel und Kontolöschung beenden Sitzungen und Tokens —
   `auth-sessions-db`, `token-laufzeit-db`.
 - Beendete Sitzungen bleiben beendet: Jede Sitzung trägt
@@ -177,22 +177,22 @@ handelte der Prozess für jede gerade aktive Sitzung.
   jede Anfrage vergleicht (5 s Zwischenspeicher je Konto, den eine Erhöhung in jedem
   Web-Prozess über NOTIFY sofort leert; ohne Horch-Verbindung keiner). Eine von einer
   laufenden Anfrage zurückgeschriebene Zeile gilt damit nicht mehr:
-  `src/konto/sitzungsVersion.ts` — `sitzungsversion-db`, `sitzungsversion-prozesse-db`.
+  `src/account/sessionVersion.ts` — `sitzungsversion-db`, `sitzungsversion-prozesse-db`.
 - Drosseln je Adresse zählen ein IPv6-/64 als eine Adresse, IPv4 in IPv6 als
-  IPv4: `drosselAdresse` in `src/konto/loginLimiter.ts` — `drossel-ipv6-db`.
+  IPv4: `drosselAdresse` in `src/account/loginLimiter.ts` — `drossel-ipv6-db`.
 - App-Anmeldung: Token mit fester Höchstdauer 180 Tage ab Anmeldung, die der
   Tausch erbt — `token-scope-rotation-db`.
 - Tokens mit Scope: `app` hat nie Verwalterrechte, QR-Codes geben nur `app`;
   Verwalterrouten verlangen Sitzung oder Scope `voll`. Gleitender Ablauf
   (90 Tage), Tausch über `/auth/token-rotieren` mit 5 min Überlappung;
   „unbegrenzt“ nur über HTTPS und mit Tauschpflicht nach 60 Tagen;
-  Geräteliste mit Scope, Netz und Ablauf: `src/konto/geraeteToken.ts` —
+  Geräteliste mit Scope, Netz und Ablauf: `src/account/deviceToken.ts` —
   `token-scope-rotation-db`, `token-gleitfrist-db`.
 - Passkeys (WebAuthn) ohne Passwort und als zweiter Faktor; Challenge nur
   einmal gültig, Zähler, Herkunft aus `APP_BASE_URL`: `src/factors/passkeys.ts` —
   `passkeys-db`. TOTP: `src/factors/secondFactor.ts` — `zweiter-faktor-db`.
 - Schrittschutz der App: Den Geräteschlüssel nimmt der Server nur mit Android
-  Key Attestation an (`src/geraete/attestation/`): Kette bis zu Googles Wurzel,
+  Key Attestation an (`src/devices/attestation/`): Kette bis zu Googles Wurzel,
   kein Glied auf Googles Widerrufsliste, Schlüssel im TEE oder StrongBox mit
   Gerätesperre bei jeder Benutzung, gesperrter Bootloader und verifizierter
   Start (RootOfTrust `deviceLocked`, `verifiedBootState = Verified`), auf Wunsch
@@ -202,7 +202,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Schlüssel an, statt ungeprüft anzunehmen (UPGRADE.md §60) —
   `geraete-attestation`, `schrittschutz-db`, `attestation-widerrufsliste-db`.
 - Kein Weg am zweiten Faktor vorbei: Es gibt genau einen Bestätigungsweg,
-  `bestaetigeMitFaktor` (`src/konto/http/anmeldung.ts`). Bei aktivem TOTP
+  `bestaetigeMitFaktor` (`src/account/http/login.ts`). Bei aktivem TOTP
   verlangt er immer Code oder Passkey-Antwort, auch mit dem
   Verwalterpasswort; fehlt beides, 400 `zweiter_faktor_noetig` ohne Zählung.
   Jede Route, die einen Zugang prägt oder Schutz abbaut, trägt im API-Vertrag
@@ -212,14 +212,14 @@ handelte der Prozess für jede gerade aktive Sitzung.
   `bestaetigung-vertrag-db` ruft jede markierte Route ohne und mit falschem
   Code, verlangt die Marke für jede Passwort-Eingabe des Vertrags und lässt
   `bcrypt.compare` nur im Pool und `@node-rs/argon2` nur in
-  `src/konto/passwortHash.ts` zu (Vergleich nur über `passwortPasst`); eine Route ohne Marke,
+  `src/account/passwordHash.ts` zu (Vergleich nur über `passwortPasst`); eine Route ohne Marke,
   die bestätigt, antwortet in Tests mit 500. Den Notausgang des Verwalters
   (`DELETE /auth/users/:id/zweiter-faktor`) gibt es nur für fremde Konten.
   Eine neue E-Mail gilt auch beim Verwalter erst nach dem Link als bestätigt
   — `zweiter-faktor-heikel-db`, `passkeys-db`, `haushalt-beitreten-db`.
 - Hinweis-Mails bei neuem App-Token und QR-Zugang (Inhaber), neuem Verwalter
   und vom Verwalter entferntem zweitem Faktor (alle Verwalter, das Konto
-  selbst): `src/konto/kontoHinweis.ts` — `zugang-hinweis-db`.
+  selbst): `src/account/accountNotice.ts` — `zugang-hinweis-db`.
 - Wiederherstellungscodes: 80 Bit, als HMAC mit Teilschlüssel des
   Datenschlüssels und an das Konto gebunden — `zweiter-faktor-db`. Codes von vor
   dem 01.11.2026 (50 Bit, SHA-256) gelten nur noch 90 Tage ab dem Update (0122);
@@ -229,13 +229,13 @@ handelte der Prozess für jede gerade aktive Sitzung.
   das Ziel und alle Verwalter. Das Ziel bricht ab durch Anmeldung (Passwort,
   Passkey, QR-Abholung) oder über den einmal gültigen Link in seiner Mail; eine
   fällige Übernahme entfällt, wenn das Ziel inzwischen deaktiviert wurde:
-  `src/konto/verwalterAktionen.ts` — `verwalter-uebernahme-db`.
+  `src/account/adminActions.ts` — `verwalter-uebernahme-db`.
 - AES-GCM nur mit vollem 16-Byte-Tag: `src/infra/geheimnis.ts` — `geheimnis-tag-laenge`.
 - Passwort zurücksetzen widerruft Tokens, Sitzungen und alle Passkeys und löst
   ausserdem, was ein Eindringling angelegt haben könnte: die Verknüpfung mit
   Hauptkonten über diesem Konto (der Haushalt nach oben), offene
   Haushaltseinladungen und eine ausstehende Adressänderung; die Hinweis-Mail
-  nennt, was wegfiel (`setzePasswortZurueck` in `src/konto/konten.ts`) —
+  nennt, was wegfiel (`setzePasswortZurueck` in `src/account/accounts.ts`) —
   `passwort-vergessen-fremdzugriff-db`. Der Wechsel widerruft Passkeys auf
   Wunsch der API (`passkeys_widerrufen`); die Oberfläche belegt das Häkchen vor. Hinweis-Mail bei neuem Passkey und bei
   Passwortwechsel/-rücksetzung, mit den Konten, die die Sammlung sehen —
@@ -278,16 +278,16 @@ handelte der Prozess für jede gerade aktive Sitzung.
 
 ### Zugriff auf fremde Daten (3)
 - Jede Abfrage über `scopeIds()`/`writableIds()` (Haushalt):
-  `src/haushalt/haushalt.ts` — `erfassung-fremd-loeschen-db`, `gutscheine-db`, `pdf-jobs-db`.
+  `src/household/household.ts` — `erfassung-fremd-loeschen-db`, `gutscheine-db`, `pdf-jobs-db`.
 - Uploads nur für Besitzer und Hauptkonto: `routes/datenDateien.ts` — `daten-dateien-db`, `media-auth`.
 - Kaufpreis umhängen: Eine fremde Erfassungs-ID antwortet wie eine fehlende
   (404 `kaufpreis_nicht_gefunden`), kein Orakel für vergebene IDs:
-  `acquisitionMoveSource` in `src/haushalt/haushalt.ts` — `sicherheit-server-grenzen-db`.
+  `acquisitionMoveSource` in `src/household/household.ts` — `sicherheit-server-grenzen-db`.
 - Set-Bilder (`/images/sets/…`) nur im Blickfeld (Bestand, Merkliste,
   Preisalarme des Haushalts), Anleitungen (`/data/instructions/…`) nur zu Sets
   im Bestand; fremd und fehlend antworten gleich (404). Teile- und
   Figurenbilder sind Katalog. Katalog, `/sets/info` und `/sets/barcode` nennen
-  `image_local` nur im Blickfeld: `src/bilder/bildBlickfeld.ts` —
+  `image_local` nur im Blickfeld: `src/images/imageScope.ts` —
   `bild-blickfeld-db`, `katalog-bilder-db`.
 - Teile-Import (`POST /sets/:setNumber/parts`) nur für Sets im Blickfeld, für
   deren Besitzer: `routes/api_v1/sets.ts` — `teile-import-besitz-db`.
@@ -306,7 +306,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
 
 ### Gemeinsame Daten (3)
 - Bildcache nur aus geprüften Katalogadressen (`bild_von IS NULL`), nie aus
-  Angaben des Clients: `src/katalog/pdf/pdfErzeugung.ts`, `src/katalog/bildNachlauf.ts` —
+  Angaben des Clients: `src/catalog/pdf/pdfGeneration.ts`, `src/catalog/imageFollowUp.ts` —
   `bildcache-quelle-db`.
 - Setnummer für den Bild-Job nur aus einer reinen Rebrickable-Setadresse:
   `routes/imgProxy.ts` — `bildcache-quelle-db`.
@@ -340,7 +340,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
 - Bild-Proxy: Cache-Schlüssel ohne Zeitstempel im Anfrageteil, CDN-Abrufe je
   Konto gedrosselt (`BILD_ABRUFE_JE_MINUTE`), Cache gedeckelt
   (`BILD_CACHE_MAX_MB`), Antworten `Cache-Control: private`:
-  `routes/imgProxy.ts`, `src/bilder/imgCacheServe.ts` — `bild-proxy-deckel`.
+  `routes/imgProxy.ts`, `src/images/imgCacheServe.ts` — `bild-proxy-deckel`.
   Hinaus geht nur ein Bildtyp aus einer Liste (JPEG, PNG, GIF, WebP, AVIF),
   nie der rohe Kopf des CDN; sonst JPEG (`bildTyp`) — `img-cache-serve`,
   `bild-proxy-deckel`.
@@ -387,9 +387,9 @@ handelte der Prozess für jede gerade aktive Sitzung.
   Caddy setzt je Anfrage eine neue: `src/infra/protokoll.ts` — `protokoll`.
 - Fremdkontingent: je Nicht-Verwalter ein Viertel, alle zusammen die Hälfte;
   Aufträge zählen beim Konto, das sie eingestellt hat:
-  `src/fremdquellen/apiKontingent.ts`, `src/auftraege/auftraege.ts` — `api-kontingent-konto-db`.
+  `src/externalSources/apiQuota.ts`, `src/auftraege/auftraege.ts` — `api-kontingent-konto-db`.
 - Je Zieladresse (gehasht): Registrierung 3/h (429), „Passwort vergessen“ 3/h
-  (still keine Mail): `src/konto/zielDrossel.ts` — `mail-fremder-text-db`.
+  (still keine Mail): `src/account/targetThrottle.ts` — `mail-fremder-text-db`.
 - Prüfung eines Haushaltscodes (`redeem/pruefen`) 30/h je Konto —
   `haushalt-beitreten-db`.
 - Jede angemeldete Anfrage zählt in ein Budget je Konto: 600 Einheiten je
@@ -422,7 +422,7 @@ handelte der Prozess für jede gerade aktive Sitzung.
   — `geheimnisse-verschluesselt-db`, `konto-dateien-db`.
 - Mail-Links ohne Token in den Protokollen: `src/mail/transport.ts`.
 - Aufbewahrung von Adressen in `rate_limit_attempts` (Anmeldebremsen,
-  `src/konto/loginLimiter.ts`): Die Zeilen `login|<Adresse>|<Konto>`
+  `src/account/loginLimiter.ts`): Die Zeilen `login|<Adresse>|<Konto>`
   und `login-adresse|<Adresse>` stehen mit der IP (IPv6 als /64)
   im Klartext und werden nach einem Tag aufgeräumt. `login-bekannt|…` (Vorrang
   bekannter Anmeldungen, 30 Tage) und `login-erfolg|…` (1 Tag) tragen statt der
