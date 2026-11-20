@@ -9,7 +9,7 @@ import { fmtN } from './format.js';
  * The cards' shared basis from the server; without it (pnl failed) there's no P&L.
  * @typedef {{ bewertet: number, withoutMarket: number, withoutPurchase: number, einstand: number, wert: number, betrag: number,
  *   gesamt?: number, withoutMarketCost?: number, withoutPurchaseValue?: number }} Basis
- * @param {Partial<import('../../frontend-typen/vertrag').PnlTotals>} pt @param {number} missingPrice
+ * @param {Partial<import('../../frontend-types/contract').PnlTotals>} pt @param {number} missingPrice
  * @returns {Basis}
  */
 export function baseFrom(pt, missingPrice) {

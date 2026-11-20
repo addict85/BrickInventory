@@ -35,7 +35,7 @@ async function waitVisibly(seconds, number) {
  * Returns what the caller needs to know: whether it worked, and if not, whether it was the rate limit
  * (worth waiting for) or bot protection (then it STOPS — asking again is exactly what must not happen).
  * @param {number | string} id
- * @returns {Promise<{ art: 'ok', antwort: import('../../frontend-typen/vertrag').GuthabenAntwort } | { art: 'abstand', wartenSek: number } | { art: 'botschutz' | 'fehler', fehler: string }>}
+ * @returns {Promise<{ art: 'ok', antwort: import('../../frontend-types/contract').GuthabenAntwort } | { art: 'abstand', wartenSek: number } | { art: 'botschutz' | 'fehler', fehler: string }>}
  */
 async function oneQuery(id) {
   const d = await api('POST', `/v1/vouchers/${id}/guthaben`);
@@ -50,7 +50,7 @@ async function oneQuery(id) {
 }
 
 /** What a successful query tells the user. */
-/** @param {import('../../frontend-typen/vertrag').GuthabenAntwort} response */
+/** @param {import('../../frontend-types/contract').GuthabenAntwort} response */
 function reportSuccess(response) {
   const v = response.voucher;
   if (!v) return;

@@ -37,7 +37,7 @@ let _detailRun = 0;
  * @type {number[] | null} */
 let _writableAccounts = null;
 
-/** In a household: does the set (also) belong to another account? @param {import('../../frontend-typen/vertrag').SetItem | null} set */
+/** In a household: does the set (also) belong to another account? @param {import('../../frontend-types/contract').SetItem | null} set */
 const inHousehold = set => (set?.owners || []).some(o => !loggedInAccount || o.id !== loggedInAccount.id);
 
 /** A name for the UI: the logged-in account is called "me". @param {{ id: number, username: string }} o */
@@ -47,7 +47,7 @@ const accountName = accountDisplay;
  * Quantity per account from the acquisitions; the own account first. In a household each account
  * has its own stepper: a single total with "−" silently removed the own account's purchase even
  * when the other one's was meant.
- * @param {import('../../frontend-typen/vertrag').SetItem} set @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs
+ * @param {import('../../frontend-types/contract').SetItem} set @param {import('../../frontend-types/contract').Acquisition[]} acqs
  */
 function quantitiesByAccount(set, acqs) {
   const owners = set.owners?.length
@@ -69,7 +69,7 @@ function quantitiesByAccount(set, acqs) {
  * Without a household, the plain field; in a household, one row per account (stepper only where
  * writing is allowed). "−" on the very last copy of the whole set is missing on purpose: that is a
  * delete and goes through the "Delete" action.
- * @param {import('../../frontend-typen/vertrag').SetItem} set @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs
+ * @param {import('../../frontend-types/contract').SetItem} set @param {import('../../frontend-types/contract').Acquisition[]} acqs
  */
 function quantityBlock(set, acqs) {
   if (!inHousehold(set))
@@ -96,7 +96,7 @@ function quantityBlock(set, acqs) {
 }
 
 /** Header line: number and, in a household, ALL owners — naming only the other account read as if
- * the set belonged to them alone. @param {import('../../frontend-typen/vertrag').SetItem} set */
+ * the set belonged to them alone. @param {import('../../frontend-types/contract').SetItem} set */
 function subtitle(set) {
   const owners = inHousehold(set)
     ? (set.owners || [])
@@ -114,7 +114,7 @@ function subtitle(set) {
 const PAIR = { paar: true };
 
 /** Content of the set dialog from openSet and the acquisitions: value and history to the left under
- * the image, the fields on the right. @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
+ * the image, the fields on the right. @param {string} sn @param {import('../../frontend-types/contract').Acquisition[]} acqs */
 function setDetailHtml(sn, acqs) {
   const set = openSet;
   if (!set) return null;
@@ -182,7 +182,7 @@ function setDetailHtml(sn, acqs) {
 }
 
 /** Load the price history in the background, without holding up the dialog.
- * @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[]} acqs */
+ * @param {string} sn @param {import('../../frontend-types/contract').Acquisition[]} acqs */
 function loadSetFollowups(sn, acqs) {
   const prices = (/** @type {string} */ z) =>
     new Set(acqs.filter(a => a.condition === z && a.purchase_price != null).map(a => a.unit_price ?? a.purchase_price));
@@ -281,7 +281,7 @@ function teileNeuImportieren() {
   if (openSet?.set_number) reimportParts(openSet.set_number);
 }
 
-/** @param {import('../../frontend-typen/vertrag').Instruction[]} instr @param {string} sn */
+/** @param {import('../../frontend-types/contract').Instruction[]} instr @param {string} sn */
 export function renderInstructions(instr, sn) {
   const items = instr
     .map(i => {
@@ -455,7 +455,7 @@ async function changeQuantity(body, step, field, set = openSet) {
 }
 
 /** "Purchase from 09/13/2026 (€250.00) removed" with Undo; the acquisition sits in the trash.
- * @param {string} sn @param {import('../../frontend-typen/vertrag').MengeGeaendert} d @param {number} [accountId] */
+ * @param {string} sn @param {import('../../frontend-types/contract').MengeGeaendert} d @param {number} [accountId] */
 function reportRemovedPurchase(sn, d, accountId) {
   const removed = d.entfallen || [];
   const k = removed[0];
@@ -518,7 +518,7 @@ async function refreshDetail(sn, field) {
 /**
  * "+" creates an acquisition, usually with the market price as an estimate. That changes the
  * finances, so the toast says so with the amount and offers "Change" instead of only reporting "Saved".
- * @param {string} sn @param {import('../../frontend-typen/vertrag').Acquisition[] | null | undefined} acqs @param {number} n
+ * @param {string} sn @param {import('../../frontend-types/contract').Acquisition[] | null | undefined} acqs @param {number} n
  */
 function reportNewCopies(sn, acqs, n) {
   const latest = [...(acqs || [])].sort((a, b) => (b.id || 0) - (a.id || 0))[0];

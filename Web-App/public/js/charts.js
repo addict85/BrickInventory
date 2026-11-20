@@ -11,7 +11,7 @@ import { crosshairParts } from './crosshair.js';
 /**
  * Marktpreis und Entwicklung je Zustand. Der Server liefert nur Zustände mit Erfassung; nach jedem Speichern
  * neu geladen, erscheint eine neue Zeile so von selbst.
- * @param {{ by_condition?: import('../../frontend-typen/vertrag').PriceByCondition }} ph
+ * @param {{ by_condition?: import('../../frontend-types/contract').PriceByCondition }} ph
  */
 export function renderMarketRows(ph, targetId = 'm-market-rows') {
   const el = G(targetId);
@@ -389,7 +389,7 @@ function referenceLine(
 }
 
 /** Antwort von /v1/…/price-history, soweit die Diagramme sie lesen.
- * @typedef {Partial<Pick<import('../../frontend-typen/vertrag').PriceHistoryResponse, 'chart' | 'history_new' | 'history_used' | 'by_condition'>> | null | undefined} Preisdaten */
+ * @typedef {Partial<Pick<import('../../frontend-types/contract').PriceHistoryResponse, 'chart' | 'history_new' | 'history_used' | 'by_condition'>> | null | undefined} Preisdaten */
 
 /**
  * Die Reihen des Preisverlaufs je Zustand, aus den Diagrammdaten des Servers (src/finances/chartData.ts). Vor

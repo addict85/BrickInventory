@@ -49,7 +49,7 @@ export async function apiRaw(method, path, o = {}) {
  * @template {string} M
  * @template {string} P
  * @param {M} method @param {P} path
- * @returns {Promise<import('../../frontend-typen/api').ApiDaten<M, P>>}
+ * @returns {Promise<import('../../frontend-types/api').ApiDaten<M, P>>}
  */
 export async function apiData(method, path) {
   try {
@@ -63,7 +63,7 @@ export async function apiData(method, path) {
 /**
  * Aufruf der eigenen API mit JSON-Antwort. Liefert immer ein Objekt, nie eine Ausnahme: Jeder Fehlschlag
  * (Netz, Proxy-Fehlerseite, Status ohne `success`) kommt als `{ success: false, error, status }`, wie vom
- * Server. Den Typ der Antwort liefert der Vertrag (frontend-typen/api.d.ts), wenn der Pfad als Literal oder
+ * Server. Den Typ der Antwort liefert der Vertrag (frontend-types/api.d.ts), wenn der Pfad als Literal oder
  * Vorlage dasteht. FormData geht als Upload, alles andere als JSON.
  * @template {string} M
  * @template {string} P
@@ -71,7 +71,7 @@ export async function apiData(method, path) {
  * @param {P} path
  * @param {FormData | object | null} [body]
  * @param {{ signal?: AbortSignal, cache?: RequestCache }} [o]
- * @returns {Promise<import('../../frontend-typen/api').ApiAntwort<M, P>>}
+ * @returns {Promise<import('../../frontend-types/api').ApiAntwort<M, P>>}
  */
 export async function api(method, path, body, o = {}) {
   let res;
@@ -110,16 +110,16 @@ export async function api(method, path, body, o = {}) {
     rememberSessionEnd(String(daten.error));
   if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') emit('passwortWechselNoetig');
   if (res.status === 403 && daten?.code === 'zweiter_faktor_pflicht') emit('zweiterFaktorPflicht');
-  return /** @type {import('../../frontend-typen/api').ApiAntwort<M, P>} */ (/** @type {unknown} */ (daten));
+  return /** @type {import('../../frontend-types/api').ApiAntwort<M, P>} */ (/** @type {unknown} */ (daten));
 }
 
 /**
  * Ein Ereignisstrom der eigenen API: EventSource mit dem Sitzungscookie, jedes Ereignis als Objekt nach dem
- * Vertrag (`Strom` in frontend-typen/vertrag.d.ts). Ohne EventSource null; dann fragt der Aufrufer ab.
+ * Vertrag (`Strom` in frontend-types/contract.d.ts). Ohne EventSource null; dann fragt der Aufrufer ab.
  * Bricht der Strom ab, ist er geschlossen, und `fehler` entscheidet über den Rückfall.
  * @template {string} P
  * @param {P} path  ohne `/api`, z. B. `/v1/sets/import/csv/stream`
- * @param {{ ereignis: (e: import('../../frontend-typen/api').StromEreignis<P>) => void, fehler: () => void }} o
+ * @param {{ ereignis: (e: import('../../frontend-types/api').StromEreignis<P>) => void, fehler: () => void }} o
  * @returns {{ schliesse: () => void } | null}
  */
 export function strom(path, o) {

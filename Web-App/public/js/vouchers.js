@@ -14,7 +14,7 @@ import { bestaetigeMitPasswort, withSecondFactor } from './confirm-prompt.js';
 // erreichbar sein, und wie in der App erfassen, ändern und anzeigen.
 
 /** Die zuletzt geladene Liste — für die Knöpfe, die auf eine Zeile zeigen. */
-/** @type {import('../../frontend-typen/vertrag').Gutschein[]} */
+/** @type {import('../../frontend-types/contract').Gutschein[]} */
 let _vouchers = [];
 /** Die zuletzt geladenen Gutscheine, zum Lesen für die Guthabenabfrage. */
 export const gutscheine = () => _vouchers;
@@ -106,7 +106,7 @@ function waehrungPruefen() {
   hinweis.textContent = tRaw('vouchers.waehrung_hinweis', { w: soll });
 }
 
-/** @param {import('../../frontend-typen/vertrag').Gutschein} g */
+/** @param {import('../../frontend-types/contract').Gutschein} g */
 function zeile(g) {
   const k = _plaintext.get(g.id);
   const openPin = _visible.has(g.id) && !!k;

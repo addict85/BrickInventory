@@ -19,7 +19,7 @@ import { emptyLocationField, selectedOwner, selectedStorage, householdAccounts }
 // would count in the gallery, parts, portfolio and finances, and every view would need a filter.
 
 /** The most recently loaded list — for the buttons that point to a row. */
-/** @typedef {import('../../frontend-typen/vertrag').Merkposten} Merkposten */
+/** @typedef {import('../../frontend-types/contract').Merkposten} Merkposten */
 /** @type {Merkposten[]} */
 let _wantedItems = [];
 
@@ -528,7 +528,7 @@ export async function merkpostenInhaberGewaehlt(arg) {
  * textContent, not innerHTML: the theme name comes from the catalog and is therefore foreign text. This
  * way it can never be read as markup, and no esc() is needed in yet another place.
  */
-/** @param {import('../../frontend-typen/vertrag').CatalogSetDetail | null | undefined} catalog @param {Merkposten} w */
+/** @param {import('../../frontend-types/contract').CatalogSetDetail | null | undefined} catalog @param {Merkposten} w */
 function fillCatalogInfo(catalog, w) {
   const set = (/** @type {string} */ id, /** @type {string} */ value) => {
     const el = G(id);
@@ -604,7 +604,7 @@ registerActions({
  * Bring the price response's `current` into the shape renderMarketRows() expects: the same number is
  * called avg_price there. pnl_pct stays empty, because a wanted item has no purchase price.
  */
-/** @param {import('../../frontend-typen/vertrag').CurrentByCondition | null | undefined} current */
+/** @param {import('../../frontend-types/contract').CurrentByCondition | null | undefined} current */
 function toDisplayFormat(current) {
   /** @type {Record<string, { market_price: number | null | undefined, pnl_pct: null }>} */
   const out = {};

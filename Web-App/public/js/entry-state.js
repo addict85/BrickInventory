@@ -6,7 +6,7 @@ import { fmtDatum, browserWritesDateHowApp } from './format.js';
 
 // Was der Kaufpreis-Dialog des Sets und der Dialog manueller Einträge teilen: dasselbe Fenster (#acq-modal),
 // dieselbe Haushaltsliste und dieselben Tabellenbausteine.
-/** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} Konto */
+/** @typedef {import('../../frontend-types/contract').HouseholdMember} Konto */
 
 /** Wessen Erfassungen im Dialog stehen und wohin das Schliessen zurückführt. */
 export const erfassung = {

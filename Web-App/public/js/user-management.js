@@ -10,7 +10,7 @@ import { html, rawHtml } from './escaping.js';
 import { bestaetigeMitPasswort, withSecondFactor } from './confirm-prompt.js';
 // Settings, Administration section: create, lock, unlock accounts, manage rights. Only
 // administrators see it — the server checks every action itself.
-/** @typedef {import('../../frontend-typen/vertrag').KontoInListe} Konto */
+/** @typedef {import('../../frontend-types/contract').KontoInListe} Konto */
 
 // ── USER MGMT ─────────────────────────────────────────
 export async function loadUsers() {

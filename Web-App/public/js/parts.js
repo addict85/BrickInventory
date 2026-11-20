@@ -35,12 +35,12 @@ import { gallerySets, accountCurrency } from './state.js';
 import { confirmDelete } from './confirm-prompt.js';
 import { manualQuery, manualTable, tablesView } from './minifigs.js';
 import { deletedWithUndo } from './trash.js';
-/** @typedef {import('../../frontend-typen/vertrag').GET_api_v1_parts['parts'][number]} PartRow */
+/** @typedef {import('../../frontend-types/contract').GET_api_v1_parts['parts'][number]} PartRow */
 
 // ── PARTS ─────────────────────────────────────────────
-/** @type {import('../../frontend-typen/vertrag').PartsFilterColor[]} */
+/** @type {import('../../frontend-types/contract').PartsFilterColor[]} */
 let partsColors = [];
-/** @type {import('../../frontend-typen/vertrag').PartsCategory[]} */
+/** @type {import('../../frontend-types/contract').PartsCategory[]} */
 let partsCats = [];
 /** @type {string | null} */
 let activeColor = null;

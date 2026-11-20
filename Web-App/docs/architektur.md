@@ -324,7 +324,7 @@ Eingabeprüfung und liefert das Fachformat: Was eine Route liest, hat der Vertra
 umgeformt (`z.transform`, z. B. `ZUSTAND` 'n' → 'N', `KENNUNG` → Zahl); eine Route wandelt
 `req.eingabe`, `req.abfrage` und `req.pfad` nicht nach (`test/layers.test.js`).
 Ein Ereignisstrom (`art: 'strom'`) nennt sein Ereignis (`ereignis`); die Oberfläche öffnet ihn nur
-über `strom()` in `public/js/api.js` und bekommt den Typ aus `Strom` (`frontend-typen/vertrag.d.ts`).
+über `strom()` in `public/js/api.js` und bekommt den Typ aus `Strom` (`frontend-types/contract.d.ts`).
 
 Was die App vom Server braucht (Routen, Abfrage, Rumpffelder, die Felder ihrer
 Modelle), steht in `shared/app-schnittstelle.json`. Der Android-Lauf erzeugt und prüft
@@ -405,7 +405,7 @@ explizit in `public/js/main.js` (Importliste), die Schichten in
 - **Texte:** `t()` maskiert eingesetzte Werte für Markup, `tRaw()` nicht (für
   `textContent`); beide aus `public/i18n.js`.
 - **Typen:** `tsconfig.frontend.json` prüft die Module streng (JSDoc, `strict`),
-  die Routentypen kommen aus `frontend-typen/vertrag.d.ts` (aus dem API-Vertrag erzeugt).
+  die Routentypen kommen aus `frontend-types/contract.d.ts` (aus dem API-Vertrag erzeugt).
 
 Die Schichten prüft `test/frontend-architektur.test.js`, das Verhalten prüfen
 die jsdom-Tests über `test/helpers/ui.js` (echtes `index.html`,

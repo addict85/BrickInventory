@@ -52,9 +52,9 @@ const METRICS = ['fin-einstand', 'fin-wert', 'fin-total-pnl', 'portfolio-current
 
 /** What a table row needs besides its own data.
  * @typedef {{ cur: string, severalAccounts: boolean, errorNeutral: boolean }} RowContext */
-/** @typedef {import('../../frontend-typen/vertrag').ValuationSet & { error?: string | null, owners?: { id: number, username: string }[] }} ValuedSet */
+/** @typedef {import('../../frontend-types/contract').ValuationSet & { error?: string | null, owners?: { id: number, username: string }[] }} ValuedSet */
 /** @typedef {ValuedSet['acquisitions'][number]} SetAcquisition */
-/** @typedef {import('../../frontend-typen/vertrag').PartsValuationResponse['parts'][number] | import('../../frontend-typen/vertrag').FigsValuationResponse['figs'][number]} ManualItem */
+/** @typedef {import('../../frontend-types/contract').PartsValuationResponse['parts'][number] | import('../../frontend-types/contract').FigsValuationResponse['figs'][number]} ManualItem */
 /** @typedef {ManualItem['acquisitions'][number]} ManualAcquisition */
 
 /** When rows from several accounts show, each names its account — even the viewer's own; otherwise
@@ -321,7 +321,7 @@ export async function loadFinance() {
   const partsItems = partsVal.success ? partsVal.parts : [];
   const figsItems = figsVal.success ? figsVal.figs : [];
   // Purchase total per section: from the server (pnl), otherwise computed from the rows.
-  /** @type {Partial<import('../../frontend-typen/vertrag').PnlTotals>} */
+  /** @type {Partial<import('../../frontend-types/contract').PnlTotals>} */
   const pt = pnlData.success ? pnlData.totals || {} : {};
   const purchase = {
     sets: numberOr(pt.sets_purchase, purchaseFrom(d.sets)),
@@ -436,7 +436,7 @@ let _finSearch = '',
   _finLimit = FIN_BLOCK;
 /** @type {{ feld: string, ab: boolean }} */
 let _finSort = { feld: '', ab: false };
-/** @type {null | { sets: ValuedSet[], parts: import('../../frontend-typen/vertrag').PartsValuationResponse['parts'], figs: import('../../frontend-typen/vertrag').FigsValuationResponse['figs'], purchase: { sets: number, parts: number, figs: number, alle: number }, value: { sets: number, parts: number, figs: number, alle: number }, setsQtyAvg: number, cur: string, basis: Basis, ctx: RowContext }} */
+/** @type {null | { sets: ValuedSet[], parts: import('../../frontend-types/contract').PartsValuationResponse['parts'], figs: import('../../frontend-types/contract').FigsValuationResponse['figs'], purchase: { sets: number, parts: number, figs: number, alle: number }, value: { sets: number, parts: number, figs: number, alle: number }, setsQtyAvg: number, cur: string, basis: Basis, ctx: RowContext }} */
 let _finState = null;
 
 /** @param {string} field @param {boolean} on */

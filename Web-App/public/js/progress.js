@@ -17,7 +17,7 @@ let _gibTimer = null; // Polling-Fallback-Timer (nur wenn SSE scheitert)
  * Ein Eintrag im Ergebnis eines Imports. `results` nennt der Vertrag nicht (CsvImportStatus ist offen); so
  * schreibt ihn src/sets/csvImportLauf.ts.
  * @typedef {{ set_number?: string, zeile?: number, success?: boolean, action?: string, isWarning?: boolean, error?: string | null, menge?: number, katalog_offen?: boolean }} ImportResult
- * @typedef {import('../../frontend-typen/vertrag').CsvImportStatus & { results?: ImportResult[] }} ImportStand
+ * @typedef {import('../../frontend-types/contract').CsvImportStatus & { results?: ImportResult[] }} ImportStand
  */
 /** @type {{ schliesse: () => void } | null} */
 let _gibSse = null; // aktiver Strom (SSE), falls verfügbar

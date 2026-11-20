@@ -114,7 +114,7 @@ export function showOffline(on, o = {}) {
 }
 
 /** The session check, with Retry-After: api() does not pass the response headers through.
- * @returns {Promise<{ d: import('../../frontend-typen/api').ApiAntwort<'GET', '/v1/auth/me'>, waitSec: number }>} */
+ * @returns {Promise<{ d: import('../../frontend-types/api').ApiAntwort<'GET', '/v1/auth/me'>, waitSec: number }>} */
 export async function checkSession() {
   try {
     const r = await apiRaw('GET', '/v1/auth/me', { cache: 'no-store' });

@@ -11,7 +11,7 @@ import { emptyLocationField, selectedOwner, selectedStorage } from './account-lo
 import { loadManualParts } from './parts.js';
 
 // Ein Teil von Hand erfassen: Formular oben im Teile-Reiter, Farbauswahl und CSV-Import.
-/** @typedef {import('../../frontend-typen/vertrag').BrickColor} Steinfarbe */
+/** @typedef {import('../../frontend-types/contract').BrickColor} Steinfarbe */
 // Inline add-part form (zuoberst im Teile-Tab)
 /** @type {Steinfarbe[]} */
 let _brickColors = [];

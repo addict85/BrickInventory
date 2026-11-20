@@ -16,7 +16,7 @@ const ICON = { set: 'set', teil: 'teil', figur: 'figur' };
 
 /**
  * Gleiche Sets zweier Konten sahen gleich aus; Konto und Menge unterscheiden sie, auch im Namen der Knöpfe.
- * @param {import('../../frontend-typen/vertrag').PapierkorbEintrag} e
+ * @param {import('../../frontend-types/contract').PapierkorbEintrag} e
  * @param {Map<number, string>} konten Name je Konto, leer ohne Haushalt
  */
 function zeile(e, konten) {

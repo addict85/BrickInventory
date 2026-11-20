@@ -91,7 +91,7 @@ function quellen() {
     for (const n of fs.readdirSync(d)) {
       const p = path.join(d, n);
       if (fs.statSync(p).isDirectory()) {
-        if (!['node_modules', 'dist', '.git', 'coverage', 'test', 'public', 'docs', 'frontend-typen'].includes(n))
+        if (!['node_modules', 'dist', '.git', 'coverage', 'test', 'public', 'docs', 'frontend-types'].includes(n))
           lauf(p);
       } else if (n.endsWith('.ts'))
         aus.set(path.relative(ROOT, p).split(path.sep).join('/'), ohneKommentare(fs.readFileSync(p, 'utf8')));

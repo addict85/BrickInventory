@@ -17,7 +17,7 @@ import { bestaetigeMitPasswort, questionCode, withSecondFactor, confirmWithPassw
 
 // On the login screen, while an admin still has to set it up (js/api.js reports it).
 let mandatory = false;
-/** The setup an admin's "set up again" has already started. @type {import('../../frontend-typen/vertrag').ZweiterFaktorEinrichtung | null} */
+/** The setup an admin's "set up again" has already started. @type {import('../../frontend-types/contract').ZweiterFaktorEinrichtung | null} */
 let started = null;
 const area = () => (mandatory ? G('zf-pflicht-flaeche') : G('zf-flaeche'));
 if (typeof document !== 'undefined')
@@ -105,7 +105,7 @@ export async function zfEinrichten() {
   showSetup(d);
 }
 
-/** @param {import('../../frontend-typen/vertrag').ZweiterFaktorEinrichtung} d */
+/** @param {import('../../frontend-types/contract').ZweiterFaktorEinrichtung} d */
 function showSetup(d) {
   // Grouped for readability, in case someone types the key in by hand.
   const readable = (d.geheimnis ?? '').replace(/(.{4})/g, '$1 ').trim();

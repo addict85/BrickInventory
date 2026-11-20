@@ -33,8 +33,8 @@ type Feld = HTMLInputElement &
 
 // Einträge der manuellen Teile- und Figurenlisten: von teile.js, minifigs.js und kauf-dialoge.js
 // geteilt. Als globale Typen, damit keine Datei der anderen wegen importiert (kein Typkreis).
-type ManuellesTeil = import('./vertrag').ManualPartsResponse['parts'][number];
-type ManuelleFigur = import('./vertrag').ManualFigsResponse['figs'][number];
+type ManuellesTeil = import('../frontend-types/contract').ManualPartsResponse['parts'][number];
+type ManuelleFigur = import('../frontend-types/contract').ManualFigsResponse['figs'][number];
 
 // Der Teil von PDF.js, den der Betrachter (pdfviewer.js) benutzt. PDF.js
 // kommt als eigenes ES-Modul aus public/vendor (pdfjs-boot.js).

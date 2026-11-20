@@ -6,9 +6,9 @@ import { ico, G, setzeHtml, ifVisible } from './dom.js';
 import { fmtDatum } from './format.js';
 import { meldeAmFeld, toast } from './messages.js';
 import { LANG, locale, t, tRaw } from '../i18n.js';
-/** @typedef {import('../../frontend-typen/vertrag').AuftragPause} AuftragPause */
-/** @typedef {import('../../frontend-typen/vertrag').Auftrag} Auftrag */
-/** @typedef {import('../../frontend-typen/vertrag').JobStatus} JobStatus */
+/** @typedef {import('../../frontend-types/contract').AuftragPause} AuftragPause */
+/** @typedef {import('../../frontend-types/contract').Auftrag} Auftrag */
+/** @typedef {import('../../frontend-types/contract').JobStatus} JobStatus */
 
 /** Zeitgeber der Jobliste, solange der Reiter offen ist. @type {ReturnType<typeof setTimeout> | null} */
 let _monitorTimer = null;
@@ -193,7 +193,7 @@ export async function saveJobSchedule(name, payload, feld) {
 // Die Zeitpläne stehen in den Einstellungen (Feld); hier, unter „Hintergrundarbeiten“, nur als Text mit
 // Link dorthin: Beobachten und Einstellen an einem Ort waren drei Speicherwege nebeneinander.
 // Die Uhrzeit als Textfeld mit 24-h-Form: <input type="time"> zeigt die Form des Browsers („03:00 AM“).
-/** @param {Record<string, import('../../frontend-typen/vertrag').JobSchedule> | null | undefined} schedules @param {string} k */
+/** @param {Record<string, import('../../frontend-types/contract').JobSchedule> | null | undefined} schedules @param {string} k */
 const schedInput = (schedules, k) => {
   const sc = schedules?.[k];
   if (!sc) return html`<span class="mon-leise">${tRaw('monitor.sched.keiner')}</span>`;
@@ -205,7 +205,7 @@ const schedInput = (schedules, k) => {
   }
   return '';
 };
-/** @param {Record<string, import('../../frontend-typen/vertrag').JobSchedule> | null | undefined} schedules @param {string} k */
+/** @param {Record<string, import('../../frontend-types/contract').JobSchedule> | null | undefined} schedules @param {string} k */
 const schedText = (schedules, k) => {
   const sc = schedules?.[k];
   if (!sc) return html`<span class="mon-leise">${tRaw('monitor.sched.keiner')}</span>`;

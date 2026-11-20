@@ -222,7 +222,7 @@ export async function ladeAlarm(sn) {
 /**
  * Nur den Merker nachführen, nie das Eingabefeld: Während getippt wird, schriebe die Serverantwort sonst ein
  * eben getipptes Zeichen wieder weg.
- * @param {import('../../frontend-typen/vertrag').Preisalarm | undefined} a
+ * @param {import('../../frontend-types/contract').Preisalarm | undefined} a
  */
 function showAlarmMarker(a) {
   const st = G(alarmId('state'));
@@ -449,7 +449,7 @@ registerActions({
 /**
  * Die Lagerort-Filter füllen. Ohne Orte bleiben sie verborgen: Eine Wahl mit nur „Alle“ beantwortet nichts —
  * dieselbe Regel wie beim Kontofilter.
- * @param {import('../../frontend-typen/vertrag').Lagerort[]} orte
+ * @param {import('../../frontend-types/contract').Lagerort[]} orte
  */
 export function initStorageSelects(orte) {
   // Lange Namen gekürzt: Ein Auswahlfeld ist so breit wie seine längste Option; der volle Name steht im title.

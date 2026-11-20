@@ -19,6 +19,6 @@
     "noUnusedLocals": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["public/js/*.js", "public/i18n.js", "frontend-typen/*.d.ts"],
+  "include": ["public/js/*.js", "public/i18n.js", "frontend-types/*.d.ts"],
   "exclude": ["public/js/app.bundle.js", "public/js/theme-boot.js", "public/js/logviewer.js"]
 }

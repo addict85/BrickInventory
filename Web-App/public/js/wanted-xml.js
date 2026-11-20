@@ -16,11 +16,11 @@ import { loadBrickColors } from './part-add.js';
 /**
  * The server's report (WantedXmlErgebnis). The contract does not yet name the per-item fields the table
  * shows, so src/merkliste writes them here.
- * @typedef {import('../../frontend-typen/vertrag').WantedXmlErgebnis['posten'][number] & {
+ * @typedef {import('../../frontend-types/contract').WantedXmlErgebnis['posten'][number] & {
  *   bild?: string | null, blFarbe?: number | null, farbHex?: string | null, farbName?: string | null,
  *   grund?: string | null, grundCode?: string | null, maxPreis?: number | null, name?: string | null,
  *   nameGeraten?: boolean, rbId?: string | null, set?: string | null, zustand?: string | null }} Item
- * @typedef {import('../../frontend-typen/vertrag').WantedXmlErgebnis & { posten: Item[],
+ * @typedef {import('../../frontend-types/contract').WantedXmlErgebnis & { posten: Item[],
  *   abgebrochen?: boolean, farbeOffen?: number, fremdeArten?: Record<string, number>,
  *   korrekturen?: { abgewiesen?: unknown[] },
  *   rebrickable?: { gefragt: number, gefunden: number, abgebrochen?: 'kontingent' | 'kein_schluessel' | 'stoerung' } | null,

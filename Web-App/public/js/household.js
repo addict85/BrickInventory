@@ -28,7 +28,7 @@ export async function loadHousehold() {
  * Die Haushaltskarte: Elternkonten und Unterkonten sind zwei unabhängige Abschnitte, weil ein Konto beides
  * zugleich sein kann. Darunter der Hinweis auf Konten, die nur über eine Kette sichtbar waren und es nicht
  * mehr sind.
- * @param {import('../../frontend-typen/vertrag').HouseholdStatusResponse} d
+ * @param {import('../../frontend-types/contract').HouseholdStatusResponse} d
  */
 function renderHousehold(d) {
   const stateEl = G('household-state');

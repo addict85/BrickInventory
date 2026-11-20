@@ -19,8 +19,8 @@ import { deleteManualPart, loadManualParts, manualParts, updateManualPart } from
 import { loadBrickColors } from './part-add.js';
 import { erfassung, gespeichert, setWithFocus, isoTag, dateField, savedBrand, showSaved } from './entry-state.js';
 import { closeAcqModal } from './purchase-dialogs.js';
-/** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} AcquisitionTotals */
-/** @typedef {import('../../frontend-typen/vertrag').Acquisition} Acquisition */
+/** @typedef {import('../../frontend-types/contract').AcquisitionTotals} AcquisitionTotals */
+/** @typedef {import('../../frontend-types/contract').Acquisition} Acquisition */
 
 // Detail dialog and acquisitions of manually recorded parts and minifigs; the #acq-modal window is
 // shared with the set's acquisition dialog (purchase-dialogs.js).

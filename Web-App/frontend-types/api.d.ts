@@ -1,8 +1,8 @@
-// Die Antwort von api(method, path) nach dem Vertrag (vertrag.d.ts). Der Pfad
+// Die Antwort von api(method, path) nach dem Vertrag (contract.d.ts). Der Pfad
 // wird wie bei Express zugeordnet: Platzhalter als ${string}, die Abfrage nach
 // „?“ zählt nicht. Passen mehrere Routen, gilt die genaueste; passt keine
 // (Pfad zur Laufzeit zusammengesetzt), ist die Antwort ungeprüft (any).
-import type { Route, Strom } from './vertrag';
+import type { Route, Strom } from '../frontend-types/contract';
 
 type OhneAbfrage<P extends string> = P extends `${infer B}?${string}` ? B : P;
 type Genau<M, P, R = Route> = R extends { m: M; p: infer Q } ? (P extends Q ? R : never) : never;

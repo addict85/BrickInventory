@@ -1,11 +1,11 @@
 /**
  * Die Oberfläche liest die Antworten von api() mit den Typen des Vertrags:
- * frontend-typen/vertrag.d.ts ist aus docs/openapi.json erzeugt, und
- * frontend-typen/api.d.ts ordnet jedem Pfad seine Route zu. Geprüft wird mit
+ * frontend-types/contract.d.ts ist aus docs/openapi.json erzeugt, und
+ * frontend-types/api.d.ts ordnet jedem Pfad seine Route zu. Geprüft wird mit
  * tsc an einer Probe, welche Zugriffe durchgehen und welche nicht.
  *
  * Gegenproben (05.11.2026 gemessen):
- *   A  in vertrag.d.ts SetsResponse.sets in SetItems umbenannt → rot: „die
+ *   A  in contract.d.ts SetsResponse.sets in SetItems umbenannt → rot: „die
  *      eingecheckten Typen sind aus openapi.json erzeugt“
  *   B  in api.d.ts Genaueste weggelassen (alle passenden Routen statt der
  *      genauesten) → rot: „api(): jeder Pfad bekommt die Antwort seiner Route“
@@ -31,7 +31,7 @@ test('die eingecheckten Typen sind aus openapi.json erzeugt', () => {
   const soll = formatiert(create(JSON.parse(fs.readFileSync(QUELLE, 'utf8'))));
   assert.ok(
     fs.readFileSync(ZIEL, 'utf8') === soll,
-    'frontend-typen/vertrag.d.ts ist veraltet — npm run vertrag:frontend',
+    'frontend-types/contract.d.ts ist veraltet — npm run vertrag:frontend',
   );
 });
 
@@ -55,7 +55,7 @@ function pruefe(probe) {
           types: [],
           skipLibCheck: true,
         },
-        files: ['probe.js', path.join(ROOT, 'frontend-typen', 'api.d.ts')],
+        files: ['probe.js', path.join(ROOT, 'frontend-types', 'api.d.ts')],
       }),
     );
     const r = spawnSync(process.execPath, [TSC, '-p', dir], { encoding: 'utf8' });
@@ -75,7 +75,7 @@ function pruefe(probe) {
 const HEADER = `/**
  * @template {string} M @template {string} P
  * @param {M} m @param {P} p
- * @returns {Promise<import(${JSON.stringify(path.join(ROOT, 'frontend-typen', 'api'))}).ApiAntwort<M, P>>}
+ * @returns {Promise<import(${JSON.stringify(path.join(ROOT, 'frontend-types', 'api'))}).ApiAntwort<M, P>>}
  */
 async function api(m, p) { return /** @type {any} */ (null); }
 /** @param {number} n */ function zahl(n) { return n; }

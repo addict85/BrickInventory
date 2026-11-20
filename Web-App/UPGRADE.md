@@ -2417,7 +2417,7 @@ Daten, keine Bezeichner, und bleiben unverändert.
   neuen Namen umgestellt werden; `postgres/app-rolle.sh` (Leserolle-Allowlist) ist bereits
   angepasst.
 - **API-Felder geändert** (Vertrag, `src/contract/*.ts`, nach Regenerierung von
-  `docs/openapi.json`, `frontend-typen/vertrag.d.ts` und `Vertrag.kt`): Preisalarme
+  `docs/openapi.json`, `frontend-types/contract.d.ts` und `Vertrag.kt`): Preisalarme
   (`GET/PUT .../alert`, `GET /alerts`, `GET /alerts/pending`) liefern/erwarten jetzt
   `direction`, `threshold`, `triggered`, `last_triggered_at`, `last_price` statt
   `richtung`, `schwelle`, `ausgeloest`, `zuletzt_am`, `zuletzt_preis` (ebenso im CSV-Export/-Import

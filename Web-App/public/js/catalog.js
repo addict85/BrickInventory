@@ -30,14 +30,14 @@ let _catPageCount = 0;
 let _catLoadedPages = new Set();
 let _catLoadingPages = new Set();
 let _catScrollBound = false;
-/** @type {import('../../frontend-typen/vertrag').CatalogSetItem[]} */
+/** @type {import('../../frontend-types/contract').CatalogSetItem[]} */
 let _catItems = [];
 /** Datenbereich aus /catalog/meta. @type {number | null} */
 let _catYearMin = null;
 /** @type {number | null} */
 let _catYearMax = null;
 let _catMetaLoaded = false;
-/** Das Set im Detail-Dialog. @type {import('../../frontend-typen/vertrag').CatalogSetDetail | null} */
+/** Das Set im Detail-Dialog. @type {import('../../frontend-types/contract').CatalogSetDetail | null} */
 let _catCurSet = null;
 /** Jahr → Zahl der Sets (Etikett am Jahresregler). @type {Record<number, number>} */
 let _catYearCounts = {};
@@ -290,7 +290,7 @@ function _setPlaceholderHeight() {
 let _catBlockStates = [];
 // Jahre mit ihrer Anzahl, in der Reihenfolge der Liste — die Grundlage für das Etikett am Scrollbalken (siehe
 // _yearAnPosition).
-/** @type {import('../../frontend-typen/vertrag').JahrAnzahl[]} */
+/** @type {import('../../frontend-types/contract').JahrAnzahl[]} */
 let _catYearDistribution = [];
 
 function _measureBlocks() {
@@ -394,7 +394,7 @@ export async function loadPage(seite) {
   }
 }
 
-/** @param {import('../../frontend-typen/vertrag').CatalogSetItem} s */
+/** @param {import('../../frontend-types/contract').CatalogSetItem} s */
 function catCard(s) {
   // Vorschau über den Server wie bei Sets, Teilen und Figuren: kleiner als die volle CDN-Auflösung, und schon
   // heruntergeladene Bilder (image_local) sparen den Weg zum CDN ganz.

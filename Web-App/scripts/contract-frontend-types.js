@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * Schreibt frontend-typen/vertrag.d.ts aus docs/openapi.json: die Antwort
+ * Schreibt frontend-types/contract.d.ts aus docs/openapi.json: die Antwort
  * jeder Route als TypeScript-Typ, damit tsc die api()-Aufrufe der Oberfläche
  * gegen den Vertrag prüft. Die Datei ist eingecheckt;
  * test/contract-frontend-types.test.js prüft, dass sie zu openapi.json passt.
@@ -14,7 +14,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const QUELLE = path.join(ROOT, 'docs', 'openapi.json');
-const ZIEL = path.join(ROOT, 'frontend-typen', 'vertrag.d.ts');
+const ZIEL = path.join(ROOT, 'frontend-types', 'contract.d.ts');
 
 const NAME = /^[A-Za-z_$][\w$]*$/;
 const schluessel = (/** @type {string} */ k) => (NAME.test(k) ? k : JSON.stringify(k));
@@ -65,7 +65,7 @@ function objekt(s, indent) {
   return zeilen.length ? `{\n${zeilen.join('\n')}\n${indent}}` : 'Record<string, never>';
 }
 
-/** Der Inhalt von vertrag.d.ts. @param {any} dok @returns {string} */
+/** Der Inhalt von contract.d.ts. @param {any} dok @returns {string} */
 function create(dok) {
   const aus = [
     '// Erzeugt von scripts/contract-frontend-types.js aus docs/openapi.json — nicht von Hand ändern.',

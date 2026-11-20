@@ -203,7 +203,7 @@ async function speichereStandardZustand() {
 export async function loadRateLimitStats() {
   const d = await api('GET', '/v1/admin/cache-stats');
   if (!d.success || !d.rate_limits) return;
-  const fmt = (/** @type {import('../../frontend-typen/vertrag').RateLimit | null | undefined} */ rl) =>
+  const fmt = (/** @type {import('../../frontend-types/contract').RateLimit | null | undefined} */ rl) =>
     rl ? `${rl.count.toLocaleString(locale())} / ${rl.limit.toLocaleString(locale())}` : '—';
   for (const service of /** @type {const} */ (['bricklink', 'rebrickable', 'brickset'])) {
     const rl = d.rate_limits[service];
@@ -266,7 +266,7 @@ async function loadOwnTheme() {
   showThemeChoice(d);
 }
 
-/** @param {import('../../frontend-typen/vertrag').AppThemeResponse} d */
+/** @param {import('../../frontend-types/contract').AppThemeResponse} d */
 function showThemeChoice(d) {
   const sel = /** @type {HTMLSelectElement} */ (/** @type {unknown} */ (G('design-wahl')));
   const NAMES = {

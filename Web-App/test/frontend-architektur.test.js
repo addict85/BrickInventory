@@ -181,7 +181,7 @@ test('docs/architektur.md beschreibt die Oberfläche mit Dateien, die es gibt', 
   require('./helpers/bundle').placeBundleSafe(); // das Kapitel nennt das Bündel, ein Erzeugnis
   const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'architektur.md'), 'utf8');
   const chapter = doc.split(/^## Oberfläche$/m)[1]?.split(/^## /m)[0] ?? '';
-  const pfade = [...chapter.matchAll(/`((?:public|test|frontend-typen|scripts)\/[\w./-]+)`/g)].map(m => m[1]);
+  const pfade = [...chapter.matchAll(/`((?:public|test|frontend-types|scripts)\/[\w./-]+)`/g)].map(m => m[1]);
   assert.ok(pfade.length >= 10, `nur ${pfade.length} Pfade im Kapitel „Oberfläche“`);
   const fehlt = pfade.filter(p => !fs.existsSync(path.join(__dirname, '..', p)));
   assert.deepEqual(fehlt, []);

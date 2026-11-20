@@ -5,8 +5,8 @@ import { esc, html } from './escaping.js';
 import { ico } from './dom.js';
 import { fmtDatum, fmtGeld, fmtGeldCode, fmtN, isGift } from './format.js';
 import { accountCurrency } from './state.js';
-/** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} Erfassungssumme */
-/** @typedef {import('../../frontend-typen/vertrag').Acquisition} Erfassung */
+/** @typedef {import('../../frontend-types/contract').AcquisitionTotals} Erfassungssumme */
+/** @typedef {import('../../frontend-types/contract').Acquisition} Erfassung */
 
 /**
  * Summenzeile unter einer Erfassungsliste.

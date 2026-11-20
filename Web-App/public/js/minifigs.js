@@ -39,7 +39,7 @@ import { confirmDelete } from './confirm-prompt.js';
 
 // ── MINIFIGUREN ──────────────────────────────────────────────────────────────
 /**
- * @typedef {import('../../frontend-typen/vertrag').GET_api_v1_minifigs['figs'][number]} Figur
+ * @typedef {import('../../frontend-types/contract').GET_api_v1_minifigs['figs'][number]} Figur
  */
 /** @type {Figur[]} */
 let allFigsCache = [];

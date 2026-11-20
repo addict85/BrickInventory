@@ -7,7 +7,7 @@ import { loadLocations, locationBlock } from './detail-fields.js';
 import { tRaw } from '../i18n.js';
 import { html, rawHtml } from './escaping.js';
 import { subscribe } from './events.js';
-/** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} HouseholdMember */
+/** @typedef {import('../../frontend-types/contract').HouseholdMember} HouseholdMember */
 
 /**
  * Kontofilter je Ansicht sichtbar machen und mit dem gespeicherten Wert füllen.

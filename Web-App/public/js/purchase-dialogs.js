@@ -16,9 +16,9 @@ import { renderMarketRows } from './charts.js';
 import { erfassung, gespeichert, setWithFocus, isoTag, dateField, savedBrand, showSaved } from './entry-state.js';
 // Kaufpreis-Modal und Detailfenster für manuelle Einträge: Beides ist Erfassung, keine Administration, und
 // gehört deshalb nicht nach admin.js.
-/** @typedef {import('../../frontend-typen/vertrag').HouseholdMember} Konto */
-/** @typedef {import('../../frontend-typen/vertrag').AcquisitionTotals} Erfassungssumme */
-/** @typedef {import('../../frontend-typen/vertrag').Acquisition} Erfassung */
+/** @typedef {import('../../frontend-types/contract').HouseholdMember} Konto */
+/** @typedef {import('../../frontend-types/contract').AcquisitionTotals} Erfassungssumme */
+/** @typedef {import('../../frontend-types/contract').Acquisition} Erfassung */
 
 // ── KAUFPREIS-MODAL ─────────────────────────────────────────────────────────
 /**

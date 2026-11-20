@@ -20,7 +20,7 @@ export let settingsSnapshot = null;
 /**
  * A set of the gallery: the row from /v1/sets, plus tile price, P&L and their source from
  * /v1/finance/pnl (set in collection.js).
- * @typedef {import('../../frontend-typen/vertrag').SetItem & { _price?: number | null, _pnl_pct?: number | null, _source?: string | null }} Tile
+ * @typedef {import('../../frontend-types/contract').SetItem & { _price?: number | null, _pnl_pct?: number | null, _source?: string | null }} Tile
  */
 /** The loaded sets of the gallery. @type {Tile[]} */
 export let gallerySets = [];
